@@ -14,3 +14,6 @@ dist/
 /tmp/
 *.tgz
 .vercel
+
+# Agent context (local only)
+CLAUDE.md
