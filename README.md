@@ -10,6 +10,9 @@ This is the "own every part" track. The mainline
 chrome); this one starts from the last permissive Scratch source so gui / vm / blocks / paint
 are all local, editable, and licence-clean.
 
+**Live:** <https://brickwright-lite.vercel.app> — auto-deploys from `main` (Vercel + GitHub Pages
+CI). The repo is public so Actions are free/unlimited.
+
 ## Why this base
 
 Scratch Foundation relicensed the whole stack **BSD-3-Clause → AGPL-3.0 on 2024-11-25**
@@ -33,36 +36,67 @@ So we pin the **last BSD-3 commit** and freeze it:
 **Do not** swap in `scratch-blocks@2.x` — it's a ground-up Blockly rewrite (ESM, new API)
 incompatible with the v4 GUI's classic `ScratchBlocks.*`; that combination fails to build.
 
-## Layout (npm workspaces)
+## How it's built: vendor + overlay
+
+We are **frozen on pinned versions**, so the pristine base never shifts under us. That means we
+don't string-patch the base every build — we **own full copies of the files we change** in
+`overlay/`, and the build just copies them over the vendored sources. To change base behaviour,
+edit the file in `overlay/`.
 
 ```
-packages/
-  scratch-gui/            ← vendored BSD-3 fork you edit
-  scratch-vm/             ← vendored BSD-3 fork you edit
-  scratch-blocks/         ← vendored Apache-2.0 fork you edit
-  scratch-paint/          ← vendored BSD-3 fork you edit (or rewrite)
-  extensions/             ← LEGO/utility extensions, bundled as built-ins
-  code-tab/               ← the sb3-creator blocks⇄code⇄Python/JS "Code" tab
-scripts/vendor.mjs        ← fetches the pinned permissive sources into packages/
-docs/extension-compat.md  ← plan to load BOTH Xcratch and TurboWarp extensions, bundled
+overlay/scratch-gui/   ← every gui file we own: the Code tab (tw-pseudocode + sb3-creator libs),
+                          the SoundFX creator, webpack.config.js, de-branded menu-bar/render-gui,
+                          the extension-library picker, the robot icons + default sprite
+overlay/scratch-vm/    ← built-in extensions (extensions/crispstrobe/*) + their registration
+scripts/
+  vendor.mjs           ← fetch the pinned permissive sources into packages/ (gitignored)
+  integrate.mjs        ← copy overlay/ over the vendored gui + micro:bit stub + 3 package.json fields
+  apply-vm-overlay.mjs ← post-install: lay the vm overlay onto node_modules/scratch-vm + one
+                          upstream bugfix (xmlEscape the extension category name)
 ```
+
+`packages/` (the vendored sources) is gitignored — `vendor.mjs` repopulates it, and validates each
+dir's `package.json` so a partial CI/Vercel build cache self-heals.
 
 ## Quick start
 
 ```bash
-npm run vendor      # fetch the pinned BSD-3/Apache sources into packages/
-npm install         # link the workspaces
-npm run build:gui   # webpack the editor
+npm run vendor                                   # fetch pinned BSD-3/Apache sources into packages/
+node scripts/integrate.mjs                       # overlay our delta
+cd packages/scratch-gui
+npm install --ignore-scripts --legacy-peer-deps  # --ignore-scripts skips the flaky micro:bit download
+node ../../scripts/apply-vm-overlay.mjs          # built-in extensions + the category-name bugfix
+NODE_ENV=production npm run build                # -> build/  (CI/Vercel run scripts/vercel-build.sh)
 ```
+
+The production build sets `devtool:false` (no source maps) — source maps over ~80 MB of blockly
+were the exit-137 OOM on 7–8 GB CI/Vercel runners; the fix drops peak RSS from >8 GB to ~4.8 GB.
+
+## What's integrated
+
+- **The "Code" tab** — blocks ⇄ pseudocode ⇄ Python ⇄ JavaScript ([sb3-creator](https://github.com/CrispStrobe/sb3-creator)),
+  with in-editor Run (Skulpt / JS) and a Custom-sprite-art dialog.
+- **SoundFX creator** (crispfxr) in the sound editor.
+- **Built-in extensions** (bundled, offline): Planète Maths, Arrays & Vectors. Each wraps its
+  TurboWarp/Xcratch source through a `Scratch`-shim adapter into a vanilla built-in.
+- **External extension loading** — the picker fetches the
+  [CrispStrobe gallery](https://crispstrobe.github.io/extensions/) and loads any of its ~117
+  extensions at runtime. Clean-room BSD path (not TurboWarp's MPL loader): allow-listed gallery
+  URLs are fetched and run in-process through the same adapter.
+- **De-branded** — Brickwright robot as favicon / menu-bar logo / default sprite; no scratch.mit.edu
+  redirect; the non-functional Share / Community / My-Stuff / account / Backpack UI is removed.
 
 ## Roadmap
 
-- [x] Pin & verify the last-BSD permissive base (installs + builds).
-- [ ] Vendor gui/vm/blocks/paint as editable workspaces; wire scratch-gui at the local vm/blocks.
-- [x] **Port the `sb3-creator` "Code" tab** — blocks⇄pseudocode⇄Python⇄JS, integrated + **build-verified** on the BSD base (skulpt/jszip added, gui.jsx patched; see overlay/ + scripts/integrate.mjs).
-- [ ] Bundle the LEGO/utility extensions as built-ins.
-- [ ] Extension shim that loads **both** Xcratch and TurboWarp formats (see `docs/`).
-- [ ] (Later) rewrite the paint editor; own vm/gui changes as needed.
+- [x] Pin & verify the last-BSD permissive base (installs + builds, green on CI + Vercel).
+- [x] **Port the `sb3-creator` "Code" tab** — blocks⇄pseudocode⇄Python⇄JS, build-verified.
+- [x] SoundFX creator in the sound editor.
+- [x] Bundle utility extensions as built-ins (Planète Maths, Arrays & Vectors); gamepad next.
+- [x] Runtime loading of the CrispStrobe gallery — TurboWarp-unsandboxed format (clean-room BSD).
+- [x] Brickwright branding (robot favicon / logo / default sprite); de-brand the dead Scratch UI.
+- [ ] German i18n for our additions (Code tab, sound editor) — gallery JSON already ships `de`.
+- [ ] Xcratch-format loading (the adapter already handles its `{blockClass, entry}` shape).
+- [ ] (Later) rewrite the paint editor; own vm/gui/blocks changes as needed.
 
 Tradeoff vs mainline Brickwright: you own a frozen fork (no free upstream fixes) and lose
 TurboWarp's compiler speed + addon system — in exchange for a permissive app you can bundle
