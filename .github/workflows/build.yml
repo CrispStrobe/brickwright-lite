@@ -17,6 +17,6 @@ jobs:
       - name: Install
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Build the editor (proves the permissive base compiles)
-        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=6144 npm run build
+        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=4096 npm run build
       - uses: actions/upload-artifact@v4
         with: { name: editor-build, path: packages/scratch-gui/build }
