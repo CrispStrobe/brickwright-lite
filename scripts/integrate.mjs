@@ -47,4 +47,24 @@ if (!s.includes('tw-pseudocode/pseudocode-importer')) {
 } else {
     console.log('  gui.jsx already patched, skipping');
 }
+
+// 4) disable production source maps. The base config uses `cheap-module-source-map`, which
+// builds source maps over ~80MB of vendored blockly — the single biggest peak-memory driver
+// and the cause of OOM (exit 137) on 7-8GB CI/Vercel runners. The shipped app needs no maps.
+const wpPath = path.join(GUI, 'webpack.config.js');
+let wp = readFileSync(wpPath, 'utf8');
+if (!wp.includes('c.devtool = false')) {
+    const anchor = `module.exports = buildDist ?
+    [buildConfig.get(), distConfig.get()] :
+    buildConfig.get();`;
+    const repl = `const _cfgs = buildDist ? [buildConfig.get(), distConfig.get()] : [buildConfig.get()];
+_cfgs.forEach(c => { c.devtool = false; }); // Brickwright: no source maps -> fits CI RAM
+module.exports = buildDist ? _cfgs : _cfgs[0];`;
+    if (!wp.includes(anchor)) { console.error('  ! webpack.config.js export anchor not found'); process.exit(1); }
+    writeFileSync(wpPath, wp.replace(anchor, repl));
+    console.log('  patched webpack.config.js (devtool: false)');
+} else {
+    console.log('  webpack.config.js already patched, skipping');
+}
+
 console.log('Integration applied. `cd packages/scratch-gui && npm install --ignore-scripts && npm run build`.');
