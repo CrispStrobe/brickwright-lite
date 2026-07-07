@@ -94,7 +94,7 @@ were the exit-137 OOM on 7–8 GB CI/Vercel runners; the fix drops peak RSS from
 - [x] Bundle utility extensions as built-ins (Planète Maths, Arrays & Vectors); gamepad next.
 - [x] Runtime loading of the CrispStrobe gallery — TurboWarp-unsandboxed format (clean-room BSD).
 - [x] Brickwright branding (robot favicon / logo / default sprite); de-brand the dead Scratch UI.
-- [ ] German i18n for our additions (Code tab, sound editor) — gallery JSON already ships `de`.
+- [x] German i18n for our additions (Code tab + SoundFX) via a per-component locale table.
 - [ ] Xcratch-format loading (the adapter already handles its `{blockClass, entry}` shape).
 - [ ] (Later) rewrite the paint editor; own vm/gui/blocks changes as needed.
 
