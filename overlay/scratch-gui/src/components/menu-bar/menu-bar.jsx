@@ -85,7 +85,7 @@ import aboutIcon from './icon--about.svg';
 import fileIcon from './icon--file.svg';
 import editIcon from './icon--edit.svg';
 
-import scratchLogo from './brickwright-logo.png'; // Brickwright: app icon in place of the Scratch logo
+import scratchLogo from './brick-robot.svg'; // Brickwright: robot mascot in place of the Scratch logo
 import ninetiesLogo from './nineties_logo.svg';
 import catLogo from './cat_logo.svg';
 import prehistoricLogo from './prehistoric-logo.svg';
