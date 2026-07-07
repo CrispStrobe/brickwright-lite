@@ -1,0 +1,15 @@
+node_modules/
+# Vendored permissive sources (populated by `npm run vendor`). Kept out of git initially;
+# once you start editing a component, `git add -f packages/<name>` to own it in-tree.
+packages/scratch-gui/
+packages/scratch-vm/
+packages/scratch-blocks/
+packages/scratch-paint/
+packages/scratch-render/
+packages/scratch-audio/
+packages/scratch-storage/
+packages/scratch-svg-renderer/
+build/
+dist/
+/tmp/
+*.tgz

@@ -1,0 +1,20 @@
+name: Build (permissive base)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Install
+        run: cd packages/scratch-gui && npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Build the editor (proves the permissive base compiles)
+        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=6144 npm run build
+      - uses: actions/upload-artifact@v4
+        with: { name: editor-build, path: packages/scratch-gui/build }
