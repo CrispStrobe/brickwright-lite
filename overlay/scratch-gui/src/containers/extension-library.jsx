@@ -82,8 +82,11 @@ class ExtensionLibrary extends React.PureComponent {
         }
     }
     render () {
-        // bundled built-ins first, then the fetched gallery
-        const allExtensions = extensionLibraryContent.concat(this.state.gallery);
+        // bundled built-ins first, then the fetched gallery — minus any gallery entry whose id we
+        // already bundle (e.g. planetemaths, arrays), so they don't appear twice.
+        const bundledIds = new Set(extensionLibraryContent.map(e => e.extensionId).filter(Boolean));
+        const gallery = this.state.gallery.filter(e => !bundledIds.has(e.extensionId));
+        const allExtensions = extensionLibraryContent.concat(gallery);
         const extensionLibraryThumbnailData = allExtensions.map(extension => ({
             rawURL: extension.iconURL || extensionIcon,
             ...extension
