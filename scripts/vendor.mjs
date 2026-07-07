@@ -24,21 +24,27 @@ const NPM = [
 
 const sh = (cmd, cwd) => execSync(cmd, { cwd, stdio: 'inherit' });
 
+// A dir counts as vendored only if its package.json is present. Vercel restores a build cache
+// that can contain a PARTIAL packages/<name> (e.g. src/ but no package.json); trusting the bare
+// directory then makes integrate.mjs fail on the missing package.json. Validate + re-fetch.
+const isVendored = dest => existsSync(path.join(dest, 'package.json'));
+const freshDir = dest => { if (existsSync(dest)) rmSync(dest, { recursive: true, force: true }); mkdirSync(dest, { recursive: true }); };
+
 function vendorGui () {
     const dest = path.join(PKG, 'scratch-gui');
-    if (existsSync(dest)) { console.log('  scratch-gui already vendored, skipping'); return; }
+    if (isVendored(dest)) { console.log('  scratch-gui already vendored, skipping'); return; }
     console.log(`  scratch-gui @ ${GUI_COMMIT} (BSD-3-Clause)`);
     sh(`curl -sL "https://codeload.github.com/scratchfoundation/scratch-gui/tar.gz/${GUI_COMMIT}" -o /tmp/_gui.tgz`);
-    mkdirSync(dest, { recursive: true });
+    freshDir(dest);
     sh(`tar xzf /tmp/_gui.tgz -C "${dest}" --strip-components=1`);
 }
 
 function vendorNpm (name, version) {
     const dest = path.join(PKG, name);
-    if (existsSync(dest)) { console.log(`  ${name} already vendored, skipping`); return; }
+    if (isVendored(dest)) { console.log(`  ${name} already vendored, skipping`); return; }
     console.log(`  ${name}@${version}`);
     const tgz = execSync(`npm pack ${name}@${version} --pack-destination /tmp 2>/dev/null`).toString().trim();
-    mkdirSync(dest, { recursive: true });
+    freshDir(dest);
     sh(`tar xzf "/tmp/${tgz}" -C "${dest}" --strip-components=1`);
 }
 

@@ -56,6 +56,14 @@ export default [
         featured: true
     },
     {
+        name: 'Arrays & Vectors',
+        extensionId: 'arrays',
+        iconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzJiN2RlOSIvPjx0ZXh0IHg9IjI0IiB5PSIzMyIgZm9udC1zaXplPSIyMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSI+WyBdPC90ZXh0Pjwvc3ZnPg==',
+        insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzJiN2RlOSIvPjx0ZXh0IHg9IjI0IiB5PSIzMyIgZm9udC1zaXplPSIyMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSI+WyBdPC90ZXh0Pjwvc3ZnPg==',
+        description: 'Named arrays, vectors & tensors (Arrays & Vectors) — bundled built-in.',
+        featured: true
+    },
+    {
         name: (
             <FormattedMessage
                 defaultMessage="Music"
