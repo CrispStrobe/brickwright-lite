@@ -8,17 +8,23 @@ const BlockType = require('../../../extension-support/block-type');
  *   1. Web Speech API (`speechSynthesis`) — works today in every modern browser, uses the OS
  *      voices, offline. This is the default and the fallback.
  *   2. CrispASR WASM (github.com/CrispStrobe/CrispASR, MIT) — a fully client-side neural TTS
- *      (piper / kokoro) compiled to WebAssembly. Higher, consistent cross-platform quality. It is
- *      wired here per the CrispASR Embind API (`ttsOpen` / `ttsSynthesize` -> Float32Array @ 24kHz),
- *      and switches on automatically once (a) a build is hosted and its base URL is configured, and
- *      (b) the page is cross-origin isolated (SharedArrayBuffer — CrispASR's WASM is multithreaded).
+ *      (kokoro) compiled to WebAssembly, multithreaded via PROXY_TO_PTHREAD. Because scratch-vm
+ *      runs on the main thread and the synth blocks, the WASM runs in a dedicated Web Worker
+ *      (overlay/scratch-gui/static/tts/tts-worker.js) — the extension just posts text and gets a
+ *      Float32Array (24 kHz mono) back. Switches on automatically once (a) a build + worker are
+ *      hosted and configured, and (b) the page is cross-origin isolated (SharedArrayBuffer).
  *
- * To enable the CrispASR engine, host the emscripten build + a model and set, before the editor
- * loads (e.g. in index.html):
+ * To enable the CrispASR engine, host the emscripten build (built via
+ * CrispASR/build-wasm.sh --proxy-to-pthread: libwhisper.js + libwhisper.wasm) next to the worker,
+ * and set — before the editor loads (e.g. in index.html):
  *     window.BRICKWRIGHT_TTS = {
- *         loaderURL: 'https://.../libwhisper.js',   // built via CrispASR/build-wasm.sh (has the TTS API)
- *         modelURL:  'https://.../piper-en_US.gguf', // piper: 30MB, MIT, built-in EN/DE/FR/ES G2P
- *         sampleRate: 24000
+ *         workerURL:  '/tts/tts-worker.js',   // co-hosted with libwhisper.js/.wasm
+ *         modelURL:   '/tts/kokoro.gguf',
+ *         voices:     {en: '/tts/voice.gguf', de: '/tts/voice_de.gguf'},
+ *         cmudictURL: '/tts/cmudict.dict',    // EN G2P (~3.5MB)
+ *         deDicts:    {olaph: '/tts/olaph_de.txt', espeak: '/tts/espeak_de.tsv'}, // DE G2P
+ *         sampleRate: 24000,
+ *         threads:    4
  *     };
  * The page must also be cross-origin isolated (COOP/COEP). On a static host without header control,
  * include CrispASR's examples/coi-serviceworker.js (it injects the headers + reloads). NOTE: enabling
@@ -34,8 +40,10 @@ class BrickwrightTTS {
     constructor (runtime) {
         this.runtime = runtime;
         this._language = 'en';
-        this._voiceURI = '';        // '' = auto-pick by language
-        this._crisp = null;         // lazily-created CrispASR engine promise
+        this._voiceURI = '';        // '' = auto-pick by language (Web Speech)
+        this._worker = null;        // lazily-created CrispASR driver worker
+        this._reqId = 0;            // request id for worker round-trips
+        this._pending = new Map();  // id -> {resolve, reject}
     }
 
     getInfo () {
@@ -83,7 +91,7 @@ class BrickwrightTTS {
         const text = String(args.WORDS);
         if (!text.trim()) return Promise.resolve();
         const cfg = (typeof window !== 'undefined' && window.BRICKWRIGHT_TTS) || null;
-        if (cfg && cfg.loaderURL && typeof self !== 'undefined' && self.crossOriginIsolated) {
+        if (cfg && cfg.workerURL && typeof self !== 'undefined' && self.crossOriginIsolated) {
             return this._speakCrisp(text, cfg).catch(() => this._speakWebSpeech(text));
         }
         return this._speakWebSpeech(text);
@@ -116,33 +124,44 @@ class BrickwrightTTS {
         });
     }
 
-    // ---- engine 2: CrispASR WASM (piper/kokoro) ----
-    _ensureCrisp (cfg) {
-        if (this._crisp) return this._crisp;
-        this._crisp = (async () => {
-            // load the emscripten loader (has the Embind TTS API), then the model into the FS.
-            // `new Function` hides the dynamic import from webpack's static analysis so it stays a
-            // real runtime import of the hosted URL (not a build-time module resolution).
-            const dynImport = new Function('u', 'return import(u);');
-            const factory = await dynImport(cfg.loaderURL).then(m => m.default || m);
-            const Module = await factory();
-            const modelBytes = new Uint8Array(await (await fetch(cfg.modelURL)).arrayBuffer());
-            try { Module.FS.mkdirTree('/models'); } catch (e) { /* exists */ }
-            Module.FS.writeFile('/models/tts.gguf', modelBytes);
-            if (cfg.voiceURL) {
-                const vb = new Uint8Array(await (await fetch(cfg.voiceURL)).arrayBuffer());
-                Module.FS.writeFile('/models/voice.gguf', vb);
-            }
-            if (!Module.ttsOpen('/models/tts.gguf', 1)) throw new Error('CrispASR ttsOpen failed');
-            if (cfg.voiceURL && Module.ttsSetVoice) Module.ttsSetVoice('/models/voice.gguf', '');
-            return Module;
-        })();
-        return this._crisp;
+    // ---- engine 2: CrispASR WASM (kokoro) via a driver Web Worker ----
+    _ensureWorker (cfg) {
+        if (this._worker) return this._worker;
+        const worker = new Worker(cfg.workerURL);
+        worker.onmessage = (e) => {
+            const d = e.data || {};
+            if (d.id == null) return; // log/progress lines
+            const req = this._pending.get(d.id);
+            if (!req) return;
+            this._pending.delete(d.id);
+            if (d.error) req.reject(new Error(d.error));
+            else req.resolve(d.pcm);
+        };
+        worker.onerror = (e) => {
+            const err = new Error((e && e.message) || 'tts worker error');
+            this._pending.forEach(req => req.reject(err));
+            this._pending.clear();
+        };
+        this._worker = worker;
+        return worker;
     }
     async _speakCrisp (text, cfg) {
-        const Module = await this._ensureCrisp(cfg);
-        if (Module.sessionSetSourceLanguage) Module.sessionSetSourceLanguage(this._language);
-        const pcm = Module.ttsSynthesize(text); // Float32Array, 24kHz mono
+        const worker = this._ensureWorker(cfg);
+        const lang = this._language;
+        const voices = cfg.voices || {};
+        const voiceURL = voices[lang] || voices.en || null;
+        const id = ++this._reqId;
+        const pcm = await new Promise((resolve, reject) => {
+            this._pending.set(id, {resolve, reject});
+            worker.postMessage({
+                id, text, lang,
+                modelURL: cfg.modelURL,
+                voiceURL,
+                cmudictURL: cfg.cmudictURL,
+                deDicts: cfg.deDicts,
+                threads: cfg.threads || 4
+            });
+        });
         if (!pcm || !pcm.length) throw new Error('CrispASR synthesis returned no audio');
         await this._playPCM(pcm, cfg.sampleRate || 24000);
     }
