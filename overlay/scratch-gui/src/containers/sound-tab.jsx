@@ -259,7 +259,9 @@ class SoundTab extends React.Component {
                     img: addSoundFromRecordingIcon,
                     onClick: onNewSoundFromRecordingClick
                 }, {
-                    title: intl.formatMessage(messages.generateSound),
+                    // No German bundle carries our custom message id, so localise by locale directly.
+                    title: intl.locale && intl.locale.startsWith('de') ? 'Erzeugen' :
+                        intl.formatMessage(messages.generateSound),
                     img: soundFxIcon,
                     onClick: this.handleOpenSoundFx
                 }, {

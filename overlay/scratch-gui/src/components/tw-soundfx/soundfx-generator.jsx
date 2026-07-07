@@ -27,6 +27,19 @@ const SLIDERS = [
     ['sound_vol', 'Volume', 0, 1]
 ];
 
+// German strings, keyed by the English source. tx() falls back to English for any other locale.
+const DE = {
+    'Generate a Sound': 'Klang erzeugen',
+    'Pick a preset, tweak it, preview, then add it to the current sprite as a real sound.':
+        'Wähle eine Vorlage, passe sie an, höre sie vor und füge sie dem aktuellen Sprite als echten Klang hinzu.',
+    Wave: 'Wellenform', Frequency: 'Frequenz', Sustain: 'Halten', Decay: 'Abfall', Volume: 'Lautstärke',
+    '🎲 Randomize': '🎲 Zufällig', '▶ Preview': '▶ Vorschau', '➕ Add to sprite': '➕ Zum Sprite hinzufügen',
+    'sound name': 'Klangname',
+    'No audio was produced — try another preset.': 'Es wurde kein Ton erzeugt — probiere eine andere Vorlage.',
+    'Rendering…': 'Wird gerendert…', 'Could not add the sound.': 'Der Klang konnte nicht hinzugefügt werden.'
+};
+const tx = (loc, en) => (loc && String(loc).startsWith('de') && DE[en]) || en;
+
 class SoundFxGenerator extends React.Component {
     constructor (props) {
         super(props);
@@ -73,7 +86,7 @@ class SoundFxGenerator extends React.Component {
         try {
             const buf = await this.render_();
             if (!buf) {
-                this.setState({status: 'No audio was produced — try another preset.'});
+                this.setState({status: tx(this.props.locale, 'No audio was produced — try another preset.')});
                 return;
             }
             const ctx = this.synth.audioContext;
@@ -92,7 +105,7 @@ class SoundFxGenerator extends React.Component {
         }
     }
     async add () {
-        this.setState({busy: true, status: 'Rendering…'});
+        this.setState({busy: true, status: tx(this.props.locale, 'Rendering…')});
         try {
             const buf = await this.render_();
             if (!buf) throw new Error('render returned no audio');
@@ -106,7 +119,7 @@ class SoundFxGenerator extends React.Component {
                     if (this.props.onNewSound) this.props.onNewSound();
                     this.props.onRequestClose();
                 });
-            }, () => this.setState({busy: false, status: 'Could not add the sound.'}));
+            }, () => this.setState({busy: false, status: tx(this.props.locale, 'Could not add the sound.')}));
         } catch (e) {
             this.setState({busy: false, status: `Error: ${e.message}`});
         }
@@ -120,13 +133,13 @@ class SoundFxGenerator extends React.Component {
         return (
             <Modal
                 id="soundFxGenerator"
-                contentLabel="Generate a Sound"
+                contentLabel={tx(this.props.locale, 'Generate a Sound')}
                 onRequestClose={this.props.onRequestClose}
             >
                 <div style={{padding: 20, width: 560, maxWidth: '92vw', boxSizing: 'border-box',
                     font: '14px/1.5 sans-serif', color: '#575e75'}}>
                     <div style={{marginBottom: 10, opacity: .8}}>
-                        Pick a preset, tweak it, preview, then add it to the current sprite as a real sound.
+                        {tx(this.props.locale, 'Pick a preset, tweak it, preview, then add it to the current sprite as a real sound.')}
                     </div>
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(96px,1fr))', gap: 8, marginBottom: 14}}>
                         {PRESETS.map(([method, label]) => (
@@ -135,7 +148,7 @@ class SoundFxGenerator extends React.Component {
                     </div>
 
                     <div style={{display: 'flex', gap: 16, flexWrap: 'wrap'}}>
-                        <label style={{fontWeight: 600}}>Wave{' '}
+                        <label style={{fontWeight: 600}}>{tx(this.props.locale, 'Wave')}{' '}
                             <select value={p.wave_type}
                                 onChange={e => this.setParam('wave_type', Number(e.target.value))}
                                 style={{padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1'}}>
@@ -147,7 +160,7 @@ class SoundFxGenerator extends React.Component {
                     <div style={{margin: '12px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 20px'}}>
                         {SLIDERS.map(([key, label, min, max]) => (
                             <label key={key} style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                                <span style={{width: 80}}>{label}</span>
+                                <span style={{width: 80}}>{tx(this.props.locale, label)}</span>
                                 <input type="range" min={min} max={max} step={0.01}
                                     value={p[key] === undefined ? 0 : p[key]}
                                     onChange={e => this.setParam(key, Number(e.target.value))}
@@ -157,12 +170,12 @@ class SoundFxGenerator extends React.Component {
                     </div>
 
                     <div style={{display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 6}}>
-                        <button style={btn} onClick={() => this.applyPreset('random')}>🎲 Randomize</button>
-                        <button style={btn} onClick={this.play}>▶ Preview</button>
+                        <button style={btn} onClick={() => this.applyPreset('random')}>{tx(this.props.locale, '🎲 Randomize')}</button>
+                        <button style={btn} onClick={this.play}>{tx(this.props.locale, '▶ Preview')}</button>
                         <input value={this.state.name} onChange={e => this.setState({name: e.target.value})}
-                            placeholder="sound name"
+                            placeholder={tx(this.props.locale, 'sound name')}
                             style={{padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', width: 130}} />
-                        <button style={primary} disabled={this.state.busy} onClick={this.add}>➕ Add to sprite</button>
+                        <button style={primary} disabled={this.state.busy} onClick={this.add}>{tx(this.props.locale, '➕ Add to sprite')}</button>
                         {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
                     </div>
 
@@ -178,7 +191,8 @@ class SoundFxGenerator extends React.Component {
 SoundFxGenerator.propTypes = {
     vm: PropTypes.shape({addSound: PropTypes.func}).isRequired,
     onRequestClose: PropTypes.func.isRequired,
-    onNewSound: PropTypes.func
+    onNewSound: PropTypes.func,
+    locale: PropTypes.string
 };
 
-export default connect(state => ({vm: state.scratchGui.vm}))(SoundFxGenerator);
+export default connect(state => ({vm: state.scratchGui.vm, locale: state.locales && state.locales.locale}))(SoundFxGenerator);

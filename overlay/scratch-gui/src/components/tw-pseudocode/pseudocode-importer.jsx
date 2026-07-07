@@ -4,6 +4,57 @@ import {connect} from 'react-redux';
 import examples from '../../lib/sb3-creator-examples.js';
 import brickRobot from './brick-robot.svg';
 
+// i18n for the Code tab's own strings. The editor already exposes the current locale in redux
+// (state.locales.locale); we pick en/de from this table (falling back to English). Values may be
+// functions for interpolation. To add a language, add its column.
+const L10N = {
+    en: {
+        loadExample: '📚 Load example…', loadExampleTitle: 'Load a built-in example',
+        infoTitle: 'Click for info', infoAria: 'About the Code tab',
+        reference: 'reference', referenceTitle: l => `Reference for ${l}`,
+        customArt: 'Custom sprite art', customArtTitle: 'Upload SVGs and bake them in as sprite costumes',
+        toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
+        fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all three languages',
+        run: 'Run', apply: '✓ Apply art & convert to blocks', done: 'Done',
+        applyTitle: n => `Assign a sprite to ${n} more file(s) first`,
+        applyReady: 'Bake these costumes in and convert your code to blocks',
+        doneTitle: 'Keep these costumes; they apply on the next ⇦ To blocks',
+        needSprite: n => `${n} file(s) still need a sprite.`,
+        svgFile: 'SVG file', sprite: 'Sprite', mode: 'Mode', chooseSprite: '— choose sprite —',
+        notInCode: 'not in code', replaceCostume: 'replace costume', addFrame: 'add as frame',
+        driverShim: 'driver: shim', driverRemote: 'driver: remote (bridge)', driverOnbrick: 'driver: on-brick',
+        stConverting: to => `Converting to ${to}…`, stCantShow: (to, e) => `Can't show as ${to}: ${e}`,
+        stRegen: 'Regenerating…', stCompiling: 'Compiling…', stReading: 'Reading current project…',
+        stLoadingPy: 'Loading Python (Skulpt)…', stError: e => `Error: ${e}`,
+        stLoaded: 'Compiled to blocks and loaded. Switch to the Code tab to see them.',
+        stWarn: w => `Loaded with warnings — ${w}`,
+        foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).'
+    },
+    de: {
+        loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
+        infoTitle: 'Für Infos klicken', infoAria: 'Über den Code-Tab',
+        reference: 'Referenz', referenceTitle: l => `Referenz für ${l}`,
+        customArt: 'Eigene Sprite-Grafik', customArtTitle: 'SVGs hochladen und als Sprite-Kostüme einbacken',
+        toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
+        fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle drei Sprachen einlesen',
+        run: 'Ausführen', apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
+        applyTitle: n => `Weise erst ${n} weiteren Datei(en) ein Sprite zu`,
+        applyReady: 'Diese Kostüme einbacken und den Code zu Blöcken umwandeln',
+        doneTitle: 'Kostüme behalten; sie werden beim nächsten „⇦ Zu Blöcken“ angewendet',
+        needSprite: n => `${n} Datei(en) brauchen noch ein Sprite.`,
+        svgFile: 'SVG-Datei', sprite: 'Sprite', mode: 'Modus', chooseSprite: '— Sprite wählen —',
+        notInCode: 'nicht im Code', replaceCostume: 'Kostüm ersetzen', addFrame: 'als Bild hinzufügen',
+        driverShim: 'Treiber: Shim', driverRemote: 'Treiber: Remote (Bridge)', driverOnbrick: 'Treiber: auf dem Stein',
+        stConverting: to => `Wird zu ${to} umgewandelt…`, stCantShow: (to, e) => `Kann nicht als ${to} angezeigt werden: ${e}`,
+        stRegen: 'Wird neu erzeugt…', stCompiling: 'Wird kompiliert…', stReading: 'Aktuelles Projekt wird gelesen…',
+        stLoadingPy: 'Python wird geladen (Skulpt)…', stError: e => `Fehler: ${e}`,
+        stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
+        stWarn: w => `Mit Warnungen geladen — ${w}`,
+        foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).'
+    }
+};
+const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
+
 /**
  * "Pseudocode" editor tab: the full SB3 Creator tool inside the editor.
  *  - load a built-in example
@@ -229,6 +280,9 @@ class PseudocodeImporter extends React.Component {
         this.switchTab = this.switchTab.bind(this);
     }
 
+    // Current-locale string table for this tab's own UI (see L10N above).
+    get L () { return L10N[pickLocale(this.props.locale)]; }
+
     activeCode () { return this.state.buffers[this.state.lang]; }
     setActiveCode (text) { this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', [s.lang]: text}})); }
 
@@ -262,9 +316,9 @@ class PseudocodeImporter extends React.Component {
         const existing = this.state.buffers[to];
         const src = this.state.buffers[from];
         if ((existing && existing.trim()) || !src || !src.trim()) { this.setState({lang: to, output: null, status: ''}); return; }
-        this.setState({busy: true, status: `Converting to ${to}…`});
+        this.setState({busy: true, status: this.L.stConverting(to)});
         this.deriveBuffer(src, from, to).then(({code, error}) => {
-            if (error) { this.setState({busy: false, status: `Can't show as ${to}: ${error}`}); return; }
+            if (error) { this.setState({busy: false, status: this.L.stCantShow(to, error)}); return; }
             this.setState(s => ({lang: to, busy: false, output: null, status: '', buffers: {...s.buffers, [to]: code}}));
         });
     }
@@ -277,7 +331,7 @@ class PseudocodeImporter extends React.Component {
         this.setState(patch, () => {
             const src = this.state.buffers.pseudocode;
             if (this.state.lang === 'pseudocode' || !src || !src.trim()) return;
-            this.setState({busy: true, status: 'Regenerating…'});
+            this.setState({busy: true, status: this.L.stRegen});
             this.deriveBuffer(src, 'pseudocode', this.state.lang).then(({code, error}) => {
                 if (error) { this.setState({busy: false, status: error}); return; }
                 this.setState(s => ({busy: false, status: '', output: null, buffers: {...s.buffers, [s.lang]: code}}));
@@ -387,14 +441,14 @@ class PseudocodeImporter extends React.Component {
             // A `forever:` game loop is meant for the blocks/green flag, not a text console —
             // catch the obvious case up front with a friendly nudge (the Worker timeout below
             // is only a safety net for non-obvious runaway loops).
-            if (forever.test(code)) throw new Error('This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).');
+            if (forever.test(code)) throw new Error(this.L.foreverLoop);
             if (usesInput || !canWorker) {
-                if (lang === 'python') { this.setState({status: 'Loading Python (Skulpt)…'}); await this.runPyMain(code, buf); } else this.runJsMain(code, buf);
+                if (lang === 'python') { this.setState({status: this.L.stLoadingPy}); await this.runPyMain(code, buf); } else this.runJsMain(code, buf);
                 finish();
             } else {
                 let result;
                 if (lang === 'python') {
-                    this.setState({status: 'Loading Python (Skulpt)…'});
+                    this.setState({status: this.L.stLoadingPy});
                     const {core, stdlib} = await this.skulptSource();
                     result = await this.runViaWorker(`${core}\n${stdlib}\n${PY_WORKER}`, code, buf, TIMEOUT);
                 } else {
@@ -445,7 +499,7 @@ class PseudocodeImporter extends React.Component {
     // from the compiled project so all three stay consistent.
     async compile () {
         const lang = this.state.lang;
-        this.setState({busy: true, status: 'Compiling…'});
+        this.setState({busy: true, status: this.L.stCompiling});
         try {
             let source = this.activeCode();
             let parseWarnings = [];
@@ -481,16 +535,16 @@ class PseudocodeImporter extends React.Component {
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             this.setState({buffers: nb, status: warns.length ?
-                `Loaded with warnings — ${warns.slice(0, 4).join(' · ')}` :
-                'Compiled to blocks and loaded. Switch to the Code tab to see them.'});
+                this.L.stWarn(warns.slice(0, 4).join(' · ')) :
+                this.L.stLoaded});
         } catch (e) {
-            this.setState({status: `Error: ${e.message}`});
+            this.setState({status: this.L.stError(e.message)});
         }
         this.setState({busy: false});
     }
     // Read the running project into all three languages at once.
     async fromBlocks () {
-        this.setState({busy: true, status: 'Reading current project…'});
+        this.setState({busy: true, status: this.L.stReading});
         try {
             const SB3Creator = (await this.lib()).default;
             const project = JSON.parse(this.props.vm.toJSON());
@@ -504,7 +558,7 @@ class PseudocodeImporter extends React.Component {
                 `Read into all three languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
                 'Read the current project into all three languages. Edit any of them, then “To blocks”.'});
         } catch (e) {
-            this.setState({status: `Error: ${e.message}`});
+            this.setState({status: this.L.stError(e.message)});
         }
         this.setState({busy: false});
     }
@@ -524,15 +578,15 @@ class PseudocodeImporter extends React.Component {
                     <img src={brickRobot} alt="Brickwright mascot" width={28} height={33} draggable={false} />
                     <strong style={{fontSize: 15}}>Brickwright Code</strong>
                     <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
-                        aria-label="About the Code tab" title="Click for info"
+                        aria-label={this.L.infoAria} title={this.L.infoTitle}
                         style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
                             padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
                             color: this.state.showInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic'}}>
                         i
                     </button>
                     <span style={{flex: 1}} />
-                    <select defaultValue="" onChange={e => this.loadExample(e.target.value)} style={sel} title="Load a built-in example">
-                        <option value="" disabled>📚 Load example…</option>
+                    <select defaultValue="" onChange={e => this.loadExample(e.target.value)} style={sel} title={this.L.loadExampleTitle}>
+                        <option value="" disabled>{this.L.loadExample}</option>
                         {GROUPS.map(g => (
                             <optgroup key={g.label} label={g.label}>
                                 {g.items.filter(([k]) => examples[k]).map(([k, label]) => (
@@ -543,18 +597,30 @@ class PseudocodeImporter extends React.Component {
                     </select>
                     <button onClick={() => this.setState(s => ({showRef: !s.showRef}))}
                         style={{...sel, cursor: 'pointer', background: this.state.showRef ? '#e2e8f0' : '#f1f5f9'}}
-                        title={`Reference for ${this.state.lang}`}>
-                        📝 {LANG_LABEL[this.state.lang]} reference
+                        title={this.L.referenceTitle(this.state.lang)}>
+                        📝 {LANG_LABEL[this.state.lang]} {this.L.reference}
                     </button>
                 </div>
 
                 {this.state.showInfo && (
                     <div style={{marginBottom: 10, padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: 8, fontSize: 13, color: '#334155'}}>
-                        Write your project as <strong>Pseudocode</strong>, <strong>Python</strong>, or <strong>JavaScript</strong> —
-                        all three are two-way. <strong>⇦ To blocks</strong> compiles the active tab; <strong>From blocks ⇨</strong>{' '}
-                        reads the current project into every language. Switching tabs converts between them. Sprite/pen behaviour
-                        lives in the blocks (the ground truth), so the code tabs show the algorithmic parts — comments are kept.
+                        {pickLocale(this.props.locale) === 'de' ? (
+                            <React.Fragment>
+                                Schreibe dein Projekt als <strong>Pseudocode</strong>, <strong>Python</strong> oder{' '}
+                                <strong>JavaScript</strong> — alle drei sind wechselseitig. <strong>⇦ Zu Blöcken</strong>{' '}
+                                kompiliert den aktiven Tab; <strong>Von Blöcken ⇨</strong> liest das aktuelle Projekt in jede
+                                Sprache ein. Beim Tab-Wechsel wird umgewandelt. Sprite-/Stift-Verhalten liegt in den Blöcken
+                                (die Wahrheit), daher zeigen die Code-Tabs die algorithmischen Teile — Kommentare bleiben erhalten.
+                            </React.Fragment>
+                        ) : (
+                            <React.Fragment>
+                                Write your project as <strong>Pseudocode</strong>, <strong>Python</strong>, or <strong>JavaScript</strong> —
+                                all three are two-way. <strong>⇦ To blocks</strong> compiles the active tab; <strong>From blocks ⇨</strong>{' '}
+                                reads the current project into every language. Switching tabs converts between them. Sprite/pen behaviour
+                                lives in the blocks (the ground truth), so the code tabs show the algorithmic parts — comments are kept.
+                            </React.Fragment>
+                        )}
                     </div>
                 )}
 
@@ -592,10 +658,10 @@ class PseudocodeImporter extends React.Component {
                     })}
                     <span style={{flex: 1}} />
                     <button type="button" onClick={() => this.setState(s => ({showArt: !s.showArt}))}
-                        title="Upload SVGs and bake them in as sprite costumes"
+                        title={this.L.customArtTitle}
                         style={{alignSelf: 'center', padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
                             border: '1px solid #cbd5e1', background: this.state.showArt ? '#e2e8f0' : '#f1f5f9', fontSize: 13}}>
-                        🖼️ Custom sprite art{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
+                        🖼️ {this.L.customArt}{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
                     </button>
                 </div>
                 <CodeEditor
@@ -613,10 +679,21 @@ class PseudocodeImporter extends React.Component {
                 {this.state.showArt && (
                 <div style={{margin: '12px 0 4px', padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8}}>
                     <p style={{margin: '0 0 8px'}}>
-                        Upload one or more <code>.svg</code> files, then associate each with a sprite from your
-                        pseudocode in the table below. On <strong>⇦ To blocks</strong>, every SVG is baked
-                        in as that sprite&apos;s costume — <em>replace</em> swaps its costume, <em>add as frame</em>
-                        appends one for animation.
+                        {pickLocale(this.props.locale) === 'de' ? (
+                            <React.Fragment>
+                                Lade eine oder mehrere <code>.svg</code>-Dateien hoch und ordne jede unten in der Tabelle
+                                einem Sprite aus deinem Pseudocode zu. Bei <strong>⇦ Zu Blöcken</strong> wird jedes SVG als
+                                Kostüm dieses Sprites eingebacken — <em>ersetzen</em> tauscht das Kostüm, <em>als Bild
+                                hinzufügen</em> ergänzt eines für Animation.
+                            </React.Fragment>
+                        ) : (
+                            <React.Fragment>
+                                Upload one or more <code>.svg</code> files, then associate each with a sprite from your
+                                pseudocode in the table below. On <strong>⇦ To blocks</strong>, every SVG is baked
+                                in as that sprite&apos;s costume — <em>replace</em> swaps its costume, <em>add as frame</em>
+                                appends one for animation.
+                            </React.Fragment>
+                        )}
                     </p>
                     <input type="file" accept=".svg,image/svg+xml" multiple onChange={this.handleFiles} />
                     {this.state.uploads.length > 0 && (() => {
@@ -626,9 +703,9 @@ class PseudocodeImporter extends React.Component {
                         return (
                             <table style={{borderCollapse: 'collapse', width: '100%', marginTop: 10}}>
                                 <thead><tr>
-                                    <th style={th}>SVG file</th>
-                                    <th style={th}>Sprite</th>
-                                    <th style={th}>Mode</th>
+                                    <th style={th}>{this.L.svgFile}</th>
+                                    <th style={th}>{this.L.sprite}</th>
+                                    <th style={th}>{this.L.mode}</th>
                                     <th style={th} />
                                 </tr></thead>
                                 <tbody>
@@ -646,17 +723,17 @@ class PseudocodeImporter extends React.Component {
                                                 <select value={u.sprite} onChange={e => this.setUpload(i, {sprite: e.target.value})}
                                                     style={{padding: '4px 8px', borderRadius: 6,
                                                         border: `1px solid ${u.sprite ? '#cbd5e1' : '#f0a0a0'}`, minWidth: 130}}>
-                                                    <option value="">— choose sprite —</option>
+                                                    <option value="">{this.L.chooseSprite}</option>
                                                     {sprites.map(n => <option key={n} value={n}>{n}</option>)}
                                                     {u.sprite && !sprites.includes(u.sprite) &&
-                                                        <option value={u.sprite}>{u.sprite} (not in code)</option>}
+                                                        <option value={u.sprite}>{u.sprite} ({this.L.notInCode})</option>}
                                                 </select>
                                             </td>
                                             <td style={td}>
                                                 <select value={u.mode} onChange={e => this.setUpload(i, {mode: e.target.value})}
                                                     style={{padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1'}}>
-                                                    <option value="replace">replace costume</option>
-                                                    <option value="add">add as frame</option>
+                                                    <option value="replace">{this.L.replaceCostume}</option>
+                                                    <option value="add">{this.L.addFrame}</option>
                                                 </select>
                                             </td>
                                             <td style={td}>
@@ -671,8 +748,17 @@ class PseudocodeImporter extends React.Component {
                     })()}
                     {this.state.uploads.length > 0 && this.spriteNames().length === 0 && (
                         <p style={{margin: '8px 0 0', fontSize: 12, color: '#b45309'}}>
-                            No <code>SPRITE</code> declarations found in your pseudocode yet — add one (e.g.
-                            <code> SPRITE Player:</code>) to associate an SVG with it.
+                            {pickLocale(this.props.locale) === 'de' ? (
+                                <React.Fragment>
+                                    Noch keine <code>SPRITE</code>-Deklarationen im Pseudocode gefunden — füge eine hinzu
+                                    (z.&nbsp;B. <code> SPRITE Player:</code>), um ein SVG damit zu verknüpfen.
+                                </React.Fragment>
+                            ) : (
+                                <React.Fragment>
+                                    No <code>SPRITE</code> declarations found in your pseudocode yet — add one (e.g.
+                                    <code> SPRITE Player:</code>) to associate an SVG with it.
+                                </React.Fragment>
+                            )}
                         </p>
                     )}
                     {this.state.uploads.length > 0 && (() => {
@@ -683,20 +769,20 @@ class PseudocodeImporter extends React.Component {
                                     onClick={() => { this.setState({showArt: false}); this.compile(); }}
                                     disabled={this.state.busy || unassigned > 0 || !this.activeCode().trim()}
                                     title={unassigned > 0 ?
-                                        `Assign a sprite to ${unassigned} more file(s) first` :
-                                        'Bake these costumes in and convert your code to blocks'}
+                                        this.L.applyTitle(unassigned) :
+                                        this.L.applyReady}
                                     style={{...btn, background: unassigned > 0 ?
                                         '#cbd5e1' : 'linear-gradient(135deg,#3aa76d,#2d8a58)'}}>
-                                    ✓ Apply art &amp; convert to blocks
+                                    {this.L.apply}
                                 </button>
                                 <button type="button" onClick={() => this.setState({showArt: false})}
-                                    title="Keep these costumes; they apply on the next ⇦ To blocks"
+                                    title={this.L.doneTitle}
                                     style={{...btn, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1'}}>
-                                    Done
+                                    {this.L.done}
                                 </button>
                                 {unassigned > 0 && (
                                     <span style={{fontSize: 12, color: '#b45309'}}>
-                                        {unassigned} file(s) still need a sprite.
+                                        {this.L.needSprite(unassigned)}
                                     </span>
                                 )}
                             </div>
@@ -708,14 +794,14 @@ class PseudocodeImporter extends React.Component {
                 <div style={{marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'}}>
                     <button onClick={this.compile}
                         disabled={this.state.busy || !this.activeCode().trim()}
-                        title={`Compile this ${LANG_LABEL[this.state.lang]} into blocks`}
+                        title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
                         style={btn}>
-                        ⇦ To blocks
+                        {this.L.toBlocks}
                     </button>
                     <button onClick={this.fromBlocks} disabled={this.state.busy}
-                        title="Read the current blocks back into all three languages"
+                        title={this.L.fromBlocksTitle}
                         style={{...btn, background: 'linear-gradient(135deg,#a55b80,#8e4a6c)'}}>
-                        From blocks ⇨
+                        {this.L.fromBlocks}
                     </button>
                     {this.state.lang !== 'pseudocode' && /_[a-z]+\.|Driver/.test(this.activeCode()) ? (
                         <span style={{fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 8}}>
@@ -723,9 +809,9 @@ class PseudocodeImporter extends React.Component {
                                 🔌{' '}
                                 <select value={this.state.driverMode} onChange={e => this.setGenOpt({driverMode: e.target.value})} disabled={this.state.busy}
                                     style={{padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', font: 'inherit'}}>
-                                    <option value="shim">driver: shim</option>
-                                    <option value="remote">driver: remote (bridge)</option>
-                                    <option value="ondevice">driver: on-brick</option>
+                                    <option value="shim">{this.L.driverShim}</option>
+                                    <option value="remote">{this.L.driverRemote}</option>
+                                    <option value="ondevice">{this.L.driverOnbrick}</option>
                                 </select>
                             </label>
                             <label title="await hardware calls (BLE is async) and make functions async">
@@ -741,7 +827,7 @@ class PseudocodeImporter extends React.Component {
                     {this.state.lang !== 'pseudocode' && this.activeCode().trim() ? (
                         <button onClick={this.run} disabled={this.state.running}
                             style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
-                            ▶ Run {this.state.lang === 'python' ? 'Python' : 'JS'}
+                            ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JS'}
                         </button>
                     ) : null}
                     {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
@@ -758,7 +844,11 @@ class PseudocodeImporter extends React.Component {
 }
 
 PseudocodeImporter.propTypes = {
-    vm: PropTypes.shape({loadProject: PropTypes.func, toJSON: PropTypes.func}).isRequired
+    vm: PropTypes.shape({loadProject: PropTypes.func, toJSON: PropTypes.func}).isRequired,
+    locale: PropTypes.string
 };
 
-export default connect(state => ({vm: state.scratchGui.vm}))(PseudocodeImporter);
+export default connect(state => ({
+    vm: state.scratchGui.vm,
+    locale: state.locales && state.locales.locale
+}))(PseudocodeImporter);
