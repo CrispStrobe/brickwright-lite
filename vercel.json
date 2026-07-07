@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "echo 'install handled inside the build script (after vendoring)'",
+  "buildCommand": "bash scripts/vercel-build.sh",
+  "outputDirectory": "packages/scratch-gui/build",
+  "framework": null
+}
