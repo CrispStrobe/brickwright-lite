@@ -3,13 +3,10 @@
   "private": true,
   "description": "A fully-permissive (BSD-3 / Apache-2.0 / MIT) Brickwright — a contained fork of the pre-relicense Scratch stack you can bundle and ship on any app store, with blocks⇄code⇄Python/JS and LEGO extensions.",
   "license": "BSD-3-Clause",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
-    "postvendor": "echo 'Vendored the pinned permissive sources into packages/. Now: npm install && npm run build:gui'",
-    "build:gui": "npm --workspace scratch-gui run build",
+    "postvendor": "echo 'Vendored. Next: npm run integrate && cd packages/scratch-gui && npm install --ignore-scripts && npm run build'",
+    "build:gui": "cd packages/scratch-gui && npm run build",
     "integrate": "node scripts/integrate.mjs"
   },
   "engines": {
