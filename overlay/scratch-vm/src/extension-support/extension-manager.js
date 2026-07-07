@@ -4,6 +4,12 @@ const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
 
+// Brickwright: the only host allowed to run an extension unsandboxed, in-process (our own gallery).
+// Anything else falls through to the vanilla sandbox worker. See loadExtensionURL below.
+const CRISP_EXTENSION_HOST = 'https://crispstrobe.github.io/';
+const isCrispExtensionURL = url =>
+    typeof url === 'string' && url.startsWith(CRISP_EXTENSION_HOST) && url.endsWith('.js');
+
 // These extensions are currently built into the VM repository but should not be loaded at startup.
 // TODO: move these out into a separate repository?
 // TODO: change extension spec so that library info, including extension ID, can be collected through static methods
@@ -157,6 +163,15 @@ class ExtensionManager {
             return Promise.resolve();
         }
 
+        // Brickwright: load a remote CrispStrobe-gallery extension unsandboxed, in-process. This is
+        // a clean-room BSD path (NOT TurboWarp's MPL loader): fetch the source, run it through the
+        // same crispstrobe adapter our built-ins use, and register the captured instance. Only our
+        // own trusted gallery is allowed to run in-process; anything else falls through to the
+        // vanilla sandbox worker (which can only resolve built-in IDs).
+        if (isCrispExtensionURL(extensionURL)) {
+            return this._loadCrispRemoteExtension(extensionURL);
+        }
+
         return new Promise((resolve, reject) => {
             // If we `require` this at the global level it breaks non-webpack targets, including tests
             const worker = new Worker('./extension-worker.js');
@@ -164,6 +179,34 @@ class ExtensionManager {
             this.pendingExtensions.push({extensionURL, resolve, reject});
             dispatch.addWorker(worker);
         });
+    }
+
+    /**
+     * Fetch a CrispStrobe-gallery extension's source and load it unsandboxed via the adapter.
+     * @param {string} extensionURL - an allow-listed https URL to the extension's .js source
+     * @returns {Promise} resolved once the extension is registered
+     */
+    _loadCrispRemoteExtension (extensionURL) {
+        if (this.isExtensionLoaded(extensionURL)) {
+            log.warn(`Rejecting attempt to load a second extension with URL ${extensionURL}`);
+            return Promise.resolve();
+        }
+        // require lazily so non-webpack/test targets that never hit this branch don't need it
+        const makeCrispExtension = require('../extensions/crispstrobe/adapter');
+        return fetch(extensionURL)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status} loading ${extensionURL}`);
+                return res.text();
+            })
+            .then(source => {
+                const Extension = makeCrispExtension(source);
+                const extensionInstance = new Extension(this.runtime);
+                const serviceName = this._registerInternalExtension(extensionInstance);
+                // Key by both the URL (what the library UI checks) and the extension's own id.
+                this._loadedExtensions.set(extensionURL, serviceName);
+                const info = extensionInstance.getInfo && extensionInstance.getInfo();
+                if (info && info.id) this._loadedExtensions.set(info.id, serviceName);
+            });
     }
 
     /**
