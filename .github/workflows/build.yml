@@ -16,6 +16,8 @@ jobs:
         run: node scripts/integrate.mjs
       - name: Install
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Apply the scratch-vm overlay (built-in extensions)
+        run: node scripts/apply-vm-overlay.mjs
       - name: Build the editor (proves the permissive base compiles)
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=4096 npm run build
       - uses: actions/upload-artifact@v4

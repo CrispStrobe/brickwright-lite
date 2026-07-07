@@ -675,6 +675,33 @@ class PseudocodeImporter extends React.Component {
                             <code> SPRITE Player:</code>) to associate an SVG with it.
                         </p>
                     )}
+                    {this.state.uploads.length > 0 && (() => {
+                        const unassigned = this.state.uploads.filter(u => !u.sprite).length;
+                        return (
+                            <div style={{marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'}}>
+                                <button type="button"
+                                    onClick={() => { this.setState({showArt: false}); this.compile(); }}
+                                    disabled={this.state.busy || unassigned > 0 || !this.activeCode().trim()}
+                                    title={unassigned > 0 ?
+                                        `Assign a sprite to ${unassigned} more file(s) first` :
+                                        'Bake these costumes in and convert your code to blocks'}
+                                    style={{...btn, background: unassigned > 0 ?
+                                        '#cbd5e1' : 'linear-gradient(135deg,#3aa76d,#2d8a58)'}}>
+                                    ✓ Apply art &amp; convert to blocks
+                                </button>
+                                <button type="button" onClick={() => this.setState({showArt: false})}
+                                    title="Keep these costumes; they apply on the next ⇦ To blocks"
+                                    style={{...btn, background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1'}}>
+                                    Done
+                                </button>
+                                {unassigned > 0 && (
+                                    <span style={{fontSize: 12, color: '#b45309'}}>
+                                        {unassigned} file(s) still need a sprite.
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
                 )}
 

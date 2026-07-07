@@ -7,7 +7,7 @@ const Cast = require('../../util/cast');
 // extension CLASS (the scratch-vm ExtensionManager instantiates it with `new Cls(runtime)`).
 // TurboWarp modules self-register via Scratch.extensions.register; Xcratch modules export
 // { blockClass, entry }. Both converge on an object with getInfo() + opcode methods.
-module.exports = function makeCrispStrobeExtension (source) {
+module.exports = function makeCrispExtension (source) {
     return class CrispStrobeExtension {
         constructor (runtime) {
             this.runtime = runtime;
