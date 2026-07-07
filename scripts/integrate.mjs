@@ -2,12 +2,21 @@
 // Apply the Brickwright delta onto the vendored (BSD/Apache) scratch-gui: the sb3-creator
 // "Code" tab (blocks <-> pseudocode <-> Python <-> JavaScript) and its deps. Idempotent.
 // Run after `vendor`. Extensions are integrated separately (see integrate-extensions.mjs).
-import { cpSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { cpSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
 const GUI = path.join(ROOT, 'packages', 'scratch-gui');
 if (!existsSync(GUI)) { console.error('Run `npm run vendor` first (packages/scratch-gui missing).'); process.exit(1); }
+
+// 0) micro:bit stub. Install runs with --ignore-scripts (the upstream prepublish.mjs downloads
+// micro:bit firmware from a flaky URL), so `src/generated/microbit-hex-url.cjs` is never created
+// and webpack fails: "Can't resolve '../generated/microbit-hex-url.cjs'". Only the firmware
+// flasher path depends on it; stub it empty.
+const genDir = path.join(GUI, 'src', 'generated');
+mkdirSync(genDir, { recursive: true });
+writeFileSync(path.join(genDir, 'microbit-hex-url.cjs'), "module.exports = '';\n");
+console.log('  wrote src/generated/microbit-hex-url.cjs stub');
 
 // 1) copy overlay files (sb3-creator libs + the tw-pseudocode component)
 cpSync(path.join(ROOT, 'overlay', 'scratch-gui'), GUI, { recursive: true });
