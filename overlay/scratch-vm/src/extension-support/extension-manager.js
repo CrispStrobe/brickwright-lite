@@ -21,6 +21,7 @@ const isRemoteExtensionURL = url =>
 const builtinExtensions = {
     planetemaths: () => require('../extensions/crispstrobe/planetemaths'),
     arrays: () => require('../extensions/crispstrobe/arrays'),
+    brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
     // This is an example that isn't loaded with the other core blocks,
     // but serves as a reference for loading core blocks as extensions.
     coreExample: () => require('../blocks/scratch3_core_example'),

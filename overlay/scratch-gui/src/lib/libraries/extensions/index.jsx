@@ -64,6 +64,14 @@ export default [
         featured: true
     },
     {
+        name: 'Text to Speech',
+        extensionId: 'brickwrightTTS',
+        iconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzBmYmQ4YyIvPjxwYXRoIGQ9Ik0xNCAyMGg1bDctNXYxOGwtNy01aC01eiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0zMSAxOGE3IDcgMCAwIDEgMCAxMk0zNCAxNGExMiAxMiAwIDAgMSAwIDIwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMi41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=',
+        insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzBmYmQ4YyIvPjxwYXRoIGQ9Ik0xNCAyMGg1bDctNXYxOGwtNy01aC01eiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0zMSAxOGE3IDcgMCAwIDEgMCAxMk0zNCAxNGExMiAxMiAwIDAgMSAwIDIwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMi41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=',
+        description: 'On-device speech (Web Speech now; CrispASR WASM when hosted) — no cloud.',
+        featured: true
+    },
+    {
         name: (
             <FormattedMessage
                 defaultMessage="Music"
