@@ -10,5 +10,8 @@
     "vendor": "node scripts/vendor.mjs",
     "postvendor": "echo 'Vendored the pinned permissive sources into packages/. Now: npm install && npm run build:gui'",
     "build:gui": "npm --workspace scratch-gui run build"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
