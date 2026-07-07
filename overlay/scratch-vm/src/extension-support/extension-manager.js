@@ -9,6 +9,10 @@ const BlockType = require('./block-type');
 const CRISP_EXTENSION_HOST = 'https://crispstrobe.github.io/';
 const isCrispExtensionURL = url =>
     typeof url === 'string' && url.startsWith(CRISP_EXTENSION_HOST) && url.endsWith('.js');
+// Any http(s) URL is loadable in-process via the adapter (gallery or user-entered). The UI gates
+// untrusted hosts with a confirmation; see isTrustedExtensionURL / loadExtensionURL.
+const isRemoteExtensionURL = url =>
+    typeof url === 'string' && /^https?:\/\//.test(url);
 
 // These extensions are currently built into the VM repository but should not be loaded at startup.
 // TODO: move these out into a separate repository?
@@ -163,13 +167,15 @@ class ExtensionManager {
             return Promise.resolve();
         }
 
-        // Brickwright: load a remote CrispStrobe-gallery extension unsandboxed, in-process. This is
-        // a clean-room BSD path (NOT TurboWarp's MPL loader): fetch the source, run it through the
-        // same crispstrobe adapter our built-ins use, and register the captured instance. Only our
-        // own trusted gallery is allowed to run in-process; anything else falls through to the
-        // vanilla sandbox worker (which can only resolve built-in IDs).
-        if (isCrispExtensionURL(extensionURL)) {
-            return this._loadCrispRemoteExtension(extensionURL);
+        // Brickwright: load a remote extension unsandboxed, in-process, from a URL — like TurboWarp
+        // and Xcratch (gallery entries AND user-entered custom URLs). Clean-room BSD path (NOT
+        // TurboWarp's MPL loader): fetch the source, run it through the same crispstrobe adapter our
+        // built-ins use, and register the captured instance. Our own gallery host is "trusted" (no
+        // confirmation); any other URL is loaded only after the UI has confirmed with the user, since
+        // running remote code in-process grants it full page access. The vanilla sandbox worker
+        // fallback below only resolves built-in IDs, so it never handles real remote URLs.
+        if (isRemoteExtensionURL(extensionURL)) {
+            return this._loadRemoteExtension(extensionURL);
         }
 
         return new Promise((resolve, reject) => {
@@ -182,11 +188,21 @@ class ExtensionManager {
     }
 
     /**
-     * Fetch a CrispStrobe-gallery extension's source and load it unsandboxed via the adapter.
-     * @param {string} extensionURL - an allow-listed https URL to the extension's .js source
+     * Whether a URL points at our own trusted extension gallery (loads without a user prompt). The
+     * extension-library UI uses this to decide whether to warn before loading a custom URL.
+     * @param {string} extensionURL - candidate URL
+     * @returns {boolean} true for our gallery host
+     */
+    isTrustedExtensionURL (extensionURL) {
+        return isCrispExtensionURL(extensionURL);
+    }
+
+    /**
+     * Fetch a remote extension's source and load it unsandboxed via the adapter.
+     * @param {string} extensionURL - an https URL to the extension's .js source
      * @returns {Promise} resolved once the extension is registered
      */
-    _loadCrispRemoteExtension (extensionURL) {
+    _loadRemoteExtension (extensionURL) {
         if (this.isExtensionLoaded(extensionURL)) {
             log.warn(`Rejecting attempt to load a second extension with URL ${extensionURL}`);
             return Promise.resolve();

@@ -4,10 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="google" value="notranslate">
+    <meta name="description" content="Build with blocks, read and edit as Python or JavaScript, and drive real LEGO bricks and robots.">
+    <meta name="theme-color" content="#22c3d6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Brickwright">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <link rel="icon" type="image/svg+xml" href="static/images/brick-robot.svg">
     <link rel="apple-touch-icon" href="static/images/apple-touch-icon.png">
+    <link rel="manifest" href="static/manifest.webmanifest">
     <title><%= htmlWebpackPlugin.options.title %></title>
   </head>
   <body>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('sw.js').catch(function () { /* PWA offline is best-effort */ });
+        });
+      }
+    </script>
   </body>
 </html>

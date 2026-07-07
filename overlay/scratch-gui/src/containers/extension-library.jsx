@@ -48,8 +48,38 @@ const messages = defineMessages({
         defaultMessage: 'Enter the URL of the extension',
         description: 'Prompt for unoffical extension url',
         id: 'gui.extensionLibrary.extensionUrl'
+    },
+    customName: {
+        defaultMessage: '➕ Extension from URL',
+        description: 'Tile that lets you load any TurboWarp/Xcratch extension by URL',
+        id: 'gui.extensionLibrary.customName'
+    },
+    customDescription: {
+        defaultMessage: 'Load any TurboWarp- or Xcratch-style extension directly from a URL.',
+        description: 'Description of the custom-extension-from-URL tile',
+        id: 'gui.extensionLibrary.customDescription'
+    },
+    untrusted: {
+        defaultMessage: 'Load and run code from:\n\n{url}\n\nOnly continue if you trust the source — the extension runs with full access to this page.',
+        description: 'Confirmation before running a custom extension from an untrusted URL',
+        id: 'gui.extensionLibrary.untrusted'
+    },
+    loadFailed: {
+        defaultMessage: 'Could not load the extension from {url}\n\n{error}',
+        description: 'Alert shown when a custom extension URL fails to load',
+        id: 'gui.extensionLibrary.loadFailed'
     }
 });
+
+// German for the picker's own prompts (defaultMessage is English; no scratch-l10n bundle carries
+// these custom ids). Keyed by message id; falls back to the English defaultMessage for other locales.
+const DE_MESSAGES = {
+    'gui.extensionLibrary.extensionUrl': 'URL der Erweiterung eingeben',
+    'gui.extensionLibrary.customName': '➕ Erweiterung per URL',
+    'gui.extensionLibrary.customDescription': 'Lade eine beliebige TurboWarp- oder Xcratch-Erweiterung direkt von einer URL.',
+    'gui.extensionLibrary.untrusted': 'Code laden und ausführen von:\n\n{url}\n\nNur fortfahren, wenn du der Quelle vertraust — die Erweiterung läuft mit vollem Zugriff auf diese Seite.',
+    'gui.extensionLibrary.loadFailed': 'Erweiterung von {url} konnte nicht geladen werden\n\n{error}'
+};
 
 class ExtensionLibrary extends React.PureComponent {
     constructor (props) {
@@ -64,29 +94,55 @@ class ExtensionLibrary extends React.PureComponent {
             .then(gallery => this.setState({gallery}))
             .catch(err => this.setState({galleryError: err.message}));
     }
+    // Locale-aware message: German from DE_MESSAGES when the editor is set to Deutsch, else the
+    // react-intl (English defaultMessage) string. Handles simple {placeholder} interpolation.
+    msg (m, values) {
+        const loc = this.props.intl.locale;
+        if (loc && loc.startsWith('de') && DE_MESSAGES[m.id]) {
+            return DE_MESSAGES[m.id].replace(/\{(\w+)\}/g, (_, k) => (values && values[k] != null ? values[k] : ''));
+        }
+        return this.props.intl.formatMessage(m, values);
+    }
     handleItemSelect (item) {
+        if (item.disabled) return;
+        const em = this.props.vm.extensionManager;
         const id = item.extensionId;
-        let url = item.extensionURL ? item.extensionURL : id;
-        if (!item.disabled && !id) {
+        let url = item.extensionURL || id;
+        // The "Extension from URL" tile (and any entry without a URL/id) asks for a URL.
+        if (item.custom || (!item.extensionURL && !id)) {
             // eslint-disable-next-line no-alert
-            url = prompt(this.props.intl.formatMessage(messages.extensionUrl));
+            url = prompt(this.msg(messages.extensionUrl));
+            if (!url) return;
+            url = url.trim();
         }
-        if (id && !item.disabled) {
-            if (this.props.vm.extensionManager.isExtensionLoaded(url)) {
-                this.props.onCategorySelected(id);
-            } else {
-                this.props.vm.extensionManager.loadExtensionURL(url).then(() => {
-                    this.props.onCategorySelected(id);
-                });
-            }
+        if (!url) return;
+        // A URL from an untrusted host runs remote code in-process with full page access — confirm.
+        if (/^https?:\/\//.test(url) && !em.isTrustedExtensionURL(url)) {
+            // eslint-disable-next-line no-alert
+            if (!confirm(this.msg(messages.untrusted, {url}))) return;
         }
+        const done = () => (id ? this.props.onCategorySelected(id) : this.props.onRequestClose());
+        if (em.isExtensionLoaded(url)) { done(); return; }
+        em.loadExtensionURL(url).then(done).catch(e => {
+            // eslint-disable-next-line no-alert
+            alert(this.msg(messages.loadFailed, {url, error: String((e && e.message) || e)}));
+        });
     }
     render () {
         // bundled built-ins first, then the fetched gallery — minus any gallery entry whose id we
         // already bundle (e.g. planetemaths, arrays), so they don't appear twice.
         const bundledIds = new Set(extensionLibraryContent.map(e => e.extensionId).filter(Boolean));
         const gallery = this.state.gallery.filter(e => !bundledIds.has(e.extensionId));
-        const allExtensions = extensionLibraryContent.concat(gallery);
+        // "Extension from URL" action tile (TurboWarp/Xcratch-style direct load), first in the list.
+        const customEntry = {
+            custom: true,
+            name: this.msg(messages.customName),
+            description: this.msg(messages.customDescription),
+            iconURL: extensionIcon,
+            tags: ['gallery'],
+            featured: true
+        };
+        const allExtensions = [customEntry].concat(extensionLibraryContent, gallery);
         const extensionLibraryThumbnailData = allExtensions.map(extension => ({
             rawURL: extension.iconURL || extensionIcon,
             ...extension

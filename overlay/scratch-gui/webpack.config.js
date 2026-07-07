@@ -110,25 +110,25 @@ const buildConfig = baseConfig.clone()
     .addPlugin(new HtmlWebpackPlugin({
         chunks: ['gui'],
         template: 'src/playground/index.ejs',
-        title: 'Scratch 3.0 GUI'
+        title: 'Brickwright'
     }))
     .addPlugin(new HtmlWebpackPlugin({
         chunks: ['blocksonly'],
         filename: 'blocks-only.html',
         template: 'src/playground/index.ejs',
-        title: 'Scratch 3.0 GUI: Blocks Only Example'
+        title: 'Brickwright — Blocks'
     }))
     .addPlugin(new HtmlWebpackPlugin({
         chunks: ['compatibilitytesting'],
         filename: 'compatibility-testing.html',
         template: 'src/playground/index.ejs',
-        title: 'Scratch 3.0 GUI: Compatibility Testing'
+        title: 'Brickwright — Compatibility'
     }))
     .addPlugin(new HtmlWebpackPlugin({
         chunks: ['player'],
         filename: 'player.html',
         template: 'src/playground/index.ejs',
-        title: 'Scratch 3.0 GUI: Player Example'
+        title: 'Brickwright — Player'
     }))
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
@@ -140,6 +140,12 @@ const buildConfig = baseConfig.clone()
                 from: 'extensions/**',
                 to: 'static',
                 context: 'src/examples'
+            },
+            {
+                // Brickwright PWA service worker — must sit at the build root so its scope covers
+                // the whole app (a file under static/ could only control static/).
+                from: 'sw.js',
+                to: 'sw.js'
             }
         ]
     }));
