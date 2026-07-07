@@ -59,7 +59,7 @@ npm run build:gui   # webpack the editor
 
 - [x] Pin & verify the last-BSD permissive base (installs + builds).
 - [ ] Vendor gui/vm/blocks/paint as editable workspaces; wire scratch-gui at the local vm/blocks.
-- [ ] Port the `sb3-creator` "Code" tab (self-contained — operates on project JSON).
+- [x] **Port the `sb3-creator` "Code" tab** — blocks⇄pseudocode⇄Python⇄JS, integrated + **build-verified** on the BSD base (skulpt/jszip added, gui.jsx patched; see overlay/ + scripts/integrate.mjs).
 - [ ] Bundle the LEGO/utility extensions as built-ins.
 - [ ] Extension shim that loads **both** Xcratch and TurboWarp formats (see `docs/`).
 - [ ] (Later) rewrite the paint editor; own vm/gui changes as needed.

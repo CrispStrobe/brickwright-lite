@@ -12,8 +12,10 @@ jobs:
         with: { node-version: 22 }
       - name: Vendor the pinned permissive Scratch sources
         run: npm run vendor
+      - name: Integrate the Code tab (sb3-creator)
+        run: node scripts/integrate.mjs
       - name: Install
-        run: cd packages/scratch-gui && npm install --legacy-peer-deps --no-audit --no-fund
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Build the editor (proves the permissive base compiles)
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=6144 npm run build
       - uses: actions/upload-artifact@v4
