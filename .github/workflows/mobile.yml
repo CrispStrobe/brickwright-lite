@@ -65,6 +65,9 @@ jobs:
           # tauri-plugin-blec's Android library requires minSdk 26; the generated
           # project defaults to 24, which fails the manifest merge.
           sed -i 's/minSdk = 24/minSdk = 26/' src-tauri/gen/android/app/build.gradle.kts
+          # Allow cleartext ws:// to LAN bridge servers (bridge-mode hardware
+          # over WiFi). The manifest ships a ${usesCleartextTraffic} placeholder.
+          sed -i 's/${usesCleartextTraffic}/true/' src-tauri/gen/android/app/src/main/AndroidManifest.xml
           npx tauri android build --apk --debug
 
       - uses: actions/upload-artifact@v4
@@ -124,6 +127,10 @@ jobs:
             awk '{print} /- sdk: WebKit.framework/{print "      - sdk: CoreBluetooth.framework"}' "$PY" > "$PY.tmp" && mv "$PY.tmp" "$PY"
           fi
           (cd src-tauri/gen/apple && xcodegen generate)
+          # Allow ws:// to LAN bridge servers (bridge-mode hardware over WiFi).
+          PLIST=src-tauri/gen/apple/brickwright-tauri_iOS/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :NSAppTransportSecurity:NSAllowsLocalNetworking true" "$PLIST"
           npx tauri ios build --target aarch64-sim
 
       - uses: actions/upload-artifact@v4
