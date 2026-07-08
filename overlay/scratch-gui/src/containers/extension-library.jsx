@@ -23,11 +23,16 @@ let cachedGallery = null;
 // OWN icon (ext.image) when it has one, falling back to a poster crop otherwise.
 // Returns {iconURL, insetIconURL} or null.
 const POSTER_BASE = 'static/extension-posters/';
+// The SPIKE Transpiler ships a nice icon; the other SPIKE variants (BLE/BTC/bridge)
+// have none, so they inherit it instead of a generic crop.
+const SPIKE_ICON = `${GALLERY_BASE}images/CrispStrobe/legospike_turbowarp_transpile.svg`;
 const posterFor = ext => {
     const slug = ext.slug || '';
     const ownIcon = ext.image ? `${GALLERY_BASE}${ext.image}` : null;
     if ((/lego|ev3|spike|nxt|wedo|boost|powered/i).test(slug)) {
-        return {iconURL: `${POSTER_BASE}lego.png`, insetIconURL: ownIcon || `${POSTER_BASE}lego-badge.png`};
+        const badge = ownIcon ||
+            ((/spike/i).test(slug) ? SPIKE_ICON : `${POSTER_BASE}lego-badge.png`);
+        return {iconURL: `${POSTER_BASE}lego.png`, insetIconURL: badge};
     }
     if (ext.id === 'universalgamepad' || (/gamepad/i).test(slug)) {
         return {iconURL: `${POSTER_BASE}gamepad.png`, insetIconURL: ownIcon || `${POSTER_BASE}gamepad-badge.png`};
