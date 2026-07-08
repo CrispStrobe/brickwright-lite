@@ -39,3 +39,27 @@ if (rt.includes(anchor)) {
     console.error('  ! runtime.js category-name anchor not found — base VM version changed?');
     process.exit(1);
 }
+
+// Brickwright UI improvement (parity with the Scratch Foundation / Xcratch
+// editor): accept full-width (double-byte) digits and signs as numbers, so
+// "１２３" typed in a number field is used as 123. One-line change to
+// Cast.toNumber — too small to vendor the whole cast.js as an overlay.
+// Full-width ０-９ ＋ － ． all map to ASCII by subtracting 0xFEE0.
+const castPath = path.join(DEST, 'src', 'util', 'cast.js');
+let cast = readFileSync(castPath, 'utf8');
+const castAnchor = '        const n = Number(value);';
+const castPatched = '        // Brickwright: accept full-width (double-byte) digits/signs.\n' +
+    '        const nv = (typeof value === \'string\') ?\n' +
+    '            value.replace(/[\\uFF10-\\uFF19\\uFF0B\\uFF0D\\uFF0E]/g, ch =>\n' +
+    '                String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)) : value;\n' +
+    '        const n = Number(nv);';
+if (cast.includes('// Brickwright: accept full-width')) {
+    console.log('  cast.js full-width number patch already applied');
+} else if (cast.includes(castAnchor)) {
+    cast = cast.replace(castAnchor, castPatched);
+    writeFileSync(castPath, cast);
+    console.log('  patched cast.js (full-width numbers)');
+} else {
+    console.error('  ! cast.js toNumber anchor not found — base VM version changed?');
+    process.exit(1);
+}
