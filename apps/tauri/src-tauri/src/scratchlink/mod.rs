@@ -14,10 +14,15 @@
 //!        IOBluetooth objc2 shim, and iOS ExternalAccessory.
 
 mod ble;
+#[cfg(target_os = "macos")]
+mod bt_macos;
 
 use std::sync::{Arc, Mutex};
 
 use futures_util::{SinkExt, StreamExt};
+// Used by the non-macOS BT skeleton and the tests; on macOS BT goes through
+// bt_macos, leaving these otherwise unused.
+#[allow(unused_imports)]
 use serde_json::{json, Value};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
@@ -116,13 +121,24 @@ async fn handle_conn(stream: TcpStream) -> Result<(), tokio_tungstenite::tungste
     if transport == Transport::Ble {
         ble::cleanup().await;
     }
+    #[cfg(target_os = "macos")]
+    if transport == Transport::Bt {
+        bt_macos::cleanup();
+    }
     writer.abort();
     log::info!("[scratchlink] client disconnected ({transport:?})");
     Ok(())
 }
 
-/// BTC/SPP skeleton: routes and ACKs so the web VM doesn't hang, pending the
-/// per-platform RFCOMM backends. Surface: discover / connect / send.
+/// BTC/SPP dispatch. macOS has a real IOBluetooth RFCOMM backend (EV3 + legacy
+/// SPIKE); other platforms still route-and-ACK, pending `bluetooth-rust`
+/// (Win/Linux/Android) and the iOS ExternalAccessory plugin.
+#[cfg(target_os = "macos")]
+async fn bt_dispatch(txt: &str, out: &Outbound) {
+    bt_macos::dispatch(txt, out).await;
+}
+
+#[cfg(not(target_os = "macos"))]
 async fn bt_dispatch(txt: &str, out: &Outbound) {
     let req: Value = match serde_json::from_str(txt) {
         Ok(v) => v,
