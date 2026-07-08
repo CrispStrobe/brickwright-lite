@@ -75,7 +75,7 @@ jobs:
           MANIFEST=src-tauri/gen/android/app/src/main/AndroidManifest.xml
           sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.microphone" android:required="false" />#' "$MANIFEST"
           # Request the runtime camera/mic permissions on launch (Tauri never does).
-          cp ../android-overlay/MainActivity.kt \
+          cp android-overlay/MainActivity.kt \
             src-tauri/gen/android/app/src/main/java/com/crispstrobe/brickwright/MainActivity.kt
           npx tauri android build --apk --debug
 
