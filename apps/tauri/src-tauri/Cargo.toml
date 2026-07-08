@@ -40,6 +40,18 @@ tauri-plugin-share = "2"
 [target.'cfg(target_os = "linux")'.dependencies]
 bluer = { version = "0.17", features = ["bluetoothd", "rfcomm"] }
 
+# Windows Bluetooth-Classic (RFCOMM/SPP) backend via WinRT.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = [
+    "Devices_Bluetooth_Rfcomm",
+    "Devices_Enumeration",
+    "Networking",
+    "Networking_Sockets",
+    "Storage_Streams",
+    "Foundation",
+    "Foundation_Collections",
+] }
+
 [features]
 # Used by the desktop entrypoint (main.rs) to avoid the extra console window.
 custom-protocol = ["tauri/custom-protocol"]
