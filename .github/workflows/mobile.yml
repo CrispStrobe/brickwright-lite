@@ -5,6 +5,9 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: write
+
 jobs:
   build-web:
     runs-on: ubuntu-latest
@@ -70,6 +73,16 @@ jobs:
           path: apps/tauri/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: warn
           retention-days: 7
+
+      # On a tag, attach the APK to the same draft GitHub Release the desktop
+      # bundles go to (release.yml), so all platforms appear together.
+      - name: Attach APK to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: apps/tauri/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
 
   ios:
     needs: build-web
