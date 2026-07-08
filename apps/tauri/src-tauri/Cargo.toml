@@ -32,6 +32,10 @@ log = "0.4"
 uuid = "1"
 base64 = "0.22"
 
+# Mobile-only: OS share sheet (sender side of the project share round-trip).
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+tauri-plugin-share = "2"
+
 [features]
 # Used by the desktop entrypoint (main.rs) to avoid the extra console window.
 custom-protocol = ["tauri/custom-protocol"]

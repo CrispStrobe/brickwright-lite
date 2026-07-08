@@ -8,8 +8,31 @@
 
 use std::path::Path;
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
+
+/// True on iOS/Android. Lets the web layer pick the share sheet (mobile) vs the
+/// native Save dialog (desktop) for exports.
+#[tauri::command]
+pub fn is_mobile() -> bool {
+    cfg!(mobile)
+}
+
+/// Write project bytes to a temp file in the app cache dir and return its path,
+/// so the web layer can hand it to the OS share sheet (mobile share plugin).
+#[tauri::command]
+pub fn write_temp_project(app: AppHandle, filename: String, bytes: Vec<u8>) -> Result<String, String> {
+    let dir = app.path().app_cache_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    // Keep the extension; sanitise the stem so it can't escape the cache dir.
+    let name = Path::new(&filename)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("project.sb3");
+    let path = dir.join(name);
+    std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
 
 /// Show a native Save dialog defaulting to `filename` and write `bytes` there.
 /// Returns Ok(true) if saved, Ok(false) if the user cancelled.
