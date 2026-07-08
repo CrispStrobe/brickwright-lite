@@ -1,0 +1,19 @@
+{
+  "name": "brickwright-tauri",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Brickwright native app (Tauri 2) — one project targeting desktop (macOS/Windows/Linux) and mobile (iOS/Android). Wraps the brickwright-lite web build and provides a native ScratchLink (BLE + BTC/SPP).",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "icon": "tauri icon ../../packages/scratch-gui/build/static/images/512.png",
+    "ios:init": "tauri ios init",
+    "ios:dev": "tauri ios dev",
+    "android:init": "tauri android init",
+    "android:dev": "tauri android dev"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

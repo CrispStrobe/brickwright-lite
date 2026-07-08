@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the Brickwright main window.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "blec:default",
+    "log:default"
+  ]
+}
