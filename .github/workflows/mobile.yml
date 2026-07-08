@@ -1,0 +1,107 @@
+name: mobile
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build web bundle (vendor + integrate + webpack)
+        run: bash scripts/vercel-build.sh || (echo "retrying web build" && bash scripts/vercel-build.sh)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+          retention-days: 3
+
+  android:
+    needs: build-web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;27.0.12077973"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install app dependencies
+        working-directory: apps/tauri
+        run: npm ci
+
+      - name: Build Android APK (debug, unsigned)
+        working-directory: apps/tauri
+        run: |
+          npx tauri android init --ci
+          npx tauri android build --apk --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brickwright-android-apk
+          path: apps/tauri/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
+          retention-days: 7
+
+  ios:
+    needs: build-web
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install app dependencies
+        working-directory: apps/tauri
+        run: npm ci
+
+      # Build for the simulator so no Apple signing certificate is required.
+      - name: Build iOS app (simulator, unsigned)
+        working-directory: apps/tauri
+        run: |
+          npx tauri ios init --ci
+          npx tauri ios build --target aarch64-sim
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brickwright-ios-sim
+          path: apps/tauri/src-tauri/gen/apple/build/**/*.app
+          if-no-files-found: warn
+          retention-days: 7
