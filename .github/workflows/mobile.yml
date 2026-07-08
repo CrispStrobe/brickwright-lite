@@ -68,6 +68,15 @@ jobs:
           # Allow cleartext ws:// to LAN bridge servers (bridge-mode hardware
           # over WiFi). The manifest ships a ${usesCleartextTraffic} placeholder.
           sed -i 's/${usesCleartextTraffic}/true/' src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          # Camera + microphone for getUserMedia (Video Sensing, loudness, record
+          # a sound). MODIFY_AUDIO_SETTINGS is required or the WebView gets the mic
+          # grant but still fails with NotReadableError. Features are required=false
+          # so devices without a camera can still install.
+          MANIFEST=src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.microphone" android:required="false" />#' "$MANIFEST"
+          # Request the runtime camera/mic permissions on launch (Tauri never does).
+          cp ../android-overlay/MainActivity.kt \
+            src-tauri/gen/android/app/src/main/java/com/crispstrobe/brickwright/MainActivity.kt
           npx tauri android build --apk --debug
 
       - uses: actions/upload-artifact@v4
@@ -135,6 +144,13 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols array" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols:0 string COM.LEGO.MINDSTORMS.EV3" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols:1 string com.lego.les" "$PLIST" 2>/dev/null || true
+          # Camera + microphone + speech usage strings for getUserMedia (Video
+          # Sensing, loudness/record-a-sound, Speech-to-Text). wry's WKWebView
+          # delegate grants the in-page request; iOS still needs these or it kills
+          # the app on first camera/mic access.
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Brickwright uses the camera for the Video Sensing blocks.'" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Brickwright uses the microphone for the sound blocks and to record sounds.'" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'Brickwright uses speech recognition for the Speech-to-Text extension.'" "$PLIST" 2>/dev/null || true
           npx tauri ios build --target aarch64-sim
 
       - uses: actions/upload-artifact@v4

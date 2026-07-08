@@ -8,5 +8,15 @@
   <string>Brickwright uses Bluetooth to connect to LEGO hubs (SPIKE, Boost, WeDo, Powered-Up, and more).</string>
   <key>NSBluetoothPeripheralUsageDescription</key>
   <string>Brickwright uses Bluetooth to connect to LEGO hubs (SPIKE, Boost, WeDo, Powered-Up, and more).</string>
+  <!-- getUserMedia: the Video Sensing extension (camera) and the sound/loudness
+       blocks + "record a sound" (microphone). wry's WKWebView UI delegate grants
+       the in-page request; macOS still shows the system TCC prompt gated by these
+       strings, so both must be present or the app is killed on first access. -->
+  <key>NSCameraUsageDescription</key>
+  <string>Brickwright uses the camera for the Video Sensing blocks and to let you photograph costumes.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Brickwright uses the microphone for the loudness/sound blocks and to record sounds.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>Brickwright uses speech recognition for the Speech-to-Text extension.</string>
 </dict>
 </plist>

@@ -4,7 +4,50 @@
 // we feed it into `window.vm.loadProject`. No-op outside Tauri.
 export default function initTauriBridge () {
     const tauri = typeof window !== 'undefined' && window.__TAURI__;
-    if (!tauri || !tauri.event || typeof tauri.event.listen !== 'function') return;
+    if (!tauri) return;
+
+    // Open external links (help pages, credits, "report a bug", extension docs)
+    // in the system browser. Without this, clicking such a link navigates the
+    // whole webview away from the editor — there is no back button, so the app
+    // looks broken. Covers <a target=_blank>, cross-origin http(s) anchors, and
+    // window.open. Uses tauri-plugin-opener via the global invoke.
+    if (tauri.core && typeof tauri.core.invoke === 'function') {
+        const openExternal = url => {
+            try {
+                tauri.core.invoke('plugin:opener|open_url', {url});
+            } catch (e) {
+                // best-effort; ignore
+            }
+        };
+        const isExternal = href => {
+            if (!href) return false;
+            try {
+                const u = new URL(href, window.location.href);
+                return (u.protocol === 'http:' || u.protocol === 'https:') &&
+                    u.origin !== window.location.origin;
+            } catch (e) {
+                return false;
+            }
+        };
+        document.addEventListener('click', e => {
+            const a = e.target && e.target.closest && e.target.closest('a[href]');
+            if (!a) return;
+            if (a.target === '_blank' || isExternal(a.getAttribute('href'))) {
+                e.preventDefault();
+                openExternal(a.href);
+            }
+        }, true);
+        const nativeOpen = window.open;
+        window.open = (url, ...rest) => {
+            if (url && isExternal(url)) {
+                openExternal(String(url));
+                return null;
+            }
+            return nativeOpen ? nativeOpen.call(window, url, ...rest) : null;
+        };
+    }
+
+    if (!tauri.event || typeof tauri.event.listen !== 'function') return;
 
     const getVm = () => {
         try {

@@ -16,7 +16,9 @@ pub fn run() {
         .plugin(tauri_plugin_blec::init())
         // Native Save/Open dialogs, and deep links / .sb3 "open with".
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_deep_link::init());
+        .plugin(tauri_plugin_deep_link::init())
+        // Open external links (help/docs/credits) in the system browser.
+        .plugin(tauri_plugin_opener::init());
 
     // OS share sheet (sender side of the project share round-trip) — mobile only.
     #[cfg(mobile)]
