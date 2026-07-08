@@ -4,13 +4,22 @@
 export default (filename, blob) => {
     const tauri = typeof window !== 'undefined' && window.__TAURI__;
     if (tauri && tauri.core && typeof tauri.core.invoke === 'function') {
+        const invoke = tauri.core.invoke;
         blob.arrayBuffer()
-            .then(buf => tauri.core.invoke('save_project', {
-                filename,
-                bytes: Array.from(new Uint8Array(buf))
-            }))
+            .then(async buf => {
+                const bytes = Array.from(new Uint8Array(buf));
+                const mobile = await invoke('is_mobile').catch(() => false);
+                if (mobile) {
+                    // Mobile: write a temp file and hand it to the OS share sheet.
+                    const path = await invoke('write_temp_project', {filename, bytes});
+                    await invoke('plugin:share|share_file', {path, mime: 'application/octet-stream'});
+                } else {
+                    // Desktop: native Save-As dialog.
+                    await invoke('save_project', {filename, bytes});
+                }
+            })
             // eslint-disable-next-line no-console
-            .catch(e => console.error('[brickwright] native save failed', e));
+            .catch(e => console.error('[brickwright] native export failed', e));
         return;
     }
 
