@@ -7,6 +7,7 @@ import GUI from '../containers/gui.jsx';
 import HashParserHOC from '../lib/hash-parser-hoc.jsx';
 import log from '../lib/log.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
+import initUrlExtensions from '../lib/url-extensions.js';
 
 const onClickLogo = () => {
     /* Brickwright: no redirect to scratch.mit.edu */
@@ -34,6 +35,10 @@ export default appTarget => {
 
     // Wire native file-open (Tauri) → web VM. No-op in a browser.
     initTauriBridge();
+
+    // Load any ?extension=<url> from the address bar (Xcratch-style), once the
+    // VM is up. Untrusted URLs prompt for confirmation first.
+    initUrlExtensions();
 
     // note that redux's 'compose' function is just being used as a general utility to make
     // the hierarchy of HOC constructor calls clearer here; it has nothing to do with redux's
