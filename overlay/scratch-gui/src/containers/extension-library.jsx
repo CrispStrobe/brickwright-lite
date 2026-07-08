@@ -18,23 +18,44 @@ const GALLERY_INDEX = `${GALLERY_BASE}generated-metadata/extensions-v0.json`;
 
 let cachedGallery = null;
 
+// Brickwright: our own extensions get proper wide poster art (hosted under static/);
+// the whole LEGO family shares one poster. Returns {iconURL, insetIconURL} or null.
+const POSTER_BASE = 'static/extension-posters/';
+const posterFor = ext => {
+    const slug = ext.slug || '';
+    if ((/lego|ev3|spike|nxt|wedo|boost|powered/i).test(slug)) {
+        return {iconURL: `${POSTER_BASE}lego.png`, insetIconURL: `${POSTER_BASE}lego-badge.png`};
+    }
+    if (ext.id === 'universalgamepad' || (/gamepad/i).test(slug)) {
+        return {iconURL: `${POSTER_BASE}gamepad.png`, insetIconURL: `${POSTER_BASE}gamepad-badge.png`};
+    }
+    if (ext.id === 'csp' || (/\/csp$/i).test(slug)) {
+        return {iconURL: `${POSTER_BASE}csp.png`, insetIconURL: `${POSTER_BASE}csp-badge.png`};
+    }
+    return null;
+};
+
 const fetchGallery = async () => {
     if (cachedGallery) return cachedGallery;
     const res = await fetch(GALLERY_INDEX);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    cachedGallery = (data.extensions || []).map(ext => ({
-        name: ext.name,
-        description: ext.description,
-        extensionId: ext.id,
-        extensionURL: `${GALLERY_BASE}${ext.slug}.js`,
-        iconURL: ext.image ? `${GALLERY_BASE}${ext.image}` : extensionIcon,
-        tags: ['gallery'],
-        featured: true,
-        // carry translations through so a later i18n pass can localise the picker
-        nameTranslations: ext.nameTranslations || {},
-        descriptionTranslations: ext.descriptionTranslations || {}
-    }));
+    cachedGallery = (data.extensions || []).map(ext => {
+        const poster = posterFor(ext);
+        return {
+            name: ext.name,
+            description: ext.description,
+            extensionId: ext.id,
+            extensionURL: `${GALLERY_BASE}${ext.slug}.js`,
+            iconURL: poster ? poster.iconURL : (ext.image ? `${GALLERY_BASE}${ext.image}` : extensionIcon),
+            insetIconURL: poster ? poster.insetIconURL : undefined,
+            tags: ['gallery'],
+            featured: true,
+            // carry translations through so a later i18n pass can localise the picker
+            nameTranslations: ext.nameTranslations || {},
+            descriptionTranslations: ext.descriptionTranslations || {}
+        };
+    });
     return cachedGallery;
 };
 

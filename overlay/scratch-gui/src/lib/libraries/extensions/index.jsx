@@ -50,7 +50,7 @@ export default [
     {
         name: 'Planète Maths',
         extensionId: 'planetemaths',
-        iconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzZiOGUyMyIvPjx0ZXh0IHg9IjI0IiB5PSIzMiIgZm9udC1zaXplPSIyNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPs+APC90ZXh0Pjwvc3ZnPg==',
+        iconURL: 'static/extension-posters/planetemaths.png',
         insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzZiOGUyMyIvPjx0ZXh0IHg9IjI0IiB5PSIzMiIgZm9udC1zaXplPSIyNiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPs+APC90ZXh0Pjwvc3ZnPg==',
         description: 'Extra math blocks (Planète Maths) — bundled built-in.',
         featured: true
@@ -58,7 +58,7 @@ export default [
     {
         name: 'Arrays & Vectors',
         extensionId: 'arrays',
-        iconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzJiN2RlOSIvPjx0ZXh0IHg9IjI0IiB5PSIzMyIgZm9udC1zaXplPSIyMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSI+WyBdPC90ZXh0Pjwvc3ZnPg==',
+        iconURL: 'static/extension-posters/arrays.png',
         insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzJiN2RlOSIvPjx0ZXh0IHg9IjI0IiB5PSIzMyIgZm9udC1zaXplPSIyMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSI+WyBdPC90ZXh0Pjwvc3ZnPg==',
         description: 'Named arrays, vectors & tensors (Arrays & Vectors) — bundled built-in.',
         featured: true
@@ -66,7 +66,7 @@ export default [
     {
         name: 'Text to Speech',
         extensionId: 'brickwrightTTS',
-        iconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzBmYmQ4YyIvPjxwYXRoIGQ9Ik0xNCAyMGg1bDctNXYxOGwtNy01aC01eiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0zMSAxOGE3IDcgMCAwIDEgMCAxMk0zNCAxNGExMiAxMiAwIDAgMSAwIDIwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMi41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=',
+        iconURL: 'static/extension-posters/tts.png',
         insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzBmYmQ4YyIvPjxwYXRoIGQ9Ik0xNCAyMGg1bDctNXYxOGwtNy01aC01eiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0zMSAxOGE3IDcgMCAwIDEgMCAxMk0zNCAxNGExMiAxMiAwIDAgMSAwIDIwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMi41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=',
         description: 'On-device speech (Web Speech now; CrispASR WASM when hosted) — no cloud.',
         featured: true
