@@ -1,5 +1,7 @@
 //! Brickwright native app (Tauri 2) — shared entry point for desktop and mobile.
 
+mod assetserver;
+mod downloads;
 mod fileio;
 mod scratchlink;
 
@@ -28,11 +30,21 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             fileio::save_project,
             fileio::write_temp_project,
-            fileio::is_mobile
+            fileio::is_mobile,
+            downloads::download_pack,
+            downloads::pack_present,
+            downloads::remove_pack
         ])
         .setup(|app| {
             // Bring up the local ScratchLink WS server the web VM dials.
             scratchlink::start();
+
+            // Offline asset cache: create the packs dir and serve it locally so
+            // the web VM can load cached library media / model weights by URL.
+            if let Ok(root) = downloads::packs_root(app.handle()) {
+                let _ = std::fs::create_dir_all(&root);
+                assetserver::start(root);
+            }
 
             // turbowarp:// deep links → load the referenced project (if any).
             #[cfg(any(target_os = "macos", target_os = "linux", windows))]
