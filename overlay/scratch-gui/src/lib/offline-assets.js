@@ -15,12 +15,40 @@ const ASSET_HOST = 'https://assets.scratch.mit.edu';
 // Pack name shared with the Rust side + the local server path `/library/…`.
 export const LIBRARY_PACK = 'library';
 
+// One-file pack (Option C): the whole CC BY-SA library (mascots excluded) as a
+// single ~40 MB zip, so a user grabs it in one request instead of ~1300. Hosted
+// as a Release asset — we redistribute only this vetted, attributed subset.
+const LIBRARY_PACK_URL =
+    'https://github.com/CrispStrobe/brickwright-lite/releases/download/library-pack-v1/brickwright-library.zip';
+
+// Trademarked Scratch characters — excluded from the offline set (not CC
+// licensed; see PLAN.md §25). Kept in lockstep with build-library-pack.mjs so
+// the cached count reconciles with the hosted pack.
+const MASCOT = /^(cat|scratch cat|gobo|pico|nano|giga|tera)\b/i;
+
+const mascotMd5exts = () => {
+    const set = new Set();
+    costumes.forEach(c => {
+        if (MASCOT.test((c.name || '').trim()) && c.md5ext) set.add(c.md5ext);
+    });
+    sprites.forEach(s => {
+        if (MASCOT.test((s.name || '').trim())) {
+            (s.costumes || []).forEach(c => {
+                if (c.md5ext) set.add(c.md5ext);
+            });
+        }
+    });
+    return set;
+};
+
 // Every unique library asset md5ext across costumes/backdrops/sounds and the
-// costumes+sounds nested in sprite entries.
+// costumes+sounds nested in sprite entries, minus the trademarked mascots (which
+// stay on the CDN — a local cache miss falls through to it).
 const collectMd5exts = () => {
+    const exclude = mascotMd5exts();
     const set = new Set();
     const add = asset => {
-        if (asset && asset.md5ext) set.add(asset.md5ext);
+        if (asset && asset.md5ext && !exclude.has(asset.md5ext)) set.add(asset.md5ext);
     };
     costumes.forEach(add);
     backdrops.forEach(add);
@@ -57,7 +85,9 @@ export const cachedCount = async () => {
     if (!t || !t.core) return 0;
     try {
         const names = await t.core.invoke('pack_present', {pack: LIBRARY_PACK});
-        return Array.isArray(names) ? names.length : 0;
+        // Count only asset files (md5-named), not the bundled LICENSE/CREDITS.
+        return Array.isArray(names) ?
+            names.filter(n => (/^[0-9a-f]{32}\./).test(n)).length : 0;
     } catch (e) {
         return 0;
     }
@@ -76,10 +106,20 @@ export const downloadLibrary = async onProgress => {
         });
     }
     try {
-        return await t.core.invoke('download_pack', {
-            pack: LIBRARY_PACK,
-            items: libraryDownloadItems()
-        });
+        // Prefer the one-file pack (single ~40 MB request). If it's unreachable
+        // (offline, or the release moved), fall back to fetching each library
+        // asset from the Scratch CDN individually.
+        try {
+            return await t.core.invoke('download_pack_zip', {
+                pack: LIBRARY_PACK,
+                url: LIBRARY_PACK_URL
+            });
+        } catch (e) {
+            return await t.core.invoke('download_pack', {
+                pack: LIBRARY_PACK,
+                items: libraryDownloadItems()
+            });
+        }
     } finally {
         if (unlisten) unlisten();
     }

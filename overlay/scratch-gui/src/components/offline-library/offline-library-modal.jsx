@@ -113,7 +113,7 @@ class OfflineLibraryModal extends React.Component {
                                 style={{width: `${pct}%`}}
                             />
                             <span className={styles.progressLabel}>
-                                {progress.done}{' / '}{progress.total}
+                                {pct}{'%'}
                                 {progress.failed ? ` (${progress.failed} failed)` : ''}
                             </span>
                         </div>

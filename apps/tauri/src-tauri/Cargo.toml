@@ -37,10 +37,13 @@ futures-util = "0.3"
 log = "0.4"
 uuid = "1"
 base64 = "0.22"
-# On-demand asset/model downloads (Option B: fetch from origin CDNs to the
-# user's device, cache locally; we host/bundle nothing). rustls to stay
-# OpenSSL-free / permissive across all platforms incl. mobile.
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# On-demand asset/model downloads. rustls to stay OpenSSL-free / permissive
+# across all platforms incl. mobile; `stream` for byte-progress on the one-file
+# library pack.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+# Extract the one-file library pack (Option C — a single CC BY-SA zip instead of
+# ~1300 individual CDN requests).
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # Mobile-only: OS share sheet (sender side of the project share round-trip).
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]

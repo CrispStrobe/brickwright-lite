@@ -32,6 +32,7 @@ pub fn run() {
             fileio::write_temp_project,
             fileio::is_mobile,
             downloads::download_pack,
+            downloads::download_pack_zip,
             downloads::pack_present,
             downloads::remove_pack
         ])
