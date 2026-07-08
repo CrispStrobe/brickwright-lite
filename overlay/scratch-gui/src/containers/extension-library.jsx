@@ -167,7 +167,8 @@ class ExtensionLibrary extends React.PureComponent {
             custom: true,
             name: this.msg(messages.customName),
             description: this.msg(messages.customDescription),
-            iconURL: extensionIcon,
+            iconURL: 'static/extension-posters/extensionurl.png',
+            insetIconURL: 'static/extension-posters/extensionurl-badge.png',
             tags: ['gallery'],
             featured: true
         };

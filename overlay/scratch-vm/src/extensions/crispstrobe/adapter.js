@@ -3,6 +3,25 @@ const BlockType = require('../../extension-support/block-type');
 const TargetType = require('../../extension-support/target-type');
 const Cast = require('../../util/cast');
 
+// Xcratch extensions ship as ES modules (`.mjs`) with top-level `export`
+// statements, but we run source through `new Function` (a function body, where
+// `export` is a syntax error: "export declarations may only appear at top level
+// of a module"). These bundles are self-contained (no top-level `import`), so we
+// rewrite their exports to CommonJS assignments the adapter already understands.
+// Anchored at line start to avoid touching `export`-like text inside code.
+const esmToCjs = source => source
+    .replace(/^[ \t]*export[ \t]+default[ \t]+/m, 'module.exports.default = ')
+    .replace(/^[ \t]*export[ \t]*\{([^}]*)\}[ \t]*;?[ \t]*$/gm, (_match, names) =>
+        names
+            .split(',')
+            .map(n => {
+                const [local, exported] = n.trim().split(/\s+as\s+/);
+                if (!local) return '';
+                return `module.exports[${JSON.stringify((exported || local).trim())}] = ${local.trim()};`;
+            })
+            .join(' '))
+    .replace(/^([ \t]*)export[ \t]+(const|let|var|function|class|async)\b/gm, '$1$2');
+
 // Build a `Scratch` shim and run a CrispStrobe extension source, returning a built-in
 // extension CLASS (the scratch-vm ExtensionManager instantiates it with `new Cls(runtime)`).
 // TurboWarp modules self-register via Scratch.extensions.register; Xcratch modules export
@@ -21,7 +40,7 @@ module.exports = function makeCrispExtension (source) {
             // In the browser the extension's top-level code (language detection etc.) runs with
             // the real window/navigator; we only inject Scratch.
             // eslint-disable-next-line no-new-func
-            const run = new Function('Scratch', 'module', 'exports', source);
+            const run = new Function('Scratch', 'module', 'exports', esmToCjs(source));
             const mod = { exports: {} };
             run(Scratch, mod, mod.exports);
             const xcx = mod.exports && (mod.exports.blockClass || (mod.exports.default && mod.exports.default.blockClass));
