@@ -72,6 +72,126 @@ export default [
         featured: true
     },
     {
+        name: 'LEGO Powered Up',
+        extensionId: 'legopoweredup',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/lego_poweredup.svg',
+        description: 'LEGO Powered Up — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO BOOST',
+        extensionId: 'legoboostunified',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legoboost_universal.svg',
+        description: 'LEGO BOOST — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO WeDo 2.0',
+        extensionId: 'wedo2unified',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'LEGO WeDo 2.0 — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO SPIKE Transpiler',
+        extensionId: 'spikeprime',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'LEGO SPIKE Transpiler — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO SPIKE Prime (BLE)',
+        extensionId: 'spikeprimeble',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'LEGO SPIKE Prime (BLE) — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO SPIKE Prime (BTC)',
+        extensionId: 'spikeprimeBTC',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'LEGO SPIKE Prime (BTC) — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO SPIKE Bridge',
+        extensionId: 'spikeprimeBridge',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'LEGO SPIKE Bridge — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO SPIKE Prime (BLE Alt)',
+        extensionId: 'legospikeprimeBLE',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'LEGO SPIKE Prime (BLE Alt) — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO MINDSTORMS EV3',
+        extensionId: 'ev3comprehensive',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_universal.svg',
+        description: 'LEGO MINDSTORMS EV3 — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO EV3 (Direct)',
+        extensionId: 'legoev3direct',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_direct.svg',
+        description: 'LEGO EV3 (Direct) — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO EV3 LMS',
+        extensionId: 'ev3lms',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_lms_transpile.svg',
+        description: 'LEGO EV3 LMS — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO NXT',
+        extensionId: 'legonxt',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legonxt_transpile_universal.svg',
+        description: 'LEGO NXT — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'LEGO EV3 (ev3dev)',
+        extensionId: 'ev3dev',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3dev_py_transpile.svg',
+        description: 'LEGO EV3 (ev3dev) — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'Gamepad',
+        extensionId: 'universalgamepad',
+        iconURL: 'static/extension-posters/gamepad.png',
+        insetIconURL: 'static/extension-posters/gamepad-badge.png',
+        description: 'Gamepad — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'CSP Solver',
+        extensionId: 'csp',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
+        description: 'CSP Solver — bundled built-in.',
+        featured: true
+    },
+    {
         name: (
             <FormattedMessage
                 defaultMessage="Music"

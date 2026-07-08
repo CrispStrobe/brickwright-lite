@@ -22,6 +22,23 @@ const builtinExtensions = {
     planetemaths: () => require('../extensions/crispstrobe/planetemaths'),
     arrays: () => require('../extensions/crispstrobe/arrays'),
     brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
+    // Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
+    // repo too; the bundledIds dedup removes the gallery copy from the picker.
+    legopoweredup: () => require('../extensions/crispstrobe/legopoweredup'),
+    legoboostunified: () => require('../extensions/crispstrobe/legoboostunified'),
+    wedo2unified: () => require('../extensions/crispstrobe/wedo2unified'),
+    spikeprime: () => require('../extensions/crispstrobe/spikeprime'),
+    spikeprimeble: () => require('../extensions/crispstrobe/spikeprimeble'),
+    spikeprimeBTC: () => require('../extensions/crispstrobe/spikeprimeBTC'),
+    spikeprimeBridge: () => require('../extensions/crispstrobe/spikeprimeBridge'),
+    legospikeprimeBLE: () => require('../extensions/crispstrobe/legospikeprimeBLE'),
+    ev3comprehensive: () => require('../extensions/crispstrobe/ev3comprehensive'),
+    legoev3direct: () => require('../extensions/crispstrobe/legoev3direct'),
+    ev3lms: () => require('../extensions/crispstrobe/ev3lms'),
+    legonxt: () => require('../extensions/crispstrobe/legonxt'),
+    ev3dev: () => require('../extensions/crispstrobe/ev3dev'),
+    universalgamepad: () => require('../extensions/crispstrobe/universalgamepad'),
+    csp: () => require('../extensions/crispstrobe/csp'),
     // This is an example that isn't loaded with the other core blocks,
     // but serves as a reference for loading core blocks as extensions.
     coreExample: () => require('../blocks/scratch3_core_example'),
