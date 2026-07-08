@@ -58,3 +58,22 @@ npm run ios:init && npm run ios:dev           # iOS (needs Xcode)
 
 The frontend is the prebuilt web bundle; rebuild it from the repo root
 (`npm run build:gui`) before packaging if the web app changed.
+
+## Testing
+
+**Automated (no hardware) — `cargo test` under `apps/tauri/src-tauri`, also run in CI (`.github/workflows/tauri.yml`):**
+- *Unit* — the BLE codec/parse helpers: `parse_uuid` (full UUID, 16-bit short as hex/`0x`/number, invalid), `decode_message` (base64 / default / missing / bad encoding), `build_scan_filter`.
+- *Integration* — spins the ScratchLink WS server on an ephemeral port and drives real JSON-RPC over a socket: `ping`→42, BT-skeleton ack, BLE-without-adapter → graceful JSON-RPC error (no panic), unknown method → error.
+- CI also runs `cargo clippy -- -D warnings`.
+
+**Live, no LEGO hub:**
+- *Real-Bluetooth scan* — build the `.app` (`npm run build -- --debug --bundles app`), launch it, then over `ws://127.0.0.1:20111/scratch/ble` send an unfiltered `discover` (`{"filters":[]}`); nearby BLE devices should stream back as `didDiscoverPeripheral`. Validates the scan→notify path through real CoreBluetooth. Needs the bundle (a raw binary can't get macOS BT permission).
+- *Editor renders* — launch the app and confirm the scratch-gui editor loads from `frontendDist` and the VM reaches the local ScratchLink.
+
+**Live, with a hub (manual checklist):**
+1. Power a hub (Boost / WeDo 2.0 / SPIKE FW3.x); in the editor add the matching extension.
+2. Discover → the hub appears in the peripheral picker.
+3. Connect → status goes green (`connect` + `discover_services` succeed).
+4. Read → a battery/sensor `read` returns a value.
+5. Write → a motor block spins a motor (`write` → `send_data`).
+6. Notifications → sensor blocks update live (`startNotifications` → `characteristicDidChange`).

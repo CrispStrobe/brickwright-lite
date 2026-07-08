@@ -265,6 +265,7 @@ dependencies = [
 name = "brickwright-tauri"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "futures-util",
  "log",
  "serde",
@@ -275,6 +276,7 @@ dependencies = [
  "tauri-plugin-log",
  "tokio",
  "tokio-tungstenite",
+ "uuid",
 ]
 
 [[package]]

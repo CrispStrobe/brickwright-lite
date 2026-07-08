@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Merged into the macOS app bundle Info.plist by Tauri. Required for
+       CoreBluetooth (btleplug / tauri-plugin-blec) to obtain BLE permission. -->
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>Brickwright uses Bluetooth to connect to LEGO hubs (SPIKE, Boost, WeDo, Powered-Up, and more).</string>
+  <key>NSBluetoothPeripheralUsageDescription</key>
+  <string>Brickwright uses Bluetooth to connect to LEGO hubs (SPIKE, Boost, WeDo, Powered-Up, and more).</string>
+</dict>
+</plist>
