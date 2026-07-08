@@ -123,6 +123,24 @@
     width: 100%;
 }
 
+/* Brickwright: icon-only extensions (bundled built-ins + fetched gallery) ship a small square
+   icon rather than a wide poster illustration. Center it at a consistent, generous size on a
+   light banner so it reads as intentional instead of a tiny icon stretched across the card. */
+.featured-image-container-icon-only {
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: $ui-primary;
+}
+
+.featured-image-icon-only {
+    width: auto;
+    height: 96px;
+    max-width: 80%;
+    object-fit: contain;
+}
+
 .featured-text {
     font-weight: bold;
     padding: 10px;
