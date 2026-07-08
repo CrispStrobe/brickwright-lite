@@ -1,0 +1,126 @@
+.backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.card {
+    width: 420px;
+    max-width: calc(100vw - 2rem);
+    background: var(--ui-white, #ffffff);
+    color: var(--text-primary, #575e75);
+    border-radius: 0.5rem;
+    box-shadow: 0 0 1.5rem 0.5rem rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    font-size: 0.875rem;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: var(--looks-secondary, #855cd6);
+    color: #ffffff;
+}
+
+.title {
+    font-weight: bold;
+    font-size: 0.95rem;
+}
+
+.close {
+    border: none;
+    background: transparent;
+    color: #ffffff;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+
+.close:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.body {
+    padding: 1rem 1rem 0.5rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.status {
+    padding: 0 1rem;
+    margin: 0.25rem 0 0.5rem;
+    font-weight: bold;
+}
+
+.progressOuter {
+    position: relative;
+    height: 1.25rem;
+    margin: 0 1rem 0.5rem;
+    background: var(--ui-primary, #e9eef2);
+    border-radius: 0.625rem;
+    overflow: hidden;
+}
+
+.progressInner {
+    height: 100%;
+    background: var(--looks-secondary, #855cd6);
+    transition: width 0.2s ease;
+}
+
+.progressLabel {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--text-primary, #575e75);
+}
+
+.error {
+    padding: 0 1rem;
+    margin: 0 0 0.5rem;
+    color: #e02020;
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    padding: 0.5rem 1rem 1rem;
+}
+
+.primary,
+.secondary {
+    border-radius: 0.25rem;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.primary {
+    background: var(--looks-secondary, #855cd6);
+    color: #ffffff;
+}
+
+.secondary {
+    background: transparent;
+    color: var(--text-primary, #575e75);
+    border-color: var(--ui-black-transparent, rgba(0, 0, 0, 0.15));
+}
+
+.primary:disabled,
+.secondary:disabled {
+    opacity: 0.5;
+    cursor: default;
+}

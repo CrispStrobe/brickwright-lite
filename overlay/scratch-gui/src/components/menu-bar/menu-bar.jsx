@@ -19,6 +19,8 @@ import SaveStatus from './save-status.jsx';
 import ProjectWatcher from '../../containers/project-watcher.jsx';
 import MenuBarMenu from './menu-bar-menu.jsx';
 import {MenuItem, MenuSection} from '../menu/menu.jsx';
+import OfflineLibraryModal from '../offline-library/offline-library-modal.jsx';
+import {isNativeApp} from '../../lib/offline-assets.js';
 import ProjectTitleInput from './project-title-input.jsx';
 import AuthorInfo from './author-info.jsx';
 import AccountNav from '../../containers/account-nav.jsx';
@@ -182,8 +184,13 @@ class MenuBar extends React.Component {
             'handleKeyPress',
             'handleRestoreOption',
             'getSaveToComputerHandler',
-            'restoreOptionMessage'
+            'restoreOptionMessage',
+            'handleOpenOfflineLibrary',
+            'handleCloseOfflineLibrary'
         ]);
+        // Local UI state for the Brickwright offline-library dialog (native app
+        // only). Kept out of Redux — it's app-specific and self-contained.
+        this.state = {offlineLibraryOpen: false};
     }
     componentDidMount () {
         document.addEventListener('keydown', this.handleKeyPress);
@@ -205,6 +212,13 @@ class MenuBar extends React.Component {
             this.props.onClickNew(this.props.canSave && this.props.canCreateNew);
         }
         this.props.onRequestCloseFile();
+    }
+    handleOpenOfflineLibrary () {
+        this.props.onRequestCloseFile();
+        this.setState({offlineLibraryOpen: true});
+    }
+    handleCloseOfflineLibrary () {
+        this.setState({offlineLibraryOpen: false});
     }
     handleClickRemix () {
         this.props.onClickRemix();
@@ -511,6 +525,15 @@ class MenuBar extends React.Component {
                                                 />
                                             </MenuItem>
                                         )}</SB3Downloader>
+                                        {isNativeApp() && (
+                                            <MenuItem onClick={this.handleOpenOfflineLibrary}>
+                                                <FormattedMessage
+                                                    defaultMessage="Offline library…"
+                                                    description="Menu item to download the asset library for offline use" // eslint-disable-line max-len
+                                                    id="gui.menuBar.offlineLibrary"
+                                                />
+                                            </MenuItem>
+                                        )}
                                     </MenuSection>
                                 </MenuBarMenu>
                             </div>
@@ -835,6 +858,9 @@ class MenuBar extends React.Component {
                 </div>
 
                 {aboutButton}
+                {this.state.offlineLibraryOpen && (
+                    <OfflineLibraryModal onClose={this.handleCloseOfflineLibrary} />
+                )}
             </Box>
         );
     }
