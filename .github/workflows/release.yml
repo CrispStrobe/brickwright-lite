@@ -1,0 +1,85 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Build the web bundle once (it is identical across OSes) and share it, so the
+  # per-platform Tauri jobs don't each rebuild scratch-gui (and hit its OOM 3×).
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build web bundle (vendor + integrate + webpack)
+        # The webpack step OOMs marginally at times — retry once before failing.
+        run: bash scripts/vercel-build.sh || (echo "retrying web build" && bash scripts/vercel-build.sh)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+          retention-days: 3
+
+  tauri:
+    needs: build-web
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Restore the prebuilt web bundle to the path tauri.conf.json's
+      # frontendDist points at (repo-root packages/scratch-gui/build).
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - name: Install Linux system dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Build the Tauri app (+ draft release on tags)
+        uses: tauri-apps/tauri-action@v0
+        id: tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/tauri
+          # On a tag push, create/append to a draft GitHub release; on manual
+          # runs both are empty, so tauri-action just builds (no release).
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Brickwright {0}', github.ref_name) || '' }}
+          releaseDraft: true
+          prerelease: false
+
+      # Also expose the bundles as workflow artifacts (useful for manual runs).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brickwright-${{ matrix.os }}
+          path: apps/tauri/src-tauri/target/release/bundle/**
+          if-no-files-found: warn
+          retention-days: 7
