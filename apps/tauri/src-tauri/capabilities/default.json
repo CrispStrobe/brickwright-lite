@@ -6,6 +6,8 @@
   "permissions": [
     "core:default",
     "blec:default",
-    "log:default"
+    "log:default",
+    "dialog:default",
+    "deep-link:default"
   ]
 }

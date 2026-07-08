@@ -7,6 +7,7 @@
     "frontendDist": "../../../packages/scratch-gui/build"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
@@ -32,6 +33,35 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["sb3"],
+        "name": "Scratch 3 Project",
+        "description": "Scratch / TurboWarp project",
+        "role": "Editor",
+        "mimeType": "application/x.scratch.sb3"
+      },
+      {
+        "ext": ["sb2"],
+        "name": "Scratch 2 Project",
+        "description": "Scratch 2 project",
+        "role": "Editor",
+        "mimeType": "application/x.scratch.sb2"
+      }
     ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["turbowarp", "brickwright"]
+      },
+      "mobile": [
+        {
+          "host": "brickwright.vercel.app",
+          "pathPrefix": ["/"]
+        }
+      ]
+    }
   }
 }
