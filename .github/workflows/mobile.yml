@@ -131,6 +131,10 @@ jobs:
           PLIST=src-tauri/gen/apple/brickwright-tauri_iOS/Info.plist
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" "$PLIST" \
             || /usr/libexec/PlistBuddy -c "Set :NSAppTransportSecurity:NSAllowsLocalNetworking true" "$PLIST"
+          # MFi ExternalAccessory protocols so the EV3/NXT are visible for BTC.
+          /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols array" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols:0 string COM.LEGO.MINDSTORMS.EV3" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols:1 string com.lego.les" "$PLIST" 2>/dev/null || true
           npx tauri ios build --target aarch64-sim
 
       - uses: actions/upload-artifact@v4
