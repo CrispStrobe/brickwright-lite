@@ -19,18 +19,21 @@ const GALLERY_INDEX = `${GALLERY_BASE}generated-metadata/extensions-v0.json`;
 let cachedGallery = null;
 
 // Brickwright: our own extensions get proper wide poster art (hosted under static/);
-// the whole LEGO family shares one poster. Returns {iconURL, insetIconURL} or null.
+// the whole LEGO family shares one poster. The inset badge keeps the extension's
+// OWN icon (ext.image) when it has one, falling back to a poster crop otherwise.
+// Returns {iconURL, insetIconURL} or null.
 const POSTER_BASE = 'static/extension-posters/';
 const posterFor = ext => {
     const slug = ext.slug || '';
+    const ownIcon = ext.image ? `${GALLERY_BASE}${ext.image}` : null;
     if ((/lego|ev3|spike|nxt|wedo|boost|powered/i).test(slug)) {
-        return {iconURL: `${POSTER_BASE}lego.png`, insetIconURL: `${POSTER_BASE}lego-badge.png`};
+        return {iconURL: `${POSTER_BASE}lego.png`, insetIconURL: ownIcon || `${POSTER_BASE}lego-badge.png`};
     }
     if (ext.id === 'universalgamepad' || (/gamepad/i).test(slug)) {
-        return {iconURL: `${POSTER_BASE}gamepad.png`, insetIconURL: `${POSTER_BASE}gamepad-badge.png`};
+        return {iconURL: `${POSTER_BASE}gamepad.png`, insetIconURL: ownIcon || `${POSTER_BASE}gamepad-badge.png`};
     }
     if (ext.id === 'csp' || (/\/csp$/i).test(slug)) {
-        return {iconURL: `${POSTER_BASE}csp.png`, insetIconURL: `${POSTER_BASE}csp-badge.png`};
+        return {iconURL: `${POSTER_BASE}csp.png`, insetIconURL: ownIcon || `${POSTER_BASE}csp-badge.png`};
     }
     return null;
 };
