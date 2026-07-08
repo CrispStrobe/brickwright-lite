@@ -20,6 +20,8 @@ mod bt_macos;
 mod bt_linux;
 #[cfg(target_os = "windows")]
 mod bt_windows;
+#[cfg(target_os = "android")]
+mod bt_android;
 
 use std::sync::{Arc, Mutex};
 
@@ -137,6 +139,10 @@ async fn handle_conn(stream: TcpStream) -> Result<(), tokio_tungstenite::tungste
     if transport == Transport::Bt {
         bt_windows::cleanup();
     }
+    #[cfg(target_os = "android")]
+    if transport == Transport::Bt {
+        bt_android::cleanup();
+    }
     writer.abort();
     log::info!("[scratchlink] client disconnected ({transport:?})");
     Ok(())
@@ -160,7 +166,12 @@ async fn bt_dispatch(txt: &str, out: &Outbound) {
     bt_windows::dispatch(txt, out).await;
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+#[cfg(target_os = "android")]
+async fn bt_dispatch(txt: &str, out: &Outbound) {
+    bt_android::dispatch(txt, out).await;
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows", target_os = "android")))]
 async fn bt_dispatch(txt: &str, out: &Outbound) {
     let req: Value = match serde_json::from_str(txt) {
         Ok(v) => v,

@@ -52,6 +52,11 @@ windows = { version = "0.58", features = [
     "Foundation_Collections",
 ] }
 
+# Android Bluetooth-Classic (RFCOMM/SPP) via JNI into android.bluetooth.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+ndk-context = "0.1"
+
 [features]
 # Used by the desktop entrypoint (main.rs) to avoid the extra console window.
 custom-protocol = ["tauri/custom-protocol"]
