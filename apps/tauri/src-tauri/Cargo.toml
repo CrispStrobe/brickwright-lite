@@ -36,6 +36,10 @@ base64 = "0.22"
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
 tauri-plugin-share = "2"
 
+# Linux Bluetooth-Classic (RFCOMM/SPP) backend, for EV3 + legacy SPIKE.
+[target.'cfg(target_os = "linux")'.dependencies]
+bluer = { version = "0.17", features = ["rfcomm"] }
+
 [features]
 # Used by the desktop entrypoint (main.rs) to avoid the extra console window.
 custom-protocol = ["tauri/custom-protocol"]
