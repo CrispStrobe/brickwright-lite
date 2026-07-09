@@ -4,6 +4,9 @@
 <dict>
   <!-- Merged into the macOS app bundle Info.plist by Tauri. Required for
        CoreBluetooth (btleplug / tauri-plugin-blec) to obtain BLE permission. -->
+  <!-- Mac App Store validation requires a category declaration. -->
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.education</string>
   <key>NSBluetoothAlwaysUsageDescription</key>
   <string>Brickwright uses Bluetooth to connect to LEGO hubs (SPIKE, Boost, WeDo, Powered-Up, and more).</string>
   <key>NSBluetoothPeripheralUsageDescription</key>
