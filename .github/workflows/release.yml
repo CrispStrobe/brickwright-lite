@@ -124,6 +124,24 @@ jobs:
           releaseDraft: true
           prerelease: false
 
+      # TestFlight (and App Store submission generally) requires the
+      # provisioning profile physically embedded in the .app bundle as
+      # Contents/embedded.provisionprofile, not just installed where
+      # codesign can find it for identity/entitlement resolution. Tauri's
+      # bundler doesn't embed it, so copy it in and re-sign (embedding
+      # after the original sign invalidates that signature, so this has
+      # to re-seal the whole bundle).
+      - name: Embed provisioning profile + re-sign
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP_PATH=$(find apps/tauri/src-tauri/target/release/bundle/macos -name "*.app" | head -1)
+          cp /tmp/brickwright.provisionprofile "$APP_PATH/Contents/embedded.provisionprofile"
+          codesign --force --deep --strict --timestamp --options runtime \
+            --entitlements apps/tauri/src-tauri/entitlements.plist \
+            --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" \
+            "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
       # Mac App Store submission needs a .pkg installer wrapper signed with
       # the *separate* "3rd Party Mac Developer Installer" identity -- the
       # Apple Distribution identity above only covers the .app itself.
