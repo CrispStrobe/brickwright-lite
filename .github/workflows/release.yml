@@ -79,19 +79,40 @@ jobs:
           PROFILE_UUID=$(security cms -D -i /tmp/brickwright.provisionprofile | plutil -extract UUID raw -)
           cp /tmp/brickwright.provisionprofile "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.provisionprofile"
 
+      # Both identities (Distribution for the .app, Installer for the .pkg
+      # below) need to be on the keychain search list for the whole job, not
+      # just Tauri's own build step -- hence a persistent keychain here
+      # rather than relying on any built-in ephemeral cert-import.
+      - name: Import Apple certificates (persistent, for productbuild)
+        if: matrix.os == 'macos-latest'
+        run: |
+          KEYCHAIN=$RUNNER_TEMP/brickwright-ci.keychain-db
+          KEYCHAIN_PASS=$(openssl rand -base64 24)
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed 's/"//g')
+
+          echo "${{ secrets.MACOS_CERT_P12 }}" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "${{ secrets.MACOS_CERT_P12_PASSWORD }}" \
+            -T /usr/bin/codesign -T /usr/bin/productbuild -T /usr/bin/productsign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+
       - name: Build the Tauri app (+ draft release on tags)
         uses: tauri-apps/tauri-action@v0
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS code signing (Apple Distribution identity, Mac App Store).
-          # tauri-action imports APPLE_CERTIFICATE into its own temporary
-          # keychain and signs with APPLE_SIGNING_IDENTITY; harmless no-op on
-          # the ubuntu/windows matrix legs. No notarization vars are set on
-          # purpose -- Mac App Store builds go through App Review, not
-          # notarization.
-          APPLE_CERTIFICATE: ${{ secrets.MACOS_CERT_P12 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERT_P12_PASSWORD }}
+          # macOS code signing: NOT importing APPLE_CERTIFICATE here on purpose.
+          # Tauri's own bundler would import it into a second temp keychain,
+          # colliding (ambiguous identity, same name) with the persistent one
+          # just set up above for productbuild. tauri.conf.json already
+          # declares signingIdentity, so the bundler just needs the identity
+          # findable on the keychain search list -- which it now is. Harmless
+          # no-op on the ubuntu/windows matrix legs either way. No notarization
+          # vars are set on purpose -- Mac App Store builds go through App
+          # Review, not notarization.
           APPLE_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
           APPLE_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
         with:
