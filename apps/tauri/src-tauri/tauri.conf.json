@@ -34,6 +34,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "macOS": {
+      "entitlements": "entitlements.plist",
+      "signingIdentity": "Apple Distribution: Christian Ströbele (N9XSJ4M3GT)",
+      "hardenedRuntime": true
+    },
     "fileAssociations": [
       {
         "ext": ["sb3"],

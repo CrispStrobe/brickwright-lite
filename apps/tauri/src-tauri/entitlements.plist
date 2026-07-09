@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+
+  <!-- Outbound: gallery extension JS, CDN asset fetches, remote-driver bridge. -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <!-- Inbound: native ScratchLink WS (127.0.0.1:20111) + local asset server (127.0.0.1:20112). -->
+  <key>com.apple.security.network.server</key>
+  <true/>
+
+  <!-- CoreBluetooth (BLE) only. NOTE: App Sandbox does not permit IOBluetooth /
+       classic-Bluetooth RFCOMM (src/scratchlink/bt_macos.m) -- that path compiles
+       but will not connect under a sandboxed Mac App Store build, so legacy
+       EV3/NXT over classic BT is expected to be unavailable here (same shape as
+       the iOS MFi gap). Modern BLE hubs (SPIKE, Boost, WeDo, Powered-Up) are
+       unaffected. -->
+  <key>com.apple.security.device.bluetooth</key>
+  <true/>
+
+  <key>com.apple.security.device.camera</key>
+  <true/>
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+
+  <!-- Native Save/Open dialogs (tauri-plugin-dialog) for .sb3 files. -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+</dict>
+</plist>

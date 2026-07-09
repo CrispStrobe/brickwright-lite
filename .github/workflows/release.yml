@@ -68,11 +68,32 @@ jobs:
         working-directory: apps/tauri
         run: npm ci
 
+      # Mac App Store provisioning profile: not part of tauri-action's own
+      # keychain setup, so install it to the standard Xcode lookup path
+      # ourselves before the build.
+      - name: Install macOS provisioning profile
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.MACOS_PROVISIONING_PROFILE }}" | base64 --decode > /tmp/brickwright.provisionprofile
+          PROFILE_UUID=$(security cms -D -i /tmp/brickwright.provisionprofile | plutil -extract UUID raw -)
+          cp /tmp/brickwright.provisionprofile "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.provisionprofile"
+
       - name: Build the Tauri app (+ draft release on tags)
         uses: tauri-apps/tauri-action@v0
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS code signing (Apple Distribution identity, Mac App Store).
+          # tauri-action imports APPLE_CERTIFICATE into its own temporary
+          # keychain and signs with APPLE_SIGNING_IDENTITY; harmless no-op on
+          # the ubuntu/windows matrix legs. No notarization vars are set on
+          # purpose -- Mac App Store builds go through App Review, not
+          # notarization.
+          APPLE_CERTIFICATE: ${{ secrets.MACOS_CERT_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERT_P12_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
         with:
           projectPath: apps/tauri
           # On a tag push, create/append to a draft GitHub release; on manual
@@ -81,6 +102,25 @@ jobs:
           releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('Brickwright {0}', github.ref_name) || '' }}
           releaseDraft: true
           prerelease: false
+
+      # Mac App Store submission needs a .pkg installer wrapper signed with
+      # the *separate* "3rd Party Mac Developer Installer" identity -- the
+      # Apple Distribution identity above only covers the .app itself.
+      - name: Build signed .pkg for Mac App Store submission
+        if: matrix.os == 'macos-latest'
+        run: |
+          APP_PATH=$(find apps/tauri/src-tauri/target/release/bundle/macos -name "*.app" | head -1)
+          productbuild --component "$APP_PATH" /Applications \
+            --sign "3rd Party Mac Developer Installer: Christian Ströbele (${{ secrets.MACOS_TEAM_ID }})" \
+            apps/tauri/src-tauri/target/release/bundle/macos/Brickwright.pkg
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'macos-latest'
+        with:
+          name: brickwright-macos-appstore-pkg
+          path: apps/tauri/src-tauri/target/release/bundle/macos/Brickwright.pkg
+          if-no-files-found: warn
+          retention-days: 7
 
       # Also expose the bundles as workflow artifacts (useful for manual runs).
       - uses: actions/upload-artifact@v4
