@@ -130,14 +130,25 @@ jobs:
       # codesign can find it for identity/entitlement resolution. Tauri's
       # bundler doesn't embed it, so copy it in and re-sign (embedding
       # after the original sign invalidates that signature, so this has
-      # to re-seal the whole bundle).
+      # to re-seal the whole bundle). Xcode normally also merges the
+      # profile's own entitlements (application-identifier,
+      # com.apple.developer.team-identifier, keychain-access-groups) into
+      # what gets signed; a plain codesign --entitlements <ours> doesn't,
+      # so extract them from the actual profile and merge rather than
+      # hardcoding the team ID a second time here.
       - name: Embed provisioning profile + re-sign
         if: matrix.os == 'macos-latest'
         run: |
           APP_PATH=$(find apps/tauri/src-tauri/target/release/bundle/macos -name "*.app" | head -1)
           cp /tmp/brickwright.provisionprofile "$APP_PATH/Contents/embedded.provisionprofile"
+
+          security cms -D -i /tmp/brickwright.provisionprofile \
+            | plutil -extract Entitlements xml1 -o /tmp/profile-entitlements.plist -
+          cp apps/tauri/src-tauri/entitlements.plist /tmp/merged-entitlements.plist
+          /usr/libexec/PlistBuddy -c "Merge /tmp/profile-entitlements.plist" /tmp/merged-entitlements.plist
+
           codesign --force --deep --strict --timestamp --options runtime \
-            --entitlements apps/tauri/src-tauri/entitlements.plist \
+            --entitlements /tmp/merged-entitlements.plist \
             --sign "${{ secrets.MACOS_SIGNING_IDENTITY }}" \
             "$APP_PATH"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
