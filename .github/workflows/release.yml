@@ -122,6 +122,33 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      # Validate + upload to App Store Connect -- only on real version tags,
+      # never on workflow_dispatch test runs (avoids spamming builds onto the
+      # app record while iterating on this workflow).
+      - name: Validate + upload to App Store Connect
+        if: matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APPSTORE_API_KEY_P8 }}" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8
+
+          PKG=apps/tauri/src-tauri/target/release/bundle/macos/Brickwright.pkg
+          BUNDLE_VERSION=$(node -p "require('./apps/tauri/src-tauri/tauri.conf.json').version")
+
+          xcrun altool --validate-app -f "$PKG" \
+            --type macos \
+            --api-key ${{ secrets.APPSTORE_API_KEY_ID }} \
+            --api-issuer ${{ secrets.APPSTORE_API_ISSUER_ID }}
+
+          xcrun altool --upload-package "$PKG" \
+            --type macos \
+            --apple-id ${{ vars.APPSTORE_APP_ID }} \
+            --bundle-id com.crispstrobe.brickwright \
+            --bundle-version "$BUNDLE_VERSION" \
+            --bundle-short-version-string "$BUNDLE_VERSION" \
+            --api-key ${{ secrets.APPSTORE_API_KEY_ID }} \
+            --api-issuer ${{ secrets.APPSTORE_API_ISSUER_ID }}
+
       # Also expose the bundles as workflow artifacts (useful for manual runs).
       - uses: actions/upload-artifact@v4
         with:

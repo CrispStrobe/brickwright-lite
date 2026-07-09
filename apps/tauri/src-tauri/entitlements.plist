@@ -13,7 +13,7 @@
   <true/>
 
   <!-- CoreBluetooth (BLE) only. NOTE: App Sandbox does not permit IOBluetooth /
-       classic-Bluetooth RFCOMM (src/scratchlink/bt_macos.m) -- that path compiles
+       classic-Bluetooth RFCOMM (src/scratchlink/bt_macos.m); that path compiles
        but will not connect under a sandboxed Mac App Store build, so legacy
        EV3/NXT over classic BT is expected to be unavailable here (same shape as
        the iOS MFi gap). Modern BLE hubs (SPIKE, Boost, WeDo, Powered-Up) are
