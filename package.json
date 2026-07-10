@@ -7,7 +7,8 @@
     "vendor": "node scripts/vendor.mjs",
     "postvendor": "echo 'Vendored. Next: npm run integrate && cd packages/scratch-gui && npm install --ignore-scripts && npm run build'",
     "build:gui": "cd packages/scratch-gui && npm run build",
-    "integrate": "node scripts/integrate.mjs"
+    "integrate": "node scripts/integrate.mjs",
+    "gen:notices": "node scripts/gen-rust-notices.mjs"
   },
   "engines": {
     "node": "22.x"
