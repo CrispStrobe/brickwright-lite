@@ -36,6 +36,13 @@
     <string>com.lego.les</string>
   </array>
 
+  <!-- Export compliance. Brickwright uses only standard HTTPS/TLS, so it is
+       exempt. Declaring it here means every upload skips the manual export
+       compliance question in App Store Connect instead of stalling the build
+       at "Missing Compliance". -->
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
+
   <!-- CoreBluetooth (btleplug / tauri-plugin-blec) permission prompt. -->
   <key>NSBluetoothAlwaysUsageDescription</key>
   <string>Brickwright uses Bluetooth to connect to LEGO hubs (SPIKE, Boost, WeDo, Powered-Up, and more).</string>

@@ -38,7 +38,8 @@
       "frameworks": [
         "CoreBluetooth",
         "ExternalAccessory"
-      ]
+      ],
+      "developmentTeam": "N9XSJ4M3GT"
     },
     "macOS": {
       "entitlements": "entitlements.plist",
