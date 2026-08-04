@@ -2,6 +2,14 @@ name: mobile
 
 on:
   workflow_dispatch:
+    inputs:
+      sign_ios:
+        description: >-
+          Also build a SIGNED iOS IPA. Off by default because it talks to
+          App Store Connect and will create/download an Apple signing
+          certificate and provisioning profile for the team.
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 
@@ -134,6 +142,11 @@ jobs:
         working-directory: apps/tauri
         run: |
           npx tauri ios init --ci
+          # PrivacyInfo.xcprivacy has no tauri.conf equivalent, so it is patched
+          # into the regenerated project and xcodegen re-run to pick it up.
+          node scripts/patch-ios-privacy.mjs
+          command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+          (cd src-tauri/gen/apple && xcodegen generate)
           npx tauri ios build --target aarch64-sim
 
       # Guard the two things that were silently missing before: the frameworks
@@ -150,6 +163,9 @@ jobs:
           done
           APP=$(find src-tauri/gen/apple/build -type d -name '*.app' | head -1)
           [ -n "$APP" ] || { echo "::error::no .app produced"; exit 1; }
+          # Apple requires the privacy manifest at the bundle ROOT, not nested.
+          [ -f "$APP/PrivacyInfo.xcprivacy" ] \
+            || { echo "::error::PrivacyInfo.xcprivacy missing from the app bundle root"; exit 1; }
           PLIST="$APP/Info.plist"
           for key in NSAppTransportSecurity UISupportedExternalAccessoryProtocols \
                      NSBluetoothAlwaysUsageDescription NSCameraUsageDescription \
@@ -164,4 +180,119 @@ jobs:
           name: brickwright-ios-sim
           path: apps/tauri/src-tauri/gen/apple/build/**/*.app
           if-no-files-found: warn
+          retention-days: 7
+
+  # Signed, App-Store-shaped IPA. Opt-in: it authenticates to App Store Connect
+  # and will CREATE/DOWNLOAD an Apple signing certificate and provisioning
+  # profile for the team, so it must not fire on every dispatch. Runs on a
+  # version tag, or on a manual dispatch with sign_ios=true.
+  #
+  # Recipe follows ~/code/appstore.md (Addendum: iOS (Tauri) — CrispDeck).
+  ios-signed:
+    needs: build-web
+    if: ${{ github.event_name == 'push' || inputs.sign_ios }}
+    runs-on: macos-latest
+    env:
+      APPLE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+      APPLE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+      APPLE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+      APPLE_TEAM_ID: N9XSJ4M3GT
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install app dependencies
+        working-directory: apps/tauri
+        run: npm ci
+
+      - name: Build signed IPA
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          if [ -z "${APPLE_API_KEY_P8:-}" ]; then
+            echo "::error::APPSTORE_API_KEY_P8 is not set — cannot sign."
+            exit 1
+          fi
+
+          KEYDIR=~/.appstoreconnect/private_keys
+          KEYPATH="$KEYDIR/AuthKey_${APPLE_API_KEY_ID}.p8"
+          mkdir -p "$KEYDIR"
+          echo "$APPLE_API_KEY_P8" | base64 --decode > "$KEYPATH"
+
+          npx tauri ios init --ci
+          node scripts/patch-ios-privacy.mjs
+          command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
+          (cd src-tauri/gen/apple && xcodegen generate)
+
+          # DEVELOPMENT_TEAM/CODE_SIGN_STYLE must be INSERTED, not sed-replaced:
+          # the Tauri-generated pbxproj does not contain them, so a substitution
+          # matches nothing. An xcodebuild CLI override does not help either —
+          # `tauri ios build` builds its own xcodebuild invocation internally.
+          # bundle.iOS.developmentTeam should already cover this; belt and braces.
+          PBX=$(ls -d src-tauri/gen/apple/*.xcodeproj | head -1)/project.pbxproj
+          node -e '
+            const fs = require("fs");
+            const p = process.argv[1], team = process.env.APPLE_TEAM_ID;
+            let s = fs.readFileSync(p, "utf8");
+            if (!s.includes("DEVELOPMENT_TEAM")) {
+              s = s.replace(/buildSettings = \{/g,
+                `buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = ${team};\n\t\t\t\tCODE_SIGN_STYLE = Automatic;`);
+              fs.writeFileSync(p, s);
+              console.log("pbxproj: inserted DEVELOPMENT_TEAM + CODE_SIGN_STYLE");
+            } else {
+              console.log("pbxproj: DEVELOPMENT_TEAM already present");
+            }
+          ' "$PBX"
+
+          # Pre-resolve provisioning. This xcodebuild call is EXPECTED to fail at
+          # the "Build Rust Code" phase (no tauri build server is running), but
+          # xcodebuild resolves and caches the provisioning profile before build
+          # phases execute — which is the whole point. `tauri ios build --` drops
+          # the -authenticationKey* flags, so they can only be passed here.
+          XCPROJ=$(ls -d src-tauri/gen/apple/*.xcodeproj | head -1)
+          xcodebuild -project "$XCPROJ" -scheme brickwright-tauri_iOS \
+            -configuration Release -sdk iphoneos \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEYPATH" \
+            -authenticationKeyID "$APPLE_API_KEY_ID" \
+            -authenticationKeyIssuerID "$APPLE_API_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            build || echo "pre-resolve finished (failure at Build Rust Code is expected)"
+
+          npx tauri ios build --export-method app-store-connect
+
+      - name: Verify the IPA is really signed
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          IPA=$(find src-tauri/gen/apple/build -name '*.ipa' | head -1)
+          [ -n "$IPA" ] || { echo "::error::no .ipa produced"; exit 1; }
+          echo "IPA: $IPA"
+          WORK=$(mktemp -d); unzip -q "$IPA" -d "$WORK"
+          APP=$(find "$WORK/Payload" -maxdepth 1 -name '*.app' | head -1)
+          [ -f "$APP/PrivacyInfo.xcprivacy" ] \
+            || { echo "::error::PrivacyInfo.xcprivacy missing from the IPA"; exit 1; }
+          [ -f "$APP/embedded.mobileprovision" ] \
+            || { echo "::error::no embedded provisioning profile — the app is not distribution-signed"; exit 1; }
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "signed, privacy manifest present, profile embedded"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brickwright-ios-ipa
+          path: apps/tauri/src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: error
           retention-days: 7
