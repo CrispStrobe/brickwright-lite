@@ -9,9 +9,25 @@
 //!   BLE (`ble` module) → wired to `tauri-plugin-blec` (btleplug): covers all
 //!        modern LEGO (SPIKE FW3.x, Essential, Boost, Powered-Up, WeDo, Technic,
 //!        DUPLO, Mario).
-//!   BTC (skeleton below) → EV3 + legacy-firmware SPIKE. Backends still TODO:
-//!        WinRT / BlueZ-bluer / Android-JNI (via `bluetooth-rust`), a macOS
-//!        IOBluetooth objc2 shim, and iOS ExternalAccessory.
+//!   BTC (`bt_*` modules) → EV3 + legacy-firmware SPIKE. Implemented on every
+//!        shipping target, one backend each, all speaking the same JSON-RPC
+//!        surface (discover/connect/send → didDiscoverPeripheral/didReceiveMessage):
+//!
+//!        macOS    `bt_macos.rs`   + `bt_macos.m` IOBluetooth shim (built by build.rs)
+//!        Linux    `bt_linux.rs`   BlueZ via `bluer`, `rfcomm` feature
+//!        Windows  `bt_windows.rs` WinRT. The OS exposes RFCOMM only for already-
+//!                                 paired devices, so `discover` enumerates paired
+//!                                 SPP devices rather than scanning.
+//!        Android  `bt_android.rs` android.bluetooth via JNI. Bonded devices only,
+//!                                 same reason. RUNTIME-UNVERIFIED: needs a real
+//!                                 device with a paired EV3 to exercise, and
+//!                                 BLUETOOTH_CONNECT at runtime.
+//!        iOS      `bt_ios.rs`     + `bt_ios.m` MFi ExternalAccessory shim. The
+//!                                 accessory must be paired in iOS Settings first.
+//!
+//!        Any other target gets the no-op fallback at the bottom of this file,
+//!        which only ACKs requests so the crate still builds. It is unreachable
+//!        on every platform we ship — do not read it as "BTC is unimplemented".
 
 mod ble;
 #[cfg(target_os = "macos")]
@@ -28,7 +44,7 @@ mod bt_ios;
 use std::sync::{Arc, Mutex};
 
 use futures_util::{SinkExt, StreamExt};
-// Used by the non-macOS BT skeleton and the tests; on macOS BT goes through
+// Used by the no-backend BT fallback and the tests; on macOS BT goes through
 // bt_macos, leaving these otherwise unused.
 #[allow(unused_imports)]
 use serde_json::{json, Value};
@@ -154,9 +170,8 @@ async fn handle_conn(stream: TcpStream) -> Result<(), tokio_tungstenite::tungste
     Ok(())
 }
 
-/// BTC/SPP dispatch. macOS has a real IOBluetooth RFCOMM backend (EV3 + legacy
-/// SPIKE); other platforms still route-and-ACK, pending `bluetooth-rust`
-/// (Win/Linux/Android) and the iOS ExternalAccessory plugin.
+/// BTC/SPP dispatch — one real RFCOMM backend per shipping target (EV3 + legacy
+/// SPIKE). See the module header for per-platform behaviour and caveats.
 #[cfg(target_os = "macos")]
 async fn bt_dispatch(txt: &str, out: &Outbound) {
     bt_macos::dispatch(txt, out).await;
@@ -182,6 +197,10 @@ async fn bt_dispatch(txt: &str, out: &Outbound) {
     bt_ios::dispatch(txt, out).await;
 }
 
+/// No-op BTC fallback for targets with no RFCOMM backend. Every platform we ship
+/// (macOS/Linux/Windows/Android/iOS) has a real one above; this exists so the crate
+/// still builds elsewhere. `bt_fallback_acks_requests` reaches this path only on
+/// such a target — on a shipping one it exercises that platform's real backend.
 #[cfg(not(any(
     target_os = "macos",
     target_os = "linux",
@@ -198,7 +217,7 @@ async fn bt_dispatch(txt: &str, out: &Outbound) {
         }
     };
     let method = req.get("method").and_then(Value::as_str).unwrap_or("");
-    log::info!("[scratchlink/bt] ◀ {method} (skeleton — RFCOMM backend TODO)");
+    log::info!("[scratchlink/bt] ◀ {method} (no RFCOMM backend for this target)");
     if let Some(id) = req.get("id").cloned() {
         let reply = json!({ "jsonrpc": "2.0", "id": id, "result": Value::Null });
         let _ = out.send(Message::Text(reply.to_string())).await;
@@ -237,7 +256,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bt_skeleton_acks_requests() {
+    async fn bt_fallback_acks_requests() {
         let v = roundtrip(
             "/scratch/bt",
             r#"{"jsonrpc":"2.0","id":5,"method":"discover","params":{}}"#,
