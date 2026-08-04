@@ -34,6 +34,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "iOS": {
+      "frameworks": [
+        "CoreBluetooth",
+        "ExternalAccessory"
+      ]
+    },
     "macOS": {
       "entitlements": "entitlements.plist",
       "signingIdentity": "Apple Distribution: Christian Ströbele (N9XSJ4M3GT)",
