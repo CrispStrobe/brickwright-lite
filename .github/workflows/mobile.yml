@@ -99,9 +99,10 @@ jobs:
   ios:
     needs: build-web
     runs-on: macos-latest
-    # WIP: simulator build hits a Rust/Xcode link error, and a real-device build
-    # needs an Apple signing certificate + developmentTeam. Non-blocking for now.
-    continue-on-error: true
+    # Simulator-only, so no Apple signing certificate or developmentTeam is
+    # needed. A real-device/TestFlight build still would be. This job is
+    # blocking: it used to be continue-on-error, which hid a genuine link
+    # failure (missing ExternalAccessory) for a month.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -123,35 +124,40 @@ jobs:
         working-directory: apps/tauri
         run: npm ci
 
-      # Build for the simulator so no Apple signing certificate is required.
+      # Frameworks come from bundle.iOS.frameworks in tauri.conf.json, and the
+      # iOS-only Info.plist keys (ATS local networking, MFi accessory protocols,
+      # camera/mic/speech usage strings) from src-tauri/Info.ios.plist — both
+      # survive project regeneration, so there is nothing to patch here. Anything
+      # this step would have to fix up belongs in one of those two files instead,
+      # or local builds silently differ from CI.
       - name: Build iOS app (simulator, unsigned)
         working-directory: apps/tauri
         run: |
           npx tauri ios init --ci
-          # btleplug needs CoreBluetooth for BLE, but Xcode does the final link
-          # and ignores the Rust autolink hint — add the framework to the
-          # xcodegen project and regenerate so the _CB* symbols resolve.
-          PY=src-tauri/gen/apple/project.yml
-          if ! grep -q 'CoreBluetooth.framework' "$PY"; then
-            awk '{print} /- sdk: WebKit.framework/{print "      - sdk: CoreBluetooth.framework"}' "$PY" > "$PY.tmp" && mv "$PY.tmp" "$PY"
-          fi
-          (cd src-tauri/gen/apple && xcodegen generate)
-          # Allow ws:// to LAN bridge servers (bridge-mode hardware over WiFi).
-          PLIST=src-tauri/gen/apple/brickwright-tauri_iOS/Info.plist
-          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true" "$PLIST" \
-            || /usr/libexec/PlistBuddy -c "Set :NSAppTransportSecurity:NSAllowsLocalNetworking true" "$PLIST"
-          # MFi ExternalAccessory protocols so the EV3/NXT are visible for BTC.
-          /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols array" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols:0 string COM.LEGO.MINDSTORMS.EV3" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :UISupportedExternalAccessoryProtocols:1 string com.lego.les" "$PLIST" 2>/dev/null || true
-          # Camera + microphone + speech usage strings for getUserMedia (Video
-          # Sensing, loudness/record-a-sound, Speech-to-Text). wry's WKWebView
-          # delegate grants the in-page request; iOS still needs these or it kills
-          # the app on first camera/mic access.
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Brickwright uses the camera for the Video Sensing blocks.'" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Brickwright uses the microphone for the sound blocks and to record sounds.'" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'Brickwright uses speech recognition for the Speech-to-Text extension.'" "$PLIST" 2>/dev/null || true
           npx tauri ios build --target aarch64-sim
+
+      # Guard the two things that were silently missing before: the frameworks
+      # Xcode must link itself (Rust's autolink hints are dropped for staticlibs)
+      # and the merged Info.plist keys. Cheap, and fails loudly rather than
+      # producing an app that dies on first BLE or camera use.
+      - name: Verify frameworks and Info.plist made it into the app
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          PROJ=src-tauri/gen/apple/project.yml
+          for fw in CoreBluetooth ExternalAccessory; do
+            grep -q "$fw.framework" "$PROJ" || { echo "::error::$fw.framework missing from $PROJ"; exit 1; }
+          done
+          APP=$(find src-tauri/gen/apple/build -type d -name '*.app' | head -1)
+          [ -n "$APP" ] || { echo "::error::no .app produced"; exit 1; }
+          PLIST="$APP/Info.plist"
+          for key in NSAppTransportSecurity UISupportedExternalAccessoryProtocols \
+                     NSBluetoothAlwaysUsageDescription NSCameraUsageDescription \
+                     NSMicrophoneUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Print :$key" "$PLIST" >/dev/null 2>&1 \
+              || { echo "::error::$key missing from the built app's Info.plist"; exit 1; }
+          done
+          echo "frameworks + Info.plist keys present in $APP"
 
       - uses: actions/upload-artifact@v4
         with:
