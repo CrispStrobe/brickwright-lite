@@ -11,23 +11,26 @@
 //!        DUPLO, Mario).
 //!   BTC (`bt_*` modules) → EV3 + legacy-firmware SPIKE. Implemented on every
 //!        shipping target, one backend each, all speaking the same JSON-RPC
-//!        surface (discover/connect/send → didDiscoverPeripheral/didReceiveMessage):
+//!        surface (discover/connect/send → didDiscoverPeripheral/didReceiveMessage).
+//!        The fenced block is `text` on purpose: an indented block after a blank
+//!        line is a Rust doctest, and this table is not Rust.
 //!
-//!        macOS    `bt_macos.rs`   + `bt_macos.m` IOBluetooth shim (built by build.rs)
-//!        Linux    `bt_linux.rs`   BlueZ via `bluer`, `rfcomm` feature
-//!        Windows  `bt_windows.rs` WinRT. The OS exposes RFCOMM only for already-
-//!                                 paired devices, so `discover` enumerates paired
-//!                                 SPP devices rather than scanning.
-//!        Android  `bt_android.rs` android.bluetooth via JNI. Bonded devices only,
-//!                                 same reason. RUNTIME-UNVERIFIED: needs a real
-//!                                 device with a paired EV3 to exercise, and
-//!                                 BLUETOOTH_CONNECT at runtime.
-//!        iOS      `bt_ios.rs`     + `bt_ios.m` MFi ExternalAccessory shim. The
-//!                                 accessory must be paired in iOS Settings first.
+//! ```text
+//! macOS    bt_macos.rs   + bt_macos.m IOBluetooth shim (built by build.rs)
+//! Linux    bt_linux.rs     BlueZ via bluer, rfcomm feature
+//! Windows  bt_windows.rs   WinRT. The OS exposes RFCOMM only for already-paired
+//!                          devices, so discover enumerates paired SPP devices
+//!                          rather than scanning.
+//! Android  bt_android.rs   android.bluetooth via JNI. Bonded devices only, same
+//!                          reason. RUNTIME-UNVERIFIED: needs a real device with a
+//!                          paired EV3 to exercise, and BLUETOOTH_CONNECT at runtime.
+//! iOS      bt_ios.rs     + bt_ios.m MFi ExternalAccessory shim. The accessory must
+//!                          be paired in iOS Settings first.
+//! ```
 //!
-//!        Any other target gets the no-op fallback at the bottom of this file,
-//!        which only ACKs requests so the crate still builds. It is unreachable
-//!        on every platform we ship — do not read it as "BTC is unimplemented".
+//!   Any other target gets the no-op fallback at the bottom of this file, which
+//!        only ACKs requests so the crate still builds. It is unreachable on every
+//!        platform we ship — do not read it as "BTC is unimplemented".
 
 mod ble;
 #[cfg(target_os = "macos")]
