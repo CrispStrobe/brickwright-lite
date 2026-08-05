@@ -182,21 +182,29 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  # Signed, App-Store-shaped IPA. Opt-in: it authenticates to App Store Connect
-  # and will CREATE/DOWNLOAD an Apple signing certificate and provisioning
-  # profile for the team, so it must not fire on every dispatch. Runs on a
-  # version tag, or on a manual dispatch with sign_ios=true.
+  # Signed, App-Store-shaped IPA. Opt-in — runs on a version tag, or on a manual
+  # dispatch with sign_ios=true.
   #
-  # Recipe follows ~/code/appstore.md (Addendum: iOS (Tauri) — CrispDeck).
+  # MANUAL signing: the tauri CLI reads IOS_CERTIFICATE / IOS_CERTIFICATE_PASSWORD
+  # / IOS_MOBILE_PROVISION itself, imports the cert into a temporary keychain,
+  # installs the profile, and sets CODE_SIGN_STYLE=Manual +
+  # PROVISIONING_PROFILE_SPECIFIER + a matching ExportOptions.plist. That avoids
+  # automatic provisioning entirely, which is what previously failed: `tauri ios
+  # build` runs -exportArchive WITHOUT the -authenticationKey* flags, so the
+  # export could not talk to Apple ("No Accounts" / "No profiles ... were found")
+  # no matter what the archive step had cached.
+  #
+  # The Apple Distribution identity is shared between macOS and iOS, so the
+  # existing MACOS_CERT_P12 is reused rather than storing a second copy.
   ios-signed:
     needs: build-web
     if: ${{ github.event_name == 'push' || inputs.sign_ios }}
     runs-on: macos-latest
     env:
-      APPLE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
-      APPLE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
-      APPLE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
-      APPLE_TEAM_ID: N9XSJ4M3GT
+      IOS_CERTIFICATE: ${{ secrets.MACOS_CERT_P12 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERT_P12_PASSWORD }}
+      IOS_MOBILE_PROVISION: ${{ secrets.IOS_PROFILE_APP_BASE64 }}
+      APPLE_DEVELOPMENT_TEAM: N9XSJ4M3GT
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -222,55 +230,14 @@ jobs:
         working-directory: apps/tauri
         run: |
           set -euo pipefail
-          if [ -z "${APPLE_API_KEY_P8:-}" ]; then
-            echo "::error::APPSTORE_API_KEY_P8 is not set — cannot sign."
-            exit 1
-          fi
-
-          KEYDIR=~/.appstoreconnect/private_keys
-          KEYPATH="$KEYDIR/AuthKey_${APPLE_API_KEY_ID}.p8"
-          mkdir -p "$KEYDIR"
-          echo "$APPLE_API_KEY_P8" | base64 --decode > "$KEYPATH"
+          for v in IOS_CERTIFICATE IOS_CERTIFICATE_PASSWORD IOS_MOBILE_PROVISION; do
+            [ -n "${!v:-}" ] || { echo "::error::$v is not set — cannot sign."; exit 1; }
+          done
 
           npx tauri ios init --ci
           node scripts/patch-ios-privacy.mjs
           command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
           (cd src-tauri/gen/apple && xcodegen generate)
-
-          # DEVELOPMENT_TEAM/CODE_SIGN_STYLE must be INSERTED, not sed-replaced:
-          # the Tauri-generated pbxproj does not contain them, so a substitution
-          # matches nothing. An xcodebuild CLI override does not help either —
-          # `tauri ios build` builds its own xcodebuild invocation internally.
-          # bundle.iOS.developmentTeam should already cover this; belt and braces.
-          PBX=$(ls -d src-tauri/gen/apple/*.xcodeproj | head -1)/project.pbxproj
-          node -e '
-            const fs = require("fs");
-            const p = process.argv[1], team = process.env.APPLE_TEAM_ID;
-            let s = fs.readFileSync(p, "utf8");
-            if (!s.includes("DEVELOPMENT_TEAM")) {
-              s = s.replace(/buildSettings = \{/g,
-                `buildSettings = {\n\t\t\t\tDEVELOPMENT_TEAM = ${team};\n\t\t\t\tCODE_SIGN_STYLE = Automatic;`);
-              fs.writeFileSync(p, s);
-              console.log("pbxproj: inserted DEVELOPMENT_TEAM + CODE_SIGN_STYLE");
-            } else {
-              console.log("pbxproj: DEVELOPMENT_TEAM already present");
-            }
-          ' "$PBX"
-
-          # Pre-resolve provisioning. This xcodebuild call is EXPECTED to fail at
-          # the "Build Rust Code" phase (no tauri build server is running), but
-          # xcodebuild resolves and caches the provisioning profile before build
-          # phases execute — which is the whole point. `tauri ios build --` drops
-          # the -authenticationKey* flags, so they can only be passed here.
-          XCPROJ=$(ls -d src-tauri/gen/apple/*.xcodeproj | head -1)
-          xcodebuild -project "$XCPROJ" -scheme brickwright-tauri_iOS \
-            -configuration Release -sdk iphoneos \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEYPATH" \
-            -authenticationKeyID "$APPLE_API_KEY_ID" \
-            -authenticationKeyIssuerID "$APPLE_API_ISSUER_ID" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
-            build || echo "pre-resolve finished (failure at Build Rust Code is expected)"
 
           npx tauri ios build --export-method app-store-connect
 
