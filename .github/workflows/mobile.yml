@@ -237,6 +237,20 @@ jobs:
           npx tauri ios init --ci
           node scripts/patch-ios-privacy.mjs
 
+          # The CLI's IOS_* variables import the certificate but do not touch the
+          # Xcode project, so install the profile where Xcode looks for it and
+          # point the project at it by name.
+          PROFDIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFDIR"
+          echo "$IOS_MOBILE_PROVISION" | base64 --decode > "$RUNNER_TEMP/app.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/app.mobileprovision" > "$RUNNER_TEMP/app.plist"
+          UUID=$(plutil -extract UUID raw -o - "$RUNNER_TEMP/app.plist")
+          NAME=$(plutil -extract Name raw -o - "$RUNNER_TEMP/app.plist")
+          cp "$RUNNER_TEMP/app.mobileprovision" "$PROFDIR/$UUID.mobileprovision"
+          echo "installed provisioning profile '$NAME' ($UUID)"
+
+          node scripts/patch-ios-signing.mjs "$APPLE_DEVELOPMENT_TEAM" "$NAME"
+
           npx tauri ios build --export-method app-store-connect
 
       - name: Verify the IPA is really signed
