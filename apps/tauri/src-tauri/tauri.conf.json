@@ -39,7 +39,8 @@
         "CoreBluetooth",
         "ExternalAccessory"
       ],
-      "developmentTeam": "N9XSJ4M3GT"
+      "developmentTeam": "N9XSJ4M3GT",
+      "minimumSystemVersion": "15.0"
     },
     "macOS": {
       "entitlements": "entitlements.plist",

@@ -36,6 +36,14 @@
     <string>com.lego.les</string>
   </array>
 
+  <!-- The .sb3/.sb2 fileAssociations in tauri.conf.json emit CFBundleDocumentTypes,
+       which tells iOS the app opens documents. Apple then requires one of
+       UISupportsDocumentBrowser / LSSupportsOpeningDocumentsInPlace to be set, or
+       upload validation warns (90737, "Missing Document Configuration"). We open
+       a project file in place rather than presenting a document browser. -->
+  <key>LSSupportsOpeningDocumentsInPlace</key>
+  <true/>
+
   <!-- Export compliance. Brickwright uses only standard HTTPS/TLS, so it is
        exempt. Declaring it here means every upload skips the manual export
        compliance question in App Store Connect instead of stalling the build
