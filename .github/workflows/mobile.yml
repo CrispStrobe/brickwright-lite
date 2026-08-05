@@ -143,10 +143,10 @@ jobs:
         run: |
           npx tauri ios init --ci
           # PrivacyInfo.xcprivacy has no tauri.conf equivalent, so it is patched
-          # into the regenerated project and xcodegen re-run to pick it up.
+          # straight into the generated pbxproj. Deliberately NOT via project.yml
+          # + `xcodegen generate`: regenerating discards the signing settings the
+          # tauri CLI writes into the pbxproj, which breaks the signed job.
           node scripts/patch-ios-privacy.mjs
-          command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
-          (cd src-tauri/gen/apple && xcodegen generate)
           npx tauri ios build --target aarch64-sim
 
       # Guard the two things that were silently missing before: the frameworks
@@ -236,8 +236,6 @@ jobs:
 
           npx tauri ios init --ci
           node scripts/patch-ios-privacy.mjs
-          command -v xcodegen >/dev/null 2>&1 || brew install xcodegen
-          (cd src-tauri/gen/apple && xcodegen generate)
 
           npx tauri ios build --export-method app-store-connect
 
