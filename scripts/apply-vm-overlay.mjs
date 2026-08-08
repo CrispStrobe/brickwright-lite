@@ -90,3 +90,35 @@ if (existsSync(editorMsgsPath)) {
         Math.round(JSON.stringify(trimmed).length / 1024) + ' KiB vs ' +
         Math.round(src.length / 1024) + ' KiB original)');
 }
+
+// Trim scratch-blocks locale messages the same way. scratch_msgs.js is 1.1 MiB with 80
+// locales using goog.provide format. Extract en + de into a generated file.
+const scratchMsgsPath = path.join(GUI, 'node_modules', 'scratch-blocks', 'msg', 'scratch_msgs.js');
+if (existsSync(scratchMsgsPath)) {
+    const src = readFileSync(scratchMsgsPath, 'utf8');
+    const lines = src.split('\n');
+    const keep = new Set(['en', 'de']);
+    const outLines = [];
+    let inLocale = null;
+    let keeping = false;
+
+    for (const line of lines) {
+        const m = line.match(/^Blockly\.ScratchMsgs\.locales\["([^"]+)"\]/);
+        if (m) {
+            inLocale = m[1];
+            keeping = keep.has(inLocale);
+        }
+        // Keep header lines (goog.provide, goog.require, 'use strict', blank, comments)
+        if (inLocale === null || keeping) {
+            outLines.push(line);
+        }
+    }
+
+    // Overwrite in place — the shim loads this via a relative require through imports-loader,
+    // so a webpack alias can't intercept it. This is safe: vendor.mjs re-fetches on every
+    // clean build, so the original is always recoverable.
+    writeFileSync(scratchMsgsPath, outLines.join('\n'));
+    console.log('  trimmed scratch-blocks/msg/scratch_msgs.js in place (en + de only, ' +
+        Math.round(outLines.join('\n').length / 1024) + ' KiB vs ' +
+        Math.round(src.length / 1024) + ' KiB original)');
+}
