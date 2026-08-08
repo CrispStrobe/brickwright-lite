@@ -150,11 +150,10 @@ const buildConfig = baseConfig.clone()
         ]
     }));
 
-// Skip building `dist/` unless explicitly requested
-// It roughly doubles build time and isn't needed for `scratch-gui` development
-// If you need non-production `dist/` for local dev, such as for `scratch-www` work, you can run something like:
-// `BUILD_MODE=dist npm run build`
-const buildDist = process.env.NODE_ENV === 'production' || process.env.BUILD_MODE === 'dist';
+// Skip building `dist/` unless explicitly requested via BUILD_MODE=dist.
+// The Vercel deploy only serves `build/`; the `dist/` library compilation roughly doubles
+// peak memory and is not needed for production deploys.
+const buildDist = process.env.BUILD_MODE === 'dist';
 
 const vmSrc = path.resolve(__dirname, 'node_modules/scratch-vm/src/index.js');
 const cfgs = buildDist ? [buildConfig.get(), distConfig.get()] : [buildConfig.get()];
