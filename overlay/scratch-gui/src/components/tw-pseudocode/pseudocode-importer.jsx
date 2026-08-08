@@ -91,6 +91,13 @@ const GROUPS = [
     ]},
     {label: 'Extensions', items: [
         ['planetemaths', '🧮 Planète Maths'], ['arrays', '📐 Arrays & Vectors']
+    ]},
+    // The examples for the C target. Everything above is a Scratch program and compiles to
+    // C only as "no equivalent" warnings; these declare real pins and build on SDCC.
+    {label: 'Hardware (STC12 / 8051)', items: [
+        ['stc_blink', '💡 Blink two LEDs'], ['stc_button', '🔘 Button'],
+        ['stc_potentiometer', '🎛️ Potentiometer (ADC)'],
+        ['stc_two_scripts', '⏱️ Two scripts at once'], ['stc_pwm_fade', '🌗 PWM fade']
     ]}
 ];
 
@@ -357,6 +364,26 @@ class PseudocodeImporter extends React.Component {
         });
     }
 
+    // Keil C51 gives itself away: keywords SDCC spells differently, and its register headers.
+    looksLikeKeil (src) {
+        return /\bsbit\s+\w+\s*=|\bsfr\s+\w+\s*=|\b_at_\b|#include\s*<\s*reg5\d|\bdata\s+\w+\s*;|\bcode\s+\w+\s*\[/.test(src);
+    }
+
+    async translateKeil (src) {
+        try {
+            const r = await fetch('https://stc-compiler.vercel.app/translate', {
+                method: 'POST', headers: {'content-type': 'application/json'},
+                body: JSON.stringify({code: src, target: 'stc12c5a60s2'})
+            });
+            if (!r.ok) return {ok: false, error: `HTTP ${r.status}`};
+            const b = await r.json();
+            // The SDCC source is in `c`; `translated` is a stats object ({include: 1, sbit: 2}).
+            return b.c ? {ok: true, code: b.c, stats: b.translated} : {ok: false, error: 'no translation returned'};
+        } catch (e) {
+            return {ok: false, error: e.message};
+        }
+    }
+
     // The circuit designer is lazily loaded and wired to the vendored engine on first open —
     // a chunk most users never need, and it must not sit in the entry bundle.
     async openCircuit () {
@@ -613,8 +640,19 @@ class PseudocodeImporter extends React.Component {
                 const res = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(source);
                 source = res.pseudocode; parseWarnings = res.warnings || [];
             } else if (lang === 'c') {
-                const res = (await import(/* webpackChunkName: "sb3-creator-c" */ '../../lib/sb3-creator-c.js')).default(source);
-                source = res.pseudocode; parseWarnings = res.warnings || [];
+                // Keil C51 is a different dialect — sbit/sfr/_at_/reg5x headers that SDCC
+                // does not accept and our front end does not model. stc-compiler already
+                // solves that (546/597 of an 86-repo corpus), so normalise through it first
+                // rather than teaching the front end a second dialect. Best effort: if the
+                // service is unreachable we parse the original text and say so.
+                let text = source;
+                if (this.looksLikeKeil(source)) {
+                    const t = await this.translateKeil(source);
+                    if (t.ok) { text = t.code; parseWarnings.push('Keil C51 normalised to SDCC via stc-compiler'); }
+                    else parseWarnings.push(`could not reach the Keil translator (${t.error}) — parsing the original`);
+                }
+                const res = (await import(/* webpackChunkName: "sb3-creator-c" */ '../../lib/sb3-creator-c.js')).default(text);
+                source = res.pseudocode; parseWarnings = parseWarnings.concat(res.warnings || []);
             }
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
