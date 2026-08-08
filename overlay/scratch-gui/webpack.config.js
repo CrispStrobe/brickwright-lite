@@ -152,5 +152,15 @@ cfgs.forEach(c => {
     // The full editor-msgs.js is 3.9 MiB with 80 locales; the trimmed copy is ~90 KiB.
     const trimmedMsgs = path.resolve(__dirname, 'src/generated/editor-msgs-lite.js');
     c.resolve.alias['scratch-l10n/locales/editor-msgs'] = trimmedMsgs;
+    // Skip babel for pre-minified blockly files — they're already compiled and 'use strict',
+    // and babel deoptimising 977 KiB of minified code wastes time and memory for no benefit.
+    const babelRule = (c.module.rules || []).find(r => r.loader === 'babel-loader');
+    if (babelRule) {
+        const origExclude = babelRule.exclude || [];
+        babelRule.exclude = [
+            ...origExclude,
+            /scratch-blocks[\\/]blockly_compressed/
+        ];
+    }
 });
 module.exports = buildDist ? cfgs : cfgs[0];
