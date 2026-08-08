@@ -165,5 +165,9 @@ cfgs.forEach(c => {
     // laid our owned delta) so our built-in extensions bundle in. Its deps resolve from the
     // hoisted scratch-gui/node_modules; babel already transpiles node_modules/*scratch*.
     c.resolve.alias['scratch-vm$'] = vmSrc;
+    // cat-blocks is a 65 MiB Easter-egg dependency (cat-themed blocks for "time travel to
+    // 2020"). Aliasing it to scratch-blocks eliminates a duplicate blockly parse+compile
+    // pass — the feature degrades gracefully to showing normal blocks.
+    c.resolve.alias['cat-blocks'] = path.resolve(__dirname, 'node_modules/scratch-blocks');
 });
 module.exports = buildDist ? cfgs : cfgs[0];
