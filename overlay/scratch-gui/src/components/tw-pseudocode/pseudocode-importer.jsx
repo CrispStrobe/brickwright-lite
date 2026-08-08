@@ -28,7 +28,9 @@ const L10N = {
         stLoadingPy: 'Loading Python (Skulpt)…', stError: e => `Error: ${e}`,
         stLoaded: 'Compiled to blocks and loaded. Switch to the Code tab to see them.',
         stWarn: w => `Loaded with warnings — ${w}`,
-        foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).'
+        foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
+        cNote: 'C for the STC12 / 8051 — a reading view. Compile it to a .hex with stc-compiler.vercel.app.',
+        stCOneWay: 'The C tab is a reading view for now — edit the Pseudocode tab and it regenerates.'
     },
     de: {
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
@@ -50,7 +52,9 @@ const L10N = {
         stLoadingPy: 'Python wird geladen (Skulpt)…', stError: e => `Fehler: ${e}`,
         stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
         stWarn: w => `Mit Warnungen geladen — ${w}`,
-        foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).'
+        foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
+        cNote: 'C für den STC12 / 8051 — eine Leseansicht. Zu .hex kompilieren auf stc-compiler.vercel.app.',
+        stCOneWay: 'Der C-Tab ist vorerst eine Leseansicht — bearbeite den Pseudocode-Tab, er wird neu erzeugt.'
     }
 };
 const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
@@ -115,7 +119,12 @@ const SYNTAX = [
         'distance to mouse-pointer', 'set drag mode draggable', 'play note 60 for 0.5 beats, set tempo to 120']]
 ];
 
-const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript'};
+const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C (STC12)'};
+
+// Languages you can compile back INTO blocks. C is not one of them yet: it is emit-only
+// for now (the C → blocks front end is intended, but the way back is still being grown
+// from stc-compiler's Keil translator and disassembler), so its tab is a reading view.
+const TWO_WAY = new Set(['pseudocode', 'python', 'javascript']);
 
 // What the Python / JavaScript front-ends actually support (shown as the reference
 // when those tabs are active, so you know what round-trips to blocks).
@@ -131,6 +140,17 @@ const SUPPORTED = {
         ['Control', ['if / else', 'while (cond)  →  repeat until', 'while (true)  →  forever', 'for (let i=0; i<n; i++)', 'return;  →  stop this script']],
         ['Statements', ['x = expr;  /  x += expr;', 'console.log(x)  →  say', 'prompt(p)  →  ask', 'xs.push/splice, xs.length', 'xs[i-1] = v']],
         ['Expressions', ['+ - * / %,  === → =', '&& / || / !', '_eq(a, b), _rand(a, b)', 'String()/Number()', 'Math.floor(x), arr[i-1]']]
+    ],
+    // The STC12 / 8051 target. Written in the pseudocode tab; the C tab shows the result.
+    c: [
+        ['Declare (pseudocode tab)', ['DEVICE STC12C5A60S2', 'CLOCK 11059200  /  CLOCK 12 MHz',
+            'PIN led = P1.0 OUTPUT ACTIVE LOW', 'PIN pot = P1.3 ANALOG   (ADC n is on P1.n)', 'PIN btn = P3.2 INPUT']],
+        ['Pins', ['turn on led / turn off led', 'set led high / set led low', 'toggle led', 'read pot   (reporter or condition)']],
+        ['Control', ['WHEN flag clicked:  → one script, or', 'several → cooperative tasks',
+            'FOREVER / REPEAT n / REPEAT UNTIL', 'IF … THEN / ELSE', 'wait n seconds, wait until, stop']],
+        ['Notes', ['Timer 0 at FOSC/12 — never a cycle-counted delay',
+            'ACTIVE LOW: “turn on” writes a 0', 'variables are 16-bit ints',
+            'motion/looks/sound → /* comments */', 'chips: stc12c5a60s2 · stc12c5a16s2 · stc89c52(rc) · stc15f2k60s2']]
     ]
 };
 
@@ -183,14 +203,18 @@ const PY_WORKER = [
 const KEYWORDS = {
     python: /^(def|if|elif|else|while|for|in|return|pass|and|or|not|True|False|None|import|from|as|global|range|del|break|continue|lambda|with|try|except|is)$/,
     javascript: /^(function|if|else|while|for|of|in|return|let|const|var|true|false|null|undefined|new|typeof|do|switch|case|break|continue|try|catch|throw|class|this|void)$/,
-    pseudocode: /^(set|change|say|think|ask|wait|move|turn|go|glide|point|broadcast|create|delete|stop|add|insert|replace|call|play|hide|show|switch|next|when|and|or|not|of|to|by|until|contains|mod|join|item|pick|random|round|sqrt|length|clone|myself)$/i
+    pseudocode: /^(set|change|say|think|ask|wait|move|turn|go|glide|point|broadcast|create|delete|stop|add|insert|replace|call|play|hide|show|switch|next|when|and|or|not|of|to|by|until|contains|mod|join|item|pick|random|round|sqrt|length|clone|myself)$/i,
+    // C, plus SDCC's 8051 extras and the SFR names generateC actually writes.
+    c: /^(if|else|while|for|do|switch|case|default|break|continue|return|goto|static|const|volatile|unsigned|signed|int|char|long|short|void|sizeof|struct|typedef|enum|__interrupt|__at|sfr|sbit|bit|include|define)$/
 };
 const PSEUDO_CAPS = /^(SPRITE|STAGE|GLOBAL|LOCAL|LIST|SHAPE|COSTUME|BACKDROP|SOUND|WHEN|DEFINE|IF|THEN|ELSE|FOREVER|REPEAT|UNTIL|FAST)$/;
 
 function escHtml (s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function highlight (code, lang) {
-    const commentPat = lang === 'javascript' ? '\\/\\/[^\\n]*' : '#[^\\n]*';
+    // C is mostly /* … */ (that is what generateC emits) but `//` is legal too.
+    const commentPat = lang === 'c' ? '\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*'
+        : lang === 'javascript' ? '\\/\\/[^\\n]*' : '#[^\\n]*';
     const re = new RegExp(`(${commentPat})|("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\b\\d+(?:\\.\\d+)?\\b)|([A-Za-z_][A-Za-z0-9_]*)`, 'g');
     const kw = KEYWORDS[lang] || KEYWORDS.pseudocode;
     let out = '', last = 0, m;
@@ -267,7 +291,7 @@ class PseudocodeImporter extends React.Component {
         // One buffer per language tab. Editing the active tab clears the others so
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
-        this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: ''},
+        this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: '', c: ''},
             uploads: [], status: '', busy: false, showRef: false, showInfo: false, showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
@@ -284,7 +308,7 @@ class PseudocodeImporter extends React.Component {
     get L () { return L10N[pickLocale(this.props.locale)]; }
 
     activeCode () { return this.state.buffers[this.state.lang]; }
-    setActiveCode (text) { this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', [s.lang]: text}})); }
+    setActiveCode (text) { this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', [s.lang]: text}})); }
 
     // Lazily import the compiler module.
     async lib () { return (await import(/* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js')); }
@@ -295,6 +319,7 @@ class PseudocodeImporter extends React.Component {
         try {
             const SB3 = (await this.lib()).default;
             let pseudo = src;
+            if (from === 'c') throw new Error('C is a reading view for now — edit the pseudocode, Python or JavaScript tab instead');
             if (from === 'python') pseudo = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(src).pseudocode;
             else if (from === 'javascript') pseudo = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(src).pseudocode;
             const creator = new SB3();
@@ -303,6 +328,7 @@ class PseudocodeImporter extends React.Component {
             let code;
             if (to === 'pseudocode') code = new SB3().decompile(proj);
             else if (to === 'python') code = new SB3().generatePython(proj, this.genOpts());
+            else if (to === 'c') code = new SB3().generateC(proj);
             else code = new SB3().generateJavaScript(proj, this.genOpts());
             return {code};
         } catch (e) { return {error: e.message}; }
@@ -464,7 +490,7 @@ class PseudocodeImporter extends React.Component {
     }
     loadExample (key) {
         if (key && examples[key]) this.setState({lang: 'pseudocode', output: null, status: '',
-            buffers: {pseudocode: examples[key], python: '', javascript: ''}});
+            buffers: {pseudocode: examples[key], python: '', javascript: '', c: ''}});
     }
     // Sprite names declared in the current pseudocode — used to populate the
     // "associate SVG → sprite" dropdowns so you pick a real sprite, not guess a name.
@@ -499,6 +525,7 @@ class PseudocodeImporter extends React.Component {
     // from the compiled project so all three stay consistent.
     async compile () {
         const lang = this.state.lang;
+        if (!TWO_WAY.has(lang)) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         try {
             let source = this.activeCode();
@@ -532,6 +559,7 @@ class PseudocodeImporter extends React.Component {
             if (lang !== 'pseudocode') nb.pseudocode = new SB3Creator().decompile(proj);
             if (lang !== 'python') nb.python = new SB3Creator().generatePython(proj, this.genOpts());
             if (lang !== 'javascript') nb.javascript = new SB3Creator().generateJavaScript(proj, this.genOpts());
+            nb.c = new SB3Creator().generateC(proj);
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             this.setState({buffers: nb, status: warns.length ?
@@ -551,7 +579,8 @@ class PseudocodeImporter extends React.Component {
             const buffers = {
                 pseudocode: new SB3Creator().decompile(project),
                 python: new SB3Creator().generatePython(project, this.genOpts()),
-                javascript: new SB3Creator().generateJavaScript(project, this.genOpts())
+                javascript: new SB3Creator().generateJavaScript(project, this.genOpts()),
+                c: new SB3Creator().generateC(project)
             };
             const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
             this.setState({buffers, output: null, status: unsupported ?
@@ -643,7 +672,7 @@ class PseudocodeImporter extends React.Component {
                 {/* Tabs (left) + Custom-art toggle (right). Plain buttons — NOT role="tab",
                     which would collide with the editor's top-level react-tabs. */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end'}}>
-                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript']].map(([l, label]) => {
+                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript'], ['c', '🔌 C (STC12)']].map(([l, label]) => {
                         const active = this.state.lang === l;
                         return (
                             <button key={l} type="button" aria-pressed={active} onClick={() => this.switchTab(l)}
@@ -667,9 +696,11 @@ class PseudocodeImporter extends React.Component {
                 <CodeEditor
                     value={this.activeCode()}
                     onChange={e => this.setActiveCode(e.target.value)}
-                    readOnly={false}
+                    readOnly={!TWO_WAY.has(this.state.lang)}
                     lang={this.state.lang}
-                    placeholder={this.state.lang === 'pseudocode'
+                    placeholder={this.state.lang === 'c'
+                        ? 'DEVICE STC12C5A60S2\nCLOCK 11059200\nPIN led = P1.0 OUTPUT ACTIVE LOW\n\nWHEN flag clicked:\n  FOREVER:\n    toggle led\n    wait 0.5 seconds\n\n(write that in the Pseudocode tab — this tab shows the C it compiles to)'
+                        : this.state.lang === 'pseudocode'
                         ? 'SPRITE Cat:\n  WHEN flag clicked:\n    say "Hello!" for 2 seconds\n    FOREVER:\n      move 10 steps'
                         : this.state.lang === 'python'
                             ? 'def when_flag_clicked():\n    print("Hello!")\n\nwhen_flag_clicked()\n\n# or press “From blocks” to generate this from your project'
@@ -793,7 +824,7 @@ class PseudocodeImporter extends React.Component {
 
                 <div style={{marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'}}>
                     <button onClick={this.compile}
-                        disabled={this.state.busy || !this.activeCode().trim()}
+                        disabled={this.state.busy || !this.activeCode().trim() || !TWO_WAY.has(this.state.lang)}
                         title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
                         style={btn}>
                         {this.L.toBlocks}
@@ -803,7 +834,7 @@ class PseudocodeImporter extends React.Component {
                         style={{...btn, background: 'linear-gradient(135deg,#a55b80,#8e4a6c)'}}>
                         {this.L.fromBlocks}
                     </button>
-                    {this.state.lang !== 'pseudocode' && /_[a-z]+\.|Driver/.test(this.activeCode()) ? (
+                    {this.state.lang !== 'pseudocode' && this.state.lang !== 'c' && /_[a-z]+\.|Driver/.test(this.activeCode()) ? (
                         <span style={{fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 8}}>
                             <label title="Hardware-extension driver: shim (neutral) · remote (bridge over WebSocket) · on-brick (device transpiler). The program is driver-agnostic; this only swaps the driver.">
                                 🔌{' '}
@@ -824,12 +855,13 @@ class PseudocodeImporter extends React.Component {
                             </label>
                         </span>
                     ) : null}
-                    {this.state.lang !== 'pseudocode' && this.activeCode().trim() ? (
+                    {this.state.lang !== 'pseudocode' && this.state.lang !== 'c' && this.activeCode().trim() ? (
                         <button onClick={this.run} disabled={this.state.running}
                             style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                             ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JS'}
                         </button>
                     ) : null}
+                    {this.state.lang === 'c' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.cNote}</span> : null}
                     {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
                 </div>
                 {this.state.output != null ? (
