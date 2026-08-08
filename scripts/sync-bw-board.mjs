@@ -66,7 +66,7 @@ for (const rel of FILES) {
 if (!check) {
     for (const f of await readdir(dest)) {
         const src = await readFile(path.join(dest, f), 'utf8');
-        for (const m of src.matchAll(/^\s*import\s[^'"]*['"]([^'".][^'"]*)['"]/gm)) {
+        for (const m of src.matchAll(/^\s*import\s[^'"\n]*['"]([^'".][^'"]*)['"]/gm)) {
             throw new Error(`${f} imports a package (${m[1]}); bw-board must stay dependency-free`);
         }
     }
@@ -78,7 +78,7 @@ if (!check) {
     const present = new Set(await readdir(dest));
     for (const f of present) {
         const src = await readFile(path.join(dest, f), 'utf8');
-        for (const m of src.matchAll(/^\s*(?:import|export)[^'"]*['"](\.\/[^'"]+)['"]/gm)) {
+        for (const m of src.matchAll(/^\s*(?:import|export)[^'"\n]*['"](\.\/[^'"]+)['"]/gm)) {
             const target = path.basename(m[1]);
             if (!present.has(target)) {
                 throw new Error(`${f} imports ${m[1]}, which was not vendored — the file list is incomplete`);

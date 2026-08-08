@@ -45,8 +45,14 @@ const pkgPath = path.join(GUI, 'package.json');
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 pkg.dependencies.skulpt = pkg.dependencies.skulpt || '^1.2.0';   // in-browser Python (Code tab Run)
 pkg.dependencies.jszip = pkg.dependencies.jszip || '^3.10.1';    // .sb3 read/write
+// Circuit designer part graphics. All three are permissive (MIT / BSD-3), and measured at
+// ~14.3 KB gzipped once tree-shaken — cheap enough to keep the real component drawings
+// rather than hand-rolling SVGs for every part.
+pkg.dependencies.lit = pkg.dependencies.lit || '^3.3.3';                        // BSD-3
+pkg.dependencies['@lit/react'] = pkg.dependencies['@lit/react'] || '^1.0.8';    // BSD-3
+pkg.dependencies['@wokwi/elements'] = pkg.dependencies['@wokwi/elements'] || '^1.9.2';   // MIT
 pkg.dependencies['scratch-vm'] = '4.8.115';                      // last BSD-3; built from src via alias
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-console.log('  ensured deps (skulpt, jszip) + pinned scratch-vm@4.8.115');
+console.log('  ensured deps (skulpt, jszip, lit + wokwi elements) + pinned scratch-vm@4.8.115');
 
 console.log('Integration applied. `cd packages/scratch-gui && npm install --ignore-scripts && npm run build`.');
