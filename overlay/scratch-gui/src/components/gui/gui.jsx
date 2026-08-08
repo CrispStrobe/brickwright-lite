@@ -7,6 +7,7 @@ import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import PseudocodeImporter from '../tw-pseudocode/pseudocode-importer.jsx';
+import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
 import tabStyles from 'react-tabs/style/react-tabs.css';
 import VM from 'scratch-vm';
 import Renderer from 'scratch-render';
@@ -311,6 +312,13 @@ const GUIComponent = props => {
                                             id="gui.gui.pseudocodeTab"
                                         />
                                     </Tab>
+                                    <Tab className={tabClassNames.tab}>
+                                        <FormattedMessage
+                                            defaultMessage="🔌 Circuit"
+                                            description="Brickwright circuit designer tab"
+                                            id="gui.gui.circuitTab"
+                                        />
+                                    </Tab>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     <Box className={styles.blocksWrapper}>
@@ -352,6 +360,9 @@ const GUIComponent = props => {
                                 </TabPanel>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     <PseudocodeImporter />
+                                </TabPanel>
+                                <TabPanel className={tabClassNames.tabPanel}>
+                                    <CircuitTab />
                                 </TabPanel>
                             </Tabs>
                             {backpackVisible ? (

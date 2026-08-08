@@ -9,6 +9,7 @@
  */
 
 import { getEngine } from '../engine.js';
+import { History } from './history.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -59,6 +60,34 @@ export class Circuit {
 
     /** @type {bigint} — current simulation time in ns */
     this.timeNs = 0n;
+
+    /** @type {History} */
+    this.history = new History();
+  }
+
+  /** Save current state to history. Called after structural mutations. */
+  _saveHistory() {
+    this.history.save({ parts: this.parts, wires: this.wires });
+  }
+
+  /** Undo the last structural change. Returns true if successful. */
+  undo() {
+    const state = this.history.undo();
+    if (!state) return false;
+    this.parts = state.parts.map(p => ({ ...p }));
+    this.wires = state.wires.map(w => ({ ...w }));
+    this._syncNetlist();
+    return true;
+  }
+
+  /** Redo a previously undone change. Returns true if successful. */
+  redo() {
+    const state = this.history.redo();
+    if (!state) return false;
+    this.parts = state.parts.map(p => ({ ...p }));
+    this.wires = state.wires.map(w => ({ ...w }));
+    this._syncNetlist();
+    return true;
   }
 
   // ── Part operations ─────────────────────────────────────────────
@@ -73,9 +102,10 @@ export class Circuit {
    */
   addPart(kind, params, x, y) {
     const terminals = terminalsForKind(kind, params);
-    const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y };
+    const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y, rotation: 0 };
     this.parts.push(part);
     this._syncNetlist();
+    this._saveHistory();
     return part;
   }
 
@@ -93,6 +123,7 @@ export class Circuit {
       w => w.from.part !== partId && w.to.part !== partId
     );
     this._syncNetlist();
+    this._saveHistory();
     return true;
   }
 
@@ -118,6 +149,47 @@ export class Circuit {
    */
   getPart(partId) {
     return this.parts.find(p => p.id === partId);
+  }
+
+  /**
+   * Rotate a part by 90 degrees clockwise.
+   * @param {string} partId
+   * @returns {boolean}
+   */
+  rotatePart(partId) {
+    const part = this.getPart(partId);
+    if (!part) return false;
+    part.rotation = ((part.rotation || 0) + 90) % 360;
+    this._saveHistory();
+    return true;
+  }
+
+  /**
+   * Duplicate a part at an offset position.
+   * @param {string} partId
+   * @param {number} [offsetX=40]
+   * @param {number} [offsetY=40]
+   * @returns {PlacedPart|null}
+   */
+  duplicatePart(partId, offsetX = 40, offsetY = 40) {
+    const src = this.getPart(partId);
+    if (!src) return null;
+    return this.addPart(src.kind, { ...src.params }, src.x + offsetX, src.y + offsetY);
+  }
+
+  /**
+   * Update a part's parameters (e.g. resistor ohms, LED color).
+   * @param {string} partId
+   * @param {Record<string, number|string>} newParams — merged with existing
+   * @returns {boolean}
+   */
+  updateParams(partId, newParams) {
+    const part = this.getPart(partId);
+    if (!part) return false;
+    Object.assign(part.params, newParams);
+    this._syncNetlist();
+    this._saveHistory();
+    return true;
   }
 
   // ── Wire operations ─────────────────────────────────────────────
@@ -179,6 +251,7 @@ export class Circuit {
     };
     this.wires.push(wire);
     this._syncNetlist();
+    this._saveHistory();
     return wire;
   }
 
@@ -192,6 +265,7 @@ export class Circuit {
     if (idx === -1) return false;
     this.wires.splice(idx, 1);
     this._syncNetlist();
+    this._saveHistory();
     return true;
   }
 

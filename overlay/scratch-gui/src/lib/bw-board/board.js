@@ -162,6 +162,11 @@ export class BoardImpl {
           this.capVoltages.set(p.id, 0); // start uncharged
         }
       }
+      if (p.kind === 'inductor') {
+        if (!this.inductorCurrents.has(p.id)) {
+          this.inductorCurrents.set(p.id, 0); // start with zero current
+        }
+      }
     }
 
     this._solve();
@@ -226,7 +231,8 @@ export class BoardImpl {
    * @returns {number} voltage 0…VCC
    */
   readAnalog(pin) {
-    return this._pinVoltage(pin);
+    const v = this._pinVoltage(pin);
+    return Number.isFinite(v) ? v : 0;
   }
 
   // ─── Boundary B: instruments ─────────────────────────────────────────────
@@ -236,7 +242,8 @@ export class BoardImpl {
    * @returns {number}
    */
   nodeVoltage(netId) {
-    return this.nodeVoltages.get(netId) ?? 0;
+    const v = this.nodeVoltages.get(netId) ?? 0;
+    return Number.isFinite(v) ? v : 0;
   }
 
   /**
@@ -248,7 +255,8 @@ export class BoardImpl {
     const result = this._solveMNA(false);
     const partCurrents = result.branchCurrents.get(partId);
     if (!partCurrents) return 0;
-    return partCurrents.get(terminal) ?? 0;
+    const i = partCurrents.get(terminal) ?? 0;
+    return Number.isFinite(i) ? i : 0;
   }
 
   /**
@@ -263,7 +271,8 @@ export class BoardImpl {
     // testNodeB is used as the reference (V=0), so R = V_A / I_test
     const result = this._solveMNA(true, a, b, testCurrent);
     const vA = result.nodeVoltages.get(a) ?? 0;
-    return Math.abs(vA) / testCurrent;
+    const r = Math.abs(vA) / testCurrent;
+    return Number.isFinite(r) ? r : 0;
   }
 
   // ─── Boundary B: transducers ─────────────────────────────────────────────
@@ -282,11 +291,9 @@ export class BoardImpl {
     // Find the most recent sample at or before windowStart (the "initial" value
     // for the window), plus all samples within the window.
     let initialCurrent = 0;
-    let initialIdx = -1;
     for (let i = history.length - 1; i >= 0; i--) {
       if (history[i].tNs <= windowStart) {
         initialCurrent = history[i].current;
-        initialIdx = i;
         break;
       }
     }
@@ -338,6 +345,12 @@ export class BoardImpl {
     const prev = edges[edges.length - 2];
     const halfPeriodNs = Number(last - prev);
     if (halfPeriodNs <= 0) return { hz: 0, on: false };
+
+    // Staleness check: if the last edge is more than 100ms ago,
+    // the buzzer has stopped toggling (e.g., after a debug halt).
+    // Report as off rather than a meaninglessly low frequency.
+    const age = this.timeNs - last;
+    if (age > 100_000_000n) return { hz: 0, on: false };
 
     const hz = 1e9 / (2 * halfPeriodNs); // two edges = one full period
     return { hz, on: true };
@@ -437,6 +450,15 @@ export class BoardImpl {
     return this.capVoltages.get(partId) ?? 0;
   }
 
+  /**
+   * Current through an inductor (DC steady-state).
+   * @param {string} partId
+   * @returns {number}
+   */
+  getInductorCurrent(partId) {
+    return this.inductorCurrents.get(partId) ?? 0;
+  }
+
   // ─── Part queries ───────────────────────────────────────────────────────
 
   /** All parts in the current netlist. @returns {Part[]} */
@@ -444,6 +466,42 @@ export class BoardImpl {
 
   /** All nets in the current netlist. @returns {Net[]} */
   getNets() { return this.nets; }
+
+  /**
+   * Get the expected terminal names for a part kind.
+   * Returns null for MCU (terminals are PinIds) and composites.
+   * Useful for the UI inspector panel.
+   *
+   * @param {string} kind
+   * @returns {string[] | null}
+   */
+  static getTerminalsForKind(kind) {
+    const map = {
+      vcc: ['vcc'], gnd: ['gnd'],
+      resistor: ['a', 'b'], capacitor: ['a', 'b'], inductor: ['a', 'b'],
+      diode: ['anode', 'cathode'], led: ['anode', 'cathode'],
+      zener: ['anode', 'cathode'],
+      potentiometer: ['a', 'b', 'wiper'],
+      button: ['a', 'b'], switch: ['a', 'b'],
+      buzzer: ['a', 'b'], ldr: ['a', 'b'], ntc: ['a', 'b'],
+      npn: ['base', 'collector', 'emitter'],
+      pnp: ['base', 'collector', 'emitter'],
+    };
+    return map[kind] ?? null;
+  }
+
+  /**
+   * Get all known part kinds.
+   * @returns {string[]}
+   */
+  static getPartKinds() {
+    return [
+      'vcc', 'gnd', 'resistor', 'capacitor', 'inductor',
+      'diode', 'led', 'zener', 'potentiometer',
+      'button', 'switch', 'buzzer', 'ldr', 'ntc',
+      'npn', 'pnp', 'seven_segment', 'rgb_led', 'mcu',
+    ];
+  }
 
   /** All LED part IDs. @returns {string[]} */
   getLeds() { return this.parts.filter(p => p.kind === 'led').map(p => p.id); }
@@ -499,7 +557,7 @@ export class BoardImpl {
     if (!this._changeListeners) return;
     const event = { type, detail };
     for (const fn of this._changeListeners) {
-      fn(event);
+      try { fn(event); } catch { /* listener error must not break the board */ }
     }
   }
 
@@ -519,7 +577,11 @@ export class BoardImpl {
 
     for (const part of this.parts) {
       if (part.kind === 'led') {
-        const current = this.ledCurrents.get(part.id) ?? 0;
+        // Use closed-form current if available, fall back to MNA
+        let current = this.ledCurrents.get(part.id) ?? 0;
+        if (current === 0) {
+          try { current = this.branchCurrent(part.id, 'anode'); } catch {}
+        }
         if (current > 0.025) { // > 25 mA
           warnings.push({
             severity: 'danger',
@@ -528,9 +590,133 @@ export class BoardImpl {
           });
         }
       }
+
+      // Check for MCU pins driving into VCC or GND directly (short circuit)
+      if (part.kind === 'mcu') {
+        for (const terminal of part.terminals) {
+          const state = this.pinStates.get(terminal);
+          if (!state || state.mode === 'input') continue;
+
+          // Find the net this pin is on
+          const net = this.nets.find(n => n.terminals.some(
+            t => t.part === part.id && t.terminal === terminal
+          ));
+          if (!net) continue;
+
+          // Check if this net is directly connected to VCC or GND
+          for (const t of net.terminals) {
+            if (t.part === part.id) continue;
+            const other = this.partMap.get(t.part);
+            if (!other) continue;
+            if (other.kind === 'vcc' && state.mode !== 'input' && !state.driveHigh) {
+              warnings.push({
+                severity: 'danger',
+                partId: part.id,
+                message: `${terminal}: pin drives LOW but is wired directly to VCC. This is a short circuit.`,
+              });
+            }
+            if (other.kind === 'gnd' && state.mode !== 'input' && state.driveHigh && state.mode === 'pushpull') {
+              warnings.push({
+                severity: 'danger',
+                partId: part.id,
+                message: `${terminal}: pin drives HIGH but is wired directly to GND. This is a short circuit.`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Check for LED wired backward (cathode to VCC, anode to GND)
+    for (const part of this.parts) {
+      if (part.kind !== 'led') continue;
+      const anodeNet = this._netForTerminal(part.id, 'anode');
+      const cathodeNet = this._netForTerminal(part.id, 'cathode');
+      if (!anodeNet || !cathodeNet) continue;
+
+      const anodeV = this.nodeVoltages.get(anodeNet) ?? 0;
+      const cathodeV = this.nodeVoltages.get(cathodeNet) ?? 0;
+      if (cathodeV > anodeV + 0.5) {
+        warnings.push({
+          severity: 'warning',
+          partId: part.id,
+          message: `${part.id}: LED appears to be wired backward (cathode at ${cathodeV.toFixed(1)}V > anode at ${anodeV.toFixed(1)}V). Swap anode and cathode.`,
+        });
+      }
+    }
+
+    // Check for output pins with nothing connected
+    for (const part of this.parts) {
+      if (part.kind !== 'mcu') continue;
+      for (const terminal of part.terminals) {
+        const state = this.pinStates.get(terminal);
+        if (!state || state.mode === 'input') continue;
+
+        const net = this.nets.find(n => n.terminals.some(
+          t => t.part === part.id && t.terminal === terminal
+        ));
+        if (!net) continue;
+
+        // Check if this pin's net has only the MCU terminal (nothing else connected)
+        const externalTerminals = net.terminals.filter(t => t.part !== part.id);
+        if (externalTerminals.length === 0) {
+          warnings.push({
+            severity: 'warning',
+            partId: part.id,
+            message: `${terminal}: output pin is driving but nothing is connected to it.`,
+          });
+        }
+      }
     }
 
     return warnings;
+  }
+
+  // ─── UI render state ─────────────────────────────────────────────────────
+
+  /**
+   * Get everything the UI needs to render the current board state in one call.
+   * Avoids the UI having to make 20+ individual queries per frame.
+   *
+   * @returns {{
+   *   powered: boolean,
+   *   timeNs: bigint,
+   *   vcc: number,
+   *   leds: Array<{id: string, brightness: number, color?: string}>,
+   *   buzzers: Array<{id: string, hz: number, on: boolean}>,
+   *   controls: Array<{id: string, kind: string, value: number}>,
+   *   pins: Array<{pin: string, mode: string, driveHigh: boolean}>,
+   *   warnings: Array<{severity: string, partId?: string, message: string}>,
+   *   nodeVoltages: Array<{net: string, voltage: number}>,
+   *   capacitors: Array<{id: string, voltage: number}>,
+   * }}
+   */
+  getRenderState() {
+    return {
+      powered: this.powered,
+      timeNs: this.timeNs,
+      vcc: this.vcc,
+      leds: this.parts
+        .filter(p => p.kind === 'led')
+        .map(p => ({
+          id: p.id,
+          brightness: this.ledBrightness(p.id),
+          color: /** @type {string | undefined} */ (p.params.color),
+        })),
+      buzzers: this.parts
+        .filter(p => p.kind === 'buzzer')
+        .map(p => ({ id: p.id, ...this.buzzerTone(p.id) })),
+      controls: this.getControls(),
+      pins: this.getPinStates(),
+      warnings: this.getWarnings(),
+      nodeVoltages: this.nets.map(n => ({
+        net: n.id,
+        voltage: this.nodeVoltage(n.id),
+      })),
+      capacitors: this.parts
+        .filter(p => p.kind === 'capacitor')
+        .map(p => ({ id: p.id, voltage: this.getCapVoltage(p.id) })),
+    };
   }
 
   // ─── Reset ──────────────────────────────────────────────────────────────
@@ -575,6 +761,7 @@ export class BoardImpl {
       pinStates: new Map(this.pinStates),
       controls: new Map(this.controls),
       capVoltages: new Map(this.capVoltages),
+      inductorCurrents: new Map(this.inductorCurrents),
     };
   }
 
@@ -588,6 +775,7 @@ export class BoardImpl {
     this.pinStates = new Map(snap.pinStates);
     this.controls = new Map(snap.controls);
     this.capVoltages = new Map(snap.capVoltages);
+    this.inductorCurrents = new Map(snap.inductorCurrents ?? []);
 
     // Re-initialize LED/buzzer tracking
     this.ledHistory.clear();
@@ -878,6 +1066,15 @@ export class BoardImpl {
           }
           break;
         }
+        case 'inductor': {
+          // DC steady state: inductor is a wire (zero resistance)
+          const otherT = t.terminal === 'a' ? 'b' : 'a';
+          const otherNet = this._netForTerminal(part.id, otherT);
+          if (otherNet) {
+            this._gatherSourcesInner(otherNet, visited, rAccum, out);
+          }
+          break;
+        }
         case 'ldr': {
           // Photoresistor: control 0…1 maps to resistance range.
           // 0 = dark (high R, e.g. 1MΩ), 1 = bright (low R, e.g. 100Ω).
@@ -1071,6 +1268,16 @@ export class BoardImpl {
           const result = this._traceToSourceInner(
             otherNet, part.id, visited, rAccum + ohms
           );
+          if (result) return result;
+          break;
+        }
+
+        case 'inductor': {
+          // DC: wire (zero resistance)
+          const otherTerminal = t.terminal === 'a' ? 'b' : 'a';
+          const otherNet = this._netForTerminal(part.id, otherTerminal);
+          if (!otherNet) continue;
+          const result = this._traceToSourceInner(otherNet, part.id, visited, rAccum);
           if (result) return result;
           break;
         }

@@ -43,6 +43,24 @@ export function useCircuit(vcc = 5.0) {
     return ok;
   }, [circuit, bump]);
 
+  const duplicatePart = useCallback((partId) => {
+    const p = circuit.duplicatePart(partId);
+    if (p) bump();
+    return p;
+  }, [circuit, bump]);
+
+  const rotatePart = useCallback((partId) => {
+    const ok = circuit.rotatePart(partId);
+    if (ok) bump();
+    return ok;
+  }, [circuit, bump]);
+
+  const updateParams = useCallback((partId, newParams) => {
+    const ok = circuit.updateParams(partId, newParams);
+    if (ok) bump();
+    return ok;
+  }, [circuit, bump]);
+
   const addWire = useCallback((fromPart, fromTerm, toPart, toTerm) => {
     const w = circuit.addWire(fromPart, fromTerm, toPart, toTerm);
     if (w) bump();
@@ -110,6 +128,14 @@ export function useCircuit(vcc = 5.0) {
     bump();
   }, [circuit, bump]);
 
+  const undo = useCallback(() => {
+    if (circuit.undo()) bump();
+  }, [circuit, bump]);
+
+  const redo = useCallback(() => {
+    if (circuit.redo()) bump();
+  }, [circuit, bump]);
+
   // Read-only accessors — these read from the engine, never fabricate.
   const ledBrightness = useCallback((partId) => {
     return circuit.ledBrightness(partId);
@@ -134,6 +160,9 @@ export function useCircuit(vcc = 5.0) {
     addPart,
     removePart,
     movePart,
+    duplicatePart,
+    rotatePart,
+    updateParams,
     addWire,
     removeWire,
     setControl,
@@ -142,6 +171,10 @@ export function useCircuit(vcc = 5.0) {
     advanceBy,
     setPower,
     loadInferred,
+    undo,
+    redo,
+    canUndo: circuit.history.canUndo,
+    canRedo: circuit.history.canRedo,
 
     // Instruments (from engine)
     ledBrightness,

@@ -3,11 +3,25 @@
  *
  * Props:
  *   project: { device?, clock?, pins: StcPin[] }
- *     Pin declarations from the project. The circuit is inferred
- *     from these on mount. The user can then redraw.
+ *     Pin declarations from the project. The circuit is re-inferred
+ *     whenever this prop changes (shallow compare on pins array).
  *
- * This component is self-contained: it manages its own board,
- * simulation, and state. No Vite-specific imports.
+ *   board?: BoardImpl
+ *     Optional external board instance. When provided, the component
+ *     uses it instead of creating its own. The host connects the
+ *     emulator adapter to this board; the component subscribes to
+ *     onChange for re-rendering. The scripted simulation loop is
+ *     skipped — the emulator drives pin events.
+ *     When omitted, the component creates its own board and runs
+ *     a scripted demo simulation.
+ *
+ *   debugState?: { halted: boolean, skewNs?: bigint }
+ *     When the debugger halts the program, advanceTo stops being called
+ *     and the board freezes coherently. setControl stays live (user intent,
+ *     not physics). On resume, time continues from where it stopped — no
+ *     wall-clock catch-up. skewNs > 0 means a live target whose hardware
+ *     kept moving while the program was halted; the panel must render that
+ *     differently from a genuinely frozen simulation.
  *
  * Every electrical value comes from bw-board. Nothing is fabricated.
  */
@@ -19,24 +33,37 @@ import { ControlPanel } from './ControlPanel.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { Multimeter } from './Multimeter.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
+import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
+import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 
 const MS = 1_000_000n;
+const GRID = 20;
 
-export function CircuitDesigner({ project }) {
+function snapToGrid(v) {
+  return Math.round(v / GRID) * GRID;
+}
+
+export function CircuitDesigner({ project, board: externalBoard }) {
   const {
     parts, wires, powered, rev,
-    addPart, removePart, movePart,
+    addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
     addWire, removeWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
-    loadInferred,
+    loadInferred, undo, redo, canUndo, canRedo,
     ledBrightness, buzzerTone, nodeVoltage,
     circuit,
   } = useCircuit(5.0);
 
+  // The active board: external (from host/emulator) or internal (from circuit model)
+  const activeBoard = externalBoard || circuit.board;
+
+  // Subscribe to board changes for automatic re-rendering
+  const { renderState, refresh } = useBoard(activeBoard);
+
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedWire, setSelectedWire] = useState(null);
-  const [mode, setMode] = useState('build');
+  const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
 
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
@@ -54,13 +81,16 @@ export function CircuitDesigner({ project }) {
     return true;
   }, [placingProbe, wires]);
 
-  // Load initial circuit from project props (or default)
-  const initialLoaded = useRef(false);
+  // ── Project prop → infer circuit ────────────────────────────────
+  // Re-infer when the project's pins change.
+  const prevPinsRef = useRef(null);
   useEffect(() => {
-    if (initialLoaded.current) return;
-    initialLoaded.current = true;
+    const pins = project?.pins;
+    // Shallow compare: skip if same array reference
+    if (pins === prevPinsRef.current) return;
+    prevPinsRef.current = pins;
 
-    const stc = project?.pins?.length > 0
+    const stc = pins?.length > 0
       ? project
       : {
           device: 'STC12C5A60S2',
@@ -72,36 +102,30 @@ export function CircuitDesigner({ project }) {
     loadInferred(ip, in_);
   }, [project, loadInferred]);
 
-  // Buzzer audio (browser-only, lazy import to avoid Node issues)
-  const buzzerAudioRef = useRef(null);
+  // ── Buzzer audio ────────────────────────────────────────────────
+  // Direct import (no dynamic import — the module guards against
+  // missing AudioContext in non-browser environments).
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    // Dynamic import so this works in non-Vite bundlers too
-    import('../audio/buzzer-audio.js').then(mod => {
-      buzzerAudioRef.current = mod;
-    });
-    return () => {
-      buzzerAudioRef.current?.stopAllBuzzers();
-    };
+    return () => stopAllBuzzers();
   }, []);
 
   useEffect(() => {
-    const ba = buzzerAudioRef.current;
-    if (!ba) return;
     const buzzers = parts.filter(p => p.kind === 'buzzer');
     for (const bz of buzzers) {
       try {
         const tone = buzzerTone(bz.id);
-        ba.updateBuzzerAudio(bz.id, tone);
+        updateBuzzerAudio(bz.id, tone);
       } catch {}
     }
   }, [rev, parts, buzzerTone]);
 
   useEffect(() => {
-    if (mode !== 'simulate') buzzerAudioRef.current?.stopAllBuzzers();
+    if (mode !== 'simulate') stopAllBuzzers();
   }, [mode]);
 
-  // Simulation loop
+  // ── Simulation loop ─────────────────────────────────────────────
+  // Drives ALL output pins found on the MCU, not just P1.0.
+  // Output pins blink at 2 Hz; input/analog pins are left alone.
   const simInterval = useRef(null);
   const simStep = useRef(0);
 
@@ -114,32 +138,87 @@ export function CircuitDesigner({ project }) {
     const mcu = parts.find(p => p.kind === 'mcu');
     if (!mcu) return;
 
-    for (const pin of mcu.terminals) setPin(pin, 'quasi', true);
+    // Classify pins by what's connected to them
+    const outputPins = []; // pins with LEDs or buzzers connected
+    const inputPins = [];  // pins with buttons connected
+    const analogPins = []; // pins with pots connected
+
+    for (const pin of mcu.terminals) {
+      // Find what's wired to this pin
+      const connectedKinds = new Set();
+      for (const w of wires) {
+        let otherPart = null;
+        if (w.from.part === mcu.id && w.from.terminal === pin) {
+          otherPart = w.to.part;
+        } else if (w.to.part === mcu.id && w.to.terminal === pin) {
+          otherPart = w.from.part;
+        }
+        if (otherPart) {
+          const p = parts.find(pp => pp.id === otherPart);
+          if (p) connectedKinds.add(p.kind);
+        }
+      }
+
+      if (connectedKinds.has('led') || connectedKinds.has('buzzer') || connectedKinds.has('resistor')) {
+        outputPins.push(pin);
+      } else if (connectedKinds.has('button')) {
+        inputPins.push(pin);
+      } else if (connectedKinds.has('potentiometer')) {
+        analogPins.push(pin);
+      } else {
+        outputPins.push(pin); // default: treat as output
+      }
+    }
+
+    // Initialize pin modes
+    for (const pin of outputPins) setPin(pin, 'quasi', true);
+    for (const pin of inputPins) setPin(pin, 'quasi', true);
+    for (const pin of analogPins) setPin(pin, 'input', false);
+
     advanceTo(0n);
     simStep.current = 0;
 
     simInterval.current = setInterval(() => {
       simStep.current++;
-      if (mcu.terminals.includes('P1.0')) {
-        setPin('P1.0', 'quasi', (simStep.current % 20) < 10);
+      const step = simStep.current;
+
+      // Blink all output pins at 2 Hz (500ms period at 20 Hz tick)
+      for (const pin of outputPins) {
+        const on = (step % 20) < 10;
+        setPin(pin, 'quasi', on); // HIGH = LED off (active-low)
       }
+
       advanceBy(50n * MS);
     }, 50);
 
     return () => { if (simInterval.current) clearInterval(simInterval.current); };
-  }, [mode]);
+  }, [mode, parts, wires]);
 
-  // Part placement
+  // ── Part placement with snap-to-grid ────────────────────────────
   const partCountRef = useRef(0);
   const handleAddPart = useCallback((kind, params) => {
-    const offset = partCountRef.current * 30;
+    const offset = partCountRef.current * 40;
     partCountRef.current++;
-    addPart(kind, params, 200 + (offset % 300), 150 + Math.floor(offset / 300) * 80);
+    const x = snapToGrid(200 + (offset % 300));
+    const y = snapToGrid(150 + Math.floor(offset / 300) * 80);
+    addPart(kind, params, x, y);
   }, [addPart]);
 
-  // Node voltages
+  // Snap-to-grid on move
+  const handleMovePart = useCallback((partId, x, y) => {
+    movePart(partId, snapToGrid(x), snapToGrid(y));
+  }, [movePart]);
+
+  // Node voltages and warnings from getRenderState (if available)
   const nodeVoltages = {};
-  if (rev >= 0) {
+  const warnings = [];
+  if (renderState) {
+    for (const { net, voltage } of renderState.nodeVoltages || []) {
+      nodeVoltages[net] = voltage;
+    }
+    warnings.push(...(renderState.warnings || []));
+  } else if (rev >= 0) {
+    // Fallback for boards without getRenderState
     const seenNets = new Set();
     for (const w of wires) {
       if (!seenNets.has(w.netId)) {
@@ -172,18 +251,70 @@ export function CircuitDesigner({ project }) {
     partCountRef.current = 0;
   }, [loadInferred]);
 
+  // Save circuit to JSON file download
+  const handleSave = useCallback(() => {
+    const json = JSON.stringify(circuit.toJSON(), null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'circuit.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [circuit]);
+
+  // Load circuit from JSON file
+  const handleLoad = useCallback((data) => {
+    if (!data || !data.parts || !data.wires) return;
+    circuit.parts = data.parts.map(p => ({ ...p }));
+    circuit.wires = data.wires.map(w => ({ ...w }));
+    circuit._syncNetlist();
+    circuit._saveHistory();
+    setSelectedPart(null);
+    setSelectedWire(null);
+    setMode('build');
+  }, [circuit]);
+
+  // Keyboard shortcuts
+  const handleKeyDown = useCallback((e) => {
+    // Ctrl+Z / Cmd+Z → undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    }
+    // Ctrl+Shift+Z / Ctrl+Y → redo
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'Z' || e.key === 'y')) {
+      e.preventDefault();
+      redo();
+    }
+    // R → rotate selected part
+    if (e.key === 'r' && !e.ctrlKey && !e.metaKey && selectedPart) {
+      rotatePart(selectedPart);
+    }
+    // Ctrl+D → duplicate selected part
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedPart) {
+      e.preventDefault();
+      const dup = duplicatePart(selectedPart);
+      if (dup) setSelectedPart(dup.id);
+    }
+  }, [undo, redo, rotatePart, duplicatePart, selectedPart]);
+
   let statusText = null;
   if (mode === 'simulate') statusText = 'SIMULATING — MCU driving pins';
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: '12px',
-      padding: '16px',
-      alignItems: 'flex-start',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: '12px',
+        padding: '16px',
+        alignItems: 'flex-start',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <PartPalette onAddPart={handleAddPart} />
         <InferPanel onLoadCircuit={handleLoadCircuit} />
@@ -199,7 +330,7 @@ export function CircuitDesigner({ project }) {
           onAddWire={addWire}
           onRemoveWire={removeWire}
           onRemovePart={removePart}
-          onMovePart={movePart}
+          onMovePart={handleMovePart}
           onSelectPart={setSelectedPart}
           selectedPart={selectedPart}
           onSelectWire={setSelectedWire}
@@ -210,6 +341,7 @@ export function CircuitDesigner({ project }) {
           statusText={statusText}
           placingProbe={placingProbe}
           onTerminalClickForProbe={handleTerminalClickForProbe}
+          circuit={circuit}
         />
       </div>
 
@@ -224,6 +356,13 @@ export function CircuitDesigner({ project }) {
           parts={parts}
           onRemovePart={(id) => { removePart(id); setSelectedPart(null); }}
           onRemoveWire={(id) => { removeWire(id); setSelectedWire(null); }}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUpdateParams={updateParams}
+          onSave={handleSave}
+          onLoad={handleLoad}
         />
         <Multimeter
           circuit={circuit}
