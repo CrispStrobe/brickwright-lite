@@ -801,7 +801,6 @@ class PseudocodeImporter extends React.Component {
                             : 'function when_flag_clicked() {\n  console.log("Hello!");\n}\nwhen_flag_clicked();\n\n// or press “From blocks” to generate this from your project'}
                 />
 
-
                 {this.state.showArt && (
                 <div style={{margin: '12px 0 4px', padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8}}>
                     <p style={{margin: '0 0 8px'}}>
