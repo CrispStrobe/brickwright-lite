@@ -8,4 +8,4 @@ node scripts/integrate.mjs
 cd packages/scratch-gui
 npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
 cd ../.. && node scripts/apply-vm-overlay.mjs && cd packages/scratch-gui
-NODE_ENV=production CI=true NODE_OPTIONS=--max-old-space-size=4096 npm run build
+NODE_ENV=production CI=true NODE_OPTIONS=--max-old-space-size=2560 npm run build

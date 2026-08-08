@@ -21,7 +21,7 @@ jobs:
       - name: Build the editor (proves the permissive base compiles)
         run: |
           cd packages/scratch-gui
-          /usr/bin/time -v sh -c 'NODE_ENV=production NODE_OPTIONS=--max-old-space-size=4096 npm run build' 2>&1 | tee build.log
+          /usr/bin/time -v sh -c 'NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build' 2>&1 | tee build.log
           echo "---"
           grep "Maximum resident" build.log || true
           du -sh build/
