@@ -44,7 +44,9 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, board: externalBoard }) {
+export function CircuitDesigner({ project, stc, board: externalBoard }) {
+  // Accept both `project` and `stc` props (backward compat with lite integration)
+  const projectData = project || stc;
   const {
     parts, wires, powered, rev,
     addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
@@ -64,6 +66,8 @@ export function CircuitDesigner({ project, board: externalBoard }) {
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedWire, setSelectedWire] = useState(null);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
 
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
@@ -85,22 +89,22 @@ export function CircuitDesigner({ project, board: externalBoard }) {
   // Re-infer when the project's pins change.
   const prevPinsRef = useRef(null);
   useEffect(() => {
-    const pins = project?.pins;
+    const pins = projectData?.pins;
     // Shallow compare: skip if same array reference
     if (pins === prevPinsRef.current) return;
     prevPinsRef.current = pins;
 
-    const stc = pins?.length > 0
-      ? project
+    const inferStc = pins?.length > 0
+      ? projectData
       : {
           device: 'STC12C5A60S2',
           clock: 11059200,
           pins: [{ name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true }],
         };
 
-    const { parts: ip, nets: in_ } = inferCircuit(stc);
+    const { parts: ip, nets: in_ } = inferCircuit(inferStc);
     loadInferred(ip, in_);
-  }, [project, loadInferred]);
+  }, [projectData, loadInferred]);
 
   // ── Buzzer audio ────────────────────────────────────────────────
   // Direct import (no dynamic import — the module guards against
@@ -124,12 +128,16 @@ export function CircuitDesigner({ project, board: externalBoard }) {
   }, [mode]);
 
   // ── Simulation loop ─────────────────────────────────────────────
-  // Drives ALL output pins found on the MCU, not just P1.0.
-  // Output pins blink at 2 Hz; input/analog pins are left alone.
+  // Only runs when no external board is provided (demo mode).
+  // When an external board is present, the emulator drives pin events
+  // and the UI re-renders via onChange subscription.
   const simInterval = useRef(null);
   const simStep = useRef(0);
 
   useEffect(() => {
+    // Skip scripted sim when external board drives the simulation
+    if (externalBoard) return;
+
     if (mode !== 'simulate') {
       if (simInterval.current) clearInterval(simInterval.current);
       return;
@@ -194,15 +202,30 @@ export function CircuitDesigner({ project, board: externalBoard }) {
     return () => { if (simInterval.current) clearInterval(simInterval.current); };
   }, [mode, parts, wires]);
 
-  // ── Part placement with snap-to-grid ────────────────────────────
-  const partCountRef = useRef(0);
+  // ── Part placement — find empty space ────────────────────────────
   const handleAddPart = useCallback((kind, params) => {
-    const offset = partCountRef.current * 40;
-    partCountRef.current++;
-    const x = snapToGrid(200 + (offset % 300));
-    const y = snapToGrid(150 + Math.floor(offset / 300) * 80);
+    // Find a position that doesn't overlap existing parts
+    const occupied = parts.map(p => ({ x: p.x, y: p.y }));
+    let x = 200, y = 200;
+    const spacing = 80;
+    let found = false;
+    // Spiral outward from center to find empty spot
+    for (let ring = 0; ring < 10 && !found; ring++) {
+      for (let dx = -ring; dx <= ring && !found; dx++) {
+        for (let dy = -ring; dy <= ring && !found; dy++) {
+          if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue; // only border
+          const cx = snapToGrid(200 + dx * spacing);
+          const cy = snapToGrid(200 + dy * spacing);
+          if (cx < 40 || cy < 40 || cx > 600 || cy > 440) continue;
+          const tooClose = occupied.some(o =>
+            Math.abs(o.x - cx) < 60 && Math.abs(o.y - cy) < 50
+          );
+          if (!tooClose) { x = cx; y = cy; found = true; }
+        }
+      }
+    }
     addPart(kind, params, x, y);
-  }, [addPart]);
+  }, [addPart, parts]);
 
   // Snap-to-grid on move
   const handleMovePart = useCallback((partId, x, y) => {
@@ -248,7 +271,6 @@ export function CircuitDesigner({ project, board: externalBoard }) {
     setSelectedPart(null);
     setSelectedWire(null);
     setMode('build');
-    partCountRef.current = 0;
   }, [loadInferred]);
 
   // Save circuit to JSON file download
@@ -300,7 +322,8 @@ export function CircuitDesigner({ project, board: externalBoard }) {
   }, [undo, redo, rotatePart, duplicatePart, selectedPart]);
 
   let statusText = null;
-  if (mode === 'simulate') statusText = 'SIMULATING — MCU driving pins';
+  if (externalBoard) statusText = 'LIVE — emulator driving pins';
+  else if (mode === 'simulate') statusText = 'SIMULATING — scripted MCU demo';
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
   return (
@@ -308,19 +331,35 @@ export function CircuitDesigner({ project, board: externalBoard }) {
       style={{
         display: 'flex',
         gap: '12px',
-        padding: '16px',
-        alignItems: 'flex-start',
+        padding: '12px',
+        height: '100%',
+        minHeight: 0, // allow flex shrinking
+        alignItems: 'stretch',
         fontFamily: 'system-ui, -apple-system, sans-serif',
+        overflow: 'hidden',
       }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <PartPalette onAddPart={handleAddPart} />
-        <InferPanel onLoadCircuit={handleLoadCircuit} />
-      </div>
+      {/* Left sidebar — collapsible */}
+      {leftOpen ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto' }}>
+          <button onClick={() => setLeftOpen(false)} style={{
+            background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
+            fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
+          }}>collapse</button>
+          <PartPalette onAddPart={handleAddPart} />
+          <InferPanel onLoadCircuit={handleLoadCircuit} />
+        </div>
+      ) : (
+        <button onClick={() => setLeftOpen(true)} style={{
+          writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
+          borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
+          fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
+        }}>Parts</button>
+      )}
 
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <BoardCanvas
           parts={parts}
           wires={wires}
@@ -341,11 +380,46 @@ export function CircuitDesigner({ project, board: externalBoard }) {
           statusText={statusText}
           placingProbe={placingProbe}
           onTerminalClickForProbe={handleTerminalClickForProbe}
+          onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) setSelectedPart(dup.id); }}
+          onRotatePart={rotatePart}
+          onDropPart={(kind, params, x, y) => {
+            const p = addPart(kind, params, snapToGrid(x), snapToGrid(y));
+            if (p) setSelectedPart(p.id);
+          }}
           circuit={circuit}
+          warnings={warnings}
         />
+
+        {/* Engine warnings — teaching feedback */}
+        {warnings.length > 0 && (
+          <div style={{
+            marginTop: '8px',
+            padding: '8px',
+            background: '#1a1a0e',
+            border: '1px solid #e67e22',
+            borderRadius: '4px',
+            fontFamily: 'monospace',
+            fontSize: '10px',
+          }}>
+            {warnings.map((w, i) => (
+              <div key={i} style={{
+                color: w.severity === 'danger' ? '#e74c3c' : '#f39c12',
+                marginBottom: '2px',
+              }}>
+                {w.severity === 'danger' ? '⚠' : '!'} {w.message}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* Right sidebar — collapsible */}
+      {rightOpen ? (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto' }}>
+        <button onClick={() => setRightOpen(false)} style={{
+          background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
+          fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
+        }}>collapse</button>
         <ControlPanel
           mode={mode}
           onModeChange={setMode}
@@ -374,6 +448,13 @@ export function CircuitDesigner({ project, board: externalBoard }) {
           probePlacement={probePlacement}
         />
       </div>
+      ) : (
+        <button onClick={() => setRightOpen(true)} style={{
+          writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
+          borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
+          fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
+        }}>Controls</button>
+      )}
     </div>
   );
 }

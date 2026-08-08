@@ -14,8 +14,12 @@ import React, { useState, useCallback } from 'react';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
 import { routeWire, partBBoxes } from '../model/wire-router.js';
+import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
+import { ContextMenu } from './ContextMenu.jsx';
 
+// Default canvas dimensions — used for viewBox and layout calculations.
+// The actual rendered size fills the container via CSS.
 const CANVAS_W = 700;
 const CANVAS_H = 500;
 
@@ -71,7 +75,10 @@ function terminalPos(part, terminal) {
 
 function fmtV(v) {
   if (v == null || typeof v !== 'number') return '';
-  return v.toFixed(3) + ' V';
+  if (Math.abs(v) < 0.01) return '0V';
+  if (Math.abs(v - Math.round(v)) < 0.01) return Math.round(v) + 'V';
+  if (Math.abs(v) < 1) return (v * 1000).toFixed(0) + 'mV';
+  return v.toFixed(1) + 'V';
 }
 
 // ── SVG part rendering ───────────────────────────────────────────
@@ -141,51 +148,76 @@ function SvgParts({ parts, selectedPart, onSelectPart }) {
 
 // ── Terminal dots (clickable for wiring) ─────────────────────────
 
-function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, placingProbe }) {
-  // Build a set of connected terminals for fast lookup
+function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDown, onTerminalUp, placingProbe }) {
   const connected = new Set();
   for (const w of wires) {
     connected.add(`${w.from.part}:${w.from.terminal}`);
     connected.add(`${w.to.part}:${w.to.terminal}`);
   }
 
+  // When wiring, all potential targets should glow
+  const isWiring = !!wiringFrom;
+
   const dots = [];
   for (const part of parts) {
     for (const term of part.terminals) {
       const pos = terminalPos(part, term);
-      const isWiringSource = wiringFrom &&
+      const isSource = wiringFrom &&
         wiringFrom.part === part.id && wiringFrom.terminal === term;
       const isConnected = connected.has(`${part.id}:${term}`);
+      const isSamePart = wiringFrom && wiringFrom.part === part.id;
+      const isValidTarget = isWiring && !isSource && !isSamePart;
 
-      // Colors: wiring source = gold, placing probe = purple,
-      // connected = green (filled), unconnected = red (hollow)
-      let fill, stroke, r;
-      if (isWiringSource) {
-        fill = '#f1c40f'; stroke = '#f39c12'; r = 6;
+      // Sizes: large enough to tap on a tablet (minimum 10px radius)
+      let fill, stroke, r, opacity;
+      if (isSource) {
+        fill = '#f1c40f'; stroke = '#f39c12'; r = 12; opacity = 1;
+      } else if (isValidTarget) {
+        // Pulsing green glow — "you can connect here"
+        fill = '#2ecc71'; stroke = '#27ae60'; r = 10; opacity = 0.8;
       } else if (placingProbe) {
-        fill = '#9b59b6'; stroke = '#8e44ad'; r = 5;
+        fill = '#9b59b6'; stroke = '#8e44ad'; r = 10; opacity = 0.7;
       } else if (isConnected) {
-        fill = '#2ecc71'; stroke = '#27ae60'; r = 4;
+        fill = '#2ecc71'; stroke = '#27ae60'; r = 6; opacity = 0.8;
       } else {
-        fill = 'none'; stroke = '#e74c3c'; r = 4;
+        // Unconnected — hollow, clearly visible
+        fill = '#16213e'; stroke = '#e74c3c'; r = 8; opacity = 1;
       }
 
       dots.push(
         <g key={`${part.id}:${term}`}>
+          {/* Invisible large hit area for touch */}
+          <circle
+            cx={pos.x} cy={pos.y} r={Math.max(r, 16)}
+            fill="transparent"
+            style={{ cursor: 'crosshair' }}
+            onMouseDown={(e) => onTerminalDown(part.id, term, e)}
+            onMouseUp={() => onTerminalUp(part.id, term)}
+            onClick={(e) => { e.stopPropagation(); onTerminalClick(part.id, term); }}
+            onTouchStart={(e) => { e.stopPropagation(); onTerminalDown(part.id, term); }}
+            onTouchEnd={(e) => { e.stopPropagation(); onTerminalUp(part.id, term); }}
+          />
+          {/* Visible dot */}
           <circle
             cx={pos.x} cy={pos.y} r={r}
-            fill={fill} stroke={stroke} strokeWidth={1.5}
-            style={{ cursor: 'pointer' }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onTerminalClick(part.id, term);
-            }}
+            fill={fill} stroke={stroke} strokeWidth={2}
+            opacity={opacity}
+            style={{ pointerEvents: 'none' }}
           />
-          {/* Terminal name tooltip — show on hover for unconnected terminals */}
+          {/* Pulsing ring for valid wiring targets */}
+          {isValidTarget && (
+            <circle
+              cx={pos.x} cy={pos.y} r={14}
+              fill="none" stroke="#2ecc71" strokeWidth={1.5}
+              opacity={0.5} strokeDasharray="3,3"
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
+          {/* Terminal label — always show for unconnected, on hover otherwise */}
           {!isConnected && (
             <text
-              x={pos.x} y={pos.y - 8}
-              textAnchor="middle" fill="#e74c3c" fontSize={8}
+              x={pos.x} y={pos.y - r - 4}
+              textAnchor="middle" fill="#bdc3c7" fontSize={9}
               fontFamily="monospace" style={{ pointerEvents: 'none' }}
             >{term}</text>
           )}
@@ -219,7 +251,20 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
     const pathD = routeWire(a, b, obstacles);
     const isSelected = selectedWire === wire.id;
     const isHovered = hoveredNet && hoveredNet === wire.netId;
-    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#3498db' : '#2ecc71';
+
+    // Wire color by voltage: red at VCC, blue near GND, green/yellow in between
+    let voltageColor = '#2ecc71'; // default green
+    const v = nodeVoltages?.[wire.netId];
+    if (v != null && typeof v === 'number') {
+      const vcc = 5.0;
+      const ratio = Math.max(0, Math.min(1, v / vcc));
+      if (ratio > 0.8) voltageColor = '#e74c3c';      // red: near VCC
+      else if (ratio > 0.4) voltageColor = '#f39c12';  // orange: mid-high
+      else if (ratio > 0.15) voltageColor = '#2ecc71'; // green: mid
+      else voltageColor = '#3498db';                    // blue: near GND
+    }
+
+    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#9b59b6' : voltageColor;
     const wireWidth = isSelected ? 3 : isHovered ? 2.5 : 2;
 
     return (
@@ -279,7 +324,6 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
 function VoltageLabels({ wires, parts, nodeVoltages }) {
   if (!nodeVoltages) return null;
-  // Show voltage per net, positioned near first wire midpoint
   const shownNets = new Set();
   return wires.map(wire => {
     if (shownNets.has(wire.netId)) return null;
@@ -293,13 +337,32 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
 
+    // Offset label perpendicular to the wire so it doesn't overlap
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    // Perpendicular offset (to the right of the wire direction)
+    const offsetX = (-dy / len) * 14;
+    const offsetY = (dx / len) * 14;
+
     return (
-      <text key={`v-${wire.netId}`}
-        x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 10}
-        textAnchor="middle" fill="#f1c40f" fontSize={10}
-        fontFamily="monospace" fontWeight="bold">
-        {fmtV(v)}
-      </text>
+      <g key={`v-${wire.netId}`}>
+        <rect
+          x={mx + offsetX - 18} y={my + offsetY - 8}
+          width={36} height={14} rx={3}
+          fill="#0a0a1a" fillOpacity={0.8}
+          style={{ pointerEvents: 'none' }}
+        />
+        <text
+          x={mx + offsetX} y={my + offsetY + 3}
+          textAnchor="middle" fill="#f1c40f" fontSize={10}
+          fontFamily="monospace" fontWeight="bold"
+          style={{ pointerEvents: 'none' }}>
+          {fmtV(v)}
+        </text>
+      </g>
     );
   });
 }
@@ -460,6 +523,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
+  onDuplicatePart, onRotatePart, onDropPart, warnings,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -468,6 +532,8 @@ export function BoardCanvas({
   const [hoveredNet, setHoveredNet] = useState(null);
   const [hoveredPart, setHoveredPart] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const [snapTarget, setSnapTarget] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
@@ -486,16 +552,38 @@ export function BoardCanvas({
     };
   }, [zoom, pan]);
 
-  const handleTerminalClick = useCallback((partId, terminal) => {
+  // Terminal interaction: drag to wire (TinkerCAD-style).
+  // Mousedown/touchstart on a terminal starts wiring.
+  // Mouseup/touchend on another terminal completes it.
+  // Also supports click-click for accessibility.
+  const handleTerminalDown = useCallback((partId, terminal, e) => {
+    if (e) e.stopPropagation();
+
     // If placing a multimeter probe, route to probe handler
     if (placingProbe && onTerminalClickForProbe) {
       onTerminalClickForProbe(partId, terminal);
       return;
     }
 
-    if (!wiringFrom) {
-      setWiringFrom({ part: partId, terminal });
-    } else {
+    setWiringFrom({ part: partId, terminal });
+  }, [placingProbe, onTerminalClickForProbe]);
+
+  const handleTerminalUp = useCallback((partId, terminal) => {
+    if (!wiringFrom) return;
+    if (wiringFrom.part !== partId || wiringFrom.terminal !== terminal) {
+      onAddWire(wiringFrom.part, wiringFrom.terminal, partId, terminal);
+    }
+    setWiringFrom(null);
+    setMousePos(null);
+  }, [wiringFrom, onAddWire]);
+
+  const handleTerminalClick = useCallback((partId, terminal) => {
+    // Click-click fallback: if already wiring, complete; if not, start
+    if (placingProbe && onTerminalClickForProbe) {
+      onTerminalClickForProbe(partId, terminal);
+      return;
+    }
+    if (wiringFrom) {
       if (wiringFrom.part !== partId || wiringFrom.terminal !== terminal) {
         onAddWire(wiringFrom.part, wiringFrom.terminal, partId, terminal);
       }
@@ -532,8 +620,14 @@ export function BoardCanvas({
     }
     if (dragging) {
       onMovePart(dragging, x, y);
+      // Check for snap-to-connector
+      const draggedPart = parts.find(p => p.id === dragging);
+      if (draggedPart) {
+        const snap = findSnapTarget({ ...draggedPart, x, y }, parts, wires);
+        setSnapTarget(snap.autoWire ? snap : null);
+      }
     }
-  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom]);
+  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom, parts, wires]);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
@@ -567,10 +661,20 @@ export function BoardCanvas({
   }, []);
 
   const handleDragEnd = useCallback(() => {
+    if (dragging && snapTarget) {
+      // Snap to connector position
+      onMovePart(dragging, snapTarget.snapX, snapTarget.snapY);
+      // Auto-wire the snapped terminals
+      if (snapTarget.autoWire) {
+        const { fromPart, fromTerm, toPart, toTerm } = snapTarget.autoWire;
+        onAddWire(fromPart, fromTerm, toPart, toTerm);
+      }
+    }
     setDragging(null);
+    setSnapTarget(null);
     setPanning(false);
     panStart.current = null;
-  }, []);
+  }, [dragging, snapTarget, onMovePart, onAddWire]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -592,7 +696,18 @@ export function BoardCanvas({
       setZoom(1);
       setPan({ x: 0, y: 0 });
     }
-  }, [selectedPart, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire]);
+    // Arrow keys nudge selected part by grid size
+    if (selectedPart && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      const step = e.shiftKey ? 5 : 20; // shift = fine nudge
+      const part = parts.find(p => p.id === selectedPart);
+      if (part) {
+        const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+        const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+        onMovePart(selectedPart, part.x + dx, part.y + dy);
+      }
+    }
+  }, [selectedPart, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart]);
 
   return (
     <div
@@ -600,15 +715,46 @@ export function BoardCanvas({
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      {/* Status bar */}
+      {/* Status/action bar */}
       <div style={{
-        color: wiringFrom ? '#f39c12' : '#7f8c8d',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
         fontFamily: 'monospace', fontSize: '11px',
-        marginBottom: '8px', height: '16px',
+        marginBottom: '6px', minHeight: '24px',
       }}>
-        {wiringFrom
-          ? `Wiring from ${wiringFrom.part}:${wiringFrom.terminal} — click another terminal or ESC`
-          : statusText || 'Click terminals to wire. Del to delete. R to rotate selected part.'}
+        <span style={{ color: wiringFrom ? '#f39c12' : '#7f8c8d', flex: 1 }}>
+          {wiringFrom
+            ? `Wiring from ${wiringFrom.part}:${wiringFrom.terminal} — drag to target`
+            : statusText || 'Drag terminals to wire. Drag parts to move.'}
+        </span>
+        {/* Visible action buttons for touch/tablet */}
+        {(selectedPart || selectedWire) && (
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {selectedPart && onRotatePart && (
+              <button onClick={() => onRotatePart(selectedPart)} style={{
+                padding: '3px 8px', background: '#2c3e50', border: '1px solid #3498db',
+                borderRadius: '3px', color: '#3498db', fontFamily: 'monospace', fontSize: '10px',
+                cursor: 'pointer',
+              }}>Rotate</button>
+            )}
+            {selectedPart && onDuplicatePart && (
+              <button onClick={() => onDuplicatePart(selectedPart)} style={{
+                padding: '3px 8px', background: '#2c3e50', border: '1px solid #2ecc71',
+                borderRadius: '3px', color: '#2ecc71', fontFamily: 'monospace', fontSize: '10px',
+                cursor: 'pointer',
+              }}>Copy</button>
+            )}
+            <button onClick={() => {
+              if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
+              else if (selectedPart) { onRemovePart(selectedPart); onSelectPart(null); }
+            }} style={{
+              padding: '3px 8px', background: '#2c3e50', border: '1px solid #e74c3c',
+              borderRadius: '3px', color: '#e74c3c', fontFamily: 'monospace', fontSize: '10px',
+              cursor: 'pointer',
+            }}>Delete</button>
+          </div>
+        )}
       </div>
 
       {/* Zoom indicator */}
@@ -621,12 +767,14 @@ export function BoardCanvas({
         </div>
       )}
 
-      {/* Canvas */}
+      {/* Canvas — fills container, minimum 700×500 */}
       <div
         style={{
           position: 'relative',
-          width: CANVAS_W,
-          height: CANVAS_H,
+          width: '100%',
+          minWidth: CANVAS_W,
+          height: '100%',
+          minHeight: CANVAS_H,
           background: '#16213e',
           borderRadius: '8px',
           border: '1px solid #2c3e50',
@@ -636,20 +784,78 @@ export function BoardCanvas({
         onMouseUp={handleDragEnd}
         onMouseDown={handleMouseDown}
         onWheel={handleWheel}
+        onTouchMove={(e) => {
+          if (e.touches.length === 1 && (dragging || wiringFrom)) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            // Reuse the mouse handler with a synthetic event shape
+            handleSvgMouseMove({
+              clientX: touch.clientX,
+              clientY: touch.clientY,
+              currentTarget: e.currentTarget,
+            });
+          }
+        }}
+        onTouchEnd={(e) => {
+          if (dragging) handleDragEnd();
+          if (wiringFrom && e.changedTouches.length === 1) {
+            // If touch ended not on a terminal, cancel wiring
+            setWiringFrom(null);
+            setMousePos(null);
+          }
+        }}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const data = e.dataTransfer.getData('application/circuit-part');
+          if (data && onDropPart) {
+            const { kind, params } = JSON.parse(data);
+            const { x, y } = screenToCanvas(e.clientX, e.clientY, e.currentTarget);
+            onDropPart(kind, params, x, y);
+          }
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          // Right-click context menu
+          if (selectedPart || selectedWire) {
+            setContextMenu({
+              x: e.clientX,
+              y: e.clientY,
+              type: selectedPart ? 'part' : 'wire',
+            });
+          }
+        }}
       >
         <svg
-          width={CANVAS_W}
-          height={CANVAS_H}
+          width="100%"
+          height="100%"
           viewBox={`${pan.x} ${pan.y} ${CANVAS_W / zoom} ${CANVAS_H / zoom}`}
+          preserveAspectRatio="xMidYMid meet"
           style={{ position: 'absolute', top: 0, left: 0 }}
           onClick={handleSvgClick}
         >
           <defs>
             <pattern id="grid" width={20} height={20} patternUnits="userSpaceOnUse">
-              <circle cx={10} cy={10} r={0.5} fill="#2c3e50" />
+              <circle cx={10} cy={10} r={1} fill="#243447" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
+
+          {/* Voltage color legend (only when simulating and there are voltages) */}
+          {nodeVoltages && Object.keys(nodeVoltages).length > 0 && (
+            <g transform={`translate(${CANVAS_W - 100}, 10)`}>
+              <rect x={-4} y={-2} width={95} height={58} rx={4}
+                fill="#0a0a1a" fillOpacity={0.7} />
+              <circle cx={6} cy={8} r={4} fill="#e74c3c" />
+              <text x={16} y={12} fill="#7f8c8d" fontSize={8} fontFamily="monospace">~5V (VCC)</text>
+              <circle cx={6} cy={22} r={4} fill="#f39c12" />
+              <text x={16} y={26} fill="#7f8c8d" fontSize={8} fontFamily="monospace">2-4V</text>
+              <circle cx={6} cy={36} r={4} fill="#2ecc71" />
+              <text x={16} y={40} fill="#7f8c8d" fontSize={8} fontFamily="monospace">0.5-2V</text>
+              <circle cx={6} cy={50} r={4} fill="#3498db" />
+              <text x={16} y={54} fill="#7f8c8d" fontSize={8} fontFamily="monospace">~0V (GND)</text>
+            </g>
+          )}
 
           {/* Empty canvas hint */}
           {parts.length === 0 && (
@@ -679,8 +885,44 @@ export function BoardCanvas({
             nodeVoltages={nodeVoltages} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
+
+          {/* Snap-to-connector indicator */}
+          {snapTarget && snapTarget.autoWire && (() => {
+            const targetPart = parts.find(p => p.id === snapTarget.autoWire.toPart);
+            if (!targetPart) return null;
+            const pos = terminalPos(targetPart, snapTarget.autoWire.toTerm);
+            return (
+              <g>
+                <circle cx={pos.x} cy={pos.y} r={10} fill="none"
+                  stroke="#f1c40f" strokeWidth={2} strokeDasharray="3,2" />
+                <circle cx={pos.x} cy={pos.y} r={4} fill="#f1c40f" opacity={0.6} />
+              </g>
+            );
+          })()}
           <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
-          <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} placingProbe={placingProbe} />
+
+          {/* Inline warning indicators on parts */}
+          {warnings && warnings.map((w, i) => {
+            if (!w.partId) return null;
+            const part = parts.find(p => p.id === w.partId);
+            if (!part) return null;
+            const color = w.severity === 'danger' ? '#e74c3c' : '#f39c12';
+            return (
+              <g key={`warn-${i}`}>
+                <circle cx={part.x + 20} cy={part.y - 25} r={8}
+                  fill={color} fillOpacity={0.9} />
+                <text x={part.x + 20} y={part.y - 21} textAnchor="middle"
+                  fill="#fff" fontSize={12} fontWeight="bold"
+                  fontFamily="monospace" style={{ pointerEvents: 'none' }}>!</text>
+                <title>{w.message}</title>
+              </g>
+            );
+          })}
+          <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom}
+                onTerminalClick={handleTerminalClick}
+                onTerminalDown={handleTerminalDown}
+                onTerminalUp={handleTerminalUp}
+                placingProbe={placingProbe} />
         </svg>
 
         {/* Wokwi element layer — transformed to match SVG viewBox */}
@@ -719,6 +961,27 @@ export function BoardCanvas({
             y={hoverPos.y}
           />
         )}
+
+        {/* Context menu (right-click / long-press) */}
+        <ContextMenu
+          x={contextMenu?.x}
+          y={contextMenu?.y}
+          type={contextMenu?.type}
+          onClose={() => setContextMenu(null)}
+          onDelete={() => {
+            if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
+            else if (selectedPart) { onRemovePart(selectedPart); onSelectPart(null); }
+            setContextMenu(null);
+          }}
+          onDuplicate={() => {
+            if (selectedPart && onDuplicatePart) onDuplicatePart(selectedPart);
+            setContextMenu(null);
+          }}
+          onRotate={() => {
+            if (selectedPart && onRotatePart) onRotatePart(selectedPart);
+            setContextMenu(null);
+          }}
+        />
       </div>
     </div>
   );
