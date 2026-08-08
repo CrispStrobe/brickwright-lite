@@ -23,6 +23,7 @@ const L10N = {
         svgFile: 'SVG file', sprite: 'Sprite', mode: 'Mode', chooseSprite: '— choose sprite —',
         notInCode: 'not in code', replaceCostume: 'replace costume', addFrame: 'add as frame',
         driverShim: 'driver: shim', driverRemote: 'driver: remote (bridge)', driverOnbrick: 'driver: on-brick',
+        driverSim: 'driver: simulated board',
         stConverting: to => `Converting to ${to}…`, stCantShow: (to, e) => `Can't show as ${to}: ${e}`,
         stRegen: 'Regenerating…', stCompiling: 'Compiling…', stReading: 'Reading current project…',
         stLoadingPy: 'Loading Python (Skulpt)…', stError: e => `Error: ${e}`,
@@ -47,6 +48,7 @@ const L10N = {
         svgFile: 'SVG-Datei', sprite: 'Sprite', mode: 'Modus', chooseSprite: '— Sprite wählen —',
         notInCode: 'nicht im Code', replaceCostume: 'Kostüm ersetzen', addFrame: 'als Bild hinzufügen',
         driverShim: 'Treiber: Shim', driverRemote: 'Treiber: Remote (Bridge)', driverOnbrick: 'Treiber: auf dem Stein',
+        driverSim: 'Treiber: simuliertes Board',
         stConverting: to => `Wird zu ${to} umgewandelt…`, stCantShow: (to, e) => `Kann nicht als ${to} angezeigt werden: ${e}`,
         stRegen: 'Wird neu erzeugt…', stCompiling: 'Wird kompiliert…', stReading: 'Aktuelles Projekt wird gelesen…',
         stLoadingPy: 'Python wird geladen (Skulpt)…', stError: e => `Fehler: ${e}`,
@@ -428,11 +430,58 @@ class PseudocodeImporter extends React.Component {
         });
     }
 
-    runJsMain (code, buf) {
+    async runJsMain (code, buf) {
         const log = (...a) => buf.push(a.map(x => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ') + '\n');
+        // With the simulated-board driver the emitted program is the MCU side of the board
+        // contract, so it needs an actual board to drive — otherwise `_board()` stays null and
+        // the program runs neutrally, which looks like the feature is broken.
+        const board = this.state.driverMode === 'simulator' ? await this.makeSimBoard(buf) : undefined;
         // eslint-disable-next-line no-new-func
-        const fn = new Function('console', 'prompt', code);
-        fn({log, error: log, warn: log, info: log}, (q) => window.prompt(q) || '');
+        const fn = new Function('console', 'prompt', 'bwBoard', code);
+        fn({log, error: log, warn: log, info: log}, (q) => window.prompt(q) || '', board);
+        if (board) this.reportSimBoard(board, buf);
+    }
+
+    // Build a board from the project's own PIN declarations (boundary C), so pressing Run on
+    // an STC12 project simulates the circuit those declarations imply rather than nothing.
+    async makeSimBoard (buf) {
+        try {
+            // Lazily imported, like skulpt and the compiler: the engine is only needed when
+            // someone actually runs with the simulated-board driver, and the bundle is
+            // already large enough that everything optional should stay out of the entry.
+            const {BoardImpl, inferNetlist} =
+                await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
+            const stc = (this.props.vm && JSON.parse(this.props.vm.toJSON()).stc) || null;
+            if (!stc || !(stc.pins || []).length) {
+                buf.push('simulated board: the project declares no PINs, so there is nothing to wire.\n');
+                return undefined;
+            }
+            const {parts, nets, notes} = inferNetlist(stc);
+            const board = new BoardImpl();
+            board.setNetlist(parts, nets);
+            board.setPower(true);
+            for (const n of notes || []) buf.push(`board: ${n}\n`);
+            this._simParts = parts;
+            return board;
+        } catch (e) {
+            buf.push(`simulated board unavailable: ${e.message}\n`);
+            return undefined;
+        }
+    }
+
+    // Report what the circuit actually did. Without this the run is silent and the user has
+    // no way to tell a working simulation from a no-op.
+    reportSimBoard (board, buf) {
+        try {
+            for (const part of this._simParts || []) {
+                if (part.kind === 'led') {
+                    buf.push(`LED ${part.id}: ${(board.ledBrightness(part.id) * 100).toFixed(1)}% brightness\n`);
+                } else if (part.kind === 'buzzer') {
+                    const t = board.buzzerTone(part.id);
+                    buf.push(`buzzer ${part.id}: ${t.on ? `${t.hz.toFixed(0)} Hz` : 'silent'}\n`);
+                }
+            }
+        } catch (e) { buf.push(`board readout failed: ${e.message}\n`); }
     }
 
     async runPyMain (code, buf) {
@@ -471,7 +520,7 @@ class PseudocodeImporter extends React.Component {
             // is only a safety net for non-obvious runaway loops).
             if (forever.test(code)) throw new Error(this.L.foreverLoop);
             if (usesInput || !canWorker) {
-                if (lang === 'python') { this.setState({status: this.L.stLoadingPy}); await this.runPyMain(code, buf); } else this.runJsMain(code, buf);
+                if (lang === 'python') { this.setState({status: this.L.stLoadingPy}); await this.runPyMain(code, buf); } else await this.runJsMain(code, buf);
                 finish();
             } else {
                 let result;
@@ -848,6 +897,7 @@ class PseudocodeImporter extends React.Component {
                                     <option value="shim">{this.L.driverShim}</option>
                                     <option value="remote">{this.L.driverRemote}</option>
                                     <option value="ondevice">{this.L.driverOnbrick}</option>
+                                    <option value="simulator">{this.L.driverSim}</option>
                                 </select>
                             </label>
                             <label title="await hardware calls (BLE is async) and make functions async">
