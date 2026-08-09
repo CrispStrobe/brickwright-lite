@@ -30,9 +30,10 @@ jobs:
       #   3. blocks.jsx null-guard removed → CAUGHT (run 31313002380)
       #      "blocks.jsx is missing the toolbox null-guard"
       #      Exact replay of the 0ba092b revert that caused the live outage.
-      #   4. Post-deploy check: not falsified (Vercel rate-limited). The check
-      #      correctly reported "Vercel deploy failed" when the deploy was
-      #      rate-limited (run 31312256732), confirming it does not false-pass.
+      #   4. HOC throw (unknown GUI crash) → CAUGHT (run 31331264070)
+      #      "FAIL: GUI did not render" — all 3 static guards passed, only the
+      #      headless browser check caught it. Proved it catches unknown causes,
+      #      not just the three named regressions. Branch: guard4-falsification.
 
       - name: Guard — bundled stc12 has all emitted opcodes
         run: |
@@ -88,42 +89,20 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: editor-build, path: packages/scratch-gui/build }
 
-  verify-deploy:
+  verify-gui:
     needs: build
     runs-on: ubuntu-latest
-    # Informational: a deploy failure (rate limit, infra) should not block the build status.
-    # The build job's guards are the gate; this job is a post-deploy smoke test.
-    continue-on-error: true
-    if: github.event_name == 'push'
+    # Smoke-test the built output in a headless browser. Catches GUI-breaking
+    # regressions that pass all static guards — the unknown-cause class.
     steps:
-      - name: Wait for Vercel deploy
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const sha = context.sha;
-            for (let i = 0; i < 40; i++) {
-              const { data } = await github.rest.repos.getCombinedStatusForRef({
-                owner: context.repo.owner, repo: context.repo.repo, ref: sha
-              });
-              const vercel = data.statuses.find(s => s.context === 'Vercel');
-              if (vercel && vercel.state === 'success') {
-                console.log('Vercel deploy succeeded');
-                return;
-              }
-              if (vercel && vercel.state === 'failure') {
-                core.setFailed('Vercel deploy failed: ' + vercel.description);
-                return;
-              }
-              console.log(`Waiting for Vercel (${vercel?.state || 'not started'})...`);
-              await new Promise(r => setTimeout(r, 15000));
-            }
-            core.setFailed('Timed out waiting for Vercel deploy');
-
+      - uses: actions/download-artifact@v4
+        with: { name: editor-build, path: build }
       - name: Install Playwright
-        run: npx playwright install chromium --with-deps
-
-      - name: Verify GUI renders on deployed site
+        run: npm install playwright && npx playwright install chromium --with-deps
+      - name: Serve build and verify GUI renders
         run: |
+          npx serve build -l 8601 &
+          for i in $(seq 1 30); do curl -s http://localhost:8601/ > /dev/null 2>&1 && break; sleep 1; done
           node -e "
             const { chromium } = require('playwright');
             (async () => {
@@ -132,12 +111,11 @@ jobs:
               const errors = [];
               page.on('pageerror', e => errors.push(e.message));
 
-              console.log('Loading https://brickwright-lite.vercel.app/ ...');
-              await page.goto('https://brickwright-lite.vercel.app/', {
+              console.log('Loading http://localhost:8601/ ...');
+              await page.goto('http://localhost:8601/', {
                 waitUntil: 'networkidle', timeout: 60000
               });
 
-              // Wait for the GUI to render
               try {
                 await page.waitForSelector('[class*=\"menu-bar\"], [class*=\"gui_\"], [role=\"tab\"]', { timeout: 60000 });
               } catch {
@@ -158,5 +136,6 @@ jobs:
               console.log('OK: GUI renders with', tabs.length, 'tabs');
               if (errors.length) console.log('Page errors (non-fatal):', errors);
               await browser.close();
+              process.exit(0);
             })();
           "
