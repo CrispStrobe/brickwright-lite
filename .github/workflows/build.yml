@@ -20,6 +20,19 @@ jobs:
         run: node scripts/apply-vm-overlay.mjs
 
       # --- guards: catch silent reverts before the build runs ---
+      #
+      # Falsified 2026-08-09 on branch guard-falsification (deleted):
+      #   1. stc12 truncated to 4 opcodes → CAUGHT (run 31312830786)
+      #      "Bundled stc12 has only 4 opcodes (need ≥10)"
+      #   2. PIN=2f896b1a with matching binary → CAUGHT (run 31312945118)
+      #      "WASM PIN is not a descendant of the crash-fix floor (85ed23d)"
+      #      Proved the floor check, not a single-hash blacklist.
+      #   3. blocks.jsx null-guard removed → CAUGHT (run 31313002380)
+      #      "blocks.jsx is missing the toolbox null-guard"
+      #      Exact replay of the 0ba092b revert that caused the live outage.
+      #   4. Post-deploy check: not falsified (Vercel rate-limited). The check
+      #      correctly reported "Vercel deploy failed" when the deploy was
+      #      rate-limited (run 31312256732), confirming it does not false-pass.
 
       - name: Guard — bundled stc12 has all emitted opcodes
         run: |
