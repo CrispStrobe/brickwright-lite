@@ -41,17 +41,7 @@ same property via `vm.setStc()`. If stc moves, `projectStc()` and `projectForEmi
 **Future:** DEVICE/CLOCK/PIN as actual blocks would round-trip natively — eliminates the
 dual source of truth. Belongs to bw-blocks and sb3-creator.
 
-## STC89 core instruction rate: 1T, not 12T (emu8051-stc)
+## ~~STC89 12T timing~~ — RESOLVED (ba6e001)
 
-**Owner:** emu8051-stc
-
-**Correction:** the original "12x fast" claim was overstated. Timers ARE part-correct
-(AUXR.T0x12 prescaling works), and `generateC` hangs every duration off Timer 0 at
-FOSC/12, so `wait` durations are correct for both 1T and 12T parts.
-
-What is 1T: the **core instruction rate** (a NOP costs 1 clock for all parts, should be
-12 for STC89). This affects anything measuring *work*, not *time*: profiling, `tNs` for
-compute-heavy stretches, `bw_block_ms` spin loops. On a real STC89 those read ~12x
-optimistic. Whether this is deliberately out of scope is emu8051-stc's to say.
-
-bw-bundle action: none.
+Fixed upstream in `00e9d5b`, rebuilt in `ba6e001`. STC89 now runs 12.0 clocks per NOP.
+Re-pinned in lite.

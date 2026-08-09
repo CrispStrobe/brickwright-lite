@@ -22,9 +22,10 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
 // Pinned to the commit whose BUILD-INFO.md records these hashes. Bump both together.
-const PIN = 'ca1ef09';
+// Current with emu8051-stc HEAD ba6e001 as of 2026-08-09.
+const PIN = 'ba6e001';
 const EXPECT = {
-    'emu8051.wasm': '194f8bf24706e26bc04f146be61369b05486a7d3df19615123e6185555923dc4',
+    'emu8051.wasm': '034dde22ea66fb8a27567072215cf6dc5260d7a4c5560f22ec2ebb95b96f2123',
     'emu8051.js': '667434cbc96d7c6622c27b0cb40dddd66ea0b977936b925c82ccb3e356bc2776'
 };
 
