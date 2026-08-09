@@ -18,36 +18,24 @@ DEBUG-CONTROL-MODEL.md §8's acceptance ladder (rungs 1–8).
 matches. The active-part highlight is dead. The right fix is to derive active parts from
 pin state (`board.getPinStates()`), not from yield points. Not blocking bw-bundle.
 
-## Slice 3: project.stc does not survive save/reload
+## ~~Slice 3: project.stc does not survive save/reload~~ — IMPLEMENTED
 
-**Owner:** coordinator (sb3-creator serializer or lite save path)
+Patched in apply-vm-overlay.mjs. sb3 serializer writes `stc: { version: 1, ... }` when
+`runtime.stc` is set; deserializer restores it on load. `vm.setStc()` added as the single
+entry point. The pseudocode re-parse fallback is kept (belt and braces).
 
-**File:** `packages/scratch-gui/node_modules/scratch-vm/src/serialization/sb3.js`
-(the sb3 serializer in scratch-vm)
+**Not verified:** no round-trip test exists yet. The serializer and deserializer are
+patched but no test builds a project with pins, serializes, deserializes into a fresh
+VM, and asserts the pin table is identical. A CI-level test requires a VM harness that
+this workspace does not have.
 
-**Symbol:** `sb3.serialize()` at ~line 400 — emits `targets`, `monitors`, `extensions`,
-`meta` and discards every other top-level key from the project JSON.
+**Coordinator note:** debug-runner.js's `projectStc()` and `projectForEmit()` read from
+`vm.runtime.stc`. The patches write to the same property. If the coordinator moves where
+stc lives, those two functions must move with it.
 
-**What breaks:** sb3-creator writes a `stc` key into the project JSON containing
-`{ device, clock, pins: [...] }`. The sb3 serializer drops it on save. When the project
-is reopened, `vm.runtime.stc` is null, the Circuit tab opens empty, the debugger has no
-pin table, and every hardware block that reads `runtime.stc.pins` gets nothing.
-
-**Current workaround:** `pseudocode-importer.jsx:672-680` re-parses the pseudocode source
-on load to reconstruct `runtime.stc`. This only works if the Code tab still has the source
-text — a project saved without the pseudocode tab open loses the declarations permanently.
-
-**What is needed:** either:
-1. sb3-creator's serializer preserves `stc` as a top-level key (the cleanest — `stc` is
-   project metadata, not a target), or
-2. lite's save path writes `stc` into a target's `comments` or `variables` as a
-   round-trippable encoding, or
-3. a `vm.setStc()` API that the importer calls, and the VM's own serializer includes it.
-
-**Impact:** hardware projects lose all declarations on save/reload. The debugger, the
-Circuit tab, and the pin blocks all read from `runtime.stc` and get null.
-
-**Workaround exists:** yes (re-parse pseudocode on load), but fragile.
+**Future:** DEVICE/CLOCK/PIN as actual blocks in the project would round-trip natively
+(they are just blocks). That eliminates the dual source of truth. Belongs to bw-blocks
+and sb3-creator, not to this slice.
 
 ## STC89 12T timing: shipped WASM runs at 1T (emu8051-stc)
 

@@ -64,6 +64,95 @@ if (cast.includes('// Brickwright: accept full-width')) {
     process.exit(1);
 }
 
+// Slice 3: stc persistence — round-trip the top-level `stc` key through save/load.
+//
+// The sb3 serializer emits targets/monitors/extensions/meta and drops everything else.
+// sb3-creator writes `stc: { device, clock, pins }` into the project, but it vanishes on
+// save from the editor. This patches both directions:
+//   serialize:   writes `stc` when runtime.stc is set
+//   deserialize: restores runtime.stc from the saved stc key
+//
+// Interop caveat (written as a comment in the patched code): a .sb3 with a top-level `stc`
+// key stays loadable everywhere (tools ignore unknown keys), but a round trip through
+// vanilla Scratch or TurboWarp strips it. Acceptable: a project whose hardware blocks are
+// an unknown extension there cannot run anyway.
+
+const sb3Path = path.join(DEST, 'src', 'serialization', 'sb3.js');
+let sb3 = readFileSync(sb3Path, 'utf8');
+
+// --- serialize: add stc after meta ---
+const serAnchor = '    obj.meta = meta;\n    return obj;';
+const serPatched = `    obj.meta = meta;
+    // Brickwright: persist hardware declarations so they survive save/reload.
+    // Versioned so a future pin-table shape change is detectable.
+    // Interop: unknown top-level keys are ignored by all Scratch tools, so a .sb3
+    // with \`stc\` opens everywhere — but a round trip through vanilla Scratch or
+    // TurboWarp strips it, since those rewrite from what they understood. That is
+    // acceptable: the hardware blocks are unknown extensions there.
+    if (runtime.stc) {
+        obj.stc = Object.assign({version: 1}, runtime.stc);
+    }
+    return obj;`;
+if (sb3.includes('// Brickwright: persist hardware declarations')) {
+    console.log('  sb3.js serialize stc patch already applied');
+} else if (sb3.includes(serAnchor)) {
+    sb3 = sb3.replace(serAnchor, serPatched);
+    console.log('  patched sb3.js (serialize stc)');
+} else {
+    console.error('  ! sb3.js serialize anchor not found — base VM version changed?');
+    process.exit(1);
+}
+
+// --- deserialize: restore stc from project JSON ---
+const desAnchor = `        .then(targets => ({
+            targets,
+            extensions
+        }));`;
+const desPatched = `        .then(targets => {
+            // Brickwright: restore hardware declarations from the saved project.
+            if (json.stc && json.stc.version === 1) {
+                runtime.stc = json.stc;
+            }
+            return {targets, extensions};
+        });`;
+if (sb3.includes('// Brickwright: restore hardware declarations')) {
+    console.log('  sb3.js deserialize stc patch already applied');
+} else if (sb3.includes(desAnchor)) {
+    sb3 = sb3.replace(desAnchor, desPatched);
+    console.log('  patched sb3.js (deserialize stc)');
+} else {
+    console.error('  ! sb3.js deserialize anchor not found — base VM version changed?');
+    process.exit(1);
+}
+
+writeFileSync(sb3Path, sb3);
+
+// --- vm.setStc(): one entry point for setting hardware declarations ---
+const vmPath2 = path.join(DEST, 'src', 'virtual-machine.js');
+let vm2 = readFileSync(vmPath2, 'utf8');
+const vmSetStcAnchor = '    installTargets (targets, extensions, wholeProject) {';
+const vmSetStcPatch = `    /**
+     * Set hardware declarations (device, clock, pin table). The single entry point
+     * for the importer, the deserializer, and the Circuit tab's onDeclarationChange.
+     * @param {object|null} stc - { version: 1, device, clock, pins: [...] } or null
+     */
+    setStc (stc) {
+        this.runtime.stc = stc;
+        this.emit('stcChanged', stc);
+    }
+
+    installTargets (targets, extensions, wholeProject) {`;
+if (vm2.includes('setStc (stc)')) {
+    console.log('  virtual-machine.js setStc already applied');
+} else if (vm2.includes(vmSetStcAnchor)) {
+    vm2 = vm2.replace(vmSetStcAnchor, vmSetStcPatch);
+    writeFileSync(vmPath2, vm2);
+    console.log('  patched virtual-machine.js (setStc)');
+} else {
+    console.error('  ! virtual-machine.js setStc anchor not found');
+    process.exit(1);
+}
+
 // Trim locale data: editor-msgs.js is 3.9 MiB with 80 locales; brickwright-lite ships only
 // en + de. Extract those two at build-prep time so webpack aliases to a 81 KiB file instead.
 // This runs here (post-install) because node_modules/scratch-l10n is needed.
