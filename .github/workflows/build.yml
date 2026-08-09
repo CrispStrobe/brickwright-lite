@@ -89,6 +89,31 @@ jobs:
           fi
           echo "blocks.jsx: toolbox null-guard present (good)"
 
+      - name: Guard — vendored sources are not stale
+        run: |
+          # Compare vendored overlay against upstream HEAD for key files.
+          # Warns (does not fail) — silent staleness is how finished work
+          # becomes invisible to users.
+          stale=0
+          for pair in \
+            "bw-circuit-ui:CrispStrobe/bw-circuit-ui:src/index.js:overlay/scratch-gui/src/lib/bw-circuit-ui/index.js" \
+            "bw-board:CrispStrobe/bw-board:src/index.js:overlay/scratch-gui/src/lib/bw-board/index.js"; do
+            IFS=: read -r name repo remote local <<< "$pair"
+            if [ ! -f "$local" ]; then continue; fi
+            upstream=$(curl -sf "https://raw.githubusercontent.com/$repo/master/$remote" 2>/dev/null || \
+                       curl -sf "https://raw.githubusercontent.com/$repo/main/$remote" 2>/dev/null || echo "")
+            if [ -z "$upstream" ]; then echo "$name: upstream not accessible (private repo?)"; continue; fi
+            local_hash=$(sha256sum "$local" | cut -d' ' -f1)
+            remote_hash=$(echo "$upstream" | sha256sum | cut -d' ' -f1)
+            if [ "$local_hash" != "$remote_hash" ]; then
+              echo "::warning::$name overlay differs from upstream HEAD — re-vendor needed"
+              stale=$((stale+1))
+            else
+              echo "$name: up to date"
+            fi
+          done
+          echo "vendor staleness: $stale stale"
+
       # --- tests (sub-second, fail fast) ---
 
       - name: Run unit tests
