@@ -64,6 +64,33 @@ if (cast.includes('// Brickwright: accept full-width')) {
     process.exit(1);
 }
 
+// Offline extension loading: when a saved project embeds extensionURLs (from sb3-creator),
+// installTargets passes the URL to loadExtensionURL, bypassing the builtinExtensions check
+// (which is keyed by ID, not URL). Fix: try the extension ID first (hits the builtin for
+// offline use), fall back to the URL only if the builtin isn't found.
+const vmPath = path.join(DEST, 'src', 'virtual-machine.js');
+let vm = readFileSync(vmPath, 'utf8');
+const vmAnchor = `const extensionURL = extensions.extensionURLs.get(extensionID) || extensionID;
+                extensionPromises.push(this.extensionManager.loadExtensionURL(extensionURL));`;
+const vmPatched = `extensionPromises.push(
+                    this.extensionManager.loadExtensionURL(extensionID)
+                        .catch(() => {
+                            const extensionURL = extensions.extensionURLs.get(extensionID);
+                            if (extensionURL) return this.extensionManager.loadExtensionURL(extensionURL);
+                            throw new Error('Extension ' + extensionID + ' not found');
+                        })
+                );`;
+if (vm.includes('// Brickwright: try builtin ID first')) {
+    console.log('  virtual-machine.js offline-extensions patch already applied');
+} else if (vm.includes(vmAnchor)) {
+    vm = vm.replace(vmAnchor, `// Brickwright: try builtin ID first (offline), fall back to URL (online).\n                ${vmPatched}`);
+    writeFileSync(vmPath, vm);
+    console.log('  patched virtual-machine.js (offline extension loading)');
+} else {
+    console.error('  ! virtual-machine.js installTargets anchor not found — base VM version changed?');
+    process.exit(1);
+}
+
 // Trim locale data: editor-msgs.js is 3.9 MiB with 80 locales; brickwright-lite ships only
 // en + de. Extract those two at build-prep time so webpack aliases to a 81 KiB file instead.
 // This runs here (post-install) because node_modules/scratch-l10n is needed.
