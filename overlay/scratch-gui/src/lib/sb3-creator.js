@@ -8,6 +8,9 @@ import { OP_TO_SCRATCH, OP_TO_ARRAYS, spritePrefix, sanitizeIdent } from './sb3-
 // The host C target's runtime and shim naming (see cHostRuntime.js for why the
 // shim is generated from OP_TO_SCRATCH rather than written out).
 import { cHostRuntime, cShimName, C_HOST_INCLUDES } from './sb3-creator-chostruntime.js';
+// The LED cube's shift directions. Shared with the C reader so the two cannot
+// drift — they already did once, and the round trip lost the block.
+import { CUBE_DIRECTIONS, cubeDirectionIndex } from './cubeDirections.js';
 
 
 // Structured error classes
@@ -217,6 +220,10 @@ class SB3Creator {
         if (mode === 'simulator' && extId === 'circuit') {
             return this.circuitSimulatorDriver(lang);
         }
+        // LED cube: a frame buffer that the board's led_cube can read if attached.
+        if (mode === 'simulator' && extId === 'ledcube') {
+            return this.ledcubeSimulatorDriver(lang);
+        }
         const banner = {
             shim: 'neutral stub — drives nothing; implement to drive real hardware',
             simulator: 'simulated board — no board attached for this runtime, so neutral',
@@ -381,33 +388,38 @@ class SB3Creator {
     circuitSimulatorDriver(lang) {
         // No-board returns NaN (stopgap) — visibly wrong, not a plausible 0.
         // Greying out unavailable blocks per target is the real fix.
+        // Self-contained board lookup: the stc12 driver defines `_board`, but a project can
+        // use circuit blocks WITHOUT any stc12 pin block, and then `_board` would not exist
+        // (a ReferenceError/NameError on the first reporter). Own helper name, no collision
+        // when both drivers are emitted side by side.
         if (lang === 'py') {
             return [
                 '# _circuit driver — board instruments (boundary B). Supply `bw_board` to attach one.',
                 '# No-board reporters return float("nan") — visibly wrong, not a plausible 0.',
+                'def _circuit_board(): return globals().get("bw_board")',
                 'class _CircuitSimulated:',
                 '    def nodeVoltage(self, net):',
-                '        b = _board()',
+                '        b = _circuit_board()',
                 '        return b.nodeVoltage(net) if b else float("nan")',
                 '    def branchCurrent(self, part):',
-                '        b = _board()',
+                '        b = _circuit_board()',
                 '        return b.branchCurrent(part, "a") if b else float("nan")',
                 '    def resistance(self, a, b_net):',
-                '        b = _board()',
+                '        b = _circuit_board()',
                 '        return b.resistance(a, b_net) if b else float("nan")',
                 '    def ledBrightness(self, part):',
-                '        b = _board()',
+                '        b = _circuit_board()',
                 '        return b.ledBrightness(part) if b else float("nan")',
                 '    def buzzerTone(self, part):',
-                '        b = _board()',
+                '        b = _circuit_board()',
                 '        if not b: return float("nan")',
                 '        r = b.buzzerTone(part)',
                 '        return r.get("hz", 0) if r.get("on") else 0',
                 '    def setControl(self, control, value):',
-                '        b = _board()',
+                '        b = _circuit_board()',
                 '        if b: b.setControl(control, float(value))',
                 '    def setPower(self, state):',
-                '        b = _board()',
+                '        b = _circuit_board()',
                 '        if b: b.setPower(state == "on")',
                 '_circuit = _CircuitSimulated()'
             ];
@@ -416,16 +428,78 @@ class SB3Creator {
             '// _circuit driver — board instruments (boundary B). Supply `bwBoard` to attach one.',
             '// No-board reporters return NaN — visibly wrong, not a plausible 0.',
             '// Stopgap: greying out unavailable blocks per target is the real fix.',
+            'const _circuit_board = () => (typeof bwBoard !== "undefined" ? bwBoard : null);',
             'const _circuit = {',
-            '    nodeVoltage: (net) => { const b = _board(); return b ? b.nodeVoltage(net) : NaN; },',
-            '    branchCurrent: (part) => { const b = _board(); return b ? b.branchCurrent(part, "a") : NaN; },',
-            '    resistance: (a, bNet) => { const b = _board(); return b ? b.resistance(a, bNet) : NaN; },',
-            '    ledBrightness: (part) => { const b = _board(); return b ? b.ledBrightness(part) : NaN; },',
-            '    buzzerTone: (part) => { const b = _board(); if (!b) return NaN;',
+            '    nodeVoltage: (net) => { const b = _circuit_board(); return b ? b.nodeVoltage(net) : NaN; },',
+            '    branchCurrent: (part) => { const b = _circuit_board(); return b ? b.branchCurrent(part, "a") : NaN; },',
+            '    resistance: (a, bNet) => { const b = _circuit_board(); return b ? b.resistance(a, bNet) : NaN; },',
+            '    ledBrightness: (part) => { const b = _circuit_board(); return b ? b.ledBrightness(part) : NaN; },',
+            '    buzzerTone: (part) => { const b = _circuit_board(); if (!b) return NaN;',
             '        const r = b.buzzerTone(part); return r && r.on ? r.hz : 0; },',
-            '    setControl: (control, v) => { const b = _board(); if (b) b.setControl(control, Number(v)); },',
-            '    setPower: (state) => { const b = _board(); if (b) b.setPower(state === "on"); }',
+            '    setControl: (control, v) => { const b = _circuit_board(); if (b) b.setControl(control, Number(v)); },',
+            '    setPower: (state) => { const b = _circuit_board(); if (b) b.setPower(state === "on"); }',
             '};'
+        ];
+    }
+
+    // LED cube simulator driver — a frame buffer that records voxel state.
+    // The board's led_cube kind reads scan history from it if attached.
+    ledcubeSimulatorDriver(lang) {
+        const cube = (this.project && this.project.stc && this.project.stc.ledcube) || { size: 4, selects: 8 };
+        const S = cube.selects;
+        const N = cube.size;
+        if (lang === 'py') {
+            return [
+                `# _ledcube driver — ${N}x${N}x${N} frame buffer.`,
+                `_ledcube_frame = [0] * ${S}`,
+                'class _LedcubeDriver:',
+                `    def _addr(self, x, y, z, c=1): return (z * 2 + (1 if c > 1 else 0), y * ${N} + x)`,
+                '    def setVoxel(self, x, y, z, c):',
+                '        s, b = self._addr(int(x), int(y), int(z), int(c))',
+                `        if 0 <= s < ${S} and 0 <= b < 8:`,
+                `            _ledcube_frame[s] = (_ledcube_frame[s] | (1 << b)) if c else (_ledcube_frame[s] & ~(1 << b))`,
+                '    def clearVoxel(self, x, y, z): self.setVoxel(int(x), int(y), int(z), 0)',
+                `    def fillLayer(self, layer, c):`,
+                `        s = int(layer) * 2 + (1 if int(c) > 1 else 0)`,
+                `        if 0 <= s < ${S}: _ledcube_frame[s] = 0xFF if c else 0`,
+                `    def fillColumn(self, x, y, c):`,
+                `        for z in range(${N}): self.setVoxel(int(x), int(y), z, int(c))`,
+                `    def fillWall(self, z, c):`,
+                `        for y in range(${N}):`,
+                `            for x in range(${N}): self.setVoxel(x, y, int(z), int(c))`,
+                `    def clear(self):`,
+                `        for i in range(${S}): _ledcube_frame[i] = 0`,
+                `    def invert(self):`,
+                `        for i in range(${S}): _ledcube_frame[i] = _ledcube_frame[i] ^ 0xFF`,
+                '    def shift(self, d): pass  # direction shift — needs voxel map',
+                `    def hold(self, ms): scratch.wait(float(ms) / 1000)`,
+                '    def readVoxel(self, x, y, z):',
+                '        s, b = self._addr(int(x), int(y), int(z))',
+                `        if 0 <= s < ${S} and 0 <= b < 8: return (_ledcube_frame[s] >> b) & 1`,
+                '        return 0',
+                '_ledcube = _LedcubeDriver()',
+            ];
+        }
+        return [
+            `// _ledcube driver — ${N}x${N}x${N} frame buffer.`,
+            `const _ledcube_frame = new Uint8Array(${S});`,
+            'const _ledcube = {',
+            `    _addr: (x, y, z, c = 1) => [z * 2 + (c > 1 ? 1 : 0), y * ${N} + x],`,
+            '    setVoxel: (x, y, z, c) => { const [s, b] = _ledcube._addr(x, y, z, c);',
+            `        if (s >= 0 && s < ${S} && b >= 0 && b < 8)`,
+            '            _ledcube_frame[s] = c ? (_ledcube_frame[s] | (1 << b)) : (_ledcube_frame[s] & ~(1 << b)); },',
+            '    clearVoxel: (x, y, z) => _ledcube.setVoxel(x, y, z, 0),',
+            `    fillLayer: (layer, c) => { const s = layer * 2 + (c > 1 ? 1 : 0);`,
+            `        if (s >= 0 && s < ${S}) _ledcube_frame[s] = c ? 0xFF : 0; },`,
+            `    fillColumn: (x, y, c) => { for (let z = 0; z < ${N}; z++) _ledcube.setVoxel(x, y, z, c); },`,
+            `    fillWall: (z, c) => { for (let y = 0; y < ${N}; y++) for (let x = 0; x < ${N}; x++) _ledcube.setVoxel(x, y, z, c); },`,
+            `    clear: () => { _ledcube_frame.fill(0); },`,
+            `    invert: () => { for (let i = 0; i < ${S}; i++) _ledcube_frame[i] ^= 0xFF; },`,
+            '    shift: (d) => {},  // direction shift — needs voxel map',
+            '    hold: (ms) => { scratch.wait(ms / 1000); },',
+            '    readVoxel: (x, y, z) => { const [s, b] = _ledcube._addr(x, y, z);',
+            `        return (s >= 0 && s < ${S} && b >= 0 && b < 8) ? (_ledcube_frame[s] >> b) & 1 : 0; },`,
+            '};',
         ];
     }
 
@@ -1662,7 +1736,12 @@ class SB3Creator {
                 const { block } = cmd('ledcube_clear');
                 return ret(block);
             }
-            if ((match = line.match(/^shift cube\s+(up|down|left|right|forward|back)$/i))) {
+            // Alternation built from the shared table, so adding a direction
+            // there makes the dialect accept it. Spelling the six words out
+            // here was a third copy — the parser would have gone on rejecting
+            // a direction the emitter and reader both understood.
+            if ((match = line.match(
+                new RegExp(`^shift cube\\s+(${CUBE_DIRECTIONS.join('|')})$`, 'i')))) {
                 const { id, block } = cmd('ledcube_shift');
                 block[id].fields.DIR = [match[1].toLowerCase(), null];
                 return ret(block);
@@ -2637,7 +2716,69 @@ class SB3Creator {
         this.validateReferences();
         this.syncExtensions();
         for (const t of this.project.targets) this.layoutScripts(t);
+        SB3Creator.writeStcComment(this.project);
         return this.project;
+    }
+
+    // ===== STC persistence: survive the sb3 serializer ==============================
+    //
+    // scratch-vm's sb3 serializer emits only targets/monitors/extensions/meta and
+    // drops every other top-level key — so `project.stc` dies on the first save from
+    // a running VM, and a reopened project loses every pin declaration. Stage
+    // comments, however, round-trip through every sb3 serializer and every editor.
+    // So the declarations ride in BOTH places: the top-level `stc` key (canonical,
+    // read by the hosted compiler and everything in this repo) and a Stage comment
+    // carrying the same JSON behind a magic marker (the survivor). readStc() prefers
+    // the key and falls back to the comment; the comment is regenerated on every
+    // parse, so the two cannot drift within this library's own flows.
+
+    /** Marker that identifies the persistence comment. */
+    static STC_MAGIC = '_stcconfig_';
+
+    /** Stable comment id, so rewrites replace rather than accumulate. */
+    static STC_COMMENT_ID = 'stcconfig';
+
+    /**
+     * Write (or rewrite) the Stage comment mirroring project.stc.
+     * No-op when the project has no stc block or no stage.
+     * @param {object} project - sb3-shaped project JSON
+     */
+    static writeStcComment(project) {
+        if (!project || !project.stc || !Array.isArray(project.targets)) return;
+        const stage = project.targets.find(t => t.isStage);
+        if (!stage) return;
+        if (!stage.comments) stage.comments = {};
+        stage.comments[SB3Creator.STC_COMMENT_ID] = {
+            blockId: null,
+            x: 0, y: 0, width: 320, height: 140, minimized: true,
+            text: 'BrickWright hardware declarations — regenerated on save, do not edit.\n'
+                + SB3Creator.STC_MAGIC + JSON.stringify(project.stc)
+        };
+    }
+
+    /**
+     * Recover the stc block from a project: the top-level key when present,
+     * else the Stage persistence comment. Returns null when neither exists or
+     * the comment is corrupt — never a fabricated default.
+     * @param {object} project - sb3-shaped project JSON
+     * @returns {object | null}
+     */
+    static readStc(project) {
+        if (!project) return null;
+        if (project.stc) return project.stc;
+        const stage = Array.isArray(project.targets) ? project.targets.find(t => t.isStage) : null;
+        if (!stage || !stage.comments) return null;
+        for (const c of Object.values(stage.comments)) {
+            const text = c && typeof c.text === 'string' ? c.text : '';
+            const at = text.indexOf(SB3Creator.STC_MAGIC);
+            if (at === -1) continue;
+            try {
+                return JSON.parse(text.slice(at + SB3Creator.STC_MAGIC.length));
+            } catch {
+                return null; // corrupt comment: absent beats invented
+            }
+        }
+        return null;
     }
 
     // Lay a target's top-level scripts out so they don't overlap in the editor. The parse-time
@@ -2926,6 +3067,12 @@ class SB3Creator {
         const out = [];
         const stage = project.targets.find(t => t.isStage);
         // STC12 / 8051 device declarations first — they are read before any script.
+        // A project that lived through scratch-vm's serializer has lost the
+        // top-level key; recover it from the Stage persistence comment.
+        if (!project.stc) {
+            const recovered = SB3Creator.readStc(project);
+            if (recovered) project.stc = recovered;
+        }
         if (project.stc) {
             const cfg = project.stc;
             out.push(`DEVICE ${String(cfg.device || 'stc12c5a60s2').toUpperCase()}`);
@@ -4588,7 +4735,16 @@ class SB3Creator {
             case 'ledcube_shift': {
                 this._cUses.cube = true;
                 const dir = f('DIR');
-                const dirIdx = { up: 0, down: 1, left: 2, right: 3, forward: 4, back: 5 }[dir] || 0;
+                const dirIdx = cubeDirectionIndex(dir);
+                // `|| 0` used to live here, which turned any unrecognised
+                // direction into "up" and emitted it as though it were asked
+                // for. Refuse instead: a cube shifting the wrong way is not a
+                // thing anyone can debug from the firmware.
+                if (dirIdx < 0) {
+                    throw new ParseError(
+                        `shift cube: "${dir}" is not a direction. ` +
+                        `Use one of: ${CUBE_DIRECTIONS.join(', ')}.`);
+                }
                 return line(`bw_cube_shift(${dirIdx});`);
             }
             case 'ledcube_hold': {
@@ -5618,7 +5774,11 @@ class SB3Creator {
                 `    if (sel >= 0 && sel < ${S}) bw_cube_frame[sel] = BW_CUBE_FILL;`,
                 '}',
                 '',
-                '/* Directions: 0=up 1=down 2=left 3=right 4=forward 5=back */',
+                // The legend the firmware carries for whoever reads the C later.
+                // Generated from the same table, so it cannot describe an
+                // encoding the emitter no longer uses — a comment that lies
+                // about a wire format is worse than no comment.
+                `/* Directions: ${CUBE_DIRECTIONS.map((d, i) => `${i}=${d}`).join(' ')} */`,
                 'static void bw_cube_shift(int dir)',
                 '{',
                 `    unsigned char i;`,
@@ -5875,6 +6035,24 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             print: { kind: 'command', method: 'print', args: ['VALUE', 'MODE'] },
             whenpin: { kind: 'hat', method: 'whenpin', args: ['PIN', 'EDGE'] },
             tableindex: { kind: 'reporter', method: 'tableIndex', args: ['TABLE', 'INDEX'], neutral: '0' }
+        }
+    },
+    // LED cube — frame-buffer animation blocks. The simulator driver maps to
+    // the board's cube accessors (bw-board led_cube kind) when a board is
+    // attached; the neutral shim records frames locally.
+    ledcube: {
+        runtime: 'ledcube',
+        ops: {
+            setvoxel: { kind: 'command', method: 'setVoxel', args: ['X', 'Y', 'Z', 'COLOUR'] },
+            clearvoxel: { kind: 'command', method: 'clearVoxel', args: ['X', 'Y', 'Z'] },
+            filllayer: { kind: 'command', method: 'fillLayer', args: ['LAYER', 'COLOUR'] },
+            fillcolumn: { kind: 'command', method: 'fillColumn', args: ['X', 'Y', 'COLOUR'] },
+            fillwall: { kind: 'command', method: 'fillWall', args: ['Z', 'COLOUR'] },
+            clear: { kind: 'command', method: 'clear', args: [] },
+            invert: { kind: 'command', method: 'invert', args: [] },
+            shift: { kind: 'command', method: 'shift', args: ['DIR'] },
+            hold: { kind: 'command', method: 'hold', args: ['DURATION'] },
+            readvoxel: { kind: 'reporter', method: 'readVoxel', args: ['X', 'Y', 'Z'], neutral: '0' }
         }
     },
     // The circuit extension — board instruments and controls (simulation-only reporters).

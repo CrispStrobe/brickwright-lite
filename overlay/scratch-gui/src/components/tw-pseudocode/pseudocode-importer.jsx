@@ -684,7 +684,37 @@ class PseudocodeImporter extends React.Component {
             // the runtime, which survives for as long as the project is loaded.
             // Not a substitute for the VM carrying them: re-opening a saved .sb3
             // still loses the pins until it does.
-            this.props.vm.runtime.stc = creator.project.stc || null;
+            // Set stc on the runtime AND write the persistence comment so it
+            // survives a save/reload cycle. readStc recovers from the comment if
+            // the top-level key was stripped by a foreign round trip.
+            const stc = creator.project.stc || null;
+            if (this.props.vm.setStc) {
+                this.props.vm.setStc(stc);
+            } else {
+                this.props.vm.runtime.stc = stc;
+            }
+            // Write the persistence comment on the stage target
+            if (stc) {
+                const SB3Creator = (await this.lib()).default || (await this.lib());
+                if (SB3Creator.writeStcComment) {
+                    const proj = JSON.parse(this.props.vm.toJSON());
+                    proj.stc = stc;
+                    SB3Creator.writeStcComment(proj);
+                    // Write the comment back onto the actual stage target's comments
+                    const stage = this.props.vm.runtime.getTargetForStage();
+                    if (stage && proj.targets) {
+                        const serialStage = proj.targets.find(t => t.isStage);
+                        if (serialStage && serialStage.comments) {
+                            const comment = serialStage.comments[SB3Creator.STC_COMMENT_ID];
+                            if (comment) {
+                                stage.createComment(SB3Creator.STC_COMMENT_ID,
+                                    null, comment.text, comment.x, comment.y,
+                                    comment.width, comment.height, comment.minimized);
+                            }
+                        }
+                    }
+                }
+            }
             const first = this.props.vm.runtime.targets.find(target => !target.isStage);
             if (first) this.props.vm.setEditingTarget(first.id);
             // regenerate the other tabs from the compiled project
