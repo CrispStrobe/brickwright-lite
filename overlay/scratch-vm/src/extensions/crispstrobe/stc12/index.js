@@ -1,10 +1,10 @@
 const makeExt = require('../adapter');
 
-// The STC12 / 8051 pin blocks — all ten opcodes.
+// The STC12 / 8051 pin blocks — all eleven opcodes.
 //
 // This source is identical to extensions/CrispStrobe/stc12.js (the gallery
-// copy). The three-copies-one-contract test in sb3-creator/test/ctarget.test.mjs
-// asserts they agree on opcodes, argument shapes, and menu identity.
+// copy). The stc12-conformance test in sb3-creator asserts both copies agree
+// on opcodes, argument shapes, and menu identity.
 //
 // A menu with acceptReporters:false compiles to a FIELD, which is what those
 // blocks use; anything else would serialise as an input with a shadow block and
@@ -142,6 +142,17 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
               MODE: { type: Scratch.ArgumentType.STRING, menu: "printModes" },
             },
           },
+          "---",
+          {
+            opcode: "whenpin",
+            blockType: Scratch.BlockType.HAT,
+            text: "when [PIN] [EDGE]",
+            isEdgeActivated: true,
+            arguments: {
+              PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
+              EDGE: { type: Scratch.ArgumentType.STRING, menu: "edges" },
+            },
+          },
         ],
         menus: {
           // acceptReporters:false is what makes these FIELDS rather than inputs,
@@ -154,6 +165,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           ports: { acceptReporters: false, items: "portNames" },
           parts: { acceptReporters: false, items: "partNames" },
           printModes: { acceptReporters: false, items: ["text", "number"] },
+          edges: { acceptReporters: false, items: ["pressed", "released"] },
         },
       };
     }
@@ -244,6 +256,19 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           ? Number(args.VALUE)
           : String(args.VALUE);
       if (typeof console !== "undefined") console.log(val);
+    }
+
+    whenpin(args) {
+      // Edge-triggered: returns true on the rising or falling edge of the
+      // logical level (polarity-aware). isEdgeActivated makes scratch-vm
+      // call this once per tick and fire the hat on a false→true transition.
+      const pin = decls(this.runtime).find((p) => p.name === args.PIN);
+      const b = board(this.runtime);
+      const raw = Object.prototype.hasOwnProperty.call(b, args.PIN)
+        ? b[args.PIN]
+        : 0;
+      const level = pin && pin.activeLow ? !raw : !!raw;
+      return args.EDGE === "pressed" ? level : !level;
     }
   }
 
