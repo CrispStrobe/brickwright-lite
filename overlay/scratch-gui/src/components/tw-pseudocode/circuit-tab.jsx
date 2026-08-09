@@ -83,11 +83,19 @@ class CircuitTab extends React.Component {
                 <Designer
                     stc={stc}
                     onDeclarationChange={(decls) => {
-                        // TODO: write decls back to project.stc so the block palette updates.
-                        // Currently project.stc is read-only from the VM — writing it back
-                        // requires either a vm.setStc() API or round-tripping through loadProject.
-                        // For now, declarations are derived but not persisted.
-                        // The bw-blocks agent may provide the integration path.
+                        // Write declarations back to vm.runtime.stc — the same place
+                        // the pseudocode importer stores them on compile. The block
+                        // palette reads from here for its dropdown menus.
+                        const vm = this.props.vm;
+                        if (vm && vm.runtime) {
+                            const existing = vm.runtime.stc || {};
+                            vm.runtime.stc = {
+                                ...existing,
+                                pins: decls.pins || existing.pins || [],
+                                ports: decls.ports || existing.ports || [],
+                                parts: decls.parts || existing.parts || [],
+                            };
+                        }
                     }}
                 />
             </div>
