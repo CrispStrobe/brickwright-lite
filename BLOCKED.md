@@ -37,16 +37,17 @@ stc lives, those two functions must move with it.
 (they are just blocks). That eliminates the dual source of truth. Belongs to bw-blocks
 and sb3-creator, not to this slice.
 
-## STC89 12T timing: shipped WASM runs at 1T (emu8051-stc)
+## STC89 core instruction rate: 1T, not 12T (emu8051-stc)
 
 **Owner:** emu8051-stc
 
-The vendored WASM (pin ca1ef09) accepts `emu_set_part(2)` (STC89) but runs at 1T timing.
-A real STC89C52RC is 12T: a NOP costs 12 oscillator clocks. Everything timed would run 12x
-fast. The part is selectable but the defining characteristic is not modelled.
+**Correction:** the original "12x fast" claim was overstated. Timers ARE part-correct
+(AUXR.T0x12 prescaling works), and `generateC` hangs every duration off Timer 0 at
+FOSC/12, so `wait` durations are correct for both 1T and 12T parts.
 
-Either emu8051-stc implements 12T instruction timing for PART_STC89, or `capabilities()`
-reports the timing model as 1T-only so the front end can refuse rather than mislead.
+What is 1T: the **core instruction rate** (a NOP costs 1 clock for all parts, should be
+12 for STC89). This affects anything measuring *work*, not *time*: profiling, `tNs` for
+compute-heavy stretches, `bw_block_ms` spin loops. On a real STC89 those read ~12x
+optimistic. Whether this is deliberately out of scope is emu8051-stc's to say.
 
-bw-bundle action: none on the pin. The WASM is otherwise good (HEAPU8, all emu_dbg_*
-exports present).
+bw-bundle action: none.
