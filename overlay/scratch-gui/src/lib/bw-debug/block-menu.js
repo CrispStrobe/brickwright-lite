@@ -27,6 +27,7 @@ import {
     isBreakpoint, toggleBreakpoint, subscribeBreakpoints, conditionOf
 } from './breakpoints.js';
 import { valuesAtBlock } from './hover-values.js';
+import { showConditionEditor } from './condition-editor.js';
 
 const MARKED_CLASS = 'bw-breakpoint';
 
@@ -57,7 +58,10 @@ const TEXT = {
 const CSS = `
 .${MARKED_CLASS} > .blocklyPath {
     stroke: #e74c3c;
-    stroke-width: 3px;
+    stroke-width: 2px;
+}
+.bw-bp-dot {
+    pointer-events: none;
 }
 .bw-hover-values {
     position: fixed;
@@ -144,10 +148,29 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
             text: words.when,
             callback: () => {
                 const existing = conditionOf(this.id) || '';
-                const source = window.prompt(words.prompt, existing);
-                if (source === null) return;
-                if (onCondition) onCondition(this.id, source.trim());
-                paint(this.workspace);
+                let varNames = [];
+                if (vm && vm.runtime && vm.runtime._bwDebugVariables) {
+                    varNames = vm.runtime._bwDebugVariables().map((v) => v.name);
+                } else if (vm) {
+                    const stage = vm.runtime && vm.runtime.getTargetForStage && vm.runtime.getTargetForStage();
+                    if (stage && stage.variables) {
+                        varNames = Object.values(stage.variables).map((v) => v.name);
+                    }
+                }
+                const svg = this.getSvgRoot && this.getSvgRoot();
+                const box = svg ? svg.getBoundingClientRect() : { right: 200, top: 200 };
+                showConditionEditor({
+                    x: box.right + 8,
+                    y: box.top,
+                    variables: varNames,
+                    existing,
+                    locale: getLocale(),
+                    onDone: (source) => {
+                        if (source === null) return;
+                        if (onCondition) onCondition(this.id, source.trim());
+                        paint(this.workspace);
+                    }
+                });
             }
         });
     };
@@ -200,13 +223,31 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
             ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
     }
 
-    /** Put the marker class on every marked block, and wire hover once each. */
+    /** Put the marker + red dot on every marked block, and wire hover. */
     function paint(workspace) {
         if (!workspace || !workspace.getAllBlocks) return;
         for (const block of workspace.getAllBlocks()) {
             const svg = block.getSvgRoot && block.getSvgRoot();
             if (!svg || !svg.classList) continue;
-            svg.classList.toggle(MARKED_CLASS, isBreakpoint(block.id));
+            const isBp = isBreakpoint(block.id);
+            svg.classList.toggle(MARKED_CLASS, isBp);
+
+            // Red dot: an SVG circle at the left edge of the block.
+            // Re-created on every paint because Blockly rebuilds the SVG.
+            let dot = svg.querySelector('.bw-bp-dot');
+            if (isBp && !dot) {
+                dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                dot.setAttribute('class', 'bw-bp-dot');
+                dot.setAttribute('cx', '6');
+                dot.setAttribute('cy', '14');
+                dot.setAttribute('r', '5');
+                dot.setAttribute('fill', '#e74c3c');
+                dot.setAttribute('stroke', '#c0392b');
+                dot.setAttribute('stroke-width', '1');
+                svg.appendChild(dot);
+            } else if (!isBp && dot) {
+                dot.remove();
+            }
 
             if (wired.has(svg)) continue;
             wired.add(svg);
