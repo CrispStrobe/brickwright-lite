@@ -1,10 +1,10 @@
 const makeExt = require('../adapter');
 
-// The STC12 / 8051 pin blocks — all twelve opcodes.
+// The STC12 / 8051 pin blocks.
 //
 // This source is identical to extensions/CrispStrobe/stc12.js (the gallery
-// copy). The stc12-conformance test in sb3-creator asserts both copies agree
-// on opcodes, argument shapes, and menu identity.
+// copy). The conformance test in sb3-creator asserts they agree on opcodes,
+// argument shapes, and menu identity.
 module.exports = makeExt(`// Name: STC12 / 8051 pins
 // ID: stc12
 // Description: Drive the pins declared with PIN in the Code tab.
@@ -48,14 +48,14 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     getInfo() {
       return {
         id: "stc12",
-        name: "STC12 / 8051 pins",
+        name: Scratch.translate("STC12 / 8051 pins"),
         color1: "#3d7ea6",
         color2: "#2f6383",
         blocks: [
           {
             opcode: "setpin",
             blockType: Scratch.BlockType.COMMAND,
-            text: "turn [STATE] [PIN]",
+            text: Scratch.translate("turn [STATE] [PIN]"),
             arguments: {
               STATE: { type: Scratch.ArgumentType.STRING, menu: "states" },
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
@@ -64,7 +64,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "toggle",
             blockType: Scratch.BlockType.COMMAND,
-            text: "toggle [PIN]",
+            text: Scratch.translate("toggle [PIN]"),
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
             },
@@ -72,7 +72,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "writepin",
             blockType: Scratch.BlockType.COMMAND,
-            text: "set [PIN] to [VALUE]",
+            text: Scratch.translate("set [PIN] to [VALUE]"),
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
               VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 },
@@ -81,7 +81,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "read",
             blockType: Scratch.BlockType.REPORTER,
-            text: "read [PIN]",
+            text: Scratch.translate("read [PIN]"),
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
             },
@@ -90,7 +90,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "setpwm",
             blockType: Scratch.BlockType.COMMAND,
-            text: "set [PIN] to [VALUE] percent",
+            text: Scratch.translate("set [PIN] to [VALUE] percent"),
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
               VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 50 },
@@ -99,7 +99,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "settone",
             blockType: Scratch.BlockType.COMMAND,
-            text: "set [PIN] to [VALUE] hz",
+            text: Scratch.translate("set [PIN] to [VALUE] hz"),
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
               VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 440 },
@@ -108,7 +108,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "setport",
             blockType: Scratch.BlockType.COMMAND,
-            text: "set [PORT] to [VALUE]",
+            text: Scratch.translate("set [PORT] to [VALUE]"),
             arguments: {
               PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" },
               VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
@@ -117,7 +117,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "readport",
             blockType: Scratch.BlockType.REPORTER,
-            text: "read [PORT]",
+            text: Scratch.translate("read [PORT]"),
             arguments: {
               PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" },
             },
@@ -125,7 +125,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "setpart",
             blockType: Scratch.BlockType.COMMAND,
-            text: "set [PART] to [VALUE]",
+            text: Scratch.translate("set [PART] to [VALUE]"),
             arguments: {
               PART: { type: Scratch.ArgumentType.STRING, menu: "parts" },
               VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
@@ -134,7 +134,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "print",
             blockType: Scratch.BlockType.COMMAND,
-            text: "print [VALUE]",
+            text: Scratch.translate("print [VALUE]"),
             arguments: {
               VALUE: {
                 type: Scratch.ArgumentType.STRING,
@@ -147,7 +147,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "whenpin",
             blockType: Scratch.BlockType.HAT,
-            text: "when [PIN] [EDGE]",
+            text: Scratch.translate("when [PIN] [EDGE]"),
             isEdgeActivated: true,
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
@@ -157,7 +157,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "tableindex",
             blockType: Scratch.BlockType.REPORTER,
-            text: "[TABLE] [ [INDEX] ]",
+            text: Scratch.translate("[TABLE] [ [INDEX] ]"),
             arguments: {
               TABLE: { type: Scratch.ArgumentType.STRING, menu: "tables" },
               INDEX: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
