@@ -22,10 +22,10 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
 // Pinned to the commit whose BUILD-INFO.md records these hashes. Bump both together.
-const PIN = '2f896b1a0a5dfd1fb58216137c789e0f29b4eb2f';
+const PIN = '28df889';
 const EXPECT = {
-    'emu8051.wasm': '14d427b5375e810f1ee2d29407c6612364dab4a46f801d4de1e6f32433915929',
-    'emu8051.js': '5a008a67644f1b1bb45716c4fa67ff12bbd9d9e369e6a23cac2b0b88f3582faf'
+    'emu8051.wasm': 'c21d57743caac777cfdaef0d2b223969a091a9c3a0f25edbb3b841f1f32037d0',
+    'emu8051.js': '2afecbab7bf5fef74786c4060b7e67b93b6e41ff53fd363e9e363456fb23b674'
 };
 
 const here = path.dirname(fileURLToPath(import.meta.url));
