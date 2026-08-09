@@ -45,7 +45,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarationChange }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarationChange, onBoardReady }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -76,6 +76,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
     }
   }, [parts, wires, onDeclarationChange]);
 
+  // ── Expose the Board to the host (for the circuit extension) ──
+  useEffect(() => {
+    if (onBoardReady && circuit.board) {
+      onBoardReady(circuit.board);
+    }
+  }, [circuit.board, onBoardReady, parts, wires]); // re-fire when netlist changes (board rebuilt)
+
   const [selectedParts, setSelectedParts] = useState(new Set());
   const [selectedWire, setSelectedWire] = useState(null);
 
@@ -97,6 +104,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+
+  const [annotations, setAnnotations] = useState([]);
 
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
@@ -131,8 +140,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
           pins: [{ name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true }],
         };
 
-    const { parts: ip, nets: in_ } = inferCircuit(inferStc);
+    const { parts: ip, nets: in_, annotations: ann } = inferCircuit(inferStc);
     loadInferred(ip, in_);
+    setAnnotations(ann || []);
   }, [projectData, loadInferred]);
 
   // ── Buzzer audio ────────────────────────────────────────────────
@@ -208,6 +218,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
     }
 
     // Initialize pin modes
+    // Reset the board to clear stale state (capacitor voltages, LED history, etc.)
+    if (circuit.board.reset) circuit.board.reset();
+
     for (const pin of outputPins) setPin(pin, 'quasi', true);
     for (const pin of inputPins) setPin(pin, 'quasi', true);
     for (const pin of analogPins) setPin(pin, 'input', false);
@@ -299,8 +312,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
     advanceBy(1n * MS);
   }, [setControl, advanceBy]);
 
-  const handleLoadCircuit = useCallback((inferredParts, inferredNets) => {
+  const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
+    setAnnotations(ann || []);
     setSelectedParts(new Set());
     setSelectedWire(null);
     setMode('build');
@@ -430,6 +444,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
           }}
           circuit={circuit}
           warnings={warnings}
+          annotations={annotations}
         />
 
         {/* Engine warnings — teaching feedback */}

@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer } from '../wokwi-wrappers/index.js';
+import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
 import { routeWire, partBBoxes } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
@@ -53,6 +53,13 @@ function terminalOffsetsForPart(part) {
     case 'button': return { a: r(-15, 0), b: r(15, 0) };
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
+    case 'seven_segment': return { a: r(-30, 30), b: r(30, 30) }; // pins at bottom
+    case 'char_lcd': return { rs: r(-50, 25), e: r(-30, 25), d4: r(-10, 25), d5: r(10, 25), d6: r(30, 25), d7: r(50, 25) };
+    case 'ir_receiver': return { out: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
+    case 'shift_register': return { data: r(-20, -15), clock: r(0, -15), latch: r(20, -15) };
+    case 'led_matrix': return { a: r(-20, 0), b: r(20, 0) };
+    case 'temp_sensor': return { dq: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
+    case 'eeprom': return { sda: r(-10, 15), scl: r(10, 15) };
     case 'mcu': {
       const offsets = {};
       const pinCount = part.terminals.length;
@@ -296,32 +303,28 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
           fill="none"
           strokeLinejoin="round"
         />
-        {/* Current flow arrow at wire midpoint */}
+        {/* Animated current-flow dots along the wire */}
         {nodeVoltages && (() => {
-          // Find the net voltages for both endpoints' nets
-          const fromNet = wire.netId;
-          const v = nodeVoltages[fromNet];
-          if (v == null || Math.abs(v) < 0.001) return null;
+          const v = nodeVoltages?.[wire.netId];
+          if (v == null) return null;
+          const len = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
+          if (len < 30) return null;
 
-          // Draw a small arrow at the midpoint of the wire
-          const mx = (a.x + b.x) / 2;
-          const my = (a.y + b.y) / 2;
-          const dx = b.x - a.x;
-          const dy = b.y - a.y;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len < 40) return null; // too short for an arrow
-
-          const nx = dx / len;
-          const ny = dy / len;
-          const sz = 5;
+          // Speed proportional to how far from mid-rail (more current = faster)
+          const vcc = 5.0;
+          const fromMid = Math.abs(v - vcc / 2) / (vcc / 2);
+          if (fromMid < 0.05) return null; // negligible current
+          const dur = Math.max(0.5, 3 - fromMid * 2.5); // seconds per cycle
 
           return (
-            <polygon
-              points={`${mx + nx * sz},${my + ny * sz} ${mx - nx * sz - ny * sz * 0.6},${my - ny * sz + nx * sz * 0.6} ${mx - nx * sz + ny * sz * 0.6},${my - ny * sz - nx * sz * 0.6}`}
-              fill={wireColor}
-              opacity={0.6}
-              style={{ pointerEvents: 'none' }}
-            />
+            <circle r={2.5} fill={wireColor} opacity={0.8}
+              style={{ pointerEvents: 'none' }}>
+              <animateMotion
+                dur={`${dur}s`}
+                repeatCount="indefinite"
+                path={pathD}
+              />
+            </circle>
           );
         })()}
       </g>
@@ -500,6 +503,63 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
             </div>
           </div>
         );
+      case 'seven_segment':
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 30, top: y - 35, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <WokwiSevenSegment digits={1} values={[1,1,1,1,1,1,0,0]} color="#e74c3c" pins="none" />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
+      case 'char_lcd':
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 60, top: y - 25, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <WokwiLcd1602 text="Hello World!" pins="none" screenOnly={true} />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
+      case 'ir_receiver':
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 15, top: y - 15, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <WokwiIrReceiver />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
+      case 'shift_register':
+      case 'led_matrix':
+      case 'temp_sensor':
+      case 'eeprom':
+        // Generic IC rendering for parts without wokwi elements
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 25, top: y - 15, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <svg width={50} height={30} viewBox="0 0 50 30">
+              <rect x={2} y={2} width={46} height={26} rx={3} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1} />
+              <text x={25} y={18} textAnchor="middle" fill="#ecf0f1" fontSize={8} fontFamily="monospace">
+                {kind === 'shift_register' ? '595' : kind === 'led_matrix' ? '8×8' : kind === 'temp_sensor' ? '18B20' : 'IC'}
+              </text>
+            </svg>
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -532,7 +592,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, warnings,
+  onDuplicatePart, onRotatePart, onDropPart, warnings, annotations,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -543,6 +603,7 @@ export function BoardCanvas({
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [snapTarget, setSnapTarget] = useState(null);
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
+  const [rubberBand, setRubberBand] = useState(null); // { startX, startY, endX, endY }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
@@ -659,13 +720,43 @@ export function BoardCanvas({
       setWiringFrom(null);
       setMousePos(null);
     }
+    // Complete rubber-band select
+    if (rubberBand) {
+      const x1 = Math.min(rubberBand.startX, rubberBand.endX);
+      const y1 = Math.min(rubberBand.startY, rubberBand.endY);
+      const x2 = Math.max(rubberBand.startX, rubberBand.endX);
+      const y2 = Math.max(rubberBand.startY, rubberBand.endY);
+      if (x2 - x1 > 10 && y2 - y1 > 10) {
+        // Select all parts inside the rectangle
+        const inside = parts.filter(p => p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2);
+        if (inside.length > 0) {
+          for (const p of inside) onSelectPart(p.id, true);
+        }
+      }
+      setRubberBand(null);
+      return;
+    }
     onSelectPart(null);
     onSelectWire(null);
-  }, [wiringFrom, onSelectPart, onSelectWire]);
+  }, [wiringFrom, onSelectPart, onSelectWire, rubberBand, parts]);
+
+  const handleSvgMouseDown = useCallback((e) => {
+    // Start rubber-band select on empty space (left button, not on a part)
+    if (e.button === 0 && !wiringFrom && !dragging) {
+      const container = e.currentTarget;
+      const { x, y } = screenToCanvas(e.clientX, e.clientY, container);
+      setRubberBand({ startX: x, startY: y, endX: x, endY: y });
+    }
+  }, [wiringFrom, dragging, screenToCanvas]);
 
   const handleSvgMouseMove = useCallback((e) => {
     const container = e.currentTarget;
     const { x, y } = screenToCanvas(e.clientX, e.clientY, container);
+
+    // Update rubber-band
+    if (rubberBand && !dragging && !wiringFrom && !panning) {
+      setRubberBand(rb => rb ? { ...rb, endX: x, endY: y } : null);
+    }
 
     if (panning && panStart.current) {
       const rect = container.getBoundingClientRect();
@@ -756,6 +847,19 @@ export function BoardCanvas({
     if (e.key === '0') {
       setZoom(1);
       setPan({ x: 0, y: 0 });
+    }
+    // F → fit all parts in view
+    if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      if (parts.length === 0) return;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of parts) {
+        minX = Math.min(minX, p.x - 80); maxX = Math.max(maxX, p.x + 80);
+        minY = Math.min(minY, p.y - 60); maxY = Math.max(maxY, p.y + 60);
+      }
+      const cw = maxX - minX + 40, ch = maxY - minY + 40;
+      const fz = Math.max(0.3, Math.min(1, Math.min(CANVAS_W / cw, CANVAS_H / ch)));
+      setZoom(fz);
+      setPan({ x: minX - 20, y: minY - 20 });
     }
     // Arrow keys nudge all selected parts by grid size
     if (selectedParts && selectedParts.size > 0 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
@@ -894,6 +998,7 @@ export function BoardCanvas({
           preserveAspectRatio="xMidYMid meet"
           style={{ position: 'absolute', top: 0, left: 0 }}
           onClick={handleSvgClick}
+          onMouseDown={handleSvgMouseDown}
         >
           <defs>
             <pattern id="grid" width={20} height={20} patternUnits="userSpaceOnUse">
@@ -945,7 +1050,31 @@ export function BoardCanvas({
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
             nodeVoltages={nodeVoltages} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
+
+          {/* Teaching annotations from inference */}
+          {annotations && annotations.map((ann, i) => (
+            <text key={`ann-${i}`}
+              x={ann.x} y={ann.y}
+              textAnchor="middle" fill={ann.color || '#7f8c8d'}
+              fontSize={11} fontFamily="monospace" fontWeight="bold"
+              style={{ pointerEvents: 'none' }}>
+              {ann.text}
+            </text>
+          ))}
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
+
+          {/* Rubber-band selection rectangle */}
+          {rubberBand && (
+            <rect
+              x={Math.min(rubberBand.startX, rubberBand.endX)}
+              y={Math.min(rubberBand.startY, rubberBand.endY)}
+              width={Math.abs(rubberBand.endX - rubberBand.startX)}
+              height={Math.abs(rubberBand.endY - rubberBand.startY)}
+              fill="#3498db" fillOpacity={0.1}
+              stroke="#3498db" strokeWidth={1} strokeDasharray="4,2"
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
 
           {/* Snap-to-connector indicator */}
           {snapTarget && snapTarget.autoWire && (() => {
