@@ -25,6 +25,7 @@ const builtinExtensions = {
     // this line every one of them failed to load with "Unknown extension: stc12".
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
+    circuit: () => require('../extensions/crispstrobe/circuit'),
     brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
     // Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
     // repo too; the bundledIds dedup removes the gallery copy from the picker.
