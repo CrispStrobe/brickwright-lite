@@ -45,6 +45,7 @@
         function recover(message) {
           if (!looksLikeStaleBuild(message)) return;
           if (sessionStorage.getItem(KEY)) return;   // already tried; let the error surface
+          console.error('[bw-chunk-recovery] stale build detected, clearing caches and reloading. Trigger:', message);
           sessionStorage.setItem(KEY, '1');
           var done = function () { location.reload(); };
           Promise.resolve()
