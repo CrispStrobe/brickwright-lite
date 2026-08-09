@@ -13,7 +13,7 @@ const baseConfig = new ScratchWebpackConfigBuilder(
     {
         rootPath: path.resolve(__dirname),
         enableReact: true,
-        shouldSplitChunks: false
+        shouldSplitChunks: true
     })
     .setTarget('browserslist')
     .merge({
@@ -101,7 +101,11 @@ const buildConfig = baseConfig.clone()
             gui: './src/playground/index.jsx'
         },
         output: {
-            path: path.resolve(__dirname, 'build')
+            path: path.resolve(__dirname, 'build'),
+            filename: '[name].[contenthash:8].js',
+            // No UMD library wrapper for the web app — it boots itself.
+            // (The library config is only for dist/, which we skip.)
+            library: undefined
         }
     })
     .addPlugin(new HtmlWebpackPlugin({
