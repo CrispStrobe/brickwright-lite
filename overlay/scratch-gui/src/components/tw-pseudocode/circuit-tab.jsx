@@ -82,6 +82,14 @@ class CircuitTab extends React.Component {
                 )}
                 <Designer
                     stc={stc}
+                    onBoardReady={(board) => {
+                        // Hand the Board to the circuit extension so meter blocks work.
+                        // The extension reads this.runtime.circuitBoard as a fallback
+                        // when this._board is null (setBoard not yet called).
+                        const vm = this.props.vm;
+                        if (!vm || !vm.runtime) return;
+                        vm.runtime.circuitBoard = board;
+                    }}
                     onDeclarationChange={(decls) => {
                         // Write declarations back to vm.runtime.stc — the same place
                         // the pseudocode importer stores them on compile. The block
