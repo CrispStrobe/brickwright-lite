@@ -74,7 +74,14 @@ Scratch relicensed BSD-3 → AGPL-3.0 on 2024-11-25. Pin the last-BSD:
    `<category name="${name}">` with the RAW name, so any extension whose name has `& < > "`
    (e.g. arrays = "Arrays & Tensors") makes not-well-formed toolbox XML → its blocks never appear.
 
-## Build optimisations (2026-08-08) — all in overlay webpack.config.js + apply-vm-overlay.mjs
+5. **Offline extension loading** (apply-vm-overlay patches virtual-machine.js) — projects
+   saved by sb3-creator embed gallery URLs in `extensionURLs`. On cold open, `installTargets`
+   passed the URL to `loadExtensionURL`, bypassing the builtin check (keyed by ID). All 14
+   gallery extensions are bundled as builtins, but the URL path fetched from the network and
+   hard-failed offline. Fix: try the extension ID first (hits the builtin), fall back to the
+   URL only if no builtin is found.
+
+## Build optimisations (2026-08-08/09) — overlay webpack.config.js + apply-vm-overlay.mjs
 5. **`dist/` build skipped** — gated behind `BUILD_MODE=dist`. Vercel only serves `build/`; the dist
    library compilation was an entire redundant webpack pass. Biggest single peak-RSS win.
 6. **cat-blocks aliased to scratch-blocks** — cat-blocks (65 MiB) is a duplicate blockly for the
