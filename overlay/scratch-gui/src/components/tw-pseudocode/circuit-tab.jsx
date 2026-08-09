@@ -47,13 +47,14 @@ class CircuitTab extends React.Component {
         this.loading = false;
     }
 
-    /** The project's own hardware declarations — device, clock, and the pin table. */
+    /** The project's own hardware declarations — device, clock, and the pin table.
+     *  vm.runtime.stc is where they live while a project is loaded (set by the
+     *  pseudocode importer on compile). toJSON read is a fallback. */
     readStc () {
-        try {
-            return JSON.parse(this.props.vm.toJSON()).stc || null;
-        } catch {
-            return null;
-        }
+        const vm = this.props.vm;
+        if (!vm) return null;
+        if (vm.runtime && vm.runtime.stc) return vm.runtime.stc;
+        try { return JSON.parse(vm.toJSON()).stc || null; } catch { return null; }
     }
 
     render () {
