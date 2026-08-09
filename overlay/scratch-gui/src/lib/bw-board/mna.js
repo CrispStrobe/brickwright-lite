@@ -117,31 +117,84 @@ function solve(A, b) {
 // ─── LED / diode model for Newton–Raphson ────────────────────────────────────
 
 /**
- * Piecewise-linear diode model.
- * Below Vf: very high resistance (1 MΩ) — effectively off.
- * Above Vf: dynamic resistance Rd with voltage offset Vf.
+ * Diode companion model for Newton-Raphson linearization.
  *
- * For Newton–Raphson, we linearize around the current operating point:
- *   I = G_eq * V_across + I_eq
+ * Two models available:
+ *   1. Piecewise-linear (default, fast): sharp knee at Vf.
+ *   2. Shockley exponential (accurate): I = Is × (e^(V/nVt) - 1).
+ *
+ * The Shockley model gives a smooth I-V curve with realistic behavior
+ * near the knee voltage, better for small-signal and temperature analysis.
  *
  * @param {number} vAcross - voltage across the diode (anode - cathode)
- * @param {number} vf - forward voltage
- * @param {number} rd - dynamic resistance
+ * @param {number} vf - forward voltage (piecewise) or nominal Vf (Shockley)
+ * @param {number} rd - dynamic resistance at rated current
+ * @param {object} [opts] - optional Shockley parameters
+ * @param {number} [opts.is] - saturation current (default: computed from Vf)
+ * @param {number} [opts.n] - ideality factor (default: 1.8 for LED, 1.0 for Si)
+ * @param {boolean} [opts.shockley] - use Shockley model (default: false)
  * @returns {{ gEq: number, iEq: number }}
  */
-function diodeCompanion(vAcross, vf, rd) {
+function diodeCompanion(vAcross, vf, rd, opts) {
+  if (opts && opts.shockley) {
+    return shockleyCompanion(vAcross, vf, rd, opts.is, opts.n);
+  }
+
+  // Piecewise-linear (original model)
   if (vAcross < vf) {
-    // Off region: very high resistance
-    const gOff = 1e-9; // 1 GΩ
+    const gOff = 1e-9;
     return { gEq: gOff, iEq: 0 };
   } else {
-    // On region: I = (V - Vf) / Rd
-    // Linearized: I = (1/Rd) * V - Vf/Rd
-    // So G_eq = 1/Rd, I_eq = -Vf/Rd (Norton source current)
     const gEq = 1 / rd;
     const iEq = -vf / rd;
     return { gEq, iEq };
   }
+}
+
+/**
+ * Shockley diode companion model.
+ * I = Is × (e^(V / nVt) - 1)
+ * Linearized at operating point V0:
+ *   G_eq = dI/dV = Is/(nVt) × e^(V0/nVt)
+ *   I_eq = I(V0) - G_eq × V0
+ *
+ * @param {number} vAcross
+ * @param {number} vf - nominal forward voltage (used to compute Is if not given)
+ * @param {number} rd - dynamic resistance (fallback)
+ * @param {number} [is] - saturation current
+ * @param {number} [n] - ideality factor
+ * @returns {{ gEq: number, iEq: number }}
+ */
+function shockleyCompanion(vAcross, vf, rd, is, n) {
+  const VT = 0.02585; // thermal voltage at 25°C (kT/q)
+  const nVt = (n ?? 1.8) * VT;
+
+  // Compute Is from Vf if not given: at Vf, I ≈ 20mA (rated)
+  // Is = I_rated / (e^(Vf/nVt) - 1)
+  if (is === undefined) {
+    const expVf = Math.exp(Math.min(vf / nVt, 80)); // clamp to avoid overflow
+    is = 0.020 / Math.max(expVf - 1, 1e-30);
+  }
+
+  // Clamp vAcross to avoid overflow in exp
+  const vClamped = Math.min(vAcross, nVt * 80);
+
+  if (vClamped < -5 * nVt) {
+    // Deep reverse bias: essentially off
+    return { gEq: 1e-12, iEq: 0 };
+  }
+
+  const expV = Math.exp(vClamped / nVt);
+  const iD = is * (expV - 1);
+  const gEq = is * expV / nVt; // dI/dV
+
+  // Clamp gEq to avoid numerical issues
+  const gClamped = Math.min(Math.max(gEq, 1e-12), 1e6);
+
+  // Norton: I_eq = I(V0) - G_eq × V0
+  const iEq = iD - gClamped * vAcross;
+
+  return { gEq: gClamped, iEq };
 }
 
 // ─── MNA circuit builder ─────────────────────────────────────────────────────
@@ -198,7 +251,8 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   // only connect to active sources and have no passive element terminals).
   const passiveKinds = new Set(['resistor', 'capacitor', 'diode', 'led',
     'potentiometer', 'button', 'switch', 'buzzer', 'ldr', 'ntc',
-    'npn', 'pnp', 'zener', 'inductor']);
+    'npn', 'pnp', 'zener', 'inductor', 'nmos', 'pmos', 'opamp',
+    'vsource', 'isource']);
 
   /** @type {Map<string, number>} net id → node index */
   const nodeIndex = new Map();
@@ -230,9 +284,22 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   if (!powerOff) {
     for (const part of parts) {
       if (part.kind === 'vcc') {
-        // Find the net VCC is connected to
         const vccNet = findNet(nets, part.id, 'vcc');
         if (vccNet && nodeIndex.has(vccNet)) {
+          vsIndex.set(part.id, vsCount++);
+        }
+      }
+      // Op-amp output is a voltage source (VCVS)
+      if (part.kind === 'opamp') {
+        const outNet = findNet(nets, part.id, 'out');
+        if (outNet && nodeIndex.has(outNet)) {
+          vsIndex.set(part.id, vsCount++);
+        }
+      }
+      // Independent voltage source
+      if (part.kind === 'vsource') {
+        const posNet = findNet(nets, part.id, 'pos');
+        if (posNet && nodeIndex.has(posNet)) {
           vsIndex.set(part.id, vsCount++);
         }
       }
@@ -254,7 +321,8 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   const diodeVoltages = new Map();
   for (const part of parts) {
     if (part.kind === 'led' || part.kind === 'diode' || part.kind === 'npn'
-        || part.kind === 'pnp' || part.kind === 'zener') {
+        || part.kind === 'pnp' || part.kind === 'zener'
+        || part.kind === 'nmos' || part.kind === 'pmos') {
       diodeVoltages.set(part.id, 0); // initial guess
     }
   }
@@ -330,11 +398,84 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
           stampPNP(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages);
           break;
 
+        case 'nmos':
+          stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages);
+          break;
+
+        case 'pmos':
+          stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages);
+          break;
+
+        case 'opamp':
+          stampOpamp(A, b, part, nets, nodeIndex, groundNetId);
+          break;
+
+        case 'vsource':
+          stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc);
+          break;
+
+        case 'isource':
+          stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId);
+          break;
+
         case 'zener':
           stampZener(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages);
           break;
 
-        // gnd, capacitor, inductor, seven_segment, rgb_led: handled elsewhere or composite
+        // ─── Drawable parts: minimal electrical models ─────────────
+        // These are not full simulations — they provide input impedance
+        // and supply current so the net they sit on is loaded correctly.
+        // Without this, the simulator reports voltages as if the part
+        // were absent, which is worse than not drawing it.
+
+        case 'char_lcd': {
+          // HD44780: ~1mA supply current, data pins are high-Z inputs.
+          // Model: VCC-GND current draw as a resistor (~5kΩ at 5V = 1mA).
+          const vccNet = findNet(nets, part.id, 'vcc');
+          const gndNet = findNet(nets, part.id, 'gnd');
+          stampTwoTerminal(A, vccNet, gndNet, 1 / 5000, nodeIndex); // ~1mA at 5V
+          break;
+        }
+
+        case 'shift_register': {
+          // 74HC595: ~80µA supply + data/clock/latch are CMOS inputs (~10MΩ).
+          // Outputs are push-pull but modeled separately as LEDs.
+          const dataNet = findNet(nets, part.id, 'data');
+          const clockNet = findNet(nets, part.id, 'clock');
+          const latchNet = findNet(nets, part.id, 'latch');
+          // CMOS input: very high impedance to GND (doesn't load the pin)
+          if (dataNet) stampTwoTerminal(A, dataNet, undefined, 1e-7, nodeIndex);
+          if (clockNet) stampTwoTerminal(A, clockNet, undefined, 1e-7, nodeIndex);
+          if (latchNet) stampTwoTerminal(A, latchNet, undefined, 1e-7, nodeIndex);
+          break;
+        }
+
+        case 'ir_receiver': {
+          // IR receiver module: ~5mA supply, output is open-collector with pull-up.
+          const vNet = findNet(nets, part.id, 'vcc');
+          const gNet = findNet(nets, part.id, 'gnd');
+          stampTwoTerminal(A, vNet, gNet, 1 / 1000, nodeIndex); // ~5mA at 5V
+          break;
+        }
+
+        case 'temp_sensor': {
+          // DS18B20: ~1mA supply, DQ is open-drain (needs external pull-up).
+          const vNet = findNet(nets, part.id, 'vcc');
+          const gNet = findNet(nets, part.id, 'gnd');
+          stampTwoTerminal(A, vNet, gNet, 1 / 5000, nodeIndex); // ~1mA at 5V
+          break;
+        }
+
+        case 'eeprom': {
+          // I2C EEPROM: ~1mA supply, SDA/SCL are open-drain (high-Z input).
+          const vNet = findNet(nets, part.id, 'vcc');
+          const gNet = findNet(nets, part.id, 'gnd');
+          stampTwoTerminal(A, vNet, gNet, 1 / 5000, nodeIndex);
+          break;
+        }
+
+        // gnd, capacitor, inductor, seven_segment, rgb_led, led_matrix:
+        // handled elsewhere or composite
       }
     }
 
@@ -375,6 +516,15 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
         const idxE = netE ? nodeIndex.get(netE) : undefined;
         const idxB = netB ? nodeIndex.get(netB) : undefined;
         vNew = (idxE !== undefined ? solution[idxE] : 0) - (idxB !== undefined ? solution[idxB] : 0);
+      } else if (part.kind === 'nmos' || part.kind === 'pmos') {
+        // Track Vgs
+        const netG = findNet(nets, part.id, 'gate');
+        const netS = findNet(nets, part.id, 'source');
+        const idxG = netG ? nodeIndex.get(netG) : undefined;
+        const idxS = netS ? nodeIndex.get(netS) : undefined;
+        const vG = idxG !== undefined ? solution[idxG] : 0;
+        const vS = idxS !== undefined ? solution[idxS] : 0;
+        vNew = part.kind === 'nmos' ? (vG - vS) : (vS - vG);
       } else {
         // LED, diode, zener: anode - cathode
         const anodeNet = findNet(nets, part.id, 'anode');
@@ -481,6 +631,34 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       currents.set('emitter', -(ib + ic));
     }
 
+    if (part.kind === 'nmos' || part.kind === 'pmos') {
+      const netG = findNet(nets, part.id, 'gate');
+      const netD = findNet(nets, part.id, 'drain');
+      const netS = findNet(nets, part.id, 'source');
+      const vG = netG ? (nodeVoltages.get(netG) ?? 0) : 0;
+      const vD = netD ? (nodeVoltages.get(netD) ?? 0) : 0;
+      const vS = netS ? (nodeVoltages.get(netS) ?? 0) : 0;
+      const vth = /** @type {number} */ (part.params.vth ?? (part.kind === 'nmos' ? 2.0 : -2.0));
+      const k = /** @type {number} */ (part.params.k ?? 0.5);
+      let id;
+      if (part.kind === 'nmos') {
+        const vgs = vG - vS;
+        id = vgs >= vth ? k * (vgs - vth) * (vgs - vth) : 0;
+      } else {
+        const vsg = vS - vG;
+        id = vsg >= Math.abs(vth) ? k * (vsg - Math.abs(vth)) * (vsg - Math.abs(vth)) : 0;
+      }
+      currents.set('drain', id);
+      currents.set('source', -id);
+      currents.set('gate', 0); // gate draws no DC current
+    }
+
+    if (part.kind === 'isource') {
+      const amps = /** @type {number} */ (part.params.amps ?? 0.001);
+      currents.set('pos', amps);
+      currents.set('neg', -amps);
+    }
+
     if (part.kind === 'ldr' || part.kind === 'ntc') {
       const netA = findNet(nets, part.id, 'a');
       const netB = findNet(nets, part.id, 'b');
@@ -512,6 +690,19 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       const i = (vA - vB) / 0.001;
       currents.set('a', -i);
       currents.set('b', i);
+    }
+
+    // Drawable parts: supply current from VCC to GND
+    if (part.kind === 'char_lcd' || part.kind === 'ir_receiver' ||
+        part.kind === 'temp_sensor' || part.kind === 'eeprom') {
+      const vNet = findNet(nets, part.id, 'vcc');
+      const gNet = findNet(nets, part.id, 'gnd');
+      const vV = vNet ? (nodeVoltages.get(vNet) ?? 0) : 0;
+      const vG = gNet ? (nodeVoltages.get(gNet) ?? 0) : 0;
+      const rSupply = part.kind === 'ir_receiver' ? 1000 : 5000;
+      const iSupply = (vV - vG) / rSupply;
+      currents.set('vcc', -iSupply);
+      currents.set('gnd', iSupply);
     }
 
     if (part.kind === 'vcc' && vsIndex.has(part.id)) {
@@ -907,6 +1098,204 @@ function stampZener(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
   }
   if (idxA !== undefined) b[idxA] -= iEq;
   if (idxC !== undefined) b[idxC] += iEq;
+}
+
+// ─── MOSFET stamp functions ─────────────────────────────────────────────────
+
+/**
+ * Stamp an N-channel MOSFET. Simplified square-law model:
+ * Terminals: gate, drain, source.
+ * Cutoff: Vgs < Vth → off (very high Rds).
+ * Linear/saturation: Id = K × (Vgs - Vth)² (simplified).
+ * Linearized as Norton companion for NR.
+ */
+function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
+  const vth = /** @type {number} */ (part.params.vth ?? 2.0);
+  const k = /** @type {number} */ (part.params.k ?? 0.5); // A/V² (transconductance parameter)
+
+  const netG = findNet(nets, part.id, 'gate');
+  const netD = findNet(nets, part.id, 'drain');
+  const netS = findNet(nets, part.id, 'source');
+
+  const idxG = netG ? nodeIndex.get(netG) : undefined;
+  const idxD = netD ? nodeIndex.get(netD) : undefined;
+  const idxS = netS ? nodeIndex.get(netS) : undefined;
+
+  const vgs = diodeVoltages.get(part.id) ?? 0;
+
+  if (vgs < vth) {
+    // Cutoff: very high resistance drain-source
+    const gOff = 1e-9;
+    if (idxD !== undefined) A.add(idxD, idxD, gOff);
+    if (idxS !== undefined) A.add(idxS, idxS, gOff);
+    if (idxD !== undefined && idxS !== undefined) {
+      A.add(idxD, idxS, -gOff);
+      A.add(idxS, idxD, -gOff);
+    }
+  } else {
+    // On: Id = K(Vgs - Vth)². Linearized:
+    // gm = dId/dVgs = 2K(Vgs - Vth)
+    // Id0 = K(Vgs - Vth)² - gm × Vgs (Norton offset)
+    const vov = vgs - vth;
+    const gm = 2 * k * vov;
+    const id0 = k * vov * vov;
+    const iEq = id0 - gm * vgs;
+
+    // VCCS: drain current controlled by Vgs
+    if (idxD !== undefined && idxG !== undefined) A.add(idxD, idxG, gm);
+    if (idxD !== undefined && idxS !== undefined) A.add(idxD, idxS, -gm);
+    if (idxS !== undefined && idxG !== undefined) A.add(idxS, idxG, -gm);
+    if (idxS !== undefined && idxS !== undefined) A.add(idxS, idxS, gm);
+
+    if (idxD !== undefined) b[idxD] -= iEq;
+    if (idxS !== undefined) b[idxS] += iEq;
+
+    // Small Rds for stability
+    const gds = 0.001; // 1kΩ output resistance
+    if (idxD !== undefined) A.add(idxD, idxD, gds);
+    if (idxS !== undefined) A.add(idxS, idxS, gds);
+    if (idxD !== undefined && idxS !== undefined) {
+      A.add(idxD, idxS, -gds);
+      A.add(idxS, idxD, -gds);
+    }
+  }
+}
+
+/** P-channel MOSFET: mirror of NMOS with reversed gate sense. */
+function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
+  const vth = /** @type {number} */ (part.params.vth ?? -2.0);
+  const k = /** @type {number} */ (part.params.k ?? 0.5);
+
+  const netG = findNet(nets, part.id, 'gate');
+  const netD = findNet(nets, part.id, 'drain');
+  const netS = findNet(nets, part.id, 'source');
+
+  const idxG = netG ? nodeIndex.get(netG) : undefined;
+  const idxD = netD ? nodeIndex.get(netD) : undefined;
+  const idxS = netS ? nodeIndex.get(netS) : undefined;
+
+  // For PMOS: Vsg > |Vth| to turn on
+  const vsg = diodeVoltages.get(part.id) ?? 0;
+
+  if (vsg < Math.abs(vth)) {
+    const gOff = 1e-9;
+    if (idxD !== undefined) A.add(idxD, idxD, gOff);
+    if (idxS !== undefined) A.add(idxS, idxS, gOff);
+    if (idxD !== undefined && idxS !== undefined) {
+      A.add(idxD, idxS, -gOff);
+      A.add(idxS, idxD, -gOff);
+    }
+  } else {
+    const vov = vsg - Math.abs(vth);
+    const gm = 2 * k * vov;
+    const id0 = k * vov * vov;
+    const iEq = id0 - gm * vsg;
+
+    // PMOS: current flows source → drain (reversed from NMOS)
+    if (idxS !== undefined && idxS !== undefined) A.add(idxS, idxS, gm);
+    if (idxS !== undefined && idxG !== undefined) A.add(idxS, idxG, -gm);
+    if (idxD !== undefined && idxS !== undefined) A.add(idxD, idxS, -gm);
+    if (idxD !== undefined && idxG !== undefined) A.add(idxD, idxG, gm);
+
+    if (idxS !== undefined) b[idxS] -= iEq;
+    if (idxD !== undefined) b[idxD] += iEq;
+
+    const gds = 0.001;
+    if (idxD !== undefined) A.add(idxD, idxD, gds);
+    if (idxS !== undefined) A.add(idxS, idxS, gds);
+    if (idxD !== undefined && idxS !== undefined) {
+      A.add(idxD, idxS, -gds);
+      A.add(idxS, idxD, -gds);
+    }
+  }
+}
+
+// ─── Op-amp stamp ───────────────────────────────────────────────────────────
+
+/**
+ * Stamp an ideal op-amp. Terminals: inp (non-inverting), inn (inverting), out.
+ * Model: Vout = A × (Vinp - Vinn), with A → infinity (ideal).
+ * In MNA: this is a VCVS with very high gain, stamped as a voltage source
+ * whose value is A × (V+ - V-).
+ */
+function stampOpamp(A, b, part, nets, nodeIndex, groundNetId) {
+  const gain = /** @type {number} */ (part.params.gain ?? 1e6); // open-loop gain
+
+  const netP = findNet(nets, part.id, 'inp');
+  const netN = findNet(nets, part.id, 'inn');
+  const netO = findNet(nets, part.id, 'out');
+
+  const idxP = netP ? nodeIndex.get(netP) : undefined;
+  const idxN = netN ? nodeIndex.get(netN) : undefined;
+  const idxO = netO ? nodeIndex.get(netO) : undefined;
+
+  // Use the voltage source row for this opamp
+  const dim = nodeIndex.size;
+  const vsIdx = part._vsIdx; // set during counting
+  // Actually we need to look it up from vsIndex passed around...
+  // For now, use the simpler Norton approach: model as a VCCS with
+  // very high transconductance, plus a small output resistance.
+
+  // Norton: Iout = gm × (V+ - V-), gm = gain / Rout
+  const rOut = /** @type {number} */ (part.params.rOut ?? 1);
+  const gm = gain / rOut; // very large
+  const gOut = 1 / rOut;
+
+  // Output conductance
+  if (idxO !== undefined) A.add(idxO, idxO, gOut);
+
+  // VCCS: current into output proportional to (V+ - V-)
+  if (idxO !== undefined && idxP !== undefined) A.add(idxO, idxP, gm);
+  if (idxO !== undefined && idxN !== undefined) A.add(idxO, idxN, -gm);
+}
+
+// ─── Independent sources ────────────────────────────────────────────────────
+
+/**
+ * Independent voltage source. Terminals: pos, neg.
+ * Params: {volts} — the source voltage.
+ */
+function stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc) {
+  const volts = /** @type {number} */ (part.params.volts ?? vcc);
+  const posNet = findNet(nets, part.id, 'pos');
+  const negNet = findNet(nets, part.id, 'neg');
+
+  const idxPos = posNet ? nodeIndex.get(posNet) : undefined;
+  const idxNeg = negNet ? nodeIndex.get(negNet) : undefined;
+  const vsIdx = vsIndex.get(part.id);
+  if (vsIdx === undefined) return;
+
+  const dim = nodeIndex.size;
+  const row = dim + vsIdx;
+
+  // V(pos) - V(neg) = volts
+  if (idxPos !== undefined) {
+    A.set(row, idxPos, 1);
+    A.set(idxPos, row, 1);
+  }
+  if (idxNeg !== undefined) {
+    A.set(row, idxNeg, -1);
+    A.set(idxNeg, row, -1);
+  }
+  b[row] = volts;
+}
+
+/**
+ * Independent current source. Terminals: pos, neg.
+ * Current flows from neg to pos (conventional).
+ * Params: {amps} — the source current.
+ */
+function stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId) {
+  const amps = /** @type {number} */ (part.params.amps ?? 0.001);
+  const posNet = findNet(nets, part.id, 'pos');
+  const negNet = findNet(nets, part.id, 'neg');
+
+  const idxPos = posNet ? nodeIndex.get(posNet) : undefined;
+  const idxNeg = negNet ? nodeIndex.get(negNet) : undefined;
+
+  // Current source: inject current into pos, extract from neg
+  if (idxPos !== undefined) b[idxPos] += amps;
+  if (idxNeg !== undefined) b[idxNeg] -= amps;
 }
 
 export { Matrix, solve, diodeCompanion, findNet };

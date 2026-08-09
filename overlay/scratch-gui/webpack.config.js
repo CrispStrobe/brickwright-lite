@@ -27,7 +27,17 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         resolve: {
             fallback: {
                 Buffer: require.resolve('buffer/'),
-                stream: require.resolve('stream-browserify')
+                stream: require.resolve('stream-browserify'),
+                // Emscripten's glue (src/lib/emu8051/emu8051.js) carries a Node
+                // branch that does require("node:fs") to read the .wasm off
+                // disk. The branch is dead in a browser — ENVIRONMENT_IS_NODE
+                // guards it — but webpack still parses the specifier, and these
+                // map it to an empty module once the `node:` prefix has been
+                // stripped by the NormalModuleReplacementPlugin below. The
+                // prefix has to go first: an unknown SCHEME fails before
+                // resolution ever runs, so a fallback alone cannot catch it.
+                fs: false,
+                path: false
             }
         }
     })
@@ -36,6 +46,13 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         resourceQuery: /^$/, // reject any query string
         type: 'asset' // let webpack decide on the best type of asset
     })
+    // `node:fs` -> `fs`, which resolve.fallback above then maps to nothing.
+    // Webpack rejects an unrecognised URI scheme while PARSING, before any
+    // resolution or fallback applies, so the prefix must be rewritten rather
+    // than resolved away. Only Emscripten's dead Node branch reaches this.
+    .addPlugin(new webpack.NormalModuleReplacementPlugin(/^node:/, resource => {
+        resource.request = resource.request.replace(/^node:/, '');
+    }))
     .addPlugin(new webpack.DefinePlugin({
         'process.env.DEBUG': Boolean(process.env.DEBUG),
         'process.env.GA_ID': `"${process.env.GA_ID || 'UA-000000-01'}"`,
@@ -63,6 +80,15 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 context: 'node_modules/scratch-vm/dist/web',
                 from: 'extension-worker.{js,js.map}',
                 noErrorOnMissing: true
+            },
+            {
+                // The 8051 emulator's WASM. Webpack bundles the Emscripten GLUE
+                // (it is an ordinary module) but never sees the .wasm, which the
+                // glue fetches by URL at runtime — so without this the debugger
+                // loads its chunk and then 404s. The runner passes a locateFile
+                // that points here; see bw-debug/debug-runner.js.
+                from: 'src/lib/emu8051/emu8051.wasm',
+                to: 'static/emu8051.wasm'
             }
         ]
     }));

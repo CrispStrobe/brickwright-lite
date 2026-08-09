@@ -144,6 +144,26 @@ class Blocks extends React.Component {
         addFunctionListener(this.workspace, 'translate', this.onWorkspaceMetricsChange);
         addFunctionListener(this.workspace, 'zoom', this.onWorkspaceMetricsChange);
 
+        // "Pause here" on a block's context menu, plus the marker that shows
+        // which blocks carry one. Loaded lazily and gated on the project having
+        // declared pins, so an ordinary Scratch project pays nothing and sees
+        // nothing. See lib/bw-debug/block-menu.js.
+        import(/* webpackChunkName: "bw-debug-menu" */ '../lib/bw-debug/block-menu.js')
+            .then(({installBreakpointMenu}) => {
+                if (!this.workspace) return;   // unmounted while loading
+                this.breakpointMenu = installBreakpointMenu(
+                    this.ScratchBlocks, this.props.vm, () => this.props.locale);
+                // Blockly rebuilds a block's SVG on load, drag and undo, so the
+                // marker class has to be re-applied rather than set once.
+                this.workspace.addChangeListener(() => {
+                    if (this.breakpointMenu) this.breakpointMenu.repaint(this.workspace);
+                });
+                this.breakpointMenu.repaint(this.workspace);
+            })
+            .catch(() => {
+                // A debugger that fails to load must not take the editor with it.
+            });
+
         this.attachVM();
         // Only update blocks/vm locale when visible to avoid sizing issues
         // If locale changes while not visible it will get handled in didUpdate
@@ -203,6 +223,10 @@ class Blocks extends React.Component {
     }
     componentWillUnmount () {
         this.detachVM();
+        if (this.breakpointMenu) {
+            this.breakpointMenu.uninstall();
+            this.breakpointMenu = null;
+        }
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
 

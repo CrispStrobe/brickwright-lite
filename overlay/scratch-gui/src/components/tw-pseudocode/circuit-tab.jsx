@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 
+import DebugPanel from './debug-panel.jsx';
+
 /**
  * The circuit designer, as a first-class editor tab beside Code / Costumes / Sounds.
  *
@@ -48,12 +50,15 @@ class CircuitTab extends React.Component {
     }
 
     /** The project's own hardware declarations — device, clock, and the pin table.
-     *  vm.runtime.stc is where they live while a project is loaded (set by the
-     *  pseudocode importer on compile). toJSON read is a fallback. */
+     *
+     * They live on the runtime, not in the serialised project: scratch-vm's sb3
+     * serializer emits targets/monitors/extensions/meta and drops every other
+     * top-level key, so the `stc` block that SB3Creator writes into the .sb3 never
+     * came back out of vm.toJSON(). This read used to be that one, which is why the
+     * designer opened empty for every project, hardware or not. */
     readStc () {
         const vm = this.props.vm;
-        if (!vm) return null;
-        if (vm.runtime && vm.runtime.stc) return vm.runtime.stc;
+        if (vm && vm.runtime && vm.runtime.stc) return vm.runtime.stc;
         try { return JSON.parse(vm.toJSON()).stc || null; } catch { return null; }
     }
 
@@ -80,30 +85,23 @@ class CircuitTab extends React.Component {
                          'and the designer will suggest the matching parts.'}
                     </div>
                 )}
+                {/* The debugger's controls, above the board they act on. The design note
+                    puts them in the stage header; they are here because that header is
+                    shown for every project including pure Scratch ones — see the panel's
+                    own comment. The block glow lands in the Blocks tab regardless. */}
+                {stc && stc.pins && stc.pins.length ? (
+                    <div style={{marginBottom: 10}}>
+                        <DebugPanel />
+                    </div>
+                ) : null}
                 <Designer
                     stc={stc}
-                    onBoardReady={(board) => {
-                        // Hand the Board to the circuit extension so meter blocks work.
-                        // The extension reads this.runtime.circuitBoard as a fallback
-                        // when this._board is null (setBoard not yet called).
-                        const vm = this.props.vm;
-                        if (!vm || !vm.runtime) return;
-                        vm.runtime.circuitBoard = board;
-                    }}
                     onDeclarationChange={(decls) => {
-                        // Write declarations back to vm.runtime.stc — the same place
-                        // the pseudocode importer stores them on compile. The block
-                        // palette reads from here for its dropdown menus.
-                        const vm = this.props.vm;
-                        if (vm && vm.runtime) {
-                            const existing = vm.runtime.stc || {};
-                            vm.runtime.stc = {
-                                ...existing,
-                                pins: decls.pins || existing.pins || [],
-                                ports: decls.ports || existing.ports || [],
-                                parts: decls.parts || existing.parts || [],
-                            };
-                        }
+                        // TODO: write decls back to project.stc so the block palette updates.
+                        // Currently project.stc is read-only from the VM — writing it back
+                        // requires either a vm.setStc() API or round-tripping through loadProject.
+                        // For now, declarations are derived but not persisted.
+                        // The bw-blocks agent may provide the integration path.
                     }}
                 />
             </div>

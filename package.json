@@ -16,7 +16,8 @@
     "sync:circuitui": "node scripts/sync-bw-circuit-ui.mjs",
     "sync:circuitui:check": "node scripts/sync-bw-circuit-ui.mjs --check",
     "sync:emuwasm": "node scripts/sync-emu8051-wasm.mjs",
-    "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check"
+    "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check",
+    "smoke:debugger": "node scripts/smoke-debugger.mjs"
   },
   "engines": {
     "node": "22.x"

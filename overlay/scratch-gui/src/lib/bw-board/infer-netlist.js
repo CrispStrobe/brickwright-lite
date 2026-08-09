@@ -25,10 +25,22 @@
  */
 
 /**
+ * A port declaration (whole-port I/O).
+ * @typedef {object} StcPort
+ * @property {string} name
+ * @property {number} port
+ * @property {string} sfr - e.g. "P0"
+ * @property {number} width - typically 8
+ * @property {'output' | 'input'} direction
+ * @property {boolean} activeLow
+ */
+
+/**
  * @typedef {object} StcProject
  * @property {string} [device]
  * @property {number} [clock]
  * @property {StcPin[]} pins
+ * @property {StcPort[]} [ports]
  */
 
 /**
@@ -65,7 +77,27 @@ export function inferNetlist(stc) {
     const isBuzzer = /buzz|speaker|tone|beep/i.test(pin.name);
 
     switch (pin.direction) {
-      case 'output': {
+      case 'tone': {
+        // Timer-driven GPIO toggle → buzzer between pin and GND.
+        // buzzerTone measures the toggle period; nothing in the MCU knows about sound.
+        const buzzId = `BUZZ_${safeName}`;
+        parts.push({
+          id: buzzId, kind: 'buzzer',
+          params: {}, terminals: ['a', 'b'],
+        });
+        nets.push({
+          id: `net_${safeName}_pin`,
+          terminals: [
+            { part: 'MCU', terminal: pinId },
+            { part: buzzId, terminal: 'a' },
+          ],
+        });
+        gndNet.terminals.push({ part: buzzId, terminal: 'b' });
+        break;
+      }
+
+      case 'output':
+      case 'pwm': {
         if (isBuzzer) {
           // pin → buzzer → GND
           const buzzId = `BUZZ_${safeName}`;
@@ -200,6 +232,157 @@ export function inferNetlist(stc) {
 
       default:
         notes.push(`Unknown direction '${pin.direction}' for pin ${pin.name} (${pinId})`);
+    }
+  }
+
+  // ─── Port declarations (whole-port I/O) ────────────────────────────────
+
+  if (stc.ports) {
+    for (const port of stc.ports) {
+      const safeName = port.name.replace(/[^a-zA-Z0-9_]/g, '_');
+      const width = port.width ?? 8;
+
+      if (port.direction === 'output') {
+        // PORT OUTPUT: each bit gets a load.
+        // Common pattern: 7-segment display or 8-LED bar.
+        // Add 8 LEDs with series resistors, each on one port bit.
+        for (let bit = 0; bit < width; bit++) {
+          const pinId = `P${port.port}.${bit}`;
+          const segName = width === 8 && bit < 7
+            ? ['a', 'b', 'c', 'd', 'e', 'f', 'g'][bit]
+            : bit === 7 ? 'dp' : `b${bit}`;
+          const rId = `R_${safeName}_${segName}`;
+          const ledId = `LED_${safeName}_${segName}`;
+
+          // Add pin to MCU terminals if not already there
+          if (!mcuTerminals.includes(pinId)) mcuTerminals.push(pinId);
+
+          parts.push({
+            id: rId, kind: 'resistor',
+            params: { ohms: 330 }, terminals: ['a', 'b'],
+          });
+          parts.push({
+            id: ledId, kind: 'led',
+            params: { vf: 2.0, color: 'red' }, terminals: ['anode', 'cathode'],
+          });
+
+          if (port.activeLow) {
+            // Active-low: VCC → R → LED → pin
+            vccNet.terminals.push({ part: rId, terminal: 'a' });
+            nets.push({
+              id: `net_${safeName}_${segName}_r_led`,
+              terminals: [
+                { part: rId, terminal: 'b' },
+                { part: ledId, terminal: 'anode' },
+              ],
+            });
+            nets.push({
+              id: `net_${safeName}_${segName}_pin`,
+              terminals: [
+                { part: ledId, terminal: 'cathode' },
+                { part: 'MCU', terminal: pinId },
+              ],
+            });
+          } else {
+            // Active-high: pin → R → LED → GND
+            nets.push({
+              id: `net_${safeName}_${segName}_pin_r`,
+              terminals: [
+                { part: 'MCU', terminal: pinId },
+                { part: rId, terminal: 'a' },
+              ],
+            });
+            nets.push({
+              id: `net_${safeName}_${segName}_r_led`,
+              terminals: [
+                { part: rId, terminal: 'b' },
+                { part: ledId, terminal: 'anode' },
+              ],
+            });
+            gndNet.terminals.push({ part: ledId, terminal: 'cathode' });
+          }
+        }
+      } else {
+        notes.push(`Unknown port direction '${port.direction}' for port ${port.name}`);
+      }
+    }
+  }
+
+  // ─── Parts declarations (shift registers, etc.) ────────────────────────
+
+  if (stc.parts) {
+    for (const part of stc.parts) {
+      const safeName = part.name.replace(/[^a-zA-Z0-9_]/g, '_');
+
+      if (part.kind === '74hc595') {
+        // 74HC595: 3 MCU pins → shift register → 8 outputs with LEDs.
+        // The shift register is modeled as a black box in the netlist:
+        // the board doesn't simulate the shift register logic itself
+        // (that requires edge-order modeling), but it creates the
+        // output LEDs so the circuit designer can show them.
+
+        // Add the 3 MCU pins
+        for (const pinId of Object.values(part.pins)) {
+          if (!mcuTerminals.includes(pinId)) mcuTerminals.push(pinId);
+        }
+
+        // Wire MCU pins to nets (the shift register connections)
+        for (const [role, pinId] of Object.entries(part.pins)) {
+          nets.push({
+            id: `net_${safeName}_${role}`,
+            terminals: [{ part: 'MCU', terminal: pinId }],
+          });
+        }
+
+        // Create output LEDs (the display that the shift register drives)
+        const numOutputs = part.outputs ?? 8;
+        for (let bit = 0; bit < numOutputs; bit++) {
+          const segName = numOutputs === 8 && bit < 7
+            ? ['a', 'b', 'c', 'd', 'e', 'f', 'g'][bit]
+            : bit === 7 ? 'dp' : `q${bit}`;
+          const rId = `R_${safeName}_${segName}`;
+          const ledId = `LED_${safeName}_${segName}`;
+
+          parts.push({
+            id: rId, kind: 'resistor',
+            params: { ohms: 330 }, terminals: ['a', 'b'],
+          });
+          parts.push({
+            id: ledId, kind: 'led',
+            params: { vf: 2.0, color: 'red' }, terminals: ['anode', 'cathode'],
+          });
+
+          if (part.activeLow) {
+            vccNet.terminals.push({ part: rId, terminal: 'a' });
+            nets.push({
+              id: `net_${safeName}_${segName}_r_led`,
+              terminals: [
+                { part: rId, terminal: 'b' },
+                { part: ledId, terminal: 'anode' },
+              ],
+            });
+            // Output goes to GND through the LED (active-low:
+            // shift register output LOW → current flows → LED on)
+            gndNet.terminals.push({ part: ledId, terminal: 'cathode' });
+          } else {
+            // Active-high: output → R → LED → GND
+            nets.push({
+              id: `net_${safeName}_${segName}_out`,
+              terminals: [{ part: rId, terminal: 'a' }],
+            });
+            nets.push({
+              id: `net_${safeName}_${segName}_r_led`,
+              terminals: [
+                { part: rId, terminal: 'b' },
+                { part: ledId, terminal: 'anode' },
+              ],
+            });
+            gndNet.terminals.push({ part: ledId, terminal: 'cathode' });
+          }
+        }
+      } else {
+        notes.push(`Unknown part kind '${part.kind}' for part ${part.name}`);
+      }
     }
   }
 

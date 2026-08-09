@@ -2,7 +2,7 @@ name: Build (permissive base)
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, bundle-test]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,6 +19,16 @@ jobs:
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
       - name: Build the editor (proves the permissive base compiles)
-        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+        run: |
+          cd packages/scratch-gui
+          /usr/bin/time -v sh -c 'NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build' 2>&1 | tee build.log
+          echo "---"
+          grep "Maximum resident" build.log || true
+          du -sh build/
+          echo "=== Build output by size ==="
+          find build/ -type f \( -name '*.js' -o -name '*.css' \) -exec ls -lhS {} + | head -20
+          echo "=== Static assets by size ==="
+          du -sh build/static/*/  2>/dev/null || true
+          find build/static/ -type f -size +100k -exec ls -lhS {} + 2>/dev/null | head -20
       - uses: actions/upload-artifact@v4
         with: { name: editor-build, path: packages/scratch-gui/build }
