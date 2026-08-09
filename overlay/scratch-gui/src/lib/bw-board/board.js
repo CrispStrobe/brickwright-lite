@@ -16,6 +16,7 @@
 import { pinThevenin } from './pin-model.js';
 import { solveMNA } from './mna.js';
 import { validateNetlist } from './validate.js';
+import { getDevice, initDeviceState } from './devices.js';
 
 /**
  * Internal pin state.
@@ -30,6 +31,15 @@ import { validateNetlist } from './validate.js';
 const LED_VF = 2.0;       // forward voltage threshold
 const LED_RD = 10;         // dynamic resistance above threshold
 const LED_I_RATED = 0.020; // 20 mA rated current (for brightness normalization)
+
+/**
+ * Part kinds the closed-form walker cannot represent. Their presence routes
+ * _solve() through the full MNA path — the walker would otherwise report
+ * voltages as if these parts were absent.
+ */
+const MNA_ONLY_KINDS = new Set([
+  'npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource',
+]);
 
 /**
  * Brightness integrator window.
@@ -125,10 +135,31 @@ export class BoardImpl {
     this._probeMaxSamples = 10000;
 
     /**
+     * Scope channels: handle → channel config + ring buffer.
+     * @type {Map<number, object>}
+     */
+    this._scopeChannels = new Map();
+
+    /** Next scope channel handle. */
+    this._nextScopeHandle = 1;
+
+    /**
+     * 74HC595 shift register states: part id → FSM state.
+     * @type {Map<string, {shiftReg: number, latchReg: number, lastClock: boolean, lastLatch: boolean}>}
+     */
+    this._shiftRegisters = new Map();
+
+    /**
      * Capacitor voltages: part id → current voltage across the cap.
      * @type {Map<string, number>}
      */
     this.capVoltages = new Map();
+
+    /**
+     * Registered-device states: part id → model state (incl. state.drives).
+     * @type {Map<string, object>}
+     */
+    this._deviceStates = new Map();
 
     /**
      * LED cube state: part id → { selectPins, dataPins, polarity, voxelHistory }.
@@ -183,6 +214,14 @@ export class BoardImpl {
           this.inductorCurrents.set(p.id, 0);
         }
       }
+      if (p.kind === 'shift_register') {
+        this._shiftRegisters.set(p.id, {
+          shiftReg: 0,    // 8-bit shift register
+          latchReg: 0,    // 8-bit output latch
+          lastClock: false,
+          lastLatch: false,
+        });
+      }
       if (p.kind === 'led_cube') {
         // Default: 8 scan lines × 8 data bits.
         // The STC12 cube scans 8 lines (4 layers × 2 colour groups)
@@ -198,6 +237,12 @@ export class BoardImpl {
           history: [{ tNs: 0n, litMask: 0n }],
         });
       }
+    }
+
+    this._deviceStates = new Map();
+    for (const p of parts) {
+      const st = initDeviceState(p);
+      if (st) this._deviceStates.set(p.id, st);
     }
 
     this._solve();
@@ -217,6 +262,11 @@ export class BoardImpl {
     this.pinStates.set(pin, { mode, driveHigh });
     this._solve();
     this._recordLedSamples();
+
+    // Update scope channel min/max for voltage changes between sample points
+    if (this._scopeChannels.size > 0) {
+      this._feedScopeVoltages();
+    }
 
     // Record buzzer edges on state change
     if (prev && prev.driveHigh !== driveHigh) {
@@ -241,12 +291,24 @@ export class BoardImpl {
     // Integrate reactive components
     if (tNs > prevNs && this.powered) {
       const dtSec = Number(tNs - prevNs) / 1e9;
-      this._integrateCapacitors(dtSec);
-      this._integrateInductors(dtSec);
+      if (this._needsMNA() && (this._hasReactive() || this._hasTimeVaryingSource())) {
+        // Semiconductors + reactive parts (or a running waveform source):
+        // the closed-form integrators cannot see either, so sub-step the
+        // transient MNA solve across the interval.
+        this._integrateTransientMNA(dtSec);
+      } else {
+        this._integrateCapacitors(dtSec);
+        this._integrateInductors(dtSec);
+      }
     }
 
     // Record LED current samples at this timestamp
     this._recordLedSamples();
+
+    // Update scope channels (fixed cadence, min/max decimation)
+    if (this._scopeChannels.size > 0) {
+      this._updateScopeChannels(tNs);
+    }
 
     // Record oscilloscope probe samples
     for (const [netId, data] of this._probes) {
@@ -335,6 +397,169 @@ export class BoardImpl {
   clearProbeData() {
     for (const [, data] of this._probes) {
       data.length = 0;
+    }
+  }
+
+  // ─── Scope channels ────────────────────────────────────────────────────
+
+  /**
+   * Attach a scope channel with fixed sim-time cadence and (min,max) decimation.
+   *
+   * @param {object} opts
+   * @param {'voltage' | 'current'} opts.type - Channel type
+   * @param {string} [opts.netId] - Net to probe (for voltage channels)
+   * @param {string} [opts.partId] - Part to probe (for current channels)
+   * @param {string} [opts.terminal] - Terminal to probe (for current channels)
+   * @param {number} [opts.sampleRateHz=100000] - Sim-time sample rate
+   * @param {number} [opts.depth=8192] - Ring buffer depth in (min,max) pairs
+   * @returns {number} Channel handle
+   */
+  addScopeChannel(opts) {
+    const handle = this._nextScopeHandle++;
+    const sampleRateHz = opts.sampleRateHz ?? 100_000;
+    const depth = opts.depth ?? 8192;
+    const intervalNs = BigInt(Math.round(1e9 / sampleRateHz));
+
+    const ch = {
+      type: opts.type,
+      netId: opts.netId ?? null,
+      partId: opts.partId ?? null,
+      terminal: opts.terminal ?? null,
+      sampleRateHz,
+      intervalNs,
+      depth,
+      // Ring buffer: interleaved [min0, max0, min1, max1, ...]
+      // Unwritten regions are NaN, never flat 0 — per boundary-B v2.
+      samples: new Float64Array(depth * 2).fill(NaN),
+      writeIndex: 0,     // next write position (in pairs, 0..depth-1)
+      count: 0,          // how many pairs have been written total
+      startTNs: 0n,      // sim-time of the oldest sample in the buffer
+      // For voltage channels: track running (min, max) within current bucket
+      _bucketMin: Infinity,
+      _bucketMax: -Infinity,
+      _nextSampleNs: this.timeNs + intervalNs, // next sample point
+    };
+
+    this._scopeChannels.set(handle, ch);
+    return handle;
+  }
+
+  /**
+   * Remove a scope channel.
+   * @param {number} handle
+   */
+  removeScopeChannel(handle) {
+    this._scopeChannels.delete(handle);
+  }
+
+  /** Remove all scope channels. */
+  clearScopeChannels() {
+    this._scopeChannels.clear();
+  }
+
+  /**
+   * Get the waveform data for a scope channel.
+   * @param {number} handle
+   * @returns {{samples: Float64Array, startTNs: bigint, sampleIntervalNs: bigint,
+   *            writeIndex: number, count: number, channelType: string} | null}
+   */
+  getScopeData(handle) {
+    const ch = this._scopeChannels.get(handle);
+    if (!ch) return null;
+    return {
+      samples: ch.samples,
+      startTNs: ch.startTNs,
+      sampleIntervalNs: ch.intervalNs,
+      writeIndex: ch.writeIndex,
+      count: ch.count,
+      channelType: ch.type,
+    };
+  }
+
+  /**
+   * Sample all current-type scope channels once (call from display loop, ~60 Hz).
+   * Returns a Map of handle → instantaneous current.
+   * @returns {Map<number, number>}
+   */
+  sampleCurrentChannels() {
+    const results = new Map();
+    for (const [handle, ch] of this._scopeChannels) {
+      if (ch.type !== 'current') continue;
+      const current = this.branchCurrent(ch.partId, ch.terminal);
+      // Write into ring buffer as a single (min=max=current) pair
+      const idx = ch.writeIndex * 2;
+      ch.samples[idx] = current;
+      ch.samples[idx + 1] = current;
+      ch.writeIndex = (ch.writeIndex + 1) % ch.depth;
+      ch.count++;
+      if (ch.count > ch.depth) {
+        ch.startTNs += ch.intervalNs;
+      }
+      results.set(handle, current);
+    }
+    return results;
+  }
+
+  /**
+   * Get all active scope channel handles.
+   * @returns {number[]}
+   */
+  getScopeChannels() {
+    return [...this._scopeChannels.keys()];
+  }
+
+  /**
+   * Update scope channel min/max with current voltages (no flush).
+   * Called from setPin/setControl to capture intra-bucket voltage changes.
+   * @private
+   */
+  _feedScopeVoltages() {
+    for (const [, ch] of this._scopeChannels) {
+      if (ch.type !== 'voltage') continue;
+      const v = this.nodeVoltages.get(ch.netId) ?? 0;
+      const val = Number.isFinite(v) ? v : 0;
+      if (val < ch._bucketMin) ch._bucketMin = val;
+      if (val > ch._bucketMax) ch._bucketMax = val;
+    }
+  }
+
+  /**
+   * Feed the current voltage into scope voltage channels.
+   * Called from advanceTo when time crosses sample boundaries.
+   * @private
+   */
+  _updateScopeChannels(tNs) {
+    for (const [, ch] of this._scopeChannels) {
+      if (ch.type !== 'voltage') continue;
+
+      // Get current voltage
+      const v = this.nodeVoltages.get(ch.netId) ?? 0;
+      const val = Number.isFinite(v) ? v : 0;
+
+      // Track running min/max for this bucket
+      if (val < ch._bucketMin) ch._bucketMin = val;
+      if (val > ch._bucketMax) ch._bucketMax = val;
+
+      // Flush completed buckets
+      while (tNs >= ch._nextSampleNs) {
+        const idx = ch.writeIndex * 2;
+        ch.samples[idx] = ch._bucketMin;
+        ch.samples[idx + 1] = ch._bucketMax;
+        ch.writeIndex = (ch.writeIndex + 1) % ch.depth;
+        ch.count++;
+
+        // Update start time when buffer wraps
+        if (ch.count > ch.depth) {
+          ch.startTNs = ch._nextSampleNs - ch.intervalNs * BigInt(ch.depth - 1);
+        } else if (ch.count === 1) {
+          ch.startTNs = ch._nextSampleNs - ch.intervalNs;
+        }
+
+        ch._nextSampleNs += ch.intervalNs;
+        // Reset bucket for next interval
+        ch._bucketMin = val;
+        ch._bucketMax = val;
+      }
     }
   }
 
@@ -756,6 +981,17 @@ export class BoardImpl {
       eeprom: ['sda', 'scl', 'vcc', 'gnd'],
       shift_register: ['data', 'clock', 'latch', 'oe', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'],
       char_lcd: ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'],
+      // Device-registry kinds
+      gate_and: ['in0', 'in1', 'out'],
+      gate_or: ['in0', 'in1', 'out'],
+      gate_not: ['in0', 'out'],
+      gate_nand: ['in0', 'in1', 'out'],
+      gate_nor: ['in0', 'in1', 'out'],
+      gate_xor: ['in0', 'in1', 'out'],
+      relay: ['coil_a', 'coil_b', 'com', 'nc', 'no'],
+      dc_motor: ['a', 'b'],
+      servo: ['signal', 'vcc', 'gnd'],
+      timer_555: ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'],
     };
     return map[kind] ?? null;
   }
@@ -773,6 +1009,14 @@ export class BoardImpl {
       'vsource', 'isource', 'seven_segment', 'rgb_led',
       'shift_register', 'char_lcd', 'led_matrix', 'led_cube',
       'ir_receiver', 'temp_sensor', 'eeprom', 'mcu',
+      // Device-registry kinds (registered at runtime, listed here for discovery)
+      'gate_and', 'gate_or', 'gate_not', 'gate_nand', 'gate_nor', 'gate_xor',
+      'relay', 'dc_motor', 'servo', 'timer_555',
+      'battery', 'vreg', 'fuse',
+      'h_bridge', 'stepper', 'solenoid',
+      'ultrasonic', 'pir', 'tilt_sensor', 'flex_sensor', 'force_sensor', 'phototransistor',
+      'neopixel', 'bargraph',
+      'decade_counter', 'dff', 'jkff', 'darlington_driver', 'piezo',
     ];
   }
 
@@ -1078,19 +1322,215 @@ export class BoardImpl {
    * @param {number} [testCurrent] - test current magnitude
    */
   _solveMNA(powerOff, testNodeA, testNodeB, testCurrent) {
-    // Build pin source map from current pin states
+    return solveMNA(this.parts, this.nets, this._pinSources(), this.controls, this.vcc, {
+      powerOff,
+      testNodeA,
+      testNodeB,
+      testCurrent,
+      // Instruments must see the circuit as it IS: a half-charged capacitor
+      // pins its nets at its stored voltage, and a waveform source is at its
+      // value for the current simulation time.
+      capVoltages: this.capVoltages,
+      tSeconds: Number(this.timeNs) / 1e9,
+      deviceStates: this._deviceStates,
+    });
+  }
+
+  /** Build the pin source map from current pin states. */
+  _pinSources() {
     /** @type {Map<string, import('./types.js').TheveninSource>} */
     const pinSources = new Map();
     for (const [pinId, state] of this.pinStates) {
       pinSources.set(pinId, pinThevenin(state.mode, state.driveHigh, this.vcc));
     }
+    return pinSources;
+  }
 
-    return solveMNA(this.parts, this.nets, pinSources, this.controls, this.vcc, {
-      powerOff,
-      testNodeA,
-      testNodeB,
-      testCurrent,
-    });
+  /**
+   * Does this netlist contain parts the closed-form walker cannot represent?
+   * If so, node voltages must come from the full MNA solve — the walker would
+   * silently report voltages as if those parts were absent, which is the
+   * "plausible, wrong" answer this project's doctrine forbids.
+   */
+  _needsMNA() {
+    for (const p of this.parts) {
+      if (MNA_ONLY_KINDS.has(p.kind) || getDevice(p.kind)) return true;
+    }
+    return false;
+  }
+
+  /** Any capacitor or inductor present? */
+  _hasReactive() {
+    for (const p of this.parts) {
+      if (p.kind === 'capacitor' || p.kind === 'inductor') return true;
+    }
+    return false;
+  }
+
+  /** Any source whose value moves with time? */
+  _hasTimeVaryingSource() {
+    for (const p of this.parts) {
+      if (p.kind === 'vsource' && p.params && p.params.wave && p.params.wave !== 'dc') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Full-MNA instantaneous solve: node voltages, LED currents and the
+   * instrument cache all come from one solution.
+   */
+  _solveViaMNA() {
+    let res = this._solveMNA(false);
+    this._adoptSolution(res);
+    // Devices react to the solved voltages (a gate sees its input change),
+    // may change what they drive, and the network is re-solved — to a
+    // bounded fixpoint, so a chain of gates settles within one event.
+    for (let round = 0; round < 10; round++) {
+      if (!this._updateDevices()) break;
+      res = this._solveMNA(false);
+      this._adoptSolution(res);
+    }
+  }
+
+  /** Adopt an MNA solution as the board's current answer. */
+  _adoptSolution(res) {
+    this.nodeVoltages = new Map(res.nodeVoltages);
+    for (const part of this.parts) {
+      if (part.kind !== 'led') continue;
+      const c = res.branchCurrents.get(part.id);
+      this.ledCurrents.set(part.id, Math.max(0, c ? (c.get('anode') ?? 0) : 0));
+    }
+    this._mnaCache = res;
+  }
+
+  /**
+   * Update 74HC595 shift register FSMs. Returns true if any output changed.
+   * Called from the settle loop alongside _updateDevices.
+   */
+  _updateShiftRegisters() {
+    if (this._shiftRegisters.size === 0) return false;
+    let changed = false;
+    const VCC = this.vcc;
+    const VIH = 0.7 * VCC;
+    const VIL = 0.3 * VCC;
+
+    for (const part of this.parts) {
+      if (part.kind !== 'shift_register') continue;
+      const sr = this._shiftRegisters.get(part.id);
+      if (!sr) continue;
+
+      const readV = (terminal) => {
+        const n = this._netForTerminal(part.id, terminal);
+        return n ? (this.nodeVoltages.get(n) ?? 0) : 0;
+      };
+
+      const dataV = readV('data');
+      const clockV = readV('clock');
+      const latchV = readV('latch');
+      const oeV = readV('oe');
+
+      const clockHigh = clockV > VIH;
+      const latchHigh = latchV > VIH;
+      const dataBit = dataV > VIH ? 1 : 0;
+      const oeActive = oeV < VIL; // active LOW
+
+      // Rising edge on clock: shift in data bit
+      if (clockHigh && !sr.lastClock) {
+        sr.shiftReg = ((sr.shiftReg << 1) | dataBit) & 0xFF;
+      }
+      sr.lastClock = clockHigh;
+
+      // Rising edge on latch: copy shift to output
+      if (latchHigh && !sr.lastLatch) {
+        if (sr.latchReg !== sr.shiftReg) {
+          sr.latchReg = sr.shiftReg;
+          changed = true;
+        }
+      }
+      sr.lastLatch = latchHigh;
+
+      // Update output drives based on OE and latch contents
+      // (This is read by the MNA via the closed-form or MNA solver)
+      // We store the drive state for the solver to pick up
+      sr.oeActive = oeActive;
+    }
+    return changed;
+  }
+
+  /** One update pass over all registered devices. True if any changed. */
+  _updateDevices() {
+    let changed = false;
+    // Built-in shift registers
+    if (this._shiftRegisters.size > 0) {
+      if (this._updateShiftRegisters()) changed = true;
+    }
+    // Registry devices
+    if (this._deviceStates.size === 0) return changed;
+    for (const part of this.parts) {
+      const model = getDevice(part.kind);
+      if (!model || !model.update) continue;
+      const state = this._deviceStates.get(part.id);
+      const read = (terminal) => {
+        const n = this._netForTerminal(part.id, terminal);
+        return n ? (this.nodeVoltages.get(n) ?? 0) : 0;
+      };
+      if (model.update(part, state, read, this.timeNs)) changed = true;
+    }
+    return changed;
+  }
+
+  /**
+   * Transient integration through MNA: sub-step backward Euler across dtSec,
+   * carrying capacitor voltages and inductor currents forward. Used when
+   * MNA-only parts coexist with reactive parts, or a waveform source runs —
+   * the closed-form RC/RL integrators cannot see either.
+   *
+   * @param {number} dtSec
+   */
+  _integrateTransientMNA(dtSec) {
+    const tEnd = Number(this.timeNs) / 1e9;
+    const t0 = tEnd - dtSec;
+    // Sub-step: 100 µs of simulated time, capped at 200 steps per call so a
+    // long idle advance cannot stall the caller. Adaptive control can replace
+    // this; the cap is a stated accuracy limit, not a hidden one.
+    const SUB = 1e-4;
+    let n = Math.max(1, Math.ceil(dtSec / SUB));
+    if (n > 200) n = 200;
+    const h = dtSec / n;
+
+    const pinSources = this._pinSources();
+    let cv = this.capVoltages;
+    let il = this.inductorCurrents;
+    let res = null;
+    for (let i = 1; i <= n; i++) {
+      res = solveMNA(this.parts, this.nets, pinSources, this.controls, this.vcc, {
+        tSeconds: t0 + i * h,
+        transient: { dtSec: h, capVoltages: cv, inductorCurrents: il },
+        deviceStates: this._deviceStates,
+      });
+      cv = res.capVoltagesNext ?? cv;
+      il = res.inductorCurrentsNext ?? il;
+      // One device pass per sub-step: a comparator/gate that flips here is
+      // seen by the network on the NEXT sub-step — switching resolution is
+      // one sub-step, which is the stated accuracy of this integrator.
+      if (this._deviceStates.size > 0) {
+        this.nodeVoltages = new Map(res.nodeVoltages);
+        this._updateDevices();
+      }
+    }
+    this.capVoltages = new Map(cv);
+    this.inductorCurrents = new Map(il);
+    if (res) {
+      this.nodeVoltages = new Map(res.nodeVoltages);
+      for (const part of this.parts) {
+        if (part.kind !== 'led') continue;
+        const c = res.branchCurrents.get(part.id);
+        this.ledCurrents.set(part.id, Math.max(0, c ? (c.get('anode') ?? 0) : 0));
+      }
+      this._mnaCache = res;
+    }
   }
 
   // ─── Internal: capacitor RC integration ───────────────────────────────────
@@ -1197,6 +1637,13 @@ export class BoardImpl {
 
     if (!this.powered) return;
 
+    // Parts beyond the walker's vocabulary? One full MNA solve answers
+    // everything coherently (and primes the instrument cache for free).
+    if (this._needsMNA()) {
+      this._solveViaMNA();
+      return;
+    }
+
     // Set known voltages: VCC and GND nets
     for (const net of this.nets) {
       for (const t of net.terminals) {
@@ -1244,6 +1691,27 @@ export class BoardImpl {
       if (netA) {
         const vB = netB ? (this.nodeVoltages.get(netB) ?? 0) : 0;
         this.nodeVoltages.set(netA, vB + capV);
+      }
+    }
+
+    // Settle built-in shift registers (clock edge → latch → output change → re-solve).
+    if (this._shiftRegisters.size > 0) {
+      for (let round = 0; round < 3; round++) {
+        if (!this._updateShiftRegisters()) break;
+        // Re-resolve affected output nets
+        for (const part of this.parts) {
+          if (part.kind !== 'shift_register') continue;
+          for (let i = 0; i < 8; i++) {
+            const netId = this._netForTerminal(part.id, `q${i}`);
+            if (netId && !this.nodeVoltages.has(netId)) continue;
+            if (netId) {
+              // Clear and re-resolve this net
+              this.nodeVoltages.delete(netId);
+              const net = this.netMap.get(netId);
+              if (net) this._resolveNet(net);
+            }
+          }
+        }
       }
     }
   }
@@ -1334,6 +1802,21 @@ export class BoardImpl {
           if (thev !== 'high-z') {
             out.push({ vTh: thev.vTh, rTh: rAccum + thev.rTh });
           }
+          break;
+        }
+        case 'shift_register': {
+          // Output terminals q0-q7 are Thévenin drivers from the latch register
+          const sr = this._shiftRegisters.get(part.id);
+          if (sr && t.terminal.startsWith('q')) {
+            const bitIdx = parseInt(t.terminal.slice(1), 10);
+            if (!isNaN(bitIdx) && sr.oeActive !== false) {
+              const bitVal = (sr.latchReg >> bitIdx) & 1;
+              const rOut = /** @type {number} */ (part.params?.rOut ?? 50);
+              out.push({ vTh: bitVal ? this.vcc : 0, rTh: rAccum + rOut });
+            }
+            // If OE inactive: high-Z, don't push any source
+          }
+          // Input terminals (data, clock, latch, oe): high impedance, ignore
           break;
         }
         case 'resistor': {

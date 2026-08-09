@@ -29,7 +29,7 @@ export const FOOTPRINTS = {
   gnd: { w: 36, h: 40 },
   mcu: { w: 120, h: 160 },
   meter: { w: 70, h: 55 },
-  ledcube: { w: 90, h: 90 },
+  led_cube: { w: 90, h: 90 },
   seven_segment: { w: 50, h: 70 },
   char_lcd: { w: 140, h: 56 },
   led_matrix: { w: 80, h: 80 },
@@ -46,6 +46,7 @@ export const FOOTPRINTS = {
   vsource: { w: 48, h: 56 },
   isource: { w: 48, h: 56 },
   relay: { w: 70, h: 50 },
+  breadboard: { w: 930, h: 310 },
   dc_motor: { w: 70, h: 70 },
   servo: { w: 70, h: 60 },
 };

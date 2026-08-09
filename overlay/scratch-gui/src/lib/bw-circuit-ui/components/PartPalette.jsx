@@ -12,6 +12,13 @@ const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white', 'orange'];
 
 const CATEGORIES = [
   {
+    name: 'Boards',
+    parts: [
+      { kind: 'breadboard', label: 'Breadboard', params: {}, color: '#e8e4d8',
+        tooltip: 'Full-size breadboard - legs snap into holes, rows and rails conduct' },
+    ],
+  },
+  {
     name: 'Power',
     parts: [
       { kind: 'vcc', label: 'VCC', params: {}, color: '#e74c3c' },
@@ -23,7 +30,9 @@ const CATEGORIES = [
     parts: [
       { kind: 'resistor', label: 'Resistor 1kΩ', params: { ohms: 1000 }, color: '#e67e22' },
       { kind: 'capacitor', label: 'Capacitor 100µF', params: { farads: 0.0001 }, color: '#34495e' },
+      { kind: 'inductor', label: 'Inductor 10mH', params: { henrys: 0.01 }, color: '#9b59b6', tooltip: 'Coil' },
       { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
+      { kind: 'zener', label: 'Zener Diode', params: { vf: 0.7, vz: 5.1 }, color: '#e67e22', tooltip: 'Voltage regulator diode' },
       { kind: 'switch', label: 'Switch', params: {}, color: '#bdc3c7' },
     ],
   },
@@ -31,7 +40,17 @@ const CATEGORIES = [
     name: 'Active',
     parts: [
       { kind: 'led', label: 'LED', params: { vf: 2.0, color: 'red' }, color: '#2ecc71', hasColorPicker: true },
+      { kind: 'rgb_led', label: 'RGB LED', params: { vf_r: 2.0, vf_g: 2.2, vf_b: 3.0 }, color: '#e74c3c', tooltip: 'Common cathode' },
       { kind: 'buzzer', label: 'Buzzer', params: {}, color: '#1abc9c' },
+    ],
+  },
+  {
+    name: 'Transistors',
+    parts: [
+      { kind: 'npn', label: 'NPN', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2222 type' },
+      { kind: 'pnp', label: 'PNP', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2907 type' },
+      { kind: 'nmos', label: 'N-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
+      { kind: 'pmos', label: 'P-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
     ],
   },
   {
@@ -40,6 +59,13 @@ const CATEGORIES = [
       { kind: 'potentiometer', label: 'Pot 10kΩ', params: { ohms: 10000 }, color: '#9b59b6' },
       { kind: 'button', label: 'Button', params: {}, color: '#f39c12' },
       { kind: 'mcu', label: 'MCU (STC12)', params: { pins: ['P1.0', 'P1.3', 'P1.5', 'P3.2'] }, color: '#7f8c8d' },
+    ],
+  },
+  {
+    name: 'Sensors',
+    parts: [
+      { kind: 'ldr', label: 'LDR', params: { rDark: 200000, rLight: 500 }, color: '#e67e22', tooltip: 'Light-dependent resistor' },
+      { kind: 'ntc', label: 'NTC Thermistor', params: { rCold: 10000, rHot: 1000 }, color: '#16a085', tooltip: 'Temperature sensor' },
     ],
   },
   {
@@ -54,6 +80,8 @@ const CATEGORIES = [
   {
     name: 'ICs',
     parts: [
+      { kind: 'opamp', label: 'Op-Amp', params: { gain: 100000 }, color: '#e67e22', tooltip: 'LM741 type' },
+      { kind: '555', label: '555 Timer', params: {}, color: '#e74c3c' },
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },
       { kind: 'temp_sensor', label: 'Temp Sensor', params: {}, color: '#16a085', tooltip: 'drawable — DS18B20' },
@@ -70,7 +98,7 @@ const CATEGORIES = [
 
 const ALL_PARTS = CATEGORIES.flatMap(c => c.parts);
 
-export function PartPalette({ onAddPart, onDragPart }) {
+export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
   const [filter, setFilter] = useState('');
   const [ledColor, setLedColor] = useState('red');
 
@@ -114,7 +142,7 @@ export function PartPalette({ onAddPart, onDragPart }) {
         matchingParts.length === 0 ? (
           <div style={{ color: '#556', fontSize: '9px', padding: '4px' }}>No matches</div>
         ) : (
-          matchingParts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} ledColor={ledColor} onLedColorChange={setLedColor} />)
+          matchingParts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
         )
       ) : (
         CATEGORIES.map(cat => (
@@ -122,7 +150,7 @@ export function PartPalette({ onAddPart, onDragPart }) {
             <div style={{ color: '#556', fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase' }}>
               {cat.name}
             </div>
-            {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} ledColor={ledColor} onLedColorChange={setLedColor} />)}
+            {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
           </div>
         ))
       )}
@@ -130,7 +158,7 @@ export function PartPalette({ onAddPart, onDragPart }) {
   );
 }
 
-function PartButton({ part, onAddPart, onDragPart, ledColor, onLedColorChange }) {
+function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
   const { kind, label, params, color, tooltip, hasColorPicker } = part;
   const [hovered, setHovered] = useState(false);
 
@@ -140,12 +168,11 @@ function PartButton({ part, onAddPart, onDragPart, ledColor, onLedColorChange })
   return (
     <div style={{ position: 'relative' }}>
       <div
-        draggable
-        onClick={() => onAddPart(kind, effectiveParams)}
-        onDragStart={(e) => {
-          e.dataTransfer.setData('application/circuit-part', JSON.stringify({ kind, params: effectiveParams }));
-          e.dataTransfer.effectAllowed = 'copy';
-          if (onDragPart) onDragPart(kind, effectiveParams);
+        onPointerDown={() => {
+          // Arm ghost placement: press-drag-release onto the canvas, or
+          // click here and click the canvas — both commit at the cursor.
+          if (onStartPlace) onStartPlace(kind, effectiveParams);
+          else onAddPart(kind, effectiveParams);
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}

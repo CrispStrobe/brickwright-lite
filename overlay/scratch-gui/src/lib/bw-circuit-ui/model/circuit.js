@@ -10,6 +10,7 @@
 
 import { getEngine } from '../engine.js';
 import { History } from './history.js';
+import { mergeNets } from './merge-nets.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -63,6 +64,18 @@ export class Circuit {
 
     /** @type {History} */
     this.history = new History();
+
+    /** @type {import('./breadboard.js').BreadboardModel | null} */
+    this.breadboard = null;
+  }
+
+  /**
+   * Attach a breadboard model. When set, _syncNetlist merges wire nets
+   * with breadboard-derived nets via union-find.
+   * @param {import('./breadboard.js').BreadboardModel | null} bb
+   */
+  setBreadboard(bb) {
+    this.breadboard = bb;
   }
 
   /** Save current state to history. Called after structural mutations. */
@@ -446,7 +459,7 @@ export class Circuit {
    */
   _syncNetlist() {
     // Parts for the engine (strip layout fields, exclude UI-only parts like meters)
-    const engineParts = this.parts.filter(p => p.kind !== 'meter').map(p => ({
+    const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
       kind: p.kind,
       params: p.params,
@@ -464,12 +477,23 @@ export class Circuit {
       if (!net.has(tk)) net.set(tk, w.to);
     }
 
-    const engineNets = [];
+    const wireNets = [];
     for (const [netId, termMap] of netMap) {
-      engineNets.push({
+      wireNets.push({
         id: netId,
         terminals: [...termMap.values()],
       });
+    }
+
+    // Merge breadboard-derived nets with wire nets when a breadboard is attached
+    let engineNets = wireNets;
+    if (this.breadboard) {
+      try {
+        const bbResult = this.breadboard.deriveNets();
+        engineNets = mergeNets(wireNets, bbResult.nets);
+      } catch {
+        // Breadboard state may be incomplete during construction
+      }
     }
 
     // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
@@ -495,7 +519,7 @@ export class Circuit {
    * @param {Array<{id: string, terminals: Array<{part: string, terminal: string}>}>} nets
    */
   syncWithExternalNets(nets) {
-    const engineParts = this.parts.filter(p => p.kind !== 'meter').map(p => ({
+    const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
       kind: p.kind,
       params: p.params,
@@ -548,13 +572,26 @@ function terminalsForKind(kind, params) {
     case 'gnd': return ['gnd'];
     case 'resistor': return ['a', 'b'];
     case 'capacitor': return ['a', 'b'];
+    case 'inductor': return ['a', 'b'];
     case 'diode': return ['anode', 'cathode'];
+    case 'zener': return ['anode', 'cathode'];
     case 'led': return ['anode', 'cathode'];
+    case 'rgb_led': return ['r_anode', 'g_anode', 'b_anode', 'cathode'];
     case 'potentiometer': return ['a', 'wiper', 'b'];
     case 'button': return ['a', 'b'];
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
+    case 'ldr': return ['a', 'b'];
+    case 'ntc': return ['a', 'b'];
+    case 'npn': case 'pnp': return ['base', 'collector', 'emitter'];
+    case 'nmos': case 'pmos': return ['gate', 'drain', 'source'];
+    case 'opamp': return ['inp', 'inn', 'out'];
+    case '555': return ['gnd', 'trig', 'out', 'reset', 'ctrl', 'thr', 'dis', 'vcc'];
+    case 'relay': return ['coil_a', 'coil_b', 'no', 'com', 'nc'];
+    case 'servo': return ['signal', 'vcc', 'gnd'];
+    case 'dc_motor': case 'hobby_gearmotor': return ['a', 'b'];
     case 'meter': return ['probe_a', 'probe_b'];
+    case 'breadboard': return [];
     case 'led_cube': return [
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),
       ...Array.from({length: 8}, (_, i) => `data_${i}`),
