@@ -223,7 +223,19 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
             ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
     }
 
-    /** Put the marker + red dot on every marked block, and wire hover. */
+    /**
+     * Put the marker + red dot on every marked block, and wire hover.
+     *
+     * Called on every Blockly workspace change event (addChangeListener in
+     * blocks.jsx), so the dot survives drag, undo/redo, collapse/expand and
+     * workspace reload. The dot is in the block's local SVG coordinate space,
+     * so it scales correctly with zoom.
+     *
+     * The dot is re-created (not moved) on every paint, because Blockly may
+     * replace a block's SVG root element entirely. querySelector finds any
+     * existing dot and skips re-creation; if the SVG was rebuilt, the old dot
+     * is gone and a new one is appended.
+     */
     function paint(workspace) {
         if (!workspace || !workspace.getAllBlocks) return;
         for (const block of workspace.getAllBlocks()) {
