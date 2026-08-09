@@ -22,6 +22,8 @@ import Box from '../box/box.jsx';
 import MenuBar from '../menu-bar/menu-bar.jsx';
 import ChromeToggle from './chrome-toggle.jsx';
 import chromeStyles from './compact-chrome.css';
+import {computePaneStyles, nextSize} from '../../lib/pane-sizes.js';
+import {setPaneSize} from '../../reducers/pane-layout';
 import CostumeLibrary from '../../containers/costume-library.jsx';
 import BackdropLibrary from '../../containers/backdrop-library.jsx';
 import Watermark from '../../containers/watermark.jsx';
@@ -123,6 +125,8 @@ const GUIComponent = props => {
         showComingSoon,
         soundsTabVisible,
         stageSizeMode,
+        paneLayout,
+        onSetPaneSize,
         targetIsStage,
         telemetryModalVisible,
         theme,
@@ -149,6 +153,12 @@ const GUIComponent = props => {
 
     return (<MediaQuery minWidth={layout.fullSizeMinWidth}>{isFullSize => {
         const stageSize = resolveStageSize(stageSizeMode, isFullSize);
+
+        // Three-column pane sizing from the paneLayout reducer
+        const leftSize = paneLayout?.left?.size || 'm';
+        const middleSize = paneLayout?.middle?.size || 'l';
+        const rightSize = paneLayout?.right?.size || 'm';
+        const paneStyles = computePaneStyles(leftSize, middleSize, rightSize);
 
         return isPlayerOnly ? (
             <StageWrapper
@@ -373,7 +383,19 @@ const GUIComponent = props => {
                             ) : null}
                         </Box>
 
-                        <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}>
+                        <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}
+                            style={paneStyles.right}>
+                            {/* Size toggle for the right column */}
+                            <button
+                                onClick={() => onSetPaneSize && onSetPaneSize('right', nextSize(rightSize))}
+                                style={{
+                                    position: 'absolute', top: 2, right: 2, zIndex: 10,
+                                    background: '#1a1a2e', border: '1px solid #2c3e50',
+                                    borderRadius: '3px', color: '#7f8c8d', cursor: 'pointer',
+                                    padding: '1px 5px', fontFamily: 'monospace', fontSize: '9px',
+                                }}
+                                title={`Right column: ${rightSize} (click to cycle)`}
+                            >{rightSize}</button>
                             <StageWrapper
                                 isFullScreen={isFullScreen}
                                 isRendererSupported={isRendererSupported}
@@ -488,12 +510,17 @@ GUIComponent.defaultProps = {
 };
 
 const mapStateToProps = state => ({
-    // This is the button's mode, as opposed to the actual current state
     blocksId: state.scratchGui.timeTravel.year.toString(),
     stageSizeMode: state.scratchGui.stageSize.stageSize,
-    theme: state.scratchGui.theme.theme
+    theme: state.scratchGui.theme.theme,
+    paneLayout: state.scratchGui.paneLayout
+});
+
+const mapDispatchToProps = dispatch => ({
+    onSetPaneSize: (column, size) => dispatch(setPaneSize(column, size))
 });
 
 export default injectIntl(connect(
-    mapStateToProps
+    mapStateToProps,
+    mapDispatchToProps
 )(GUIComponent));

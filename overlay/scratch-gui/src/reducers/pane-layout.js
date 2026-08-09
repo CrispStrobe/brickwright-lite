@@ -49,39 +49,60 @@ export const PRESETS = {
   },
 };
 
-const initialState = {
+const STORAGE_KEY = 'bw-pane-layout';
+
+function loadFromStorage() {
+  try {
+    const stored = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch { /* fine */ }
+  return null;
+}
+
+function saveToStorage(state) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        left: state.left,
+        middle: state.middle,
+        right: state.right,
+        activePreset: state.activePreset,
+      }));
+    }
+  } catch { /* fine */ }
+}
+
+const initialState = loadFromStorage() || {
   ...PRESETS.blocks,
   activePreset: 'blocks',
 };
 
 export default function paneLayoutReducer(state = initialState, action) {
+  let next;
   switch (action.type) {
     case SET_PANE_SIZE: {
       const { column, size } = action;
       if (!state[column]) return state;
-      return {
-        ...state,
-        [column]: { ...state[column], size },
-        activePreset: null, // custom layout
-      };
+      next = { ...state, [column]: { ...state[column], size }, activePreset: null };
+      break;
     }
     case SET_SLOT_CONTENT: {
       const { column, position, contentId } = action;
       if (!state[column]) return state;
-      return {
-        ...state,
-        [column]: { ...state[column], [position]: contentId },
-        activePreset: null,
-      };
+      next = { ...state, [column]: { ...state[column], [position]: contentId }, activePreset: null };
+      break;
     }
     case APPLY_PRESET: {
       const preset = PRESETS[action.preset];
       if (!preset) return state;
-      return { ...preset, activePreset: action.preset };
+      next = { ...preset, activePreset: action.preset };
+      break;
     }
     default:
       return state;
   }
+  saveToStorage(next);
+  return next;
 }
 
 // Action creators
