@@ -8,6 +8,7 @@ import HashParserHOC from '../lib/hash-parser-hoc.jsx';
 import log from '../lib/log.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
 import initUrlExtensions from '../lib/url-extensions.js';
+import {applyStoredChrome} from '../components/gui/chrome-toggle.jsx';
 
 const onClickLogo = () => {
     /* Brickwright: no redirect to scratch.mit.edu */
@@ -70,6 +71,8 @@ export default appTarget => {
         window.onbeforeunload = () => true;
     }
 
+    // Before first paint, or the tall chrome flashes and then collapses.
+    applyStoredChrome();
     ReactDOM.render(
         // important: this is checking whether `simulateScratchDesktop` is truthy, not just defined!
         simulateScratchDesktop ?
