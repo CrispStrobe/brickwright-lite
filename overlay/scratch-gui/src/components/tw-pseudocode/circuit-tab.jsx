@@ -25,8 +25,10 @@ const DebugPanel = React.lazy(() =>
 class CircuitTab extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {Designer: null, error: null, reloading: false, stc: null, board: null, debugState: null};
+        this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
+            board: null, debugState: null, panel: 'designer', circuit: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
+        this.handleCircuitChange = this.handleCircuitChange.bind(this);
     }
 
     componentDidMount () {
@@ -45,7 +47,11 @@ class CircuitTab extends React.Component {
             const engine = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
             ui.setEngine(engine);   // the panel takes the engine by injection, not by path
-            this.setState({Designer: ui.CircuitDesigner});
+            // Keep the whole module, not just the designer. The warnings, parts
+            // list and examples panels are separate exports, and a build may
+            // legitimately not have them yet — which the panel strip reports
+            // rather than hides.
+            this.setState({Designer: ui.CircuitDesigner, ui});
         } catch (e) {
             // A chunk that 404s because the deploy moved on is not an error the
             // user can act on, and catching it here made it INVISIBLE to the
@@ -60,6 +66,42 @@ class CircuitTab extends React.Component {
             this.setState(recovering ? {reloading: true} : {error: e.message});
         }
         this.loading = false;
+    }
+
+    /**
+     * The designer publishing the circuit it owns.
+     *
+     * The warnings and parts-list panels are presentation-only: `runDrc` wants
+     * `circuit.parts`, `.wires`, `.breadboards` and `.board`, and `generateBom`
+     * wants the parts. All of that lives inside CircuitDesigner. `onBoardReady`
+     * hands over the board and `onDeclarationChange` hands over declarations,
+     * but neither is the circuit, so a host cannot currently feed either panel.
+     *
+     * So this is written against the prop that ought to exist. Until
+     * bw-circuit-ui calls it, `circuit` stays null and the panels say exactly
+     * why rather than rendering an empty list that reads as "no warnings".
+     */
+    handleCircuitChange (circuit) {
+        this.setState({circuit});
+    }
+
+    /** DRC warnings, or null when we cannot compute them (and why). */
+    drcWarnings () {
+        const {ui, circuit, board} = this.state;
+        if (!ui || typeof ui.runDrc !== 'function') {
+            return {error: 'This build of the circuit designer does not export runDrc yet.'};
+        }
+        if (!circuit) {
+            return {error: 'The designer in this build does not publish its circuit ' +
+                           '(waiting on bw-circuit-ui to call onCircuitChange), so the ' +
+                           'design-rule check cannot run.'};
+        }
+        try {
+            return {warnings: ui.runDrc(circuit, board || circuit.board) || []};
+        } catch (e) {
+            // A checker that throws must not read as a clean circuit.
+            return {error: `The design-rule check failed: ${e.message}`};
+        }
     }
 
     /**
@@ -184,10 +226,18 @@ class CircuitTab extends React.Component {
                         </React.Suspense>
                     </div>
                 ) : null}
+                {this.renderPanelStrip()}
+                {this.state.panel === 'designer' ? null : this.renderPanel()}
+                {/* The designer stays mounted whatever panel is showing: it owns the
+                    circuit, the board and the emulator's view of both, and unmounting
+                    it to show a parts list would tear all three down and rebuild them
+                    on the way back. Hidden, not destroyed. */}
+                <div style={this.state.panel === 'designer' ? null : {display: 'none'}}>
                 <Designer
                     stc={stc}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
+                    onCircuitChange={this.handleCircuitChange}
                     onBoardReady={(board) => {
                         // Publish the board so the Code tab's sim runner can use it
                         // instead of building its own. One board, one truth.
@@ -217,8 +267,111 @@ class CircuitTab extends React.Component {
                         // The bw-blocks agent may provide the integration path.
                     }}
                 />
+                </div>
             </div>
         );
+    }
+
+    /** Designer | Warnings | Parts list | Examples. */
+    renderPanelStrip () {
+        const {panel} = this.state;
+        const drc = this.drcWarnings();
+        // Only a real count earns a badge. "0" when the check could not run would
+        // say "this circuit is clean", which is the opposite of what we know.
+        const count = drc.warnings ? drc.warnings.length : null;
+        const danger = drc.warnings ? drc.warnings.filter(w => w.severity === 'danger').length : 0;
+        const tabs = [
+            ['designer', 'Designer', null],
+            ['warnings', 'Warnings', count],
+            ['bom', 'Parts list', null],
+            ['examples', 'Examples', null]
+        ];
+        return (
+            <div style={{display: 'flex', gap: 4, marginBottom: 10, borderBottom: '1px solid #e2e8f0'}}>
+                {tabs.map(([id, label, badge]) => (
+                    <button
+                        key={id}
+                        onClick={() => this.setState({panel: id})}
+                        style={{
+                            padding: '6px 12px', border: 'none', cursor: 'pointer', fontSize: 13,
+                            background: panel === id ? '#e0f2fe' : 'transparent',
+                            borderBottom: panel === id ? '2px solid #0284c7' : '2px solid transparent',
+                            color: panel === id ? '#0c4a6e' : '#475569'
+                        }}
+                    >
+                        {label}
+                        {badge ? (
+                            <span style={{marginLeft: 6, padding: '1px 6px', borderRadius: 9, fontSize: 11,
+                                background: danger ? '#fecaca' : '#fef3c7',
+                                color: danger ? '#991b1b' : '#92400e'}}
+                            >{badge}</span>
+                        ) : null}
+                    </button>
+                ))}
+            </div>
+        );
+    }
+
+    renderPanel () {
+        const {panel, ui, circuit} = this.state;
+        const note = (text) => (
+            <div style={{padding: '10px 12px', borderRadius: 6, background: '#f8fafc',
+                border: '1px solid #e2e8f0', fontSize: 13, color: '#475569'}}
+            >{text}</div>
+        );
+
+        if (panel === 'warnings') {
+            const drc = this.drcWarnings();
+            if (drc.error) return note(drc.error);
+            if (!drc.warnings.length) return note('No design-rule warnings for this circuit.');
+            if (ui && ui.DrcPanel) return <ui.DrcPanel warnings={drc.warnings} />;
+            // The data is real even when their panel is not in the build; render it
+            // plainly rather than withhold it.
+            return (
+                <ul style={{margin: 0, paddingLeft: 18, fontSize: 13}}>
+                    {drc.warnings.map((w, i) => (
+                        <li key={i} style={{marginBottom: 6,
+                            color: w.severity === 'danger' ? '#991b1b' : '#92400e'}}
+                        >{`${w.rule}: ${w.message || ''} (${w.partId || 'circuit'})`}</li>
+                    ))}
+                </ul>
+            );
+        }
+
+        if (panel === 'bom') {
+            if (!ui || typeof ui.generateBom !== 'function') {
+                return note('This build of the circuit designer does not export generateBom yet.');
+            }
+            if (!circuit) {
+                return note('The designer in this build does not publish its circuit ' +
+                            '(waiting on bw-circuit-ui to call onCircuitChange), so the ' +
+                            'parts list cannot be built.');
+            }
+            if (ui.BomPanel) return <ui.BomPanel parts={circuit.parts} />;
+            const bom = ui.generateBom(circuit.parts) || [];
+            return bom.length ? (
+                <table style={{fontSize: 13, borderCollapse: 'collapse'}}>
+                    <tbody>
+                        {bom.map((row, i) => (
+                            <tr key={i}>
+                                <td style={{padding: '2px 10px 2px 0'}}>{row.qty || row.quantity}</td>
+                                <td style={{padding: '2px 10px 2px 0'}}>{row.kind || row.name}</td>
+                                <td style={{padding: '2px 0'}}>{row.value || ''}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : note('No parts on the board yet.');
+        }
+
+        if (panel === 'examples') {
+            if (!ui || !ui.ExamplesBrowser) {
+                return note('This build of the circuit designer does not include the ' +
+                            'examples browser yet.');
+            }
+            return <ui.ExamplesBrowser examples={[]} />;
+        }
+        return null;
     }
 }
 
