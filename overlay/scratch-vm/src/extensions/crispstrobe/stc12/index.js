@@ -20,17 +20,17 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
   /** Pin declarations live on the runtime; see the importer's loadProject. */
   function decls(runtime) {
     const stc = runtime && runtime.stc;
-    return (stc && Array.isArray(stc.pins)) ? stc.pins : [];
+    return stc && Array.isArray(stc.pins) ? stc.pins : [];
   }
 
   function portDecls(runtime) {
     const stc = runtime && runtime.stc;
-    return (stc && Array.isArray(stc.ports)) ? stc.ports : [];
+    return stc && Array.isArray(stc.ports) ? stc.ports : [];
   }
 
   function partDecls(runtime) {
     const stc = runtime && runtime.stc;
-    return (stc && Array.isArray(stc.parts)) ? stc.parts : [];
+    return stc && Array.isArray(stc.parts) ? stc.parts : [];
   }
 
   /** The board state this extension maintains, for whoever is watching. */
@@ -40,7 +40,9 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
   }
 
   class STC12 {
-    constructor(runtime) { this.runtime = runtime; }
+    constructor(runtime) {
+      this.runtime = runtime;
+    }
 
     getInfo() {
       return {
@@ -55,14 +57,16 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
             text: "turn [STATE] [PIN]",
             arguments: {
               STATE: { type: Scratch.ArgumentType.STRING, menu: "states" },
-              PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" }
-            }
+              PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
+            },
           },
           {
             opcode: "toggle",
             blockType: Scratch.BlockType.COMMAND,
             text: "toggle [PIN]",
-            arguments: { PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" } }
+            arguments: {
+              PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
+            },
           },
           {
             opcode: "writepin",
@@ -70,14 +74,16 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
             text: "set [PIN] to [VALUE]",
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
-              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
-            }
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 },
+            },
           },
           {
             opcode: "read",
             blockType: Scratch.BlockType.REPORTER,
             text: "read [PIN]",
-            arguments: { PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" } }
+            arguments: {
+              PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
+            },
           },
           "---",
           {
@@ -86,8 +92,8 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
             text: "set [PIN] to [VALUE] percent",
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
-              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 50 }
-            }
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 50 },
+            },
           },
           {
             opcode: "settone",
@@ -95,8 +101,8 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
             text: "set [PIN] to [VALUE] hz",
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
-              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 440 }
-            }
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 440 },
+            },
           },
           {
             opcode: "setport",
@@ -104,14 +110,16 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
             text: "set [PORT] to [VALUE]",
             arguments: {
               PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" },
-              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
-            }
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
+            },
           },
           {
             opcode: "readport",
             blockType: Scratch.BlockType.REPORTER,
             text: "read [PORT]",
-            arguments: { PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" } }
+            arguments: {
+              PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" },
+            },
           },
           {
             opcode: "setpart",
@@ -119,54 +127,75 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
             text: "set [PART] to [VALUE]",
             arguments: {
               PART: { type: Scratch.ArgumentType.STRING, menu: "parts" },
-              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
-            }
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
+            },
           },
           {
             opcode: "print",
             blockType: Scratch.BlockType.COMMAND,
             text: "print [VALUE]",
             arguments: {
-              VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "hello" },
-              MODE: { type: Scratch.ArgumentType.STRING, menu: "printModes" }
-            }
-          }
+              VALUE: {
+                type: Scratch.ArgumentType.STRING,
+                defaultValue: "hello",
+              },
+              MODE: { type: Scratch.ArgumentType.STRING, menu: "printModes" },
+            },
+          },
         ],
         menus: {
           // acceptReporters:false is what makes these FIELDS rather than inputs,
           // which is how sb3-creator writes them.
           pins: { acceptReporters: false, items: "pinNames" },
-          states: { acceptReporters: false, items: ["on", "off", "high", "low"] },
+          states: {
+            acceptReporters: false,
+            items: ["on", "off", "high", "low"],
+          },
           ports: { acceptReporters: false, items: "portNames" },
           parts: { acceptReporters: false, items: "partNames" },
-          printModes: { acceptReporters: false, items: ["text", "number"] }
-        }
+          printModes: { acceptReporters: false, items: ["text", "number"] },
+        },
       };
     }
 
     /** Declared pins, or a placeholder so the palette is never an empty dropdown. */
     pinNames() {
-      const names = decls(this.runtime).map(p => p.name);
-      return names.length ? names : [{ text: "(declare a PIN in the Code tab)", value: "" }];
+      const names = decls(this.runtime).map((p) => p.name);
+      return names.length
+        ? names
+        : [{ text: "(declare a PIN in the Code tab)", value: "" }];
     }
 
     portNames() {
-      const names = portDecls(this.runtime).map(p => p.name);
-      return names.length ? names : [{ text: "(declare a PORT in the Code tab)", value: "" }];
+      const names = portDecls(this.runtime).map((p) => p.name);
+      return names.length
+        ? names
+        : [{ text: "(declare a PORT in the Code tab)", value: "" }];
     }
 
     partNames() {
-      const names = partDecls(this.runtime).map(p => p.name);
-      return names.length ? names : [{ text: "(declare a PART in the Code tab)", value: "" }];
+      const names = partDecls(this.runtime).map((p) => p.name);
+      return names.length
+        ? names
+        : [{ text: "(declare a PART in the Code tab)", value: "" }];
     }
 
     setpin(args) {
-      const pin = decls(this.runtime).find(p => p.name === args.PIN);
+      const pin = decls(this.runtime).find((p) => p.name === args.PIN);
       const state = String(args.STATE);
       // ACTIVE LOW is the whole point of the declaration: "on" writes a 0.
-      const level = state === "on" ? (pin && pin.activeLow ? 0 : 1)
-        : state === "off" ? (pin && pin.activeLow ? 1 : 0)
-          : state === "high" ? 1 : 0;
+      const level =
+        state === "on"
+          ? pin && pin.activeLow
+            ? 0
+            : 1
+          : state === "off"
+            ? pin && pin.activeLow
+              ? 1
+              : 0
+            : state === "high"
+              ? 1
+              : 0;
       board(this.runtime)[args.PIN] = level;
     }
 
@@ -181,7 +210,9 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
 
     read(args) {
       const b = board(this.runtime);
-      return Object.prototype.hasOwnProperty.call(b, args.PIN) ? b[args.PIN] : 0;
+      return Object.prototype.hasOwnProperty.call(b, args.PIN)
+        ? b[args.PIN]
+        : 0;
     }
 
     setpwm(args) {
@@ -193,7 +224,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     }
 
     setport(args) {
-      board(this.runtime)["port_" + args.PORT] = Number(args.VALUE) & 0xFF;
+      board(this.runtime)["port_" + args.PORT] = Number(args.VALUE) & 0xff;
     }
 
     readport(args) {
@@ -203,12 +234,15 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     }
 
     setpart(args) {
-      board(this.runtime)["part_" + args.PART] = Number(args.VALUE) & 0xFF;
+      board(this.runtime)["part_" + args.PART] = Number(args.VALUE) & 0xff;
     }
 
     print(args) {
       // In the editor, print goes to the console. On hardware, it is the UART.
-      const val = String(args.MODE) === "number" ? Number(args.VALUE) : String(args.VALUE);
+      const val =
+        String(args.MODE) === "number"
+          ? Number(args.VALUE)
+          : String(args.VALUE);
       if (typeof console !== "undefined") console.log(val);
     }
   }
