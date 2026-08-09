@@ -308,6 +308,9 @@ console.log(`via the editor bridge: ${bridged ? bridged.variables.map(v => v.nam
 // falls back to the stage's Scratch variables, so a missing producer is silent
 // -- it just offers a subtly different list and conditions quietly never fire.
 const editorVars = vm.runtime._bwDebugVariables ? vm.runtime._bwDebugVariables() : null;
+// bw-bundle's DebugStatus reads this; a missing producer shows as an em-dash and
+// nothing else, so the producing side asserts it.
+console.log(`bwMs published: ${runner.state().bwMs}`);
 console.log(`condition editor variable list: ${editorVars ? editorVars.map(v => v.name).join(', ') : 'NOT PUBLISHED'}`);
 
 const never = runner.valuesAtBlock('not-a-block');
@@ -319,6 +322,7 @@ if (at && !at.variables.some(v => v.name === 'counter')) fail.push('the snapshot
 if (never !== null) fail.push('a non-yield block returned something');
 if (!bridged) fail.push('the editor bridge returned nothing — a tooltip would never appear');
 if (!editorVars) fail.push('_bwDebugVariables is not published, so the condition editor offers the wrong list');
+if (typeof runner.state().bwMs !== 'number') fail.push('bwMs is not published — DebugStatus would show an em-dash');
 if (editorVars && !editorVars.some(v => v.name === 'counter')) fail.push('the editor list is missing a real variable');
 if (bridged && bridged.agoMs < 0) fail.push('a negative "ago" leaked out');
 if (condErr) fail.push('a valid condition was rejected');

@@ -122,6 +122,20 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             breakpoints: listBreakpoints(),
             /** Marked blocks the current build has no yield point for. */
             unreachableBreakpoints: listBreakpoints().filter((id) => yieldOf.size && !yieldOf.has(id)),
+            /**
+             * The cooperative scheduler's millisecond tick, straight from RAM.
+             *
+             * bw-bundle's DebugStatus panel destructures this and showed "—"
+             * because the runner held the target privately and never published
+             * it. Sixth instance of the producer/consumer pattern, and the
+             * second where I am the producer — the consumer was written
+             * correctly against a value that did not exist.
+             *
+             * undefined before a symbol table exists, which is honest: without
+             * one there is no `bw_ms` address to read and a zero would be a
+             * fabrication.
+             */
+            bwMs: target ? target.bwMs() : undefined,
             conditions: allConditions(),
             conditionErrors,
             skippedHits: skipped,
