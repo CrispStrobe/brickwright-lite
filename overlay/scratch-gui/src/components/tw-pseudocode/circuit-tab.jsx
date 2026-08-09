@@ -155,6 +155,18 @@ class CircuitTab extends React.Component {
                     stc={stc}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
+                    onBoardReady={(board) => {
+                        // Publish the board so the Code tab's sim runner can use it
+                        // instead of building its own. One board, one truth.
+                        const vm = this.props.vm;
+                        if (vm && vm.runtime) {
+                            vm.runtime.circuitBoard = board;
+                            // Producer-asserts-the-consumer: verify the circuit extension
+                            // can read it (it uses a lazy getter on this.runtime.circuitBoard).
+                            console.assert(vm.runtime.circuitBoard === board,
+                                'circuitBoard not readable from runtime');
+                        }
+                    }}
                     simulationOnly={(() => {
                         // Read stc12liveCapabilities from runtime.
                         // If a live hardware target is connected, simulation-only

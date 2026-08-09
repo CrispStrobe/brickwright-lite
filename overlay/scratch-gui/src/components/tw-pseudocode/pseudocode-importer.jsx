@@ -488,7 +488,14 @@ class PseudocodeImporter extends React.Component {
         // With the simulated-board driver the emitted program is the MCU side of the board
         // contract, so it needs an actual board to drive — otherwise `_board()` stays null and
         // the program runs neutrally, which looks like the feature is broken.
-        const board = this.state.driverMode === 'simulator' ? await this.makeSimBoard(buf) : undefined;
+        // Use the Circuit tab's board if it exists (one board, one truth), otherwise build one.
+        const sharedBoard = this.props.vm && this.props.vm.runtime && this.props.vm.runtime.circuitBoard;
+        const board = this.state.driverMode === 'simulator'
+            ? (sharedBoard || await this.makeSimBoard(buf))
+            : undefined;
+        if (sharedBoard && this.state.driverMode === 'simulator') {
+            buf.push('simulated board: using the Circuit tab\'s board.\n');
+        }
         // eslint-disable-next-line no-new-func
         const fn = new Function('console', 'prompt', 'bwBoard', code);
         fn({log, error: log, warn: log, info: log}, (q) => window.prompt(q) || '', board);
