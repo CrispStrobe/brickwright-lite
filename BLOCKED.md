@@ -25,3 +25,18 @@ Halting, stepping, tasks, capabilities, and haltReason all work.
 `/setpin|toggle|writepin/`. Block IDs are opaque strings, not opcodes — the regex never
 matches. The active-part highlight is dead. The right fix is to derive active parts from
 pin state (`board.getPinStates()`), not from yield points. Not blocking bw-bundle.
+
+## STC89 12T timing: shipped WASM runs at 1T (emu8051-stc)
+
+**Owner:** emu8051-stc
+
+The vendored WASM (pin ca1ef09) accepts `emu_set_part(2)` (STC89) but runs at 1T timing.
+A real STC89C52RC is 12T: a NOP costs 12 oscillator clocks. Everything timed would run 12x
+fast. The part is selectable but the defining characteristic is not modelled.
+
+Either emu8051-stc implements 12T instruction timing for PART_STC89, or `capabilities()`
+reports the timing model as 1T-only so the front end can refuse rather than mislead.
+
+bw-bundle action: none on the pin. The WASM is otherwise good (HEAPU8, all emu_dbg_*
+exports present). The commit message "STC89+STC15W parts" is narrower than it reads —
+STC89 part identity is selectable but timing is not modelled.
