@@ -3,6 +3,13 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -86,33 +93,44 @@ jobs:
 
       - name: Build the editor
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
-      - uses: actions/upload-artifact@v4
-        with: { name: editor-build, path: packages/scratch-gui/build }
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: packages/scratch-gui/build }
 
-  verify-gui:
+  deploy:
     needs: build
     runs-on: ubuntu-latest
-    # Smoke-test the built output in a headless browser. Catches GUI-breaking
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  verify-gui:
+    needs: deploy
+    runs-on: ubuntu-latest
+    # Smoke-test the deployed site in a headless browser. Catches GUI-breaking
     # regressions that pass all static guards — the unknown-cause class.
     steps:
-      - uses: actions/download-artifact@v4
-        with: { name: editor-build, path: build }
       - name: Install Playwright
         run: npm install playwright && npx playwright install chromium --with-deps
-      - name: Serve build and verify GUI renders
+      - name: Verify GUI renders on deployed site
         run: |
-          npx serve build -l 8601 &
-          for i in $(seq 1 30); do curl -s http://localhost:8601/ > /dev/null 2>&1 && break; sleep 1; done
           node -e "
             const { chromium } = require('playwright');
             (async () => {
+              const url = 'https://crispstrobe.github.io/brickwright-lite/';
               const browser = await chromium.launch();
               const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
               const errors = [];
               page.on('pageerror', e => errors.push(e.message));
 
-              console.log('Loading http://localhost:8601/ ...');
-              await page.goto('http://localhost:8601/', {
+              console.log('Loading ' + url + ' ...');
+              await page.goto(url, {
                 waitUntil: 'networkidle', timeout: 60000
               });
 
