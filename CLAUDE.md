@@ -7,10 +7,10 @@ distinct from mainline **Brickwright** (a TurboWarp fork, GPL-3.0 editor chrome)
 
 - **Repo:** `CrispStrobe/brickwright-lite` (PUBLIC → free unlimited Actions). Push directly to `main`,
   **no PRs**. Auto-deploys to **https://brickwright-lite.vercel.app** (Vercel) + GH Pages CI.
-- **Local:** `/Users/christianstrobele/code/lego/brickwright-lite` (moved off /tmp 2026-07-07; `packages/`
+- **Local:** this repo (moved off /tmp 2026-07-07; `packages/`
   + `node_modules` + `build/` preserved). Siblings: `code/lego/brickwright` (mainline, GPL — source of
   robot/soundfx/default-project assets), `code/lego/brickwright-ios`, `.../brickwright-android`.
-- **The compiler** (Code tab) comes from `sb3-creator` (`/Users/christianstrobele/code/sb3-creator`).
+- **The compiler** (Code tab) comes from `sb3-creator` (`../../sb3-creator`).
 
 ## Git / deploy rules
 - Commit author MUST be `CrispStrobe <cze+github@mailbox.org>` (Vercel git auth). NOT `cze@mailbox.org`.
@@ -137,7 +137,7 @@ Scratch relicensed BSD-3 → AGPL-3.0 on 2024-11-25. Pin the last-BSD:
   same-origin GETs → offline after first visit.
 
 ## Planned: on-device TTS (replace cloud AWS text2speech)
-See memory `brickwright-ondevice-tts`. `/Users/christianstrobele/code/CrispASR` (MIT) has 23 TTS
+See memory `brickwright-ondevice-tts`. `../../CrispASR` (MIT) has 23 TTS
 engines compiling to WASM (~4.3MB, client-side) → offline TTS. Needs COOP/COEP (SharedArrayBuffer);
 CrispASR ships `examples/coi-serviceworker.js` to inject those headers on static hosts — could merge
 into our sw.js. Watch: cross-origin isolation vs the gallery fetch (CORS ok, mind asset CORP).
@@ -175,10 +175,10 @@ Every push must keep CI **and** Vercel green. Verify features are actually in th
 The 8051 work has a finished compile side and an unstarted extension side. **The extension
 belongs here in lite, not in mainline** (decided 2026-08-08).
 
-Siblings: **`/Users/christianstrobele/code/stc-compiler`** (public, live at
+Siblings: **`../../stc-compiler`** (public, live at
 <https://stc-compiler.vercel.app> — C / BrickWright pseudocode / Keil C51 → Intel HEX),
-**`/Users/christianstrobele/code/stc`** (private lab: wiring, examples, `docs/ROADMAP.md`),
-**`/Users/christianstrobele/code/sb3-creator`** (where `generateC()` will live). Read
+**`../../stc`** (private lab: wiring, examples, `docs/ROADMAP.md`),
+**`../../sb3-creator`** (where `generateC()` will live). Read
 `stc-compiler/CLAUDE.md` before touching any of it.
 
 **Two modes, and they are very different amounts of work:**
@@ -242,8 +242,9 @@ exactly how MakeCode simulates micro:bit without emulating a CPU.
 
 Two agents run on the VPS against that contract: `screen -U -r -A ucsim-stc` (GPL-2, CI
 oracle only) and `screen -U -r -A emu8051-stc` (**MIT — the one that can actually ship
-here**). Emscripten is installed on that box: emsdk at `/mnt/volume1/emsdk`, **emcc 6.0.0**, activated
-with `source /mnt/volume1/emsdk/emsdk_env.sh` (not on the default PATH).
+here**). Emscripten is installed on that box: an emsdk checkout with **emcc 6.0.0**, activated by
+sourcing its `emsdk_env.sh` (not on the default PATH). The exact location is in the VPS notes
+rather than here -- this file is public.
 
 **Flashing from the browser, two known constraints:**
 1. The STC bootloader only listens **right after a cold power-on** — a reset button will
