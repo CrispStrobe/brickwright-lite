@@ -396,6 +396,16 @@ class PseudocodeImporter extends React.Component {
 
 
 
+    // The project's hardware declarations. `vm.runtime.stc` is where they live while
+    // a project is loaded (see loadProject above for why toJSON cannot carry them);
+    // the toJSON read stays as a fallback for the day the VM does.
+    currentStc () {
+        const vm = this.props.vm;
+        if (!vm) return null;
+        if (vm.runtime && vm.runtime.stc) return vm.runtime.stc;
+        try { return JSON.parse(vm.toJSON()).stc || null; } catch { return null; }
+    }
+
     // Hardware-extension codegen options passed to generatePython/generateJavaScript.
     genOpts () { return {driver: this.state.driverMode, async: this.state.asyncMode, events: this.state.eventsMode}; }
 
@@ -494,7 +504,7 @@ class PseudocodeImporter extends React.Component {
             // already large enough that everything optional should stay out of the entry.
             const {BoardImpl, inferNetlist} =
                 await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
-            const stc = (this.props.vm && JSON.parse(this.props.vm.toJSON()).stc) || null;
+            const stc = this.currentStc();
             if (!stc || !(stc.pins || []).length) {
                 buf.push('simulated board: the project declares no PINs, so there is nothing to wire.\n');
                 return undefined;
@@ -659,6 +669,15 @@ class PseudocodeImporter extends React.Component {
             });
             const blob = await creator.generateSB3();
             await this.props.vm.loadProject(await blob.arrayBuffer());
+            // The .sb3 carries the STC12 declarations as a top-level `stc` key, but
+            // scratch-vm's serializer only knows targets/monitors/extensions/meta and
+            // drops everything else — so vm.toJSON().stc has always come back
+            // undefined, and every reader of it (the circuit designer, the simulator
+            // driver's pin table) silently saw a project with no pins. Keep them on
+            // the runtime, which survives for as long as the project is loaded.
+            // Not a substitute for the VM carrying them: re-opening a saved .sb3
+            // still loses the pins until it does.
+            this.props.vm.runtime.stc = creator.project.stc || null;
             const first = this.props.vm.runtime.targets.find(target => !target.isStage);
             if (first) this.props.vm.setEditingTarget(first.id);
             // regenerate the other tabs from the compiled project
