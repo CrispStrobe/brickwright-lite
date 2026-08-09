@@ -22,7 +22,7 @@ it knows they exist. The Pico is absent everywhere, including the compiler.
 | **circuits** | `overlay/.../lib/bw-circuit-ui/` | 5.6k lines | **STC12 only** — one board model |
 | **transpilers** | `overlay/.../lib/sb3-creator-c.js` | — | infers `stc12c5a60s2`, `stc15f2k60s2`, `stc89c52rc` from `#include` |
 | | `overlay/.../lib/sb3-creator-python.js` | — | **STC12 only** |
-| **code ⇄ AST** | `sb3-creator/src/utils/` | 17.7k lines | device C (8051), host C, Python, JavaScript |
+| **code ⇄ AST** | `sb3-creator/src/utils/` | 17.7k lines | device C (8051 **and Arduino**), host C, Python, JavaScript |
 | **debugger** | `overlay/.../lib/bw-debug/`, `bw-board/` | 7.4k lines | **8051 only** (`emu8051-adapter.js`) |
 
 Two things that survey corrects, because both are stale in the CLAUDE.md files:
@@ -142,12 +142,39 @@ are not equal. Adding boards makes that more true, not less.
 5. **Circuit board models**, starting with the two that are DIP-shaped.
 6. **Debugger: nothing.** Record why.
 
-Steps 1 and 2 are done. Step 3 is half done: a foreign board is named rather
-than guessed at, but *reading* an Arduino sketch needs a pin discovery that
-understands a pin NUMBER instead of a `{port, bit}` — a front end, not a
-lookup.
+Steps 1, 2 and 3 are done (2026-08-09). The pin discovery step 3 needed is
+built: an Arduino pin is a bare number that nothing declares, so it is
+discovered from the calls that use it, strongest evidence first. `pinMode`,
+`digitalWrite`/`digitalRead`, `analogRead`/`analogWrite` and `tone` all
+translate; `setup()` + `loop()` reassemble into one script with a `FOREVER`,
+which is the shape the dialect emits going the other way. `INPUT_PULLUP`
+gives ACTIVE LOW *stated by the sketch* rather than inferred from an `_ON`
+idiom — better evidence than the 8051 path ever gets.
 
 Step 4 turned out to be mostly already true, which is the useful kind of
-survey result. That leaves **circuits** as the one module with a real gap and
-no compatibility trap in front of it: it models one board, and the two new
-DIP-shaped ones (Uno, Nano) are the cheapest to add.
+survey result.
+
+### What step 3 turned up that this survey had wrong
+
+The survey treated the modules as independent. They are not, and the reader
+found the seam: **`sb3-creator`'s own parser knows five STC parts and one pin
+syntax.** `PIN led = D13 OUTPUT` is not a line it can read, and
+`DEVICE ARDUINO-UNO` is not a device it knows. So an imported sketch produces
+correct pseudocode that this repository cannot turn back into a project.
+
+That splits the remaining work in two, and the halves are nothing like the
+same size:
+
+- **Accepting the syntax** — the Arduino boards in `STC_PARTS`, and a `PIN`
+  regex that takes `D13`/`A0` beside `P1.0`. Small, and it is what makes
+  sketch → pseudocode → *blocks* work, which is the actual BrickWright use
+  case.
+- **Generating Arduino C from a project** — `generateC()` is 8051 all the way
+  down. This is the fifth target the roadmap already names, and it should
+  *adopt* `stc-compiler`'s `ArduinoTarget`/`AvrTarget` rather than grow a
+  second implementation that can disagree with it.
+
+Nothing above changes the recommendation for **circuits**, which is still the
+one module with a real gap and no compatibility trap in front of it: it
+models one board, and the two DIP-shaped ones (Uno, Nano) are the cheapest to
+add.
