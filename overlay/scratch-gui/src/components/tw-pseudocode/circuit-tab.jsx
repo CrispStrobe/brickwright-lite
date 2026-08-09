@@ -79,10 +79,10 @@ class CircuitTab extends React.Component {
             return {...t, blockId, kind: blockId && kinds ? kinds[blockId] : undefined};
         });
         const haltReason = why ? why.cause : null;
-        // bwMs: the runner snapshot does not expose target.bwMs() — it requires
-        // the coordinator to add it to debug-runner.js's snapshot(). Until then,
-        // DebugStatus shows "—" for the scheduler ms counter. Tracked in BLOCKED.md.
-        const bwMs = undefined;
+        // bwMs: the cooperative scheduler's millisecond tick, read from RAM via
+        // the symbol table's bw_ms address. undefined before symbols exist (no
+        // fabricated zero — see ceafc8d).
+        const bwMs = ui ? ui.bwMs : undefined;
         const caps = ui ? ui.capabilities : null;
         const prev = this.state.debugState || {};
         if (board !== this.state.board || halted !== prev.halted ||
