@@ -32,7 +32,7 @@ class CircuitTab extends React.Component {
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
-        this.handleCircuitChange = this.handleCircuitChange.bind(this);
+        this.handleCircuitReady = this.handleCircuitReady.bind(this);
     }
 
     componentDidMount () {
@@ -73,19 +73,25 @@ class CircuitTab extends React.Component {
     }
 
     /**
-     * The designer publishing the circuit it owns.
+     * The designer handing over the circuit it owns.
      *
-     * The warnings and parts-list panels are presentation-only: `runDrc` wants
-     * `circuit.parts`, `.wires`, `.breadboards` and `.board`, and `generateBom`
-     * wants the parts. All of that lives inside CircuitDesigner. `onBoardReady`
-     * hands over the board and `onDeclarationChange` hands over declarations,
-     * but neither is the circuit, so a host cannot currently feed either panel.
+     * `runDrc` wants `circuit.parts`, `.wires`, `.breadboards` and `.board`, and
+     * `generateBom` wants the parts — all of it inside CircuitDesigner, and
+     * neither `onBoardReady` nor `onDeclarationChange` carries it.
      *
-     * So this is written against the prop that ought to exist. Until
-     * bw-circuit-ui calls it, `circuit` stays null and the panels say exactly
-     * why rather than rendering an empty list that reads as "no warnings".
+     * It arrives ONCE, on mount, and that is right rather than a bug: the
+     * circuit is a `useRef` instance that mutates in place behind an internal
+     * revision counter, so the host holds a live reference — the same handshake
+     * as `onBoardReady`. What a once-only handover does NOT give us is a signal
+     * that the contents changed, which is why `onDeclarationChange` doubles as
+     * one below.
+     *
+     * (The prop is `onCircuitReady`. I asked for `onCircuitChange` and it
+     * shipped under the other name — the sixth producer/consumer mismatch of
+     * this campaign, and the one that cost the least, because nothing silently
+     * half-worked: the panels kept saying they had no circuit.)
      */
-    handleCircuitChange (circuit) {
+    handleCircuitReady (circuit) {
         this.setState({circuit});
     }
 
@@ -96,9 +102,9 @@ class CircuitTab extends React.Component {
             return {error: 'This build of the circuit designer does not export runDrc yet.'};
         }
         if (!circuit) {
-            return {error: 'The designer in this build does not publish its circuit ' +
-                           '(waiting on bw-circuit-ui to call onCircuitChange), so the ' +
-                           'design-rule check cannot run.'};
+            return {error: 'The designer has not handed over its circuit yet ' +
+                           '(onCircuitReady has not fired), so the design-rule check ' +
+                           'cannot run. Open the Designer once and come back.'};
         }
         try {
             return {warnings: ui.runDrc(circuit, board || circuit.board) || []};
@@ -261,7 +267,7 @@ class CircuitTab extends React.Component {
                     stc={stc}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
-                    onCircuitChange={this.handleCircuitChange}
+                    onCircuitReady={this.handleCircuitReady}
                     onBoardReady={(board) => {
                         // Publish the board so the Code tab's sim runner can use it
                         // instead of building its own. One board, one truth.
@@ -284,6 +290,16 @@ class CircuitTab extends React.Component {
                         return undefined; // default: simulator assumed
                     })()}
                     onDeclarationChange={(decls) => {
+                        // Doubles as the change signal the once-only onCircuitReady
+                        // handover does not provide. The circuit object is stable and
+                        // mutates in place, so the warnings badge and the parts list
+                        // would otherwise keep showing whatever was true when this
+                        // component last happened to re-render — and a warnings count
+                        // that is silently stale is worse than none, because it reads
+                        // as a statement about the circuit in front of you. This fires
+                        // on every parts/wires change, which is exactly when both
+                        // panels need recomputing.
+                        this.setState(s => ({circuitRev: (s.circuitRev || 0) + 1}));
                         // TODO: write decls back to project.stc so the block palette updates.
                         // Currently project.stc is read-only from the VM — writing it back
                         // requires either a vm.setStc() API or round-tripping through loadProject.
