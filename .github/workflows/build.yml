@@ -89,10 +89,29 @@ jobs:
           fi
           echo "blocks.jsx: toolbox null-guard present (good)"
 
+      # --- tests (sub-second, fail fast) ---
+
+      - name: Run unit tests
+        run: |
+          if ! grep -q '"test"' package.json; then
+            echo "::error::package.json has no test script — tests exist but nothing runs them"
+            exit 1
+          fi
+          npm test
+
       # --- build ---
 
       - name: Build the editor
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+
+      - name: Smoke-test the debugger
+        run: |
+          if ! grep -q '"smoke:debugger"' package.json; then
+            echo "::error::package.json has no smoke:debugger script — the debugger is untested"
+            exit 1
+          fi
+          npm run smoke:debugger
+
       - uses: actions/upload-pages-artifact@v3
         with: { path: packages/scratch-gui/build }
 
