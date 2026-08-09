@@ -330,6 +330,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         rafId = null;
         if (!session) return;
         const outcome = session.pump();
+        // Boundary A's clock. The emulator pushes PIN CHANGES to the board by
+        // itself (emu_set_board_callbacks), but nothing pushes TIME: the debug
+        // run path never calls on_advance, and the board integrates time to get
+        // LED brightness and buzzer frequency. Without this the pins toggle
+        // correctly and the LED never changes, which looks like a dead board.
+        //
+        // Doing it HERE, only when the pump actually ran, is also what makes
+        // DEBUG-CONTROL-MODEL §3.1 fall out for free: a halted MCU stops
+        // pumping, so board time stops with program time, and resume continues
+        // from where it stopped rather than catching up on wall-clock.
+        if (board && outcome !== 'idle') board.advanceTo(target.timeNs());
         // Keep going while there is anything to do. A halted session stops
         // asking for frames entirely, which is what makes a paused program cost
         // nothing rather than spin.

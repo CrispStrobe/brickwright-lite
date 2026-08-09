@@ -146,6 +146,40 @@ store.toggleBreakpoint(plainBlock);
 const after = runner.state();
 console.log(`  marks: ${after.breakpoints.length}, unreachable: ${after.unreachableBreakpoints.length}`);
 
+// ---- the board the runner exposes is the one the emulator drives ----------
+// Without this the Circuit tab builds its own board and shows LEDs that never
+// change while the program blinks them.
+const board = runner.board();
+// getLeds() returns ID STRINGS, not objects. Mapping .id off them yields
+// undefined, and ledBrightness(undefined) returns 0 — a plausible, wrong
+// answer of exactly the kind simulation.md warns about. Take the shape from
+// the engine's own tests, not from memory.
+const leds = board ? board.getLeds() : [];
+if (board) {
+    const realSetPin = board.setPin.bind(board);
+    let n = 0;
+    board.setPin = (...args) => { n++; return realSetPin(...args); };
+    setTimeout(() => console.log(`  board.setPin calls during the run: ${n}`), 380);
+
+}
+let brightSamples = [];
+if (board && leds.length) {
+    // Clear the pause point first: it is still armed from the check above, so a
+    // resume would stop at it again and we would be sampling a frozen board —
+    // which is correct behaviour and a useless measurement.
+    store.clearBreakpoints();
+    runner.resume();
+    for (let i = 0; i < 40; i++) {
+        await new Promise(r => setTimeout(r, 10));
+        brightSamples.push(board.ledBrightness(leds[0]));
+    }
+    runner.pause();
+}
+const distinct = new Set(brightSamples.map(b => b.toFixed(3)));
+console.log(`  brightness: ${brightSamples.slice(0, 10).map(b => b.toFixed(3)).join(' ')} …`);
+console.log(`  board time: ${board ? (Number(board.getTime()) / 1e6).toFixed(1) : '?'} ms`);
+console.log(`board: ${leds.length} LEDs, ${distinct.size} distinct brightness values over 40 samples`);
+
 // ---- the engineer's view: parity with emu8051's TUI -----------------------
 const insp = runner.inspect();
 console.log(`inspect: PC ${insp.pc.toString(16)} A ${insp.regs.a} SP ${insp.regs.sp} bank ${insp.regs.bank}`);
@@ -210,6 +244,9 @@ const bpOff = runner.toggleAddressBreakpoint(0x0170);
 console.log(`setPc ok: ${pcOk} | address breakpoint on/off: ${bpOn}/${bpOff}`);
 
 const fail = [];
+if (!board) fail.push('the runner exposes no board, so the Circuit tab has nothing to show');
+if (!leds.length) fail.push('the inferred board has no LEDs');
+if (distinct.size < 2) fail.push('the LED never changed brightness — the board is not being driven');
 if (!insp || !insp.regs || insp.regs.r.length !== 8) fail.push('inspect did not return eight registers');
 if (!traceRows.length) fail.push('the trace recorded nothing');
 if (!traceRows.at(-1).text) fail.push('a trace row has no disassembly');

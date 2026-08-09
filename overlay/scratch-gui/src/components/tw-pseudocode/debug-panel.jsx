@@ -93,8 +93,15 @@ class DebugPanel extends React.Component {
             /* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/debug-runner.js');
         const runner = createDebugRunner({
             vm: this.props.vm,
-            onChange: (ui) => this.setState({ui})
+            onChange: (ui) => {
+                this.setState({ui});
+                // The board only exists after attach, and the tab has to be told:
+                // until it is, the designer is showing a board of its own that
+                // nothing drives. See circuit-tab.jsx.
+                if (this.props.onRunnerChange) this.props.onRunnerChange(runner, ui);
+            }
         });
+        if (this.props.onRunnerChange) this.props.onRunnerChange(runner, this.state.ui);
         // setState is async, so hand the instance back directly rather than
         // reading it out of state on the very next line.
         this.setState({runner});
@@ -254,6 +261,7 @@ class DebugPanel extends React.Component {
 
 DebugPanel.propTypes = {
     clockHz: PropTypes.number,
+    onRunnerChange: PropTypes.func,
     locale: PropTypes.string,
     vm: PropTypes.shape({toJSON: PropTypes.func, runtime: PropTypes.object}).isRequired
 };
