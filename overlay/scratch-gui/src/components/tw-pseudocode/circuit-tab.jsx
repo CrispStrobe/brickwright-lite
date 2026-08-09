@@ -79,7 +79,16 @@ class CircuitTab extends React.Component {
                          'and the designer will suggest the matching parts.'}
                     </div>
                 )}
-                <Designer stc={stc} />
+                <Designer
+                    stc={stc}
+                    onDeclarationChange={(decls) => {
+                        // TODO: write decls back to project.stc so the block palette updates.
+                        // Currently project.stc is read-only from the VM — writing it back
+                        // requires either a vm.setStc() API or round-tripping through loadProject.
+                        // For now, declarations are derived but not persisted.
+                        // The bw-blocks agent may provide the integration path.
+                    }}
+                />
             </div>
         );
     }
