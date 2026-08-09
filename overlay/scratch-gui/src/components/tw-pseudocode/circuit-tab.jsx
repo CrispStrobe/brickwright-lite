@@ -123,6 +123,15 @@ class CircuitTab extends React.Component {
                     stc={stc}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
+                    simulationOnly={(() => {
+                        // Read stc12liveCapabilities from runtime.
+                        // If a live hardware target is connected, simulation-only
+                        // features (voltage, current, brightness) are unavailable.
+                        const vm = this.props.vm;
+                        const caps = vm && vm.runtime && vm.runtime.stc12liveCapabilities;
+                        if (caps) return false; // live hardware → no sim values
+                        return undefined; // default: simulator assumed
+                    })()}
                     onDeclarationChange={(decls) => {
                         // TODO: write decls back to project.stc so the block palette updates.
                         // Currently project.stc is read-only from the VM — writing it back
