@@ -86,11 +86,20 @@ WHEN flag clicked:
     toggle led2
     wait 0.3 seconds
 `);
-const projectJson = JSON.stringify(creator.project);
+// The VM stub mimics the REAL one, which means dropping `stc` from toJSON():
+// scratch-vm's sb3 serializer emits targets/monitors/extensions/meta and nothing
+// else, and keeps the hardware declarations on the runtime instead. An earlier
+// version of this stub served `stc` from toJSON() and so could not have caught
+// the runner reading it from there — which would have sent every debug build to
+// the host C target without failing.
+const serialised = { ...creator.project };
+const stc = serialised.stc;
+delete serialised.stc;
+const projectJson = JSON.stringify(serialised);
 const glows = [];
 const vm = {
     toJSON: () => projectJson,
-    runtime: { glowBlock: (id, on) => glows.push([id, on]) }
+    runtime: { stc, glowBlock: (id, on) => glows.push([id, on]) }
 };
 const blockOpcode = new Map();
 for (const t of creator.project.targets) {
@@ -137,7 +146,83 @@ store.toggleBreakpoint(plainBlock);
 const after = runner.state();
 console.log(`  marks: ${after.breakpoints.length}, unreachable: ${after.unreachableBreakpoints.length}`);
 
+// ---- the engineer's view: parity with emu8051's TUI -----------------------
+const insp = runner.inspect();
+console.log(`inspect: PC ${insp.pc.toString(16)} A ${insp.regs.a} SP ${insp.regs.sp} bank ${insp.regs.bank}`);
+console.log(`  SFRs: ${Object.entries(insp.sfr).map(([k, v]) => `${k}=${v.toString(16)}`).join(' ')}`);
+console.log(`  stack depth: ${insp.stack.length}`);
+
+const traceRows = runner.trace();
+console.log(`trace: ${traceRows.length} rows, last = ${traceRows.at(-1).text} @ ${traceRows.at(-1).pc.toString(16)}`);
+
+// Stepping IS the per-instruction trace: each step halts, and every halt is a row.
+const before = runner.trace().length;
+runner.stepInstruction(5);
+const added = runner.trace().length - before;
+const walked = runner.trace().slice(-5);
+console.log(`stepped 5 instructions -> ${added} rows: ${walked.map(r => r.text.split(/\s+/)[0]).join(' ')}`);
+
+// The opcode LENGTH TABLE, against the oracle it was generated from.
+//
+// Not by comparing a linear walk to stc_disasm's listing: that disassembler
+// resynchronises on branch targets and skips what it decides is data, so a
+// naive walk from 0x0000 through SDCC's interrupt-vector padding disagrees
+// with it for reasons that have nothing to do with lengths. Instead, take
+// stc_disasm's OWN consecutive instruction boundaries — where it is certain —
+// and check that our table predicts each gap.
+const disasmOut = execFileSync('python3', ['-c', `
+import sys; sys.path.insert(0, ${JSON.stringify(STCC)})
+import stc_disasm
+print(stc_disasm.disassemble_hex(open(${JSON.stringify(path.join(work, 'main.ihx'))}).read()))
+`], { encoding: 'utf8' });
+const oracle = disasmOut.split('\n')
+    .map(l => l.match(/^([0-9A-F]{4})\s+((?:[0-9A-F]{2} )+)/))
+    .filter(Boolean)
+    .map(m => ({ addr: parseInt(m[1], 16), len: m[2].trim().split(/\s+/).length }));
+const { instructionLength } = await import(`${LITE}/lib/bw-debug/opcodes.js`);
+const lengthMismatch = oracle.filter(o => {
+    const opcode = runner.readMem('code', o.addr, 1)[0];
+    return instructionLength(opcode) !== o.len;
+});
+console.log(`opcode lengths: ${oracle.length} instructions from stc_disasm, ${lengthMismatch.length} disagree`);
+
+const listing = runner.listing(0x0000, 8);
+console.log(`listing: ${listing.map(r => r.text.split(/\s+/)[0]).slice(0, 5).join(' ')}`);
+
+// Memory, both ways, in a space the program does not touch.
+runner.writeMem('xram', 0x200, 0xA5);
+const readBack = runner.readMem('xram', 0x200, 1)[0];
+
+// Registers are editable because every one of them IS a memory location: the
+// accumulator is SFR 0xE0, R3 is internal RAM at bank*8+3. The drawer writes
+// them through the same writeMem the hex view uses, so this checks that path.
+runner.writeMem('sfr', 0xE0, 0x5A);
+const accBack = runner.inspect().regs.a;
+const bank = runner.inspect().regs.bank;
+runner.writeMem('iram', (bank * 8) + 3, 0x99);
+const r3Back = runner.inspect().regs.r[3];
+console.log(`register edit: A=${accBack.toString(16)} R3=${r3Back.toString(16)} (bank ${bank})`);
+
+// Set PC and an address breakpoint — the TUI's `g` and `k`.
+const pcOk = runner.setPc(0x0100) === undefined && runner.inspect().pc === 0x0100;
+const bpOn = runner.toggleAddressBreakpoint(0x0170);
+const bpOff = runner.toggleAddressBreakpoint(0x0170);
+console.log(`setPc ok: ${pcOk} | address breakpoint on/off: ${bpOn}/${bpOff}`);
+
 const fail = [];
+if (!insp || !insp.regs || insp.regs.r.length !== 8) fail.push('inspect did not return eight registers');
+if (!traceRows.length) fail.push('the trace recorded nothing');
+if (!traceRows.at(-1).text) fail.push('a trace row has no disassembly');
+if (added !== 5) fail.push(`stepping 5 instructions recorded ${added} rows, not 5`);
+if (walked.some(r => !r.bytes.length)) fail.push('a traced instruction has no opcode bytes');
+if (!oracle.length) fail.push('stc_disasm produced no instructions to check against');
+if (lengthMismatch.length) fail.push(`${lengthMismatch.length} opcode lengths disagree with stc_disasm`);
+if (listing.some(r => !r.text)) fail.push('a listing row has no disassembly');
+if (readBack !== 0xA5) fail.push(`memory write/read gave ${readBack}`);
+if (accBack !== 0x5A) fail.push(`writing SFR 0xE0 did not change A (${accBack})`);
+if (r3Back !== 0x99) fail.push(`writing bank*8+3 did not change R3 (${r3Back})`);
+if (!pcOk) fail.push('setPc did not move the PC');
+if (!bpOn || bpOff) fail.push('the address breakpoint did not toggle');
 if (st.phase !== 'paused') fail.push(`never paused (phase ${st.phase})`);
 if (!why || why.cause !== 'breakpoint') fail.push(`stopped for the wrong reason: ${why && why.cause}`);
 if (!st.glowing.includes(repeatBlock)) fail.push('the breakpoint block is not glowing');

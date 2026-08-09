@@ -435,6 +435,42 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
         timeNs: nowNs,
 
         /**
+         * The instruction at `addr`, as text.
+         *
+         * `emu_disasm` returns a `const char *`, which is a pointer — normally
+         * out of reach here (see the header). `ccall` with a 'string' return
+         * marshals it using Emscripten's own heap access, which is exported.
+         * It does NOT report the instruction's length; a caller that needs to
+         * walk forward gets that from an opcode table.
+         */
+        disasm(addr) {
+            if (!wasm.ccall || !wasm._emu_disasm) return '';
+            try {
+                return wasm.ccall('emu_disasm', 'string', ['number'], [addr & 0xFFFF]) || '';
+            } catch {
+                return '';
+            }
+        },
+
+        /**
+         * Move the program counter. `g` in the TUI.
+         *
+         * Refused rather than silently ignored when the build predates it —
+         * jumping the PC and having nothing happen is worse than being told.
+         */
+        setPc(addr) {
+            if (!wasm._emu_set_pc) return { refused: 'this emulator build cannot set the PC' };
+            wasm._emu_set_pc(addr & 0xFFFF);
+            return undefined;
+        },
+
+        /** Clear RAM as well as the registers — the TUI's W)ipe, vs its R)eset. */
+        wipe() {
+            if (wasm._emu_reset) wasm._emu_reset(1);
+            else wasm._emu_dbg_reset();
+        },
+
+        /**
          * Run at most `budgetNs` of PROGRAM time, or until the target halts.
          *
          * The primitive a host's frame loop is built from. Returns:

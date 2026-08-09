@@ -91,7 +91,7 @@ class CircuitTab extends React.Component {
                     own comment. The block glow lands in the Blocks tab regardless. */}
                 {stc && stc.pins && stc.pins.length ? (
                     <div style={{marginBottom: 10}}>
-                        <DebugPanel />
+                        <DebugPanel clockHz={(stc && Number(stc.clock)) || 11059200} />
                     </div>
                 ) : null}
                 <Designer

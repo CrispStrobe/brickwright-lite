@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 
+import DebugDrawer from './debug-drawer.jsx';
+
 /**
  * The debugger's controls: ⚑ ⏸ ⏭ ⏹, a speed dial, and what the program is doing.
  *
@@ -216,6 +218,17 @@ class DebugPanel extends React.Component {
                     )}
                 </div>
 
+                {/* Parity with emu8051's TUI, closed by default: opening it is
+                    the user declaring they want the engineer's view. */}
+                {this.state.runner ? (
+                    <DebugDrawer
+                        runner={this.state.runner}
+                        ui={ui}
+                        locale={this.props.locale}
+                        clockHz={this.props.clockHz}
+                    />
+                ) : null}
+
                 {/* Level 1 is yield-to-yield. Say so, rather than letting the
                     highlight imply a precision the position does not have. */}
                 {paused && why ? (
@@ -240,6 +253,7 @@ class DebugPanel extends React.Component {
 }
 
 DebugPanel.propTypes = {
+    clockHz: PropTypes.number,
     locale: PropTypes.string,
     vm: PropTypes.shape({toJSON: PropTypes.func, runtime: PropTypes.object}).isRequired
 };

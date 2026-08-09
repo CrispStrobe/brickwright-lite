@@ -35,6 +35,8 @@
  */
 
 import { listBreakpoints, subscribeBreakpoints, toggleBreakpoint } from './breakpoints.js';
+import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
+import { instructionLength } from './opcodes.js';
 
 /**
  * @param {object} opts
@@ -62,6 +64,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      */
     const bps = new Map();
     let unsubscribeBps = null;
+    /** The execution history the drawer renders. See trace.js. */
+    const trace = createTrace();
+    /** Address breakpoints, which the drawer sets by number rather than by block. */
+    const addrBps = new Map();
 
     function setStatus(phase, message = '') {
         status = { phase, message };
@@ -150,9 +156,29 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     // ─── build ───────────────────────────────────────────────────────────
 
-    /** The project's own hardware declarations, or null if it has none. */
+    /**
+     * The project's own hardware declarations.
+     *
+     * NOT from `vm.toJSON().stc`, which is always undefined: scratch-vm's sb3
+     * serializer emits targets/monitors/extensions/meta and drops every other
+     * top-level key, so the `stc` block SB3Creator writes into the .sb3 never
+     * comes back out. The runtime keeps it instead. Reading the serialised copy
+     * is why the circuit designer opened empty for every project, and it would
+     * have sent every debug build to the HOST C target — `generateC` picks
+     * device-vs-host on `project.stc.pins`, so a missing table does not fail
+     * loudly, it silently compiles a different program.
+     */
     function projectStc(project) {
+        if (vm && vm.runtime && vm.runtime.stc) return vm.runtime.stc;
         return (project && project.stc) || null;
+    }
+
+    /** The project as the emitter needs it: serialised, with the runtime's stc put back. */
+    function projectForEmit() {
+        const project = JSON.parse(vm.toJSON());
+        const stc = projectStc(project);
+        if (stc) project.stc = stc;
+        return project;
     }
 
     /**
@@ -161,8 +187,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      */
     async function build() {
         setStatus('building', 'reading the project…');
-        const project = JSON.parse(vm.toJSON());
-        const stc = projectStc(project);
+        const project = projectForEmit();
+        const stc = project.stc;
         if (!stc || !(stc.pins || []).length) {
             throw new Error(
                 'This project declares no pins, so there is no hardware to debug. ' +
@@ -238,8 +264,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const wasm = await createEmu8051({
             locateFile: (file) => new URL(`static/${file}`, document.baseURI).href
         });
-        const project = JSON.parse(vm.toJSON());
-        const stc = projectStc(project);
+        const stc = projectStc(null);
         const fosc = Number(stc.clock) || 11059200;
 
         // ORDER MATTERS, and getting it wrong fails silently.
@@ -285,8 +310,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         target = createEmu8051DebugTarget(wasm, { symbols });
         session = createDebugSession(target, {
             onChange: (st) => {
-                if (st.halted) glow(st.tasks);
-                else clearGlow();
+                if (st.halted) {
+                    glow(st.tasks);
+                    // One row per stop, always. The drawer's trace pane is the
+                    // TUI's history ring; this is the cheap half of filling it.
+                    trace.record(target, st.why ? st.why.cause : 'halt');
+                } else clearGlow();
                 emit();
             }
         });
@@ -400,6 +429,133 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             emit();
             return now;
         },
+
+        // ─── the engineer's view ─────────────────────────────────────
+        //
+        // Everything below exists so the drawer can show what emu8051's TUI
+        // shows. It is deliberately a thin pass-through: the target already
+        // implements boundary D, and a second layer of interpretation here
+        // would be a second place for the two to disagree.
+
+        /** Registers, the SFRs the TUI names, and the stack — one sample. */
+        inspect() {
+            if (!target) return null;
+            const regs = target.regs();
+            const sfr = {};
+            for (const { name, addr } of [...IO_SFRS, ...TIMER_SFRS]) {
+                sfr[name] = target.readMem('sfr', addr, 1)[0];
+            }
+            // The stack grows UP on an 8051 and SP points at the last byte
+            // pushed, so the live entries are 0x08..SP — 0x07 is where SP sits
+            // after a reset, below the first push.
+            const stack = [];
+            for (let a = 0x08; a <= regs.sp && a <= 0xFF; a++) {
+                stack.push({ addr: a, value: target.readMem('iram', a, 1)[0] });
+            }
+            return { regs, sfr, stack, pc: regs.pc, tNs: target.timeNs() };
+        },
+
+        /** Raw bytes, for the hex view. Returns [] rather than throwing. */
+        readMem(space, addr, len) {
+            if (!target) return [];
+            const out = target.readMem(space, addr, len);
+            return out instanceof Uint8Array ? [...out] : [];
+        },
+
+        /** Edit one byte. `code` is writable here, as it is in the TUI. */
+        writeMem(space, addr, value) {
+            if (!target) return { refused: 'nothing is loaded' };
+            return target.writeMem(space, addr, Uint8Array.from([value & 0xFF]));
+        },
+
+        /** The instruction at an address, as text. */
+        disasm(addr) { return target ? target.disasm(addr) : ''; },
+
+        /**
+         * A short listing from `addr`, walking with the opcode length table.
+         * The TUI has no such pane — its code window is the trace — but a
+         * listing around the PC is what a GUI reader expects, and the length
+         * table makes it free.
+         */
+        listing(addr, count = 16) {
+            if (!target) return [];
+            const rows = [];
+            let a = addr & 0xFFFF;
+            for (let i = 0; i < count; i++) {
+                const opcode = target.readMem('code', a, 1)[0];
+                const len = instructionLength(opcode);
+                rows.push({
+                    addr: a,
+                    bytes: [...target.readMem('code', a, len)],
+                    text: target.disasm(a)
+                });
+                a = (a + len) & 0xFFFF;
+            }
+            return rows;
+        },
+
+        /** Move the PC. The TUI's `g`. */
+        setPc(addr) { return target ? target.setPc(addr) : { refused: 'nothing is loaded' }; },
+
+        /** Reset registers only, or reset and clear RAM. The TUI's R) and W). */
+        resetCpu() { if (target) { target.reset(); trace.record(target, 'reset'); emit(); } },
+        wipe() { if (target) { target.wipe(); trace.record(target, 'reset'); emit(); } },
+
+        /** A breakpoint at a code ADDRESS, which blocks cannot express. */
+        addressBreakpoints: () => [...addrBps.keys()],
+        toggleAddressBreakpoint(addr) {
+            if (!target) return false;
+            const a = addr & 0xFFFF;
+            if (addrBps.has(a)) {
+                target.clearBreakpoint(addrBps.get(a));
+                addrBps.delete(a);
+            } else {
+                const handle = target.setBreakpoint({ kind: 'code', addr: a });
+                if (typeof handle !== 'number') return false;
+                addrBps.set(a, handle);
+            }
+            emit();
+            return addrBps.has(a);
+        },
+
+        /** The execution history. Newest last. */
+        trace: () => trace.rows(),
+        traceDropped: () => trace.dropped(),
+        clearTrace() { trace.clear(); emit(); },
+
+        /**
+         * One instruction, synchronously. The TUI's space bar.
+         *
+         * Each step ends in a halt, and the halt handler records a trace row —
+         * so stepping IS how an instruction-by-instruction trace gets built,
+         * and nothing extra is recorded here. An earlier version recorded again
+         * from this loop and produced two rows per step.
+         *
+         * A free run does NOT trace every instruction, and cannot: a row is
+         * about thirty WASM calls, against eleven million instructions a second.
+         * emu8051's TUI has the same limit from the other side — it records per
+         * instruction because its loop single-steps, and at speed it stops
+         * keeping up too. The trace pane says which it is showing rather than
+         * presenting the gap as a complete history.
+         */
+        stepInstruction(count = 1) {
+            if (!target) return { unsupported: 'nothing is running yet' };
+            for (let i = 0; i < count; i++) {
+                const refusal = target.step('insn', 1);
+                if (refusal) return refusal;
+                // Pump until the step lands. One instruction is a handful of
+                // cycles, so this is bounded and fast.
+                for (let n = 0; n < 4096 && target.state() === 'running'; n++) {
+                    target.runFor(1000);
+                }
+            }
+            emit();
+            return undefined;
+        },
+
+        /** `over` and `out`, which the target defines in terms of SP. */
+        stepOver() { return session ? session.step('over') : { unsupported: 'not running' }; },
+        stepOut() { return session ? session.step('out') : { unsupported: 'not running' }; },
 
         /** Program time, in ms, or null before anything has run. */
         timeMs: () => (target ? Number(target.timeNs()) / 1e6 : null),
