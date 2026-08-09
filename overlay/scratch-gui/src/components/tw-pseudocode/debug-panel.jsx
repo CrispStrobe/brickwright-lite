@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 
 import DebugDrawer from './debug-drawer.jsx';
+import DebugInspector from './debug-inspector.jsx';
 
 /**
  * The debugger's controls: ⚑ ⏸ ⏭ ⏹, a speed dial, and what the program is doing.
@@ -224,6 +225,14 @@ class DebugPanel extends React.Component {
                         </div>
                     )}
                 </div>
+
+                {/* What is happening, in the user's own nouns. This comes FIRST
+                    and the machine's view comes underneath — the order every
+                    mature debugger uses, and the one this could not offer until
+                    the symbol table learned which memory holds `counter`. */}
+                {this.state.runner ? (
+                    <DebugInspector runner={this.state.runner} locale={this.props.locale} />
+                ) : null}
 
                 {/* Parity with emu8051's TUI, closed by default: opening it is
                     the user declaring they want the engineer's view. */}

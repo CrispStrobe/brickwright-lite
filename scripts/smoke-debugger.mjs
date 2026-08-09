@@ -82,7 +82,9 @@ WHEN flag clicked:
     wait 0.15 seconds
 
 WHEN flag clicked:
+  set counter to 0
   REPEAT 4:
+    change counter by 1
     toggle led2
     wait 0.3 seconds
 `);
@@ -243,7 +245,30 @@ const bpOn = runner.toggleAddressBreakpoint(0x0170);
 const bpOff = runner.toggleAddressBreakpoint(0x0170);
 console.log(`setPc ok: ${pcOk} | address breakpoint on/off: ${bpOn}/${bpOff}`);
 
+// ---- the inspector: the user's own nouns ---------------------------------
+const vars = runner.variables();
+console.log(`variables: ${vars.map(v => `${v.name}=${v.value} @${v.where}`).join(', ') || 'none'}`);
+const pinView = runner.pins();
+console.log(`pins: ${pinView.map(p => `${p.name}(${p.pin})=${p.direction === 'analog' ? (p.volts||0).toFixed(2)+'V' : (p.on ? 'on' : 'off')}`).join(', ')}`);
+const withVars = runner.trace().filter(r => r.variables);
+console.log(`timeline: ${withVars.length} stops carry a variable snapshot`);
+
+// let it run so a variable actually moves, then compare two recorded stops
+store.clearBreakpoints();
+runner.resume();
+await new Promise(r => setTimeout(r, 300));
+runner.pause();
+await new Promise(r => setTimeout(r, 30));
+const snaps = runner.trace().filter(r => r.variables);
+const counterOverTime = snaps.map(r => (r.variables.find(v => v.name === 'counter') || {}).value);
+console.log(`counter across recorded stops: ${JSON.stringify(counterOverTime)}`);
+
 const fail = [];
+if (!vars.length) fail.push('no variables reported — the symbol table carried none');
+if (!vars.some(v => v.name === 'counter')) fail.push('the variable is not under its Scratch name');
+if (!pinView.length) fail.push('no pins reported');
+if (!pinView.some(p => p.direction === 'output' && typeof p.on === 'boolean')) fail.push('a digital pin has no on/off');
+if (!withVars.length) fail.push('no trace row carries variables, so the timeline cannot scrub');
 if (!board) fail.push('the runner exposes no board, so the Circuit tab has nothing to show');
 if (!leds.length) fail.push('the inferred board has no LEDs');
 if (distinct.size < 2) fail.push('the LED never changed brightness — the board is not being driven');

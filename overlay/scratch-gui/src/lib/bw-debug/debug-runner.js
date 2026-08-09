@@ -66,6 +66,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let unsubscribeBps = null;
     /** The execution history the drawer renders. See trace.js. */
     const trace = createTrace();
+    /** The user's own variables: {name, space, addr, size}. From the symbol table. */
+    let variableTable = [];
+    /** The project's declared pins, for the physical view. */
+    let pinTable = [];
     /** Address breakpoints, which the drawer sets by number rather than by block. */
     const addrBps = new Map();
 
@@ -307,6 +311,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         symbols = built.symbols;
+        variableTable = (symbols.variables || []).filter((v) => v.space);
+        pinTable = stc.pins || [];
         target = createEmu8051DebugTarget(wasm, { symbols });
         session = createDebugSession(target, {
             onChange: (st) => {
@@ -314,7 +320,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     glow(st.tasks);
                     // One row per stop, always. The drawer's trace pane is the
                     // TUI's history ring; this is the cheap half of filling it.
-                    trace.record(target, st.why ? st.why.cause : 'halt');
+                    trace.record(target, st.why ? st.why.cause : 'halt',
+                        { variables: runner.variables(), tasks: st.tasks });
                 } else clearGlow();
                 emit();
             }
@@ -509,8 +516,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         setPc(addr) { return target ? target.setPc(addr) : { refused: 'nothing is loaded' }; },
 
         /** Reset registers only, or reset and clear RAM. The TUI's R) and W). */
-        resetCpu() { if (target) { target.reset(); trace.record(target, 'reset'); emit(); } },
-        wipe() { if (target) { target.wipe(); trace.record(target, 'reset'); emit(); } },
+        resetCpu() { if (target) { target.reset(); trace.record(target, 'reset', {variables: runner.variables()}); emit(); } },
+        wipe() { if (target) { target.wipe(); trace.record(target, 'reset', {variables: runner.variables()}); emit(); } },
 
         /** A breakpoint at a code ADDRESS, which blocks cannot express. */
         addressBreakpoints: () => [...addrBps.keys()],
@@ -567,6 +574,65 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         /** `over` and `out`, which the target defines in terms of SP. */
         stepOver() { return session ? session.step('over') : { unsupported: 'not running' }; },
         stepOut() { return session ? session.step('out') : { unsupported: 'not running' }; },
+
+        /**
+         * The user's OWN variables, by the name they typed.
+         *
+         * This is the pane a debugger for this audience should lead with. Not
+         * A/B/DPTR — `counter`, with the value in it. Every one is a 16-bit
+         * signed int because that is what generateC emits, and SDCC stores
+         * them little-endian.
+         */
+        variables() {
+            if (!target) return [];
+            return variableTable.map((v) => {
+                const bytes = target.readMem(v.space, v.addr, 2);
+                const raw = (bytes[1] << 8) | bytes[0];
+                return {
+                    name: v.name,
+                    sprite: v.sprite || null,
+                    // Scratch's numbers are signed; 0xFFFF is -1, not 65535.
+                    value: raw > 0x7FFF ? raw - 0x10000 : raw,
+                    where: `${v.space} 0x${v.addr.toString(16).toUpperCase()}`
+                };
+            });
+        },
+
+        /**
+         * Each declared pin as a PHYSICAL fact, not a register bit.
+         *
+         * The board is the authority: it knows the resolved level and what is
+         * wired there, and it already applies the active-low inversion. An
+         * ANALOG pin reports volts, because that is what the part does — the
+         * conversion to counts is the MCU's business (boundary A).
+         */
+        pins() {
+            if (!board) return [];
+            return pinTable.map((p) => {
+                const id = `P${p.port}.${p.bit}`;
+                const out = { name: p.name, pin: id, direction: p.direction,
+                    activeLow: !!p.activeLow };
+                try {
+                    if (p.direction === 'analog') {
+                        out.volts = board.readAnalog(id);
+                    } else {
+                        const level = board.readPin(id);
+                        out.level = level;
+                        // What the USER called it: an active-low LED driven
+                        // low is ON, and saying "0" here would teach the
+                        // opposite of the thing this board exists to teach.
+                        out.on = p.activeLow ? level === 0 : level === 1;
+                    }
+                } catch { /* a pin with nothing wired to it has no reading */ }
+                return out;
+            });
+        },
+
+        /** LED brightnesses by part id, so the panel can show them lit. */
+        leds() {
+            if (!board) return [];
+            return board.getLeds().map((id) => ({ id, brightness: board.ledBrightness(id) }));
+        },
 
         /** Program time, in ms, or null before anything has run. */
         timeMs: () => (target ? Number(target.timeNs()) / 1e6 : null),
