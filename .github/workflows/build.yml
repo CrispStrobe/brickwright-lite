@@ -91,7 +91,9 @@ jobs:
   verify-deploy:
     needs: build
     runs-on: ubuntu-latest
-    # Only on push (not workflow_dispatch) — needs a real Vercel deploy to check
+    # Informational: a deploy failure (rate limit, infra) should not block the build status.
+    # The build job's guards are the gate; this job is a post-deploy smoke test.
+    continue-on-error: true
     if: github.event_name == 'push'
     steps:
       - name: Wait for Vercel deploy
