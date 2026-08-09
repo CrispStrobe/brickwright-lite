@@ -21,6 +21,45 @@
           navigator.serviceWorker.register('sw.js').catch(function () { /* PWA offline is best-effort */ });
         });
       }
+
+      /* Recover from a stale build, once.
+       *
+       * The service worker now serves the document network-first, so a fresh
+       * load always names the current entry. But a tab that was ALREADY open
+       * across a deploy still holds the old entry in memory, and its lazy
+       * imports point at chunk hashes the deploy removed. The user sees
+       * "Loading chunk NNN failed" and no amount of clicking fixes it, because
+       * the code doing the asking is the stale code.
+       *
+       * So: on a chunk-load failure, drop every cache, unregister the worker
+       * and reload — exactly once per tab. The sessionStorage guard matters
+       * more than it looks: without it, a chunk that is genuinely missing from
+       * the server turns this into an infinite reload loop, which is a worse
+       * failure than the one being fixed. Once is a recovery; twice is a bug we
+       * would rather see reported. */
+      (function () {
+        var KEY = 'bw-chunk-recovery';
+        function looksLikeStaleBuild(message) {
+          return /Loading chunk \S+ failed|ChunkLoadError|error loading dynamically imported module/i.test(String(message || ''));
+        }
+        function recover(message) {
+          if (!looksLikeStaleBuild(message)) return;
+          if (sessionStorage.getItem(KEY)) return;   // already tried; let the error surface
+          sessionStorage.setItem(KEY, '1');
+          var done = function () { location.reload(); };
+          Promise.resolve()
+            .then(function () { return caches && caches.keys().then(function (k) { return Promise.all(k.map(function (n) { return caches.delete(n); })); }); })
+            .then(function () {
+              return navigator.serviceWorker && navigator.serviceWorker.getRegistrations()
+                .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); });
+            })
+            .then(done, done);
+        }
+        window.addEventListener('error', function (e) { recover(e && e.message); });
+        window.addEventListener('unhandledrejection', function (e) {
+          recover(e && e.reason && (e.reason.message || e.reason));
+        });
+      }());
     </script>
   </body>
 </html>

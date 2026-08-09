@@ -1,8 +1,45 @@
 /* Brickwright PWA service worker.
- * Runtime cache-then-network (stale-while-revalidate) for same-origin GET requests, so after the
- * first visit the editor loads offline. No precache manifest is needed — webpack chunk names are
- * hashed, and this caches each asset as it is first fetched. Bump CACHE to invalidate old assets. */
-const CACHE = 'brickwright-v1';
+ *
+ * ## The bug this was rewritten to fix (2026-08-09)
+ *
+ * The first version was stale-while-revalidate for EVERY same-origin GET —
+ * `return cached || network` — including `index.html` and the hashed entry
+ * bundle. That breaks the app on the second deploy, and it broke it in
+ * production:
+ *
+ *   1. A visit caches index.html and gui.<oldhash>.js.
+ *   2. A new build deploys. Chunk hashes change; the old chunk files are gone,
+ *      because a deploy replaces the whole tree.
+ *   3. The next visit is served the CACHED index.html, which names the CACHED
+ *      old entry. The app runs a build that no longer exists on the server.
+ *   4. The moment that old entry lazily imports a chunk the user had not
+ *      visited before — the C tab, the debugger — it requests a hash that is
+ *      404 and fails with "Loading chunk NNN failed".
+ *
+ * Reported as: `Can't show as c: Loading chunk 596 failed
+ * (.../chunks/sb3-creator.fa965b005eea503da2a1.js)`. Confirmed by fetching the
+ * deployed entry: it names `sb3-creator.8972d337850ada585ee3.js`, which is 200,
+ * and contains the failing hash zero times. The browser was running a stale
+ * entry against a fresh tree.
+ *
+ * Bumping CACHE would not have helped on its own, because nobody bumps a
+ * constant on every deploy — and a scheme that needs a human step on every
+ * release is a scheme that fails on the release someone forgets.
+ *
+ * ## The rule
+ *
+ * **The document is the one thing that must never be stale**, because it names
+ * every hashed asset. Everything it names is content-addressed and therefore
+ * safe to cache forever.
+ *
+ *   navigation / index.html  -> network first, cache only as an offline fallback
+ *   hashed assets            -> cache first (immutable: the hash IS the version)
+ *   everything else          -> stale-while-revalidate
+ */
+const CACHE = 'brickwright-v2';
+
+/** `gui.aeeed7e4.js`, `chunks/sb3-creator.8972d337850ada585ee3.js`, `static/…` */
+const HASHED = /\.[a-f0-9]{8,32}\.(js|css)$/;
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -18,15 +55,38 @@ self.addEventListener('fetch', event => {
     const req = event.request;
     if (req.method !== 'GET') return;
     const url = new URL(req.url);
-    if (url.origin !== self.location.origin) return; // let cross-origin (e.g. the extension gallery) hit the network
+    if (url.origin !== self.location.origin) return; // the extension gallery goes to the network
+
+    const isDocument = req.mode === 'navigate' || req.destination === 'document' ||
+        url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
 
     event.respondWith((async () => {
         const cache = await caches.open(CACHE);
+
+        // The document names the build. Always ask the network first; fall back
+        // to cache only when there is no network at all, which is the case the
+        // PWA exists for.
+        if (isDocument) {
+            try {
+                const fresh = await fetch(req, {cache: 'no-cache'});
+                if (fresh && fresh.status === 200) cache.put(req, fresh.clone());
+                return fresh;
+            } catch {
+                return (await cache.match(req)) || Response.error();
+            }
+        }
+
         const cached = await cache.match(req);
+
+        // A hashed asset can never change under its own name, so a hit is
+        // always correct and there is nothing to revalidate.
+        if (cached && HASHED.test(url.pathname)) return cached;
+
         const network = fetch(req).then(resp => {
             if (resp && resp.status === 200 && resp.type === 'basic') cache.put(req, resp.clone());
             return resp;
         }).catch(() => cached);
+
         return cached || network;
     })());
 });
