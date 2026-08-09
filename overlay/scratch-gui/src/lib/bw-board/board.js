@@ -143,6 +143,12 @@ export class BoardImpl {
     /** Next scope channel handle. */
     this._nextScopeHandle = 1;
 
+    /** Whether the last MNA solve converged. */
+    this._lastSolveConverged = true;
+
+    /** Whether advanceTo hit the device sub-step cap. */
+    this._deviceSubstepOverflow = false;
+
     /**
      * 74HC595 shift register states: part id → FSM state.
      * @type {Map<string, {shiftReg: number, latchReg: number, lastClock: boolean, lastLatch: boolean}>}
@@ -286,19 +292,80 @@ export class BoardImpl {
    */
   advanceTo(tNs) {
     const prevNs = this.timeNs;
-    this.timeNs = tNs;
+    if (tNs < prevNs) return;
+    if (tNs === prevNs) {
+      // Same time: still record probes/LED samples (first call at t=0)
+      this._recordLedSamples();
+      if (this._scopeChannels.size > 0) this._updateScopeChannels(tNs);
+      for (const [netId, data] of this._probes) {
+        const v = this.nodeVoltages.get(netId) ?? 0;
+        data.push({ tNs, v: Number.isFinite(v) ? v : 0 });
+        if (data.length > this._probeMaxSamples) data.splice(0, data.length - this._probeMaxSamples);
+      }
+      this._notifyChange('time', { tNs });
+      return;
+    }
 
-    // Integrate reactive components
-    if (tNs > prevNs && this.powered) {
-      const dtSec = Number(tNs - prevNs) / 1e9;
-      if (this._needsMNA() && (this._hasReactive() || this._hasTimeVaryingSource())) {
-        // Semiconductors + reactive parts (or a running waveform source):
-        // the closed-form integrators cannot see either, so sub-step the
-        // transient MNA solve across the interval.
-        this._integrateTransientMNA(dtSec);
-      } else {
-        this._integrateCapacitors(dtSec);
-        this._integrateInductors(dtSec);
+    const hasDevices = this._deviceStates.size > 0 || this._shiftRegisters.size > 0;
+
+    // Sub-step through device deadlines so timed transitions fire at the
+    // correct time, not just at the destination. Without this, a relay with
+    // a 5ms deadline jumped 0→100ms would only see 100ms, and an encoder
+    // would undercount edges by the entire interval.
+    if (hasDevices && this.powered) {
+      const MAX_DEVICE_SUBSTEPS = 200;
+      let steps = 0;
+      let cursor = prevNs;
+
+      while (cursor < tNs && steps < MAX_DEVICE_SUBSTEPS) {
+        // Find the earliest device deadline in (cursor, tNs]
+        const deadline = this._earliestDeviceDeadline(cursor, tNs);
+        const nextT = deadline ?? tNs;
+
+        // Advance time to this point
+        this.timeNs = nextT;
+        const dtSec = Number(nextT - cursor) / 1e9;
+
+        // Integrate reactive components for this sub-interval
+        if (dtSec > 0) {
+          if (this._needsMNA() && (this._hasReactive() || this._hasTimeVaryingSource())) {
+            this._integrateTransientMNA(dtSec);
+          } else {
+            this._integrateCapacitors(dtSec);
+            this._integrateInductors(dtSec);
+          }
+        }
+
+        // Update devices at this time and re-solve if state changed
+        for (let round = 0; round < 5; round++) {
+          if (!this._updateDevices()) break;
+          this._solve();
+        }
+
+        cursor = nextT;
+        steps++;
+
+        // If we hit the destination and no deadline pulled us earlier, done
+        if (nextT >= tNs) break;
+      }
+
+      // If we hit the sub-step cap, report it
+      if (steps >= MAX_DEVICE_SUBSTEPS && cursor < tNs) {
+        this.timeNs = tNs;
+        this._deviceSubstepOverflow = true;
+      }
+    } else {
+      // No devices: original fast path
+      this.timeNs = tNs;
+
+      if (tNs > prevNs && this.powered) {
+        const dtSec = Number(tNs - prevNs) / 1e9;
+        if (this._needsMNA() && (this._hasReactive() || this._hasTimeVaryingSource())) {
+          this._integrateTransientMNA(dtSec);
+        } else {
+          this._integrateCapacitors(dtSec);
+          this._integrateInductors(dtSec);
+        }
       }
     }
 
@@ -1017,6 +1084,21 @@ export class BoardImpl {
       'ultrasonic', 'pir', 'tilt_sensor', 'flex_sensor', 'force_sensor', 'phototransistor',
       'neopixel', 'bargraph',
       'decade_counter', 'dff', 'jkff', 'darlington_driver', 'piezo',
+      // Analog ICs + discrete
+      'tip120', 'lm393', 'tmp36', 'light_bulb', 'optocoupler',
+      // Real DIP chips (chip-composer)
+      '74hc00', '74hc02', '74hc04', '74hc08', '74hc10', '74hc11', '74hc14',
+      '74hc20', '74hc21', '74hc27', '74hc32', '74hc73', '74hc74', '74hc86',
+      '74hc93', '74hc132', 'cd4511',
+      // Misc parts
+      'dc_motor_encoder', 'keypad_4x4', 'dip_switch', 'vibration_motor', 'polarized_cap',
+      // Named variants (real part numbers)
+      'battery_9v', 'battery_aa', 'battery_coin', 'lm7805', 'ld1117v33',
+      'gas_sensor', 'ambient_light', 'ir_transmitter',
+      '74hc95', 'lm339', 'timer_556',
+      // Tier 1 catalogue parts
+      'photodiode', 'soil_moisture', 'relay_dpdt', 'solar_cell', 'gearmotor',
+      '74hc75', '74hc283', 'header', 'usb_a', 'ir_remote', 'clock_display',
     ];
   }
 
@@ -1035,6 +1117,25 @@ export class BoardImpl {
     return this.parts
       .filter(p => controllable.includes(p.kind))
       .map(p => ({ id: p.id, kind: p.kind, value: this.controls.get(p.id) ?? 0 }));
+  }
+
+  /**
+   * Get the state of a registered device or built-in shift register.
+   * Returns the device's internal state object (drives, FSM state, etc.)
+   * or null if the part has no device state.
+   *
+   * For shift registers: { shiftReg, latchReg, oeActive }
+   * For registry devices: whatever the model's init() returned + mutations
+   *
+   * @param {string} partId
+   * @returns {object | null}
+   */
+  getDeviceState(partId) {
+    // Built-in shift register
+    const sr = this._shiftRegisters.get(partId);
+    if (sr) return { shiftReg: sr.shiftReg, latchReg: sr.latchReg, oeActive: sr.oeActive ?? true };
+    // Registry devices
+    return this._deviceStates.get(partId) ?? null;
   }
 
   /**
@@ -1091,6 +1192,25 @@ export class BoardImpl {
     const warnings = [];
 
     if (!this.powered) return warnings;
+
+    // Device sub-step overflow: advanceTo hit the cap on device sub-steps.
+    if (this._deviceSubstepOverflow) {
+      warnings.push({
+        severity: 'warning',
+        message: 'Device sub-step limit reached — some timed transitions may have been ' +
+          'skipped. This happens when many device deadlines fall within one advanceTo interval.',
+      });
+    }
+
+    // Non-convergence: the solver could not find a consistent operating point.
+    // This is a RESULT, not an error — the UI can render "circuit did not settle".
+    if (this._lastSolveConverged === false) {
+      warnings.push({
+        severity: 'danger',
+        message: 'Circuit did not converge — voltages shown are approximate. ' +
+          'This can happen with circuits that have no stable operating point.',
+      });
+    }
 
     for (const part of this.parts) {
       if (part.kind === 'led') {
@@ -1403,6 +1523,54 @@ export class BoardImpl {
       this.ledCurrents.set(part.id, Math.max(0, c ? (c.get('anode') ?? 0) : 0));
     }
     this._mnaCache = res;
+    // Track non-convergence — a solver that cannot converge must say so.
+    // Returning the last iterate as if it were an answer is the numerical
+    // form of the silent-degradation bug.
+    this._lastSolveConverged = res.converged !== false;
+  }
+
+  /**
+   * Find the earliest device deadline strictly after `afterNs` and at or before `beforeNs`.
+   * Returns the deadline bigint, or null if no deadline exists in that range.
+   *
+   * Devices with deadlines: relay (_pendingState.deadlineNs), ultrasonic (_echoEndNs).
+   * Continuous devices (motor, servo, encoder) use a max sub-step interval instead.
+   */
+  _earliestDeviceDeadline(afterNs, beforeNs) {
+    let earliest = null;
+
+    // Check registry device states for known deadline fields
+    for (const [, state] of this._deviceStates) {
+      // Relay-style deadline
+      if (state._pendingState && state._pendingState.deadlineNs > afterNs &&
+          state._pendingState.deadlineNs <= beforeNs) {
+        if (earliest === null || state._pendingState.deadlineNs < earliest) {
+          earliest = state._pendingState.deadlineNs;
+        }
+      }
+      // Ultrasonic echo end
+      if (state._measuring && state._echoEndNs > afterNs &&
+          state._echoEndNs <= beforeNs) {
+        if (earliest === null || state._echoEndNs < earliest) {
+          earliest = state._echoEndNs;
+        }
+      }
+    }
+
+    // For continuous devices (motor, encoder, servo): impose a max sub-step
+    // of 1ms so they don't lose resolution on long jumps.
+    // Only if the interval is large enough to warrant sub-stepping.
+    const MAX_DEVICE_INTERVAL = 1_000_000n; // 1ms
+    if (beforeNs - afterNs > MAX_DEVICE_INTERVAL) {
+      const periodicDeadline = afterNs + MAX_DEVICE_INTERVAL;
+      if (periodicDeadline <= beforeNs) {
+        if (earliest === null || periodicDeadline < earliest) {
+          earliest = periodicDeadline;
+        }
+      }
+    }
+
+    return earliest;
   }
 
   /**
