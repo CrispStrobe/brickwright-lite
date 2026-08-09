@@ -51,13 +51,13 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady , onCircuitReady}) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
     parts, wires, powered, rev,
     addPart, removePart, movePart, duplicatePart, rotatePart, flipPart, updateParams,
-    addWire, removeWire, addHoleWire, updateWire,
+    addWire, removeWire, addHoleWire, addTapWire, updateWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
     ledBrightness, buzzerTone, nodeVoltage,
@@ -180,6 +180,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // ── Buzzer audio ────────────────────────────────────────────────
   // Direct import (no dynamic import — the module guards against
   // missing AudioContext in non-browser environments).
+  // Publish the circuit to the host (harness/integration) once on mount.
+  useEffect(() => {
+    if (onCircuitReady) onCircuitReady(circuit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     return () => stopAllBuzzers();
   }, []);
@@ -257,7 +263,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     for (const pin of inputPins) setPin(pin, 'quasi', true);
     for (const pin of analogPins) setPin(pin, 'input', false);
 
-    advanceTo(0n);
     simStep.current = 0;
 
     simInterval.current = setInterval(() => {
@@ -493,12 +498,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         minHeight: 0, // allow flex shrinking
         alignItems: 'stretch',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        overflow: 'hidden',
+        overflow: 'clip',
       }}
     >
       {/* Left sidebar — collapsible */}
       {leftOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', minHeight: 0, maxHeight: '100%', overscrollBehavior: 'contain' }}>
           <button onClick={() => setLeftOpen(false)} style={{
             background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
             fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
@@ -560,6 +565,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onAddWire={addWire}
           onRemoveWire={removeWire}
           onAddHoleWire={(boardId, a, b) => addHoleWire(boardId, a, b)}
+          onAddTapWire={(partId, terminal, boardId, hole) => addTapWire(partId, terminal, boardId, hole)}
           onRemovePart={removePart}
           onMovePart={handleMovePart}
           onNudgePart={handleNudgePart}
