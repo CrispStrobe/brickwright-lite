@@ -64,6 +64,27 @@ export default [
         featured: true
     },
     {
+        name: 'STC12 / 8051 Pins',
+        extensionId: 'stc12',
+        iconURL: 'static/extension-posters/csp-badge.png',
+        description: 'Drive the GPIO pins declared with PIN in the Code tab — bundled built-in.',
+        featured: true
+    },
+    {
+        name: 'STC12 Live (Web Serial)',
+        extensionId: 'stc12live',
+        iconURL: 'static/extension-posters/csp-badge.png',
+        description: 'Connect to a real STC12 chip over USB — bundled, works offline.',
+        featured: true
+    },
+    {
+        name: 'Circuit',
+        extensionId: 'circuit',
+        iconURL: 'static/extension-posters/csp-badge.png',
+        description: 'Meter blocks: voltage, current, resistance, brightness, tone — bundled built-in.',
+        featured: true
+    },
+    {
         name: 'Text to Speech',
         extensionId: 'brickwrightTTS',
         iconURL: 'static/extension-posters/tts.png',
