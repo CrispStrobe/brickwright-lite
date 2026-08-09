@@ -101,12 +101,64 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
     style.textContent = CSS;
     document.head.appendChild(style);
 
-    /** Does this project have hardware to debug? */
+    /**
+     * Does this project have hardware to debug?
+     *
+     * This gate was `vm.runtime.stc.pins.length` alone, and that made the whole
+     * feature unreachable in the commonest flow. bw-blocks found it by driving
+     * a real browser rather than reading the code: write pseudocode, press
+     * "To blocks", right-click a `turn on led1` — and the menu shows only
+     * Duplicate / Add Comment / Delete. `runtime.stc` is populated by a full
+     * project load, not by the importer, so a freshly converted project has
+     * pins on screen, the STC12 palette visible, and no gate.
+     *
+     * The consequence was larger than a missing menu item: everything
+     * downstream is gated behind it, so **0 of 6 breakpoint-decoration cases
+     * could be tested** — the decoration never renders if the mark can never
+     * be set.
+     *
+     * So ask the question three ways, cheapest first, and pass if any says yes.
+     * All three are things the user can already see:
+     *
+     *   1. `runtime.stc` — set after a load. The fast path, unchanged.
+     *   2. the stc12 extension being loaded — which is exactly why the palette
+     *      shows an STC12 category. If the blocks are offerable, the project is
+     *      a hardware project.
+     *   3. the Stage comment the serializer now carries declarations in
+     *      (sb3-creator e7d739d), for a project loaded from a file. The marker
+     *      is `_stcconfig_` (SB3Creator.STC_MAGIC) under comment id
+     *      `stcconfig` — checked against the source rather than guessed, having
+     *      first written `@bw-stc` here, which matches nothing.
+     *
+     * None of these serialises the project; a right-click must stay cheap.
+     */
     const isHardwareProject = () => {
-        // vm.runtime.stc is the cheap path; toJSON on every right-click would
-        // serialise the whole project to answer a yes/no question.
-        const stc = vm && vm.runtime && vm.runtime.stc;
-        return !!(stc && stc.pins && stc.pins.length);
+        const runtime = vm && vm.runtime;
+        if (!runtime) return false;
+
+        const stc = runtime.stc;
+        if (stc && stc.pins && stc.pins.length) return true;
+
+        const em = vm.extensionManager;
+        if (em && typeof em.isExtensionLoaded === 'function') {
+            try {
+                if (em.isExtensionLoaded('stc12') || em.isExtensionLoaded('stc12live')) return true;
+            } catch { /* an extension manager mid-load is not an error here */ }
+        }
+
+        try {
+            const stage = runtime.getTargetForStage && runtime.getTargetForStage();
+            const comments = stage && stage.comments;
+            if (comments) {
+                if (comments.stcconfig) return true;
+                for (const id of Object.keys(comments)) {
+                    const text = comments[id] && comments[id].text;
+                    if (text && text.indexOf('_stcconfig_') !== -1) return true;
+                }
+            }
+        } catch { /* no stage yet */ }
+
+        return false;
     };
 
     // Hook generateContextMenu, NOT customContextMenu.
