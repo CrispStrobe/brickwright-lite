@@ -18,24 +18,28 @@ DEBUG-CONTROL-MODEL.md §8's acceptance ladder (rungs 1–8).
 matches. The active-part highlight is dead. The right fix is to derive active parts from
 pin state (`board.getPinStates()`), not from yield points. Not blocking bw-bundle.
 
-## ~~Slice 3: project.stc does not survive save/reload~~ — IMPLEMENTED
+## ~~Slice 3: project.stc does not survive save/reload~~ — IN PROGRESS
 
-Patched in apply-vm-overlay.mjs. sb3 serializer writes `stc: { version: 1, ... }` when
-`runtime.stc` is set; deserializer restores it on load. `vm.setStc()` added as the single
-entry point. The pseudocode re-parse fallback is kept (belt and braces).
+Two persistence paths, belt and braces:
+1. **sb3.js patch** (apply-vm-overlay.mjs): serialize writes `stc: { version: 1, ... }`
+   as a top-level key; deserialize restores it. Works for projects saved in lite.
+2. **Stage comment** (sb3-creator e7d739d): `writeStcComment()` writes a minimized comment
+   on the Stage target with magic `_stcconfig_`; `readStc()` recovers from it even after
+   a foreign round trip strips the top-level key.
 
-**Not verified:** no round-trip test exists yet. The serializer and deserializer are
-patched but no test builds a project with pins, serializes, deserializes into a fresh
-VM, and asserts the pin table is identical. A CI-level test requires a VM harness that
-this workspace does not have.
+**Wired:** importer writes the comment on import via writeStcComment.
+**Not yet wired:** comment recovery on .sb3 file open (the read path when a user opens a
+saved .sb3 through the file menu, not through the importer). Needs a VM event listener.
+**vm.setStc()** is patched in; importer uses it.
 
-**Coordinator note:** debug-runner.js's `projectStc()` and `projectForEmit()` read from
-`vm.runtime.stc`. The patches write to the same property. If the coordinator moves where
-stc lives, those two functions must move with it.
+**Not verified:** no round-trip test in this workspace. sb3-creator has
+`test/stc-persistence.test.mjs` covering readStc/writeStcComment.
 
-**Future:** DEVICE/CLOCK/PIN as actual blocks in the project would round-trip natively
-(they are just blocks). That eliminates the dual source of truth. Belongs to bw-blocks
-and sb3-creator, not to this slice.
+**Coordinator note:** debug-runner.js reads `vm.runtime.stc`. The patches write to the
+same property via `vm.setStc()`. If stc moves, `projectStc()` and `projectForEmit()` move.
+
+**Future:** DEVICE/CLOCK/PIN as actual blocks would round-trip natively — eliminates the
+dual source of truth. Belongs to bw-blocks and sb3-creator.
 
 ## STC89 core instruction rate: 1T, not 12T (emu8051-stc)
 
