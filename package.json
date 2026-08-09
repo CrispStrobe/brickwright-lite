@@ -14,7 +14,9 @@
     "sync:bwboard": "node scripts/sync-bw-board.mjs",
     "sync:bwboard:check": "node scripts/sync-bw-board.mjs --check",
     "sync:circuitui": "node scripts/sync-bw-circuit-ui.mjs",
-    "sync:circuitui:check": "node scripts/sync-bw-circuit-ui.mjs --check"
+    "sync:circuitui:check": "node scripts/sync-bw-circuit-ui.mjs --check",
+    "sync:emuwasm": "node scripts/sync-emu8051-wasm.mjs",
+    "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check"
   },
   "engines": {
     "node": "22.x"
