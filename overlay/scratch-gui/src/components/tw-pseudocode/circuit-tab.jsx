@@ -389,9 +389,9 @@ class CircuitTab extends React.Component {
                 return note('This build of the circuit designer does not export generateBom yet.');
             }
             if (!circuit) {
-                return note('The designer in this build does not publish its circuit ' +
-                            '(waiting on bw-circuit-ui to call onCircuitChange), so the ' +
-                            'parts list cannot be built.');
+                return note('The designer has not handed over its circuit yet ' +
+                            '(onCircuitReady has not fired), so the parts list cannot ' +
+                            'be built. Open the Designer once and come back.');
             }
             if (ui.BomPanel) return <ui.BomPanel parts={circuit.parts} />;
             const bom = ui.generateBom(circuit.parts) || [];
