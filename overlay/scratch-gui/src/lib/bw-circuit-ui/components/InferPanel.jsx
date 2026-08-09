@@ -277,7 +277,7 @@ export function InferPanel({ onLoadCircuit }) {
 
   const handleLoad = useCallback((preset) => {
     const result = inferCircuit(preset.stc);
-    onLoadCircuit(result.parts, result.nets, result.annotations);
+    onLoadCircuit(result.parts, result.nets);
     // Combine inference notes with preset-level conflict notes
     const allNotes = [...result.notes];
     if (preset.note) allNotes.unshift(preset.note);

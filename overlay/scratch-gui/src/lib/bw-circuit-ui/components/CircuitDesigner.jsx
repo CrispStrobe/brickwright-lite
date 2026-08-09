@@ -98,8 +98,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
-  const [annotations, setAnnotations] = useState([]);
-
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
   const [probePlacement, setProbePlacement] = useState(null);
@@ -133,9 +131,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
           pins: [{ name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true }],
         };
 
-    const { parts: ip, nets: in_, annotations: ann } = inferCircuit(inferStc);
+    const { parts: ip, nets: in_ } = inferCircuit(inferStc);
     loadInferred(ip, in_);
-    setAnnotations(ann || []);
   }, [projectData, loadInferred]);
 
   // ── Buzzer audio ────────────────────────────────────────────────
@@ -302,9 +299,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
     advanceBy(1n * MS);
   }, [setControl, advanceBy]);
 
-  const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
+  const handleLoadCircuit = useCallback((inferredParts, inferredNets) => {
     loadInferred(inferredParts, inferredNets);
-    setAnnotations(ann || []);
     setSelectedParts(new Set());
     setSelectedWire(null);
     setMode('build');
@@ -434,7 +430,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
           }}
           circuit={circuit}
           warnings={warnings}
-          annotations={annotations}
         />
 
         {/* Engine warnings — teaching feedback */}

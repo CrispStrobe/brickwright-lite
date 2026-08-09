@@ -99,16 +99,10 @@ class Blocks extends React.Component {
         this.ScratchBlocks.Procedures.externalProcedureDefCallback = this.props.onActivateCustomProcedures;
         this.ScratchBlocks.ScratchMsgs.setLocale(this.props.locale);
 
-        // If toolboxXML is null (initial state — deferred because scratch-blocks
-        // wasn't loaded yet at store init), generate it now.
-        const toolboxXML = this.props.toolboxXML || makeToolboxXML(true);
-        if (!this.props.toolboxXML) {
-            this.props.updateToolboxState(toolboxXML);
-        }
         const workspaceConfig = defaultsDeep({},
             Blocks.defaultOptions,
             this.props.options,
-            {rtl: this.props.isRtl, toolbox: toolboxXML, colours: getColorsForTheme(this.props.theme)}
+            {rtl: this.props.isRtl, toolbox: this.props.toolboxXML, colours: getColorsForTheme(this.props.theme)}
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
 
