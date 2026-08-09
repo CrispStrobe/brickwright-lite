@@ -286,7 +286,25 @@ const stopped = runner.state();
 const counterAtStop = (runner.variables().find(v => v.name === 'counter') || {}).value;
 console.log(`stopped with counter=${counterAtStop}, ${stopped.skippedHits} earlier hits skipped`);
 
+// ---- hover-to-inspect: what was `counter` HERE? ---------------------------
+const hoverBlock = runner.state().yieldBlocks.find(b => runner.yieldKind(b) === 'repeat');
+const at = runner.valuesAtBlock(hoverBlock);
+console.log(`values at the REPEAT block: ${at ? at.variables.map(v => v.name + '=' + v.value).join(', ') + ` (${at.agoMs.toFixed(0)} ms ago)` : 'never stopped there'}`);
+// The bridge the editor uses: the runner publishes a resolver, the workspace
+// asks. Verified through the same path the tooltip takes, not around it.
+const {valuesAtBlock: viaBridge} = await import(`${LITE}/lib/bw-debug/hover-values.js`);
+const bridged = viaBridge(hoverBlock);
+console.log(`via the editor bridge: ${bridged ? bridged.variables.map(v => v.name + '=' + v.value).join(', ') : 'nothing'}`);
+
+const never = runner.valuesAtBlock('not-a-block');
+console.log(`values at a block that is not a yield point: ${never === null ? 'null, correctly' : 'WRONG'}`);
+
 const fail = [];
+if (!at) fail.push('no recorded values at a block the program demonstrably stopped at');
+if (at && !at.variables.some(v => v.name === 'counter')) fail.push('the snapshot has no counter');
+if (never !== null) fail.push('a non-yield block returned something');
+if (!bridged) fail.push('the editor bridge returned nothing — a tooltip would never appear');
+if (bridged && bridged.agoMs < 0) fail.push('a negative "ago" leaked out');
 if (condErr) fail.push('a valid condition was rejected');
 if (!bogus) fail.push('a malformed condition was accepted');
 if (stopped.phase !== 'paused') fail.push('the conditional pause point never fired');

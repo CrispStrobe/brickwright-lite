@@ -40,6 +40,7 @@ import {
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
+import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 
 /**
@@ -330,6 +331,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             );
         }
 
+        // The block editor asks for hover values through this, because the
+        // workspace and the runner are in different component trees.
+        setValueResolver((blockId) => runner.valuesAtBlock(blockId));
         symbols = built.symbols;
         variableTable = (symbols.variables || []).filter((v) => v.space);
         pinTable = stc.pins || [];
@@ -776,6 +780,47 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return board.getLeds().map((id) => ({ id, brightness: board.ledBrightness(id) }));
         },
 
+        /**
+         * What the program looked like the last time it was AT this block.
+         *
+         * The debugger's answer to "what was `counter` here?", which is the
+         * question a learner actually has and the one a live-values pane
+         * cannot answer: by the time you look, the program has moved on.
+         * Every recorded stop already carries a full variable snapshot and the
+         * position it was taken at, so this is a lookup, not new machinery.
+         *
+         * Returns null when this block has never been stopped at — which is
+         * the honest answer, and different from "all its variables were zero".
+         *
+         * @param {string} blockId
+         * @returns {{variables: Array, tNs: bigint, agoMs: number, why: string} | null}
+         */
+        valuesAtBlock(blockId) {
+            const y = yieldOf.get(blockId);
+            if (!y) return null;
+            const rows = trace.rows();
+            for (let i = rows.length - 1; i >= 0; i--) {
+                const row = rows[i];
+                if (!row.variables || !row.tasks) continue;
+                // The row was taken while this task sat in this state — which
+                // is exactly "the program was at this block".
+                const here = row.tasks.some((t) => t.task === y.task && t.state === y.state);
+                if (!here) continue;
+                const now = target ? target.timeNs() : row.tNs;
+                return {
+                    variables: row.variables,
+                    tNs: row.tNs,
+                    // Clamped: when the program is paused AT this block, now
+                    // and the row are the same instant, and `-0 ms ago` is a
+                    // JS artefact rather than a fact about the program.
+                    agoMs: Math.max(0, Number(now - row.tNs) / 1e6),
+                    why: row.why,
+                    kind: y.kind
+                };
+            }
+            return null;
+        },
+
         /** Program time, in ms, or null before anything has run. */
         timeMs: () => (target ? Number(target.timeNs()) / 1e6 : null),
 
@@ -785,6 +830,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         symbols: () => symbols,
 
         destroy() {
+            setValueResolver(null);
             unschedule();
             if (unsubscribeBps) { unsubscribeBps(); unsubscribeBps = null; }
             clearGlow();
