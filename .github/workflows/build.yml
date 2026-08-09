@@ -2,7 +2,7 @@ name: Build (permissive base)
 on:
   workflow_dispatch:
   push:
-    branches: [main, bundle-test]
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,17 +18,48 @@ jobs:
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
-      - name: Build the editor (proves the permissive base compiles)
+
+      # --- guards: catch silent reverts before the build runs ---
+
+      - name: Guard — bundled stc12 has all emitted opcodes
         run: |
-          cd packages/scratch-gui
-          /usr/bin/time -v sh -c 'NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build' 2>&1 | tee build.log
-          echo "---"
-          grep "Maximum resident" build.log || true
-          du -sh build/
-          echo "=== Build output by size ==="
-          find build/ -type f \( -name '*.js' -o -name '*.css' \) -exec ls -lhS {} + | head -20
-          echo "=== Static assets by size ==="
-          du -sh build/static/*/  2>/dev/null || true
-          find build/static/ -type f -size +100k -exec ls -lhS {} + 2>/dev/null | head -20
+          FILE=overlay/scratch-vm/src/extensions/crispstrobe/stc12/index.js
+          COUNT=$(grep -c 'opcode:' "$FILE")
+          echo "stc12 opcodes: $COUNT"
+          if [ "$COUNT" -lt 10 ]; then
+            echo "::error::Bundled stc12 has only $COUNT opcodes (need ≥10). Was it rebuilt from the gallery?"
+            exit 1
+          fi
+
+      - name: Guard — WASM pin is not older than the crash-fix floor
+        run: |
+          PIN=$(grep "const PIN" scripts/sync-emu8051-wasm.mjs | head -1)
+          echo "$PIN"
+          # The crash fix is at 85ed23d. The original crashing pin is 2f896b1a.
+          # Fail if the pin is the known-bad value.
+          if echo "$PIN" | grep -q '2f896b1a'; then
+            echo "::error::WASM pin is the crashing pre-fix build (2f896b1a). Re-pin to 85ed23d or later."
+            exit 1
+          fi
+          node scripts/sync-emu8051-wasm.mjs --check
+
+      - name: Guard — toolbox reducer does not import makeToolboxXML
+        run: |
+          # The crash: reducers/toolbox.js importing and calling makeToolboxXML(true)
+          # at module level touches scratch-blocks before the lazy loader resolves.
+          FILE=overlay/scratch-gui/src/reducers/toolbox.js
+          if [ ! -f "$FILE" ]; then
+            FILE=packages/scratch-gui/src/reducers/toolbox.js
+          fi
+          if grep -v '^\s*//' "$FILE" | grep -q 'import.*makeToolboxXML\|require.*make-toolbox-xml'; then
+            echo "::error::toolbox.js imports makeToolboxXML — GUI will crash (scratch-blocks not loaded yet)"
+            exit 1
+          fi
+          echo "toolbox reducer: no makeToolboxXML import (good)"
+
+      # --- build ---
+
+      - name: Build the editor
+        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
       - uses: actions/upload-artifact@v4
         with: { name: editor-build, path: packages/scratch-gui/build }
