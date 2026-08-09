@@ -154,8 +154,9 @@ pick en/de from a per-component string table (English fallback). Done: `pseudoco
 add a column. Untranslated on purpose: code-example placeholders, preset names.
 
 ## Invariants
-Every push must keep CI **and** Vercel green. Verify features are actually in the bundle (grep `build/gui.js`
-for distinctive strings) — a green build doesn't prove an extension loads (see the dist-vs-src gotcha).
+Every push must keep CI **and** Vercel green. Verify features are actually in the bundle
+(grep `build/gui.*.js` for distinctive strings — the filename is now `gui.[contenthash].js`)
+— a green build doesn't prove an extension loads (see the dist-vs-src gotcha).
 
 ## Planned: `stc12live` — the STC12/8051 hardware extension (NOT started)
 
