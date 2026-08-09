@@ -904,6 +904,38 @@ class SB3Creator {
             });
         }
 
+        // Device reporters
+        if ((m = s.match(/^temperature from\s+(.+)$/i))) {
+            return B('devices_temperature', { SENSOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^light from\s+(.+)$/i))) {
+            return B('devices_light', { SENSOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^angle of\s+(.+)$/i))) {
+            return B('devices_servoangle', { SERVO: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^distance from\s+(.+)$/i))) {
+            return B('devices_distance', { SENSOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^speed of\s+(.+)$/i))) {
+            return B('devices_motorspeed', { MOTOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^direction of\s+(.+)$/i))) {
+            return B('devices_motordirection', { MOTOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^state of\s+(.+)$/i))) {
+            return B('devices_devicestate', { DEVICE: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^flex of\s+(.+)$/i))) {
+            return B('devices_flex', { SENSOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^force on\s+(.+)$/i))) {
+            return B('devices_force', { SENSOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^ir code from\s+(.+)$/i))) {
+            return B('devices_ircode', { SENSOR: this.parseValue(m[1], context) });
+        }
+
         if ((m = s.match(/^pick random\s+(.+)$/i))) {
             const parts = this.splitBinary(m[1], [' to '], { ci: true });
             if (parts) {
@@ -1126,20 +1158,59 @@ class SB3Creator {
         // A numbered pin (D13, A0) for the boards that have them. Kept as its
         // own branch: an Arduino pin has no port and no bit, so every check
         // below it is about a coordinate system it is not in.
-        if ((m = trimmed.match(/^PIN\s+([A-Za-z_]\w*)\s*=\s*([DA]\d+)\s+(OUTPUT|INPUT|ANALOG|PWM|TONE)(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
+        if ((m = trimmed.match(/^PIN\s+([A-Za-z_]\w*)\s*=\s*([DA]\d+|GP\d+|P\d+|BUTTON_[AB])\s+(OUTPUT|INPUT|ANALOG|PWM|TONE)(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
             const [, name, where, direction, active] = m;
             const cfg = this.stcConfig();
             const part = SB3Creator.STC_PARTS[cfg.device];
-            if (part && part.core !== 'arduino') {
-                this.warn(lineIndex, `"${where.toUpperCase()}" is an Arduino pin name; ${cfg.device} names its pins P<port>.<bit>`);
+            const core = part && part.core;
+            // Three vocabularies reach here and each board owns exactly one.
+            // Naming a pin in another board's spelling is the mistake worth
+            // catching, because both spellings look perfectly reasonable.
+            // Per DEVICE, not per core: a micro:bit and a Pico are both
+            // MicroPython and share no pin name at all, so one regex for the
+            // pair let each accept the other's spelling.
+            const SPOKEN = {
+                'arduino-uno': [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A5'],
+                'arduino-nano': [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A7'],
+                atmega328p: [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A5'],
+                microbit: [/^(P\d+|BUTTON_[AB])$/i, 'P0-P20, BUTTON_A or BUTTON_B'],
+                pico: [/^GP\d+$/i, 'GP0-GP28']
+            };
+            const spoken = SPOKEN[cfg.device];
+            if (!spoken || !spoken[0].test(where)) {
+                const want = spoken ? spoken[1] : 'P<port>.<bit>';
+                this.warn(lineIndex, `"${where.toUpperCase()}" is not how ${cfg.device || 'this device'} names a pin; it uses ${want}`);
+                return true;
+            }
+            // The board ends somewhere, and the compiler already refuses past
+            // it. Disagreeing here would mean a project that builds in one
+            // place and not the other.
+            const LAST = { 'arduino-uno': { D: 13, A: 5 }, 'arduino-nano': { D: 13, A: 7 },
+                atmega328p: { D: 13, A: 5 }, microbit: { P: 20 }, pico: { GP: 28 } };
+            const edge = LAST[cfg.device] || {};
+            const num = where.match(/^([A-Z]+)(\d+)$/i);
+            if (num && edge[num[1].toUpperCase()] !== undefined && Number(num[2]) > edge[num[1].toUpperCase()]) {
+                this.warn(lineIndex, `${cfg.device} has no ${where.toUpperCase()}; it goes up to ${num[1].toUpperCase()}${edge[num[1].toUpperCase()]}`);
                 return true;
             }
             if (this.stcPin(name)) {
                 this.warn(lineIndex, `Pin "${name}" declared twice`);
                 return true;
             }
-            if (/^analog$/i.test(direction) && !/^A/i.test(where)) {
+            // The Nano's A6/A7 reach the pad with no digital buffer behind
+            // them, so a digital write to one does nothing on the board. The
+            // compiler refuses it; agreeing here is the point of the rule
+            // above about not disagreeing with it.
+            if (cfg.device === 'arduino-nano' && /^A[67]$/i.test(where) && !/^analog$/i.test(direction)) {
+                this.warn(lineIndex, `${where.toUpperCase()} is analog-input only on the Nano (the TQFP package brings out the ADC channel with no digital buffer), so it cannot be an ${direction.toUpperCase()}`);
+                return true;
+            }
+            if (core === 'arduino' && /^analog$/i.test(direction) && !/^A/i.test(where)) {
                 this.warn(lineIndex, `ANALOG needs an analog input (A0 and up), not ${where.toUpperCase()}`);
+                return true;
+            }
+            if (core === 'micropython' && /^button_[ab]$/i.test(where) && !/^input$/i.test(direction)) {
+                this.warn(lineIndex, `${where.toUpperCase()} is a button and can only be an INPUT`);
                 return true;
             }
             cfg.pins.push({
@@ -1366,6 +1437,26 @@ class SB3Creator {
         }
         if ((m = s.match(/^read\s+([A-Za-z_]\w*)$/i)) && this.stcPort(m[1])) {
             return push('stc12_readport', {}, { PORT: [this.stcPort(m[1]).name, null] });
+        }
+        // Device predicates (boolean reporters)
+        // Device predicate: "<name> pressed?" — but NOT "key X pressed?" which is Scratch's own.
+        if ((m = s.match(/^"([^"]+)"\s+pressed\??$/i))) {
+            return push('devices_pressed', { BUTTON: this.parseValue(`"${m[1]}"`, context) });
+        }
+        if ((m = s.match(/^(.+?)\s+above\s+(.+)$/i))) {
+            return push('devices_above', { SENSOR: this.parseValue(m[1], context), THRESHOLD: this.parseValue(m[2], context) });
+        }
+        if ((m = s.match(/^(.+?)\s+closer than\s+(.+)$/i))) {
+            return push('devices_closer', { SENSOR: this.parseValue(m[1], context), DISTANCE: this.parseValue(m[2], context) });
+        }
+        if ((m = s.match(/^motion detected on\s+(.+)$/i))) {
+            return push('devices_motion', { SENSOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^(.+?)\s+tilted\??$/i))) {
+            return push('devices_tilted', { SENSOR: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^(.+?)\s+energised\??$/i)) || (m = s.match(/^(.+?)\s+energized\??$/i))) {
+            return push('devices_energised', { DEVICE: this.parseValue(m[1], context) });
         }
         if ((m = s.match(/^touching color\s+(.+)$/i))) {
             const color = this.parseValue(m[1].trim(), context);
@@ -1793,6 +1884,118 @@ class SB3Creator {
                 const { block } = cmd('ledcube_invert');
                 return ret(block);
             }
+        }
+
+        // ---- Device convenience blocks (seven-segment, RGB LED, servo, motor, relay) ----
+        // Higher-level vocabulary over the pin/port primitives. A learner says
+        // "show digit 5" not "set port to font[5]".
+        if ((match = line.match(/^show digit\s+(.+?)\s+on\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_showdigit');
+            block[id].inputs.DIGIT = val(match[1]);
+            block[id].inputs.DISPLAY = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+(.+?)\s+colour to R\s+(.+?)\s+G\s+(.+?)\s+B\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_setrgb');
+            block[id].inputs.LED = val(match[1]);
+            block[id].inputs.R = val(match[2]);
+            block[id].inputs.G = val(match[3]);
+            block[id].inputs.B = val(match[4]);
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+(.+?)\s+angle to\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_setservo');
+            block[id].inputs.SERVO = val(match[1]);
+            block[id].inputs.ANGLE = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+(.+?)\s+speed to\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_setmotor');
+            block[id].inputs.MOTOR = val(match[1]);
+            block[id].inputs.SPEED = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^set relay\s+(.+?)\s+(on|off)$/i))) {
+            const { id, block } = cmd('devices_setrelay');
+            block[id].inputs.RELAY = val(match[1]);
+            block[id].fields.STATE = [match[2].toLowerCase(), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+(.+?)\s+direction\s+(forward|reverse|brake|coast)$/i))) {
+            const { id, block } = cmd('devices_setdirection');
+            block[id].inputs.MOTOR = val(match[1]);
+            block[id].fields.DIR = [match[2].toLowerCase(), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^activate\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_activate');
+            block[id].inputs.DEVICE = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^deactivate\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_deactivate');
+            block[id].inputs.DEVICE = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^read temperature from\s+(.+)$/i))) {
+            // Reporter — handled in parseReporter, not here
+        }
+        if ((match = line.match(/^read light from\s+(.+)$/i))) {
+            // Reporter — handled in parseReporter, not here
+        }
+        // ---- char_lcd blocks ----
+        if ((match = line.match(/^lcd print\s+"([^"]*)"\s+on\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_lcdprint');
+            block[id].inputs.TEXT = [1, [10, match[1]]];
+            block[id].inputs.DISPLAY = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^lcd print\s+(.+?)\s+on\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_lcdprint');
+            block[id].inputs.TEXT = val(match[1]);
+            block[id].inputs.DISPLAY = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^lcd set cursor\s+(.+?)\s+(.+?)\s+on\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_lcdcursor');
+            block[id].inputs.ROW = val(match[1]);
+            block[id].inputs.COL = val(match[2]);
+            block[id].inputs.DISPLAY = val(match[3]);
+            return ret(block);
+        }
+        if ((match = line.match(/^lcd clear\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_lcdclear');
+            block[id].inputs.DISPLAY = val(match[1]);
+            return ret(block);
+        }
+        // ---- led_matrix blocks ----
+        if ((match = line.match(/^set pixel\s+(.+?)\s+(.+?)\s+to\s+(.+?)\s+on\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_setpixel');
+            block[id].inputs.X = val(match[1]);
+            block[id].inputs.Y = val(match[2]);
+            block[id].inputs.BRIGHTNESS = val(match[3]);
+            block[id].inputs.MATRIX = val(match[4]);
+            return ret(block);
+        }
+        if ((match = line.match(/^clear matrix\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_clearmatrix');
+            block[id].inputs.MATRIX = val(match[1]);
+            return ret(block);
+        }
+        // ---- neopixel blocks ----
+        if ((match = line.match(/^set neopixel\s+(.+?)\s+to R\s+(.+?)\s+G\s+(.+?)\s+B\s+(.+?)\s+on\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_setneopixel');
+            block[id].inputs.INDEX = val(match[1]);
+            block[id].inputs.R = val(match[2]);
+            block[id].inputs.G = val(match[3]);
+            block[id].inputs.B = val(match[4]);
+            block[id].inputs.STRIP = val(match[5]);
+            return ret(block);
+        }
+        if ((match = line.match(/^clear neopixels on\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_clearneopixels');
+            block[id].inputs.STRIP = val(match[1]);
+            return ret(block);
         }
 
         // ---- Arrays & Vectors extension commands (anchored on `array "NAME"`; 0-based) ----
@@ -3293,6 +3496,17 @@ class SB3Creator {
             case 'stc12_readport': return `read ${f('PORT')}`;
             case 'stc12_tableindex': return `${f('TABLE')}[${v('INDEX')}]`;
             case 'ledcube_readvoxel': return `voxel ${v('X')} ${v('Y')} ${v('Z')}`;
+            // Device reporters
+            case 'devices_temperature': return `temperature from ${v('SENSOR')}`;
+            case 'devices_light': return `light from ${v('SENSOR')}`;
+            case 'devices_servoangle': return `angle of ${v('SERVO')}`;
+            case 'devices_distance': return `distance from ${v('SENSOR')}`;
+            case 'devices_motorspeed': return `speed of ${v('MOTOR')}`;
+            case 'devices_motordirection': return `direction of ${v('MOTOR')}`;
+            case 'devices_devicestate': return `state of ${v('DEVICE')}`;
+            case 'devices_flex': return `flex of ${v('SENSOR')}`;
+            case 'devices_force': return `force on ${v('SENSOR')}`;
+            case 'devices_ircode': return `ir code from ${v('SENSOR')}`;
             // circuit extension reporters
             case 'circuit_nodevoltage': return `voltage at ${v('NET')}`;
             case 'circuit_branchcurrent': return `current through ${v('PART')}`;
@@ -3337,6 +3551,13 @@ class SB3Creator {
             case 'planetemaths_contains': return `${v('STRING1')} contains ${v('STRING2')}`;
             case 'planetemaths_multiple': return `${v('NUM1')} is multiple of ${v('NUM2')}`;
             case 'arrays_contains': return `array ${v('NAME')} contains ${v('VALUE')}`;
+            // Device predicates
+            case 'devices_pressed': return `${v('BUTTON')} pressed?`;
+            case 'devices_above': return `${v('SENSOR')} above ${v('THRESHOLD')}`;
+            case 'devices_closer': return `${v('SENSOR')} closer than ${v('DISTANCE')}`;
+            case 'devices_motion': return `motion detected on ${v('SENSOR')}`;
+            case 'devices_tilted': return `${v('SENSOR')} tilted?`;
+            case 'devices_energised': return `${v('DEVICE')} energised?`;
             default: return this.drep(b, blocks);
         }
     }
@@ -3496,6 +3717,22 @@ class SB3Creator {
             // circuit extension commands
             case 'circuit_setcontrol': return line(`set control ${v('CONTROL')} to ${v('VALUE')}`);
             case 'circuit_setpower': return line(`turn power ${f('STATE')}`);
+            // Device convenience blocks
+            case 'devices_showdigit': return line(`show digit ${v('DIGIT')} on ${v('DISPLAY')}`);
+            case 'devices_setrgb': return line(`set ${v('LED')} colour to R ${v('R')} G ${v('G')} B ${v('B')}`);
+            case 'devices_setservo': return line(`set ${v('SERVO')} angle to ${v('ANGLE')}`);
+            case 'devices_setmotor': return line(`set ${v('MOTOR')} speed to ${v('SPEED')}`);
+            case 'devices_setrelay': return line(`set relay ${v('RELAY')} ${f('STATE')}`);
+            case 'devices_setdirection': return line(`set ${v('MOTOR')} direction ${f('DIR')}`);
+            case 'devices_activate': return line(`activate ${v('DEVICE')}`);
+            case 'devices_deactivate': return line(`deactivate ${v('DEVICE')}`);
+            case 'devices_lcdprint': return line(`lcd print ${v('TEXT')} on ${v('DISPLAY')}`);
+            case 'devices_lcdcursor': return line(`lcd set cursor ${v('ROW')} ${v('COL')} on ${v('DISPLAY')}`);
+            case 'devices_lcdclear': return line(`lcd clear ${v('DISPLAY')}`);
+            case 'devices_setpixel': return line(`set pixel ${v('X')} ${v('Y')} to ${v('BRIGHTNESS')} on ${v('MATRIX')}`);
+            case 'devices_clearmatrix': return line(`clear matrix ${v('MATRIX')}`);
+            case 'devices_setneopixel': return line(`set neopixel ${v('INDEX')} to R ${v('R')} G ${v('G')} B ${v('B')} on ${v('STRIP')}`);
+            case 'devices_clearneopixels': return line(`clear neopixels on ${v('STRIP')}`);
             // LED cube commands
             case 'ledcube_setvoxel': return line(`set voxel ${v('X')} ${v('Y')} ${v('Z')} to ${v('COLOUR')}`);
             case 'ledcube_clearvoxel': return line(`clear voxel ${v('X')} ${v('Y')} ${v('Z')}`);
@@ -5361,10 +5598,13 @@ class SB3Creator {
         // a file that compiles for the wrong chip out of pins that do not exist
         // on it. Refusing by name is the only honest answer until the Arduino
         // back end lands; stc-compiler can already build these, and says so.
-        if (part && part.core === 'arduino') {
-            this.cWarn(`DEVICE ${device.toUpperCase()} has numbered pins and no 8051 registers — `
+        if (part && part.core && part.core !== '8051') {
+            const how = part.core === 'micropython'
+                ? 'runs MicroPython, where the program IS the artefact and there is nothing to compile'
+                : 'has numbered pins and no 8051 registers';
+            this.cWarn(`DEVICE ${device.toUpperCase()} ${how} — `
                 + 'this back end emits bare-metal 8051 only. The project is unchanged; '
-                + 'build it with stc-compiler, which has an Arduino target.');
+                + 'build it with stc-compiler, which has a target for this board.');
             return `/* No C emitted for DEVICE ${device.toUpperCase()}.\n`
                 + ' *\n'
                 + ' * This back end emits bare-metal 8051. An Arduino board has numbered\n'
@@ -6104,6 +6344,51 @@ SB3Creator.RUNTIME_EXTENSIONS = {
     // The circuit extension — board instruments and controls (simulation-only reporters).
     // Overrides the generated entry with camelCase method names (matching the simulator
     // driver and boundary B) and neutral values (resistance alone refuses with a reason).
+    // Device convenience blocks — higher-level vocabulary over pins/ports.
+    // A learner says "show digit 5" not "set port to font[5]".
+    devices: {
+        runtime: 'devices',
+        ops: {
+            showdigit: { kind: 'command', method: 'showDigit', args: ['DIGIT', 'DISPLAY'] },
+            setrgb: { kind: 'command', method: 'setRgb', args: ['LED', 'R', 'G', 'B'] },
+            setservo: { kind: 'command', method: 'setServo', args: ['SERVO', 'ANGLE'] },
+            setmotor: { kind: 'command', method: 'setMotor', args: ['MOTOR', 'SPEED'] },
+            setrelay: { kind: 'command', method: 'setRelay', args: ['RELAY', 'STATE'] },
+            temperature: { kind: 'reporter', method: 'temperature', args: ['SENSOR'], neutral: 'NaN' },
+            light: { kind: 'reporter', method: 'light', args: ['SENSOR'], neutral: 'NaN' },
+            servoangle: { kind: 'reporter', method: 'servoAngle', args: ['SERVO'], neutral: 'NaN' },
+            distance: { kind: 'reporter', method: 'distance', args: ['SENSOR'], neutral: 'NaN' },
+            // char_lcd
+            lcdprint: { kind: 'command', method: 'lcdPrint', args: ['TEXT', 'DISPLAY'] },
+            lcdcursor: { kind: 'command', method: 'lcdCursor', args: ['ROW', 'COL', 'DISPLAY'] },
+            lcdclear: { kind: 'command', method: 'lcdClear', args: ['DISPLAY'] },
+            // led_matrix
+            setpixel: { kind: 'command', method: 'setPixel', args: ['X', 'Y', 'BRIGHTNESS', 'MATRIX'] },
+            clearmatrix: { kind: 'command', method: 'clearMatrix', args: ['MATRIX'] },
+            // neopixel
+            setneopixel: { kind: 'command', method: 'setNeopixel', args: ['INDEX', 'R', 'G', 'B', 'STRIP'] },
+            clearneopixels: { kind: 'command', method: 'clearNeopixels', args: ['STRIP'] },
+            // H-bridge / solenoid / general actuator control
+            setdirection: { kind: 'command', method: 'setDirection', args: ['MOTOR', 'DIR'] },
+            activate: { kind: 'command', method: 'activate', args: ['DEVICE'] },
+            deactivate: { kind: 'command', method: 'deactivate', args: ['DEVICE'] },
+            // Sensor reporters
+            flex: { kind: 'reporter', method: 'flex', args: ['SENSOR'], neutral: 'NaN' },
+            force: { kind: 'reporter', method: 'force', args: ['SENSOR'], neutral: 'NaN' },
+            ircode: { kind: 'reporter', method: 'irCode', args: ['SENSOR'], neutral: 'NaN' },
+            // Actuator readback reporters
+            motorspeed: { kind: 'reporter', method: 'motorSpeed', args: ['MOTOR'], neutral: 'NaN' },
+            motordirection: { kind: 'reporter', method: 'motorDirection', args: ['MOTOR'], neutral: '"stopped"' },
+            devicestate: { kind: 'reporter', method: 'deviceState', args: ['DEVICE'], neutral: '"unknown"' },
+            // Predicates (boolean reporters)
+            pressed: { kind: 'boolean', method: 'pressed', args: ['BUTTON'], neutral: 'false' },
+            above: { kind: 'boolean', method: 'above', args: ['SENSOR', 'THRESHOLD'], neutral: 'false' },
+            closer: { kind: 'boolean', method: 'closer', args: ['SENSOR', 'DISTANCE'], neutral: 'false' },
+            motion: { kind: 'boolean', method: 'motion', args: ['SENSOR'], neutral: 'false' },
+            tilted: { kind: 'boolean', method: 'tilted', args: ['SENSOR'], neutral: 'false' },
+            energised: { kind: 'boolean', method: 'energised', args: ['DEVICE'], neutral: 'false' }
+        }
+    },
     // The generated entry from circuit.js provides the opcode shape and the gallery URL.
     circuit: {
         runtime: 'circuit',
@@ -6145,13 +6430,21 @@ SB3Creator.STC_PARTS = {
     stc89c52rc: { header: '8052.h', portModes: false, aux1T: false, adc: false },
     stc89c52: { header: '8052.h', portModes: false, aux1T: false, adc: false },
     stc15f2k60s2: { header: 'stc12.h', portModes: true, aux1T: true, adc: true },
+    // STC15W408AS: same SFR layout as STC15F2K60S2 for everything the emitter
+    // touches. Lacks Timer 1, so TONE pins (which need Timer 1) should warn.
+    stc15w408as: { header: 'stc12.h', portModes: true, aux1T: true, adc: true },
     // core: 'arduino' -- pins are NUMBERS (D13, A0), and there is no C back
     // end here yet. Declared so a sketch imported by cToPseudocode.js parses
     // into a project and reaches the blocks; generateC() refuses them by name
     // rather than emitting 8051 registers for a board that has none.
     'arduino-uno': { core: 'arduino', header: 'Arduino.h', portModes: false, aux1T: false, adc: true },
     'arduino-nano': { core: 'arduino', header: 'Arduino.h', portModes: false, aux1T: false, adc: true },
-    atmega328p: { core: 'arduino', header: 'avr/io.h', portModes: false, aux1T: false, adc: true }
+    atmega328p: { core: 'arduino', header: 'avr/io.h', portModes: false, aux1T: false, adc: true },
+    // core: 'micropython' -- the program IS the artefact, so there is no C back
+    // end for these by definition, not merely not yet. Pins are P0-P20 and the
+    // two buttons on a micro:bit, GP0-GP28 on a Pico.
+    microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
+    pico: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true }
 };
 
 // C keywords a sanitized Scratch name could collide with (sanitizeIdent only guards the

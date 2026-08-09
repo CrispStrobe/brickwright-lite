@@ -33,6 +33,10 @@ const FILES = [
     ['src/utils/sb3Creator.js', path.join(lib, 'sb3-creator.js')],
     ['src/utils/examples.js', path.join(lib, 'sb3-creator-examples.js')],
     ['src/utils/pythonToPseudocode.js', path.join(lib, 'sb3-creator-python.js')],
+    // MicroPython for a board -- micro:bit and Pico. Reached THROUGH the Python
+    // entry point, which routes on the import line, so the importer's Python
+    // tab takes either without the user choosing.
+    ['src/utils/micropythonToPseudocode.js', path.join(lib, 'sb3-creator-micropython.js')],
     ['src/utils/javascriptToPseudocode.js', path.join(lib, 'sb3-creator-javascript.js')],
     ['src/utils/cToPseudocode.js', path.join(lib, 'sb3-creator-c.js')],
     ['src/utils/runtimeRegistry.generated.js', path.join(lib, 'sb3-creator-runtime.js')],
@@ -53,6 +57,7 @@ async function readSource (rel) {
 // names (e.g. javascriptToPseudocode.js imports pythonToPseudocode.js).
 const rewriteImports = (src) => src
     .replace(/(['"])\.\/pythonToPseudocode\.js\1/g, "'./sb3-creator-python.js'")
+    .replace(/(['"])\.\/micropythonToPseudocode\.js\1/g, "'./sb3-creator-micropython.js'")
     .replace(/(['"])\.\/runtimeRegistry\.generated\.js\1/g, "'./sb3-creator-runtime.js'")
     .replace(/(['"])\.\/scratchRuntime\.js\1/g, "'./sb3-creator-scratchruntime.js'")
     .replace(/(['"])\.\/cHostRuntime\.js\1/g, "'./sb3-creator-chostruntime.js'")
