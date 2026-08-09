@@ -1099,6 +1099,7 @@ export class BoardImpl {
       // Tier 1 catalogue parts
       'photodiode', 'soil_moisture', 'relay_dpdt', 'solar_cell', 'gearmotor',
       '74hc75', '74hc283', 'header', 'usb_a', 'ir_remote', 'clock_display',
+      'pcf8574', 'char_lcd_i2c',
     ];
   }
 
@@ -1680,6 +1681,15 @@ export class BoardImpl {
       });
       cv = res.capVoltagesNext ?? cv;
       il = res.inductorCurrentsNext ?? il;
+      // Every sub-step publishes its voltages and feeds the scope at its
+      // intermediate timestamp. Without this, a waveform source sampled only
+      // at advanceTo boundaries aliases to a flat line: a 50 ms tick is an
+      // integer number of 1 kHz periods, so sin() is 0 at every boundary.
+      this.nodeVoltages = new Map(res.nodeVoltages);
+      if (this._scopeChannels.size > 0) {
+        const stepNs = this.timeNs - BigInt(Math.round((n - i) * h * 1e9));
+        this._updateScopeChannels(stepNs);
+      }
       // One device pass per sub-step: a comparator/gate that flips here is
       // seen by the network on the NEXT sub-step — switching resolution is
       // one sub-step, which is the stated accuracy of this integrator.
