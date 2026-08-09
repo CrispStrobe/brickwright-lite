@@ -28,7 +28,7 @@ import {closeExtensionLibrary, openSoundRecorder, openConnectionModal} from '../
 import {activateCustomProcedures, deactivateCustomProcedures} from '../reducers/custom-procedures';
 import {setConnectionModalExtensionId} from '../reducers/connection-modal';
 import {updateMetrics} from '../reducers/workspace-metrics';
-import LazyScratchBlocks from '../lib/tw-lazy-scratch-blocks';
+import LazyScratchBlocks from '../lib/lazy-scratch-blocks';
 
 import {
     activateTab,
@@ -707,7 +707,7 @@ const mapDispatchToProps = dispatch => ({
     }
 });
 
-import LoadScratchBlocksHOC from '../lib/tw-load-scratch-blocks-hoc.jsx';
+import LoadScratchBlocksHOC from '../lib/load-scratch-blocks-hoc.jsx';
 
 export default LoadScratchBlocksHOC(
     errorBoundaryHOC('Blocks')(

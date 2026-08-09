@@ -3,7 +3,7 @@ import defaultsDeep from 'lodash.defaultsdeep';
 import PropTypes from 'prop-types';
 import React from 'react';
 import CustomProceduresComponent from '../components/custom-procedures/custom-procedures.jsx';
-import LazyScratchBlocks from '../lib/tw-lazy-scratch-blocks';
+import LazyScratchBlocks from '../lib/lazy-scratch-blocks';
 import {connect} from 'react-redux';
 
 class CustomProcedures extends React.Component {

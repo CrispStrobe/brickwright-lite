@@ -53,7 +53,9 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
                     initPlayer,
                     initTelemetryModal
                 } = guiRedux;
-                const {ScratchPaintReducer} = require('scratch-paint');
+                // Import only the reducer, not the full paint editor UI, so the
+                // heavy paint component can be lazy-loaded on first tab activation.
+                const ScratchPaintReducer = require('scratch-paint/src/reducers/scratch-paint-reducer').default;
 
                 let initializedGui = guiInitialState;
                 if (props.isFullScreen || props.isPlayerOnly) {

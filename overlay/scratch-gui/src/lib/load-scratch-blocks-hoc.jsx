@@ -1,5 +1,5 @@
 import React from 'react';
-import LazyScratchBlocks from './tw-lazy-scratch-blocks';
+import LazyScratchBlocks from './lazy-scratch-blocks';
 
 const LoadScratchBlocksHOC = function (WrappedComponent) {
     class LoadScratchBlocks extends React.Component {

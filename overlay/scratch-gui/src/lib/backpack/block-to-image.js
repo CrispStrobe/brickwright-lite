@@ -1,5 +1,5 @@
 import computedStyleToInlineStyle from 'computed-style-to-inline-style';
-import LazyScratchBlocks from '../tw-lazy-scratch-blocks';
+import LazyScratchBlocks from '../lazy-scratch-blocks';
 
 /**
  * Given a blockId, return a data-uri image that can be used to create a thumbnail.

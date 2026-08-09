@@ -1,4 +1,4 @@
-import LazyScratchBlocks from './tw-lazy-scratch-blocks';
+import LazyScratchBlocks from './lazy-scratch-blocks';
 
 /**
  * Connect scratch blocks with the vm
