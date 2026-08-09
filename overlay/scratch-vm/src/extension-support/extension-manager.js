@@ -21,6 +21,9 @@ const isRemoteExtensionURL = url =>
 const builtinExtensions = {
     planetemaths: () => require('../extensions/crispstrobe/planetemaths'),
     arrays: () => require('../extensions/crispstrobe/arrays'),
+    // The pin blocks sb3-creator has always emitted for hardware projects. Without
+    // this line every one of them failed to load with "Unknown extension: stc12".
+    stc12: () => require('../extensions/crispstrobe/stc12'),
     brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
     // Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
     // repo too; the bundledIds dedup removes the gallery copy from the picker.
