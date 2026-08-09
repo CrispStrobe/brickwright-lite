@@ -46,10 +46,13 @@ cd packages/scratch-gui && NODE_ENV=production CI=true NODE_OPTIONS=--max-old-sp
 ```
 Fresh: `npm run vendor` first, then `npm install --ignore-scripts --legacy-peer-deps` before the above.
 
-**Build numbers (2026-08-09, GH Actions):** peak RSS 2.9 GiB, wall-clock 37 s, build/ total 82 MiB,
-0 babel deopts, Vercel 8 GiB headroom: ~5.2 GiB. Output is chunk-split: vendor chunk 9.86 MiB
-(3.6 MiB brotli, immutable-cached — frozen deps never change) + app chunk 2.05 MiB (490 KiB brotli).
-Repeat visitors after a code-only deploy download **490 KiB** instead of the full 4.1 MiB.
+**Build numbers (2026-08-09, GH Actions):** peak RSS 2.4 GiB, wall-clock 47 s, build/ total 82 MiB,
+0 babel deopts, Vercel 8 GiB headroom: ~5.6 GiB. Output is chunk-split with lazy loading:
+- Vendor chunk 8.44 MiB (3.3 MiB brotli, immutable — frozen deps never change)
+- App chunk 2.05 MiB (500 KiB brotli, immutable)
+- Blockly chunk 1.07 MiB (240 KiB brotli, lazy — loads in background, non-blocking)
+- Paint editor chunk 375 KiB (87 KiB brotli, lazy — loads on costume tab activation)
+- First paint: 3.8 MiB brotli. Repeat visits after a code-only deploy: **500 KiB**.
 
 ## Permissive base (exact pins — freeze, don't chase upstream)
 Scratch relicensed BSD-3 → AGPL-3.0 on 2024-11-25. Pin the last-BSD:
@@ -89,10 +92,19 @@ Scratch relicensed BSD-3 → AGPL-3.0 on 2024-11-25. Pin the last-BSD:
 10. **Babel skips pre-minified blockly** — `blockly_compressed_vertical.js` is excluded from
     babel-loader (already compiled, `'use strict'`). Eliminated the last babel deopt.
 11. **Chunk splitting + content hashes + immutable caching** — `shouldSplitChunks: true` splits
-    vendor code (React, blockly, scratch-vm) into `chunks/123.[hash].js`, cached immutably since
+    vendor code (React, scratch-vm) into `chunks/[id].[hash].js`, cached immutably since
     deps are frozen. Entry is `gui.[contenthash:8].js`. UMD library wrapper removed from the web
     build (only needed for dist/). `vercel.json` sets `Cache-Control: immutable` for hashed JS,
     chunks, and `static/assets/`. index.html stays `must-revalidate`.
+12. **Lazy-load scratch-blocks** — `lazy-scratch-blocks.js` loads the ~1 MiB blockly core via
+    dynamic `import()` into a separate `sb.[hash].js` chunk. A `LoadScratchBlocksHOC` wraps the
+    blocks container and defers rendering until the chunk resolves. All static `import ScratchBlocks
+    from 'scratch-blocks'` replaced with `LazyScratchBlocks.get()` (blocks.js, make-toolbox-xml.js,
+    custom-procedures.jsx, block-to-image.js). Cleanroom implementation (standard React patterns).
+13. **Lazy-load scratch-paint** — `paint-editor-wrapper.jsx` uses `React.lazy()` + `Suspense` to
+    load the paint editor component only on costume tab activation (375 KiB separate chunk). The
+    Redux reducer is imported directly from `scratch-paint/src/reducers/scratch-paint-reducer`
+    (small, no UI deps) so the store initialises without the full paint component.
 
 ## Extensions
 - **Bundled built-ins** (offline): planetemaths, arrays. Each = `overlay/scratch-vm/.../crispstrobe/<id>/index.js`
