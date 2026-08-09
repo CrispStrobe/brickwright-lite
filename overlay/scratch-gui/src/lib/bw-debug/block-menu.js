@@ -23,13 +23,25 @@
  * @module
  */
 
-import { isBreakpoint, toggleBreakpoint, subscribeBreakpoints } from './breakpoints.js';
+import {
+    isBreakpoint, toggleBreakpoint, subscribeBreakpoints, conditionOf
+} from './breakpoints.js';
 
 const MARKED_CLASS = 'bw-breakpoint';
 
 const TEXT = {
-    en: { set: '⏸ Pause here', clear: '⏸ Don’t pause here' },
-    de: { set: '⏸ Hier anhalten', clear: '⏸ Hier nicht anhalten' }
+    en: {
+        set: '⏸ Pause here', clear: '⏸ Don’t pause here',
+        when: '⏸ Pause here when…',
+        prompt: 'Pause here only when this is true.\n\nFor example:  counter > 10\n' +
+            'Comparisons only (> < >= <= = !=), joined with and / or.'
+    },
+    de: {
+        set: '⏸ Hier anhalten', clear: '⏸ Hier nicht anhalten',
+        when: '⏸ Hier anhalten, wenn…',
+        prompt: 'Nur anhalten, wenn das zutrifft.\n\nZum Beispiel:  counter > 10\n' +
+            'Nur Vergleiche (> < >= <= = !=), verknüpft mit and / or.'
+    }
 };
 
 /**
@@ -54,7 +66,7 @@ let installed = false;
  * @param {() => string} getLocale
  * @returns {() => void} uninstall
  */
-export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en') {
+export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en', onCondition = null) {
     const inert = { repaint() {}, uninstall() {} };
     if (installed || !ScratchBlocks || !ScratchBlocks.BlockSvg) return inert;
     installed = true;
@@ -86,6 +98,20 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en')
             text: marked ? words.clear : words.set,
             callback: () => {
                 toggleBreakpoint(this.id);
+                paint(this.workspace);
+            }
+        });
+        // The conditional form is a SEPARATE item rather than a mode, so the
+        // plain one stays a single click. A condition already set is offered
+        // back for editing instead of making the user retype it.
+        options.push({
+            enabled: true,
+            text: words.when,
+            callback: () => {
+                const existing = conditionOf(this.id) || '';
+                const source = window.prompt(words.prompt, existing);
+                if (source === null) return;
+                if (onCondition) onCondition(this.id, source.trim());
                 paint(this.workspace);
             }
         });

@@ -152,7 +152,15 @@ class Blocks extends React.Component {
             .then(({installBreakpointMenu}) => {
                 if (!this.workspace) return;   // unmounted while loading
                 this.breakpointMenu = installBreakpointMenu(
-                    this.ScratchBlocks, this.props.vm, () => this.props.locale);
+                    this.ScratchBlocks, this.props.vm, () => this.props.locale,
+                    // A condition is validated by the RUNNER (it knows which
+                    // variables exist), so the menu hands it over rather than
+                    // parsing it here. Without a runner yet, it is stored raw
+                    // and validated when one appears.
+                    (blockId, source) => {
+                        import(/* webpackChunkName: "bw-debug" */ '../lib/bw-debug/breakpoints.js')
+                            .then(({setCondition}) => setCondition(blockId, source));
+                    });
                 // Blockly rebuilds a block's SVG on load, drag and undo, so the
                 // marker class has to be re-applied rather than set once.
                 this.workspace.addChangeListener(() => {

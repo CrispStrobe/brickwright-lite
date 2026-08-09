@@ -263,7 +263,35 @@ const snaps = runner.trace().filter(r => r.variables);
 const counterOverTime = snaps.map(r => (r.variables.find(v => v.name === 'counter') || {}).value);
 console.log(`counter across recorded stops: ${JSON.stringify(counterOverTime)}`);
 
+// ---- conditional pause points --------------------------------------------
+// The point of the feature: stop on the iteration you care about, not on all
+// of them. `counter` counts 1..4 in the second script, so a condition of
+// `counter > 2` must skip the first hits and stop at 3.
+store.clearBreakpoints();
+runner.stop();
+const repeatBody = [...blockOpcode].find(([, op]) => op === 'stc12_toggle')[0];
+const waitBlock = runner.trace().length ? null : null;
+// Put it on the wait inside the REPEAT — a yield point that runs once per turn.
+const yieldsByKind = runner.state().yieldBlocks.map(b => [b, runner.yieldKind(b)]);
+const waitInRepeat = yieldsByKind.filter(([, k]) => k === 'wait').pop()[0];
+const condErr = runner.setCondition(waitInRepeat, 'counter > 2');
+console.log(`condition set: ${condErr ? 'REJECTED ' + condErr.error : 'counter > 2'}`);
+const bogus = runner.setCondition(waitInRepeat, 'counter >');
+console.log(`bogus condition: ${bogus ? 'rejected — ' + bogus.error.slice(0, 40) : 'ACCEPTED (wrong)'}`);
+runner.setCondition(waitInRepeat, 'counter > 2');
+
+await runner.start();
+for (let i = 0; i < 200 && runner.state().phase !== 'paused'; i++) await new Promise(r => setTimeout(r, 10));
+const stopped = runner.state();
+const counterAtStop = (runner.variables().find(v => v.name === 'counter') || {}).value;
+console.log(`stopped with counter=${counterAtStop}, ${stopped.skippedHits} earlier hits skipped`);
+
 const fail = [];
+if (condErr) fail.push('a valid condition was rejected');
+if (!bogus) fail.push('a malformed condition was accepted');
+if (stopped.phase !== 'paused') fail.push('the conditional pause point never fired');
+if (counterAtStop !== 3) fail.push(`stopped at counter=${counterAtStop}, wanted the first value over 2`);
+if (!stopped.skippedHits) fail.push('no hits were skipped, so the condition did nothing');
 if (!vars.length) fail.push('no variables reported — the symbol table carried none');
 if (!vars.some(v => v.name === 'counter')) fail.push('the variable is not under its Scratch name');
 if (!pinView.length) fail.push('no pins reported');
