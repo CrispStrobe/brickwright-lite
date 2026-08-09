@@ -334,6 +334,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // The block editor asks for hover values through this, because the
         // workspace and the runner are in different component trees.
         setValueResolver((blockId) => runner.valuesAtBlock(blockId));
+
+        // The condition editor (block-menu.js) offers a list of variable names
+        // to pick from. It falls back to the stage's Scratch variables, which
+        // are CLOSE but not the same list: this one is what the current build
+        // actually located, so a variable the linker dropped is absent rather
+        // than offered. Offering a name that is not in the build produces a
+        // condition that parses, never fires, and looks like a broken pause
+        // point — the exact failure setCondition() warns about.
+        if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
         symbols = built.symbols;
         variableTable = (symbols.variables || []).filter((v) => v.space);
         pinTable = stc.pins || [];
@@ -831,6 +840,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         destroy() {
             setValueResolver(null);
+            if (vm && vm.runtime) delete vm.runtime._bwDebugVariables;
             unschedule();
             if (unsubscribeBps) { unsubscribeBps(); unsubscribeBps = null; }
             clearGlow();

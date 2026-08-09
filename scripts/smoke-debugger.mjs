@@ -304,6 +304,12 @@ const {valuesAtBlock: viaBridge} = await import(`${LITE}/lib/bw-debug/hover-valu
 const bridged = viaBridge(hoverBlock);
 console.log(`via the editor bridge: ${bridged ? bridged.variables.map(v => v.name + '=' + v.value).join(', ') : 'nothing'}`);
 
+// The condition editor's variable list. block-menu.js feature-detects this and
+// falls back to the stage's Scratch variables, so a missing producer is silent
+// -- it just offers a subtly different list and conditions quietly never fire.
+const editorVars = vm.runtime._bwDebugVariables ? vm.runtime._bwDebugVariables() : null;
+console.log(`condition editor variable list: ${editorVars ? editorVars.map(v => v.name).join(', ') : 'NOT PUBLISHED'}`);
+
 const never = runner.valuesAtBlock('not-a-block');
 console.log(`values at a block that is not a yield point: ${never === null ? 'null, correctly' : 'WRONG'}`);
 
@@ -312,6 +318,8 @@ if (!at) fail.push('no recorded values at a block the program demonstrably stopp
 if (at && !at.variables.some(v => v.name === 'counter')) fail.push('the snapshot has no counter');
 if (never !== null) fail.push('a non-yield block returned something');
 if (!bridged) fail.push('the editor bridge returned nothing — a tooltip would never appear');
+if (!editorVars) fail.push('_bwDebugVariables is not published, so the condition editor offers the wrong list');
+if (editorVars && !editorVars.some(v => v.name === 'counter')) fail.push('the editor list is missing a real variable');
 if (bridged && bridged.agoMs < 0) fail.push('a negative "ago" leaked out');
 if (condErr) fail.push('a valid condition was rejected');
 if (!bogus) fail.push('a malformed condition was accepted');
