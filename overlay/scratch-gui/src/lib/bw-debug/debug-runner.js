@@ -615,12 +615,23 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 // A name the build does not have is not fatal — the variable may
                 // appear after an edit — but it IS worth saying, because the
                 // commonest condition that never fires is a misspelt name.
+                //
+                // `variables()` returns [] in two different situations: before
+                // the first build, when we genuinely cannot judge a name, and
+                // after a build of a program that declares none. Gating the
+                // warning on the set being non-empty conflated them, so a
+                // condition in a variable-less program silently never fired —
+                // the exact shape of bug this file is supposed to prevent. The
+                // distinguisher is whether we have BUILT, not whether the set
+                // happens to have anything in it.
                 const known = new Set(runner.variables().map((v) => v.name));
                 const unknown = parsed.names.filter((n) => !known.has(n));
                 conditionErrors = { ...conditionErrors };
                 delete conditionErrors[blockId];
-                if (unknown.length && known.size) {
-                    conditionErrors[blockId] = `no variable named ${unknown.join(', ')}`;
+                if (unknown.length && target) {
+                    conditionErrors[blockId] = known.size
+                        ? `no variable named ${unknown.join(', ')}`
+                        : 'this program has no variables, so this can never be true';
                 }
             } else {
                 conditionErrors = { ...conditionErrors };

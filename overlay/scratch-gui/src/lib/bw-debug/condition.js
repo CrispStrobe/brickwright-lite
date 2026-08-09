@@ -117,7 +117,11 @@ function parseComparison(text) {
 }
 
 function parseOperand(text) {
-    if (/^-?\d+$/.test(text)) return { value: Number(text) };
+    // Decimals are accepted even though every variable in a generateC build is
+    // a 16-bit int. `speed > 1.5` can never be an equality, but as an
+    // inequality it is exactly as meaningful as `speed > 1`, and a Scratch user
+    // — whose variables ARE floats — will write it. Rejecting it taught nothing.
+    if (/^-?\d+(\.\d+)?$/.test(text)) return { value: Number(text) };
     if (/^[A-Za-z_][\w ]*$/.test(text)) return { name: text.trim() };
     return { error: `"${text}" is neither a number nor a variable name` };
 }
