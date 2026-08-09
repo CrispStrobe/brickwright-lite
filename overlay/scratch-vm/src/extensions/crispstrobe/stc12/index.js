@@ -1,31 +1,14 @@
 const makeExt = require('../adapter');
 
-// The STC12 / 8051 pin blocks.
+// The STC12 / 8051 pin blocks — all ten opcodes.
 //
-// These opcodes have existed on the sb3-creator side for months — `stc12_setpin`,
-// `stc12_writepin`, `stc12_toggle`, `stc12_read` — and every hardware example
-// emits them along with `extensions: ["stc12"]`. Nothing ever registered that id
-// with the VM, so loading any of those projects failed outright with
-// "Unknown extension: stc12": the Code tab could show the pseudocode and the C,
-// and "⇦ To blocks" could not work at all. This is the missing half.
-//
-// The block SHAPES are not a design choice here; they have to match what
-// SB3Creator emits, or a project round-trips into blocks that read differently
-// from the ones it came from:
-//
-//   stc12_setpin    fields PIN, STATE          (both dropdowns → fields, not inputs)
-//   stc12_writepin  field  PIN, input VALUE
-//   stc12_toggle    field  PIN
-//   stc12_read      field  PIN, reporter
+// This source is identical to extensions/CrispStrobe/stc12.js (the gallery
+// copy). The three-copies-one-contract test in sb3-creator/test/ctarget.test.mjs
+// asserts they agree on opcodes, argument shapes, and menu identity.
 //
 // A menu with acceptReporters:false compiles to a FIELD, which is what those
 // blocks use; anything else would serialise as an input with a shadow block and
 // no longer match.
-//
-// What they DO when the green flag runs: nothing to a chip, because there is no
-// chip attached to a browser. They record the pin state on the runtime so the
-// circuit designer and the tier-1 simulator can watch, and they read back what
-// was written. Pretending to drive hardware would be the dishonest option.
 module.exports = makeExt(`// Name: STC12 / 8051 pins
 // ID: stc12
 // Description: Drive the pins declared with PIN in the Code tab.
@@ -38,6 +21,16 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
   function decls(runtime) {
     const stc = runtime && runtime.stc;
     return (stc && Array.isArray(stc.pins)) ? stc.pins : [];
+  }
+
+  function portDecls(runtime) {
+    const stc = runtime && runtime.stc;
+    return (stc && Array.isArray(stc.ports)) ? stc.ports : [];
+  }
+
+  function partDecls(runtime) {
+    const stc = runtime && runtime.stc;
+    return (stc && Array.isArray(stc.parts)) ? stc.parts : [];
   }
 
   /** The board state this extension maintains, for whoever is watching. */
@@ -85,13 +78,68 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
             blockType: Scratch.BlockType.REPORTER,
             text: "read [PIN]",
             arguments: { PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" } }
+          },
+          "---",
+          {
+            opcode: "setpwm",
+            blockType: Scratch.BlockType.COMMAND,
+            text: "set [PIN] to [VALUE] percent",
+            arguments: {
+              PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 50 }
+            }
+          },
+          {
+            opcode: "settone",
+            blockType: Scratch.BlockType.COMMAND,
+            text: "set [PIN] to [VALUE] hz",
+            arguments: {
+              PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 440 }
+            }
+          },
+          {
+            opcode: "setport",
+            blockType: Scratch.BlockType.COMMAND,
+            text: "set [PORT] to [VALUE]",
+            arguments: {
+              PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" },
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
+            }
+          },
+          {
+            opcode: "readport",
+            blockType: Scratch.BlockType.REPORTER,
+            text: "read [PORT]",
+            arguments: { PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" } }
+          },
+          {
+            opcode: "setpart",
+            blockType: Scratch.BlockType.COMMAND,
+            text: "set [PART] to [VALUE]",
+            arguments: {
+              PART: { type: Scratch.ArgumentType.STRING, menu: "parts" },
+              VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 }
+            }
+          },
+          {
+            opcode: "print",
+            blockType: Scratch.BlockType.COMMAND,
+            text: "print [VALUE]",
+            arguments: {
+              VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "hello" },
+              MODE: { type: Scratch.ArgumentType.STRING, menu: "printModes" }
+            }
           }
         ],
         menus: {
           // acceptReporters:false is what makes these FIELDS rather than inputs,
           // which is how sb3-creator writes them.
           pins: { acceptReporters: false, items: "pinNames" },
-          states: { acceptReporters: false, items: ["on", "off", "high", "low"] }
+          states: { acceptReporters: false, items: ["on", "off", "high", "low"] },
+          ports: { acceptReporters: false, items: "portNames" },
+          parts: { acceptReporters: false, items: "partNames" },
+          printModes: { acceptReporters: false, items: ["text", "number"] }
         }
       };
     }
@@ -100,6 +148,16 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     pinNames() {
       const names = decls(this.runtime).map(p => p.name);
       return names.length ? names : [{ text: "(declare a PIN in the Code tab)", value: "" }];
+    }
+
+    portNames() {
+      const names = portDecls(this.runtime).map(p => p.name);
+      return names.length ? names : [{ text: "(declare a PORT in the Code tab)", value: "" }];
+    }
+
+    partNames() {
+      const names = partDecls(this.runtime).map(p => p.name);
+      return names.length ? names : [{ text: "(declare a PART in the Code tab)", value: "" }];
     }
 
     setpin(args) {
@@ -124,6 +182,34 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     read(args) {
       const b = board(this.runtime);
       return Object.prototype.hasOwnProperty.call(b, args.PIN) ? b[args.PIN] : 0;
+    }
+
+    setpwm(args) {
+      board(this.runtime)[args.PIN + "_pwm"] = Number(args.VALUE);
+    }
+
+    settone(args) {
+      board(this.runtime)[args.PIN + "_tone"] = Number(args.VALUE);
+    }
+
+    setport(args) {
+      board(this.runtime)["port_" + args.PORT] = Number(args.VALUE) & 0xFF;
+    }
+
+    readport(args) {
+      const b = board(this.runtime);
+      const k = "port_" + args.PORT;
+      return Object.prototype.hasOwnProperty.call(b, k) ? b[k] : 0;
+    }
+
+    setpart(args) {
+      board(this.runtime)["part_" + args.PART] = Number(args.VALUE) & 0xFF;
+    }
+
+    print(args) {
+      // In the editor, print goes to the console. On hardware, it is the UART.
+      const val = String(args.MODE) === "number" ? Number(args.VALUE) : String(args.VALUE);
+      if (typeof console !== "undefined") console.log(val);
     }
   }
 
