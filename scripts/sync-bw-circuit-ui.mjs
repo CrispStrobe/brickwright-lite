@@ -55,8 +55,18 @@ if (!check) {
     const allowed = new Set(['react', 'prop-types', '@lit/react', 'lit', '@wokwi/elements']);
     for (const rel of files) {
         const src = await readFile(path.join(dest, rel), 'utf8');
-        for (const m of src.matchAll(/^\s*(?:import|export)[^'"\n]*['"]([^'"]+)['"]/gm)) {
-            const spec = m[1];
+        // Only a real module specifier counts: a `from '...'` clause, or a
+        // side-effect `import '...'`. The previous pattern took the first
+        // quoted string on any line starting with import/export, so
+        //     export function ExamplesBrowser({ examples, lang = 'en' })
+        // was read as importing a package called "en" and the whole vendor
+        // aborted. A gate that blocks correct code is as costly as one that
+        // passes wrong code — this one blocked every re-vendor, which is the
+        // only path anything reaches users by.
+        for (const m of src.matchAll(
+            /^\s*(?:import|export)\b[^\n]*?\bfrom\s*['"]([^'"]+)['"]|^\s*import\s*['"]([^'"]+)['"]/gm
+        )) {
+            const spec = m[1] || m[2];
             if (spec.startsWith('.')) {
                 // resolve relative to this file, allowing an omitted .js/.jsx extension
                 const target = path.posix.normalize(path.posix.join(path.posix.dirname(rel), spec));

@@ -27,14 +27,32 @@ const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 // grows (it gained validate.js the day this script was written) and produces a vendored copy
 // that fails at webpack time with a missing-module error far from the cause.
 const FALLBACK = [
+    ...["analog-ics","chip-composer","dc-motor","digital-ics","display","h-bridge","logic-gates","misc-parts","motor-drivers","named-parts","power","relay","sensors","servo","timer-555"].map(f => `src/devices/${f}.js`),
     'src/index.js', 'src/board.js', 'src/types.js', 'src/pin-model.js', 'src/mna.js',
     'src/infer-netlist.js', 'src/scripted-mcu.js', 'src/conformance.js',
     'src/emu8051-adapter.js', 'src/validate.js'
 ];
-const FILES = srcDir
-    ? (await readdir(path.join(srcDir, 'src'))).filter(f => f.endsWith('.js')).sort()
-        .map(f => `src/${f}`)
-    : FALLBACK;
+// bw-board grew a `src/devices/` subdirectory. Globbing only the top level
+// missed it entirely, and `index.js` imports `./devices/chip-composer.js`, so
+// the vendored engine referenced files that were never copied. One level of
+// nesting is enough for what bw-board has; a second would need recursion, and
+// the import check below fails loudly if one ever appears.
+const listSrc = async () => {
+    const root = path.join(srcDir, 'src');
+    const out = [];
+    for (const e of await readdir(root, {withFileTypes: true})) {
+        if (e.isDirectory()) {
+            for (const f of await readdir(path.join(root, e.name))) {
+                if (f.endsWith('.js')) out.push(`src/${e.name}/${f}`);
+            }
+        } else if (e.name.endsWith('.js')) {
+            out.push(`src/${e.name}`);
+        }
+    }
+    return out.sort();
+};
+
+const FILES = srcDir ? await listSrc() : FALLBACK;
 
 async function readSource (rel) {
     if (srcDir) return readFile(path.join(srcDir, rel), 'utf8');
@@ -46,7 +64,11 @@ async function readSource (rel) {
 await mkdir(dest, {recursive: true});
 let stale = 0;
 for (const rel of FILES) {
-    const out = path.join(dest, path.basename(rel));
+    // Keep the layout under src/ rather than flattening to a basename: a file
+    // in devices/ imports its siblings by relative path, and flattening would
+    // break every one of them.
+    const out = path.join(dest, rel.replace(/^src\//, ''));
+    await mkdir(path.dirname(out), {recursive: true});
     let next;
     try {
         next = await readSource(rel);
@@ -63,8 +85,23 @@ for (const rel of FILES) {
 
 // A vendored engine that quietly grew a dependency would break the bundle at build time,
 // so fail loudly here instead.
+// `readdir` returns directories too, and bw-board grew a `devices/` subdirectory
+// this session — reading one as a file threw EISDIR and aborted the vendor, which
+// is the only path anything reaches users by. Enumerate the actual files.
+const vendoredFiles = async () => {
+    const out = [];
+    for (const e of await readdir(dest, {withFileTypes: true})) {
+        if (e.isDirectory()) {
+            for (const sub of await readdir(path.join(dest, e.name))) out.push(path.join(e.name, sub));
+        } else {
+            out.push(e.name);
+        }
+    }
+    return out;
+};
+
 if (!check) {
-    for (const f of await readdir(dest)) {
+    for (const f of await vendoredFiles()) {
         const src = await readFile(path.join(dest, f), 'utf8');
         for (const m of src.matchAll(/^\s*import\s[^'"\n]*['"]([^'".][^'"]*)['"]/gm)) {
             throw new Error(`${f} imports a package (${m[1]}); bw-board must stay dependency-free`);
@@ -75,11 +112,20 @@ if (!check) {
 // Every relative import must resolve inside the vendored copy. This is the check that would
 // have caught validate.js going missing, at the point of vendoring rather than at build time.
 if (!check) {
-    const present = new Set(await readdir(dest));
-    for (const f of present) {
+    const files = await vendoredFiles();
+    const present = new Set(files.map(f => path.basename(f)));
+    for (const f of files) {
         const src = await readFile(path.join(dest, f), 'utf8');
-        for (const m of src.matchAll(/^\s*(?:import|export)[^'"\n]*['"](\.\/[^'"]+)['"]/gm)) {
-            const target = path.basename(m[1]);
+        // Match only a genuine module specifier — a `from '...'` clause or a
+        // side-effect `import '...'`. Taking the first quoted string on any
+        // import/export line reads a default parameter value as a specifier;
+        // that false positive aborted the whole vendor in the circuit-ui
+        // script. Less exposed here because only `./…` is captured, but it is
+        // the same bug waiting for the first `export function f({p = './x'})`.
+        for (const m of src.matchAll(
+            /^\s*(?:import|export)\b[^\n]*?\bfrom\s*['"](\.\/[^'"]+)['"]|^\s*import\s*['"](\.\/[^'"]+)['"]/gm
+        )) {
+            const target = path.basename(m[1] || m[2]);
             if (!present.has(target)) {
                 throw new Error(`${f} imports ${m[1]}, which was not vendored — the file list is incomplete`);
             }
