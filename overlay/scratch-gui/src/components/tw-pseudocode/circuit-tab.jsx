@@ -78,14 +78,24 @@ class CircuitTab extends React.Component {
             const blockId = ui && ui.blockOfTask ? ui.blockOfTask[`${t.task}/${t.state}`] : undefined;
             return {...t, blockId, kind: blockId && kinds ? kinds[blockId] : undefined};
         });
-        if (board !== this.state.board || halted !== (this.state.debugState || {}).halted) {
+        const haltReason = why ? why.cause : null;
+        // bwMs: the runner snapshot does not expose target.bwMs() — it requires
+        // the coordinator to add it to debug-runner.js's snapshot(). Until then,
+        // DebugStatus shows "—" for the scheduler ms counter. Tracked in BLOCKED.md.
+        const bwMs = undefined;
+        const caps = ui ? ui.capabilities : null;
+        const prev = this.state.debugState || {};
+        if (board !== this.state.board || halted !== prev.halted ||
+            haltReason !== prev.haltReason || enriched !== prev.tasks) {
             this.setState({
                 board,
                 debugState: {
                     halted,
                     skewNs: why ? why.skewNs : 0n,
+                    haltReason,
+                    bwMs,
                     tasks: enriched,
-                    capabilities: ui ? ui.capabilities : null
+                    capabilities: caps
                 }
             });
         }
