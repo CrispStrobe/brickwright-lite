@@ -1,10 +1,10 @@
 const makeExt = require('../adapter');
 
-// The STC12 / 8051 pin blocks.
+// The STC12 / 8051 pin blocks — all twelve opcodes.
 //
 // This source is identical to extensions/CrispStrobe/stc12.js (the gallery
-// copy). The conformance test in sb3-creator asserts they agree on opcodes,
-// argument shapes, and menu identity.
+// copy). The stc12-conformance test in sb3-creator asserts both copies agree
+// on opcodes, argument shapes, and menu identity.
 module.exports = makeExt(`// Name: STC12 / 8051 pins
 // ID: stc12
 // Description: Drive the pins declared with PIN in the Code tab.
