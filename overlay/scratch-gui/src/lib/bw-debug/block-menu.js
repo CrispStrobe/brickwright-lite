@@ -24,7 +24,8 @@
  */
 
 import {
-    isBreakpoint, toggleBreakpoint, subscribeBreakpoints, conditionOf
+    isBreakpoint, toggleBreakpoint, subscribeBreakpoints, conditionOf,
+    listBreakpoints
 } from './breakpoints.js';
 import { valuesAtBlock } from './hover-values.js';
 import { showConditionEditor } from './condition-editor.js';
@@ -238,6 +239,13 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
      */
     function paint(workspace) {
         if (!workspace || !workspace.getAllBlocks) return;
+        // Prune marks on blocks that no longer exist (deleted, or project
+        // switched without clearing). A stale mark is harmless for the dot
+        // but the runner would still try to resolve it.
+        const allIds = new Set(workspace.getAllBlocks().map((b) => b.id));
+        for (const id of listBreakpoints()) {
+            if (!allIds.has(id)) toggleBreakpoint(id);
+        }
         for (const block of workspace.getAllBlocks()) {
             const svg = block.getSvgRoot && block.getSvgRoot();
             if (!svg || !svg.classList) continue;
