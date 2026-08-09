@@ -225,6 +225,14 @@ console.log(`opcode lengths: ${oracle.length} instructions from stc_disasm, ${le
 const listing = runner.listing(0x0000, 8);
 console.log(`listing: ${listing.map(r => r.text.split(/\s+/)[0]).slice(0, 5).join(' ')}`);
 
+// The code pane anchors at the PC, and clicking a line is how a breakpoint at
+// an address gets set -- so the pane's own data has to line up with the PC.
+const atPc = runner.listing(runner.inspect().pc, 6);
+const pcNow = runner.inspect().pc;
+console.log(`code pane: first row 0x${atPc[0].addr.toString(16)} = PC 0x${pcNow.toString(16)} -> ${atPc[0].addr === pcNow}, rows advance by 1-3 bytes`);
+const gaps = atPc.slice(1).map((r, i) => r.addr - atPc[i].addr);
+console.log(`  instruction sizes walked: ${gaps.join(' ')}`);
+
 // Memory, both ways, in a space the program does not touch.
 runner.writeMem('xram', 0x200, 0xA5);
 const readBack = runner.readMem('xram', 0x200, 1)[0];
@@ -326,6 +334,8 @@ if (walked.some(r => !r.bytes.length)) fail.push('a traced instruction has no op
 if (!oracle.length) fail.push('stc_disasm produced no instructions to check against');
 if (lengthMismatch.length) fail.push(`${lengthMismatch.length} opcode lengths disagree with stc_disasm`);
 if (listing.some(r => !r.text)) fail.push('a listing row has no disassembly');
+if (atPc[0].addr !== pcNow) fail.push('the code pane does not start at the program counter');
+if (gaps.some(g => g < 1 || g > 3)) fail.push(`a listing step was ${gaps.join(',')} bytes — not an 8051 instruction`);
 if (readBack !== 0xA5) fail.push(`memory write/read gave ${readBack}`);
 if (accBack !== 0x5A) fail.push(`writing SFR 0xE0 did not change A (${accBack})`);
 if (r3Back !== 0x99) fail.push(`writing bank*8+3 did not change R3 (${r3Back})`);

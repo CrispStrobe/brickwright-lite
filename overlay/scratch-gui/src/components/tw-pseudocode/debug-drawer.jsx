@@ -60,7 +60,10 @@ const L10N = {
     en: {
         title: 'Under the hood', hide: 'Hide', show: 'Show',
         trace: 'Execution trace', now: 'Registers', sfrs: 'Special function registers',
-        memory: 'Memory', stack: 'Stack', clock: 'Clock',
+        memory: 'Memory', stack: 'Stack', clock: 'Clock', code: 'Code at the program counter',
+        clickBreak: 'Click to pause here',
+        codeNote: 'Anchored at the program counter and read forwards — an 8051 cannot be ' +
+            'disassembled backwards, because nothing marks where an instruction starts.',
         cols: 'Columns', regs: 'registers', ports: 'ports', timers: 'timers',
         stepInsn: 'Step instruction', over: 'Step over', out: 'Step out',
         setPc: 'Set PC', breakAt: 'Break at', reset: 'Reset', wipe: 'Wipe',
@@ -79,7 +82,10 @@ const L10N = {
     de: {
         title: 'Unter der Haube', hide: 'Verbergen', show: 'Zeigen',
         trace: 'Ablaufprotokoll', now: 'Register', sfrs: 'Spezialregister',
-        memory: 'Speicher', stack: 'Stapel', clock: 'Takt',
+        memory: 'Speicher', stack: 'Stapel', clock: 'Takt', code: 'Code am Programmzähler',
+        clickBreak: 'Klicken, um hier anzuhalten',
+        codeNote: 'Ab dem Programmzähler vorwärts gelesen — ein 8051 lässt sich nicht ' +
+            'rückwärts disassemblieren, da nichts den Befehlsanfang markiert.',
         cols: 'Spalten', regs: 'Register', ports: 'Ports', timers: 'Timer',
         stepInsn: 'Ein Befehl', over: 'Überspringen', out: 'Heraus',
         setPc: 'PC setzen', breakAt: 'Halt bei', reset: 'Reset', wipe: 'Löschen',
@@ -165,13 +171,6 @@ class DebugDrawer extends React.Component {
                         if (a !== null) runner.setPc(a);
                     }}
                 >{this.tx('setPc')}</button>
-                <button
-                    style={BTN}
-                    onClick={() => {
-                        const a = this.askAddress(this.tx('breakAt'), this.currentPc());
-                        if (a !== null) runner.toggleAddressBreakpoint(a);
-                    }}
-                >{this.tx('breakAt')}</button>
                 <button style={BTN} onClick={() => runner.resetCpu()}>{this.tx('reset')}</button>
                 <button style={BTN} onClick={() => runner.wipe()}>{this.tx('wipe')}</button>
                 <button
@@ -286,6 +285,67 @@ class DebugDrawer extends React.Component {
             this.props.runner.writeMem(where.space, where.addr, v);
         }
         this.forceUpdate();
+    }
+
+    /**
+     * Where the program is, in code.
+     *
+     * The trace pane is history; this is the present, and every debugger has
+     * one. It is anchored at the PC and walks FORWARD with the opcode length
+     * table — an 8051 cannot be disassembled backwards, since instructions are
+     * one to three bytes and nothing marks where one starts. Showing a window
+     * that pretends to include earlier instructions would be guessing.
+     *
+     * Clicking a line sets or clears a breakpoint there, which is why the
+     * drawer needs no "type an address" dialog for the common case.
+     */
+    renderCode () {
+        const {runner, ui} = this.props;
+        const snap = runner.inspect();
+        if (!snap) return null;
+        const rows = runner.listing(snap.pc, 12);
+        const bps = new Set(runner.addressBreakpoints());
+        return (
+            <div style={{...PANE, maxHeight: 240}}>
+                <div style={TITLE}>{this.tx('code')}</div>
+                {rows.map((r, i) => {
+                    const here = r.addr === snap.pc;
+                    const marked = bps.has(r.addr);
+                    return (
+                        <div
+                            key={r.addr}
+                            role="button"
+                            tabIndex={-1}
+                            title={this.tx('clickBreak')}
+                            onClick={() => { runner.toggleAddressBreakpoint(r.addr); this.forceUpdate(); }}
+                            style={{
+                                display: 'flex', gap: 8, whiteSpace: 'nowrap', cursor: 'pointer',
+                                background: here ? '#1e3a5f' : 'transparent',
+                                borderLeft: `3px solid ${marked ? '#e74c3c' : 'transparent'}`,
+                                paddingLeft: 4
+                            }}
+                        >
+                            <span style={{color: here ? '#f39c12' : '#5d6d7e', width: 12}}>
+                                {here ? '▶' : (marked ? '●' : '')}
+                            </span>
+                            <span style={{color: '#3498db'}}>{hex16(r.addr)}</span>
+                            <span style={{color: '#5d6d7e'}}>{formatBytes(r.bytes)}</span>
+                            <span style={{color: here ? '#ecf0f1' : '#bdc3c7'}}>{r.text}</span>
+                            {i === 0 && ui && ui.session && ui.session.tasks ? (
+                                <span style={{marginLeft: 'auto', color: '#7f8c8d', fontSize: 10}}>
+                                    {ui.session.tasks
+                                        .filter(t => t.state !== 0xFFFF)
+                                        .map(t => `${t.task}:${t.state}`).join(' ')}
+                                </span>
+                            ) : null}
+                        </div>
+                    );
+                })}
+                <div style={{color: '#5d6d7e', marginTop: 6, fontSize: 10}}>
+                    {this.tx('codeNote')}
+                </div>
+            </div>
+        );
     }
 
     renderNow () {
@@ -516,6 +576,7 @@ class DebugDrawer extends React.Component {
                 {!open ? null : (
                     <div style={{display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8}}>
                         {this.renderControls()}
+                        {this.renderCode()}
                         {this.renderTrace()}
                         <div style={{display: 'grid', gap: 8,
                             gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))'}}>
