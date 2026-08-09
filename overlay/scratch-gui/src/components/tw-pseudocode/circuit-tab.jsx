@@ -25,8 +25,12 @@ const DebugPanel = React.lazy(() =>
 class CircuitTab extends React.Component {
     constructor (props) {
         super(props);
+        let hintDismissed = false;
+        try {
+            hintDismissed = localStorage.getItem('bw-circuit-hint') === '1';
+        } catch { /* private mode */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
-            board: null, debugState: null, panel: 'designer', circuit: null};
+            board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitChange = this.handleCircuitChange.bind(this);
     }
@@ -168,7 +172,7 @@ class CircuitTab extends React.Component {
 
     render () {
         const {Designer, error, reloading, stc} = this.state;
-        const box = {height: '100%', overflow: 'auto', padding: 12, boxSizing: 'border-box'};
+        const box = {height: '100%', overflow: 'auto', padding: 8, boxSizing: 'border-box'};
         if (reloading) {
             return (
                 <div style={{...box, color: '#64748b'}}>
@@ -204,12 +208,32 @@ class CircuitTab extends React.Component {
         }
         return (
             <div style={box}>
-                {stc && stc.pins && stc.pins.length ? null : (
-                    <div style={{marginBottom: 10, padding: '8px 10px', borderRadius: 6,
-                        background: '#fefce8', border: '1px solid #fde68a', fontSize: 13, color: '#713f12'}}>
-                        {'This project declares no pins, so the board starts empty. ' +
-                         'Declare them in the Code tab — e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — ' +
-                         'and the designer will suggest the matching parts.'}
+                {/* A circuit does not need a microcontroller.
+                    This used to read "declares no pins, so the board starts empty", which
+                    framed a battery-LED-resistor circuit — the first circuit anyone builds —
+                    as a misconfigured MCU project. The board, the solver, the instruments and
+                    the design-rule check all work with no MCU in the netlist at all. So this
+                    is an invitation, shown once and dismissible, not a warning. */}
+                {(stc && stc.pins && stc.pins.length) || this.state.hintDismissed ? null : (
+                    <div style={{marginBottom: 6, padding: '5px 8px', borderRadius: 5,
+                        background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: 12,
+                        color: '#075985', display: 'flex', alignItems: 'center', gap: 8}}>
+                        <span style={{flex: 1}}>
+                            {'Build a circuit on its own — battery, LED, resistor, a 555. ' +
+                             'To drive parts from blocks, declare pins in the Code tab ' +
+                             '(PIN led1 IS P1.0 OUTPUT ACTIVE LOW).'}
+                        </span>
+                        <button
+                            title={'Dismiss'}
+                            onClick={() => {
+                                this.setState({hintDismissed: true});
+                                try {
+                                    localStorage.setItem('bw-circuit-hint', '1');
+                                } catch { /* private mode: dismissed for this session only */ }
+                            }}
+                            style={{border: 'none', background: 'transparent', cursor: 'pointer',
+                                color: '#0369a1', fontSize: 15, lineHeight: 1, padding: '0 2px'}}
+                        >{'×'}</button>
                     </div>
                 )}
                 {/* The debugger's controls, above the board they act on. The design note
@@ -286,22 +310,28 @@ class CircuitTab extends React.Component {
             ['bom', 'Parts list', null],
             ['examples', 'Examples', null]
         ];
+        // The board is the reason this tab exists, so the switcher costs one thin
+        // row and nothing else — no tab-bar chrome, no borders, no 44px targets
+        // stealing height from the canvas. A segmented control reads as "a view
+        // of the same thing", which is what these are.
         return (
-            <div style={{display: 'flex', gap: 4, marginBottom: 10, borderBottom: '1px solid #e2e8f0'}}>
+            <div style={{display: 'inline-flex', gap: 1, marginBottom: 6, padding: 1,
+                borderRadius: 5, background: '#f1f5f9', fontSize: 11.5, lineHeight: 1.6}}>
                 {tabs.map(([id, label, badge]) => (
                     <button
                         key={id}
                         onClick={() => this.setState({panel: id})}
                         style={{
-                            padding: '6px 12px', border: 'none', cursor: 'pointer', fontSize: 13,
-                            background: panel === id ? '#e0f2fe' : 'transparent',
-                            borderBottom: panel === id ? '2px solid #0284c7' : '2px solid transparent',
-                            color: panel === id ? '#0c4a6e' : '#475569'
+                            padding: '2px 8px', border: 'none', cursor: 'pointer', borderRadius: 4,
+                            fontSize: 'inherit',
+                            background: panel === id ? '#fff' : 'transparent',
+                            boxShadow: panel === id ? '0 1px 2px rgba(15,23,42,.12)' : 'none',
+                            color: panel === id ? '#0f172a' : '#64748b'
                         }}
                     >
                         {label}
                         {badge ? (
-                            <span style={{marginLeft: 6, padding: '1px 6px', borderRadius: 9, fontSize: 11,
+                            <span style={{marginLeft: 5, padding: '0 5px', borderRadius: 8, fontSize: 10,
                                 background: danger ? '#fecaca' : '#fef3c7',
                                 color: danger ? '#991b1b' : '#92400e'}}
                             >{badge}</span>
