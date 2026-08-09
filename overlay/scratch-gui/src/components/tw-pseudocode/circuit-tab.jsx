@@ -65,10 +65,28 @@ class CircuitTab extends React.Component {
         const board = runner.board();
         const halted = !!(ui && ui.session && ui.session.halted);
         const why = ui && ui.session && ui.session.why;
+        // The designer reads debugState.tasks and .capabilities, and this passed
+        // neither — so its Level 1 position panel and its active-part highlight
+        // both received undefined and silently rendered nothing. Optional
+        // chaining on their side meant nothing errored: the fifth time in two
+        // days a value was written for a consumer, or read from a producer,
+        // that did not exist. Enriched with the block id, which only the runner
+        // can supply — it holds the (task, state) -> block map.
+        const kinds = ui && ui.yieldKinds;
+        const tasks = (why && why.tasks ? why.tasks : (runner.state().session || {}).tasks) || null;
+        const enriched = tasks && tasks.map(t => {
+            const blockId = ui && ui.blockOfTask ? ui.blockOfTask[`${t.task}/${t.state}`] : undefined;
+            return {...t, blockId, kind: blockId && kinds ? kinds[blockId] : undefined};
+        });
         if (board !== this.state.board || halted !== (this.state.debugState || {}).halted) {
             this.setState({
                 board,
-                debugState: {halted, skewNs: why ? why.skewNs : 0n}
+                debugState: {
+                    halted,
+                    skewNs: why ? why.skewNs : 0n,
+                    tasks: enriched,
+                    capabilities: ui ? ui.capabilities : null
+                }
             });
         }
     }

@@ -125,6 +125,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             conditions: allConditions(),
             conditionErrors,
             skippedHits: skipped,
+            /** `<task>/<state>` -> block id, so a consumer can name a position. */
+            blockOfTask: Object.fromEntries(blockOf),
             /** block id -> `wait` / `forever` / … so a list can name them, not hash them. */
             yieldKinds: Object.fromEntries(
                 [...yieldOf].map(([id, y]) => [id, y.kind])
