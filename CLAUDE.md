@@ -46,8 +46,10 @@ cd packages/scratch-gui && NODE_ENV=production CI=true NODE_OPTIONS=--max-old-sp
 ```
 Fresh: `npm run vendor` first, then `npm install --ignore-scripts --legacy-peer-deps` before the above.
 
-**Build numbers (2026-08-08, GH Actions):** peak RSS 3.3 GiB, wall-clock 51 s, gui.js 11.9 MiB
-(4.1 MiB brotli over wire), build/ total 82 MiB, 0 babel deopts. Vercel 8 GiB headroom: ~4.8 GiB.
+**Build numbers (2026-08-09, GH Actions):** peak RSS 2.9 GiB, wall-clock 37 s, build/ total 82 MiB,
+0 babel deopts, Vercel 8 GiB headroom: ~5.2 GiB. Output is chunk-split: vendor chunk 9.86 MiB
+(3.6 MiB brotli, immutable-cached — frozen deps never change) + app chunk 2.05 MiB (490 KiB brotli).
+Repeat visitors after a code-only deploy download **490 KiB** instead of the full 4.1 MiB.
 
 ## Permissive base (exact pins — freeze, don't chase upstream)
 Scratch relicensed BSD-3 → AGPL-3.0 on 2024-11-25. Pin the last-BSD:
@@ -86,6 +88,11 @@ Scratch relicensed BSD-3 → AGPL-3.0 on 2024-11-25. Pin the last-BSD:
    `build/index.html` for all platforms (web, macOS, Windows, Linux, iOS, Android).
 10. **Babel skips pre-minified blockly** — `blockly_compressed_vertical.js` is excluded from
     babel-loader (already compiled, `'use strict'`). Eliminated the last babel deopt.
+11. **Chunk splitting + content hashes + immutable caching** — `shouldSplitChunks: true` splits
+    vendor code (React, blockly, scratch-vm) into `chunks/123.[hash].js`, cached immutably since
+    deps are frozen. Entry is `gui.[contenthash:8].js`. UMD library wrapper removed from the web
+    build (only needed for dist/). `vercel.json` sets `Cache-Control: immutable` for hashed JS,
+    chunks, and `static/assets/`. index.html stays `must-revalidate`.
 
 ## Extensions
 - **Bundled built-ins** (offline): planetemaths, arrays. Each = `overlay/scratch-vm/.../crispstrobe/<id>/index.js`
