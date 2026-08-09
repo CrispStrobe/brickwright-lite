@@ -325,12 +325,26 @@ class PseudocodeImporter extends React.Component {
     async lib () { return (await import(/* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js')); }
 
     // Convert one language's source to another by going through blocks:
+    // Two kinds of C arrive here and they need different readers. Host C is what
+    // generateC now emits for a Scratch project — machine written, carrying its
+    // own structure, and marked with @bw-program. Everything else is 8051 C,
+    // possibly hand written, which sb3-creator-c.js infers pins from. Guessing
+    // wrong means reading a sprite program as firmware, so the marker decides.
+    async readC (text) {
+        if (/@bw-program/.test(text)) {
+            const host = (await import(/* webpackChunkName: "sb3-creator-chost" */ '../../lib/sb3-creator-chost.js')).default;
+            return { pseudocode: host(text), warnings: [] };
+        }
+        const device = (await import(/* webpackChunkName: "sb3-creator-c" */ '../../lib/sb3-creator-c.js')).default;
+        return device(text);
+    }
+
     // source → pseudocode → parse() → project → generate(to). Returns {code} or {error}.
     async deriveBuffer (src, from, to) {
         try {
             const SB3 = (await this.lib()).default;
             let pseudo = src;
-            if (from === 'c') pseudo = (await import(/* webpackChunkName: "sb3-creator-c" */ '../../lib/sb3-creator-c.js')).default(src).pseudocode;
+            if (from === 'c') pseudo = (await this.readC(src)).pseudocode;
             else if (from === 'python') pseudo = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(src).pseudocode;
             else if (from === 'javascript') pseudo = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(src).pseudocode;
             const creator = new SB3();
@@ -628,7 +642,7 @@ class PseudocodeImporter extends React.Component {
                     if (t.ok) { text = t.code; parseWarnings.push('Keil C51 normalised to SDCC via stc-compiler'); }
                     else parseWarnings.push(`could not reach the Keil translator (${t.error}) — parsing the original`);
                 }
-                const res = (await import(/* webpackChunkName: "sb3-creator-c" */ '../../lib/sb3-creator-c.js')).default(text);
+                const res = await this.readC(text);
                 source = res.pseudocode; parseWarnings = parseWarnings.concat(res.warnings || []);
             }
             const SB3Creator = (await this.lib()).default;
