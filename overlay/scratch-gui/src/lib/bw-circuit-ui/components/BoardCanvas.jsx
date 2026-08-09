@@ -10,10 +10,14 @@
  * wokwi web components positioned absolutely on top via CSS.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { InteractionMachine } from '../interaction/machine.js';
+import { createHitTest } from '../interaction/hittest.js';
+import { classifyWheel } from '../interaction/transform.js';
+import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
-import { routeWire, partBBoxes } from '../model/wire-router.js';
+import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
@@ -45,7 +49,11 @@ function rotateOffset(dx, dy, deg) {
  */
 function terminalOffsetsForPart(part) {
   const rot = part.rotation || 0;
-  const r = (dx, dy) => rotateOffset(dx, dy, rot);
+  const flip = part.flipped;
+  const r = (dx, dy) => {
+    const rotated = rotateOffset(dx, dy, rot);
+    return flip ? { dx: -rotated.dx, dy: rotated.dy } : rotated;
+  };
 
   switch (part.kind) {
     case 'vcc': return { vcc: r(0, 20) };
@@ -57,7 +65,7 @@ function terminalOffsetsForPart(part) {
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
     case 'meter': return { probe_a: r(-25, 20), probe_b: r(25, 20) };
-    case 'ledcube': {
+    case 'led_cube': {
       const offsets = {};
       for (let i = 0; i < 8; i++) offsets[`sel_${i}`] = r(-60, -30 + i * 10);
       for (let i = 0; i < 8; i++) offsets[`data_${i}`] = r(60, -30 + i * 10);
@@ -103,8 +111,13 @@ function fmtV(v) {
 function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
+    const rot = part.rotation || 0;
+    const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
     const selStroke = isSelected ? '#f1c40f' : undefined;
+    let xform = `translate(${x}, ${y})`;
+    if (rot) xform += ` rotate(${rot})`;
+    if (flip) xform += ` scale(-1, 1)`;
 
     const handleClick = (e) => {
       e.stopPropagation();
@@ -115,8 +128,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
     switch (kind) {
       case 'vcc':
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}
-            onClick={handleClick}
+          <g key={id} transform={xform}
+            pointerEvents="none"
             style={{ cursor: 'pointer' }}>
             {/* Larger hit area */}
             <rect x={-20} y={-8} width={40} height={32} fill="transparent" />
@@ -128,8 +141,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
         );
       case 'gnd':
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}
-            onClick={handleClick}
+          <g key={id} transform={xform}
+            pointerEvents="none"
             style={{ cursor: 'pointer' }}>
             <rect x={-20} y={-14} width={40} height={42} fill="transparent" />
             <line x1={0} y1={-10} x2={0} y2={0} stroke={selStroke || '#3498db'} strokeWidth={2} />
@@ -146,8 +159,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
         const chipH = Math.max(60, pinCount * 30 + 20);
         const chipY = -chipH / 2;
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}
-            onClick={handleClick}
+          <g key={id} transform={xform}
+            pointerEvents="none"
             style={{ cursor: 'pointer' }}>
             <rect x={-50} y={chipY} width={120} height={chipH} rx={6}
               fill="#2c3e50" stroke={selStroke || '#7f8c8d'} strokeWidth={isSelected ? 3 : 2} />
@@ -216,12 +229,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
           <circle
             cx={pos.x} cy={pos.y} r={Math.max(r, 16)}
             fill="transparent"
-            style={{ cursor: 'crosshair' }}
-            onMouseDown={(e) => onTerminalDown(part.id, term, e)}
-            onMouseUp={() => onTerminalUp(part.id, term)}
-            onClick={(e) => { e.stopPropagation(); onTerminalClick(part.id, term); }}
-            onTouchStart={(e) => { e.stopPropagation(); onTerminalDown(part.id, term); }}
-            onTouchEnd={(e) => { e.stopPropagation(); onTerminalUp(part.id, term); }}
+            style={{ pointerEvents: 'none' }}
           />
           {/* Visible dot */}
           <circle
@@ -256,7 +264,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
 
 // ── Wires ────────────────────────────────────────────────────────
 
-function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages }) {
+function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
   // Group wires by net to find all terminals in each net
   const netTerminals = new Map();
   for (const w of wires) {
@@ -273,8 +281,9 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
-    const obstacles = partBBoxes(parts, wire.from.part, wire.to.part);
-    const pathD = routeWire(a, b, obstacles);
+    const pathD = wire.waypoints && wire.waypoints.length > 0
+      ? routeWireWithWaypoints(a, b, wire.waypoints)
+      : routeWire(a, b, partBBoxes(parts, wire.from.part, wire.to.part));
     const isSelected = selectedWire === wire.id;
     const isHovered = hoveredNet && hoveredNet === wire.netId;
 
@@ -290,11 +299,13 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
       else voltageColor = '#3498db';                    // blue: near GND
     }
 
-    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#9b59b6' : voltageColor;
+    // Manual color overrides voltage-keyed color (bench discipline: red=+, black=GND)
+    const baseColor = wire.color || voltageColor;
+    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#9b59b6' : baseColor;
     const wireWidth = isSelected ? 3 : isHovered ? 2.5 : 2;
 
     return (
-      <g key={wire.id}>
+      <g key={wire.id} data-wire={wire.id}>
         {/* Invisible wider hit area */}
         <path
           d={pathD}
@@ -302,7 +313,30 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
           strokeWidth={10}
           fill="none"
           style={{ cursor: 'pointer' }}
-          onClick={(e) => { e.stopPropagation(); onSelectWire(wire.id); }}
+          pointerEvents="none"
+          onDoubleClick={(e) => {
+            // Add a waypoint at the click position
+            e.stopPropagation();
+            if (onUpdateWire) {
+              const container = e.currentTarget.closest('[data-canvas]');
+              if (container) {
+                const pos = screenToCanvas(e.clientX, e.clientY, container);
+                const wps = [...(wire.waypoints || [])];
+                // Insert at nearest segment position
+                const pts = [a, ...wps, b];
+                let bestIdx = wps.length; // default: append before end
+                let bestDist = Infinity;
+                for (let i = 0; i < pts.length - 1; i++) {
+                  const mx = (pts[i].x + pts[i + 1].x) / 2;
+                  const my = (pts[i].y + pts[i + 1].y) / 2;
+                  const d = (pos.x - mx) ** 2 + (pos.y - my) ** 2;
+                  if (d < bestDist) { bestDist = d; bestIdx = i; }
+                }
+                wps.splice(bestIdx, 0, { x: pos.x, y: pos.y });
+                onUpdateWire(wire.id, { waypoints: wps });
+              }
+            }
+          }}
           onMouseEnter={() => onHoverNet(wire.netId)}
           onMouseLeave={() => onHoverNet(null)}
         />
@@ -313,6 +347,27 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
           fill="none"
           strokeLinejoin="round"
         />
+        {/* Waypoint handles (visible when wire is selected) */}
+        {isSelected && wire.waypoints && wire.waypoints.map((wp, wi) => (
+          <circle
+            key={`wp-${wi}`}
+            cx={wp.x} cy={wp.y} r={5}
+            fill="#f1c40f" stroke="#2c3e50" strokeWidth={1.5}
+            style={{ cursor: 'move' }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              setDraggingWaypoint({ wireId: wire.id, index: wi });
+            }}
+            onDoubleClick={(e) => {
+              // Double-click waypoint to remove it
+              e.stopPropagation();
+              if (onUpdateWire) {
+                const wps = wire.waypoints.filter((_, i) => i !== wi);
+                onUpdateWire(wire.id, { waypoints: wps.length > 0 ? wps : undefined });
+              }
+            }}
+          />
+        ))}
         {/* Animated current-flow dots along the wire */}
         {nodeVoltages && (() => {
           const v = nodeVoltages?.[wire.netId];
@@ -395,12 +450,16 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
+    const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
+    const transforms = [];
+    if (rot) transforms.push(`rotate(${rot}deg)`);
+    if (flip) transforms.push('scaleX(-1)');
     const baseStyle = {
       position: 'absolute',
       outline: isSelected ? '2px solid #f1c40f' : 'none',
       borderRadius: '4px',
-      transform: rot ? `rotate(${rot}deg)` : undefined,
+      transform: transforms.length > 0 ? transforms.join(' ') : undefined,
       transformOrigin: 'center',
     };
 
@@ -451,7 +510,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       case 'potentiometer':
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 30, top: y - 30, cursor: 'move', pointerEvents: 'auto' }}
+            style={{ ...baseStyle, left: x - 30, top: y - 30, cursor: 'move', pointerEvents: 'none' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}>
             <WokwiPotentiometer
               min={0} max={1} step={0.01} value={0.5}
@@ -486,7 +545,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       case 'button':
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 18, top: y - 18, cursor: 'move', pointerEvents: 'auto' }}
+            style={{ ...baseStyle, left: x - 18, top: y - 18, cursor: 'move', pointerEvents: 'none' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             onMouseDown={(e) => { e.stopPropagation(); onButtonDown(id); }}
             onMouseUp={() => onButtonUp(id)}
@@ -571,7 +630,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
-      case 'ledcube': {
+      case 'led_cube': {
         // 4x4x4 bi-colour LED cube — voxel map unknown until measured
         // Use scan history from cubeScans prop if available, otherwise test pattern
         const scanData = cubeScans?.[id] || testPattern();
@@ -676,12 +735,13 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
-  const [dragging, setDragging] = useState(null);
+  const [dragging, setDragging] = useState(null); // partId that initiated the drag
+  const dragStartPos = React.useRef(null); // {x, y} at drag start for offset calc
   const [hoveredNet, setHoveredNet] = useState(null);
   const [hoveredPart, setHoveredPart] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
@@ -689,6 +749,7 @@ export function BoardCanvas({
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
+  const [draggingWaypoint, setDraggingWaypoint] = useState(null); // { wireId, index }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
@@ -727,6 +788,204 @@ export function BoardCanvas({
       y: sy / zoom + pan.y,
     };
   }, [zoom, pan]);
+
+  // ── Interaction v2: one state machine, container-level pointer events ──
+  // The old plumbing attached handlers to child DOM nodes and the wokwi
+  // layer swallowed them: a click on the LED deselected, a 200 px drag moved
+  // nothing. Now the container captures every pointer, hits are pure math on
+  // model data (src/interaction/), and the visual layers are inert.
+  const partsRef = useRef(parts); partsRef.current = parts;
+  const wiresRef = useRef(wires); wiresRef.current = wires;
+  const selectedPartsRef = useRef(null); selectedPartsRef.current = selectedParts || new Set();
+  const zoomRef = useRef(zoom); zoomRef.current = zoom;
+  const panRef = useRef(pan); panRef.current = pan;
+  const apiRef = useRef({});
+  apiRef.current = { onMovePart, onAddWire, onSelectPart, onSelectWire, onSaveHistory,
+    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire };
+  const placingProbeRef = useRef(false); placingProbeRef.current = !!placingProbe;
+  const pressedButtonRef = useRef(null);
+  const draggingWaypointRef = useRef(null); draggingWaypointRef.current = draggingWaypoint;
+  const machineRef = useRef(null);
+  if (!machineRef.current) {
+    const hit = createHitTest(
+      () => partsRef.current,
+      () => wiresRef.current.map(w => {
+        const fp = partsRef.current.find(pp => pp.id === w.from.part);
+        const tp = partsRef.current.find(pp => pp.id === w.to.part);
+        if (!fp || !tp) return { id: w.id, points: [] };
+        return { id: w.id, points: [terminalPos(fp, w.from.terminal), ...(w.waypoints || []), terminalPos(tp, w.to.terminal)] };
+      }),
+      (part) => part.terminals.map(t => ({ terminal: t, ...terminalPos(part, t) }))
+    );
+    const cb = {
+      select: (ids, mode) => {
+        const api = apiRef.current;
+        if (mode === 'replace') {
+          api.onSelectPart(null);
+          for (const id of ids) api.onSelectPart(id, true);
+        } else if (mode === 'add') {
+          for (const id of ids) if (!selectedPartsRef.current.has(id)) api.onSelectPart(id, true);
+        } else {
+          for (const id of ids) api.onSelectPart(id, true);
+        }
+      },
+      selectWire: (id) => { apiRef.current.onSelectWire(id); },
+      clearSelection: () => { apiRef.current.onSelectPart(null); apiRef.current.onSelectWire(null); },
+      moveSelection: (dx, dy) => {
+        const api = apiRef.current;
+        const ids = [...selectedPartsRef.current];
+        for (const id of ids) {
+          const pp = partsRef.current.find(q => q.id === id);
+          if (pp) api.onMovePart(id, pp.x + dx, pp.y + dy);
+        }
+        if (ids.length === 1) {
+          const pp = partsRef.current.find(q => q.id === ids[0]);
+          if (pp) {
+            const snap = findSnapTarget(pp, partsRef.current, wiresRef.current);
+            setSnapTarget(snap && snap.autoWire ? snap : null);
+          }
+        }
+      },
+      endMove: () => {
+        const api = apiRef.current;
+        // Live drag is free-moving; the DROP snaps to the 20 px grid.
+        for (const id of selectedPartsRef.current) {
+          const pp = partsRef.current.find(q => q.id === id);
+          if (pp) api.onMovePart(id, Math.round(pp.x / 20) * 20, Math.round(pp.y / 20) * 20);
+        }
+        setSnapTarget(st => {
+          if (st && st.autoWire) {
+            api.onMovePart(st.autoWire.fromPart, st.snapX, st.snapY);
+            api.onAddWire(st.autoWire.fromPart, st.autoWire.fromTerm, st.autoWire.toPart, st.autoWire.toTerm);
+          }
+          return null;
+        });
+        if (api.onSaveHistory) api.onSaveHistory();
+      },
+      createWire: (from, to) => { apiRef.current.onAddWire(from.partId, from.terminal, to.partId, to.terminal); },
+      wirePreview: (from, toPos) => { setWiringFrom({ part: from.partId, terminal: from.terminal }); setMousePos(toPos); },
+      clearWirePreview: () => { setWiringFrom(null); setMousePos(null); },
+      marqueeRect: (r) => setRubberBand(r ? { startX: r.x1, startY: r.y1, endX: r.x2, endY: r.y2 } : null),
+    };
+    machineRef.current = new InteractionMachine(hit, cb, () => selectedPartsRef.current, (px) => px / zoomRef.current);
+  }
+
+  // The SVG viewBox must span the container's REAL size: with a fixed
+  // 700×500 viewBox and preserveAspectRatio, the SVG letterboxed whenever the
+  // container had any other aspect — every dot, wire and grid line drew
+  // offset from the wokwi parts, and hit positions missed by the same margin.
+  const [containerSize, setContainerSize] = useState({ w: CANVAS_W, h: CANVAS_H });
+  React.useEffect(() => {
+    const el = canvasContainerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      setContainerSize({ w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H });
+    });
+    ro.observe(el);
+    setContainerSize({ w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H });
+    return () => ro.disconnect();
+  }, []);
+
+  const eventToWorld = useCallback((e) => {
+    const r = canvasContainerRef.current.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / zoomRef.current + panRef.current.x,
+             y: (e.clientY - r.top) / zoomRef.current + panRef.current.y };
+  }, []);
+
+  const handlePointerDown = useCallback((e) => {
+    if (e.button === 1) { e.preventDefault(); setPanning(true); panStart.current = { x: e.clientX, y: e.clientY }; return; }
+    if (e.button !== 0) return;
+    if (draggingWaypointRef.current) return;
+    const { x, y } = eventToWorld(e);
+    const m = machineRef.current;
+    if (placingProbeRef.current && apiRef.current.onTerminalClickForProbe) {
+      const t = m.hit.terminalAt(x, y, 14 / zoomRef.current);
+      if (t) apiRef.current.onTerminalClickForProbe(t.partId, t.terminal);
+      return;
+    }
+    const pid = m.hit.partAt(x, y);
+    const pressedPart = pid && partsRef.current.find(pp => pp.id === pid);
+    if (pressedPart && pressedPart.kind === 'button' && apiRef.current.onButtonDown) {
+      pressedButtonRef.current = pid;
+      apiRef.current.onButtonDown(pid);
+    }
+    try { canvasContainerRef.current.setPointerCapture(e.pointerId); } catch { /* non-browser env */ }
+    m.down(x, y, { shiftKey: e.shiftKey });
+  }, [eventToWorld]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (panning && panStart.current) {
+      const dx = (e.clientX - panStart.current.x) / zoomRef.current;
+      const dy = (e.clientY - panStart.current.y) / zoomRef.current;
+      setPan(pp => ({ x: pp.x - dx, y: pp.y - dy }));
+      panStart.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    const { x, y } = eventToWorld(e);
+    if (draggingWaypointRef.current && apiRef.current.onUpdateWire) {
+      const dw = draggingWaypointRef.current;
+      const wire = wiresRef.current.find(w => w.id === dw.wireId);
+      if (wire && wire.waypoints) {
+        apiRef.current.onUpdateWire(wire.id, { waypoints: wire.waypoints.map((wp, i) => (i === dw.index ? { x, y } : wp)) });
+      }
+      return;
+    }
+    const m = machineRef.current;
+    if (pressedButtonRef.current && m.state === 'draggingParts') {
+      if (apiRef.current.onButtonUp) apiRef.current.onButtonUp(pressedButtonRef.current);
+      pressedButtonRef.current = null;
+    }
+    m.move(x, y);
+    const wid = m.hit.wireAt(x, y, 8 / zoomRef.current);
+    const hoverWire = wid ? wiresRef.current.find(w => w.id === wid) : null;
+    setHoveredNet(hoverWire ? hoverWire.netId : null);
+  }, [panning, eventToWorld]);
+
+  const handlePointerUp = useCallback((e) => {
+    if (panning) { setPanning(false); panStart.current = null; return; }
+    if (pressedButtonRef.current) {
+      if (apiRef.current.onButtonUp) apiRef.current.onButtonUp(pressedButtonRef.current);
+      pressedButtonRef.current = null;
+    }
+    if (draggingWaypointRef.current) {
+      setDraggingWaypoint(null);
+      if (apiRef.current.onSaveHistory) apiRef.current.onSaveHistory();
+      return;
+    }
+    const { x, y } = eventToWorld(e);
+    machineRef.current.up(x, y, { shiftKey: e.shiftKey });
+  }, [panning, eventToWorld]);
+
+  const handlePointerCancel = useCallback(() => {
+    machineRef.current.cancel();
+    setPanning(false); panStart.current = null; pressedButtonRef.current = null;
+  }, []);
+
+  // Wheel must be a native non-passive listener: trackpad two-finger scroll
+  // PANS, pinch / ctrl+wheel zooms at the cursor. The old canvas zoomed on
+  // every wheel — trackpad users could never pan at all.
+  React.useEffect(() => {
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const g = classifyWheel(e);
+      if (g.kind === 'pan') {
+        setPan(pp => ({ x: pp.x - g.dx / zoomRef.current, y: pp.y - g.dy / zoomRef.current }));
+      } else {
+        const r = el.getBoundingClientRect();
+        const sx = e.clientX - r.left, sy = e.clientY - r.top;
+        setZoom(z => {
+          const nz = Math.max(0.3, Math.min(3, z * g.factor));
+          const wx = sx / z + panRef.current.x, wy = sy / z + panRef.current.y;
+          setPan({ x: wx - sx / nz, y: wy - sy / nz });
+          return nz;
+        });
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   // Terminal interaction: drag to wire (TinkerCAD-style).
   // Mousedown/touchstart on a terminal starts wiring.
@@ -799,7 +1058,7 @@ export function BoardCanvas({
     }
   }, [parts, wires, wiringFrom, onAddWire]);
 
-  const handleSvgClick = useCallback(() => {
+  const handleSvgClick = useCallback((e) => {
     // Cancel wiring if clicking empty space
     if (wiringFrom) {
       setWiringFrom(null);
@@ -807,14 +1066,19 @@ export function BoardCanvas({
     }
     // Complete rubber-band select
     if (rubberBand) {
-      const x1 = Math.min(rubberBand.startX, rubberBand.endX);
-      const y1 = Math.min(rubberBand.startY, rubberBand.endY);
-      const x2 = Math.max(rubberBand.startX, rubberBand.endX);
-      const y2 = Math.max(rubberBand.startY, rubberBand.endY);
-      if (x2 - x1 > 10 && y2 - y1 > 10) {
-        // Select all parts inside the rectangle
-        const inside = parts.filter(p => p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2);
+      const rx1 = Math.min(rubberBand.startX, rubberBand.endX);
+      const ry1 = Math.min(rubberBand.startY, rubberBand.endY);
+      const rx2 = Math.max(rubberBand.startX, rubberBand.endX);
+      const ry2 = Math.max(rubberBand.startY, rubberBand.endY);
+      if (rx2 - rx1 > 10 && ry2 - ry1 > 10) {
+        // Hit-test bounding boxes, not centres
+        const inside = parts.filter(p => {
+          const bb = getPartBBox(p);
+          return bb.x + bb.w >= rx1 && bb.x <= rx2 && bb.y + bb.h >= ry1 && bb.y <= ry2;
+        });
         if (inside.length > 0) {
+          // Shift = additive (toggle into existing selection); default = replace
+          if (!e?.shiftKey) onSelectPart(null);
           for (const p of inside) onSelectPart(p.id, true);
         }
       }
@@ -852,19 +1116,49 @@ export function BoardCanvas({
       return;
     }
 
+    // Waypoint drag
+    if (draggingWaypoint && onUpdateWire) {
+      const wire = wires.find(w => w.id === draggingWaypoint.wireId);
+      if (wire && wire.waypoints) {
+        const wps = wire.waypoints.map((wp, i) =>
+          i === draggingWaypoint.index ? { x, y } : wp
+        );
+        onUpdateWire(wire.id, { waypoints: wps });
+      }
+    }
+
     if (wiringFrom) {
       setMousePos({ x, y });
     }
     if (dragging) {
-      onMovePart(dragging, x, y);
-      // Check for snap-to-connector
-      const draggedPart = parts.find(p => p.id === dragging);
-      if (draggedPart) {
-        const snap = findSnapTarget({ ...draggedPart, x, y }, parts, wires);
-        setSnapTarget(snap.autoWire ? snap : null);
+      // Group drag: move all selected parts together
+      if (dragStartPos.current) {
+        const dx = x - dragStartPos.current.x;
+        const dy = y - dragStartPos.current.y;
+        dragStartPos.current = { x, y };
+
+        const idsToMove = (selectedParts && selectedParts.size > 0 && selectedParts.has(dragging))
+          ? [...selectedParts]
+          : [dragging];
+
+        for (const id of idsToMove) {
+          const p = parts.find(pp => pp.id === id);
+          if (p) onMovePart(id, p.x + dx, p.y + dy);
+        }
+      } else {
+        dragStartPos.current = { x, y };
+      }
+
+      // Snap-to-connector (only for single-part drag)
+      if (!selectedParts || selectedParts.size <= 1) {
+        const draggedPart = parts.find(p => p.id === dragging);
+        if (draggedPart) {
+          const snap = findSnapTarget({ ...draggedPart, x, y }, parts, wires);
+          setSnapTarget(snap.autoWire ? snap : null);
+        }
       }
     }
-  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom, parts, wires]);
+  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom, parts, wires, draggingWaypoint, onUpdateWire]);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
@@ -907,13 +1201,39 @@ export function BoardCanvas({
         onAddWire(fromPart, fromTerm, toPart, toTerm);
       }
     }
+    if (dragging && onSaveHistory) onSaveHistory();
+    dragStartPos.current = null;
     setDragging(null);
     setSnapTarget(null);
+    setDraggingWaypoint(null);
     setPanning(false);
     panStart.current = null;
-  }, [dragging, snapTarget, onMovePart, onAddWire]);
+  }, [dragging, snapTarget, onMovePart, onAddWire, onSaveHistory]);
 
   const handleKeyDown = useCallback((e) => {
+    // Undo/redo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      if (onUndo) onUndo();
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'Z' || e.key === 'y')) {
+      e.preventDefault();
+      if (onRedo) onRedo();
+    }
+    // Select all
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+      e.preventDefault();
+      if (onSelectAll) onSelectAll();
+    }
+    // R → rotate selected parts
+    if (e.key === 'r' && !e.ctrlKey && !e.metaKey && selectedParts && selectedParts.size > 0 && onRotatePart) {
+      for (const id of selectedParts) onRotatePart(id);
+    }
+    // Ctrl+D → duplicate selected part
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedParts && selectedParts.size > 0 && onDuplicatePart) {
+      e.preventDefault();
+      for (const id of selectedParts) onDuplicatePart(id);
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (selectedWire) {
         onRemoveWire(selectedWire);
@@ -924,6 +1244,7 @@ export function BoardCanvas({
       }
     }
     if (e.key === 'Escape') {
+      if (machineRef.current) machineRef.current.cancel();
       setWiringFrom(null);
       setMousePos(null);
       onSelectPart(null);
@@ -946,18 +1267,68 @@ export function BoardCanvas({
       setZoom(fz);
       setPan({ x: minX - 20, y: minY - 20 });
     }
-    // Arrow keys nudge all selected parts by grid size
+    // Copy/paste
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedParts && selectedParts.size > 0) {
+      e.preventDefault();
+      if (onCopy) onCopy(selectedParts);
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      e.preventDefault();
+      if (onPaste) onPaste();
+    }
+    // H → flip selected part horizontally
+    if (e.key === 'h' && !e.ctrlKey && !e.metaKey && selectedParts && selectedParts.size > 0 && onFlipPart) {
+      for (const id of selectedParts) onFlipPart(id);
+    }
+    // Arrow keys nudge all selected parts (Shift = fine 5px bypass snap)
     if (selectedParts && selectedParts.size > 0 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault();
-      const step = e.shiftKey ? 5 : 20;
+      const fine = e.shiftKey;
+      const step = fine ? 5 : 20;
+      const mover = fine && onNudgePart ? onNudgePart : onMovePart;
       const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
       const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
       for (const id of selectedParts) {
         const part = parts.find(p => p.id === id);
-        if (part) onMovePart(id, part.x + dx, part.y + dy);
+        if (part) mover(id, part.x + dx, part.y + dy);
       }
     }
-  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart]);
+  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onNudgePart, onCopy, onPaste, onFlipPart, onUndo, onRedo, onSelectAll, onRotatePart, onDuplicatePart]);
+
+  // ── Touch support ────────────────────────────────────────────────
+  const canvasContainerRef = useRef(null);
+  const touchHandlers = useTouch({
+    onDrag: useCallback((clientX, clientY) => {
+      const container = canvasContainerRef.current;
+      if (!container) return;
+      if (dragging) {
+        handleSvgMouseMove({ clientX, clientY, currentTarget: container });
+      }
+    }, [dragging, handleSvgMouseMove]),
+    onDragEnd: useCallback(() => {
+      if (dragging) handleDragEnd();
+      if (wiringFrom) { setWiringFrom(null); setMousePos(null); }
+    }, [dragging, wiringFrom, handleDragEnd]),
+    onTap: useCallback((clientX, clientY) => {
+      // Tap on empty space deselects
+      onSelectPart(null);
+      onSelectWire(null);
+    }, [onSelectPart, onSelectWire]),
+    onLongPress: useCallback((clientX, clientY) => {
+      if ((selectedParts && selectedParts.size > 0) || selectedWire) {
+        setContextMenu({
+          x: clientX, y: clientY,
+          type: (selectedParts && selectedParts.size === 1) ? 'part' : selectedWire ? 'wire' : 'part',
+        });
+      }
+    }, [selectedParts, selectedWire]),
+    onPinch: useCallback((scale) => {
+      setZoom(z => Math.max(0.3, Math.min(3, z * scale)));
+    }, []),
+    onPan: useCallback((dx, dy) => {
+      setPan(p => ({ x: p.x - dx / zoom, y: p.y - dy / zoom }));
+    }, [zoom]),
+  });
 
   return (
     <div
@@ -998,14 +1369,14 @@ export function BoardCanvas({
               <button onClick={() => onRotatePart(selectedPart)}
                 title="Rotate (R)"
                 style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #3498db', borderRadius: '3px', color: '#3498db', fontSize: '9px', cursor: 'pointer' }}>
-                R
+                ↻ Rotate
               </button>
             )}
             {selectedPart && onDuplicatePart && (
               <button onClick={() => onDuplicatePart(selectedPart)}
                 title="Duplicate (Ctrl+D)"
                 style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #2ecc71', borderRadius: '3px', color: '#2ecc71', fontSize: '9px', cursor: 'pointer' }}>
-                D
+                ⧉ Duplicate
               </button>
             )}
             <button onClick={() => {
@@ -1014,7 +1385,7 @@ export function BoardCanvas({
             }}
               title="Delete (Del)"
               style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: '3px', color: '#e74c3c', fontSize: '9px', cursor: 'pointer' }}>
-              Del
+              ✕ Delete
             </button>
           </>
         )}
@@ -1032,6 +1403,8 @@ export function BoardCanvas({
 
       {/* Canvas — fills container, minimum 700×500 */}
       <div
+        ref={canvasContainerRef}
+        data-canvas
         style={{
           position: 'relative',
           width: '100%',
@@ -1042,30 +1415,16 @@ export function BoardCanvas({
           borderRadius: '8px',
           border: '1px solid #2c3e50',
           overflow: 'hidden',
+          touchAction: 'none',
         }}
-        onMouseMove={handleSvgMouseMove}
-        onMouseUp={handleDragEnd}
-        onMouseDown={handleMouseDown}
-        onWheel={handleWheel}
-        onTouchMove={(e) => {
-          if (e.touches.length === 1 && (dragging || wiringFrom)) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            // Reuse the mouse handler with a synthetic event shape
-            handleSvgMouseMove({
-              clientX: touch.clientX,
-              clientY: touch.clientY,
-              currentTarget: e.currentTarget,
-            });
-          }
-        }}
-        onTouchEnd={(e) => {
-          if (dragging) handleDragEnd();
-          if (wiringFrom && e.changedTouches.length === 1) {
-            // If touch ended not on a terminal, cancel wiring
-            setWiringFrom(null);
-            setMousePos(null);
-          }
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onDoubleClick={(e) => {
+          const { x, y } = eventToWorld(e);
+          const pid = machineRef.current.hit.partAt(x, y);
+          if (pid) setInlineEdit({ partId: pid, x: e.clientX, y: e.clientY });
         }}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
         onDrop={(e) => {
@@ -1079,24 +1438,25 @@ export function BoardCanvas({
         }}
         onContextMenu={(e) => {
           e.preventDefault();
-          // Right-click context menu
-          if ((selectedParts && selectedParts.size > 0) || selectedWire) {
-            setContextMenu({
-              x: e.clientX,
-              y: e.clientY,
-              type: selectedPart ? 'part' : 'wire',
-            });
+          // Right-click selects what is under the cursor, then opens the menu.
+          const { x, y } = eventToWorld(e);
+          const pid = machineRef.current.hit.partAt(x, y);
+          if (pid && !(selectedParts && selectedParts.has(pid))) {
+            onSelectPart(null); onSelectPart(pid, true);
+          }
+          const wid = !pid ? machineRef.current.hit.wireAt(x, y, 8 / zoomRef.current) : null;
+          if (wid) onSelectWire(wid);
+          if (pid || wid || (selectedParts && selectedParts.size > 0) || selectedWire) {
+            setContextMenu({ x: e.clientX, y: e.clientY, type: (pid || selectedPart) ? 'part' : 'wire' });
           }
         }}
       >
         <svg
           width="100%"
           height="100%"
-          viewBox={`${pan.x} ${pan.y} ${CANVAS_W / zoom} ${CANVAS_H / zoom}`}
-          preserveAspectRatio="xMidYMid meet"
+          viewBox={`${pan.x} ${pan.y} ${containerSize.w / zoom} ${containerSize.h / zoom}`}
+          preserveAspectRatio="none"
           style={{ position: 'absolute', top: 0, left: 0 }}
-          onClick={handleSvgClick}
-          onMouseDown={handleSvgMouseDown}
         >
           <defs>
             <pattern id="grid" width={20} height={20} patternUnits="userSpaceOnUse">
@@ -1146,7 +1506,9 @@ export function BoardCanvas({
           <Wires wires={wires} parts={parts}
             selectedWire={selectedWire} onSelectWire={onSelectWire}
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
-            nodeVoltages={nodeVoltages} />
+            nodeVoltages={nodeVoltages}
+            onUpdateWire={onUpdateWire} screenToCanvas={screenToCanvas}
+            setDraggingWaypoint={setDraggingWaypoint} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
 
           {/* Teaching annotations from inference */}
@@ -1330,6 +1692,16 @@ export function BoardCanvas({
           }}
           onRotate={() => {
             if (selectedPart && onRotatePart) onRotatePart(selectedPart);
+            setContextMenu(null);
+          }}
+          onFlip={() => {
+            if (selectedPart && onFlipPart) onFlipPart(selectedPart);
+            setContextMenu(null);
+          }}
+          onSetWireColor={(color) => {
+            if (selectedWire && onUpdateWire) {
+              onUpdateWire(selectedWire, { color: color || undefined });
+            }
             setContextMenu(null);
           }}
         />

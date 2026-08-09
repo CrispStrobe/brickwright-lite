@@ -175,6 +175,19 @@ export class Circuit {
   }
 
   /**
+   * Flip a part horizontally (mirror).
+   * @param {string} partId
+   * @returns {boolean}
+   */
+  flipPart(partId) {
+    const part = this.getPart(partId);
+    if (!part) return false;
+    part.flipped = !part.flipped;
+    this._saveHistory();
+    return true;
+  }
+
+  /**
    * Duplicate a part at an offset position.
    * @param {string} partId
    * @param {number} [offsetX=40]
@@ -184,7 +197,20 @@ export class Circuit {
   duplicatePart(partId, offsetX = 40, offsetY = 40) {
     const src = this.getPart(partId);
     if (!src) return null;
-    return this.addPart(src.kind, { ...src.params }, src.x + offsetX, src.y + offsetY);
+    // Uniquify declName: led1 → led2, pot1 → pot2, etc.
+    let declName;
+    if (src.declName) {
+      const existing = new Set(this.parts.map(p => p.declName).filter(Boolean));
+      const base = src.declName.replace(/\d+$/, '');
+      for (let i = 1; ; i++) {
+        const candidate = base + i;
+        if (!existing.has(candidate)) { declName = candidate; break; }
+      }
+    }
+    const dup = this.addPart(src.kind, { ...src.params }, src.x + offsetX, src.y + offsetY, declName);
+    if (dup && src.rotation) dup.rotation = src.rotation;
+    if (dup && src.flipped) dup.flipped = src.flipped;
+    return dup;
   }
 
   /**
@@ -275,6 +301,21 @@ export class Circuit {
     if (idx === -1) return false;
     this.wires.splice(idx, 1);
     this._syncNetlist();
+    this._saveHistory();
+    return true;
+  }
+
+  /**
+   * Update wire properties (e.g. color, waypoints).
+   * Does not trigger netlist rebuild — these are visual-only.
+   * @param {string} wireId
+   * @param {object} props — merged onto the wire
+   * @returns {boolean}
+   */
+  updateWire(wireId, props) {
+    const wire = this.wires.find(w => w.id === wireId);
+    if (!wire) return false;
+    Object.assign(wire, props);
     this._saveHistory();
     return true;
   }
@@ -405,7 +446,7 @@ export class Circuit {
    */
   _syncNetlist() {
     // Parts for the engine (strip layout fields, exclude UI-only parts like meters)
-    const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'ledcube').map(p => ({
+    const engineParts = this.parts.filter(p => p.kind !== 'meter').map(p => ({
       id: p.id,
       kind: p.kind,
       params: p.params,
@@ -431,13 +472,43 @@ export class Circuit {
       });
     }
 
+    // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
+    const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
+
     this.board = new this._BoardImpl(this.vcc);
     try {
       this.board.setNetlist(engineParts, engineNets);
+      // Restore engine state if possible (surviving parts keep their state)
+      if (prevSnap && this.board.restore) {
+        this.board.restore(prevSnap);
+      }
     } catch {
       // Partial circuit (e.g. VCC without GND) — engine validation
       // rejects incomplete netlists. This is fine during construction;
       // the next addPart/addWire will try again.
+    }
+  }
+
+  /**
+   * Sync the engine with externally-provided nets (e.g. from the breadboard model).
+   * Uses the same parts filtering as _syncNetlist but replaces wire-derived nets.
+   * @param {Array<{id: string, terminals: Array<{part: string, terminal: string}>}>} nets
+   */
+  syncWithExternalNets(nets) {
+    const engineParts = this.parts.filter(p => p.kind !== 'meter').map(p => ({
+      id: p.id,
+      kind: p.kind,
+      params: p.params,
+      terminals: p.terminals,
+    }));
+
+    const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
+    this.board = new this._BoardImpl(this.vcc);
+    try {
+      this.board.setNetlist(engineParts, nets);
+      if (prevSnap && this.board.restore) this.board.restore(prevSnap);
+    } catch {
+      // Incomplete breadboard wiring — expected during construction
     }
   }
 
@@ -484,7 +555,7 @@ function terminalsForKind(kind, params) {
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
     case 'meter': return ['probe_a', 'probe_b'];
-    case 'ledcube': return [
+    case 'led_cube': return [
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),
       ...Array.from({length: 8}, (_, i) => `data_${i}`),
     ];

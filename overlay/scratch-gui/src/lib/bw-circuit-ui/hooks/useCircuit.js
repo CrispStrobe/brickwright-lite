@@ -55,6 +55,12 @@ export function useCircuit(vcc = 5.0) {
     return ok;
   }, [circuit, bump]);
 
+  const flipPart = useCallback((partId) => {
+    const ok = circuit.flipPart(partId);
+    if (ok) bump();
+    return ok;
+  }, [circuit, bump]);
+
   const updateParams = useCallback((partId, newParams) => {
     const ok = circuit.updateParams(partId, newParams);
     if (ok) bump();
@@ -69,6 +75,12 @@ export function useCircuit(vcc = 5.0) {
 
   const removeWire = useCallback((wireId) => {
     const ok = circuit.removeWire(wireId);
+    if (ok) bump();
+    return ok;
+  }, [circuit, bump]);
+
+  const updateWire = useCallback((wireId, props) => {
+    const ok = circuit.updateWire(wireId, props);
     if (ok) bump();
     return ok;
   }, [circuit, bump]);
@@ -136,6 +148,15 @@ export function useCircuit(vcc = 5.0) {
     if (circuit.redo()) bump();
   }, [circuit, bump]);
 
+  const saveHistory = useCallback(() => {
+    circuit._saveHistory();
+  }, [circuit]);
+
+  const syncWithExternalNets = useCallback((nets) => {
+    circuit.syncWithExternalNets(nets);
+    bump();
+  }, [circuit, bump]);
+
   // Read-only accessors — these read from the engine, never fabricate.
   const ledBrightness = useCallback((partId) => {
     return circuit.ledBrightness(partId);
@@ -162,9 +183,11 @@ export function useCircuit(vcc = 5.0) {
     movePart,
     duplicatePart,
     rotatePart,
+    flipPart,
     updateParams,
     addWire,
     removeWire,
+    updateWire,
     setControl,
     setPin,
     advanceTo,
@@ -173,6 +196,8 @@ export function useCircuit(vcc = 5.0) {
     loadInferred,
     undo,
     redo,
+    saveHistory,
+    syncWithExternalNets,
     canUndo: circuit.history.canUndo,
     canRedo: circuit.history.canRedo,
 

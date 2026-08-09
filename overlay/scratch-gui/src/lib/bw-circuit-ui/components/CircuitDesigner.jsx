@@ -39,6 +39,9 @@ import { generatePartName, circuitToDeclarations } from '../model/declarations.j
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
+import { BreadboardView } from './BreadboardView.jsx';
+import { BreadboardModel } from '../model/breadboard.js';
+import { FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -52,10 +55,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const projectData = project || stc;
   const {
     parts, wires, powered, rev,
-    addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
-    addWire, removeWire,
+    addPart, removePart, movePart, duplicatePart, rotatePart, flipPart, updateParams,
+    addWire, removeWire, updateWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
-    loadInferred, undo, redo, canUndo, canRedo,
+    loadInferred, undo, redo, canUndo, canRedo, saveHistory,
     ledBrightness, buzzerTone, nodeVoltage,
     circuit,
   } = useCircuit(5.0);
@@ -104,8 +107,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setSelectedWire(null);
   }, []);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
+  const [viewMode, setViewMode] = useState('schematic'); // 'schematic' | 'breadboard'
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+
+  // Breadboard model (persistent across renders)
+  const breadboardRef = useRef(new BreadboardModel());
+  const [bbRev, setBbRev] = useState(0);
+  const bbBump = useCallback(() => setBbRev(r => r + 1), []);
+  const [bbPendingPart, setBbPendingPart] = useState(null); // { kind, params } waiting for hole click
+  const [bbGhost, setBbGhost] = useState(null); // { kind, leadMap } preview
+  const [bbWiringFrom, setBbWiringFrom] = useState(null); // hole id for wire start
+  const [bbWireColor, setBbWireColor] = useState('#333'); // default jumper color
+  const bbWireIdRef = useRef(0);
 
   const [annotations, setAnnotations] = useState([]);
 
@@ -116,7 +130,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // Sample pin states for cube when renderState updates
   useEffect(() => {
     if (!renderState || !renderState.pins) return;
-    const hasCube = parts.some(p => p.kind === 'ledcube');
+    const hasCube = parts.some(p => p.kind === 'led_cube');
     if (!hasCube) return;
 
     cubeScanRef.current.sample(renderState.timeNs || 0n, renderState.pins);
@@ -124,7 +138,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // Build cubeScans map for all cube parts
     const scans = {};
     for (const p of parts) {
-      if (p.kind === 'ledcube') scans[p.id] = history;
+      if (p.kind === 'led_cube') scans[p.id] = history;
     }
     setCubeScans(scans);
   }, [renderState, parts]);
@@ -268,6 +282,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   // ── Part placement — find empty space ────────────────────────────
   const handleAddPart = useCallback((kind, params) => {
+    // In breadboard mode, defer to click-to-place flow
+    if (viewMode === 'breadboard' && FOOTPRINTS[kind]) {
+      setBbPendingPart({ kind, params });
+      return;
+    }
     // Find a position that doesn't overlap existing parts
     const occupied = parts.map(p => ({ x: p.x, y: p.y }));
     let x = 200, y = 200;
@@ -293,12 +312,74 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const existingNames = parts.filter(p => p.declName).map(p => p.declName);
     const declName = declarable.includes(kind) ? generatePartName(kind, existingNames) : undefined;
     addPart(kind, params, x, y, declName);
-  }, [addPart, parts]);
+  }, [addPart, parts, viewMode]);
 
-  // Snap-to-grid on move
+  // Snap-to-grid on move (drag)
   const handleMovePart = useCallback((partId, x, y) => {
     movePart(partId, snapToGrid(x), snapToGrid(y));
   }, [movePart]);
+
+  // Raw move without snap (fine nudge with Shift+arrow)
+  const handleNudgePart = useCallback((partId, x, y) => {
+    movePart(partId, x, y);
+  }, [movePart]);
+
+  // ── Copy/paste ────────────────────────────────────────────────────
+  const clipboardRef = useRef(null);
+
+  const handleCopy = useCallback((partIds) => {
+    if (!partIds || partIds.size === 0) return;
+    const idSet = partIds instanceof Set ? partIds : new Set(partIds);
+    const copiedParts = parts.filter(p => idSet.has(p.id)).map(p => ({ ...p, params: { ...p.params } }));
+    // Wires where both ends are in the copied set
+    const copiedWires = wires.filter(w => idSet.has(w.from.part) && idSet.has(w.to.part))
+      .map(w => ({ ...w, from: { ...w.from }, to: { ...w.to } }));
+    clipboardRef.current = { parts: copiedParts, wires: copiedWires };
+  }, [parts, wires]);
+
+  const handlePaste = useCallback(() => {
+    if (!clipboardRef.current) return;
+    const { parts: srcParts, wires: srcWires } = clipboardRef.current;
+    if (srcParts.length === 0) return;
+
+    const OFFSET = 40;
+    const idMap = new Map(); // old id → new id
+    const newIds = [];
+
+    for (const src of srcParts) {
+      const existingNames = parts.map(p => p.declName).filter(Boolean);
+      let declName;
+      if (src.declName) {
+        const base = src.declName.replace(/\d+$/, '');
+        for (let i = 1; ; i++) {
+          const candidate = base + i;
+          if (!existingNames.includes(candidate) && ![...idMap.values()].some((_, idx) => srcParts[idx]?.declName === candidate)) {
+            declName = candidate;
+            existingNames.push(candidate);
+            break;
+          }
+        }
+      }
+      const p = addPart(src.kind, { ...src.params }, snapToGrid(src.x + OFFSET), snapToGrid(src.y + OFFSET), declName);
+      if (p) {
+        if (src.rotation) p.rotation = src.rotation;
+        idMap.set(src.id, p.id);
+        newIds.push(p.id);
+      }
+    }
+
+    // Re-create internal wires with new IDs
+    for (const w of srcWires) {
+      const fromId = idMap.get(w.from.part);
+      const toId = idMap.get(w.to.part);
+      if (fromId && toId) {
+        addWire(fromId, w.from.terminal, toId, w.to.terminal);
+      }
+    }
+
+    // Select the pasted parts
+    setSelectedParts(new Set(newIds));
+  }, [parts, addPart, addWire, setSelectedParts]);
 
   // Node voltages and warnings from getRenderState (if available)
   const nodeVoltages = {};
@@ -366,34 +447,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setMode('build');
   }, [circuit]);
 
-  // Keyboard shortcuts
-  const handleKeyDown = useCallback((e) => {
-    // Ctrl+Z / Cmd+Z → undo
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-      e.preventDefault();
-      undo();
-    }
-    // Ctrl+Shift+Z / Ctrl+Y → redo
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'Z' || e.key === 'y')) {
-      e.preventDefault();
-      redo();
-    }
-    // Ctrl+A → select all parts
-    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-      e.preventDefault();
-      setSelectedParts(new Set(parts.map(p => p.id)));
-    }
-    // R → rotate selected part
-    if (e.key === 'r' && !e.ctrlKey && !e.metaKey && selectedPart) {
-      rotatePart(selectedPart);
-    }
-    // Ctrl+D → duplicate selected part
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedPart) {
-      e.preventDefault();
-      const dup = duplicatePart(selectedPart);
-      if (dup) handleSelectPart(dup.id);
-    }
-  }, [undo, redo, rotatePart, duplicatePart, selectedPart]);
+  // All keyboard shortcuts are handled by BoardCanvas (single focus scope).
+  const handleUndo = useCallback(() => undo(), [undo]);
+  const handleRedo = useCallback(() => redo(), [redo]);
+  const handleSelectAll = useCallback(() => {
+    setSelectedParts(new Set(parts.map(p => p.id)));
+  }, [parts]);
 
   // What this board IS right now. `LIVE` was shown for any attached board,
   // which is wrong the moment the debugger halts: the pins stop moving and the
@@ -445,8 +504,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         fontFamily: 'system-ui, -apple-system, sans-serif',
         overflow: 'hidden',
       }}
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
     >
       {/* Left sidebar — collapsible */}
       {leftOpen ? (
@@ -503,6 +560,123 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
+        {/* View mode toggle */}
+        <div style={{
+          display: 'flex', gap: '4px', marginBottom: '4px',
+        }}>
+          {['schematic', 'breadboard'].map(vm => (
+            <button key={vm} onClick={() => setViewMode(vm)} style={{
+              background: viewMode === vm ? '#3498db' : '#1a1a2e',
+              color: viewMode === vm ? '#fff' : '#7f8c8d',
+              border: '1px solid #2c3e50', borderRadius: '4px',
+              padding: '4px 10px', cursor: 'pointer',
+              fontFamily: 'monospace', fontSize: '11px',
+            }}>{vm === 'schematic' ? 'Schematic' : 'Breadboard'}</button>
+          ))}
+        </div>
+
+        {viewMode === 'breadboard' ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            {/* Breadboard toolbar */}
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '4px', alignItems: 'center' }}>
+              <button onClick={() => {
+                setBbPendingPart(null); setBbGhost(null);
+                setBbWiringFrom(bbWiringFrom ? null : 'WAITING');
+              }} style={{
+                background: bbWiringFrom ? '#e67e22' : '#1a1a2e', border: '1px solid #2c3e50',
+                borderRadius: '4px', padding: '4px 10px', cursor: 'pointer',
+                fontFamily: 'monospace', fontSize: '11px',
+                color: bbWiringFrom ? '#fff' : '#7f8c8d',
+              }}>Jumper wire</button>
+              {bbWiringFrom && bbWiringFrom !== 'WAITING' && (
+                <span style={{ color: '#e67e22', fontFamily: 'monospace', fontSize: '11px' }}>
+                  from {bbWiringFrom} → click destination
+                </span>
+              )}
+              {bbWiringFrom === 'WAITING' && (
+                <span style={{ color: '#e67e22', fontFamily: 'monospace', fontSize: '11px' }}>
+                  click first hole
+                </span>
+              )}
+              {/* Wire color picker */}
+              {bbWiringFrom && (
+                <div style={{ display: 'flex', gap: '2px', marginLeft: '8px' }}>
+                  {[['#e74c3c', '+'], ['#1a1a1a', 'G'], ['#2ecc71', ''], ['#3498db', ''], ['#f1c40f', ''], ['#ecf0f1', '']].map(([c, label]) => (
+                    <button key={c} onClick={() => setBbWireColor(c)} style={{
+                      width: 16, height: 16, borderRadius: 2,
+                      background: c, border: bbWireColor === c ? '2px solid #f1c40f' : '1px solid #555',
+                      cursor: 'pointer',
+                    }} title={label || c} />
+                  ))}
+                </div>
+              )}
+            </div>
+            {bbPendingPart && (
+              <div style={{
+                padding: '6px 12px', background: '#1a1a2e', border: '1px solid #3498db',
+                borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', color: '#3498db',
+                marginBottom: '4px',
+              }}>
+                Click a hole to place {bbPendingPart.kind} — Esc to cancel
+              </div>
+            )}
+            <BreadboardView
+              model={breadboardRef.current}
+              notes={(() => { try { return breadboardRef.current.deriveNets().notes; } catch { return []; } })()}
+              placingPart={bbGhost}
+              onHoverHole={(holeId) => {
+                if (!bbPendingPart || !holeId) { setBbGhost(null); return; }
+                const fp = FOOTPRINTS[bbPendingPart.kind];
+                if (!fp) { setBbGhost(null); return; }
+                try {
+                  const leadMap = computeLeadMap(fp, holeId);
+                  setBbGhost({ kind: bbPendingPart.kind, leadMap });
+                } catch {
+                  setBbGhost(null);
+                }
+              }}
+              onClickHole={(holeId) => {
+                // Jumper wire mode
+                if (bbWiringFrom === 'WAITING') {
+                  setBbWiringFrom(holeId);
+                  return;
+                }
+                if (bbWiringFrom) {
+                  try {
+                    const wireId = `jmp_${bbWireIdRef.current++}`;
+                    breadboardRef.current.addWire(wireId, bbWiringFrom, holeId, bbWireColor);
+                    bbBump();
+                  } catch (err) {
+                    console.warn('Wire:', err.message);
+                  }
+                  setBbWiringFrom(null);
+                  return;
+                }
+                if (!bbPendingPart) return;
+                const fp = FOOTPRINTS[bbPendingPart.kind];
+                if (!fp) return;
+                try {
+                  const leadMap = computeLeadMap(fp, holeId);
+                  const declarable = ['led', 'buzzer', 'button', 'potentiometer'];
+                  const existingNames = parts.filter(p => p.declName).map(p => p.declName);
+                  const declName = declarable.includes(bbPendingPart.kind)
+                    ? generatePartName(bbPendingPart.kind, existingNames) : undefined;
+                  const p = addPart(bbPendingPart.kind, bbPendingPart.params || {}, 0, 0, declName);
+                  if (p) {
+                    breadboardRef.current.occupy(p.id, leadMap);
+                    bbBump();
+                  }
+                  setBbPendingPart(null);
+                  setBbGhost(null);
+                } catch (err) {
+                  // Surface placement error as teaching
+                  console.warn('Placement:', err.message);
+                }
+              }}
+              onEscape={() => { setBbPendingPart(null); setBbGhost(null); setBbWiringFrom(null); }}
+            />
+          </div>
+        ) : (
         <BoardCanvas
           parts={parts}
           wires={wires}
@@ -513,6 +687,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRemoveWire={removeWire}
           onRemovePart={removePart}
           onMovePart={handleMovePart}
+          onNudgePart={handleNudgePart}
           onSelectPart={handleSelectPart}
           selectedPart={selectedPart}
           selectedParts={selectedParts}
@@ -526,6 +701,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onTerminalClickForProbe={handleTerminalClickForProbe}
           onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) handleSelectPart(dup.id); }}
           onRotatePart={rotatePart}
+          onFlipPart={flipPart}
           onDropPart={(kind, params, x, y) => {
             const declarable = ['led', 'buzzer', 'button', 'potentiometer'];
             const existingNames = parts.filter(p => p.declName).map(p => p.declName);
@@ -538,7 +714,15 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           annotations={annotations}
           cubeScans={cubeScans}
           onUpdateParams={updateParams}
+          onSaveHistory={saveHistory}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onUpdateWire={updateWire}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onSelectAll={handleSelectAll}
         />
+        )}
 
         {/* Engine warnings — teaching feedback */}
         {warnings.length > 0 && (
