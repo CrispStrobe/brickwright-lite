@@ -16,6 +16,19 @@
 //     `#define FOSC_HZ`, directions from how each pin is used. Everything inferred rather
 //     than known is reported in `warnings` — this never guesses silently.
 //
+// The Arduino/AVR core vocabulary. Present in order to be REFUSED by name:
+// these are library calls, not functions defined in the file, so the
+// custom-block fallback below would invent a block for each one.
+// `delay()` is NOT here: it already translates correctly to a wait, and
+// refusing something the reader handles would be a regression dressed as
+// caution. Nor are `setup`/`loop`, which are functions defined in the file and
+// so are legitimately procedures.
+const ARDUINO_CORE = new Set([
+    'pinMode', 'digitalWrite', 'digitalRead', 'analogRead', 'analogWrite',
+    'delayMicroseconds', 'tone', 'noTone', 'shiftOut', 'shiftIn',
+    'attachInterrupt', 'analogReference', 'pulseIn',
+]);
+
 // Deliberately a subset. C that does not map onto Scratch blocks (pointers, structs, arrays,
 // bit fiddling on whole ports) is dropped with a warning rather than mistranslated.
 
@@ -209,7 +222,13 @@ class ExprParser {
     }
 
     unary () {
-        if (this.c.eat('!')) { const x = this.unary(); return { text: `not ${wrap(x, 99)}`, level: 99 }; }
+        if (this.c.eat('!')) {
+            const x = this.unary();
+            // Collapse `!(!expr)` → expr. Arises from active-low pins: `!P1_0` = `not read led`,
+            // `!(!P1_0)` should be `read led`, not `not not read led`.
+            if (x.text.startsWith('not ')) return { text: x.text.slice(4), level: x.level };
+            return { text: `not ${wrap(x, 99)}`, level: 99 };
+        }
         if (this.c.eat('~')) { const x = this.unary(); return { text: `bitnot ${wrap(x, 99)}`, level: 99 }; }
         if (this.c.eat('-')) { const x = this.unary(); return { text: `-${wrap(x, 99)}`, level: 99 }; }
         if (this.c.eat('+')) return this.unary();
@@ -336,14 +355,31 @@ export default function cToPseudocode (source, opts = {}) {
     const pre = preprocess(stripped, opts.headers || {}, warn);
 
     // ---- device + clock ----
+    // 11.0592 MHz is an 8051 crystal, chosen because it divides into exact
+    // baud rates. It is not a sensible default for a board that has never
+    // seen one, which is why the device gets to change it.
+    let defaultClock = 11059200;
     let device = markers && markers.device;
+    // A source can now be for a board this front end does not read. Naming the
+    // device correctly and saying so is the whole point: assuming STC12 for an
+    // Arduino sketch produced a confident DEVICE STC12C5A60S2 and a body of
+    // invented statements, which is the one outcome this file exists to avoid.
+    const foreign = pre.includes.find((i) =>
+        /^(arduino\.h|avr\/io\.h)$/i.test(i.name.replace(/^.*?(avr\/io\.h)$/i, '$1')));
     if (!device) {
         const inc = pre.includes.find((i) => /^(stc12|8052|8051)\.h$/i.test(i.name.split('/').pop()));
         const head = inc ? inc.name.split('/').pop().toLowerCase() : null;
-        device = head === '8052.h' || head === '8051.h' ? 'stc89c52rc' : 'stc12c5a60s2';
-        if (head === 'stc12.h') warn(`<stc12.h> serves several parts — assuming DEVICE ${device.toUpperCase()}; set it explicitly if that is wrong`);
-        else if (head) warn(`inferred DEVICE ${device.toUpperCase()} from <${head}>`);
-        else warn(`no register header found — assuming DEVICE ${device.toUpperCase()}`);
+        if (foreign) {
+            const which = /arduino\.h/i.test(foreign.name);
+            device = which ? 'arduino-uno' : 'atmega328p';
+            defaultClock = 16000000;    // not an 8051 crystal
+            warn(`inferred DEVICE ${device.toUpperCase()} from <${foreign.name}> — but this front end reads the 8051 subset only, so the body below is not translated`);
+        } else {
+            device = head === '8052.h' || head === '8051.h' ? 'stc89c52rc' : 'stc12c5a60s2';
+            if (head === 'stc12.h') warn(`<stc12.h> serves several parts — assuming DEVICE ${device.toUpperCase()}; set it explicitly if that is wrong`);
+            else if (head) warn(`inferred DEVICE ${device.toUpperCase()} from <${head}>`);
+            else warn(`no register header found — assuming DEVICE ${device.toUpperCase()}`);
+        }
     }
     let clock = markers && markers.clock;
     if (!clock) {
@@ -354,7 +390,7 @@ export default function cToPseudocode (source, opts = {}) {
             }
         }
         if (clock) warn(`inferred CLOCK ${clock} from a #define`);
-        else { clock = 11059200; warn('no clock #define found — assuming CLOCK 11059200'); }
+        else { clock = defaultClock; warn(`no clock #define found — assuming CLOCK ${defaultClock}`); }
     }
 
     // ---- pins ----
@@ -438,7 +474,7 @@ export default function cToPseudocode (source, opts = {}) {
             if (/^-?\d+$/.test(lit)) return lit;
             if (/^0x[0-9a-f]+$/i.test(lit)) return String(parseInt(lit, 16));
             const pin = byName.get(id) || pins.get(lit);
-            if (pin) return `read ${pin.name}`;
+            if (pin) return pin.activeLow ? `not read ${pin.name}` : `read ${pin.name}`;
             const n = varName(id);
             usedVars.add(n);
             return n;
@@ -720,24 +756,28 @@ export default function cToPseudocode (source, opts = {}) {
                         else if (cur.k[si].v === ')') pDepth--;
                         else if (cur.k[si].v === '?' && pDepth === 0) { hasQ = true; break; }
                     }
-                    if (hasQ && !SFRS.test(name)) {
-                        // Parse cond, then, else separately so we can expand to if/else.
-                        // Suppress the ternary warning during this parse — we handle it.
+                    const qPin = byName.get(name) || pins.get(expand(name, pre.defines));
+                    if (hasQ && (qPin || !SFRS.test(name))) {
                         const origWarn = ctx.warn;
-                        let ternaryWarned = false;
-                        ctx.warn = (m) => { if (/ternary/.test(m)) ternaryWarned = true; else origWarn(m); };
+                        ctx.warn = (m) => { if (!/ternary/.test(m)) origWarn(m); };
                         cur.i = scan;
-                        const condExpr = new ExprParser(cur, ctx).parse(1);  // parse above ternary level
+                        const condExpr = new ExprParser(cur, ctx).parse(1);
                         if (cur.eat('?')) {
                             const thenExpr = new ExprParser(cur, ctx).parse(0);
                             cur.eat(':');
                             const elseExpr = new ExprParser(cur, ctx).parse(0);
                             cur.eat(';');
                             const pin = byName.get(name) || pins.get(expand(name, pre.defines));
+                            ctx.warn = origWarn;
+                            // Emitter pattern: `PIN = (expr) ? 1 : 0` → `set pin to expr`.
+                            // The ternary clamps to 0/1 for the physical bit; the condition
+                            // IS the computed value the user wrote.
+                            if (pin && thenExpr.text === '1' && elseExpr.text === '0') {
+                                return [`${pad}set ${pin.name} to ${condExpr.text}`];
+                            }
                             const target = pin ? pin.name : varName(name);
                             if (!pin) usedVars.add(target);
                             const setCmd = pin ? (v) => pinWrite(pin, v) : (v) => `set ${target} to ${v}`;
-                            ctx.warn = origWarn;
                             return [
                                 `${pad}IF ${condExpr.text} THEN:`,
                                 `${'  '.repeat(depth + 1)}${setCmd(thenExpr.text)}`,
@@ -745,7 +785,6 @@ export default function cToPseudocode (source, opts = {}) {
                                 `${'  '.repeat(depth + 1)}${setCmd(elseExpr.text)}`
                             ];
                         }
-                        // Fallback: `?` not where expected, restore and parse normally.
                         ctx.warn = origWarn;
                         cur.i = scan;
                     }
@@ -790,16 +829,56 @@ export default function cToPseudocode (source, opts = {}) {
     const origReadCall = ctx.readCall;
     ctx.readCall = (name, args) => {
         if (DELAYS.has(name)) {
-            const ms = Number(args[0] ? args[0].text : 0);
-            const secs = Number.isFinite(ms) ? +(ms / 1000).toFixed(6) : null;
-            return { text: '0', level: 99, stmt: secs === null ? `wait ${args[0].text} ms` : `wait ${secs} seconds` };
+            const argText = args[0] ? args[0].text : '0';
+            const ms = Number(argText);
+            if (Number.isFinite(ms)) {
+                const secs = +(ms / 1000).toFixed(6);
+                return { text: '0', level: 99, stmt: `wait ${secs} seconds` };
+            }
+            // The emitter writes `delay_ms((unsigned int)((secs) * 1000))` for a
+            // variable wait. Detect `(EXPR) * 1000` and recover `wait EXPR seconds`.
+            const mulMatch = argText.match(/^\((.+)\) \* 1000$/);
+            if (mulMatch) return { text: '0', level: 99, stmt: `wait ${mulMatch[1]} seconds` };
+            // Also handle `EXPR * 1000` without outer parens.
+            const mulMatch2 = argText.match(/^(.+) \* 1000$/);
+            if (mulMatch2) return { text: '0', level: 99, stmt: `wait (${mulMatch2[1]}) seconds` };
+            return { text: '0', level: 99, stmt: `wait ${argText} ms` };
         }
         if (SETUP.has(name) || name === '_nop_' || name === 'NOP' || name === '__nop') return { text: '0', level: 99, stmt: null };
+        // LED cube kernel functions → cube pseudocode commands.
+        if (name === 'bw_cube_clear') return { text: '0', level: 99, stmt: 'clear cube' };
+        if (name === 'bw_cube_hold' || name === 'bw_cube_scan') {
+            return { text: '0', level: 99, stmt: `hold frame for ${args[0] ? args[0].text : 0} ms` };
+        }
+        if (name === 'bw_cube_set' && args.length >= 4) {
+            return { text: '0', level: 99, stmt: `set voxel ${args[0].text} ${args[1].text} ${args[2].text} to ${args[3].text}` };
+        }
+        if (name === 'bw_cube_fill_layer' && args.length >= 2) {
+            return { text: '0', level: 99, stmt: `fill layer ${args[0].text} with ${args[1].text}` };
+        }
+        if (name === 'bw_cube_shift' && args.length >= 1) {
+            // Direction table: index → name. Must agree with the emitter's
+            // { up: 0, down: 1, left: 2, right: 3, forward: 4, back: 5 }.
+            const CUBE_DIRS = ['up', 'down', 'left', 'right', 'forward', 'back'];
+            const dir = CUBE_DIRS[Number(args[0].text)] || args[0].text;
+            return { text: '0', level: 99, stmt: `shift cube ${dir}` };
+        }
+        if (name === 'bw_cube_get' && args.length >= 3) {
+            return { text: `voxel ${args[0].text} ${args[1].text} ${args[2].text}`, level: 99 };
+        }
         if (markers && markers.procs.has(name)) {
             const { proccode } = markers.procs.get(name);
             let i = 0;
             const label = proccode.replace(/%[sb]/g, () => (args[i] ? args[i++].text : '0'));
             return { text: '0', level: 99, stmt: label };
+        }
+        // Arduino and AVR core calls are LIBRARY functions, not helpers defined
+        // in the file, so turning them into custom-block calls invents a block
+        // that means nothing -- `pinMode led OUTPUT` is not a sentence in this
+        // dialect. Refused by name instead, which is actionable.
+        if (ARDUINO_CORE.has(name)) {
+            warn(`${name}() is Arduino/AVR core, which this front end does not read — the pseudocode below is missing that line`);
+            return { text: '0', level: 99, stmt: null };
         }
         // For hand-written firmware, translate unknown function calls as custom block
         // calls rather than silently dropping them. In expression position (not
@@ -1249,7 +1328,7 @@ export default function cToPseudocode (source, opts = {}) {
 
     const linesFor = (f, depth) => {
         const sub = new Cursor(tokens.slice(f.from, f.to));
-        try { return block(sub, depth); } catch (e) { warn(`could not parse ${f.name}(): ${e.message}`); return []; }
+        try { return block(sub, depth); } catch (e) { warn(`could not parse ${f.name}(): ${e.message}`); return [`${'  '.repeat(depth)}stop`]; }
     };
 
     // ---- assemble ----
@@ -1261,9 +1340,18 @@ export default function cToPseudocode (source, opts = {}) {
             out.push(`PIN ${p.name} = P${p.port}.${p.bit} ${p.direction.toUpperCase()}${p.activeLow ? ' ACTIVE LOW' : ''}`);
         }
     }
+    // Detect the LED cube kernel by the presence of bw_cube_frame.
+    const cubeFrameMatch = source.match(/bw_cube_frame\[(\d+)\]/);
+    if (cubeFrameMatch) {
+        const selects = Number(cubeFrameMatch[1]);
+        const size = selects / 2;   // 8 selects = 4×4×4, 6 selects = 3×3×3
+        if (size >= 2 && size <= 8) out.push('', `LEDCUBE ${size}`);
+    }
 
     const IGNORE_FNS = new Set(['bw_setup', 'bw_tick', 'bw_now', 'bw_block_ms', 'delay_ms', 'adc_read',
-        'board_init', 'delay_init']);
+        'board_init', 'delay_init',
+        'bw_cube_scan', 'bw_cube_set', 'bw_cube_get', 'bw_cube_clear',
+        'bw_cube_fill_layer', 'bw_cube_shift', 'bw_cube_hold']);
     const procFns = funcs.filter((f) => markers && markers.procs.has(f.name));
     const scriptFns = funcs.filter((f) => !IGNORE_FNS.has(f.name)
         && (markers ? markers.scripts.has(f.name) : f.name === 'main'));
@@ -1273,21 +1361,35 @@ export default function cToPseudocode (source, opts = {}) {
         else warn('no main() and no @bw script markers — nothing to translate');
     }
 
-    for (const f of procFns) {
-        const { proccode } = markers.procs.get(f.name);
-        // Recover parameter names from the C function signature (just before the body).
+    // Emit DEFINE blocks for custom procedures.
+    // With markers: only named procs. Without markers (hand-written firmware):
+    // every function that is not main, not a known setup/delay, and not an ISR.
+    const userFns = markers
+        ? procFns
+        : funcs.filter((f) => !IGNORE_FNS.has(f.name) && f.name !== 'main'
+            && !DELAYS.has(f.name) && !SETUP.has(f.name));
+
+    for (const f of userFns) {
+        // Recover parameter names from the C function signature.
         const paramNames = [];
         for (let j = f.from - 1; j >= 0; j--) {
             if (tokens[j].v === '(') break;
             if (tokens[j].t === 'id' && tokens[j - 1] && tokens[j - 1].t === 'id') paramNames.unshift(varName(tokens[j].v));
         }
-        let n = 0;
-        const sig = proccode.replace(/%[sb]/g, (tok) => {
-            const name = paramNames[n] || `arg${n + 1}`;
-            n++;
-            return `${tok === '%b' ? '<' : '('}${name}${tok === '%b' ? '>' : ')'}`;
-        });
-        out.push('', `DEFINE ${sig}:`, ...linesFor(f, 1));
+        if (markers && markers.procs.has(f.name)) {
+            const { proccode } = markers.procs.get(f.name);
+            let n = 0;
+            const sig = proccode.replace(/%[sb]/g, (tok) => {
+                const name = paramNames[n] || `arg${n + 1}`;
+                n++;
+                return `${tok === '%b' ? '<' : '('}${name}${tok === '%b' ? '>' : ')'}`;
+            });
+            out.push('', `DEFINE ${sig}:`, ...linesFor(f, 1));
+        } else {
+            // Hand-written: build a proccode from the function name and parameters.
+            const params = paramNames.length ? ' ' + paramNames.map((p) => `(${p})`).join(' ') : '';
+            out.push('', `DEFINE ${f.name}${params}:`, ...linesFor(f, 1));
+        }
     }
 
     // Find `//` comments preceding a function definition in the original source.

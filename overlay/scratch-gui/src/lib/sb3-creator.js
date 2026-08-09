@@ -240,7 +240,9 @@ class SB3Creator {
             const df = this._async ? 'async def' : 'def';   // async so `await _boost.x()` works
             for (const [method, op] of methods) {
                 if (mode === 'remote' && op.kind === 'command') { lines.push(`    ${df} ${method}(self, *a): self._send("${method}", list(a))`); continue; }
-                const ret = op.kind === 'command' ? 'pass' : op.kind === 'boolean' ? 'return False' : `return ${op.neutral || '0'}`;
+                let neutral = op.neutral || '0';
+                if (neutral === 'NaN') neutral = 'float("nan")';  // Python has no bare NaN
+                const ret = op.kind === 'command' ? 'pass' : op.kind === 'boolean' ? 'return False' : `return ${neutral}`;
                 lines.push(`    ${df} ${method}(self, *a): ${ret}`);
             }
             lines.push('    def on(self, event, handler): pass  # register an event-hat handler');
@@ -377,28 +379,28 @@ class SB3Creator {
     // The circuit extension driver — boundary B exposed to Python/JS. Meter reporters
     // sample at display rate (~60 Hz), not per edge (measured constraint from bw-board).
     circuitSimulatorDriver(lang) {
-        // No-board returns 'needs the simulator', not 0 — a voltmeter that reads
-        // 0 V when disconnected is indistinguishable from a grounded-net reading.
+        // No-board returns NaN (stopgap) — visibly wrong, not a plausible 0.
+        // Greying out unavailable blocks per target is the real fix.
         if (lang === 'py') {
             return [
                 '# _circuit driver — board instruments (boundary B). Supply `bw_board` to attach one.',
-                '# No-board reporters return "needs the simulator", never 0 — refuse with a reason.',
+                '# No-board reporters return float("nan") — visibly wrong, not a plausible 0.',
                 'class _CircuitSimulated:',
                 '    def nodeVoltage(self, net):',
                 '        b = _board()',
-                '        return b.nodeVoltage(net) if b else "needs the simulator"',
+                '        return b.nodeVoltage(net) if b else float("nan")',
                 '    def branchCurrent(self, part):',
                 '        b = _board()',
-                '        return b.branchCurrent(part, "a") if b else "needs the simulator"',
+                '        return b.branchCurrent(part, "a") if b else float("nan")',
                 '    def resistance(self, a, b_net):',
                 '        b = _board()',
-                '        return b.resistance(a, b_net) if b else "needs the simulator"',
+                '        return b.resistance(a, b_net) if b else float("nan")',
                 '    def ledBrightness(self, part):',
                 '        b = _board()',
-                '        return b.ledBrightness(part) if b else "needs the simulator"',
+                '        return b.ledBrightness(part) if b else float("nan")',
                 '    def buzzerTone(self, part):',
                 '        b = _board()',
-                '        if not b: return "needs the simulator"',
+                '        if not b: return float("nan")',
                 '        r = b.buzzerTone(part)',
                 '        return r.get("hz", 0) if r.get("on") else 0',
                 '    def setControl(self, control, value):',
@@ -412,13 +414,14 @@ class SB3Creator {
         }
         return [
             '// _circuit driver — board instruments (boundary B). Supply `bwBoard` to attach one.',
-            '// No-board reporters return "needs the simulator", never 0 — refuse with a reason.',
+            '// No-board reporters return NaN — visibly wrong, not a plausible 0.',
+            '// Stopgap: greying out unavailable blocks per target is the real fix.',
             'const _circuit = {',
-            '    nodeVoltage: (net) => { const b = _board(); return b ? b.nodeVoltage(net) : "needs the simulator"; },',
-            '    branchCurrent: (part) => { const b = _board(); return b ? b.branchCurrent(part, "a") : "needs the simulator"; },',
-            '    resistance: (a, bNet) => { const b = _board(); return b ? b.resistance(a, bNet) : "needs the simulator"; },',
-            '    ledBrightness: (part) => { const b = _board(); return b ? b.ledBrightness(part) : "needs the simulator"; },',
-            '    buzzerTone: (part) => { const b = _board(); if (!b) return "needs the simulator";',
+            '    nodeVoltage: (net) => { const b = _board(); return b ? b.nodeVoltage(net) : NaN; },',
+            '    branchCurrent: (part) => { const b = _board(); return b ? b.branchCurrent(part, "a") : NaN; },',
+            '    resistance: (a, bNet) => { const b = _board(); return b ? b.resistance(a, bNet) : NaN; },',
+            '    ledBrightness: (part) => { const b = _board(); return b ? b.ledBrightness(part) : NaN; },',
+            '    buzzerTone: (part) => { const b = _board(); if (!b) return NaN;',
             '        const r = b.buzzerTone(part); return r && r.on ? r.hz : 0; },',
             '    setControl: (control, v) => { const b = _board(); if (b) b.setControl(control, Number(v)); },',
             '    setPower: (state) => { const b = _board(); if (b) b.setPower(state === "on"); }',
@@ -798,6 +801,11 @@ class SB3Creator {
         if ((m = s.match(/^read\s+([A-Za-z_]\w*)$/i)) && this.stcPort(m[1])) {
             return B('stc12_readport', {}, { PORT: [this.stcPort(m[1]).name, null] });
         }
+        // TABLE lookup: table[index] — a constant byte from code-space flash.
+        if ((m = s.match(/^([A-Za-z_]\w*)\[(.+)\]$/)) && this.stcTable(m[1])) {
+            return B('stc12_tableindex', { INDEX: this.parseValue(m[2], context) },
+                { TABLE: [this.stcTable(m[1]).name, null] });
+        }
         // Circuit extension reporters (boundary B instruments).
         if ((m = s.match(/^voltage at\s+(.+)$/i))) {
             return B('circuit_nodevoltage', { NET: this.parseValue(m[1], context) });
@@ -813,6 +821,13 @@ class SB3Creator {
         }
         if ((m = s.match(/^tone of\s+(.+)$/i))) {
             return B('circuit_buzzertone', { PART: this.parseValue(m[1], context) });
+        }
+        // LED cube voxel read: voxel <x> <y> <z>
+        if ((m = s.match(/^voxel\s+(.+?)\s+(.+?)\s+(.+)$/i)) && this.project && this.project.stc && this.project.stc.ledcube) {
+            return B('ledcube_readvoxel', {
+                X: this.parseValue(m[1], context), Y: this.parseValue(m[2], context),
+                Z: this.parseValue(m[3], context)
+            });
         }
 
         if ((m = s.match(/^pick random\s+(.+)$/i))) {
@@ -975,10 +990,12 @@ class SB3Creator {
     // dialect (`stc_pseudocode.py`), which is this target's reference implementation
     // and test oracle — see generateC().
     stcConfig(project = this.project) {
-        if (!project.stc) project.stc = { device: 'stc12c5a60s2', clock: 11059200, pins: [], ports: [], parts: [] };
+        if (!project.stc) project.stc = { device: 'stc12c5a60s2', clock: 11059200, pins: [], ports: [], parts: [], tables: [] };
         const cfg = project.stc;
         if (!cfg.ports) cfg.ports = [];
         if (!cfg.parts) cfg.parts = [];
+        if (!cfg.tables) cfg.tables = [];
+        if (!cfg.ledcube) cfg.ledcube = null;
         return cfg;
     }
 
@@ -997,6 +1014,14 @@ class SB3Creator {
         if (!cfg || !cfg.ports || !name) return null;
         const lower = String(name).trim().toLowerCase();
         return cfg.ports.find((p) => p.name.toLowerCase() === lower) || null;
+    }
+
+    // A declared lookup table by name, or null.
+    stcTable(name) {
+        const cfg = this.project && this.project.stc;
+        if (!cfg || !cfg.tables || !name) return null;
+        const lower = String(name).trim().toLowerCase();
+        return cfg.tables.find((t) => t.name.toLowerCase() === lower) || null;
     }
 
     // A declared shift-register part by name, or null.
@@ -1122,6 +1147,62 @@ class SB3Creator {
                 latch: { port: Number(lp), bit: Number(lb) },
                 activeLow: /^low$/i.test(active || '')
             });
+            return true;
+        }
+        // TABLE <name> = <value>, <value>, ... — constant lookup table in code space.
+        // Values are bytes (0–255), separated by commas. Supports hex (0x3F) and
+        // binary (0b00111111) literals. The table rides in project.stc.tables and
+        // the C emitter puts it in __code flash.
+        if ((m = trimmed.match(/^TABLE\s+([A-Za-z_]\w*)\s*=\s*(.+)$/i))) {
+            const [, name, body] = m;
+            const cfg = this.stcConfig();
+            if (this.stcTable(name)) {
+                this.warn(lineIndex, `Table "${name}" declared twice`);
+                return true;
+            }
+            const values = [];
+            for (let item of body.split(',')) {
+                item = item.trim();
+                if (!item) continue;
+                let n;
+                if (/^0b[01]+$/i.test(item)) n = parseInt(item.slice(2), 2);
+                else n = Number(item.startsWith('0x') || item.startsWith('0X') ? item : item);
+                if (!Number.isFinite(n) || n !== Math.floor(n)) {
+                    this.warn(lineIndex, `"${item}" is not a constant; a TABLE holds numbers only`);
+                    return true;
+                }
+                if (n < 0 || n > 255) {
+                    this.warn(lineIndex, `${n} is outside 0–255; a TABLE holds bytes`);
+                    return true;
+                }
+                values.push(n);
+            }
+            if (!values.length) {
+                this.warn(lineIndex, `Table "${name}" is empty`);
+                return true;
+            }
+            cfg.tables.push({ name, values });
+            return true;
+        }
+        // LEDCUBE <size> — a multiplexed LED cube, <size>x<size>x<size>.
+        // The voxel map (select, bit) → (x, y, z) is hardware-dependent and
+        // currently unknown (see stc/src/20-ledcube/README.md). The blocks
+        // work on the logical grid; the mapping table translates at emit time.
+        if ((m = trimmed.match(/^LEDCUBE\s+(\d+)$/i))) {
+            const size = Number(m[1]);
+            if (size < 2 || size > 8) {
+                this.warn(lineIndex, `LEDCUBE size must be 2–8, got ${size}`);
+                return true;
+            }
+            const cfg = this.stcConfig();
+            if (cfg.ledcube) {
+                this.warn(lineIndex, 'LEDCUBE declared twice');
+                return true;
+            }
+            // selects = size * (bicolour ? 2 : 1), bits = size * size.
+            // For the 4x4x4: 8 selects, 8 data bits per select (only lower 4x4
+            // used unless bi-colour doubles the select range).
+            cfg.ledcube = { size, selects: size * 2, bits: 8 };
             return true;
         }
         return false;
@@ -1547,10 +1628,65 @@ class SB3Creator {
             return ret(block);
         }
         // ---- Circuit extension commands (boundary B) --------------------------------
+        if ((match = line.match(/^set control\s+(.+?)\s+to\s+(.+)$/i))) {
+            const { id, block } = cmd('circuit_setcontrol');
+            block[id].inputs.CONTROL = val(match[1]);
+            block[id].inputs.VALUE = val(match[2]);
+            return ret(block);
+        }
         if ((match = line.match(/^turn power\s+(on|off)$/i))) {
             const { id, block } = cmd('circuit_setpower');
             block[id].fields.STATE = [match[1].toLowerCase(), null];
             return ret(block);
+        }
+        // ---- LED cube commands (guarded on a LEDCUBE declaration) --------------------
+        if (this.project && this.project.stc && this.project.stc.ledcube) {
+            if ((match = line.match(/^set voxel\s+(.+?)\s+(.+?)\s+(.+?)\s+to\s+(.+)$/i))) {
+                const { id, block } = cmd('ledcube_setvoxel');
+                block[id].inputs.X = val(match[1]); block[id].inputs.Y = val(match[2]);
+                block[id].inputs.Z = val(match[3]); block[id].inputs.COLOUR = val(match[4]);
+                return ret(block);
+            }
+            if ((match = line.match(/^clear voxel\s+(.+?)\s+(.+?)\s+(.+)$/i))) {
+                const { id, block } = cmd('ledcube_clearvoxel');
+                block[id].inputs.X = val(match[1]); block[id].inputs.Y = val(match[2]);
+                block[id].inputs.Z = val(match[3]);
+                return ret(block);
+            }
+            if ((match = line.match(/^fill layer\s+(.+?)\s+with\s+(.+)$/i))) {
+                const { id, block } = cmd('ledcube_filllayer');
+                block[id].inputs.LAYER = val(match[1]); block[id].inputs.COLOUR = val(match[2]);
+                return ret(block);
+            }
+            if (/^clear cube$/i.test(line)) {
+                const { block } = cmd('ledcube_clear');
+                return ret(block);
+            }
+            if ((match = line.match(/^shift cube\s+(up|down|left|right|forward|back)$/i))) {
+                const { id, block } = cmd('ledcube_shift');
+                block[id].fields.DIR = [match[1].toLowerCase(), null];
+                return ret(block);
+            }
+            if ((match = line.match(/^hold frame(?:\s+for)?\s+(.+?)\s*(?:ms|milliseconds?)$/i))) {
+                const { id, block } = cmd('ledcube_hold');
+                block[id].inputs.DURATION = val(match[1]);
+                return ret(block);
+            }
+            if ((match = line.match(/^fill column\s+(.+?)\s+(.+?)\s+with\s+(.+)$/i))) {
+                const { id, block } = cmd('ledcube_fillcolumn');
+                block[id].inputs.X = val(match[1]); block[id].inputs.Y = val(match[2]);
+                block[id].inputs.COLOUR = val(match[3]);
+                return ret(block);
+            }
+            if ((match = line.match(/^fill wall\s+(.+?)\s+with\s+(.+)$/i))) {
+                const { id, block } = cmd('ledcube_fillwall');
+                block[id].inputs.Z = val(match[1]); block[id].inputs.COLOUR = val(match[2]);
+                return ret(block);
+            }
+            if (/^invert cube$/i.test(line)) {
+                const { block } = cmd('ledcube_invert');
+                return ret(block);
+            }
         }
 
         // ---- Arrays & Vectors extension commands (anchored on `array "NAME"`; 0-based) ----
@@ -2394,7 +2530,7 @@ class SB3Creator {
 
             // STC12 / 8051 target declarations (DEVICE / CLOCK / PIN / PORT / PART). Inert
             // for every other target; generateC() is the only consumer.
-            if (/^(DEVICE|CLOCK|PIN|PORT|PART)\b/i.test(trimmed) && this.parseStcDeclaration(trimmed, i)) {
+            if (/^(DEVICE|CLOCK|PIN|PORT|PART|TABLE|LEDCUBE)\b/i.test(trimmed) && this.parseStcDeclaration(trimmed, i)) {
                 i++; continue;
             }
 
@@ -2803,6 +2939,11 @@ class SB3Creator {
             for (const p of cfg.parts || []) {
                 out.push(`PART ${p.name} = 74HC595 data P${p.data.port}.${p.data.bit} clock P${p.clock.port}.${p.clock.bit} latch P${p.latch.port}.${p.latch.bit}${p.activeLow ? ' ACTIVE LOW' : ''}`);
             }
+            for (const t of cfg.tables || []) {
+                const vals = t.values.map((v) => `0x${v.toString(16).toUpperCase().padStart(2, '0')}`);
+                out.push(`TABLE ${t.name} = ${vals.join(', ')}`);
+            }
+            if (cfg.ledcube) out.push(`LEDCUBE ${cfg.ledcube.size}`);
             out.push('');
         }
         for (const v of Object.values(stage.variables || {})) out.push(`GLOBAL ${v[0]}`);
@@ -2976,6 +3117,8 @@ class SB3Creator {
             // STC12 / 8051 pin read (digital level or ADC value).
             case 'stc12_read': return `read ${f('PIN')}`;
             case 'stc12_readport': return `read ${f('PORT')}`;
+            case 'stc12_tableindex': return `${f('TABLE')}[${v('INDEX')}]`;
+            case 'ledcube_readvoxel': return `voxel ${v('X')} ${v('Y')} ${v('Z')}`;
             // circuit extension reporters
             case 'circuit_nodevoltage': return `voltage at ${v('NET')}`;
             case 'circuit_branchcurrent': return `current through ${v('PART')}`;
@@ -3177,8 +3320,18 @@ class SB3Creator {
                 return line(`print ${v('VALUE')}`);
             }
             // circuit extension commands
-            case 'circuit_setcontrol': return line(`set ${v('CONTROL')} to ${v('VALUE')}`);
+            case 'circuit_setcontrol': return line(`set control ${v('CONTROL')} to ${v('VALUE')}`);
             case 'circuit_setpower': return line(`turn power ${f('STATE')}`);
+            // LED cube commands
+            case 'ledcube_setvoxel': return line(`set voxel ${v('X')} ${v('Y')} ${v('Z')} to ${v('COLOUR')}`);
+            case 'ledcube_clearvoxel': return line(`clear voxel ${v('X')} ${v('Y')} ${v('Z')}`);
+            case 'ledcube_filllayer': return line(`fill layer ${v('LAYER')} with ${v('COLOUR')}`);
+            case 'ledcube_clear': return line('clear cube');
+            case 'ledcube_shift': return line(`shift cube ${f('DIR')}`);
+            case 'ledcube_hold': return line(`hold frame for ${v('DURATION')} ms`);
+            case 'ledcube_fillcolumn': return line(`fill column ${v('X')} ${v('Y')} with ${v('COLOUR')}`);
+            case 'ledcube_fillwall': return line(`fill wall ${v('Z')} with ${v('COLOUR')}`);
+            case 'ledcube_invert': return line('invert cube');
             case 'data_showlist': return line(`show list ${f('LIST')}`);
             case 'data_hidelist': return line(`hide list ${f('LIST')}`);
             case 'data_showvariable': return line(`show variable ${f('VARIABLE')}`);
@@ -4222,6 +4375,17 @@ class SB3Creator {
                 const portCfg = this.project && this.project.stc && (this.project.stc.ports || []).find((p) => p.name.toLowerCase() === f('PORT').toLowerCase());
                 return portCfg ? `P${portCfg.port}` : `0 /* read ${this.cComment(f('PORT'))} */`;
             }
+            case 'stc12_tableindex': {
+                const tbl = this.stcTable(f('TABLE'));
+                const tName = tbl ? `bw_tab_${tbl.name}` : `bw_tab_${f('TABLE').toLowerCase()}`;
+                const len = tbl ? tbl.values.length : 0;
+                this._cUses.table = true;
+                return len ? `${tName}[bw_clamp(${v('INDEX')}, ${len - 1})]` : `${tName}[${v('INDEX')}]`;
+            }
+            case 'ledcube_readvoxel': {
+                this._cUses.cube = true;
+                return `bw_cube_get(${v('X')}, ${v('Y')}, ${v('Z')})`;
+            }
             case 'argument_reporter_string_number':
             case 'argument_reporter_boolean': return this.cName(f('VALUE'));
             default: {
@@ -4403,6 +4567,45 @@ class SB3Creator {
                     return line(`bw_print("${this.cComment(text)}");`);
                 }
                 return line(`bw_print_num(${v('VALUE')});`);
+            }
+            // LED cube commands — manipulate the working frame, then hold to play.
+            case 'ledcube_setvoxel': {
+                this._cUses.cube = true;
+                return line(`bw_cube_set(${v('X')}, ${v('Y')}, ${v('Z')}, ${v('COLOUR')});`);
+            }
+            case 'ledcube_clearvoxel': {
+                this._cUses.cube = true;
+                return line(`bw_cube_set(${v('X')}, ${v('Y')}, ${v('Z')}, 0);`);
+            }
+            case 'ledcube_filllayer': {
+                this._cUses.cube = true;
+                return line(`bw_cube_fill_layer(${v('LAYER')}, ${v('COLOUR')});`);
+            }
+            case 'ledcube_clear': {
+                this._cUses.cube = true;
+                return line('bw_cube_clear();');
+            }
+            case 'ledcube_shift': {
+                this._cUses.cube = true;
+                const dir = f('DIR');
+                const dirIdx = { up: 0, down: 1, left: 2, right: 3, forward: 4, back: 5 }[dir] || 0;
+                return line(`bw_cube_shift(${dirIdx});`);
+            }
+            case 'ledcube_hold': {
+                this._cUses.cube = true;
+                return line(`bw_cube_hold(${v('DURATION')});`);
+            }
+            case 'ledcube_fillcolumn': {
+                this._cUses.cube = true;
+                return line(`bw_cube_fill_column(${v('X')}, ${v('Y')}, ${v('COLOUR')});`);
+            }
+            case 'ledcube_fillwall': {
+                this._cUses.cube = true;
+                return line(`bw_cube_fill_wall(${v('Z')}, ${v('COLOUR')});`);
+            }
+            case 'ledcube_invert': {
+                this._cUses.cube = true;
+                return line('bw_cube_invert();');
             }
             case 'procedures_call': return line(this.cProcCall(b, blocks));
             default: {
@@ -4950,8 +5153,10 @@ class SB3Creator {
         // writes for it produced the 390 "no C equivalent" warnings this split
         // exists to end. `opts.target` overrides for the rare case of wanting
         // the other one on purpose.
-        const hasPins = !!(project && project.stc && project.stc.pins && project.stc.pins.length);
-        const want = opts.target || (hasPins ? 'device' : 'host');
+        const stc = project && project.stc;
+        const hasPins = !!(stc && stc.pins && stc.pins.length);
+        const hasHardware = hasPins || !!(stc && stc.ledcube);
+        const want = opts.target || (hasHardware ? 'device' : 'host');
         if (want === 'host') return this.generateHostC(project, opts);
 
         this._cNames = new Map();
@@ -5139,6 +5344,11 @@ class SB3Creator {
             }
         });
         this._curPrefix = ''; this._curLocals = null;
+        // The cube scan kernel needs delay_ms unconditionally — it is a blocking
+        // per-line dwell, not a scheduler wait. Flag it so the assembly emits it
+        // even when the scheduler is active (which normally suppresses delay_ms
+        // in favour of the ISR-based bw_now/bw_block_ms).
+        if (this._cUses.cube) this._cUses.cubeDelay = true;
         if (this._cUses.adc && !chip.adc) this.cWarn(`ANALOG pins need an ADC, and the ${device} has none`);
 
         // ---- assemble ----------------------------------------------------------------
@@ -5174,6 +5384,8 @@ class SB3Creator {
             for (const w of this._cWarnings) out.push(`/* warning: ${this.cComment(w)} */`);
         }
 
+        const tables = (this.project && this.project.stc && this.project.stc.tables) || [];
+
         // The marker header: everything the flat C form cannot say for itself, stated by the
         // emitter instead of left to be inferred. Same device as `scratch.defblock(...)` /
         // `scratch.sprite(...)` in the Python and JS back ends, and for the same reason — it
@@ -5187,6 +5399,7 @@ class SB3Creator {
                 `device ${device}`,
                 `clock ${clock}`,
                 ...pins.map((p) => `pin ${p.name} P${p.port}.${p.bit} ${p.direction}${p.activeLow ? ' active-low' : ''}`),
+                ...tables.map((t) => `table ${t.name} ${t.values.length}`),
                 ...markVars, ...markProcs, ...markScripts,
                 // The yield map: `<task>_state == N` means "about to run this block". It is
                 // the only thing that turns a Level 1 position into something the block
@@ -5259,6 +5472,25 @@ class SB3Creator {
                 '    }',
                 '}', '');
         }
+        // The cube scan kernel always needs delay_ms (blocking per-line dwell).
+        // The normal path emits it only when !_cTasks && _cUses.delay; if the
+        // scheduler is active (or no wait blocks exist), it was not emitted.
+        const delayAlreadyEmitted = !this._cTasks && this._cUses.delay;
+        if (this._cUses.cubeDelay && !delayAlreadyEmitted) {
+            out.push('/* Blocking delay for the cube scan kernel (per-line dwell). */',
+                'static void delay_ms(unsigned int ms)',
+                '{',
+                '    while (ms--) {',
+                '        TL0 = (unsigned char)(T0_RELOAD & 0xFF);',
+                '        TH0 = (unsigned char)(T0_RELOAD >> 8);',
+                '        TF0 = 0;',
+                '        TR0 = 1;',
+                '        while (!TF0) ;',
+                '        TR0 = 0;',
+                '        TF0 = 0;',
+                '    }',
+                '}', '');
+        }
 
         if (this._cUses.adc) {
             out.push('/* 10-bit ADC, polled. Channel n is on P1.n; the channel is selected and the',
@@ -5272,6 +5504,150 @@ class SB3Creator {
                 '    ADC_CONTR &= ~0x10;                           /* clear it by hand */',
                 '    return ((unsigned int)ADC_RES << 2) | (ADC_RESL & 0x03);',
                 '}', '');
+        }
+
+        // Lookup tables: constant bytes in code space (__code flash).
+        // (tables was declared earlier, before the marker header that references it.)
+        if (tables.length) {
+            out.push('/* Lookup tables live in code space: flash is the abundant resource',
+                ' * here and RAM is not. `const __code` keeps them out of the 256 bytes',
+                ' * that matter. */');
+            const hex2 = (n) => '0x' + n.toString(16).toUpperCase().padStart(2, '0');
+            for (const t of tables) {
+                out.push(`static const __code unsigned char bw_tab_${t.name}[] = { ${t.values.map(hex2).join(', ')} };`);
+            }
+            out.push('', '/* A computed index is clamped rather than trusted. Reading past a',
+                ' * table means reading a random byte of flash and, on a display,',
+                ' * showing it — which looks like data rather than like a fault. */',
+                'static unsigned char bw_clamp(int i, unsigned char last)',
+                '{',
+                '    if (i < 0) return 0;',
+                '    if (i > (int)last) return last;',
+                '    return (unsigned char)i;',
+                '}', '');
+        }
+
+        // LED cube runtime: working frame buffer, scan kernel, and helper functions.
+        // The voxel map is unknown (stc/src/20-ledcube/README.md): the blocks work on a
+        // logical grid and the mapping table (identity for now) translates at emit time.
+        if (this._cUses.cube) {
+            const cube = (this.project && this.project.stc && this.project.stc.ledcube) || { size: 4, selects: 8, bits: 8 };
+            const S = cube.selects;
+            const N = cube.size;   // side length (4 for a 4×4×4)
+            out.push(`/* LED cube: ${cube.size}x${cube.size}x${cube.size}, ${S} select lines, multiplex scan.`,
+                ' *',
+                ' * P0 POLARITY — ACTIVE-HIGH.  Measured: emu8051-stc Finding #14, P0',
+                ' * value histogram over 5 s of vendor firmware, zero exceptions in 3,930+',
+                ' * writes (0x00 always blank, 0xFF always data).  Not yet confirmed on',
+                ' * silicon — probe.c on a real cube is the definitive check.  Changing',
+                ' * this one constant flips every frame, clear, fill and blank. */',
+                '#define BW_CUBE_ACTIVE_HIGH 1',
+                `#define BW_CUBE_BLANK  (BW_CUBE_ACTIVE_HIGH ? 0x00 : 0xFF)`,
+                `#define BW_CUBE_FILL   (BW_CUBE_ACTIVE_HIGH ? 0xFF : 0x00)`,
+                `#define BW_CUBE_ON(b)  (BW_CUBE_ACTIVE_HIGH ? (1u << (b)) : ~(1u << (b)))`,
+                '',
+                `static const __code unsigned char bw_cube_sel[${S}] = {`,
+                `    ${Array.from({ length: S }, (_, i) => '0x' + ((~(1 << i)) & 0xFF).toString(16).toUpperCase().padStart(2, '0')).join(', ')}`,
+                '};',
+                `static unsigned char bw_cube_frame[${S}];   /* working frame buffer */`,
+                '',
+                `static void bw_cube_scan(unsigned int ms)`,
+                '{',
+                '    unsigned int end;',
+                '    unsigned char i;',
+                `    end = ms;   /* iterations, ~1 ms each at ${S} lines × ~125 µs/line */`,
+                '    while (end--) {',
+                `        for (i = 0; i < ${S}; i++) {`,
+                '            /* A layer must never be enabled while P0 holds another',
+                '             * line\'s data — blank first, then select, then drive. */',
+                '            P0 = BW_CUBE_BLANK;',
+                '            P2 = bw_cube_sel[i];',
+                '            P0 = bw_cube_frame[i];',
+                '            delay_ms(1);',
+                '        }',
+                '    }',
+                '}',
+                '',
+                `/* VOXEL MAP — UNVERIFIED.  Assumed identity: (x, y, z) maps to`,
+                ` * select = z * 2, bit = y * ${N} + x.  Only probe.c on a real cube can`,
+                ` * fill in the actual (select, bit) → position table.  Changing this`,
+                ` * one table corrects every set/get/fill/clear in the kernel.`,
+                ` * See stc/src/20-ledcube/README.md. */`,
+                `static void bw_cube_addr(int x, int y, int z, int colour,`,
+                '                         unsigned char *sel, unsigned char *bit)',
+                '{',
+                `    *sel = (unsigned char)(z * 2 + (colour > 1 ? 1 : 0));`,
+                `    *bit = (unsigned char)(y * ${N} + x);`,
+                '}',
+                '',
+                `static void bw_cube_set(int x, int y, int z, int colour)`,
+                '{',
+                '    unsigned char sel, bit;',
+                '    bw_cube_addr(x, y, z, colour, &sel, &bit);',
+                `    if (sel >= ${S} || bit >= 8) return;`,
+                '    if (colour) {',
+                '        if (BW_CUBE_ACTIVE_HIGH)',
+                '            bw_cube_frame[sel] |= (unsigned char)(1u << bit);',
+                '        else',
+                '            bw_cube_frame[sel] &= (unsigned char)~(1u << bit);',
+                '    } else {',
+                '        if (BW_CUBE_ACTIVE_HIGH)',
+                '            bw_cube_frame[sel] &= (unsigned char)~(1u << bit);',
+                '        else',
+                '            bw_cube_frame[sel] |= (unsigned char)(1u << bit);',
+                '    }',
+                '}',
+                '',
+                `static unsigned char bw_cube_get(int x, int y, int z)`,
+                '{',
+                '    unsigned char sel, bit;',
+                '    bw_cube_addr(x, y, z, 1, &sel, &bit);',
+                `    if (sel >= ${S} || bit >= 8) return 0;`,
+                '    return BW_CUBE_ACTIVE_HIGH ? ((bw_cube_frame[sel] >> bit) & 1)',
+                '                              : !((bw_cube_frame[sel] >> bit) & 1);',
+                '}',
+                '',
+                'static void bw_cube_clear(void)',
+                '{',
+                `    unsigned char i; for (i = 0; i < ${S}; i++) bw_cube_frame[i] = BW_CUBE_BLANK;`,
+                '}',
+                '',
+                `static void bw_cube_fill_layer(int layer, int colour)`,
+                '{',
+                `    int sel = layer * 2 + (colour > 1 ? 1 : 0);`,
+                `    if (sel >= 0 && sel < ${S}) bw_cube_frame[sel] = BW_CUBE_FILL;`,
+                '}',
+                '',
+                '/* Directions: 0=up 1=down 2=left 3=right 4=forward 5=back */',
+                'static void bw_cube_shift(int dir)',
+                '{',
+                `    unsigned char i;`,
+                '    switch (dir) {',
+                `    case 0: for (i = ${S} - 1; i > 0; i--) bw_cube_frame[i] = bw_cube_frame[i-1]; bw_cube_frame[0] = 0; break;`,
+                `    case 1: for (i = 0; i < ${S} - 1; i++) bw_cube_frame[i] = bw_cube_frame[i+1]; bw_cube_frame[${S}-1] = 0; break;`,
+                '    case 2: for (i = 0; i < ' + S + '; i++) bw_cube_frame[i] <<= 1; break;',
+                '    case 3: for (i = 0; i < ' + S + '; i++) bw_cube_frame[i] >>= 1; break;',
+                `    default: break;  /* forward/back need the voxel map */`,
+                '    }',
+                '}',
+                '',
+                `static void bw_cube_fill_column(int x, int y, int colour)`,
+                '{',
+                `    int z; for (z = 0; z < ${N}; z++) bw_cube_set(x, y, z, colour);`,
+                '}',
+                '',
+                `static void bw_cube_fill_wall(int z, int colour)`,
+                '{',
+                `    int x, y; for (y = 0; y < ${N}; y++) for (x = 0; x < ${N}; x++) bw_cube_set(x, y, z, colour);`,
+                '}',
+                '',
+                'static void bw_cube_invert(void)',
+                '{',
+                `    unsigned char i; for (i = 0; i < ${S}; i++) bw_cube_frame[i] = ~bw_cube_frame[i];`,
+                '}',
+                '',
+                'static void bw_cube_hold(unsigned int ms) { bw_cube_scan(ms); }',
+                '');
         }
 
         if (stateDecls.length) {
@@ -5497,7 +5873,8 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             readport: { kind: 'reporter', method: 'readPort', args: ['PORT'], neutral: '0' },
             setpart: { kind: 'command', method: 'setPart', args: ['PART', 'VALUE'] },
             print: { kind: 'command', method: 'print', args: ['VALUE', 'MODE'] },
-            whenpin: { kind: 'hat', method: 'whenpin', args: ['PIN', 'EDGE'] }
+            whenpin: { kind: 'hat', method: 'whenpin', args: ['PIN', 'EDGE'] },
+            tableindex: { kind: 'reporter', method: 'tableIndex', args: ['TABLE', 'INDEX'], neutral: '0' }
         }
     },
     // The circuit extension — board instruments and controls (simulation-only reporters).
@@ -5507,11 +5884,11 @@ SB3Creator.RUNTIME_EXTENSIONS = {
     circuit: {
         runtime: 'circuit',
         ops: {
-            nodevoltage: { kind: 'reporter', method: 'nodeVoltage', args: ['NET'], neutral: '"needs the simulator"' },
-            branchcurrent: { kind: 'reporter', method: 'branchCurrent', args: ['PART'], neutral: '"needs the simulator"' },
-            resistance: { kind: 'reporter', method: 'resistance', args: ['A', 'B'], neutral: '"needs the simulator"' },
-            ledbrightness: { kind: 'reporter', method: 'ledBrightness', args: ['PART'], neutral: '"needs the simulator"' },
-            buzzertone: { kind: 'reporter', method: 'buzzerTone', args: ['PART'], neutral: '"needs the simulator"' },
+            nodevoltage: { kind: 'reporter', method: 'nodeVoltage', args: ['NET'], neutral: 'NaN' },
+            branchcurrent: { kind: 'reporter', method: 'branchCurrent', args: ['PART'], neutral: 'NaN' },
+            resistance: { kind: 'reporter', method: 'resistance', args: ['A', 'B'], neutral: 'NaN' },
+            ledbrightness: { kind: 'reporter', method: 'ledBrightness', args: ['PART'], neutral: 'NaN' },
+            buzzertone: { kind: 'reporter', method: 'buzzerTone', args: ['PART'], neutral: 'NaN' },
             setcontrol: { kind: 'command', method: 'setControl', args: ['CONTROL', 'VALUE'] },
             setpower: { kind: 'command', method: 'setPower', args: ['STATE'] }
         }
