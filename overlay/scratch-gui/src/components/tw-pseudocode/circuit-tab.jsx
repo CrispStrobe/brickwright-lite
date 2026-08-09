@@ -2,7 +2,9 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 
-import DebugPanel from './debug-panel.jsx';
+const DebugPanel = React.lazy(() =>
+    import(/* webpackChunkName: "bw-debug-panel" */ './debug-panel.jsx')
+);
 
 /**
  * The circuit designer, as a first-class editor tab beside Code / Costumes / Sounds.
@@ -113,10 +115,12 @@ class CircuitTab extends React.Component {
                     own comment. The block glow lands in the Blocks tab regardless. */}
                 {stc && stc.pins && stc.pins.length ? (
                     <div style={{marginBottom: 10}}>
-                        <DebugPanel
-                            clockHz={(stc && Number(stc.clock)) || 11059200}
-                            onRunnerChange={this.handleRunnerChange}
-                        />
+                        <React.Suspense fallback={null}>
+                            <DebugPanel
+                                clockHz={(stc && Number(stc.clock)) || 11059200}
+                                onRunnerChange={this.handleRunnerChange}
+                            />
+                        </React.Suspense>
                     </div>
                 ) : null}
                 <Designer
