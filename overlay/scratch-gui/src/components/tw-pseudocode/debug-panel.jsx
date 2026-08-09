@@ -34,6 +34,7 @@ const L10N = {
         ready: 'ready', running: 'running', paused: 'paused', stepping: 'stepping…',
         error: 'error',
         stepHint: 'Run to the next block boundary',
+        consumes: 'Debugging this board uses:',
         pausedAt: 'Paused at', afterMs: 'after',
         noPins: 'Declare pins in the Code tab to debug this project.',
         bps: 'Pause points', noBps: 'Right-click a block and choose “Pause here”.',
@@ -50,6 +51,7 @@ const L10N = {
         ready: 'bereit', running: 'läuft', paused: 'angehalten', stepping: 'Schritt…',
         error: 'Fehler',
         stepHint: 'Bis zur nächsten Blockgrenze laufen',
+        consumes: 'Das Debuggen dieser Platine belegt:',
         pausedAt: 'Angehalten bei', afterMs: 'nach',
         noPins: 'Für das Debuggen im Code-Tab Pins deklarieren.',
         bps: 'Haltepunkte', noBps: 'Rechtsklick auf einen Block, dann „Hier anhalten“.',
@@ -73,12 +75,25 @@ const OFF = {...BTN, color: '#4a5568', cursor: 'not-allowed'};
 class DebugPanel extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {runner: null, ui: {phase: 'idle', message: ''}};
+        // The target is chosen BEFORE a runner exists, so it lives here rather
+        // than in the runner: picking "Live board" and then pressing Run is the
+        // order a user works in.
+        this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
         this.onStop = this.onStop.bind(this);
         this.onSpeed = this.onSpeed.bind(this);
+    }
+
+    componentDidMount () {
+        // The menu comes from bw-board, not from a list duplicated here: it owns
+        // which targets exist and what each one is called.
+        import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
+            .then(m => {
+                if (m.getTargetKinds) this.setState({kinds: m.getTargetKinds()});
+            })
+            .catch(() => { /* no picker rather than a broken one */ });
     }
 
     componentWillUnmount () {
@@ -96,6 +111,7 @@ class DebugPanel extends React.Component {
             /* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/debug-runner.js');
         const runner = createDebugRunner({
             vm: this.props.vm,
+            targetKind: this.state.kind,
             onChange: (ui) => {
                 this.setState({ui});
                 // The board only exists after attach, and the tab has to be told:
@@ -171,6 +187,27 @@ class DebugPanel extends React.Component {
                         onClick={this.onStop}
                     >{'⏹ '}{this.tx('stop')}</button>
 
+                    {/* The target picker. Everything else in this panel branches on
+                        capabilities(), never on which target is selected — §1 is
+                        explicit that an interface hiding the differences "produces a
+                        front end that lies to the user the moment it is pointed at
+                        real hardware". So this chooses; it does not adapt. */}
+                    {this.state.kinds && this.state.kinds.length > 1 ? (
+                        <span style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                            <select
+                                value={this.state.kind}
+                                disabled={running || paused || busy}
+                                title={(this.state.kinds.find(k => k.kind === this.state.kind) || {}).description}
+                                onChange={e => this.setState({kind: e.target.value})}
+                                style={{...BTN, padding: '3px 6px'}}
+                            >
+                                {this.state.kinds.map(k => (
+                                    <option key={k.kind} value={k.kind}>{k.label}</option>
+                                ))}
+                            </select>
+                        </span>
+                    ) : null}
+
                     <span style={{marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6}}>
                         <label htmlFor="bw-debug-speed">{this.tx('speed')}</label>
                         <select
@@ -186,6 +223,16 @@ class DebugPanel extends React.Component {
                         </select>
                     </span>
                 </div>
+
+                {/* What this target cannot do, named rather than left as greyed
+                    buttons with no explanation. The capability matrix is a teaching
+                    surface: a live chip has no code breakpoints because the part has
+                    no PSEN, and saying so is the point. */}
+                {caps && caps.consumes && caps.consumes.length ? (
+                    <div style={{color: '#f39c12', fontSize: 11}}>
+                        {`${this.tx('consumes')} ${caps.consumes.join(', ')}`}
+                    </div>
+                ) : null}
 
                 <div style={{display: 'flex', gap: 10, alignItems: 'baseline'}}>
                     <strong style={{color: phase === 'error' ? '#e74c3c'

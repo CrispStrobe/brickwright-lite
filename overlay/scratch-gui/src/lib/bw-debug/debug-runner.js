@@ -56,7 +56,7 @@ const SKIP_BUDGET = 20000;
  * @param {string} [opts.compilerUrl] the stc-compiler service
  * @param {(state: object) => void} [opts.onChange] UI state changed
  */
-export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', onChange = () => {} }) {
+export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', onChange = () => {} }) {
     let session = null;
     let target = null;
     let board = null;
@@ -274,6 +274,20 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // ─── attach ──────────────────────────────────────────────────────────
 
     async function attach(built) {
+        // The picker offers two targets and only one of them can be honoured
+        // here yet. Refusing with the reason is the house rule: silently
+        // running the emulator when the user picked "Live board" would be the
+        // worst outcome available — they would debug a simulation believing it
+        // was their board, and every reading would be plausible and wrong.
+        if (targetKind === 'serial') {
+            throw new Error(
+                'Live board debugging needs a serial connection, and this build has no ' +
+                'transport wired up yet. The target itself is implemented and tested ' +
+                '(bw-board serial-debug.js, driven through the real firmware inside the ' +
+                'emulator) — what is missing is Web Serial port selection in the browser, ' +
+                'which cannot be written blind. Choose "Simulated (emu8051)" for now.'
+            );
+        }
         setStatus('attaching', 'starting the emulator…');
         const [{ createEmu8051DebugTarget, createDebugSession, createEmu8051Adapter,
             BoardImpl, inferNetlist }, createEmu8051] = await Promise.all([
