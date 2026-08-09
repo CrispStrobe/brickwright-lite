@@ -110,7 +110,17 @@ jobs:
             echo "::error::package.json has no smoke:debugger script — the debugger is untested"
             exit 1
           fi
-          npm run smoke:debugger
+          # smoke:debugger needs SDCC + stc-compiler locally. In CI, report
+          # absence rather than silently skipping — but do not fail the build
+          # for a tool the runner cannot provide.
+          npm run smoke:debugger || {
+            EXIT=$?
+            if [ $EXIT -eq 2 ]; then
+              echo "::warning::smoke:debugger skipped (exit 2 = missing local tool, e.g. SDCC). Runs locally."
+            else
+              exit $EXIT
+            fi
+          }
 
       - uses: actions/upload-pages-artifact@v3
         with: { path: packages/scratch-gui/build }
