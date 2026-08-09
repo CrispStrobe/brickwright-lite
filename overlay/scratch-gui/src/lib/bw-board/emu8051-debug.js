@@ -29,30 +29,23 @@
  * doing something else"). `capabilities().steps` therefore omits `line`, and
  * calling it returns `{unsupported}`.
  *
- * **Watchpoints are refused.** `dbg_breakpoint` has BP_WRITE and BP_READ, but
- * no `emu_dbg_set_bp_write` is exported, so there is no way to reach them. They
- * are reported absent rather than accepted-and-ignored.
+ * **Watchpoints are feature-detected.** Upstream builds now export
+ * `emu_dbg_set_bp_write`; older builds (the pinned one in brickwright-lite)
+ * do not. When absent, `write` breakpoints are refused with a reason. When
+ * present, they are offered in `capabilities().breakpoints` and require a
+ * `space` parameter because iram and sfr overlap at 0x80+. Read watchpoints
+ * remain unsupported in all builds.
  *
- * ## No heap view — why memory is read a byte at a time
+ * ## Memory reads: fast path and slow path
  *
- * Neither emu8051 build exposes `Module.HEAPU8` (checked against both the one
- * vendored in brickwright-lite and the current upstream build; the exported
- * runtime is `ccall cwrap addFunction removeFunction UTF8ToString
- * stringToUTF8` and nothing else). Every WASM entry point that hands JS a
- * POINTER is therefore unreachable — which is `emu_dbg_read_mem`, and the
- * `struct dbg_halt_reason *` the halt callback is given.
+ * `readMem` feature-detects `HEAPU8` and `_emu_dbg_read_mem`. When available
+ * (upstream builds after the HEAPU8 export), a 256-byte read is one WASM call.
+ * When absent (the pinned build in brickwright-lite), it falls back to
+ * value-returning accessors (`emu_get_code/_iram/_sfr/_xdata`), one call per
+ * byte — the same code that was here before, still correct, just slower.
  *
- * So this wrapper uses only value-returning calls: `emu_get_code` /
- * `_iram` / `_sfr` / `_xdata` for reads, which compute exactly what
- * `dbg_read_mem` computes (same switch, same bounds — read them side by side),
- * and it reconstructs the halt reason from the accessors plus what it asked
- * for. The one thing genuinely lost is `bp_id`; it is recovered by matching the
- * halted PC against the breakpoints we set, and reported as absent when that is
- * ambiguous rather than guessed.
- *
- * Exporting HEAPU8 from the WASM build would let both go back to the direct
- * route. Until then this is not a workaround to be tidied away later — it is
- * the only thing that works against what actually ships.
+ * The halt reason struct is still unreachable on builds without HEAPU8, so
+ * `bp_id` is recovered by matching the halted PC against known breakpoints.
  *
  * ## The budget-halt wart, absorbed
  *
@@ -277,10 +270,15 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
 
     const target = {
         capabilities() {
+            // Feature-detect watchpoints: available if _emu_dbg_set_bp_write exists
+            const hasWatchpoints = typeof wasm._emu_dbg_set_bp_write === 'function';
+
             return {
                 // `line` is absent on purpose — see "Two corrections" above.
                 steps: ['insn', 'block', 'over', 'out'],
-                breakpoints: ['code', 'yield'],
+                breakpoints: hasWatchpoints
+                    ? ['code', 'yield', 'write']
+                    : ['code', 'yield'],
                 spaces: ['code', 'iram', 'sfr', 'xram', 'bit'],
                 writable: ['code', 'iram', 'sfr', 'xram', 'bit'],
                 sfrs: 'all',
@@ -361,10 +359,25 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                 }
                 pc = addr;
                 handle = wasm._emu_dbg_set_bp_yield(addr, idx, bp.state);
-            } else if (bp.kind === 'write' || bp.kind === 'read') {
+            } else if (bp.kind === 'write') {
+                if (typeof wasm._emu_dbg_set_bp_write !== 'function') {
+                    return { unsupported:
+                        'this build exposes no watchpoints. Poll the variable between blocks ' +
+                        'instead — and label that as sampling, because it is.' };
+                }
+                // Watchpoint: requires a space (iram and sfr overlap at 0x80+)
+                const space = bp.space ?? 'iram';
+                const spaceId = SPACE[space];
+                if (spaceId === undefined) {
+                    return { unsupported: `no such address space: ${space}` };
+                }
+                handle = wasm._emu_dbg_set_bp_write(spaceId, bp.addr);
+                pc = bp.addr; // for matching on halt
+            } else if (bp.kind === 'read') {
                 return { unsupported:
-                    'this build exposes no watchpoints. Poll the variable between blocks ' +
-                    'instead — and label that as sampling, because it is.' };
+                    'read watchpoints are not available. Write watchpoints are ' +
+                    (typeof wasm._emu_dbg_set_bp_write === 'function' ? 'available' : 'also not available') +
+                    '.' };
             } else {
                 return { unsupported: `no such breakpoint kind: ${bp.kind}` };
             }
@@ -382,6 +395,19 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             if (SPACE[space] === undefined) {
                 return { unsupported: `no such address space: ${space}` };
             }
+
+            // Fast path: if the build exports HEAPU8 and _emu_dbg_read_mem,
+            // read the whole block in one WASM call. Feature-detect: the
+            // vendored build in brickwright-lite may be older and lack these.
+            if (wasm.HEAPU8 && wasm._emu_dbg_read_mem && space !== 'bit') {
+                const ptr = wasm._emu_dbg_read_mem(SPACE[space], addr, len);
+                if (ptr) {
+                    return new Uint8Array(wasm.HEAPU8.buffer, ptr, len).slice();
+                }
+                // fall through to byte-at-a-time if pointer is null
+            }
+
+            // Slow path: one value-returning call per byte (always works)
             const out = new Uint8Array(len);
             for (let i = 0; i < len; i++) out[i] = readByte(space, (addr + i) & 0xFFFF);
             return out;
