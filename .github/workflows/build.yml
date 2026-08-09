@@ -74,3 +74,74 @@ jobs:
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
       - uses: actions/upload-artifact@v4
         with: { name: editor-build, path: packages/scratch-gui/build }
+
+  verify-deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Only on push (not workflow_dispatch) — needs a real Vercel deploy to check
+    if: github.event_name == 'push'
+    steps:
+      - name: Wait for Vercel deploy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.sha;
+            for (let i = 0; i < 40; i++) {
+              const { data } = await github.rest.repos.getCombinedStatusForRef({
+                owner: context.repo.owner, repo: context.repo.repo, ref: sha
+              });
+              const vercel = data.statuses.find(s => s.context === 'Vercel');
+              if (vercel && vercel.state === 'success') {
+                console.log('Vercel deploy succeeded');
+                return;
+              }
+              if (vercel && vercel.state === 'failure') {
+                core.setFailed('Vercel deploy failed: ' + vercel.description);
+                return;
+              }
+              console.log(`Waiting for Vercel (${vercel?.state || 'not started'})...`);
+              await new Promise(r => setTimeout(r, 15000));
+            }
+            core.setFailed('Timed out waiting for Vercel deploy');
+
+      - name: Install Playwright
+        run: npx playwright install chromium --with-deps
+
+      - name: Verify GUI renders on deployed site
+        run: |
+          node -e "
+            const { chromium } = require('playwright');
+            (async () => {
+              const browser = await chromium.launch();
+              const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
+              const errors = [];
+              page.on('pageerror', e => errors.push(e.message));
+
+              console.log('Loading https://brickwright-lite.vercel.app/ ...');
+              await page.goto('https://brickwright-lite.vercel.app/', {
+                waitUntil: 'networkidle', timeout: 60000
+              });
+
+              // Wait for the GUI to render
+              try {
+                await page.waitForSelector('[class*=\"menu-bar\"], [class*=\"gui_\"], [role=\"tab\"]', { timeout: 60000 });
+              } catch {
+                console.error('FAIL: GUI did not render');
+                if (errors.length) console.error('Page errors:', errors);
+                process.exit(1);
+              }
+
+              const tabs = await page.locator('[role=tab]').allInnerTexts();
+              console.log('Tabs:', tabs.join(', '));
+
+              if (tabs.length === 0) {
+                console.error('FAIL: No tabs rendered — GUI is broken');
+                if (errors.length) console.error('Page errors:', errors);
+                process.exit(1);
+              }
+
+              console.log('OK: GUI renders with', tabs.length, 'tabs');
+              if (errors.length) console.log('Page errors (non-fatal):', errors);
+              await browser.close();
+            })();
+          "
