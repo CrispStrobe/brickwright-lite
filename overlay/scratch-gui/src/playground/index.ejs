@@ -43,8 +43,8 @@
           return /Loading chunk \S+ failed|ChunkLoadError|error loading dynamically imported module/i.test(String(message || ''));
         }
         function recover(message) {
-          if (!looksLikeStaleBuild(message)) return;
-          if (sessionStorage.getItem(KEY)) return;   // already tried; let the error surface
+          if (!looksLikeStaleBuild(message)) return false;
+          if (sessionStorage.getItem(KEY)) return false;   // already tried; let the error surface
           console.error('[bw-chunk-recovery] stale build detected, clearing caches and reloading. Trigger:', message);
           sessionStorage.setItem(KEY, '1');
           var done = function () { location.reload(); };
@@ -55,11 +55,27 @@
                 .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); });
             })
             .then(done, done);
+          return true;
         }
         window.addEventListener('error', function (e) { recover(e && e.message); });
         window.addEventListener('unhandledrejection', function (e) {
           recover(e && e.reason && (e.reason.message || e.reason));
         });
+
+        /* Reachable by code that CATCHES its own import failure.
+         *
+         * The two listeners above only see failures nobody handled. A component
+         * that does `await import(...)` inside a try/catch and renders its own
+         * "failed to load" message is invisible to them — the rejection WAS
+         * handled, so it is never unhandled. That is not hypothetical: it is
+         * how "The circuit designer failed to load: Loading chunk 783 failed"
+         * reached a user as a permanently dead panel while this recovery sat
+         * here, correct and never called.
+         *
+         * Returns true if recovery started (the caller should show a reloading
+         * state, not an error), false if this is not a stale build or the
+         * one-shot is already spent. */
+        window.__bwRecoverFromStaleBuild = recover;
       }());
     </script>
   </body>

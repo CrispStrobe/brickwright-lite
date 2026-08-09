@@ -93,7 +93,19 @@ class DebugPanel extends React.Component {
             .then(m => {
                 if (m.getTargetKinds) this.setState({kinds: m.getTargetKinds()});
             })
-            .catch(() => { /* no picker rather than a broken one */ });
+            .catch(e => {
+                // Degrading to "no picker" is the right call for a genuine
+                // failure, but swallowing the reason is not: if the chunk is
+                // missing because the deploy moved on, this catch hides it from
+                // the global stale-build recovery (which only sees UNHANDLED
+                // rejections) and the user gets a silently reduced UI. Ask the
+                // recovery first, and if it declines, at least say why the
+                // picker is absent instead of pretending it was never there.
+                const recovering = typeof window !== 'undefined' &&
+                    window.__bwRecoverFromStaleBuild &&
+                    window.__bwRecoverFromStaleBuild(e && e.message);
+                if (!recovering) console.warn('[brickwright] target picker unavailable:', e);
+            });
     }
 
     componentWillUnmount () {

@@ -25,7 +25,7 @@ const DebugPanel = React.lazy(() =>
 class CircuitTab extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {Designer: null, error: null, stc: null, board: null, debugState: null};
+        this.state = {Designer: null, error: null, reloading: false, stc: null, board: null, debugState: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
     }
 
@@ -47,7 +47,17 @@ class CircuitTab extends React.Component {
             ui.setEngine(engine);   // the panel takes the engine by injection, not by path
             this.setState({Designer: ui.CircuitDesigner});
         } catch (e) {
-            this.setState({error: e.message});
+            // A chunk that 404s because the deploy moved on is not an error the
+            // user can act on, and catching it here made it INVISIBLE to the
+            // global recovery in index.ejs: that handler only sees failures
+            // nobody handled, and this catch handles it. The result was a
+            // permanently dead panel next to a recovery that never ran. So ask
+            // the recovery explicitly; it reloads once per tab, and returns
+            // false if this is not a stale build or the one shot is spent.
+            const recovering = typeof window !== 'undefined' &&
+                window.__bwRecoverFromStaleBuild &&
+                window.__bwRecoverFromStaleBuild(e && e.message);
+            this.setState(recovering ? {reloading: true} : {error: e.message});
         }
         this.loading = false;
     }
@@ -115,12 +125,35 @@ class CircuitTab extends React.Component {
     }
 
     render () {
-        const {Designer, error, stc} = this.state;
+        const {Designer, error, reloading, stc} = this.state;
         const box = {height: '100%', overflow: 'auto', padding: 12, boxSizing: 'border-box'};
+        if (reloading) {
+            return (
+                <div style={{...box, color: '#64748b'}}>
+                    {'A new version was published while this tab was open. Reloading…'}
+                </div>
+            );
+        }
         if (error) {
+            // Reached only when recovery declined: not a stale build, or the
+            // one-shot is spent (a second failure is a real bug, not a deploy
+            // race, and looping the reload would hide it). Offer the manual
+            // action rather than leaving a dead panel — the user's tab may have
+            // been open across two deploys, which is not their fault.
             return (
                 <div style={{...box, color: '#b91c1c'}}>
-                    {`The circuit designer failed to load: ${error}`}
+                    <div>{`The circuit designer failed to load: ${error}`}</div>
+                    <button
+                        style={{marginTop: 10, padding: '6px 12px', borderRadius: 6, cursor: 'pointer'}}
+                        onClick={() => {
+                            try {
+                                sessionStorage.removeItem('bw-chunk-recovery');
+                            } catch { /* private mode */ }
+                            location.reload();
+                        }}
+                    >
+                        {'Reload the editor'}
+                    </button>
                 </div>
             );
         }
