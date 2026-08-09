@@ -31,31 +31,42 @@ jobs:
             exit 1
           fi
 
-      - name: Guard — WASM pin is not older than the crash-fix floor
+      - name: Guard — WASM pin is a descendant of the crash-fix floor
         run: |
-          PIN=$(grep "const PIN" scripts/sync-emu8051-wasm.mjs | head -1)
-          echo "$PIN"
-          # The crash fix is at 85ed23d. The original crashing pin is 2f896b1a.
-          # Fail if the pin is the known-bad value.
-          if echo "$PIN" | grep -q '2f896b1a'; then
-            echo "::error::WASM pin is the crashing pre-fix build (2f896b1a). Re-pin to 85ed23d or later."
+          # The floor: 85ed23d is the commit with the emu_init crash fix and
+          # corrected BUILD-INFO.md. Any pin older than this ships a crashing
+          # binary. Bump the floor when a newer build is deliberately adopted.
+          FLOOR=85ed23d
+          PIN=$(node -e "
+            const src = require('fs').readFileSync('scripts/sync-emu8051-wasm.mjs','utf8');
+            const m = src.match(/const PIN = '([^']+)'/);
+            console.log(m ? m[1] : '');
+          ")
+          echo "PIN=$PIN  FLOOR=$FLOOR"
+          if [ -z "$PIN" ]; then
+            echo "::error::Could not extract PIN from sync-emu8051-wasm.mjs"
             exit 1
           fi
+          # Clone just enough of emu8051-stc to check ancestry
+          git clone --bare --filter=blob:none https://github.com/CrispStrobe/emu8051-stc.git /tmp/emu8051-stc.git 2>/dev/null
+          if ! git -C /tmp/emu8051-stc.git merge-base --is-ancestor "$FLOOR" "$PIN" 2>/dev/null; then
+            echo "::error::WASM PIN ($PIN) is not a descendant of the crash-fix floor ($FLOOR). Re-pin to $FLOOR or later."
+            exit 1
+          fi
+          echo "PIN is at or after the floor — good"
           node scripts/sync-emu8051-wasm.mjs --check
 
-      - name: Guard — toolbox reducer does not import makeToolboxXML
+      - name: Guard — blocks.jsx has the toolbox null-guard
         run: |
-          # The crash: reducers/toolbox.js importing and calling makeToolboxXML(true)
-          # at module level touches scratch-blocks before the lazy loader resolves.
-          FILE=overlay/scratch-gui/src/reducers/toolbox.js
-          if [ ! -f "$FILE" ]; then
-            FILE=packages/scratch-gui/src/reducers/toolbox.js
-          fi
-          if grep -v '^\s*//' "$FILE" | grep -q 'import.*makeToolboxXML\|require.*make-toolbox-xml'; then
-            echo "::error::toolbox.js imports makeToolboxXML — GUI will crash (scratch-blocks not loaded yet)"
+          # The crash: blocks.jsx passes this.props.toolboxXML to ScratchBlocks.inject().
+          # toolboxXML is null at startup (deferred because scratch-blocks is lazy-loaded).
+          # Without the null-guard, inject() gets null and the GUI doesn't mount.
+          FILE=overlay/scratch-gui/src/containers/blocks.jsx
+          if ! grep -q 'this.props.toolboxXML || makeToolboxXML' "$FILE"; then
+            echo "::error::blocks.jsx is missing the toolbox null-guard (this.props.toolboxXML || makeToolboxXML). GUI will not render."
             exit 1
           fi
-          echo "toolbox reducer: no makeToolboxXML import (good)"
+          echo "blocks.jsx: toolbox null-guard present (good)"
 
       # --- build ---
 
