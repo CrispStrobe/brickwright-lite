@@ -8,15 +8,9 @@ import BoundingBoxTool from '../selection-tools/bounding-box-tool';
 import NudgeTool from '../selection-tools/nudge-tool';
 
 /**
- * Tool for drawing rounded rectangles.
- *
- * Brickwright: upstream scratch-paint ships the whole scaffolding for this tool — the mode, the
- * container, the component, the icon and the i18n message — but the tool body is a stub that
- * only logs "not yet implemented", and paint-editor.jsx never renders the button. This is the
- * real implementation, modelled on rect-tool.js so the two behave identically apart from the
- * corner radius.
+ * Tool for drawing ovals.
  */
-class RoundedRectTool extends paper.Tool {
+class OvalTool extends paper.Tool {
     static get TOLERANCE () {
         return 2;
     }
@@ -32,26 +26,25 @@ class RoundedRectTool extends paper.Tool {
         this.clearSelectedItems = clearSelectedItems;
         this.onUpdateImage = onUpdateImage;
         this.boundingBoxTool = new BoundingBoxTool(
-            Modes.ROUNDED_RECT,
+            Modes.OVAL,
             setSelectedItems,
             clearSelectedItems,
             setCursor,
             onUpdateImage
         );
-        const nudgeTool = new NudgeTool(Modes.ROUNDED_RECT, this.boundingBoxTool, onUpdateImage);
+        const nudgeTool = new NudgeTool(Modes.OVAL, this.boundingBoxTool, onUpdateImage);
 
         // We have to set these functions instead of just declaring them because
         // paper.js tools hook up the listeners in the setter functions.
         this.onMouseDown = this.handleMouseDown;
-        this.onMouseMove = this.handleMouseMove;
         this.onMouseDrag = this.handleMouseDrag;
+        this.onMouseMove = this.handleMouseMove;
         this.onMouseUp = this.handleMouseUp;
         this.onKeyUp = nudgeTool.onKeyUp;
         this.onKeyDown = nudgeTool.onKeyDown;
 
-        this.rect = null;
+        this.oval = null;
         this.colorState = null;
-        this.cornerRadius = 16;
         this.isBoundingBoxMode = null;
         this.active = false;
     }
@@ -65,7 +58,7 @@ class RoundedRectTool extends paper.Tool {
             match: hitResult =>
                 (hitResult.item.data && (hitResult.item.data.isScaleHandle || hitResult.item.data.isRotHandle)) ||
                 hitResult.item.selected, // Allow hits on bounding box and selected only
-            tolerance: RoundedRectTool.TOLERANCE / paper.view.zoom
+            tolerance: OvalTool.TOLERANCE / paper.view.zoom
         };
     }
     /**
@@ -78,12 +71,6 @@ class RoundedRectTool extends paper.Tool {
     setColorState (colorState) {
         this.colorState = colorState;
     }
-    /**
-     * @param {!number} cornerRadius Corner radius in art board units, as set in the shape panel.
-     */
-    setCornerRadius (cornerRadius) {
-        this.cornerRadius = cornerRadius;
-    }
     handleMouseDown (event) {
         if (event.event.button > 0) return; // only first mouse button
         this.active = true;
@@ -94,6 +81,11 @@ class RoundedRectTool extends paper.Tool {
         } else {
             this.isBoundingBoxMode = false;
             clearSelection(this.clearSelectedItems);
+            this.oval = new paper.Shape.Ellipse({
+                point: event.downPoint,
+                size: 0
+            });
+            styleShape(this.oval, this.colorState);
         }
     }
     handleMouseDrag (event) {
@@ -104,34 +96,30 @@ class RoundedRectTool extends paper.Tool {
             return;
         }
 
-        if (this.rect) {
-            this.rect.remove();
-        }
-
-        const downPoint = snapPointToGrid(event.downPoint);
-        const dragPoint = snapPointToGrid(event.point);
-
-        const rect = new paper.Rectangle(downPoint, dragPoint);
-        const squareDimensions = getSquareDimensions(downPoint, dragPoint);
+        // Brickwright: snap the two drag corners to the grid, so everything downstream — the
+        // square constraint, the alt/shift positioning — is computed from the snapped values
+        // and the finished shape lands on grid lines rather than merely starting on one.
+        const downPoint = snapPointToGrid(new paper.Point(event.downPoint.x, event.downPoint.y));
+        const point = snapPointToGrid(new paper.Point(event.point.x, event.point.y));
+        const squareDimensions = getSquareDimensions(downPoint, point);
         if (event.modifiers.shift) {
-            rect.size = squareDimensions.size.abs();
+            this.oval.size = squareDimensions.size.abs();
+        } else {
+            this.oval.size = downPoint.subtract(point);
         }
-
-        // A corner radius over half the shorter side would make opposite corners cross over each
-        // other; paper draws that as a self-intersecting mess, so clamp instead.
-        const radius = Math.max(0, Math.min(this.cornerRadius, rect.width / 2, rect.height / 2));
-        this.rect = new paper.Path.Rectangle(rect, radius);
 
         if (event.modifiers.alt) {
-            this.rect.position = downPoint;
+            this.oval.position = downPoint;
         } else if (event.modifiers.shift) {
-            this.rect.position = squareDimensions.position;
+            this.oval.position = squareDimensions.position;
         } else {
-            const dimensions = dragPoint.subtract(downPoint);
-            this.rect.position = downPoint.add(dimensions.multiply(0.5));
+            this.oval.position = downPoint.subtract(this.oval.size.multiply(0.5));
         }
 
-        styleShape(this.rect, this.colorState);
+        styleShape(this.oval, this.colorState);
+    }
+    handleMouseMove (event) {
+        this.boundingBoxTool.onMouseMove(event, this.getHitOptions());
     }
     handleMouseUp (event) {
         if (event.event.button > 0 || !this.active) return; // only first mouse button
@@ -142,26 +130,26 @@ class RoundedRectTool extends paper.Tool {
             return;
         }
 
-        if (this.rect) {
-            if (this.rect.area < RoundedRectTool.TOLERANCE / paper.view.zoom) {
-                // Tiny rectangle created unintentionally?
-                this.rect.remove();
-                this.rect = null;
+        if (this.oval) {
+            if (Math.abs(this.oval.size.width * this.oval.size.height) < OvalTool.TOLERANCE / paper.view.zoom) {
+                // Tiny oval created unintentionally?
+                this.oval.remove();
+                this.oval = null;
             } else {
-                this.rect.selected = true;
+                const ovalPath = this.oval.toPath(true /* insert */);
+                this.oval.remove();
+                this.oval = null;
+
+                ovalPath.selected = true;
                 this.setSelectedItems();
                 this.onUpdateImage();
-                this.rect = null;
             }
         }
         this.active = false;
-    }
-    handleMouseMove (event) {
-        this.boundingBoxTool.onMouseMove(event, this.getHitOptions());
     }
     deactivateTool () {
         this.boundingBoxTool.deactivateTool();
     }
 }
 
-export default RoundedRectTool;
+export default OvalTool;

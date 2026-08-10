@@ -56,6 +56,13 @@ const STRINGS = {
         mirrorAboutEdge: 'Edge',
         mirrorAboutCanvas: 'Canvas',
 
+        grid: 'Grid & snapping',
+        showGrid: 'Show grid',
+        gridSize: 'Size',
+        snapToGrid: 'Snap to grid',
+        smartGuides: 'Snap to objects',
+        smartGuidesHint: 'Dragging lines up with other objects’ edges and centres.',
+
         shape: 'Shape',
         cornerRadius: 'Corner radius',
         polygonSides: 'Sides',
@@ -109,6 +116,13 @@ const STRINGS = {
         mirrorAbout: 'Spiegeln an',
         mirrorAboutEdge: 'Kante',
         mirrorAboutCanvas: 'Zeichenfläche',
+
+        grid: 'Raster & Einrasten',
+        showGrid: 'Raster anzeigen',
+        gridSize: 'Größe',
+        snapToGrid: 'Am Raster einrasten',
+        smartGuides: 'An Objekten einrasten',
+        smartGuidesHint: 'Beim Ziehen an Kanten und Mitten anderer Objekte ausrichten.',
 
         shape: 'Form',
         cornerRadius: 'Eckenradius',

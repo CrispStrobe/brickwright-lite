@@ -12,6 +12,12 @@ import {
     changeStarInnerRatio,
     changeStarPoints
 } from '../reducers/bw-shape';
+import {
+    changeGridSize,
+    toggleGridVisible,
+    toggleSmartGuides,
+    toggleSnapToGrid
+} from '../reducers/bw-grid';
 import {togglePanel} from '../reducers/bw-panel';
 import {setSelectedItems} from '../reducers/selected-items';
 
@@ -168,6 +174,7 @@ class BwPropertiesPanel extends React.Component {
                 alignTo={this.state.alignTo}
                 booleanEmpty={this.state.booleanEmpty}
                 booleanOperandCount={getOperands().length}
+                grid={this.props.grid}
                 locale={this.props.intl.locale}
                 lockAspect={this.state.lockAspect}
                 mirrorAbout={this.state.mirrorAbout}
@@ -179,6 +186,7 @@ class BwPropertiesPanel extends React.Component {
                 onAlign={this.handleAlign}
                 onBoolean={this.handleBoolean}
                 onChangeAlignTo={alignTo => this.setState({alignTo})}
+                onChangeGridSize={this.props.onChangeGridSize}
                 onChangeHeight={this.handleChangeHeight}
                 onChangeMirrorAbout={mirrorAbout => this.setState({mirrorAbout})}
                 onChangeRotation={this.handleChangeRotation}
@@ -190,18 +198,26 @@ class BwPropertiesPanel extends React.Component {
                 onMirror={this.handleMirror}
                 onRotateClockwise={this.handleRotateClockwise}
                 onRotateCounterClockwise={this.handleRotateCounterClockwise}
+                onToggleGrid={this.props.onToggleGrid}
                 onToggleLockAspect={this.handleToggleLockAspect}
                 onTogglePanel={this.props.onTogglePanel}
+                onToggleSmartGuides={this.props.onToggleSmartGuides}
+                onToggleSnapToGrid={this.props.onToggleSnapToGrid}
             />
         );
     }
 }
 
 BwPropertiesPanel.propTypes = {
+    grid: PropTypes.object.isRequired,
     intl: intlShape,
     mode: PropTypes.oneOf(Object.keys(Modes)).isRequired,
+    onChangeGridSize: PropTypes.func.isRequired,
     onChangeShapeParam: PropTypes.func.isRequired,
+    onToggleGrid: PropTypes.func.isRequired,
     onTogglePanel: PropTypes.func.isRequired,
+    onToggleSmartGuides: PropTypes.func.isRequired,
+    onToggleSnapToGrid: PropTypes.func.isRequired,
     onUpdateImage: PropTypes.func.isRequired,
     // Not read for its contents — it is what makes this component re-render when the geometry
     // changes, and what clears the "nothing left" hint.
@@ -212,18 +228,31 @@ BwPropertiesPanel.propTypes = {
 };
 
 const mapStateToProps = state => ({
+    grid: state.scratchPaint.bwGrid,
     mode: state.scratchPaint.mode,
     selectedItems: state.scratchPaint.selectedItems,
     shapeParams: state.scratchPaint.bwShape,
     visible: state.scratchPaint.bwPanel.visible
 });
 const mapDispatchToProps = dispatch => ({
+    onChangeGridSize: size => {
+        dispatch(changeGridSize(size));
+    },
     onChangeShapeParam: (key, value) => {
         const action = SHAPE_PARAM_ACTIONS[key];
         if (action) dispatch(action(value));
     },
+    onToggleGrid: () => {
+        dispatch(toggleGridVisible());
+    },
     onTogglePanel: () => {
         dispatch(togglePanel());
+    },
+    onToggleSmartGuides: () => {
+        dispatch(toggleSmartGuides());
+    },
+    onToggleSnapToGrid: () => {
+        dispatch(toggleSnapToGrid());
     },
     setSelectedItems: () => {
         dispatch(setSelectedItems(getSelectedLeafItems(), false /* bitmapMode */));

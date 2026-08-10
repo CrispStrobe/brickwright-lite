@@ -170,6 +170,25 @@
     background: $ui-background-blue;
 }
 
+.toggle {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: $grid-unit;
+    cursor: pointer;
+    line-height: 1.6;
+}
+
+.toggle input {
+    cursor: pointer;
+    margin: 0;
+}
+
+.toggle + .field-row,
+.field-row + .toggle {
+    margin-top: $grid-unit;
+}
+
 .segmented {
     display: flex;
     flex-direction: row;

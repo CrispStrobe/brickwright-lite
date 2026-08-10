@@ -18,6 +18,7 @@ import Box from '../box/box.jsx';
 import Button from '../button/button.jsx';
 import ButtonGroup from '../button-group/button-group.jsx';
 import BrushMode from '../../containers/brush-mode.jsx';
+import BwGridLayer from '../../containers/bw-grid-layer.jsx';
 import BwPropertiesPanel from '../../containers/bw-properties-panel.jsx';
 import {PolygonMode, StarMode} from '../../containers/bw-shape-mode.jsx';
 import EraserMode from '../../containers/eraser-mode.jsx';
@@ -316,10 +317,15 @@ const PaintEditorComponent = props => (
 
             {/* Brickwright: the properties rail (numeric transform, align/distribute, shape
                 parameters). Vector only — none of it has a meaning for a raster costume. */}
-            {props.canvas !== null && isVector(props.format) ?
+            {props.canvas !== null && isVector(props.format) ? [
+                // Renders nothing; it keeps the grid drawn on paper's guide layer in step with
+                // the settings. Vector only, like the panel that controls it.
+                <BwGridLayer key="grid" />,
                 <BwPropertiesPanel
+                    key="properties"
                     onUpdateImage={props.onUpdateImage}
-                /> : null}
+                />
+            ] : null}
         </div>
     </div>
 );

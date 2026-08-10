@@ -2,6 +2,7 @@ import paper from '@scratch/paper';
 import {styleShape} from '../style-path';
 import {clearSelection} from '../selection';
 import {getSquareDimensions} from '../math';
+import {snapPointToGrid} from '../bw/grid';
 import BoundingBoxTool from '../selection-tools/bounding-box-tool';
 import NudgeTool from '../selection-tools/nudge-tool';
 
@@ -109,8 +110,11 @@ class BwShapeTool extends paper.Tool {
             this.shape.remove();
         }
 
-        const rect = new paper.Rectangle(event.downPoint, event.point);
-        const squareDimensions = getSquareDimensions(event.downPoint, event.point);
+        const downPoint = snapPointToGrid(event.downPoint);
+        const dragPoint = snapPointToGrid(event.point);
+
+        const rect = new paper.Rectangle(downPoint, dragPoint);
+        const squareDimensions = getSquareDimensions(downPoint, dragPoint);
         if (event.modifiers.shift) {
             rect.size = squareDimensions.size.abs();
         }
@@ -118,11 +122,11 @@ class BwShapeTool extends paper.Tool {
         // Unlike rect-tool, the shape is built INTO its final rectangle rather than built and
         // then moved, so the rectangle has to be placed first. Same three cases, same meanings.
         if (event.modifiers.alt) {
-            rect.center = event.downPoint;
+            rect.center = downPoint;
         } else if (event.modifiers.shift) {
             rect.center = squareDimensions.position;
         } else {
-            rect.center = event.downPoint.add(event.point.subtract(event.downPoint).multiply(0.5));
+            rect.center = downPoint.add(dragPoint.subtract(downPoint).multiply(0.5));
         }
 
         this.shape = this.buildPath(rect, this.params);

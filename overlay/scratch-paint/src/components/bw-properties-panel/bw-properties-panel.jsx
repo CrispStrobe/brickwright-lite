@@ -101,6 +101,27 @@ Section.propTypes = {
     title: PropTypes.string.isRequired
 };
 
+/** A labelled checkbox, for the on/off grid and snapping settings. */
+const Toggle = ({checked, label, title, onChange}) => (
+    <label
+        className={styles.toggle}
+        title={title}
+    >
+        <input
+            checked={checked}
+            type="checkbox"
+            onChange={onChange}
+        />
+        <span>{label}</span>
+    </label>
+);
+Toggle.propTypes = {
+    checked: PropTypes.bool.isRequired,
+    label: PropTypes.string.isRequired,
+    onChange: PropTypes.func.isRequired,
+    title: PropTypes.string
+};
+
 /** A two-option toggle, used for "align relative to" and "mirror about". */
 const Segmented = ({label, options, value, onChange}) => (
     <div className={styles.segmented}>
@@ -333,6 +354,32 @@ const BwPropertiesPanel = props => {
                     </div>
                 </Section>
 
+                <Section title={t('grid')}>
+                    <Toggle
+                        checked={props.grid.visible}
+                        label={t('showGrid')}
+                        onChange={props.onToggleGrid}
+                    />
+                    <div className={styles.fieldRow}>
+                        <NumberField
+                            label={t('gridSize')}
+                            value={props.grid.size}
+                            onSubmit={props.onChangeGridSize}
+                        />
+                    </div>
+                    <Toggle
+                        checked={props.grid.snapToGrid}
+                        label={t('snapToGrid')}
+                        onChange={props.onToggleSnapToGrid}
+                    />
+                    <Toggle
+                        checked={props.grid.smartGuides}
+                        label={t('smartGuides')}
+                        title={t('smartGuidesHint')}
+                        onChange={props.onToggleSmartGuides}
+                    />
+                </Section>
+
                 {mode === Modes.ROUNDED_RECT || mode === Modes.POLYGON || mode === Modes.STAR ?
                     <Section title={t('shape')}>
                         {mode === Modes.ROUNDED_RECT ?
@@ -384,6 +431,12 @@ BwPropertiesPanel.propTypes = {
     alignTo: PropTypes.oneOf(Object.keys(AlignTo).map(key => AlignTo[key])).isRequired,
     booleanEmpty: PropTypes.bool,
     booleanOperandCount: PropTypes.number.isRequired,
+    grid: PropTypes.shape({
+        size: PropTypes.number,
+        smartGuides: PropTypes.bool,
+        snapToGrid: PropTypes.bool,
+        visible: PropTypes.bool
+    }).isRequired,
     locale: PropTypes.string,
     lockAspect: PropTypes.bool,
     mirrorAbout: PropTypes.oneOf(Object.keys(MirrorAbout).map(key => MirrorAbout[key])).isRequired,
@@ -391,6 +444,7 @@ BwPropertiesPanel.propTypes = {
     onAlign: PropTypes.func.isRequired,
     onBoolean: PropTypes.func.isRequired,
     onChangeAlignTo: PropTypes.func.isRequired,
+    onChangeGridSize: PropTypes.func.isRequired,
     onChangeHeight: PropTypes.func.isRequired,
     onChangeMirrorAbout: PropTypes.func.isRequired,
     onChangeRotation: PropTypes.func.isRequired,
@@ -402,8 +456,11 @@ BwPropertiesPanel.propTypes = {
     onMirror: PropTypes.func.isRequired,
     onRotateClockwise: PropTypes.func.isRequired,
     onRotateCounterClockwise: PropTypes.func.isRequired,
+    onToggleGrid: PropTypes.func.isRequired,
     onToggleLockAspect: PropTypes.func.isRequired,
     onTogglePanel: PropTypes.func.isRequired,
+    onToggleSmartGuides: PropTypes.func.isRequired,
+    onToggleSnapToGrid: PropTypes.func.isRequired,
     selectionCount: PropTypes.number.isRequired,
     shapeParams: PropTypes.shape({
         cornerRadius: PropTypes.number,

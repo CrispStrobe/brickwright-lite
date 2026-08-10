@@ -8,15 +8,9 @@ import BoundingBoxTool from '../selection-tools/bounding-box-tool';
 import NudgeTool from '../selection-tools/nudge-tool';
 
 /**
- * Tool for drawing rounded rectangles.
- *
- * Brickwright: upstream scratch-paint ships the whole scaffolding for this tool — the mode, the
- * container, the component, the icon and the i18n message — but the tool body is a stub that
- * only logs "not yet implemented", and paint-editor.jsx never renders the button. This is the
- * real implementation, modelled on rect-tool.js so the two behave identically apart from the
- * corner radius.
+ * Tool for drawing rectangles.
  */
-class RoundedRectTool extends paper.Tool {
+class RectTool extends paper.Tool {
     static get TOLERANCE () {
         return 2;
     }
@@ -32,13 +26,13 @@ class RoundedRectTool extends paper.Tool {
         this.clearSelectedItems = clearSelectedItems;
         this.onUpdateImage = onUpdateImage;
         this.boundingBoxTool = new BoundingBoxTool(
-            Modes.ROUNDED_RECT,
+            Modes.RECT,
             setSelectedItems,
             clearSelectedItems,
             setCursor,
             onUpdateImage
         );
-        const nudgeTool = new NudgeTool(Modes.ROUNDED_RECT, this.boundingBoxTool, onUpdateImage);
+        const nudgeTool = new NudgeTool(Modes.RECT, this.boundingBoxTool, onUpdateImage);
 
         // We have to set these functions instead of just declaring them because
         // paper.js tools hook up the listeners in the setter functions.
@@ -51,7 +45,6 @@ class RoundedRectTool extends paper.Tool {
 
         this.rect = null;
         this.colorState = null;
-        this.cornerRadius = 16;
         this.isBoundingBoxMode = null;
         this.active = false;
     }
@@ -65,7 +58,7 @@ class RoundedRectTool extends paper.Tool {
             match: hitResult =>
                 (hitResult.item.data && (hitResult.item.data.isScaleHandle || hitResult.item.data.isRotHandle)) ||
                 hitResult.item.selected, // Allow hits on bounding box and selected only
-            tolerance: RoundedRectTool.TOLERANCE / paper.view.zoom
+            tolerance: RectTool.TOLERANCE / paper.view.zoom
         };
     }
     /**
@@ -77,12 +70,6 @@ class RoundedRectTool extends paper.Tool {
     }
     setColorState (colorState) {
         this.colorState = colorState;
-    }
-    /**
-     * @param {!number} cornerRadius Corner radius in art board units, as set in the shape panel.
-     */
-    setCornerRadius (cornerRadius) {
-        this.cornerRadius = cornerRadius;
     }
     handleMouseDown (event) {
         if (event.event.button > 0) return; // only first mouse button
@@ -108,6 +95,9 @@ class RoundedRectTool extends paper.Tool {
             this.rect.remove();
         }
 
+        // Brickwright: snap the two drag corners to the grid, so everything downstream — the
+        // square constraint, the alt/shift positioning — is computed from the snapped values
+        // and the finished shape lands on grid lines rather than merely starting on one.
         const downPoint = snapPointToGrid(event.downPoint);
         const dragPoint = snapPointToGrid(event.point);
 
@@ -117,11 +107,7 @@ class RoundedRectTool extends paper.Tool {
             rect.size = squareDimensions.size.abs();
         }
 
-        // A corner radius over half the shorter side would make opposite corners cross over each
-        // other; paper draws that as a self-intersecting mess, so clamp instead.
-        const radius = Math.max(0, Math.min(this.cornerRadius, rect.width / 2, rect.height / 2));
-        this.rect = new paper.Path.Rectangle(rect, radius);
-
+        this.rect = new paper.Path.Rectangle(rect);
         if (event.modifiers.alt) {
             this.rect.position = downPoint;
         } else if (event.modifiers.shift) {
@@ -143,7 +129,7 @@ class RoundedRectTool extends paper.Tool {
         }
 
         if (this.rect) {
-            if (this.rect.area < RoundedRectTool.TOLERANCE / paper.view.zoom) {
+            if (this.rect.area < RectTool.TOLERANCE / paper.view.zoom) {
                 // Tiny rectangle created unintentionally?
                 this.rect.remove();
                 this.rect = null;
@@ -164,4 +150,4 @@ class RoundedRectTool extends paper.Tool {
     }
 }
 
-export default RoundedRectTool;
+export default RectTool;

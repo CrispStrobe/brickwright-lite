@@ -3,6 +3,7 @@ import modeReducer from './modes';
 import bitBrushSizeReducer from './bit-brush-size';
 import bitEraserSizeReducer from './bit-eraser-size';
 import brushModeReducer from './brush-mode';
+import bwGridReducer from './bw-grid';
 import bwPanelReducer from './bw-panel';
 import bwShapeReducer from './bw-shape';
 import eraserModeReducer from './eraser-mode';
@@ -27,7 +28,9 @@ export default combineReducers({
     bitBrushSize: bitBrushSizeReducer,
     bitEraserSize: bitEraserSizeReducer,
     brushMode: brushModeReducer,
-    // Brickwright additions: the properties rail and the parametric shape tools.
+    // Brickwright additions: the properties rail, the grid and snapping, and the parametric
+    // shape tools.
+    bwGrid: bwGridReducer,
     bwPanel: bwPanelReducer,
     bwShape: bwShapeReducer,
     color: colorReducer,
