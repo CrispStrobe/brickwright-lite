@@ -51,6 +51,52 @@ import { instructionLength } from './opcodes.js';
 const SKIP_BUDGET = 20000;
 
 /**
+ * Route compilation to the local WASM toolchain, if the user asked for it.
+ *
+ * The preview flag gates a ~1.6 MiB download, so the check happens BEFORE the
+ * dynamic import — a flag read inside the imported module would let webpack
+ * fetch the chunk for everyone and gate nothing. That diagnosis is bw-bundle's.
+ *
+ * It lives here rather than in the circuit tab because the intercept patches
+ * `globalThis.fetch` and only matters at the moment something compiles. Wired
+ * to tab visibility, a user who opted in and pressed run without ever opening
+ * the Circuit tab would silently get the hosted compiler instead — the flag
+ * would appear not to work, depending on which tab they had visited.
+ *
+ * A failure here is reported, not swallowed. Someone who deliberately turned on
+ * a preview flag is owed the reason it did not take effect; falling back to the
+ * hosted compiler in silence is the same bug this file's other catch blocks
+ * exist to prevent.
+ *
+ * @param {(phase: string, detail: string) => void} setStatus
+ */
+let wasmCompilerInstalled = false;
+async function installWasmCompilerIfOptedIn (setStatus) {
+    if (wasmCompilerInstalled) return;
+    let wanted = false;
+    try {
+        wanted = typeof localStorage !== 'undefined' &&
+                 localStorage.getItem('bw-use-wasm-compiler') === '1';
+    } catch { /* private browsing: no localStorage, treat as not opted in */ }
+    if (!wanted) return;
+    try {
+        const m = await import(
+            /* webpackChunkName: "sdcc-wasm" */ '../sdcc-wasm/intercept.js');
+        m.installWasmCompilerIntercept();
+        wasmCompilerInstalled = true;
+    } catch (e) {
+        // A missing chunk here is usually a stale build, which the page can fix.
+        const recovering = typeof window !== 'undefined' &&
+            window.__bwRecoverFromStaleBuild &&
+            window.__bwRecoverFromStaleBuild(e && e.message);
+        if (!recovering) {
+            setStatus('building', 'local compiler unavailable — using the hosted one');
+            console.warn('[brickwright] WASM compiler opted in but failed to load:', e);
+        }
+    }
+}
+
+/**
  * @param {object} opts
  * @param {object} opts.vm the scratch-vm instance (for toJSON and glowBlock)
  * @param {string} [opts.compilerUrl] the stc-compiler service
@@ -252,6 +298,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         setStatus('building', 'compiling…');
+        await installWasmCompilerIfOptedIn(setStatus);
         const res = await fetch(`${compilerUrl}/compile`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

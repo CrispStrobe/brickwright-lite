@@ -50,18 +50,12 @@ class CircuitTab extends React.Component {
         try {
             const engine = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
-            ui.setEngine(engine);
-            // Install the WASM compiler intercept ONLY if the preview flag is set.
-            // The flag check is here (before import) so the chunk is never fetched
-            // when the flag is off — otherwise every user downloads the compiler.
-            try {
-                if (typeof localStorage !== 'undefined' &&
-                    localStorage.getItem('bw-use-wasm-compiler') === '1') {
-                    import(/* webpackChunkName: "sdcc-wasm" */ '../../lib/sdcc-wasm/intercept.js')
-                        .then(m => m.installWasmCompilerIntercept())
-                        .catch(() => {});
-                }
-            } catch { /* private browsing — no localStorage */ }
+            ui.setEngine(engine);   // the panel takes the engine by injection, not by path
+            // (The WASM compiler intercept used to be installed here. It now
+            // lives at the compile call site in debug-runner.js: patching
+            // globalThis.fetch only matters when something compiles, and hanging
+            // it off this tab's visibility meant opting in did nothing unless you
+            // happened to open the Circuit tab first.)
             // Keep the whole module, not just the designer. The warnings, parts
             // list and examples panels are separate exports, and a build may
             // legitimately not have them yet — which the panel strip reports
