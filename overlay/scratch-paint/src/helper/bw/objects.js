@@ -19,21 +19,63 @@ import {getAllSelectableRootItems, setItemSelection, clearSelection} from '../se
 const HIDDEN_TAG = 'bwHidden';
 
 /**
+ * Guess what a path actually is from its geometry.
+ *
+ * Calling every one of them "Path" is true and useless — a costume imported from SVG is dozens
+ * of them, and the list may as well be blank. paper keeps no record of which tool drew a shape
+ * (`Path.Rectangle` is a constructor, not a type), so anything not drawn by one of our own tools
+ * has to be inferred back out of the segments.
+ *
+ * @param {!paper.Path} path The path.
+ * @return {!string} A short description.
+ */
+const describePath = function (path) {
+    const segments = path.segments || [];
+    const count = segments.length;
+    const straight = segments.every(segment =>
+        segment.handleIn.isZero() && segment.handleOut.isZero());
+
+    if (!path.closed) {
+        return count === 2 ? 'Line' : `Line (${count} points)`;
+    }
+    if (straight) {
+        if (count === 3) return 'Triangle';
+        if (count === 4) return 'Rectangle';
+        return `Polygon (${count} sides)`;
+    }
+    // paper builds an ellipse from four segments, each with handles.
+    if (count === 4) return 'Ellipse';
+    // A rounded rectangle is four corners each split into two arc segments.
+    if (count === 8) return 'Rounded rectangle';
+    return `Shape (${count} points)`;
+};
+
+/**
  * A human label for an item that has no name of its own.
  * @param {!paper.Item} item The item.
  * @return {!string} A short type name.
  */
 const describeItem = function (item) {
+    // Shapes our own tools drew know what they are; nothing has to be guessed for those.
+    if (item.data && item.data.bwKind) return item.data.bwKind;
+
     if (item instanceof paper.PointText) {
         // The words themselves identify a text object far better than the word "Text" does.
         const content = (item.content || '').trim().replace(/\s+/g, ' ');
         return content ? content.slice(0, 24) : 'Text';
     }
-    if (item instanceof paper.Group) return 'Group';
+    if (item instanceof paper.Group) {
+        return `Group (${item.children ? item.children.length : 0})`;
+    }
     if (item instanceof paper.Raster) return 'Image';
-    if (item instanceof paper.CompoundPath) return 'Compound path';
-    if (item instanceof paper.Shape) return 'Shape';
-    return 'Path';
+    if (item instanceof paper.CompoundPath) {
+        return `Compound path (${item.children ? item.children.length : 0})`;
+    }
+    if (item instanceof paper.Shape) {
+        return item.type ? item.type.charAt(0).toUpperCase() + item.type.slice(1) : 'Shape';
+    }
+    if (item instanceof paper.Path) return describePath(item);
+    return 'Object';
 };
 
 /**
@@ -159,6 +201,7 @@ const rehideItems = function (hidden) {
 
 export {
     describeItem,
+    describePath,
     listObjects,
     rehideItems,
     renameObject,

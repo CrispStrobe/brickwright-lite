@@ -23,7 +23,8 @@ const ObjectRow = props => {
             className={classNames(styles.row, {
                 [styles.rowSelected]: object.selected,
                 [styles.rowDragOver]: props.isDragTarget,
-                [styles.rowDimmed]: object.hidden || object.locked
+                [styles.rowHidden]: object.hidden,
+                [styles.rowLocked]: object.locked
             })}
             draggable
             onDragEnd={props.onDragEnd}
@@ -32,7 +33,7 @@ const ObjectRow = props => {
             onDrop={props.onDrop}
         >
             <button
-                className={styles.rowIcon}
+                className={classNames(styles.rowIcon, {[styles.rowIconActive]: object.hidden})}
                 title={object.hidden ? t('showObject') : t('hideObject')}
                 type="button"
                 onClick={props.onToggleHidden}
@@ -40,7 +41,7 @@ const ObjectRow = props => {
                 <Eye closed={object.hidden} />
             </button>
             <button
-                className={styles.rowIcon}
+                className={classNames(styles.rowIcon, {[styles.rowIconActive]: object.locked})}
                 title={object.locked ? t('unlockObject') : t('lockObject')}
                 type="button"
                 onClick={props.onToggleLocked}

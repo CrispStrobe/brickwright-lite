@@ -83,10 +83,38 @@ class BwPropertiesPanel extends React.Component {
             mirrorAbout: MirrorAbout.SELECTION_EDGE
         };
     }
+    componentDidMount () {
+        this.remeasureCanvas();
+    }
     componentWillReceiveProps (nextProps) {
         if (this.state.booleanEmpty && nextProps.selectedItems !== this.props.selectedItems) {
             this.setState({booleanEmpty: false});
         }
+    }
+    componentDidUpdate (prevProps) {
+        if (prevProps.visible !== this.props.visible) {
+            this.remeasureCanvas();
+        }
+    }
+    componentWillUnmount () {
+        this.remeasureCanvas();
+    }
+    /**
+     * Tell paper the canvas changed size.
+     *
+     * The rail is a column in the same flex row as the canvas, so opening or closing it resizes
+     * the canvas element — but paper only re-measures on a WINDOW resize (paper-canvas.jsx renders
+     * the canvas with resize="true", and its own comment on recalibrateSize says that when the two
+     * sizes drift apart "the mouse events in the paint editor don't line up correctly"). Without
+     * this, opening the rail left paper drawing and hit-testing against a stale viewport: the
+     * artwork spilled under the rail and zooming and panning went wrong.
+     *
+     * Deferred a frame because the browser has not laid the new width out yet at this point.
+     */
+    remeasureCanvas () {
+        window.requestAnimationFrame(() => {
+            window.dispatchEvent(new Event('resize'));
+        });
     }
     /**
      * Commit a change that moved or resized existing objects.

@@ -40,6 +40,8 @@ const makePolygon = function (rect, sides) {
         path.add(pointOn(rect, START_ANGLE + (i * 2 * Math.PI / count), 1));
     }
     path.closed = true;
+    // Let the objects tree name it outright instead of inferring it back out of the segments.
+    path.data.bwKind = `Polygon (${count} sides)`;
     return path;
 };
 
@@ -59,6 +61,8 @@ const makeStar = function (rect, points, innerRatio) {
         path.add(pointOn(rect, START_ANGLE + (i * Math.PI / count), i % 2 === 0 ? 1 : inner));
     }
     path.closed = true;
+    // Let the objects tree name it outright instead of inferring it back out of the segments.
+    path.data.bwKind = `Star (${count} points)`;
     return path;
 };
 

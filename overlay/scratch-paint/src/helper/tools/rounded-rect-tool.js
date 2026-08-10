@@ -121,6 +121,8 @@ class RoundedRectTool extends paper.Tool {
         // other; paper draws that as a self-intersecting mess, so clamp instead.
         const radius = Math.max(0, Math.min(this.cornerRadius, rect.width / 2, rect.height / 2));
         this.rect = new paper.Path.Rectangle(rect, radius);
+        // Let the objects tree name it outright instead of inferring it back out of the segments.
+        this.rect.data.bwKind = 'Rounded rectangle';
 
         if (event.modifiers.alt) {
             this.rect.position = downPoint;

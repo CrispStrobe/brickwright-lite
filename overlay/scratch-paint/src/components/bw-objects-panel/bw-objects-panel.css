@@ -68,10 +68,18 @@
     border-top-width: 2px;
 }
 
-.row-dimmed .row-label {
-    opacity: 0.5;
+.row-hidden .row-label {
+    opacity: 0.45;
+    text-decoration: line-through;
 }
 
+.row-locked .row-label {
+    font-style: italic;
+}
+
+/* The state icons are the row's least important content until they mean something: an always-on
+   padlock on every row reads as "everything is locked". Off state fades back and returns on hover
+   so the control is still discoverable; on state is fully opaque and coloured. */
 .row-icon {
     display: flex;
     align-items: center;
@@ -84,11 +92,24 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    opacity: 0.65;
+    opacity: 0.18;
+    transition: opacity 0.12s ease-out;
 }
 
-.row-icon:hover {
+.row:hover .row-icon {
+    opacity: 0.6;
+}
+
+.row-icon:hover,
+.row:hover .row-icon:hover {
     opacity: 1;
+}
+
+/* An icon whose state is ON is information, not a control, so it stays visible. */
+.row-icon-active,
+.row:hover .row-icon-active {
+    opacity: 1;
+    color: $looks-secondary;
 }
 
 .row-icon svg {

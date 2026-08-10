@@ -3,33 +3,37 @@
 
 /* Brickwright: the designer's right-hand properties rail. */
 
+/* `flex-shrink: 1` matters: with `0 0 auto` the rail's full width became a floor under the whole
+   editor row, so the pane could no longer be squeezed — which showed up as the stage-size buttons
+   appearing to do nothing to the editor. It may give up width down to `min-width` instead. */
 .rail {
     display: flex;
     flex-direction: column;
-    flex: 0 0 auto;
+    flex: 0 1 15rem;
     width: 15rem;
+    min-width: 11rem;
     overflow: hidden;
     color: $text-primary;
     font-size: 0.75rem;
 }
 
+/* Closed, the rail must cost the canvas as close to nothing as a toggle can: no border, no
+   margin, just room for the button that opens it. */
 .rail-collapsed {
     display: flex;
     flex-direction: column;
     flex: 0 0 auto;
     align-items: center;
-    padding-top: calc(2 * $grid-unit);
+    padding: calc(2 * $grid-unit) 0 0 0;
 }
 
-[dir="ltr"] .rail,
-[dir="ltr"] .rail-collapsed {
+[dir="ltr"] .rail {
     border-left: 1px dashed $ui-pane-border;
     margin-left: calc(3 * $grid-unit);
     padding-left: calc(3 * $grid-unit);
 }
 
-[dir="rtl"] .rail,
-[dir="rtl"] .rail-collapsed {
+[dir="rtl"] .rail {
     border-right: 1px dashed $ui-pane-border;
     margin-right: calc(3 * $grid-unit);
     padding-right: calc(3 * $grid-unit);
