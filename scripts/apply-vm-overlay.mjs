@@ -127,9 +127,40 @@ if (sb3.includes('// Brickwright: restore hardware declarations')) {
 
 writeFileSync(sb3Path, sb3);
 
-// --- vm.setStc(): one entry point for setting hardware declarations ---
+// --- vm.setStc() + pre-load extensions: two patches on virtual-machine.js ---
 const vmPath2 = path.join(DEST, 'src', 'virtual-machine.js');
 let vm2 = readFileSync(vmPath2, 'utf8');
+
+// Pre-load declared extensions before deserialization.
+// sb3.js builds extensionIDs from block opcodes DURING deserialization, but
+// drops blocks whose extension prefix is unknown. Fix: load declared
+// extensions (builtins are sync) before the deserializer runs.
+const deserAnchor = `    deserializeProject (projectJSON, zip) {
+        // Clear the current runtime
+        this.clear();`;
+const deserPatch = `    deserializeProject (projectJSON, zip) {
+        // Clear the current runtime
+        this.clear();
+
+        // Brickwright: pre-load declared extensions so their blocks survive
+        // deserialization. Without this, sb3.js drops blocks whose extension
+        // prefix is unknown, and the extension is never requested — circular.
+        if (projectJSON.extensions && Array.isArray(projectJSON.extensions)) {
+            for (const id of projectJSON.extensions) {
+                if (!this.extensionManager.isExtensionLoaded(id)) {
+                    this.extensionManager.loadExtensionURL(id);
+                }
+            }
+        }`;
+if (vm2.includes('// Brickwright: pre-load declared extensions')) {
+    console.log('  virtual-machine.js pre-load extensions already applied');
+} else if (vm2.includes(deserAnchor)) {
+    vm2 = vm2.replace(deserAnchor, deserPatch);
+    console.log('  patched virtual-machine.js (pre-load declared extensions)');
+} else {
+    console.error('  ! virtual-machine.js deserializeProject anchor not found');
+    process.exit(1);
+}
 const vmSetStcAnchor = '    installTargets (targets, extensions, wholeProject) {';
 const vmSetStcPatch = `    /**
      * Set hardware declarations (device, clock, pin table). The single entry point
