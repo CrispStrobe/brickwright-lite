@@ -164,6 +164,51 @@ class CircuitTab extends React.Component {
      *
      * @param {object} ex an entry from examples/index.json
      */
+    /**
+     * Load an example's program, so the project gains its PIN declarations.
+     *
+     * Without this, opening an example gives a wired board and no debugger:
+     * the run controls are gated on `stc.pins`, and pins are declared in
+     * `program.bw`, not in `circuit.json`. That is the shortest path a curious
+     * user takes to find the debugger, and it ended nowhere.
+     *
+     * `vm.loadProject` REPLACES the project — unlike loading a circuit, which
+     * the designer's undo can recover. So this asks first.
+     *
+     * This repeats part of pseudocode-importer.jsx's sequence (parse →
+     * generateSB3 → loadProject → set stc) rather than sharing it, and that is
+     * a deliberate, narrow choice I would rather flag than hide: extracting the
+     * importer's version means refactoring working code that has no test
+     * covering it. What is NOT duplicated is the stc-comment persistence — the
+     * importer writes `stc` into a stage comment so it survives save/reload.
+     * An opened example lives on `runtime.stc`, which `readStc()` reads, and is
+     * lost on reload. If examples ever need to survive a save, this should call
+     * the importer's path instead of growing a second copy of it.
+     *
+     * @returns {Promise<boolean>} whether pins were loaded
+     */
+    async loadExampleProgram (ex) {
+        const path = ex && ex.files && ex.files.program;
+        if (!path) return false;
+        const vm = this.props.vm;
+        if (!vm || !vm.loadProject) return false;
+        const res = await fetch(`examples/${path}`);
+        if (!res.ok) throw new Error(`program: HTTP ${res.status}`);
+        const source = await res.text();
+        const {default: SB3Creator} = await import(
+            /* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js');
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const blob = await creator.generateSB3();
+        await vm.loadProject(await blob.arrayBuffer());
+        // scratch-vm's serializer drops unknown top-level keys, so `stc` never
+        // survives toJSON. Keep it on the runtime, which lives as long as the
+        // project does — the same reason the importer does it.
+        const stc = creator.project.stc || null;
+        if (vm.setStc) vm.setStc(stc); else vm.runtime.stc = stc;
+        return !!(stc && stc.pins && stc.pins.length);
+    }
+
     async loadExample (ex) {
         const path = ex && ex.files && ex.files.circuit;
         if (!path) {
@@ -171,6 +216,16 @@ class CircuitTab extends React.Component {
                 `"${(ex && ex.id) || 'that example'}" lists no circuit file, so there is ` +
                 'nothing to place on the board.'});
             return;
+        }
+        // An example with a program replaces the project, which undo cannot
+        // recover — so ask, once, and say what is at stake. A circuit-only
+        // example touches nothing but the board and needs no permission.
+        const hasProgram = !!(ex.files && ex.files.program && ex.kind !== 'circuit');
+        if (hasProgram && typeof confirm === 'function') {
+            const ok = confirm(
+                `Open "${ex.id}"?\n\nThis replaces the current project — its blocks, its ` +
+                'pins and its board. Anything unsaved is lost.');
+            if (!ok) return;
         }
         this.setState({loadingExample: ex.id, examplesError: null});
         try {
@@ -180,10 +235,37 @@ class CircuitTab extends React.Component {
             if (!data || !Array.isArray(data.parts) || !Array.isArray(data.wires)) {
                 throw new Error('not a circuit (no parts/wires)');
             }
+            // The program first: it calls vm.loadProject, which would otherwise
+            // discard a circuit loaded a moment earlier. Its failure is not
+            // fatal — a board with no pins is still a board, and the panel now
+            // says why the debugger is absent — so the circuit still loads and
+            // the reason is reported.
+            let pins = false;
+            let programError = null;
+            if (hasProgram) {
+                try {
+                    pins = await this.loadExampleProgram(ex);
+                } catch (e) {
+                    programError = e.message;
+                }
+            }
             // Switching to the Designer is the point of clicking an example —
             // leaving the user on the gallery with an invisible change would be
             // the same silence this panel strip exists to avoid.
-            this.setState({circuitData: data, panel: 'designer', loadingExample: null});
+            this.setState({
+                circuitData: data,
+                panel: 'designer',
+                loadingExample: null,
+                stc: this.readStc(),
+                examplesError: programError ?
+                    `Opened the circuit for "${ex.id}", but its program did not load ` +
+                    `(${programError}), so there are no pins and no debugger.` : null
+            });
+            if (hasProgram && !pins && !programError) {
+                this.setState({examplesError:
+                    `"${ex.id}" loaded, but its program declares no pins, so the ` +
+                    'debugger stays hidden.'});
+            }
         } catch (e) {
             this.setState({loadingExample: null, examplesError:
                 `Could not open "${ex.id}": ${e.message}. The board is unchanged.`});
