@@ -315,6 +315,33 @@ class PseudocodeImporter extends React.Component {
         this.switchTab = this.switchTab.bind(this);
     }
 
+    componentDidMount () {
+        // Pick up pseudocode from an example loaded via the Circuit tab.
+        // loadExampleProgram stores the source on vm.runtime.bwPseudocodeSource
+        // and emits PROJECT_CHANGED; we read it here so the Code tab fills.
+        const vm = this.props.vm;
+        if (vm && vm.runtime) {
+            this._onProjectChanged = () => {
+                const src = vm.runtime.bwPseudocodeSource;
+                if (src && src !== this.state.buffers.pseudocode) {
+                    this.setState(s => ({
+                        lang: 'pseudocode',
+                        buffers: {...s.buffers, pseudocode: src}
+                    }));
+                    delete vm.runtime.bwPseudocodeSource;
+                }
+            };
+            vm.runtime.on('PROJECT_CHANGED', this._onProjectChanged);
+        }
+    }
+
+    componentWillUnmount () {
+        const vm = this.props.vm;
+        if (vm && vm.runtime && this._onProjectChanged) {
+            vm.runtime.removeListener('PROJECT_CHANGED', this._onProjectChanged);
+        }
+    }
+
     // Current-locale string table for this tab's own UI (see L10N above).
     get L () { return L10N[pickLocale(this.props.locale)]; }
 

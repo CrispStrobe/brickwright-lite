@@ -206,6 +206,12 @@ class CircuitTab extends React.Component {
         // project does — the same reason the importer does it.
         const stc = creator.project.stc || null;
         if (vm.setStc) vm.setStc(stc); else vm.runtime.stc = stc;
+        // Store the pseudocode source so the Code tab can show it.
+        // The importer reads this on mount/update and fills its buffer
+        // when it sees the project changed.
+        vm.runtime.bwPseudocodeSource = source;
+        // Emit a project change so the importer knows to re-read.
+        vm.runtime.emit('PROJECT_CHANGED');
         return !!(stc && stc.pins && stc.pins.length);
     }
 
@@ -355,7 +361,9 @@ class CircuitTab extends React.Component {
 
     render () {
         const {Designer, error, reloading, stc} = this.state;
-        const box = {height: '100%', overflow: 'auto', padding: 8, boxSizing: 'border-box'};
+        // overflow:clip prevents deep sidebar scrolls from shifting the page —
+        // the designer's palette and panels scroll internally, not the tab itself.
+        const box = {height: '100%', overflow: 'clip', padding: 8, boxSizing: 'border-box'};
         if (reloading) {
             return (
                 <div style={{...box, color: '#64748b'}}>
