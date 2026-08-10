@@ -30,11 +30,12 @@ const builtinExtensions = {
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     circuit: () => require('../extensions/crispstrobe/circuit'),
-    // Device convenience blocks (servo, motor, relay, sensors, LCD, NeoPixel).
-    // sb3-creator emits these as devices_* opcodes; without this line every
-    // project using them fell to the SANDBOXED loader (importScripts('devices')
-    // → 404 → blocks silently dropped).
-    devices: () => require('../extensions/crispstrobe/devices'),
+    // Device convenience blocks: NOT REGISTERED. 31 of 36 opcodes are stubs
+    // (BW_STUB in generated C). A palette that is smaller and true beats one
+    // that is complete and partly inert — a block that silently returns 0 on
+    // real hardware is the thing this project keeps refusing to ship.
+    // Re-register when a meaningful fraction of the blocks have working drivers.
+    // See: bw-blocks census c35992b, PARTS-TO-BLOCKS.md greying spec.
     brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
     // Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
     // repo too; the bundledIds dedup removes the gallery copy from the picker.
