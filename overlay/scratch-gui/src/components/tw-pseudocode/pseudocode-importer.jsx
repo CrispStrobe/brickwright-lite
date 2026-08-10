@@ -4,6 +4,32 @@ import {connect} from 'react-redux';
 import examples from '../../lib/sb3-creator-examples.js';
 import brickRobot from './brick-robot.svg';
 
+// Device groups for the device selector. Mirrors STC_PARTS in sb3-creator.js; the parser
+// validates the DEVICE line against STC_PARTS and warns on unknowns, so this list is a
+// presentation concern. Each group maps to a `core` that determines pin naming, compile
+// target, and emulator. Capability flags tell the UI what each target supports.
+const DEVICE_GROUPS = [
+    { label: 'STC12 (8051)', core: '8051', devices: [
+        { id: 'stc12c5a60s2', label: 'STC12C5A60S2', compile: true, emulator: 'emu8051' },
+        { id: 'stc12c5a16s2', label: 'STC12C5A16S2', compile: true, emulator: 'emu8051' },
+        { id: 'stc15f2k60s2', label: 'STC15F2K60S2', compile: true, emulator: 'emu8051' },
+        { id: 'stc15w408as', label: 'STC15W408AS', compile: true, emulator: 'emu8051' },
+        { id: 'stc89c52rc', label: 'STC89C52RC', compile: true, emulator: 'emu8051' },
+        { id: 'stc89c52', label: 'STC89C52', compile: true, emulator: 'emu8051' },
+    ]},
+    { label: 'Arduino (AVR)', core: 'arduino', devices: [
+        { id: 'arduino-uno', label: 'Arduino Uno', compile: false, emulator: 'avr8js' },
+        { id: 'arduino-nano', label: 'Arduino Nano', compile: false, emulator: 'avr8js' },
+        { id: 'atmega328p', label: 'ATmega328P (bare)', compile: false, emulator: 'avr8js' },
+    ]},
+    { label: 'MicroPython', core: 'micropython', devices: [
+        { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
+        { id: 'pico', label: 'Raspberry Pi Pico', compile: false, emulator: null },
+    ]},
+];
+const DEVICE_BY_ID = {};
+for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = { ...d, core: g.core, group: g.label };
+
 // i18n for the Code tab's own strings. The editor already exposes the current locale in redux
 // (state.locales.locale); we pick en/de from this table (falling back to English). Values may be
 // functions for interpolation. To add a language, add its column.
@@ -423,6 +449,39 @@ class PseudocodeImporter extends React.Component {
 
 
 
+    // Read the DEVICE id from the pseudocode buffer. Returns lowercase id or null.
+    currentDevice () {
+        const src = this.state.buffers.pseudocode || '';
+        const m = src.match(/^DEVICE\s+([\w-]+)/im);
+        return m ? m[1].toLowerCase() : null;
+    }
+
+    // Set the DEVICE in the pseudocode buffer: update if present, insert at top if not.
+    // Also publishes the device core on vm.runtime so the debug panel can pick the right
+    // emulator without parsing pseudocode itself.
+    setDevice (deviceId) {
+        const info = DEVICE_BY_ID[deviceId];
+        if (!info) return;
+        const line = `DEVICE ${deviceId.toUpperCase()}`;
+        this.setState(s => {
+            const src = s.buffers.pseudocode || '';
+            let next;
+            if (/^DEVICE\s+[\w-]+/im.test(src)) {
+                next = src.replace(/^DEVICE\s+[\w-]+.*$/im, line);
+            } else {
+                // Insert before the first non-empty, non-comment line, or at top
+                next = line + '\n' + src;
+            }
+            return { buffers: { ...s.buffers, pseudocode: next } };
+        }, () => {
+            // Publish core on the runtime so the debug panel can filter target kinds
+            if (this.props.vm && this.props.vm.runtime) {
+                this.props.vm.runtime.bwDeviceCore = info.core;
+                this.props.vm.runtime.bwDeviceId = deviceId;
+            }
+        });
+    }
+
     // The project's hardware declarations. `vm.runtime.stc` is where they live while
     // a project is loaded (see loadProject above for why toJSON cannot carry them);
     // the toJSON read stays as a fallback for the day the VM does.
@@ -821,6 +880,22 @@ class PseudocodeImporter extends React.Component {
                         i
                     </button>
                     <span style={{flex: 1}} />
+                    {/* Device selector: drives MCU sidecar, pin names, compile target, emulator */}
+                    <select
+                        value={this.currentDevice() || ''}
+                        onChange={e => this.setDevice(e.target.value)}
+                        style={sel}
+                        title="Target device — sets pin names, compile target and emulator"
+                    >
+                        <option value="" disabled>Device…</option>
+                        {DEVICE_GROUPS.map(g => (
+                            <optgroup key={g.label} label={g.label}>
+                                {g.devices.map(d => (
+                                    <option key={d.id} value={d.id}>{d.label}</option>
+                                ))}
+                            </optgroup>
+                        ))}
+                    </select>
                     <select defaultValue="" onChange={e => this.loadExample(e.target.value)} style={sel} title={this.L.loadExampleTitle}>
                         <option value="" disabled>{this.L.loadExample}</option>
                         {GROUPS.map(g => (
