@@ -50,12 +50,6 @@ class PaperCanvas extends React.Component {
         // recalibrateSize below, which describes exactly this failure and until now had no
         // trigger for it. Observing the element covers every cause at once instead of asking each
         // possible cause to remember to announce itself.
-        if (typeof ResizeObserver !== 'undefined') {
-            this.resizeObserver = new ResizeObserver(() => {
-                if (paper.view) this.onViewResize();
-            });
-            this.resizeObserver.observe(this.canvas);
-        }
         resetZoom();
         if (this.props.zoomLevelId) {
             this.props.setZoomLevelId(this.props.zoomLevelId);
@@ -80,6 +74,40 @@ class PaperCanvas extends React.Component {
         setupLayers(this.props.format);
         this.importImage(
             this.props.imageFormat, this.props.image, this.props.rotationCenterX, this.props.rotationCenterY);
+        // Last, so it can never interfere with the initial zoom-to-fit above.
+        this.observeCanvasResize();
+    }
+    /**
+     * Brickwright: re-measure when the canvas ELEMENT changes size, whatever moved it — the
+     * properties rail opening, the small/large stage buttons, a pane divider, browser zoom.
+     * paper itself only learns of a WINDOW resize (the canvas is rendered with resize="true"),
+     * so every other cause left it drawing and hit-testing against a stale viewport.
+     *
+     * The guards matter as much as the observer. ResizeObserver always delivers one callback for
+     * the INITIAL measurement, which is not a resize at all; reacting to it ran clampViewBounds
+     * while the costume was still being imported and zoomed to fit, and left the view parked off
+     * the artwork with the workspace background showing. A callback reporting a size we already
+     * hold is likewise not a resize, and neither is one that arrives while a zoom-to-fit is still
+     * pending.
+     */
+    observeCanvasResize () {
+        if (typeof ResizeObserver === 'undefined') return;
+        let lastSize = null;
+        this.resizeObserver = new ResizeObserver(entries => {
+            if (!paper.view || !entries.length) return;
+            const {width, height} = entries[0].contentRect;
+            const size = `${Math.round(width)}x${Math.round(height)}`;
+            if (lastSize === null) { // the initial measurement, not a change
+                lastSize = size;
+                return;
+            }
+            if (size === lastSize) return;
+            lastSize = size;
+            // An import is still settling the view; it will size itself when it lands.
+            if (this.shouldZoomToFit) return;
+            this.onViewResize();
+        });
+        this.resizeObserver.observe(this.canvas);
     }
     componentWillReceiveProps (newProps) {
         if (this.props.imageId !== newProps.imageId) {
