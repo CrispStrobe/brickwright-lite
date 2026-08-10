@@ -71,8 +71,8 @@ const KNOWN_DEAD = new Map([
         'Written, never imported; only the right column is sized today.'],
     ['lib/bw-circuit-ui/model/demo-netlist.js', 'Vendored; used only by the standalone demo.'],
     ['lib/bw-circuit-ui/model/export-png.js', 'Vendored; PNG export is not surfaced in lite.'],
-    ['lib/bw-circuit-ui/model/simulation.js', 'Vendored; lite drives the board through bw-board.'],
-    ['lib/bw-circuit-ui/model/terminal-aliases.js', 'Vendored; no lite caller yet.']
+    ['lib/bw-circuit-ui/model/simulation.js', 'Vendored; lite drives the board through bw-board.']
+    // terminal-aliases.js was here. Removed: circuit.js imports it after 92c6450 (schematic wire fix).
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;
