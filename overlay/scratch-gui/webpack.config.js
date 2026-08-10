@@ -89,6 +89,13 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 // that points here; see bw-debug/debug-runner.js.
                 from: 'src/lib/emu8051/emu8051.wasm',
                 to: 'static/emu8051.wasm'
+            },
+            {
+                // SDCC 4.5.0 as WASM — lazy-loaded on first compile when
+                // the preview flag is set. Not the default compiler path.
+                from: 'src/lib/sdcc-wasm/dist',
+                to: 'static/sdcc-wasm',
+                noErrorOnMissing: true
             }
         ]
     }));

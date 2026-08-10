@@ -50,7 +50,12 @@ class CircuitTab extends React.Component {
         try {
             const engine = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
-            ui.setEngine(engine);   // the panel takes the engine by injection, not by path
+            ui.setEngine(engine);
+            // Install the WASM compiler intercept if the flag is set.
+            // Lazy: the intercept module and the compiler are in their own chunk.
+            import(/* webpackChunkName: "sdcc-wasm" */ '../../lib/sdcc-wasm/intercept.js')
+                .then(m => m.installWasmCompilerIntercept())
+                .catch(() => {}); // absent or flag not set — no-op   // the panel takes the engine by injection, not by path
             // Keep the whole module, not just the designer. The warnings, parts
             // list and examples panels are separate exports, and a build may
             // legitimately not have them yet — which the panel strip reports
