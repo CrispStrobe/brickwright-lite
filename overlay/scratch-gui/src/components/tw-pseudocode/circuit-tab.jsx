@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 
@@ -35,6 +36,11 @@ class CircuitTab extends React.Component {
         } catch { /* private mode */ }
         let hideStage = false;
         let debugDock = 'top';
+        let showInStage = true; // owner default: while coding, the circuit replaces the stage
+        try {
+            showInStage = localStorage.getItem('bw-stage-circuit') !== '0';
+        } catch { /* private mode */ }
+        this._stageHost = null;
         try {
             hideStage = localStorage.getItem('bw-hide-stage') === '1';
             const d = localStorage.getItem('bw-debug-dock');
@@ -42,7 +48,7 @@ class CircuitTab extends React.Component {
         } catch { /* private mode: defaults */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
-            debugHintDismissed, hideStage, debugDock,
+            debugHintDismissed, hideStage, debugDock, showInStage,
             examples: null, examplesError: null, circuitData: null, loadingExample: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
@@ -61,15 +67,49 @@ class CircuitTab extends React.Component {
             document.head.appendChild(st);
         }
         this._syncStageAttr();
+        this._ensureStageHost();
     }
 
     componentDidUpdate (prevProps) {
         if (this.props.isVisible && !prevProps.isVisible) this.load();
         this._syncStageAttr();
+        this._ensureStageHost();
+        if (this._stageHost) {
+            this._stageHost.style.display = this._portalOn ? 'block' : 'none';
+        }
     }
 
     componentWillUnmount () {
         document.documentElement.removeAttribute('data-bw-hide-stage');
+        if (this._stageHost && this._stageHost.parentNode) {
+            this._stageHost.parentNode.removeChild(this._stageHost);
+        }
+    }
+
+    /** The overlay div inside the stage column that hosts the portal. Created
+     *  lazily OUTSIDE render (DOM mutation is a lifecycle affair); render only
+     *  uses it if it already exists — the first eligible update supplies it. */
+    _ensureStageHost () {
+        if (this._stageHost && document.contains(this._stageHost)) return this._stageHost;
+        const wrap = document.querySelector('div[class*="stage-and-target-wrapper"]');
+        if (!wrap) return null;
+        if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+        const host = document.createElement('div');
+        host.style.cssText = 'position:absolute;inset:0;z-index:20;background:#fff;display:none;overflow:hidden;';
+        wrap.appendChild(host);
+        this._stageHost = host;
+        return host;
+    }
+
+    /** While coding (any other tab), the circuit takes the stage's column —
+     *  the owner's default: you watch the LED you are programming, not an
+     *  empty Scratch stage. Only when there is circuit content to show. */
+    _stagePortalOn () {
+        if (this.props.isVisible || !this.state.showInStage) return false;
+        const {stc, circuit} = this.state;
+        const hasContent = !!((circuit && circuit.parts && circuit.parts.length) ||
+            (stc && stc.pins && stc.pins.length));
+        return hasContent && !!this._stageHost && document.contains(this._stageHost);
     }
 
     /** Hide the stage+sprites column only while THIS tab is the visible one —
@@ -445,7 +485,8 @@ class CircuitTab extends React.Component {
         if (!Designer) {
             return <div style={{...box, color: '#64748b'}}>{'Loading the circuit designer…'}</div>;
         }
-        return (
+        this._portalOn = this._stagePortalOn();
+        const content = (
             <div style={box}>
                 {/* A circuit does not need a microcontroller.
                     This used to read "declares no pins, so the board starts empty", which
@@ -599,6 +640,8 @@ class CircuitTab extends React.Component {
                 </div>
             </div>
         );
+        if (this._portalOn) return ReactDOM.createPortal(content, this._stageHost);
+        return content;
     }
 
     /** One DebugPanel instance, wherever it docks. Moving between the top
@@ -691,6 +734,17 @@ class CircuitTab extends React.Component {
                 {segBtn(this.state.debugDock === 'top', 'Top', 'Debugger above the board', () => setDock('top'))}
                 {segBtn(this.state.debugDock === 'right', 'Right', 'Debugger in a right column', () => setDock('right'))}
                 {segBtn(this.state.debugDock === 'off', 'Off', 'Hide the debugger', () => setDock('off'))}
+            </div>
+            <span style={{color: '#94a3b8'}}>{'While coding'}</span>
+            <div style={{display: 'inline-flex', gap: 1, padding: 1, borderRadius: 5, background: '#f1f5f9'}}>
+                {segBtn(this.state.showInStage, 'Circuit', 'On other tabs, show the circuit where the stage is', () => {
+                    this.setState({showInStage: true});
+                    try { localStorage.setItem('bw-stage-circuit', '1'); } catch { /* session */ }
+                })}
+                {segBtn(!this.state.showInStage, 'Scratch stage', 'Keep the normal stage and sprites while coding', () => {
+                    this.setState({showInStage: false});
+                    try { localStorage.setItem('bw-stage-circuit', '0'); } catch { /* session */ }
+                })}
             </div>
             <div style={{display: 'inline-flex', gap: 1, padding: 1, borderRadius: 5, background: '#f1f5f9'}}>
                 {segBtn(!this.state.hideStage, 'Stage', 'Show the Scratch stage and sprites', () => {

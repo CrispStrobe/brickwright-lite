@@ -388,9 +388,23 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // The board, so the LEDs light and the buzzer sounds while debugging.
         // It is driven by the emulator through boundary A and knows nothing
         // about the debugger: a halted MCU simply stops calling advanceTo.
-        const { parts, nets } = inferNetlist(stc);
+        //
+        // ONE BOARD, ONE TRUTH: the netlist comes from the DESIGNER's solved
+        // board when there is one — the canvas's actual part ids and the
+        // breadboard's merged strip nets. Building from the abstract pin
+        // inference here is how Blink stopped blinking (2026-08-10): the
+        // designer showed a seated bench whose LED id the runner's private
+        // board had never heard of, so every brightness lookup returned 0
+        // while the emulator dutifully toggled a phantom LED. The inference
+        // remains only as the fallback for a project that never opened the
+        // Circuit tab's designer.
+        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
+        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
+            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
+            ? {parts: designerBoard.parts, nets: designerBoard.getNets()}
+            : inferNetlist(stc);
         board = new BoardImpl();
-        board.setNetlist(parts, nets);
+        board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
         adapter.attachBoard(board);
 
