@@ -8,6 +8,19 @@
  * This reducer owns the layout model that gui.jsx renders.
  */
 
+/**
+ * The stage-size buttons live in a different reducer (scratch-gui/StageSize), and until now the
+ * two knew nothing about each other. That made the small/large buttons look broken: they resize
+ * the stage INSIDE the right column, but the column keeps its share of the row, so the editor
+ * never gets the space back. Measured headlessly at 1600px: editor 870px in both modes, right
+ * column pinned at 730px (flex-basis 28.6%), while the stage's own min-content correctly halved
+ * from 482px to 242px. The stage shrank; its column did not.
+ *
+ * Reacting to another reducer's action is the right shape here — the column share IS layout
+ * state, and this reducer owns it.
+ */
+const SET_STAGE_SIZE = 'scratch-gui/StageSize/SET_STAGE_SIZE';
+
 const SET_PANE_SIZE = 'scratch-gui/pane-layout/SET_PANE_SIZE';
 const SET_SLOT_CONTENT = 'scratch-gui/pane-layout/SET_SLOT_CONTENT';
 const APPLY_PRESET = 'scratch-gui/pane-layout/APPLY_PRESET';
@@ -90,6 +103,16 @@ export default function paneLayoutReducer(state = initialState, action) {
       const { column, position, contentId } = action;
       if (!state[column]) return state;
       next = { ...state, [column]: { ...state[column], [position]: contentId }, activePreset: null };
+      break;
+    }
+    case SET_STAGE_SIZE: {
+      // Clicking "small stage" IS a request for more editor room, so it deliberately overrides
+      // an earlier manual cycling of this column — the user is asking for it right now, and a
+      // button that silently did nothing because of a choice made ten minutes ago is worse than
+      // one that overrides it. A later manual cycle wins again, until the next stage-size click.
+      const size = action.stageSize === 'small' ? 's' : 'm';
+      if (!state.right || state.right.size === size) return state;
+      next = { ...state, right: { ...state.right, size }, activePreset: null };
       break;
     }
     case APPLY_PRESET: {
