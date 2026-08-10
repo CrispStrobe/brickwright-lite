@@ -266,7 +266,19 @@ jobs:
                 for (const t of vm.runtime.targets) {
                   for (const b of Object.values(t.blocks._blocks)) ops[b.opcode] = (ops[b.opcode] || 0) + 1;
                 }
-                return { opcodes: ops, stc12Loaded: vm.extensionManager.isExtensionLoaded('stc12') };
+                // Assert the PROPERTY: editingTarget is the target with the blocks (0b18556).
+                // Stage-only projects had editingTarget pointing at a non-Stage target that
+                // did not exist, so the workspace showed zero blocks while the Stage had them.
+                const editing = vm.editingTarget;
+                const editingBlocks = editing ? Object.keys(editing.blocks._blocks).length : 0;
+                const editingName = editing ? (editing.getName ? editing.getName() : '?') : null;
+                return {
+                  opcodes: ops,
+                  stc12Loaded: vm.extensionManager.isExtensionLoaded('stc12'),
+                  editingTarget: editingName,
+                  editingIsStage: editing ? editing.isStage : null,
+                  editingBlocks
+                };
               });
 
               if (extResult.error) {
@@ -283,7 +295,12 @@ jobs:
                 console.error('FAIL: stc12_setpin missing — extension blocks dropped during deserialization (the e155ca1 regression)');
                 process.exit(1);
               }
-              console.log('OK: extension guard — control_forever + stc12_setpin both present after loadProject');
+              if (extResult.editingBlocks === 0) {
+                console.error('FAIL: editingTarget has 0 blocks — workspace shows nothing (the 0b18556 regression)');
+                console.error('  editingTarget:', extResult.editingTarget, 'isStage:', extResult.editingIsStage);
+                process.exit(1);
+              }
+              console.log('OK: extension guard — control_forever + stc12_setpin present, editingTarget has', extResult.editingBlocks, 'blocks (' + extResult.editingTarget + ')');
 
               if (errors.length) console.log('Page errors (non-fatal):', errors);
               await browser.close();
