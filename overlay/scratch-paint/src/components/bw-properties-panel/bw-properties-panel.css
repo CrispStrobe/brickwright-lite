@@ -37,6 +37,22 @@
     height: 0;
 }
 
+/* The rail adds its width to the editor's minimum footprint, and an editor that cannot fit stops
+   responding to the small/large stage buttons at all — it is already over its budget, so giving
+   it more room changes nothing visible. Narrow the rail on a narrow window so the editor keeps
+   some slack to give back. The spacer and the rail must stay the same width or the canvas slides
+   under the panel. */
+@media only screen and (max-width: $full-size-paint) {
+    .rail,
+    .rail-spacer {
+        width: 11rem;
+    }
+
+    .rail-spacer {
+        flex-basis: 11rem;
+    }
+}
+
 /* Closed, the rail must cost the canvas as close to nothing as a toggle can: no border, no
    margin, just room for the button that opens it. */
 .rail-collapsed {

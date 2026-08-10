@@ -92,15 +92,18 @@ class PaperCanvas extends React.Component {
      */
     observeCanvasResize () {
         if (typeof ResizeObserver === 'undefined') return;
-        let lastSize = null;
+        // Seed the baseline from the size paper was actually set up against, NOT from the
+        // observer's first callback. Treating that first callback as the baseline meant that if
+        // the element settled to a different size than it had at paper.setup() — which is normal,
+        // since layout is still resolving during mount — the difference was recorded and never
+        // acted on, leaving paper's viewport smaller than the element and an unpainted strip
+        // along the bottom and right edges.
+        const measure = () => `${Math.round(this.canvas.clientWidth)}x${Math.round(this.canvas.clientHeight)}`;
+        let lastSize = measure();
         this.resizeObserver = new ResizeObserver(entries => {
             if (!paper.view || !entries.length) return;
             const {width, height} = entries[0].contentRect;
             const size = `${Math.round(width)}x${Math.round(height)}`;
-            if (lastSize === null) { // the initial measurement, not a change
-                lastSize = size;
-                return;
-            }
             if (size === lastSize) return;
             lastSize = size;
             // An import is still settling the view; it will size itself when it lands.
