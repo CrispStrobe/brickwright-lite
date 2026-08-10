@@ -123,6 +123,9 @@ $border-radius: 0.25rem;
     display: flex;
     flex-flow: column;
     flex-grow: 1;
+    /* Brickwright: the properties rail is a third child of .top-align-row, so the canvas column
+       has to be allowed to give up its flex-basis rather than pushing the row wider. */
+    min-width: 0;
     margin-left: calc(2 * $grid-unit);
     margin-right: calc(2 * $grid-unit);
 }

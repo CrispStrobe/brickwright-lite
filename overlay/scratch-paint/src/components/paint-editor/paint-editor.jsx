@@ -18,6 +18,7 @@ import Box from '../box/box.jsx';
 import Button from '../button/button.jsx';
 import ButtonGroup from '../button-group/button-group.jsx';
 import BrushMode from '../../containers/brush-mode.jsx';
+import BwPropertiesPanel from '../../containers/bw-properties-panel.jsx';
 import EraserMode from '../../containers/eraser-mode.jsx';
 import FillColorIndicatorComponent from '../../containers/fill-color-indicator.jsx';
 import FillMode from '../../containers/fill-mode.jsx';
@@ -29,6 +30,7 @@ import ModeToolsContainer from '../../containers/mode-tools.jsx';
 import OvalMode from '../../containers/oval-mode.jsx';
 import RectMode from '../../containers/rect-mode.jsx';
 import ReshapeMode from '../../containers/reshape-mode.jsx';
+import RoundedRectMode from '../../containers/rounded-rect-mode.jsx';
 import SelectMode from '../../containers/select-mode.jsx';
 import StrokeColorIndicatorComponent from '../../containers/stroke-color-indicator.jsx';
 import StrokeWidthIndicatorComponent from '../../containers/stroke-width-indicator.jsx';
@@ -159,6 +161,11 @@ const PaintEditorComponent = props => (
                         onUpdateImage={props.onUpdateImage}
                     />
                     <RectMode
+                        onUpdateImage={props.onUpdateImage}
+                    />
+                    {/* Brickwright: upstream ships every part of this tool except a working
+                        body and this button — see helper/tools/rounded-rect-tool.js. */}
+                    <RoundedRectMode
                         onUpdateImage={props.onUpdateImage}
                     />
                 </div>
@@ -299,6 +306,13 @@ const PaintEditorComponent = props => (
                     </InputGroup>
                 </div>
             </div>
+
+            {/* Brickwright: the properties rail (numeric transform, align/distribute, shape
+                parameters). Vector only — none of it has a meaning for a raster costume. */}
+            {props.canvas !== null && isVector(props.format) ?
+                <BwPropertiesPanel
+                    onUpdateImage={props.onUpdateImage}
+                /> : null}
         </div>
     </div>
 );
