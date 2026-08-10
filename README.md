@@ -71,14 +71,18 @@ unmodified web bundle "just works" once the native side is up.
   ([sb3-creator](https://github.com/CrispStrobe/sb3-creator)), with in-editor Run (Skulpt / JS)
   and a Custom-sprite-art dialog.
 - **SoundFX creator** (crispfxr) in the sound editor.
-- **Built-in extensions (bundled, offline)** — our own extensions ship as vanilla built-ins: the
-  **LEGO family** (SPIKE Prime BLE/BTC, Powered Up, BOOST, WeDo 2, EV3, NXT, …), **gamepad**,
-  **Arrays**, **CSP**, **Planète Maths** and **TTS**. Each wraps its TurboWarp/Xcratch source
-  through a `Scratch`-shim adapter.
+- **Built-in extensions (bundled, offline)** — **23** of our own extensions ship as vanilla
+  built-ins: the **LEGO family** (SPIKE Prime BLE/BTC, Powered Up, BOOST, WeDo 2, EV3, NXT, …),
+  **gamepad**, **Arrays**, **CSP**, **Planète Maths**, **TTS**, the **circuit** surface and the
+  **STC12** pair. Each is *our* source written in the TurboWarp extension format — the
+  `// Name: / // ID: / // Description:` header plus `Scratch.extensions.register` — and loaded as
+  a built-in through our own `Scratch`-shim adapter, which also accepts Xcratch's ES-module shape.
+  Format compatibility, not shared code: see [Licensing](#licensing-what-is-actually-in-a-build).
 - **External extension loading** — the picker fetches the
-  [CrispStrobe gallery](https://crispstrobe.github.io/extensions/) (~117 extensions) and loads any
-  at runtime via a clean-room BSD path (not TurboWarp's MPL loader). GPL/third-party extensions
-  live there, not in the shipped build.
+  [CrispStrobe gallery](https://crispstrobe.github.io/extensions/) (**150** extensions: 21 ours,
+  129 inherited from the upstream fork) and loads any of them at runtime over HTTPS, via a
+  clean-room BSD path rather than TurboWarp's MPL loader. Third-party extensions are *fetched*,
+  never bundled — nothing in a shipped build depends on the gallery being reachable.
 - **Editor polish** — full-width (double-byte) numbers usable as values; external links open in the
   system browser; de-branded (Brickwright robot as favicon / logo / default sprite; the dead
   Share / Community / My-Stuff / account UI removed).
@@ -155,9 +159,53 @@ Tradeoff vs mainline Brickwright: you own a frozen fork (no free upstream fixes)
 TurboWarp's compiler speed + addon system — in exchange for a permissive app you can bundle and
 ship on Apple / Google / Microsoft directly, with native LEGO Bluetooth on every platform.
 
-## License
+## Licensing: what is actually in a build
 
 BSD-3-Clause. Vendored web components keep their own permissive licenses (BSD-3 / Apache-2.0); the
 Tauri app's Rust crates are BSD/MIT/Apache; glue is MIT/BSD. The offline-library pack is Scratch
 "Support Materials" under CC BY-SA 2.0 (trademarked mascots excluded) — it is fetched/served, not
 part of the shipped code.
+
+### The extensions, specifically
+
+The question that decides whether this can ship: **does a build contain any copyleft code from
+the upstream extension gallery?** It does not, and the checks are cheap to repeat.
+
+**What is bundled.** 23 extensions under
+`overlay/scratch-vm/src/extensions/crispstrobe/`. Every one carries a licence header —
+**20 MPL-2.0 and 3 MIT** — and MPL-2.0 is file-level weak copyleft: a covered file may
+be combined into a Larger Work distributed under other terms, provided the MPL files stay MPL and
+their source stays available. It is in this repository. That is compatible with closed distribution
+channels in a way GPL-3.0 is not.
+
+**Where the GPL in the upstream gallery actually lives.** `TurboWarp/extensions` is mixed-licence:
+extension `.js` files carry per-file headers (MIT historically, MPL-2.0 now), sample projects are
+CC-BY 4.0, and **GPL-3.0 covers the images, the development server and the website** — the
+infrastructure around the extensions, not the extension code. None of that infrastructure is
+vendored here: no gallery images, no dev server, no site code.
+
+**A handful of third-party gallery extensions do carry copyleft**, and they are worth naming rather
+than glossing: `lab/text.js`, `Lily/Cast.js` and `Lily/McUtils.js` are *MIT AND LGPL-3.0*;
+`CubesterYT/KeySimulation.js` is *MIT AND MPL-2.0*. **None is bundled.** They live in the gallery
+and are fetched at runtime if a project asks for one.
+
+**How that was established**, so it can be re-run rather than trusted:
+
+| check | result |
+|---|---|
+| licence header of every bundled extension | 20 MPL-2.0, 3 MIT, 0 GPL |
+| our 21 gallery extensions vs the 129 third-party ones, distinctive lines ≥60 chars | **0 shared of 3,114** |
+| bundled extensions vs upstream TurboWarp's own `gamepad.js`, `bitwise.js`, `text2speech.js` | **0 shared** |
+| bundled extensions vs every copyleft-flagged third-party extension | **0 shared of 424 indexed** |
+| gallery images / dev server / site code vendored into the build | **none** |
+
+**On "wraps its TurboWarp/Xcratch source".** Earlier wording in this file said that, and it read as
+provenance when it meant interface. Our extensions are written in the TurboWarp extension *format*
+and our own adapter loads them; `adapter.js` additionally rewrites Xcratch's ES-module exports to
+CommonJS because the source runs through `new Function`, where `export` is a syntax error. Writing
+to someone's interface is not deriving from their code.
+
+What none of this proves: that nobody ever read an upstream extension while writing ours. Absence of
+shared lines rules out copy-paste, not influence. MIT and MPL-2.0 both permit derivation anyway
+provided headers survive — and since the GPL-3.0 upstream is the site rather than the extensions,
+even a derived extension would not pull it in.
