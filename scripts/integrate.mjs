@@ -52,7 +52,14 @@ pkg.dependencies.lit = pkg.dependencies.lit || '^3.3.3';                        
 pkg.dependencies['@lit/react'] = pkg.dependencies['@lit/react'] || '^1.0.8';    // BSD-3
 pkg.dependencies['@wokwi/elements'] = pkg.dependencies['@wokwi/elements'] || '^1.9.2';   // MIT
 pkg.dependencies['scratch-vm'] = '4.8.115';                      // last BSD-3; built from src via alias
+// Pin scratch-paint exactly, for the same reason as scratch-vm: overlay/scratch-paint holds FULL
+// FILE COPIES of the costume-designer files we own, authored against one exact base. The base
+// range was `^2.2.151`, and 2.2.518 happens to be both the highest 2.2.x ever published and the
+// last permissive (BSD-3) one — but a range would let a republish move the floor under our
+// overlay. webpack builds it from src (package `browser` field), and apply-paint-overlay.mjs
+// lays our delta over node_modules/scratch-paint after install.
+pkg.dependencies['scratch-paint'] = '2.2.518';                   // last BSD-3
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-console.log('  ensured deps (skulpt, jszip, lit + wokwi elements) + pinned scratch-vm@4.8.115');
+console.log('  ensured deps (skulpt, jszip, lit + wokwi elements) + pinned scratch-vm@4.8.115, scratch-paint@2.2.518');
 
 console.log('Integration applied. `cd packages/scratch-gui && npm install --ignore-scripts && npm run build`.');

@@ -1,0 +1,201 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+/* Brickwright: the designer's right-hand properties rail. */
+
+.rail {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    width: 13.5rem;
+    overflow: hidden;
+    color: $text-primary;
+    font-size: 0.75rem;
+}
+
+.rail-collapsed {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    align-items: center;
+    padding-top: calc(2 * $grid-unit);
+}
+
+[dir="ltr"] .rail,
+[dir="ltr"] .rail-collapsed {
+    border-left: 1px dashed $ui-pane-border;
+    margin-left: calc(3 * $grid-unit);
+    padding-left: calc(3 * $grid-unit);
+}
+
+[dir="rtl"] .rail,
+[dir="rtl"] .rail-collapsed {
+    border-right: 1px dashed $ui-pane-border;
+    margin-right: calc(3 * $grid-unit);
+    padding-right: calc(3 * $grid-unit);
+}
+
+.header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: $grid-unit;
+    padding-bottom: calc(2 * $grid-unit);
+    border-bottom: 1px dashed $ui-pane-border;
+}
+
+.header-title {
+    font-weight: bold;
+}
+
+/* The rail is the tallest thing in the editor, so it scrolls rather than stretching the row. */
+.body {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding-top: calc(2 * $grid-unit);
+}
+
+.section + .section {
+    margin-top: calc(3 * $grid-unit);
+    padding-top: calc(3 * $grid-unit);
+    border-top: 1px dashed $ui-pane-border;
+}
+
+.section-title {
+    font-size: 0.65rem;
+    font-weight: bold;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: calc(2 * $grid-unit);
+}
+
+.hint {
+    opacity: 0.7;
+    line-height: 1.35;
+    margin-bottom: calc(2 * $grid-unit);
+}
+
+.field-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: $grid-unit;
+}
+
+.field-row + .field-row {
+    margin-top: $grid-unit;
+}
+
+.field {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: $grid-unit;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.field-disabled {
+    opacity: 0.5;
+}
+
+.field-label {
+    flex: 0 0 auto;
+    min-width: 1.1rem;
+    font-weight: bold;
+    opacity: 0.75;
+}
+
+.field-input {
+    /* Override the stock pill input: the rail needs these to fit two-up. */
+    width: 100%;
+    min-width: 0;
+    height: 1.75rem;
+    padding: 0 calc(2 * $grid-unit);
+    text-align: center;
+    border-radius: $form-radius;
+}
+
+/* The spinners steal width the rail does not have, and the buffered input already validates. */
+.field-input::-webkit-outer-spin-button,
+.field-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.field-input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.button-row {
+    display: flex;
+    flex-direction: row;
+    gap: $grid-unit;
+}
+
+.button-row + .button-row {
+    margin-top: $grid-unit;
+}
+
+.icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1.85rem;
+    height: 1.85rem;
+    padding: 0;
+    color: $text-primary;
+    background: transparent;
+    border: 1px solid $form-border;
+    border-radius: $form-radius;
+    cursor: pointer;
+    transition: 0.15s ease-out;
+}
+
+.icon-button:hover:not(:disabled) {
+    background: $ui-background-blue;
+}
+
+.icon-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.icon-button-active {
+    color: $looks-secondary;
+    border-color: $looks-secondary;
+    background: $ui-background-blue;
+}
+
+.segmented {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: $grid-unit;
+    margin-bottom: calc(2 * $grid-unit);
+}
+
+.segmented-label {
+    opacity: 0.75;
+}
+
+.segment {
+    flex: 1 1 auto;
+    padding: calc($grid-unit / 2) $grid-unit;
+    font-size: 0.7rem;
+    font-family: inherit;
+    color: $text-primary;
+    background: transparent;
+    border: 1px solid $form-border;
+    border-radius: $form-radius;
+    cursor: pointer;
+}
+
+.segment-active {
+    color: white;
+    background: $looks-secondary;
+    border-color: $looks-secondary;
+}

@@ -25,6 +25,8 @@ jobs:
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
+      - name: Apply the scratch-paint overlay (extended costume designer)
+        run: node scripts/apply-paint-overlay.mjs
 
       # --- guards: catch silent reverts before the build runs ---
       #

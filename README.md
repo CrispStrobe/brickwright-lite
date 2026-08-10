@@ -100,6 +100,8 @@ scripts/
   integrate.mjs        ← copy overlay/ over the vendored gui + micro:bit stub + package.json fields
   apply-vm-overlay.mjs ← post-install: lay the vm overlay onto node_modules/scratch-vm + two small
                           upstream fixes (xmlEscape category name; full-width numbers in Cast)
+  apply-paint-overlay.mjs ← post-install: lay the paint overlay onto node_modules/scratch-paint
+                          (the extended costume designer); asserts the exact pinned base version
   build-library-pack.mjs ← assemble the CC BY-SA offline-library pack
 ```
 
@@ -116,6 +118,7 @@ node scripts/integrate.mjs                       # overlay our delta
 cd packages/scratch-gui
 npm install --ignore-scripts --legacy-peer-deps  # --ignore-scripts skips the flaky micro:bit download
 node ../../scripts/apply-vm-overlay.mjs          # built-in extensions + the small upstream fixes
+node ../../scripts/apply-paint-overlay.mjs       # the extended costume designer
 NODE_ENV=production npm run build                # -> build/  (CI/Vercel run scripts/vercel-build.sh)
 ```
 

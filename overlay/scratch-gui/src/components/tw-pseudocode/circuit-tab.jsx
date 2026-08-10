@@ -350,7 +350,20 @@ class CircuitTab extends React.Component {
                             />
                         </React.Suspense>
                     </div>
-                ) : null}
+                ) : (
+                    // The panel is correctly absent — there is no program to run
+                    // control over — but absent and broken look identical, and a
+                    // reader who came here for the debugger finds nothing and no
+                    // reason. Every other panel in this strip explains why it is
+                    // empty; this one used to be the exception.
+                    <div style={{marginBottom: 8, padding: '4px 8px', borderRadius: 4,
+                        background: '#f8fafc', border: '1px solid #e2e8f0',
+                        fontSize: 11.5, color: '#64748b'}}>
+                        {'Run and step controls appear here once the project declares pins — ' +
+                         'the debugger needs a program and a chip to drive. Add one in the ' +
+                         'Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW.'}
+                    </div>
+                )}
                 {this.renderPanelStrip()}
                 {this.state.panel === 'designer' ? null : this.renderPanel()}
                 {/* The designer stays mounted whatever panel is showing: it owns the
