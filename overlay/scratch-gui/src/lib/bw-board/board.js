@@ -17,6 +17,7 @@ import { pinThevenin } from './pin-model.js';
 import { solveMNA } from './mna.js';
 import { validateNetlist } from './validate.js';
 import { getDevice, initDeviceState } from './devices.js';
+import { checkCurrentBudget } from './current-ratings.js';
 
 /**
  * Internal pin state.
@@ -1315,6 +1316,18 @@ export class BoardImpl {
     // current + input impedance) but no functional simulation. The part
     // loads the net correctly but its behavior is not modeled.
     // This is stated honestly rather than hidden.
+
+    // Aggregate current budget check — uses actual solved currents when
+    // available (realistic), falls back to kind maximums (upper bound).
+    const solvedCurrents = new Map();
+    for (const part of this.parts) {
+      if (part.kind === 'led') {
+        const i = this.ledCurrents.get(part.id);
+        if (i !== undefined && i > 0) solvedCurrents.set(part.id, i);
+      }
+    }
+    const budgetWarnings = checkCurrentBudget(this.parts, solvedCurrents.size > 0 ? solvedCurrents : undefined);
+    for (const w of budgetWarnings) warnings.push(w);
 
     return warnings;
   }

@@ -110,13 +110,16 @@ export const CURRENT_RATINGS = {
   isource: 0,
   solar_cell: 0,
 
-  // ─── Passives (current depends on circuit, not kind) ──────────────
-  resistor: null,       // depends on voltage and value
-  capacitor: null,      // depends on frequency
-  polarized_cap: null,
-  inductor: null,
-  diode: null,          // depends on forward current
-  zener: null,
+  // ─── Passives ─────────────────────────────────────────────────────
+  // Passives limit or store current; they don't independently draw from a port.
+  // Rated as 0: they are current-limiters, not current-consumers. The LED or
+  // motor on the other end of the resistor is the thing with the rating.
+  resistor: 0,
+  capacitor: 0,
+  polarized_cap: 0,
+  inductor: 0,
+  diode: 0,
+  zener: 0,
 
   // ─── Transistors (current depends on circuit) ─────────────────────
   npn: null,
@@ -129,7 +132,7 @@ export const CURRENT_RATINGS = {
   // ─── Switches (passive, no current rating) ────────────────────────
   button: 0,
   switch: 0,
-  potentiometer: null,  // depends on value
+  potentiometer: 0,     // passive — draws from VCC/GND, not from an MCU port
   dip_switch: 0,
   keypad_4x4: 0,
 
@@ -193,3 +196,93 @@ export const PORT_LIMITS = {
   perPort: { sink: 0.080 },                     // 80 mA per port (8051 family guidance, not in STC12 datasheet)
   perChip: { sink: 0.120 },                     // 120 mA total chip (§4.1 intro: "had better drive lower than")
 };
+
+/**
+ * Compute aggregate current for a list of part kinds.
+ *
+ * Returns the sum of rated parts, a list of unrated part kinds, and whether
+ * the total is complete. When the total is incomplete, the consumer should
+ * warn: "at least X mA (parts Y, Z not counted) exceeds limit" — never
+ * silently sum what it can.
+ *
+ * @param {Array<{id: string, kind: string}>} parts
+ * @returns {{ totalAmps: number, unrated: Array<{id: string, kind: string}>, complete: boolean }}
+ */
+export function aggregateCurrent(parts) {
+  let totalAmps = 0;
+  const unrated = [];
+  for (const p of parts) {
+    const rating = getMaxCurrent(p.kind);
+    if (rating === null) {
+      unrated.push({ id: p.id, kind: p.kind });
+    } else {
+      totalAmps += rating;
+    }
+  }
+  return { totalAmps, unrated, complete: unrated.length === 0 };
+}
+
+/**
+ * Check a circuit's parts against chip current limits.
+ * Returns DRC warnings for aggregate current budget violations.
+ *
+ * When `solvedCurrents` is provided (a Map of partId → amps from MNA),
+ * uses actual solved currents instead of kind maximums. This gives a
+ * realistic answer ("24 mA through your 1kΩ resistors") instead of a
+ * worst-case bound ("up to 160 mA at maximum ratings").
+ *
+ * @param {Array<{id: string, kind: string}>} parts
+ * @param {Map<string, number>} [solvedCurrents] - partId → actual amps from MNA
+ * @returns {Array<{severity: 'warning' | 'danger', message: string}>}
+ */
+export function checkCurrentBudget(parts, solvedCurrents) {
+  const warnings = [];
+  const chipLimit = PORT_LIMITS.perChip.sink;
+
+  if (solvedCurrents && solvedCurrents.size > 0) {
+    // Use actual solved currents — realistic, not worst-case
+    let totalAmps = 0;
+    for (const [, amps] of solvedCurrents) {
+      totalAmps += Math.abs(amps);
+    }
+
+    if (totalAmps > chipLimit) {
+      const totalMa = (totalAmps * 1000).toFixed(1);
+      const limitMa = (chipLimit * 1000).toFixed(0);
+      warnings.push({
+        severity: 'danger',
+        message: `Total current draw ${totalMa} mA exceeds chip limit of ${limitMa} mA.`,
+      });
+    }
+    return warnings;
+  }
+
+  // Fallback: kind-level maximums (upper bound, stated as such)
+  const { totalAmps, unrated, complete } = aggregateCurrent(parts);
+
+  if (totalAmps > chipLimit) {
+    const totalMa = (totalAmps * 1000).toFixed(1);
+    const limitMa = (chipLimit * 1000).toFixed(0);
+    if (complete) {
+      warnings.push({
+        severity: 'warning',
+        message: `Up to ${totalMa} mA at maximum ratings — may exceed chip limit of ${limitMa} mA. Actual current depends on resistor values.`,
+      });
+    } else {
+      const names = unrated.map(u => u.id).join(', ');
+      warnings.push({
+        severity: 'warning',
+        message: `Up to ${totalMa} mA at maximum ratings (${names} not counted) — may exceed chip limit of ${limitMa} mA.`,
+      });
+    }
+  } else if (!complete) {
+    const totalMa = (totalAmps * 1000).toFixed(1);
+    const names = unrated.map(u => u.id).join(', ');
+    warnings.push({
+      severity: 'warning',
+      message: `Current budget incomplete: up to ${totalMa} mA counted, but ${names} could not be rated.`,
+    });
+  }
+
+  return warnings;
+}
