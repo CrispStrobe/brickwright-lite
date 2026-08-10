@@ -194,6 +194,16 @@ class ExtensionManager {
             return Promise.resolve();
         }
 
+        // Brickwright: a BARE ID that is not a builtin is a missing implementation,
+        // not a URL. Treating it as one spawned a sandbox worker whose
+        // importScripts('<id>') 404'd as a page error on every project load
+        // (id 'devices', example 53, 2026-08-10). Warn once, loudly, and skip —
+        // the blocks stay dropped either way until the extension exists.
+        if (!/^(https?:|data:|blob:|\.|\/)/.test(extensionURL)) {
+            log.warn(`Unknown extension id "${extensionURL}" — no builtin and not a URL; skipping.`);
+            return Promise.resolve();
+        }
+
         // Brickwright: load a remote extension unsandboxed, in-process, from a URL — like TurboWarp
         // and Xcratch (gallery entries AND user-entered custom URLs). Clean-room BSD path (NOT
         // TurboWarp's MPL loader): fetch the source, run it through the same crispstrobe adapter our
