@@ -674,6 +674,44 @@ licence — which is how this bundle is structured.
 Modifications to any file in that directory must be made available under
 MPL-2.0. Files outside that directory are unaffected and remain BSD-3-Clause.
 
+## bw-board — MIT
+
+**Location in this repo:** `overlay/scratch-gui/src/lib/bw-board/`
+
+This directory contains a vendored copy of **bw-board** (simulation engine:
+netlist inference, pin model, MNA solver, device drivers, emu8051 adapter),
+licensed under the **MIT License**.
+
+- **Licence:** MIT
+- **Upstream:** CrispStrobe/bw-board (private repository)
+- **Licence file:** `overlay/scratch-gui/src/lib/bw-board/LICENSE`
+
+MIT requires the copyright and permission notice to be included in all copies
+or substantial portions of the Software. The directory-level LICENSE file
+carries both.
+
+## sb3-creator — MPL-2.0
+
+**Location in this repo:** `overlay/scratch-gui/src/lib/sb3-creator*.js`
+and `overlay/scratch-gui/src/lib/cubeDirections.js`
+
+These 11 files are vendored from **sb3-creator** (the Code tab's pseudocode
+compiler: Scratch blocks to/from C, Python, MicroPython, JavaScript, and
+the runtime registries), relicensed to **MPL-2.0** as of commit `f72f1e7`.
+
+- **Licence:** MPL-2.0
+- **Upstream:** CrispStrobe/sb3-creator (private repository)
+- **Licence file:** `overlay/scratch-gui/src/lib/sb3-creator-LICENSE`
+- **Source availability:** the vendored files are readable JavaScript in this
+  public repository and constitute the Corresponding Source Code for the
+  purposes of MPL-2.0 §3.2(a).
+
+### Licence boundary
+
+Each of the 11 files named in the licence file remains licensed under MPL-2.0.
+MPL-2.0 §3.3 ("Larger Work") permits distributing them alongside BSD-3-Clause
+files. Modifications to any of those files must be made available under MPL-2.0.
+
 ## SDCC (Small Device C Compiler) — GPL-2-or-later
 
 **Location in this repo:** `overlay/scratch-gui/src/lib/sdcc-wasm/dist/`
