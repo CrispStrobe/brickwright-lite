@@ -648,6 +648,32 @@ none copyleft in a way that affects this binary.
 - zvariant_derive 5.13.0 (MIT) -- https://github.com/z-galaxy/zbus/
 - zvariant_utils 3.5.0 (MIT) -- https://github.com/z-galaxy/zbus/
 
+## bw-circuit-ui — MPL-2.0
+
+**Location in this repo:** `overlay/scratch-gui/src/lib/bw-circuit-ui/`
+
+This directory contains a vendored copy of **bw-circuit-ui** (circuit designer
+UI: board canvas, schematic view, part models, interaction handlers, and wokwi
+element wrappers), licensed under **MPL-2.0** (Mozilla Public License 2.0).
+
+- **Licence:** MPL-2.0
+- **Upstream:** CrispStrobe/bw-circuit-ui (private repository)
+- **Source availability:** the vendored files are readable JavaScript in this
+  public repository and constitute the Corresponding Source Code for the
+  purposes of MPL-2.0 §3.2(a). No additional source beyond what is checked in
+  under the path above is required to build or modify these files.
+
+### Licence boundary
+
+MPL-2.0 is a file-level copyleft licence. Each file under
+`overlay/scratch-gui/src/lib/bw-circuit-ui/` remains licensed under MPL-2.0
+within this BSD-3-Clause project. MPL-2.0 §3.3 ("Larger Work") explicitly
+permits distributing MPL-licensed files alongside files under a different
+licence — which is how this bundle is structured.
+
+Modifications to any file in that directory must be made available under
+MPL-2.0. Files outside that directory are unaffected and remain BSD-3-Clause.
+
 ## SDCC (Small Device C Compiler) — GPL-2-or-later
 
 **Location in this repo:** `overlay/scratch-gui/src/lib/sdcc-wasm/dist/`
