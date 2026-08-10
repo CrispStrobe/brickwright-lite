@@ -11,6 +11,7 @@ import {redrawSelectionBox, setSelectedItems} from '../reducers/selected-items';
 import {updateViewBounds} from '../reducers/view-bounds';
 
 import {getSelectedLeafItems} from '../helper/selection';
+import {rehideItems, revealHiddenItems} from '../helper/bw/objects';
 import {getRaster, hideGuideLayers, showGuideLayers} from '../helper/layer';
 import {commitRectToBitmap, commitOvalToBitmap, commitSelectionToBitmap, getHitBounds} from '../helper/bitmap';
 import {performSnapshot} from '../helper/undo';
@@ -135,6 +136,12 @@ const UpdateImageHOC = function (WrappedComponent) {
                 workspaceMask.remove();
             }
             const guideLayers = hideGuideLayers(true /* includeRaster */);
+            // Brickwright: the objects panel's eye is an editing aid, not a costume property —
+            // a Scratch costume has no notion of a hidden element. Reveal hidden items for the
+            // duration of the export (before drawnBounds is read, so they still count towards
+            // the costume's extent) and hide them again afterwards. Without this, hiding
+            // something would quietly drop it from the artwork on the very next edit.
+            const hiddenItems = revealHiddenItems();
 
             // Export at 0.5x
             scaleWithStrokes(paper.project.activeLayer, .5, new paper.Point());
@@ -160,6 +167,7 @@ const UpdateImageHOC = function (WrappedComponent) {
             scaleWithStrokes(paper.project.activeLayer, 2, new paper.Point());
             paper.project.activeLayer.applyMatrix = true;
 
+            rehideItems(hiddenItems);
             showGuideLayers(guideLayers);
 
             // Add back viewbox

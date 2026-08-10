@@ -207,6 +207,47 @@ const mirrorIcon = vertical => (
 const MirrorHorizontal = () => mirrorIcon(false);
 const MirrorVertical = () => mirrorIcon(true);
 
+/** Eye for the objects tree's show/hide toggle; struck through when the object is hidden. */
+const Eye = ({closed}) => (
+    <svg {...svgProps}>
+        <path
+            {...edge}
+            d="M2.5 10s3-4.5 7.5-4.5S17.5 10 17.5 10s-3 4.5-7.5 4.5S2.5 10 2.5 10z"
+            fill="none"
+            strokeLinejoin="round"
+        />
+        <circle {...solid} cx="10" cy="10" r="2.2" />
+        {closed ? (
+            <line
+                {...edge}
+                x1="4"
+                y1="16"
+                x2="16"
+                y2="4"
+            />
+        ) : null}
+    </svg>
+);
+
+/** Padlock for the objects tree's lock toggle: open shackle when unlocked. */
+const Padlock = ({locked}) => (
+    <svg {...svgProps}>
+        <path
+            {...edge}
+            d={locked ? 'M7 9V6.5a3 3 0 0 1 6 0V9' : 'M7 9V6.5a3 3 0 0 1 6 0'}
+            fill="none"
+        />
+        <rect
+            {...(locked ? solid : outline)}
+            x="4.5"
+            y="9"
+            width="11"
+            height="8"
+            rx="1.5"
+        />
+    </svg>
+);
+
 /** Chevron for the rail's collapse toggle. */
 const Chevron = ({pointsRight}) => (
     <svg {...svgProps}>
@@ -225,6 +266,12 @@ AspectLock.propTypes = {
 Chevron.propTypes = {
     pointsRight: PropTypes.bool
 };
+Eye.propTypes = {
+    closed: PropTypes.bool
+};
+Padlock.propTypes = {
+    locked: PropTypes.bool
+};
 
 export {
     AlignBottom,
@@ -239,7 +286,9 @@ export {
     DistributeVertical,
     Divide,
     Exclude,
+    Eye,
     Intersect,
+    Padlock,
     MirrorHorizontal,
     MirrorVertical,
     RotateClockwise,

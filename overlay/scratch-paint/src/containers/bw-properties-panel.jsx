@@ -203,6 +203,7 @@ class BwPropertiesPanel extends React.Component {
                 onTogglePanel={this.props.onTogglePanel}
                 onToggleSmartGuides={this.props.onToggleSmartGuides}
                 onToggleSnapToGrid={this.props.onToggleSnapToGrid}
+                onUpdateImage={this.props.onUpdateImage}
             />
         );
     }

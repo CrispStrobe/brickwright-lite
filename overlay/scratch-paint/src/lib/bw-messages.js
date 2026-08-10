@@ -56,6 +56,14 @@ const STRINGS = {
         mirrorAboutEdge: 'Edge',
         mirrorAboutCanvas: 'Canvas',
 
+        objects: 'Objects',
+        noObjects: 'Nothing drawn yet.',
+        showObject: 'Show',
+        hideObject: 'Hide while editing',
+        lockObject: 'Lock',
+        unlockObject: 'Unlock',
+        renameHint: 'Click to select, double-click to rename, drag to reorder',
+
         grid: 'Grid & snapping',
         showGrid: 'Show grid',
         gridSize: 'Size',
@@ -116,6 +124,14 @@ const STRINGS = {
         mirrorAbout: 'Spiegeln an',
         mirrorAboutEdge: 'Kante',
         mirrorAboutCanvas: 'Zeichenfläche',
+
+        objects: 'Objekte',
+        noObjects: 'Noch nichts gezeichnet.',
+        showObject: 'Einblenden',
+        hideObject: 'Beim Bearbeiten ausblenden',
+        lockObject: 'Sperren',
+        unlockObject: 'Entsperren',
+        renameHint: 'Klicken zum Auswählen, Doppelklick zum Umbenennen, Ziehen zum Umsortieren',
 
         grid: 'Raster & Einrasten',
         showGrid: 'Raster anzeigen',

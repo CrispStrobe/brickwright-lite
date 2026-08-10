@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import BufferedInputHOC from '../forms/buffered-input-hoc.jsx';
+import BwObjectsPanel from '../../containers/bw-objects-panel.jsx';
 import Input from '../forms/input.jsx';
 import Modes from '../../lib/modes';
 import tx from '../../lib/bw-messages';
@@ -208,6 +209,12 @@ const BwPropertiesPanel = props => {
             </div>
 
             <div className={styles.body}>
+                {/* The objects tree comes first: it is what you reach for to find the thing you
+                    want to change before you change it. */}
+                <div className={styles.section}>
+                    <BwObjectsPanel onUpdateImage={props.onUpdateImage} />
+                </div>
+
                 <Section title={t('transform')}>
                     {hasSelection ? null :
                         <div className={styles.hint}>{t('nothingSelected')}</div>}
@@ -458,6 +465,7 @@ BwPropertiesPanel.propTypes = {
     onRotateCounterClockwise: PropTypes.func.isRequired,
     onToggleGrid: PropTypes.func.isRequired,
     onToggleLockAspect: PropTypes.func.isRequired,
+    onUpdateImage: PropTypes.func.isRequired,
     onTogglePanel: PropTypes.func.isRequired,
     onToggleSmartGuides: PropTypes.func.isRequired,
     onToggleSnapToGrid: PropTypes.func.isRequired,
