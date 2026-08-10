@@ -31,7 +31,7 @@ async function walk (rel = '') {
     for (const e of await readdir(path.join(srcDir, 'src', rel), {withFileTypes: true})) {
         const r = rel ? `${rel}/${e.name}` : e.name;
         if (e.isDirectory()) out.push(...await walk(r));
-        else if (/\.jsx?$/.test(e.name) && !SKIP.has(e.name)) out.push(r);
+        else if (/\.(jsx?|json|svg)$/.test(e.name) && !SKIP.has(e.name)) out.push(r);
     }
     return out.sort();
 }
