@@ -91,6 +91,22 @@ class Blocks extends React.Component {
     }
     componentDidMount () {
         this.ScratchBlocks = VMScratchBlocks(this.props.vm);
+        // A comment bubble positioned on a workspace with no metrics (the
+        // Blocks tab hidden while a project loads) dereferences null inside
+        // positionBubble_ and the error unmounts the GUI. Generated projects
+        // now write comments minimized, but any user project with an open
+        // comment still walks this path - so it must degrade to a skipped
+        // reposition, not a crash. (2026-08-10, examples 05-08.)
+        const BubbleProto = this.ScratchBlocks.Bubble && this.ScratchBlocks.Bubble.prototype;
+        if (BubbleProto && BubbleProto.positionBubble_ && !BubbleProto.__bwGuarded) {
+            const orig = BubbleProto.positionBubble_;
+            BubbleProto.positionBubble_ = function (...args) {
+                try { return orig.apply(this, args); } catch (e) {
+                    console.warn('[brickwright] comment bubble position skipped (hidden workspace):', e && e.message);
+                }
+            };
+            BubbleProto.__bwGuarded = true;
+        }
         this.ScratchBlocks.prompt = this.handlePromptStart;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
         this.ScratchBlocks.recordSoundCallback = this.handleOpenSoundRecorder;

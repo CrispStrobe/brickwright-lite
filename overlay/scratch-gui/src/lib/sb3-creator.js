@@ -610,7 +610,13 @@ class SB3Creator {
         const cid = `cmt_${this._commentSeq++}`;
         if (!target.comments) target.comments = {};
         target.comments[cid] = {
-            blockId, x: 0, y: 0, width: 200, height: 100, minimized: false, text: this._pendingComment
+            // minimized: an OPEN comment bubble must be positioned by Blockly
+            // the moment the workspace renders, and on a hidden workspace
+            // (project loaded while another tab is active) positionBubble_
+            // dereferences null and crashes the GUI (2026-08-10, examples
+            // 05-08). A minimized comment renders as an icon, no bubble, and
+            // the reader expands it when they actually want it.
+            blockId, x: 0, y: 0, width: 200, height: 100, minimized: true, text: this._pendingComment
         };
         block.comment = cid;
         this._pendingComment = '';
@@ -4936,6 +4942,24 @@ class SB3Creator {
             }
             case 'argument_reporter_string_number':
             case 'argument_reporter_boolean': return this.cName(f('VALUE'));
+            // Device reporters: sensor reads, actuator readback, generic state.
+            case 'devices_servoangle': { this._cUses.devices = true; this._cUses.servo = true; return `bw_servo_get(${v('SERVO')})`; }
+            case 'devices_motorspeed': { this._cUses.devices = true; this._cUses.motor = true; return `bw_motor_get_speed(${v('MOTOR')})`; }
+            case 'devices_motordirection': { this._cUses.devices = true; this._cUses.motor = true; return `bw_motor_get_dir(${v('MOTOR')})`; }
+            case 'devices_temperature': { this._cUses.devices = true; this._cUses.sensor = true; this._cUses.adc = true; return `bw_temperature(${v('SENSOR')})`; }
+            case 'devices_light': { this._cUses.devices = true; this._cUses.sensor = true; this._cUses.adc = true; return `bw_light(${v('SENSOR')})`; }
+            case 'devices_distance': { this._cUses.devices = true; this._cUses.ultrasonic = true; return `bw_distance(${v('SENSOR')})`; }
+            case 'devices_flex': { this._cUses.devices = true; this._cUses.sensor = true; this._cUses.adc = true; return `bw_flex(${v('SENSOR')})`; }
+            case 'devices_force': { this._cUses.devices = true; this._cUses.sensor = true; this._cUses.adc = true; return `bw_force(${v('SENSOR')})`; }
+            case 'devices_ircode': { this._cUses.devices = true; return `bw_ir_code(${v('SENSOR')})`; }
+            case 'devices_devicestate': { this._cUses.devices = true; return `bw_device_state(${v('DEVICE')})`; }
+            // Device predicates (booleans): these also land here via cCond → cRep fallback.
+            case 'devices_pressed': { this._cUses.devices = true; this._cUses.button = true; return `bw_pressed(${v('BUTTON')})`; }
+            case 'devices_above': { this._cUses.devices = true; this._cUses.sensor = true; this._cUses.adc = true; return `bw_above(${v('SENSOR')}, ${v('THRESHOLD')})`; }
+            case 'devices_closer': { this._cUses.devices = true; this._cUses.ultrasonic = true; return `bw_closer(${v('SENSOR')}, ${v('DISTANCE')})`; }
+            case 'devices_motion': { this._cUses.devices = true; this._cUses.button = true; return `bw_motion(${v('SENSOR')})`; }
+            case 'devices_tilted': { this._cUses.devices = true; this._cUses.button = true; return `bw_tilted(${v('SENSOR')})`; }
+            case 'devices_energised': { this._cUses.devices = true; this._cUses.relay = true; return `bw_energised(${v('DEVICE')})`; }
             default: {
                 const text = this.drep(b, blocks) || b.opcode;
                 this.cWarn(`no C equivalent for "${text}" — emitted as 0`);
@@ -5172,16 +5196,12 @@ class SB3Creator {
             // that this emitter does not yet generate. The stubs make the code
             // COMPILE, which is better than a link error, and the /* TODO */
             // comment in each stub says what a real implementation would do.
-            case 'devices_setservo': { this._cUses.devices = true; return line(`bw_servo_set(${v('SERVO')}, ${v('ANGLE')});`); }
-            case 'devices_servoangle': { this._cUses.devices = true; return `bw_servo_get(${v('SERVO')})`; }
-            case 'devices_setmotor': { this._cUses.devices = true; return line(`bw_motor_speed(${v('MOTOR')}, ${v('SPEED')});`); }
-            case 'devices_motorspeed': { this._cUses.devices = true; return `bw_motor_get_speed(${v('MOTOR')})`; }
-            case 'devices_setdirection': { this._cUses.devices = true; const d = f('DIR'); return line(`bw_motor_dir(${v('MOTOR')}, ${({ forward: 0, reverse: 1, brake: 2, coast: 3 })[d] || 0});`); }
-            case 'devices_motordirection': { this._cUses.devices = true; return `bw_motor_get_dir(${v('MOTOR')})`; }
-            case 'devices_setrelay': { this._cUses.devices = true; return line(`bw_relay_set(${v('RELAY')}, ${f('STATE') === 'on' ? 1 : 0});`); }
-            case 'devices_devicestate': { this._cUses.devices = true; return `bw_device_state(${v('DEVICE')})`; }
-            case 'devices_activate': { this._cUses.devices = true; return line(`bw_device_activate(${v('DEVICE')});`); }
-            case 'devices_deactivate': { this._cUses.devices = true; return line(`bw_device_deactivate(${v('DEVICE')});`); }
+            case 'devices_setservo': { this._cUses.devices = true; this._cUses.servo = true; return line(`bw_servo_set(${v('SERVO')}, ${v('ANGLE')});`); }
+            case 'devices_setmotor': { this._cUses.devices = true; this._cUses.motor = true; return line(`bw_motor_speed(${v('MOTOR')}, ${v('SPEED')});`); }
+            case 'devices_setdirection': { this._cUses.devices = true; this._cUses.motor = true; const d = f('DIR'); return line(`bw_motor_dir(${v('MOTOR')}, ${({ forward: 0, reverse: 1, brake: 2, coast: 3 })[d] || 0});`); }
+            case 'devices_setrelay': { this._cUses.devices = true; this._cUses.relay = true; return line(`bw_relay_set(${v('RELAY')}, ${f('STATE') === 'on' ? 1 : 0});`); }
+            case 'devices_activate': { this._cUses.devices = true; this._cUses.relay = true; return line(`bw_device_activate(${v('DEVICE')});`); }
+            case 'devices_deactivate': { this._cUses.devices = true; this._cUses.relay = true; return line(`bw_device_deactivate(${v('DEVICE')});`); }
             case 'devices_lcdprint': { this._cUses.devices = true; return line(`bw_lcd_print(${v('DISPLAY')}, ${v('TEXT')});`); }
             case 'devices_lcdcursor': { this._cUses.devices = true; return line(`bw_lcd_cursor(${v('DISPLAY')}, ${v('ROW')}, ${v('COL')});`); }
             case 'devices_lcdclear': { this._cUses.devices = true; return line(`bw_lcd_clear(${v('DISPLAY')});`); }
@@ -5189,20 +5209,8 @@ class SB3Creator {
             case 'devices_setrgb': { this._cUses.devices = true; return line(`bw_rgb_set(${v('LED')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
             case 'devices_setpixel': { this._cUses.devices = true; return line(`bw_matrix_set(${v('MATRIX')}, ${v('X')}, ${v('Y')}, ${v('BRIGHTNESS')});`); }
             case 'devices_clearmatrix': { this._cUses.devices = true; return line(`bw_matrix_clear(${v('MATRIX')});`); }
-            case 'devices_setneopixel': { this._cUses.devices = true; return line(`bw_neopixel_set(${v('STRIP')}, ${v('INDEX')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
-            case 'devices_clearneopixels': { this._cUses.devices = true; return line(`bw_neopixel_clear(${v('STRIP')});`); }
-            case 'devices_temperature': { this._cUses.devices = true; return `bw_temperature(${v('SENSOR')})`; }
-            case 'devices_light': { this._cUses.devices = true; return `bw_light(${v('SENSOR')})`; }
-            case 'devices_distance': { this._cUses.devices = true; return `bw_distance(${v('SENSOR')})`; }
-            case 'devices_flex': { this._cUses.devices = true; return `bw_flex(${v('SENSOR')})`; }
-            case 'devices_force': { this._cUses.devices = true; return `bw_force(${v('SENSOR')})`; }
-            case 'devices_ircode': { this._cUses.devices = true; return `bw_ir_code(${v('SENSOR')})`; }
-            case 'devices_pressed': { this._cUses.devices = true; return `bw_pressed(${v('BUTTON')})`; }
-            case 'devices_above': { this._cUses.devices = true; return `bw_above(${v('SENSOR')}, ${v('THRESHOLD')})`; }
-            case 'devices_closer': { this._cUses.devices = true; return `bw_closer(${v('SENSOR')}, ${v('DISTANCE')})`; }
-            case 'devices_motion': { this._cUses.devices = true; return `bw_motion(${v('SENSOR')})`; }
-            case 'devices_tilted': { this._cUses.devices = true; return `bw_tilted(${v('SENSOR')})`; }
-            case 'devices_energised': { this._cUses.devices = true; return `bw_energised(${v('DEVICE')})`; }
+            case 'devices_setneopixel': { this._cUses.devices = true; this._cUses.neopixel = true; return line(`bw_neopixel_set(${v('STRIP')}, ${v('INDEX')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
+            case 'devices_clearneopixels': { this._cUses.devices = true; this._cUses.neopixel = true; return line(`bw_neopixel_clear(${v('STRIP')});`); }
             case 'procedures_call': return line(this.cProcCall(b, blocks));
             default: {
                 const text = (this.decompileStackBlock(b, blocks, 0)[0] || b.opcode).trim();
@@ -5813,6 +5821,9 @@ class SB3Creator {
                     const pc = this._cPins && this._cPins.get(pn.toLowerCase());
                     if (pc && pc.direction === 'input') { scriptCount++; hasEventHat = true; }
                 }
+                if (['devices_whenabove', 'devices_whencloser', 'devices_whenmotion', 'devices_whentilted'].includes(b.opcode)) {
+                    scriptCount++; hasEventHat = true;
+                }
             }
         }
         // `{debug: true}` forces the scheduler even for one script. Straight-line code in
@@ -5956,6 +5967,68 @@ class SB3Creator {
                             `    ${task}_state = 0;   /* ready for the next edge */`,
                             '}', '');
                     }
+                } else if (b.opcode === 'devices_whenabove' || b.opcode === 'devices_whencloser'
+                    || b.opcode === 'devices_whenmotion' || b.opcode === 'devices_whentilted') {
+                    // Device event hats: polled tasks with edge detection.
+                    // Same pattern as stc12_whenpin, but poll a sensor reading.
+                    const n = taskIndex++;
+                    const task = taskNames[n];
+                    const where = t.isStage ? '' : `, ${this.cComment(t.name)}`;
+                    const hatNote = this.codeCommentLines(topId, '', '//');
+                    markScripts.push(`script ${task} ${n}`
+                        + (t.isStage ? ' stage' : ` sprite ${this.pyStr(t.name)}`));
+                    const ctx = { task, state: 0, statics, tasks: taskNames, yields: debug ? yieldMap : [] };
+                    if (debug) yieldMap.push({ task, state: 0, block: topId, kind: 'hat' });
+                    ctx.state = 1;
+                    const body = this.cTaskFrom(b.next, blocks, 1, ctx);
+                    let condExpr;
+                    switch (b.opcode) {
+                        case 'devices_whenabove': {
+                            this._cUses.devices = true; this._cUses.sensor = true; this._cUses.adc = true;
+                            const sv = this.cVal(b.inputs.SENSOR, blocks);
+                            const tv = this.cVal(b.inputs.THRESHOLD, blocks);
+                            condExpr = `(bw_temperature(${sv}) > ${tv})`;
+                            break;
+                        }
+                        case 'devices_whencloser': {
+                            this._cUses.devices = true; this._cUses.ultrasonic = true;
+                            const sv = this.cVal(b.inputs.SENSOR, blocks);
+                            const dv = this.cVal(b.inputs.DISTANCE, blocks);
+                            condExpr = `(bw_distance(${sv}) < ${dv})`;
+                            break;
+                        }
+                        case 'devices_whenmotion': {
+                            this._cUses.devices = true; this._cUses.button = true;
+                            const sv = this.cVal(b.inputs.SENSOR, blocks);
+                            condExpr = `bw_motion(${sv})`;
+                            break;
+                        }
+                        case 'devices_whentilted': {
+                            this._cUses.devices = true; this._cUses.button = true;
+                            const sv = this.cVal(b.inputs.SENSOR, blocks);
+                            condExpr = `bw_tilted(${sv})`;
+                            break;
+                        }
+                    }
+                    taskDefs.push(`static unsigned int ${task}_state;`);
+                    if (this.cHasWait(b.next, blocks)) taskDefs.push(`static unsigned int ${task}_until;`);
+                    taskDefs.push(`static unsigned char ${task}_prev;`);
+                    taskDefs.push(...hatNote,
+                        `/* ${this.cComment(this.decompileHat(b, blocks) || b.opcode)} (script ${n + 1}${where}) */`,
+                        `static void ${task}(void)`, '{',
+                        `    unsigned char now = ${condExpr} ? 1 : 0;`,
+                        `    unsigned char fired = now && !${task}_prev;`,
+                        `    ${task}_prev = now;`,
+                        `    switch (${task}_state) {`,
+                        '    case 0:',
+                        '        if (!fired)',
+                        '            return;',
+                        `        ${task}_state = 1;`,
+                        '    case 1:',
+                        ...body,
+                        '    }',
+                        `    ${task}_state = 0;   /* ready for the next edge */`,
+                        '}', '');
                 } else if (this.isHat(b.opcode) || this.runtimeOp(b.opcode)) {
                     this.cWarn(`"${this.decompileHat(b, blocks) || b.opcode}" has no meaning on the chip — script skipped`);
                 }
@@ -5969,11 +6042,85 @@ class SB3Creator {
         if (this._cUses.cube) this._cUses.cubeDelay = true;
         if (this._cUses.adc && !chip.adc) this.cWarn(`ANALOG pins need an ADC, and the ${device} has none`);
 
+        // ---- resource collision check ------------------------------------------------
+        // Resource allocation table — drivers AND runtime:
+        //   Timer 0:  scheduler tick (always when _cTasks)
+        //   Timer 1:  ultrasonic echo timing — ALSO tethered-mode wall clock
+        //   BRT:      tethered-mode baud generator (10-live-firmware)
+        //   PCA 0:    servo (16-bit compare/match, CCP0 = P1.3)
+        //   PCA 1:    motor speed (8-bit PWM, CCP1 = P1.4)
+        //   P1.1:     ADC sensor channel 1
+        //   P1.3:     servo (CCP0)
+        //   P1.4:     motor (CCP1)
+        //   P2.0:     relay (active-low)
+        //   P3.2:     button / contact closure (INT0 pin, no ext interrupt)
+        //   P3.4:     motor IN1
+        //   P3.5:     motor IN2
+        //   P3.6:     ultrasonic trigger
+        //   P3.7:     ultrasonic echo
+        //
+        // Collision warnings use BW_COLLISION markers and are also pushed to
+        // this.warnings so they reach the UI / CLI without parsing the C.
+        const collision = (msg) => {
+            this.cWarn(`BW_COLLISION: ${msg}`);
+            this.warn(null, msg);
+        };
+        // Timer 1: ultrasonic vs tethered-mode wall clock.
+        if (this._cUses.ultrasonic && debug) {
+            collision('Timer 1 is claimed by both the ultrasonic driver (echo timing) '
+                + 'and the tethered-mode monitor (wall clock) — distance readings will '
+                + 'corrupt the skew counter when the debugger is attached');
+        }
+        // P1.3: servo vs user ANALOG declaration.
+        if (this._cUses.servo) {
+            const p13analog = pins.find((p) => p.port === 1 && p.bit === 3 && p.direction === 'analog');
+            if (p13analog) collision('P1.3 is the servo pin (CCP0) and is also declared ANALOG — the PCA output fights the ADC input');
+        }
+        // Driver-fixed pin claims.
+        const driverPins = [];
+        if (this._cUses.servo) driverPins.push({ port: 1, bit: 3, driver: 'servo (CCP0)' });
+        if (this._cUses.motor) {
+            driverPins.push({ port: 1, bit: 4, driver: 'motor PWM (CCP1)' });
+            driverPins.push({ port: 3, bit: 4, driver: 'motor IN1' });
+            driverPins.push({ port: 3, bit: 5, driver: 'motor IN2' });
+        }
+        if (this._cUses.relay) driverPins.push({ port: 2, bit: 0, driver: 'relay' });
+        if (this._cUses.button) driverPins.push({ port: 3, bit: 2, driver: 'button' });
+        if (this._cUses.sensor) driverPins.push({ port: 1, bit: 1, driver: 'ADC sensor' });
+        if (this._cUses.ultrasonic) {
+            driverPins.push({ port: 3, bit: 6, driver: 'ultrasonic trigger' });
+            driverPins.push({ port: 3, bit: 7, driver: 'ultrasonic echo' });
+        }
+        if (this._cUses.neopixel) driverPins.push({ port: 1, bit: 5, driver: 'NeoPixel data' });
+        // Driver pins vs each other.
+        for (let i = 0; i < driverPins.length; i++) {
+            for (let j = i + 1; j < driverPins.length; j++) {
+                if (driverPins[i].port === driverPins[j].port && driverPins[i].bit === driverPins[j].bit) {
+                    collision(`P${driverPins[i].port}.${driverPins[i].bit} claimed by both ${driverPins[i].driver} and ${driverPins[j].driver}`);
+                }
+            }
+        }
+        // Driver pins vs user-declared pins.
+        for (const dp of driverPins) {
+            const userPin = pins.find((p) => p.port === dp.port && p.bit === dp.bit);
+            if (userPin) {
+                collision(`P${dp.port}.${dp.bit} is declared as "${userPin.name}" and also claimed by the ${dp.driver} driver`);
+            }
+        }
+
         // ---- assemble ----------------------------------------------------------------
         const hex = (n) => n.toString(16).toUpperCase().padStart(2, '0');
         const out = [
             '/* Generated by Brickwright — blocks → C for the STC12 / 8051.',
-            ' * Hand edits will be lost; change the project instead.'
+            // This used to read "Hand edits will be lost; change the project
+            // instead." The first half is still true and the second stopped
+            // being true once the C reader landed: edits are no longer a dead
+            // end, they just do not survive a REGENERATION. Telling someone
+            // their only option is to go back to the blocks now sends them the
+            // long way round.
+            ' * Regenerating from the project overwrites this file. Your edits are not',
+            ' * stuck here though — the C reader imports this back into blocks, and it',
+            ' * names anything it cannot represent rather than dropping it in silence.'
         ];
         // closed either by the not-an-STC12-program diagnostic below, or here
         if (!(pins.length === 0 && this._cWarnings.length > 3)) out.push(' */');
@@ -6121,6 +6268,32 @@ class SB3Creator {
                 '    while (!(ADC_CONTR & 0x10)) ;                 /* wait for ADC_FLAG */',
                 '    ADC_CONTR &= ~0x10;                           /* clear it by hand */',
                 '    return ((unsigned int)ADC_RES << 2) | (ADC_RESL & 0x03);',
+                '}', '');
+        }
+
+        if (this._cUses.pwm || this._cUses.motor) {
+            out.push('/* PCA PWM. The comparator is 9 bits, {EPCnH,CCAPnH} against (0,CL),',
+                ' * and it drives the pin LOW while CL is BELOW the compare value — so a',
+                ' * LARGER value is a LONGER low time and the duty as a fraction HIGH is',
+                ' * (256 - value)/256.  Getting that backwards inverts every brightness and',
+                ' * looks entirely plausible doing it.',
+                ' *',
+                ' * Writing CCAPnH rather than CCAPnL is deliberate: the hardware reloads',
+                ' * CCAPnH into CCAPnL when CL wraps, so an update cannot glitch mid-period.',
+                ' * The 9th bit (EPCnH) is what expresses 0% and 100%, which an 8-bit',
+                ' * compare cannot.  Datasheet 10.3.4. */',
+                'static void pwm_set(unsigned char module, unsigned int percent_high)',
+                '{',
+                '    unsigned int v;',
+                '    if (percent_high > 100) percent_high = 100;',
+                '    v = 256 - ((percent_high * 256 + 50) / 100);',
+                '    if (module == 0) {',
+                '        CCAP0H = (unsigned char)v;',
+                '        if (v > 255) PCA_PWM0 |= 0x02; else PCA_PWM0 &= (unsigned char)~0x02;',
+                '    } else {',
+                '        CCAP1H = (unsigned char)v;',
+                '        if (v > 255) PCA_PWM1 |= 0x02; else PCA_PWM1 &= (unsigned char)~0x02;',
+                '    }',
                 '}', '');
         }
 
@@ -6288,17 +6461,370 @@ class SB3Creator {
             // stderr — one line per stub, naming the block that will do nothing.
             const stub = (sig, marker) => `${sig} { /* BW_STUB: ${marker} — no-op on hardware */ }`;
             const rstub = (sig, marker) => `${sig} { /* BW_STUB: ${marker} */ return 0; }`;
+            // Servo: real PCA 16-bit compare/match driver when _cUses.servo is set,
+            // otherwise fall back to the stub.
+            if (this._cUses.servo) {
+                // PCA module 0 on P1.3, 16-bit software-timer mode.
+                // At FOSC/12 (921.6 kHz for 11.0592 MHz), 20 ms = 18432 counts.
+                // Pulse: 500 µs (0°) = 461 counts, 2500 µs (180°) = 2304 counts.
+                // The ISR toggles the pin: high at frame start, low at the pulse end.
+                out.push(
+                    '/* Servo driver: PCA module 0 in 16-bit compare/match mode (50 Hz). */',
+                    '/* Pin: P1.3 (CCP0). Note: P1.3 is also the ADC example pin — a */',
+                    '/* project using both servo and ADC on P1.3 would conflict. CCP1 on */',
+                    '/* P1.4 is available as an alternative. */',
+                    '/* FOSC/12 clock: 20 ms = FOSC_HZ/12/50 counts. Pulse: 500-2500 µs. */',
+                    '#define SERVO_PERIOD  ((unsigned int)(FOSC_HZ / 12UL / 50UL))',
+                    '#define SERVO_MIN_US  500',
+                    '#define SERVO_MAX_US  2500',
+                    'static unsigned int _servo_pulse;   /* pulse width in timer counts */',
+                    'static unsigned int _servo_phase;   /* 0 = rising edge, 1 = falling */',
+                    'static int _servo_angle;',
+                    '',
+                    'static void bw_servo_set(int servo, int angle)',
+                    '{',
+                    '    unsigned long us;',
+                    '    (void)servo;',
+                    '    if (angle < 0) angle = 0;',
+                    '    if (angle > 180) angle = 180;',
+                    '    _servo_angle = angle;',
+                    '    us = SERVO_MIN_US + (unsigned long)angle * (SERVO_MAX_US - SERVO_MIN_US) / 180;',
+                    '    _servo_pulse = (unsigned int)(us * (FOSC_HZ / 12UL) / 1000000UL);',
+                    '}',
+                    '',
+                    'static int bw_servo_get(int servo) { (void)servo; return _servo_angle; }',
+                    '',
+                    '/* PCA ISR: toggles the servo pin at the pulse edges. */',
+                    '/* Module 0 match flag (CCF0) fires twice per period: */',
+                    '/*   phase 0: set pin HIGH, schedule falling edge at +_servo_pulse */',
+                    '/*   phase 1: set pin LOW,  schedule rising edge at +(PERIOD-pulse) */',
+                    'void bw_pca_isr(void) __interrupt(7)',
+                    '{',
+                    '    unsigned int next;',
+                    '    if (!(CCON & 0x01)) return;  /* not CCF0 */',
+                    '    CCON &= ~0x01;               /* clear CCF0 */',
+                    '    if (_servo_phase == 0) {',
+                    '        P1_3 = 1;                /* pulse start */',
+                    '        next = ((unsigned int)CCAP0H << 8) | CCAP0L;',
+                    '        next += _servo_pulse;',
+                    '        CCAP0L = (unsigned char)(next & 0xFF);',
+                    '        CCAP0H = (unsigned char)(next >> 8);',
+                    '        _servo_phase = 1;',
+                    '    } else {',
+                    '        P1_3 = 0;                /* pulse end */',
+                    '        next = ((unsigned int)CCAP0H << 8) | CCAP0L;',
+                    '        next += SERVO_PERIOD - _servo_pulse;',
+                    '        CCAP0L = (unsigned char)(next & 0xFF);',
+                    '        CCAP0H = (unsigned char)(next >> 8);',
+                    '        _servo_phase = 0;',
+                    '    }',
+                    '}',
+                    '');
+            } else {
+                out.push(
+                    stub('static void bw_servo_set(int servo, int angle)', 'devices_setservo'),
+                    rstub('static int bw_servo_get(int servo)', 'devices_servoangle'));
+            }
+            // Motor driver: 8-bit PCA PWM for speed (no ISR, no compare/match),
+            // plain GPIO for direction through an L293D-style H-bridge.
+            // PCA module 1 (CCP1 on P1.4) — module 0 is reserved for servo.
+            // Direction pins: P3.4 (IN1) and P3.5 (IN2) — these are the free
+            // port 3 pins on every STC12 dev board.
+            //   forward: IN1=1, IN2=0    reverse: IN1=0, IN2=1
+            //   brake:   IN1=1, IN2=1    coast:   IN1=0, IN2=0
+            if (this._cUses.motor) {
+                out.push(
+                    '/* DC motor driver: PCA module 1 (CCP1, P1.4) in 8-bit PWM mode. */',
+                    '/* No ISR needed — the hardware toggles the pin autonomously. */',
+                    '/* Direction: P3.4 (IN1) and P3.5 (IN2) for L293D H-bridge. */',
+                    '#define MOTOR_IN1  P3_4',
+                    '#define MOTOR_IN2  P3_5',
+                    'static int _motor_speed;',
+                    'static int _motor_dir;',
+                    '',
+                    'static void bw_motor_speed(int motor, int speed)',
+                    '{',
+                    '    (void)motor;',
+                    '    if (speed < 0) speed = 0;',
+                    '    if (speed > 100) speed = 100;',
+                    '    _motor_speed = speed;',
+                    '    pwm_set(1, (unsigned int)speed);   /* PCA module 1 (CCP1/P1.4) */',
+                    '}',
+                    '',
+                    'static int bw_motor_get_speed(int motor) { (void)motor; return _motor_speed; }',
+                    '',
+                    '/* Direction: 0=forward 1=reverse 2=brake 3=coast */',
+                    'static void bw_motor_dir(int motor, int dir)',
+                    '{',
+                    '    (void)motor;',
+                    '    _motor_dir = dir;',
+                    '    switch (dir) {',
+                    '        case 0: MOTOR_IN1 = 1; MOTOR_IN2 = 0; break;  /* forward */',
+                    '        case 1: MOTOR_IN1 = 0; MOTOR_IN2 = 1; break;  /* reverse */',
+                    '        case 2: MOTOR_IN1 = 1; MOTOR_IN2 = 1; break;  /* brake */',
+                    '        default: MOTOR_IN1 = 0; MOTOR_IN2 = 0; break; /* coast */',
+                    '    }',
+                    '}',
+                    '',
+                    'static int bw_motor_get_dir(int motor) { (void)motor; return _motor_dir; }',
+                    '');
+            } else {
+                out.push(
+                    stub('static void bw_motor_speed(int motor, int speed)', 'devices_setmotor'),
+                    rstub('static int bw_motor_get_speed(int motor)', 'devices_motorspeed'),
+                    stub('static void bw_motor_dir(int motor, int dir)', 'devices_setdirection'),
+                    rstub('static int bw_motor_get_dir(int motor)', 'devices_motordirection'));
+            }
+            // Relay driver: single GPIO pin drives a transistor that energizes the coil.
+            // P2.0 default — any output pin works; the 8051 sinks current through an
+            // NPN base, so relay ON = pin LOW (active-low, same as LEDs).
+            if (this._cUses.relay) {
+                out.push(
+                    '/* Relay / generic actuator: GPIO pin drives transistor → coil. */',
+                    '/* P2.0 default.  Active-low: pin LOW = relay ON. */',
+                    '#define RELAY_PIN  P2_0',
+                    'static int _relay_state;',
+                    '',
+                    'static void bw_relay_set(int relay, int on)',
+                    '{',
+                    '    (void)relay;',
+                    '    _relay_state = on;',
+                    '    RELAY_PIN = on ? 0 : 1;           /* active-low */',
+                    '}',
+                    '',
+                    'static int bw_energised(int d) { (void)d; return _relay_state; }',
+                    '',
+                    '/* activate/deactivate are relay aliases. */',
+                    'static void bw_device_activate(int dev) { bw_relay_set(dev, 1); }',
+                    'static void bw_device_deactivate(int dev) { bw_relay_set(dev, 0); }',
+                    '');
+            } else {
+                out.push(
+                    stub('static void bw_relay_set(int relay, int on)', 'devices_setrelay'),
+                    stub('static void bw_device_activate(int dev)', 'devices_activate'),
+                    stub('static void bw_device_deactivate(int dev)', 'devices_deactivate'),
+                    rstub('static int bw_energised(int d)', 'devices_energised'));
+            }
+            // Button / digital contact closure: GPIO read with pull-up.
+            // P3.2 (INT0) is the canonical button pin on STC12 dev boards.
+            // Active-low: pressed = pin LOW (button shorts to GND).
+            // Motion and tilt sensors are the same behaviour class (contact closure).
+            if (this._cUses.button) {
+                out.push(
+                    '/* Button / contact closure: active-low GPIO read. */',
+                    '/* P3.2 (INT0) default.  Pressed = pin LOW. */',
+                    '#define BUTTON_PIN  P3_2',
+                    '',
+                    'static int bw_pressed(int btn) { (void)btn; return !BUTTON_PIN; }',
+                    'static int bw_motion(int s) { (void)s; return !BUTTON_PIN; }',
+                    'static int bw_tilted(int s) { (void)s; return !BUTTON_PIN; }',
+                    '');
+            } else {
+                out.push(
+                    rstub('static int bw_pressed(int btn)', 'devices_pressed'),
+                    rstub('static int bw_motion(int s)', 'devices_motion'),
+                    rstub('static int bw_tilted(int s)', 'devices_tilted'));
+            }
+            // Analog sensors: ADC read + scaling.  All four behaviour classes
+            // (3-pin voltage, 2-pin resistance divider) reduce to adc_read().
+            // Default channel: P1.1 (ADC channel 1).
+            //   temperature (TMP36): V = 10 mV/°C + 500 mV → °C = (mV - 500) / 10
+            //   light (LDR):  higher light → lower R → higher V → 0-100%
+            //   flex/force:   resistance divider, 0-1023 raw ADC value
+            if (this._cUses.sensor) {
+                out.push(
+                    '/* Analog sensors: ADC channel 1 (P1.1) default. */',
+                    '/* VERIFIED: ADC register sequence (P1ASF, ADC_CONTR handshake), */',
+                    '/*   arithmetic (raw code → scaled value). */',
+                    '/* NOT VERIFIED: analog path (voltage → ADC code) — bench only. */',
+                    '/* TMP36: mV = ADC * 5000 / 1024; °C = (mV - 500) / 10. */',
+                    '/* LDR / flex / force: percentage = ADC * 100 / 1023. */',
+                    '#define SENSOR_CH  1',
+                    '',
+                    'static int bw_temperature(int s)',
+                    '{',
+                    '    unsigned int raw;',
+                    '    (void)s;',
+                    '    raw = adc_read(SENSOR_CH);',
+                    '    /* TMP36 at 5V ref: mV = raw * 5000 / 1024, °C = (mV-500)/10 */',
+                    '    return (int)((long)raw * 500 / 1024 - 50);',
+                    '}',
+                    '',
+                    'static int bw_light(int s)',
+                    '{',
+                    '    (void)s;',
+                    '    return (int)((unsigned long)adc_read(SENSOR_CH) * 100 / 1023);',
+                    '}',
+                    '',
+                    'static int bw_flex(int s) { (void)s; return (int)adc_read(SENSOR_CH); }',
+                    'static int bw_force(int s) { (void)s; return (int)adc_read(SENSOR_CH); }',
+                    '',
+                    '/* Threshold predicate: compare sensor reading against a value. */',
+                    'static int bw_above(int s, int thr) { return bw_temperature(s) > thr; }',
+                    '');
+            } else {
+                out.push(
+                    rstub('static int bw_temperature(int s)', 'devices_temperature'),
+                    rstub('static int bw_light(int s)', 'devices_light'),
+                    rstub('static int bw_flex(int s)', 'devices_flex'),
+                    rstub('static int bw_force(int s)', 'devices_force'),
+                    rstub('static int bw_above(int s, int thr)', 'devices_above'));
+            }
+            // Ultrasonic distance (HC-SR04): trigger pulse + echo timing.
+            // P3.6 (trigger), P3.7 (echo).  Timer 1 mode 1 measures the echo.
+            // Distance = echo_us / 58 cm.
+            if (this._cUses.ultrasonic) {
+                out.push(
+                    '/* Ultrasonic distance (HC-SR04): P3.6 trig, P3.7 echo. */',
+                    '/* VERIFIED: Timer 1 mode 1 timing, arithmetic. */',
+                    '/* NOT VERIFIED: analog echo threshold — bench only. */',
+                    '#define US_TRIG  P3_6',
+                    '#define US_ECHO  P3_7',
+                    '',
+                    'static int bw_distance(int s)',
+                    '{',
+                    '    unsigned int ticks;',
+                    '    unsigned int reload;',
+                    '    (void)s;',
+                    '    /* Timer 1 at FOSC/12 for ALL timing — identical on 1T and 12T cores.',
+                    '     * Never count instructions: same source, different core, wrong time.',
+                    '     * 10 µs trigger: FOSC/12/100000 ticks ≈ 9 at 11.0592 MHz. */',
+                    '    TMOD = (TMOD & 0x0F) | 0x10;  /* Timer 1, mode 1 */',
+                    '    /* 10 µs trigger pulse via Timer 1 */',
+                    '    reload = (unsigned int)(65536UL - FOSC_HZ / 12UL / 100000UL);',
+                    '    US_TRIG = 0;',
+                    '    US_TRIG = 1;',
+                    '    TL1 = (unsigned char)(reload & 0xFF);',
+                    '    TH1 = (unsigned char)(reload >> 8);',
+                    '    TF1 = 0; TR1 = 1;',
+                    '    while (!TF1) ;',
+                    '    TR1 = 0;',
+                    '    US_TRIG = 0;',
+                    '    /* Wait for echo HIGH (timeout ~60 ms = no object) */',
+                    '    TL1 = 0; TH1 = 0; TF1 = 0;',
+                    '    TR1 = 1;',
+                    '    while (!US_ECHO && !TF1) ;',
+                    '    if (TF1) { TR1 = 0; return 999; }  /* timeout: no object */',
+                    '    /* Measure echo pulse width */',
+                    '    TL1 = 0; TH1 = 0; TF1 = 0;',
+                    '    while (US_ECHO && !TF1) ;',
+                    '    TR1 = 0;',
+                    '    ticks = ((unsigned int)TH1 << 8) | TL1;',
+                    '    /* cm = ticks * (12 / FOSC_HZ) * 1e6 / 58 */',
+                    '    return (int)((unsigned long)ticks * 12UL * 1000000UL / (FOSC_HZ * 58UL));',
+                    '}',
+                    '',
+                    'static int bw_closer(int s, int dist) { return bw_distance(s) < dist; }',
+                    '');
+            } else {
+                out.push(
+                    rstub('static int bw_distance(int s)', 'devices_distance'),
+                    rstub('static int bw_closer(int s, int dist)', 'devices_closer'));
+            }
+            // WS2812 NeoPixel: 800 kHz bit-timed via inline assembly.
+            // 1T ONLY — 12T cores cannot meet the ±150 ns timing windows
+            // because a single 12T machine cycle (1085 ns at 11.0592 MHz)
+            // exceeds the entire 0-bit HIGH window (250-550 ns).
+            // Pin: P1.5.  Buffer: 8 pixels max (24 bytes GRB, RAM is precious).
+            if (this._cUses.neopixel) {
+                if (!chip.aux1T) {
+                    this.cWarn('WS2812 NeoPixel requires a 1T core — 12T cannot meet the 800 kHz timing');
+                    collision('WS2812 NeoPixel is unavailable on ' + device + ' (12T core)');
+                }
+                // Timing is hand-counted for 11.0592 MHz 1T (90 ns/cy).
+                // At very different clocks the NOP counts would need adjusting.
+                const cyNs = chip.aux1T ? (1e9 / clock) : (12e9 / clock);
+                if (chip.aux1T && (cyNs < 50 || cyNs > 120)) {
+                    this.cWarn(`WS2812 timing tuned for 11.0592 MHz; at ${(clock / 1e6).toFixed(3)} MHz pulse widths may drift`);
+                }
+                out.push(
+                    '/* WS2812B NeoPixel: 800 kHz bitbang via inline assembly (1T only). */',
+                    '/* Pin: P1.5.  Measured by ucsim-stc fbc15bf (category 2b): */',
+                    '/*   T0H = 362 ns (250-550)  T0L = 814 ns (700-1000) */',
+                    '/*   T1H = 814 ns (650-950)  T1L = 452 ns (300-600) */',
+                    '/*   72 bits, 9 bytes, all sent.  Moves to cat 1 with silicon. */',
+                    '/* 12T CANNOT DO THIS: 1 cycle = 1085 ns > entire 0-bit window. */',
+                    '/* Interrupts disabled during send — any ISR breaks bit timing. */',
+                    '/* A timer-timed pulse carries instruction overhead on top, so a */',
+                    '/* device with an upper bound needs that overhead counted. Here the */',
+                    '/* instruction IS the timing; there is no timer to defer to. */',
+                    '#define NEO_PIN  P1_5',
+                    '#define NEO_MAX  8',
+                    'static unsigned char _neo_buf[NEO_MAX * 3];',
+                    'static unsigned char _neo_count;',
+                    '',
+                    'static void bw_neo_byte(unsigned char val)',
+                    '{',
+                    '    /* Load byte into accumulator via C — works regardless of SDCC */',
+                    '    /* calling convention (static functions do NOT use DPL). */',
+                    '    ACC = val;',
+                    '    __asm',
+                    '    push ar7             ; save caller R7 (SDCC loop counter)',
+                    '    mov  r7, #8',
+                    '00201$:',
+                    '    setb 0x95           ; 1  P1.5 HIGH',
+                    '    rlc  a              ; 1  MSB -> C',
+                    '    jc   00202$         ; 2  branch if 1-bit',
+                    '    clr  0x95           ; 1  P1.5 LOW  (T0H = 4 cy = 362 ns)',
+                    '    nop',
+                    '    nop',
+                    '    nop',
+                    '    nop',
+                    '    nop',
+                    '    nop                 ;    T0L = 9 cy = 814 ns',
+                    '    djnz r7, 00201$     ; 2',
+                    '    pop  ar7            ; restore caller R7',
+                    '    sjmp 00203$         ; exit',
+                    '00202$:',
+                    '    nop                 ;    T1H continues...',
+                    '    nop',
+                    '    nop',
+                    '    nop',
+                    '    nop',
+                    '    clr  0x95           ; 1  P1.5 LOW  (T1H = 10 cy = 904 ns)',
+                    '    nop                 ;    T1L = 4 cy = 362 ns',
+                    '    nop',
+                    '    djnz r7, 00201$     ; 2',
+                    '    pop  ar7            ; restore caller R7',
+                    '00203$:',
+                    '    __endasm;',
+                    '}',
+                    '',
+                    'static void bw_neo_send(void)',
+                    '{',
+                    '    unsigned char i, n;',
+                    '    n = _neo_count * 3;',
+                    '    EA = 0;',
+                    '    for (i = 0; i < n; i++) bw_neo_byte(_neo_buf[i]);',
+                    '    EA = 1;',
+                    '}',
+                    '',
+                    'static void bw_neopixel_set(int s, int idx, int r, int g, int b)',
+                    '{',
+                    '    (void)s;',
+                    '    if (idx < 0 || idx >= _neo_count) return;',
+                    '    _neo_buf[idx * 3]     = (unsigned char)(g > 255 ? 255 : g < 0 ? 0 : g);',
+                    '    _neo_buf[idx * 3 + 1] = (unsigned char)(r > 255 ? 255 : r < 0 ? 0 : r);',
+                    '    _neo_buf[idx * 3 + 2] = (unsigned char)(b > 255 ? 255 : b < 0 ? 0 : b);',
+                    '    bw_neo_send();',
+                    '}',
+                    '',
+                    'static void bw_neopixel_clear(int s)',
+                    '{',
+                    '    unsigned char i;',
+                    '    (void)s;',
+                    '    for (i = 0; i < _neo_count * 3; i++) _neo_buf[i] = 0;',
+                    '    bw_neo_send();',
+                    '}',
+                    '');
+            } else {
+                out.push(
+                    stub('static void bw_neopixel_set(int s, int i, int r, int g, int b)', 'devices_setneopixel'),
+                    stub('static void bw_neopixel_clear(int s)', 'devices_clearneopixels'));
+            }
+            // Stubs: IR (protocol decode), displays (I2C/shift register), RGB (3-channel PWM).
             out.push(
-                stub('static void bw_servo_set(int servo, int angle)', 'devices_setservo'),
-                rstub('static int bw_servo_get(int servo)', 'devices_servoangle'),
-                stub('static void bw_motor_speed(int motor, int speed)', 'devices_setmotor'),
-                rstub('static int bw_motor_get_speed(int motor)', 'devices_motorspeed'),
-                stub('static void bw_motor_dir(int motor, int dir)', 'devices_setdirection'),
-                rstub('static int bw_motor_get_dir(int motor)', 'devices_motordirection'),
-                stub('static void bw_relay_set(int relay, int on)', 'devices_setrelay'),
                 rstub('static int bw_device_state(int dev)', 'devices_devicestate'),
-                stub('static void bw_device_activate(int dev)', 'devices_activate'),
-                stub('static void bw_device_deactivate(int dev)', 'devices_deactivate'),
                 stub('static void bw_lcd_print(int disp, int text)', 'devices_lcdprint'),
                 stub('static void bw_lcd_cursor(int disp, int row, int col)', 'devices_lcdcursor'),
                 stub('static void bw_lcd_clear(int disp)', 'devices_lcdclear'),
@@ -6306,20 +6832,7 @@ class SB3Creator {
                 stub('static void bw_rgb_set(int led, int r, int g, int b)', 'devices_setrgb'),
                 stub('static void bw_matrix_set(int m, int x, int y, int br)', 'devices_setpixel'),
                 stub('static void bw_matrix_clear(int m)', 'devices_clearmatrix'),
-                stub('static void bw_neopixel_set(int s, int i, int r, int g, int b)', 'devices_setneopixel'),
-                stub('static void bw_neopixel_clear(int s)', 'devices_clearneopixels'),
-                rstub('static int bw_temperature(int s)', 'devices_temperature'),
-                rstub('static int bw_light(int s)', 'devices_light'),
-                rstub('static int bw_distance(int s)', 'devices_distance'),
-                rstub('static int bw_flex(int s)', 'devices_flex'),
-                rstub('static int bw_force(int s)', 'devices_force'),
                 rstub('static int bw_ir_code(int s)', 'devices_ircode'),
-                rstub('static int bw_pressed(int btn)', 'devices_pressed'),
-                rstub('static int bw_above(int s, int thr)', 'devices_above'),
-                rstub('static int bw_closer(int s, int dist)', 'devices_closer'),
-                rstub('static int bw_motion(int s)', 'devices_motion'),
-                rstub('static int bw_tilted(int s)', 'devices_tilted'),
-                rstub('static int bw_energised(int d)', 'devices_energised'),
                 '');
         }
 
@@ -6364,6 +6877,90 @@ class SB3Creator {
         out.push('');
         if (chip.aux1T) out.push('    AUXR &= ~0x80;                 /* Timer 0 at FOSC/12 */');
         out.push('    TMOD  = (TMOD & 0xF0) | 0x01;  /* Timer 0, mode 1 */');
+        // PCA setup for servo (16-bit compare/match, module 0 on P1.3).
+        if (this._cUses.servo) {
+            out.push('',
+                '    /* PCA: FOSC/12 clock, 16-bit compare/match on module 0 (P1.3). */',
+                '    CMOD = 0x00;                      /* PCA clock = FOSC/12 */',
+                '    CCAPM0 = 0x49;                    /* module 0: match + toggle + interrupt */',
+                '    CCAP0L = 0; CCAP0H = 0;',
+                '    CL = 0; CH = 0;',
+                '    EA = 1;                           /* global interrupt enable */',
+                '    /* PCA interrupt is enabled per-module by CCAPM0.ECCF (bit 0 of */',
+                '    /* 0x49 above). There is NO IE.EC bit for PCA on STC12 — IE.6 is */',
+                '    /* ELVD (Low Voltage Detector). Do not set EC=1 here. */',
+                '    CR = 1;                           /* start PCA counter — AFTER EA */',
+                '    _servo_pulse = (unsigned int)(1500UL * (FOSC_HZ / 12UL) / 1000000UL);  /* 90° default */',
+                '    _servo_angle = 90;',
+                '    _servo_phase = 0;');
+        }
+        // PCA setup for motor (8-bit PWM, module 1 on P1.4).
+        if (this._cUses.motor) {
+            if (!this._cUses.servo) {
+                // Servo already sets CMOD and starts CR; only emit if alone.
+                out.push('',
+                    '    /* PCA: FOSC/12 clock for 8-bit PWM. */',
+                    '    CMOD = 0x00;                      /* PCA clock = FOSC/12 */',
+                    '    CL = 0; CH = 0;');
+            }
+            if (chip.portModes) {
+                out.push(
+                    '    P1M1 &= ~0x10; P1M0 |=  0x10;  /* P1.4 (CCP1) push-pull */',
+                    '    P3M1 &= ~0x30; P3M0 |=  0x30;  /* P3.4, P3.5 push-pull */');
+            }
+            out.push(
+                '    CCAPM1 = 0x42;                    /* module 1: 8-bit PWM (ECOM|PWM) */',
+                '    CCAP1H = 0xFF; CCAP1L = 0xFF;     /* start at 0% duty (pin stays high) */',
+                '    _motor_speed = 0;',
+                '    _motor_dir = 3;                    /* coast */',
+                '    MOTOR_IN1 = 0; MOTOR_IN2 = 0;     /* coast: both inputs low */');
+            if (!this._cUses.servo) {
+                out.push('    CR = 1;                           /* start PCA counter */');
+            }
+        }
+        // stc12_setpwm also needs PCA 8-bit PWM — share the same setup path.
+        if (this._cUses.pwm && !this._cUses.servo && !this._cUses.motor) {
+            out.push('',
+                '    /* PCA: FOSC/12 clock for 8-bit PWM. */',
+                '    CMOD = 0x00;                      /* PCA clock = FOSC/12 */',
+                '    CL = 0; CH = 0;',
+                '    CR = 1;                           /* start PCA counter */');
+        }
+        // Relay: P2.0 as push-pull output, start de-energized.
+        if (this._cUses.relay) {
+            if (chip.portModes) {
+                out.push('    P2M1 &= ~0x01; P2M0 |=  0x01;  /* P2.0 push-pull */');
+            }
+            out.push('    RELAY_PIN = 1;                    /* de-energized (active-low) */',
+                '    _relay_state = 0;');
+        }
+        // Ultrasonic: P3.6 (trigger) push-pull output.
+        if (this._cUses.ultrasonic) {
+            if (chip.portModes) {
+                out.push('    P3M1 &= ~0x40; P3M0 |=  0x40;  /* P3.6 (US trig) push-pull */');
+            }
+            out.push('    US_TRIG = 0;');
+            if (chip.aux1T) out.push('    AUXR &= ~0x40;                 /* Timer 1 at FOSC/12 */');
+        }
+        // NeoPixel: P1.5 push-pull output, buffer init.
+        if (this._cUses.neopixel) {
+            if (chip.portModes) {
+                out.push('    P1M1 &= ~0x20; P1M0 |=  0x20;  /* P1.5 (NeoPixel) push-pull */');
+            }
+            out.push('    NEO_PIN = 0;',
+                '    _neo_count = NEO_MAX;');
+        }
+        // Sensor ADC: P1.1 as analog input (channel 1).
+        // adc_read() already exists when _cUses.adc is set — the ADC_CONTR
+        // and P1ASF setup is emitted by the general analog-pin path above.
+        // But devices_temperature etc. set _cUses.adc themselves, so the
+        // P1ASF bit for channel 1 must be included.  That path reads from
+        // the declared pins — sensor blocks have no pin declaration, so add
+        // the bit here.
+        if (this._cUses.sensor) {
+            out.push('    P1ASF |= 0x02;                    /* P1.1 analog (sensor) */',
+                '    P1M1 |=  0x02; P1M0 &= ~0x02;    /* P1.1 high-impedance */');
+        }
         out.push('}', '', 'void main(void)', '{', '    bw_setup();');
         if (this._cTasks) {
             out.push('    TL0 = (unsigned char)(T0_RELOAD & 0xFF);',

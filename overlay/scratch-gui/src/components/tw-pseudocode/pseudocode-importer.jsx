@@ -498,6 +498,15 @@ class PseudocodeImporter extends React.Component {
                 URL.revokeObjectURL(url);
                 resolve(result);
             };
+            // An uncaught error INSIDE the worker (e.g. Skulpt calling
+            // importScripts('bitops') for a stdlib module the inline bundle
+            // does not carry) otherwise bubbles to window as a page error and
+            // reads like an app crash. It is a preview failure: report it in
+            // the preview pane and stop the noise.
+            worker.onerror = (e) => {
+                if (e && e.preventDefault) e.preventDefault();
+                done({error: `Python preview unavailable for this program: ${(e && e.message) || 'worker error'}`});
+            };
             const timer = setTimeout(() => done({timeout: true}), timeoutMs);
             worker.onmessage = (e) => {
                 const d = e.data || {};

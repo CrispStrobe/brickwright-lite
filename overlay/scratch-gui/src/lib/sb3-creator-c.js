@@ -627,10 +627,24 @@ export default function cToPseudocode (source, opts = {}) {
         // also declaration specifiers.
         if (t.t === 'id' && ['unsigned', 'signed', 'int', 'char', 'long', 'short', 'static', 'volatile', 'const', 'float', 'double',
             'sbit', 'sfr', 'sfr16', 'bit', 'code', 'data', 'xdata', 'idata', 'pdata', 'void', 'extern', 'register', 'typedef', 'struct', 'union', 'enum'].includes(t.v)) {
+            // Capture what is being skipped so the warning can name it.
+            // cur.peek() returned t but did not advance; skip it before collecting.
+            cur.next();
+            const declTokens = [t.v];
             while (!cur.is(';') && cur.peek().t !== 'eof') {
-                if (cur.is('{')) cur.skip('{', '}'); else cur.next();
+                if (cur.is('{')) { declTokens.push('{…}'); cur.skip('{', '}'); }
+                else declTokens.push(cur.next().v);
             }
             cur.eat(';');
+            // Warn for non-trivial declarations that carry program state.
+            // Simple locals (`unsigned char i;`) inside function bodies are noise.
+            // Structs, arrays, pointers, typedefs, and named struct variables are
+            // the ones a user expects to survive.
+            const declJoined = declTokens.join(' ');
+            const declText = declTokens.slice(0, 8).join(' ');
+            if (/struct|union|enum|typedef|\*|\[/.test(declJoined)) {
+                warn(`declaration dropped (no block equivalent): ${declText}${declTokens.length > 8 ? ' …' : ''}`);
+            }
             return [];
         }
 
@@ -934,8 +948,16 @@ export default function cToPseudocode (source, opts = {}) {
             }
         }
         cur.i = start;
-        while (!cur.is(';') && !cur.is('}') && cur.peek().t !== 'eof') { if (cur.is('{')) cur.skip('{', '}'); else cur.next(); }
+        const skippedTokens = [];
+        while (!cur.is(';') && !cur.is('}') && cur.peek().t !== 'eof') {
+            if (cur.is('{')) cur.skip('{', '}');
+            else skippedTokens.push(cur.next().v);
+        }
         cur.eat(';');
+        if (skippedTokens.length) {
+            const text = skippedTokens.slice(0, 8).join(' ');
+            warn(`statement dropped (not representable as a block): ${text}${skippedTokens.length > 8 ? ' …' : ''}`);
+        }
         return [];
     }
 
@@ -1576,7 +1598,16 @@ export default function cToPseudocode (source, opts = {}) {
             const bodyStart = cur.i;
             cur.skip('{', '}');
             funcs.push({ name, from: bodyStart, to: cur.i });
-        } else { cur.eat(';'); if (cur.i === start) cur.next(); }
+        } else {
+            // Top-level declaration (not a function). Warn if it carries
+            // program state that the reader cannot represent.
+            const declSpan = tokens.slice(start, cur.i).map(t => t.v).join(' ');
+            if (/struct|union|enum|typedef|\*|\[/.test(declSpan) && !SFRS.test(declSpan)) {
+                const brief = tokens.slice(start, Math.min(cur.i, start + 8)).map(t => t.v).join(' ');
+                warn(`top-level declaration dropped (no block equivalent): ${brief}${cur.i - start > 8 ? ' …' : ''}`);
+            }
+            cur.eat(';'); if (cur.i === start) cur.next();
+        }
     }
 
     const linesFor = (f, depth) => {
@@ -1636,6 +1667,8 @@ export default function cToPseudocode (source, opts = {}) {
     }
 
     const IGNORE_FNS = new Set(['bw_setup', 'bw_tick', 'bw_now', 'bw_block_ms', 'delay_ms', 'adc_read',
+        'pwm_set', 'bw_distance', 'bw_closer',
+        'bw_neo_byte', 'bw_neo_send', 'bw_neopixel_set', 'bw_neopixel_clear',
         'board_init', 'delay_init', 'tone_set', 'tone_stop',
         'bw_cube_scan', 'bw_cube_set', 'bw_cube_get', 'bw_cube_clear',
         'bw_cube_fill_layer', 'bw_cube_shift', 'bw_cube_hold',
@@ -1696,6 +1729,19 @@ export default function cToPseudocode (source, opts = {}) {
             // Hand-written: build a proccode from the function name and parameters.
             const params = paramNames.length ? ' ' + paramNames.map((p) => `(${p})`).join(' ') : '';
             out.push('', `DEFINE ${f.name}${params}:`, ...linesFor(f, 1));
+        }
+    }
+
+    // Warn about functions found in the source but not emitted.
+    // SFR/runtime functions are expected to be dropped; user functions are not.
+    const emitted = new Set([...scriptFns.map(f => f.name), ...userFns.map(f => f.name)]);
+    for (const f of funcs) {
+        if (!emitted.has(f.name) && !IGNORE_FNS.has(f.name) && !DELAYS.has(f.name) && !SETUP.has(f.name)
+            && !f.name.startsWith('bw_')       // runtime/device helpers
+            && !f.name.startsWith('tone_')      // tone helpers
+            && !f.name.startsWith('__')         // compiler intrinsics (__interrupt, __at, etc.)
+            && f.name !== 'main') {
+            warn(`function ${f.name}() dropped: not a script or known procedure — hand-added code does not survive the round-trip`);
         }
     }
 

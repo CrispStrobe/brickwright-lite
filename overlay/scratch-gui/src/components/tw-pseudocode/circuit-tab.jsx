@@ -340,7 +340,10 @@ class CircuitTab extends React.Component {
             // leaving the user on the gallery with an invisible change would be
             // the same silence this panel strip exists to avoid.
             this.setState({
-                circuitData: data,
+                // fileOnly tells the designer this circuit came with no
+                // program: never rebuild it from whatever pins the previous
+                // project left behind.
+                circuitData: hasProgram ? data : {...data, fileOnly: true},
                 panel: 'designer',
                 loadingExample: null,
                 stc: this.readStc(),
@@ -450,7 +453,16 @@ class CircuitTab extends React.Component {
         // is what lets a flex child actually shrink and scroll instead of
         // growing past its parent (the default `min-height: auto` is exactly
         // why this looked like a clipping bug rather than a sizing one).
-        const box = {height: '100%', overflow: 'clip', padding: 8, boxSizing: 'border-box',
+        // `width: 100%` is not redundant with a block element's default: the
+        // tab panel upstream is `display: flex`, so this root is a FLEX ITEM,
+        // and a flex item's default `flex-grow: 0` sizes it to its content. It
+        // measured 1313px inside a 1400px panel — the leftover strip that made
+        // "Full width" look like it was not reclaiming the whole width. The
+        // stage was hidden correctly the whole time; the tab simply never grew
+        // into the space it was given. `flex` is stated too, so this does not
+        // depend on which of the two upstream happens to honour.
+        const box = {height: '100%', width: '100%', flex: '1 1 auto',
+            overflow: 'clip', padding: 8, boxSizing: 'border-box',
             display: 'flex', flexDirection: 'column'};
         if (reloading) {
             return (
