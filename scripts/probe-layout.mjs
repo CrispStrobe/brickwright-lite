@@ -15,7 +15,14 @@
  *   node scripts/probe-layout.mjs --report   # also dump the measurements
  *
  * Needs a build in packages/scratch-gui/build and, once:
- *   npm i -D playwright && npx playwright install firefox
+ *   npm i -D playwright --no-save && npx playwright install firefox
+ *   git checkout package-lock.json        # <- do not skip this
+ *
+ * playwright stays out of package.json deliberately: it is ~100 MB and only this script wants
+ * it, and CI's verify-gui job installs its own copy standalone. But --no-save only spares
+ * package.json — npm still rewrites package-lock.json, which IS tracked, and a concurrent
+ * `git add -A` in this repo has already once committed playwright into it as a root dependency
+ * the root package.json does not declare. Restore the lock after installing.
  */
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
