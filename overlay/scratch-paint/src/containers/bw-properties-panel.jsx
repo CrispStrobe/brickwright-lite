@@ -22,6 +22,7 @@ import {togglePanel} from '../reducers/bw-panel';
 import {setSelectedItems} from '../reducers/selected-items';
 
 import {alignSelection, AlignTo, distributeSelection} from '../helper/bw/align';
+import {getOpacityPercent, setOpacityPercent} from '../helper/bw/appearance';
 import {applyBoolean, getOperands} from '../helper/bw/booleans';
 import {MirrorAbout, mirrorDuplicate} from '../helper/bw/symmetry';
 import {getTransform, rotateBy, setPosition, setRotation, setSize} from '../helper/bw/transform';
@@ -63,6 +64,7 @@ class BwPropertiesPanel extends React.Component {
             'handleAlign',
             'handleBoolean',
             'handleChangeHeight',
+            'handleChangeOpacity',
             'handleChangeRotation',
             'handleChangeShapeParam',
             'handleChangeWidth',
@@ -83,38 +85,10 @@ class BwPropertiesPanel extends React.Component {
             mirrorAbout: MirrorAbout.SELECTION_EDGE
         };
     }
-    componentDidMount () {
-        this.remeasureCanvas();
-    }
     componentWillReceiveProps (nextProps) {
         if (this.state.booleanEmpty && nextProps.selectedItems !== this.props.selectedItems) {
             this.setState({booleanEmpty: false});
         }
-    }
-    componentDidUpdate (prevProps) {
-        if (prevProps.visible !== this.props.visible) {
-            this.remeasureCanvas();
-        }
-    }
-    componentWillUnmount () {
-        this.remeasureCanvas();
-    }
-    /**
-     * Tell paper the canvas changed size.
-     *
-     * The rail is a column in the same flex row as the canvas, so opening or closing it resizes
-     * the canvas element — but paper only re-measures on a WINDOW resize (paper-canvas.jsx renders
-     * the canvas with resize="true", and its own comment on recalibrateSize says that when the two
-     * sizes drift apart "the mouse events in the paint editor don't line up correctly"). Without
-     * this, opening the rail left paper drawing and hit-testing against a stale viewport: the
-     * artwork spilled under the rail and zooming and panning went wrong.
-     *
-     * Deferred a frame because the browser has not laid the new width out yet at this point.
-     */
-    remeasureCanvas () {
-        window.requestAnimationFrame(() => {
-            window.dispatchEvent(new Event('resize'));
-        });
     }
     /**
      * Commit a change that moved or resized existing objects.
@@ -156,6 +130,9 @@ class BwPropertiesPanel extends React.Component {
             transform.width * (height / transform.height) :
             null;
         this.commit(setSize(width, height));
+    }
+    handleChangeOpacity (value) {
+        this.commit(setOpacityPercent(value));
     }
     handleChangeRotation (value) {
         this.commit(setRotation(value));
@@ -216,6 +193,8 @@ class BwPropertiesPanel extends React.Component {
                 onChangeAlignTo={alignTo => this.setState({alignTo})}
                 onChangeGridSize={this.props.onChangeGridSize}
                 onChangeHeight={this.handleChangeHeight}
+                onChangeOpacity={this.handleChangeOpacity}
+                opacityPercent={getOpacityPercent()}
                 onChangeMirrorAbout={mirrorAbout => this.setState({mirrorAbout})}
                 onChangeRotation={this.handleChangeRotation}
                 onChangeShapeParam={this.handleChangeShapeParam}

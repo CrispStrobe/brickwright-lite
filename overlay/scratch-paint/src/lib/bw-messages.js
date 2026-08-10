@@ -25,6 +25,10 @@ const STRINGS = {
         nothingSelected: 'Select something to transform it.',
         rotationMultiple: 'Rotation can only be typed for a single object — use the buttons.',
 
+        appearance: 'Appearance',
+        opacity: 'Opacity',
+        opacityMixed: 'The selected objects have different opacities.',
+
         align: 'Align',
         alignLeft: 'Align left',
         alignHorizontalCenter: 'Align horizontal centres',
@@ -93,6 +97,10 @@ const STRINGS = {
         rotateCounterClockwise: 'Um 90° gegen den Uhrzeigersinn drehen',
         nothingSelected: 'Wähle etwas aus, um es zu transformieren.',
         rotationMultiple: 'Die Drehung lässt sich nur für ein einzelnes Objekt eintippen — nutze die Schaltflächen.',
+
+        appearance: 'Darstellung',
+        opacity: 'Deckkraft',
+        opacityMixed: 'Die ausgewählten Objekte haben unterschiedliche Deckkraft.',
 
         align: 'Ausrichten',
         alignLeft: 'Linksbündig ausrichten',

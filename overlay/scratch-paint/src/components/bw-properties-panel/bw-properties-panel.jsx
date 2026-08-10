@@ -279,6 +279,20 @@ const BwPropertiesPanel = props => {
                     </div>
                 </Section>
 
+                <Section title={t('appearance')}>
+                    <div className={styles.fieldRow}>
+                        <NumberField
+                            disabled={!hasSelection}
+                            label={t('opacity')}
+                            title={hasSelection && props.opacityPercent === null ?
+                                t('opacityMixed') : null}
+                            value={hasSelection ? props.opacityPercent : null}
+                            onSubmit={props.onChangeOpacity}
+                        />
+                        <span className={styles.fieldSuffix}>{'%'}</span>
+                    </div>
+                </Section>
+
                 <Section title={t('align')}>
                     <Segmented
                         label={t('alignRelativeTo')}
@@ -449,10 +463,12 @@ BwPropertiesPanel.propTypes = {
     mirrorAbout: PropTypes.oneOf(Object.keys(MirrorAbout).map(key => MirrorAbout[key])).isRequired,
     mode: PropTypes.oneOf(Object.keys(Modes)).isRequired,
     onAlign: PropTypes.func.isRequired,
+    opacityPercent: PropTypes.number,
     onBoolean: PropTypes.func.isRequired,
     onChangeAlignTo: PropTypes.func.isRequired,
     onChangeGridSize: PropTypes.func.isRequired,
     onChangeHeight: PropTypes.func.isRequired,
+    onChangeOpacity: PropTypes.func.isRequired,
     onChangeMirrorAbout: PropTypes.func.isRequired,
     onChangeRotation: PropTypes.func.isRequired,
     onChangeShapeParam: PropTypes.func.isRequired,

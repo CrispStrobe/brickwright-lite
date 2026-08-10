@@ -33,12 +33,16 @@
     line-height: 1.35;
 }
 
-/* Capped so a costume with many objects can't push the rest of the rail off screen. */
+/* Capped so a costume with many objects can't push the rest of the rail off screen — and capped
+   against the VIEWPORT too, so on a short window the list gives up its space instead of being the
+   only thing you can see. */
 .list {
     list-style: none;
     margin: 0;
     padding: 0;
     max-height: 13rem;
+    max-height: min(13rem, 28vh);
+    min-height: 3rem;
     overflow-y: auto;
 }
 

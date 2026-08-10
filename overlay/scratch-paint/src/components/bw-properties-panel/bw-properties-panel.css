@@ -39,23 +39,34 @@
     padding-right: calc(3 * $grid-unit);
 }
 
+/* Kept to one compact line: it is a label and a toggle, and every pixel it takes is a pixel the
+   sections below do not get on a short screen. */
 .header {
     display: flex;
     flex-direction: row;
     align-items: center;
+    flex: 0 0 auto;
     gap: $grid-unit;
-    padding-bottom: calc(2 * $grid-unit);
+    padding-bottom: $grid-unit;
     border-bottom: 1px dashed $ui-pane-border;
 }
 
 .header-title {
     font-weight: bold;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.75;
 }
 
-/* The rail is the tallest thing in the editor, so it scrolls rather than stretching the row. */
+/* The rail holds more than fits on a short window, so the sections scroll inside it rather than
+   overflowing the editor. `min-height: 0` is the part that actually makes it work — without it a
+   flex child refuses to shrink below its content and the scrollbar never appears. */
 .body {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     padding-top: calc(2 * $grid-unit);
 }
@@ -99,6 +110,11 @@
     gap: $grid-unit;
     flex: 1 1 auto;
     min-width: 0;
+}
+
+.field-suffix {
+    flex: 0 0 auto;
+    opacity: 0.7;
 }
 
 .field-disabled {
