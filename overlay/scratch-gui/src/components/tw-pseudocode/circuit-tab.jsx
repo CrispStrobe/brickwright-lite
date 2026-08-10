@@ -33,9 +33,16 @@ class CircuitTab extends React.Component {
         try {
             debugHintDismissed = localStorage.getItem('bw-debug-hint') === '1';
         } catch { /* private mode */ }
+        let hideStage = false;
+        let debugDock = 'top';
+        try {
+            hideStage = localStorage.getItem('bw-hide-stage') === '1';
+            const d = localStorage.getItem('bw-debug-dock');
+            if (d === 'right' || d === 'off') debugDock = d;
+        } catch { /* private mode: defaults */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
-            debugHintDismissed,
+            debugHintDismissed, hideStage, debugDock,
             examples: null, examplesError: null, circuitData: null, loadingExample: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
@@ -44,10 +51,34 @@ class CircuitTab extends React.Component {
 
     componentDidMount () {
         if (this.props.isVisible) this.load();
+        // The stage-hiding CSS lives here rather than in a stylesheet because
+        // the wrapper's class is a hashed CSS-module name; the attribute-
+        // contains selector survives rebuilds.
+        if (!document.getElementById('bw-layout-style')) {
+            const st = document.createElement('style');
+            st.id = 'bw-layout-style';
+            st.textContent = 'html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"]{display:none !important}';
+            document.head.appendChild(st);
+        }
+        this._syncStageAttr();
     }
 
     componentDidUpdate (prevProps) {
         if (this.props.isVisible && !prevProps.isVisible) this.load();
+        this._syncStageAttr();
+    }
+
+    componentWillUnmount () {
+        document.documentElement.removeAttribute('data-bw-hide-stage');
+    }
+
+    /** Hide the stage+sprites column only while THIS tab is the visible one —
+     *  the option reads "give the circuit the whole width", not "lose the
+     *  stage everywhere". Other tabs get it back the moment they show. */
+    _syncStageAttr () {
+        const on = !!(this.state.hideStage && this.props.isVisible);
+        if (on) document.documentElement.setAttribute('data-bw-hide-stage', '');
+        else document.documentElement.removeAttribute('data-bw-hide-stage');
     }
 
     async load () {
@@ -56,6 +87,11 @@ class CircuitTab extends React.Component {
         this.loading = true;
         try {
             const engine = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
+            // The device registry has no self-registration: seventeen register*
+            // exports and, until 2026-08-10, zero callers outside the engine's
+            // own tests — servo/555/h-bridge netlists failed as "unknown kind"
+            // with their drivers sitting right there. Register at injection.
+            if (typeof engine.registerAllDevices === 'function') engine.registerAllDevices();
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
             ui.setEngine(engine);   // the panel takes the engine by injection, not by path
             // Part sidecars (pin maps, current ratings, footprints) into the
@@ -444,16 +480,12 @@ class CircuitTab extends React.Component {
                     puts them in the stage header; they are here because that header is
                     shown for every project including pure Scratch ones — see the panel's
                     own comment. The block glow lands in the Blocks tab regardless. */}
-                {stc && stc.pins && stc.pins.length ? (
+                {this.state.debugDock === 'top' && stc && stc.pins && stc.pins.length ? (
                     <div style={{marginBottom: 10, flex: '0 0 auto'}}>
-                        <React.Suspense fallback={null}>
-                            <DebugPanel
-                                clockHz={(stc && Number(stc.clock)) || 11059200}
-                                onRunnerChange={this.handleRunnerChange}
-                            />
-                        </React.Suspense>
+                        {this.renderDebugPanel()}
                     </div>
-                ) : (
+                ) : null}
+                {stc && stc.pins && stc.pins.length ? null : (
                     // The panel is correctly absent — there is no program to run
                     // control over — but absent and broken look identical, and a
                     // reader who came here for the debugger finds nothing and no
@@ -489,6 +521,8 @@ class CircuitTab extends React.Component {
                     )
                 )}
                 {this.renderPanelStrip()}
+                <div style={{display: 'flex', flex: '1 1 auto', minHeight: 0, gap: 8}}>
+                <div style={{flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column'}}>
                 {/* The tab container is `overflow: clip` so a deep sidebar scroll cannot
                     shift the page. That is right for the designer, whose palette and panels
                     scroll internally — but these panels do not. A 53-row parts list or a
@@ -555,7 +589,31 @@ class CircuitTab extends React.Component {
                     }}
                 />
                 </div>
+                </div>
+                {this.state.debugDock !== 'top' && stc && stc.pins && stc.pins.length ? (
+                    <div style={this.state.debugDock === 'right' ?
+                        {flex: '0 0 320px', minWidth: 0, overflow: 'auto'} : {display: 'none'}}>
+                        {this.renderDebugPanel()}
+                    </div>
+                ) : null}
+                </div>
             </div>
+        );
+    }
+
+    /** One DebugPanel instance, wherever it docks. Moving between the top
+     *  slot and the right column remounts it (different tree positions), so
+     *  the runner restarts on a dock change — a rare, user-initiated action.
+     *  Toggling right<->off does NOT remount: off keeps it hidden, alive. */
+    renderDebugPanel () {
+        const {stc} = this.state;
+        return (
+            <React.Suspense fallback={null}>
+                <DebugPanel
+                    clockHz={(stc && Number(stc.clock)) || 11059200}
+                    onRunnerChange={this.handleRunnerChange}
+                />
+            </React.Suspense>
         );
     }
 
@@ -577,9 +635,27 @@ class CircuitTab extends React.Component {
         // row and nothing else — no tab-bar chrome, no borders, no 44px targets
         // stealing height from the canvas. A segmented control reads as "a view
         // of the same thing", which is what these are.
+        const segBtn = (active, label, title, onClick) => (
+            <button
+                key={label}
+                title={title}
+                onClick={onClick}
+                style={{padding: '2px 8px', border: 'none', cursor: 'pointer', borderRadius: 4,
+                    fontSize: 'inherit',
+                    background: active ? '#fff' : 'transparent',
+                    boxShadow: active ? '0 1px 2px rgba(15,23,42,.12)' : 'none',
+                    color: active ? '#0f172a' : '#64748b'}}
+            >{label}</button>
+        );
+        const setDock = (d) => {
+            this.setState({debugDock: d});
+            try { localStorage.setItem('bw-debug-dock', d); } catch { /* session only */ }
+        };
         return (
-            <div style={{display: 'inline-flex', gap: 1, marginBottom: 6, padding: 1, flex: '0 0 auto',
-                borderRadius: 5, background: '#f1f5f9', fontSize: 11.5, lineHeight: 1.6}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flex: '0 0 auto',
+                fontSize: 11.5, lineHeight: 1.6}}>
+            <div style={{display: 'inline-flex', gap: 1, padding: 1,
+                borderRadius: 5, background: '#f1f5f9'}}>
                 {tabs.map(([id, label, badge]) => (
                     <button
                         key={id}
@@ -604,6 +680,28 @@ class CircuitTab extends React.Component {
                         ) : null}
                     </button>
                 ))}
+            </div>
+            <span style={{flex: 1}} />
+            {/* Debugger placement: on top it competes with the canvas for
+                height; docked right it takes the column the stage no longer
+                needs; off it hides (hidden, not unmounted — the runner and
+                its state survive the toggle). */}
+            <span style={{color: '#94a3b8'}}>{'Debugger'}</span>
+            <div style={{display: 'inline-flex', gap: 1, padding: 1, borderRadius: 5, background: '#f1f5f9'}}>
+                {segBtn(this.state.debugDock === 'top', 'Top', 'Debugger above the board', () => setDock('top'))}
+                {segBtn(this.state.debugDock === 'right', 'Right', 'Debugger in a right column', () => setDock('right'))}
+                {segBtn(this.state.debugDock === 'off', 'Off', 'Hide the debugger', () => setDock('off'))}
+            </div>
+            <div style={{display: 'inline-flex', gap: 1, padding: 1, borderRadius: 5, background: '#f1f5f9'}}>
+                {segBtn(!this.state.hideStage, 'Stage', 'Show the Scratch stage and sprites', () => {
+                    this.setState({hideStage: false});
+                    try { localStorage.setItem('bw-hide-stage', '0'); } catch { /* session only */ }
+                })}
+                {segBtn(this.state.hideStage, 'Full width', 'Hide the stage — the circuit gets the whole width', () => {
+                    this.setState({hideStage: true});
+                    try { localStorage.setItem('bw-hide-stage', '1'); } catch { /* session only */ }
+                })}
+            </div>
             </div>
         );
     }
