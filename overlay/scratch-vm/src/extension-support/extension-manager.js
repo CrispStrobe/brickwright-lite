@@ -30,6 +30,11 @@ const builtinExtensions = {
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     circuit: () => require('../extensions/crispstrobe/circuit'),
+    // Device convenience blocks (servo, motor, relay, sensors, LCD, NeoPixel).
+    // sb3-creator emits these as devices_* opcodes; without this line every
+    // project using them fell to the SANDBOXED loader (importScripts('devices')
+    // → 404 → blocks silently dropped).
+    devices: () => require('../extensions/crispstrobe/devices'),
     brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
     // Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
     // repo too; the bundledIds dedup removes the gallery copy from the picker.
