@@ -29,8 +29,13 @@ class CircuitTab extends React.Component {
         try {
             hintDismissed = localStorage.getItem('bw-circuit-hint') === '1';
         } catch { /* private mode */ }
+        let debugHintDismissed = false;
+        try {
+            debugHintDismissed = localStorage.getItem('bw-debug-hint') === '1';
+        } catch { /* private mode */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
+            debugHintDismissed,
             examples: null, examplesError: null, circuitData: null, loadingExample: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
@@ -361,9 +366,16 @@ class CircuitTab extends React.Component {
 
     render () {
         const {Designer, error, reloading, stc} = this.state;
-        // overflow:clip prevents deep sidebar scrolls from shifting the page —
-        // the designer's palette and panels scroll internally, not the tab itself.
-        const box = {height: '100%', overflow: 'clip', padding: 8, boxSizing: 'border-box'};
+        // overflow:clip prevents deep sidebar scrolls from shifting the page.
+        // But clip on its own cuts off anything taller than the tab with no way
+        // to reach it — the parts palette ended below the fold at "09 Shift Reg"
+        // with no bottom edge, and the multimeter the same. A column flex box
+        // gives the designer the remaining height explicitly, and `minHeight: 0`
+        // is what lets a flex child actually shrink and scroll instead of
+        // growing past its parent (the default `min-height: auto` is exactly
+        // why this looked like a clipping bug rather than a sizing one).
+        const box = {height: '100%', overflow: 'clip', padding: 8, boxSizing: 'border-box',
+            display: 'flex', flexDirection: 'column'};
         if (reloading) {
             return (
                 <div style={{...box, color: '#64748b'}}>
@@ -408,7 +420,8 @@ class CircuitTab extends React.Component {
                 {(stc && stc.pins && stc.pins.length) || this.state.hintDismissed ? null : (
                     <div style={{marginBottom: 6, padding: '5px 8px', borderRadius: 5,
                         background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: 12,
-                        color: '#075985', display: 'flex', alignItems: 'center', gap: 8}}>
+                        color: '#075985', display: 'flex', alignItems: 'center', gap: 8,
+                        flex: '0 0 auto'}}>
                         <span style={{flex: 1}}>
                             {'Build a circuit on its own — battery, LED, resistor, a 555. ' +
                              'To drive parts from blocks, declare pins in the Code tab ' +
@@ -432,7 +445,7 @@ class CircuitTab extends React.Component {
                     shown for every project including pure Scratch ones — see the panel's
                     own comment. The block glow lands in the Blocks tab regardless. */}
                 {stc && stc.pins && stc.pins.length ? (
-                    <div style={{marginBottom: 10}}>
+                    <div style={{marginBottom: 10, flex: '0 0 auto'}}>
                         <React.Suspense fallback={null}>
                             <DebugPanel
                                 clockHz={(stc && Number(stc.clock)) || 11059200}
@@ -446,13 +459,34 @@ class CircuitTab extends React.Component {
                     // reader who came here for the debugger finds nothing and no
                     // reason. Every other panel in this strip explains why it is
                     // empty; this one used to be the exception.
-                    <div style={{marginBottom: 8, padding: '4px 8px', borderRadius: 4,
-                        background: '#f8fafc', border: '1px solid #e2e8f0',
-                        fontSize: 11.5, color: '#64748b'}}>
-                        {'Run and step controls appear here once the project declares pins — ' +
-                         'the debugger needs a program and a chip to drive. Add one in the ' +
-                         'Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW.'}
-                    </div>
+                    this.state.debugHintDismissed ? null : (
+                        <div style={{marginBottom: 8, padding: '4px 8px', borderRadius: 4,
+                            background: '#f8fafc', border: '1px solid #e2e8f0', flex: '0 0 auto',
+                            fontSize: 11.5, color: '#64748b',
+                            display: 'flex', alignItems: 'center', gap: 8}}>
+                            <span style={{flex: 1}}>
+                                {'Run and step controls appear here once the project declares ' +
+                                 'pins — the debugger needs a program and a chip to drive. Add ' +
+                                 'one in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW.'}
+                            </span>
+                            {/* Dismissible for the same reason the standalone-circuit hint is:
+                                someone building a circuit with no MCU has read it once and does
+                                not need it on every visit. Its own key, not the circuit hint's —
+                                they answer different questions and dismissing one should not
+                                silence the other. */}
+                            <button
+                                title={'Dismiss'}
+                                onClick={() => {
+                                    this.setState({debugHintDismissed: true});
+                                    try {
+                                        localStorage.setItem('bw-debug-hint', '1');
+                                    } catch { /* private mode: dismissed for this session */ }
+                                }}
+                                style={{border: 'none', background: 'transparent', cursor: 'pointer',
+                                    color: '#64748b', fontSize: 15, lineHeight: 1, padding: '0 2px'}}
+                            >{'×'}</button>
+                        </div>
+                    )
                 )}
                 {this.renderPanelStrip()}
                 {/* The tab container is `overflow: clip` so a deep sidebar scroll cannot
@@ -462,7 +496,7 @@ class CircuitTab extends React.Component {
                     content silently absent, which is the failure this strip exists to avoid.
                     So the panel body carries its own scroll. */}
                 {this.state.panel === 'designer' ? null : (
-                    <div style={{maxHeight: 'calc(100% - 40px)', overflow: 'auto'}}>
+                    <div style={{flex: '1 1 auto', minHeight: 0, overflow: 'auto'}}>
                         {this.renderPanel()}
                     </div>
                 )}
@@ -470,7 +504,8 @@ class CircuitTab extends React.Component {
                     circuit, the board and the emulator's view of both, and unmounting
                     it to show a parts list would tear all three down and rebuild them
                     on the way back. Hidden, not destroyed. */}
-                <div style={this.state.panel === 'designer' ? null : {display: 'none'}}>
+                <div style={this.state.panel === 'designer' ?
+                    {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
                 <Designer
                     stc={stc}
                     board={this.state.board || undefined}
@@ -540,7 +575,7 @@ class CircuitTab extends React.Component {
         // stealing height from the canvas. A segmented control reads as "a view
         // of the same thing", which is what these are.
         return (
-            <div style={{display: 'inline-flex', gap: 1, marginBottom: 6, padding: 1,
+            <div style={{display: 'inline-flex', gap: 1, marginBottom: 6, padding: 1, flex: '0 0 auto',
                 borderRadius: 5, background: '#f1f5f9', fontSize: 11.5, lineHeight: 1.6}}>
                 {tabs.map(([id, label, badge]) => (
                     <button
