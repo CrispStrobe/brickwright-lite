@@ -26,6 +26,11 @@
     height: 100%;
     padding-top: calc(5 * $grid-unit);
     min-width: 524px;
+    /* Brickwright: a flex item's default min-height is `auto`, meaning "never shrink below your
+       content". Without this the row simply grows taller than the editor, and a child asking to
+       scroll never gets a height to scroll WITHIN — which is why the properties rail's
+       overflow-y had no effect no matter what was set on the rail itself. */
+    min-height: 0;
 }
 
 .row + .row {
@@ -133,7 +138,14 @@ $border-radius: 0.25rem;
 .canvas-container {
     width: 100%;
     flex-grow: 1;
-    min-width: 402px; /* Leave room for the border */
+    /* Brickwright: was `min-width: 402px`. With the properties rail taking a column, that floor
+       meant the canvas could not shrink to fit what was left — so instead of resizing it simply
+       OVERFLOWED its container (which is `overflow: visible`), painting the workspace background
+       out over the rail as a grey band and leaving paper's viewport wider than the visible area,
+       which is what put every mouse coordinate out and broke zooming and panning. No amount of
+       re-measuring fixes a canvas that is genuinely too wide; it has to be allowed to shrink.
+       ScrollableCanvas already provides scrollbars when the art board exceeds the view. */
+    min-width: 0;
     box-sizing: content-box;
     border: 1px solid #e8edf1;
     border-radius: .25rem;
