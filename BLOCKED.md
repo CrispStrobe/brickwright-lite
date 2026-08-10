@@ -1,16 +1,24 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
-## OPEN: example crash — unreproducible headlessly
+## ~~Example crash~~ — RESOLVED (bw-circuit-ui 2567fa6)
 
-Owner reports loading an example crashes the browser window. Playwright
-tests show 0 page errors. The stale-service-worker hypothesis is **ruled
-out**: SW is network-first for documents (e695dd6), served hashes match
-the latest deploy (verified with positive control). The crash is real and
-unexplained.
+Root cause: Sim on a circuit with no MCU crashed the app. Fixed by the
+owner in `8f26f20` (vendoring bw-circuit-ui 2567fa6). Not browser-specific,
+not an interaction artefact — the trigger was pressing Sim on a pure
+circuit, which Playwright never enters. My inability to reproduce was
+correct; the missing piece was the trigger.
 
-**What would help:** the owner's exact steps, browser, and console output.
-A crash for a hand-tester but not Playwright suggests browser-version or
-existing-tab-state interaction (autosave restore, cached circuit data).
+## Vendoring responsibility
+
+**The owner now drives bw-circuit-ui vendoring into lite directly.** Five
+owner commits (`a0e2381`–`b6d8720`) vendor bw-circuit-ui from their own
+machine. bw-bundle (me) steps back from vendoring bw-circuit-ui to avoid
+two vendoring runs against a moving upstream — the exact pattern that
+reverted three fixes earlier in this campaign.
+
+bw-bundle continues to own: CI guards, bundle budget, bw-board vendoring,
+WASM pinning, sb3-creator vendoring, extension conformance, and deploy
+verification.
 
 ## OPEN: debugger visibility from the Code tab
 
