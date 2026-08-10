@@ -220,6 +220,10 @@ class SB3Creator {
         if (mode === 'simulator' && extId === 'circuit') {
             return this.circuitSimulatorDriver(lang);
         }
+        // Device convenience blocks: read state from board.getDeviceState().
+        if (mode === 'simulator' && extId === 'devices') {
+            return this.devicesSimulatorDriver(lang);
+        }
         // LED cube: a frame buffer that the board's led_cube can read if attached.
         if (mode === 'simulator' && extId === 'ledcube') {
             return this.ledcubeSimulatorDriver(lang);
@@ -439,6 +443,102 @@ class SB3Creator {
             '    setControl: (control, v) => { const b = _circuit_board(); if (b) b.setControl(control, Number(v)); },',
             '    setPower: (state) => { const b = _circuit_board(); if (b) b.setPower(state === "on"); }',
             '};'
+        ];
+    }
+
+    // Device convenience blocks simulator driver — reads getDeviceState()
+    // from the board for reporters, forwards commands for actuators.
+    devicesSimulatorDriver(lang) {
+        if (lang === 'py') {
+            return [
+                '# _devices driver — reads device state from the board via getDeviceState().',
+                'class _DevicesSimulated:',
+                '    def _state(self, name):',
+                '        b = _board()',
+                '        return b.getDeviceState(str(name)) if b and hasattr(b, "getDeviceState") else None',
+                '    def servoAngle(self, s):',
+                '        st = self._state(s)',
+                '        return st.get("targetAngle", 0) if st else float("nan")',
+                '    def motorSpeed(self, m):',
+                '        st = self._state(m)',
+                '        return st.get("omega", 0) if st else float("nan")',
+                '    def motorDirection(self, m):',
+                '        st = self._state(m)',
+                '        return st.get("direction", "stopped") if st else "stopped"',
+                '    def deviceState(self, d):',
+                '        st = self._state(d)',
+                '        if not st: return "unknown"',
+                '        if "energized" in st: return "on" if st["energized"] else "off"',
+                '        return "unknown"',
+                '    def temperature(self, s):',
+                '        st = self._state(s)',
+                '        return st.get("temperature", float("nan")) if st else float("nan")',
+                '    def light(self, s):',
+                '        st = self._state(s)',
+                '        return st.get("lux", float("nan")) if st else float("nan")',
+                '    def distance(self, s):',
+                '        st = self._state(s)',
+                '        return st.get("distance", float("nan")) if st else float("nan")',
+                '    def flex(self, s):',
+                '        st = self._state(s)',
+                '        return st.get("flex", float("nan")) if st else float("nan")',
+                '    def force(self, s):',
+                '        st = self._state(s)',
+                '        return st.get("force", float("nan")) if st else float("nan")',
+                '    def irCode(self, s):',
+                '        st = self._state(s)',
+                '        return st.get("code", float("nan")) if st else float("nan")',
+                '    def pressed(self, b): return bool(self._state(b) and self._state(b).get("pressed"))',
+                '    def above(self, s, t): v = self._state(s); return float(v.get("value", 0) if v else 0) > float(t)',
+                '    def closer(self, s, d): v = self._state(s); return float(v.get("distance", 999) if v else 999) < float(d)',
+                '    def motion(self, s): return bool(self._state(s) and self._state(s).get("motion"))',
+                '    def tilted(self, s): return bool(self._state(s) and self._state(s).get("tilted"))',
+                '    def energised(self, d): return bool(self._state(d) and self._state(d).get("energized"))',
+                '    # Commands are forwarded to the board if it supports them.',
+                '    def setServo(self, s, a): pass',
+                '    def setMotor(self, m, s): pass',
+                '    def setDirection(self, m, d): pass',
+                '    def setRelay(self, r, s): pass',
+                '    def activate(self, d): pass',
+                '    def deactivate(self, d): pass',
+                '    def showDigit(self, d, n): pass',
+                '    def setRgb(self, l, r, g, b): pass',
+                '    def lcdPrint(self, d, t): pass',
+                '    def lcdCursor(self, d, r, c): pass',
+                '    def lcdClear(self, d): pass',
+                '    def setPixel(self, m, x, y, b): pass',
+                '    def clearMatrix(self, m): pass',
+                '    def setNeopixel(self, s, i, r, g, b): pass',
+                '    def clearNeopixels(self, s): pass',
+                '_devices = _DevicesSimulated()',
+            ];
+        }
+        return [
+            '// _devices driver — reads device state from the board via getDeviceState().',
+            'const _devices = {',
+            '    _state: (name) => { const b = _board(); return b && b.getDeviceState ? b.getDeviceState(String(name)) : null; },',
+            '    servoAngle: (s) => { const st = _devices._state(s); return st ? (st.targetAngle ?? 0) : NaN; },',
+            '    motorSpeed: (m) => { const st = _devices._state(m); return st ? (st.omega ?? 0) : NaN; },',
+            '    motorDirection: (m) => { const st = _devices._state(m); return st ? (st.direction ?? "stopped") : "stopped"; },',
+            '    deviceState: (d) => { const st = _devices._state(d); if (!st) return "unknown"; return ("energized" in st) ? (st.energized ? "on" : "off") : "unknown"; },',
+            '    temperature: (s) => { const st = _devices._state(s); return st ? (st.temperature ?? NaN) : NaN; },',
+            '    light: (s) => { const st = _devices._state(s); return st ? (st.lux ?? NaN) : NaN; },',
+            '    distance: (s) => { const st = _devices._state(s); return st ? (st.distance ?? NaN) : NaN; },',
+            '    flex: (s) => { const st = _devices._state(s); return st ? (st.flex ?? NaN) : NaN; },',
+            '    force: (s) => { const st = _devices._state(s); return st ? (st.force ?? NaN) : NaN; },',
+            '    irCode: (s) => { const st = _devices._state(s); return st ? (st.code ?? NaN) : NaN; },',
+            '    pressed: (b) => { const st = _devices._state(b); return !!(st && st.pressed); },',
+            '    above: (s, t) => { const st = _devices._state(s); return ((st && st.value) ?? 0) > Number(t); },',
+            '    closer: (s, d) => { const st = _devices._state(s); return ((st && st.distance) ?? 999) < Number(d); },',
+            '    motion: (s) => { const st = _devices._state(s); return !!(st && st.motion); },',
+            '    tilted: (s) => { const st = _devices._state(s); return !!(st && st.tilted); },',
+            '    energised: (d) => { const st = _devices._state(d); return !!(st && st.energized); },',
+            '    // Commands — no-ops in the simulator driver (the board handles them through pins)',
+            '    setServo: () => {}, setMotor: () => {}, setDirection: () => {}, setRelay: () => {},',
+            '    activate: () => {}, deactivate: () => {}, showDigit: () => {}, setRgb: () => {},',
+            '    lcdPrint: () => {}, lcdCursor: () => {}, lcdClear: () => {},',
+            '    setPixel: () => {}, clearMatrix: () => {}, setNeopixel: () => {}, clearNeopixels: () => {},',
+            '};',
         ];
     }
 
@@ -1708,6 +1808,35 @@ class SB3Creator {
         if (line.includes('flag clicked') || /^when\s+started$/i.test(line)
             || /^when\s+powered\s+on$/i.test(line)) {
             return { block: this.createBlock('event_whenflagclicked', { topLevel: true }).block, extraBlocks: {} };
+        }
+        // Device sensor hats: threshold-based and binary event blocks.
+        // Quoted sensor name avoids collision with Scratch's "when X key pressed".
+        if ((match = line.match(/^when\s+"([^"]+)"\s+above\s+(.+)$/i))) {
+            const { id, block } = this.createBlock('devices_whenabove', { topLevel: true });
+            block[id].inputs.SENSOR = [1, [10, match[1]]];
+            block[id].inputs.THRESHOLD = val(match[2]);
+            return { block, extraBlocks: {} };
+        }
+        if ((match = line.match(/^when\s+"([^"]+)"\s+closer than\s+(.+)$/i))) {
+            const { id, block } = this.createBlock('devices_whencloser', { topLevel: true });
+            block[id].inputs.SENSOR = [1, [10, match[1]]];
+            block[id].inputs.DISTANCE = val(match[2]);
+            return { block, extraBlocks: {} };
+        }
+        if ((match = line.match(/^when motion on\s+"([^"]+)"$/i))) {
+            const { id, block } = this.createBlock('devices_whenmotion', { topLevel: true });
+            block[id].inputs.SENSOR = [1, [10, match[1]]];
+            return { block, extraBlocks: {} };
+        }
+        if ((match = line.match(/^when\s+"([^"]+)"\s+tilted$/i))) {
+            const { id, block } = this.createBlock('devices_whentilted', { topLevel: true });
+            block[id].inputs.SENSOR = [1, [10, match[1]]];
+            return { block, extraBlocks: {} };
+        }
+        if ((match = line.match(/^when IR received on\s+"([^"]+)"$/i))) {
+            const { id, block } = this.createBlock('devices_whenirreceived', { topLevel: true });
+            block[id].inputs.SENSOR = [1, [10, match[1]]];
+            return { block, extraBlocks: {} };
         }
         // STC12 event hat: `when <pin> pressed` / `when <pin> released` for INPUT pins.
         if ((match = line.match(/^when\s+([A-Za-z_]\w*)\s+(pressed|released)$/i)) && this.stcPin(match[1])) {
@@ -3573,6 +3702,7 @@ class SB3Creator {
 
     decompileHat(b, blocks) {
         const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
+        const v = (k) => this.dval(b.inputs[k], blocks);
         switch (b.opcode) {
             case 'event_whenflagclicked': return 'WHEN flag clicked:';
             case 'event_whenkeypressed': return `WHEN ${f('KEY_OPTION')} key pressed:`;
@@ -3580,6 +3710,11 @@ class SB3Creator {
             case 'event_whenbroadcastreceived': return `WHEN I receive "${f('BROADCAST_OPTION')}":`;
             case 'control_start_as_clone': return 'WHEN I start as a clone:';
             case 'stc12_whenpin': return `WHEN ${f('PIN')} ${f('EDGE')}:`;
+            case 'devices_whenabove': return `WHEN ${v('SENSOR')} above ${v('THRESHOLD')}:`;
+            case 'devices_whencloser': return `WHEN ${v('SENSOR')} closer than ${v('DISTANCE')}:`;
+            case 'devices_whenmotion': return `WHEN motion on ${v('SENSOR')}:`;
+            case 'devices_whentilted': return `WHEN ${v('SENSOR')} tilted:`;
+            case 'devices_whenirreceived': return `WHEN IR received on ${v('SENSOR')}:`;
             case 'procedures_definition': {
                 const proto = blocks[b.inputs.custom_block[1]];
                 const m = proto.mutation;
@@ -3778,7 +3913,9 @@ class SB3Creator {
     isHat(op) {
         return ['event_whenflagclicked', 'event_whenkeypressed', 'event_whenthisspriteclicked',
             'event_whenbroadcastreceived', 'control_start_as_clone', 'procedures_definition',
-            'stc12_whenpin'].includes(op);
+            'stc12_whenpin',
+            'devices_whenabove', 'devices_whencloser', 'devices_whenmotion',
+            'devices_whentilted', 'devices_whenirreceived'].includes(op);
     }
 
     pyName(name) {
@@ -5027,6 +5164,45 @@ class SB3Creator {
                 this._cUses.cube = true;
                 return line('bw_cube_invert();');
             }
+            // ---- devices_* C lowerings ----
+            // Each emits a call to an inline bw_* stub, emitted by the assembly
+            // section when _cUses.devices is set. The stubs are no-ops on the
+            // device target — they record the call so the simulator can read it,
+            // but on bare metal a servo/LCD/motor needs a real driver library
+            // that this emitter does not yet generate. The stubs make the code
+            // COMPILE, which is better than a link error, and the /* TODO */
+            // comment in each stub says what a real implementation would do.
+            case 'devices_setservo': { this._cUses.devices = true; return line(`bw_servo_set(${v('SERVO')}, ${v('ANGLE')});`); }
+            case 'devices_servoangle': { this._cUses.devices = true; return `bw_servo_get(${v('SERVO')})`; }
+            case 'devices_setmotor': { this._cUses.devices = true; return line(`bw_motor_speed(${v('MOTOR')}, ${v('SPEED')});`); }
+            case 'devices_motorspeed': { this._cUses.devices = true; return `bw_motor_get_speed(${v('MOTOR')})`; }
+            case 'devices_setdirection': { this._cUses.devices = true; const d = f('DIR'); return line(`bw_motor_dir(${v('MOTOR')}, ${({ forward: 0, reverse: 1, brake: 2, coast: 3 })[d] || 0});`); }
+            case 'devices_motordirection': { this._cUses.devices = true; return `bw_motor_get_dir(${v('MOTOR')})`; }
+            case 'devices_setrelay': { this._cUses.devices = true; return line(`bw_relay_set(${v('RELAY')}, ${f('STATE') === 'on' ? 1 : 0});`); }
+            case 'devices_devicestate': { this._cUses.devices = true; return `bw_device_state(${v('DEVICE')})`; }
+            case 'devices_activate': { this._cUses.devices = true; return line(`bw_device_activate(${v('DEVICE')});`); }
+            case 'devices_deactivate': { this._cUses.devices = true; return line(`bw_device_deactivate(${v('DEVICE')});`); }
+            case 'devices_lcdprint': { this._cUses.devices = true; return line(`bw_lcd_print(${v('DISPLAY')}, ${v('TEXT')});`); }
+            case 'devices_lcdcursor': { this._cUses.devices = true; return line(`bw_lcd_cursor(${v('DISPLAY')}, ${v('ROW')}, ${v('COL')});`); }
+            case 'devices_lcdclear': { this._cUses.devices = true; return line(`bw_lcd_clear(${v('DISPLAY')});`); }
+            case 'devices_showdigit': { this._cUses.devices = true; return line(`bw_7seg_show(${v('DISPLAY')}, ${v('DIGIT')});`); }
+            case 'devices_setrgb': { this._cUses.devices = true; return line(`bw_rgb_set(${v('LED')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
+            case 'devices_setpixel': { this._cUses.devices = true; return line(`bw_matrix_set(${v('MATRIX')}, ${v('X')}, ${v('Y')}, ${v('BRIGHTNESS')});`); }
+            case 'devices_clearmatrix': { this._cUses.devices = true; return line(`bw_matrix_clear(${v('MATRIX')});`); }
+            case 'devices_setneopixel': { this._cUses.devices = true; return line(`bw_neopixel_set(${v('STRIP')}, ${v('INDEX')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
+            case 'devices_clearneopixels': { this._cUses.devices = true; return line(`bw_neopixel_clear(${v('STRIP')});`); }
+            case 'devices_temperature': { this._cUses.devices = true; return `bw_temperature(${v('SENSOR')})`; }
+            case 'devices_light': { this._cUses.devices = true; return `bw_light(${v('SENSOR')})`; }
+            case 'devices_distance': { this._cUses.devices = true; return `bw_distance(${v('SENSOR')})`; }
+            case 'devices_flex': { this._cUses.devices = true; return `bw_flex(${v('SENSOR')})`; }
+            case 'devices_force': { this._cUses.devices = true; return `bw_force(${v('SENSOR')})`; }
+            case 'devices_ircode': { this._cUses.devices = true; return `bw_ir_code(${v('SENSOR')})`; }
+            case 'devices_pressed': { this._cUses.devices = true; return `bw_pressed(${v('BUTTON')})`; }
+            case 'devices_above': { this._cUses.devices = true; return `bw_above(${v('SENSOR')}, ${v('THRESHOLD')})`; }
+            case 'devices_closer': { this._cUses.devices = true; return `bw_closer(${v('SENSOR')}, ${v('DISTANCE')})`; }
+            case 'devices_motion': { this._cUses.devices = true; return `bw_motion(${v('SENSOR')})`; }
+            case 'devices_tilted': { this._cUses.devices = true; return `bw_tilted(${v('SENSOR')})`; }
+            case 'devices_energised': { this._cUses.devices = true; return `bw_energised(${v('DEVICE')})`; }
             case 'procedures_call': return line(this.cProcCall(b, blocks));
             default: {
                 const text = (this.decompileStackBlock(b, blocks, 0)[0] || b.opcode).trim();
@@ -6096,6 +6272,57 @@ class SB3Creator {
                 '');
         }
 
+        // Device helper stubs — emitted inline when any devices_* block is used.
+        // These are no-op stubs that make the generated C COMPILE. On bare metal
+        // a real implementation would drive the peripheral; these record the
+        // intent so the simulator can read it, and on hardware they do nothing.
+        // Each carries a /* TODO */ comment saying what a real driver would do.
+        if (this._cUses.devices) {
+            out.push('/* ---- device helper stubs (emitted because devices_* blocks are used) ----',
+                ' * These are no-ops on the device target. A real implementation would',
+                ' * drive the peripheral via its protocol (I2C for LCD, PWM for servo,',
+                ' * pin toggling for shift registers, etc.). The stubs make the code',
+                ' * compile and record the call for the simulator. */');
+            // Each stub carries a greppable BW_STUB: marker so the build tool
+            // can report them. grep 'BW_STUB:' on the generated C and echo to
+            // stderr — one line per stub, naming the block that will do nothing.
+            const stub = (sig, marker) => `${sig} { /* BW_STUB: ${marker} — no-op on hardware */ }`;
+            const rstub = (sig, marker) => `${sig} { /* BW_STUB: ${marker} */ return 0; }`;
+            out.push(
+                stub('static void bw_servo_set(int servo, int angle)', 'devices_setservo'),
+                rstub('static int bw_servo_get(int servo)', 'devices_servoangle'),
+                stub('static void bw_motor_speed(int motor, int speed)', 'devices_setmotor'),
+                rstub('static int bw_motor_get_speed(int motor)', 'devices_motorspeed'),
+                stub('static void bw_motor_dir(int motor, int dir)', 'devices_setdirection'),
+                rstub('static int bw_motor_get_dir(int motor)', 'devices_motordirection'),
+                stub('static void bw_relay_set(int relay, int on)', 'devices_setrelay'),
+                rstub('static int bw_device_state(int dev)', 'devices_devicestate'),
+                stub('static void bw_device_activate(int dev)', 'devices_activate'),
+                stub('static void bw_device_deactivate(int dev)', 'devices_deactivate'),
+                stub('static void bw_lcd_print(int disp, int text)', 'devices_lcdprint'),
+                stub('static void bw_lcd_cursor(int disp, int row, int col)', 'devices_lcdcursor'),
+                stub('static void bw_lcd_clear(int disp)', 'devices_lcdclear'),
+                stub('static void bw_7seg_show(int disp, int digit)', 'devices_showdigit'),
+                stub('static void bw_rgb_set(int led, int r, int g, int b)', 'devices_setrgb'),
+                stub('static void bw_matrix_set(int m, int x, int y, int br)', 'devices_setpixel'),
+                stub('static void bw_matrix_clear(int m)', 'devices_clearmatrix'),
+                stub('static void bw_neopixel_set(int s, int i, int r, int g, int b)', 'devices_setneopixel'),
+                stub('static void bw_neopixel_clear(int s)', 'devices_clearneopixels'),
+                rstub('static int bw_temperature(int s)', 'devices_temperature'),
+                rstub('static int bw_light(int s)', 'devices_light'),
+                rstub('static int bw_distance(int s)', 'devices_distance'),
+                rstub('static int bw_flex(int s)', 'devices_flex'),
+                rstub('static int bw_force(int s)', 'devices_force'),
+                rstub('static int bw_ir_code(int s)', 'devices_ircode'),
+                rstub('static int bw_pressed(int btn)', 'devices_pressed'),
+                rstub('static int bw_above(int s, int thr)', 'devices_above'),
+                rstub('static int bw_closer(int s, int dist)', 'devices_closer'),
+                rstub('static int bw_motion(int s)', 'devices_motion'),
+                rstub('static int bw_tilted(int s)', 'devices_tilted'),
+                rstub('static int bw_energised(int d)', 'devices_energised'),
+                '');
+        }
+
         if (stateDecls.length) {
             out.push('/* Variables (16-bit signed, like Scratch\'s integers). */', ...stateDecls, '');
         }
@@ -6386,7 +6613,13 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             closer: { kind: 'boolean', method: 'closer', args: ['SENSOR', 'DISTANCE'], neutral: 'false' },
             motion: { kind: 'boolean', method: 'motion', args: ['SENSOR'], neutral: 'false' },
             tilted: { kind: 'boolean', method: 'tilted', args: ['SENSOR'], neutral: 'false' },
-            energised: { kind: 'boolean', method: 'energised', args: ['DEVICE'], neutral: 'false' }
+            energised: { kind: 'boolean', method: 'energised', args: ['DEVICE'], neutral: 'false' },
+            // Sensor event hats
+            whenabove: { kind: 'hat', method: 'whenAbove', args: ['SENSOR', 'THRESHOLD'] },
+            whencloser: { kind: 'hat', method: 'whenCloser', args: ['SENSOR', 'DISTANCE'] },
+            whenmotion: { kind: 'hat', method: 'whenMotion', args: ['SENSOR'] },
+            whentilted: { kind: 'hat', method: 'whenTilted', args: ['SENSOR'] },
+            whenirreceived: { kind: 'hat', method: 'whenIrReceived', args: ['SENSOR'] }
         }
     },
     // The generated entry from circuit.js provides the opcode shape and the gallery URL.

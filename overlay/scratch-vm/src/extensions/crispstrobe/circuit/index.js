@@ -2,6 +2,7 @@ const makeExt = require('../adapter');
 
 // The circuit meter/control extension (boundary B blocks).
 // Source identical to extensions/CrispStrobe/circuit.js.
+// Includes hideFromPalette greying for simulation-only blocks.
 module.exports = makeExt(`// Name: Circuit
 // ID: circuit
 // Description: Board instruments and controls for the circuit simulator.
@@ -26,6 +27,7 @@ module.exports = makeExt(`// Name: Circuit
       "circuit.power": "turn power [STATE]",
       "circuit.on": "on",
       "circuit.off": "off",
+      "circuit.needsSim": "needs the simulator",
     },
     de: {
       "circuit.name": "Schaltkreis",
@@ -38,6 +40,7 @@ module.exports = makeExt(`// Name: Circuit
       "circuit.power": "Strom [STATE]",
       "circuit.on": "ein",
       "circuit.off": "aus",
+      "circuit.needsSim": "braucht den Simulator",
     },
     fr: {
       "circuit.name": "Circuit",
@@ -50,6 +53,7 @@ module.exports = makeExt(`// Name: Circuit
       "circuit.power": "alimentation [STATE]",
       "circuit.on": "marche",
       "circuit.off": "arrêt",
+      "circuit.needsSim": "nécessite le simulateur",
     },
   };
 
@@ -213,9 +217,22 @@ module.exports = makeExt(`// Name: Circuit
       this._cache = {};
     }
 
+    // ---- target detection ---------------------------------------------------
+
+    /** Is a hardware target connected? If so, simulation-only blocks are greyed. */
+    _isHardwareTarget() {
+      return !!(this._runtime && this._runtime.stc12liveCapabilities);
+    }
+
     // ---- getInfo ----------------------------------------------------------
 
     getInfo() {
+      const hw = this._isHardwareTarget();
+      // Simulation-only blocks are hidden when a hardware target is connected.
+      // They return NaN anyway, but greying them with a reason is honest;
+      // leaving them in the palette is the trap PARTS-TO-BLOCKS.md refuses.
+      const simOnly = hw ? \` [\${t("circuit.needsSim")}]\` : "";
+
       return {
         id: "circuit",
         name: t("circuit.name"),
@@ -226,7 +243,8 @@ module.exports = makeExt(`// Name: Circuit
           {
             opcode: "nodevoltage",
             blockType: Scratch.BlockType.REPORTER,
-            text: t("circuit.voltage"),
+            hideFromPalette: hw,
+            text: t("circuit.voltage") + simOnly,
             arguments: {
               NET: { type: Scratch.ArgumentType.STRING, defaultValue: "vcc" },
             },
@@ -234,7 +252,8 @@ module.exports = makeExt(`// Name: Circuit
           {
             opcode: "branchcurrent",
             blockType: Scratch.BlockType.REPORTER,
-            text: t("circuit.current"),
+            hideFromPalette: hw,
+            text: t("circuit.current") + simOnly,
             arguments: {
               PART: { type: Scratch.ArgumentType.STRING, defaultValue: "led1" },
             },
@@ -242,7 +261,8 @@ module.exports = makeExt(`// Name: Circuit
           {
             opcode: "resistance",
             blockType: Scratch.BlockType.REPORTER,
-            text: t("circuit.resistance"),
+            hideFromPalette: hw,
+            text: t("circuit.resistance") + simOnly,
             arguments: {
               A: { type: Scratch.ArgumentType.STRING, defaultValue: "net1" },
               B: { type: Scratch.ArgumentType.STRING, defaultValue: "net2" },
@@ -251,7 +271,8 @@ module.exports = makeExt(`// Name: Circuit
           {
             opcode: "ledbrightness",
             blockType: Scratch.BlockType.REPORTER,
-            text: t("circuit.brightness"),
+            hideFromPalette: hw,
+            text: t("circuit.brightness") + simOnly,
             arguments: {
               PART: { type: Scratch.ArgumentType.STRING, defaultValue: "led1" },
             },
@@ -259,7 +280,8 @@ module.exports = makeExt(`// Name: Circuit
           {
             opcode: "buzzertone",
             blockType: Scratch.BlockType.REPORTER,
-            text: t("circuit.tone"),
+            hideFromPalette: hw,
+            text: t("circuit.tone") + simOnly,
             arguments: {
               PART: {
                 type: Scratch.ArgumentType.STRING,
@@ -271,7 +293,8 @@ module.exports = makeExt(`// Name: Circuit
           {
             opcode: "setcontrol",
             blockType: Scratch.BlockType.COMMAND,
-            text: t("circuit.setcontrol"),
+            hideFromPalette: hw,
+            text: t("circuit.setcontrol") + simOnly,
             arguments: {
               CONTROL: {
                 type: Scratch.ArgumentType.STRING,
