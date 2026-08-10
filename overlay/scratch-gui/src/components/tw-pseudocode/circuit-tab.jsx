@@ -30,7 +30,8 @@ class CircuitTab extends React.Component {
             hintDismissed = localStorage.getItem('bw-circuit-hint') === '1';
         } catch { /* private mode */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
-            board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed};
+            board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
+            examples: null, examplesError: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
     }
@@ -98,6 +99,37 @@ class CircuitTab extends React.Component {
      */
     handleCircuitReady (circuit) {
         this.setState({circuit});
+    }
+
+    /**
+     * The example gallery index, fetched once when the tab is first opened.
+     *
+     * It is a fetch rather than an import because the gallery is 53 examples of
+     * circuits, programs and expectations — data that has no business in the
+     * first-paint bundle for the many users who never open this tab. The tab is
+     * already lazy, so by the time this runs the user has asked for it.
+     *
+     * A missing index is reported, not swallowed into an empty list. An empty
+     * gallery and an unshipped one look identical on screen and mean completely
+     * different things — the first says "we have no examples", which would be a
+     * lie about work bw-cfront has done.
+     */
+    async loadExamples () {
+        if (this.state.examples || this.examplesLoading) return;
+        this.examplesLoading = true;
+        try {
+            const res = await fetch('examples/index.json');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : (data.examples || []);
+            this.setState({examples: list});
+        } catch (e) {
+            this.setState({examplesError:
+                'The example gallery is not part of this build yet ' +
+                `(examples/index.json: ${e.message}). The examples exist — they ` +
+                'are published by bw-cfront and need vendoring into the app.'});
+        }
+        this.examplesLoading = false;
     }
 
     /** DRC warnings, or null when we cannot compute them (and why). */
@@ -341,7 +373,10 @@ class CircuitTab extends React.Component {
                 {tabs.map(([id, label, badge]) => (
                     <button
                         key={id}
-                        onClick={() => this.setState({panel: id})}
+                        onClick={() => {
+                            this.setState({panel: id});
+                            if (id === 'examples') this.loadExamples();
+                        }}
                         style={{
                             padding: '2px 8px', border: 'none', cursor: 'pointer', borderRadius: 4,
                             fontSize: 'inherit',
@@ -420,7 +455,21 @@ class CircuitTab extends React.Component {
                 return note('This build of the circuit designer does not include the ' +
                             'examples browser yet.');
             }
-            return <ui.ExamplesBrowser examples={[]} />;
+            // An empty array here used to read as "there are no examples", which
+            // is a different and much worse statement than "this build does not
+            // ship them". bw-cfront publishes examples/index.json — 53 entries,
+            // bilingual titles, and a `kind` of "circuit" or "program" — so the
+            // browser is fed from that or says why it is not.
+            const {examples, examplesError} = this.state;
+            if (examplesError) return note(examplesError);
+            if (!examples) return note('Loading examples…');
+            return (
+                <ui.ExamplesBrowser
+                    examples={examples}
+                    lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
+                        .slice(0, 2) === 'de' ? 'de' : 'en'}
+                />
+            );
         }
         return null;
     }
