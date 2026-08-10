@@ -31,9 +31,10 @@ class CircuitTab extends React.Component {
         } catch { /* private mode */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
-            examples: null, examplesError: null};
+            examples: null, examplesError: null, circuitData: null, loadingExample: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
+        this.loadExample = this.loadExample.bind(this);
     }
 
     componentDidMount () {
@@ -130,6 +131,47 @@ class CircuitTab extends React.Component {
                 'are published by bw-cfront and need vendoring into the app.'});
         }
         this.examplesLoading = false;
+    }
+
+    /**
+     * Open a gallery example onto the board.
+     *
+     * The card hands back the whole index entry, so the files it names are
+     * fetched here rather than guessed: `files.circuit` is a path relative to
+     * the gallery root, not an id to reconstruct.
+     *
+     * Loading is destructive — it replaces whatever is on the board. That is
+     * acceptable without a confirm dialog *only* because bw-circuit-ui's
+     * `handleLoad` calls `_saveHistory()` first, so undo brings the previous
+     * circuit back. If that ever stops being true this needs a prompt, which is
+     * why the reason is written down rather than assumed.
+     *
+     * @param {object} ex an entry from examples/index.json
+     */
+    async loadExample (ex) {
+        const path = ex && ex.files && ex.files.circuit;
+        if (!path) {
+            this.setState({examplesError:
+                `"${(ex && ex.id) || 'that example'}" lists no circuit file, so there is ` +
+                'nothing to place on the board.'});
+            return;
+        }
+        this.setState({loadingExample: ex.id, examplesError: null});
+        try {
+            const res = await fetch(`examples/${path}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            if (!data || !Array.isArray(data.parts) || !Array.isArray(data.wires)) {
+                throw new Error('not a circuit (no parts/wires)');
+            }
+            // Switching to the Designer is the point of clicking an example —
+            // leaving the user on the gallery with an invisible change would be
+            // the same silence this panel strip exists to avoid.
+            this.setState({circuitData: data, panel: 'designer', loadingExample: null});
+        } catch (e) {
+            this.setState({loadingExample: null, examplesError:
+                `Could not open "${ex.id}": ${e.message}. The board is unchanged.`});
+        }
     }
 
     /** DRC warnings, or null when we cannot compute them (and why). */
@@ -305,6 +347,7 @@ class CircuitTab extends React.Component {
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
                     onCircuitReady={this.handleCircuitReady}
+                    circuitData={this.state.circuitData || undefined}
                     onBoardReady={(board) => {
                         // Publish the board so the Code tab's sim runner can use it
                         // instead of building its own. One board, one truth.
@@ -466,6 +509,7 @@ class CircuitTab extends React.Component {
             return (
                 <ui.ExamplesBrowser
                     examples={examples}
+                    onLoadExample={this.loadExample}
                     lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
                         .slice(0, 2) === 'de' ? 'de' : 'en'}
                 />
