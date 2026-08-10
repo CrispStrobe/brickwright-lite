@@ -462,6 +462,8 @@ class CircuitTab extends React.Component {
                     on the way back. Hidden, not destroyed. */}
                 <div style={this.state.panel === 'designer' ? null : {display: 'none'}}>
                 <Designer
+                        onCircuitReady={c => { window.__circuit = c; }}
+                        onBoardReady={b => { window.__board = b; }}
                     stc={stc}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
