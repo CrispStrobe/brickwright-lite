@@ -33,6 +33,7 @@ import { ControlPanel } from './ControlPanel.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
+import { SchematicPanel } from './SchematicPanel.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
@@ -141,6 +142,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
   const [placingPart, setPlacingPart] = useState(null); // {kind, params} riding the cursor
+  const [showSchematic, setShowSchematic] = useState(false);
   const [probePlacement, setProbePlacement] = useState(null);
   const handleStartPlacing = useCallback((which) => setPlacingProbe(which), []);
   const handleStopPlacing = useCallback(() => setPlacingProbe(null), []);
@@ -556,6 +558,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
+        <div style={{ display: 'flex', gap: 8, flex: 1, minHeight: 0, minWidth: 0 }}>
+        <div style={{ flex: showSchematic ? '1 1 55%' : '1 1 100%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <button onClick={() => setShowSchematic(v => !v)} style={{
+          alignSelf: 'flex-end', marginBottom: 4,
+          background: showSchematic ? '#2c3e50' : '#16213e',
+          border: '1px solid ' + (showSchematic ? '#9ab0c4' : '#2c3e50'),
+          color: showSchematic ? '#9ab0c4' : '#7f8c8d',
+          borderRadius: 4, padding: '3px 10px', cursor: 'pointer',
+          fontFamily: 'monospace', fontSize: 10,
+        }}>{showSchematic ? 'Schematic ✓' : 'Schematic'}</button>
         <BoardCanvas
           parts={parts}
           wires={wires}
@@ -620,8 +632,46 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onUndo={handleUndo}
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}
-          drcWarnings={(() => { try { return runDrc(circuit, circuit.board); } catch { return []; } })()}
+          drcWarnings={(() => {
+            try {
+              const drc = runDrc(circuit, circuit.board);
+              // Merge bw-board engine warnings (from getWarnings/renderState)
+              // so aggregate current-budget warnings reach DrcOverlay too.
+              for (const w of warnings) {
+                if (w.partIds && w.partIds.length > 0) {
+                  // Multi-part warning (e.g. aggregate current): one entry
+                  // per contributing part so the overlay highlights each one
+                  for (const pid of w.partIds) {
+                    drc.push({
+                      severity: w.severity || 'warning',
+                      rule: w.type || 'engine',
+                      partId: pid,
+                      explanation: w.message,
+                      unratedIds: w.unratedIds,
+                    });
+                  }
+                } else {
+                  // Single-part or no-part warning: fall back to MCU or first part
+                  drc.push({
+                    severity: w.severity || 'warning',
+                    rule: w.type || 'engine',
+                    partId: w.partId || parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
+                    explanation: w.message,
+                  });
+                }
+              }
+              return drc;
+            } catch { return []; }
+          })()}
         />
+        </div>
+        {showSchematic && (
+          <div style={{ flex: '1 1 45%', minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain' }}>
+            <SchematicPanel parts={parts}
+              nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets() : []} />
+          </div>
+        )}
+        </div>
 
         {/* Engine warnings — teaching feedback */}
         {warnings.length > 0 && (
