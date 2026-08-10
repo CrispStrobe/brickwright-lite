@@ -742,7 +742,14 @@ class PseudocodeImporter extends React.Component {
                     }
                 }
             }
-            const first = this.props.vm.runtime.targets.find(target => !target.isStage);
+            // Show the target the blocks actually landed on. Every program this
+            // dialect generates is Stage-only, so `find(!isStage)` returns
+            // undefined and the old `if (first)` quietly did nothing: the editor
+            // kept whichever target was selected before the import, and the new
+            // blocks were real, correct, and on a Stage nobody was looking at.
+            // That is what "to blocks does not draw the blocks" was.
+            const first = this.props.vm.runtime.targets.find(target => !target.isStage) ||
+                this.props.vm.runtime.getTargetForStage();
             if (first) this.props.vm.setEditingTarget(first.id);
             // regenerate the other tabs from the compiled project
             const proj = creator.project;
