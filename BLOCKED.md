@@ -1,56 +1,38 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
-This tracks the campaign integration ladder (slices 1–3), distinct from
-DEBUG-CONTROL-MODEL.md §8's acceptance ladder (rungs 1–8).
+## OPEN: loadExample must fill both code AND circuit
 
-## ~~Slice 1: debugState.bwMs~~ — RESOLVED (ceafc8d)
+**Owner:** coordinator (circuit-tab.jsx is the coordinator's file)
 
-`bwMs` added to debug-runner.js snapshot at line 138. circuit-tab.jsx reads
-`ui.bwMs` and forwards it to DebugStatus. Undefined before symbols exist
-(deliberate — no fabricated zero).
+`circuit-tab.jsx:167 loadExample()` sets `circuitData` only — it fetches
+`circuit.json` and passes it to the designer. The owner directive says it
+must ALSO run the example's pseudocode (`program.bw`) through the importer
+path to set `vm.runtime.stc` + blocks. bw-cfront's gallery ships both files.
 
-## Slice 1 note: activePartIds regex in CircuitDesigner
+**File:** `overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx`
+**Method:** `loadExample(ex)` — needs to also fetch `examples/${ex.files.program}`,
+call the importer's `loadProject` or equivalent to set stc + blocks.
 
-**Owner:** bw-circuit-ui
+## OPEN: debugger visibility in production
 
-`CircuitDesigner.jsx:540` filters `debugState.tasks` by matching blockId against
-`/setpin|toggle|writepin/`. Block IDs are opaque strings, not opcodes — the regex never
-matches. The active-part highlight is dead. The right fix is to derive active parts from
-pin state (`board.getPinStates()`), not from yield points. Not blocking bw-bundle.
+The DebugPanel (flag/pause/step) renders in the Circuit tab when a project
+has PIN declarations. Owner wants it discoverable from the Code tab too.
+Not verified on production yet.
 
-## ~~Slice 3: project.stc does not survive save/reload~~ — IN PROGRESS
+## OPEN: example crash — cannot reproduce headlessly
 
-Two persistence paths, belt and braces:
-1. **sb3.js patch** (apply-vm-overlay.mjs): serialize writes `stc: { version: 1, ... }`
-   as a top-level key; deserialize restores it. Works for projects saved in lite.
-2. **Stage comment** (sb3-creator e7d739d): `writeStcComment()` writes a minimized comment
-   on the Stage target with magic `_stcconfig_`; `readStc()` recovers from it even after
-   a foreign round trip strips the top-level key.
+Owner reports loading an example crashes the browser window. Playwright
+tests show 0 page errors on clicking examples. May be:
+- Browser-version-specific
+- A stale SW cache (now fixed: e695dd6 network-first for documents)
+- An interaction the headless context doesn't trigger
 
-**Wired:** importer writes the comment on import via writeStcComment.
-**Not yet wired:** comment recovery on .sb3 file open (the read path when a user opens a
-saved .sb3 through the file menu, not through the importer). Needs a VM event listener.
-**vm.setStc()** is patched in; importer uses it.
+SW cache verified correct: fresh page loads get current deploy hashes.
+The one-shot recovery handler covers tabs open across deploys.
 
-**Not verified:** no round-trip test in this workspace. sb3-creator has
-`test/stc-persistence.test.mjs` covering readStc/writeStcComment.
+## RESOLVED items moved to bottom
 
-**Coordinator note:** debug-runner.js reads `vm.runtime.stc`. The patches write to the
-same property via `vm.setStc()`. If stc moves, `projectStc()` and `projectForEmit()` move.
-
-**Future:** DEVICE/CLOCK/PIN as actual blocks would round-trip natively — eliminates the
-dual source of truth. Belongs to bw-blocks and sb3-creator.
-
-## ~~STC89 12T timing~~ — RESOLVED (ba6e001)
-
-Fixed upstream in `00e9d5b`, rebuilt in `ba6e001`. STC89 now runs 12.0 clocks per NOP.
-Re-pinned in lite.
-
-## Naming rule: competitor name in vendored BoardCanvas.jsx
-
-**Owner:** bw-circuit-ui (source file, line 1262: "competitor-product-style")
-
-lite's vendored copy at `overlay/.../bw-circuit-ui/components/BoardCanvas.jsx`
-carries the competitor product name. lite is a public repo. Do not patch the
-vendored copy — it gets overwritten on every re-vendor. Wait for bw-circuit-ui
-to fix the source, then re-vendor.
+### ~~Slice 1: debugState.bwMs~~ — RESOLVED (ceafc8d)
+### ~~Slice 3: project.stc persistence~~ — IN PROGRESS (sb3.js patches + stage comment)
+### ~~STC89 12T timing~~ — RESOLVED (ba6e001)
+### ~~Naming rule: competitor name~~ — RESOLVED (b787135 + 956fab6)
