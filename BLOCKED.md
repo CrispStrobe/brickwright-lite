@@ -45,3 +45,12 @@ dual source of truth. Belongs to bw-blocks and sb3-creator.
 
 Fixed upstream in `00e9d5b`, rebuilt in `ba6e001`. STC89 now runs 12.0 clocks per NOP.
 Re-pinned in lite.
+
+## Naming rule: competitor name in vendored BoardCanvas.jsx
+
+**Owner:** bw-circuit-ui (source file, line 1262: "TinkerCAD-style")
+
+lite's vendored copy at `overlay/.../bw-circuit-ui/components/BoardCanvas.jsx`
+carries the competitor product name. lite is a public repo. Do not patch the
+vendored copy — it gets overwritten on every re-vendor. Wait for bw-circuit-ui
+to fix the source, then re-vendor.
