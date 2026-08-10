@@ -22,9 +22,16 @@ verification.
 
 ## OPEN: debugger visibility from the Code tab
 
-The DebugPanel renders in the Circuit tab when a project has PIN
-declarations. Owner wants it discoverable from the Code tab too. Not
-verified on production. **Owner: bw-bundle.**
+Verified on production: Run/Sim controls are in the Circuit tab.
+Pause/Step appear after a program starts. The Code tab has NO debugger
+controls. **Owner: bw-bundle.**
+
+The DebugPanel is architecturally in the Circuit tab — it needs the
+board, emulator, and pin declarations, all of which load there. Surfacing
+it from the Code tab requires either: (a) a shared panel component that
+mounts in both tabs, or (b) a link/button in the Code tab that switches
+to the Circuit tab. Option (b) is simpler and matches the "one panel, one
+owner" pattern.
 
 ## RESOLVED
 
