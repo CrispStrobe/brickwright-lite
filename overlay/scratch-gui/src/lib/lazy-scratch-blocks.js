@@ -25,21 +25,27 @@ const load = () => {
             // at container-construction time this module has not resolved and
             // Bubble does not exist yet, which is why the first guard never
             // installed. Degrades to a skipped reposition.
-            // ScratchBubble OVERRIDES positionBubble_ on its own prototype,
-            // so guarding only the base class intercepts nothing — both get
-            // the wrap, and any future subclass with its own copy would too.
-            for (const name of ['Bubble', 'ScratchBubble']) {
+            // Comment bubbles crash on hidden workspaces: with no rendered
+            // metrics, ScratchBubble's positioning chain (positionBubble_,
+            // updatePosition_, moveTo, ...) dereferences null at whichever
+            // method reads first — guarding them one by one just moves the
+            // crash (observed live: it hopped to updatePosition_). Guard the
+            // ENTRY POINT instead: if a comment cannot open its bubble, it
+            // stays closed; the text is intact and opens fine once the
+            // workspace is actually visible. (Examples 05-08, 2026-08-10.)
+            if (typeof window !== 'undefined') window.__bwBubbleGuard = [];
+            for (const name of ['ScratchBlockComment', 'WorkspaceComment', 'ScratchWorkspaceComment']) {
                 const proto = _ScratchBlocks[name] && _ScratchBlocks[name].prototype;
-                if (!proto || typeof proto.positionBubble_ !== 'function') continue;
-                if (!Object.prototype.hasOwnProperty.call(proto, 'positionBubble_')) continue;
-                if (proto.positionBubble_.__bwGuarded) continue;
-                const orig = proto.positionBubble_;
-                proto.positionBubble_ = function (...args) {
+                if (!proto || typeof proto.setVisible !== 'function') continue;
+                if (proto.setVisible.__bwGuarded) continue;
+                const orig = proto.setVisible;
+                proto.setVisible = function (...args) {
                     try { return orig.apply(this, args); } catch (e) {
-                        console.warn('[brickwright] comment bubble reposition skipped:', e && e.message);
+                        console.warn('[brickwright] comment left closed (hidden workspace):', e && e.message);
                     }
                 };
-                proto.positionBubble_.__bwGuarded = true;
+                proto.setVisible.__bwGuarded = true;
+                if (typeof window !== 'undefined') window.__bwBubbleGuard.push(name);
             }
             return _ScratchBlocks;
         });
