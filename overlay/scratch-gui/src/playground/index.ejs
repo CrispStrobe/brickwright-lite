@@ -77,6 +77,36 @@
          * one-shot is already spent. */
         window.__bwRecoverFromStaleBuild = recover;
       }());
+
+      /* Crash telemetry: surface uncaught errors as a visible red banner so
+       * the next occurrence names itself. The chunk-load recovery above handles
+       * stale-build errors; this catches everything else — the example crash
+       * the owner reported, which Playwright could not reproduce because
+       * headless contexts have no pre-existing state. */
+      (function () {
+        var shown = false;
+        function showCrash(msg) {
+          if (shown) return;
+          shown = true;
+          console.error('[bw-crash]', msg);
+          var banner = document.createElement('div');
+          banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;' +
+            'background:#b91c1c;color:#fff;padding:8px 12px;font:13px/1.4 monospace;' +
+            'cursor:pointer;white-space:pre-wrap;max-height:30vh;overflow:auto;';
+          banner.textContent = 'Error: ' + msg + '\n(click to dismiss)';
+          banner.onclick = function () { banner.remove(); shown = false; };
+          document.body.appendChild(banner);
+        }
+        window.addEventListener('error', function (e) {
+          if (e && e.message && !/Loading chunk/.test(e.message)) {
+            showCrash(e.message + (e.filename ? ' (' + e.filename + ':' + e.lineno + ')' : ''));
+          }
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          var msg = e && e.reason && (e.reason.message || String(e.reason));
+          if (msg && !/Loading chunk/.test(msg)) showCrash(msg);
+        });
+      }());
     </script>
   </body>
 </html>
