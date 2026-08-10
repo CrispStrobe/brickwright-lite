@@ -42,8 +42,7 @@
         function looksLikeStaleBuild(message) {
           return /Loading chunk \S+ failed|ChunkLoadError|error loading dynamically imported module/i.test(String(message || ''));
         }
-        function recover(message) {
-          if (!looksLikeStaleBuild(message)) return false;
+        function startRecovery(message) {
           if (sessionStorage.getItem(KEY)) return false;   // already tried; let the error surface
           console.error('[bw-chunk-recovery] stale build detected, clearing caches and reloading. Trigger:', message);
           sessionStorage.setItem(KEY, '1');
@@ -56,6 +55,10 @@
             })
             .then(done, done);
           return true;
+        }
+        function recover(message) {
+          if (!looksLikeStaleBuild(message)) return false;
+          return startRecovery(message);
         }
         window.addEventListener('error', function (e) { recover(e && e.message); });
         window.addEventListener('unhandledrejection', function (e) {
@@ -76,6 +79,59 @@
          * state, not an error), false if this is not a stale build or the
          * one-shot is already spent. */
         window.__bwRecoverFromStaleBuild = recover;
+
+        /* The hole the two paths above still leave (found 2026-08-10): a cache
+         * that is stale but SELF-CONSISTENT. A browser whose old service worker
+         * cached the document stale-first keeps serving an old build whose own
+         * chunks are all still cached — nothing 404s, no ChunkLoadError ever
+         * fires, and the user runs a build the server deleted, indefinitely.
+         * That is exactly how "examples are STILL broken" reports kept arriving
+         * after the fix was live: the reporter's browser had never executed the
+         * fixed code at all (their console named chunk 923.03abf63e…, a 404 on
+         * the live tree).
+         *
+         * So the page verifies its own identity: fetch the live document with
+         * cache:'no-store' (bypasses HTTP cache AND the service worker), pull
+         * the content-hashed asset names out of it, and compare with the hashed
+         * assets this document actually references. Webpack's hashes ARE the
+         * build identity — no build-time stamping to keep in sync. A mismatch
+         * means "the server has moved on"; recover through the same one-shot
+         * guard. Fetch failure means offline: do nothing, that is what the PWA
+         * cache is for. */
+        function hashedAssets(html) {
+          var out = [], re = /(?:src|href)="([^"]*\.[a-f0-9]{8,32}\.(?:js|css))"/g, m;
+          while ((m = re.exec(html))) out.push(m[1].split('/').pop());
+          return out;
+        }
+        function checkFreshBuild() {
+          // The query string matters: cache:'no-store' skips the HTTP cache but
+          // NOT a service worker, and a worker that answers this probe from its
+          // own cache would mask the very staleness being probed. A novel URL
+          // misses any URL-keyed cache.match and forces the network.
+          return fetch('index.html?fresh=' + Date.now(), { cache: 'no-store' }).then(function (resp) {
+            if (!resp || resp.status !== 200) return false;
+            return resp.text().then(function (html) {
+              var live = hashedAssets(html);
+              if (live.length === 0) return false; // not a build document — no verdict
+              /* Containment, not equality: webpack APPENDS lazy-chunk script
+               * tags to this DOM at runtime, so `mine` legitimately grows past
+               * what any document names. Stale means the live document names a
+               * hashed asset this page has never heard of. */
+              var mine = {};
+              hashedAssets(
+                Array.prototype.map.call(
+                  document.querySelectorAll('script[src], link[rel="stylesheet"][href]'),
+                  function (el) { return (el.tagName === 'SCRIPT' ? ' src="' + el.getAttribute('src') : ' href="' + el.getAttribute('href')) + '"'; }
+                ).join(' ')
+              ).forEach(function (n) { mine[n] = true; });
+              var missing = live.filter(function (n) { return !mine[n]; });
+              if (missing.length === 0) return false;
+              return startRecovery('build mismatch: server names ' + missing.join(', ') + ' — this page runs a build the server replaced');
+            });
+          }).catch(function () { return false; });
+        }
+        window.__bwCheckFreshBuild = checkFreshBuild;
+        window.addEventListener('load', function () { setTimeout(checkFreshBuild, 4000); });
       }());
 
       /* Crash telemetry: surface uncaught errors as a visible red banner so

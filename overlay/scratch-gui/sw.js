@@ -36,7 +36,12 @@
  *   hashed assets            -> cache first (immutable: the hash IS the version)
  *   everything else          -> stale-while-revalidate
  */
-const CACHE = 'brickwright-v2';
+/* v3: bumped after the 2026-08-10 stale-client incident — a browser that was
+ * last served by the v1 worker (stale-first documents) kept running a build
+ * whose chunks had been deleted from the server, indefinitely. Activating v3
+ * deletes every older cache outright, so the first visit after this deploy
+ * starts clean even for those clients. */
+const CACHE = 'brickwright-v3';
 
 /** `gui.aeeed7e4.js`, `chunks/sb3-creator.8972d337850ada585ee3.js`, `static/…` */
 const HASHED = /\.[a-f0-9]{8,32}\.(js|css)$/;
@@ -60,13 +65,18 @@ self.addEventListener('fetch', event => {
     const isDocument = req.mode === 'navigate' || req.destination === 'document' ||
         url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
 
+    // Example data is unhashed and edited often; a stale-first policy here
+    // means a user keeps seeing last week's gallery until a background
+    // revalidation they never observe. Small files — treat like the document.
+    const isLiveData = url.pathname.includes('/examples/');
+
     event.respondWith((async () => {
         const cache = await caches.open(CACHE);
 
         // The document names the build. Always ask the network first; fall back
         // to cache only when there is no network at all, which is the case the
         // PWA exists for.
-        if (isDocument) {
+        if (isDocument || isLiveData) {
             try {
                 const fresh = await fetch(req, {cache: 'no-cache'});
                 if (fresh && fresh.status === 200) cache.put(req, fresh.clone());
