@@ -154,10 +154,15 @@ const GUIComponent = props => {
     return (<MediaQuery minWidth={layout.fullSizeMinWidth}>{isFullSize => {
         const stageSize = resolveStageSize(stageSizeMode, isFullSize);
 
-        // Three-column pane sizing from the paneLayout reducer
+        // Three-column pane sizing from the paneLayout reducer.
+        // The middle column's `upper` content id decides what the first TabPanel
+        // shows: 'blocks-canvas' (default) = the workspace, 'code' = the pseudocode
+        // editor. This is the "content swap" — the Tabs structure stays intact, only
+        // the first panel's content changes per preset.
         const leftSize = paneLayout?.left?.size || 'm';
         const middleSize = paneLayout?.middle?.size || 'l';
         const rightSize = paneLayout?.right?.size || 'm';
+        const middleContent = paneLayout?.middle?.upper || 'blocks-canvas';
         const paneStyles = computePaneStyles(leftSize, middleSize, rightSize);
 
         return isPlayerOnly ? (
@@ -334,36 +339,45 @@ const GUIComponent = props => {
                                     </Tab>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
-                                    <Box className={styles.blocksWrapper}>
-                                        <Blocks
-                                            key={`${blocksId}/${theme}`}
-                                            canUseCloud={canUseCloud}
-                                            grow={1}
-                                            isVisible={blocksTabVisible}
-                                            options={{
-                                                media: `${basePath}static/${themeMap[theme].blocksMediaFolder}/`
-                                            }}
-                                            stageSize={stageSize}
-                                            theme={theme}
-                                            vm={vm}
-                                        />
-                                    </Box>
-                                    <Box className={styles.extensionButtonContainer}>
-                                        <button
-                                            className={styles.extensionButton}
-                                            title={intl.formatMessage(messages.addExtension)}
-                                            onClick={onExtensionButtonClick}
-                                        >
-                                            <img
-                                                className={styles.extensionButtonIcon}
-                                                draggable={false}
-                                                src={addExtensionIcon}
-                                            />
-                                        </button>
-                                    </Box>
-                                    <Box className={styles.watermark}>
-                                        <Watermark />
-                                    </Box>
+                                    {middleContent === 'code' ? (
+                                        /* Content swap: the code preset puts the pseudocode editor
+                                           in the first (blocks) tab panel. The blocks workspace
+                                           stays mounted in TabPanel index 3 so it is not destroyed. */
+                                        <PseudocodeImporter />
+                                    ) : (
+                                        <React.Fragment>
+                                            <Box className={styles.blocksWrapper}>
+                                                <Blocks
+                                                    key={`${blocksId}/${theme}`}
+                                                    canUseCloud={canUseCloud}
+                                                    grow={1}
+                                                    isVisible={blocksTabVisible}
+                                                    options={{
+                                                        media: `${basePath}static/${themeMap[theme].blocksMediaFolder}/`
+                                                    }}
+                                                    stageSize={stageSize}
+                                                    theme={theme}
+                                                    vm={vm}
+                                                />
+                                            </Box>
+                                            <Box className={styles.extensionButtonContainer}>
+                                                <button
+                                                    className={styles.extensionButton}
+                                                    title={intl.formatMessage(messages.addExtension)}
+                                                    onClick={onExtensionButtonClick}
+                                                >
+                                                    <img
+                                                        className={styles.extensionButtonIcon}
+                                                        draggable={false}
+                                                        src={addExtensionIcon}
+                                                    />
+                                                </button>
+                                            </Box>
+                                            <Box className={styles.watermark}>
+                                                <Watermark />
+                                            </Box>
+                                        </React.Fragment>
+                                    )}
                                 </TabPanel>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {costumesTabVisible ? <CostumeTab vm={vm} /> : null}
