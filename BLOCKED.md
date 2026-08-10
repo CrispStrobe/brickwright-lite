@@ -42,3 +42,22 @@ owner" pattern.
 - ~~Slice 3: project.stc persistence~~ — IN PROGRESS
 - ~~STC89 12T timing~~ — RESOLVED (ba6e001)
 - ~~Naming rule~~ — RESOLVED (b787135 + 956fab6)
+
+## FINDING: To-blocks drops stc12 extension blocks
+
+Headless repro (Playwright, production site):
+- Textarea filled with: DEVICE/CLOCK/PIN + WHEN flag clicked + turn on/off led1 + wait
+- ⇦ To blocks clicked
+- Stage has 5 blocks: event_whenflagclicked, 2× control_wait, 2× math_number
+- MISSING: stc12_setpin (turn on/off led1) — 0 stc12 blocks
+- stc.pins is EMPTY ([]) — PIN declaration not parsed
+- editingTarget is Stage (correct for stage-only project)
+
+The loss is in the parse → generateSB3 → loadProject chain. Either:
+1. SB3Creator.parse() does not extract pins from the textarea input, or
+2. The stc12 extension blocks are created but vm.loadProject drops them
+   because the extension is not registered before the blocks arrive
+
+**Owner: bw-bundle.** Next step: check creator.project after parse() in
+the same headless run — does it have stc12 blocks and pins before
+generateSB3?
