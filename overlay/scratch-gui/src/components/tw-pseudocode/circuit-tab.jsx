@@ -455,7 +455,17 @@ class CircuitTab extends React.Component {
                     </div>
                 )}
                 {this.renderPanelStrip()}
-                {this.state.panel === 'designer' ? null : this.renderPanel()}
+                {/* The tab container is `overflow: clip` so a deep sidebar scroll cannot
+                    shift the page. That is right for the designer, whose palette and panels
+                    scroll internally — but these panels do not. A 53-row parts list or a
+                    long warnings list would be clipped with no way to reach the rest of it:
+                    content silently absent, which is the failure this strip exists to avoid.
+                    So the panel body carries its own scroll. */}
+                {this.state.panel === 'designer' ? null : (
+                    <div style={{maxHeight: 'calc(100% - 40px)', overflow: 'auto'}}>
+                        {this.renderPanel()}
+                    </div>
+                )}
                 {/* The designer stays mounted whatever panel is showing: it owns the
                     circuit, the board and the emulator's view of both, and unmounting
                     it to show a parts list would tear all three down and rebuild them
