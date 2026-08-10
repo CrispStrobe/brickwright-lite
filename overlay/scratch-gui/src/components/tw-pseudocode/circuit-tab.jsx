@@ -52,11 +52,23 @@ class CircuitTab extends React.Component {
         try {
             const engine = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
-            ui.setEngine(engine);
-            // Load part sidecars (pin maps, current ratings, footprints) into
-            // the parts registry. Uses require.context (webpack) instead of
-            // import.meta.glob (vite). 115 files, ~464 KiB, in this chunk.
-            await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/model/sidecar-loader.js');   // the panel takes the engine by injection, not by path
+            ui.setEngine(engine);   // the panel takes the engine by injection, not by path
+            // Part sidecars (pin maps, current ratings, footprints) into the
+            // parts registry. require.context because this bundle is webpack,
+            // not vite. 115 files, ~464 KiB, in this same chunk.
+            //
+            // NOT fatal, and not awaited into the same try as the designer.
+            // The registry is an enhancement: `artCoverage()` already reports
+            // which kinds fall back to the hand-drawn switch, so a designer
+            // with no sidecars is degraded and usable. Loading it inside the
+            // designer's try meant one bad JSON file took down the whole tab —
+            // and worse, looked like a stale build, because that catch offers
+            // the failure to the chunk-recovery path and would have reloaded
+            // the page over a missing part drawing.
+            import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/model/sidecar-loader.js')
+                .catch((e) => console.warn(
+                    '[brickwright] part sidecars unavailable — the palette will ' +
+                    'fall back to built-in drawings:', e));
             // (The WASM compiler intercept used to be installed here. It now
             // lives at the compile call site in debug-runner.js: patching
             // globalThis.fetch only matters when something compiles, and hanging
