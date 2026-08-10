@@ -22,7 +22,8 @@ import Box from '../box/box.jsx';
 import MenuBar from '../menu-bar/menu-bar.jsx';
 import ChromeToggle from './chrome-toggle.jsx';
 import chromeStyles from './compact-chrome.css';
-import {computePaneStyles, nextSize} from '../../lib/pane-sizes.js';
+import PaneDivider from './pane-divider.jsx';
+import {computePaneStyles, isCollapsed} from '../../lib/pane-sizes.js';
 import {setPaneSize} from '../../reducers/pane-layout';
 import CostumeLibrary from '../../containers/costume-library.jsx';
 import BackdropLibrary from '../../containers/backdrop-library.jsx';
@@ -397,19 +398,16 @@ const GUIComponent = props => {
                             ) : null}
                         </Box>
 
+                        <PaneDivider
+                            isRtl={isRtl}
+                            share={rightSize}
+                            onCollapseToggle={() => onSetPaneSize &&
+                                onSetPaneSize('right', isCollapsed(rightSize) ? 'm' : 'xs')}
+                            onResize={share => onSetPaneSize && onSetPaneSize('right', share)}
+                        />
+
                         <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}
                             style={paneStyles.right}>
-                            {/* Size toggle for the right column */}
-                            <button
-                                onClick={() => onSetPaneSize && onSetPaneSize('right', nextSize(rightSize))}
-                                style={{
-                                    position: 'absolute', top: 2, right: 2, zIndex: 10,
-                                    background: '#1a1a2e', border: '1px solid #2c3e50',
-                                    borderRadius: '3px', color: '#7f8c8d', cursor: 'pointer',
-                                    padding: '1px 5px', fontFamily: 'monospace', fontSize: '9px',
-                                }}
-                                title={`Right column: ${rightSize} (click to cycle)`}
-                            >{rightSize}</button>
                             <StageWrapper
                                 isFullScreen={isFullScreen}
                                 isRendererSupported={isRendererSupported}

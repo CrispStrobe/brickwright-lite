@@ -81,13 +81,19 @@ try {
             const el = document.querySelector(`[class*="${frag}"]`);
             if (!el) return null;
             const r = el.getBoundingClientRect();
-            return {w: Math.round(r.width), h: Math.round(r.height), bottom: Math.round(r.bottom)};
+            return {
+                w: Math.round(r.width), h: Math.round(r.height),
+                bottom: Math.round(r.bottom),
+                left: Math.round(r.left), right: Math.round(r.right),
+                top: Math.round(r.top)
+            };
         };
         return {
             editor: box('editor-wrapper'),
             stageColumn: box('stage-and-target-wrapper'),
             paintCanvas: box('paint-editor_canvas-container'),
             rail: box('bw-properties-panel_rail'),
+            divider: box('pane-divider_divider'),
             viewportHeight: window.innerHeight
         };
     });
@@ -110,8 +116,85 @@ try {
         check('stage size buttons present', false, `found ${stageButtons.length}`);
     }
 
-    // --- Invariant 2: the costume tab's properties rail must not stretch the editor past the
+    // --- Invariant 2: the divider that replaced the xs/s/m/l/xl debug button must actually
+    // move the boundary. Two columns share one row, so a drag that grows one and does not
+    // shrink the other has not moved a boundary — it has resized a box, which is the exact
+    // failure the stage-size buttons had.
+    //
+    // THIS MUST RUN BEFORE THE COSTUME TAB IS EVER OPENED, and the ordering is not
+    // cosmetic. Tabs render with forceRenderTabPanel, so every panel stays mounted once
+    // visited; opening the properties rail raises the editor column's min-content width
+    // to ~776px, and a flex item cannot shrink below its min-content no matter what its
+    // flex-basis says. The floor then persists on the blocks tab. Run after the costume
+    // tab and a 220px drag measures 90px of movement — which is the rail's floor, not the
+    // divider, and looks exactly like the flex-grow dilution bug this invariant exists to
+    // catch. It cost a full diagnostic round to tell those two apart.
+    const start = await measure();
+    if (!start.divider) {
+        check('the pane divider is present', false, 'no [class*="pane-divider_divider"]');
+    } else {
+        const y = start.divider.top + Math.round(start.divider.h / 2);
+
+        /** Drag the divider by dx px and report the resulting boxes. @returns {object} */
+        const drag = async dx => {
+            const from = await measure();
+            const grabX = Math.round((from.divider.left + from.divider.right) / 2);
+            await page.mouse.move(grabX, y);
+            await page.mouse.down();
+            // In steps, because a single jump is not a drag: it would pass even if the
+            // component only handled pointerup.
+            await page.mouse.move(grabX + dx, y, {steps: 12});
+            await page.mouse.up();
+            await page.waitForTimeout(600);
+            return measure();
+        };
+
+        const DX = 220;
+        const wider = await drag(-DX); // boundary left = stage column grows
+        if (REPORT) console.log('after dragging left:', JSON.stringify(wider, null, 1), '\n');
+
+        // THE assertion. Not "it moved" — "it moved by what I asked for". The first
+        // implementation passed a "did it move" check while moving 90px for a 220px
+        // drag, because the column had flex-grow 1 and rendered at its basis plus a
+        // cut of the free space. A boundary that lags the pointer is the whole way a
+        // split pane feels broken, and only a measured delta catches it.
+        const grew = wider.stageColumn.w - start.stageColumn.w;
+        check('the divider follows the pointer',
+            Math.abs(grew - DX) <= 8,
+            `dragged ${DX}px, boundary moved ${grew}px`);
+        check('...and the editor gives up exactly that much',
+            Math.abs((start.editor.w - wider.editor.w) - DX) <= 8,
+            `${start.editor.w}px -> ${wider.editor.w}px`);
+
+        // The clamp: dragged hard against the edge, the far column must keep a usable width
+        // rather than collapsing. Collapsing is double-click, and it has to stay deliberate.
+        // The target stays inside the viewport on purpose — playwright cannot move the mouse
+        // past it, so a larger dx would silently deliver no movement at all and the check
+        // would pass by doing nothing.
+        const shoved = await drag(
+            1560 - Math.round((wider.divider.left + wider.divider.right) / 2));
+        if (REPORT) console.log('after dragging far right:', JSON.stringify(shoved, null, 1), '\n');
+        check('dragging past the edge does not collapse the stage column',
+            shoved.stageColumn.w >= 120,
+            `stage column ${shoved.stageColumn.w}px, minimum 120px`);
+        check('...and leaves the editor holding the rest of the row',
+            shoved.editor.w > start.editor.w,
+            `${start.editor.w}px -> ${shoved.editor.w}px`);
+
+        // Double-click is the only route to the collapsed strip. Re-measure first: the
+        // divider is wherever the last drag left it, not where it started.
+        await page.mouse.dblclick(
+            Math.round((shoved.divider.left + shoved.divider.right) / 2), y);
+        await page.waitForTimeout(600);
+        const collapsed = await measure();
+        check('double-clicking the divider collapses the stage column to a strip',
+            collapsed.stageColumn.w <= 40,
+            `stage column ${collapsed.stageColumn.w}px`);
+    }
+    // --- Invariant 3: the costume tab's properties rail must not stretch the editor past the
     // window. This is the bug that produced the grey band and the "broken" zoom, four times over.
+    // Last, because opening the rail permanently raises the editor's min-content width (see
+    // invariant 2) and every later measurement inherits that.
     const costumeTab = await page.$('[class*="gui_tab"]:nth-child(2)');
     if (costumeTab) {
         await costumeTab.click();
@@ -140,6 +223,7 @@ try {
     } else {
         check('costume tab present', false);
     }
+
 } finally {
     await browser.close();
     server.close();
