@@ -41,7 +41,11 @@
  * whose chunks had been deleted from the server, indefinitely. Activating v3
  * deletes every older cache outright, so the first visit after this deploy
  * starts clean even for those clients. */
-const CACHE = 'brickwright-v3';
+// v4: a deploy served a mismatched tree, so v3 caches can hold entries for assets that 404'd.
+// Hashed assets are cache-first and are never revalidated, so those entries would be permanent.
+// The activate handler deletes every cache that is not the current one, which means renaming is
+// the only thing that actually recovers a browser that is already broken.
+const CACHE = 'brickwright-v4';
 
 /** `gui.aeeed7e4.js`, `chunks/sb3-creator.8972d337850ada585ee3.js`, `static/…` */
 const HASHED = /\.[a-f0-9]{8,32}\.(js|css)$/;
@@ -88,15 +92,36 @@ self.addEventListener('fetch', event => {
 
         const cached = await cache.match(req);
 
-        // A hashed asset can never change under its own name, so a hit is
-        // always correct and there is nothing to revalidate.
-        if (cached && HASHED.test(url.pathname)) return cached;
+        // A hashed asset can never change under its own name, so a hit is always correct — but
+        // only if the hit is a USABLE response. A cached failure would otherwise be permanent,
+        // because cache-first never revalidates it.
+        if (cached && cached.ok && HASHED.test(url.pathname)) return cached;
 
-        const network = fetch(req).then(resp => {
-            if (resp && resp.status === 200 && resp.type === 'basic') cache.put(req, resp.clone());
-            return resp;
-        }).catch(() => cached);
+        // Must always settle to a Response. `respondWith` REJECTS the request if its promise
+        // resolves to undefined, and the browser reports that as "a ServiceWorker intercepted
+        // the request and an unexpected error occurred" — the script then never loads at all.
+        // The previous version ended in `.catch(() => cached)` and `return cached || network`,
+        // so a fetch rejection with nothing cached resolved to undefined and took the whole app
+        // down with a white screen. A network failure must degrade to a network failure, not to
+        // a service worker exception.
+        const fromNetwork = (async () => {
+            try {
+                const resp = await fetch(req);
+                if (resp && resp.status === 200 && resp.type === 'basic') {
+                    cache.put(req, resp.clone());
+                }
+                return resp;
+            } catch {
+                return null;
+            }
+        })();
 
-        return cached || network;
+        if (cached) {
+            // Stale-while-revalidate: serve the hit, refresh behind it. waitUntil keeps the
+            // worker alive for the refresh after the response has already gone out.
+            event.waitUntil(fromNetwork);
+            return cached;
+        }
+        return (await fromNetwork) || Response.error();
     })());
 });
