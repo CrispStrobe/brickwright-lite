@@ -61,3 +61,19 @@ The loss is in the parse → generateSB3 → loadProject chain. Either:
 **Owner: bw-bundle.** Next step: check creator.project after parse() in
 the same headless run — does it have stc12 blocks and pins before
 generateSB3?
+
+## ~~To-blocks drops stc12 blocks~~ — FIXED (e155ca1), VERIFIED
+
+**Post-fix headless repro (production, run 31366606123):**
+- Hand-built .sb3 with extensions:["stc12"] + 2× stc12_setpin blocks
+- vm.loadProject → Stage has **7 blocks**, stc12_setpin **present**
+- stc12 extension **loaded** (pre-loaded from declared extensions)
+
+Pre-fix: 5 blocks, 0 stc12. Post-fix: 7 blocks, 2 stc12_setpin. ✓
+
+Root cause: sb3.js built extensionIDs from opcodes during deserialization,
+dropping blocks whose extension prefix was unknown — circular.
+Fix: deserializeProject pre-loads declared extensions before parsing targets.
+
+**bw-blocks:** your side was clean (confirmed). The loss was in
+vm.loadProject's deserialization, not in sb3-creator.
