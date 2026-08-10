@@ -51,6 +51,7 @@ pkg.dependencies.jszip = pkg.dependencies.jszip || '^3.10.1';    // .sb3 read/wr
 pkg.dependencies.lit = pkg.dependencies.lit || '^3.3.3';                        // BSD-3
 pkg.dependencies['@lit/react'] = pkg.dependencies['@lit/react'] || '^1.0.8';    // BSD-3
 pkg.dependencies['@wokwi/elements'] = pkg.dependencies['@wokwi/elements'] || '^1.9.2';   // MIT
+pkg.dependencies['avr8js'] = pkg.dependencies['avr8js'] || '^0.21.0';                   // MIT — ATmega328P emulator (lazy-imported)
 pkg.dependencies['scratch-vm'] = '4.8.115';                      // last BSD-3; built from src via alias
 // Pin scratch-paint exactly, for the same reason as scratch-vm: overlay/scratch-paint holds FULL
 // FILE COPIES of the costume-designer files we own, authored against one exact base. The base

@@ -16,7 +16,6 @@
  */
 
 import { createEmu8051Adapter } from './emu8051-adapter.js';
-import { createAvr8jsAdapter } from './avr8js-adapter.js';
 import { createSerialDebugTarget } from './serial-debug.js';
 
 /**
@@ -115,6 +114,10 @@ async function createAvr8jsTarget(opts) {
   const { board, hex, clockHz, vcc = 5.0 } = opts;
 
   if (!board) throw new Error('avr8js target requires opts.board');
+
+  // Lazy import: avr8js is optional — an STC12-only user never pays for it,
+  // and the smoke test does not die when the package is absent.
+  const { createAvr8jsAdapter } = await import('./avr8js-adapter.js');
 
   // 1. Adapter — clockHz comes from the compile response, never hard-coded
   const adapter = createAvr8jsAdapter({ clockHz, vcc });
