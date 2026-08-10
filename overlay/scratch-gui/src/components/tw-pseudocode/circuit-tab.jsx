@@ -693,6 +693,19 @@ class CircuitTab extends React.Component {
         const setDock = (d) => {
             this.setState({debugDock: d});
             try { localStorage.setItem('bw-debug-dock', d); } catch { /* session only */ }
+            // Choosing Top or Right is an explicit request for the debugger. If
+            // there are no pins there is nothing to dock, and with the hint
+            // dismissed the click produced literally no visible change — the
+            // panel did not appear and nothing said why. Dismissing a hint means
+            // "I have read this", not "never answer this question again", so an
+            // explicit request re-opens the explanation. Off is left alone: the
+            // user asked for silence and gets it.
+            const {stc} = this.state;
+            const nothingToDock = !(stc && stc.pins && stc.pins.length);
+            if (d !== 'off' && nothingToDock) {
+                this.setState({debugHintDismissed: false});
+                try { localStorage.removeItem('bw-debug-hint'); } catch { /* session only */ }
+            }
         };
         return (
             <div style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flex: '0 0 auto',
