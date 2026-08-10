@@ -77,3 +77,28 @@ Fix: deserializeProject pre-loads declared extensions before parsing targets.
 
 **bw-blocks:** your side was clean (confirmed). The loss was in
 vm.loadProject's deserialization, not in sb3-creator.
+
+## IN PROGRESS: pane-slots (gui.jsx)
+
+**Owner: bw-bundle.**
+
+The reducer models content slots (`upper`/`lower` per column) and gui.jsx
+reads only `.size`. PaneColumn exists and is unreferenced.
+
+**Approach decision needed:** The Scratch `<Tabs>` component hardcodes the
+block palette + workspace as one TabPanel. The "code" preset wants the
+pseudocode editor in the middle column instead. Two options:
+
+1. **Decompose Tabs** — break the palette and workspace into separate
+   content surfaces that PaneColumn can place independently. High risk,
+   breaks the existing tab switching behavior.
+
+2. **Content swap inside the existing TabPanel** — when the preset says
+   `middle.upper === 'code'`, render the pseudocode editor in the blocks
+   TabPanel instead of the workspace. Lower risk, keeps Tabs intact.
+
+Option 2 is simpler and preserves the existing tab structure. The Code
+tab already exists as TabPanel index 3 (PseudocodeImporter); the preset
+would just change which TabPanel is selected, not where content renders.
+
+**Status:** reading the structure, not yet editing gui.jsx.
