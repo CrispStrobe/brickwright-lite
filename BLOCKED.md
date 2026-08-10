@@ -102,3 +102,37 @@ tab already exists as TabPanel index 3 (PseudocodeImporter); the preset
 would just change which TabPanel is selected, not where content renders.
 
 **Status:** reading the structure, not yet editing gui.jsx.
+
+---
+
+## Wind-down note (2026-08-10, quota pause until Aug 15)
+
+### What was just finished
+- Licence notices for all three vendored sources: bw-circuit-ui (MPL-2.0,
+  directory LICENSE + THIRD-PARTY-NOTICES), bw-board (MIT, directory LICENSE +
+  THIRD-PARTY-NOTICES), sb3-creator (MPL-2.0, sb3-creator-LICENSE + THIRD-PARTY-NOTICES).
+- Each sync script verified: none can delete the notice it sits beside.
+- integrate.mjs confirmed to carry all three into packages/ via recursive cpSync.
+- bw-debug confirmed as lite's own code, not vendored — no notice needed.
+
+### What is NOT done
+1. **SW failure-mode tests** — Playwright tests for chunk 404, fetch timeout,
+   stale entry vs fresh chunks. Identified but not built. The owner found the
+   white-screen bug by hand (9886889); these would catch the class.
+2. **Code-tab debugger strip** — placement approved (strip under Circuit tab bar,
+   shared runner via vm.runtime.bwDebugRunner). Not started. Owner may build it.
+3. **Pane-slots full routing** — content swap works, full PaneColumn decomposition
+   not done (high risk, not worth it per coordinator).
+
+### What was ruled out (expensive to rediscover)
+- **Node cannot reproduce the extension-block deserialization bug.** sb3.js in
+  node keeps blocks with unknown extension prefixes; the browser drops them.
+  Any guard for this class MUST be a headless browser test. The CI verify-gui
+  job already has one (e155ca1 extension guard).
+- **bw-debug is NOT vendored.** 8 files, no sync script, no upstream repo. All
+  lite's own glue between sb3-creator design docs and bw-board's session API.
+- **Devices extension unregistered** (ad0384f) — 31 of 36 blocks were stubs.
+  Re-register when drivers exist.
+- **SDCC WASM byte-identity** not verified. Behind localStorage flag. Preview only.
+- **Licence choice is owner's call.** MPL-2.0 was added to bw-circuit-ui (01860ac)
+  and bw-bundle (e3ad9f6). Owner has not ruled. Do not change any LICENSE file.
