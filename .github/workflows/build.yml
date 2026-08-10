@@ -208,6 +208,62 @@ jobs:
               }
 
               console.log('OK: GUI renders with', tabs.length, 'tabs');
+
+              // --- Extension-block regression guard (e155ca1) ---
+              // Node cannot reproduce this bug: the browser and node disagree about
+              // whether sb3.js drops blocks with unknown extension prefixes. This
+              // headless browser check is the only harness that distinguishes 5/7 from 7/7.
+              await page.addScriptTag({ url: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js' });
+              const extResult = await page.evaluate(async () => {
+                const guiEl = document.querySelector('[class*=\"gui_body\"]') || document.querySelector('[class*=\"gui\"]');
+                const key = Object.keys(guiEl).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
+                let fiber = guiEl[key], vm = null;
+                for (let i = 0; i < 30 && fiber; i++) {
+                  if (fiber.memoizedProps && fiber.memoizedProps.vm) { vm = fiber.memoizedProps.vm; break; }
+                  fiber = fiber.return;
+                }
+                if (!vm) return { error: 'vm not found' };
+                const project = {
+                  targets: [{ isStage: true, name: 'Stage', variables: {}, lists: {}, broadcasts: {},
+                    blocks: {
+                      h: { opcode: 'event_whenflagclicked', next: 'f', parent: null, inputs: {}, fields: {}, shadow: false, topLevel: true, x: 0, y: 0 },
+                      f: { opcode: 'control_forever', next: null, parent: 'h', inputs: { SUBSTACK: [2, 's'] }, fields: {}, shadow: false, topLevel: false },
+                      s: { opcode: 'stc12_setpin', next: null, parent: 'f', inputs: {}, fields: { PIN: ['P1.0', null], STATE: ['on', null] }, shadow: false, topLevel: false },
+                    },
+                    comments: {}, currentCostume: 0,
+                    costumes: [{ name: 'b', bitmapResolution: 1, dataFormat: 'svg', assetId: 'cd21514d0531fdffb22204e0ec5ed84a', md5ext: 'cd21514d0531fdffb22204e0ec5ed84a.svg', rotationCenterX: 240, rotationCenterY: 180 }],
+                    sounds: [], volume: 100, layerOrder: 0, tempo: 60, videoTransparency: 50, videoState: 'on', textToSpeechLanguage: null
+                  }],
+                  monitors: [], extensions: ['stc12'],
+                  meta: { semver: '3.0.0', vm: '0.2.0' }
+                };
+                const zip = new JSZip();
+                zip.file('project.json', JSON.stringify(project));
+                zip.file('cd21514d0531fdffb22204e0ec5ed84a.svg', '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"480\" height=\"360\"></svg>');
+                await vm.loadProject(await zip.generateAsync({ type: 'arraybuffer' }));
+                const ops = {};
+                for (const t of vm.runtime.targets) {
+                  for (const b of Object.values(t.blocks._blocks)) ops[b.opcode] = (ops[b.opcode] || 0) + 1;
+                }
+                return { opcodes: ops, stc12Loaded: vm.extensionManager.isExtensionLoaded('stc12') };
+              });
+
+              if (extResult.error) {
+                console.error('FAIL: extension guard could not find VM:', extResult.error);
+                process.exit(1);
+              }
+              const hasForever = !!extResult.opcodes['control_forever'];
+              const hasSetpin = !!extResult.opcodes['stc12_setpin'];
+              if (!hasForever) {
+                console.error('FAIL: control_forever missing — loadProject dropped everything');
+                process.exit(1);
+              }
+              if (!hasSetpin) {
+                console.error('FAIL: stc12_setpin missing — extension blocks dropped during deserialization (the e155ca1 regression)');
+                process.exit(1);
+              }
+              console.log('OK: extension guard — control_forever + stc12_setpin both present after loadProject');
+
               if (errors.length) console.log('Page errors (non-fatal):', errors);
               await browser.close();
               process.exit(0);
