@@ -17,3 +17,4 @@ dist/
 
 # Agent context (local only)
 CLAUDE.md
+.claude/
