@@ -48,7 +48,7 @@ Re-pinned in lite.
 
 ## Naming rule: competitor name in vendored BoardCanvas.jsx
 
-**Owner:** bw-circuit-ui (source file, line 1262: "TinkerCAD-style")
+**Owner:** bw-circuit-ui (source file, line 1262: "competitor-product-style")
 
 lite's vendored copy at `overlay/.../bw-circuit-ui/components/BoardCanvas.jsx`
 carries the competitor product name. lite is a public repo. Do not patch the
