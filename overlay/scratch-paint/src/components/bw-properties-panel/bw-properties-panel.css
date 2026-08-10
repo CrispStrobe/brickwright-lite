@@ -6,19 +6,35 @@
 /* `flex-shrink: 1` matters: with `0 0 auto` the rail's full width became a floor under the whole
    editor row, so the pane could no longer be squeezed — which showed up as the stage-size buttons
    appearing to do nothing to the editor. It may give up width down to `min-width` instead. */
+/* The rail is positioned, not flowed, so its height can never decide the editor's height — see
+   the note on .top-align-row in paint-editor.css. top/bottom give it a DEFINITE height taken from
+   the row, which is what finally lets .body scroll instead of overflowing. */
 .rail {
+    position: absolute;
+    top: 0;
+    bottom: 0;
     display: flex;
     flex-direction: column;
-    flex: 0 1 15rem;
     width: 15rem;
-    min-width: 11rem;
-    /* Bounded by the row, and allowed to shrink within it — together these are what give .body
-       an actual height to scroll inside. */
-    max-height: 100%;
-    min-height: 0;
     overflow: hidden;
     color: $text-primary;
     font-size: 0.75rem;
+}
+
+[dir="ltr"] .rail {
+    right: 0;
+}
+
+[dir="rtl"] .rail {
+    left: 0;
+}
+
+/* Reserves the rail's WIDTH in the flex row while contributing no height. Being in flow is what
+   keeps the canvas from sliding underneath the rail; being zero-height is what keeps the rail
+   from stretching the row. */
+.rail-spacer {
+    flex: 0 0 15rem;
+    height: 0;
 }
 
 /* Closed, the rail must cost the canvas as close to nothing as a toggle can: no border, no

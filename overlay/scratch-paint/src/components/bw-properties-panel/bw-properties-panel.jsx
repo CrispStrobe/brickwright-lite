@@ -197,8 +197,12 @@ const BwPropertiesPanel = props => {
     }
 
     return (
-        <div className={styles.rail}>
-            <div className={styles.header}>
+        <React.Fragment>
+            {/* Holds the rail's width open in the flex row; the rail itself is positioned, so it
+                cannot stretch the row taller than the window. */}
+            <div className={styles.railSpacer} />
+            <div className={styles.rail}>
+                <div className={styles.header}>
                 <IconButton
                     title={t('hideProperties')}
                     onClick={props.onTogglePanel}
@@ -443,8 +447,9 @@ const BwPropertiesPanel = props => {
                             </div>
                         ] : null}
                     </Section> : null}
+                </div>
             </div>
-        </div>
+        </React.Fragment>
     );
 };
 

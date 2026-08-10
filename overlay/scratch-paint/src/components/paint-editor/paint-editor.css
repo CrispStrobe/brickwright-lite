@@ -26,11 +26,14 @@
     height: 100%;
     padding-top: calc(5 * $grid-unit);
     min-width: 524px;
-    /* Brickwright: a flex item's default min-height is `auto`, meaning "never shrink below your
-       content". Without this the row simply grows taller than the editor, and a child asking to
-       scroll never gets a height to scroll WITHIN — which is why the properties rail's
-       overflow-y had no effect no matter what was set on the rail itself. */
     min-height: 0;
+    /* Brickwright: anchor for the properties rail, which is positioned out of this row's HEIGHT
+       flow. The rail's sections are collectively taller than the canvas, so while it was an
+       ordinary flex child it became the thing that decided how tall this row was — the row grew
+       past the window, the canvas grew with it (it is height-driven), and that one fact produced
+       every symptom at once: the workspace background as a grey band above the art board, the
+       artwork pushed down off screen, and a rail with no bounded height to scroll inside. */
+    position: relative;
 }
 
 .row + .row {
