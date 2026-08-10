@@ -666,17 +666,22 @@ target — it is NOT linked into the BSD-3 editor code.
 
 ### Compiled output and headers
 
-SDCC's runtime libraries and headers carry an explicit exception to the GPL
-(see `COPYING` in the SDCC source tree):
+Each header in `include/mcs51/` carries the GPL-2+ licence **plus an explicit
+linking exception**. The exception text appears in every header file (verified
+in `stc12.h` lines 22-27, `8051.h` and others):
 
 > "As a special exception, if you link this library with other files, some of
 > which are compiled with SDCC, to produce an executable, this library does not
 > by itself cause the resulting executable to be covered by the GNU General
-> Public License."
+> Public License. This exception does not however invalidate any other reasons
+> why the executable file might be covered by the GNU General Public License."
+
+**Source citation:** `include/mcs51/stc12.h` lines 22-27 in the bundled copy
+(`overlay/scratch-gui/src/lib/sdcc-wasm/dist/include/mcs51/stc12.h`).
 
 This means a user's compiled `.hex` output does NOT carry GPL obligations.
-The headers in `include/mcs51/` are part of SDCC's library distribution and
-fall under the same exception.
+The compiler itself (sdcc, sdas8051, sdld) is GPL-2+, but the exception
+covers the headers and runtime libraries that user code links against.
 
 ### Licence boundary
 
