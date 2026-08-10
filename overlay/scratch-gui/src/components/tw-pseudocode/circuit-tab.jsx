@@ -52,7 +52,11 @@ class CircuitTab extends React.Component {
         try {
             const engine = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
-            ui.setEngine(engine);   // the panel takes the engine by injection, not by path
+            ui.setEngine(engine);
+            // Load part sidecars (pin maps, current ratings, footprints) into
+            // the parts registry. Uses require.context (webpack) instead of
+            // import.meta.glob (vite). 115 files, ~464 KiB, in this chunk.
+            await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/model/sidecar-loader.js');   // the panel takes the engine by injection, not by path
             // (The WASM compiler intercept used to be installed here. It now
             // lives at the compile call site in debug-runner.js: patching
             // globalThis.fetch only matters when something compiles, and hanging
