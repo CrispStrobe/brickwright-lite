@@ -513,6 +513,9 @@ class CircuitTab extends React.Component {
                     onCircuitReady={c => { window.__circuit = c; this.handleCircuitReady(c); }}
                     circuitData={this.state.circuitData || undefined}
                     onBoardReady={(board) => {
+                        // Same diagnosis hook the standalone harness exposes —
+                        // production incidents get measured, not guessed at.
+                        window.__board = board;
                         // Publish the board so the Code tab's sim runner can use it
                         // instead of building its own. One board, one truth.
                         const vm = this.props.vm;
