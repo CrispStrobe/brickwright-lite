@@ -7,12 +7,27 @@ permissions:
   contents: read
   pages: write
   id-token: write
-concurrency:
-  group: pages
-  cancel-in-progress: false
+# Concurrency is set PER JOB rather than on the workflow, on purpose.
+#
+# The workflow-level `group: pages, cancel-in-progress: false` (GitHub's stock Pages snippet)
+# guards the right thing for the wrong span. Its reason to exist is that a production deployment
+# must never be interrupted half-published — but at workflow level it also shields the BUILD,
+# which is the slow job and is pure waste the moment a newer commit exists.
+#
+# Observed on 2026-08-10, with two people pushing a few minutes apart: a build for a commit
+# nobody was waiting on held the single `pages` slot for ~14 minutes and then published itself,
+# while the tip queued behind it and newer queued runs were cancelled in turn. The site sat
+# several commits stale, and three rounds of "this is still broken" turned out to be that lag
+# rather than the code.
+#
+# So: builds are cancellable and converge on the tip; deployments are not, and stay atomic.
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A superseded build has nothing anyone wants. Cancel it and start the newer one.
+    concurrency:
+      group: pages-build
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -155,6 +170,12 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    # Never interrupted: this is the job the stock Pages snippet's `cancel-in-progress: false`
+    # was actually written to protect. Queued deploys still coalesce to the newest, which is
+    # what we want — only the tip is worth publishing.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write
