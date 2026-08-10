@@ -3,7 +3,6 @@
  * @module
  */
 import { registerSidecar } from './parts-registry.js';
-
 const ctx = require.context('../parts-data', false, /\.json$/);
 let count = 0;
 for (const key of ctx.keys()) {
