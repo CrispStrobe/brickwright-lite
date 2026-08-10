@@ -87,6 +87,7 @@ import aboutIcon from './icon--about.svg';
 import fileIcon from './icon--file.svg';
 import editIcon from './icon--edit.svg';
 
+import BwAbout from './bw-about.jsx'; // Brickwright: build stamp + About dialog
 import scratchLogo from './brick-robot.svg'; // Brickwright: robot mascot in place of the Scratch logo
 import ninetiesLogo from './nineties_logo.svg';
 import catLogo from './cat_logo.svg';
@@ -449,6 +450,13 @@ class MenuBar extends React.Component {
                                 src={this.props.logo}
                                 onClick={this.props.onClickLogo}
                             />
+                        </div>
+                        {/* Brickwright: the running build's commit, and the About box behind it.
+                            A page that cannot say which version it is makes every bug report
+                            ambiguous — stale tab, undeployed fix and real regression all look
+                            identical from the outside. */}
+                        <div className={classNames(styles.menuBarItem)}>
+                            <BwAbout />
                         </div>
                         {(this.props.canChangeTheme || this.props.canChangeLanguage) && (<SettingsMenu
                             canChangeLanguage={this.props.canChangeLanguage}

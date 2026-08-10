@@ -7,6 +7,31 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const ScratchWebpackConfigBuilder = require('scratch-webpack-configuration');
 
+/**
+ * The commit this bundle was built from, short form.
+ *
+ * CI exports GITHUB_SHA and Vercel exports VERCEL_GIT_COMMIT_SHA; a local build has neither, so
+ * fall back to asking git. Never throws — a missing version must not be able to fail a build,
+ * it just leaves the About box saying "unknown".
+ * @returns {string} A short commit sha, or 'unknown'.
+ */
+const buildVersion = () => {
+    const fromEnv = process.env.GITHUB_SHA || process.env.VERCEL_GIT_COMMIT_SHA;
+    if (fromEnv) return fromEnv.slice(0, 7);
+    try {
+        return require('child_process')
+            // This file runs from packages/scratch-gui, which is vendored and gitignored — the
+            // repository is two levels up.
+            .execSync('git rev-parse --short=7 HEAD', {
+                cwd: path.resolve(__dirname, '..', '..'),
+                stdio: ['ignore', 'pipe', 'ignore']
+            })
+            .toString().trim() || 'unknown';
+    } catch (e) {
+        return 'unknown';
+    }
+};
+
 // const STATIC_PATH = process.env.STATIC_PATH || '/static';
 
 const baseConfig = new ScratchWebpackConfigBuilder(
@@ -54,6 +79,13 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         resource.request = resource.request.replace(/^node:/, '');
     }))
     .addPlugin(new webpack.DefinePlugin({
+        // Brickwright: stamp the build so a running page can say which commit it is. Without
+        // this there is no way to tell a stale tab from a deployed regression except by
+        // comparing bundle hashes against the repo by hand, which is not something a user can
+        // be asked to do — and every bug report is unanswerable until you know the version.
+        // CI sets GITHUB_SHA; a local build falls back to asking git; neither is fatal.
+        'process.env.BW_VERSION': JSON.stringify(buildVersion()),
+        'process.env.BW_BUILD_TIME': JSON.stringify(new Date().toISOString()),
         'process.env.DEBUG': Boolean(process.env.DEBUG),
         'process.env.GA_ID': `"${process.env.GA_ID || 'UA-000000-01'}"`,
         'process.env.GTM_ENV_AUTH': `"${process.env.GTM_ENV_AUTH || ''}"`,
