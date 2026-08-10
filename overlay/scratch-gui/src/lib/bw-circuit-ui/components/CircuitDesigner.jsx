@@ -173,6 +173,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     if (pins === prevPinsRef.current) return;
     prevPinsRef.current = pins;
 
+    // No declared pins: the last session's autosaved wiring beats the
+    // canned demo - losing an evening's circuit to a reload was the bug.
+    if (!(pins?.length > 0) && typeof localStorage !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('bw-circuit-autosave');
+        if (saved) {
+          const data = JSON.parse(saved);
+          if (data && Array.isArray(data.parts) && data.parts.length > 0) {
+            handleLoad(data);
+            return;
+          }
+        }
+      } catch { /* corrupt autosave: fall through to the demo */ }
+    }
     const inferStc = pins?.length > 0
       ? projectData
       : {
@@ -189,6 +203,24 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // ── Buzzer audio ────────────────────────────────────────────────
   // Direct import (no dynamic import — the module guards against
   // missing AudioContext in non-browser environments).
+  // Autosave: every structural change lands in localStorage (debounced);
+  // a fresh mount with an empty canvas restores the last session's work.
+  // Save/load-to-file stays explicit; this is the safety net under it.
+  const autosaveTimer = useRef(null);
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return undefined;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      try {
+        if (parts.length > 0) {
+          localStorage.setItem('bw-circuit-autosave', JSON.stringify(circuit.toJSON()));
+        }
+      } catch { /* storage full/blocked: the explicit save still works */ }
+    }, 800);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rev]);
+
   // Publish the circuit to the host (harness/integration) once on mount.
   useEffect(() => {
     if (onCircuitReady) onCircuitReady(circuit);
@@ -540,7 +572,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     >
       {/* Left sidebar — collapsible */}
       {leftOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', minHeight: 0, maxHeight: '100%', overscrollBehavior: 'contain' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', minHeight: 0, maxHeight: 'min(100%, calc(100dvh - 130px))', overscrollBehavior: 'contain' }}>
           <button onClick={() => setLeftOpen(false)} style={{
             background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
             fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
@@ -667,6 +699,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onUndo={handleUndo}
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}
+          onSaveCircuit={handleSave}
+          onLoadCircuit={() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json,.json';
+            input.onchange = () => {
+              const f = input.files && input.files[0];
+              if (!f) return;
+              const reader = new FileReader();
+              reader.onload = () => { try { handleLoad(JSON.parse(String(reader.result))); } catch { /* bad file */ } };
+              reader.readAsText(f);
+            };
+            input.click();
+          }}
           drcWarnings={(() => {
             try {
               const drc = runDrc(circuit, circuit.board);

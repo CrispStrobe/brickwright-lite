@@ -13,7 +13,9 @@ import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
 import { logicChipTerminals } from './dip-chips.js';
+import { sidecarTerminals } from './parts-registry.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
+import { getSidecar } from './parts-registry.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -757,8 +759,19 @@ export class Circuit {
 
 /**
  * Return the terminal names for a given part kind.
+ *
+ * Sidecar-first: checks bw-parts sidecar data before the local switch.
+ * Special kinds (mcu, breadboard, led_cube) need params-dependent or
+ * dynamic terminals and bypass the sidecar.
  */
 function terminalsForKind(kind, params) {
+  // Special kinds with dynamic or param-dependent terminals
+  const DYNAMIC_KINDS = new Set(['mcu', 'breadboard', 'led_cube', 'dip_switch', 'header']);
+  if (!DYNAMIC_KINDS.has(kind)) {
+    const sc = sidecarTerminals(kind);
+    if (sc && sc.length > 0) return sc;
+  }
+  // Fallback to local definitions (for kinds without sidecars or dynamic kinds)
   switch (kind) {
     case 'vcc': return ['vcc'];
     case 'gnd': return ['gnd'];
@@ -822,7 +835,20 @@ function terminalsForKind(kind, params) {
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),
       ...Array.from({length: 8}, (_, i) => `data_${i}`),
     ];
-    case 'mcu': return params?.pins || ['P1.0'];
+    case 'mcu': {
+      // The chip shows ALL physical pins (sidecar pin map, datasheet-true),
+      // not only the declared ones - you wire to a real DIP-40, and the
+      // declarations light up the pins the program drives. Falls back to
+      // the declared list when no sidecar is registered (node tools).
+      const sc = getSidecar('mcu');
+      const declared = Array.isArray(params?.pins) ? params.pins : ['P1.0'];
+      if (sc && sc.terminals && sc.terminals.length > 2) {
+        const names = sc.terminals.map(t => t.name);
+        for (const d of declared) if (!names.includes(d)) names.push(d);
+        return names;
+      }
+      return declared;
+    }
     default: {
       // Check logic chip definitions (74HC family)
       const chipTerms = logicChipTerminals(kind);
