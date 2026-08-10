@@ -4,8 +4,11 @@ import React from 'react';
 
 import BufferedInputHOC from '../forms/buffered-input-hoc.jsx';
 import Input from '../forms/input.jsx';
+import Modes from '../../lib/modes';
 import tx from '../../lib/bw-messages';
 import {Alignments, AlignTo, Axes} from '../../helper/bw/align';
+import {BooleanOps} from '../../helper/bw/booleans';
+import {MirrorAbout} from '../../helper/bw/symmetry';
 
 import {
     AlignBottom,
@@ -18,8 +21,15 @@ import {
     Chevron,
     DistributeHorizontal,
     DistributeVertical,
+    Divide,
+    Exclude,
+    Intersect,
+    MirrorHorizontal,
+    MirrorVertical,
     RotateClockwise,
-    RotateCounterClockwise
+    RotateCounterClockwise,
+    Subtract,
+    Unite
 } from './bw-icons.jsx';
 
 import styles from './bw-properties-panel.css';
@@ -47,7 +57,7 @@ IconButton.propTypes = {
 };
 
 /** A labelled numeric field. A null value renders an empty box rather than "0" or "NaN". */
-const NumberField = ({disabled, label, title, value, onSubmit}) => (
+const NumberField = ({disabled, label, step, title, value, onSubmit}) => (
     <label
         className={classNames(styles.field, {[styles.fieldDisabled]: disabled})}
         title={title}
@@ -63,6 +73,7 @@ const NumberField = ({disabled, label, title, value, onSubmit}) => (
             /> :
             <BufferedInput
                 className={styles.fieldInput}
+                step={step}
                 type="number"
                 value={value}
                 onSubmit={onSubmit}
@@ -74,6 +85,7 @@ NumberField.propTypes = {
     disabled: PropTypes.bool,
     label: PropTypes.string.isRequired,
     onSubmit: PropTypes.func.isRequired,
+    step: PropTypes.number,
     title: PropTypes.string,
     value: PropTypes.number
 };
@@ -89,8 +101,36 @@ Section.propTypes = {
     title: PropTypes.string.isRequired
 };
 
+/** A two-option toggle, used for "align relative to" and "mirror about". */
+const Segmented = ({label, options, value, onChange}) => (
+    <div className={styles.segmented}>
+        <span className={styles.segmentedLabel}>{label}</span>
+        {options.map(option => (
+            <button
+                className={classNames(styles.segment, {
+                    [styles.segmentActive]: value === option.value
+                })}
+                key={option.value}
+                type="button"
+                onClick={() => onChange(option.value)}
+            >
+                {option.label}
+            </button>
+        ))}
+    </div>
+);
+Segmented.propTypes = {
+    label: PropTypes.string.isRequired,
+    onChange: PropTypes.func.isRequired,
+    options: PropTypes.arrayOf(PropTypes.shape({
+        label: PropTypes.string,
+        value: PropTypes.string
+    })).isRequired,
+    value: PropTypes.string.isRequired
+};
+
 const BwPropertiesPanel = props => {
-    const {alignTo, locale, selectionCount, transform, visible} = props;
+    const {alignTo, locale, mode, selectionCount, shapeParams, transform, visible} = props;
     const t = key => tx(locale, key);
 
     const hasSelection = transform !== null;
@@ -98,6 +138,7 @@ const BwPropertiesPanel = props => {
     // other is not. Distribute always needs three, so there is a middle item to move.
     const canAlign = hasSelection && (alignTo === AlignTo.CANVAS || selectionCount >= 2);
     const canDistribute = selectionCount >= 3;
+    const canCombine = props.booleanOperandCount >= 2;
     const singleItem = selectionCount === 1;
 
     const alignButton = (alignment, key, Icon) => (
@@ -105,6 +146,16 @@ const BwPropertiesPanel = props => {
             disabled={!canAlign}
             title={canAlign ? t(key) : `${t(key)} — ${t('needTwo')}`}
             onClick={() => props.onAlign(alignment)}
+        >
+            <Icon />
+        </IconButton>
+    );
+
+    const booleanButton = (op, key, Icon) => (
+        <IconButton
+            disabled={!canCombine}
+            title={canCombine ? t(key) : `${t(key)} — ${t('needTwoPaths')}`}
+            onClick={() => props.onBoolean(op)}
         >
             <Icon />
         </IconButton>
@@ -201,27 +252,15 @@ const BwPropertiesPanel = props => {
                 </Section>
 
                 <Section title={t('align')}>
-                    <div className={styles.segmented}>
-                        <span className={styles.segmentedLabel}>{t('alignRelativeTo')}</span>
-                        <button
-                            className={classNames(styles.segment, {
-                                [styles.segmentActive]: alignTo === AlignTo.SELECTION
-                            })}
-                            type="button"
-                            onClick={() => props.onChangeAlignTo(AlignTo.SELECTION)}
-                        >
-                            {t('alignToSelection')}
-                        </button>
-                        <button
-                            className={classNames(styles.segment, {
-                                [styles.segmentActive]: alignTo === AlignTo.CANVAS
-                            })}
-                            type="button"
-                            onClick={() => props.onChangeAlignTo(AlignTo.CANVAS)}
-                        >
-                            {t('alignToCanvas')}
-                        </button>
-                    </div>
+                    <Segmented
+                        label={t('alignRelativeTo')}
+                        options={[
+                            {label: t('alignToSelection'), value: AlignTo.SELECTION},
+                            {label: t('alignToCanvas'), value: AlignTo.CANVAS}
+                        ]}
+                        value={alignTo}
+                        onChange={props.onChangeAlignTo}
+                    />
                     <div className={styles.buttonRow}>
                         {alignButton(Alignments.LEFT, 'alignLeft', AlignLeft)}
                         {alignButton(Alignments.HORIZONTAL_CENTER, 'alignHorizontalCenter', AlignHorizontalCenter)}
@@ -254,15 +293,87 @@ const BwPropertiesPanel = props => {
                     </div>
                 </Section>
 
-                {props.showShapeSection ?
+                <Section title={t('combine')}>
+                    <div className={styles.buttonRow}>
+                        {booleanButton(BooleanOps.UNITE, 'unite', Unite)}
+                        {booleanButton(BooleanOps.SUBTRACT, 'subtract', Subtract)}
+                        {booleanButton(BooleanOps.INTERSECT, 'intersect', Intersect)}
+                        {booleanButton(BooleanOps.EXCLUDE, 'exclude', Exclude)}
+                        {booleanButton(BooleanOps.DIVIDE, 'divide', Divide)}
+                    </div>
+                    {props.booleanEmpty ?
+                        <div className={styles.hint}>{t('booleanEmpty')}</div> : null}
+                </Section>
+
+                <Section title={t('symmetry')}>
+                    <Segmented
+                        label={t('mirrorAbout')}
+                        options={[
+                            {label: t('mirrorAboutEdge'), value: MirrorAbout.SELECTION_EDGE},
+                            {label: t('mirrorAboutCanvas'), value: MirrorAbout.CANVAS_CENTER}
+                        ]}
+                        value={props.mirrorAbout}
+                        onChange={props.onChangeMirrorAbout}
+                    />
+                    <div className={styles.buttonRow}>
+                        <IconButton
+                            disabled={!hasSelection}
+                            title={t('mirrorHorizontal')}
+                            onClick={() => props.onMirror(Axes.HORIZONTAL)}
+                        >
+                            <MirrorHorizontal />
+                        </IconButton>
+                        <IconButton
+                            disabled={!hasSelection}
+                            title={t('mirrorVertical')}
+                            onClick={() => props.onMirror(Axes.VERTICAL)}
+                        >
+                            <MirrorVertical />
+                        </IconButton>
+                    </div>
+                </Section>
+
+                {mode === Modes.ROUNDED_RECT || mode === Modes.POLYGON || mode === Modes.STAR ?
                     <Section title={t('shape')}>
-                        <div className={styles.fieldRow}>
-                            <NumberField
-                                label={t('cornerRadius')}
-                                value={props.cornerRadius}
-                                onSubmit={props.onChangeCornerRadius}
-                            />
-                        </div>
+                        {mode === Modes.ROUNDED_RECT ?
+                            <div className={styles.fieldRow}>
+                                <NumberField
+                                    label={t('cornerRadius')}
+                                    value={shapeParams.cornerRadius}
+                                    onSubmit={value => props.onChangeShapeParam('cornerRadius', value)}
+                                />
+                            </div> : null}
+                        {mode === Modes.POLYGON ?
+                            <div className={styles.fieldRow}>
+                                <NumberField
+                                    label={t('polygonSides')}
+                                    value={shapeParams.polygonSides}
+                                    onSubmit={value => props.onChangeShapeParam('polygonSides', value)}
+                                />
+                            </div> : null}
+                        {mode === Modes.STAR ? [
+                            <div
+                                className={styles.fieldRow}
+                                key="points"
+                            >
+                                <NumberField
+                                    label={t('starPoints')}
+                                    value={shapeParams.starPoints}
+                                    onSubmit={value => props.onChangeShapeParam('starPoints', value)}
+                                />
+                            </div>,
+                            <div
+                                className={styles.fieldRow}
+                                key="waist"
+                            >
+                                <NumberField
+                                    label={t('starInnerRatio')}
+                                    step={0.05}
+                                    value={shapeParams.starInnerRatio}
+                                    onSubmit={value => props.onChangeShapeParam('starInnerRatio', value)}
+                                />
+                            </div>
+                        ] : null}
                     </Section> : null}
             </div>
         </div>
@@ -271,24 +382,35 @@ const BwPropertiesPanel = props => {
 
 BwPropertiesPanel.propTypes = {
     alignTo: PropTypes.oneOf(Object.keys(AlignTo).map(key => AlignTo[key])).isRequired,
-    cornerRadius: PropTypes.number,
+    booleanEmpty: PropTypes.bool,
+    booleanOperandCount: PropTypes.number.isRequired,
     locale: PropTypes.string,
     lockAspect: PropTypes.bool,
+    mirrorAbout: PropTypes.oneOf(Object.keys(MirrorAbout).map(key => MirrorAbout[key])).isRequired,
+    mode: PropTypes.oneOf(Object.keys(Modes)).isRequired,
     onAlign: PropTypes.func.isRequired,
+    onBoolean: PropTypes.func.isRequired,
     onChangeAlignTo: PropTypes.func.isRequired,
-    onChangeCornerRadius: PropTypes.func.isRequired,
     onChangeHeight: PropTypes.func.isRequired,
+    onChangeMirrorAbout: PropTypes.func.isRequired,
     onChangeRotation: PropTypes.func.isRequired,
+    onChangeShapeParam: PropTypes.func.isRequired,
     onChangeWidth: PropTypes.func.isRequired,
     onChangeX: PropTypes.func.isRequired,
     onChangeY: PropTypes.func.isRequired,
     onDistribute: PropTypes.func.isRequired,
+    onMirror: PropTypes.func.isRequired,
     onRotateClockwise: PropTypes.func.isRequired,
     onRotateCounterClockwise: PropTypes.func.isRequired,
     onToggleLockAspect: PropTypes.func.isRequired,
     onTogglePanel: PropTypes.func.isRequired,
     selectionCount: PropTypes.number.isRequired,
-    showShapeSection: PropTypes.bool,
+    shapeParams: PropTypes.shape({
+        cornerRadius: PropTypes.number,
+        polygonSides: PropTypes.number,
+        starInnerRatio: PropTypes.number,
+        starPoints: PropTypes.number
+    }).isRequired,
     transform: PropTypes.shape({
         height: PropTypes.number,
         rotation: PropTypes.number,

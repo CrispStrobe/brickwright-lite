@@ -19,6 +19,7 @@ import Button from '../button/button.jsx';
 import ButtonGroup from '../button-group/button-group.jsx';
 import BrushMode from '../../containers/brush-mode.jsx';
 import BwPropertiesPanel from '../../containers/bw-properties-panel.jsx';
+import {PolygonMode, StarMode} from '../../containers/bw-shape-mode.jsx';
 import EraserMode from '../../containers/eraser-mode.jsx';
 import FillColorIndicatorComponent from '../../containers/fill-color-indicator.jsx';
 import FillMode from '../../containers/fill-mode.jsx';
@@ -166,6 +167,12 @@ const PaintEditorComponent = props => (
                     {/* Brickwright: upstream ships every part of this tool except a working
                         body and this button — see helper/tools/rounded-rect-tool.js. */}
                     <RoundedRectMode
+                        onUpdateImage={props.onUpdateImage}
+                    />
+                    <PolygonMode
+                        onUpdateImage={props.onUpdateImage}
+                    />
+                    <StarMode
                         onUpdateImage={props.onUpdateImage}
                     />
                 </div>

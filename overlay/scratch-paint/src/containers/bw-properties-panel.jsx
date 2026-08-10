@@ -6,12 +6,20 @@ import {connect} from 'react-redux';
 import {injectIntl, intlShape} from 'react-intl';
 
 import Modes from '../lib/modes';
-import {changeCornerRadius} from '../reducers/bw-shape';
+import {
+    changeCornerRadius,
+    changePolygonSides,
+    changeStarInnerRatio,
+    changeStarPoints
+} from '../reducers/bw-shape';
 import {togglePanel} from '../reducers/bw-panel';
+import {setSelectedItems} from '../reducers/selected-items';
 
 import {alignSelection, AlignTo, distributeSelection} from '../helper/bw/align';
+import {applyBoolean, getOperands} from '../helper/bw/booleans';
+import {MirrorAbout, mirrorDuplicate} from '../helper/bw/symmetry';
 import {getTransform, rotateBy, setPosition, setRotation, setSize} from '../helper/bw/transform';
-import {getSelectedRootItems} from '../helper/selection';
+import {getSelectedLeafItems, getSelectedRootItems} from '../helper/selection';
 import {ART_BOARD_WIDTH, SVG_ART_BOARD_WIDTH} from '../helper/view';
 
 import BwPropertiesPanelComponent from '../components/bw-properties-panel/bw-properties-panel.jsx';
@@ -24,9 +32,17 @@ const ART_BOARD_UNITS_PER_COSTUME_UNIT = ART_BOARD_WIDTH / SVG_ART_BOARD_WIDTH;
 const toCostumeUnits = value => Math.round((value / ART_BOARD_UNITS_PER_COSTUME_UNIT) * 100) / 100;
 const toArtBoardUnits = value => value * ART_BOARD_UNITS_PER_COSTUME_UNIT;
 
+/** Which action creator each shape parameter goes through. */
+const SHAPE_PARAM_ACTIONS = {
+    cornerRadius: changeCornerRadius,
+    polygonSides: changePolygonSides,
+    starInnerRatio: changeStarInnerRatio,
+    starPoints: changeStarPoints
+};
+
 /**
- * Brickwright: the designer's properties rail — numeric transform, align and distribute, and the
- * parameters of the parametric shape tools.
+ * Brickwright: the designer's properties rail — numeric transform, align and distribute, boolean
+ * combine, mirroring, and the parameters of the parametric shape tools.
  *
  * Geometry is read straight out of paper on every render rather than mirrored into redux, because
  * paper is the single source of truth for it and a mirror would drift. What redux provides is the
@@ -39,29 +55,49 @@ class BwPropertiesPanel extends React.Component {
         super(props);
         bindAll(this, [
             'handleAlign',
-            'handleChangeCornerRadius',
+            'handleBoolean',
             'handleChangeHeight',
             'handleChangeRotation',
+            'handleChangeShapeParam',
             'handleChangeWidth',
             'handleChangeX',
             'handleChangeY',
             'handleDistribute',
+            'handleMirror',
             'handleRotateClockwise',
             'handleRotateCounterClockwise',
             'handleToggleLockAspect'
         ]);
         this.state = {
             alignTo: AlignTo.SELECTION,
-            lockAspect: false
+            // Set when a boolean op yields nothing, so the panel can say why nothing happened
+            // instead of looking broken. Cleared by the next selection change.
+            booleanEmpty: false,
+            lockAspect: false,
+            mirrorAbout: MirrorAbout.SELECTION_EDGE
         };
     }
+    componentWillReceiveProps (nextProps) {
+        if (this.state.booleanEmpty && nextProps.selectedItems !== this.props.selectedItems) {
+            this.setState({booleanEmpty: false});
+        }
+    }
     /**
-     * Commit a geometry change. onUpdateImage exports the costume, takes an undo snapshot and
-     * (via update-image-hoc) tells everything reading the selection to refresh.
-     * @param {boolean} changed Whether the helper actually moved anything.
+     * Commit a change that moved or resized existing objects.
+     * @param {boolean} changed Whether the helper actually did anything.
      */
     commit (changed) {
         if (changed) this.props.onUpdateImage();
+    }
+    /**
+     * Commit a change that added or removed objects. Those also need the selection pushed back
+     * into redux, because the items themselves are different now — not merely moved.
+     * @param {boolean} changed Whether the helper actually did anything.
+     */
+    commitStructural (changed) {
+        if (!changed) return;
+        this.props.setSelectedItems();
+        this.props.onUpdateImage();
     }
     handleChangeX (value) {
         this.commit(setPosition(toArtBoardUnits(value), null));
@@ -105,9 +141,17 @@ class BwPropertiesPanel extends React.Component {
     handleDistribute (axis) {
         this.commit(distributeSelection(axis));
     }
-    handleChangeCornerRadius (value) {
+    handleBoolean (op) {
+        const changed = applyBoolean(op);
+        this.setState({booleanEmpty: !changed && getOperands().length >= 2});
+        this.commitStructural(changed);
+    }
+    handleMirror (axis) {
+        this.commitStructural(mirrorDuplicate(axis, this.state.mirrorAbout));
+    }
+    handleChangeShapeParam (key, value) {
         // Only affects shapes drawn from now on, so there is no image to update.
-        this.props.onChangeCornerRadius(value);
+        this.props.onChangeShapeParam(key, value);
     }
     render () {
         const raw = getTransform();
@@ -122,22 +166,28 @@ class BwPropertiesPanel extends React.Component {
         return (
             <BwPropertiesPanelComponent
                 alignTo={this.state.alignTo}
-                cornerRadius={this.props.cornerRadius}
+                booleanEmpty={this.state.booleanEmpty}
+                booleanOperandCount={getOperands().length}
                 locale={this.props.intl.locale}
                 lockAspect={this.state.lockAspect}
+                mirrorAbout={this.state.mirrorAbout}
+                mode={this.props.mode}
                 selectionCount={getSelectedRootItems().length}
-                showShapeSection={this.props.mode === Modes.ROUNDED_RECT}
+                shapeParams={this.props.shapeParams}
                 transform={transform}
                 visible={this.props.visible}
                 onAlign={this.handleAlign}
+                onBoolean={this.handleBoolean}
                 onChangeAlignTo={alignTo => this.setState({alignTo})}
-                onChangeCornerRadius={this.handleChangeCornerRadius}
                 onChangeHeight={this.handleChangeHeight}
+                onChangeMirrorAbout={mirrorAbout => this.setState({mirrorAbout})}
                 onChangeRotation={this.handleChangeRotation}
+                onChangeShapeParam={this.handleChangeShapeParam}
                 onChangeWidth={this.handleChangeWidth}
                 onChangeX={this.handleChangeX}
                 onChangeY={this.handleChangeY}
                 onDistribute={this.handleDistribute}
+                onMirror={this.handleMirror}
                 onRotateClockwise={this.handleRotateClockwise}
                 onRotateCounterClockwise={this.handleRotateCounterClockwise}
                 onToggleLockAspect={this.handleToggleLockAspect}
@@ -148,30 +198,35 @@ class BwPropertiesPanel extends React.Component {
 }
 
 BwPropertiesPanel.propTypes = {
-    cornerRadius: PropTypes.number.isRequired,
     intl: intlShape,
     mode: PropTypes.oneOf(Object.keys(Modes)).isRequired,
-    onChangeCornerRadius: PropTypes.func.isRequired,
+    onChangeShapeParam: PropTypes.func.isRequired,
     onTogglePanel: PropTypes.func.isRequired,
     onUpdateImage: PropTypes.func.isRequired,
-    // Not read directly — it is what makes this component re-render when the geometry changes.
-    // eslint-disable-next-line react/no-unused-prop-types
+    // Not read for its contents — it is what makes this component re-render when the geometry
+    // changes, and what clears the "nothing left" hint.
     selectedItems: PropTypes.arrayOf(PropTypes.instanceOf(paper.Item)),
+    setSelectedItems: PropTypes.func.isRequired,
+    shapeParams: PropTypes.object.isRequired,
     visible: PropTypes.bool.isRequired
 };
 
 const mapStateToProps = state => ({
-    cornerRadius: state.scratchPaint.bwShape.cornerRadius,
     mode: state.scratchPaint.mode,
     selectedItems: state.scratchPaint.selectedItems,
+    shapeParams: state.scratchPaint.bwShape,
     visible: state.scratchPaint.bwPanel.visible
 });
 const mapDispatchToProps = dispatch => ({
-    onChangeCornerRadius: cornerRadius => {
-        dispatch(changeCornerRadius(cornerRadius));
+    onChangeShapeParam: (key, value) => {
+        const action = SHAPE_PARAM_ACTIONS[key];
+        if (action) dispatch(action(value));
     },
     onTogglePanel: () => {
         dispatch(togglePanel());
+    },
+    setSelectedItems: () => {
+        dispatch(setSelectedItems(getSelectedLeafItems(), false /* bitmapMode */));
     }
 });
 

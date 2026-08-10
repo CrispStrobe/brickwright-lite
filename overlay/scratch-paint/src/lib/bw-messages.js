@@ -40,8 +40,27 @@ const STRINGS = {
         needTwo: 'Select two or more objects.',
         needThree: 'Select three or more objects.',
 
+        combine: 'Combine',
+        unite: 'Unite',
+        subtract: 'Subtract front',
+        intersect: 'Intersect',
+        exclude: 'Exclude overlap',
+        divide: 'Divide',
+        needTwoPaths: 'Select two or more shapes.',
+        booleanEmpty: 'Those shapes do not overlap, so there would be nothing left.',
+
+        symmetry: 'Symmetry',
+        mirrorHorizontal: 'Mirror a copy left/right',
+        mirrorVertical: 'Mirror a copy up/down',
+        mirrorAbout: 'Mirror about',
+        mirrorAboutEdge: 'Edge',
+        mirrorAboutCanvas: 'Canvas',
+
         shape: 'Shape',
-        cornerRadius: 'Corner radius'
+        cornerRadius: 'Corner radius',
+        polygonSides: 'Sides',
+        starPoints: 'Points',
+        starInnerRatio: 'Waist'
     },
     de: {
         properties: 'Eigenschaften',
@@ -75,8 +94,27 @@ const STRINGS = {
         needTwo: 'Wähle zwei oder mehr Objekte aus.',
         needThree: 'Wähle drei oder mehr Objekte aus.',
 
+        combine: 'Kombinieren',
+        unite: 'Vereinen',
+        subtract: 'Vorderes abziehen',
+        intersect: 'Schnittmenge',
+        exclude: 'Überlappung ausschließen',
+        divide: 'Unterteilen',
+        needTwoPaths: 'Wähle zwei oder mehr Formen aus.',
+        booleanEmpty: 'Diese Formen überlappen sich nicht — es bliebe nichts übrig.',
+
+        symmetry: 'Symmetrie',
+        mirrorHorizontal: 'Kopie links/rechts spiegeln',
+        mirrorVertical: 'Kopie oben/unten spiegeln',
+        mirrorAbout: 'Spiegeln an',
+        mirrorAboutEdge: 'Kante',
+        mirrorAboutCanvas: 'Zeichenfläche',
+
         shape: 'Form',
-        cornerRadius: 'Eckenradius'
+        cornerRadius: 'Eckenradius',
+        polygonSides: 'Seiten',
+        starPoints: 'Zacken',
+        starInnerRatio: 'Taille'
     }
 };
 

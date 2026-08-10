@@ -102,6 +102,111 @@ const AspectLock = ({locked}) => (
     </svg>
 );
 
+/*
+ * Boolean-op glyphs. Each is the same two overlapping shapes — a square and a circle — with only
+ * the shading changed, so the icons read as a set and each one shows exactly which regions the
+ * operation keeps. The outline of both operands always stays visible, or "keep nothing but the
+ * overlap" would look identical to "delete everything".
+ */
+const SQUARE = {x: 3.5, y: 5.5, width: 9, height: 9};
+const CIRCLE = {cx: 12.5, cy: 11, r: 4.8};
+const outline = {fill: 'none', stroke: 'currentColor', strokeWidth: '1.3', opacity: '0.65'};
+const solid = {fill: 'currentColor', opacity: '0.55'};
+
+/**
+ * @param {!React.ReactNode} filled The shaded regions, drawn under the outlines.
+ * @return {!React.ReactElement} The finished two-operand glyph.
+ */
+const booleanIcon = filled => (
+    <svg {...svgProps}>
+        {filled}
+        <rect {...outline} {...SQUARE} rx="1" />
+        <circle {...outline} {...CIRCLE} />
+    </svg>
+);
+
+const Unite = () => booleanIcon(
+    <g {...solid}>
+        <rect {...SQUARE} rx="1" />
+        <circle {...CIRCLE} />
+    </g>
+);
+/* The circle is punched out of the square, so the shaded square is clipped by a mask. */
+const Subtract = () => (
+    <svg {...svgProps}>
+        <mask id="bw-subtract-mask">
+            <rect x="0" y="0" width="20" height="20" fill="black" />
+            <rect {...SQUARE} rx="1" fill="white" />
+            <circle {...CIRCLE} fill="black" />
+        </mask>
+        <rect x="0" y="0" width="20" height="20" mask="url(#bw-subtract-mask)" {...solid} />
+        <rect {...outline} {...SQUARE} rx="1" />
+        <circle {...outline} {...CIRCLE} />
+    </svg>
+);
+/* Only the lens where the two meet. */
+const Intersect = () => (
+    <svg {...svgProps}>
+        <mask id="bw-intersect-mask">
+            <rect {...SQUARE} rx="1" fill="white" />
+        </mask>
+        <circle {...CIRCLE} mask="url(#bw-intersect-mask)" {...solid} />
+        <rect {...outline} {...SQUARE} rx="1" />
+        <circle {...outline} {...CIRCLE} />
+    </svg>
+);
+/* Everything except the lens: paint the union white, then punch the overlap back out in black. */
+const Exclude = () => (
+    <svg {...svgProps}>
+        <defs>
+            <clipPath id="bw-exclude-clip">
+                <rect {...SQUARE} rx="1" />
+            </clipPath>
+        </defs>
+        <mask id="bw-exclude-mask">
+            <rect {...SQUARE} rx="1" fill="white" />
+            <circle {...CIRCLE} fill="white" />
+            <circle
+                {...CIRCLE}
+                clipPath="url(#bw-exclude-clip)"
+                fill="black"
+            />
+        </mask>
+        <rect x="0" y="0" width="20" height="20" mask="url(#bw-exclude-mask)" {...solid} />
+        <rect {...outline} {...SQUARE} rx="1" />
+        <circle {...outline} {...CIRCLE} />
+    </svg>
+);
+/* All three regions kept, drawn apart to show they are now separate objects. */
+const Divide = () => (
+    <svg {...svgProps}>
+        <rect {...solid} x="2.5" y="5.5" width="8" height="9" rx="1" />
+        <circle {...solid} cx="14" cy="11" r="4.4" />
+        <rect {...outline} x="2.5" y="5.5" width="8" height="9" rx="1" />
+        <circle {...outline} cx="14" cy="11" r="4.4" />
+    </svg>
+);
+
+/** Mirror: a shape, its axis, and the reflected copy. */
+const mirrorIcon = vertical => (
+    <svg {...svgProps}>
+        <g transform={vertical ? 'rotate(90 10 10)' : undefined}>
+            <path {...solid} d="M9 4.5v11H4l5-11z" />
+            <path {...outline} d="M11 4.5v11h5l-5-11z" />
+            <line
+                {...edge}
+                strokeDasharray="2 2"
+                x1="10"
+                y1="2.5"
+                x2="10"
+                y2="17.5"
+            />
+        </g>
+    </svg>
+);
+const MirrorHorizontal = () => mirrorIcon(false);
+const MirrorVertical = () => mirrorIcon(true);
+
 /** Chevron for the rail's collapse toggle. */
 const Chevron = ({pointsRight}) => (
     <svg {...svgProps}>
@@ -132,6 +237,13 @@ export {
     Chevron,
     DistributeHorizontal,
     DistributeVertical,
+    Divide,
+    Exclude,
+    Intersect,
+    MirrorHorizontal,
+    MirrorVertical,
     RotateClockwise,
-    RotateCounterClockwise
+    RotateCounterClockwise,
+    Subtract,
+    Unite
 };
