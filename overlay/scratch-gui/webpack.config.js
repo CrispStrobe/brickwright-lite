@@ -162,6 +162,13 @@ const buildConfig = baseConfig.clone()
                 // the whole app (a file under static/ could only control static/).
                 from: 'sw.js',
                 to: 'sw.js'
+            },
+            {
+                // Examples gallery index — 22 KiB, 53 entries, bilingual.
+                // The ExamplesBrowser fetches 'examples/index.json' (relative).
+                from: 'examples',
+                to: 'examples',
+                noErrorOnMissing: true
             }
         ]
     }));
