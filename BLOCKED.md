@@ -136,3 +136,50 @@ would just change which TabPanel is selected, not where content renders.
 - **SDCC WASM byte-identity** not verified. Behind localStorage flag. Preview only.
 - **Licence choice is owner's call.** MPL-2.0 was added to bw-circuit-ui (01860ac)
   and bw-bundle (e3ad9f6). Owner has not ruled. Do not change any LICENSE file.
+
+## RESOLVED: schematic zero-wires defect
+
+Headless verification (Playwright, 3 cases, deployed site at `c2c1e62`):
+- Case 1 (Blink): 6 symbols, 3 nets, 12 segments — unchanged by fix
+- Case 2 (Dimmer): 7 symbols, 5 nets, 22 segments — unchanged by fix
+- Case 3 (LED chaser): 20 symbols, **0→20 nets**, **0→67 segments**, 0→9 junctions
+
+Root cause: `fromJSON` did not resolve terminal aliases against each part's
+real terminal list. Wire endpoints referencing legacy names never matched,
+`_syncNetlist` produced 0 nets, schematic drew 0 wires. Fixed in
+bw-circuit-ui `92c6450`. Cases 1 and 2 were unaffected — their circuits
+already resolved. Screenshots: `/tmp/schematic-{1,2,3}-*.png`.
+
+## PLANNED: avr8js emulator integration
+
+**Owner: bw-bundle.** Not started — write-up only, to hand forward.
+
+### Verified
+
+- **avr8js** npm: MIT, wokwi/avr8js, v0.21.0 (Arduino 8-bit AVR simulator)
+- **rp2040js** npm (later): MIT, wokwi/rp2040js, v1.3.3 (RP2040/Pico)
+- Both need THIRD-PARTY-NOTICES.md entries when installed
+
+### Adapter contract (coordinator, bw-board)
+
+```
+createAvr8jsAdapter({clockHz=16MHz, vcc=5, program?: Uint16Array})
+  → { cpu, loadProgram(words), attachBoard(board), advanceNs(deltaNs), timeNs(), stats }
+```
+
+Boundary A identical to emu8051. Pin names: D0-D13, A0-A5
+(ATMEGA328P_PINS map exported). Time-first-edge-second rule.
+
+### What needs building
+
+1. Intel HEX → Uint16Array parser (little-endian byte pairs, small)
+2. `targetKind: 'avr8js'` path in debug-runner.js (parallel to emu8051, lines 345-410)
+3. `getTargetKinds()` entry in debug-target-factory.js
+4. avr-gcc compile endpoint — bw-cfront's track, not ours
+5. THIRD-PARTY-NOTICES.md entries for avr8js (and rp2040js when added)
+
+### What was ruled out
+
+- rp2040js is later — no compile backend, no adapter contract yet
+- Do not guess the adapter API — the contract must land on bw-board master first
+  (as of 2026-08-10, `avr8js-adapter.js` not yet on master)
