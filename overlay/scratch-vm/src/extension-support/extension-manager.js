@@ -23,6 +23,10 @@ const builtinExtensions = {
     arrays: () => require('../extensions/crispstrobe/arrays'),
     // The pin blocks sb3-creator has always emitted for hardware projects. Without
     // this line every one of them failed to load with "Unknown extension: stc12".
+    // sb3-creator's bitwise reporters (bitand/bitor/.../shiftright). Without
+    // this line the id fell to the SANDBOXED loader: importScripts('bitops')
+    // 404'd and the blocks were dropped (gallery sweep, 2026-08-10).
+    bitops: () => require('../extensions/crispstrobe/bitops'),
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     circuit: () => require('../extensions/crispstrobe/circuit'),

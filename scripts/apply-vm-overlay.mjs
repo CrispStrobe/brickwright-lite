@@ -151,16 +151,47 @@ const deserPatch = `    deserializeProject (projectJSON, zip) {
                     this.extensionManager.loadExtensionURL(id);
                 }
             }
+        }
+        // Brickwright: ids that just loaded as BUILTINS must not load a second
+        // time from extensionURLs — the sb3 carries gallery URLs so the file
+        // stays openable in stock TurboWarp, but here a URL load spawns a
+        // SANDBOXED extension worker: importScripts noise at best, a slower
+        // duplicate registration at worst (the duplicate block-definition
+        // warnings, 2026-08-10). An id with no URL entry used to fall through
+        // to the sandbox too, with the bare id as the URL ('bitops' 404).
+        if (projectJSON.extensionURLs) {
+            for (const id of Object.keys(projectJSON.extensionURLs)) {
+                if (this.extensionManager.isExtensionLoaded(id)) {
+                    delete projectJSON.extensionURLs[id];
+                }
+            }
         }`;
-if (vm2.includes('// Brickwright: pre-load declared extensions')) {
-    console.log('  virtual-machine.js pre-load extensions already applied');
+const preloadBlock = `        if (projectJSON.extensions && Array.isArray(projectJSON.extensions)) {
+            for (const id of projectJSON.extensions) {
+                if (!this.extensionManager.isExtensionLoaded(id)) {
+                    this.extensionManager.loadExtensionURL(id);
+                }
+            }
+        }`;
+const stripBlock = deserPatch.slice(deserPatch.indexOf('\n        // Brickwright: ids that just loaded as BUILTINS'));
+if (vm2.includes('// Brickwright: ids that just loaded as BUILTINS')) {
+    console.log('  virtual-machine.js pre-load + URL-strip already applied');
+} else if (vm2.includes(preloadBlock)) {
+    // Older install: preload present, URL-strip missing. Append the strip —
+    // NOT a deserAnchor replace: the anchor is a SUBSTRING of the patched
+    // text and re-replacing it duplicates the preload block.
+    vm2 = vm2.replace(preloadBlock, preloadBlock + stripBlock);
+    writeFileSync(vmPath2, vm2);
+    console.log('  patched virtual-machine.js (added extensionURLs strip)');
 } else if (vm2.includes(deserAnchor)) {
     vm2 = vm2.replace(deserAnchor, deserPatch);
-    console.log('  patched virtual-machine.js (pre-load declared extensions)');
+    writeFileSync(vmPath2, vm2);
+    console.log('  patched virtual-machine.js (pre-load declared extensions + URL strip)');
 } else {
     console.error('  ! virtual-machine.js deserializeProject anchor not found');
     process.exit(1);
 }
+vm2 = readFileSync(vmPath2, 'utf8');
 const vmSetStcAnchor = '    installTargets (targets, extensions, wholeProject) {';
 const vmSetStcPatch = `    /**
      * Set hardware declarations (device, clock, pin table). The single entry point
