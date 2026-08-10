@@ -755,6 +755,20 @@ upstream material (SDCC). Everything else in this repository is BSD-3-Clause
 invokable program distributed alongside the BSD-3 editor; their presence does
 not change the licence of the editor code.
 
+## avr8js — MIT
+
+**avr8js** (MIT License, https://github.com/wokwi/avr8js) provides
+instruction-level ATmega328P emulation (Arduino Uno/Nano) for the
+circuit simulator. Imported as `avr8js` via the bw-board adapter
+(`overlay/scratch-gui/src/lib/bw-board/avr8js-adapter.js`).
+
+- **Version:** 0.21.0
+- **Licence:** MIT
+- **Source:** https://github.com/wokwi/avr8js
+- **Usage:** AVR CPU simulation, I/O port + timer + ADC peripherals.
+  No source code from avr8js is modified; the package is consumed as
+  a published npm dependency.
+
 ## wokwi-elements — MIT
 
 **wokwi-elements** (MIT License, https://github.com/wokwi/wokwi-elements)

@@ -16,6 +16,7 @@
  */
 
 import { createEmu8051Adapter } from './emu8051-adapter.js';
+import { createAvr8jsAdapter } from './avr8js-adapter.js';
 import { createSerialDebugTarget } from './serial-debug.js';
 
 /**
@@ -45,11 +46,14 @@ export async function createDebugTarget(kind, opts) {
   if (kind === 'emulator') {
     return createEmulatorTarget(opts);
   }
+  if (kind === 'avr8js') {
+    return createAvr8jsTarget(opts);
+  }
   if (kind === 'serial') {
     return createSerialTarget(opts);
   }
   throw new Error(
-    `Unknown debug target kind: '${kind}'. Use 'emulator' or 'serial'.`
+    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js' or 'serial'.`
   );
 }
 
@@ -105,6 +109,61 @@ async function createEmulatorTarget(opts) {
   return { target, adapter };
 }
 
+// ─── AVR target (avr8js) ─────────────────────────────────────────────────
+
+async function createAvr8jsTarget(opts) {
+  const { board, hex, clockHz, vcc = 5.0 } = opts;
+
+  if (!board) throw new Error('avr8js target requires opts.board');
+
+  // 1. Adapter — clockHz comes from the compile response, never hard-coded
+  const adapter = createAvr8jsAdapter({ clockHz, vcc });
+
+  // 2. Attach board
+  adapter.attachBoard(board);
+
+  // 3. Load hex — parse Intel HEX to Uint16Array of 16-bit words
+  if (hex) {
+    const words = parseIntelHex(hex);
+    adapter.loadProgram(words);
+  }
+
+  // avr8js has no separate debug target yet — the adapter IS the target.
+  // The runner drives it through advanceNs/timeNs the same way it drives
+  // emu8051 through the adapter's tick loop. A full debug target (with
+  // breakpoints, symbol resolution, yield points) is a later addition;
+  // for now the adapter provides execution and pin-level simulation.
+  return { adapter, target: null };
+}
+
+/**
+ * Parse an Intel HEX string into a Uint16Array of 16-bit words (little-endian
+ * byte pairs), suitable for avr8js's progMem.
+ */
+function parseIntelHex(hex) {
+  const bytes = new Uint8Array(0x8000); // 32 KB flash
+  let maxAddr = 0;
+  for (const line of hex.split(/\r?\n/)) {
+    if (!line.startsWith(':')) continue;
+    const len = parseInt(line.slice(1, 3), 16);
+    const addr = parseInt(line.slice(3, 7), 16);
+    const type = parseInt(line.slice(7, 9), 16);
+    if (type !== 0) continue; // only data records
+    for (let i = 0; i < len; i++) {
+      const b = parseInt(line.slice(9 + i * 2, 11 + i * 2), 16);
+      bytes[addr + i] = b;
+      if (addr + i + 1 > maxAddr) maxAddr = addr + i + 1;
+    }
+  }
+  // Pack into 16-bit words (little-endian: low byte first)
+  const wordCount = Math.ceil(maxAddr / 2);
+  const words = new Uint16Array(wordCount);
+  for (let i = 0; i < wordCount; i++) {
+    words[i] = bytes[i * 2] | (bytes[i * 2 + 1] << 8);
+  }
+  return words;
+}
+
 // ─── Serial target ───────────────────────────────────────────────────────
 
 async function createSerialTarget(opts) {
@@ -136,6 +195,11 @@ export function getTargetKinds() {
       kind: 'emulator',
       label: 'Simulated (emu8051)',
       description: 'Full instruction-level emulation. All debug features available.',
+    },
+    {
+      kind: 'avr8js',
+      label: 'Simulated (AVR)',
+      description: 'ATmega328P instruction-level emulation (Arduino Uno/Nano).',
     },
     {
       kind: 'serial',

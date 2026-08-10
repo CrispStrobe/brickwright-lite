@@ -351,6 +351,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 'which cannot be written blind. Choose "Simulated (emu8051)" for now.'
             );
         }
+
+        if (targetKind === 'avr8js') {
+            return attachAvr8js(built);
+        }
+
         setStatus('attaching', 'starting the emulator…');
         const [{ createEmu8051DebugTarget, createDebugSession, createEmu8051Adapter,
             BoardImpl, inferNetlist }, createEmu8051] = await Promise.all([
@@ -465,6 +470,49 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         setStatus('ready', `${built.bytes} bytes, ${blockOf.size} yield points`);
         return session;
+    }
+
+    // ── AVR attach path ─────────────────────────────────────────────────
+    // avr8js is pure JS — no WASM, no callback-pointer gymnastics. The
+    // adapter drives the board through the same boundary A as emu8051.
+    // No debug target with breakpoints yet: the adapter provides execution
+    // and pin-level simulation. Block-level debugging (step, pause, glow)
+    // requires a yield-point model for AVR, which is a later addition.
+    async function attachAvr8js(built) {
+        setStatus('attaching', 'starting the AVR emulator…');
+        const { createDebugTarget, BoardImpl, inferNetlist } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+
+        const stc = projectStc(null);
+
+        // F_CPU from the compile response, never hard-coded. The compile
+        // endpoint owns the clock and echoes it so the simulator does not
+        // guess — this project already documents that failure mode for 1T
+        // versus 12T cores.
+        const clockHz = built.f_cpu || built.clockHz || 16_000_000;
+
+        // Board — same one-board-one-truth rule as emu8051.
+        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
+        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
+            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
+            ? { parts: designerBoard.parts, nets: designerBoard.getNets() }
+            : inferNetlist(stc);
+        board = new BoardImpl();
+        board.setNetlist(netlist.parts, netlist.nets);
+        board.setPower(true);
+
+        // The factory creates the adapter, attaches the board, parses the
+        // Intel HEX into Uint16Array words, and loads the program.
+        const { adapter } = await createDebugTarget('avr8js', {
+            board, hex: built.hex, clockHz,
+        });
+
+        setStatus('ready', `${built.bytes} bytes (AVR), running`);
+
+        // No session/target yet — the adapter runs but block-level debugging
+        // (step, pause, breakpoints) is not wired for AVR. The board and
+        // pins are live, which is the simulation the Circuit tab shows.
+        return null;
     }
 
     /**

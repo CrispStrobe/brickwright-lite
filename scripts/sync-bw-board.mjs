@@ -100,11 +100,17 @@ const vendoredFiles = async () => {
     return out;
 };
 
+// avr8js is the one allowed external dependency: the adapter imports the
+// emulator package, which is installed in packages/scratch-gui.
+const ALLOWED_PACKAGES = new Set(['avr8js']);
+
 if (!check) {
     for (const f of await vendoredFiles()) {
         const src = await readFile(path.join(dest, f), 'utf8');
         for (const m of src.matchAll(/^\s*import\s[^'"\n]*['"]([^'".][^'"]*)['"]/gm)) {
-            throw new Error(`${f} imports a package (${m[1]}); bw-board must stay dependency-free`);
+            if (!ALLOWED_PACKAGES.has(m[1])) {
+                throw new Error(`${f} imports a package (${m[1]}); bw-board must stay dependency-free (allowed: ${[...ALLOWED_PACKAGES].join(', ')})`);
+            }
         }
     }
 }
