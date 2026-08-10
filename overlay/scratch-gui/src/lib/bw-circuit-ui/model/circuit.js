@@ -740,6 +740,10 @@ export class Circuit {
       vcc: this.vcc,
       parts: this.parts.map(p => ({ ...p })),
       wires: this.wires.map(w => ({ ...w })),
+      // Jumpers live in the per-board occupancy models — without this they
+      // silently vanished from saves and the restored board stopped
+      // conducting through its rails.
+      holeWires: this.holeWires(),
     };
   }
 
@@ -752,6 +756,25 @@ export class Circuit {
     const c = new Circuit(data.vcc);
     c.parts = data.parts.map(p => ({ ...p }));
     c.wires = data.wires.map(w => ({ ...w }));
+    // Rebuild what serialization flattens: every breadboard part gets its
+    // occupancy model back, and every seated part re-occupies its holes.
+    // Without this, a loaded save LOOKED right but the strips no longer
+    // conducted - the LED that was lit when saved came back dark.
+    for (const p of c.parts) {
+      if (p.kind === 'breadboard') c.breadboards.set(p.id, new BreadboardModel());
+    }
+    for (const p of c.parts) {
+      if (!p.seat) continue;
+      const bb = c.breadboards.get(p.seat.boardId);
+      if (!bb) { delete p.seat; continue; }
+      try { bb.occupy(p.id, p.seat.leadMap); } catch { delete p.seat; }
+    }
+    for (const jw of data.holeWires || []) {
+      const bb = c.breadboards.get(jw.boardId);
+      if (!bb) continue;
+      const id = jw.ref ? jw.ref.split(':').pop() : genId('bbw');
+      try { bb.addWire(id, jw.a, jw.b, jw.color); } catch { /* occupied: drop honestly */ }
+    }
     c._syncNetlist();
     return c;
   }
