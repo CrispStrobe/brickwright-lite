@@ -647,3 +647,41 @@ none copyleft in a way that affects this binary.
 - zvariant 5.13.0 (MIT) -- https://github.com/z-galaxy/zbus/
 - zvariant_derive 5.13.0 (MIT) -- https://github.com/z-galaxy/zbus/
 - zvariant_utils 3.5.0 (MIT) -- https://github.com/z-galaxy/zbus/
+
+## SDCC (Small Device C Compiler) — GPL-2-or-later
+
+**Location in this repo:** `overlay/scratch-gui/src/lib/sdcc-wasm/dist/`
+
+This directory contains SDCC 4.5.0 compiled to WebAssembly (Emscripten),
+distributed under **GPL-2.0-or-later**. It is a separate program invoked
+at the user's request to compile C source to Intel HEX for the 8051/mcs51
+target — it is NOT linked into the BSD-3 editor code.
+
+- **Version:** 4.5.0 (mcs51 port only)
+- **Licence:** GPL-2.0-or-later
+- **Source:** https://sourceforge.net/projects/sdcc/files/sdcc/4.5.0/sdcc-src-4.5.0.tar.bz2/download
+- **Source SHA-256:** `d5030437fb436bb1d93a8dbdbfb46baaa60613318f4fb3f5871d72815d1eed80`
+- **Build toolchain:** Emscripten 3.1.61 (no patches to SDCC source)
+- **Components:** sdcc.js/wasm, sdas8051.js/wasm, sdld.js/wasm, include/mcs51/*.h
+
+### Compiled output and headers
+
+SDCC's runtime libraries and headers carry an explicit exception to the GPL
+(see `COPYING` in the SDCC source tree):
+
+> "As a special exception, if you link this library with other files, some of
+> which are compiled with SDCC, to produce an executable, this library does not
+> by itself cause the resulting executable to be covered by the GNU General
+> Public License."
+
+This means a user's compiled `.hex` output does NOT carry GPL obligations.
+The headers in `include/mcs51/` are part of SDCC's library distribution and
+fall under the same exception.
+
+### Licence boundary
+
+Everything under `overlay/scratch-gui/src/lib/sdcc-wasm/dist/` is GPL-2+
+upstream material (SDCC). Everything else in this repository is BSD-3-Clause
+(see LICENSE at the repo root). The SDCC binaries are a separate, independently
+invokable program distributed alongside the BSD-3 editor; their presence does
+not change the licence of the editor code.
