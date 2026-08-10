@@ -239,6 +239,40 @@ class PaperCanvas extends React.Component {
             }
         }
 
+        // Brickwright: give every rounded <rect> both of its corner radii before paper sees it.
+        //
+        // SVG says a missing ry defaults to rx and vice versa, so `<rect rx="12">` is a rect with
+        // 12x12 corners. paper's importer does not implement that default: it reads ry straight
+        // off the node, gets nothing, and builds the shape with radius (12, 0) — and a corner
+        // radius with a zero axis is a SQUARE corner. Every `<rect rx="...">` written the normal
+        // way therefore lost its rounding on import, and the next edit exported the squared-off
+        // result back over the costume, so the damage was permanent. Our own robot sprite is 14
+        // such rects (the 6 that also carry ry always survived, which is why some corners looked
+        // right and others did not).
+        //
+        // Normalising the input is the honest fix: it is what the spec already says the markup
+        // means, it is confined to the file we own, and it leaves paper untouched.
+        const rects = svgDom.getElementsByTagName('rect');
+        let normalizedRadii = false;
+        for (let i = 0; i < rects.length; i++) {
+            const rx = rects[i].getAttribute('rx');
+            const ry = rects[i].getAttribute('ry');
+            // Copy the value verbatim rather than parsing it: percentages and SVG2's `auto` are
+            // both legal here and both mean "whatever the other axis is".
+            if (rx !== null && ry === null) {
+                rects[i].setAttribute('ry', rx);
+                normalizedRadii = true;
+            } else if (ry !== null && rx === null) {
+                rects[i].setAttribute('rx', ry);
+                normalizedRadii = true;
+            }
+        }
+        // Only re-serialise when something actually changed, so costumes without this problem go
+        // to paper as the exact bytes they arrived as.
+        if (normalizedRadii) {
+            svg = new XMLSerializer().serializeToString(svgDom);
+        }
+
         paper.project.importSVG(svg, {
             expandShapes: true,
             onLoad: function (item) {
