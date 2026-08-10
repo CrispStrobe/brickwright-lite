@@ -144,6 +144,10 @@ export function computePaneStyles(left, middle, right) {
         flexShrink: 0,
         minWidth: `${XS_MIN_WIDTH}px`,
         overflow: 'hidden',
+        // The containing block for PaneStrip, which covers the collapsed column so the
+        // 28px slice of clipped stage underneath is not what the user sees. Stated here
+        // rather than relied upon: the base .stage-and-target-wrapper does not set it.
+        position: 'relative',
       };
     }
     if (isExplicitFraction(name)) {

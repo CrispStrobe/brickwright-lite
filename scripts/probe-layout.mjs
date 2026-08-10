@@ -197,6 +197,41 @@ try {
         check('double-clicking the divider collapses the stage column to a strip',
             collapsed.stageColumn.w <= 40,
             `stage column ${collapsed.stageColumn.w}px`);
+
+        // A collapsed pane must LOOK collapsed. Without the strip covering it, those 28px
+        // show a vertical slice of the live stage — part of the green flag, a sliced
+        // sprite, two orphaned letters — which is what got the old collapse step reported
+        // as broken. Width alone does not catch that; the lid has to be there.
+        const strip = await page.evaluate(() => {
+            const el = document.querySelector('[class*="pane-strip_strip"]');
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            const s = getComputedStyle(el);
+            return {w: Math.round(r.width), h: Math.round(r.height),
+                text: el.textContent.trim(), opaque: s.backgroundColor,
+                covers: r.height > 100};
+        });
+        check('the collapsed column shows a labelled strip, not a slice of stage',
+            strip && strip.covers && /stage|bühne/i.test(strip.text),
+            strip ? `strip ${strip.w}x${strip.h}, label "${strip.text}"` : 'no strip rendered');
+
+        // The stage must survive being collapsed. Unmounting StageWrapper would take
+        // scratch-render's canvas with it, and the restore would be a remount.
+        const canvasAlive = await page.evaluate(() => {
+            const c = document.querySelector('canvas');
+            return c ? c.width : 0;
+        });
+        check('the stage canvas is still mounted behind the strip',
+            canvasAlive > 0, `canvas backing store ${canvasAlive}px wide`);
+
+        if (strip) {
+            await page.click('[class*="pane-strip_strip"]');
+            await page.waitForTimeout(900);
+            const restored = await measure();
+            check('clicking the strip restores the stage column',
+                restored.stageColumn.w > 200,
+                `${collapsed.stageColumn.w}px -> ${restored.stageColumn.w}px`);
+        }
     }
     // --- Invariant 3: the costume tab's properties rail must not stretch the editor past the
     // window. This is the bug that produced the grey band and the "broken" zoom, four times over.

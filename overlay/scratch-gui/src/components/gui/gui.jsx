@@ -23,6 +23,7 @@ import MenuBar from '../menu-bar/menu-bar.jsx';
 import ChromeToggle from './chrome-toggle.jsx';
 import chromeStyles from './compact-chrome.css';
 import PaneDivider from './pane-divider.jsx';
+import PaneStrip from './pane-strip.jsx';
 import {computePaneStyles, isCollapsed} from '../../lib/pane-sizes.js';
 import {setPaneSize} from '../../reducers/pane-layout';
 import CostumeLibrary from '../../containers/costume-library.jsx';
@@ -408,6 +409,14 @@ const GUIComponent = props => {
 
                         <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}
                             style={paneStyles.right}>
+                            {/* Covers the column rather than replacing it — the stage stays
+                                mounted underneath, clipped to 28px, so restoring is instant
+                                and scratch-render's canvas is never torn down. */}
+                            {isCollapsed(rightSize) ? (
+                                <PaneStrip
+                                    onRestore={() => onSetPaneSize && onSetPaneSize('right', 'm')}
+                                />
+                            ) : null}
                             <StageWrapper
                                 isFullScreen={isFullScreen}
                                 isRendererSupported={isRendererSupported}

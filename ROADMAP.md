@@ -3,7 +3,7 @@
 Everything known to be pending, in one place, with the measurements that were expensive to
 obtain. Two rules for this file:
 
-- **A entry carries its evidence.** Numbers, not impressions. An item that says "feels cramped"
+- **Each entry carries its evidence.** Numbers, not impressions. An item that says "feels cramped"
   costs its next reader a day; one that says "the rail pins the editor's min-content at 776px"
   costs them nothing.
 - **Cross-reference, do not copy.** `BLOCKED.md` is bw-bundle's own log and stays authoritative
@@ -18,16 +18,18 @@ practice until then.
 
 ## 1. Costume designer & GUI layout
 
-### 1.1 Collapsed stage column is a clipped stage, not a strip — OPEN
-The divider's double-click collapses the stage column to 28px, and what shows in those 28px is a
-vertical slice of the live stage: a fragment of the green flag, a sliced sprite, two orphaned
-letters from the sprite panel. This is the same thing that was reported as "broken/nonsensical"
-about the old `xs` step of the cycling debug button. The draggable divider changed how the state
-is reached, not what it looks like.
+### 1.1 Collapsed stage column is a clipped stage, not a strip — RESOLVED (`pane-strip.jsx`)
+Collapsing showed 28px of live stage: a fragment of the green flag, a sliced sprite, two orphaned
+letters from the sprite panel — the same thing reported as "broken/nonsensical" about the old `xs`
+step of the cycling button. The divider changed how that state was reached, not what it looked
+like.
 
-`overlay/scratch-gui/src/components/gui/pane-column.jsx` already has a `stripStyle` that renders a
-labelled vertical strip for exactly this, and is on the dead-module ratchet (§4). Fixing this
-retires a dead module.
+`pane-strip.jsx` now covers the collapsed column with a labelled, clickable strip. It covers
+rather than replaces: `StageWrapper` stays mounted underneath, because unmounting it would take
+scratch-render's canvas with it and make restoring a remount. Verified by probe — the canvas
+backing store stays 480px wide throughout, and clicking the strip restores 28px → 725px.
+
+Retired `pane-column.jsx` from the ratchet in the same commit (§4).
 
 ### 1.2 Properties rail reserves width globally — OPEN
 The rail reserves 15rem (11rem narrow). The number that matters is downstream of that: **opening
@@ -97,9 +99,10 @@ via `vm.runtime.bwDebugRunner`. Not started. See `BLOCKED.md`.
 
 ### 3.2 Pane-slots full routing — DEFERRED
 The reducer models `upper`/`lower` content slots per column; `gui.jsx` reads only `.size`. The
-content swap works. Full `PaneColumn` decomposition was judged not worth the risk (it would mean
-breaking Scratch's `<Tabs>` apart). See `BLOCKED.md`. §1.1 uses `PaneColumn` for the strip only,
-which needs none of that.
+content swap works. Full slot decomposition was judged not worth the risk (it would mean breaking
+Scratch's `<Tabs>` apart). See `BLOCKED.md`. The `PaneColumn` renderer written for it is gone
+(§1.1) — it was ~40 lines of flex divs and cheap to write again if this is ever revived; what
+would be expensive is the `<Tabs>` decomposition, and that was never started.
 
 ### 3.3 Long-horizon tracks — NOT STARTED
 All specified in `CLAUDE.md`; not repeated here.
@@ -116,10 +119,11 @@ All specified in `CLAUDE.md`; not repeated here.
 
 ## 4. Standing debt
 
-**Dead-module ratchet** (`test/no-dead-overlay-modules.test.mjs`) — six entries, and the list may
-only go down. Two are ours: `components/gui/pane-column.jsx` and `lib/flyout-resize.js`, both
-written and never imported. Four are vendored bw-circuit-ui modules used only by its standalone
-demo. §1.1 retires the first.
+**Dead-module ratchet** (`test/no-dead-overlay-modules.test.mjs`) — **five** entries, and the list
+may only go down. One is ours: `lib/flyout-resize.js`, which bridges the pane size vocabulary to
+Blockly's flyout for the LEFT column and has no caller because only the right column is sized
+today. Four are vendored bw-circuit-ui modules used only by its standalone demo.
+`components/gui/pane-column.jsx` came off the list in §1.1.
 
 **Attribution wart** — the `project-data.js` rotation-centre fix was swept into `333fae8`
 ("vendor bw-circuit-ui") by a concurrent `git add -A`. Content is correct and verified; only the

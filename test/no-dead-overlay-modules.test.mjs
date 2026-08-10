@@ -60,12 +60,15 @@ const ALLOWED = new Map([
  * name; removing one means editing this list in the same commit.
  */
 const KNOWN_DEAD = new Map([
-    ['components/gui/pane-column.jsx',
-        'Renders the pane-layout slots. The slots are modelled, actioned and ' +
-        'tested; nothing renders them. Needs an owner in lite — bw-circuit-ui ' +
-        'correctly refused to cross the repo boundary to wire it.'],
+    // pane-column.jsx was here. Its collapsed-strip branch was the only part with a
+    // caller waiting for it, and pane-strip.jsx now does that job for the one column
+    // that collapses; the rest of it rendered the two-slot layout, which was ruled out
+    // as not worth breaking Scratch's <Tabs> apart for (BLOCKED.md, "pane-slots"). Kept
+    // as a comment rather than silently dropped, because the ratchet's whole point is
+    // that the list moving is visible.
     ['lib/flyout-resize.js',
-        'Same feature as pane-column: written, never imported.'],
+        'Bridges the pane size vocabulary to Blockly\'s flyout for the LEFT column. ' +
+        'Written, never imported; only the right column is sized today.'],
     ['lib/bw-circuit-ui/model/demo-netlist.js', 'Vendored; used only by the standalone demo.'],
     ['lib/bw-circuit-ui/model/export-png.js', 'Vendored; PNG export is not surfaced in lite.'],
     ['lib/bw-circuit-ui/model/simulation.js', 'Vendored; lite drives the board through bw-board.'],
