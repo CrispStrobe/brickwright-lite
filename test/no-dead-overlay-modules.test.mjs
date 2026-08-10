@@ -86,6 +86,48 @@ function walk (dir, out = []) {
     return out;
 }
 
+/**
+ * The integrated tree must match the overlay before any of this means anything.
+ *
+ * This test lists modules from `overlay/` but looks for their importers in
+ * `packages/` — the integrated copy. `packages/` is generated and gitignored,
+ * so it goes stale the moment a vendor sync lands without `npm run integrate`.
+ * When that happens the test does not fail to run; it fails with the WRONG
+ * ANSWER, accusing a live module of being dead because the stale copy of its
+ * importer has not caught up.
+ *
+ * That happened on 2026-08-10: `terminal-aliases.js` was reported as imported
+ * by nothing while `circuit.js` had imported it since 92c6450 — the schematic
+ * wire fix. Six files were stale. The finding read as "delete this dead code",
+ * which would have removed the fix.
+ *
+ * So the staleness is checked first and named for what it is. A test whose
+ * input is out of date should say so, not answer confidently from it.
+ */
+function staleIntegratedFiles () {
+    const stale = [];
+    for (const f of walk(overlaySrc)) {
+        const rel = relative(overlaySrc, f).split('\\').join('/');
+        const built = join(builtSrc, rel);
+        if (!existsSync(built)) continue;
+        if (readFileSync(f, 'utf8') !== readFileSync(built, 'utf8')) stale.push(rel);
+    }
+    return stale;
+}
+
+test('the integrated tree is current', {
+    skip: existsSync(builtSrc) ? false :
+        'packages/scratch-gui not integrated — run `npm run integrate` first'
+}, () => {
+    const stale = staleIntegratedFiles();
+    assert.deepEqual(stale, [],
+        `${stale.length} file(s) differ between overlay/ and the integrated ` +
+        `packages/ tree:\n    ${stale.join('\n    ')}\n\n` +
+        `Run \`npm run integrate\`. Until then the dead-module check below is ` +
+        `reading a stale copy and can report a live module as dead — which is ` +
+        `how a real fix nearly got deleted as dead code.`);
+});
+
 test('every overlay module is imported by something', {
     skip: existsSync(builtSrc) ? false :
         'packages/scratch-gui not integrated — run `npm run integrate` first'
