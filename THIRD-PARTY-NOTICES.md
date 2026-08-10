@@ -690,3 +690,16 @@ upstream material (SDCC). Everything else in this repository is BSD-3-Clause
 (see LICENSE at the repo root). The SDCC binaries are a separate, independently
 invokable program distributed alongside the BSD-3 editor; their presence does
 not change the licence of the editor code.
+
+## wokwi-elements — MIT
+
+**wokwi-elements** (MIT License, https://github.com/wokwi/wokwi-elements)
+provides the web-component renderings of electronic parts (LED, resistor,
+buzzer, etc.) used in the circuit designer. The elements are imported as
+`@wokwi/elements` via `overlay/scratch-gui/src/lib/bw-circuit-ui/wokwi-wrappers/`.
+
+- **Licence:** MIT
+- **Source:** https://github.com/wokwi/wokwi-elements
+- **Usage:** runtime web components for part visualisation in the circuit
+  designer canvas. No source code from wokwi-elements is modified; the
+  components are consumed as published npm packages.
