@@ -79,7 +79,14 @@ class CircuitTab extends React.Component {
                 this.setDisplayPreference('showInStage', value === '1');
                 if (value === '1') this.load();
             }
-            if (key === 'hideStage' || key === 'bw-hide-stage') this.setDisplayPreference('hideStage', value === '1');
+            if (key === 'hideStage' || key === 'bw-hide-stage') {
+                // The Code-mode circuit is rendered into the normal stage column.
+                // Hiding that wrapper there would hide the portal as well. Persist
+                // the preference for the dedicated Circuit tab, but only apply the
+                // DOM hiding while that tab is actually visible.
+                try { localStorage.setItem('bw-hide-stage', value === '1' ? '1' : '0'); } catch { /* private mode */ }
+                if (this.props.isVisible) this.setDisplayPreference('hideStage', value === '1');
+            }
             if (key === 'bw-circuit-theme') {
                 try { localStorage.setItem('bw-circuit-theme', value); } catch { /* private mode */ }
                 // CircuitDesigner owns the visual theme; forward the same
@@ -585,10 +592,12 @@ class CircuitTab extends React.Component {
                     the design-rule check all work with no MCU in the netlist at all. So this
                     is an invitation, shown once and dismissible, not a warning. */}
                 {(stc && stc.pins && stc.pins.length) || this.state.hintDismissed ? null : (
-                    <div style={{marginBottom: 6, padding: '5px 8px', borderRadius: 5,
+                    <details style={{marginBottom: 6, flex: '0 0 auto', color: '#075985'}}>
+                    <summary style={{cursor: 'pointer', color: '#d97706', fontSize: 18, lineHeight: 1, padding: '2px 4px'}} title="Show circuit hint">▲</summary>
+                    <div style={{padding: '5px 8px', borderRadius: 5,
                         background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: 12,
                         color: '#075985', display: 'flex', alignItems: 'center', gap: 8,
-                        flex: '0 0 auto'}}>
+                        }}>
                         <span style={{flex: 1}}>
                             {'Build a circuit on its own — battery, LED, resistor, a 555. ' +
                              'To drive parts from blocks, declare pins in the Code tab ' +
@@ -606,6 +615,7 @@ class CircuitTab extends React.Component {
                                 color: '#0369a1', fontSize: 15, lineHeight: 1, padding: '0 2px'}}
                         >{'×'}</button>
                     </div>
+                    </details>
                 )}
                 {/* The debugger's controls, above the board they act on. The design note
                     puts them in the stage header; they are here because that header is
@@ -623,7 +633,9 @@ class CircuitTab extends React.Component {
                     // reason. Every other panel in this strip explains why it is
                     // empty; this one used to be the exception.
                     this.state.debugHintDismissed ? null : (
-                        <div style={{marginBottom: 8, padding: '4px 8px', borderRadius: 4,
+                        <details style={{marginBottom: 8, flex: '0 0 auto', color: '#64748b'}}>
+                        <summary style={{cursor: 'pointer', color: '#ca8a04', fontSize: 18, lineHeight: 1, padding: '2px 4px'}} title="Show debugger hint">▲</summary>
+                        <div style={{padding: '4px 8px', borderRadius: 4,
                             background: '#f8fafc', border: '1px solid #e2e8f0', flex: '0 0 auto',
                             fontSize: 11.5, color: '#64748b',
                             display: 'flex', alignItems: 'center', gap: 8}}>
@@ -649,9 +661,10 @@ class CircuitTab extends React.Component {
                                     color: '#64748b', fontSize: 15, lineHeight: 1, padding: '0 2px'}}
                             >{'×'}</button>
                         </div>
+                        </details>
                     )
                 )}
-                {this.renderPanelStrip()}
+                {this.state.panel === 'designer' ? null : this.renderPanelStrip()}
                 <div style={{display: 'flex', flex: '1 1 auto', minHeight: 0, gap: 8}}>
                 <div style={{flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column'}}>
                 {/* The tab container is `overflow: clip` so a deep sidebar scroll cannot
@@ -702,6 +715,8 @@ class CircuitTab extends React.Component {
                         return undefined; // default: simulator assumed
                     })()}
                         onDeclarationChange={this.handleDeclarationChange}
+                        panelNav={this.renderPanelStrip()}
+                        embedded={this._portalOn}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                     />

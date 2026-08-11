@@ -61,7 +61,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -155,10 +155,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     lastStopToken.current = stopToken;
     setMode('build');
   }, [stopToken]);
-  const [leftOpen, setLeftOpen] = useState(true);
-  const [rightOpen, setRightOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(!embedded);
+  const [rightOpen, setRightOpen] = useState(!embedded);
+  useEffect(() => {
+    if (embedded) {
+      setLeftOpen(false);
+      setRightOpen(false);
+    }
+  }, [embedded]);
   const [showScope, setShowScope] = useState(false);
   const [showMeter, setShowMeter] = useState(false);
+  const [warningsOpen, setWarningsOpen] = useState(false);
 
   // Breadboard model (persistent across renders)
   const [bbRev, setBbRev] = useState(0);
@@ -747,7 +754,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 160px', width: 160, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 160px', width: 160, minWidth: 0, minHeight: 0, maxHeight: '100%', overflowY: 'scroll', overscrollBehavior: 'contain' }}>
           <button onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
             alignSelf: 'flex-end', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer',
             fontSize: '20px', lineHeight: 1, width: 28, height: 24, padding: 0,
@@ -800,22 +807,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
-        {/* View mode switch: compact icon buttons; labels are in tooltips. */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-          {['realistic', 'schematic'].map(vm => (
-            <button key={vm} onClick={() => setShowSchematic(vm === 'schematic')} style={{
-              background: (vm === 'schematic') === showSchematic ? '#3498db' : '#16213e',
-              color: (vm === 'schematic') === showSchematic ? '#fff' : '#7f8c8d',
-              border: '1px solid #2c3e50', borderRadius: 4,
-              width: 30, height: 26, padding: 0, cursor: 'pointer',
-              fontFamily: 'sans-serif', fontSize: 16, lineHeight: 1,
-            }} title={vm === 'realistic' ? 'Realistic view' : 'Schematic view'}
-            aria-label={vm === 'realistic' ? 'Realistic view' : 'Schematic view'}
-            aria-pressed={(vm === 'schematic') === showSchematic}>
-              <span aria-hidden="true">{vm === 'realistic' ? '◉' : '⌁'}</span>
-            </button>
-          ))}
-        </div>
         <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'clip', display: 'flex', flexDirection: 'column' }}>
         {!showSchematic ? (<>
         <BoardCanvas
@@ -963,6 +954,26 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               return drc;
             } catch { return []; }
           })()}
+          panelNav={panelNav}
+          rightOpen={rightOpen}
+          onToggleRightPanel={() => setRightOpen(v => !v)}
+          viewNav={(
+            <div style={{display: 'inline-flex', gap: 4, alignItems: 'center'}}>
+              {['realistic', 'schematic'].map(vm => (
+                <button key={vm} onClick={() => setShowSchematic(vm === 'schematic')} style={{
+                  background: (vm === 'schematic') === showSchematic ? '#3498db' : '#16213e',
+                  color: (vm === 'schematic') === showSchematic ? '#fff' : '#7f8c8d',
+                  border: '1px solid #2c3e50', borderRadius: 4,
+                  width: 38, height: 34, padding: 0, cursor: 'pointer',
+                  fontFamily: 'sans-serif', fontSize: 18, lineHeight: 1,
+                }} title={vm === 'realistic' ? 'Realistic view' : 'Schematic view'}
+                aria-label={vm === 'realistic' ? 'Realistic view' : 'Schematic view'}
+                aria-pressed={(vm === 'schematic') === showSchematic}>
+                  <span aria-hidden="true">{vm === 'realistic' ? '◉' : '⌁'}</span>
+                </button>
+              ))}
+            </div>
+          )}
         />
         </>) : (
           <div style={{ flex: 1, minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain',
@@ -978,23 +989,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
         {/* Engine warnings — teaching feedback */}
         {warnings.length > 0 && (
-          <div style={{
-            marginTop: '8px',
-            padding: '8px',
-            background: '#1a1a0e',
-            border: '1px solid #e67e22',
-            borderRadius: '4px',
-            fontFamily: 'monospace',
-            fontSize: '10px',
-          }}>
-            {warnings.map((w, i) => (
-              <div key={i} style={{
-                color: w.severity === 'danger' ? '#e74c3c' : '#f39c12',
-                marginBottom: '2px',
-              }}>
-                {w.severity === 'danger' ? '⚠' : '!'} {w.message}
-              </div>
-            ))}
+          <div style={{marginTop: '8px', fontFamily: 'monospace', fontSize: '10px'}}>
+            <button onClick={() => setWarningsOpen(v => !v)} title="Show circuit warnings" aria-label={`${warnings.length} circuit warnings`} aria-expanded={warningsOpen}
+              style={{border: 'none', background: 'transparent', color: warnings.some(w => w.severity === 'danger') ? '#dc2626' : '#d97706', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 3px'}}>▲</button>
+            {warningsOpen && <div style={{marginTop: 4, padding: '8px', background: '#1a1a0e', border: '1px solid #e67e22', borderRadius: '4px'}}>
+              {warnings.map((w, i) => <div key={i} style={{color: w.severity === 'danger' ? '#e74c3c' : '#f39c12', marginBottom: '2px'}}>{w.severity === 'danger' ? '⚠' : '!'} {w.message}</div>)}
+            </div>}
           </div>
         )}
       </div>

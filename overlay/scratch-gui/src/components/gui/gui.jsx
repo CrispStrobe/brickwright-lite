@@ -284,7 +284,7 @@ const GUIComponent = props => {
                                             src={codeIcon}
                                         />
                                         <FormattedMessage
-                                            defaultMessage="Code"
+                                            defaultMessage="Blocks"
                                             description="Button to get to the code panel"
                                             id="gui.gui.codeTab"
                                         />
@@ -339,6 +339,23 @@ const GUIComponent = props => {
                                             id="gui.gui.circuitTab"
                                         />
                                     </Tab>
+                                    <button
+                                        type="button"
+                                        title="Show stage and circuit pane"
+                                        aria-label="Show stage and circuit pane"
+                                        onClick={() => {
+                                            try { localStorage.setItem('bw-hide-stage', '0'); } catch { /* private mode */ }
+                                            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                                                detail: {key: 'bw-hide-stage', value: '0'}
+                                            }));
+                                        }}
+                                        style={{
+                                            marginLeft: 'auto', alignSelf: 'center', minWidth: 38, height: 34,
+                                            border: '1px solid rgba(0,0,0,.18)', borderRadius: 4,
+                                            background: 'transparent', color: '#575e75', cursor: 'pointer',
+                                            fontSize: 18, lineHeight: 1
+                                        }}
+                                    >▣</button>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent === 'code' ? (

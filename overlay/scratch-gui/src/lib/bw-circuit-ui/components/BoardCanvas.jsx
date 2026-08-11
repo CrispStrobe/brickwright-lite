@@ -1130,7 +1130,7 @@ export function BoardCanvas({
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
-  drcWarnings,
+  drcWarnings, panelNav, viewNav, rightOpen, onToggleRightPanel,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
@@ -1151,6 +1151,7 @@ export function BoardCanvas({
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
+  const [noticeOpen, setNoticeOpen] = useState(false);
   const [draggingWaypoint, setDraggingWaypoint] = useState(null); // { wireId, index }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
@@ -1913,16 +1914,26 @@ export function BoardCanvas({
       <div style={{
         display: 'flex', alignItems: 'center', gap: '6px',
         fontFamily: 'monospace', fontSize: '10px',
-        marginBottom: '4px', minHeight: '26px',
-        padding: '2px 4px',
+        marginBottom: '6px', minHeight: '44px',
+        padding: '4px 6px',
         background: '#16213e', borderRadius: '4px',
+        flexWrap: 'wrap', alignContent: 'center', rowGap: '6px',
+        overflow: 'visible', width: '100%', boxSizing: 'border-box',
       }}>
         <button onClick={() => onModeChange?.('build')} title="Build mode"
-          style={{ padding: '2px 7px', background: mode === 'build' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'build' ? '#3498db' : '#2c3e50'}`, borderRadius: '3px', color: mode === 'build' ? '#3498db' : '#7f8c8d', fontSize: '10px', cursor: 'pointer' }}>Build</button>
+          style={{ minHeight: 34, padding: '4px 10px', background: mode === 'build' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'build' ? '#3498db' : '#2c3e50'}`, borderRadius: '4px', color: mode === 'build' ? '#3498db' : '#7f8c8d', fontSize: '12px', cursor: 'pointer' }}>Build</button>
         <button onClick={() => onModeChange?.('simulate')} title="Simulation mode"
-          style={{ padding: '2px 7px', background: mode === 'simulate' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'simulate' ? '#2ecc71' : '#2c3e50'}`, borderRadius: '3px', color: mode === 'simulate' ? '#2ecc71' : '#7f8c8d', fontSize: '10px', cursor: 'pointer' }}>Sim</button>
+          style={{ minHeight: 34, padding: '4px 10px', background: mode === 'simulate' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'simulate' ? '#2ecc71' : '#2c3e50'}`, borderRadius: '4px', color: mode === 'simulate' ? '#2ecc71' : '#7f8c8d', fontSize: '12px', cursor: 'pointer' }}>Sim</button>
         <button onClick={() => onPowerToggle?.()} title={powered ? 'Power on' : 'Power off'}
-          style={{ padding: '2px 7px', background: powered ? '#176b3a' : '#7f1d1d', border: '1px solid transparent', borderRadius: '3px', color: '#fff', fontSize: '10px', cursor: 'pointer' }}>{powered ? '⏻ On' : '⏻ Off'}</button>
+          style={{ minHeight: 34, padding: '4px 10px', background: powered ? '#176b3a' : '#7f1d1d', border: '1px solid transparent', borderRadius: '4px', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>{powered ? '⏻ On' : '⏻ Off'}</button>
+
+        {panelNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
+        {viewNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
+        {onToggleRightPanel ? <button onClick={onToggleRightPanel}
+          title={rightOpen ? 'Hide right panel' : 'Show right panel'}
+          aria-label={rightOpen ? 'Hide right panel' : 'Show right panel'}
+          aria-expanded={rightOpen}
+          style={{minHeight: 34, minWidth: 38, padding: '4px 8px', background: '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#dbeafe', fontSize: 18, cursor: 'pointer'}}>▣</button> : null}
 
         {/* Mode indicator */}
         <span style={{
@@ -1934,11 +1945,17 @@ export function BoardCanvas({
           {wiringFrom ? 'WIRING' : 'SELECT'}
         </span>
 
-        {/* Status text */}
+        {/* Compact status warning; click the triangle to reveal the full explanation. */}
+        {statusText && /WIRING ONLY|HARDWARE|SNAPSHOT/.test(statusText) ? (
+          <button onClick={() => setNoticeOpen(v => !v)} title={statusText} aria-label={statusText} aria-expanded={noticeOpen}
+            style={{border: 'none', background: 'transparent', color: /WIRING ONLY/.test(statusText) ? '#f59e0b' : '#ef4444', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 3px'}}>▲</button>
+        ) : null}
         <span style={{ color: '#7f8c8d', flex: 1, fontSize: '10px' }}>
           {wiringFrom
             ? `${wiringFrom.part}:${wiringFrom.terminal} → ?`
-            : statusText || (selectedParts?.size > 0 ? `${selectedParts.size} selected` : '')}
+            : (noticeOpen || !statusText || !/WIRING ONLY|HARDWARE|SNAPSHOT/.test(statusText))
+              ? (statusText || (selectedParts?.size > 0 ? `${selectedParts.size} selected` : ''))
+              : ''}
         </span>
 
         {/* Selection actions */}
