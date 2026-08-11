@@ -18,6 +18,7 @@
     "sync:emuwasm": "node scripts/sync-emu8051-wasm.mjs",
     "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check",
     "smoke:debugger": "node scripts/smoke-debugger.mjs",
+    "verify:interaction": "node scripts/verify-interaction.mjs",
     "test": "node --test test/*.test.mjs",
     "test:all": "npm run test && npm run smoke:debugger",
     "probe:layout": "node scripts/probe-layout.mjs"
