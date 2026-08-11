@@ -472,6 +472,11 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
   }
 
   return wires.map(wire => {
+    // Board-connected tap wires are drawn by the dedicated tap-wire layer.
+    // A board hole is not a part terminal; rendering it here as well creates
+    // a second bogus straight path alongside the real curved tap wire.
+    if (wire.from.board || wire.to.board) return null;
+
     const fromPart = parts.find(p => p.id === wire.from.part);
     const toPart = parts.find(p => p.id === wire.to.part);
     if (!fromPart || !toPart) return null;
