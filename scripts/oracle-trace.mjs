@@ -66,10 +66,12 @@ export function compareTraces(expected, actual) {
 export function parseVcd(source, {signals = {}} = {}) {
     const text = String(source);
     const units = {s: 1_000_000_000n, ms: 1_000_000n, us: 1_000n, ns: 1n, ps: 0n};
-    const scale = text.match(/\$timescale\s+([^\s]+)\s+([^\s]+)\s+\$end/);
-    if (!scale || units[scale[2]] === undefined) throw new Error('VCD has no supported $timescale');
-    const magnitude = BigInt(scale[1]);
-    const factor = units[scale[2]];
+    const scale = text.match(/\$timescale\s+([^\s]+)(?:\s+([^\s]+))?\s+\$end/);
+    const scaleText = scale && (scale[2] ? `${scale[1]}${scale[2]}` : scale[1]);
+    const parsedScale = scaleText && scaleText.match(/^(\d+)(s|ms|us|ns|ps)$/);
+    if (!parsedScale || units[parsedScale[2]] === undefined) throw new Error('VCD has no supported $timescale');
+    const magnitude = BigInt(parsedScale[1]);
+    const factor = units[parsedScale[2]];
     if (factor === 0n) throw new Error('VCD ps timescale is below nanosecond precision');
 
     const ids = new Map();
@@ -90,6 +92,24 @@ export function parseVcd(source, {signals = {}} = {}) {
         if (!change || !ids.has(change[2])) continue;
         if (change[1] !== '0' && change[1] !== '1') continue;
         rows.push({timeNs: ticks * magnitude * factor, pin: ids.get(change[2]), value: Number(change[1])});
+    }
+    return normalizeTrace(rows);
+}
+
+/** Parse ucsim-stc's headless trace rows: `time PIN 1.5 PP H/L`. */
+export function parseUcsimTrace(source, {pins = {}} = {}) {
+    const rows = [];
+    for (const line of String(source).split(/\r?\n/)) {
+        const fields = line.trim().split(/\s+/);
+        if (fields.length < 5 || fields[1] !== 'PIN') continue;
+        if (!/^[0-9]+$/.test(fields[0]) || !/^\d+\.\d+$/.test(fields[2])) continue;
+        if (fields[3] !== 'PP' || !/^[HL]$/.test(fields[4])) continue;
+        const rawPin = `P${fields[2]}`;
+        rows.push({
+            timeNs: BigInt(fields[0]),
+            pin: pins[rawPin] || rawPin,
+            value: fields[4] === 'H' ? 1 : 0,
+        });
     }
     return normalizeTrace(rows);
 }

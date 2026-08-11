@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {compareTraces, normalizeTrace, parseVcd} from '../scripts/oracle-trace.mjs';
+import {compareTraces, normalizeTrace, parseUcsimTrace, parseVcd} from '../scripts/oracle-trace.mjs';
 
 test('oracle traces normalize cycles, pin case, ordering, and repeated levels', () => {
     const trace = normalizeTrace([
@@ -32,5 +32,28 @@ test('VCD scalar changes become canonical pin edges', () => {
         {timeNs: 0n, pin: 'D13', value: 0},
         {timeNs: 8n, pin: 'D13', value: 1},
         {timeNs: 24n, pin: 'D13', value: 0},
+    ]);
+});
+
+test('VCD compact timescales emitted by simavr are accepted', () => {
+    const vcd = `$timescale 10ns $end\n$var wire 1 ! D13 $end\n$enddefinitions $end\n`
+        + `$dumpvars\nx!\n$end\n#31\n1!\n#210137\n0!\n`;
+    assert.deepEqual(parseVcd(vcd), [
+        {timeNs: 310n, pin: 'D13', value: 1},
+        {timeNs: 2_101_370n, pin: 'D13', value: 0},
+    ]);
+});
+
+test('ucsim-stc PIN trace rows become canonical board edges', () => {
+    const trace = parseUcsimTrace([
+        '72518\tPIN\t1.5 PP L',
+        '77039\tPIN\t1.5 PP H',
+        'ignored\tPC\t0001',
+        '77401\tPIN\t1.5 PP L',
+    ].join('\n'));
+    assert.deepEqual(trace, [
+        {timeNs: 72518n, pin: 'P1.5', value: 0},
+        {timeNs: 77039n, pin: 'P1.5', value: 1},
+        {timeNs: 77401n, pin: 'P1.5', value: 0},
     ]);
 });

@@ -19,6 +19,11 @@ its VCD output, and maps explicitly named signals to board pins. It does not
 assume that a simulator register name is automatically an Arduino pin; each
 fixture must provide that mapping.
 
+The STC oracle uses the project-specific `ucsim-stc` fork. Its `stc12_trace`
+output is parsed with `parseUcsimTrace`; rows such as `72518 PIN 1.5 PP L` are
+converted to a `P1.5` low edge at 72,518 ns. The fork is GPL and remains a
+CI/local-only oracle, never a Brickwright runtime dependency.
+
 Planned oracle adapters:
 
 - `simavr` for ATmega328P Uno/Nano GPIO, timers, PWM, UART, SPI, I²C, ADC, and

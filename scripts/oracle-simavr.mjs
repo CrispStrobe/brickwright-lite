@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Optional local oracle runner. The GPL simulator is never bundled or linked. */
 import {execFile} from 'node:child_process';
-import {readFile, unlink} from 'node:fs/promises';
+import {mkdtemp, readFile, readdir, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {parseVcd} from './oracle-trace.mjs';
@@ -33,15 +33,26 @@ if (!Object.keys(signals).length) {
     process.exit(2);
 }
 
-const vcd = join(tmpdir(), `brickwright-simavr-${process.pid}.vcd`);
+const workDir = await mkdtemp(join(tmpdir(), 'brickwright-simavr-'));
+const vcd = join(workDir, 'trace.vcd');
 try {
     await new Promise((resolve, reject) => {
-        execFile('simavr', ['-m', mcu, '-f', clock, '-o', vcd, firmware], {maxBuffer: 4 * 1024 * 1024}, (error, stdout, stderr) => {
+        execFile('simavr', ['-m', mcu, '-f', clock, '-o', vcd, firmware], {
+            cwd: workDir,
+            maxBuffer: 4 * 1024 * 1024,
+        }, (error, stdout, stderr) => {
             if (error) reject(new Error(`simavr failed: ${error.message}\n${stderr || stdout}`));
             else resolve();
         });
     });
-    process.stdout.write(`${JSON.stringify(parseVcd(await readFile(vcd, 'utf8'), {signals}), (_, x) => typeof x === 'bigint' ? String(x) : x)}\n`);
+    // A firmware may carry AVR_MCU_VCD_FILE metadata; simavr then uses that
+    // filename instead of the CLI output path. The isolated cwd makes that
+    // behavior safe and deterministic rather than leaving files in the repo.
+    const files = await readdir(workDir);
+    const generated = files.filter(file => file.toLowerCase().endsWith('.vcd'));
+    if (!generated.length) throw new Error('simavr completed without producing a VCD trace');
+    const source = await readFile(join(workDir, generated[0]), 'utf8');
+    process.stdout.write(`${JSON.stringify(parseVcd(source, {signals}), (_, x) => typeof x === 'bigint' ? String(x) : x)}\n`);
 } finally {
-    await unlink(vcd).catch(() => {});
+    await rm(workDir, {recursive: true, force: true}).catch(() => {});
 }
