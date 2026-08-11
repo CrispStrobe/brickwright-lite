@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
+import {parseUf2} from '../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js';
+
 // Keep this parser test independent of the optional browser dependency; the
 // format contract is also checked in the adapter source by the GUI build.
 function makeUf2(address, payload) {
@@ -17,6 +19,24 @@ function makeUf2(address, payload) {
 
 test('UF2 records carry flash addresses and payloads', () => {
     const block = makeUf2(0x10000010, Uint8Array.of(1, 2, 3));
-    assert.equal(new DataView(block.buffer).getUint32(12, true), 0x10000010);
-    assert.deepEqual([...block.slice(32, 35)], [1, 2, 3]);
+    const image = parseUf2(block);
+    assert.deepEqual([...image], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3]);
+});
+
+test('Pico adapter advances time before publishing its GPIO boundary', async () => {
+    const {createRp2040jsAdapter} = await import('../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js');
+    const times = [];
+    const edges = [];
+    const board = {
+        advanceTo: t => times.push(String(t)),
+        setPin: (...edge) => edges.push(edge),
+        readAnalog: () => 0,
+    };
+    const adapter = createRp2040jsAdapter({board});
+    adapter.loadProgram(Uint8Array.of(0, 0, 0, 0));
+    adapter.stepInstruction();
+    assert.equal(adapter.stats.instructionCount, 1);
+    assert.equal(adapter.timeNs() > 0n, true);
+    assert.equal(edges.length > 0, true);
+    assert.equal(times.length > 0, true);
 });
