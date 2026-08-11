@@ -15,7 +15,7 @@ import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel } from '../interaction/transform.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
-import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole } from '../interaction/breadboard-snap.js';
+import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
 import { getSidecar } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
@@ -2230,7 +2230,7 @@ export function BoardCanvas({
           {parts.filter(p => p.kind === 'breadboard').map(bb => (
             <BreadboardView key={bb.id} part={bb}
               model={circuit?.breadboards?.get(bb.id)}
-              footprint={FOOTPRINTS.breadboard}
+              footprint={bbFootprint(bb)}
               selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
           ))}
 

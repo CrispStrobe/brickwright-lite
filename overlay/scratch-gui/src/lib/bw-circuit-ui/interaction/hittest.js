@@ -121,6 +121,12 @@ export function createHitTest(getParts, getWirePaths, getTerminals) {
       return null;
     },
 
+    partKindAt(wx, wy) {
+      const id = this.partAt(wx, wy);
+      if (!id) return null;
+      return getParts().find(part => part.id === id)?.kind ?? null;
+    },
+
     terminalAt(wx, wy, radius) {
       let best = null;
       let bestD = radius;
