@@ -40,6 +40,21 @@ import { boardGeometry } from '../model/board-geometry.js';
 // The actual rendered size fills the container via CSS.
 const CANVAS_W = 700;
 const CANVAS_H = 500;
+const DIP_PIN_PITCH = 20;
+const DIP_ROW_OFFSET = 60;
+
+function dipTerminalPositions(sidecar) {
+  const positions = {};
+  if (!sidecar?.terminals) return positions;
+  const left = sidecar.terminals.filter(t => t.x <= sidecar.w / 2).sort((a, b) => a.y - b.y);
+  const right = sidecar.terminals.filter(t => t.x > sidecar.w / 2).sort((a, b) => a.y - b.y);
+  const put = (items, y) => items.forEach((t, i) => {
+    positions[t.name] = {dx: (i - (items.length - 1) / 2) * DIP_PIN_PITCH, dy: y};
+  });
+  put(left, -DIP_ROW_OFFSET);
+  put(right, DIP_ROW_OFFSET);
+  return positions;
+}
 
 /**
  * Rotate a {dx, dy} offset by deg degrees (0, 90, 180, 270).
@@ -105,10 +120,9 @@ function terminalOffsetsForPart(part) {
         // The source sidecar uses a generous 200×260 art coordinate space;
         // the physical DIP package on this canvas is the compact 80×111
         // footprint. Keep the same scale for pins and body.
-        const S = 14 / 12;
         const offsets = {};
-        for (const t of sc.terminals) {
-          offsets[t.name] = r((t.y - sc.h / 2) * S, t.x < sc.w / 2 ? -47 : 47);
+        for (const [name, position] of Object.entries(dipTerminalPositions(sc))) {
+          offsets[name] = r(position.dx, position.dy);
         }
         return offsets;
       }
@@ -202,11 +216,10 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         // offsets use - one geometry, so every leg meets its connector.
         const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
         if (sc && sc.terminals && sc.terminals.length > 2) {
-          const S = 14 / 12;
-          const W = 280, Hh = 111;
-          const px = (t) => (t.y - sc.h / 2) * S;
-          const py = (t) => t.x <= sc.w / 2 ? -47 : 47;
-          const bodyW = 210, bodyH = 62;
+          const positions = dipTerminalPositions(sc);
+          const px = (t) => positions[t.name]?.dx || 0;
+          const py = (t) => positions[t.name]?.dy || 0;
+          const bodyW = 300, bodyH = 64;
           return (
             <g key={id} transform={xform} pointerEvents="none">
               <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
@@ -221,9 +234,11 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fontFamily="monospace">DIP-40</text>
               {sc.terminals.map(t => (
                 <g key={t.name}>
-                  <rect x={px(t) - 7} y={py(t) - 1.6} width={14} height={3.2}
-                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
-                  <text x={px(t)} y={py(t) + (py(t) < 0 ? -6 : 10)} textAnchor="middle"
+                  <line x1={px(t)} y1={py(t) < 0 ? -bodyH / 2 : bodyH / 2} x2={px(t)} y2={py(t)}
+                    stroke="#b0b8c0" strokeWidth={3} />
+                  <rect x={px(t) - 5} y={py(t) - 2.5} width={10} height={5}
+                    fill="#d8dee4" stroke="#8090a0" strokeWidth={0.5} />
+                  <text x={px(t)} y={py(t) + (py(t) < 0 ? -8 : 14)} textAnchor="middle"
                     fill="#7f8c8d" fontSize={4.2} fontFamily="monospace">{t.name}</text>
                 </g>
               ))}

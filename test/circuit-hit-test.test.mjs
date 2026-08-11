@@ -28,9 +28,9 @@ test('Arduino footprints are hittable even without rendered DOM', () => {
   }
 });
 
-test('STC12 footprint uses the compact DIP geometry', () => {
+test('STC12 footprint uses the breadboard-pitch DIP geometry', () => {
   const b = partBounds({ id: 'chip', kind: 'mcu', x: 300, y: 240 });
-  assert.deepEqual(b, { minX: 160, minY: 184.5, maxX: 440, maxY: 295.5 });
+  assert.deepEqual(b, { minX: 90, minY: 165, maxX: 510, maxY: 315 });
   const rotated = partBounds({ id: 'chip', kind: 'mcu', x: 300, y: 240, seat: { rot: 1 } });
-  assert.deepEqual(rotated, { minX: 244.5, minY: 100, maxX: 355.5, maxY: 380 });
+  assert.deepEqual(rotated, { minX: 225, minY: 30, maxX: 375, maxY: 450 });
 });
