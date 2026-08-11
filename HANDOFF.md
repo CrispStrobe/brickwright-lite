@@ -84,8 +84,10 @@ Instrument committed at `scripts/verify-schematic.mjs`.
   Lite's own glue code.
 - **Devices extension unregistered** — 31 of 36 blocks were stubs. Re-register
   when drivers exist.
-- **rp2040js execution** is later — no compile backend, adapter contract is
-  in the factory but untested end-to-end.
+- **rp2040js execution** now exists for raw UF2/flash images: GPIO feedback,
+  vector-table reset, instruction stepping, raw XIP breakpoints, registers, and
+  code/SRAM memory access are tested. It still has no MicroPython compiler,
+  ELF/source-symbol mapping, yield points, or full peripheral parity.
 
 ## Open cross-repo items
 
@@ -93,9 +95,10 @@ Instrument committed at `scripts/verify-schematic.mjs`.
   references to the old slug survive. Lite carries them via the vendor — cannot
   fix without the next sync overwriting. Highest acted on: bw-parts 005.
 
-## AVR integration — parked as plan
+## AVR integration — boundary-D complete; compiler endpoint remains open
 
 Written up in BLOCKED.md. avr8js/rp2040js MIT verified, adapter contracts
-documented, Intel HEX parser built, factory wired, debug-runner path exists.
-What remains: avr-gcc compile endpoint (bw-cfront), end-to-end execution test
-(bw-board), block-level debugging for AVR (yield-point model).
+documented, Intel HEX/UF2 parsers built, factory wired, and the AVR boundary-D
+target is complete. What remains is the avr-gcc compile endpoint (bw-cfront)
+and end-to-end browser execution; AVR source symbols are supplied by the
+compiler endpoint contract.

@@ -141,8 +141,10 @@ never turns missing data into a hardware claim.
   visibly marked unaudited until verified.
 - **Raspberry Pi Pico / RP2040** — the board, pin geometry, GP alternate-function metadata, wiring,
   schematic, declarations, and safety checks are available. Pico GPIO is treated as 3.3 V only;
-  execution/emulation and MicroPython integration are not yet shipped, so the palette and status bar
-  say `wiring only` rather than pretending the board can run Scratch code.
+  the MIT `rp2040js` target now executes raw UF2/flash images, feeds GPIO into the circuit engine,
+  supports instruction stepping, raw XIP code breakpoints, register/memory inspection, and honors
+  the Cortex-M vector table. MicroPython compilation, ELF symbols/yield points, and full peripheral
+  parity remain open; the UI must not present those as complete.
 
 This boundary is intentional: a board may be useful as electrical geometry and documentation before
 it has a clean-room executable model. Unsupported execution is reported in the UI instead of falling
@@ -245,10 +247,11 @@ CI does this for all platforms: `.github/workflows/release.yml` (desktop macOS/W
       About dialog, and File tutorials.
 - [x] STC12/8051 instruction-level circuit/debugger path and AVR8JS Uno/Nano boundary adapter.
 - [x] Uno/Nano/Pico board geometry and pin sidecars, with audited-vs-unaudited pin provenance shown
+- [x] RP2040 raw-image execution, GPIO feedback, vector reset, instruction stepping, and raw code breakpoints via rp2040js
       in the chooser.
 - [ ] Hardware-verify each transport against real LEGO hardware (macOS BLE done).
 - [ ] Complete Arduino Uno/Nano peripheral fidelity and source-level AVR debugger mapping.
-- [ ] Add a clean-room RP2040/MicroPython execution path for Pico (currently wiring-only).
+- [ ] Add a clean-room RP2040/MicroPython compilation path for Pico (runtime raw-image execution exists).
 - [ ] Improve schematic symbol coverage and hand-layout controls beyond the generated projection.
 - [ ] Apple code-signing for a distributable iOS build.
 - [ ] A few editor-parity items (multi-line say/think, palette-edge, cleanup layout) — see PLAN §26.

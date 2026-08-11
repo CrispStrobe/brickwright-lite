@@ -5,10 +5,10 @@ supported *throughout* BrickWright, beside the STC12 that everything was built
 for. This is the survey that scopes that, done by reading the code rather than
 the intentions, on 2026-08-09.
 
-The short version: **the compiler now speaks five families; every other module
-speaks one.** Today's work added Arduino, AVR and micro:bit targets to
-`stc-compiler` with full feature parity, and nothing upstream or downstream of
-it knows they exist. The Pico is absent everywhere, including the compiler.
+The short version: **the compiler and runtime now cover more families, but not
+with equal fidelity.** Arduino AVR and RP2040 execution have separate MIT
+adapters; the Pico path currently accepts raw UF2/flash images and exposes
+GPIO/debug state, while MicroPython compilation and source symbols remain open.
 
 ---
 
@@ -23,7 +23,7 @@ it knows they exist. The Pico is absent everywhere, including the compiler.
 | **transpilers** | `overlay/.../lib/sb3-creator-c.js` | — | infers `stc12c5a60s2`, `stc15f2k60s2`, `stc89c52rc` from `#include` |
 | | `overlay/.../lib/sb3-creator-python.js` | — | **STC12 only** |
 | **code ⇄ AST** | `sb3-creator/src/utils/` | 17.7k lines | device C (8051 **and Arduino**), host C, Python, JavaScript |
-| **debugger** | `overlay/.../lib/bw-debug/`, `bw-board/` | 7.4k lines | **8051 only** (`emu8051-adapter.js`) |
+| **debugger** | `overlay/.../lib/bw-debug/`, `bw-board/` | — | 8051, ATmega328P, and RP2040 targets with per-device capabilities |
 
 Two things that survey corrects, because both are stale in the CLAUDE.md files:
 
@@ -42,7 +42,7 @@ Ordered by cost, cheapest first. The ratio is stark: three of the four boards
 are already done at the compiler and undone everywhere else, so the expensive
 work is not the chips.
 
-### 1. Compiler — the Pico is the only hole
+### 1. Compiler — the Pico remains the MicroPython hole
 
 Uno, Nano and micro:bit landed today. The RP2040 has two routes:
 
@@ -116,12 +116,14 @@ The honest complication is that a micro:bit and a Pico are *modules*, not DIP
 chips on a breadboard: their "circuit" is an edge connector and a pin header,
 which the current model has no vocabulary for.
 
-### 5. Debugger — out of scope, and worth saying so
+### 5. Debugger — per-device capability boundaries
 
-`bw-board` wraps an 8051 emulator. Nothing about it generalises: an AVR needs
-a different emulator, a Pico or micro:bit needs a different one again, and the
-Cortex-M parts have real on-chip debug (CMSIS-DAP) that a browser could drive
-over WebUSB — a different project, not an extension of this one.
+`bw-board` now has separate targets: `emu8051` for STC, `avr8js` for ATmega328P,
+and `rp2040js` for raw RP2040 images. They share the debug-session contract but
+advertise different capabilities. The RP2040 target supports GPIO feedback,
+instruction stepping, raw XIP code breakpoints, registers, and code/SRAM
+memory access; it does not yet claim ELF symbols, yield points, or complete
+peripheral parity.
 
 `docs/DEBUG-CONTROL-MODEL.md` in the lab repo already says the three targets
 are not equal. Adding boards makes that more true, not less.
@@ -140,7 +142,9 @@ are not equal. Adding boards makes that more true, not less.
    follows the declared pins and the dialect already refuses what a board
    cannot do. See above for why the first draft of this list was wrong.
 5. **Circuit board models**, starting with the two that are DIP-shaped.
-6. **Debugger: nothing.** Record why.
+6. **Debugger capability parity.** AVR boundary-D is complete; extend RP2040
+   symbols, source mapping, and peripheral coverage only when their contracts
+   are verified.
 
 Steps 1, 2 and 3 are done (2026-08-09). The pin discovery step 3 needed is
 built: an Arduino pin is a bare number that nothing declares, so it is
