@@ -30,12 +30,11 @@ const builtinExtensions = {
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     circuit: () => require('../extensions/crispstrobe/circuit'),
-    // Device convenience blocks: NOT REGISTERED. 31 of 36 opcodes are stubs
-    // (BW_STUB in generated C). A palette that is smaller and true beats one
-    // that is complete and partly inert — a block that silently returns 0 on
-    // real hardware is the thing this project keeps refusing to ship.
-    // Re-register when a meaningful fraction of the blocks have working drivers.
-    // See: bw-blocks census c35992b, PARTS-TO-BLOCKS.md greying spec.
+    // Device convenience blocks: servo, motor, relay, sensors, LCD, NeoPixel.
+    // 7 stubs (showdigit, setrgb, setpixel, clearmatrix, devicestate, ircode,
+    // whenirreceived) are hidden from the palette; methods remain so saved
+    // projects load.  NeoPixel hidden on 12T, servo/motor hidden on STC89 (no PCA).
+    devices: () => require('../extensions/crispstrobe/devices'),
     brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
     // Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
     // repo too; the bundledIds dedup removes the gallery copy from the picker.

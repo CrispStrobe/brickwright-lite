@@ -27,8 +27,8 @@ module.exports = makeExt(`// Name: Devices
   const STUB = true;
 
   class Devices {
-    constructor() {
-      this._runtime = null;
+    constructor(runtime) {
+      this._runtime = runtime;
     }
 
     /** Is the current target a 12T core (STC89)? No PCA, no WS2812. */
@@ -242,6 +242,6 @@ module.exports = makeExt(`// Name: Devices
     whenirreceived(a) { const st = this._state(a.SENSOR); return !!(st && st.irReceived); }
   }
 
-  Scratch.extensions.register(new Devices());
+  Scratch.extensions.register(new Devices(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `);

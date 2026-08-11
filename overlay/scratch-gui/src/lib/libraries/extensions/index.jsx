@@ -85,6 +85,13 @@ export default [
         featured: true
     },
     {
+        name: 'Devices',
+        extensionId: 'devices',
+        iconURL: 'static/extension-posters/csp-badge.png',
+        description: 'Servo, motor, relay, sensor, display and NeoPixel blocks for circuit projects — bundled built-in.',
+        featured: true
+    },
+    {
         name: 'Text to Speech',
         extensionId: 'brickwrightTTS',
         iconURL: 'static/extension-posters/tts.png',

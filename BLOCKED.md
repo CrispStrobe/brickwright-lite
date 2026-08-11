@@ -131,11 +131,24 @@ would just change which TabPanel is selected, not where content renders.
   job already has one (e155ca1 extension guard).
 - **bw-debug is NOT vendored.** 8 files, no sync script, no upstream repo. All
   lite's own glue between sb3-creator design docs and bw-board's session API.
-- **Devices extension unregistered** (ad0384f) — 31 of 36 blocks were stubs.
-  Re-register when drivers exist.
+- ~~Devices extension unregistered (ad0384f)~~ — RE-REGISTERED. 29 of 36
+  blocks have implementations that drive parts through `circuitBoard`. 7 stubs
+  (showdigit, setrgb, setpixel, clearmatrix, devicestate, ircode, whenirreceived)
+  remain hidden from the palette; methods exist so saved projects load. Runtime
+  wiring bug fixed (constructor now receives runtime from adapter).
 - **SDCC WASM byte-identity** not verified. Behind localStorage flag. Preview only.
-- **Licence choice is owner's call.** MPL-2.0 was added to bw-circuit-ui (01860ac)
-  and bw-bundle (e3ad9f6). Owner has not ruled. Do not change any LICENSE file.
+- **Licence choice: SETTLED.** Owner explicitly chose MPL-2.0 for bw-circuit-ui,
+  bw-cfront, bw-parts, bw-bundle, and sb3-creator (including relicensing
+  sb3-creator from AGPL-3.0 to MPL-2.0, needed because lite vendors ten of its
+  files into a BSD-3 tree and AGPL anywhere in a bundle blocks app-store
+  distribution). Reasoning: MPL-2.0 requires attribution, keeps improvements
+  open at file level, permits combination into a larger work under other terms,
+  and §3.3 leaves the door open to GPL/AGPL later while the reverse would not.
+  The commits that appeared without explanation (01860ac, e3ad9f6) were applied
+  by the owner over ssh — unannounced, not unsettled.
+  Repos NOT under MPL-2.0 are inherited, not chosen: ucsim-stc = GPL-2 (from
+  ucsim), emu8051-stc = MIT (from Jari Komppa), brickwright-lite = BSD-3 (from
+  upstream Scratch), stc lab = MIT + Apache-2.0 NOTICE for two derived examples.
 
 ## RESOLVED: camera hit-testing (a798d56)
 
