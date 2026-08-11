@@ -313,7 +313,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
               rx={3} fill="#0b6b8a" opacity={0.35} />
             <text x={0} y={kind === 'arduino_nano' ? 5 : 4} textAnchor="middle"
-              fill="#dff6ff" fontSize={kind === 'pi_pico' ? 8 : 9} fontFamily="monospace" fontWeight="bold">
+              fill="#dff6ff" fontSize={kind === 'pi_pico' ? 5.5 : 9} fontFamily="monospace" fontWeight="bold">
               {title}
             </text>
             <text x={0} y={kind === 'arduino_nano' ? 16 : 16} textAnchor="middle"
@@ -322,14 +322,17 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             </text>
             {sc?.terminals?.map(t => {
               const p = pin(t);
-              const horizontal = Math.abs(p.y) >= Math.abs(p.x);
+              // Sidecars place pads on the two long edges. Labels belong
+              // beside their pad, inside the PCB: left edge → right-aligned
+              // toward the body; right edge → left-aligned toward the body.
+              const leftSide = p.x < 0;
               return (
                 <g key={t.name}>
                   <circle cx={p.x} cy={p.y} r={2.4} fill="#d8dee4" stroke="#637381" strokeWidth={0.6} />
-                  <text x={p.x + (horizontal ? 0 : (p.x < 0 ? -4 : 4))}
-                    y={p.y + (horizontal ? (p.y < 0 ? -4 : 8) : 2)}
-                    textAnchor={horizontal ? 'middle' : (p.x < 0 ? 'end' : 'start')}
-                    fill="#d6eef5" fontSize={4.5} fontFamily="monospace">{t.name.toUpperCase()}</text>
+                  <text x={p.x + (leftSide ? 7 : -7)} y={p.y + 1.6}
+                    textAnchor={leftSide ? 'start' : 'end'}
+                    fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.7 : 4.5}
+                    fontFamily="monospace">{t.name.toUpperCase()}</text>
                 </g>
               );
             })}
