@@ -267,7 +267,9 @@ export function createRp2040jsDebugTarget(adapter) {
                 return {unsupported: `no such address space: ${space}`};
             }
             const base = space === 'code' ? FLASH_BASE : RAM_BASE;
-            if (!Number.isInteger(addr) || !Number.isInteger(len) || len < 0 || addr < base) {
+            const limit = base + (space === 'code' ? adapter.rp2040.flash.length : adapter.rp2040.sram.length);
+            if (!Number.isInteger(addr) || !Number.isInteger(len) || len < 0 ||
+                addr < base || addr + len > limit) {
                 return {unsupported: `${space} address/range is invalid`};
             }
             const out = new Uint8Array(len);
@@ -276,7 +278,10 @@ export function createRp2040jsDebugTarget(adapter) {
         },
         writeMem(space, addr, data) {
             if (space !== 'sram') return {refused: `space not writable: ${space}`};
-            if (!Number.isInteger(addr) || addr < RAM_BASE) return {refused: 'invalid SRAM address'};
+            if (!Number.isInteger(addr) || addr < RAM_BASE ||
+                addr + data.length > RAM_BASE + adapter.rp2040.sram.length) {
+                return {refused: 'invalid SRAM address'};
+            }
             for (let i = 0; i < data.length; i++) adapter.rp2040.writeUint8(addr + i, data[i]);
             return undefined;
         },
