@@ -155,6 +155,28 @@ circuit files. The board state is autosaved locally so a reload does not discard
 experiment. DRC results, declarations, board readiness, and simulator state remain derived from the
 same circuit model.
 
+## Simulator and oracle policy
+
+### Simulator and oracle policy
+
+The browser and shipped native app use only the permissive execution paths
+listed in the device matrix. External emulators are developer-side,
+black-box test oracles and are never bundled into Brickwright. The current
+oracle roles are documented in [Oracle testing](docs/oracle-testing.md):
+
+- `CrispStrobe/ucsim-stc` is our project-specific GPL STC/8051 oracle, paired
+  with the MIT `emu8051-stc` differential runner.
+- `simavr` is an optional external AVR hardware/peripheral oracle for Uno and
+  Nano traces.
+- MIT [`cemeyer/avr-emu`](https://github.com/cemeyer/avr-emu) may provide
+  independent CPU-level AVR instruction and debugger cross-checks.
+- MIT [`Gregwar/avrel`](https://github.com/Gregwar/avrel) is a pedagogical
+  opcode/reference source, not a board simulator.
+
+GPL/AGPL oracle code stays outside the product and dependency graph. Oracle
+agreement is evidence for a specified fixture and clock configuration, not a
+claim of complete silicon equivalence.
+
 ## How it's built: vendor + overlay
 
 We're **frozen on pinned versions**, so the base never shifts under us and we don't string-patch it

@@ -127,8 +127,11 @@ All specified in `CLAUDE.md`; not repeated here.
   COOP/COEP, which interacts with the gallery fetch.
 - **Hardware visualisation surface** — S4A-style live board view, simulated and live, riding the
   existing `RUNTIME_EXTENSIONS` driver contract (no emitter changes).
-- **Simulator / debugger view** — `emu8051` is MIT and can ship here; ucsim/QEMU/unicorn are GPL-2
-  and can never be bundled. No ucsim build ships an STC model.
+- **Simulator / debugger view** — `emu8051-stc` is MIT and can ship here;
+  `CrispStrobe/ucsim-stc` is our GPL-2 oracle and remains CI/local-only.
+  `avr8js` is the shipped AVR path; `simavr` is an external AVR hardware
+  oracle. The MIT `cemeyer/avr-emu` and `Gregwar/avrel` projects are optional
+  CPU/reference cross-checks only, not board runtimes.
 
 ---
 
