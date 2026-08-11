@@ -131,6 +131,14 @@ function terminalPos(part, terminal) {
   return { x: part.x + offset.dx, y: part.y + offset.dy };
 }
 
+// Autosaves from the first breadboard format used `boardId`; live Circuit
+// wires use `board`. Treat both as a board endpoint so a tap is rendered only
+// by the dedicated curved tap layer, never again as a part-to-part wire.
+function isBoardEndpoint(endpoint) {
+  return !!(endpoint && (endpoint.board || endpoint.boardId ||
+    (endpoint.hole && !endpoint.part)));
+}
+
 function fmtV(v) {
   if (v == null || typeof v !== 'number') return '';
   if (Math.abs(v) < 0.01) return '0V';
@@ -475,7 +483,7 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
     // Board-connected tap wires are drawn by the dedicated tap-wire layer.
     // A board hole is not a part terminal; rendering it here as well creates
     // a second bogus straight path alongside the real curved tap wire.
-    if (wire.from.board || wire.to.board) return null;
+    if (isBoardEndpoint(wire.from) || isBoardEndpoint(wire.to)) return null;
 
     const fromPart = parts.find(p => p.id === wire.from.part);
     const toPart = parts.find(p => p.id === wire.to.part);
@@ -2191,10 +2199,10 @@ export function BoardCanvas({
           })}
 
           {/* Tap wires: part terminal → board hole, drawn as bench wires */}
-          {wires.filter(w => w.from.board || w.to.board).map(w => {
+          {wires.filter(w => isBoardEndpoint(w.from) || isBoardEndpoint(w.to)).map(w => {
             const endPos = (e) => {
-              if (e.board) {
-                const bb = parts.find(q => q.id === e.board);
+              if (isBoardEndpoint(e)) {
+                const bb = parts.find(q => q.id === (e.board || e.boardId));
                 return bb ? holeWorldPos(bb, e.hole) : null;
               }
               const pp = parts.find(q => q.id === e.part);
