@@ -28,6 +28,11 @@ export const FOOTPRINTS = {
   vcc: { w: 36, h: 40 },
   gnd: { w: 36, h: 40 },
   mcu: { w: 120, h: 160 },
+  // These dimensions match the vendored bw-parts sidecars and their SVG art.
+  // Keep them here too: hit testing must not depend on DOM/SVG availability.
+  arduino_uno: { w: 180, h: 120 },
+  arduino_nano: { w: 60, h: 160 },
+  pi_pico: { w: 60, h: 210 },
   meter: { w: 70, h: 55 },
   led_cube: { w: 90, h: 90 },
   seven_segment: { w: 50, h: 70 },
@@ -68,7 +73,8 @@ export function partBounds(part) {
     const cols = part.params.size === 'half' ? 30 : 17;
     const w = (cols - 1) * 14 + 54;
     const h = part.params.size === 'mini' ? 310 - 2 * (2 * 14 + 18) : 310;
-    return { x: part.x - w / 2, y: part.y - h / 2, w, h };
+    return { minX: part.x - w / 2, minY: part.y - h / 2,
+      maxX: part.x + w / 2, maxY: part.y + h / 2 };
   }
   const { w, h } = footprintOf(part);
   const rot = ((part.rotation ?? 0) % 360 + 360) % 360;

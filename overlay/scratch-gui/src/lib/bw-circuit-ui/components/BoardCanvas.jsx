@@ -117,6 +117,20 @@ function terminalOffsetsForPart(part) {
       });
       return offsets;
     }
+    case 'arduino_uno':
+    case 'arduino_nano':
+    case 'pi_pico': {
+      const sc = getSidecar(part.kind);
+      if (sc?.terminals?.length) {
+        const S = 1;
+        const offsets = {};
+        for (const t of sc.terminals) {
+          offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
+        }
+        return offsets;
+      }
+      return { a: r(-15, 0), b: r(15, 0) };
+    }
     default: return { a: r(-15, 0), b: r(15, 0) };
   }
 }
@@ -271,6 +285,48 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                     fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
                   <text x={chipW / 2 + legLen + 3} y={py + 3} textAnchor="start"
                     fill="#f39c12" fontSize={7} fontFamily="monospace">{pin}</text>
+                </g>
+              );
+            })}
+          </g>
+        );
+      }
+      case 'arduino_uno':
+      case 'arduino_nano':
+      case 'pi_pico': {
+        // Board sidecars provide the audited dimensions and pin coordinates.
+        // The designer deliberately keeps this clean-room inline renderer:
+        // the sidecar is geometry/data, not an imported third-party runtime.
+        const sc = getSidecar(kind);
+        const W = sc?.w ?? (kind === 'arduino_nano' ? 60 : kind === 'pi_pico' ? 60 : 180);
+        const H = sc?.h ?? (kind === 'arduino_nano' ? 160 : kind === 'pi_pico' ? 210 : 120);
+        const boardColor = kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
+        const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : 'RASPBERRY PI PICO';
+        const pin = (t) => ({ x: t.x - W / 2, y: t.y - H / 2 });
+        return (
+          <g key={id} transform={xform} pointerEvents="none">
+            <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
+              fill={boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
+            <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
+              rx={3} fill="#0b6b8a" opacity={0.35} />
+            <text x={0} y={kind === 'arduino_nano' ? 5 : 4} textAnchor="middle"
+              fill="#dff6ff" fontSize={kind === 'pi_pico' ? 8 : 9} fontFamily="monospace" fontWeight="bold">
+              {title}
+            </text>
+            <text x={0} y={kind === 'arduino_nano' ? 16 : 16} textAnchor="middle"
+              fill="#a9dbea" fontSize={6} fontFamily="monospace">
+              {kind === 'pi_pico' ? 'RP2040 · 3V3' : 'ATmega328P · 5V'}
+            </text>
+            {sc?.terminals?.map(t => {
+              const p = pin(t);
+              const horizontal = Math.abs(p.y) >= Math.abs(p.x);
+              return (
+                <g key={t.name}>
+                  <circle cx={p.x} cy={p.y} r={2.4} fill="#d8dee4" stroke="#637381" strokeWidth={0.6} />
+                  <text x={p.x + (horizontal ? 0 : (p.x < 0 ? -4 : 4))}
+                    y={p.y + (horizontal ? (p.y < 0 ? -4 : 8) : 2)}
+                    textAnchor={horizontal ? 'middle' : (p.x < 0 ? 'end' : 'start')}
+                    fill="#d6eef5" fontSize={4.5} fontFamily="monospace">{t.name.toUpperCase()}</text>
                 </g>
               );
             })}
@@ -1234,7 +1290,7 @@ export function BoardCanvas({
       for (const q of partsRef.current) {
         if (q.kind === 'breadboard' || q.kind === 'meter') continue;
         const b = partBounds(q);
-        if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) return null;
+        if (wx >= b.minX && wx <= b.maxX && wy >= b.minY && wy <= b.maxY) return null;
       }
       for (const q of partsRef.current) {
         if (q.kind !== 'breadboard') continue;
@@ -1584,7 +1640,8 @@ export function BoardCanvas({
         // Hit-test bounding boxes, not centres
         const inside = parts.filter(p => {
           const bb = getPartBBox(p);
-          return bb.x + bb.w >= rx1 && bb.x <= rx2 && bb.y + bb.h >= ry1 && bb.y <= ry2;
+          const bounds = partBounds(p);
+          return bounds.maxX >= rx1 && bounds.minX <= rx2 && bounds.maxY >= ry1 && bounds.minY <= ry2;
         });
         if (inside.length > 0) {
           // Shift = additive (toggle into existing selection); default = replace
