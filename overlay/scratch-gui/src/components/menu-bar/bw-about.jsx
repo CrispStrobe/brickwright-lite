@@ -26,6 +26,7 @@ const BUILD_TIME = (typeof process.env.BW_BUILD_TIME === 'string' && process.env
 const REPO_URL = 'https://github.com/CrispStrobe/brickwright-lite';
 const NOTICES_URL = `${REPO_URL}/blob/main/THIRD-PARTY-NOTICES.md`;
 const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
+const COMPILER_HEALTH_URL = 'https://stc-compiler.vercel.app/health';
 
 // The imprint block, mirroring the compiler service's About (its
 // IMPRINT_* defaults) — one provider, stated identically in both places.
@@ -76,7 +77,10 @@ const L10N = {
         notices: 'Full third-party notices',
         affil: 'Affiliation',
         affilText: 'Not affiliated with or endorsed by Scratch / MIT, STC, Arduino, or ' +
-            'Raspberry Pi. Trademarks belong to their owners.'
+            'Raspberry Pi. Trademarks belong to their owners.',
+        toolchain: 'Compile service',
+        toolchainLoading: 'asking the service…',
+        toolchainDown: 'service not reachable right now — compiling will say why'
     },
     de: {
         about: 'Über Brickwright',
@@ -107,7 +111,10 @@ const L10N = {
         notices: 'Vollständige Third-Party-Hinweise',
         affil: 'Zugehörigkeit',
         affilText: 'Nicht verbunden mit oder unterstützt von Scratch / MIT, STC, Arduino oder ' +
-            'Raspberry Pi. Marken gehören ihren Eigentümern.'
+            'Raspberry Pi. Marken gehören ihren Eigentümern.',
+        toolchain: 'Compile-Dienst',
+        toolchainLoading: 'frage den Dienst…',
+        toolchainDown: 'Dienst gerade nicht erreichbar — beim Kompilieren steht warum'
     }
 };
 
@@ -126,7 +133,7 @@ const formatBuildTime = iso => {
 class BwAbout extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {open: false, copied: false};
+        this.state = {open: false, copied: false, toolchain: null};
         this.handleToggle = this.handleToggle.bind(this);
         this.handleClose = this.handleClose.bind(this);
         this.handleCopy = this.handleCopy.bind(this);
@@ -142,7 +149,17 @@ class BwAbout extends React.Component {
         if (event.key === 'Escape' && this.state.open) this.handleClose();
     }
     handleToggle () {
-        this.setState({open: !this.state.open, copied: false});
+        const opening = !this.state.open;
+        this.setState({open: opening, copied: false});
+        // The dialog states the WHOLE chain: this build, and the toolchains
+        // that will compile for it. Fetched on open, never blocking render;
+        // /health carries CORS and reports the service's own deploy commit.
+        if (opening && !this.state.toolchain) {
+            fetch(COMPILER_HEALTH_URL, {cache: 'no-store'})
+                .then(r => r.json())
+                .then(info => this.setState({toolchain: info}))
+                .catch(() => this.setState({toolchain: {ok: false}}));
+        }
     }
     handleClose () {
         this.setState({open: false});
@@ -226,6 +243,16 @@ class BwAbout extends React.Component {
                                 </table>
                                 <p className={styles.body}>
                                     <a href={NOTICES_URL} rel="noopener noreferrer" target="_blank">{t('notices')}</a>
+                                </p>
+                                <div className={styles.heading}>{t('toolchain')}</div>
+                                <p className={classNames(styles.body, styles.mono)}>
+                                    {this.state.toolchain === null ? t('toolchainLoading') :
+                                        this.state.toolchain.ok === false ? t('toolchainDown') : [
+                                            this.state.toolchain.version ?
+                                                `service ${this.state.toolchain.version}` : null,
+                                            this.state.toolchain.sdcc || null,
+                                            this.state.toolchain.avr_gcc || null
+                                        ].filter(Boolean).join(' · ')}
                                 </p>
                                 <div className={styles.heading}>{t('affil')}</div>
                                 <p className={styles.body}>{t('affilText')}</p>
