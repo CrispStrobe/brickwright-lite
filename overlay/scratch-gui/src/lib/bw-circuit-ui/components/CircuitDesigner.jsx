@@ -740,7 +740,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
             fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
           }}>collapse</button>
-          <PartPalette onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+          <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
           <InferPanel onLoadCircuit={handleLoadCircuit} />
         </div>
       ) : (

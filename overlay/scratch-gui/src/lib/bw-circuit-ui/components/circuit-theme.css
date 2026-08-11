@@ -3,6 +3,11 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+:global(.bw-circuit-designer),
+:global(.bw-circuit-designer *) {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
 :global(.bw-circuit-designer[data-bw-circuit-theme="light"] button),
 :global(.bw-circuit-designer[data-bw-circuit-theme="light"] input),
 :global(.bw-circuit-designer[data-bw-circuit-theme="light"] select),

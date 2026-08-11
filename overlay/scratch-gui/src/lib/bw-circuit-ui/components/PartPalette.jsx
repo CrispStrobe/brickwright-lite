@@ -179,9 +179,19 @@ const CATEGORIES = [
 
 const ALL_PARTS = CATEGORIES.flatMap(c => c.parts);
 
-export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
+export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark' }) {
   const [filter, setFilter] = useState('');
   const [ledColor, setLedColor] = useState('red');
+  const light = theme === 'light';
+  const palette = light ? {
+    background: '#f8fafc', border: '#cbd5e1', text: '#1e293b', input: '#fff',
+    inputText: '#334155', category: '#475569', card: '#fff', hover: '#e0f2fe',
+    cardBorder: '#94a3b8', muted: '#64748b'
+  } : {
+    background: '#172033', border: '#2c3e50', text: '#f8fafc', input: '#0b1220',
+    inputText: '#f8fafc', category: '#b8c7d9', card: '#20324d', hover: '#29466a',
+    cardBorder: '#6383a8', muted: '#cbd5e1'
+  };
 
   const matchingParts = filter
     ? ALL_PARTS.filter(p =>
@@ -192,16 +202,16 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
 
   return (
     <div style={{
-      background: '#172033',
-      border: '1px solid #2c3e50',
+      background: palette.background,
+      border: `1px solid ${palette.border}`,
       borderRadius: '8px',
       padding: '8px',
       width: '160px',
-      fontFamily: 'monospace',
+      fontFamily: 'inherit',
       flexShrink: 0,
       overflowY: 'auto',
     }}>
-      <div style={{ color: '#f8fafc', fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
+      <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
         Parts
       </div>
 
@@ -212,26 +222,26 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
         placeholder="search..."
         style={{
           width: '100%', padding: '4px 6px', marginBottom: '6px',
-          background: '#0b1220', border: '1px solid #6383a8',
-          borderRadius: '4px', color: '#f8fafc',
-          fontFamily: 'monospace', fontSize: '10px',
+          background: palette.input, border: `1px solid ${palette.cardBorder}`,
+          borderRadius: '4px', color: palette.inputText,
+          fontFamily: 'inherit', fontSize: '10px',
           boxSizing: 'border-box',
         }}
       />
 
       {matchingParts ? (
         matchingParts.length === 0 ? (
-          <div style={{ color: '#556', fontSize: '9px', padding: '4px' }}>No matches</div>
+          <div style={{ color: palette.muted, fontSize: '9px', padding: '4px' }}>No matches</div>
         ) : (
-          matchingParts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
+          matchingParts.map(p => <PartButton key={p.kind} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
         )
       ) : (
         CATEGORIES.map(cat => (
           <div key={cat.name}>
-            <div style={{ color: '#b8c7d9', fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+            <div style={{ color: palette.category, fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 700 }}>
               {cat.name}
             </div>
-            {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
+            {cat.parts.map(p => <PartButton key={p.kind} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
           </div>
         ))
       )}
@@ -239,7 +249,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
   );
 }
 
-function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
+function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
   const { kind, label, params, color, tooltip, capability, hasColorPicker } = part;
   const [hovered, setHovered] = useState(false);
 
@@ -265,8 +275,8 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
           width: '100%',
           padding: '4px',
           marginBottom: '3px',
-          background: hovered ? '#29466a' : '#20324d',
-          border: `1px solid ${hovered ? color : '#6383a8'}`,
+          background: hovered ? palette.hover : palette.card,
+          border: `1px solid ${hovered ? color : palette.cardBorder}`,
           borderRadius: '6px',
           cursor: 'grab',
           userSelect: 'none',
@@ -277,8 +287,8 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
       >
         <PartThumbnail kind={kind} color={color} params={effectiveParams} />
         <div style={{
-          color: hovered ? '#ffffff' : '#e7eef8',
-          fontFamily: 'monospace',
+          color: palette.text,
+          fontFamily: 'inherit',
           fontSize: '9px',
           textAlign: 'center',
           lineHeight: '1.2',
@@ -288,7 +298,7 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
         </div>
         {capability && (
           <div style={{
-            color: capability === 'wiring only' ? '#f6c76d' : '#9fe3bf',
+            color: capability === 'wiring only' ? '#a16207' : '#047857',
             fontSize: '7px', textAlign: 'center', marginTop: '2px',
             letterSpacing: '.02em',
           }}>
