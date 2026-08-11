@@ -33,6 +33,7 @@ import { InlineEditor } from './InlineEditor.jsx';
 import { getMeterReading } from '../model/meter-reading.js';
 import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 import { getPinFunctions } from '../model/pin-functions.js';
+import { isBoardEndpoint } from '../model/wire-endpoints.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -129,14 +130,6 @@ function terminalPos(part, terminal) {
   const offsets = terminalOffsetsForPart(part);
   const offset = offsets[terminal] ?? { dx: 0, dy: 0 };
   return { x: part.x + offset.dx, y: part.y + offset.dy };
-}
-
-// Autosaves from the first breadboard format used `boardId`; live Circuit
-// wires use `board`. Treat both as a board endpoint so a tap is rendered only
-// by the dedicated curved tap layer, never again as a part-to-part wire.
-function isBoardEndpoint(endpoint) {
-  return !!(endpoint && (endpoint.board || endpoint.boardId ||
-    (endpoint.hole && !endpoint.part)));
 }
 
 function fmtV(v) {
