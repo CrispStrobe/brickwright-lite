@@ -117,6 +117,24 @@ try {
         if (REPORT) console.log('small stage:', JSON.stringify(small, null, 1), '\n');
         check('small stage widens the editor', small.editor.w > before.editor.w,
             `${before.editor.w}px -> ${small.editor.w}px`);
+
+        // "Wider" was too weak a claim to be worth much: the column used to step from a
+        // 'm' share to an 's' share, which widened the editor by 95px while leaving 372px
+        // of empty background around a 240px stage. Asking for a small stage is asking for
+        // editor room, so the column has to actually fit the stage — compare it against
+        // the width its own content needs, which is what flex-basis: min-content resolves.
+        const fit = await page.evaluate(() => {
+            const col = document.querySelector('[class*="stage-and-target-wrapper"]');
+            const saved = col.getAttribute('style') || '';
+            col.style.flexBasis = 'min-content';
+            col.style.flexGrow = '0';
+            const needed = Math.round(col.getBoundingClientRect().width);
+            col.setAttribute('style', saved);
+            return {needed, actual: Math.round(col.getBoundingClientRect().width)};
+        });
+        check('the small stage\'s column is as narrow as the stage allows',
+            Math.abs(fit.actual - fit.needed) <= 4,
+            `column ${fit.actual}px, stage needs ${fit.needed}px`);
         await stageButtons[1].click(); // back to large
         await page.waitForTimeout(1200);
     } else {

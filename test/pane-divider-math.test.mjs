@@ -19,8 +19,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    MIN_COLUMN_WIDTH, PANE_SIZES, clampFraction, computePaneStyles, isCollapsed,
-    isExplicitFraction, resolveShare
+    FIT, MIN_COLUMN_WIDTH, PANE_SIZES, clampFraction, computePaneStyles, isCollapsed,
+    isExplicitFraction, isFit, resolveShare
 } from '../overlay/scratch-gui/src/lib/pane-sizes.js';
 
 test('a dragged column renders at exactly the fraction it was given', () => {
@@ -70,6 +70,33 @@ test('only the xs NAME collapses — a small dragged fraction never does', () =>
         'the collapsed strip must not grow');
     assert.equal(computePaneStyles('m', 'l', 0.15).right.minWidth, `${MIN_COLUMN_WIDTH}px`,
         'a dragged column keeps the declared minimum width');
+});
+
+test('a fit column asks the CSS for exactly its content width', () => {
+    // The stage-size buttons store FIT. Deliberately min-content and not a pixel table:
+    // the stage is 480px scaled by 1, 0.85 or 0.5, and a table would have to be kept in
+    // sync with all three plus the sprite pane underneath.
+    const style = computePaneStyles('m', 'l', FIT).right;
+    assert.equal(style.flexBasis, 'min-content');
+    assert.equal(style.flexGrow, 0, 'a fitted column must not take a cut of the free space');
+    assert.equal(style.flexShrink, 1, 'but must still give way when the window narrows');
+});
+
+test('FIT is its own kind, distinct from every other size', () => {
+    // It must not be mistaken for a named share (which would grow), for the collapsed
+    // strip, or for a dragged fraction.
+    assert.equal(isFit(FIT), true);
+    assert.equal(isFit('m'), false);
+    assert.equal(isFit(0.4), false);
+    assert.equal(isCollapsed(FIT), false);
+    assert.equal(isExplicitFraction(FIT), false);
+});
+
+test('dragging replaces fit, and fit replaces a drag', () => {
+    // The two must be interchangeable in the same slot: the stage buttons overwrite a
+    // hand-dragged width on purpose, and dragging afterwards overwrites the fit.
+    assert.equal(computePaneStyles('m', 'l', 0.4).right.flexBasis, '40.00%');
+    assert.equal(computePaneStyles('m', 'l', FIT).right.flexBasis, 'min-content');
 });
 
 test('clampFraction keeps both columns above the minimum width', () => {

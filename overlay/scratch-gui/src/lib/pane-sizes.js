@@ -44,6 +44,27 @@ export const MIN_COLUMN_WIDTH = 120;
  * left exported for no caller.
  */
 
+/**
+ * "As wide as its content needs, and not one pixel more."
+ *
+ * Stored by the stage-size buttons. The stage is a fixed 480px scaled by 1, 0.85
+ * or 0.5, so what its column needs is a fact the CSS can work out on its own —
+ * measured at 1600px wide: 498px at the large stage, 258px at small, against a
+ * column that was actually 725px and 630px. That is 227px and 372px of empty
+ * background sitting where the editor could be, and the small-stage case is the
+ * one people notice, because asking for a small stage is asking for editor room.
+ *
+ * `min-content` rather than a table of numbers: it already tracks the 0.85
+ * constrained scale, the sprite pane underneath, and anything either grows into
+ * later, with nothing to keep in sync.
+ */
+export const FIT = 'fit';
+
+/** @param {string|number} size @returns {boolean} */
+export function isFit(size) {
+  return size === FIT;
+}
+
 /** @param {string|number} size — size name or dragged fraction @returns {boolean} */
 export function isCollapsed(size) {
   return size === 'xs';
@@ -148,6 +169,17 @@ export function computePaneStyles(left, middle, right) {
         // 28px slice of clipped stage underneath is not what the user sees. Stated here
         // rather than relied upon: the base .stage-and-target-wrapper does not set it.
         position: 'relative',
+      };
+    }
+    if (isFit(name)) {
+      return {
+        flexBasis: 'min-content',
+        // Same reason as a dragged fraction: the width is the answer, so the
+        // column must not then help itself to the free space as well.
+        flexGrow: 0,
+        flexShrink: 1,
+        minWidth: `${MIN_COLUMN_WIDTH}px`,
+        overflow: 'hidden',
       };
     }
     if (isExplicitFraction(name)) {

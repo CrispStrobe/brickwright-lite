@@ -1,3 +1,5 @@
+import { FIT } from '../lib/pane-sizes.js';
+
 /**
  * Pane layout reducer — three columns, each with one or two stacked slots.
  *
@@ -107,12 +109,18 @@ export default function paneLayoutReducer(state = initialState, action) {
     }
     case SET_STAGE_SIZE: {
       // Clicking "small stage" IS a request for more editor room, so it deliberately overrides
-      // an earlier manual cycling of this column — the user is asking for it right now, and a
-      // button that silently did nothing because of a choice made ten minutes ago is worse than
-      // one that overrides it. A later manual cycle wins again, until the next stage-size click.
-      const size = action.stageSize === 'small' ? 's' : 'm';
-      if (!state.right || state.right.size === size) return state;
-      next = { ...state, right: { ...state.right, size }, activePreset: null };
+      // whatever this column was set to — including a hand-dragged width. The user is asking
+      // right now, and a button that silently did nothing because of a choice made ten minutes
+      // ago is worse than one that overrides it. Dragging the divider wins again afterwards,
+      // until the next stage-size click.
+      //
+      // FIT rather than the 's'/'m' shares this used to set. Those were an estimate of how much
+      // room a stage of that size wants, and they were a poor one: measured at 1600px wide, the
+      // column sat at 630px around a small stage that needs 258px, so "switch to small stage"
+      // handed the editor 95px of the 372px it had just been asked for. The column can simply
+      // be as wide as its content, and then the answer is exact at every stage scale.
+      if (!state.right || state.right.size === FIT) return state;
+      next = { ...state, right: { ...state.right, size: FIT }, activePreset: null };
       break;
     }
     case APPLY_PRESET: {

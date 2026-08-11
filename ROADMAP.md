@@ -60,6 +60,21 @@ space and the first version moved the boundary 90px for a 220px drag. Double-cli
 from pointerdown timestamps: the `preventDefault` that stops a drag selecting text also suppresses
 `dblclick`, which never fired once in Firefox.
 
+### 1.5 Stage-size buttons now fit the column to the stage — RESOLVED (`FIT` in pane-sizes.js)
+The buttons used to step the column between the `s` and `m` shares, which was an estimate of how
+much room a stage of that size wants and a poor one. Measured at 1600px: a small stage needs a
+258px column and got 630px; a large stage needs 498px and got 725px. "Switch to small stage" is a
+request for editor room, and it was handing over 95px of the 372px available.
+
+The column is now `flex-basis: min-content` (the `FIT` size), so it is exactly as wide as the
+stage and sprite pane need. `min-content` rather than a pixel table because the stage is 480px
+scaled by 1, 0.85 or 0.5, and a table would need keeping in sync with all three. Editor at small
+stage: 866px → **1333px**.
+
+Note: restoring from the collapsed strip still goes to the `m` share (725px), not `FIT`. That is
+the documented default rather than an oversight, but a one-word change if the snug width is wanted
+there too.
+
 ---
 
 ## 2. Deploy and CI
