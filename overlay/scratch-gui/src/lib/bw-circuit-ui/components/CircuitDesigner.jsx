@@ -813,7 +813,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           parts={parts}
           wires={wires}
           mode={mode}
-          onModeChange={setMode}
+          onModeChange={nextMode => {
+            setMode(nextMode);
+            // Simulation controls live in the instrument column. Selecting
+            // Sim must reveal that column even in the compact embedded view;
+            // otherwise the mode changes but its controls are unreachable.
+            if (nextMode === 'simulate') setRightOpen(true);
+          }}
           powered={powered}
           onPowerToggle={() => setPower(!powered)}
           simulate={mode === 'simulate'}

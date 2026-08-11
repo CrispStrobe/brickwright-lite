@@ -283,11 +283,7 @@ const GUIComponent = props => {
                                             draggable={false}
                                             src={codeIcon}
                                         />
-                                        <FormattedMessage
-                                            defaultMessage="Blocks"
-                                            description="Button to get to the code panel"
-                                            id="gui.gui.codeTab"
-                                        />
+                                        <span>Blocks</span>
                                     </Tab>
                                     <Tab
                                         className={tabClassNames.tab}

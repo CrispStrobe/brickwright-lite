@@ -152,7 +152,9 @@ class CircuitTab extends React.Component {
         if (!wrap) return null;
         if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
         const host = document.createElement('div');
-        host.style.cssText = 'position:absolute;inset:0;z-index:20;background:#fff;display:none;overflow:hidden;';
+        // Keep the stage header controls above the portal: the portal owns the
+        // stage surface, but must never intercept the three view buttons.
+        host.style.cssText = 'position:absolute;inset:0;z-index:1;background:#fff;display:none;overflow:hidden;';
         wrap.appendChild(host);
         this._stageHost = host;
         return host;

@@ -82,7 +82,11 @@ const setCircuitView = ({fullWidth, debuggerOn}) => {
 
 const readCircuitView = () => {
     try {
-        if (localStorage.getItem('bw-stage-circuit') === '0') return 'scratch';
+        const coding = localStorage.getItem('bw-stage-circuit');
+        // A fresh Scratch editor starts with its normal stage selected. The
+        // circuit/debugger choices become active only after the user chooses
+        // them or selects them in Settings.
+        if (coding !== '1') return 'scratch';
         return localStorage.getItem('bw-debug-dock') === 'off' ? 'circuit' : 'debugger';
     } catch {
         return 'scratch';
@@ -104,7 +108,10 @@ const StageViewButtons = ({intl}) => {
         return () => window.removeEventListener('bw-settings-change', sync);
     }, []);
     return (
-        <div className={styles.stageSizeToggleGroup}>
+        <div
+            className={styles.stageSizeToggleGroup}
+            style={{position: 'relative', zIndex: 20}}
+        >
             <ToggleButtons
                 buttons={[
                     {

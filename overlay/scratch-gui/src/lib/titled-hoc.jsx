@@ -8,7 +8,7 @@ import {setProjectTitle} from '../reducers/project-title';
 
 const messages = defineMessages({
     defaultProjectTitle: {
-        id: 'gui.gui.defaultProjectTitle',
+        id: 'gui.gui.defaultBrickWrightProjectTitle',
         description: 'Default title for project',
         defaultMessage: 'BrickWright Project'
     }
