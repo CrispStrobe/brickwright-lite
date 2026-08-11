@@ -27,9 +27,10 @@ export function createRp2040jsAdapter(opts = {}) {
     let attached = board;
     let instructionObserver = null;
     let loadedVector = null;
+    const lastPublished = new Map();
     const stats = {instructionCount: 0, pinChangeCount: 0, advanceToCount: 0};
 
-    function publishPin(index) {
+    function publishPin(index, force = false) {
         if (!attached) return;
         const pin = rp2040.gpio[index];
         // Boundary rule: board time is current before the edge is published.
@@ -38,18 +39,27 @@ export function createRp2040jsAdapter(opts = {}) {
         const state = pin.outputEnable
             ? (high ? GPIOPinState.High : GPIOPinState.Low)
             : pin.value;
+        let mode;
+        let driveHigh;
         if (state === GPIOPinState.High || state === GPIOPinState.Low) {
-            attached.setPin(pinName(index), 'pushpull', state === GPIOPinState.High);
+            mode = 'pushpull';
+            driveHigh = state === GPIOPinState.High;
         } else if (state === GPIOPinState.InputPullUp) {
-            attached.setPin(pinName(index), 'input-pullup', true);
+            mode = 'input-pullup';
+            driveHigh = true;
         } else {
-            attached.setPin(pinName(index), 'input', false);
+            mode = 'input';
+            driveHigh = false;
         }
+        const key = `${mode}:${driveHigh ? 1 : 0}`;
+        if (!force && lastPublished.get(index) === key) return;
+        lastPublished.set(index, key);
+        attached.setPin(pinName(index), mode, driveHigh);
         stats.pinChangeCount++;
     }
 
-    function publishAll() {
-        for (let i = 0; i < rp2040.gpio.length; i++) publishPin(i);
+    function publishAll(force = false) {
+        for (let i = 0; i < rp2040.gpio.length; i++) publishPin(i, force);
     }
 
     function sampleInputs() {
@@ -67,7 +77,7 @@ export function createRp2040jsAdapter(opts = {}) {
     }
 
     function executeOne() {
-        if (instructionObserver && instructionObserver({pc: rp2040.core.pc, timeNs, phase: 'before'}) === false) {
+        if (instructionObserver && instructionObserver({pc: pcOf(rp2040), timeNs, phase: 'before'}) === false) {
             return false;
         }
         sampleInputs();
@@ -111,11 +121,11 @@ export function createRp2040jsAdapter(opts = {}) {
                 rp2040.core.PC = FLASH_BASE;
             }
             timeNs = 0n;
-            publishAll();
+            publishAll(true);
         },
         attachBoard(nextBoard) {
             attached = nextBoard;
-            publishAll();
+            publishAll(true);
         },
         advanceNs(deltaNs) {
             const target = timeNs + BigInt(Math.max(0, Math.round(deltaNs)));
@@ -132,7 +142,7 @@ export function createRp2040jsAdapter(opts = {}) {
                 rp2040.core.PC = loadedVector.resetPc;
             }
             timeNs = 0n;
-            publishAll();
+            publishAll(true);
         },
         timeNs() { return timeNs; },
     };
