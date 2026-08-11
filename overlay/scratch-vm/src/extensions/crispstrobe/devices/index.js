@@ -31,7 +31,7 @@ module.exports = makeExt(`// Name: Devices
       this._runtime = null;
     }
 
-    /** Is the current target a 12T core (STC89)? WS2812 is unavailable. */
+    /** Is the current target a 12T core (STC89)? No PCA, no WS2812. */
     _is12T() {
       if (!this._runtime) return false;
       const stc = this._runtime.stc;
@@ -43,6 +43,9 @@ module.exports = makeExt(`// Name: Devices
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def ?? 0 } });
       const is12T = this._is12T();
+      // STC89 has no PCA — servo (compare/match) and motor (8-bit PWM)
+      // silently produce 0 edges (ucsim-stc 356df26 measured).
+      const noPCA = is12T;
 
       return {
         id: 'devices',
@@ -50,13 +53,17 @@ module.exports = makeExt(`// Name: Devices
         color1: '#CF6A1D',
         blocks: [
           // ---- Commands: real drivers ----
+          // Servo and motor need PCA — hidden on STC89 (no PCA, 0 edges)
           { opcode: 'setservo', blockType: Scratch.BlockType.COMMAND,
+            hideFromPalette: noPCA,
             text: 'set [SERVO] angle to [ANGLE]',
             arguments: { ...str('SERVO', 'servo1'), ...n('ANGLE', 90) } },
           { opcode: 'setmotor', blockType: Scratch.BlockType.COMMAND,
+            hideFromPalette: noPCA,
             text: 'set [MOTOR] speed to [SPEED]',
             arguments: { ...str('MOTOR', 'motor1'), ...n('SPEED', 50) } },
           { opcode: 'setdirection', blockType: Scratch.BlockType.COMMAND,
+            hideFromPalette: noPCA,
             text: 'set [MOTOR] direction [DIR]',
             arguments: { ...str('MOTOR', 'motor1'),
               DIR: { type: Scratch.ArgumentType.STRING, defaultValue: 'forward',
@@ -106,10 +113,13 @@ module.exports = makeExt(`// Name: Devices
 
           // ---- Reporters: real drivers ----
           { opcode: 'servoangle', blockType: Scratch.BlockType.REPORTER,
+            hideFromPalette: noPCA,
             text: 'angle of [SERVO]', arguments: str('SERVO', 'servo1') },
           { opcode: 'motorspeed', blockType: Scratch.BlockType.REPORTER,
+            hideFromPalette: noPCA,
             text: 'speed of [MOTOR]', arguments: str('MOTOR', 'motor1') },
           { opcode: 'motordirection', blockType: Scratch.BlockType.REPORTER,
+            hideFromPalette: noPCA,
             text: 'direction of [MOTOR]', arguments: str('MOTOR', 'motor1') },
           { opcode: 'temperature', blockType: Scratch.BlockType.REPORTER,
             text: 'temperature from [SENSOR]', arguments: str('SENSOR', 'sensor1') },
