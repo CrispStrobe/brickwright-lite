@@ -131,50 +131,14 @@ async function createAvr8jsTarget(opts) {
     adapter.loadProgram(words);
   }
 
-  // Boundary D deliberately exposes only what the AVR execution loop can
-  // prove today. Source/yield positions need an AVR symbol mapper; pretending
-  // the STC task table applies here would light the wrong Scratch blocks.
-  let running = false;
-  let listeners = [];
-  const announce = (cause) => {
-    const why = {cause, tasks: undefined, tNs: adapter.timeNs(), skewNs: 0n};
-    for (const listener of listeners) listener(why);
-  };
-  const target = {
-    capabilities() {
-      return {steps: ['insn'], breakpoints: [], spaces: ['code'], writable: [],
-        sfrs: 'none', haltPolicy: 'freeze-timers', timeFreezes: true, consumes: []};
-    },
-    state: () => running ? 'running' : 'halted',
-    run() { running = true; },
-    halt() { if (running) { running = false; announce('user'); } },
-    step(kind, count = 1) {
-      if (kind !== 'insn') {
-        return {unsupported: `AVR debugging currently supports instruction stepping only; step('${kind}') needs AVR source mapping.`};
-      }
-      running = false;
-      for (let i = 0; i < count; i++) adapter.stepInstruction();
-      announce('step');
-      return undefined;
-    },
-    reset() { running = false; adapter.reset(); },
-    onHalt(listener) { listeners.push(listener); return () => { listeners = listeners.filter(l => l !== listener); }; },
-    position: () => undefined,
-    runFor(budgetNs) {
-      if (!running) return 'idle';
-      adapter.advanceNs(Number(budgetNs));
-      return 'budget';
-    },
-    timeNs: () => adapter.timeNs(),
-    bwMs: () => undefined,
-    setBreakpoint: () => ({unsupported: 'AVR source breakpoints need the AVR symbol mapper.'}),
-    clearBreakpoint: () => ({unsupported: 'AVR source breakpoints are not available yet.'}),
-    readMem: () => new Uint8Array(),
-    writeMem: () => ({unsupported: 'AVR memory inspection is not available yet.'}),
-    destroy() { listeners = []; running = false; },
-  };
+  // The AVR debug target wraps the adapter for boundary D (run/pause/step).
+  // Block-level positions require AVR symbol mapping (a later addition).
+  const { createAvr8jsDebugTarget } = await import('./avr8js-adapter.js');
+  const target = typeof createAvr8jsDebugTarget === 'function'
+    ? createAvr8jsDebugTarget(adapter)
+    : null;
 
-  return {adapter, target};
+  return { adapter, target };
 }
 
 /**

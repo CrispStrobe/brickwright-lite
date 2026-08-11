@@ -14,9 +14,6 @@ export { inferNetlist, checkWiring } from './infer-netlist.js';
 export { runTrace } from './scripted-mcu.js';
 export { runConformance, formatReport } from './conformance.js';
 export { createEmu8051Adapter, formatPollingLossReport } from './emu8051-adapter.js';
-// avr8js-adapter.js is NOT re-exported statically: it imports 'avr8js' at the
-// top level, and that package is optional. Callers reach it through
-// createDebugTarget('avr8js', ...) which lazy-imports it.
 export { createEmu8051DebugTarget } from './emu8051-debug.js';
 export { createDebugSession } from './debug-session.js';
 export { validateNetlist, assertValidNetlist } from './validate.js';
@@ -44,3 +41,10 @@ export { registerI2CParts } from './devices/i2c-parts.js';
 export { registerAllDevices } from './register-all.js';
 export { getMaxCurrent, CURRENT_RATINGS, PORT_LIMITS, aggregateCurrent, checkCurrentBudget } from './current-ratings.js';
 export { R_INPUT_PULLUP } from './pin-model.js';
+// pin-functions.js is NODE-ONLY (it reads the bw-parts sibling checkout via
+// node:fs) and is deliberately NOT exported here: this file is the browser
+// entry, and a bundler handed a node:fs import fails the whole app build —
+// the same lesson as vite-isms in runtime-agnostic modules, node flavour.
+// Node-side consumers (tests, tooling) import './pin-functions.js' directly.
+// Browser consumers get pin functions from bw-circuit-ui's VENDORED sidecar
+// registry, which is the same bw-parts data through the sync pipeline.
