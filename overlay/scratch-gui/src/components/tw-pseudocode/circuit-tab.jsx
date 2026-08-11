@@ -54,6 +54,8 @@ class CircuitTab extends React.Component {
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
         this.loadExample = this.loadExample.bind(this);
         this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
+        this.handleProjectStart = this.handleProjectStart.bind(this);
+        this.handleProjectStop = this.handleProjectStop.bind(this);
     }
 
     componentDidMount () {
@@ -73,10 +75,18 @@ class CircuitTab extends React.Component {
             const {key, value} = event.detail || {};
             if (key === 'about') return;
             if (key === 'debugDock') this.setDock(value);
-            if (key === 'stageCircuit') this.setDisplayPreference('showInStage', value === '1');
+            if (key === 'stageCircuit') {
+                this.setDisplayPreference('showInStage', value === '1');
+                if (value === '1') this.load();
+            }
             if (key === 'hideStage') this.setDisplayPreference('hideStage', value === '1');
         };
         window.addEventListener('bw-settings-change', this._settingsHandler);
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (runtime && runtime.on) {
+            runtime.on('PROJECT_START', this.handleProjectStart);
+            runtime.on('PROJECT_STOP_ALL', this.handleProjectStop);
+        }
     }
 
     componentDidUpdate (prevProps) {
@@ -90,6 +100,11 @@ class CircuitTab extends React.Component {
 
     componentWillUnmount () {
         window.removeEventListener('bw-settings-change', this._settingsHandler);
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (runtime && runtime.removeListener) {
+            runtime.removeListener('PROJECT_START', this.handleProjectStart);
+            runtime.removeListener('PROJECT_STOP_ALL', this.handleProjectStop);
+        }
         document.documentElement.removeAttribute('data-bw-hide-stage');
         if (this._stageHost && this._stageHost.parentNode) {
             this._stageHost.parentNode.removeChild(this._stageHost);
@@ -106,6 +121,14 @@ class CircuitTab extends React.Component {
         this.setState({[key]: value});
         const storageKey = key === 'showInStage' ? 'bw-stage-circuit' : 'bw-hide-stage';
         try { localStorage.setItem(storageKey, value ? '1' : '0'); } catch { /* private mode */ }
+    }
+
+    handleProjectStart () {
+        this.setState(state => ({runToken: (state.runToken || 0) + 1}));
+    }
+
+    handleProjectStop () {
+        this.setState(state => ({stopToken: (state.stopToken || 0) + 1}));
     }
 
     /** The overlay div inside the stage column that hosts the portal. Created
@@ -673,13 +696,20 @@ class CircuitTab extends React.Component {
                         if (caps) return false; // live hardware → no sim values
                         return undefined; // default: simulator assumed
                     })()}
-                    onDeclarationChange={this.handleDeclarationChange}
-                />
+                        onDeclarationChange={this.handleDeclarationChange}
+                        runToken={this.state.runToken}
+                        stopToken={this.state.stopToken}
+                    />
                 </div>
                 </div>
                 {this.state.debugDock !== 'top' && stc && stc.pins && stc.pins.length ? (
                     <div style={this.state.debugDock === 'right' ?
                         {flex: '0 0 320px', minWidth: 0, overflow: 'auto'} : {display: 'none'}}>
+                        {this.renderDebugPanel()}
+                    </div>
+                ) : null}
+                {this.state.debugDock === 'off' && stc && stc.pins && stc.pins.length ? (
+                    <div style={{display: 'none'}} aria-hidden="true">
                         {this.renderDebugPanel()}
                     </div>
                 ) : null}
@@ -700,6 +730,8 @@ class CircuitTab extends React.Component {
             <React.Suspense fallback={null}>
                 <DebugPanel
                     clockHz={(stc && Number(stc.clock)) || 11059200}
+                    runToken={this.state.runToken}
+                    stopToken={this.state.stopToken}
                     onRunnerChange={this.handleRunnerChange}
                 />
             </React.Suspense>

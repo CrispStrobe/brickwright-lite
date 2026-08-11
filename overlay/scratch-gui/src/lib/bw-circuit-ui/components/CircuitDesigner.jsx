@@ -52,6 +52,7 @@ import { Circuit } from '../model/circuit.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
 import { runDrc } from '../model/drc.js';
+import { migrateStarterAutosave } from '../model/starter-migration.js';
 import './circuit-theme.css';
 
 const MS = 1_000_000n;
@@ -61,7 +62,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -143,6 +144,18 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setSelectedWire(null);
   }, []);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
+  const lastRunToken = useRef(0);
+  const lastStopToken = useRef(0);
+  useEffect(() => {
+    if (!runToken || runToken === lastRunToken.current) return;
+    lastRunToken.current = runToken;
+    setMode('simulate');
+  }, [runToken]);
+  useEffect(() => {
+    if (!stopToken || stopToken === lastStopToken.current) return;
+    lastStopToken.current = stopToken;
+    setMode('build');
+  }, [stopToken]);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
@@ -213,7 +226,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         if (saved) {
           const data = JSON.parse(saved);
           if (data && Array.isArray(data.parts) && data.parts.length > 0) {
-            handleLoad(data);
+            handleLoad(migrateStarterAutosave(data));
             return;
           }
         }

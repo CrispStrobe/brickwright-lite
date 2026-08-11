@@ -84,9 +84,11 @@ class DebugPanel extends React.Component {
         this.onStep = this.onStep.bind(this);
         this.onStop = this.onStop.bind(this);
         this.onSpeed = this.onSpeed.bind(this);
+        this.syncProjectTokens = this.syncProjectTokens.bind(this);
     }
 
     componentDidMount () {
+        this.syncProjectTokens({}, true);
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
@@ -106,6 +108,19 @@ class DebugPanel extends React.Component {
                     window.__bwRecoverFromStaleBuild(e && e.message);
                 if (!recovering) console.warn('[brickwright] target picker unavailable:', e);
             });
+    }
+
+    componentDidUpdate (prevProps) {
+        this.syncProjectTokens(prevProps, false);
+    }
+
+    syncProjectTokens (prevProps, initial) {
+        if (this.props.runToken && (initial || this.props.runToken !== prevProps.runToken)) {
+            this.onStart();
+        }
+        if (!initial && this.props.stopToken && this.props.stopToken !== prevProps.stopToken) {
+            this.onStop();
+        }
     }
 
     componentWillUnmount () {
@@ -350,6 +365,8 @@ class DebugPanel extends React.Component {
 DebugPanel.propTypes = {
     clockHz: PropTypes.number,
     onRunnerChange: PropTypes.func,
+    runToken: PropTypes.number,
+    stopToken: PropTypes.number,
     locale: PropTypes.string,
     vm: PropTypes.shape({toJSON: PropTypes.func, runtime: PropTypes.object}).isRequired
 };

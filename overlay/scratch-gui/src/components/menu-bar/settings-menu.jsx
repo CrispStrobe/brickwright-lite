@@ -27,17 +27,29 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
     const current = key => {
         try { return localStorage.getItem(key); } catch { return null; }
     };
-    const choice = (label, settingKey, value, title) => (
-        <MenuItem onClick={() => {
-            emit(settingKey === 'bw-circuit-theme' ? 'bw-circuit-theme' : 'bw-settings-change', {
-                key: settingKey,
-                value
-            });
-            onRequestClose();
-        }}>
-            <span className={classNames(styles.check, {[styles.selected]: current(settingKey) === value})}>✓</span>
-            <span title={title}>{label}</span>
-        </MenuItem>
+    const workspaceValue = (key, fallback) => current(key) || fallback;
+    const setWorkspace = (key, value) => {
+        emit('bw-settings-change', {key, value});
+        onRequestClose();
+    };
+    const presentation = (() => {
+        const layout = workspaceValue('bw-hide-stage', '0') === '1' ? 'full' : 'stage';
+        const theme = workspaceValue('bw-circuit-theme', 'light');
+        return `${layout}-${theme}`;
+    })();
+    const setPresentation = value => {
+        const [layout, theme] = value.split('-');
+        emit('bw-settings-change', {key: 'bw-hide-stage', value: layout === 'full' ? '1' : '0'});
+        emit('bw-circuit-theme', {key: 'bw-circuit-theme', value: theme});
+        onRequestClose();
+    };
+    const workspaceSelect = (label, value, onChange, options, title) => (
+        <label className={styles.preferenceRow} title={title}>
+            <span>{label}</span>
+            <select value={value} onChange={event => onChange(event.target.value)}>
+                {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+        </label>
     );
     return (
         <div
@@ -62,16 +74,23 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             <img className={styles.groupCaret} src={dropdownCaret} />
                         </div>
                         <Submenu place={isRtl ? 'left' : 'right'}>
-                            <div className={styles.sectionLabel}>Circuit workspace</div>
-                            {choice('Debugger: Top', 'bw-debug-dock', 'top', 'Show the debugger above the circuit')}
-                            {choice('Debugger: Right', 'bw-debug-dock', 'right', 'Show the debugger beside the circuit')}
-                            {choice('Debugger: Off', 'bw-debug-dock', 'off', 'Hide the debugger')}
-                            {choice('While coding: Circuit', 'bw-stage-circuit', '1', 'Show the circuit in the right pane while coding')}
-                            {choice('While coding: Scratch stage', 'bw-stage-circuit', '0', 'Show the normal Scratch stage while coding')}
-                            {choice('Circuit layout: Stage', 'bw-hide-stage', '0', 'Keep the stage and sprites beside the circuit')}
-                            {choice('Circuit layout: Full width', 'bw-hide-stage', '1', 'Give the circuit the full editor width')}
-                            {choice('Circuit style: Scratch light', 'bw-circuit-theme', 'light', 'Use the light Scratch-like circuit interface')}
-                            {choice('Circuit style: Dark', 'bw-circuit-theme', 'dark', 'Use the dark circuit interface')}
+                            {workspaceSelect('Debugger', workspaceValue('bw-debug-dock', 'top'),
+                                value => setWorkspace('bw-debug-dock', value), [
+                                    {value: 'top', label: 'Top'},
+                                    {value: 'right', label: 'Right'},
+                                    {value: 'off', label: 'Off'}
+                                ], 'Choose where the circuit debugger appears')}
+                            {workspaceSelect('While coding', workspaceValue('bw-stage-circuit', '1'),
+                                value => setWorkspace('bw-stage-circuit', value), [
+                                    {value: '1', label: 'Circuit'},
+                                    {value: '0', label: 'Scratch stage'}
+                                ], 'Choose what replaces the normal right pane while coding')}
+                            {workspaceSelect('Circuit presentation', presentation, setPresentation, [
+                                {value: 'stage-light', label: 'Stage · light'},
+                                {value: 'stage-dark', label: 'Stage · dark'},
+                                {value: 'full-light', label: 'Full width · light'},
+                                {value: 'full-dark', label: 'Full width · dark'}
+                            ], 'Choose circuit layout and appearance')}
                         </Submenu>
                     </MenuItem>
                 </MenuSection>
