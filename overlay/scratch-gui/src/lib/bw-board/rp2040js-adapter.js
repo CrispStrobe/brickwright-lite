@@ -4,8 +4,8 @@
  * The adapter deliberately exposes the same electrical contract as the AVR
  * adapter: program time advances first, then GPIO edges reach BoardImpl. The
  * RP2040 is 3.3 V logic, so input sampling and output drive use that domain.
- * Source-level breakpoints are not fabricated; the first target milestone is
- * deterministic instruction stepping and circuit GPIO feedback.
+ * Source-level breakpoints are not fabricated; raw flash-address breakpoints
+ * are supported when a caller already knows the address.
  *
  * @module
  */
@@ -23,6 +23,7 @@ export function createRp2040jsAdapter(opts = {}) {
     const board = opts.board || null;
     let timeNs = 0n;
     let attached = board;
+    let instructionObserver = null;
     const stats = {instructionCount: 0, pinChangeCount: 0, advanceToCount: 0};
 
     function publishPin(index) {
@@ -63,6 +64,9 @@ export function createRp2040jsAdapter(opts = {}) {
     }
 
     function executeOne() {
+        if (instructionObserver && instructionObserver({pc: rp2040.core.pc, timeNs, phase: 'before'}) === false) {
+            return false;
+        }
         sampleInputs();
         if (rp2040.core.waiting) {
             const next = rp2040.clock.nanosToNextAlarm;
@@ -73,6 +77,7 @@ export function createRp2040jsAdapter(opts = {}) {
         }
         publishAll();
         stats.instructionCount++;
+        return true;
     }
 
     return {
@@ -95,11 +100,12 @@ export function createRp2040jsAdapter(opts = {}) {
         },
         advanceNs(deltaNs) {
             const target = timeNs + BigInt(Math.max(0, Math.round(deltaNs)));
-            while (timeNs < target) executeOne();
+            while (timeNs < target && executeOne()) { /* instruction observer may halt */ }
             attached?.advanceTo?.(timeNs);
             stats.advanceToCount++;
         },
         stepInstruction() { executeOne(); },
+        setInstructionObserver(observer) { instructionObserver = observer || null; },
         reset() {
             rp2040.reset();
             timeNs = 0n;
@@ -139,6 +145,34 @@ export function parseUf2(input) {
 export function createRp2040jsDebugTarget(adapter) {
     const listeners = new Set();
     let running = false;
+    let nextHandle = 1;
+    const breakpoints = new Map();
+    let resumePc = null;
+
+    const announce = (cause, details = {}) => {
+        const why = {cause, pc: adapter.rp2040.core.pc, tNs: adapter.timeNs(), skewNs: 0n, ...details};
+        for (const cb of listeners) cb(why);
+        return why;
+    };
+
+    adapter.setInstructionObserver?.(({pc, phase}) => {
+        if (!running) return true;
+        if (phase !== 'before') return true;
+        if (resumePc !== null && pc === resumePc) {
+            resumePc = null;
+            return true;
+        }
+        for (const [handle, bp] of breakpoints) {
+            if (bp.addr === pc) {
+                running = false;
+                resumePc = pc;
+                announce('breakpoint', {handle, kind: 'code'});
+                return false;
+            }
+        }
+        return true;
+    });
+
     return {
         onHalt(cb) { listeners.add(cb); return () => listeners.delete(cb); },
         capabilities() {
@@ -146,7 +180,7 @@ export function createRp2040jsDebugTarget(adapter) {
                 target: 'rp2040js',
                 execution: ['run', 'pause', 'reset'],
                 stepping: ['instruction'],
-                breakpoints: [],
+                breakpoints: ['code'],
                 symbols: false,
                 consumes: ['GPIO', 'ADC'],
                 timeFreezes: true,
@@ -157,8 +191,7 @@ export function createRp2040jsDebugTarget(adapter) {
         halt() {
             if (!running) return;
             running = false;
-            const why = {cause: 'user', pc: adapter.rp2040.core.pc, tNs: adapter.timeNs(), skewNs: 0n};
-            for (const cb of listeners) cb(why);
+            announce('user');
         },
         reset() { running = false; adapter.reset(); },
         step(kind) {
@@ -172,8 +205,21 @@ export function createRp2040jsDebugTarget(adapter) {
             return 'ran';
         },
         position() { return {pc: adapter.rp2040.core.pc}; },
-        setSymbols() { return {unsupported: 'rp2040js symbol mapping is not wired yet.'}; },
-        setBreakpoint() { return {unsupported: 'Pico breakpoints require a symbol/debug map.'}; },
+        setSymbols() { return {unsupported: 'rp2040js symbol mapping requires an ELF/debug-map contract.'}; },
+        setBreakpoint(bp) {
+            if (!bp || bp.kind !== 'code') {
+                return {unsupported: 'Pico supports raw code-address breakpoints only.'};
+            }
+            if (!Number.isInteger(bp.addr) || bp.addr < FLASH_BASE) {
+                return {unsupported: `Pico code breakpoint needs an integer XIP address >= 0x${FLASH_BASE.toString(16)}.`};
+            }
+            const handle = nextHandle++;
+            breakpoints.set(handle, {addr: bp.addr});
+            return handle;
+        },
+        clearBreakpoint(handle) {
+            breakpoints.delete(handle);
+        },
     };
 }
 
