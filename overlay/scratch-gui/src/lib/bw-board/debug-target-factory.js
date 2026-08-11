@@ -147,13 +147,14 @@ async function createAvr8jsTarget(opts) {
 // ─── RP2040 target (rp2040js) ─────────────────────────────────────────────
 
 async function createRp2040jsTarget(opts) {
-  const { board, hex } = opts;
+  const { board, hex, image } = opts;
   if (!board) throw new Error('rp2040js target requires opts.board');
-  const { createRp2040jsAdapter, createRp2040jsDebugTarget } =
+  const { createRp2040jsAdapter, createRp2040jsDebugTarget, parseUf2 } =
     await import('./rp2040js-adapter.js');
   const adapter = createRp2040jsAdapter({ board });
   adapter.attachBoard(board);
-  if (hex) adapter.loadProgram(parseIntelHexBytes(hex));
+  if (image) adapter.loadProgram(parseUf2(image));
+  else if (hex) adapter.loadProgram(parseIntelHexBytes(hex));
   const target = createRp2040jsDebugTarget(adapter);
   return { adapter, target };
 }

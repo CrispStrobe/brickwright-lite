@@ -109,6 +109,32 @@ export function createRp2040jsAdapter(opts = {}) {
     };
 }
 
+/** Parse a UF2 image into a flash-offset byte image. */
+export function parseUf2(input) {
+    const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+    const MAGIC0 = 0x0a324655;
+    const MAGIC1 = 0x9e5d5157;
+    const MAGIC_END = 0x0ab16f30;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const blocks = [];
+    let max = 0;
+    for (let offset = 0; offset + 512 <= bytes.length; offset += 512) {
+        if (view.getUint32(offset, true) !== MAGIC0 ||
+            view.getUint32(offset + 4, true) !== MAGIC1 ||
+            view.getUint32(offset + 508, true) !== MAGIC_END) continue;
+        const address = view.getUint32(offset + 12, true);
+        const payloadSize = view.getUint32(offset + 16, true);
+        if (payloadSize === 0 || payloadSize > 476 || address < FLASH_BASE) continue;
+        const target = address - FLASH_BASE;
+        blocks.push({target, payload: bytes.slice(offset + 32, offset + 32 + payloadSize)});
+        max = Math.max(max, target + payloadSize);
+    }
+    if (!blocks.length) throw new Error('Invalid or empty UF2 image');
+    const image = new Uint8Array(max);
+    for (const block of blocks) image.set(block.payload, block.target);
+    return image;
+}
+
 /** Small Boundary D target for the shared debug session. */
 export function createRp2040jsDebugTarget(adapter) {
     const listeners = new Set();

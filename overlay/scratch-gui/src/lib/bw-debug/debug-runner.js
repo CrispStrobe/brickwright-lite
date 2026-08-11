@@ -325,14 +325,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 code: c,
                 language: 'c',
                 target: (stc.device || 'stc12c5a60s2').toLowerCase(),
-                format: 'ihx',
+                format: String(stc.device || '').toLowerCase() === 'pico' ? 'uf2' : 'ihx',
                 // Both, from the SAME request — see the header.
                 symbols: true
             })
         });
         const out = await res.json();
         if (!out.success) throw new Error(out.error || 'the compiler refused this program');
-        if (!out.symbols) {
+        const isPico = String(stc.device || '').toLowerCase() === 'pico';
+        if (!out.symbols && !isPico) {
             throw new Error(
                 `the image built but carries no symbol table, so the debugger cannot ` +
                 `say where it is: ${out.symbols_error || 'no reason given'}`
@@ -352,6 +353,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         return {
             hex: atob(out.base64),
+            image: isPico ? Uint8Array.from(atob(out.base64), c => c.charCodeAt(0)) : null,
             symbols: out.symbols,
             c,
             bytes: out.bytes,
@@ -359,6 +361,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // adapter. Falling back in the adapter remains safe for older
             // endpoints, but current AVR builds must not silently assume it.
             f_cpu: out.f_cpu || out.fcpu || out.clockHz,
+            format: out.format || (isPico ? 'uf2' : 'ihx'),
         };
     }
 
@@ -563,7 +566,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
         const {target: picoTarget} = await createDebugTarget('rp2040js', {
-            board, hex: built.hex,
+            board, image: built.format === 'uf2' ? built.image : null,
+            hex: built.format === 'uf2' ? null : built.hex,
         });
         target = picoTarget;
         session = createDebugSession(target, {
