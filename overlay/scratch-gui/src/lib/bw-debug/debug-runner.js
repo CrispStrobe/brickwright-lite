@@ -102,6 +102,25 @@ async function installWasmCompilerIfOptedIn (setStatus) {
  * @param {string} [opts.compilerUrl] the stc-compiler service
  * @param {(state: object) => void} [opts.onChange] UI state changed
  */
+/**
+ * Choose a faithful execution backend when the user has not explicitly
+ * requested a different transport. Arduino boards are ATmega328P targets;
+ * routing them through the STC emulator would make every result plausible
+ * but wrong. Pico is deliberately reported as unavailable until its
+ * RP2040/MicroPython backend exists.
+ *
+ * @param {string} device project device identifier
+ * @param {string} requested target picker selection
+ * @returns {string}
+ */
+export function selectDebugTargetKind(device, requested = 'emulator') {
+    if (requested !== 'emulator') return requested;
+    const normalized = String(device || '').toLowerCase();
+    if (['arduino-uno', 'arduino-nano', 'atmega328p'].includes(normalized)) return 'avr8js';
+    if (normalized === 'pico') return 'rp2040js';
+    return requested;
+}
+
 export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', onChange = () => {} }) {
     let session = null;
     let target = null;
@@ -346,12 +365,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // ─── attach ──────────────────────────────────────────────────────────
 
     async function attach(built) {
+        const device = String(projectStc(null)?.device || '').toLowerCase();
+        const selectedTargetKind = selectDebugTargetKind(device, targetKind);
         // The picker offers two targets and only one of them can be honoured
         // here yet. Refusing with the reason is the house rule: silently
         // running the emulator when the user picked "Live board" would be the
         // worst outcome available — they would debug a simulation believing it
         // was their board, and every reading would be plausible and wrong.
-        if (targetKind === 'serial') {
+        if (selectedTargetKind === 'serial') {
             throw new Error(
                 'Live board debugging needs a serial connection, and this build has no ' +
                 'transport wired up yet. The target itself is implemented and tested ' +
@@ -361,7 +382,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             );
         }
 
-        if (targetKind === 'avr8js') {
+        if (selectedTargetKind === 'rp2040js') {
+            throw new Error(
+                'Pico projects are wired and checked in the circuit designer. The MIT rp2040js ' +
+                'core is available, but its Brickwright adapter (image loading, stepping, and ' +
+                'GPIO-to-circuit binding) is still being completed; this is not substituted with ' +
+                'the STC or AVR simulator.'
+            );
+        }
+
+        if (selectedTargetKind === 'avr8js') {
             return attachAvr8js(built);
         }
 

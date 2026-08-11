@@ -102,7 +102,7 @@ const vendoredFiles = async () => {
 
 // avr8js is the one allowed external dependency: the adapter imports the
 // emulator package, which is installed in packages/scratch-gui.
-const ALLOWED_PACKAGES = new Set(['avr8js']);
+const ALLOWED_PACKAGES = new Set(['avr8js', 'rp2040js']);
 
 if (!check) {
     for (const f of await vendoredFiles()) {
