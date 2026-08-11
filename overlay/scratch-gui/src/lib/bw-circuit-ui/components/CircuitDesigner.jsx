@@ -748,10 +748,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 160px', width: 160, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
-          <button onClick={() => setLeftOpen(false)} style={{
-            background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
-            fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
-          }}>collapse</button>
+          <button onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
+            alignSelf: 'flex-end', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer',
+            fontSize: '20px', lineHeight: 1, width: 28, height: 24, padding: 0,
+          }}>‹</button>
           <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
           <InferPanel onLoadCircuit={handleLoadCircuit} />
         </div>
@@ -760,7 +760,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
           borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
           fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
-        }}>Parts</button>
+        }} aria-label="Expand parts panel" aria-expanded="false" title="Expand parts panel">›</button>
       )}
 
       {/* A snapshot must not LOOK like a live board. Desaturating it is the
@@ -1002,10 +1002,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 280px', width: 280, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
-        <button onClick={() => setRightOpen(false)} style={{
-          background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
-          fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
-        }}>collapse</button>
+        <button onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
+          alignSelf: 'flex-start', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer',
+          fontSize: '20px', lineHeight: 1, width: 28, height: 24, padding: 0,
+        }}>›</button>
         {debugState && (
           <DebugStatus
             debugState={debugState}
@@ -1041,7 +1041,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
           borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
           fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
-        }}>Controls</button>
+        }} aria-label="Expand instruments panel" aria-expanded="false" title="Expand instruments panel">‹</button>
       )}
     </div>
   );

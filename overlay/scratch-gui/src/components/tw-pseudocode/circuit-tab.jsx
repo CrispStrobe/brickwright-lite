@@ -74,8 +74,8 @@ class CircuitTab extends React.Component {
         this._settingsHandler = event => {
             const {key, value} = event.detail || {};
             if (key === 'about') return;
-            if (key === 'debugDock') this.setDock(value);
-            if (key === 'stageCircuit') {
+            if (key === 'debugDock' || key === 'bw-debug-dock') this.setDock(value);
+            if (key === 'stageCircuit' || key === 'bw-stage-circuit') {
                 this.setDisplayPreference('showInStage', value === '1');
                 if (value === '1') this.load();
             }

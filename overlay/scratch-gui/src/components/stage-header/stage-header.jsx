@@ -1,6 +1,6 @@
 import {defineMessages, injectIntl, intlShape} from 'react-intl';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {connect} from 'react-redux';
 import VM from 'scratch-vm';
 
@@ -66,18 +66,75 @@ const messages = defineMessages({
 });
 
 const setCircuitView = ({fullWidth, debuggerOn}) => {
-    window.dispatchEvent(new CustomEvent('bw-settings-change', {
-        detail: {key: 'bw-hide-stage', value: fullWidth ? '1' : '0'}
-    }));
-    window.dispatchEvent(new CustomEvent('bw-settings-change', {
-        detail: {key: 'bw-debug-dock', value: debuggerOn ? 'top' : 'off'}
-    }));
-    window.dispatchEvent(new CustomEvent('bw-settings-change', {
-        detail: {key: 'bw-stage-circuit', value: fullWidth ? '1' : '0'}
-    }));
-    window.dispatchEvent(new CustomEvent('bw-settings-change', {
-        detail: {key: 'bw-circuit-theme', value: 'light'}
-    }));
+    const values = {
+        'bw-hide-stage': fullWidth ? '1' : '0',
+        'bw-debug-dock': debuggerOn ? 'top' : 'off',
+        'bw-stage-circuit': fullWidth ? '1' : '0',
+        'bw-circuit-theme': 'light'
+    };
+    try {
+        Object.entries(values).forEach(([key, value]) => localStorage.setItem(key, value));
+    } catch { /* private browsing: the live events still work */ }
+    Object.entries(values).forEach(([key, value]) => {
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key, value}}));
+    });
+};
+
+const readCircuitView = () => {
+    try {
+        if (localStorage.getItem('bw-stage-circuit') === '0') return 'scratch';
+        return localStorage.getItem('bw-debug-dock') === 'off' ? 'circuit' : 'debugger';
+    } catch {
+        return 'scratch';
+    }
+};
+
+const StageViewButtons = ({intl}) => {
+    const [view, setView] = useState(readCircuitView);
+    useEffect(() => {
+        const sync = event => {
+            const {key, value} = event.detail || {};
+            if (key === 'bw-stage-circuit') {
+                setView(value === '1' ? (localStorage.getItem('bw-debug-dock') === 'off' ? 'circuit' : 'debugger') : 'scratch');
+            } else if (key === 'bw-debug-dock') {
+                setView(localStorage.getItem('bw-stage-circuit') === '0' ? 'scratch' : (value === 'off' ? 'circuit' : 'debugger'));
+            }
+        };
+        window.addEventListener('bw-settings-change', sync);
+        return () => window.removeEventListener('bw-settings-change', sync);
+    }, []);
+    return (
+        <div className={styles.stageSizeToggleGroup}>
+            <ToggleButtons
+                buttons={[
+                    {
+                        handleClick: () => { setCircuitView({fullWidth: true, debuggerOn: false}); setView('circuit'); },
+                        icon: circuitIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'circuit',
+                        title: intl.formatMessage(messages.circuitNoDebugger)
+                    },
+                    {
+                        handleClick: () => { setCircuitView({fullWidth: true, debuggerOn: true}); setView('debugger'); },
+                        icon: debuggerIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'debugger',
+                        title: intl.formatMessage(messages.circuitDebugger)
+                    },
+                    {
+                        handleClick: () => {
+                            setCircuitView({fullWidth: false, debuggerOn: true});
+                            setView('scratch');
+                        },
+                        icon: scratchStageIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'scratch',
+                        title: intl.formatMessage(messages.scratchStage)
+                    }
+                ]}
+            />
+        </div>
+    );
 };
 
 const StageHeaderComponent = function (props) {
@@ -171,33 +228,7 @@ const StageHeaderComponent = function (props) {
                     <Controls vm={vm} />
                     <div className={styles.stageSizeRow}>
                         {stageControls}
-                        <div className={styles.stageSizeToggleGroup}>
-                            <ToggleButtons
-                                buttons={[
-                                    {
-                                        handleClick: () => setCircuitView({fullWidth: true, debuggerOn: false}),
-                                        icon: circuitIcon,
-                                        iconClassName: styles.stageButtonIcon,
-                                        isSelected: false,
-                                        title: props.intl.formatMessage(messages.circuitNoDebugger)
-                                    },
-                                    {
-                                        handleClick: () => setCircuitView({fullWidth: true, debuggerOn: true}),
-                                        icon: debuggerIcon,
-                                        iconClassName: styles.stageButtonIcon,
-                                        isSelected: false,
-                                        title: props.intl.formatMessage(messages.circuitDebugger)
-                                    },
-                                    {
-                                        handleClick: () => setCircuitView({fullWidth: false, debuggerOn: true}),
-                                        icon: scratchStageIcon,
-                                        iconClassName: styles.stageButtonIcon,
-                                        isSelected: false,
-                                        title: props.intl.formatMessage(messages.scratchStage)
-                                    }
-                                ]}
-                            />
-                        </div>
+                        <StageViewButtons intl={props.intl} />
                         <div>
                             <Button
                                 className={styles.stageButton}
