@@ -5,7 +5,7 @@ test('Pico target accepts raw XIP code breakpoints but rejects source breakpoint
     const {createRp2040jsDebugTarget} = await import('../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js');
     let observer = null;
     const adapter = {
-        rp2040: {core: {pc: 0x10000000}},
+        rp2040: {core: {PC: 0x10000000, SP: 0, LR: 0, xPSR: 0, registers: new Uint32Array(16), cycles: 0}, readUint8: () => 0, writeUint8: () => {}},
         timeNs: () => 0n,
         stepInstruction: () => {},
         advanceNs: () => {},
@@ -28,5 +28,11 @@ test('Pico target accepts raw XIP code breakpoints but rejects source breakpoint
     assert.equal(observer({pc: 0x10000020, timeNs: 0n, phase: 'before'}), false);
     assert.equal(target.state(), 'halted');
     assert.equal(halts[0].cause, 'breakpoint');
+    assert.deepEqual(target.position(), {pc: 0x10000000});
+    assert.deepEqual(target.regs().r, Array.from(new Uint32Array(16)));
+    assert.deepEqual(target.readMem('code', 0x10000000, 2), Uint8Array.of(0, 0));
+    assert.deepEqual(target.writeMem('code', 0x10000000, Uint8Array.of(1)), {
+        refused: 'space not writable: code'
+    });
     target.clearBreakpoint(handle);
 });
