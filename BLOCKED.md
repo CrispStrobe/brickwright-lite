@@ -137,22 +137,12 @@ would just change which TabPanel is selected, not where content renders.
 - **Licence choice is owner's call.** MPL-2.0 was added to bw-circuit-ui (01860ac)
   and bw-bundle (e3ad9f6). Owner has not ruled. Do not change any LICENSE file.
 
-## OPEN: sidecar-count drift (bw-parts 123 vs bw-circuit-ui 115)
+## RESOLVED: sidecar-count drift (115→123)
 
-bw-parts `e817263` ships 123 sidecars; bw-circuit-ui vendored 115.
-The middle link (bw-circuit-ui) is frozen on the weekly limit.
-
-**8 missing:** arduino_nano, pi_pico, microbit_breakout, pololu_motor_ctrl,
-fuse, solenoid, stepper, ir_transmitter.
-
-**4 renamed (dangerous — old files still present, new names resolve to nothing):**
-hobby_gearmotor → gearmotor, seven_segment_clock → clock_display,
-lcd_i2c → char_lcd_i2c, motor_driver_l293d → l293d.
-
-Full list: bw-parts `spec-updates/005-sidecar-count-drift.md`.
-Fix: when bw-circuit-ui unfreezes, run `npm run sync:parts` then
-re-vendor into lite. The 4 old-slug files must be DELETED, not just
-overwritten — the sync may not handle renames as deletions.
+bw-circuit-ui `4064e96` resynced from bw-parts. Vendored into lite
+at `3ac31ad`: 123 JSON + 123 SVG, 4 old-name files deleted, LICENSE
+intact. The sync script now deletes files that vanish upstream (with
+a KEEP set protecting LICENSE). 53/53 tests pass.
 
 ## RESOLVED: schematic zero-wires defect
 
