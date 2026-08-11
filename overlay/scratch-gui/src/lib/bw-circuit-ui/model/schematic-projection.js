@@ -245,7 +245,14 @@ export function projectSchematic(parts, nets) {
 function findPinNet(nets, partId, terminal) {
   for (const net of nets) {
     for (const t of net.terminals) {
-      if (t.part === partId && t.terminal === terminal) return net.id;
+      // Board sidecars are intentionally user-facing lowercase (d13/gp0),
+      // while the silicon boundary uses canonical uppercase names (D13/GP0).
+      // The schematic combines raw designer parts with engine nets, so this
+      // lookup must treat those spellings as the same electrical terminal.
+      if (t.part === partId && (t.terminal === terminal ||
+          String(t.terminal).toLowerCase() === String(terminal).toLowerCase())) {
+        return net.id;
+      }
     }
   }
   return null;
