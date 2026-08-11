@@ -50,6 +50,12 @@ const KNOWN_TERMINALS = {
   seven_segment: null, // composite — sub-parts have their own terminals
   rgb_led: null, // composite
   mcu: null, // terminals are PinIds, validated separately
+  // Board-shaped controller parts are accepted as connection geometry now.
+  // Their CPU adapters are capability-gated elsewhere, so validation must not
+  // pretend they are already executable MCU targets.
+  arduino_uno: null,
+  arduino_nano: null,
+  pi_pico: null,
 };
 
 /**

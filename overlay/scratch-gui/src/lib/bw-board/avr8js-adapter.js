@@ -110,8 +110,12 @@ export function createAvr8jsAdapter(opts = {}) {
     const high = !!(out & (1 << bit));
     // AVR semantics: output → hard push-pull; input with PORT bit → weak
     // internal pull-up (~35 kΩ); plain input → high-Z.
-    if (driven) board.setPin(name, 'pushpull', high);
-    else board.setPin(name, high ? 'input-pullup' : 'input', high);
+    // The circuit sidecars use lowercase terminal IDs (d13/a0), while the
+    // compiler/debug vocabulary is uppercase (D13/A0). Keep that boundary
+    // explicit instead of requiring every saved circuit to be rewritten.
+    const circuitName = name.toLowerCase();
+    if (driven) board.setPin(circuitName, 'pushpull', high);
+    else board.setPin(circuitName, high ? 'input-pullup' : 'input', high);
     stats.pinChangeCount++;
   }
 
@@ -130,7 +134,7 @@ export function createAvr8jsAdapter(opts = {}) {
     stats.adcReadCount++;
     let volts = 0;
     if (board && board.readAnalog && input.channel <= 5) {
-      try { volts = board.readAnalog(`A${input.channel}`) ?? 0; } catch { volts = 0; }
+      try { volts = board.readAnalog(`a${input.channel}`) ?? 0; } catch { volts = 0; }
     }
     // avr8js completes the conversion after the sampling cycles elapse.
     adc.completeADCRead(Math.max(0, Math.min(1023, Math.round((volts / vcc) * 1023))));
@@ -143,6 +147,15 @@ export function createAvr8jsAdapter(opts = {}) {
       progMem.fill(0);
       progMem.set(words);
       cpu.reset();
+    },
+
+    reset() {
+      cpu.reset();
+    },
+
+    stepInstruction() {
+      avrInstruction(cpu);
+      cpu.tick();
     },
 
     attachBoard(b) {

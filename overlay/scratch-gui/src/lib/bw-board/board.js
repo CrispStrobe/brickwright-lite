@@ -1044,6 +1044,11 @@ export class BoardImpl {
       opamp: ['inp', 'inn', 'out'],
       vsource: ['pos', 'neg'],
       isource: ['pos', 'neg'],
+      // Controller sidecars own the exact pin tables. The board accepts their
+      // terminals as opaque MCU pins until an AVR/RP2040 target is attached.
+      arduino_uno: null,
+      arduino_nano: null,
+      pi_pico: null,
       ir_receiver: ['vcc', 'gnd', 'out'],
       temp_sensor: ['vcc', 'gnd', 'dq'],
       eeprom: ['sda', 'scl', 'vcc', 'gnd'],
@@ -1077,6 +1082,7 @@ export class BoardImpl {
       'vsource', 'isource', 'seven_segment', 'rgb_led',
       'shift_register', 'char_lcd', 'led_matrix', 'led_cube',
       'ir_receiver', 'temp_sensor', 'eeprom', 'mcu',
+      'arduino_uno', 'arduino_nano', 'pi_pico',
       // Device-registry kinds (registered at runtime, listed here for discovery)
       'gate_and', 'gate_or', 'gate_not', 'gate_nand', 'gate_nor', 'gate_xor',
       'relay', 'dc_motor', 'servo', 'timer_555',

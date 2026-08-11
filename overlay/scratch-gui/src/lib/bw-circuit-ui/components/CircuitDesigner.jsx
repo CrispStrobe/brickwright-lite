@@ -52,6 +52,7 @@ import { Circuit } from '../model/circuit.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
 import { runDrc } from '../model/drc.js';
+import './circuit-theme.css';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -176,6 +177,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [placingProbe, setPlacingProbe] = useState(null);
   const [placingPart, setPlacingPart] = useState(null); // {kind, params} riding the cursor
   const [showSchematic, setShowSchematic] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('bw-circuit-theme') || 'light'; } catch { return 'light'; }
+  });
   const [simPaused, setSimPaused] = useState(false);
   const [simSpeed, setSimSpeed] = useState(1); // 0.25 | 1 | 4 x real time
   const [probePlacement, setProbePlacement] = useState(null);
@@ -288,7 +292,33 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, []);
 
   useEffect(() => {
+    const onTheme = event => {
+      const next = event.detail && event.detail.value;
+      if (next !== 'light' && next !== 'dark') return;
+      setTheme(next);
+      try { localStorage.setItem('bw-circuit-theme', next); } catch { /* private mode */ }
+    };
+    window.addEventListener('bw-circuit-theme', onTheme);
+    return () => window.removeEventListener('bw-circuit-theme', onTheme);
+  }, []);
+
+  useEffect(() => {
     return () => stopAllBuzzers();
+  }, []);
+
+  // The Scratch green flag is the shared start affordance. Pure circuits do
+  // not have an MCU board to drive them, so the flag explicitly enters the
+  // designer's simulation mode; MCU-backed circuits are already externally
+  // clocked and simply continue to receive the VM's pin writes.
+  useEffect(() => {
+    const onGreenFlag = () => setMode('simulate');
+    const onStopAll = () => setSimPaused(true);
+    window.addEventListener('bw-green-flag', onGreenFlag);
+    window.addEventListener('bw-stop-all', onStopAll);
+    return () => {
+      window.removeEventListener('bw-green-flag', onGreenFlag);
+      window.removeEventListener('bw-stop-all', onStopAll);
+    };
   }, []);
 
   useEffect(() => {
@@ -321,7 +351,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       return;
     }
 
-    const mcu = parts.find(p => p.kind === 'mcu');
+    const mcu = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(p.kind));
     // No MCU is NOT "no simulation": pure circuits (battery+LED, FG+scope,
     // RC charge) need the clock just as much. Only the demo pin script
     // below is MCU-conditional.
@@ -657,7 +687,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const effectiveNodeVoltages = hasSimulation ? nodeVoltages : {};
 
   let statusText = null;
-  if (!hasSimulation && externalBoard) {
+  const picoPresent = parts.some(part => part.kind === 'pi_pico');
+  if (picoPresent && !externalBoard) {
+    statusText = 'WIRING ONLY — Pico execution is not available yet';
+  } else if (!hasSimulation && externalBoard) {
     statusText = 'HARDWARE — voltage/current readings need the simulator';
   } else if (externalBoard && halted && staleBy > 0) {
     statusText = `SNAPSHOT — the board kept running for ${
@@ -671,6 +704,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   return (
     <div
+      className="bw-circuit-designer"
+      data-bw-circuit-theme={theme}
       data-sim-mode={mode}
       style={{
         display: 'flex',

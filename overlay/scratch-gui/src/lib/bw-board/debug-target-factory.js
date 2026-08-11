@@ -131,12 +131,50 @@ async function createAvr8jsTarget(opts) {
     adapter.loadProgram(words);
   }
 
-  // avr8js has no separate debug target yet — the adapter IS the target.
-  // The runner drives it through advanceNs/timeNs the same way it drives
-  // emu8051 through the adapter's tick loop. A full debug target (with
-  // breakpoints, symbol resolution, yield points) is a later addition;
-  // for now the adapter provides execution and pin-level simulation.
-  return { adapter, target: null };
+  // Boundary D deliberately exposes only what the AVR execution loop can
+  // prove today. Source/yield positions need an AVR symbol mapper; pretending
+  // the STC task table applies here would light the wrong Scratch blocks.
+  let running = false;
+  let listeners = [];
+  const announce = (cause) => {
+    const why = {cause, tasks: undefined, tNs: adapter.timeNs(), skewNs: 0n};
+    for (const listener of listeners) listener(why);
+  };
+  const target = {
+    capabilities() {
+      return {steps: ['insn'], breakpoints: [], spaces: ['code'], writable: [],
+        sfrs: 'none', haltPolicy: 'freeze-timers', timeFreezes: true, consumes: []};
+    },
+    state: () => running ? 'running' : 'halted',
+    run() { running = true; },
+    halt() { if (running) { running = false; announce('user'); } },
+    step(kind, count = 1) {
+      if (kind !== 'insn') {
+        return {unsupported: `AVR debugging currently supports instruction stepping only; step('${kind}') needs AVR source mapping.`};
+      }
+      running = false;
+      for (let i = 0; i < count; i++) adapter.stepInstruction();
+      announce('step');
+      return undefined;
+    },
+    reset() { running = false; adapter.reset(); },
+    onHalt(listener) { listeners.push(listener); return () => { listeners = listeners.filter(l => l !== listener); }; },
+    position: () => undefined,
+    runFor(budgetNs) {
+      if (!running) return 'idle';
+      adapter.advanceNs(Number(budgetNs));
+      return 'budget';
+    },
+    timeNs: () => adapter.timeNs(),
+    bwMs: () => undefined,
+    setBreakpoint: () => ({unsupported: 'AVR source breakpoints need the AVR symbol mapper.'}),
+    clearBreakpoint: () => ({unsupported: 'AVR source breakpoints are not available yet.'}),
+    readMem: () => new Uint8Array(),
+    writeMem: () => ({unsupported: 'AVR memory inspection is not available yet.'}),
+    destroy() { listeners = []; running = false; },
+  };
+
+  return {adapter, target};
 }
 
 /**

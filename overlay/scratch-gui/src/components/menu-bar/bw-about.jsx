@@ -141,9 +141,12 @@ class BwAbout extends React.Component {
     }
     componentDidMount () {
         document.addEventListener('keydown', this.handleKeyDown);
+        this.openFromSettings = () => this.setState({open: true, copied: false});
+        window.addEventListener('bw-open-about', this.openFromSettings);
     }
     componentWillUnmount () {
         document.removeEventListener('keydown', this.handleKeyDown);
+        window.removeEventListener('bw-open-about', this.openFromSettings);
     }
     handleKeyDown (event) {
         if (event.key === 'Escape' && this.state.open) this.handleClose();
@@ -181,14 +184,16 @@ class BwAbout extends React.Component {
 
         return (
             <React.Fragment>
-                <button
-                    className={styles.trigger}
-                    title={`${t('about')} — ${VERSION}`}
-                    type="button"
-                    onClick={this.handleToggle}
-                >
-                    {VERSION}
-                </button>
+                {this.props.hideTrigger ? null : (
+                    <button
+                        className={styles.trigger}
+                        title={`${t('about')} — ${VERSION}`}
+                        type="button"
+                        onClick={this.handleToggle}
+                    >
+                        {VERSION}
+                    </button>
+                )}
                 {this.state.open ? (
                     <div
                         className={styles.backdrop}
@@ -298,7 +303,8 @@ class BwAbout extends React.Component {
 }
 
 BwAbout.propTypes = {
-    locale: PropTypes.string
+    locale: PropTypes.string,
+    hideTrigger: PropTypes.bool
 };
 
 const mapStateToProps = state => ({

@@ -78,7 +78,6 @@ import collectMetadata from '../../lib/collect-metadata';
 
 import styles from './menu-bar.css';
 
-import helpIcon from '../../lib/assets/icon--tutorials.svg';
 import mystuffIcon from './icon--mystuff.png';
 import profileIcon from './icon--profile.png';
 import remixIcon from './icon--remix.svg';
@@ -87,7 +86,6 @@ import aboutIcon from './icon--about.svg';
 import fileIcon from './icon--file.svg';
 import editIcon from './icon--edit.svg';
 
-import BwAbout from './bw-about.jsx'; // Brickwright: build stamp + About dialog
 import scratchLogo from './brick-robot.svg'; // Brickwright: robot mascot in place of the Scratch logo
 import ninetiesLogo from './nineties_logo.svg';
 import catLogo from './cat_logo.svg';
@@ -455,17 +453,14 @@ class MenuBar extends React.Component {
                             A page that cannot say which version it is makes every bug report
                             ambiguous — stale tab, undeployed fix and real regression all look
                             identical from the outside. */}
-                        <div className={classNames(styles.menuBarItem)}>
-                            <BwAbout />
-                        </div>
-                        {(this.props.canChangeTheme || this.props.canChangeLanguage) && (<SettingsMenu
+                        <SettingsMenu
                             canChangeLanguage={this.props.canChangeLanguage}
                             canChangeTheme={this.props.canChangeTheme}
                             isRtl={this.props.isRtl}
                             onRequestClose={this.props.onRequestCloseSettings}
                             onRequestOpen={this.props.onClickSettings}
                             settingsMenuOpen={this.props.settingsMenuOpen}
-                        />)}
+                        />
                         {(this.props.canManageFiles) && (
                             <div
                                 className={classNames(styles.menuBarItem, styles.hoverable, {
@@ -488,6 +483,14 @@ class MenuBar extends React.Component {
                                     place={this.props.isRtl ? 'left' : 'right'}
                                     onRequestClose={this.props.onRequestCloseFile}
                                 >
+                                    <MenuSection>
+                                        <MenuItem onClick={() => {
+                                            this.props.onOpenTipLibrary();
+                                            this.props.onRequestCloseFile();
+                                        }}>
+                                            <FormattedMessage defaultMessage="Tutorials" id="gui.menuBar.tutorialsFile" />
+                                        </MenuItem>
+                                    </MenuSection>
                                     <MenuSection>
                                         <MenuItem
                                             isRtl={this.props.isRtl}
@@ -716,22 +719,6 @@ class MenuBar extends React.Component {
                                 <CommunityButton className={styles.menuBarButton} />
                             </MenuBarItemTooltip>
                         ) : [])}
-                    </div>
-                    <Divider className={classNames(styles.divider)} />
-                    <div className={styles.fileGroup}>
-                        <div
-                            aria-label={this.props.intl.formatMessage(ariaMessages.tutorials)}
-                            className={classNames(styles.menuBarItem, styles.hoverable, 'tutorials-button')}
-                            onClick={this.props.onOpenTipLibrary}
-                        >
-                            <img
-                                className={styles.helpIcon}
-                                src={helpIcon}
-                            />
-                            <span className={styles.tutorialsLabel}>
-                                <FormattedMessage {...ariaMessages.tutorials} />
-                            </span>
-                        </div>
                     </div>
                 </div>
 

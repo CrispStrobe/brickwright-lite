@@ -14,6 +14,7 @@ export function generatePartName(kind, existingNames) {
   const prefix = {
     led: 'led', resistor: 'r', buzzer: 'buzzer', button: 'btn',
     potentiometer: 'pot', capacitor: 'cap', vcc: 'vcc', gnd: 'gnd', mcu: 'mcu',
+    arduino_uno: 'uno', arduino_nano: 'nano', pi_pico: 'pico',
   }[kind] || kind;
 
   for (let i = 1; i < 100; i++) {
@@ -128,12 +129,16 @@ function deriveButtonActiveLow(partId, parts, wires) {
  */
 export function partToDeclaration(part, pin, context) {
   if (!pin || !part.declName) return null;
-  const match = pin.match(/P(\d+)\.(\d+)/);
-  if (!match) return null;
+  const normalizedPin = String(pin).trim().toUpperCase();
+  const stcMatch = normalizedPin.match(/^P(\d+)\.(\d+)$/);
+  const boardMatch = normalizedPin.match(/^(D\d+|A\d+|GP\d+)$/);
+  if (!stcMatch && !boardMatch) return null;
 
-  const port = parseInt(match[1]);
-  const bit = parseInt(match[2]);
-  const base = { name: part.declName, port, bit, pin };
+  const port = stcMatch ? parseInt(stcMatch[1]) : undefined;
+  const bit = stcMatch ? parseInt(stcMatch[2]) : undefined;
+  const base = boardMatch
+    ? { name: part.declName, where: normalizedPin, pin: normalizedPin }
+    : { name: part.declName, port, bit, pin: normalizedPin };
   const { parts, wires, toneAlreadyClaimed } = context || {};
 
   switch (part.kind) {
@@ -163,6 +168,10 @@ export function partToDeclaration(part, pin, context) {
 
     case 'potentiometer': {
       // ANALOG is P1.x only
+      if (boardMatch) {
+        if (!/^A\d+$/.test(normalizedPin)) return { ...base, direction: 'input', activeLow: false };
+        return { ...base, direction: 'analog', activeLow: false };
+      }
       if (port !== 1) return { ...base, direction: 'input', activeLow: false };
       return { ...base, direction: 'analog', activeLow: false };
     }
@@ -177,8 +186,15 @@ export function partToDeclaration(part, pin, context) {
  */
 export function circuitToDeclarations(parts, wires) {
   const pins = [];
-  const mcu = parts.find(p => p.kind === 'mcu');
-  if (!mcu) return { pins, ports: [], parts: [] };
+  const controller = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(p.kind));
+  if (!controller) return { pins, ports: [], parts: [] };
+
+  const deviceByKind = {
+    mcu: 'stc12c5a60s2',
+    arduino_uno: 'arduino-uno',
+    arduino_nano: 'arduino-nano',
+    pi_pico: 'pico',
+  };
 
   let toneAlreadyClaimed = false;
   const context = { parts, wires, toneAlreadyClaimed: false };
@@ -190,8 +206,8 @@ export function circuitToDeclarations(parts, wires) {
     let mcuPin = null;
     for (const wire of wires) {
       // Direct connection
-      if (wire.from.part === mcu.id && wire.to.part === part.id) mcuPin = wire.from.terminal;
-      else if (wire.to.part === mcu.id && wire.from.part === part.id) mcuPin = wire.to.terminal;
+      if (wire.from.part === controller.id && wire.to.part === part.id) mcuPin = wire.from.terminal;
+      else if (wire.to.part === controller.id && wire.from.part === part.id) mcuPin = wire.to.terminal;
       if (mcuPin) break;
 
       // Through a resistor
@@ -200,8 +216,8 @@ export function circuitToDeclarations(parts, wires) {
       if (!mid) continue;
       for (const w2 of wires) {
         if (w2 === wire) continue;
-        if (w2.from.part === mid && w2.to.part === mcu.id) { mcuPin = w2.to.terminal; break; }
-        if (w2.to.part === mid && w2.from.part === mcu.id) { mcuPin = w2.from.terminal; break; }
+        if (w2.from.part === mid && w2.to.part === controller.id) { mcuPin = w2.to.terminal; break; }
+        if (w2.to.part === mid && w2.from.part === controller.id) { mcuPin = w2.from.terminal; break; }
       }
       if (mcuPin) break;
     }
@@ -215,5 +231,5 @@ export function circuitToDeclarations(parts, wires) {
     }
   }
 
-  return { pins, ports: [], parts: [] };
+  return { device: deviceByKind[controller.kind], pins, ports: [], parts: [] };
 }

@@ -475,12 +475,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // ── AVR attach path ─────────────────────────────────────────────────
     // avr8js is pure JS — no WASM, no callback-pointer gymnastics. The
     // adapter drives the board through the same boundary A as emu8051.
-    // No debug target with breakpoints yet: the adapter provides execution
-    // and pin-level simulation. Block-level debugging (step, pause, glow)
-    // requires a yield-point model for AVR, which is a later addition.
+    // Boundary D currently supports run/pause/resume and instruction stepping.
+    // It does not claim block-level positions until AVR symbols are mapped.
     async function attachAvr8js(built) {
         setStatus('attaching', 'starting the AVR emulator…');
-        const { createDebugTarget, BoardImpl, inferNetlist } =
+        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
 
         const stc = projectStc(null);
@@ -503,16 +502,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         // The factory creates the adapter, attaches the board, parses the
         // Intel HEX into Uint16Array words, and loads the program.
-        const { adapter } = await createDebugTarget('avr8js', {
+        const {target: avrTarget} = await createDebugTarget('avr8js', {
             board, hex: built.hex, clockHz,
+        });
+
+        target = avrTarget;
+        session = createDebugSession(target, {
+            onChange: (st) => {
+                if (st.halted) trace.record(target, st.why ? st.why.cause : 'halt', {variables: [], tasks: []});
+                emit();
+            }
         });
 
         setStatus('ready', `${built.bytes} bytes (AVR), running`);
 
-        // No session/target yet — the adapter runs but block-level debugging
-        // (step, pause, breakpoints) is not wired for AVR. The board and
-        // pins are live, which is the simulation the Circuit tab shows.
-        return null;
+        return session;
     }
 
     /**

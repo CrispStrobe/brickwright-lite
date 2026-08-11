@@ -53,6 +53,7 @@ class CircuitTab extends React.Component {
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
         this.loadExample = this.loadExample.bind(this);
+        this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
     }
 
     componentDidMount () {
@@ -68,6 +69,14 @@ class CircuitTab extends React.Component {
         }
         this._syncStageAttr();
         this._ensureStageHost();
+        this._settingsHandler = event => {
+            const {key, value} = event.detail || {};
+            if (key === 'about') return;
+            if (key === 'debugDock') this.setDock(value);
+            if (key === 'stageCircuit') this.setDisplayPreference('showInStage', value === '1');
+            if (key === 'hideStage') this.setDisplayPreference('hideStage', value === '1');
+        };
+        window.addEventListener('bw-settings-change', this._settingsHandler);
     }
 
     componentDidUpdate (prevProps) {
@@ -80,10 +89,23 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        window.removeEventListener('bw-settings-change', this._settingsHandler);
         document.documentElement.removeAttribute('data-bw-hide-stage');
         if (this._stageHost && this._stageHost.parentNode) {
             this._stageHost.parentNode.removeChild(this._stageHost);
         }
+    }
+
+    setDock (d) {
+        if (d !== 'top' && d !== 'right' && d !== 'off') return;
+        this.setState({debugDock: d});
+        try { localStorage.setItem('bw-debug-dock', d); } catch { /* private mode */ }
+    }
+
+    setDisplayPreference (key, value) {
+        this.setState({[key]: value});
+        const storageKey = key === 'showInStage' ? 'bw-stage-circuit' : 'bw-hide-stage';
+        try { localStorage.setItem(storageKey, value ? '1' : '0'); } catch { /* private mode */ }
     }
 
     /** The overlay div inside the stage column that hosts the portal. Created
@@ -197,6 +219,34 @@ class CircuitTab extends React.Component {
      */
     handleCircuitReady (circuit) {
         this.setState({circuit});
+    }
+
+    /**
+     * Keep the hardware contract live while the user wires the board.
+     *
+     * CircuitDesigner derives pins from physical wiring; the Scratch blocks
+     * and debugger read them from runtime.stc. Leaving this as a one-way
+     * preview made a perfectly wired Uno look disconnected to the code tab.
+     * Merge only the circuit-owned tables so compiler/device settings and any
+     * declarations not represented by the visual starter-kit parts survive.
+     */
+    handleDeclarationChange (decls) {
+        this.setState(s => ({circuitRev: (s.circuitRev || 0) + 1}));
+        if (!decls || !decls.device || !Array.isArray(decls.pins)) return;
+        const vm = this.props.vm;
+        if (!vm) return;
+        const current = (vm.runtime && vm.runtime.stc) || {};
+        const next = {
+            ...current,
+            device: decls.device,
+            pins: decls.pins,
+            ports: decls.ports || [],
+            parts: decls.parts || []
+        };
+        if (vm.setStc) vm.setStc(next);
+        else if (vm.runtime) vm.runtime.stc = next;
+        this.setState({stc: next});
+        if (vm.runtime && vm.runtime.emit) vm.runtime.emit('PROJECT_CHANGED');
     }
 
     /**
@@ -623,23 +673,7 @@ class CircuitTab extends React.Component {
                         if (caps) return false; // live hardware → no sim values
                         return undefined; // default: simulator assumed
                     })()}
-                    onDeclarationChange={(decls) => {
-                        // Doubles as the change signal the once-only onCircuitReady
-                        // handover does not provide. The circuit object is stable and
-                        // mutates in place, so the warnings badge and the parts list
-                        // would otherwise keep showing whatever was true when this
-                        // component last happened to re-render — and a warnings count
-                        // that is silently stale is worse than none, because it reads
-                        // as a statement about the circuit in front of you. This fires
-                        // on every parts/wires change, which is exactly when both
-                        // panels need recomputing.
-                        this.setState(s => ({circuitRev: (s.circuitRev || 0) + 1}));
-                        // TODO: write decls back to project.stc so the block palette updates.
-                        // Currently project.stc is read-only from the VM — writing it back
-                        // requires either a vm.setStc() API or round-tripping through loadProject.
-                        // For now, declarations are derived but not persisted.
-                        // The bw-blocks agent may provide the integration path.
-                    }}
+                    onDeclarationChange={this.handleDeclarationChange}
                 />
                 </div>
                 </div>
@@ -702,23 +736,6 @@ class CircuitTab extends React.Component {
                     color: active ? '#0f172a' : '#64748b'}}
             >{label}</button>
         );
-        const setDock = (d) => {
-            this.setState({debugDock: d});
-            try { localStorage.setItem('bw-debug-dock', d); } catch { /* session only */ }
-            // Choosing Top or Right is an explicit request for the debugger. If
-            // there are no pins there is nothing to dock, and with the hint
-            // dismissed the click produced literally no visible change — the
-            // panel did not appear and nothing said why. Dismissing a hint means
-            // "I have read this", not "never answer this question again", so an
-            // explicit request re-opens the explanation. Off is left alone: the
-            // user asked for silence and gets it.
-            const {stc} = this.state;
-            const nothingToDock = !(stc && stc.pins && stc.pins.length);
-            if (d !== 'off' && nothingToDock) {
-                this.setState({debugHintDismissed: false});
-                try { localStorage.removeItem('bw-debug-hint'); } catch { /* session only */ }
-            }
-        };
         return (
             <div style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flex: '0 0 auto',
                 fontSize: 11.5, lineHeight: 1.6}}>
@@ -750,37 +767,7 @@ class CircuitTab extends React.Component {
                 ))}
             </div>
             <span style={{flex: 1}} />
-            {/* Debugger placement: on top it competes with the canvas for
-                height; docked right it takes the column the stage no longer
-                needs; off it hides (hidden, not unmounted — the runner and
-                its state survive the toggle). */}
-            <span style={{color: '#94a3b8'}}>{'Debugger'}</span>
-            <div style={{display: 'inline-flex', gap: 1, padding: 1, borderRadius: 5, background: '#f1f5f9'}}>
-                {segBtn(this.state.debugDock === 'top', 'Top', 'Debugger above the board', () => setDock('top'))}
-                {segBtn(this.state.debugDock === 'right', 'Right', 'Debugger in a right column', () => setDock('right'))}
-                {segBtn(this.state.debugDock === 'off', 'Off', 'Hide the debugger', () => setDock('off'))}
-            </div>
-            <span style={{color: '#94a3b8'}}>{'While coding'}</span>
-            <div style={{display: 'inline-flex', gap: 1, padding: 1, borderRadius: 5, background: '#f1f5f9'}}>
-                {segBtn(this.state.showInStage, 'Circuit', 'On other tabs, show the circuit where the stage is', () => {
-                    this.setState({showInStage: true});
-                    try { localStorage.setItem('bw-stage-circuit', '1'); } catch { /* session */ }
-                })}
-                {segBtn(!this.state.showInStage, 'Scratch stage', 'Keep the normal stage and sprites while coding', () => {
-                    this.setState({showInStage: false});
-                    try { localStorage.setItem('bw-stage-circuit', '0'); } catch { /* session */ }
-                })}
-            </div>
-            <div style={{display: 'inline-flex', gap: 1, padding: 1, borderRadius: 5, background: '#f1f5f9'}}>
-                {segBtn(!this.state.hideStage, 'Stage', 'Show the Scratch stage and sprites', () => {
-                    this.setState({hideStage: false});
-                    try { localStorage.setItem('bw-hide-stage', '0'); } catch { /* session only */ }
-                })}
-                {segBtn(this.state.hideStage, 'Full width', 'Hide the stage — the circuit gets the whole width', () => {
-                    this.setState({hideStage: true});
-                    try { localStorage.setItem('bw-hide-stage', '1'); } catch { /* session only */ }
-                })}
-            </div>
+            <span style={{color: '#64748b', fontSize: 11}}>Workspace options are in Settings</span>
             </div>
         );
     }

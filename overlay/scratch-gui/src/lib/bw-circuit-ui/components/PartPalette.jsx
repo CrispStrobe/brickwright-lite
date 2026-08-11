@@ -20,6 +20,15 @@ const CATEGORIES = [
         tooltip: 'Half-size breadboard (30 columns) with power rails' },
       { kind: 'breadboard', label: 'Breadboard mini', params: { size: 'mini' }, color: '#e8e4d8',
         tooltip: 'Mini 170-point breadboard (17 columns) - no power rails, like the real one' },
+      { kind: 'arduino_uno', label: 'Arduino Uno', params: {}, color: '#168aad',
+        capability: 'AVR simulation',
+        tooltip: 'ATmega328P board — 5 V logic, digital and analog headers' },
+      { kind: 'arduino_nano', label: 'Arduino Nano', params: {}, color: '#168aad',
+        capability: 'AVR simulation',
+        tooltip: 'ATmega328P Nano board — 5 V logic, compact headers' },
+      { kind: 'pi_pico', label: 'Raspberry Pi Pico', params: {}, color: '#7b2cbf',
+        capability: 'wiring only',
+        tooltip: 'RP2040 board — 3.3 V logic; do not connect 5 V signals' },
     ],
   },
   {
@@ -183,7 +192,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
 
   return (
     <div style={{
-      background: '#1a1a2e',
+      background: '#172033',
       border: '1px solid #2c3e50',
       borderRadius: '8px',
       padding: '8px',
@@ -192,7 +201,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
       flexShrink: 0,
       overflowY: 'auto',
     }}>
-      <div style={{ color: '#ecf0f1', fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
+      <div style={{ color: '#f8fafc', fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
         Parts
       </div>
 
@@ -203,8 +212,8 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
         placeholder="search..."
         style={{
           width: '100%', padding: '4px 6px', marginBottom: '6px',
-          background: '#0a0a1a', border: '1px solid #2c3e50',
-          borderRadius: '4px', color: '#ecf0f1',
+          background: '#0b1220', border: '1px solid #6383a8',
+          borderRadius: '4px', color: '#f8fafc',
           fontFamily: 'monospace', fontSize: '10px',
           boxSizing: 'border-box',
         }}
@@ -219,7 +228,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
       ) : (
         CATEGORIES.map(cat => (
           <div key={cat.name}>
-            <div style={{ color: '#556', fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase' }}>
+            <div style={{ color: '#b8c7d9', fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
               {cat.name}
             </div>
             {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
@@ -231,7 +240,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
 }
 
 function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
-  const { kind, label, params, color, tooltip, hasColorPicker } = part;
+  const { kind, label, params, color, tooltip, capability, hasColorPicker } = part;
   const [hovered, setHovered] = useState(false);
 
   // For LEDs, use the selected color
@@ -256,8 +265,8 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
           width: '100%',
           padding: '4px',
           marginBottom: '3px',
-          background: hovered ? '#1e2d4a' : '#16213e',
-          border: `1px solid ${hovered ? color : '#2c3e50'}`,
+          background: hovered ? '#29466a' : '#20324d',
+          border: `1px solid ${hovered ? color : '#6383a8'}`,
           borderRadius: '6px',
           cursor: 'grab',
           userSelect: 'none',
@@ -268,7 +277,7 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
       >
         <PartThumbnail kind={kind} color={color} params={effectiveParams} />
         <div style={{
-          color: hovered ? '#ecf0f1' : color,
+          color: hovered ? '#ffffff' : '#e7eef8',
           fontFamily: 'monospace',
           fontSize: '9px',
           textAlign: 'center',
@@ -277,8 +286,17 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
         }}>
           {kind === 'led' ? `LED (${ledColor})` : label}
         </div>
+        {capability && (
+          <div style={{
+            color: capability === 'wiring only' ? '#f6c76d' : '#9fe3bf',
+            fontSize: '7px', textAlign: 'center', marginTop: '2px',
+            letterSpacing: '.02em',
+          }}>
+            {capability}
+          </div>
+        )}
         {tooltip && (
-          <div style={{ color: '#556', fontSize: '7px', textAlign: 'center' }}>{tooltip}</div>
+          <div style={{ color: '#a9bdd2', fontSize: '7px', textAlign: 'center' }}>{tooltip}</div>
         )}
       </div>
 

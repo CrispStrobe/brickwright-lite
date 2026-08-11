@@ -32,6 +32,7 @@ import { ContextMenu } from './ContextMenu.jsx';
 import { InlineEditor } from './InlineEditor.jsx';
 import { getMeterReading } from '../model/meter-reading.js';
 import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
+import { getPinFunctions } from '../model/pin-functions.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -346,6 +347,27 @@ const STC12_PIN_INFO = {
   RST: 'reset — ACTIVE HIGH', VCC: '+5 V supply (pin 40)', GND: 'ground (pin 20)',
   XTAL1: 'crystal in (internal RC works without one)', XTAL2: 'crystal out',
 };
+
+/**
+ * Board pin descriptions preserve the sidecar's audit state. A null function
+ * list is explicitly shown as unaudited; an empty list is an audited pin with
+ * no alternates.
+ */
+function pinInfoForPart(part, pin) {
+  const normalized = String(pin).toUpperCase();
+  if (part.kind === 'mcu') return STC12_PIN_INFO[normalized] || '';
+  if (/GND|VCC|5V|3V3|VIN|AREF|RESET|VBUS|VSYS|RUN|AGND|SWD/.test(normalized)) {
+    return 'power/control';
+  }
+  const functions = getPinFunctions(part.kind, pin);
+  if (functions === null) return 'GPIO (?) — alternates not audited';
+  if (Array.isArray(functions)) {
+    if (functions.includes('analog_only')) return 'analog input only';
+    const alternates = functions.filter(name => name !== 'gpio');
+    return alternates.length ? `GPIO · ${alternates.join(' · ').toUpperCase()}` : 'GPIO only';
+  }
+  return '';
+}
 
 function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDown, onTerminalUp, placingProbe }) {
   const connected = new Set();
@@ -2413,7 +2435,7 @@ export function BoardCanvas({
                       borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontFamily: 'monospace',
                     }}>
                       <span style={{ fontSize: 11, minWidth: 46 }}>{pin}</span>
-                      <span style={{ fontSize: 9, color: '#7f8c8d' }}>{STC12_PIN_INFO[pin] || ''}</span>
+                      <span style={{ fontSize: 9, color: '#9ab0c4' }}>{pinInfoForPart(chip, pin)}</span>
                     </button>
                   ))}
                 </div>
