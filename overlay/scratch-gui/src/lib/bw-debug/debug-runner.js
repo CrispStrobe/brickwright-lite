@@ -331,7 +331,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             yieldOf.set(y.block, { task: y.task, state: y.state, kind: y.kind });
         }
 
-        return { hex: atob(out.base64), symbols: out.symbols, c, bytes: out.bytes };
+        return {
+            hex: atob(out.base64),
+            symbols: out.symbols,
+            c,
+            bytes: out.bytes,
+            // Preserve the compiler-owned clock all the way to the silicon
+            // adapter. Falling back in the adapter remains safe for older
+            // endpoints, but current AVR builds must not silently assume it.
+            f_cpu: out.f_cpu || out.fcpu || out.clockHz,
+        };
     }
 
     // ─── attach ──────────────────────────────────────────────────────────
