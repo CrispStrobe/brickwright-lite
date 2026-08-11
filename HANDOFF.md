@@ -14,6 +14,11 @@
   `packages/scratch-gui/src/` tree and assert the constructor function exists.
 
 ### What those tests CANNOT see
+Entry weight is flat (+0.55% at `649f40d`) because 515 KB moved into lazy
+chunks (bw-board 150 KB, bw-circuit-ui 330 KB, bw-debug-panel 35 KB). Those
+chunks are asserted to load in Node, not in a built bundle — the weight win
+and the coverage gap are the same decision.
+
 **Built-bundle chunk resolution.** The routing tests load from
 `packages/scratch-gui/src/` (Node, pre-webpack), not from `build/chunks/`.
 A lazy chunk that 404s in production would not be caught by any test in the
