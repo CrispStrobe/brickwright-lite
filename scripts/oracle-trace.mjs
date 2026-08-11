@@ -61,3 +61,35 @@ export function compareTraces(expected, actual) {
     }
     return {equal: true};
 }
+
+/** Parse the scalar subset of a VCD file emitted by an external oracle. */
+export function parseVcd(source, {signals = {}} = {}) {
+    const text = String(source);
+    const units = {s: 1_000_000_000n, ms: 1_000_000n, us: 1_000n, ns: 1n, ps: 0n};
+    const scale = text.match(/\$timescale\s+([^\s]+)\s+([^\s]+)\s+\$end/);
+    if (!scale || units[scale[2]] === undefined) throw new Error('VCD has no supported $timescale');
+    const magnitude = BigInt(scale[1]);
+    const factor = units[scale[2]];
+    if (factor === 0n) throw new Error('VCD ps timescale is below nanosecond precision');
+
+    const ids = new Map();
+    for (const match of text.matchAll(/\$var\s+\S+\s+1\s+(\S+)\s+([^\s$]+)[^$]*\$end/g)) {
+        const [, id, rawName] = match;
+        ids.set(id, signals[rawName] || rawName);
+    }
+    if (!ids.size) throw new Error('VCD contains no scalar signals');
+
+    const rows = [];
+    let ticks = 0n;
+    for (const line of text.split(/\r?\n/)) {
+        if (line.startsWith('#')) {
+            ticks = BigInt(line.slice(1));
+            continue;
+        }
+        const change = line.match(/^([01xXzZ])(\S+)$/);
+        if (!change || !ids.has(change[2])) continue;
+        if (change[1] !== '0' && change[1] !== '1') continue;
+        rows.push({timeNs: ticks * magnitude * factor, pin: ids.get(change[2]), value: Number(change[1])});
+    }
+    return normalizeTrace(rows);
+}

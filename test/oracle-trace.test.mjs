@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {compareTraces, normalizeTrace} from '../scripts/oracle-trace.mjs';
+import {compareTraces, normalizeTrace, parseVcd} from '../scripts/oracle-trace.mjs';
 
 test('oracle traces normalize cycles, pin case, ordering, and repeated levels', () => {
     const trace = normalizeTrace([
@@ -22,4 +22,15 @@ test('oracle comparison reports the first observable mismatch', () => {
     assert.equal(result.equal, false);
     assert.equal(result.index, 0);
     assert.deepEqual(result.expected, {timeNs: '0', pin: 'D13', value: 0});
+});
+
+test('VCD scalar changes become canonical pin edges', () => {
+    const vcd = `$timescale 1 ns $end\n`
+        + `$var wire 1 ! PORTB[5] $end\n$enddefinitions $end\n`
+        + `#0\n0!\n#8\n1!\n#16\n1!\n#24\n0!\n`;
+    assert.deepEqual(parseVcd(vcd, {signals: {'PORTB[5]': 'D13'}}), [
+        {timeNs: 0n, pin: 'D13', value: 0},
+        {timeNs: 8n, pin: 'D13', value: 1},
+        {timeNs: 24n, pin: 'D13', value: 0},
+    ]);
 });

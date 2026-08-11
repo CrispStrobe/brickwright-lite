@@ -14,6 +14,11 @@ An oracle adapter converts a simulator's output to rows of:
 adapter may run a separately installed executable, but it must not link that
 executable into Brickwright or make the shipped app depend on it.
 
+For AVR, `scripts/oracle-simavr.mjs` runs a separately installed `simavr`, reads
+its VCD output, and maps explicitly named signals to board pins. It does not
+assume that a simulator register name is automatically an Arduino pin; each
+fixture must provide that mapping.
+
 Planned oracle adapters:
 
 - `simavr` for ATmega328P Uno/Nano GPIO, timers, PWM, UART, SPI, I²C, ADC, and
