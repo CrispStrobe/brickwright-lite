@@ -11,6 +11,7 @@
  */
 
 import { getSidecar } from './parts-registry.js';
+import { boardGeometry } from './board-geometry.js';
 
 /**
  * @typedef {{ x: number, y: number, w: number, h: number }} BBox
@@ -73,7 +74,8 @@ export function getPartBBox(p) {
   // Prefer sidecar dimensions (bw-parts owns the geometry)
   const sc = getSidecar(p.kind);
   if (sc && sc.w && sc.h) {
-    return { x: p.x - sc.w / 2, y: p.y - sc.h / 2, w: sc.w, h: sc.h };
+    const geometry = boardGeometry(sc);
+    return { x: p.x - geometry.w / 2, y: p.y - geometry.h / 2, w: geometry.w, h: geometry.h };
   }
   // Fallback to hardcoded sizes for kinds without sidecars
   switch (p.kind) {

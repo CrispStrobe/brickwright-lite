@@ -34,6 +34,7 @@ import { getMeterReading } from '../model/meter-reading.js';
 import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 import { getPinFunctions } from '../model/pin-functions.js';
 import { isBoardEndpoint } from '../model/wire-endpoints.js';
+import { boardGeometry } from '../model/board-geometry.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -125,7 +126,7 @@ function terminalOffsetsForPart(part) {
     case 'pi_pico': {
       const sc = getSidecar(part.kind);
       if (sc?.terminals?.length) {
-        const S = 1;
+        const S = boardGeometry(sc)?.scale || 1;
         const offsets = {};
         for (const t of sc.terminals) {
           offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
@@ -291,11 +292,13 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         // The designer deliberately keeps this clean-room inline renderer:
         // the sidecar is geometry/data, not an imported third-party runtime.
         const sc = getSidecar(kind);
-        const W = sc?.w ?? (kind === 'arduino_nano' ? 60 : kind === 'pi_pico' ? 60 : 180);
-        const H = sc?.h ?? (kind === 'arduino_nano' ? 160 : kind === 'pi_pico' ? 210 : 120);
+        const geometry = boardGeometry(sc);
+        const W = geometry?.w ?? (kind === 'arduino_nano' ? 150 : kind === 'pi_pico' ? 150 : 450);
+        const H = geometry?.h ?? (kind === 'arduino_nano' ? 400 : kind === 'pi_pico' ? 525 : 300);
         const boardColor = kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
         const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : 'RASPBERRY PI PICO';
-        const pin = (t) => ({ x: t.x - W / 2, y: t.y - H / 2 });
+        const S = geometry?.scale || 1;
+        const pin = (t) => ({ x: t.x * S - W / 2, y: t.y * S - H / 2 });
         return (
           <g key={id} transform={xform} pointerEvents="none">
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
@@ -318,7 +321,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               const leftSide = p.x < 0;
               return (
                 <g key={t.name}>
-                  <circle cx={p.x} cy={p.y} r={2.4} fill="#d8dee4" stroke="#637381" strokeWidth={0.6} />
+                  <circle cx={p.x} cy={p.y} r={5} fill="#d8dee4" stroke="#637381" strokeWidth={1} />
                   <text x={p.x + (leftSide ? 7 : -7)} y={p.y + 1.6}
                     textAnchor={leftSide ? 'start' : 'end'}
                     fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.7 : 4.5}

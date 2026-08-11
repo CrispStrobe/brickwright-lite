@@ -30,11 +30,11 @@ export const FOOTPRINTS = {
   // STC12C5A60S2 DIP-40: the visible package is the compact 80×111
   // sidecar footprint, not the old generic 120×160 development-board box.
   mcu: { w: 280, h: 111 },
-  // These dimensions match the vendored bw-parts sidecars and their SVG art.
-  // Keep them here too: hit testing must not depend on DOM/SVG availability.
-  arduino_uno: { w: 180, h: 120 },
-  arduino_nano: { w: 60, h: 160 },
-  pi_pico: { w: 60, h: 210 },
+  // Sidecar art is scaled from 8-unit pin pitch to the canvas' 20-unit
+  // breadboard raster. Keep hit bounds in the same world coordinates.
+  arduino_uno: { w: 450, h: 300 },
+  arduino_nano: { w: 150, h: 400 },
+  pi_pico: { w: 150, h: 525 },
   meter: { w: 70, h: 55 },
   led_cube: { w: 90, h: 90 },
   seven_segment: { w: 50, h: 70 },
