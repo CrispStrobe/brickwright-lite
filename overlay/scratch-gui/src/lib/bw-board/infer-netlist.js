@@ -61,8 +61,15 @@ export function inferNetlist(stc) {
   parts.push({ id: 'VCC', kind: 'vcc', params: {}, terminals: ['vcc'] });
   parts.push({ id: 'GND', kind: 'gnd', params: {}, terminals: ['gnd'] });
 
-  // Collect MCU terminals from declared pins
-  const mcuTerminals = stc.pins.map(p => `P${p.port}.${p.bit}`);
+  // Arduino/Pico declarations carry physical header names (D13/GP0), while
+  // STC declarations carry port/bit pairs. Keep the inferred netlist in the
+  // same spelling consumed by the selected silicon adapter.
+  const device = String(stc.device || '').toLowerCase();
+  const boardPin = p => (p.where || p.pin || p.name);
+  const pinIdFor = p => device === 'arduino-uno' || device === 'arduino-nano' || device === 'pico'
+    ? String(boardPin(p)).toUpperCase()
+    : `P${p.port}.${p.bit}`;
+  const mcuTerminals = stc.pins.map(pinIdFor);
   parts.push({ id: 'MCU', kind: 'mcu', params: {}, terminals: mcuTerminals });
 
   // VCC and GND nets (shared by multiple parts)
@@ -70,7 +77,7 @@ export function inferNetlist(stc) {
   const gndNet = { id: 'net_gnd', terminals: [{ part: 'GND', terminal: 'gnd' }] };
 
   for (const pin of stc.pins) {
-    const pinId = `P${pin.port}.${pin.bit}`;
+    const pinId = pinIdFor(pin);
     const safeName = pin.name.replace(/[^a-zA-Z0-9_]/g, '_');
 
     // Detect buzzer by name convention
@@ -420,9 +427,13 @@ export function checkWiring(declaredPins, wiredParts, wiredNets) {
   }
 
   // Check: declared pins with nothing wired
-  const declaredPinIds = new Set(declaredPins.map(p => `P${p.port}.${p.bit}`));
+  const boardDevice = declaredPins.some(p => p.where || p.pin || p.name?.match(/^(D\d+|A\d+|GP\d+)$/));
+  const declaredPinId = p => boardDevice
+    ? String(p.where || p.pin || p.name).toUpperCase()
+    : `P${p.port}.${p.bit}`;
+  const declaredPinIds = new Set(declaredPins.map(declaredPinId));
   for (const pin of declaredPins) {
-    const pinId = `P${pin.port}.${pin.bit}`;
+    const pinId = declaredPinId(pin);
     if (!wiredPinIds.has(pinId)) {
       notes.push(`Pin ${pin.name} (${pinId}) is declared as ${pin.direction} but has nothing wired to it`);
     }

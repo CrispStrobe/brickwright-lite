@@ -383,12 +383,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         if (selectedTargetKind === 'rp2040js') {
-            throw new Error(
-                'Pico projects are wired and checked in the circuit designer. The MIT rp2040js ' +
-                'core is available, but its Brickwright adapter (image loading, stepping, and ' +
-                'GPIO-to-circuit binding) is still being completed; this is not substituted with ' +
-                'the STC or AVR simulator.'
-            );
+            return attachRp2040js(built);
         }
 
         if (selectedTargetKind === 'avr8js') {
@@ -555,6 +550,29 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         setStatus('ready', `${built.bytes} bytes (AVR), running`);
 
+        return session;
+    }
+
+    async function attachRp2040js(built) {
+        setStatus('attaching', 'starting the Pico emulator…');
+        const {createDebugTarget, createDebugSession, BoardImpl, inferNetlist} =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+        const stc = projectStc(null);
+        const netlist = inferNetlist(stc);
+        board = new BoardImpl(3.3);
+        board.setNetlist(netlist.parts, netlist.nets);
+        board.setPower(true);
+        const {target: picoTarget} = await createDebugTarget('rp2040js', {
+            board, hex: built.hex,
+        });
+        target = picoTarget;
+        session = createDebugSession(target, {
+            onChange: (st) => {
+                if (st.halted) trace.record(target, st.why ? st.why.cause : 'halt', {variables: [], tasks: []});
+                emit();
+            }
+        });
+        setStatus('ready', `${built.bytes} bytes (Pico), running`);
         return session;
     }
 

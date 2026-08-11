@@ -48,11 +48,14 @@ export async function createDebugTarget(kind, opts) {
   if (kind === 'avr8js') {
     return createAvr8jsTarget(opts);
   }
+  if (kind === 'rp2040js') {
+    return createRp2040jsTarget(opts);
+  }
   if (kind === 'serial') {
     return createSerialTarget(opts);
   }
   throw new Error(
-    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js' or 'serial'.`
+    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', 'rp2040js' or 'serial'.`
   );
 }
 
@@ -141,6 +144,20 @@ async function createAvr8jsTarget(opts) {
   return { adapter, target };
 }
 
+// ─── RP2040 target (rp2040js) ─────────────────────────────────────────────
+
+async function createRp2040jsTarget(opts) {
+  const { board, hex } = opts;
+  if (!board) throw new Error('rp2040js target requires opts.board');
+  const { createRp2040jsAdapter, createRp2040jsDebugTarget } =
+    await import('./rp2040js-adapter.js');
+  const adapter = createRp2040jsAdapter({ board });
+  adapter.attachBoard(board);
+  if (hex) adapter.loadProgram(parseIntelHexBytes(hex));
+  const target = createRp2040jsDebugTarget(adapter);
+  return { adapter, target };
+}
+
 /**
  * Parse an Intel HEX string into a Uint16Array of 16-bit words (little-endian
  * byte pairs), suitable for avr8js's progMem.
@@ -167,6 +184,28 @@ function parseIntelHex(hex) {
     words[i] = bytes[i * 2] | (bytes[i * 2 + 1] << 8);
   }
   return words;
+}
+
+function parseIntelHexBytes(hex) {
+  const bytes = new Uint8Array(0x100000);
+  let maxAddr = 0;
+  let upper = 0;
+  for (const line of String(hex).split(/\r?\n/)) {
+    if (!line.startsWith(':')) continue;
+    const len = parseInt(line.slice(1, 3), 16);
+    const addr = parseInt(line.slice(3, 7), 16);
+    const type = parseInt(line.slice(7, 9), 16);
+    if (type === 4) { upper = parseInt(line.slice(9, 13), 16) << 16; continue; }
+    if (type !== 0) continue;
+    const absolute = upper + addr;
+    // RP2040 flash images are linked at 0x10000000; store them at offset 0.
+    const offset = absolute >= 0x10000000 ? absolute - 0x10000000 : absolute;
+    for (let i = 0; i < len; i++) {
+      bytes[offset + i] = parseInt(line.slice(9 + i * 2, 11 + i * 2), 16);
+      maxAddr = Math.max(maxAddr, offset + i + 1);
+    }
+  }
+  return bytes.slice(0, maxAddr);
 }
 
 // ─── Serial target ───────────────────────────────────────────────────────
@@ -205,6 +244,11 @@ export function getTargetKinds() {
       kind: 'avr8js',
       label: 'Simulated (AVR)',
       description: 'ATmega328P instruction-level emulation (Arduino Uno/Nano).',
+    },
+    {
+      kind: 'rp2040js',
+      label: 'Simulated (Pico)',
+      description: 'RP2040 instruction-level emulation with GPIO simulation; source mapping is not yet available.',
     },
     {
       kind: 'serial',
