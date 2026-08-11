@@ -104,10 +104,10 @@ function terminalOffsetsForPart(part) {
         // The source sidecar uses a generous 200×260 art coordinate space;
         // the physical DIP package on this canvas is the compact 80×111
         // footprint. Keep the same scale for pins and body.
-        const S = 0.4;
+        const S = 14 / 12;
         const offsets = {};
         for (const t of sc.terminals) {
-          offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
+          offsets[t.name] = r((t.y - sc.h / 2) * S, t.x < sc.w / 2 ? -47 : 47);
         }
         return offsets;
       }
@@ -162,7 +162,7 @@ function fmtV(v) {
 function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
-    const rot = part.rotation || 0;
+    const rot = (part.rotation || 0) + ((part.kind === 'mcu' ? (part.seat?.rot || 0) * 90 : 0));
     const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
     const selStroke = isSelected ? '#f1c40f' : undefined;
@@ -201,39 +201,29 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         // offsets use - one geometry, so every leg meets its connector.
         const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
         if (sc && sc.terminals && sc.terminals.length > 2) {
-          const S = 0.4;
-          const W = 80, Hh = 111;
-          const left = sc.terminals.filter(t => t.x <= sc.w / 2);
-          const right = sc.terminals.filter(t => t.x > sc.w / 2);
-          const px = (t) => (t.x - sc.w / 2) * S;
-          const py = (t) => (t.y - sc.h / 2) * S;
-          const legLen = 10;
+          const S = 14 / 12;
+          const W = 280, Hh = 111;
+          const px = (t) => (t.y - sc.h / 2) * S;
+          const py = (t) => t.x <= sc.w / 2 ? -47 : 47;
+          const bodyW = 210, bodyH = 62;
           return (
             <g key={id} transform={xform} pointerEvents="none">
-              <rect x={-W / 2 + legLen} y={-Hh / 2} width={W - 2 * legLen} height={Hh} rx={4}
+              <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
                 fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
-              <path d={`M ${-7} ${-Hh / 2} A 7 7 0 0 1 ${7} ${-Hh / 2}`}
+              <path d="M -9 -31 A 9 9 0 0 1 9 -31"
                 fill="#2c3e50" stroke={selStroke || '#555'} strokeWidth={1} />
-              <circle cx={-W / 2 + legLen + 8} cy={-Hh / 2 + 10} r={2.5} fill="#555" />
-              <text x={0} y={-6} textAnchor="middle" fill="#bbb" fontSize={11}
+              <circle cx={-bodyW / 2 + 12} cy={-bodyH / 2 + 10} r={2.5} fill="#555" />
+              <text x={0} y={-5} textAnchor="middle" fill="#bbb" fontSize={10}
                 fontFamily="monospace" fontWeight="bold"
                 transform="rotate(0)">STC12C5A60S2</text>
-              <text x={0} y={8} textAnchor="middle" fill="#777" fontSize={8}
+              <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={7}
                 fontFamily="monospace">DIP-40</text>
-              {left.map(t => (
+              {sc.terminals.map(t => (
                 <g key={t.name}>
-                  <rect x={px(t) - 1} y={py(t) - 1.6} width={legLen + 1} height={3.2}
+                  <rect x={px(t) - 7} y={py(t) - 1.6} width={14} height={3.2}
                     fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
-                  <text x={px(t) + legLen + 3} y={py(t) + 2.6} textAnchor="start"
-                    fill="#7f8c8d" fontSize={5.6} fontFamily="monospace">{t.name}</text>
-                </g>
-              ))}
-              {right.map(t => (
-                <g key={t.name}>
-                  <rect x={px(t) - legLen} y={py(t) - 1.6} width={legLen + 1} height={3.2}
-                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
-                  <text x={px(t) - legLen - 3} y={py(t) + 2.6} textAnchor="end"
-                    fill="#7f8c8d" fontSize={5.6} fontFamily="monospace">{t.name}</text>
+                  <text x={px(t)} y={py(t) + (py(t) < 0 ? -6 : 10)} textAnchor="middle"
+                    fill="#7f8c8d" fontSize={4.2} fontFamily="monospace">{t.name}</text>
                 </g>
               ))}
             </g>

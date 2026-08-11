@@ -29,7 +29,7 @@ export const FOOTPRINTS = {
   gnd: { w: 36, h: 40 },
   // STC12C5A60S2 DIP-40: the visible package is the compact 80×111
   // sidecar footprint, not the old generic 120×160 development-board box.
-  mcu: { w: 80, h: 111 },
+  mcu: { w: 280, h: 111 },
   // These dimensions match the vendored bw-parts sidecars and their SVG art.
   // Keep them here too: hit testing must not depend on DOM/SVG availability.
   arduino_uno: { w: 180, h: 120 },
@@ -79,7 +79,7 @@ export function partBounds(part) {
       maxX: part.x + w / 2, maxY: part.y + h / 2 };
   }
   const { w, h } = footprintOf(part);
-  const rot = ((part.rotation ?? 0) % 360 + 360) % 360;
+  const rot = (((part.rotation ?? 0) + ((part.seat?.rot ?? 0) * 90)) % 360 + 360) % 360;
   let bw = w, bh = h;
   if (rot % 180 === 90) { bw = h; bh = w; }
   else if (rot % 90 !== 0) {

@@ -34,13 +34,10 @@ function baseOffsets(kind, terminals) {
     case 'capacitor': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
     case 'mcu': {
       const offsets = {};
-      const count = terminals.length;
-      const chipH = Math.max(60, count * 30 + 20);
-      const chipY = -chipH / 2;
-      terminals.forEach((pin, i) => {
-        const o = rotateOffset(-60, chipY + 30 + i * 30, 0);
-        offsets[pin] = o;
-      });
+      const top = ['P1.0','P1.1','P1.2','P1.3','P1.4','P1.5','P1.6','P1.7','RST','P3.0','P3.1','P3.2','P3.3','P3.4','P3.5','P3.6','P3.7','XTAL2','XTAL1','GND'];
+      const bottom = ['P2.0','P2.1','P2.2','P2.3','P2.4','P2.5','P2.6','P2.7','P4.4','P4.5','P4.6','P0.7','P0.6','P0.5','P0.4','P0.3','P0.2','P0.1','P0.0','VCC'];
+      top.forEach((pin, i) => { offsets[pin] = { dx: (i - 9.5) * 14, dy: -47 }; });
+      bottom.forEach((pin, i) => { offsets[pin] = { dx: (9.5 - i) * 14, dy: 47 }; });
       return offsets;
     }
     default: return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };

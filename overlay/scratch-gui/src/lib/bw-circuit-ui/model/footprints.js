@@ -166,6 +166,13 @@ export const FOOTPRINTS = {
       c1: { dRow: 5, dCol: 0 }, c2: { dRow: 5, dCol: 1 }, c3: { dRow: 5, dCol: 2 }, c4: { dRow: 5, dCol: 3 } },
   },
   dip_switch: { refTerminal: 's1_a', leads: { s1_a: { dRow: 0, dCol: 0 }, s1_b: { dRow: 0, dCol: 1 } } },
+  mcu: {
+    refTerminal: 'P1.0', straddlesGutter: true,
+    leads: {
+      ...Object.fromEntries(['P1.0','P1.1','P1.2','P1.3','P1.4','P1.5','P1.6','P1.7','RST','P3.0','P3.1','P3.2','P3.3','P3.4','P3.5','P3.6','P3.7','XTAL2','XTAL1','GND'].map((name, i) => [name, { dRow: 0, dCol: i }])),
+      ...Object.fromEntries(['P2.0','P2.1','P2.2','P2.3','P2.4','P2.5','P2.6','P2.7','P4.4','P4.5','P4.6','P0.7','P0.6','P0.5','P0.4','P0.3','P0.2','P0.1','P0.0','VCC'].map((name, i) => [name, { dRow: 5, dCol: 19 - i }])),
+    },
+  },
 };
 
 /**
