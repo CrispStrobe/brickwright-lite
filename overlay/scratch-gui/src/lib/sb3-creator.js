@@ -4274,9 +4274,20 @@ class SB3Creator {
         const stc = project && project.stc;
         if (!stc || !stc.pins || !stc.pins.length) return [];
         const q = (v) => this.pyStr(v);
+        // 8051 declarations carry a port/bit pair; Arduino and RP2040
+        // declarations carry their board vocabulary in `where` (D13, A0,
+        // GP0). Do not manufacture Pundefined.undefined for the latter: the
+        // marker is the lossless bridge used by Python/JavaScript round trips.
+        const whereOf = (pin) => pin.where || (
+            pin.port !== undefined && pin.bit !== undefined
+                ? `P${pin.port}.${pin.bit}`
+                : null
+        );
         const lines = [`scratch.device(${q(stc.device)}, ${stc.clock})`];
         for (const pin of stc.pins) {
-            lines.push(`scratch.pin(${q(pin.name)}, ${q(`P${pin.port}.${pin.bit}`)}, `
+            const where = whereOf(pin);
+            if (!where) continue;
+            lines.push(`scratch.pin(${q(pin.name)}, ${q(where)}, `
                 + `${q(pin.direction)}, ${pin.activeLow ? 1 : 0})`);
         }
         return lines;
