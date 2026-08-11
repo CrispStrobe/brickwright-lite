@@ -24,6 +24,28 @@ const VERSION = (typeof process.env.BW_VERSION === 'string' && process.env.BW_VE
 const BUILD_TIME = (typeof process.env.BW_BUILD_TIME === 'string' && process.env.BW_BUILD_TIME) || '';
 
 const REPO_URL = 'https://github.com/CrispStrobe/brickwright-lite';
+const NOTICES_URL = `${REPO_URL}/blob/main/THIRD-PARTY-NOTICES.md`;
+const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
+
+// The imprint block, mirroring the compiler service's About (its
+// IMPRINT_* defaults) — one provider, stated identically in both places.
+const PROVIDER = {
+    name: 'Christian Ströbele',
+    address: ['Nikolausstr. 5', '70190 Stuttgart', 'Deutschland / Germany'],
+    email: 'postmaster@crispstro.be',
+    phone: '+49 176 6421 8601'
+};
+
+/** Component / licence table. Rows are [what, licence, url]. */
+const COMPONENTS = [
+    ['Brickwright-lite — this app', 'MIT + BSD-3/Apache-2.0 (pre-relicense Scratch stack)', `${REPO_URL}/blob/main/LICENSE`],
+    ['bw-board · bw-circuit-ui · sb3-creator (engine, designer, transpiler)', 'MIT', 'https://github.com/CrispStrobe'],
+    ['@wokwi/elements (part artwork) · avr8js (AVR emulator)', 'MIT', 'https://github.com/wokwi'],
+    ['emu8051 fork (8051 emulator)', 'MIT', 'https://github.com/CrispStrobe/emu8051-stc'],
+    ['Skulpt (Python preview)', 'MIT', 'https://github.com/skulpt/skulpt'],
+    ['SDCC — hosted compile service (separate program, not bundled)', 'GPL-2.0+, runs server-side', COMPILER_ABOUT_URL],
+    ['SDCC-WASM — optional local compiler (opt-in download)', 'GPL-2.0+, separate artifact', NOTICES_URL]
+];
 
 const L10N = {
     en: {
@@ -37,7 +59,24 @@ const L10N = {
         blurb: 'A fully-permissive fork of the pre-relicense Scratch stack — BSD-3, Apache-2.0 ' +
             'and MIT throughout, so it can be bundled and shipped anywhere.',
         copied: 'Copied',
-        copy: 'Copy version details'
+        copy: 'Copy version details',
+        provider: 'Provider (Impressum)',
+        contact: 'Contact',
+        email: 'E-mail',
+        phone: 'Phone',
+        privacy: 'Privacy',
+        privacyText: 'This is a static page: no accounts, no tracking by us, and projects stay ' +
+            'in your browser. Pressing Build/Run sends your program text to the compile service ' +
+            'to be compiled and is not stored; the optional local compiler removes even that.',
+        disclaimer: 'Disclaimer',
+        disclaimerText: 'An educational tool. The simulation is a model, not silicon: check ' +
+            'polarity, voltage and current limits before wiring real hardware, and treat ' +
+            'anything not verified on a real chip as unverified.',
+        components: 'Components and licences',
+        notices: 'Full third-party notices',
+        affil: 'Affiliation',
+        affilText: 'Not affiliated with or endorsed by Scratch / MIT, STC, Arduino, or ' +
+            'Raspberry Pi. Trademarks belong to their owners.'
     },
     de: {
         about: 'Über Brickwright',
@@ -50,7 +89,25 @@ const L10N = {
         blurb: 'Ein vollständig permissiver Fork des Scratch-Stacks vor der Lizenzänderung — ' +
             'durchgängig BSD-3, Apache-2.0 und MIT, also überall bündelbar und auslieferbar.',
         copied: 'Kopiert',
-        copy: 'Versionsdetails kopieren'
+        copy: 'Versionsdetails kopieren',
+        provider: 'Anbieter (Impressum)',
+        contact: 'Kontakt',
+        email: 'E-Mail',
+        phone: 'Telefon',
+        privacy: 'Datenschutz',
+        privacyText: 'Dies ist eine statische Seite: keine Konten, kein Tracking durch uns, ' +
+            'Projekte bleiben im Browser. Build/Run sendet den Programmtext zum Kompilieren an ' +
+            'den Compile-Dienst und wird nicht gespeichert; der optionale lokale Compiler ' +
+            'vermeidet auch das.',
+        disclaimer: 'Haftungsausschluss',
+        disclaimerText: 'Ein Lernwerkzeug. Die Simulation ist ein Modell, kein Silizium: vor ' +
+            'echter Hardware Polung, Spannungen und Stromgrenzen prüfen; alles ohne Nachweis ' +
+            'auf echtem Chip gilt als unverifiziert.',
+        components: 'Komponenten und Lizenzen',
+        notices: 'Vollständige Third-Party-Hinweise',
+        affil: 'Zugehörigkeit',
+        affilText: 'Nicht verbunden mit oder unterstützt von Scratch / MIT, STC, Arduino oder ' +
+            'Raspberry Pi. Marken gehören ihren Eigentümern.'
     }
 };
 
@@ -138,6 +195,41 @@ class BwAbout extends React.Component {
 
                             {known ? null :
                                 <p className={styles.warning}>{t('unknownVersion')}</p>}
+
+                            <div className={styles.section}>
+                                <div className={styles.heading}>{t('provider')}</div>
+                                <address className={styles.address}>
+                                    <strong>{PROVIDER.name}</strong><br />
+                                    {PROVIDER.address.map(line => [line, <br key={line} />])}
+                                </address>
+                                <div className={styles.heading}>{t('contact')}</div>
+                                <p className={styles.body}>
+                                    {t('email')}: <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a><br />
+                                    {t('phone')}: <a href={`tel:${PROVIDER.phone.replace(/[^+0-9]/g, '')}`}>{PROVIDER.phone}</a>
+                                </p>
+                                <div className={styles.heading}>{t('privacy')}</div>
+                                <p className={styles.body}>{t('privacyText')}</p>
+                                <div className={styles.heading}>{t('disclaimer')}</div>
+                                <p className={styles.body}>{t('disclaimerText')}</p>
+                                <div className={styles.heading}>{t('components')}</div>
+                                <table className={styles.licences}>
+                                    <tbody>
+                                        {COMPONENTS.map(([what, lic, url]) => (
+                                            <tr key={what}>
+                                                <td>{what}</td>
+                                                <td>
+                                                    <a href={url} rel="noopener noreferrer" target="_blank">{lic}</a>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <p className={styles.body}>
+                                    <a href={NOTICES_URL} rel="noopener noreferrer" target="_blank">{t('notices')}</a>
+                                </p>
+                                <div className={styles.heading}>{t('affil')}</div>
+                                <p className={styles.body}>{t('affilText')}</p>
+                            </div>
 
                             <div className={styles.links}>
                                 <a
