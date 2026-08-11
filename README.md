@@ -157,8 +157,6 @@ same circuit model.
 
 ## Simulator and oracle policy
 
-### Simulator and oracle policy
-
 The browser and shipped native app use only the permissive execution paths
 listed in the device matrix. External emulators are developer-side,
 black-box test oracles and are never bundled into Brickwright. The current
