@@ -1,5 +1,5 @@
 /**
- * Debug target factory — one construction path for two targets.
+ * Debug target factory — one construction path for three target kinds.
  *
  * The host should not need to know that one target has a destructive init
  * (emu_init re-callocs code memory) or that another needs a baud rate.
@@ -8,20 +8,27 @@
  * on which target it is.
  *
  * What the factory UNIFIES: construction and setup ordering.
- * What it does NOT unify: capabilities. The two targets are not equally
+ * What it does NOT unify: capabilities. The targets are not equally
  * capable, and §1 says an interface hiding that "produces a front end
  * that lies to the user the moment it is pointed at real hardware."
+ *
+ * Target kinds:
+ *   'emulator'  — STC12 / 8051 via emu8051 WASM
+ *   'avr8js'    — ATmega328P via avr8js (pure TS, no WASM)
+ *   'serial'    — live hardware over serial
  *
  * @module
  */
 
 import { createEmu8051Adapter } from './emu8051-adapter.js';
 import { createSerialDebugTarget } from './serial-debug.js';
+import { createAvr8jsAdapter } from './avr8js-adapter.js';
+import { parseIntelHex } from './intel-hex.js';
 
 /**
  * Create a DebugTarget of the specified kind.
  *
- * @param {'emulator' | 'serial'} kind
+ * @param {'emulator' | 'avr8js' | 'serial'} kind
  * @param {object} opts
  *
  * For 'emulator':
@@ -32,6 +39,13 @@ import { createSerialDebugTarget } from './serial-debug.js';
  * @param {number} [opts.fosc] — oscillator frequency (default 11059200)
  * @param {number} [opts.vcc] — supply voltage (default 5.0)
  *
+ * For 'avr8js':
+ * @param {object} opts.board — the BoardImpl instance
+ * @param {string} [opts.hex] — Intel HEX to load
+ * @param {object} [opts.symbols] — symbol table (avr-nm JSON, same shape)
+ * @param {number} [opts.clockHz] — CPU clock (default 16 MHz)
+ * @param {number} [opts.vcc] — supply voltage (default 5.0)
+ *
  * For 'serial':
  * @param {object} opts.transport — serial transport adapter
  *   { write(data), onData(cb), onClose(cb) }
@@ -39,7 +53,7 @@ import { createSerialDebugTarget } from './serial-debug.js';
  *
  * @returns {Promise<{ target: object, adapter?: object }>}
  *   target: the DebugTarget
- *   adapter: the boundary-A adapter (emulator only)
+ *   adapter: the boundary-A adapter (emulator/avr8js only)
  */
 export async function createDebugTarget(kind, opts) {
   if (kind === 'emulator') {
@@ -59,7 +73,7 @@ export async function createDebugTarget(kind, opts) {
   );
 }
 
-// ─── Emulator target ─────────────────────────────────────────────────────
+// ─── Emulator target (8051 / STC12) ─────────────────────────────────────
 
 async function createEmulatorTarget(opts) {
   const {
@@ -111,37 +125,55 @@ async function createEmulatorTarget(opts) {
   return { target, adapter };
 }
 
-// ─── AVR target (avr8js) ─────────────────────────────────────────────────
+// ─── AVR target (ATmega328P via avr8js) ─────────────────────────────────
 
 async function createAvr8jsTarget(opts) {
-  const { board, hex, clockHz, vcc = 5.0 } = opts;
+  const {
+    board, hex, symbols,
+    clockHz = 16_000_000, vcc = 5.0,
+  } = opts;
 
   if (!board) throw new Error('avr8js target requires opts.board');
 
-  // Lazy import: avr8js is optional — an STC12-only user never pays for it,
-  // and the smoke test does not die when the package is absent.
-  const { createAvr8jsAdapter } = await import('./avr8js-adapter.js');
+  // avr8js has no destructive init — order is flexible, but we follow the
+  // same adapter-first, board-second, program-third pattern for consistency.
 
-  // 1. Adapter — clockHz comes from the compile response, never hard-coded
+  // 1. Adapter
   const adapter = createAvr8jsAdapter({ clockHz, vcc });
 
   // 2. Attach board
   adapter.attachBoard(board);
 
-  // 3. Load hex — parse Intel HEX to Uint16Array of 16-bit words
+  // 3. Load hex → parse to word-addressed Uint16Array → load into flash
   if (hex) {
     const words = parseIntelHex(hex);
     adapter.loadProgram(words);
+
+    // Sanity: AVR reset vector is at word 0. A JMP instruction starts with
+    // 0x940C or 0x940E; an RJMP with 0xCxxx. All-zeros means empty flash.
+    if (words[0] === 0) {
+      console.warn(
+        'Warning: flash word 0 is 0x0000 after loading hex. ' +
+        'The image may not have loaded correctly.'
+      );
+    }
   }
 
-  // The AVR debug target wraps the adapter for boundary D (run/pause/step).
-  // Block-level positions require AVR symbol mapping (a later addition).
-  const { createAvr8jsDebugTarget } = await import('./avr8js-adapter.js');
-  const target = typeof createAvr8jsDebugTarget === 'function'
-    ? createAvr8jsDebugTarget(adapter)
-    : null;
+  // 4. Debug target — the coordinator is writing createAvr8jsDebugTarget.
+  //    Dynamic import so this file does not fail when the module does not
+  //    exist yet. The factory returns { adapter } without a target in that
+  //    case — the caller can still run the simulation, just not debug it.
+  let target = null;
+  try {
+    const mod = await import('./avr8js-debug.js');
+    if (mod.createAvr8jsDebugTarget) {
+      target = mod.createAvr8jsDebugTarget(adapter, { symbols });
+    }
+  } catch {
+    // avr8js-debug.js does not exist yet — adapter-only mode
+  }
 
-  return { adapter, target };
+  return { target, adapter };
 }
 
 // ─── RP2040 target (rp2040js) ─────────────────────────────────────────────
@@ -155,38 +187,14 @@ async function createRp2040jsTarget(opts) {
   adapter.attachBoard(board);
   if (image) adapter.loadProgram(parseUf2(image));
   else if (hex) adapter.loadProgram(parseIntelHexBytes(hex));
-  const target = createRp2040jsDebugTarget(adapter);
+  const target = typeof createRp2040jsDebugTarget === 'function'
+    ? createRp2040jsDebugTarget(adapter) : null;
   return { adapter, target };
 }
 
 /**
- * Parse an Intel HEX string into a Uint16Array of 16-bit words (little-endian
- * byte pairs), suitable for avr8js's progMem.
+ * Parse Intel HEX to raw bytes for RP2040 (addresses may be 0x10000000+).
  */
-function parseIntelHex(hex) {
-  const bytes = new Uint8Array(0x8000); // 32 KB flash
-  let maxAddr = 0;
-  for (const line of hex.split(/\r?\n/)) {
-    if (!line.startsWith(':')) continue;
-    const len = parseInt(line.slice(1, 3), 16);
-    const addr = parseInt(line.slice(3, 7), 16);
-    const type = parseInt(line.slice(7, 9), 16);
-    if (type !== 0) continue; // only data records
-    for (let i = 0; i < len; i++) {
-      const b = parseInt(line.slice(9 + i * 2, 11 + i * 2), 16);
-      bytes[addr + i] = b;
-      if (addr + i + 1 > maxAddr) maxAddr = addr + i + 1;
-    }
-  }
-  // Pack into 16-bit words (little-endian: low byte first)
-  const wordCount = Math.ceil(maxAddr / 2);
-  const words = new Uint16Array(wordCount);
-  for (let i = 0; i < wordCount; i++) {
-    words[i] = bytes[i * 2] | (bytes[i * 2 + 1] << 8);
-  }
-  return words;
-}
-
 function parseIntelHexBytes(hex) {
   const bytes = new Uint8Array(0x100000);
   let maxAddr = 0;
@@ -199,7 +207,6 @@ function parseIntelHexBytes(hex) {
     if (type === 4) { upper = parseInt(line.slice(9, 13), 16) << 16; continue; }
     if (type !== 0) continue;
     const absolute = upper + addr;
-    // RP2040 flash images are linked at 0x10000000; store them at offset 0.
     const offset = absolute >= 0x10000000 ? absolute - 0x10000000 : absolute;
     for (let i = 0; i < len; i++) {
       bytes[offset + i] = parseInt(line.slice(9 + i * 2, 11 + i * 2), 16);
@@ -238,18 +245,18 @@ export function getTargetKinds() {
   return [
     {
       kind: 'emulator',
-      label: 'Simulated (emu8051)',
-      description: 'Full instruction-level emulation. All debug features available.',
+      label: 'Simulated (STC12 / 8051)',
+      description: 'Full instruction-level 8051 emulation. All debug features available.',
     },
     {
       kind: 'avr8js',
-      label: 'Simulated (AVR)',
-      description: 'ATmega328P instruction-level emulation (Arduino Uno/Nano).',
+      label: 'Simulated (ATmega328P)',
+      description: 'AVR instruction-level emulation. Arduino Nano/Uno programs.',
     },
     {
       kind: 'rp2040js',
       label: 'Simulated (Pico)',
-      description: 'RP2040 instruction-level emulation with GPIO simulation; source mapping is not yet available.',
+      description: 'RP2040 instruction-level emulation with GPIO simulation.',
     },
     {
       kind: 'serial',

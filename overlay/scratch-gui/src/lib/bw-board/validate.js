@@ -50,11 +50,6 @@ const KNOWN_TERMINALS = {
   seven_segment: null, // composite — sub-parts have their own terminals
   rgb_led: null, // composite
   mcu: null, // terminals are PinIds, validated separately
-  // Arduino/Pico parts share the MCU electrical boundary; the debug target
-  // supplies their concrete silicon behavior.
-  arduino_uno: null,
-  arduino_nano: null,
-  pi_pico: null,
 };
 
 /**

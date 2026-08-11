@@ -538,9 +538,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         board.setPower(true);
 
         // The factory creates the adapter, attaches the board, parses the
-        // Intel HEX into Uint16Array words, and loads the program.
+        // Intel HEX into Uint16Array words, loads the program, and — if
+        // symbols are present — creates the boundary-D debug target with
+        // yield breakpoints and block-level position reporting.
         const {target: avrTarget} = await createDebugTarget('avr8js', {
-            board, hex: built.hex, clockHz,
+            board, hex: built.hex, symbols: built.symbols, clockHz,
         });
 
         target = avrTarget;
