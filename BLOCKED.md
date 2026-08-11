@@ -137,6 +137,26 @@ would just change which TabPanel is selected, not where content renders.
 - **Licence choice is owner's call.** MPL-2.0 was added to bw-circuit-ui (01860ac)
   and bw-bundle (e3ad9f6). Owner has not ruled. Do not change any LICENSE file.
 
+## RESOLVED: camera hit-testing (a798d56)
+
+Owner's schematic camera verified by headless Playwright hit-testing
+(01-blink, "5V" label, `elementFromPoint` + parent walk to symbol `<g>`):
+
+| Scenario | Hit at NEW pos | Miss at OLD pos |
+|---|---|---|
+| Pan (3×30px wheel) | HIT | MISS |
+| Cursor-anchored zoom (3×ctrl+wheel) | HIT | HIT (correct — anchor keeps target in place) |
+| Pan + zoom combined | HIT | MISS |
+
+No stale hit regions. SVG viewBox-based camera updates hit areas
+correctly — the browser recomputes from the viewBox, unlike CSS
+transforms which can leave hit regions at old coordinates. The
+cursor-anchored zoom correctly keeps the point under the cursor
+nearly stationary (11px shift over 3× zoom), so the old position
+still hits — this is the intended behavior, not a stale region.
+
+The owner's camera arrived correct.
+
 ## OPEN: spec-update 006 (stale hobby_gearmotor refs) — bw-circuit-ui's fix
 
 bw-parts `006-stale-gearmotor-refs.md`: 5 code references to the old slug
