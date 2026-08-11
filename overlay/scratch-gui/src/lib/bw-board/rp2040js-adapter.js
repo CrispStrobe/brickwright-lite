@@ -26,6 +26,7 @@ export function createRp2040jsAdapter(opts = {}) {
     let timeNs = 0n;
     let attached = board;
     let instructionObserver = null;
+    let loadedVector = null;
     const stats = {instructionCount: 0, pinChangeCount: 0, advanceToCount: 0};
 
     function publishPin(index) {
@@ -89,10 +90,26 @@ export function createRp2040jsAdapter(opts = {}) {
             rp2040.reset();
             rp2040.flash.fill(0xff);
             rp2040.flash.set(bytes, 0);
-            // A boot ROM image is not shipped by rp2040js. Starting at the
-            // XIP flash entry lets native test images execute while keeping
-            // the omission explicit; UF2/boot-ROM handling is a later layer.
-            if (bytes.length > 0) rp2040.core.PC = FLASH_BASE;
+            // A boot ROM image is not shipped by rp2040js. Consume the
+            // Cortex-M vector table directly when the image has one; tiny
+            // hand-written fixtures without a valid vector fall back to the
+            // XIP entry so they remain useful for adapter tests.
+            loadedVector = null;
+            if (bytes.length >= 8) {
+                const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+                const initialSp = view.getUint32(0, true);
+                const resetPc = view.getUint32(4, true) & 0xfffffffe;
+                if (initialSp >= RAM_BASE && initialSp < RAM_BASE + rp2040.sram.length &&
+                    resetPc >= FLASH_BASE && resetPc < FLASH_BASE + bytes.length) {
+                    loadedVector = {initialSp, resetPc};
+                }
+            }
+            if (loadedVector) {
+                rp2040.core.SP = loadedVector.initialSp;
+                rp2040.core.PC = loadedVector.resetPc;
+            } else if (bytes.length > 0) {
+                rp2040.core.PC = FLASH_BASE;
+            }
             timeNs = 0n;
             publishAll();
         },
@@ -110,6 +127,10 @@ export function createRp2040jsAdapter(opts = {}) {
         setInstructionObserver(observer) { instructionObserver = observer || null; },
         reset() {
             rp2040.reset();
+            if (loadedVector) {
+                rp2040.core.SP = loadedVector.initialSp;
+                rp2040.core.PC = loadedVector.resetPc;
+            }
             timeNs = 0n;
             publishAll();
         },

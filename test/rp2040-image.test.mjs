@@ -41,6 +41,23 @@ test('Pico adapter advances time before publishing its GPIO boundary', async () 
     assert.equal(times.length > 0, true);
 });
 
+test('Pico adapter loads and resets from a valid Cortex-M vector table', async () => {
+    const {createRp2040jsAdapter} = await import('../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js');
+    const image = new Uint8Array(32);
+    const view = new DataView(image.buffer);
+    view.setUint32(0, 0x20040000, true);
+    view.setUint32(4, 0x10000011, true);
+    const adapter = createRp2040jsAdapter();
+    adapter.loadProgram(image);
+    assert.equal(adapter.rp2040.core.SP, 0x20040000);
+    assert.equal(adapter.rp2040.core.PC, 0x10000010);
+    adapter.rp2040.core.SP = 0x20000000;
+    adapter.rp2040.core.PC = 0x10000020;
+    adapter.reset();
+    assert.equal(adapter.rp2040.core.SP, 0x20040000);
+    assert.equal(adapter.rp2040.core.PC, 0x10000010);
+});
+
 test('board pin markers preserve Arduino and Pico pin vocabularies', async () => {
     const {default: SB3Creator} = await import('../packages/scratch-gui/src/lib/sb3-creator.js');
     const creator = new SB3Creator();
