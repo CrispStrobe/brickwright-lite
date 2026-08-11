@@ -15,8 +15,10 @@ import {RP2040, GPIOPinState} from 'rp2040js';
 const CLOCK_HZ = 125_000_000;
 const VCC = 3.3;
 const FLASH_BASE = 0x10000000;
+const RAM_BASE = 0x20000000;
 
 function pinName(index) { return `GP${index}`; }
+function pcOf(rp2040) { return rp2040.core.PC; }
 
 export function createRp2040jsAdapter(opts = {}) {
     const rp2040 = new RP2040();
@@ -90,7 +92,7 @@ export function createRp2040jsAdapter(opts = {}) {
             // A boot ROM image is not shipped by rp2040js. Starting at the
             // XIP flash entry lets native test images execute while keeping
             // the omission explicit; UF2/boot-ROM handling is a later layer.
-            if (bytes.length > 0) rp2040.core.pc = FLASH_BASE;
+            if (bytes.length > 0) rp2040.core.PC = FLASH_BASE;
             timeNs = 0n;
             publishAll();
         },
@@ -148,9 +150,10 @@ export function createRp2040jsDebugTarget(adapter) {
     let nextHandle = 1;
     const breakpoints = new Map();
     let resumePc = null;
+    let stepPending = false;
 
     const announce = (cause, details = {}) => {
-        const why = {cause, pc: adapter.rp2040.core.pc, tNs: adapter.timeNs(), skewNs: 0n, ...details};
+        const why = {cause, pc: pcOf(adapter.rp2040), tNs: adapter.timeNs(), skewNs: 0n, ...details};
         for (const cb of listeners) cb(why);
         return why;
     };
@@ -179,8 +182,11 @@ export function createRp2040jsDebugTarget(adapter) {
             return {
                 target: 'rp2040js',
                 execution: ['run', 'pause', 'reset'],
+                steps: ['insn'],
                 stepping: ['instruction'],
                 breakpoints: ['code'],
+                spaces: ['code', 'sram'],
+                writable: ['sram'],
                 symbols: false,
                 consumes: ['GPIO', 'ADC'],
                 timeFreezes: true,
@@ -193,18 +199,56 @@ export function createRp2040jsDebugTarget(adapter) {
             running = false;
             announce('user');
         },
-        reset() { running = false; adapter.reset(); },
+        reset() { running = false; stepPending = false; resumePc = null; adapter.reset(); },
         step(kind) {
-            if (kind !== 'instruction') return {unsupported: 'Pico currently supports instruction stepping only.'};
-            adapter.stepInstruction();
+            if (kind !== 'instruction' && kind !== 'insn') return {unsupported: 'Pico currently supports instruction stepping only.'};
+            stepPending = true;
+            running = true;
             return undefined;
         },
         runFor(deltaNs) {
             if (!running) return 'idle';
+            if (stepPending) {
+                stepPending = false;
+                adapter.stepInstruction();
+                running = false;
+                announce('step');
+                return 'halted';
+            }
             adapter.advanceNs(deltaNs);
+            if (!running) return 'halted';
             return 'ran';
         },
-        position() { return {pc: adapter.rp2040.core.pc}; },
+        position() { return {pc: pcOf(adapter.rp2040)}; },
+        regs() {
+            const core = adapter.rp2040.core;
+            return {
+                pc: core.PC,
+                sp: core.SP,
+                lr: core.LR,
+                xpsr: core.xPSR,
+                r: Array.from(core.registers),
+                cycles: core.cycles,
+            };
+        },
+        readMem(space, addr, len) {
+            if (space !== 'code' && space !== 'sram') {
+                return {unsupported: `no such address space: ${space}`};
+            }
+            const base = space === 'code' ? FLASH_BASE : RAM_BASE;
+            if (!Number.isInteger(addr) || !Number.isInteger(len) || len < 0 || addr < base) {
+                return {unsupported: `${space} address/range is invalid`};
+            }
+            const out = new Uint8Array(len);
+            for (let i = 0; i < len; i++) out[i] = adapter.rp2040.readUint8(addr + i);
+            return out;
+        },
+        writeMem(space, addr, data) {
+            if (space !== 'sram') return {refused: `space not writable: ${space}`};
+            if (!Number.isInteger(addr) || addr < RAM_BASE) return {refused: 'invalid SRAM address'};
+            for (let i = 0; i < data.length; i++) adapter.rp2040.writeUint8(addr + i, data[i]);
+            return undefined;
+        },
         setSymbols() { return {unsupported: 'rp2040js symbol mapping requires an ELF/debug-map contract.'}; },
         setBreakpoint(bp) {
             if (!bp || bp.kind !== 'code') {
