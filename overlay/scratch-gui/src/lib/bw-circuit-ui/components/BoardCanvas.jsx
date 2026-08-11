@@ -1123,6 +1123,7 @@ export function BoardCanvas({
   onSelectPart, selectedPart, selectedParts,
   onSelectWire, selectedWire,
   onControlChange, onButtonDown, onButtonUp,
+  mode, onModeChange, powered, onPowerToggle,
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
@@ -1916,6 +1917,13 @@ export function BoardCanvas({
         padding: '2px 4px',
         background: '#16213e', borderRadius: '4px',
       }}>
+        <button onClick={() => onModeChange?.('build')} title="Build mode"
+          style={{ padding: '2px 7px', background: mode === 'build' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'build' ? '#3498db' : '#2c3e50'}`, borderRadius: '3px', color: mode === 'build' ? '#3498db' : '#7f8c8d', fontSize: '10px', cursor: 'pointer' }}>Build</button>
+        <button onClick={() => onModeChange?.('simulate')} title="Simulation mode"
+          style={{ padding: '2px 7px', background: mode === 'simulate' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'simulate' ? '#2ecc71' : '#2c3e50'}`, borderRadius: '3px', color: mode === 'simulate' ? '#2ecc71' : '#7f8c8d', fontSize: '10px', cursor: 'pointer' }}>Sim</button>
+        <button onClick={() => onPowerToggle?.()} title={powered ? 'Power on' : 'Power off'}
+          style={{ padding: '2px 7px', background: powered ? '#176b3a' : '#7f1d1d', border: '1px solid transparent', borderRadius: '3px', color: '#fff', fontSize: '10px', cursor: 'pointer' }}>{powered ? '⏻ On' : '⏻ Off'}</button>
+
         {/* Mode indicator */}
         <span style={{
           padding: '2px 8px', borderRadius: '3px',

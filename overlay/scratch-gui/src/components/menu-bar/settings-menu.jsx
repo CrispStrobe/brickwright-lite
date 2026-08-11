@@ -40,7 +40,7 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
     const setPresentation = value => {
         const [layout, theme] = value.split('-');
         emit('bw-settings-change', {key: 'bw-hide-stage', value: layout === 'full' ? '1' : '0'});
-        emit('bw-circuit-theme', {key: 'bw-circuit-theme', value: theme});
+        emit('bw-settings-change', {key: 'bw-circuit-theme', value: theme});
         onRequestClose();
     };
     const workspaceSelect = (label, value, onChange, options, title) => (

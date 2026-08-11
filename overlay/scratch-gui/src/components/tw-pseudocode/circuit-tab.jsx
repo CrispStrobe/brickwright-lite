@@ -79,7 +79,12 @@ class CircuitTab extends React.Component {
                 this.setDisplayPreference('showInStage', value === '1');
                 if (value === '1') this.load();
             }
-            if (key === 'hideStage') this.setDisplayPreference('hideStage', value === '1');
+            if (key === 'hideStage' || key === 'bw-hide-stage') this.setDisplayPreference('hideStage', value === '1');
+            if (key === 'bw-circuit-theme') {
+                try { localStorage.setItem('bw-circuit-theme', value); } catch { /* private mode */ }
+                // CircuitDesigner owns the visual theme; forward the same
+                // setting event so an already-mounted designer updates now.
+            }
         };
         window.addEventListener('bw-settings-change', this._settingsHandler);
         const runtime = this.props.vm && this.props.vm.runtime;
@@ -752,22 +757,8 @@ class CircuitTab extends React.Component {
             ['bom', 'Parts list', null],
             ['examples', 'Examples', null]
         ];
-        // The board is the reason this tab exists, so the switcher costs one thin
-        // row and nothing else — no tab-bar chrome, no borders, no 44px targets
-        // stealing height from the canvas. A segmented control reads as "a view
-        // of the same thing", which is what these are.
-        const segBtn = (active, label, title, onClick) => (
-            <button
-                key={label}
-                title={title}
-                onClick={onClick}
-                style={{padding: '2px 8px', border: 'none', cursor: 'pointer', borderRadius: 4,
-                    fontSize: 'inherit',
-                    background: active ? '#fff' : 'transparent',
-                    boxShadow: active ? '0 1px 2px rgba(15,23,42,.12)' : 'none',
-                    color: active ? '#0f172a' : '#64748b'}}
-            >{label}</button>
-        );
+        const tabIcons = {designer: '▦', warnings: '⚠', bom: '☷', examples: '▤'};
+        const tabTitles = {designer: 'Designer', warnings: 'Warnings', bom: 'Parts list', examples: 'Examples'};
         return (
             <div style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flex: '0 0 auto',
                 fontSize: 11.5, lineHeight: 1.6}}>
@@ -780,17 +771,20 @@ class CircuitTab extends React.Component {
                             this.setState({panel: id});
                             if (id === 'examples') this.loadExamples();
                         }}
+                        title={tabTitles[id]}
+                        aria-label={tabTitles[id]}
+                        aria-pressed={panel === id}
                         style={{
-                            padding: '2px 8px', border: 'none', cursor: 'pointer', borderRadius: 4,
-                            fontSize: 'inherit',
+                            width: 30, height: 26, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4,
+                            fontSize: 16, lineHeight: 1, position: 'relative',
                             background: panel === id ? '#fff' : 'transparent',
                             boxShadow: panel === id ? '0 1px 2px rgba(15,23,42,.12)' : 'none',
                             color: panel === id ? '#0f172a' : '#64748b'
                         }}
                     >
-                        {label}
+                        <span aria-hidden="true">{tabIcons[id]}</span>
                         {badge ? (
-                            <span style={{marginLeft: 5, padding: '0 5px', borderRadius: 8, fontSize: 10,
+                            <span style={{position: 'absolute', top: 1, right: 1, minWidth: 13, padding: '0 2px', borderRadius: 8, fontSize: 9,
                                 background: danger ? '#fecaca' : '#fef3c7',
                                 color: danger ? '#991b1b' : '#92400e'}}
                             >{badge}</span>
@@ -799,7 +793,6 @@ class CircuitTab extends React.Component {
                 ))}
             </div>
             <span style={{flex: 1}} />
-            <span style={{color: '#64748b', fontSize: 11}}>Workspace options are in Settings</span>
             </div>
         );
     }

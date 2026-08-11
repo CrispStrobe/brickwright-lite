@@ -36,7 +36,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { BoardCanvas } from './BoardCanvas.jsx';
 import { PartPalette } from './PartPalette.jsx';
-import { ControlPanel } from './ControlPanel.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
@@ -158,6 +157,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, [stopToken]);
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  const [showScope, setShowScope] = useState(false);
+  const [showMeter, setShowMeter] = useState(false);
 
   // Breadboard model (persistent across renders)
   const [bbRev, setBbRev] = useState(0);
@@ -193,6 +194,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('bw-circuit-theme') || 'light'; } catch { return 'light'; }
   });
+  useEffect(() => {
+    const onSettings = event => {
+      const {key, value} = event.detail || {};
+      if (key !== 'bw-circuit-theme' || (value !== 'light' && value !== 'dark')) return;
+      setTheme(value);
+      try { localStorage.setItem('bw-circuit-theme', value); } catch { /* private mode */ }
+    };
+    window.addEventListener('bw-settings-change', onSettings);
+    return () => window.removeEventListener('bw-settings-change', onSettings);
+  }, []);
   const [simPaused, setSimPaused] = useState(false);
   const [simSpeed, setSimSpeed] = useState(1); // 0.25 | 1 | 4 x real time
   const [probePlacement, setProbePlacement] = useState(null);
@@ -728,14 +739,15 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         minHeight: 0, // allow flex shrinking
         alignItems: 'stretch',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        overflow: 'clip',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
       }}
     >
       {/* Left sidebar — collapsible. Hidden entirely in schematic view:
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', minHeight: 0, maxHeight: 'calc(100dvh - 130px)', overscrollBehavior: 'contain' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 160px', width: 160, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
           <button onClick={() => setLeftOpen(false)} style={{
             background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
             fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
@@ -788,47 +800,31 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
-        {/* View mode switch: one view at a time, full width */}
+        {/* View mode switch: compact icon buttons; labels are in tooltips. */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
           {['realistic', 'schematic'].map(vm => (
             <button key={vm} onClick={() => setShowSchematic(vm === 'schematic')} style={{
               background: (vm === 'schematic') === showSchematic ? '#3498db' : '#16213e',
               color: (vm === 'schematic') === showSchematic ? '#fff' : '#7f8c8d',
               border: '1px solid #2c3e50', borderRadius: 4,
-              padding: '3px 10px', cursor: 'pointer',
-              fontFamily: 'monospace', fontSize: 10,
-            }}>{vm === 'realistic' ? 'Realistic' : 'Schematic'}</button>
+              width: 30, height: 26, padding: 0, cursor: 'pointer',
+              fontFamily: 'sans-serif', fontSize: 16, lineHeight: 1,
+            }} title={vm === 'realistic' ? 'Realistic view' : 'Schematic view'}
+            aria-label={vm === 'realistic' ? 'Realistic view' : 'Schematic view'}
+            aria-pressed={(vm === 'schematic') === showSchematic}>
+              <span aria-hidden="true">{vm === 'realistic' ? '◉' : '⌁'}</span>
+            </button>
           ))}
         </div>
         <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'clip', display: 'flex', flexDirection: 'column' }}>
         {!showSchematic ? (<>
-        {mode === 'simulate' && (
-          <span style={{ display: 'inline-flex', gap: 4, alignSelf: 'flex-end', marginBottom: 4, marginRight: 6 }}>
-            <button onClick={() => setSimPaused(v => !v)}
-              title={simPaused ? 'Resume simulation' : 'Pause simulation (board time freezes; knobs stay live)'}
-              style={{ background: simPaused ? '#e67e22' : '#16213e', border: '1px solid #2c3e50',
-                color: simPaused ? '#000' : '#7f8c8d', borderRadius: 4, padding: '3px 10px',
-                cursor: 'pointer', fontFamily: 'monospace', fontSize: 10 }}>
-              {simPaused ? '▶ resume' : '⏸ pause'}</button>
-            <button onClick={handleSimStep} disabled={!simPaused}
-              title="Advance one 50 ms tick"
-              style={{ background: '#16213e', border: '1px solid #2c3e50',
-                color: simPaused ? '#3498db' : '#3a4a5a', borderRadius: 4, padding: '3px 10px',
-                cursor: simPaused ? 'pointer' : 'default', fontFamily: 'monospace', fontSize: 10 }}>
-              ⏭ step</button>
-            <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))}
-              title="Simulation speed"
-              style={{ background: '#16213e', color: '#7f8c8d', border: '1px solid #2c3e50',
-                borderRadius: 4, fontSize: 10, fontFamily: 'monospace' }}>
-              <option value={0.25}>0.25x</option>
-              <option value={1}>1x</option>
-              <option value={4}>4x</option>
-            </select>
-          </span>
-        )}
         <BoardCanvas
           parts={parts}
           wires={wires}
+          mode={mode}
+          onModeChange={setMode}
+          powered={powered}
+          onPowerToggle={() => setPower(!powered)}
           simulate={mode === 'simulate'}
           ledBrightness={readLedBrightness}
           buzzerTones={readBuzzerTone}
@@ -1005,7 +1001,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', maxHeight: 'calc(100dvh - 130px)', overscrollBehavior: 'contain' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 280px', width: 280, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
         <button onClick={() => setRightOpen(false)} style={{
           background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
           fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
@@ -1016,37 +1012,29 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             capabilities={debugState.capabilities || null}
           />
         )}
-        <ControlPanel
-          mode={mode}
-          onModeChange={setMode}
-          powered={powered}
-          onPowerToggle={() => setPower(!powered)}
-          selectedPart={selectedPart}
-          selectedWire={selectedWire}
-          parts={parts}
-          onRemovePart={(id) => { removePart(id); setSelectedParts(new Set()); }}
-          onRemoveWire={(id) => { removeWire(id); setSelectedWire(null); }}
-          onUndo={undo}
-          onRedo={redo}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUpdateParams={updateParams}
-          onSave={handleSave}
-          onLoad={handleLoad}
-        />
-        <ScopePanel
-          board={circuit.board}
-          nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []}
-        />
-        <Multimeter
-          circuit={circuit}
-          wires={wires}
-          parts={parts}
-          placingProbe={placingProbe}
-          onStartPlacing={handleStartPlacing}
-          onStopPlacing={handleStopPlacing}
-          probePlacement={probePlacement}
-        />
+        {mode === 'simulate' && (
+          <section style={{width: 280, padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
+            <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>Simulation</div>
+            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5}}>
+              <button onClick={() => setSimPaused(v => !v)} title={simPaused ? 'Resume simulation' : 'Pause simulation'}
+                style={{padding: '5px 4px', cursor: 'pointer'}}>{simPaused ? '▶ Resume' : '⏸ Pause'}</button>
+              <button onClick={handleSimStep} disabled={!simPaused} title="Advance one 50 ms tick"
+                style={{padding: '5px 4px', cursor: simPaused ? 'pointer' : 'default'}}>⏭ Step</button>
+            </div>
+            <label style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, fontSize: 11, color: '#475569'}}>
+              Speed
+              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Simulation speed">
+                <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
+              </select>
+            </label>
+          </section>
+        )}
+        <div style={{ display: 'flex', gap: 4, width: 280 }}>
+          <button onClick={() => setShowScope(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showScope ? '#2c3e50' : '#16213e', border: '1px solid #3498db', borderRadius: 4, color: '#3498db', fontFamily: 'monospace', fontSize: 10 }}>{showScope ? '▣ Hide scope' : '▣ Scope'}</button>
+          <button onClick={() => setShowMeter(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showMeter ? '#2c3e50' : '#16213e', border: '1px solid #f1c40f', borderRadius: 4, color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>{showMeter ? '⌁ Hide meter' : '⌁ Meter'}</button>
+        </div>
+        {showScope && <div style={{ width: 280 }}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} /></div>}
+        {showMeter && <div style={{ width: 280 }}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
       </div>
       ) : (
         <button onClick={() => setRightOpen(true)} style={{

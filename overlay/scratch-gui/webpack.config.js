@@ -168,6 +168,10 @@ const buildConfig = baseConfig.clone()
         output: {
             path: path.resolve(__dirname, 'build'),
             filename: '[name].[contenthash:8].js',
+            // Keep lazy feature chunks addressable across Pages deploys.
+            // Hashed lazy URLs let a cached HTML/runtime request a chunk that
+            // the next clean deployment has already removed.
+            chunkFilename: 'chunks/[name].js',
             // No UMD library wrapper for the web app — it boots itself.
             // (The library config is only for dist/, which we skip.)
             library: undefined

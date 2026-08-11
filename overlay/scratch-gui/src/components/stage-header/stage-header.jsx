@@ -15,6 +15,9 @@ import fullScreenIcon from './icon--fullscreen.svg';
 import largeStageIcon from './icon--large-stage.svg';
 import smallStageIcon from './icon--small-stage.svg';
 import unFullScreenIcon from './icon--unfullscreen.svg';
+import circuitIcon from './icon--circuit.svg';
+import debuggerIcon from './icon--debugger.svg';
+import scratchStageIcon from './icon--scratch-stage.svg';
 
 import scratchLogo from '../menu-bar/scratch-logo.svg';
 import styles from './stage-header.css';
@@ -44,8 +47,38 @@ const messages = defineMessages({
         defaultMessage: 'Full Screen Control',
         description: 'Button to enter/exit full screen mode',
         id: 'gui.stageHeader.fullscreenControl'
+    },
+    circuitDebugger: {
+        defaultMessage: 'Switch to debugger',
+        description: 'Button to show the Circuit Designer with its debugger',
+        id: 'gui.stageHeader.circuitDebugger'
+    },
+    circuitNoDebugger: {
+        defaultMessage: 'Circuit Designer without debugger',
+        description: 'Button to show the full-width Circuit Designer without debugger',
+        id: 'gui.stageHeader.circuitNoDebugger'
+    },
+    scratchStage: {
+        defaultMessage: 'Scratch Stage',
+        description: 'Button to show the Scratch stage while coding',
+        id: 'gui.stageHeader.scratchStage'
     }
 });
+
+const setCircuitView = ({fullWidth, debuggerOn}) => {
+    window.dispatchEvent(new CustomEvent('bw-settings-change', {
+        detail: {key: 'bw-hide-stage', value: fullWidth ? '1' : '0'}
+    }));
+    window.dispatchEvent(new CustomEvent('bw-settings-change', {
+        detail: {key: 'bw-debug-dock', value: debuggerOn ? 'top' : 'off'}
+    }));
+    window.dispatchEvent(new CustomEvent('bw-settings-change', {
+        detail: {key: 'bw-stage-circuit', value: fullWidth ? '1' : '0'}
+    }));
+    window.dispatchEvent(new CustomEvent('bw-settings-change', {
+        detail: {key: 'bw-circuit-theme', value: 'light'}
+    }));
+};
 
 const StageHeaderComponent = function (props) {
     const {
@@ -138,6 +171,33 @@ const StageHeaderComponent = function (props) {
                     <Controls vm={vm} />
                     <div className={styles.stageSizeRow}>
                         {stageControls}
+                        <div className={styles.stageSizeToggleGroup}>
+                            <ToggleButtons
+                                buttons={[
+                                    {
+                                        handleClick: () => setCircuitView({fullWidth: true, debuggerOn: false}),
+                                        icon: circuitIcon,
+                                        iconClassName: styles.stageButtonIcon,
+                                        isSelected: false,
+                                        title: props.intl.formatMessage(messages.circuitNoDebugger)
+                                    },
+                                    {
+                                        handleClick: () => setCircuitView({fullWidth: true, debuggerOn: true}),
+                                        icon: debuggerIcon,
+                                        iconClassName: styles.stageButtonIcon,
+                                        isSelected: false,
+                                        title: props.intl.formatMessage(messages.circuitDebugger)
+                                    },
+                                    {
+                                        handleClick: () => setCircuitView({fullWidth: false, debuggerOn: true}),
+                                        icon: scratchStageIcon,
+                                        iconClassName: styles.stageButtonIcon,
+                                        isSelected: false,
+                                        title: props.intl.formatMessage(messages.scratchStage)
+                                    }
+                                ]}
+                            />
+                        </div>
                         <div>
                             <Button
                                 className={styles.stageButton}
