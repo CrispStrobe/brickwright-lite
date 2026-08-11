@@ -137,6 +137,21 @@ would just change which TabPanel is selected, not where content renders.
 - **Licence choice is owner's call.** MPL-2.0 was added to bw-circuit-ui (01860ac)
   and bw-bundle (e3ad9f6). Owner has not ruled. Do not change any LICENSE file.
 
+## OPEN: spec-update 006 (stale hobby_gearmotor refs) — bw-circuit-ui's fix
+
+bw-parts `006-stale-gearmotor-refs.md`: 5 code references to the old slug
+`hobby_gearmotor` survive in bw-circuit-ui after the sidecar resync. DRC,
+wire router, circuit model, and thumbnail renderer still match the old name.
+lite carries the same stale refs via the vendor — fixing them here would be
+overwritten by the next sync. bw-circuit-ui must fix upstream, then we
+re-vendor.
+
+### Spec-update convention
+
+Adopted per bw-parts `a6f9240 CONVENTION.md`. At session start, scan
+`/mnt/volume1/code/*/spec-updates/` for items addressed to bw-bundle or
+lite. Highest acted on: bw-parts 005 (sidecar drift, resolved `3ac31ad`).
+
 ## RESOLVED: sidecar-count drift (115→123)
 
 bw-circuit-ui `4064e96` resynced from bw-parts. Vendored into lite
