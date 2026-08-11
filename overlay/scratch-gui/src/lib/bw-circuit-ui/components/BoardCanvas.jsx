@@ -101,7 +101,10 @@ function terminalOffsetsForPart(part) {
       // declared-pins-only single-column layout.
       const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
       if (sc && sc.terminals && sc.terminals.length > 2) {
-        const S = 0.62;
+        // The source sidecar uses a generous 200×260 art coordinate space;
+        // the physical DIP package on this canvas is the compact 80×111
+        // footprint. Keep the same scale for pins and body.
+        const S = 0.4;
         const offsets = {};
         for (const t of sc.terminals) {
           offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
@@ -198,8 +201,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         // offsets use - one geometry, so every leg meets its connector.
         const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
         if (sc && sc.terminals && sc.terminals.length > 2) {
-          const S = 0.62;
-          const W = sc.w * S, Hh = sc.h * S;
+          const S = 0.4;
+          const W = 80, Hh = 111;
           const left = sc.terminals.filter(t => t.x <= sc.w / 2);
           const right = sc.terminals.filter(t => t.x > sc.w / 2);
           const px = (t) => (t.x - sc.w / 2) * S;

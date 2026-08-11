@@ -27,7 +27,9 @@ export const FOOTPRINTS = {
   switch: { w: 48, h: 28 },
   vcc: { w: 36, h: 40 },
   gnd: { w: 36, h: 40 },
-  mcu: { w: 120, h: 160 },
+  // STC12C5A60S2 DIP-40: the visible package is the compact 80×111
+  // sidecar footprint, not the old generic 120×160 development-board box.
+  mcu: { w: 80, h: 111 },
   // These dimensions match the vendored bw-parts sidecars and their SVG art.
   // Keep them here too: hit testing must not depend on DOM/SVG availability.
   arduino_uno: { w: 180, h: 120 },
