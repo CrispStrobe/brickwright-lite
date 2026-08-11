@@ -87,6 +87,74 @@ unmodified web bundle "just works" once the native side is up.
   system browser; de-branded (Brickwright robot as favicon / logo / default sprite; the dead
   Share / Community / My-Stuff / account UI removed).
 
+## Circuit Designer and embedded hardware workbench
+
+The Circuit tab is a second, integrated workspace inside Scratch. It is useful without a
+microcontroller for ordinary electronics experiments, and becomes a live visual companion to the
+Scratch program when the project declares hardware pins.
+
+### Scratch integration
+
+- The normal Scratch stage and sprite/background pane can be exchanged for the Circuit view from
+  **Settings**. The same menu controls the debugger dock (`Top`, `Right`, or `Off`), the
+  stage/full-width layout, and the Circuit Designer light/dark style.
+- Tutorials live under **File**. The Git revision and project information are consolidated in the
+  **About** dialog rather than occupying permanent toolbar space.
+- The green flag starts Scratch scripts and the circuit simulation together. Stop-all stops both.
+  A circuit can still be designed and simulated independently when no Scratch hardware program is
+  present.
+- Circuit declarations are derived from the physical wiring and written back into the live project
+  contract, so adding a board or wiring an output does not leave the Code tab with stale pin data.
+
+### Circuit editing and simulation
+
+- Place, drag, rotate, flip, duplicate, delete, and wire parts on a grid; parts can also be seated
+  on full, half, and mini breadboards with conductive strips, power rails, and hole-to-hole jumpers.
+- The palette includes power sources and posts, resistors, capacitors, diodes and LEDs, switches,
+  buttons, potentiometers, buzzers, transistors, MOSFETs, motors, servos, relays, displays, sensors,
+  logic ICs, memory and I/O parts, meters, and microcontroller boards.
+- The simulator is backed by the circuit engine rather than UI-made-up readings. It reports node
+  voltages, LED brightness, buzzer tone, current/voltage warnings, and component behavior where a
+  model exists. Hardware-only views explicitly suppress readings that cannot be measured.
+- Simulation controls include pause, resume, single-tick stepping, and 0.25×/1×/4× speed. Debugger
+  halt state is reflected in the board so program time and circuit time stay coherent.
+- The realistic board view has a read-only generated schematic view. It supports pan, cursor-centered
+  zoom, double-click-to-fit, connected-pin labels, junctions, orthogonal net routing, and an implicit
+  GND symbol when the solver uses the negative terminal of a source as its reference.
+- Design-rule checks explain common electrical mistakes instead of silently accepting plausible wrong
+  results: missing LED resistors, excessive pin/load current, missing flyback diodes, floating inputs,
+  supply shorts, reversed polarized parts, missing I²C pull-ups, aggregate current, and unsafe Pico
+  GPIO voltage connections.
+
+### Boards and current execution boundary
+
+The board selector and pin chooser use sidecar data with three deliberately separate states:
+audited alternate functions, audited pins with no alternates, and known-but-unaudited pins. The UI
+never turns missing data into a hardware claim.
+
+- **STC12C5A60S2 / 8051** — the existing STC board path includes datasheet-grounded pin descriptions,
+  netlist integration, instruction-level emulation, debugger run/pause/resume/reset/step, and circuit
+  feedback. The pin map excludes AT89C51-only ghost pins.
+- **Arduino Uno and Nano / ATmega328P** — both can be placed and wired. Uno/Nano declarations use
+  Arduino-style D0–D13 and A0–A5 names, and the AVR8JS target provides instruction-level simulation
+  for this MCU family. Nano alternate functions are audited in the sidecar; Uno alternates remain
+  visibly marked unaudited until verified.
+- **Raspberry Pi Pico / RP2040** — the board, pin geometry, GP alternate-function metadata, wiring,
+  schematic, declarations, and safety checks are available. Pico GPIO is treated as 3.3 V only;
+  execution/emulation and MicroPython integration are not yet shipped, so the palette and status bar
+  say `wiring only` rather than pretending the board can run Scratch code.
+
+This boundary is intentional: a board may be useful as electrical geometry and documentation before
+it has a clean-room executable model. Unsupported execution is reported in the UI instead of falling
+back to a fake simulator.
+
+### Project and circuit files
+
+Circuit edits are undoable and redoable, can be copied and pasted, and can be saved/loaded as JSON
+circuit files. The board state is autosaved locally so a reload does not discard an unfinished
+experiment. DRC results, declarations, board readiness, and simulator state remain derived from the
+same circuit model.
+
 ## How it's built: vendor + overlay
 
 We're **frozen on pinned versions**, so the base never shifts under us and we don't string-patch it
@@ -151,7 +219,17 @@ CI does this for all platforms: `.github/workflows/release.yml` (desktop macOS/W
 - [x] **Native ScratchLink** — BLE (all platforms) + Bluetooth Classic (per-OS) + WiFi bridge.
 - [x] Native save / load / share, `.sb3` associations, deep links, camera + microphone.
 - [x] Offline asset library (on-demand fetch + one-file CC BY-SA pack).
+- [x] Integrated Circuit Designer with realistic editing, breadboards, schematic projection, DRC,
+      autosave, undo/redo, and Scratch green-flag synchronization.
+- [x] Circuit settings: debugger dock placement, stage/full-width routing, light/dark Circuit style,
+      About dialog, and File tutorials.
+- [x] STC12/8051 instruction-level circuit/debugger path and AVR8JS Uno/Nano boundary adapter.
+- [x] Uno/Nano/Pico board geometry and pin sidecars, with audited-vs-unaudited pin provenance shown
+      in the chooser.
 - [ ] Hardware-verify each transport against real LEGO hardware (macOS BLE done).
+- [ ] Complete Arduino Uno/Nano peripheral fidelity and source-level AVR debugger mapping.
+- [ ] Add a clean-room RP2040/MicroPython execution path for Pico (currently wiring-only).
+- [ ] Improve schematic symbol coverage and hand-layout controls beyond the generated projection.
 - [ ] Apple code-signing for a distributable iOS build.
 - [ ] A few editor-parity items (multi-line say/think, palette-edge, cleanup layout) — see PLAN §26.
 
