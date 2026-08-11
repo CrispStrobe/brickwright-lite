@@ -219,9 +219,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         }
       } catch { /* corrupt autosave: fall through to the demo */ }
     }
-    // First-open starter: a COMPLETE no-MCU bench circuit, seated and lit -
-    // battery tapped into the rails, jumpers to the columns, resistor + LED
-    // in the strips. Declared pins replace it with the inferred circuit.
+    // First-open starter: a COMPLETE no-MCU bench circuit, seated and lit.
+    // The battery taps directly into the two component strips so this simple
+    // example has one visible positive wire and one visible return wire. A
+    // rail-plus-jumper layout is electrically equivalent, but unnecessarily
+    // draws four wires and makes the starter look duplicated.
     if (!(pins?.length > 0)) {
       try {
         const bb = addPart('breadboard', {}, 470, 300);
@@ -230,11 +232,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         const led = addPart('led', { color: 'red' }, 0, 0, 'led1');
         circuit.seatPart(r1.id, bb.id, computeLeadMap(BB_FOOTPRINTS.resistor, 'b5'));
         circuit.seatPart(led.id, bb.id, computeLeadMap(BB_FOOTPRINTS.led, 'c9'));
-        addTapWire(bat.id, 'pos', bb.id, 't+3', '#e74c3c');
-        addTapWire(bat.id, 'neg', bb.id, 't-3', '#2c3e50');
-        addHoleWire(bb.id, 't+8', 'a5', '#e74c3c');
-        addHoleWire(bb.id, 'a10', 't-8', '#2c3e50');
-        setAnnotations([{ x: 470, y: 130, text: 'a complete circuit — the battery feeds the rails, the strips do the wiring', color: '#7f8c8d' }]);
+        addTapWire(bat.id, 'pos', bb.id, 'a5', '#e74c3c');
+        addTapWire(bat.id, 'neg', bb.id, 'a10', '#2c3e50');
+        setAnnotations([{ x: 470, y: 130, text: 'a complete circuit — battery + → resistor → LED → battery −', color: '#7f8c8d' }]);
         return;
       } catch { /* fall through to the inferred demo */ }
     }
