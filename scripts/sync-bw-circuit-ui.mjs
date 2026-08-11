@@ -12,7 +12,7 @@
 //   --check      exit non-zero (without writing) if stale, for CI.
 //   --dir <path> read from a local checkout instead of over HTTP.
 
-import {readFile, writeFile, mkdir, readdir} from 'node:fs/promises';
+import {readFile, writeFile, mkdir, readdir, unlink} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -48,6 +48,34 @@ for (const rel of files) {
     await mkdir(path.dirname(out), {recursive: true});
     await writeFile(out, next);
     console.log(`  wrote ${rel}`);
+}
+
+// Delete vendored files that no longer exist upstream. Without this, a
+// rename (e.g. hobby_gearmotor → gearmotor) leaves both names live, and
+// nothing says which is real. The LICENSE file placed in this directory
+// for MPL-2.0 compliance is not a vendored source file and must survive.
+if (!check) {
+    const KEEP = new Set(['LICENSE']);
+    async function walkDest (rel = '') {
+        const out = [];
+        for (const e of await readdir(path.join(dest, rel), {withFileTypes: true})) {
+            const r = rel ? `${rel}/${e.name}` : e.name;
+            if (e.isDirectory()) out.push(...await walkDest(r));
+            else if (/\.(jsx?|json|svg)$/.test(e.name)) out.push(r);
+        }
+        return out;
+    }
+    const sourceSet = new Set(files);
+    let deleted = 0;
+    for (const rel of await walkDest()) {
+        if (KEEP.has(path.basename(rel))) continue;
+        if (!sourceSet.has(rel)) {
+            await unlink(path.join(dest, rel));
+            console.log(`  DELETE ${rel}`);
+            deleted++;
+        }
+    }
+    if (deleted) console.log(`  removed ${deleted} file(s) no longer upstream`);
 }
 
 if (!check) {
