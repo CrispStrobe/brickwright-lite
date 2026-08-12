@@ -37,15 +37,20 @@ const FALLBACK = [
 // the vendored engine referenced files that were never copied. One level of
 // nesting is enough for what bw-board has; a second would need recursion, and
 // the import check below fails loudly if one ever appears.
+// Node-only modules that import node: builtins and must NOT be vendored
+// into the browser bundle.  pin-functions.js reads bw-parts sidecars via
+// fs and is explicitly marked NODE-ONLY in bw-board's index.js.
+const EXCLUDE = new Set(['pin-functions.js']);
+
 const listSrc = async () => {
     const root = path.join(srcDir, 'src');
     const out = [];
     for (const e of await readdir(root, {withFileTypes: true})) {
         if (e.isDirectory()) {
             for (const f of await readdir(path.join(root, e.name))) {
-                if (f.endsWith('.js')) out.push(`src/${e.name}/${f}`);
+                if (f.endsWith('.js') && !EXCLUDE.has(f)) out.push(`src/${e.name}/${f}`);
             }
-        } else if (e.name.endsWith('.js')) {
+        } else if (e.name.endsWith('.js') && !EXCLUDE.has(e.name)) {
             out.push(`src/${e.name}`);
         }
     }

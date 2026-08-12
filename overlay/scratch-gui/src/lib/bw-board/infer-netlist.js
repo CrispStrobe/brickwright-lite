@@ -61,15 +61,11 @@ export function inferNetlist(stc) {
   parts.push({ id: 'VCC', kind: 'vcc', params: {}, terminals: ['vcc'] });
   parts.push({ id: 'GND', kind: 'gnd', params: {}, terminals: ['gnd'] });
 
-  // Arduino/Pico declarations carry physical header names (D13/GP0), while
-  // STC declarations carry port/bit pairs. Keep the inferred netlist in the
-  // same spelling consumed by the selected silicon adapter.
-  const device = String(stc.device || '').toLowerCase();
-  const boardPin = p => (p.where || p.pin || p.name);
-  const pinIdFor = p => device === 'arduino-uno' || device === 'arduino-nano' || device === 'pico'
-    ? String(boardPin(p)).toUpperCase()
-    : `P${p.port}.${p.bit}`;
-  const mcuTerminals = stc.pins.map(pinIdFor);
+  // Collect MCU terminals from declared pins.
+  // Arduino-style pins have `where` ('D13', 'A0') but no port/bit;
+  // STC-style pins have port/bit ('P1.0').
+  const pinId = (p) => p.where || `P${p.port}.${p.bit}`;
+  const mcuTerminals = stc.pins.map(pinId);
   parts.push({ id: 'MCU', kind: 'mcu', params: {}, terminals: mcuTerminals });
 
   // VCC and GND nets (shared by multiple parts)
@@ -77,7 +73,7 @@ export function inferNetlist(stc) {
   const gndNet = { id: 'net_gnd', terminals: [{ part: 'GND', terminal: 'gnd' }] };
 
   for (const pin of stc.pins) {
-    const pinId = pinIdFor(pin);
+    const pid = pinId(pin);
     const safeName = pin.name.replace(/[^a-zA-Z0-9_]/g, '_');
 
     // Detect buzzer by name convention
@@ -95,7 +91,7 @@ export function inferNetlist(stc) {
         nets.push({
           id: `net_${safeName}_pin`,
           terminals: [
-            { part: 'MCU', terminal: pinId },
+            { part: 'MCU', terminal: pid },
             { part: buzzId, terminal: 'a' },
           ],
         });
@@ -115,7 +111,7 @@ export function inferNetlist(stc) {
           nets.push({
             id: `net_${safeName}_pin`,
             terminals: [
-              { part: 'MCU', terminal: pinId },
+              { part: 'MCU', terminal: pid },
               { part: buzzId, terminal: 'a' },
             ],
           });
@@ -150,7 +146,7 @@ export function inferNetlist(stc) {
             id: `net_${safeName}_pin`,
             terminals: [
               { part: ledId, terminal: 'cathode' },
-              { part: 'MCU', terminal: pinId },
+              { part: 'MCU', terminal: pid },
             ],
           });
         } else {
@@ -169,7 +165,7 @@ export function inferNetlist(stc) {
           nets.push({
             id: `net_${safeName}_pin_r`,
             terminals: [
-              { part: 'MCU', terminal: pinId },
+              { part: 'MCU', terminal: pid },
               { part: rId, terminal: 'a' },
             ],
           });
@@ -203,7 +199,7 @@ export function inferNetlist(stc) {
           id: `net_${safeName}_wiper`,
           terminals: [
             { part: potId, terminal: 'wiper' },
-            { part: 'MCU', terminal: pinId },
+            { part: 'MCU', terminal: pid },
           ],
         });
         break;
@@ -229,7 +225,7 @@ export function inferNetlist(stc) {
           terminals: [
             { part: rpuId, terminal: 'b' },
             { part: btnId, terminal: 'a' },
-            { part: 'MCU', terminal: pinId },
+            { part: 'MCU', terminal: pid },
           ],
         });
         // button.b → GND
@@ -238,7 +234,7 @@ export function inferNetlist(stc) {
       }
 
       default:
-        notes.push(`Unknown direction '${pin.direction}' for pin ${pin.name} (${pinId})`);
+        notes.push(`Unknown direction '${pin.direction}' for pin ${pin.name} (${pid})`);
     }
   }
 
@@ -427,15 +423,12 @@ export function checkWiring(declaredPins, wiredParts, wiredNets) {
   }
 
   // Check: declared pins with nothing wired
-  const boardDevice = declaredPins.some(p => p.where || p.pin || p.name?.match(/^(D\d+|A\d+|GP\d+)$/));
-  const declaredPinId = p => boardDevice
-    ? String(p.where || p.pin || p.name).toUpperCase()
-    : `P${p.port}.${p.bit}`;
-  const declaredPinIds = new Set(declaredPins.map(declaredPinId));
+  const pid = (p) => p.where || `P${p.port}.${p.bit}`;
+  const declaredPinIds = new Set(declaredPins.map(pid));
   for (const pin of declaredPins) {
-    const pinId = declaredPinId(pin);
-    if (!wiredPinIds.has(pinId)) {
-      notes.push(`Pin ${pin.name} (${pinId}) is declared as ${pin.direction} but has nothing wired to it`);
+    const id = pid(pin);
+    if (!wiredPinIds.has(id)) {
+      notes.push(`Pin ${pin.name} (${id}) is declared as ${pin.direction} but has nothing wired to it`);
     }
   }
 
@@ -451,7 +444,7 @@ export function checkWiring(declaredPins, wiredParts, wiredNets) {
     const mcuTerminals = net.terminals.filter(t => t.part === mcuPart.id);
     if (mcuTerminals.length > 0 && net.terminals.length === 1) {
       for (const t of mcuTerminals) {
-        const pin = declaredPins.find(p => `P${p.port}.${p.bit}` === t.terminal);
+        const pin = declaredPins.find(p => pid(p) === t.terminal);
         const name = pin ? `${pin.name} (${t.terminal})` : t.terminal;
         notes.push(`${name} is connected to a net with no external components`);
       }

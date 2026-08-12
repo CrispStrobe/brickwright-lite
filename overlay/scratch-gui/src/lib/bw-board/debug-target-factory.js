@@ -62,14 +62,11 @@ export async function createDebugTarget(kind, opts) {
   if (kind === 'avr8js') {
     return createAvr8jsTarget(opts);
   }
-  if (kind === 'rp2040js') {
-    return createRp2040jsTarget(opts);
-  }
   if (kind === 'serial') {
     return createSerialTarget(opts);
   }
   throw new Error(
-    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', 'rp2040js' or 'serial'.`
+    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', or 'serial'.`
   );
 }
 
@@ -176,25 +173,6 @@ async function createAvr8jsTarget(opts) {
   return { target, adapter };
 }
 
-// ─── RP2040 target (rp2040js) ─────────────────────────────────────────────
-
-async function createRp2040jsTarget(opts) {
-  const { board, hex, image } = opts;
-  if (!board) throw new Error('rp2040js target requires opts.board');
-  const { createRp2040jsAdapter, createRp2040jsDebugTarget, parseUf2 } =
-    await import('./rp2040js-adapter.js');
-  const adapter = createRp2040jsAdapter({ board });
-  adapter.attachBoard(board);
-  if (image) adapter.loadProgram(parseUf2(image));
-  else if (hex) {
-    const { parseIntelHexBytes } = await import('./intel-hex.js');
-    adapter.loadProgram(parseIntelHexBytes(hex));
-  }
-  const target = typeof createRp2040jsDebugTarget === 'function'
-    ? createRp2040jsDebugTarget(adapter) : null;
-  return { adapter, target };
-}
-
 // ─── Serial target ───────────────────────────────────────────────────────
 
 async function createSerialTarget(opts) {
@@ -231,11 +209,6 @@ export function getTargetKinds() {
       kind: 'avr8js',
       label: 'Simulated (ATmega328P)',
       description: 'AVR instruction-level emulation. Arduino Nano/Uno programs.',
-    },
-    {
-      kind: 'rp2040js',
-      label: 'Simulated (Pico)',
-      description: 'RP2040 instruction-level emulation with GPIO simulation.',
     },
     {
       kind: 'serial',
