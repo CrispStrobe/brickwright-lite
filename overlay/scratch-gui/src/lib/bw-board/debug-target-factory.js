@@ -15,6 +15,7 @@
  * Target kinds:
  *   'emulator'  — STC12 / 8051 via emu8051 WASM
  *   'avr8js'    — ATmega328P via avr8js (pure TS, no WASM)
+ *   'rp2040js'  — RP2040 via rp2040js (GPIO, instruction stepping)
  *   'serial'    — live hardware over serial
  *
  * @module

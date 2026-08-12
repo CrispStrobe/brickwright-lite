@@ -322,14 +322,22 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         setStatus('building', 'compiling…');
         await installWasmCompilerIfOptedIn(setStatus);
+        // The compiler accepts chip names (atmega328p, stc12c5a60s2), not board
+        // names (arduino-nano). Map the user-facing device to the compile target.
+        const COMPILE_TARGET = {
+            'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
+            'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
+        };
+        const deviceLower = (stc.device || 'stc12c5a60s2').toLowerCase();
+        const compileTarget = COMPILE_TARGET[deviceLower] || deviceLower;
         const res = await fetch(`${compilerUrl}/compile`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 code: c,
                 language: 'c',
-                target: (stc.device || 'stc12c5a60s2').toLowerCase(),
-                format: String(stc.device || '').toLowerCase() === 'pico' ? 'uf2' : 'ihx',
+                target: compileTarget,
+                format: deviceLower === 'pico' ? 'uf2' : 'ihx',
                 // Both, from the SAME request — see the header.
                 symbols: true
             })
@@ -568,15 +576,27 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             });
         }
 
+        // Same value-resolver and variable wiring as the emu8051 path.
+        setValueResolver((blockId) => runner.valuesAtBlock(blockId));
+        if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
+        symbols = built.symbols;
+        variableTable = (symbols.variables || []).filter((v) => v.space);
+        pinTable = stc.pins || [];
+
         target = avrTarget;
         session = createDebugSession(target, {
             onChange: (st) => {
-                if (st.halted) trace.record(target, st.why ? st.why.cause : 'halt', {variables: [], tasks: []});
+                if (st.halted) {
+                    if (shouldSkip(st)) { skipped++; skipRequested = true; return; }
+                    glow(st.tasks);
+                    trace.record(target, st.why ? st.why.cause : 'halt',
+                        { variables: runner.variables(), tasks: st.tasks });
+                } else clearGlow();
                 emit();
             }
         });
 
-        setStatus('ready', `${built.bytes} bytes (AVR), running`);
+        setStatus('ready', `${built.bytes} bytes (AVR), ${blockOf.size} yield points`);
 
         return session;
     }
@@ -1004,7 +1024,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         pins() {
             if (!board) return [];
             return pinTable.map((p) => {
-                const id = `P${p.port}.${p.bit}`;
+                const id = p.where || `P${p.port}.${p.bit}`;
                 const out = { name: p.name, pin: id, direction: p.direction,
                     activeLow: !!p.activeLow };
                 try {
