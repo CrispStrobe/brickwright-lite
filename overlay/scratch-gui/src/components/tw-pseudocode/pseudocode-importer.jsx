@@ -788,6 +788,11 @@ class PseudocodeImporter extends React.Component {
             } else {
                 this.props.vm.runtime.stc = stc;
             }
+            // Re-call getInfo() on loaded extensions so device-dependent gating
+            // (e.g. hiding PWM blocks on AVR, PCA blocks on STC89) takes effect.
+            if (this.props.vm.extensionManager && this.props.vm.extensionManager.refreshBlocks) {
+                this.props.vm.extensionManager.refreshBlocks();
+            }
             // Write the persistence comment on the stage target
             if (stc) {
                 const SB3Creator = (await this.lib()).default || (await this.lib());
