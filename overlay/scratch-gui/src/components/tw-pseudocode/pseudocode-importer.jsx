@@ -458,30 +458,49 @@ class PseudocodeImporter extends React.Component {
         return m ? m[1].toLowerCase() : null;
     }
 
-    // Set the DEVICE in the pseudocode buffer: update if present, insert at top if not.
-    // Also publishes the device core on vm.runtime so the debug panel can pick the right
-    // emulator without parsing pseudocode itself.
-    setDevice (deviceId) {
+    // Set the DEVICE in the pseudocode buffer. When the code has PIN declarations,
+    // retargetPseudocode rewrites them to the target's conventional pins and reports
+    // any hard blockers ("no ADC on this chip"). Code without pins just gets its
+    // DEVICE line rewritten — there is nothing to refuse.
+    async setDevice (deviceId) {
         const info = DEVICE_BY_ID[deviceId];
         if (!info) return;
-        const line = `DEVICE ${deviceId.toUpperCase()}`;
-        this.setState(s => {
-            const src = s.buffers.pseudocode || '';
-            let next;
-            if (/^DEVICE\s+[\w-]+/im.test(src)) {
-                next = src.replace(/^DEVICE\s+[\w-]+.*$/im, line);
+        const src = this.state.buffers.pseudocode || '';
+        const hasPins = /^\s*PIN\s/im.test(src);
+
+        if (hasPins) {
+            const SB3Creator = (await this.lib()).default;
+            const result = SB3Creator.retargetPseudocode(src, deviceId);
+            if (result.ok) {
+                this.setState({
+                    buffers: {...this.state.buffers, pseudocode: result.pseudocode},
+                    status: result.warnings.length
+                        ? `Retargeted to ${info.label}: ${result.warnings.join('; ')}`
+                        : `Retargeted to ${info.label}.`
+                });
             } else {
-                // Insert before the first non-empty, non-comment line, or at top
-                next = line + '\n' + src;
+                this.setState({status: `Cannot retarget to ${info.label}: ${result.reasons.join('; ')}`});
+                return; // don't switch — the reasons explain why
             }
-            return { buffers: { ...s.buffers, pseudocode: next } };
-        }, () => {
-            // Publish core on the runtime so the debug panel can filter target kinds
-            if (this.props.vm && this.props.vm.runtime) {
-                this.props.vm.runtime.bwDeviceCore = info.core;
-                this.props.vm.runtime.bwDeviceId = deviceId;
-            }
-        });
+        } else {
+            const line = `DEVICE ${deviceId.toUpperCase()}`;
+            this.setState(s => {
+                const buf = s.buffers.pseudocode || '';
+                let next;
+                if (/^DEVICE\s+[\w-]+/im.test(buf)) {
+                    next = buf.replace(/^DEVICE\s+[\w-]+.*$/im, line);
+                } else {
+                    next = line + '\n' + buf;
+                }
+                return { buffers: { ...s.buffers, pseudocode: next } };
+            });
+        }
+        // Publish core on the runtime so the debug panel can pick the right emulator
+        if (this.props.vm && this.props.vm.runtime) {
+            this.props.vm.runtime.bwDeviceCore = info.core;
+            this.props.vm.runtime.bwDeviceId = deviceId;
+        }
+        this.computeExampleCompat(deviceId);
     }
 
     // The project's hardware declarations. `vm.runtime.stc` is where they live while
@@ -696,9 +715,55 @@ class PseudocodeImporter extends React.Component {
             finish(String(e.message || e));
         }
     }
-    loadExample (key) {
-        if (key && examples[key]) this.setState({lang: 'pseudocode', output: null, status: '',
-            buffers: {pseudocode: examples[key], python: '', javascript: '', c: ''}});
+    // Compute which hardware examples can retarget to the given device. Returns
+    // { [exampleKey]: { ok, reasons } }. Cached by device so render stays cheap.
+    _exampleCompatCache = {};
+    _exampleCompatDevice = null;
+    async computeExampleCompat (device) {
+        if (!device || device === this._exampleCompatDevice) return;
+        const SB3Creator = (await this.lib()).default;
+        if (!SB3Creator.retargetPseudocode) return;
+        const cache = {};
+        for (const [key, src] of Object.entries(examples)) {
+            if (!/^DEVICE\s/im.test(src)) continue; // not a hardware example
+            const exDev = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
+            if (exDev && exDev.toLowerCase() === device) { cache[key] = { ok: true }; continue; }
+            const result = SB3Creator.retargetPseudocode(src, device);
+            cache[key] = { ok: result.ok, reasons: result.reasons };
+        }
+        this._exampleCompatCache = cache;
+        this._exampleCompatDevice = device;
+        this.forceUpdate();
+    }
+
+    /** Inline lookup: is this example compatible with the current device? */
+    exampleCompat (key) {
+        return this._exampleCompatCache[key];
+    }
+
+    async loadExample (key) {
+        const src = key && examples[key];
+        if (!src) return;
+        const device = this.currentDevice();
+        const exampleDevice = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
+        // Retarget hardware examples when the selected device differs.
+        if (device && exampleDevice && device !== exampleDevice.toLowerCase()) {
+            const SB3Creator = (await this.lib()).default;
+            const result = SB3Creator.retargetPseudocode(src, device);
+            if (result.ok) {
+                this.setState({lang: 'pseudocode', output: null,
+                    status: result.warnings.length ? result.warnings.join('; ') : '',
+                    buffers: {pseudocode: result.pseudocode, python: '', javascript: '', c: ''}});
+                return;
+            }
+            // Show what blocked the retarget — the example stays loaded in its original form.
+            this.setState({lang: 'pseudocode', output: null,
+                status: `Loaded for ${exampleDevice} (cannot retarget to ${device}: ${result.reasons.join('; ')})`,
+                buffers: {pseudocode: src, python: '', javascript: '', c: ''}});
+            return;
+        }
+        this.setState({lang: 'pseudocode', output: null, status: '',
+            buffers: {pseudocode: src, python: '', javascript: '', c: ''}});
     }
     // Sprite names declared in the current pseudocode — used to populate the
     // "associate SVG → sprite" dropdowns so you pick a real sprite, not guess a name.
@@ -907,9 +972,16 @@ class PseudocodeImporter extends React.Component {
                         <option value="" disabled>{this.L.loadExample}</option>
                         {GROUPS.map(g => (
                             <optgroup key={g.label} label={g.label}>
-                                {g.items.filter(([k]) => examples[k]).map(([k, label]) => (
-                                    <option key={k} value={k}>{label}</option>
-                                ))}
+                                {g.items.filter(([k]) => examples[k]).map(([k, label]) => {
+                                    const compat = this.exampleCompat(k);
+                                    const blocked = compat && !compat.ok;
+                                    return (
+                                        <option key={k} value={k} disabled={blocked}
+                                            title={blocked ? compat.reasons.join('; ') : ''}>
+                                            {blocked ? `${label} ⛔` : label}
+                                        </option>
+                                    );
+                                })}
                             </optgroup>
                         ))}
                     </select>

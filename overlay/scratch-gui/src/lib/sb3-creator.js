@@ -6201,13 +6201,24 @@ class SB3Creator {
         // STC89 has no PCA — these blocks silently produce 0 edges (ucsim-stc
         // 356df26 measured 0 edges on STC89, confirmed).  Same treatment as
         // WS2812 on 12T: warn and refuse rather than silently do nothing.
-        if (this._cUses.servo && !chip.pca) {
+        if (this._core === '8051' && this._cUses.servo && !chip.pca) {
             this.cWarn(`servo requires PCA (compare/match) — the ${device} has none; the servo will not move`);
             this.warn(null, `servo requires PCA — the ${device} has no PCA peripheral`);
         }
-        if (this._cUses.motor && !chip.pca) {
+        if (this._core === '8051' && this._cUses.motor && !chip.pca) {
             this.cWarn(`motor PWM requires PCA — the ${device} has none; speed control will not work`);
             this.warn(null, `motor PWM requires PCA — the ${device} has no PCA peripheral`);
+        }
+        // On the gcc cores a servo shares PWM hardware with the dimmer:
+        // the ATmega's Timer 1 becomes the 50 Hz servo frame (D9/D10 stop
+        // dimming), and the Pico's slice 0 does (GP16/GP17 stop dimming).
+        if (this._core === 'avr' && this._cUses.servo && this._cUses.pwm) {
+            this.cWarn('servo takes Timer 1 for its 50 Hz frame — '
+                + '"set ... percent" on D9/D10 will not dim in this program; use D3/D11');
+        }
+        if (this._core === 'arm' && this._cUses.servo && this._cUses.pwm) {
+            this.cWarn('servo takes PWM slice 0 (GP16/GP17) for its 50 Hz frame — '
+                + 'do not dim on GP16/GP17 in this program');
         }
         if (this._cUses.ultrasonic && !chip.timer1) {
             this.cWarn(`ultrasonic distance requires Timer 1 — the ${device} has none`);
@@ -6943,9 +6954,62 @@ class SB3Creator {
             // stderr — one line per stub, naming the block that will do nothing.
             const stub = (sig, marker) => `${sig} { /* BW_STUB: ${marker} — no-op on hardware */ }`;
             const rstub = (sig, marker) => `${sig} { /* BW_STUB: ${marker} */ return 0; }`;
-            // Servo: real PCA 16-bit compare/match driver when _cUses.servo is set,
+            // Servo: a real driver per core when _cUses.servo is set,
             // otherwise fall back to the stub.
-            if (this._cUses.servo) {
+            if (this._cUses.servo && this._core === 'arm') {
+                out.push(
+                    '/* Servo driver: PWM slice 0 at 50 Hz — servo 1 = GP16 (channel A),',
+                    ' * servo 2 = GP17 (channel B). TOP 19999 at the 1 MHz slice clock is',
+                    ' * a 20 ms frame, and CC is then the pulse width in MICROSECONDS',
+                    ' * directly (500-2500). Slice 0 belongs to the servos: dimming on',
+                    ' * GP16/GP17 in the same program would retune their frame. */',
+                    'static int _servo_angle[2];',
+                    '',
+                    'static void bw_servo_set(int servo, int angle)',
+                    '{',
+                    '    uint32_t gpio, us;',
+                    '    if (servo < 1 || servo > 2) return;',
+                    '    if (angle < 0) angle = 0;',
+                    '    if (angle > 180) angle = 180;',
+                    '    _servo_angle[servo - 1] = angle;',
+                    '    gpio = 15u + (uint32_t)servo;            /* 1 -> GP16, 2 -> GP17 */',
+                    '    us = 500u + (uint32_t)angle * 2000u / 180u;',
+                    '    BW_IOBANK0_CTRL(gpio) = 4u;              /* funcsel PWM */',
+                    '    BW_PWM_DIV(0) = 125u << 4;               /* 1 MHz slice clock */',
+                    '    BW_PWM_TOP(0) = 19999u;                  /* 20 ms frame */',
+                    '    if (gpio & 1u) BW_PWM_CC(0) = (BW_PWM_CC(0) & 0xFFFFu) | (us << 16);',
+                    '    else BW_PWM_CC(0) = (BW_PWM_CC(0) & 0xFFFF0000u) | us;',
+                    '    BW_PWM_CSR(0) = 1u;',
+                    '}',
+                    '',
+                    'static int bw_servo_get(int servo)',
+                    '{ return (servo >= 1 && servo <= 2) ? _servo_angle[servo - 1] : 0; }',
+                    '');
+            } else if (this._cUses.servo && this._core === 'avr') {
+                out.push(
+                    '/* Servo driver: Timer 1 in mode 14 (fast PWM, ICR1 TOP) at 50 Hz —',
+                    ' * servo 1 = D9 (OC1A), servo 2 = D10 (OC1B). Prescaler 8 gives',
+                    ' * 0.5 µs ticks: ICR1 = 39999 is 20 ms and OCR1x = 2 × pulse-µs.',
+                    ' * Timer 1 belongs to the servos in this program (bw_setup put it',
+                    ' * in mode 14, not the dimmer\'s 8-bit mode). */',
+                    'static int _servo_angle[2];',
+                    '',
+                    'static void bw_servo_set(int servo, int angle)',
+                    '{',
+                    '    unsigned int us;',
+                    '    if (servo < 1 || servo > 2) return;',
+                    '    if (angle < 0) angle = 0;',
+                    '    if (angle > 180) angle = 180;',
+                    '    _servo_angle[servo - 1] = angle;',
+                    '    us = (unsigned int)(500u + (unsigned long)angle * 2000u / 180u);',
+                    '    if (servo == 1) { TCCR1A |= (1 << COM1A1); OCR1A = us * 2u; }',
+                    '    else            { TCCR1A |= (1 << COM1B1); OCR1B = us * 2u; }',
+                    '}',
+                    '',
+                    'static int bw_servo_get(int servo)',
+                    '{ return (servo >= 1 && servo <= 2) ? _servo_angle[servo - 1] : 0; }',
+                    '');
+            } else if (this._cUses.servo) {
                 // PCA module 0 on P1.3, 16-bit software-timer mode.
                 // At FOSC/12 (921.6 kHz for 11.0592 MHz), 20 ms = 18432 counts.
                 // Pulse: 500 µs (0°) = 461 counts, 2500 µs (180°) = 2304 counts.
@@ -7014,7 +7078,12 @@ class SB3Creator {
             // port 3 pins on every STC12 dev board.
             //   forward: IN1=1, IN2=0    reverse: IN1=0, IN2=1
             //   brake:   IN1=1, IN2=1    coast:   IN1=0, IN2=0
-            if (this._cUses.motor) {
+            if (this._cUses.motor && this._core !== '8051') {
+                this.cWarn(`motor blocks are not yet ported to the ${this._core === 'arm' ? 'RP2040' : 'AVR'} back end — emitted as no-op stubs`);
+                out.push(
+                    stub('static void bw_motor_speed(int speed)', 'devices_setmotor'),
+                    stub('static void bw_motor_dir(int dir)', 'devices_motordir'));
+            } else if (this._cUses.motor) {
                 out.push(
                     '/* DC motor driver: PCA module 1 (CCP1, P1.4) in 8-bit PWM mode. */',
                     '/* No ISR needed — the hardware toggles the pin autonomously. */',
@@ -7473,10 +7542,17 @@ class SB3Creator {
                     '    OCR0A  = BW_OCR0A;             /* one compare = 1 ms */',
                     '    TIMSK0 = (1 << OCIE0A);        /* millisecond tick */');
             }
-            if (this._cUses.pwm || this._cUses.motor) {
+            if (this._cUses.servo) {
+                out.push('    TCCR1A = (1 << WGM11);         /* Timer 1: mode 14, servo frame */',
+                    '    TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);  /* F_CPU/8 */',
+                    '    ICR1 = 39999;                  /* 20 ms at 0.5 us ticks */',
+                    '    DDRB |= (1 << 1) | (1 << 2);   /* D9/D10 = the servo pins */');
+            } else if (this._cUses.pwm || this._cUses.motor) {
                 out.push('    TCCR1A = (1 << WGM10);         /* Timer 1: 8-bit fast PWM */',
-                    '    TCCR1B = (1 << WGM12) | (1 << CS11) | (1 << CS10);  /* F_CPU/64 */',
-                    '    TCCR2A = (1 << WGM20) | (1 << WGM21);  /* Timer 2: fast PWM */',
+                    '    TCCR1B = (1 << WGM12) | (1 << CS11) | (1 << CS10);  /* F_CPU/64 */');
+            }
+            if (this._cUses.pwm || this._cUses.motor) {
+                out.push('    TCCR2A = (1 << WGM20) | (1 << WGM21);  /* Timer 2: fast PWM */',
                     '    TCCR2B = (1 << CS22);          /* F_CPU/64 */');
             }
             if (this._cUses.print) {
@@ -7961,6 +8037,148 @@ SB3Creator.RUNTIME_EXTENSIONS = {
 // Not all STC any more, but the name is in warning text and in saved
 // projects. `core` is what actually matters: it says which vocabulary a
 // board's pins are spelled in, and which C back end (if any) can emit for it.
+/**
+ * Conventional pin pools per device, for retargeting an example from one
+ * chip to another. Roles, not pins, are the portable idea: an example says
+ * "a LED, a pot, a button" through its declarations, and each device says
+ * where such things conventionally live. Order matters — the first free
+ * pin of the right role is taken, so multi-LED examples spread naturally.
+ * `ledActiveLow` is the wiring convention: the 8051 boards sink current
+ * (datasheet §4.6), the Nano/Pico onboard LEDs are driven high.
+ */
+SB3Creator.RETARGET_POOLS = {
+    stc12c5a60s2: { digital: ['P1.0', 'P1.1', 'P1.2', 'P1.5', 'P1.6', 'P1.7', 'P3.4', 'P3.5'],
+        analog: ['P1.3', 'P1.4', 'P1.5', 'P1.6'], input: ['P3.2', 'P3.3', 'P3.6', 'P3.7'],
+        pwm: ['P1.3', 'P1.4'], ledActiveLow: true },
+    stc89c52rc: { digital: ['P1.0', 'P1.1', 'P1.2', 'P1.3', 'P1.4', 'P1.5', 'P1.6', 'P1.7'],
+        analog: [], input: ['P3.2', 'P3.3', 'P3.6', 'P3.7'],
+        pwm: [], ledActiveLow: true },
+    stc15f2k60s2: { digital: ['P1.0', 'P1.1', 'P1.2', 'P1.3', 'P1.4', 'P1.5'],
+        // P1.6/P1.7 stay out of the analog pool: a crystal takes ADC6/7.
+        analog: ['P1.0', 'P1.1', 'P1.2', 'P1.3', 'P1.4', 'P1.5'], input: ['P3.2', 'P3.3', 'P3.6', 'P3.7'],
+        pwm: ['P1.1', 'P1.0'], ledActiveLow: true },
+    'arduino-uno': { digital: ['D13', 'D12', 'D8', 'D7', 'D4', 'D2'],
+        analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5'], input: ['D2', 'D4', 'D7', 'D8'],
+        // D5/D6 are Timer 0's and refused by the emitter; the pool agrees.
+        pwm: ['D3', 'D11', 'D9', 'D10'], ledActiveLow: false },
+    'arduino-nano': { digital: ['D13', 'D12', 'D8', 'D7', 'D4', 'D2'],
+        analog: ['A0', 'A1', 'A2', 'A3', 'A6', 'A7'], input: ['D2', 'D4', 'D7', 'D8'],
+        pwm: ['D3', 'D11', 'D9', 'D10'], ledActiveLow: false },
+    pico: { digital: ['GP25', 'GP15', 'GP14', 'GP13', 'GP12', 'GP11', 'GP10'],
+        analog: ['GP26', 'GP27', 'GP28'], input: ['GP2', 'GP3', 'GP4', 'GP5'],
+        // GP16/GP17 stay out: they are the servo pins (slice 0, 50 Hz).
+        pwm: ['GP15', 'GP14', 'GP13', 'GP12'], ledActiveLow: false }
+};
+
+/**
+ * Retarget a pseudocode program to another device: same body, the target's
+ * conventional pins. Returns { ok, pseudocode?, reasons: [], warnings: [] }.
+ * `reasons` states every hard blocker (a feature the target cannot do, or
+ * more pins of a role than the convention offers); with any reason, ok is
+ * false and no pseudocode is produced — a gallery filters on exactly this.
+ */
+SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
+    const part = SB3Creator.STC_PARTS[device];
+    const pools = SB3Creator.RETARGET_POOLS[device];
+    if (!part || !pools) return { ok: false, reasons: [`unknown device: ${device}`], warnings: [] };
+    const core = part.core === 'arduino' ? 'avr' : part.core === 'rp2040' ? 'arm' : part.core || '8051';
+    if (core === 'micropython') return { ok: false, reasons: [`${device} runs MicroPython — no C retarget`], warnings: [] };
+
+    const c = new SB3Creator();
+    c.parse(src);
+    const stc = c.project && c.project.stc;
+    if (!stc || !Array.isArray(stc.pins)) {
+        return { ok: false, reasons: ['the source has no hardware declarations to retarget'], warnings: [] };
+    }
+    const reasons = [];
+    const warnings = [...(c.warnings || [])];
+    if ((stc.ports || []).length && core !== '8051') {
+        reasons.push('whole-port declarations (PORT x = Pn) are an 8051 construct — no port registers here');
+    }
+
+    // ---- feature scan: what does the body actually use? -----------------
+    const used = { pwmPins: new Set(), port: false, cube: false, pixel: false,
+        servo: false, motor: false, adc: false, tone: false };
+    for (const t of c.project.targets || []) {
+        for (const b of Object.values(t.blocks || {})) {
+            if (!b || !b.opcode) continue;
+            if (b.opcode === 'stc12_setpwm' && b.fields && b.fields.PIN) used.pwmPins.add(String(b.fields.PIN[0]).toLowerCase());
+            if (b.opcode === 'stc12_setport' || b.opcode === 'stc12_readport') used.port = true;
+            if (/^cube_/.test(b.opcode)) used.cube = true;
+            if (/devices_(setpixel|setrgb|clearmatrix)/.test(b.opcode)) used.pixel = true;
+            if (/devices_(setservo|servoangle)/.test(b.opcode)) used.servo = true;
+            if (/devices_(setmotor|motordir|motorspeed)/.test(b.opcode)) used.motor = true;
+            if (b.opcode === 'stc12_settone') used.tone = true;
+        }
+    }
+    for (const pin of stc.pins) if (pin.direction === 'analog') used.adc = true;
+
+    // ---- hard blockers, each with its reason ---------------------------
+    if (used.adc && (!part.adc || !pools.analog.length)) reasons.push(`${device} has no ADC — the analog pins cannot map`);
+    if (used.port && core !== '8051') reasons.push('whole-port writes are an 8051 construct — no port registers here');
+    if (used.cube && device !== 'stc12c5a60s2') reasons.push('the LED cube is STC12 hardware');
+    if (used.pixel && core !== '8051') reasons.push('NeoPixel timing is not ported to this core yet');
+    if (used.tone && core !== '8051') reasons.push('tone is not ported to this core yet');
+    if (used.motor && core !== '8051') reasons.push('motor blocks are stubs on this core');
+    if (used.servo && core === '8051' && !part.pca) reasons.push(`servo needs the PCA — ${device} has none`);
+    if (used.pwmPins.size && !pools.pwm.length) reasons.push(`${device} has no PWM-capable convention pins`);
+
+    // ---- allocate pins from the pools ----------------------------------
+    const taken = new Set();
+    const take = (list) => {
+        for (const where of list) if (!taken.has(where)) { taken.add(where); return where; }
+        return null;
+    };
+    const newPins = [];
+    for (const pin of stc.pins) {
+        let where = null;
+        let activeLow = false;
+        if (pin.direction === 'analog') {
+            where = take(pools.analog);
+            if (!where) reasons.push(`more analog pins than ${device}'s convention offers (${pools.analog.length})`);
+        } else if (pin.direction === 'input') {
+            where = take(pools.input);
+            if (!where) reasons.push(`more input pins than ${device}'s convention offers (${pools.input.length})`);
+        } else if (pin.direction === 'output' && used.pwmPins.has(String(pin.name).toLowerCase())) {
+            where = take(pools.pwm);
+            activeLow = false; // a dimmed LED keeps analogWrite semantics: high = bright
+            if (!where) reasons.push(`more dimmed pins than ${device}'s PWM convention offers (${pools.pwm.length})`);
+            if (where && core !== '8051') {
+                // The arduino/pico parsers require the PWM direction for a
+                // percent write; the 8051 dialect dims OUTPUT pins directly.
+                newPins.push({ ...pin, where, activeLow, direction: 'pwm', port: undefined, bit: undefined });
+                continue;
+            }
+        } else if (pin.direction === 'output') {
+            where = take(pools.digital);
+            activeLow = pools.ledActiveLow;
+            if (!where) reasons.push(`more digital outputs than ${device}'s convention offers (${pools.digital.length})`);
+        } else {
+            reasons.push(`pin "${pin.name}" has direction ${pin.direction}, which does not retarget yet`);
+        }
+        if (where) newPins.push({ ...pin, where, activeLow, port: undefined, bit: undefined });
+    }
+
+    if (reasons.length) return { ok: false, reasons, warnings };
+
+    // ---- rewrite declarations, keep the body ---------------------------
+    // On the 8051 cores the parser wants port/bit back; re-parsing the
+    // decompiled text derives them, so decompile with `where` only.
+    stc.device = device;
+    stc.clock = core === 'avr' ? 16000000 : core === 'arm' ? 125000000
+        : device.startsWith('stc15') ? 11059200 : 11059200;
+    stc.pins = newPins;
+    const out = c.decompile();
+
+    // The proof of the rewrite is a clean re-parse.
+    const check = new SB3Creator();
+    check.parse(out);
+    if ((check.warnings || []).length) {
+        return { ok: false, reasons: [`retargeted text does not re-parse clean: ${check.warnings[0]}`], warnings };
+    }
+    return { ok: true, pseudocode: out, reasons: [], warnings };
+};
+
 SB3Creator.STC_PARTS = {
     // core: '8051' -- {port, bit} pins, and generateC() emits for these.
     // ccp: array of {port, bit} for each PCA module (0, 1, …), or null if no PCA.
