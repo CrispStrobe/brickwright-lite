@@ -88,6 +88,7 @@ class DebugPanel extends React.Component {
     }
 
     componentDidMount () {
+        this.syncDeviceKind();
         this.syncProjectTokens({}, true);
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
@@ -111,7 +112,28 @@ class DebugPanel extends React.Component {
     }
 
     componentDidUpdate (prevProps) {
+        this.syncDeviceKind();
         this.syncProjectTokens(prevProps, false);
+    }
+
+    // When the project's DEVICE declaration changes, switch the default
+    // target kind to match the architecture. The user can still override
+    // it via the picker — this only sets the default so an Arduino project
+    // does not start with "Simulated (emu8051)" selected.
+    syncDeviceKind () {
+        const rt = this.props.vm && this.props.vm.runtime;
+        if (!rt) return;
+        const core = rt.bwDeviceCore;
+        if (core === this._lastCore) return;
+        this._lastCore = core;
+        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', micropython: 'rp2040js' };
+        const kind = CORE_TO_KIND[core];
+        if (kind && kind !== this.state.kind) {
+            // Changing the kind while a runner exists would leave it on the
+            // wrong engine. Destroy it so the next Start creates a fresh one.
+            if (this.state.runner) { this.state.runner.destroy(); }
+            this.setState({ kind, runner: null, ui: { phase: 'idle', message: '' } });
+        }
     }
 
     syncProjectTokens (prevProps, initial) {
