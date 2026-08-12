@@ -1052,14 +1052,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           />
         )}
         {debuggerPanel && (
-          <section data-debugger-panel style={{width: '100%', minHeight: 0, boxSizing: 'border-box', padding: 8,
+          <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>Debugger</div>
             {debuggerPanel}
           </section>
         )}
         {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && (
-          <div data-no-code-indicator style={{padding: '10px 9px', borderRadius: 6,
+          <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
             fontSize: 12, lineHeight: 1.35}}>
             <strong>Debugger inactive</strong>
@@ -1067,7 +1067,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </div>
         )}
         {mode === 'simulate' && (
-          <section data-simulation-controls style={{width: '100%', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
+          <section data-simulation-controls style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
             <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>Simulation controls</div>
             <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: 5}}>
               <button onClick={() => setSimPaused(v => !v)} title={simPaused ? 'Resume simulation' : 'Pause simulation'}
@@ -1083,12 +1083,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             </label>
           </section>
         )}
-        <div style={{ display: 'flex', gap: 4, width: 280 }}>
+        <div style={{ display: 'flex', flex: '0 0 auto', gap: 4, width: 280 }}>
           <button onClick={() => setShowScope(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showScope ? '#2c3e50' : '#16213e', border: '1px solid #3498db', borderRadius: 4, color: '#3498db', fontFamily: 'monospace', fontSize: 10 }}>{showScope ? '▣ Hide scope' : '▣ Scope'}</button>
           <button onClick={() => setShowMeter(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showMeter ? '#2c3e50' : '#16213e', border: '1px solid #f1c40f', borderRadius: 4, color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>{showMeter ? '⌁ Hide meter' : '⌁ Meter'}</button>
         </div>
-        {showScope && <div style={{ width: 280 }}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} /></div>}
-        {showMeter && <div style={{ width: 280 }}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
+        {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} /></div>}
+        {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
         </div>
       </div>
       ) : (

@@ -122,13 +122,16 @@ try {
     const dedicatedDesigner = page.locator('.bw-circuit-designer:visible').last();
     check('dedicated Circuit tab keeps debugger controls visible', await dedicatedDesigner.locator('[data-instruments-column] [data-debugger-panel]').count() === 1,
         `designers=${await page.locator('.bw-circuit-designer').count()} visible=${await page.locator('.bw-circuit-designer:visible').count()} instruments=${await dedicatedDesigner.locator('[data-instruments-column]').count()}`);
-    const debuggerColumnMetrics = await dedicatedDesigner.locator('[data-instruments-column]').evaluate(el => ({
-        clientHeight: el.clientHeight, scrollHeight: el.scrollHeight,
-        overflowY: getComputedStyle(el).overflowY,
-        top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom,
-        viewport: window.innerHeight,
-    }));
-    check('Debugger in Instruments stays viewport-bounded and scrollable', debuggerColumnMetrics.bottom <= debuggerColumnMetrics.viewport + 1 && debuggerColumnMetrics.overflowY === 'auto' && debuggerColumnMetrics.scrollHeight >= debuggerColumnMetrics.clientHeight,
+    const debuggerColumnMetrics = await dedicatedDesigner.locator('[data-instruments-column]').evaluate(el => {
+        const scroll = el.querySelector('[data-instruments-scroll]');
+        return {
+            clientHeight: scroll?.clientHeight, scrollHeight: scroll?.scrollHeight,
+            overflowY: scroll ? getComputedStyle(scroll).overflowY : '',
+            top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom,
+            viewport: window.innerHeight,
+        };
+    });
+    check('Debugger in Instruments stays viewport-bounded and has a scroll viewport', debuggerColumnMetrics.bottom <= debuggerColumnMetrics.viewport + 1 && debuggerColumnMetrics.overflowY === 'auto' && debuggerColumnMetrics.scrollHeight >= debuggerColumnMetrics.clientHeight,
         JSON.stringify(debuggerColumnMetrics));
     check('dedicated Circuit tab visibly reports missing code when applicable', await dedicatedDesigner.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1,
         `dock=${await page.evaluate(() => localStorage.getItem('bw-debug-dock'))} noCode=${await dedicatedDesigner.locator('[data-no-code-indicator]').count()}`);
@@ -360,6 +363,30 @@ try {
     check('oscilloscope toggle is available from the instrument panel', await scopeButtons.count() >= 1 || await scopePanel.count() === 1, `embedded=${await embedded.count()} instruments=${await instruments.count()}`);
     if (await scopePanel.count()) check('oscilloscope fits inside the instrument column', await scopePanel.evaluate(el => el.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
     check('multimeter is available from the instrument panel', await meterTitle.count() >= 1, `titles=${await meterTitle.count()}`);
+
+    const instrumentScroll = embedded.locator('[data-instruments-scroll]');
+    const instrumentMetrics = await instrumentScroll.evaluate(el => ({
+        clientHeight: el.clientHeight,
+        scrollHeight: el.scrollHeight,
+        overflowY: getComputedStyle(el).overflowY,
+        scrollTop: el.scrollTop,
+        bottom: el.getBoundingClientRect().bottom,
+        viewport: window.innerHeight,
+        scope: !!el.querySelector('[data-scope-module]'),
+        meter: !!el.querySelector('[data-meter-module]'),
+    }));
+    check('Scope and Meter share the scrollable Instruments viewport', instrumentMetrics.scope && instrumentMetrics.meter && instrumentMetrics.overflowY === 'auto' && instrumentMetrics.scrollHeight > instrumentMetrics.clientHeight && instrumentMetrics.bottom <= instrumentMetrics.viewport + 1,
+        JSON.stringify(instrumentMetrics));
+    if (instrumentMetrics.scrollHeight > instrumentMetrics.clientHeight) {
+        const scrolled = await instrumentScroll.evaluate(el => {
+            el.scrollTop = el.scrollHeight;
+            const scope = el.querySelector('[data-scope-module]');
+            const meter = el.querySelector('[data-meter-module]');
+            const viewport = el.getBoundingClientRect();
+            return {scrollTop: el.scrollTop, scopeBottom: scope?.getBoundingClientRect().bottom, meterTop: meter?.getBoundingClientRect().top, viewportBottom: viewport.bottom};
+        });
+        check('Instruments can scroll to reveal content below Scope', scrolled.scrollTop > 0 && scrolled.meterTop <= scrolled.viewportBottom + 1, JSON.stringify(scrolled));
+    }
 
     await embedded.locator('[data-build-sim-toggle]').getByRole('radio', {name: 'Sim mode'}).evaluate(el => el.click());
     await page.waitForTimeout(100);
