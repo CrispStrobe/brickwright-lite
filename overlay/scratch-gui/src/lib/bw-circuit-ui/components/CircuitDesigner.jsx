@@ -37,6 +37,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { BoardCanvas } from './BoardCanvas.jsx';
 import { PartPalette } from './PartPalette.jsx';
 import { InferPanel } from './InferPanel.jsx';
+import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SchematicPanel } from './SchematicPanel.jsx';
@@ -61,7 +62,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, onLoadExample }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -784,7 +785,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
           </div>
           <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto'}}>
-            <InferPanel onLoadCircuit={handleLoadCircuit} />
+            {examples && onLoadExample ? (
+              <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} />
+            ) : (
+              <InferPanel onLoadCircuit={handleLoadCircuit} />
+            )}
           </div>
         </div>
       ) : null}

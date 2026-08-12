@@ -61,7 +61,10 @@ class CircuitTab extends React.Component {
     }
 
     componentDidMount () {
-        if (this.props.isVisible) this.load();
+        if (this.props.isVisible) {
+            this.load();
+            this.loadExamples();
+        }
         // The stage-hiding CSS lives here rather than in a stylesheet because
         // the wrapper's class is a hashed CSS-module name; the attribute-
         // contains selector survives rebuilds.
@@ -121,7 +124,10 @@ class CircuitTab extends React.Component {
     }
 
     componentDidUpdate (prevProps) {
-        if (this.props.isVisible && !prevProps.isVisible) this.load();
+        if (this.props.isVisible && !prevProps.isVisible) {
+            this.load();
+            this.loadExamples();
+        }
         this._syncStageAttr();
         this._ensureStageHost();
         // The host is created outside React's tree. When the Code tab becomes
@@ -753,6 +759,8 @@ class CircuitTab extends React.Component {
                     {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
                     <Designer
                     stc={stc}
+                    examples={this.state.examples || undefined}
+                    onLoadExample={this.loadExample}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
                     onCircuitReady={c => { window.__circuit = c; this.handleCircuitReady(c); }}
