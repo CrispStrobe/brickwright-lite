@@ -280,7 +280,13 @@ const GUIComponent = props => {
                 <ChromeToggle className={chromeStyles.chromeToggle} />
                 <Box className={styles.bodyWrapper}>
                     <Box className={styles.flexWrapper}>
-                        <Box className={styles.editorWrapper}>
+                        <Box
+                            className={styles.editorWrapper}
+                            data-editor-pane="true"
+                            style={stagePaneVisible ? undefined : {
+                                flex: '1 1 100%', flexBasis: 0, maxWidth: '100%', minWidth: 0
+                            }}
+                        >
                             <Tabs
                                 forceRenderTabPanel
                                 className={tabClassNames.tabs}
@@ -362,7 +368,8 @@ const GUIComponent = props => {
                                             }));
                                         }}
                                         style={{
-                                            marginLeft: 'auto', alignSelf: 'stretch', minWidth: 44,
+                                            position: 'absolute', top: 0, right: 0, zIndex: 20,
+                                            minWidth: 44, height: 36,
                                             border: 'none', borderBottom: '3px solid transparent', borderRadius: 0,
                                             background: 'transparent', color: '#575e75', cursor: 'pointer',
                                             fontSize: 18, lineHeight: 1, padding: '0 10px'
@@ -428,16 +435,19 @@ const GUIComponent = props => {
                             ) : null}
                         </Box>
 
-                        <PaneDivider
+                        {stagePaneVisible ? <PaneDivider
                             isRtl={isRtl}
                             share={rightSize}
                             onCollapseToggle={() => onSetPaneSize &&
                                 onSetPaneSize('right', isCollapsed(rightSize) ? 'm' : 'xs')}
                             onResize={share => onSetPaneSize && onSetPaneSize('right', share)}
-                        />
+                        /> : null}
 
                         <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}
-                            style={paneStyles.right}>
+                            data-right-pane="true"
+                            style={stagePaneVisible ? paneStyles.right : {
+                                display: 'none', flex: '0 0 0', width: 0, minWidth: 0
+                            }}>
                             {/* Covers the column rather than replacing it — the stage stays
                                 mounted underneath, clipped to 28px, so restoring is instant
                                 and scratch-render's canvas is never torn down. */}

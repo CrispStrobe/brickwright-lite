@@ -76,7 +76,14 @@ class CircuitTab extends React.Component {
         this._settingsHandler = event => {
             const {key, value} = event.detail || {};
             if (key === 'about') return;
-            if (key === 'debugDock' || key === 'bw-debug-dock') this.setDock(value);
+            if (key === 'debugDock' || key === 'bw-debug-dock') {
+                this.setDock(value);
+                // Stage-header view changes can arrive while this tab is still
+                // mounted but not selected. Request the designer here too;
+                // otherwise the portal host is visible before its content has
+                // ever been loaded and the user sees a blank debugger pane.
+                if (value === 'top' && this.state.showInStage) this.load();
+            }
             if (key === 'stageCircuit' || key === 'bw-stage-circuit') {
                 this.setDisplayPreference('showInStage', value === '1');
                 if (value === '1') this.load();
@@ -676,13 +683,6 @@ class CircuitTab extends React.Component {
                         {this.renderDebugPanel()}
                     </div>
                 ) : null}
-                {this.state.debugDock === 'top' && (!stc || !stc.pins || !stc.pins.length) ? (
-                    <div data-no-code-indicator style={{marginBottom: 8, padding: '6px 8px', borderRadius: 5,
-                        background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
-                        fontSize: 12, flex: '0 0 auto'}}>
-                        {'Debugger inactive — no program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}
-                    </div>
-                ) : null}
                 {stc && stc.pins && stc.pins.length ? null : (
                     // The panel is correctly absent — there is no program to run
                     // control over — but absent and broken look identical, and a
@@ -741,7 +741,7 @@ class CircuitTab extends React.Component {
                     on the way back. Hidden, not destroyed. */}
                 <div style={this.state.panel === 'designer' ?
                     {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
-                <Designer
+                    <Designer
                     stc={stc}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
@@ -773,7 +773,8 @@ class CircuitTab extends React.Component {
                     })()}
                         onDeclarationChange={this.handleDeclarationChange}
                         panelNav={this.renderPanelStrip()}
-                        embedded={this._portalOn}
+                    embedded={this._portalOn}
+                    debuggerOn={this.state.debugDock === 'top'}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                     />

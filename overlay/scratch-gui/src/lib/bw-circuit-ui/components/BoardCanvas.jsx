@@ -1343,7 +1343,9 @@ export function BoardCanvas({
             // The holes this part's legs would take, live under the finger —
             // green free / red taken — BEFORE release commits anything.
             if (pp.kind !== 'breadboard') {
-              const sg = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y }, partsRef.current);
+              const fp = BB_FOOTPRINTS[pp.kind];
+              const anchor = fp && terminalOffsetsForPart(pp)[fp.refTerminal];
+              const sg = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y, anchorDx: anchor?.dx || 0, anchorDy: anchor?.dy || 0 }, partsRef.current);
               const g = sg.snapped ? ghostWithLegs(sg) : null;
               setDragLegs(g && g.legs ? g.legs : null);
             }
@@ -1358,7 +1360,9 @@ export function BoardCanvas({
         for (const id of selectedPartsRef.current) {
           const pp = partsRef.current.find(q => q.id === id);
           if (!pp) continue;
-          const s = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y }, partsRef.current);
+          const fp = BB_FOOTPRINTS[pp.kind];
+          const anchor = fp && terminalOffsetsForPart(pp)[fp.refTerminal];
+          const s = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y, anchorDx: anchor?.dx || 0, anchorDy: anchor?.dy || 0 }, partsRef.current);
           if (s.snapped && api.onSeatPart && api.onSeatPart(id, s.boardId, s.hole)) {
             api.onMovePart(id, s.x, s.y);
             continue;
@@ -2243,6 +2247,16 @@ export function BoardCanvas({
               ))}
             </g>
           )}
+
+          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(q.kind)).map(q => (
+            <g key={`seat-badge-${q.id}`} style={{pointerEvents: 'none'}}>
+              <rect x={q.x - 42} y={q.y - 42} width={84} height={16} rx={8}
+                fill="#166534" stroke="#86efac" strokeWidth={1} />
+              <text x={q.x} y={q.y - 31} textAnchor="middle" fill="#dcfce7" fontSize={8} fontFamily="system-ui, sans-serif" fontWeight="bold">
+                SEATED • PIN RASTER
+              </text>
+            </g>
+          ))}
 
           {/* Breadboard substrates render under everything else */}
           {parts.filter(p => p.kind === 'breadboard').map(bb => (

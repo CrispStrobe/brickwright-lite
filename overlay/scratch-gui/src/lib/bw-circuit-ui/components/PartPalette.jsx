@@ -201,7 +201,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
     : null;
 
   return (
-    <div style={{
+    <div data-parts-palette="true" style={{
       background: palette.background,
       border: `1px solid ${palette.border}`,
       borderRadius: '8px',
@@ -210,9 +210,11 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
       minWidth: 0,
       minHeight: 0,
       fontFamily: 'inherit',
-      flexShrink: 0,
+      flex: '1 1 0',
+      flexShrink: 1,
+      minHeight: 0,
       overflowY: 'auto',
-      flex: '1 1 auto',
+      overscrollBehavior: 'contain',
     }}>
       <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
         Parts

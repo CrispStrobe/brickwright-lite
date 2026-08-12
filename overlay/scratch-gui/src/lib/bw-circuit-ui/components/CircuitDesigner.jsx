@@ -61,7 +61,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -156,7 +156,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setMode('build');
   }, [stopToken]);
   const [leftOpen, setLeftOpen] = useState(!embedded);
-  const [rightOpen, setRightOpen] = useState(!embedded);
+  const [rightOpen, setRightOpen] = useState(!embedded || debuggerOn);
+  useEffect(() => {
+    if (debuggerOn) setRightOpen(true);
+  }, [debuggerOn]);
   const [showScope, setShowScope] = useState(false);
   const [showMeter, setShowMeter] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
@@ -755,7 +758,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
           }}>‹</button>
           <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
-          <InferPanel onLoadCircuit={handleLoadCircuit} />
+          <div style={{flex: '0 0 auto', maxHeight: '28%', minHeight: 0, overflowY: 'auto'}}>
+            <InferPanel onLoadCircuit={handleLoadCircuit} />
+          </div>
         </div>
       ) : (
         <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(true); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(true)} style={{
@@ -1003,6 +1008,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             debugState={debugState}
             capabilities={debugState.capabilities || null}
           />
+        )}
+        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && (
+          <div data-no-code-indicator style={{padding: '10px 9px', borderRadius: 6,
+            background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
+            fontSize: 12, lineHeight: 1.35}}>
+            <strong>Debugger inactive</strong>
+            <div>{'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}</div>
+          </div>
         )}
         {mode === 'simulate' && (
           <section data-simulation-controls style={{width: '100%', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>

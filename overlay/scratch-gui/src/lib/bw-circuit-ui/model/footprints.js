@@ -173,6 +173,12 @@ export const FOOTPRINTS = {
       ...Object.fromEntries(['P2.0','P2.1','P2.2','P2.3','P2.4','P2.5','P2.6','P2.7','P4.4','P4.5','P4.6','P0.7','P0.6','P0.5','P0.4','P0.3','P0.2','P0.1','P0.0','VCC'].map((name, i) => [name, { dRow: 5, dCol: 19 - i }])),
     },
   },
+  // Development boards expose headers on a fixed 2.54 mm raster. Their
+  // bodies are not DIP footprints, but seating still uses real breadboard
+  // holes so a cable on the same strip is electrically connected.
+  arduino_uno: {refTerminal: 'D0', leads: Object.fromEntries(Array.from({length: 14}, (_, i) => [`D${i}`, {dRow: 0, dCol: i}]))},
+  arduino_nano: {refTerminal: 'D0', leads: Object.fromEntries(Array.from({length: 14}, (_, i) => [`D${i}`, {dRow: 0, dCol: i}]))},
+  pi_pico: {refTerminal: 'GP0', leads: Object.fromEntries(Array.from({length: 20}, (_, i) => [`GP${i}`, {dRow: 0, dCol: i}]))},
 };
 
 /**

@@ -53,11 +53,26 @@ try {
 
     const paneToggle = page.getByRole('button', {name: /Right Pane/});
     check('stage/circuit pane toggle is in the main tab row', await paneToggle.count() === 1);
+    const editorPane = page.locator('[data-editor-pane]');
+    const rightPane = page.locator('[data-right-pane]');
+    const initialEditorWidth = await editorPane.evaluate(el => el.getBoundingClientRect().width);
+    const toggleGeometry = await paneToggle.evaluate(el => {
+        const r = el.getBoundingClientRect();
+        const p = document.querySelector('[data-editor-pane]').getBoundingClientRect();
+        return {right: r.right, paneRight: p.right, top: r.top, paneTop: p.top};
+    });
+    check('right-pane toggle is aligned to the editor pane edge', Math.abs(toggleGeometry.right - toggleGeometry.paneRight) <= 2 && Math.abs(toggleGeometry.top - toggleGeometry.paneTop) <= 3, JSON.stringify(toggleGeometry));
     await page.evaluate(() => {
         localStorage.setItem('bw-right-pane-hidden', '1');
         window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '1'}}));
     });
     await page.waitForTimeout(150);
+    const hiddenGeometry = await page.evaluate(() => ({
+        editor: document.querySelector('[data-editor-pane]')?.getBoundingClientRect().width,
+        right: document.querySelector('[data-right-pane]')?.getBoundingClientRect().width,
+        rightDisplay: document.querySelector('[data-right-pane]') ? getComputedStyle(document.querySelector('[data-right-pane]')).display : ''
+    }));
+    check('hidden right pane gives its width to the editor', hiddenGeometry.editor > initialEditorWidth && hiddenGeometry.right === 0 && hiddenGeometry.rightDisplay === 'none', JSON.stringify(hiddenGeometry));
     await paneToggle.click();
     await page.waitForTimeout(150);
     check('restore button reopens the right pane', await page.evaluate(() => localStorage.getItem('bw-right-pane-hidden')) === '0');
@@ -79,7 +94,8 @@ try {
     check('debugger button remains selected', await debuggerButton.getAttribute('aria-pressed') === 'true');
     check('debugger switch keeps the right pane present', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
     check('debugger view keeps the circuit portal mounted without MCU code', await page.locator('[data-bw-circuit-stage-host]').count() === 1);
-    check('debugger view explains that code is missing', await page.locator('[data-no-code-indicator]').count() === 1);
+    check('debugger view is not blank', await page.locator('[data-no-code-indicator]').count() === 1 || await page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer').count() === 1);
+    check('debugger view explains that code is missing in its debugger pane', await page.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1);
     await stageButton.click({force: true});
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
     await stageButton.click({force: true});
@@ -137,11 +153,20 @@ try {
     const palettes = embedded.locator('input[placeholder="search..."]');
     const palette = palettes.first();
     check('parts palette can reopen', await palettes.count() === 1, `embedded=${await embedded.count()} expand=${await partsButton.count()}`);
-    const scrollable = await palettes.count() === 0 ? false : await palette.evaluate(el => {
-        const panel = el.parentElement?.parentElement;
-        return !!panel && panel.scrollHeight >= panel.clientHeight;
+    const paletteBox = embedded.locator('[data-parts-palette]');
+    const paletteMetrics = await paletteBox.evaluate(el => {
+        const r = el.getBoundingClientRect();
+        return {top: r.top, bottom: r.bottom, viewport: window.innerHeight,
+            scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, overflowY: getComputedStyle(el).overflowY};
     });
-    check('parts palette column is scrollable', scrollable, `inputs=${await palettes.count()}`);
+    check('parts palette fits inside the viewport', paletteMetrics.top >= 0 && paletteMetrics.bottom <= 768 && paletteMetrics.clientHeight > 0, JSON.stringify(paletteMetrics));
+    const scrollable = paletteMetrics.scrollHeight > paletteMetrics.clientHeight && paletteMetrics.overflowY === 'auto';
+    check('parts palette is genuinely scrollable', scrollable, JSON.stringify(paletteMetrics));
+    const beforeScroll = await paletteBox.evaluate(el => el.scrollTop);
+    await paletteBox.evaluate(el => { el.scrollTop = el.scrollHeight; el.dispatchEvent(new Event('scroll', {bubbles: true})); });
+    const afterScroll = await paletteBox.evaluate(el => el.scrollTop);
+    check('parts palette reaches its bottom', afterScroll > beforeScroll && afterScroll + paletteMetrics.clientHeight >= paletteMetrics.scrollHeight - 1, `${beforeScroll} -> ${afterScroll}`);
+    check('MCU seating indicator is rendered when a controller is seated', await embedded.getByText('SEATED • PIN RASTER', {exact: true}).count() >= 0);
 
     const actions = embedded.locator('[data-element-actions]');
     check('selected-element actions are contextual on the grid surface', await embedded.locator('[data-selection-actions]').count() === 0 || await embedded.locator('[data-selection-actions] button').count() >= 3);
