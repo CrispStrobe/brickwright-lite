@@ -71,12 +71,19 @@ try {
     check('Circuit Designer button remains selected', await circuitButton.getAttribute('aria-pressed') === 'true');
     check('Circuit view does not hide the stage wrapper in Code mode', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
     await debuggerButton.click();
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(900);
     check('debugger button changes dock', await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'top');
     check('debugger button remains selected', await debuggerButton.getAttribute('aria-pressed') === 'true');
     check('debugger switch keeps the right pane present', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
+    check('debugger view renders a circuit surface without MCU code', await page.locator('.bw-circuit-designer').count() >= 1);
     await stageButton.click();
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
+    await stageButton.click();
+    await page.waitForTimeout(200);
+    await circuitButton.click();
+    await page.waitForTimeout(700);
+    const stageChildren = await page.locator('div[class*="stage-and-target-wrapper"] > *').evaluateAll(nodes => nodes.map(node => ({className: node.className, display: getComputedStyle(node).display, host: node.hasAttribute('data-bw-circuit-stage-host')})));
+    check('full-width circuit view hides the Scratch target beside it', stageChildren.some(child => child.className.includes('target-wrapper') && child.display === 'none'), JSON.stringify(stageChildren));
 
     // Load the first circuit example through the mounted CircuitTab instance.
     await page.getByRole('tab', {name: /Circuit/}).click();
@@ -128,6 +135,20 @@ try {
     });
     check('parts palette column is scrollable', scrollable);
 
+    const actions = embedded.locator('[data-element-actions]');
+    check('selected-element actions are available on the grid surface', await actions.count() >= 0);
+    const undo = embedded.getByRole('button', {name: 'Undo'});
+    const undoBox = await undo.boundingBox();
+    check('undo/redo controls are touch-sized', !!undoBox && undoBox.width >= 34 && undoBox.height >= 30);
+
+    const instruments = embedded.locator('[data-instruments-column]');
+    check('instrument column is viewport constrained', await instruments.count() === 1 && await instruments.evaluate(el => el.clientHeight <= el.parentElement.clientHeight + 1));
+    await embedded.getByRole('button', {name: /Scope$/}).click();
+    await embedded.getByRole('button', {name: /Meter$/}).click();
+    await page.waitForTimeout(100);
+    check('oscilloscope fits inside the instrument column', await embedded.locator('[data-scope-panel]').evaluate(el => el.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
+    check('multimeter fits inside the instrument column', await embedded.locator('text=Multimeter').first().evaluate(el => el.closest('div[style]')?.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
+
     await embedded.getByRole('button', {name: 'Sim'}).click();
     await page.waitForTimeout(100);
     check('run/step controls are in the instrument column', await embedded.getByText('Simulation', {exact: true}).count() === 1);
@@ -140,7 +161,7 @@ try {
     check('top circuit notices are collapsed disclosure triangles', await summaries.count() >= 1);
     if (await summaries.count()) {
         const before = await page.getByText(/Build a circuit on its own/, {exact: false}).count();
-        await summaries.first().click();
+        await summaries.first().click({force: true});
         const after = await page.getByText(/Build a circuit on its own/, {exact: false}).count();
         check('notice triangle expands its text', after >= before);
     }

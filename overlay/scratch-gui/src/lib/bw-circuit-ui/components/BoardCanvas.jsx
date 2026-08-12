@@ -1055,6 +1055,7 @@ export function BoardCanvas({
   // consumed by everything below (partsRef included, so what you see is
   // what you hit stays true for seated parts too).
   parts = resolveSeatedParts(parts);
+  const selectedPartObject = selectedPart ? parts.find(p => p.id === selectedPart) : null;
   const circuitRef = useRef(null); circuitRef.current = circuit;
   const [placeGhost, setPlaceGhost] = useState(null);
   const [dragLegs, setDragLegs] = useState(null); // hole highlights while dragging an existing part
@@ -1852,24 +1853,7 @@ export function BoardCanvas({
             : statusText || (selectedParts?.size > 0 ? `${selectedParts.size} selected` : '')}
         </span>
 
-        {/* Selection actions */}
-        {((selectedParts && selectedParts.size > 0) || selectedWire) && (
-          <>
-            {selectedPart && onRotatePart && (
-              <button onClick={() => onRotatePart(selectedPart)}
-                title="Rotate (R)"
-                style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #3498db', borderRadius: '3px', color: '#3498db', fontSize: '9px', cursor: 'pointer' }}>
-                ↻ Rotate
-              </button>
-            )}
-            {selectedPart && onDuplicatePart && (
-              <button onClick={() => onDuplicatePart(selectedPart)}
-                title="Duplicate (Ctrl+D)"
-                style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #2ecc71', borderRadius: '3px', color: '#2ecc71', fontSize: '9px', cursor: 'pointer' }}>
-                ⧉ Duplicate
-              </button>
-            )}
-            {selectedWire && onUpdateWire && (
+        {selectedWire && onUpdateWire && (
               <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}
                 title="Wire color (auto = colored by voltage)">
                 {['#e74c3c', '#2c3e50', '#3498db', '#2ecc71', '#f1c40f', '#e67e22', null].map((c, i) => (
@@ -1884,29 +1868,19 @@ export function BoardCanvas({
                 ))}
               </span>
             )}
-            <button onClick={() => {
-              if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
-              else if (selectedParts && selectedParts.size > 0) { for (const id of selectedParts) onRemovePart(id); onSelectPart(null); }
-            }}
-              title="Delete (Del)"
-              style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: '3px', color: '#e74c3c', fontSize: '9px', cursor: 'pointer' }}>
-              ✕ Delete
-            </button>
-          </>
-        )}
 
         {/* Always-visible history + persistence controls */}
-        <button onClick={() => onUndo && onUndo()} title="Undo (Ctrl+Z)"
-          style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '11px', cursor: 'pointer' }}>↶</button>
-        <button onClick={() => onRedo && onRedo()} title="Redo (Ctrl+Y)"
-          style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '11px', cursor: 'pointer' }}>↷</button>
+        <button onClick={() => onUndo && onUndo()} title="Undo (Ctrl+Z)" aria-label="Undo"
+          style={{ padding: '5px 10px', minWidth: 38, minHeight: 32, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '4px', color: '#bdc3c7', fontSize: '18px', cursor: 'pointer' }}>↶</button>
+        <button onClick={() => onRedo && onRedo()} title="Redo (Ctrl+Y)" aria-label="Redo"
+          style={{ padding: '5px 10px', minWidth: 38, minHeight: 32, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '4px', color: '#bdc3c7', fontSize: '18px', cursor: 'pointer' }}>↷</button>
         {onSaveCircuit && (
           <button onClick={onSaveCircuit} title="Save wiring as file"
-            style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #27ae60', borderRadius: '3px', color: '#2ecc71', fontSize: '10px', cursor: 'pointer' }}>💾</button>
+            style={{ padding: '5px 10px', minWidth: 38, minHeight: 32, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: '4px', color: '#2ecc71', fontSize: '18px', cursor: 'pointer' }}>💾</button>
         )}
         {onLoadCircuit && (
           <button onClick={onLoadCircuit} title="Load wiring from file"
-            style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #2980b9', borderRadius: '3px', color: '#3498db', fontSize: '10px', cursor: 'pointer' }}>📂</button>
+            style={{ padding: '5px 10px', minWidth: 38, minHeight: 32, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: '4px', color: '#3498db', fontSize: '18px', cursor: 'pointer' }}>📂</button>
         )}
 
         {/* Zoom info */}
@@ -1970,6 +1944,20 @@ export function BoardCanvas({
           }
         }}
       >
+        {selectedPartObject && (
+          <div data-element-actions style={{
+            position: 'absolute',
+            left: `${(selectedPartObject.x - pan.x) * zoom}px`,
+            top: `${(selectedPartObject.y - pan.y) * zoom - 34}px`,
+            transform: 'translateX(-50%)', display: 'flex', gap: 3, zIndex: 20,
+            padding: 3, borderRadius: 5, background: 'rgba(15,23,42,.94)',
+            border: '1px solid #475569', boxShadow: '0 2px 8px rgba(0,0,0,.35)',
+          }}>
+            {onRotatePart && <button onClick={() => onRotatePart(selectedPart)} title="Rotate (R)" aria-label="Rotate selected element">↻</button>}
+            {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPart)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected element">⧉</button>}
+            <button onClick={() => { onRemovePart(selectedPart); onSelectPart(null); }} title="Delete (Del)" aria-label="Delete selected element">✕</button>
+          </div>
+        )}
         <svg
           width="100%"
           height="100%"

@@ -32,6 +32,26 @@ const repo = resolve(here, '..');
  */
 const REACHES = [
     {
+        selector: 'stage-canvas-wrapper',
+        css: 'packages/scratch-gui/src/components/stage-wrapper/stage-wrapper.css',
+        why: 'Circuit tab hides the Scratch canvas while preserving its header controls so the circuit portal can occupy the stage column.'
+    },
+    {
+        selector: 'stage-wrapper',
+        css: 'packages/scratch-gui/src/components/stage-wrapper/stage-wrapper.css',
+        why: 'Circuit tab keeps the stage header above the portal and disables only the underlying Scratch surface.'
+    },
+    {
+        selector: 'target-wrapper',
+        css: 'packages/scratch-gui/src/components/gui/gui.css',
+        why: 'Circuit full-width mode hides the adjacent target pane while retaining the stage host used by the designer.'
+    },
+    {
+        selector: 'stage-menu-wrapper',
+        css: 'packages/scratch-gui/src/components/stage-header/stage-header.css',
+        why: 'Circuit mode leaves the stage header interactive so the user can switch back from debugger or circuit view.'
+    },
+    {
         selector: 'stage-and-target-wrapper',
         css: 'packages/scratch-gui/src/components/gui/gui.css',
         why: 'Circuit tab full-width mode hides the stage column by matching this ' +

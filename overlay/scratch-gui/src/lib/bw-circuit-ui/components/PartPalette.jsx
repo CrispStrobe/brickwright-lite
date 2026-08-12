@@ -170,9 +170,19 @@ const CATEGORIES = [
 
 const ALL_PARTS = CATEGORIES.flatMap(c => c.parts);
 
-export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
+export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark' }) {
   const [filter, setFilter] = useState('');
   const [ledColor, setLedColor] = useState('red');
+  const light = theme === 'light';
+  const palette = light ? {
+    background: '#f8fafc', border: '#cbd5e1', text: '#1e293b', input: '#fff',
+    inputText: '#334155', category: '#475569', card: '#fff', hover: '#e0f2fe',
+    cardBorder: '#94a3b8', muted: '#64748b'
+  } : {
+    background: '#172033', border: '#2c3e50', text: '#f8fafc', input: '#0b1220',
+    inputText: '#f8fafc', category: '#b8c7d9', card: '#20324d', hover: '#29466a',
+    cardBorder: '#6383a8', muted: '#cbd5e1'
+  };
 
   const matchingParts = filter
     ? ALL_PARTS.filter(p =>
@@ -181,18 +191,23 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
         (p.tooltip || '').toLowerCase().includes(filter.toLowerCase()))
     : null;
 
-  return (
+    return (
     <div style={{
-      background: '#1a1a2e',
-      border: '1px solid #2c3e50',
+      background: palette.background,
+      border: `1px solid ${palette.border}`,
       borderRadius: '8px',
       padding: '8px',
       width: '160px',
-      fontFamily: 'monospace',
+      height: '100%',
+      minHeight: 0,
+      maxHeight: '100%',
+      boxSizing: 'border-box',
+      fontFamily: 'inherit',
       flexShrink: 0,
       overflowY: 'auto',
-    }}>
-      <div style={{ color: '#ecf0f1', fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
+      overscrollBehavior: 'contain',
+    }} data-parts-palette>
+      <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
         Parts
       </div>
 
@@ -203,8 +218,8 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
         placeholder="search..."
         style={{
           width: '100%', padding: '4px 6px', marginBottom: '6px',
-          background: '#0a0a1a', border: '1px solid #2c3e50',
-          borderRadius: '4px', color: '#ecf0f1',
+          background: palette.input, border: `1px solid ${palette.border}`,
+          borderRadius: '4px', color: palette.inputText,
           fontFamily: 'monospace', fontSize: '10px',
           boxSizing: 'border-box',
         }}
@@ -219,7 +234,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
       ) : (
         CATEGORIES.map(cat => (
           <div key={cat.name}>
-            <div style={{ color: '#556', fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase' }}>
+            <div style={{ color: palette.category, fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase' }}>
               {cat.name}
             </div>
             {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}

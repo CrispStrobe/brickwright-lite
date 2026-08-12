@@ -66,7 +66,7 @@ class CircuitTab extends React.Component {
         if (!document.getElementById('bw-layout-style')) {
             const st = document.createElement('style');
             st.id = 'bw-layout-style';
-            st.textContent = 'html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"]{display:none !important}';
+            st.textContent = 'html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-canvas-wrapper"]{display:none !important} html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-wrapper"]{position:relative;z-index:3}';
             document.head.appendChild(st);
         }
         this._syncStageAttr();
@@ -81,11 +81,10 @@ class CircuitTab extends React.Component {
             }
             if (key === 'hideStage' || key === 'bw-hide-stage') {
                 // The Code-mode circuit is rendered into the normal stage column.
-                // Hiding that wrapper there would hide the portal as well. Persist
-                // the preference for the dedicated Circuit tab, but only apply the
-                // DOM hiding while that tab is actually visible.
+                // Hide only Scratch-stage children; the portal is explicitly
+                // exempted by data-bw-circuit-stage-host and remains visible.
                 try { localStorage.setItem('bw-hide-stage', value === '1' ? '1' : '0'); } catch { /* private mode */ }
-                if (this.props.isVisible) this.setDisplayPreference('hideStage', value === '1');
+                this.setDisplayPreference('hideStage', value === '1');
             }
             if (key === 'bw-circuit-theme') {
                 try { localStorage.setItem('bw-circuit-theme', value); } catch { /* private mode */ }
@@ -154,7 +153,8 @@ class CircuitTab extends React.Component {
         const host = document.createElement('div');
         // Keep the stage header controls above the portal: the portal owns the
         // stage surface, but must never intercept the three view buttons.
-        host.style.cssText = 'position:absolute;inset:0;z-index:1;background:#fff;display:none;overflow:hidden;';
+        host.dataset.bwCircuitStageHost = 'true';
+        host.style.cssText = 'position:absolute;inset:0;z-index:2;background:#fff;display:none;overflow:hidden;';
         wrap.appendChild(host);
         this._stageHost = host;
         return host;
@@ -165,19 +165,30 @@ class CircuitTab extends React.Component {
      *  empty Scratch stage. Only when there is circuit content to show. */
     _stagePortalOn () {
         if (this.props.isVisible || !this.state.showInStage) return false;
-        const {stc, circuit} = this.state;
-        const hasContent = !!((circuit && circuit.parts && circuit.parts.length) ||
-            (stc && stc.pins && stc.pins.length));
-        return hasContent && !!this._stageHost && document.contains(this._stageHost);
+        // This is a presentation choice, not a capability check. Debugger
+        // mode must still show the designer for an empty project so the user
+        // can build the circuit before adding MCU code.
+        return !!this._stageHost && document.contains(this._stageHost);
     }
 
     /** Hide the stage+sprites column only while THIS tab is the visible one —
      *  the option reads "give the circuit the whole width", not "lose the
      *  stage everywhere". Other tabs get it back the moment they show. */
     _syncStageAttr () {
-        const on = !!(this.state.hideStage && this.props.isVisible);
+        const on = !!this.state.hideStage;
         if (on) document.documentElement.setAttribute('data-bw-hide-stage', '');
         else document.documentElement.removeAttribute('data-bw-hide-stage');
+        const wrap = document.querySelector('div[class*="stage-and-target-wrapper"]');
+        const stage = wrap && wrap.querySelector('div[class*="stage-wrapper"]');
+        const canvas = wrap && wrap.querySelector('div[class*="stage-canvas-wrapper"]');
+        const target = wrap && wrap.querySelector('div[class*="target-wrapper"]');
+        if (canvas) canvas.style.display = on ? 'none' : '';
+        if (target) target.style.display = on ? 'none' : '';
+        if (stage) {
+            stage.style.pointerEvents = on ? 'none' : '';
+            const header = stage.querySelector('div[class*="stage-menu-wrapper"]');
+            if (header) header.style.pointerEvents = on ? 'auto' : '';
+        }
     }
 
     async load () {

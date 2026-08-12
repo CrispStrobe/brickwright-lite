@@ -689,12 +689,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', minHeight: 0, maxHeight: 'calc(100dvh - 130px)', overscrollBehavior: 'contain' }}>
-          <button onClick={() => setLeftOpen(false)} style={{
-            background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
-            fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
-          }}>collapse</button>
-          <PartPalette onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+        <div data-parts-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 160px', width: 160, minWidth: 0, minHeight: 0, height: '100%', maxHeight: '100%', overflow: 'hidden', overscrollBehavior: 'contain' }}>
+          <button onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
+            position: 'absolute', top: 2, right: 2, zIndex: 5, background: '#172033', border: '1px solid #6383a8', borderRadius: 4, color: '#f8fafc', cursor: 'pointer',
+            fontSize: '18px', lineHeight: 1, width: 26, height: 24, padding: 0,
+          }}>‹</button>
+          <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+            <PartPalette theme="dark" onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+          </div>
           <InferPanel onLoadCircuit={handleLoadCircuit} />
         </div>
       ) : (
@@ -959,11 +961,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', maxHeight: 'calc(100dvh - 130px)', overscrollBehavior: 'contain' }}>
-        <button onClick={() => setRightOpen(false)} style={{
-          background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
-          fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
-        }}>collapse</button>
+      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 240px', width: 240, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
+        <button onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
+          position: 'absolute', top: 2, right: 2, zIndex: 5, background: '#172033', border: '1px solid #6383a8', borderRadius: 4, color: '#f8fafc', cursor: 'pointer',
+          fontSize: '18px', lineHeight: 1, width: 26, height: 24, padding: 0,
+        }}>›</button>
         {debugState && (
           <DebugStatus
             debugState={debugState}
@@ -988,19 +990,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onSave={handleSave}
           onLoad={handleLoad}
         />
-        <ScopePanel
-          board={circuit.board}
-          nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []}
-        />
-        <Multimeter
-          circuit={circuit}
-          wires={wires}
-          parts={parts}
-          placingProbe={placingProbe}
-          onStartPlacing={handleStartPlacing}
-          onStopPlacing={handleStopPlacing}
-          probePlacement={probePlacement}
-        />
         {/* Pin functions: show when an MCU is selected */}
         {selectedPart && (() => {
           const p = parts.find(pp => pp.id === selectedPart);
@@ -1009,6 +998,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           if (pinData.length === 0) return null;
           return <PinChooser pins={pinData} />;
         })()}
+        <div style={{ display: 'flex', gap: 4, width: '100%' }}>
+          <button onClick={() => setShowScope(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showScope ? '#2c3e50' : '#16213e', border: '1px solid #3498db', borderRadius: 4, color: '#3498db', fontFamily: 'monospace', fontSize: 10 }}>{showScope ? '▣ Hide scope' : '▣ Scope'}</button>
+          <button onClick={() => setShowMeter(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showMeter ? '#2c3e50' : '#16213e', border: '1px solid #f1c40f', borderRadius: 4, color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>{showMeter ? '⌁ Hide meter' : '⌁ Meter'}</button>
+        </div>
+        {showScope && <div style={{ width: '100%', minWidth: 0 }}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} /></div>}
+        {showMeter && <div style={{ width: '100%', minWidth: 0 }}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
       </div>
       ) : (
         <button onClick={() => setRightOpen(true)} style={{
