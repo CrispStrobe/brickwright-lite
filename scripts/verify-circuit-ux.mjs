@@ -57,16 +57,24 @@ try {
     await page.keyboard.press('Escape');
 
     const paneToggle = page.locator('[data-right-pane-toggle]');
+    const rightPane = page.locator('[data-right-pane]');
     check('right-pane toggle is present in the main tab row', await paneToggle.count() === 1);
     if (await paneToggle.count()) {
         const beforePane = await paneToggle.getAttribute('aria-pressed');
+        const beforeEditorWidth = await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width);
+        const beforeRightWidth = await rightPane.evaluate(el => el.getBoundingClientRect().width);
         await paneToggle.click({force: true});
         await page.waitForTimeout(120);
         check('right-pane toggle visibly changes state', await paneToggle.getAttribute('aria-pressed') !== beforePane);
+        const hiddenEditorWidth = await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width);
+        const hiddenRightWidth = await rightPane.evaluate(el => el.getBoundingClientRect().width);
+        check('hiding right pane gives its width to the editor', hiddenEditorWidth > beforeEditorWidth && hiddenRightWidth === 0,
+            JSON.stringify({beforeEditorWidth, hiddenEditorWidth, beforeRightWidth, hiddenRightWidth}));
         await paneToggle.click({force: true});
+        await page.waitForTimeout(120);
+        check('showing right pane restores its layout width', await rightPane.evaluate(el => el.getBoundingClientRect().width) > 0);
     }
     const editorPane = page.locator('[data-editor-pane]');
-    const rightPane = page.locator('[data-right-pane]');
     check('right pane remains mounted for optional Circuit Designer selection', await page.locator('[data-right-pane]').count() === 1);
 
     const stageButton = page.getByRole('button', {name: 'Scratch Stage'});

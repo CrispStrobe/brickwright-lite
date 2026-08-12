@@ -67,6 +67,7 @@ test('main tab row retains the right-pane toggle', () => {
     const gui = read('overlay/scratch-gui/src/components/gui/gui.jsx');
     assert.match(gui, /data-right-pane-toggle/);
     assert.match(gui, /Show right panel|Hide right panel/);
+    assert.match(gui, /stagePaneVisible \? '›' : '‹'/);
 });
 
 test('Settings exposes an app-internal hard reload without clearing project storage', () => {

@@ -370,8 +370,8 @@ const GUIComponent = props => {
                                             try { localStorage.setItem('bw-right-pane-hidden', next ? '0' : '1'); } catch { /* private mode */ }
                                             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: next ? '0' : '1'}}));
                                         }}
-                                        style={{marginLeft: 6, minHeight: 34, padding: '0 10px', border: '1px solid #94a3b8', borderRadius: 5, background: stagePaneVisible ? '#2563eb' : '#475569', color: '#fff', cursor: 'pointer', fontWeight: 700}}
-                                    >{stagePaneVisible ? 'Hide right panel' : 'Show right panel'}</button>
+                                        style={{marginLeft: 6, width: 32, minWidth: 32, height: 34, padding: 0, border: '1px solid #94a3b8', borderRadius: 5, background: stagePaneVisible ? '#2563eb' : '#475569', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 22, lineHeight: 1}}
+                                    >{stagePaneVisible ? '›' : '‹'}</button>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent === 'code' ? (
