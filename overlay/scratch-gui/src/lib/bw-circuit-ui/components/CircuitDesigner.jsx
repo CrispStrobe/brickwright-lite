@@ -761,13 +761,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       {/* Left sidebar — collapsible. Hidden entirely in schematic view:
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
+      <div data-selectors-rail style={{position: 'relative', display: 'flex', flex: selectorsOpen ? '0 0 190px' : '0 0 28px', width: selectorsOpen ? 190 : 28, minWidth: selectorsOpen ? 190 : 28, minHeight: 0, height: '100%', overflow: 'visible'}}>
       {selectorsOpen ? (
-        <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '0 0 190px', width: 190, minWidth: 190, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
-          <button onPointerDownCapture={e => { e.stopPropagation(); setSelectorsOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setSelectorsOpen(false)} aria-label="Collapse Selectors Panel" aria-expanded="true" title="Collapse Selectors Panel" style={{
-            position: 'absolute', zIndex: 3, top: 4, right: -13, background: '#ffffff', border: '1px solid #cbd5e1',
-            boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
-            fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
-          }}>‹</button>
+        <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto', width: '100%', minWidth: 0, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
           <div data-parts-selector style={{position: 'relative', flex: `${selectorSplit} 1 0`, minHeight: partsOpen ? 80 : 34, display: 'flex', minWidth: 0}}>
             <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts Selector' : 'Expand Parts Selector'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts Selector' : 'Expand Parts Selector'} style={{position: 'absolute', zIndex: 4, left: -13, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
             {partsOpen && <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />}
@@ -791,15 +787,15 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             <InferPanel onLoadCircuit={handleLoadCircuit} />
           </div>
         </div>
-      ) : (
-        <button onPointerDown={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(true); }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(true); }} onClick={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(true); }} style={{
-          position: 'absolute', right: 4, top: 52, zIndex: 70,
+      ) : null}
+        <button onPointerDown={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} onClick={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} style={{
+          position: 'absolute', right: -13, top: 4, zIndex: 70,
           width: 28, height: 28, padding: 0, display: 'grid', placeItems: 'center',
           background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
           boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
           color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
-        }} aria-label="Expand Selectors Panel" aria-expanded="false" title="Expand Selectors Panel">›</button>
-      )}
+        }} aria-label={selectorsOpen ? 'Collapse Selectors Panel' : 'Expand Selectors Panel'} aria-expanded={selectorsOpen} title={selectorsOpen ? 'Collapse Selectors Panel' : 'Expand Selectors Panel'}>{selectorsOpen ? '‹' : '›'}</button>
+      </div>
 
       {/* A snapshot must not LOOK like a live board. Desaturating it is the
           cheapest honest signal: the reading is real but it is of a world that

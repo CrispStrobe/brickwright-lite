@@ -58,7 +58,13 @@ try {
 
     const paneToggle = page.locator('[data-right-pane-toggle]');
     const rightPane = page.locator('[data-right-pane]');
-    check('right-pane toggle is present in the main tab row', await paneToggle.count() === 1);
+    check('right-pane toggle is present in the main tab row', await paneToggle.count() === 1 && await paneToggle.evaluate(el => !!el.closest('[role="tablist"]')));
+    if (await paneToggle.count()) {
+        const tabListBox = await paneToggle.locator('xpath=..').boundingBox();
+        const toggleBox = await paneToggle.boundingBox();
+        check('right-pane toggle is at the far end of the tab row', !!tabListBox && !!toggleBox && toggleBox.x + toggleBox.width >= tabListBox.x + tabListBox.width - 4,
+            JSON.stringify({tabList: tabListBox, toggle: toggleBox}));
+    }
     if (await paneToggle.count()) {
         const beforePane = await paneToggle.getAttribute('aria-pressed');
         const beforeEditorWidth = await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width);
@@ -177,6 +183,16 @@ try {
         await page.waitForTimeout(100);
         check('parts selector actually reopens', await designer.getByRole('button', {name: 'Collapse Parts Selector'}).count() === 1 && await designer.locator('[data-selectors-panel]').count() === 1);
         check('parts/examples divider is draggable', await designer.locator('[data-selector-divider]').count() === 1 && await designer.locator('[data-selector-divider]').getAttribute('role') === 'separator');
+    }
+    const selectorCollapse = designer.getByRole('button', {name: 'Collapse Selectors Panel'});
+    check('selectors panel has an adjacent collapse handle', await selectorCollapse.count() === 1);
+    if (await selectorCollapse.count()) {
+        await selectorCollapse.click({force: true});
+        await page.waitForTimeout(100);
+        check('selectors collapse keeps its handle visible', await designer.getByRole('button', {name: 'Expand Selectors Panel'}).count() === 1 && await designer.locator('[data-selectors-panel]').count() === 0);
+        await designer.getByRole('button', {name: 'Expand Selectors Panel'}).click({force: true});
+        await page.waitForTimeout(100);
+        check('selectors panel reopens from its persistent handle', await designer.locator('[data-selectors-panel]').count() === 1);
     }
     const examplesSelector = designer.locator('[data-examples-selector]').first();
     check('Examples selector has an independent collapse affordance', await examplesSelector.count() === 1 && await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1);
