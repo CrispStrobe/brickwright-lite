@@ -126,11 +126,15 @@ module.exports = makeExt(`// Name: Circuit
     });
   }
 
+  // Use the VM's translation registry, matching STC12 Live. Do not derive the
+  // block language from navigator.language: the browser language is not the
+  // BrickWright language selected by the user. The embedded translations remain
+  // useful defaults for hosts that do not provide a catalog.
   function t(key) {
-    const tr = translations[currentLang];
-    if (tr && tr[key]) return tr[key];
-    if (translations.en && translations.en[key]) return translations.en[key];
-    return key;
+    return Scratch.translate({
+      id: key,
+      default: translations.en[key] || key,
+    });
   }
 
   // ============================================================================
@@ -352,7 +356,7 @@ module.exports = makeExt(`// Name: Circuit
 
     // ---- dynamic menus ---------------------------------------------------
 
-    _items(method, emptyKey) {
+    _items(method, emptyKey, include = () => true) {
       const board = this.board;
       let values = [];
       try {
@@ -362,6 +366,7 @@ module.exports = makeExt(`// Name: Circuit
         values = [];
       }
       const ids = values
+        .filter(include)
         .map((value) => typeof value === "string" ? value : value && value.id)
         .filter((value) => typeof value === "string" && value.length > 0);
       return ids.length
@@ -369,7 +374,19 @@ module.exports = makeExt(`// Name: Circuit
         : [{ text: t(emptyKey), value: "" }];
     }
 
-    netNames() { return this._items("getNets", "circuit.noNets"); }
+    netNames() {
+      // Breadboard strip nets are implementation details. A seated component
+      // creates n-col-t*/n-col-b* nodes even when no jumper or wire connects
+      // it to the circuit, so exposing them makes the menu mostly noise.
+      return this._items(
+        "getNets",
+        "circuit.noNets",
+        (value) => {
+          const id = typeof value === "string" ? value : value && value.id;
+          return !/^n-col-[bt]\d+$/.test(id || "");
+        }
+      );
+    }
     partNames() { return this._items("getParts", "circuit.noParts"); }
     ledNames() { return this._items("getLeds", "circuit.noLeds"); }
     buzzerNames() { return this._items("getBuzzers", "circuit.noBuzzers"); }

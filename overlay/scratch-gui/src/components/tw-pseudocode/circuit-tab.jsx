@@ -844,14 +844,14 @@ class CircuitTab extends React.Component {
                         aria-label={tabTitles[id]}
                         aria-pressed={panel === id}
                         style={{
-                            minWidth: 54, height: 34, padding: '4px 8px', border: 'none', cursor: 'pointer', borderRadius: 4,
-                            fontSize: 12, lineHeight: 1, position: 'relative', fontWeight: 600,
+                            width: 38, minWidth: 38, height: 34, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4,
+                            fontSize: 17, lineHeight: 1, position: 'relative', fontWeight: 600,
                             background: panel === id ? '#fff' : 'transparent',
                             boxShadow: panel === id ? '0 1px 2px rgba(15,23,42,.12)' : 'none',
                             color: panel === id ? '#0f172a' : '#64748b'
                         }}
                     >
-                        <span aria-hidden="true" style={{marginRight: 4}}>{tabIcons[id]}</span>{label}
+                        <span aria-hidden="true">{tabIcons[id]}</span>
                         {badge ? (
                             <span style={{position: 'absolute', top: 1, right: 1, minWidth: 13, padding: '0 2px', borderRadius: 8, fontSize: 9,
                                 background: danger ? '#fecaca' : '#fef3c7',

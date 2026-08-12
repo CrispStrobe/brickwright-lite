@@ -135,12 +135,19 @@ try {
     check('Circuit Designer rendered', await designer.count() >= 1);
     const modeToggle = designer.locator('[data-build-sim-toggle]');
     const toolbar = modeToggle.locator('..');
-    check('shared toolbar has view buttons', await designer.getByRole('button', {name: 'Realistic view'}).count() === 1 && await designer.getByRole('button', {name: 'Schematic view'}).count() === 1);
+    check('shared toolbar has view buttons', await designer.locator('[data-circuit-view-toggle] [aria-label="Realistic view"]').count() >= 1 && await designer.locator('[data-circuit-view-toggle] [aria-label="Schematic view"]').count() >= 1);
+    const viewToggle = designer.locator('[data-circuit-view-toggle]').first();
+    check('Realistic/Schematic is one segmented view toggle', await viewToggle.count() === 1 && await viewToggle.getByRole('radio').count() === 2 && await viewToggle.getByRole('radio', {name: 'Realistic view'}).getAttribute('aria-checked') === 'true');
+    check('view toggle matches toolbar control height', await viewToggle.evaluate(el => el.getBoundingClientRect().height >= 34));
     check('Build/Sim is one segmented mode toggle', await modeToggle.count() === 1 && await modeToggle.getByRole('radio').count() === 2 && await modeToggle.getByRole('radio', {name: 'Build mode'}).getAttribute('aria-checked') === 'true');
     check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().locator('xpath=../..').locator('[data-build-sim-toggle]').count() === 1);
     check('shared toolbar has panel navigation', await designer.getByRole('button', {name: 'Designer'}).count() === 1 && await designer.getByRole('button', {name: 'Warnings'}).count() === 1 && await designer.getByRole('button', {name: 'Parts list'}).count() === 1 && await designer.getByRole('button', {name: 'Examples'}).count() === 1);
+    const panelButtonMetrics = await designer.getByRole('button', {name: 'Designer'}).evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
+    check('panel navigation uses compact equal buttons', panelButtonMetrics.length === 1 && panelButtonMetrics[0].width <= 42 && panelButtonMetrics[0].height >= 30, JSON.stringify(panelButtonMetrics));
     const toolbarBox = await toolbar.boundingBox();
     check('toolbar is touch-sized', !!toolbarBox && toolbarBox.height >= 40, toolbarBox ? `${toolbarBox.width}x${toolbarBox.height}` : 'missing');
+    check('zoom indicator has readable contrast styling', await designer.locator('[data-zoom-indicator]').count() === 1 && await designer.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
+    check('toolbar explicitly wraps when space is constrained', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).flexWrap === 'wrap'));
 
     // The dedicated Circuit tab is the full designer. The Blocks tab embeds a
     // compact circuit preview, where editor chrome starts collapsed.
@@ -181,7 +188,7 @@ try {
     check('parts palette reaches its bottom', afterScroll > beforeScroll && afterScroll + paletteMetrics.clientHeight >= paletteMetrics.scrollHeight - 1, `${beforeScroll} -> ${afterScroll}`);
     check('parts palette remains viewport bounded after scrolling', await paletteBox.evaluate(el => {
         const r = el.getBoundingClientRect();
-        return r.top >= 0 && r.bottom <= window.innerHeight && el.clientHeight > 0 && el.scrollHeight > el.clientHeight;
+        return r.top >= 0 && r.bottom <= window.innerHeight && el.clientHeight > 0 && el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === 'auto';
     }), JSON.stringify(paletteMetrics));
     check('example info is compact and on demand', await embedded.getByText('Why active-low?', {exact: true}).count() === 0 && await embedded.getByRole('button', {name: /Example info|Info for/}).count() === 1);
     const canvasMetrics = await embedded.locator('[data-canvas]').evaluate(el => {
@@ -193,8 +200,32 @@ try {
     });
     check('circuit canvas fits or exceeds its available width without clipping', canvasMetrics.parentWidth > 0 && canvasMetrics.width >= canvasMetrics.parentWidth - 2 && canvasMetrics.scrollWidth >= canvasMetrics.clientWidth, JSON.stringify(canvasMetrics));
     check('circuit designer viewport scrolls in both directions when needed', canvasMetrics.scrollWidth > canvasMetrics.clientWidth && canvasMetrics.scrollHeight > canvasMetrics.clientHeight, JSON.stringify(canvasMetrics));
-    check('MCU seating indicator is rendered when a controller is seated', await embedded.getByText('SEATED • PIN RASTER', {exact: true}).count() >= 0);
-
+    const narrowLayout = await embedded.evaluate(root => {
+        const toolbar = root.querySelector('[data-circuit-toolbar]');
+        const main = root.querySelector('[data-designer-main]');
+        const canvas = root.querySelector('[data-canvas]');
+        const oldWidth = toolbar.style.width;
+        toolbar.style.width = '320px';
+        toolbar.style.maxWidth = '320px';
+        toolbar.style.flex = '0 0 320px';
+        const result = {toolbarHeight: toolbar?.getBoundingClientRect().height || 0, mainWidth: main?.clientWidth || 0,
+            mainScrollWidth: main?.scrollWidth || 0, mainScrollHeight: main?.scrollHeight || 0,
+            canvasWidth: canvas?.getBoundingClientRect().width || 0};
+        toolbar.style.width = oldWidth;
+        toolbar.style.maxWidth = '';
+        toolbar.style.flex = '';
+        return result;
+    });
+    check('narrow toolbar grows to multiple rows', narrowLayout.toolbarHeight > 44, JSON.stringify(narrowLayout));
+    check('wrapped toolbar is not vertically cropped', await embedded.evaluate(root => {
+        const toolbar = root.querySelector('[data-circuit-toolbar]');
+        const canvas = root.querySelector('[data-canvas]');
+        const tr = toolbar?.getBoundingClientRect();
+        const cr = canvas?.getBoundingClientRect();
+        return !!tr && !!cr && tr.bottom <= cr.top && tr.height >= 44;
+    }));
+    check('narrow circuit pane remains scrollable instead of static crop', narrowLayout.mainWidth > 0 && narrowLayout.mainScrollWidth > narrowLayout.mainWidth && narrowLayout.mainScrollHeight > 0, JSON.stringify(narrowLayout));
+    await page.setViewportSize({width: 1024, height: 768});
     const actions = embedded.locator('[data-element-actions]');
     check('selected-element actions are contextual on the grid surface', await embedded.locator('[data-selection-actions]').count() === 0 || await embedded.locator('[data-selection-actions] button').count() >= 3);
     const undo = page.getByRole('button', {name: 'Undo'}).last();
@@ -210,6 +241,7 @@ try {
         await page.waitForTimeout(100);
     }
     check('instrument panel has a compact expand/collapse affordance', await instruments.count() === 1 || await expandInstruments.count() === 1);
+    check('toolbar has no duplicate right-panel button', await embedded.getByRole('button', {name: /Show right panel|Hide right panel/}).count() === 0);
     const scopeButtons = page.getByRole('button', {name: /Scope$/});
     for (let i = 0; i < await scopeButtons.count(); i++) {
         await scopeButtons.nth(i).evaluate(el => el.click());

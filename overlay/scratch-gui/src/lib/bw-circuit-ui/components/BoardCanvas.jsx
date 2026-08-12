@@ -1919,13 +1919,13 @@ export function BoardCanvas({
     >
       {/* Status/action bar */}
       {/* Toolbar */}
-      <div style={{
+      <div data-circuit-toolbar style={{
         display: 'flex', alignItems: 'center', gap: '6px',
         fontFamily: 'monospace', fontSize: '10px',
-        marginBottom: '6px', minHeight: '44px',
+        marginBottom: '8px', minHeight: '44px',
         padding: '4px 6px',
         background: '#16213e', borderRadius: '4px',
-        flexWrap: 'wrap', alignContent: 'center', rowGap: '6px',
+        flexWrap: 'wrap', alignContent: 'flex-start', rowGap: '8px',
         overflow: 'visible', width: '100%', boxSizing: 'border-box',
       }}>
         <div role="radiogroup" aria-label="Build or Sim mode" data-build-sim-toggle style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
@@ -1939,12 +1939,6 @@ export function BoardCanvas({
 
         {panelNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
         {viewNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
-        {onToggleRightPanel ? <button onClick={onToggleRightPanel}
-          title={rightOpen ? 'Hide right panel' : 'Show right panel'}
-          aria-label={rightOpen ? 'Hide right panel' : 'Show right panel'}
-          aria-expanded={rightOpen}
-          style={{minHeight: 34, minWidth: 38, padding: '4px 8px', background: '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#dbeafe', fontSize: 18, cursor: 'pointer'}}>▣</button> : null}
-
         {/* Mode indicator */}
         <span style={{
           padding: '2px 8px', borderRadius: '3px',
@@ -2013,9 +2007,7 @@ export function BoardCanvas({
         )}
 
         {/* Zoom info */}
-        {zoom !== 1 && (
-          <span style={{ color: '#556', fontSize: '9px' }}>{(zoom * 100).toFixed(0)}%</span>
-        )}
+        <span data-zoom-indicator title="Canvas zoom" style={{ color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: '11px', fontWeight: 700 }}>{(zoom * 100).toFixed(0)}%</span>
       </div>
 
       {/* Zoom indicator removed — now in toolbar */}

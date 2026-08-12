@@ -997,11 +997,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           rightOpen={rightOpen}
           onToggleRightPanel={() => setRightOpen(v => !v)}
           viewNav={(
-            <div data-circuit-view-switcher style={{display: 'inline-flex', gap: 4, alignItems: 'center'}}>
-              <button onClick={() => setShowSchematic(false)} aria-label="Realistic view" aria-pressed={!showSchematic} title="Realistic view"
-                style={{width: 34, height: 30, cursor: 'pointer', background: !showSchematic ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>◉</button>
-              <button onClick={() => setShowSchematic(true)} aria-label="Schematic view" aria-pressed={showSchematic} title="Schematic view"
-                style={{width: 34, height: 30, cursor: 'pointer', background: showSchematic ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
+            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+              <button role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"
+                style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic ? '#1e3a5f' : 'transparent', color: !showSchematic ? '#93c5fd' : '#94a3b8', border: 'none', borderRight: '1px solid #64748b', fontSize: 17}}>◉</button>
+              <button role="radio" aria-checked={showSchematic} onClick={() => setShowSchematic(true)} aria-label="Schematic view" title="Schematic view"
+                style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#1e3a5f' : 'transparent', color: showSchematic ? '#93c5fd' : '#94a3b8', border: 'none', fontSize: 17}}>⌁</button>
             </div>
           )}
         />
