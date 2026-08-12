@@ -20,8 +20,9 @@ test('Circuit Designer side selectors expose independent collapse affordances', 
     const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
     const examples = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/ExamplesBrowser.jsx');
     const presets = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/InferPanel.jsx');
-    assert.match(designer, /Collapse Selectors Panel/);
-    assert.match(designer, /Expand Selectors Panel/);
+    assert.match(designer, /Collapse Parts Selector/);
+    assert.match(designer, /Expand Parts Selector/);
+    assert.match(designer, /data-selector-divider/);
     assert.match(examples, /Collapse examples selector/);
     assert.match(examples, /Expand examples selector/);
     assert.match(examples, /data-examples-selector-content/);

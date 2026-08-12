@@ -148,15 +148,16 @@ try {
 
     // The dedicated Circuit tab is the full designer. The Blocks tab embeds a
     // compact circuit preview, where editor chrome starts collapsed.
-    const fullPartsButton = designer.getByRole('button', {name: 'Collapse Selectors Panel'});
+    const fullPartsButton = designer.getByRole('button', {name: 'Collapse Parts Selector'});
     check('full designer shows its parts panel', await fullPartsButton.count() === 1);
     if (await fullPartsButton.count()) {
         await fullPartsButton.click({force: true});
         await page.waitForTimeout(100);
-        check('parts selector actually collapses', await designer.getByRole('button', {name: 'Expand Selectors Panel'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 0);
-        await designer.getByRole('button', {name: 'Expand Selectors Panel'}).click({force: true});
+        check('parts selector actually collapses', await designer.getByRole('button', {name: 'Expand Parts Selector'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 0);
+        await designer.getByRole('button', {name: 'Expand Parts Selector'}).click({force: true});
         await page.waitForTimeout(100);
-        check('parts selector actually reopens', await designer.getByRole('button', {name: 'Collapse Selectors Panel'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 1);
+        check('parts selector actually reopens', await designer.getByRole('button', {name: 'Collapse Parts Selector'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 1);
+        check('parts/examples divider is draggable', await designer.locator('[data-selector-divider]').count() === 1 && await designer.locator('[data-selector-divider]').getAttribute('role') === 'separator');
     }
     const examplesSelector = designer.locator('[data-examples-selector]').first();
     check('Examples selector has an independent collapse affordance', await examplesSelector.count() === 1 && await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1);
@@ -176,7 +177,7 @@ try {
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await page.waitForTimeout(700);
     const embedded = page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer');
-    const partsButton = embedded.getByRole('button', {name: 'Expand Selectors Panel'});
+    const partsButton = embedded.getByRole('button', {name: 'Expand Parts Selector'});
     check('embedded preview starts with parts collapsed', await partsButton.count() === 1);
     const collapsedPartsBox = await partsButton.boundingBox();
     const collapsedPartsStyle = await partsButton.evaluate(el => ({position: getComputedStyle(el).position, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height}));

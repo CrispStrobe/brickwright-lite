@@ -156,6 +156,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setMode('build');
   }, [stopToken]);
   const [leftOpen, setLeftOpen] = useState(!embedded);
+  const [selectorSplit, setSelectorSplit] = useState(0.68);
   const [rightOpen, setRightOpen] = useState(!embedded || debuggerOn);
   useEffect(() => {
     if (debuggerOn) setRightOpen(true);
@@ -760,13 +761,30 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
         <div data-parts-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 190px', width: 190, minWidth: 190, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
-          <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(false)} aria-label="Collapse Selectors Panel" aria-expanded="true" title="Collapse Selectors Panel" style={{
-            position: 'absolute', zIndex: 3, top: 4, right: -12, background: '#ffffff', border: '1px solid #cbd5e1',
+          <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(false)} aria-label="Collapse Parts Selector" aria-expanded="true" title="Collapse Parts Selector" style={{
+            position: 'absolute', zIndex: 3, top: 4, left: -13, background: '#ffffff', border: '1px solid #cbd5e1',
             boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
             fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
           }}>‹</button>
-          <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
-          <div data-examples-selector style={{flex: '0 0 auto', maxHeight: '28%', minHeight: 0, overflowY: 'auto'}}>
+          <div data-parts-selector style={{flex: `${selectorSplit} 1 0`, minHeight: 80, display: 'flex', minWidth: 0}}>
+            <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+          </div>
+          <div data-selector-divider role="separator" aria-label="Resize Parts and Examples selectors" tabIndex={0}
+            onPointerDown={event => {
+              event.preventDefault();
+              const startY = event.clientY;
+              const start = selectorSplit;
+              const parent = event.currentTarget.parentElement;
+              const total = parent ? parent.getBoundingClientRect().height : 1;
+              const move = moveEvent => setSelectorSplit(Math.max(0.2, Math.min(0.85, start + (moveEvent.clientY - startY) / total)));
+              const end = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); };
+              window.addEventListener('pointermove', move);
+              window.addEventListener('pointerup', end, {once: true});
+            }}
+            style={{height: 10, flex: '0 0 10px', cursor: 'row-resize', borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', background: '#e2e8f0', margin: '1px 0'}}>
+            <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
+          </div>
+          <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto'}}>
             <InferPanel onLoadCircuit={handleLoadCircuit} />
           </div>
         </div>
@@ -777,7 +795,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
           boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
           color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
-        }} aria-label="Expand Selectors Panel" aria-expanded="false" title="Expand Selectors Panel">›</button>
+        }} aria-label="Expand Parts Selector" aria-expanded="false" title="Expand Parts Selector">›</button>
       )}
 
       {/* A snapshot must not LOOK like a live board. Desaturating it is the
@@ -983,9 +1001,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           viewNav={(
             <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
               <button role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"
-                style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic ? '#1e3a5f' : 'transparent', color: !showSchematic ? '#93c5fd' : '#94a3b8', border: 'none', borderRight: '1px solid #64748b', fontSize: 17}}>◉</button>
+                style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
               <button role="radio" aria-checked={showSchematic} onClick={() => setShowSchematic(true)} aria-label="Schematic view" title="Schematic view"
-                style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#1e3a5f' : 'transparent', color: showSchematic ? '#93c5fd' : '#94a3b8', border: 'none', fontSize: 17}}>⌁</button>
+                style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>⌁</button>
             </div>
           )}
         />
