@@ -1,49 +1,46 @@
 # bw-bundle handoff — 2026-08-12 (session 3)
 
-## What was done this session (0c1bb42)
+## What was done this session
 
-### Pico debug chain: wired into the app
+### Pico debug chain: wired into the app (0c1bb42, 486fd62)
 
 **Re-vendored:**
-- sb3-creator at 3e2659b (DEVICE PICO + real PWM on AVR/RP2040)
+- sb3-creator at ab68d1b (DEVICE PICO + real PWM + servo on gcc cores + retargetPseudocode)
 - bw-board at 32582aa (rp2040js adapter + debug target + digital-input leg on both adapters)
 
 **Overlay-specific fixes re-applied after vendor:**
-- avr8js-adapter.js: lowercase pin names (`name.toLowerCase()`) to match
-  bw-parts sidecar terminal conventions; ADC reads lowercase `a${channel}`
-- board.js: `isMcuKind()` helper treats `arduino_uno`, `arduino_nano`,
-  `pi_pico` identically to `mcu` in solver + walk chain
-- infer-netlist.js: `pinId` function uses `p.where` for Arduino/Pico pins;
+- avr8js-adapter.js: lowercase pin names to match sidecar conventions
+- board.js: `isMcuKind()` helper for `arduino_uno`/`arduino_nano`/`pi_pico`
+- infer-netlist.js: `pinId(p)` function uses `p.where` for non-STC pins;
   fixed self-referencing bug (`const pid = pid(pin)` → `const pid = pinId(pin)`)
-- checkWiring also updated to use `where`-aware pin IDs
 
-**Device selector (pseudocode-importer.jsx):**
-- Pico moved from MicroPython group to new "Raspberry Pi" group
-- `compile: true`, `emulator: 'rp2040js'`
+**Device selector:** Pico in its own "Raspberry Pi" group, `compile: true`, `emulator: 'rp2040js'`
 
-**debug-runner.js:**
-- `COMPILE_TARGET` map: `'pico' → 'rp2040'`
-- `selectDebugTargetKind('pico')` → `'rp2040js'`
-- `attachRp2040js`: wires serial, glow, trace, breakpoints, value resolver
-- `build()`: base64 → Uint16Array halfwords (little-endian) for Pico raw binary
+**debug-runner.js:** `pico` → `rp2040` compile target, base64→Uint16Array for raw
+binary, `attachRp2040js` with serial/glow/trace/breakpoints
 
-**debug-target-factory.js:**
-- `'rp2040js'` added to `getTargetKinds()` (label: "Simulated (RP2040)")
+**debug-target-factory.js:** `'rp2040js'` in `getTargetKinds()` (label: "Simulated (RP2040)")
 
-**New file: rp2040js-debug.js**
-- Boundary-D debug target for RP2040 (from bw-board): breakpoints, stepping,
-  position reporting, halt policy = freeze-timers
+**New file: rp2040js-debug.js** — Boundary-D debug target for RP2040 from bw-board
 
-### Browser-verified (Playwright, local build)
-- Pico appears in device selector
-- Code compiles to blocks with DEVICE PICO
-- "Raspberry Pi Pico" and "rp2040js" confirmed in bundle
-- All chunks (bw-board, bw-debug, sb3-creator) contain rp2040/pico code
-- Debug routing: pico→rp2040 compile target, rp2040js attach path present
-- Zero page errors
+**Tests fixed:** rp2040-debug, rp2040-image, sb3-creator-motion-target — matched to vendored API
 
-### Build deployed
-- Pushed to main at 0c1bb42, CI build queued
+### retargetPseudocode wired into UI (2e538e6)
+
+**Device switcher:** changing device on code with PIN declarations calls
+`SB3Creator.retargetPseudocode()`. Pins are rewritten to the target's conventional
+wiring (RETARGET_POOLS). If the target lacks a feature (no ADC, wrong core), the
+switch is refused with reasons in the status bar.
+
+**Example browser:** loading a hardware example with a different device selected
+retargets it automatically. Incompatible examples are greyed out with reason tooltips.
+
+**5 new tests:** STC→Pico (GP25), STC→Nano (D13), ADC refusal on STC89, unknown
+device, pool coverage.
+
+### Test counts
+- 115/115 pass locally
+- CI green for all pushed commits
 
 ## Nothing in flight
 
@@ -53,26 +50,19 @@ All changes pushed to `main`. No branches, no stashes, no WIP.
 
 ### AVR debug chain (session 2, d29198f)
 - Full AVR debug wiring: Nano blink, yield breakpoints, serial output
-- Licence confirmation: MPL-2.0 for bw-parts, bw-circuit-ui, bw-cfront, bw-bundle, sb3-creator
 
 ### Devices extension (e2ad1cf)
 - Re-registered in builtinExtensions, picker entry added
-- Runtime wiring bug fixed (constructor receives runtime)
 - 29 blocks visible, 7 stubs hidden
-
-### Three-engine routing (649f40d)
-- debug-target-factory.js routes emulator/avr8js/rp2040js/serial
-- Lazy imports: avr8js/rp2040js loaded on demand
 
 ## Open items
 
 - **Full Pico debug chain test**: needs stc-compiler.vercel.app to accept
-  target "rp2040" — coordinator to verify with production proof
+  target "rp2040" — coordinator runs production proof
 - **7 device stubs** hidden from palette — need drivers in bw-board
 - **Code-tab debugger strip** — placement approved, not started
-- **SW failure-mode tests** — identified but not built
-- **Spec-update 006** (stale hobby_gearmotor refs): bw-circuit-ui's fix upstream
-- **F_CPU from compile response**: stc-compiler doesn't echo f_cpu yet for AVR
-  (shows as undefined in test output — adapter falls back to 16MHz correctly)
 - **bw-board pin name convention**: bw-board source still uses uppercase pin names
-  on avr8js-adapter; overlay has the lowercase fix — next sync will need re-apply
+  on avr8js-adapter; overlay has the lowercase fix — next sync needs re-apply
+- **Example gallery (cfront)**: with retarget landed in the app, the gallery
+  can compute supported-device lists per example by dry-running retargetPseudocode;
+  manual per-device example sets (nano01-04, pico01-04) are now golden fixtures
