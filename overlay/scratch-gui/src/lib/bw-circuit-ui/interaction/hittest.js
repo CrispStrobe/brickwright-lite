@@ -27,7 +27,13 @@ export const FOOTPRINTS = {
   switch: { w: 48, h: 28 },
   vcc: { w: 36, h: 40 },
   gnd: { w: 36, h: 40 },
-  mcu: { w: 120, h: 160 },
+  // STC12C5A60S2 DIP-40: 20 pins per side at the 20-unit breadboard pitch.
+  mcu: { w: 280, h: 70 },
+  // Sidecar art is scaled from 8-unit pin pitch to the canvas' 20-unit
+  // breadboard raster. Keep hit bounds in the same world coordinates.
+  arduino_uno: { w: 450, h: 300 },
+  arduino_nano: { w: 150, h: 400 },
+  pi_pico: { w: 150, h: 525 },
   meter: { w: 70, h: 55 },
   led_cube: { w: 90, h: 90 },
   seven_segment: { w: 50, h: 70 },
@@ -68,10 +74,11 @@ export function partBounds(part) {
     const cols = part.params.size === 'half' ? 30 : 17;
     const w = (cols - 1) * 14 + 54;
     const h = part.params.size === 'mini' ? 310 - 2 * (2 * 14 + 18) : 310;
-    return { x: part.x - w / 2, y: part.y - h / 2, w, h };
+    return { minX: part.x - w / 2, minY: part.y - h / 2,
+      maxX: part.x + w / 2, maxY: part.y + h / 2 };
   }
   const { w, h } = footprintOf(part);
-  const rot = ((part.rotation ?? 0) % 360 + 360) % 360;
+  const rot = (((part.rotation ?? 0) + ((part.seat?.rot ?? 0) * 90)) % 360 + 360) % 360;
   let bw = w, bh = h;
   if (rot % 180 === 90) { bw = h; bh = w; }
   else if (rot % 90 !== 0) {
@@ -111,6 +118,12 @@ export function createHitTest(getParts, getWirePaths, getTerminals) {
         }
       }
       return null;
+    },
+
+    partKindAt(wx, wy) {
+      const id = this.partAt(wx, wy);
+      if (!id) return null;
+      return getParts().find(part => part.id === id)?.kind ?? null;
     },
 
     terminalAt(wx, wy, radius) {
