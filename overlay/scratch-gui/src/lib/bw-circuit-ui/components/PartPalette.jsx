@@ -229,7 +229,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
         matchingParts.length === 0 ? (
           <div style={{ color: '#556', fontSize: '9px', padding: '4px' }}>No matches</div>
         ) : (
-          matchingParts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
+          matchingParts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
         )
       ) : (
         CATEGORIES.map(cat => (
@@ -237,7 +237,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
             <div style={{ color: palette.category, fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase' }}>
               {cat.name}
             </div>
-            {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
+            {cat.parts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
           </div>
         ))
       )}

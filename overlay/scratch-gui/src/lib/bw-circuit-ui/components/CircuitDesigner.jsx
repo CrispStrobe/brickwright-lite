@@ -178,6 +178,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [placingProbe, setPlacingProbe] = useState(null);
   const [placingPart, setPlacingPart] = useState(null); // {kind, params} riding the cursor
   const [showSchematic, setShowSchematic] = useState(false);
+  const [showScope, setShowScope] = useState(false);
+  const [showMeter, setShowMeter] = useState(false);
   const [simPaused, setSimPaused] = useState(false);
   const [simSpeed, setSimSpeed] = useState(1); // 0.25 | 1 | 4 x real time
   const [probePlacement, setProbePlacement] = useState(null);

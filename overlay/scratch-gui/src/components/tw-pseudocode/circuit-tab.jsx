@@ -154,7 +154,7 @@ class CircuitTab extends React.Component {
         // Keep the stage header controls above the portal: the portal owns the
         // stage surface, but must never intercept the three view buttons.
         host.dataset.bwCircuitStageHost = 'true';
-        host.style.cssText = 'position:absolute;inset:0;z-index:2;background:#fff;display:none;overflow:hidden;';
+        host.style.cssText = 'position:absolute;inset:0;z-index:0;background:#fff;display:none;overflow:hidden;';
         wrap.appendChild(host);
         this._stageHost = host;
         return host;
@@ -185,9 +185,22 @@ class CircuitTab extends React.Component {
         if (canvas) canvas.style.display = on ? 'none' : '';
         if (target) target.style.display = on ? 'none' : '';
         if (stage) {
-            stage.style.pointerEvents = on ? 'none' : '';
+            stage.style.position = 'relative';
+            stage.style.zIndex = on ? '3' : '';
+            // Keep the wrapper hit-testable: the stage canvas/target are
+            // hidden individually below, while the header must still receive
+            // the Scratch/circuit/debugger mode clicks.
+            stage.style.pointerEvents = '';
             const header = stage.querySelector('div[class*="stage-menu-wrapper"]');
-            if (header) header.style.pointerEvents = on ? 'auto' : '';
+            if (header) {
+                header.style.pointerEvents = on ? 'auto' : '';
+                // The circuit portal fills the stage wrapper. Keep the three
+                // mode buttons above that surface so switching between
+                // Scratch, circuit-only, and debugger never loses the only
+                // route back.
+                header.style.position = 'relative';
+                header.style.zIndex = '10';
+            }
         }
     }
 
