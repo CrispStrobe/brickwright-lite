@@ -22,9 +22,11 @@ const DEVICE_GROUPS = [
         { id: 'arduino-nano', label: 'Arduino Nano', compile: false, emulator: 'avr8js' },
         { id: 'atmega328p', label: 'ATmega328P (bare)', compile: false, emulator: 'avr8js' },
     ]},
+    { label: 'Raspberry Pi', core: 'rp2040', devices: [
+        { id: 'pico', label: 'Raspberry Pi Pico', compile: true, emulator: 'rp2040js' },
+    ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
-        { id: 'pico', label: 'Raspberry Pi Pico', compile: false, emulator: null },
     ]},
 ];
 const DEVICE_BY_ID = {};

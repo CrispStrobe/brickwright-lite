@@ -327,6 +327,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const COMPILE_TARGET = {
             'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
             'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
+            'pico': 'rp2040',
         };
         const deviceLower = (stc.device || 'stc12c5a60s2').toLowerCase();
         const compileTarget = COMPILE_TARGET[deviceLower] || deviceLower;
@@ -363,17 +364,26 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             yieldOf.set(y.block, { task: y.task, state: y.state, kind: y.kind });
         }
 
+        // For Pico the compile response is a raw SRAM binary, not Intel HEX.
+        // Convert base64 → Uint8Array → Uint16Array (little-endian halfwords).
+        let image = null;
+        if (isPico) {
+            const bytes = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
+            // Pad to even length if needed
+            const padded = bytes.length & 1
+                ? new Uint8Array([...bytes, 0])
+                : bytes;
+            image = new Uint16Array(padded.buffer, padded.byteOffset, padded.length / 2);
+        }
+
         return {
-            hex: atob(out.base64),
-            image: isPico ? Uint8Array.from(atob(out.base64), c => c.charCodeAt(0)) : null,
+            hex: isPico ? null : atob(out.base64),
+            image,
             symbols: out.symbols,
             c,
             bytes: out.bytes,
-            // Preserve the compiler-owned clock all the way to the silicon
-            // adapter. Falling back in the adapter remains safe for older
-            // endpoints, but current AVR builds must not silently assume it.
             f_cpu: out.f_cpu || out.fcpu || out.clockHz,
-            format: out.format || (isPico ? 'uf2' : 'ihx'),
+            format: out.format || (isPico ? 'bin' : 'ihx'),
         };
     }
 
@@ -601,27 +611,72 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
+    // ── Pico attach path ──────────────────────────────────────────────
+    // rp2040js is pure JS — same pattern as avr8js. The program is raw
+    // Thumb halfwords into SRAM, not Intel HEX or UF2.
     async function attachRp2040js(built) {
         setStatus('attaching', 'starting the Pico emulator…');
-        const {createDebugTarget, createDebugSession, BoardImpl, inferNetlist} =
+        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+
         const stc = projectStc(null);
-        const netlist = inferNetlist(stc);
+        const clockHz = built.f_cpu || built.clockHz || 125_000_000;
+
+        // Board — one-board-one-truth, same as AVR.
+        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
+        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
+            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
+            ? { parts: designerBoard.parts, nets: designerBoard.getNets() }
+            : inferNetlist(stc);
         board = new BoardImpl(3.3);
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
-        const {target: picoTarget} = await createDebugTarget('rp2040js', {
-            board, image: built.format === 'uf2' ? built.image : null,
-            hex: built.format === 'uf2' ? null : built.hex,
+
+        // Convert raw binary to Uint16Array halfwords (Thumb).
+        // The compile response returns base64 of the raw SRAM image.
+        const program = built.image instanceof Uint16Array ? built.image : null;
+
+        const { target: picoTarget, adapter: picoAdapter } = await createDebugTarget('rp2040js', {
+            board, program, symbols: built.symbols, clockHz,
         });
+
+        // Wire serial output — same accumulator pattern as AVR.
+        if (picoAdapter && picoAdapter.onSerial) {
+            let lineBuf = '';
+            serialLines = [];
+            picoAdapter.onSerial((byte) => {
+                const ch = String.fromCharCode(byte);
+                if (ch === '\n') {
+                    serialLines.push(lineBuf);
+                    lineBuf = '';
+                    if (serialLines.length > 200) serialLines.shift();
+                } else if (ch !== '\r') {
+                    lineBuf += ch;
+                }
+            });
+        }
+
+        // Value resolver and variable wiring — same as AVR.
+        setValueResolver((blockId) => runner.valuesAtBlock(blockId));
+        if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
+        symbols = built.symbols;
+        variableTable = (symbols && symbols.variables || []).filter((v) => v.space);
+        pinTable = stc.pins || [];
+
         target = picoTarget;
         session = createDebugSession(target, {
             onChange: (st) => {
-                if (st.halted) trace.record(target, st.why ? st.why.cause : 'halt', {variables: [], tasks: []});
+                if (st.halted) {
+                    if (shouldSkip(st)) { skipped++; skipRequested = true; return; }
+                    glow(st.tasks);
+                    trace.record(target, st.why ? st.why.cause : 'halt',
+                        { variables: runner.variables(), tasks: st.tasks });
+                } else clearGlow();
                 emit();
             }
         });
-        setStatus('ready', `${built.bytes} bytes (Pico), running`);
+
+        setStatus('ready', `${built.bytes} bytes (Pico), ${blockOf.size} yield points`);
         return session;
     }
 

@@ -24,7 +24,7 @@
  */
 
 import {
-  CPU, avrInstruction, AVRIOPort, AVRTimer, AVRADC, AVRUSART,
+  CPU, avrInstruction, AVRIOPort, AVRTimer, AVRADC, AVRUSART, PinState,
   portBConfig, portCConfig, portDConfig,
   timer0Config, timer1Config, timer2Config,
   adcConfig, usart0Config,
@@ -53,14 +53,10 @@ export const ATMEGA328P_PINS = {
   A7: { analogOnly: true, adcChannel: 7 },
 };
 
-// Terminal names MUST match the board's netlist. The designer sidecars
-// (bw-parts) define Arduino terminals in lowercase (d13, a0), so the
-// pin names driven through boundary A must be lowercase too. A case
-// mismatch makes pinStates.get('d13') return undefined while the adapter
-// wrote 'D13' — the LED stays dark (diagnosed 2026-08-12).
+// Lowercase pin names to match bw-parts sidecar terminal conventions.
 const PORT_PINS = { B: {}, C: {}, D: {} };
 for (const [name, def] of Object.entries(ATMEGA328P_PINS)) {
-  if (def.analogOnly) continue; // A6/A7 have no port register
+  if (def.analogOnly) continue;
   PORT_PINS[def.port][def.bit] = name.toLowerCase();
 }
 
@@ -117,7 +113,11 @@ export function createAvr8jsAdapter(opts = {}) {
     D: { ddr: 0x2a, port: 0x2b },
   };
 
-  /** Push one pin's CURRENT electrical role to the board. */
+  /** Push one pin's CURRENT electrical role to the board.
+   *  Uses AVRIOPort.pinState() which reads lastValue — the override-applied
+   *  output — so hardware-timer PWM edges (timerOverridePin) propagate to the
+   *  board correctly. Reading the raw PORT register would miss timer overrides
+   *  because the timer modifies overrideMask/overrideValue, not PORT itself. */
   function publishPin(portKey, bit) {
     if (!board) return;
     if (board.advanceTo) {
@@ -128,14 +128,13 @@ export function createAvr8jsAdapter(opts = {}) {
     // A6/A7 are analog-only — no DDR/PORT bits, never driven as GPIO
     const pinDef = ATMEGA328P_PINS[name];
     if (pinDef?.analogOnly) return;
-    const ddr = cpu.data[REG[portKey].ddr];
-    const out = cpu.data[REG[portKey].port];
-    const driven = !!(ddr & (1 << bit));
-    const high = !!(out & (1 << bit));
-    // AVR semantics: output → hard push-pull; input with PORT bit → weak
-    // internal pull-up (~35 kΩ); plain input → high-Z.
-    if (driven) board.setPin(name, 'pushpull', high);
-    else board.setPin(name, high ? 'input-pullup' : 'input', high);
+    const state = ioPorts[portKey].pinState(bit);
+    switch (state) {
+      case PinState.High:   board.setPin(name, 'pushpull', true);      break;
+      case PinState.Low:    board.setPin(name, 'pushpull', false);     break;
+      case PinState.InputPullUp: board.setPin(name, 'input-pullup', true); break;
+      default:              board.setPin(name, 'input', false);        break;
+    }
     stats.pinChangeCount++;
   }
 
@@ -146,6 +145,21 @@ export function createAvr8jsAdapter(opts = {}) {
       // and immune to which register moved.
       for (let bit = 0; bit < 8; bit++) publishPin(key, bit);
     });
+  }
+
+  /** Boundary A's digital-input leg: every pin the MCU is NOT driving
+   *  (DDR bit clear) takes its level from the solved circuit. Mirrors the
+   *  emu8051 adapter's syncPinInputs — a button wired to a pin works the
+   *  same way on every core. Called at each advance slice, so a press
+   *  propagates within one frame. */
+  function syncInputs() {
+    if (!board || !board.readPin) return;
+    for (const [name, def] of Object.entries(ATMEGA328P_PINS)) {
+      if (def.analogOnly) continue;
+      const ddr = cpu.data[REG[def.port].ddr];
+      if (ddr & (1 << def.bit)) continue; // MCU-driven: the board listens, not talks
+      ioPorts[def.port].setPin(def.bit, board.readPin(name) === 1);
+    }
   }
 
   // ADC: when the program starts a conversion, answer with the BOARD's node
@@ -180,10 +194,16 @@ export function createAvr8jsAdapter(opts = {}) {
       for (const key of Object.keys(ioPorts)) {
         for (let bit = 0; bit < 8; bit++) publishPin(key, bit);
       }
+      syncInputs();
     },
+
+    /** Re-read every input pin from the board (also called internally at
+     *  each advance slice; exposed for the debug target's runFor). */
+    syncInputs,
 
     /** Run the CPU forward by deltaNs of simulated time, then sync the board clock. */
     advanceNs(deltaNs) {
+      syncInputs();
       const targetCycles = cpu.cycles + Math.round((deltaNs / 1e9) * clockHz);
       while (cpu.cycles < targetCycles) {
         avrInstruction(cpu);

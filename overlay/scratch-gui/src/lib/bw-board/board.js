@@ -42,13 +42,7 @@ const MNA_ONLY_KINDS = new Set([
   'npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource',
 ]);
 
-/**
- * Board-level MCU parts: real board kinds that drive GPIO pins exactly
- * like the generic 'mcu' kind. The solver, DRC, and pin resolution all
- * need to treat these identically — a case for 'mcu' alone misses the
- * designer's Arduino/Pico parts and LED brightness reads 0 because the
- * walker never sees a driving source (diagnosed 2026-08-12).
- */
+/** Board-level MCU parts: the solver must treat these identically to 'mcu'. */
 function isMcuKind(kind) {
   return kind === 'mcu' || kind === 'arduino_uno' || kind === 'arduino_nano' || kind === 'pi_pico';
 }
@@ -1318,7 +1312,7 @@ export class BoardImpl {
 
     // Check for output pins with nothing connected
     for (const part of this.parts) {
-      if (!isMcuKind(part.kind)) continue;
+      if (part.kind !== 'mcu') continue;
       for (const terminal of part.terminals) {
         const state = this.pinStates.get(terminal);
         if (!state || state.mode === 'input') continue;
@@ -2336,7 +2330,7 @@ export class BoardImpl {
     for (const net of this.nets) {
       for (const t of net.terminals) {
         const part = this.partMap.get(t.part);
-        if (part && isMcuKind(part.kind) && t.terminal === pin) {
+        if (part && part.kind === 'mcu' && t.terminal === pin) {
           return this.nodeVoltages.get(net.id) ?? 0;
         }
       }
@@ -2423,7 +2417,7 @@ export class BoardImpl {
 
       for (const t of net.terminals) {
         const p = this.partMap.get(t.part);
-        if (p && isMcuKind(p.kind) && t.terminal === pin) {
+        if (p && p.kind === 'mcu' && t.terminal === pin) {
           const edges = this.buzzerEdges.get(part.id);
           if (edges) {
             edges.push(this.timeNs);

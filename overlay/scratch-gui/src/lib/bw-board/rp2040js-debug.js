@@ -1,48 +1,41 @@
 /**
- * Boundary-D debug target for avr8js — the ATmega328P becomes a breakable,
- * steppable, position-reporting program, through the SAME interface the
- * emu8051 target implements (DEBUG-CONTROL-MODEL). The session layer and the
- * runner branch on capabilities(), never on which silicon is underneath.
+ * Boundary-D debug target for rp2040js — the Pico becomes a breakable,
+ * steppable, position-reporting program through the SAME interface the
+ * emu8051 and avr8js targets implement (DEBUG-CONTROL-MODEL). The session
+ * layer branches on capabilities(), never on which silicon is underneath.
  *
- * ## What is easy here, and why
+ * ## What is different here, and what is not
  *
- * emu8051 is WASM: halts arrive through registered C callbacks, memory reads
- * marshal across a heap boundary, and run control is a state machine on the
- * other side of `_emu_dbg_*`. avr8js is a JS stepping loop THIS module owns:
- * a breakpoint is an address comparison before each instruction, memory is a
- * typed array, and "halted" is simply this module not calling
- * `avrInstruction` any more. The easiest debugger target this project has —
- * which is exactly what made it worth specifying boundary D once, properly.
- *
- * ## PC units — the one real trap
- *
- * avr8js's `cpu.pc` counts WORDS; every toolchain (avr-nm, avr-objdump,
- * listings) prints BYTE addresses. This module speaks BYTES at its surface —
- * breakpoint addrs, `regs().pc`, symbol yield addrs — and converts at the
- * single comparison site. Mixing the two is silent order-of-2 breakage, so
- * the conversion never leaves this file.
+ * Like avr8js, rp2040js is a stepping loop THIS module owns: a breakpoint
+ * is an address comparison before each instruction, and "halted" is this
+ * module not calling executeInstruction() any more. UNLIKE the AVR there
+ * is no PC unit trap — ARM PCs are byte addresses, the same unit every
+ * toolchain prints. The one ARM-ism: bit 0 of a code address is the Thumb
+ * execution-state flag, never part of the address, so it is masked at the
+ * compare site and odd breakpoint addresses are refused.
  *
  * ## Halt policy
  *
- * `freeze-timers`, trivially honest: timers advance on `cpu.tick()`, ticks
- * happen only inside runFor/step, so a halted target freezes program time,
- * peripheral time and pin state all at once. `skewNs` is 0n for the same
- * reason the emulator's is — no wall clock runs on without us.
+ * `freeze-timers`, honest for the same reason as the AVR target: the
+ * simulation clock advances only inside this module's execute loop, so a
+ * halted target freezes program time, peripheral alarms and pin state all
+ * at once. `skewNs` is 0n — no wall clock runs on without us.
  *
  * ## Position (Level 1)
  *
- * Same contract as the 8051: the generated scheduler keeps one `<task>_state`
- * variable per task; the symbol table says where each lives in SRAM and which
- * code address each `(task, state)` yield sits at. `position()` reads the
- * variables (16-bit little-endian, 0xFFFF = ran to completion); yield
- * breakpoints resolve `(task, state)` → code address at set time.
+ * Same contract as both siblings: the generated scheduler keeps one
+ * `<task>_state` variable per task; the symbol table says where each lives
+ * (absolute SRAM addresses on ARM) and which code address each
+ * `(task, state)` yield sits at. Which toolchain will PRODUCE that table
+ * for the Pico (bare-metal C vs MicroPython) is still open on the roadmap;
+ * the target speaks the schema, not the toolchain.
  *
  * @module
  */
 
-import { avrInstruction } from 'avr8js';
+const RAM_START = 0x20000000;
 
-/** Halt-cause detail passed to onHalt listeners; shape mirrors emu8051-debug. */
+/** Halt-cause detail passed to onHalt listeners; shape mirrors the siblings. */
 function makeWhy(target, cause, hit) {
   return {
     cause,
@@ -56,15 +49,16 @@ function makeWhy(target, cause, hit) {
 }
 
 /**
- * @param {ReturnType<import('./avr8js-adapter.js').createAvr8jsAdapter>} adapter
+ * @param {ReturnType<import('./rp2040js-adapter.js').createRp2040jsAdapter>} adapter
  * @param {object} [opts]
  * @param {object} [opts.symbols] — scheduler symbol table (same schema the
- *   8051 path uses: { scheduler: { bw_ms?: {addr}, tasks: [{ name,
- *   state: {addr, size?}, until?: {addr, size?}, yields: [{state, addr}] }] } };
- *   all addresses are DATA-SPACE for variables, BYTE code addresses for yields.
+ *   8051/AVR paths use); variable addresses are ABSOLUTE (SRAM lives at
+ *   0x20000000), yield addresses are byte code addresses.
  */
-export function createAvr8jsDebugTarget(adapter, opts = {}) {
-  const cpu = adapter.cpu;
+export function createRp2040jsDebugTarget(adapter, opts = {}) {
+  const { rp2040, core } = adapter;
+  const clock = rp2040.clock;
+  const cycleNanos = 1e9 / adapter.clockHz;
 
   let running = false;
   let detached = false;
@@ -72,23 +66,23 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
   let insnRemaining = null;
   /** True while a step('block') runs to the next yield address. */
   let blockStep = false;
-  /** Byte PC we just halted at: one instruction of grace on resume, or a
+  /** PC we just halted at: one instruction of grace on resume, or a
    *  breakpoint would re-fire forever without ever executing. */
   let resumeGuard = null;
   let listeners = [];
 
   // ─── breakpoints ────────────────────────────────────────────────────
   let nextHandle = 1;
-  /** handle → { kind, addr } (addr in BYTES) */
+  /** handle → { kind, addr } */
   const bps = new Map();
-  /** byte addr → handle, the hot-loop lookup */
+  /** addr → handle, the hot-loop lookup */
   const bpAt = new Map();
 
   // ─── symbols ────────────────────────────────────────────────────────
   let symbols = null;
   const taskIndex = new Map();   // name → task record
-  const yieldAddr = new Map();   // `${task}/${state}` → byte addr
-  const yieldSet = new Set();    // all yield byte addrs, for block stepping
+  const yieldAddr = new Map();   // `${task}/${state}` → code addr
+  const yieldSet = new Set();    // all yield addrs, for block stepping
 
   function loadSymbols(table) {
     symbols = table;
@@ -102,8 +96,8 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
       taskIndex.set(task.name, task);
       for (const y of task.yields || []) {
         if (typeof y.addr === 'number') {
-          yieldAddr.set(`${task.name}/${y.state}`, y.addr);
-          yieldSet.add(y.addr);
+          yieldAddr.set(`${task.name}/${y.state}`, y.addr & ~1);
+          yieldSet.add(y.addr & ~1);
           yields++;
         }
       }
@@ -116,7 +110,7 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
     if (!sym || typeof sym.addr !== 'number') return undefined;
     const size = sym.size ?? fallbackSize;
     let v = 0;
-    for (let i = size - 1; i >= 0; i--) v = (v << 8) | (cpu.data[sym.addr + i] ?? 0);
+    for (let i = size - 1; i >= 0; i--) v = (v << 8) | rp2040.readUint8(sym.addr + i);
     return v >>> 0;
   }
 
@@ -144,43 +138,54 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
   }
 
   /**
-   * Execute instructions until a stop condition or the cycle limit.
+   * Execute instructions until a stop condition or the time budget.
    * Returns 'halted' | 'budget'. Owns ALL mutation of running/stepping
    * state, so run()/step()/runFor() stay thin.
    */
-  function execute(untilCycles) {
-    while (cpu.cycles < untilCycles) {
-      const bytePc = cpu.pc * 2; // the single unit-conversion site
+  function execute(untilNanos) {
+    while (clock.nanos < untilNanos) {
+      if (core.waiting) {
+        // Asleep: no instruction executes, so no breakpoint can hit.
+        // Jump to the next alarm, or to the budget's end when nothing is
+        // scheduled (nanosToNextAlarm is 0 then — see the adapter).
+        const toAlarm = clock.nanosToNextAlarm;
+        const dt = toAlarm > 0 ? Math.min(toAlarm, untilNanos - clock.nanos)
+          : untilNanos - clock.nanos;
+        clock.tick(dt);
+        continue;
+      }
 
-      if (bytePc !== resumeGuard) {
-        const handle = bpAt.get(bytePc);
+      const pc = core.PC & ~1; // bit 0 is the Thumb flag, not address
+
+      if (pc !== resumeGuard) {
+        const handle = bpAt.get(pc);
         if (handle !== undefined) {
           running = false;
           insnRemaining = null;
           blockStep = false;
-          resumeGuard = bytePc;
+          resumeGuard = pc;
           syncBoard();
           announce('breakpoint', { handle, kind: bps.get(handle).kind });
           return 'halted';
         }
-        if (blockStep && yieldSet.has(bytePc)) {
+        if (blockStep && yieldSet.has(pc)) {
           running = false;
           blockStep = false;
-          resumeGuard = bytePc;
+          resumeGuard = pc;
           syncBoard();
           announce('step');
           return 'halted';
         }
       }
 
-      avrInstruction(cpu);
-      cpu.tick();
+      const cycles = core.executeInstruction();
+      clock.tick(cycles * cycleNanos);
       resumeGuard = null; // one instruction executed: breakpoints re-arm
 
       if (insnRemaining !== null && --insnRemaining <= 0) {
         running = false;
         insnRemaining = null;
-        resumeGuard = cpu.pc * 2;
+        resumeGuard = core.PC & ~1;
         syncBoard();
         announce('step');
         return 'halted';
@@ -196,6 +201,8 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
     adapter.advanceNs(0);
   }
 
+  const sramEnd = RAM_START + rp2040.sram.length;
+
   // ─── the target ─────────────────────────────────────────────────────
 
   const target = {
@@ -205,9 +212,11 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
         // than pretended (the capability matrix exists for exactly this).
         steps: ['insn', 'block'],
         breakpoints: ['code', 'yield'],
+        // ARM has ONE flat address space; these are named windows onto it
+        // (addresses are absolute in both).
         spaces: ['code', 'sram'],
         writable: ['sram'],
-        sfrs: 'memory-mapped', // AVR I/O registers live in the data space
+        sfrs: 'memory-mapped',
         haltPolicy: 'freeze-timers',
         timeFreezes: true,
         consumes: [],
@@ -226,8 +235,6 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
     },
 
     halt() {
-      // The loop is synchronous and owned by the caller's runFor slices, so
-      // "halt" is simply: stop being running, tell the listeners why.
       if (!running) return;
       running = false;
       insnRemaining = null;
@@ -263,7 +270,8 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
         if (typeof bp.addr !== 'number') return { unsupported: 'code breakpoint needs addr' };
         if ((bp.addr & 1) !== 0) {
           return { unsupported:
-            `AVR code addresses are even (byte address of a word): ${bp.addr}` };
+            `Thumb code addresses are halfword-aligned; bit 0 is the ` +
+            `execution-state flag, not part of the address: ${bp.addr}` };
         }
         const handle = nextHandle++;
         bps.set(handle, { kind: 'code', addr: bp.addr });
@@ -289,44 +297,37 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
       const bp = bps.get(handle);
       if (!bp) return;
       bps.delete(handle);
-      // Another handle may share the address only if set twice; rebuild the
-      // hot map from what remains rather than guessing.
       bpAt.clear();
       for (const [h, b] of bps) bpAt.set(b.addr, h);
     },
 
     readMem(space, addr, len) {
-      if (space === 'sram') {
-        return cpu.data.slice(addr, addr + len);
+      if (space !== 'sram' && space !== 'code') {
+        return { unsupported: `no such address space: ${space}` };
       }
-      if (space === 'code') {
-        // progMem is word-addressed; expose bytes little-endian, the way
-        // every AVR tool prints flash.
-        const out = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          const byteAddr = addr + i;
-          const word = cpu.progMem[byteAddr >> 1] ?? 0;
-          out[i] = (byteAddr & 1) ? (word >> 8) & 0xff : word & 0xff;
-        }
-        return out;
-      }
-      return { unsupported: `no such address space: ${space}` };
+      const out = new Uint8Array(len);
+      for (let i = 0; i < len; i++) out[i] = rp2040.readUint8(addr + i);
+      return out;
     },
 
     writeMem(space, addr, data) {
       if (space !== 'sram') return { refused: `space not writable: ${space}` };
-      for (let i = 0; i < data.length; i++) cpu.data[addr + i] = data[i];
+      if (addr < RAM_START || addr + data.length > sramEnd) {
+        return { refused:
+          `write outside SRAM (0x${RAM_START.toString(16)}..0x${sramEnd.toString(16)})` };
+      }
+      for (let i = 0; i < data.length; i++) rp2040.writeUint8(addr + i, data[i]);
       return undefined;
     },
 
     regs() {
-      const sp = cpu.data[0x5d] | (cpu.data[0x5e] << 8);
       return {
-        pc: cpu.pc * 2,          // BYTES, like every AVR tool
-        sp,
-        sreg: cpu.data[0x5f],
-        r: Array.from(cpu.data.slice(0, 32)),
-        cycles: cpu.cycles,
+        pc: core.PC & ~1,
+        sp: core.SP,
+        lr: core.LR,
+        xpsr: core.APSR,
+        r: Array.from(core.registers.slice(0, 13)),
+        cycles: core.cycles,
       };
     },
 
@@ -336,7 +337,9 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
     },
 
     reset() {
-      cpu.reset();
+      // NOT core.reset() bare: that fetches PC from a vector table this
+      // no-bootrom setup does not have (see the adapter's resetToProgram).
+      adapter.resetToProgram();
       running = false;
       insnRemaining = null;
       blockStep = false;
@@ -350,12 +353,10 @@ export function createAvr8jsDebugTarget(adapter, opts = {}) {
       // levels are re-read here — once per pump slice, same cadence as a
       // free run. A button works identically under the debugger.
       if (adapter.syncInputs) adapter.syncInputs();
-      const clockHz = adapter.clockHz ?? 16_000_000;
-      const budgetCycles = Math.max(1, Math.round((budgetNs / 1e9) * clockHz));
-      return execute(cpu.cycles + budgetCycles);
+      return execute(clock.nanos + budgetNs);
     },
 
-    // ─── beyond the interface (same extras the emulator target ships) ──
+    // ─── beyond the interface (same extras the siblings ship) ──────────
 
     setSymbols: loadSymbols,
     position: positionOf,

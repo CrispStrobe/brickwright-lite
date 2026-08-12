@@ -428,7 +428,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
           }
           break;
 
-        case 'mcu': case 'arduino_uno': case 'arduino_nano': case 'pi_pico':
+        case 'mcu':
           if (!powerOff) {
             stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources);
           }

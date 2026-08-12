@@ -15,7 +15,10 @@
  * Target kinds:
  *   'emulator'  — STC12 / 8051 via emu8051 WASM
  *   'avr8js'    — ATmega328P via avr8js (pure TS, no WASM)
- *   'rp2040js'  — RP2040 via rp2040js (GPIO, instruction stepping)
+ *   'rp2040js'  — Raspberry Pi Pico via rp2040js (pure TS; adapter-only
+ *                 until rp2040js-debug.js exists, and absent from
+ *                 getTargetKinds() until the Pico has a compile route —
+ *                 a picker entry nothing can build for would be a lie)
  *   'serial'    — live hardware over serial
  *
  * @module
@@ -70,7 +73,7 @@ export async function createDebugTarget(kind, opts) {
     return createSerialTarget(opts);
   }
   throw new Error(
-    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', 'rp2040js' or 'serial'.`
+    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', 'rp2040js', or 'serial'.`
   );
 }
 
@@ -177,23 +180,38 @@ async function createAvr8jsTarget(opts) {
   return { target, adapter };
 }
 
-// ─── RP2040 target (rp2040js) ─────────────────────────────────────────────
+// ─── Pico target (RP2040 via rp2040js) ──────────────────────────────────
 
 async function createRp2040jsTarget(opts) {
-  const { board, hex, image } = opts;
+  const {
+    board, program, symbols,
+    clockHz = 125_000_000, vcc = 3.3,
+  } = opts;
+
   if (!board) throw new Error('rp2040js target requires opts.board');
-  const { createRp2040jsAdapter, createRp2040jsDebugTarget, parseUf2 } =
-    await import('./rp2040js-adapter.js');
-  const adapter = createRp2040jsAdapter({ board });
+
+  // Same adapter-first, board-second, program-third pattern. The program
+  // is Thumb halfwords into SRAM (the no-bootrom path) — hex/UF2-to-flash
+  // arrives with the Pico compile route, whichever one the roadmap picks.
+  const { createRp2040jsAdapter } = await import('./rp2040js-adapter.js');
+  const adapter = createRp2040jsAdapter({ clockHz, vcc });
   adapter.attachBoard(board);
-  if (image) adapter.loadProgram(parseUf2(image));
-  else if (hex) {
-    const { parseIntelHexBytes } = await import('./intel-hex.js');
-    adapter.loadProgram(parseIntelHexBytes(hex));
+  if (program) adapter.loadProgram(program);
+
+  // Debug target: the coordinator writes createRp2040jsDebugTarget next.
+  // Until then the factory returns { adapter } without a target — the
+  // caller can run the simulation, just not debug it.
+  let target = null;
+  try {
+    const mod = await import('./rp2040js-debug.js');
+    if (mod.createRp2040jsDebugTarget) {
+      target = mod.createRp2040jsDebugTarget(adapter, { symbols });
+    }
+  } catch {
+    // rp2040js-debug.js does not exist yet — adapter-only mode
   }
-  const target = typeof createRp2040jsDebugTarget === 'function'
-    ? createRp2040jsDebugTarget(adapter) : null;
-  return { adapter, target };
+
+  return { target, adapter };
 }
 
 // ─── Serial target ───────────────────────────────────────────────────────
@@ -235,8 +253,8 @@ export function getTargetKinds() {
     },
     {
       kind: 'rp2040js',
-      label: 'Simulated (Pico)',
-      description: 'RP2040 instruction-level emulation with GPIO simulation.',
+      label: 'Simulated (RP2040)',
+      description: 'ARM Cortex-M0+ emulation. Raspberry Pi Pico programs.',
     },
     {
       kind: 'serial',

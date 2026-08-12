@@ -62,10 +62,8 @@ export function inferNetlist(stc) {
   parts.push({ id: 'GND', kind: 'gnd', params: {}, terminals: ['gnd'] });
 
   // Collect MCU terminals from declared pins.
-  // Arduino-style pins have `where` ('D13', 'A0') but no port/bit;
-  // STC-style pins have port/bit ('P1.0').
-  // Lowercase for Arduino pins: the avr8js adapter drives lowercase names
-  // (matching bw-parts sidecar terminals), so the MCU terminals must agree.
+  // Arduino/Pico pins use `where` (D13, GP0) lowercased to match sidecar conventions;
+  // STC pins use port/bit (P1.0).
   const pinId = (p) => p.where ? p.where.toLowerCase() : `P${p.port}.${p.bit}`;
   const mcuTerminals = stc.pins.map(pinId);
   parts.push({ id: 'MCU', kind: 'mcu', params: {}, terminals: mcuTerminals });
@@ -285,7 +283,7 @@ export function inferNetlist(stc) {
               id: `net_${safeName}_${segName}_pin`,
               terminals: [
                 { part: ledId, terminal: 'cathode' },
-                { part: 'MCU', terminal: pinId },
+                { part: 'MCU', terminal: pid },
               ],
             });
           } else {
@@ -293,7 +291,7 @@ export function inferNetlist(stc) {
             nets.push({
               id: `net_${safeName}_${segName}_pin_r`,
               terminals: [
-                { part: 'MCU', terminal: pinId },
+                { part: 'MCU', terminal: pid },
                 { part: rId, terminal: 'a' },
               ],
             });
@@ -335,7 +333,7 @@ export function inferNetlist(stc) {
         for (const [role, pinId] of Object.entries(part.pins)) {
           nets.push({
             id: `net_${safeName}_${role}`,
-            terminals: [{ part: 'MCU', terminal: pinId }],
+            terminals: [{ part: 'MCU', terminal: pid }],
           });
         }
 
@@ -425,7 +423,7 @@ export function checkWiring(declaredPins, wiredParts, wiredNets) {
   }
 
   // Check: declared pins with nothing wired
-  const pid = (p) => p.where || `P${p.port}.${p.bit}`;
+  const pid = (p) => p.where ? p.where.toLowerCase() : `P${p.port}.${p.bit}`;
   const declaredPinIds = new Set(declaredPins.map(pid));
   for (const pin of declaredPins) {
     const id = pid(pin);
@@ -435,9 +433,9 @@ export function checkWiring(declaredPins, wiredParts, wiredNets) {
   }
 
   // Check: MCU terminals wired but not declared in the project
-  for (const pinId of wiredPinIds) {
-    if (!declaredPinIds.has(pinId)) {
-      notes.push(`${pinId} has wiring on the board but is not declared in the project`);
+  for (const id of wiredPinIds) {
+    if (!declaredPinIds.has(id)) {
+      notes.push(`${id} has wiring on the board but is not declared in the project`);
     }
   }
 
