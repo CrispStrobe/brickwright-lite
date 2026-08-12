@@ -149,6 +149,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let pinTable = [];
     /** Conditions that failed to parse, surfaced rather than silently ignored. */
     let conditionErrors = {};
+    /** Serial output buffer — bytes received from adapter.onSerial, decoded as UTF-8. */
+    let serialLines = [];
     /** How many conditional hits were skipped, so the UI can show it happened. */
     let skipped = 0;
     /** Set by the halt handler when a stop should not be shown; read by pumpFrame. */
@@ -211,7 +213,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 [...yieldOf].map(([id, y]) => [id, y.kind])
             ),
             glowing: [...glowing],
-            yieldBlocks: [...yieldOf.keys()]
+            yieldBlocks: [...yieldOf.keys()],
+            /** Serial output lines from the AVR USART (print statements). */
+            serialOutput: serialLines.length ? [...serialLines] : undefined
         };
     }
 
@@ -541,9 +545,28 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // Intel HEX into Uint16Array words, loads the program, and — if
         // symbols are present — creates the boundary-D debug target with
         // yield breakpoints and block-level position reporting.
-        const {target: avrTarget} = await createDebugTarget('avr8js', {
+        const {target: avrTarget, adapter: avrAdapter} = await createDebugTarget('avr8js', {
             board, hex: built.hex, symbols: built.symbols, clockHz,
         });
+
+        // Wire serial output: each byte from the AVR's USART0 (print
+        // statements) accumulates into lines. The snapshot exposes them
+        // so the UI can show a serial monitor.
+        if (avrAdapter && avrAdapter.onSerial) {
+            let lineBuf = '';
+            serialLines = [];
+            avrAdapter.onSerial((byte) => {
+                const ch = String.fromCharCode(byte);
+                if (ch === '\n') {
+                    serialLines.push(lineBuf);
+                    lineBuf = '';
+                    // Cap at 200 lines to avoid unbounded growth
+                    if (serialLines.length > 200) serialLines.shift();
+                } else if (ch !== '\r') {
+                    lineBuf += ch;
+                }
+            });
+        }
 
         target = avrTarget;
         session = createDebugSession(target, {
