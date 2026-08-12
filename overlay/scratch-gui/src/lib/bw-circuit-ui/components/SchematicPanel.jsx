@@ -11,8 +11,8 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { projectSchematic } from '../model/schematic-projection.js';
 import { classifyWheel } from '../interaction/transform.js';
 
-const STROKE = '#c7d7e8';
-const LABEL = '#d9e7f5';
+const STROKE = '#9ab0c4';
+const LABEL = '#6b8299';
 
 function Symbol({ s }) {
   const { kind, x, y, params } = s;
@@ -231,7 +231,7 @@ export function SchematicPanel({ parts, nets }) {
         cursor: 'grab', touchAction: 'none',
       }}>
       {proj.wires.map(w => (
-        <g key={w.netId} stroke="#6e9bc4" strokeWidth={1.5} fill="none">
+        <g key={w.netId} stroke="#3d5a75" strokeWidth={1.3} fill="none">
           <line x1={w.trunk.x} y1={w.trunk.y1} x2={w.trunk.x} y2={w.trunk.y2} />
           {w.stubs.map((seg, i) => (
             <line key={i} x1={seg[0].x} y1={seg[0].y} x2={seg[1].x} y2={seg[1].y} />
@@ -239,7 +239,7 @@ export function SchematicPanel({ parts, nets }) {
         </g>
       ))}
       {proj.junctions.map((j, i) => (
-        <circle key={i} cx={j.x} cy={j.y} r={2.4} fill="#9cc7ed" />
+        <circle key={i} cx={j.x} cy={j.y} r={2.4} fill="#3d5a75" />
       ))}
       {proj.symbols.map(s => <Symbol key={s.id} s={s} />)}
     </svg>

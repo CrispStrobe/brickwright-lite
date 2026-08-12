@@ -186,34 +186,13 @@ async function createRp2040jsTarget(opts) {
   const adapter = createRp2040jsAdapter({ board });
   adapter.attachBoard(board);
   if (image) adapter.loadProgram(parseUf2(image));
-  else if (hex) adapter.loadProgram(parseIntelHexBytes(hex));
+  else if (hex) {
+    const { parseIntelHexBytes } = await import('./intel-hex.js');
+    adapter.loadProgram(parseIntelHexBytes(hex));
+  }
   const target = typeof createRp2040jsDebugTarget === 'function'
     ? createRp2040jsDebugTarget(adapter) : null;
   return { adapter, target };
-}
-
-/**
- * Parse Intel HEX to raw bytes for RP2040 (addresses may be 0x10000000+).
- */
-function parseIntelHexBytes(hex) {
-  const bytes = new Uint8Array(0x100000);
-  let maxAddr = 0;
-  let upper = 0;
-  for (const line of String(hex).split(/\r?\n/)) {
-    if (!line.startsWith(':')) continue;
-    const len = parseInt(line.slice(1, 3), 16);
-    const addr = parseInt(line.slice(3, 7), 16);
-    const type = parseInt(line.slice(7, 9), 16);
-    if (type === 4) { upper = parseInt(line.slice(9, 13), 16) << 16; continue; }
-    if (type !== 0) continue;
-    const absolute = upper + addr;
-    const offset = absolute >= 0x10000000 ? absolute - 0x10000000 : absolute;
-    for (let i = 0; i < len; i++) {
-      bytes[offset + i] = parseInt(line.slice(9 + i * 2, 11 + i * 2), 16);
-      maxAddr = Math.max(maxAddr, offset + i + 1);
-    }
-  }
-  return bytes.slice(0, maxAddr);
 }
 
 // ─── Serial target ───────────────────────────────────────────────────────

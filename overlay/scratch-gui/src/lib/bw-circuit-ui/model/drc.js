@@ -104,36 +104,6 @@ export function runDrc(circuit, board) {
   const partById = (id) => parts.find(p => p.id === id);
   const netOf = (partId, terminal) => terminalToNet.get(`${partId}:${terminal}`);
 
-  // ── Rule 0: Pico GPIO voltage domain ──────────────────────────────
-  // RP2040 GPIO is 3.3 V only. VBUS is deliberately excluded: it is the
-  // board's 5 V USB input, not a GPIO signal. This warning is topology-based
-  // and therefore remains useful before the simulator has a Pico model.
-  for (const pico of parts.filter(p => p.kind === 'pi_pico')) {
-    for (const pin of pico.terminals || []) {
-      if (!/^gp\d+$/i.test(pin)) continue;
-      const netId = netOf(pico.id, pin);
-      if (!netId) continue;
-      const members = partsOnNet(netId);
-      const fiveVoltSource = members.some(member => {
-        const source = partById(member.part);
-        if (!source) return false;
-        if (source.kind === 'vcc' || /^(5v|vin)$/i.test(member.terminal)) return true;
-        return source.kind === 'vsource' && Number(source.params?.volts) > 3.6;
-      });
-      if (fiveVoltSource) {
-        warnings.push({
-          severity: 'danger',
-          rule: 'pico-voltage',
-          partId: pico.id,
-          pinId: pin,
-          explanation: `${pin.toUpperCase()} is an RP2040 GPIO at 3.3 V. ` +
-            'This connection reaches a 5 V-or-higher source and can damage the Pico.',
-          fix: 'Use the Pico 3V3 rail or a proper logic-level shifter; reserve VBUS for board power.',
-        });
-      }
-    }
-  }
-
   // ── Rule 1: Source-current violation ──────────────────────────────
   for (const part of parts) {
     if (part.kind !== 'mcu') continue;

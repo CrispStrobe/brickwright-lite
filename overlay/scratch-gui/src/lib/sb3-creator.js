@@ -4274,20 +4274,9 @@ class SB3Creator {
         const stc = project && project.stc;
         if (!stc || !stc.pins || !stc.pins.length) return [];
         const q = (v) => this.pyStr(v);
-        // 8051 declarations carry a port/bit pair; Arduino and RP2040
-        // declarations carry their board vocabulary in `where` (D13, A0,
-        // GP0). Do not manufacture Pundefined.undefined for the latter: the
-        // marker is the lossless bridge used by Python/JavaScript round trips.
-        const whereOf = (pin) => pin.where || (
-            pin.port !== undefined && pin.bit !== undefined
-                ? `P${pin.port}.${pin.bit}`
-                : null
-        );
         const lines = [`scratch.device(${q(stc.device)}, ${stc.clock})`];
         for (const pin of stc.pins) {
-            const where = whereOf(pin);
-            if (!where) continue;
-            lines.push(`scratch.pin(${q(pin.name)}, ${q(where)}, `
+            lines.push(`scratch.pin(${q(pin.name)}, ${q(`P${pin.port}.${pin.bit}`)}, `
                 + `${q(pin.direction)}, ${pin.activeLow ? 1 : 0})`);
         }
         return lines;
@@ -5213,9 +5202,9 @@ class SB3Creator {
             case 'devices_setrelay': { this._cUses.devices = true; this._cUses.relay = true; return line(`bw_relay_set(${v('RELAY')}, ${f('STATE') === 'on' ? 1 : 0});`); }
             case 'devices_activate': { this._cUses.devices = true; this._cUses.relay = true; return line(`bw_device_activate(${v('DEVICE')});`); }
             case 'devices_deactivate': { this._cUses.devices = true; this._cUses.relay = true; return line(`bw_device_deactivate(${v('DEVICE')});`); }
-            case 'devices_lcdprint': { this._cUses.devices = true; return line(`bw_lcd_print(${v('DISPLAY')}, ${v('TEXT')});`); }
-            case 'devices_lcdcursor': { this._cUses.devices = true; return line(`bw_lcd_cursor(${v('DISPLAY')}, ${v('ROW')}, ${v('COL')});`); }
-            case 'devices_lcdclear': { this._cUses.devices = true; return line(`bw_lcd_clear(${v('DISPLAY')});`); }
+            case 'devices_lcdprint': { this._cUses.devices = true; this._cUses.lcd = true; return line(`bw_lcd_print(${v('DISPLAY')}, ${v('TEXT')});`); }
+            case 'devices_lcdcursor': { this._cUses.devices = true; this._cUses.lcd = true; return line(`bw_lcd_cursor(${v('DISPLAY')}, ${v('ROW')}, ${v('COL')});`); }
+            case 'devices_lcdclear': { this._cUses.devices = true; this._cUses.lcd = true; return line(`bw_lcd_clear(${v('DISPLAY')});`); }
             case 'devices_showdigit': { this._cUses.devices = true; return line(`bw_7seg_show(${v('DISPLAY')}, ${v('DIGIT')});`); }
             case 'devices_setrgb': { this._cUses.devices = true; return line(`bw_rgb_set(${v('LED')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
             case 'devices_setpixel': { this._cUses.devices = true; return line(`bw_matrix_set(${v('MATRIX')}, ${v('X')}, ${v('Y')}, ${v('BRIGHTNESS')});`); }
@@ -6052,6 +6041,22 @@ class SB3Creator {
         // in favour of the ISR-based bw_now/bw_block_ms).
         if (this._cUses.cube) this._cUses.cubeDelay = true;
         if (this._cUses.adc && !chip.adc) this.cWarn(`ANALOG pins need an ADC, and the ${device} has none`);
+        // PCA: servo (16-bit compare/match) and motor (8-bit PWM) need the PCA.
+        // STC89 has no PCA — these blocks silently produce 0 edges (ucsim-stc
+        // 356df26 measured 0 edges on STC89, confirmed).  Same treatment as
+        // WS2812 on 12T: warn and refuse rather than silently do nothing.
+        if (this._cUses.servo && !chip.pca) {
+            this.cWarn(`servo requires PCA (compare/match) — the ${device} has none; the servo will not move`);
+            this.warn(null, `servo requires PCA — the ${device} has no PCA peripheral`);
+        }
+        if (this._cUses.motor && !chip.pca) {
+            this.cWarn(`motor PWM requires PCA — the ${device} has none; speed control will not work`);
+            this.warn(null, `motor PWM requires PCA — the ${device} has no PCA peripheral`);
+        }
+        if (this._cUses.ultrasonic && !chip.timer1) {
+            this.cWarn(`ultrasonic distance requires Timer 1 — the ${device} has none`);
+            this.warn(null, `ultrasonic distance requires Timer 1 — the ${device} has none`);
+        }
 
         // ---- resource collision check ------------------------------------------------
         // Resource allocation table — drivers AND runtime:
@@ -6070,28 +6075,72 @@ class SB3Creator {
         //   P3.6:     ultrasonic trigger
         //   P3.7:     ultrasonic echo
         //
+        //
+        // Collision matrix (part-aware via STC_PARTS.ccp and .xtalAdc):
+        //   UNCONDITIONAL (from block list alone):
+        //     PCA 0+1 full: servo + motor + stc12_setpwm → no module left
+        //     Timer 1:      ultrasonic + tethered mode → skew corruption
+        //   CONFIGURATION-DEPENDENT (from per-part CCP map + pin declarations):
+        //     CCP0(servo) vs ANALOG on same pin — STC12:P1.3, STC15:P1.1
+        //     CCP1(motor) vs ANALOG on same pin — STC12:P1.4, STC15:P1.0
+        //     P1.5 NeoPixel vs ANALOG (ADC5) — same on all families
+        //     STC15 XTAL shares P1.6(ADC6)/P1.7(ADC7) — crystal costs analog
+        //   UNRESOLVABLE (no fix possible on this part family):
+        //     RGB needs 3 PWM channels, only 2 PCA modules exist
+        //
         // Collision warnings use BW_COLLISION markers and are also pushed to
         // this.warnings so they reach the UI / CLI without parsing the C.
         const collision = (msg) => {
             this.cWarn(`BW_COLLISION: ${msg}`);
             this.warn(null, msg);
         };
+
+        // ---- Unconditional collisions (from block list alone) ----
+        // PCA modules: only 2 exist. Servo=0, motor=1. Both consumed = no room.
+        // A third PWM consumer (e.g. RGB) is unresolvable on this part family.
+        if (this._cUses.servo && this._cUses.motor && this._cUses.pwm) {
+            // User's stc12_setpwm also needs a PCA module but both are taken.
+            collision('both PCA modules are in use (servo=0, motor=1) — no module available for PWM pin blocks');
+        }
         // Timer 1: ultrasonic vs tethered-mode wall clock.
         if (this._cUses.ultrasonic && debug) {
             collision('Timer 1 is claimed by both the ultrasonic driver (echo timing) '
                 + 'and the tethered-mode monitor (wall clock) — distance readings will '
                 + 'corrupt the skew counter when the debugger is attached');
         }
-        // P1.3: servo vs user ANALOG declaration.
-        if (this._cUses.servo) {
-            const p13analog = pins.find((p) => p.port === 1 && p.bit === 3 && p.direction === 'analog');
-            if (p13analog) collision('P1.3 is the servo pin (CCP0) and is also declared ANALOG — the PCA output fights the ADC input');
+
+        // ---- Configuration-dependent collisions (from per-part CCP map) ----
+        const ccpMap = chip.ccp || [];
+        // Servo uses CCP module 0; check if its pin is also declared ANALOG.
+        if (this._cUses.servo && ccpMap[0]) {
+            const cp = ccpMap[0];
+            const analog = pins.find((p) => p.port === cp.port && p.bit === cp.bit && p.direction === 'analog');
+            if (analog) collision(`P${cp.port}.${cp.bit} is the servo pin (CCP0) and is also declared ANALOG — the PCA output fights the ADC input`);
+        }
+        // Motor uses CCP module 1; check if its pin is also declared ANALOG.
+        if (this._cUses.motor && ccpMap[1]) {
+            const cp = ccpMap[1];
+            const analog = pins.find((p) => p.port === cp.port && p.bit === cp.bit && p.direction === 'analog');
+            if (analog) collision(`P${cp.port}.${cp.bit} is the motor pin (CCP1) and is also declared ANALOG — the PCA output fights the ADC input`);
+        }
+        // P1.5 = NeoPixel data AND ADC5 (same pin on all families with P1 ADC).
+        if (this._cUses.neopixel) {
+            const p15analog = pins.find((p) => p.port === 1 && p.bit === 5 && p.direction === 'analog');
+            if (p15analog) collision('P1.5 is the NeoPixel data pin and is also declared ANALOG — bitbang output fights the ADC input');
+        }
+        // STC15: XTAL shares P1.6(ADC6)/P1.7(ADC7). If the user declares one
+        // of these as ANALOG and the board has a crystal, it will not work.
+        if (chip.xtalAdc) {
+            for (const ch of chip.xtalAdc) {
+                const analog = pins.find((p) => p.port === 1 && p.bit === ch && p.direction === 'analog');
+                if (analog) collision(`P1.${ch} (ADC${ch}) is shared with the crystal oscillator on ${device} — an external crystal disables this analog input`);
+            }
         }
         // Driver-fixed pin claims.
         const driverPins = [];
-        if (this._cUses.servo) driverPins.push({ port: 1, bit: 3, driver: 'servo (CCP0)' });
+        if (this._cUses.servo && ccpMap[0]) driverPins.push({ port: ccpMap[0].port, bit: ccpMap[0].bit, driver: 'servo (CCP0)' });
         if (this._cUses.motor) {
-            driverPins.push({ port: 1, bit: 4, driver: 'motor PWM (CCP1)' });
+            if (ccpMap[1]) driverPins.push({ port: ccpMap[1].port, bit: ccpMap[1].bit, driver: 'motor PWM (CCP1)' });
             driverPins.push({ port: 3, bit: 4, driver: 'motor IN1' });
             driverPins.push({ port: 3, bit: 5, driver: 'motor IN2' });
         }
@@ -6103,6 +6152,10 @@ class SB3Creator {
             driverPins.push({ port: 3, bit: 7, driver: 'ultrasonic echo' });
         }
         if (this._cUses.neopixel) driverPins.push({ port: 1, bit: 5, driver: 'NeoPixel data' });
+        if (this._cUses.lcd) {
+            driverPins.push({ port: 2, bit: 1, driver: 'I2C SDA' });
+            driverPins.push({ port: 2, bit: 2, driver: 'I2C SCL' });
+        }
         // Driver pins vs each other.
         for (let i = 0; i < driverPins.length; i++) {
             for (let j = i + 1; j < driverPins.length; j++) {
@@ -6273,9 +6326,15 @@ class SB3Creator {
                 ' * conversion started in one write, as STC\'s own examples do. */',
                 'static unsigned int adc_read(unsigned char channel)',
                 '{',
-                '    unsigned char settle;',
+                `    /* Mux settle: datasheet §10.5 requires ~8 oscillator clocks after`,
+                `     * channel selection.  At FOSC ${(clock / 1e6).toFixed(4)} MHz that is`,
+                `     * ${(8e9 / clock).toFixed(0)} ns — well under 1 µs.  The NOP loop over-provides`,
+                '     * on both 1T and 12T cores: 1T gives ~32 clocks, 12T ~384. */',
                 '    ADC_CONTR = (unsigned char)(0xE8 | channel);  /* power|fast|start|chan */',
-                '    for (settle = 0; settle < 8; settle++) ;      /* let the mux settle */',
+                '    __asm nop __endasm; __asm nop __endasm;',
+                '    __asm nop __endasm; __asm nop __endasm;',
+                '    __asm nop __endasm; __asm nop __endasm;',
+                '    __asm nop __endasm; __asm nop __endasm;        /* 8 NOPs ≥ 8 osc clocks */',
                 '    while (!(ADC_CONTR & 0x10)) ;                 /* wait for ADC_FLAG */',
                 '    ADC_CONTR &= ~0x10;                           /* clear it by hand */',
                 '    return ((unsigned int)ADC_RES << 2) | (ADC_RESL & 0x03);',
@@ -6833,12 +6892,106 @@ class SB3Creator {
                     stub('static void bw_neopixel_set(int s, int i, int r, int g, int b)', 'devices_setneopixel'),
                     stub('static void bw_neopixel_clear(int s)', 'devices_clearneopixels'));
             }
-            // Stubs: IR (protocol decode), displays (I2C/shift register), RGB (3-channel PWM).
+            // I2C LCD (HD44780 via PCF8574 backpack): bit-banged I2C, 4-bit mode.
+            // First bidirectional protocol in this project. Open-drain SDA/SCL.
+            // SIMULATOR LIMIT: the board model decodes I2C bytes but does NOT
+            // drive SDA for ACK — the driver proceeds without ACK check, which
+            // is correct for write-only devices (LCD). The data reaches the
+            // model regardless; the ACK is unverifiable in simulation.
+            if (this._cUses.lcd) {
+                out.push(
+                    '/* I2C LCD (HD44780 via PCF8574 backpack): bit-banged I2C. */',
+                    '/* SDA = P2.1, SCL = P2.2 — open-drain with external pull-ups. */',
+                    '/* SIMULATOR LIMIT: board model does not drive SDA for ACK; */',
+                    '/* driver proceeds without ACK check (write-only LCD). */',
+                    '/* Moves to verifiable when bw-board adds ACK driving. */',
+                    '#define I2C_SDA  P2_1',
+                    '#define I2C_SCL  P2_2',
+                    '#define LCD_ADDR 0x27   /* PCF8574 default */',
+                    '',
+                    `/* I2C bus timing (NXP UM10204 table 10, 100 kHz standard mode): */`,
+                    `/*   t_HIGH ≥ 4.0 µs (SCL high — delay only, no data setup) */`,
+                    `/*   t_LOW  ≥ 4.7 µs (SCL low  — delay + data setup overhead) */`,
+                    `/* One delay sized for t_LOW (4.7 µs) satisfies both: HIGH gets */`,
+                    `/* the full delay, LOW gets delay + setup → always longer. */`,
+                    `/* Measured (ucsim-stc f775869, loop=26, 1T 11.0592 MHz): */`,
+                    `/*   HIGH = 5.61 µs (+1.61 margin)  LOW = 7.26 µs (+2.56 margin) */`,
+                    `/* Predicted 6.5 µs (proportional model); measured 5.61 = 14% over. */`,
+                    `/* Two-point calibration (loop 13→3.25, 26→5.61): */`,
+                    `/*   per-iter ≈ 0.181 µs, fixed overhead ≈ 0.89 µs (call + SCL write). */`,
+                    `/* Use t = 0.89 + 0.181 * N for future predictions on this build. */`,
+                    `static void i2c_delay(void) { unsigned char i; for (i = 0; i < ${chip.aux1T ? Math.ceil(clock * 4.7e-6 / 2) : Math.max(2, Math.ceil(clock / 12 * 4.7e-6 / 2))}; i++) ; }`,
+                    'static void i2c_start(void) { I2C_SDA = 1; I2C_SCL = 1; i2c_delay(); I2C_SDA = 0; i2c_delay(); I2C_SCL = 0; }',
+                    'static void i2c_stop(void)  { I2C_SDA = 0; I2C_SCL = 1; i2c_delay(); I2C_SDA = 1; i2c_delay(); }',
+                    'static void i2c_write(unsigned char dat)',
+                    '{',
+                    '    unsigned char i;',
+                    '    for (i = 0; i < 8; i++) {',
+                    '        I2C_SDA = (dat & 0x80) ? 1 : 0;',
+                    '        dat <<= 1;',
+                    '        I2C_SCL = 1; i2c_delay(); I2C_SCL = 0; i2c_delay();',
+                    '    }',
+                    '    /* ACK clock: release SDA, clock SCL. We do not check the ACK */',
+                    '    /* because the board model does not drive it (write-only LCD). */',
+                    '    I2C_SDA = 1; I2C_SCL = 1; i2c_delay(); I2C_SCL = 0; i2c_delay();',
+                    '}',
+                    '',
+                    '/* Send a byte to the PCF8574 at LCD_ADDR. */',
+                    'static void lcd_i2c_send(unsigned char val)',
+                    '{',
+                    '    i2c_start();',
+                    '    i2c_write((unsigned char)(LCD_ADDR << 1));  /* address + W */',
+                    '    i2c_write(val);',
+                    '    i2c_stop();',
+                    '}',
+                    '',
+                    '/* Pulse the EN line on the PCF8574: set EN high, then low. */',
+                    '/* PCF8574 bit layout: D7 D6 D5 D4 BL EN RW RS */',
+                    'static void lcd_nibble(unsigned char nib, unsigned char rs)',
+                    '{',
+                    '    unsigned char val = (unsigned char)((nib & 0xF0) | 0x08 | rs);  /* BL=1 */',
+                    '    lcd_i2c_send((unsigned char)(val | 0x04));   /* EN=1 */',
+                    '    lcd_i2c_send((unsigned char)(val & ~0x04));  /* EN=0 */',
+                    '}',
+                    '',
+                    'static void lcd_cmd(unsigned char cmd)',
+                    '{',
+                    '    lcd_nibble((unsigned char)(cmd & 0xF0), 0);',
+                    '    lcd_nibble((unsigned char)((cmd << 4) & 0xF0), 0);',
+                    '}',
+                    '',
+                    'static void lcd_data(unsigned char dat)',
+                    '{',
+                    '    lcd_nibble((unsigned char)(dat & 0xF0), 1);',
+                    '    lcd_nibble((unsigned char)((dat << 4) & 0xF0), 1);',
+                    '}',
+                    '',
+                    'static void bw_lcd_print(int disp, int text)',
+                    '{',
+                    '    const char *s = (const char *)(unsigned int)text;',
+                    '    (void)disp;',
+                    '    /* text is a Scratch string cast to int — on the 8051 it is a */',
+                    '    /* pointer to a null-terminated string in code space. */',
+                    '    while (*s) lcd_data((unsigned char)*s++);',
+                    '}',
+                    '',
+                    'static void bw_lcd_cursor(int disp, int row, int col)',
+                    '{',
+                    '    (void)disp;',
+                    '    lcd_cmd((unsigned char)(0x80 | ((row & 1) ? 0x40 : 0x00) | (col & 0x0F)));',
+                    '}',
+                    '',
+                    'static void bw_lcd_clear(int disp) { (void)disp; lcd_cmd(0x01); }',
+                    '');
+            } else {
+                out.push(
+                    stub('static void bw_lcd_print(int disp, int text)', 'devices_lcdprint'),
+                    stub('static void bw_lcd_cursor(int disp, int row, int col)', 'devices_lcdcursor'),
+                    stub('static void bw_lcd_clear(int disp)', 'devices_lcdclear'));
+            }
+            // Stubs: IR (protocol decode), 7-segment, matrix, RGB.
             out.push(
-                rstub('static int bw_device_state(int dev)', 'devices_devicestate'),
-                stub('static void bw_lcd_print(int disp, int text)', 'devices_lcdprint'),
-                stub('static void bw_lcd_cursor(int disp, int row, int col)', 'devices_lcdcursor'),
-                stub('static void bw_lcd_clear(int disp)', 'devices_lcdclear'),
+                `static int bw_device_state(int dev) { (void)dev; return ${this._cUses.relay ? '_relay_state' : '0'}; }`,
                 stub('static void bw_7seg_show(int disp, int digit)', 'devices_showdigit'),
                 stub('static void bw_rgb_set(int led, int r, int g, int b)', 'devices_setrgb'),
                 stub('static void bw_matrix_set(int m, int x, int y, int br)', 'devices_setpixel'),
@@ -6960,6 +7113,21 @@ class SB3Creator {
             }
             out.push('    NEO_PIN = 0;',
                 '    _neo_count = NEO_MAX;');
+        }
+        // I2C LCD: P2.1 (SDA) and P2.2 (SCL) in open-drain mode.
+        if (this._cUses.lcd) {
+            if (chip.portModes) {
+                out.push('    P2M1 |=  0x06; P2M0 |=  0x06;  /* P2.1, P2.2 open-drain (I2C) */');
+            }
+            out.push('    I2C_SDA = 1; I2C_SCL = 1;      /* release bus */');
+            // HD44780 4-bit mode init sequence (must be sent as nibbles, not bytes).
+            out.push('    /* HD44780 init: 4-bit mode, 2-line, 5x8 font */',
+                '    lcd_nibble(0x30, 0); lcd_nibble(0x30, 0); lcd_nibble(0x30, 0);',
+                '    lcd_nibble(0x20, 0);             /* switch to 4-bit */',
+                '    lcd_cmd(0x28);                    /* 2 lines, 5x8 */',
+                '    lcd_cmd(0x0C);                    /* display on, cursor off */',
+                '    lcd_cmd(0x06);                    /* increment, no shift */',
+                '    lcd_cmd(0x01);                    /* clear */');
         }
         // Sensor ADC: P1.1 as analog input (channel 1).
         // adc_read() already exists when _cUses.adc is set — the ADC_CONTR
@@ -7266,14 +7434,23 @@ SB3Creator.RUNTIME_EXTENSIONS = {
 // board's pins are spelled in, and which C back end (if any) can emit for it.
 SB3Creator.STC_PARTS = {
     // core: '8051' -- {port, bit} pins, and generateC() emits for these.
-    stc12c5a60s2: { header: 'stc12.h', portModes: true, aux1T: true, adc: true },
-    stc12c5a16s2: { header: 'stc12.h', portModes: true, aux1T: true, adc: true },
-    stc89c52rc: { header: '8052.h', portModes: false, aux1T: false, adc: false },
-    stc89c52: { header: '8052.h', portModes: false, aux1T: false, adc: false },
-    stc15f2k60s2: { header: 'stc12.h', portModes: true, aux1T: true, adc: true },
-    // STC15W408AS: same SFR layout as STC15F2K60S2 for everything the emitter
-    // touches. Lacks Timer 1, so TONE pins (which need Timer 1) should warn.
-    stc15w408as: { header: 'stc12.h', portModes: true, aux1T: true, adc: true },
+    // ccp: array of {port, bit} for each PCA module (0, 1, …), or null if no PCA.
+    //   STC12: CCP0=P1.3, CCP1=P1.4.  STC15: CCP0=P1.1, CCP1=P1.0, CCP2=P3.7.
+    // xtalAdc: array of ADC channels lost to the crystal oscillator, or null.
+    //   STC15: XTAL shares P1.6(ADC6)/P1.7(ADC7) — a crystal costs two analog inputs.
+    stc12c5a60s2: { header: 'stc12.h', portModes: true, aux1T: true, adc: true, pca: true, timer1: true,
+        ccp: [{ port: 1, bit: 3 }, { port: 1, bit: 4 }], xtalAdc: null },
+    stc12c5a16s2: { header: 'stc12.h', portModes: true, aux1T: true, adc: true, pca: true, timer1: true,
+        ccp: [{ port: 1, bit: 3 }, { port: 1, bit: 4 }], xtalAdc: null },
+    stc89c52rc: { header: '8052.h', portModes: false, aux1T: false, adc: false, pca: false, timer1: true,
+        ccp: null, xtalAdc: null },
+    stc89c52: { header: '8052.h', portModes: false, aux1T: false, adc: false, pca: false, timer1: true,
+        ccp: null, xtalAdc: null },
+    stc15f2k60s2: { header: 'stc12.h', portModes: true, aux1T: true, adc: true, pca: true, timer1: true,
+        ccp: [{ port: 1, bit: 1 }, { port: 1, bit: 0 }, { port: 3, bit: 7 }], xtalAdc: [6, 7] },
+    // STC15W408AS: lacks Timer 1. Same CCP mapping as STC15F2K. XTAL shares ADC6/7.
+    stc15w408as: { header: 'stc12.h', portModes: true, aux1T: true, adc: true, pca: true, timer1: false,
+        ccp: [{ port: 1, bit: 1 }, { port: 1, bit: 0 }], xtalAdc: [6, 7] },
     // core: 'arduino' -- pins are NUMBERS (D13, A0), and there is no C back
     // end here yet. Declared so a sketch imported by cToPseudocode.js parses
     // into a project and reaches the blocks; generateC() refuses them by name

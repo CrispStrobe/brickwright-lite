@@ -11,7 +11,6 @@
  */
 
 import { getSidecar } from './parts-registry.js';
-import { boardGeometry } from './board-geometry.js';
 
 /**
  * @typedef {{ x: number, y: number, w: number, h: number }} BBox
@@ -71,12 +70,10 @@ function lShapeCrosses(a, mid, b, obstacles) {
  * @returns {BBox}
  */
 export function getPartBBox(p) {
-  if (p.kind === 'mcu') return { x: p.x - 140, y: p.y - 35, w: 280, h: 70 };
   // Prefer sidecar dimensions (bw-parts owns the geometry)
   const sc = getSidecar(p.kind);
   if (sc && sc.w && sc.h) {
-    const geometry = boardGeometry(sc);
-    return { x: p.x - geometry.w / 2, y: p.y - geometry.h / 2, w: geometry.w, h: geometry.h };
+    return { x: p.x - sc.w / 2, y: p.y - sc.h / 2, w: sc.w, h: sc.h };
   }
   // Fallback to hardcoded sizes for kinds without sidecars
   switch (p.kind) {

@@ -170,25 +170,6 @@ export class InteractionMachine {
       return;
     }
 
-    // A breadboard is itself selectable. Its hole field must not turn every
-    // press into a jumper gesture: select the board first so drag/delete work
-    // anywhere on the visible substrate. Terminal-to-hole wiring still starts
-    // from the component terminal and can land on a hole.
-    const bodyPartId = this.hit.partAt(wx, wy);
-    if (bodyPartId && this.hit.partKindAt?.(wx, wy) === 'breadboard') {
-      const selected = this.getSelection();
-      if (mods.shiftKey) {
-        this.cb.select([bodyPartId], 'toggle');
-        this.state = 'idle';
-        return;
-      }
-      if (!selected.has(bodyPartId)) this.cb.select([bodyPartId], 'replace');
-      this.state = 'pressedPart';
-      this._gesture = { partId: bodyPartId, startX: wx, startY: wy,
-        lastX: wx, lastY: wy, wasSelected: selected.has(bodyPartId) };
-      return;
-    }
-
     // A free hole on a board starts a JUMPER — checked before the part
     // body, because every hole lies inside the breadboard's bounds. Occupied
     // holes hold legs, and legs are terminals, which won above.

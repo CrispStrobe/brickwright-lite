@@ -6,409 +6,221 @@
     {
       "name": "gp0",
       "x": 4,
-      "y": 14,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd0",
-        "sda0",
-        "spi0_rx"
-      ]
+      "y": 14
     },
     {
       "name": "gp1",
       "x": 4,
-      "y": 22,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd0",
-        "scl0",
-        "spi0_csn"
-      ]
+      "y": 22
     },
     {
       "name": "gnd_1",
       "x": 4,
-      "y": 30,
-      "functions": []
+      "y": 30
     },
     {
       "name": "gp2",
       "x": 4,
-      "y": 38,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi0_sck"
-      ]
+      "y": 38
     },
     {
       "name": "gp3",
       "x": 4,
-      "y": 46,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi0_tx"
-      ]
+      "y": 46
     },
     {
       "name": "gp4",
       "x": 4,
-      "y": 54,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd1",
-        "sda0",
-        "spi0_rx"
-      ]
+      "y": 54
     },
     {
       "name": "gp5",
       "x": 4,
-      "y": 62,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd1",
-        "scl0",
-        "spi0_csn"
-      ]
+      "y": 62
     },
     {
       "name": "gnd_2",
       "x": 4,
-      "y": 70,
-      "functions": []
+      "y": 70
     },
     {
       "name": "gp6",
       "x": 4,
-      "y": 78,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi0_sck"
-      ]
+      "y": 78
     },
     {
       "name": "gp7",
       "x": 4,
-      "y": 86,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi0_tx"
-      ]
+      "y": 86
     },
     {
       "name": "gp8",
       "x": 4,
-      "y": 94,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd1",
-        "sda0",
-        "spi1_rx"
-      ]
+      "y": 94
     },
     {
       "name": "gp9",
       "x": 4,
-      "y": 102,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd1",
-        "scl0",
-        "spi1_csn"
-      ]
+      "y": 102
     },
     {
       "name": "gnd_3",
       "x": 4,
-      "y": 110,
-      "functions": []
+      "y": 110
     },
     {
       "name": "gp10",
       "x": 4,
-      "y": 118,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi1_sck"
-      ]
+      "y": 118
     },
     {
       "name": "gp11",
       "x": 4,
-      "y": 126,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi1_tx"
-      ]
+      "y": 126
     },
     {
       "name": "gp12",
       "x": 4,
-      "y": 134,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd0",
-        "sda0",
-        "spi1_rx"
-      ]
+      "y": 134
     },
     {
       "name": "gp13",
       "x": 4,
-      "y": 142,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd0",
-        "scl0",
-        "spi1_csn"
-      ]
+      "y": 142
     },
     {
       "name": "gnd_4",
       "x": 4,
-      "y": 150,
-      "functions": []
+      "y": 150
     },
     {
       "name": "gp14",
       "x": 4,
-      "y": 158,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi1_sck"
-      ]
+      "y": 158
     },
     {
       "name": "gp15",
       "x": 4,
-      "y": 166,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi1_tx"
-      ]
+      "y": 166
     },
     {
       "name": "vbus",
       "x": 56,
-      "y": 14,
-      "functions": []
+      "y": 14
     },
     {
       "name": "vsys",
       "x": 56,
-      "y": 22,
-      "functions": []
+      "y": 22
     },
     {
       "name": "gnd_5",
       "x": 56,
-      "y": 30,
-      "functions": []
+      "y": 30
     },
     {
       "name": "3v3_en",
       "x": 56,
-      "y": 38,
-      "functions": []
+      "y": 38
     },
     {
       "name": "3v3",
       "x": 56,
-      "y": 46,
-      "functions": []
+      "y": 46
     },
     {
       "name": "adc_vref",
       "x": 56,
-      "y": 54,
-      "functions": []
+      "y": 54
     },
     {
       "name": "gp28",
       "x": 56,
-      "y": 62,
-      "functions": [
-        "gpio",
-        "pwm",
-        "adc2",
-        "sda0",
-        "spi1_rx"
-      ]
+      "y": 62
     },
     {
       "name": "agnd",
       "x": 56,
-      "y": 70,
-      "functions": []
+      "y": 70
     },
     {
       "name": "gp27",
       "x": 56,
-      "y": 78,
-      "functions": [
-        "gpio",
-        "pwm",
-        "adc1",
-        "scl1",
-        "spi1_tx"
-      ]
+      "y": 78
     },
     {
       "name": "gp26",
       "x": 56,
-      "y": 86,
-      "functions": [
-        "gpio",
-        "pwm",
-        "adc0",
-        "sda1",
-        "spi1_sck"
-      ]
+      "y": 86
     },
     {
       "name": "run",
       "x": 56,
-      "y": 94,
-      "functions": []
+      "y": 94
     },
     {
       "name": "gp22",
       "x": 56,
-      "y": 102,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi0_sck"
-      ]
+      "y": 102
     },
     {
       "name": "gnd_6",
       "x": 56,
-      "y": 110,
-      "functions": []
+      "y": 110
     },
     {
       "name": "gp21",
       "x": 56,
-      "y": 118,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd1",
-        "scl0",
-        "spi0_csn"
-      ]
+      "y": 118
     },
     {
       "name": "gp20",
       "x": 56,
-      "y": 126,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd1",
-        "sda0",
-        "spi0_rx"
-      ]
+      "y": 126
     },
     {
       "name": "gp19",
       "x": 56,
-      "y": 134,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi0_tx"
-      ]
+      "y": 134
     },
     {
       "name": "gp18",
       "x": 56,
-      "y": 142,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi0_sck"
-      ]
+      "y": 142
     },
     {
       "name": "gnd_7",
       "x": 56,
-      "y": 150,
-      "functions": []
+      "y": 150
     },
     {
       "name": "gp17",
       "x": 56,
-      "y": 158,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd0",
-        "scl0",
-        "spi0_csn"
-      ]
+      "y": 158
     },
     {
       "name": "gp16",
       "x": 56,
-      "y": 166,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd0",
-        "sda0",
-        "spi0_rx"
-      ]
+      "y": 166
     },
     {
       "name": "swclk",
       "x": 20,
-      "y": 198,
-      "functions": []
+      "y": 198
     },
     {
       "name": "swd_gnd",
       "x": 30,
-      "y": 198,
-      "functions": []
+      "y": 198
     },
     {
       "name": "swdio",
       "x": 40,
-      "y": 198,
-      "functions": []
+      "y": 198
     }
   ],
   "variants": null,
-  "_note": "RP2040 dual-core Cortex-M0+. 3.3V logic — NOT 5V tolerant. GP23/24/25/29 are used internally (regulator, VBUS detect, LED, VSYS sense) and not on the header. Pin table in docs/pin-table-rp2040.md.",
+  "_note": "RP2040 dual-core Cortex-M0+. 3.3V logic \u2014 NOT 5V tolerant. GP23/24/25/29 are used internally (regulator, VBUS detect, LED, VSYS sense) and not on the header. Pin table in docs/pin-table-rp2040.md.",
   "footprint": {
     "refTerminal": "gp0",
     "leads": {

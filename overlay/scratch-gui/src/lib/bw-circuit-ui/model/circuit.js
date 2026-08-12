@@ -669,24 +669,12 @@ export class Circuit {
    * then call board.setNetlist(). This is called after every mutation.
    */
   _syncNetlist() {
-    // Keep sidecar spellings in the editor, and normalize board terminals at
-    // the engine boundary where the silicon adapters use canonical names.
-    const boardKinds = new Set(['arduino_uno', 'arduino_nano', 'pi_pico']);
-    const boardPartIds = new Map(this.parts
-      .filter(p => boardKinds.has(p.kind))
-      .map(p => [p.id, p]));
-    const engineTerminal = (partId, terminal) => boardPartIds.has(partId)
-      ? String(terminal).toUpperCase() : terminal;
     // Parts for the engine (strip layout fields, exclude UI-only parts like meters)
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
-      kind: boardKinds.has(p.kind) ? 'mcu' : p.kind,
-      params: boardKinds.has(p.kind)
-        ? { ...p.params, pins: p.terminals.map(t => String(t).toUpperCase()) }
-        : p.params,
-      terminals: boardKinds.has(p.kind)
-        ? p.terminals.map(t => String(t).toUpperCase())
-        : p.terminals,
+      kind: p.kind,
+      params: p.params,
+      terminals: p.terminals,
     }));
 
     // Build nets from wires. A {board, hole} endpoint becomes a pseudo-
@@ -699,12 +687,10 @@ export class Circuit {
       const net = netMap.get(w.netId);
       const f = holeEnd(w.from);
       const t = holeEnd(w.to);
-      const fEngine = { ...f, terminal: engineTerminal(f.part, f.terminal) };
-      const tEngine = { ...t, terminal: engineTerminal(t.part, t.terminal) };
-      const fk = `${fEngine.part}:${fEngine.terminal}`;
-      const tk = `${tEngine.part}:${tEngine.terminal}`;
-      if (!net.has(fk)) net.set(fk, fEngine);
-      if (!net.has(tk)) net.set(tk, tEngine);
+      const fk = `${f.part}:${f.terminal}`;
+      const tk = `${t.part}:${t.terminal}`;
+      if (!net.has(fk)) net.set(fk, f);
+      if (!net.has(tk)) net.set(tk, t);
     }
 
     const wireNets = [];

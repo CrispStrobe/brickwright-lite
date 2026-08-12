@@ -1,32 +1,33 @@
 /**
- * Audited alternate-function metadata for controller pins.
+ * Pin function lookup — reads from the parts registry (vendored sidecars).
  *
- * `null` is intentional: the board sidecar knows the pin, but its alternate
- * functions have not been audited yet. `[]` means the pin was audited and has
- * no alternate functions. Keeping those states distinct prevents the chooser
- * from presenting guesses as hardware facts.
+ * Three-state return per bw-parts spec-update 007:
+ *   string[] — audited, pin has these functions
+ *   []       — audited, no alternates (GPIO only)
+ *   null     — not yet audited (unknown)
+ *
+ * SECOND IMPLEMENTATION: bw-board has its own accessor at
+ * src/pin-functions.js (getPinFunctions), reading the same sidecars
+ * via a sibling path. Both interpret the same schema. If the schema
+ * gains a fifth state or "analog_only" changes meaning, BOTH files
+ * must update — a divergence renders one thing while the engine
+ * believes another. See bw-parts spec-updates/007.
+ *
+ * @module
  */
-import './sidecar-loader.js';
+
 import { getSidecar } from './parts-registry.js';
 
-function terminalFor(boardKind, pinName) {
-  const sidecar = getSidecar(boardKind);
-  if (!sidecar || !Array.isArray(sidecar.terminals)) return undefined;
-  const wanted = String(pinName).toLowerCase();
-  return sidecar.terminals.find(terminal => String(terminal.name).toLowerCase() === wanted);
-}
-
 /**
- * @returns {string[]|null|undefined} audited functions, unaudited, or unknown
+ * Get alternate functions for a pin on a given part.
+ * @param {string} kind — part kind (e.g. 'mcu', 'stc_mcu', 'arduino_nano')
+ * @returns {Array<{name: string, functions: string[]|null}>}
  */
-export function getPinFunctions(boardKind, pinName) {
-  const terminal = terminalFor(boardKind, pinName);
-  if (!terminal) return undefined;
-  if (!Object.prototype.hasOwnProperty.call(terminal, 'functions')) return null;
-  return Array.isArray(terminal.functions) ? terminal.functions : null;
-}
-
-/** Return the complete sidecar terminal record when it exists. */
-export function getPinInfo(boardKind, pinName) {
-  return terminalFor(boardKind, pinName);
+export function getPinFunctionsForPart(kind) {
+  const sc = getSidecar(kind);
+  if (!sc || !sc.terminals) return [];
+  return sc.terminals.map(t => ({
+    name: t.name,
+    functions: t.functions === undefined ? null : t.functions,
+  }));
 }

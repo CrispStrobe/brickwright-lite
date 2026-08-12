@@ -6,253 +6,152 @@
     {
       "name": "d1",
       "x": 4,
-      "y": 16,
-      "functions": [
-        "gpio",
-        "txd0"
-      ]
+      "y": 16
     },
     {
       "name": "d0",
       "x": 4,
-      "y": 24,
-      "functions": [
-        "gpio",
-        "rxd0"
-      ]
+      "y": 24
     },
     {
       "name": "reset",
       "x": 4,
-      "y": 32,
-      "functions": []
+      "y": 32
     },
     {
       "name": "gnd",
       "x": 4,
-      "y": 40,
-      "functions": []
+      "y": 40
     },
     {
       "name": "d2",
       "x": 4,
-      "y": 48,
-      "functions": [
-        "gpio",
-        "int0"
-      ]
+      "y": 48
     },
     {
       "name": "d3",
       "x": 4,
-      "y": 56,
-      "functions": [
-        "gpio",
-        "int1",
-        "pwm_t2b"
-      ]
+      "y": 56
     },
     {
       "name": "d4",
       "x": 4,
-      "y": 64,
-      "functions": [
-        "gpio",
-        "t0"
-      ]
+      "y": 64
     },
     {
       "name": "d5",
       "x": 4,
-      "y": 72,
-      "functions": [
-        "gpio",
-        "pwm_t0b",
-        "t1"
-      ]
+      "y": 72
     },
     {
       "name": "d6",
       "x": 4,
-      "y": 80,
-      "functions": [
-        "gpio",
-        "pwm_t0a",
-        "ain0"
-      ]
+      "y": 80
     },
     {
       "name": "d7",
       "x": 4,
-      "y": 88,
-      "functions": [
-        "gpio",
-        "ain1"
-      ]
+      "y": 88
     },
     {
       "name": "d8",
       "x": 4,
-      "y": 96,
-      "functions": [
-        "gpio",
-        "icp1"
-      ]
+      "y": 96
     },
     {
       "name": "d9",
       "x": 4,
-      "y": 104,
-      "functions": [
-        "gpio",
-        "pwm_t1a"
-      ]
+      "y": 104
     },
     {
       "name": "d10",
       "x": 4,
-      "y": 112,
-      "functions": [
-        "gpio",
-        "pwm_t1b",
-        "ss"
-      ]
+      "y": 112
     },
     {
       "name": "d11",
       "x": 4,
-      "y": 120,
-      "functions": [
-        "gpio",
-        "pwm_t2a",
-        "mosi"
-      ]
+      "y": 120
     },
     {
       "name": "d12",
       "x": 4,
-      "y": 128,
-      "functions": [
-        "gpio",
-        "miso"
-      ]
+      "y": 128
     },
     {
       "name": "vin",
       "x": 56,
-      "y": 16,
-      "functions": []
+      "y": 16
     },
     {
       "name": "gnd2",
       "x": 56,
-      "y": 24,
-      "functions": []
+      "y": 24
     },
     {
       "name": "reset2",
       "x": 56,
-      "y": 32,
-      "functions": []
+      "y": 32
     },
     {
       "name": "5v",
       "x": 56,
-      "y": 40,
-      "functions": []
+      "y": 40
     },
     {
       "name": "a7",
       "x": 56,
-      "y": 48,
-      "functions": [
-        "analog_only"
-      ]
+      "y": 48
     },
     {
       "name": "a6",
       "x": 56,
-      "y": 56,
-      "functions": [
-        "analog_only"
-      ]
+      "y": 56
     },
     {
       "name": "a5",
       "x": 56,
-      "y": 64,
-      "functions": [
-        "gpio",
-        "adc5",
-        "scl"
-      ]
+      "y": 64
     },
     {
       "name": "a4",
       "x": 56,
-      "y": 72,
-      "functions": [
-        "gpio",
-        "adc4",
-        "sda"
-      ]
+      "y": 72
     },
     {
       "name": "a3",
       "x": 56,
-      "y": 80,
-      "functions": [
-        "gpio",
-        "adc3"
-      ]
+      "y": 80
     },
     {
       "name": "a2",
       "x": 56,
-      "y": 88,
-      "functions": [
-        "gpio",
-        "adc2"
-      ]
+      "y": 88
     },
     {
       "name": "a1",
       "x": 56,
-      "y": 96,
-      "functions": [
-        "gpio",
-        "adc1"
-      ]
+      "y": 96
     },
     {
       "name": "a0",
       "x": 56,
-      "y": 104,
-      "functions": [
-        "gpio",
-        "adc0"
-      ]
+      "y": 104
     },
     {
       "name": "aref",
       "x": 56,
-      "y": 112,
-      "functions": []
+      "y": 112
     },
     {
       "name": "3v3",
       "x": 56,
-      "y": 120,
-      "functions": []
+      "y": 120
     },
     {
       "name": "d13",
       "x": 56,
-      "y": 128,
-      "functions": [
-        "gpio",
-        "sclk"
-      ]
+      "y": 128
     }
   ],
   "variants": null,
