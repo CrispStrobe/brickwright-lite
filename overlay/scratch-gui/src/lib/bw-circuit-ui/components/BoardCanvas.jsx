@@ -1928,10 +1928,11 @@ export function BoardCanvas({
         flexWrap: 'wrap', alignContent: 'center', rowGap: '6px',
         overflow: 'visible', width: '100%', boxSizing: 'border-box',
       }}>
-        <button onClick={() => onModeChange?.('build')} title="Build mode"
-          style={{ minHeight: 34, padding: '4px 10px', background: mode === 'build' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'build' ? '#3498db' : '#2c3e50'}`, borderRadius: '4px', color: mode === 'build' ? '#3498db' : '#7f8c8d', fontSize: '12px', cursor: 'pointer' }}>Build</button>
-        <button onClick={() => onModeChange?.('simulate')} title="Simulation mode"
-          style={{ minHeight: 34, padding: '4px 10px', background: mode === 'simulate' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'simulate' ? '#2ecc71' : '#2c3e50'}`, borderRadius: '4px', color: mode === 'simulate' ? '#2ecc71' : '#7f8c8d', fontSize: '12px', cursor: 'pointer' }}>Sim</button>
+        <button onClick={() => onModeChange?.(mode === 'simulate' ? 'build' : 'simulate')}
+          title={mode === 'simulate' ? 'Sim active — switch to Build' : 'Build active — switch to Sim'}
+          aria-label={mode === 'simulate' ? 'Sim active — switch to Build' : 'Build active — switch to Sim'}
+          aria-pressed={mode === 'simulate'}
+          style={{ minHeight: 34, minWidth: 82, padding: '4px 10px', background: mode === 'simulate' ? '#14532d' : '#1e3a5f', border: `1px solid ${mode === 'simulate' ? '#2ecc71' : '#3498db'}`, borderRadius: '4px', color: mode === 'simulate' ? '#86efac' : '#93c5fd', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>{mode === 'simulate' ? '▶ Sim' : '▦ Build'}</button>
         <button onClick={() => onPowerToggle?.()} title={powered ? 'Power on' : 'Power off'}
           style={{ minHeight: 34, padding: '4px 10px', background: powered ? '#176b3a' : '#7f1d1d', border: '1px solid transparent', borderRadius: '4px', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>{powered ? '⏻ On' : '⏻ Off'}</button>
 
@@ -2003,11 +2004,11 @@ export function BoardCanvas({
           style={{ minWidth: 34, minHeight: 30, padding: '2px 7px', background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '11px', cursor: 'pointer' }}>↷</button>
         {onSaveCircuit && (
           <button onClick={onSaveCircuit} title="Save wiring as file"
-            style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #27ae60', borderRadius: '3px', color: '#2ecc71', fontSize: '10px', cursor: 'pointer' }}>💾</button>
+            aria-label="Save wiring as file" style={{ minWidth: 40, minHeight: 30, padding: '2px 7px', background: '#2c3e50', border: '1px solid #27ae60', borderRadius: '3px', color: '#2ecc71', fontSize: '14px', cursor: 'pointer' }}>💾</button>
         )}
         {onLoadCircuit && (
           <button onClick={onLoadCircuit} title="Load wiring from file"
-            style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #2980b9', borderRadius: '3px', color: '#3498db', fontSize: '10px', cursor: 'pointer' }}>📂</button>
+            aria-label="Load wiring from file" style={{ minWidth: 40, minHeight: 30, padding: '2px 7px', background: '#2c3e50', border: '1px solid #2980b9', borderRadius: '3px', color: '#3498db', fontSize: '14px', cursor: 'pointer' }}>📂</button>
         )}
 
         {/* Zoom info */}
@@ -2027,14 +2028,15 @@ export function BoardCanvas({
         data-canvas
         style={{
           position: 'relative',
-          width: '100%',
+          flex: '0 0 auto',
+          width: 900,
           minWidth: CANVAS_W,
-          height: '100%',
+          height: 650,
           minHeight: CANVAS_H,
           background: '#16213e',
           borderRadius: '8px',
           border: '1px solid #2c3e50',
-          overflow: 'hidden',
+          overflow: 'visible',
           touchAction: 'none',
         }}
         onPointerDown={handlePointerDown}

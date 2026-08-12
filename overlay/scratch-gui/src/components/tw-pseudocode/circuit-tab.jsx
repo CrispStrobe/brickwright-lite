@@ -678,11 +678,6 @@ class CircuitTab extends React.Component {
                     puts them in the stage header; they are here because that header is
                     shown for every project including pure Scratch ones — see the panel's
                     own comment. The block glow lands in the Blocks tab regardless. */}
-                {this.state.debugDock === 'top' && stc && stc.pins && stc.pins.length ? (
-                    <div style={{marginBottom: 10, flex: '0 0 auto'}}>
-                        {this.renderDebugPanel()}
-                    </div>
-                ) : null}
                 {stc && stc.pins && stc.pins.length ? null : (
                     // The panel is correctly absent — there is no program to run
                     // control over — but absent and broken look identical, and a
@@ -775,6 +770,7 @@ class CircuitTab extends React.Component {
                         panelNav={this.renderPanelStrip()}
                     embedded={this._portalOn}
                     debuggerOn={this.state.debugDock === 'top'}
+                    debuggerPanel={this.state.debugDock === 'top' ? this.renderDebugPanel() : null}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                     />
@@ -848,14 +844,14 @@ class CircuitTab extends React.Component {
                         aria-label={tabTitles[id]}
                         aria-pressed={panel === id}
                         style={{
-                            width: 30, height: 26, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4,
-                            fontSize: 16, lineHeight: 1, position: 'relative',
+                            minWidth: 54, height: 34, padding: '4px 8px', border: 'none', cursor: 'pointer', borderRadius: 4,
+                            fontSize: 12, lineHeight: 1, position: 'relative', fontWeight: 600,
                             background: panel === id ? '#fff' : 'transparent',
                             boxShadow: panel === id ? '0 1px 2px rgba(15,23,42,.12)' : 'none',
                             color: panel === id ? '#0f172a' : '#64748b'
                         }}
                     >
-                        <span aria-hidden="true">{tabIcons[id]}</span>
+                        <span aria-hidden="true" style={{marginRight: 4}}>{tabIcons[id]}</span>{label}
                         {badge ? (
                             <span style={{position: 'absolute', top: 1, right: 1, minWidth: 13, padding: '0 2px', borderRadius: 8, fontSize: 9,
                                 background: danger ? '#fecaca' : '#fef3c7',

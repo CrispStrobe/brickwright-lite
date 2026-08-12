@@ -61,7 +61,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -742,8 +742,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         height: '100%',
         minHeight: 0, // allow flex shrinking
         alignItems: 'stretch',
+        position: 'relative',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        overflow: 'hidden',
+        overflow: 'auto',
         boxSizing: 'border-box',
       }}
     >
@@ -764,9 +765,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         </div>
       ) : (
         <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(true); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(true)} style={{
-          writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
-          borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
-          fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
+          position: 'absolute', left: 4, top: 52, zIndex: 70,
+          width: 28, height: 28, padding: 0, display: 'grid', placeItems: 'center',
+          background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
+          boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
+          color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
         }} aria-label="Expand parts panel" aria-expanded="false" title="Expand parts panel">›</button>
       )}
 
@@ -807,13 +810,15 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
-        <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div data-circuit-view-switcher style={{display: 'flex', gap: 4, flex: '0 0 auto', marginBottom: 6}}>
-          <button onClick={() => setShowSchematic(false)} aria-label="Realistic view" aria-pressed={!showSchematic} title="Realistic view"
-            style={{width: 38, height: 30, cursor: 'pointer', background: !showSchematic ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>◉</button>
-          <button onClick={() => setShowSchematic(true)} aria-label="Schematic view" aria-pressed={showSchematic} title="Schematic view"
-            style={{width: 38, height: 30, cursor: 'pointer', background: showSchematic ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
-        </div>
+        <div data-designer-main style={{ flex: '1 1 0', width: 0, minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {showSchematic && (
+          <div data-schematic-escape data-circuit-view-switcher style={{display: 'inline-flex', gap: 4, alignItems: 'center', marginBottom: 8}}>
+            <button onClick={() => setShowSchematic(false)} aria-label="Realistic view" aria-pressed={false} title="Realistic view"
+              style={{width: 34, height: 30, cursor: 'pointer', background: '#16213e', color: '#fff', border: '1px solid #3498db', borderRadius: 4}}>◉</button>
+            <button onClick={() => setShowSchematic(true)} aria-label="Schematic view" aria-pressed="true" title="Schematic view"
+              style={{width: 34, height: 30, cursor: 'pointer', background: '#3498db', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
+          </div>
+        )}
         {!showSchematic ? (<>
         <BoardCanvas
           parts={parts}
@@ -969,7 +974,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           panelNav={panelNav}
           rightOpen={rightOpen}
           onToggleRightPanel={() => setRightOpen(v => !v)}
-          viewNav={null}
+          viewNav={(
+            <div data-circuit-view-switcher style={{display: 'inline-flex', gap: 4, alignItems: 'center'}}>
+              <button onClick={() => setShowSchematic(false)} aria-label="Realistic view" aria-pressed={!showSchematic} title="Realistic view"
+                style={{width: 34, height: 30, cursor: 'pointer', background: !showSchematic ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>◉</button>
+              <button onClick={() => setShowSchematic(true)} aria-label="Schematic view" aria-pressed={showSchematic} title="Schematic view"
+                style={{width: 34, height: 30, cursor: 'pointer', background: showSchematic ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
+            </div>
+          )}
         />
         </>) : (
           <div style={{ flex: 1, minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain',
@@ -1009,6 +1021,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             capabilities={debugState.capabilities || null}
           />
         )}
+        {debuggerPanel && (
+          <section data-debugger-panel style={{width: '100%', boxSizing: 'border-box', padding: 8,
+            borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
+            <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>Debugger</div>
+            {debuggerPanel}
+          </section>
+        )}
         {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && (
           <div data-no-code-indicator style={{padding: '10px 9px', borderRadius: 6,
             background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
@@ -1043,9 +1062,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       </div>
       ) : (
         <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(true); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(true)} style={{
-          writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
-          borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
-          fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
+          position: 'absolute', right: 4, top: 52, zIndex: 70,
+          width: 28, height: 28, padding: 0, display: 'grid', placeItems: 'center',
+          background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
+          boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
+          color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
         }} aria-label="Expand instruments panel" aria-expanded="false" title="Expand instruments panel">‹</button>
       )}
     </div>

@@ -68,11 +68,15 @@ try {
     });
     await page.waitForTimeout(150);
     const hiddenGeometry = await page.evaluate(() => ({
-        editor: document.querySelector('[data-editor-pane]')?.getBoundingClientRect().width,
-        right: document.querySelector('[data-right-pane]')?.getBoundingClientRect().width,
+        editor: document.querySelector('[data-editor-pane]')?.getBoundingClientRect(),
+        columns: document.querySelector('[data-workspace-columns]')?.getBoundingClientRect(),
+        right: document.querySelector('[data-right-pane]')?.getBoundingClientRect(),
         rightDisplay: document.querySelector('[data-right-pane]') ? getComputedStyle(document.querySelector('[data-right-pane]')).display : ''
     }));
-    check('hidden right pane gives its width to the editor', hiddenGeometry.editor > initialEditorWidth && hiddenGeometry.right === 0 && hiddenGeometry.rightDisplay === 'none', JSON.stringify(hiddenGeometry));
+    check('hidden right pane gives its width to the editor', hiddenGeometry.editor && hiddenGeometry.columns &&
+        hiddenGeometry.editor.width >= hiddenGeometry.columns.width - 2 &&
+        hiddenGeometry.editor.right >= hiddenGeometry.columns.right - 2 &&
+        hiddenGeometry.right.width === 0 && hiddenGeometry.rightDisplay === 'none', JSON.stringify(hiddenGeometry));
     await paneToggle.click();
     await page.waitForTimeout(150);
     check('restore button reopens the right pane', await page.evaluate(() => localStorage.getItem('bw-right-pane-hidden')) === '0');
@@ -96,6 +100,7 @@ try {
     check('debugger view keeps the circuit portal mounted without MCU code', await page.locator('[data-bw-circuit-stage-host]').count() === 1);
     check('debugger view is not blank', await page.locator('[data-no-code-indicator]').count() === 1 || await page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer').count() === 1);
     check('debugger view explains that code is missing in its debugger pane', await page.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1);
+    check('debugger module is in the Circuit Designer instrument pane', await page.locator('[data-instruments-column] [data-debugger-panel]').count() === 1);
     await stageButton.click({force: true});
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
     await stageButton.click({force: true});
@@ -128,8 +133,11 @@ try {
 
     const designer = page.locator('.bw-circuit-designer').first();
     check('Circuit Designer rendered', await designer.count() >= 1);
-    const toolbar = designer.locator('button[title="Build mode"]').locator('..');
+    const modeToggle = designer.getByRole('button', {name: /active — switch to (Build|Sim)/}).first();
+    const toolbar = modeToggle.locator('..');
     check('shared toolbar has view buttons', await designer.getByRole('button', {name: 'Realistic view'}).count() === 1 && await designer.getByRole('button', {name: 'Schematic view'}).count() === 1);
+    check('Build/Sim is one visual mode toggle', await modeToggle.count() === 1 && await designer.getByRole('button', {name: 'Build', exact: true}).count() === 0 && await designer.getByRole('button', {name: 'Sim', exact: true}).count() === 0);
+    check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().locator('xpath=../..').locator('button[aria-label*="active — switch to"]').count() === 1);
     check('shared toolbar has panel navigation', await designer.getByRole('button', {name: 'Designer'}).count() === 1 && await designer.getByRole('button', {name: 'Warnings'}).count() === 1 && await designer.getByRole('button', {name: 'Parts list'}).count() === 1 && await designer.getByRole('button', {name: 'Examples'}).count() === 1);
     const toolbarBox = await toolbar.boundingBox();
     check('toolbar is touch-sized', !!toolbarBox && toolbarBox.height >= 40, toolbarBox ? `${toolbarBox.width}x${toolbarBox.height}` : 'missing');
@@ -138,9 +146,11 @@ try {
     // compact circuit preview, where editor chrome starts collapsed.
     const fullPartsButton = designer.getByRole('button', {name: 'Collapse parts panel'});
     check('full designer shows its parts panel', await fullPartsButton.count() === 1);
-    await designer.getByRole('button', {name: 'Schematic view'}).click({force: true});
-    check('schematic view keeps an escape route', await designer.locator('[data-circuit-view-switcher]').count() === 1 && await designer.getByRole('button', {name: 'Realistic view'}).count() === 1);
-    await designer.getByRole('button', {name: 'Realistic view'}).click({force: true});
+    await designer.locator('[data-circuit-view-switcher] button[title="Schematic view"]').first().evaluate(el => el.click());
+    await page.waitForTimeout(150);
+    const realisticEscape = page.locator('[data-schematic-escape] button[title="Realistic view"]');
+    check('schematic view keeps an escape route', await realisticEscape.count() >= 1);
+    if (await realisticEscape.count()) await realisticEscape.last().evaluate(el => el.click());
     await circuitButton.click();
     await page.waitForTimeout(250);
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
@@ -148,6 +158,9 @@ try {
     const embedded = page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer');
     const partsButton = embedded.getByRole('button', {name: 'Expand parts panel'});
     check('embedded preview starts with parts collapsed', await partsButton.count() === 1);
+    const collapsedPartsBox = await partsButton.boundingBox();
+    const collapsedPartsStyle = await partsButton.evaluate(el => ({position: getComputedStyle(el).position, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height}));
+    check('collapsed parts handle is a compact overlay', collapsedPartsStyle.position === 'absolute' && collapsedPartsStyle.width <= 40 && collapsedPartsStyle.height <= 40, JSON.stringify(collapsedPartsStyle));
     await partsButton.evaluate(el => el.click());
     await page.waitForTimeout(150);
     const palettes = embedded.locator('input[placeholder="search..."]');
@@ -166,6 +179,16 @@ try {
     await paletteBox.evaluate(el => { el.scrollTop = el.scrollHeight; el.dispatchEvent(new Event('scroll', {bubbles: true})); });
     const afterScroll = await paletteBox.evaluate(el => el.scrollTop);
     check('parts palette reaches its bottom', afterScroll > beforeScroll && afterScroll + paletteMetrics.clientHeight >= paletteMetrics.scrollHeight - 1, `${beforeScroll} -> ${afterScroll}`);
+    check('example info is compact and on demand', await embedded.getByText('Why active-low?', {exact: true}).count() === 0 && await embedded.getByRole('button', {name: /Example info|Info for/}).count() === 1);
+    const canvasMetrics = await embedded.locator('[data-canvas]').evaluate(el => {
+        const r = el.getBoundingClientRect();
+        const p = el.closest('[data-designer-main]');
+        const pr = p.getBoundingClientRect();
+        return {width: r.width, height: r.height, parentWidth: pr.width, parentHeight: pr.height,
+            scrollWidth: p.scrollWidth, clientWidth: p.clientWidth, scrollHeight: p.scrollHeight, clientHeight: p.clientHeight};
+    });
+    check('circuit canvas fits or exceeds its available width without clipping', canvasMetrics.width >= canvasMetrics.parentWidth - 2 && canvasMetrics.scrollWidth >= canvasMetrics.clientWidth, JSON.stringify(canvasMetrics));
+    check('circuit designer viewport scrolls in both directions when needed', canvasMetrics.scrollWidth > canvasMetrics.clientWidth && canvasMetrics.scrollHeight > canvasMetrics.clientHeight, JSON.stringify(canvasMetrics));
     check('MCU seating indicator is rendered when a controller is seated', await embedded.getByText('SEATED • PIN RASTER', {exact: true}).count() >= 0);
 
     const actions = embedded.locator('[data-element-actions]');
@@ -177,6 +200,8 @@ try {
     const instruments = embedded.locator('[data-instruments-column]');
     const expandInstruments = page.getByRole('button', {name: 'Expand instruments panel'});
     if (await expandInstruments.count()) {
+        const collapsedInstrumentsStyle = await expandInstruments.last().evaluate(el => ({position: getComputedStyle(el).position, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height}));
+        check('collapsed instruments handle is a compact overlay', collapsedInstrumentsStyle.position === 'absolute' && collapsedInstrumentsStyle.width <= 40 && collapsedInstrumentsStyle.height <= 40, JSON.stringify(collapsedInstrumentsStyle));
         await expandInstruments.last().evaluate(el => el.click());
         await page.waitForTimeout(100);
     }
@@ -196,7 +221,7 @@ try {
     if (await scopePanel.count()) check('oscilloscope fits inside the instrument column', await scopePanel.evaluate(el => el.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
     check('multimeter is available from the instrument panel', await meterTitle.count() >= 1, `titles=${await meterTitle.count()}`);
 
-    await embedded.getByRole('button', {name: 'Sim'}).evaluate(el => el.click());
+    await embedded.getByRole('button', {name: /active — switch to Sim/}).evaluate(el => el.click());
     await page.waitForTimeout(100);
     check('run/step controls are in the instrument column', await embedded.locator('[data-simulation-controls]').count() === 1, `sim=${await embedded.locator('[data-simulation-controls]').count()}`);
     const pauseButton = page.locator('button[title="Pause simulation"]');

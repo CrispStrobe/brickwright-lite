@@ -279,12 +279,17 @@ const GUIComponent = props => {
                 />
                 <ChromeToggle className={chromeStyles.chromeToggle} />
                 <Box className={styles.bodyWrapper}>
-                    <Box className={styles.flexWrapper}>
+                    <Box
+                        className={styles.flexWrapper}
+                        data-workspace-columns="true"
+                        style={stagePaneVisible ? undefined : {display: 'block', width: '100%'}}
+                    >
                         <Box
                             className={styles.editorWrapper}
                             data-editor-pane="true"
                             style={stagePaneVisible ? undefined : {
-                                flex: '1 1 100%', flexBasis: 0, maxWidth: '100%', minWidth: 0
+                                display: 'flex', width: '100%', maxWidth: 'none', height: '100%',
+                                flex: 'none', flexBasis: 'auto', minWidth: 0
                             }}
                         >
                             <Tabs
