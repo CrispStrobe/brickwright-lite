@@ -13,6 +13,7 @@ const CATEGORY_LABELS = {
   analog: 'Analog',
   digital: 'Digital',
   motors: 'Motors & Actuators',
+  'pure-circuit': 'Pure circuits',
 };
 
 const CATEGORY_COLORS = {
@@ -20,6 +21,7 @@ const CATEGORY_COLORS = {
   analog: '#f39c12',
   digital: '#9b59b6',
   motors: '#e74c3c',
+  'pure-circuit': '#16a085',
 };
 
 const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
@@ -71,10 +73,12 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
       borderRadius: '8px',
       padding: '8px',
       fontFamily: 'monospace',
-      overflow: 'visible',
+      height: '100%',
+      overflow: 'hidden',
       minHeight: 0,
-      maxHeight: '100%',
       position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
       <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
         aria-label={open ? 'Collapse examples selector' : 'Expand examples selector'}
@@ -87,7 +91,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
         Examples
       </div>
 
-      {!open ? null : <div data-examples-selector-content style={{minHeight: 0, maxHeight: 'calc(100% - 30px)', overflowY: 'auto'}}>
+      {!open ? null : <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto'}}>
 
       {/* Search */}
       <input

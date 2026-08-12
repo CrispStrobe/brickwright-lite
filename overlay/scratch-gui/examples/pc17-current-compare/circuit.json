@@ -1,0 +1,181 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vsource_1",
+      "kind": "vsource",
+      "params": {
+        "volts": 5
+      },
+      "terminals": [
+        "pos",
+        "neg"
+      ],
+      "x": 100,
+      "y": 150,
+      "rotation": 0
+    },
+    {
+      "id": "resistor_2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 250,
+      "y": 50,
+      "rotation": 0
+    },
+    {
+      "id": "led_3",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "terminals": [
+        "anode",
+        "cathode"
+      ],
+      "x": 250,
+      "y": 110,
+      "rotation": 0
+    },
+    {
+      "id": "resistor_10",
+      "kind": "resistor",
+      "params": {
+        "ohms": 470
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 250,
+      "y": 130,
+      "rotation": 0
+    },
+    {
+      "id": "led_11",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "terminals": [
+        "anode",
+        "cathode"
+      ],
+      "x": 250,
+      "y": 190,
+      "rotation": 0
+    },
+    {
+      "id": "resistor_16",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 250,
+      "y": 210,
+      "rotation": 0
+    },
+    {
+      "id": "led_17",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "blue"
+      },
+      "terminals": [
+        "anode",
+        "cathode"
+      ],
+      "x": 250,
+      "y": 270,
+      "rotation": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "wire_5",
+      "netId": "net_4",
+      "from": "vsource_1",
+      "to": "resistor_2",
+      "fromTerminal": "pos",
+      "toTerminal": "a"
+    },
+    {
+      "id": "wire_7",
+      "netId": "net_6",
+      "from": "resistor_2",
+      "to": "led_3",
+      "fromTerminal": "b",
+      "toTerminal": "anode"
+    },
+    {
+      "id": "wire_9",
+      "netId": "net_8",
+      "from": "led_3",
+      "to": "vsource_1",
+      "fromTerminal": "cathode",
+      "toTerminal": "neg"
+    },
+    {
+      "id": "wire_12",
+      "netId": "net_4",
+      "from": "vsource_1",
+      "to": "resistor_10",
+      "fromTerminal": "pos",
+      "toTerminal": "a"
+    },
+    {
+      "id": "wire_14",
+      "netId": "net_13",
+      "from": "resistor_10",
+      "to": "led_11",
+      "fromTerminal": "b",
+      "toTerminal": "anode"
+    },
+    {
+      "id": "wire_15",
+      "netId": "net_8",
+      "from": "led_11",
+      "to": "vsource_1",
+      "fromTerminal": "cathode",
+      "toTerminal": "neg"
+    },
+    {
+      "id": "wire_18",
+      "netId": "net_4",
+      "from": "vsource_1",
+      "to": "resistor_16",
+      "fromTerminal": "pos",
+      "toTerminal": "a"
+    },
+    {
+      "id": "wire_20",
+      "netId": "net_19",
+      "from": "resistor_16",
+      "to": "led_17",
+      "fromTerminal": "b",
+      "toTerminal": "anode"
+    },
+    {
+      "id": "wire_21",
+      "netId": "net_8",
+      "from": "led_17",
+      "to": "vsource_1",
+      "fromTerminal": "cathode",
+      "toTerminal": "neg"
+    }
+  ],
+  "holeWires": []
+}
