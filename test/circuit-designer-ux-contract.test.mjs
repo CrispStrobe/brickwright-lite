@@ -16,6 +16,12 @@ test('Circuit Designer toolbar has one mode toggle, one view toggle, and a reada
     assert.doesNotMatch(source, /Show right panel|Hide right panel/);
 });
 
+test('light circuit theme does not override toggle paint', () => {
+    const theme = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/circuit-theme.css');
+    assert.doesNotMatch(theme, /data-bw-circuit-theme="light"\]\s*button\)[\s\S]*background:\s*#ffffff\s*!important/);
+    assert.match(theme, /Buttons own their active\/inactive colors inline/);
+});
+
 test('Circuit Designer side selectors expose independent collapse affordances', () => {
     const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
     const examples = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/ExamplesBrowser.jsx');
