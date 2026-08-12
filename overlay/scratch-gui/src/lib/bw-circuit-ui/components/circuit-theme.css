@@ -24,6 +24,21 @@
     font-family: inherit !important;
 }
 
+/* The toolbar is a single control row. Keep every button and group on the
+ * same border-box baseline; otherwise upstream button defaults make the
+ * panel-nav cells visibly drift from Build/Power/Undo on Safari. */
+:global(.bw-circuit-designer [data-circuit-toolbar] button) {
+    box-sizing: border-box !important;
+    height: 34px !important;
+    min-height: 34px !important;
+}
+:global(.bw-circuit-designer [data-circuit-toolbar] > [data-circuit-control-group]) {
+    box-sizing: border-box !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    align-self: center !important;
+}
+
 :global(.bw-circuit-designer[data-bw-circuit-theme="light"] button[data-circuit-toggle-state="selected"]) {
     background: #2563eb !important;
     color: #ffffff !important;

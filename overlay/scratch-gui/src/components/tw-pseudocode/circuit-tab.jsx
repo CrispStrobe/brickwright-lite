@@ -856,7 +856,7 @@ class CircuitTab extends React.Component {
         const tabIcons = {designer: '▦', warnings: '⚠', bom: '☷', examples: '▤'};
         const tabTitles = {designer: 'Designer', warnings: 'Warnings', bom: 'Parts list', examples: 'Examples'};
         return (
-            <div data-panel-navigation style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flex: '0 0 auto',
+            <div data-panel-navigation style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 0, flex: '0 0 auto',
                 fontSize: 11.5, lineHeight: 1.6}}>
             <div style={{display: 'inline-flex', gap: 1, padding: 1,
                 borderRadius: 5, background: '#f1f5f9'}}>
