@@ -4,6 +4,12 @@ import { createHitTest, partBounds } from '../overlay/scratch-gui/src/lib/bw-cir
 import { computeLeadMap, FOOTPRINTS } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/footprints.js';
 import { seatGeometry } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/interaction/seat-geometry.js';
 import { BreadboardModel } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/breadboard.js';
+import { DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/dip-geometry.js';
+
+test('STC12 renderer uses the breadboard raster', () => {
+  assert.equal(DIP_PIN_PITCH, 14);
+  assert.equal(DIP_ROW_OFFSET * 2, 38);
+});
 
 test('breadboard bounds are selectable in model space', () => {
   const board = { id: 'bb1', kind: 'breadboard', params: {}, x: 470, y: 300 };
@@ -33,9 +39,9 @@ test('Arduino footprints are hittable even without rendered DOM', () => {
 
 test('STC12 footprint uses the breadboard-pitch DIP geometry', () => {
   const b = partBounds({ id: 'chip', kind: 'mcu', x: 300, y: 240 });
-  assert.deepEqual(b, { minX: 160, minY: 205, maxX: 440, maxY: 275 });
+  assert.deepEqual(b, { minX: 150, minY: 205, maxX: 450, maxY: 275 });
   const rotated = partBounds({ id: 'chip', kind: 'mcu', x: 300, y: 240, seat: { rot: 1 } });
-  assert.deepEqual(rotated, { minX: 265, minY: 100, maxX: 335, maxY: 380 });
+  assert.deepEqual(rotated, { minX: 265, minY: 90, maxX: 335, maxY: 390 });
 });
 
 test('STC12 DIP leads land on adjacent breadboard rows and the same strips as cables', () => {

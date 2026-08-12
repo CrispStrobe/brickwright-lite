@@ -35,26 +35,12 @@ import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 import { getPinFunctionsForPart } from '../model/pin-functions.js';
 import { isBoardEndpoint } from '../model/wire-endpoints.js';
 import { boardGeometry } from '../model/board-geometry.js';
+import { dipTerminalPositions, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
 const CANVAS_W = 700;
 const CANVAS_H = 500;
-const DIP_PIN_PITCH = 20;
-const DIP_ROW_OFFSET = 60;
-
-function dipTerminalPositions(sidecar) {
-  const positions = {};
-  if (!sidecar?.terminals) return positions;
-  const left = sidecar.terminals.filter(t => t.x <= sidecar.w / 2).sort((a, b) => a.y - b.y);
-  const right = sidecar.terminals.filter(t => t.x > sidecar.w / 2).sort((a, b) => a.y - b.y);
-  const put = (items, y) => items.forEach((t, i) => {
-    positions[t.name] = {dx: (i - (items.length - 1) / 2) * DIP_PIN_PITCH, dy: y};
-  });
-  put(left, -DIP_ROW_OFFSET);
-  put(right, DIP_ROW_OFFSET);
-  return positions;
-}
 
 /**
  * Rotate a {dx, dy} offset by deg degrees (0, 90, 180, 270).
@@ -219,7 +205,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           const positions = dipTerminalPositions(sc);
           const px = (t) => positions[t.name]?.dx || 0;
           const py = (t) => positions[t.name]?.dy || 0;
-          const bodyW = 300, bodyH = 64;
+          const bodyW = 286, bodyH = 52;
           return (
             <g key={id} transform={xform} pointerEvents="none">
               <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}

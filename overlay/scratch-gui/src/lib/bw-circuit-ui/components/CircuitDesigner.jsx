@@ -754,10 +754,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 160px', width: 160, minWidth: 0, minHeight: 0, maxHeight: '100%', overflowY: 'scroll', overscrollBehavior: 'contain' }}>
+        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 160px', width: 160, minWidth: 0, minHeight: 0, maxHeight: '100%', overflowY: 'auto', overscrollBehavior: 'contain' }}>
           <button onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
-            alignSelf: 'flex-end', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer',
-            fontSize: '20px', lineHeight: 1, width: 28, height: 24, padding: 0,
+            position: 'absolute', zIndex: 3, top: 4, right: 4, background: '#ffffff', border: '1px solid #cbd5e1',
+            boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
+            fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
           }}>‹</button>
           <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
           <InferPanel onLoadCircuit={handleLoadCircuit} />
@@ -1007,10 +1008,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
-      <div data-instruments-column style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 280px', width: 280, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
+      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 280px', width: 280, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
         <button onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
-          alignSelf: 'flex-start', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer',
-          fontSize: '20px', lineHeight: 1, width: 28, height: 24, padding: 0,
+          position: 'absolute', zIndex: 3, top: 4, left: 4, background: '#ffffff', border: '1px solid #cbd5e1',
+          boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
+          fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
         {debugState && (
           <DebugStatus
@@ -1019,17 +1021,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           />
         )}
         {mode === 'simulate' && (
-          <section style={{width: 280, padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
-            <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>Simulation</div>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5}}>
+          <section data-simulation-controls style={{width: '100%', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
+            <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>Simulation controls</div>
+            <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: 5}}>
               <button onClick={() => setSimPaused(v => !v)} title={simPaused ? 'Resume simulation' : 'Pause simulation'}
-                style={{padding: '5px 4px', cursor: 'pointer'}}>{simPaused ? '▶ Resume' : '⏸ Pause'}</button>
+                style={{minHeight: 32, padding: '5px 8px', cursor: 'pointer'}}>{simPaused ? '▶ Resume simulation' : '⏸ Pause simulation'}</button>
               <button onClick={handleSimStep} disabled={!simPaused} title="Advance one 50 ms tick"
-                style={{padding: '5px 4px', cursor: simPaused ? 'pointer' : 'default'}}>⏭ Step</button>
+                style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>⏭ Step one tick</button>
             </div>
-            <label style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, fontSize: 11, color: '#475569'}}>
-              Speed
-              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Simulation speed">
+            <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
+              <span>Speed</span>
+              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Simulation speed" style={{minHeight: 30}}>
                 <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
               </select>
             </label>

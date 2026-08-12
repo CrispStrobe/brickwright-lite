@@ -349,8 +349,8 @@ const GUIComponent = props => {
                                     </Tab>
                                     <button
                                         type="button"
-                                        title={stagePaneVisible ? 'Hide stage and circuit pane' : 'Show stage and circuit pane'}
-                                        aria-label={stagePaneVisible ? 'Hide stage and circuit pane' : 'Show stage and circuit pane'}
+                                        title={stagePaneVisible ? 'Hide Right Pane' : 'Show Right Pane'}
+                                        aria-label={stagePaneVisible ? 'Hide Right Pane' : 'Show Right Pane'}
                                         onClick={() => {
                                             const value = stagePaneVisible ? '1' : '0';
                                             try { localStorage.setItem('bw-hide-stage', value); } catch { /* private mode */ }
@@ -364,7 +364,7 @@ const GUIComponent = props => {
                                             background: 'transparent', color: '#575e75', cursor: 'pointer',
                                             fontSize: 18, lineHeight: 1
                                         }}
-                                    >▣</button>
+                                    >{stagePaneVisible ? '◀' : '▶'}</button>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent === 'code' ? (

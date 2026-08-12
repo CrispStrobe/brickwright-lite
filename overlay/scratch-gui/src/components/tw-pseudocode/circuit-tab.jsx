@@ -66,7 +66,7 @@ class CircuitTab extends React.Component {
         if (!document.getElementById('bw-layout-style')) {
             const st = document.createElement('style');
             st.id = 'bw-layout-style';
-            st.textContent = 'html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-canvas-wrapper"]{display:none !important} html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-wrapper"]{position:relative;z-index:3}';
+            st.textContent = 'html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-canvas-wrapper"],html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="target-wrapper"]{display:none !important} html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-wrapper"]{position:relative;z-index:3;background:transparent !important}';
             document.head.appendChild(st);
         }
         this._syncStageAttr();
@@ -187,6 +187,9 @@ class CircuitTab extends React.Component {
         if (stage) {
             stage.style.position = 'relative';
             stage.style.zIndex = on ? '3' : '';
+            stage.style.background = on ? 'transparent' : '';
+            stage.style.flex = on ? '1 1 100%' : '';
+            stage.style.width = on ? '100%' : '';
             // Keep the wrapper hit-testable: the stage canvas/target are
             // hidden individually below, while the header must still receive
             // the Scratch/circuit/debugger mode clicks.
