@@ -68,6 +68,7 @@ const messages = defineMessages({
 const setCircuitView = ({fullWidth, debuggerOn}) => {
     const values = {
         'bw-hide-stage': fullWidth ? '1' : '0',
+        'bw-right-pane-hidden': '0',
         'bw-debug-dock': debuggerOn ? 'top' : 'off',
         'bw-stage-circuit': fullWidth ? '1' : '0',
         'bw-circuit-theme': 'light'

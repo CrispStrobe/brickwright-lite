@@ -206,10 +206,13 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
       border: `1px solid ${palette.border}`,
       borderRadius: '8px',
       padding: '8px',
-      width: '160px',
+      width: '100%',
+      minWidth: 0,
+      minHeight: 0,
       fontFamily: 'inherit',
       flexShrink: 0,
       overflowY: 'auto',
+      flex: '1 1 auto',
     }}>
       <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
         Parts

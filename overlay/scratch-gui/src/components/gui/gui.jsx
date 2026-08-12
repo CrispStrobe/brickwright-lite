@@ -63,12 +63,12 @@ let isRendererSupported = null;
 
 const GUIComponent = props => {
     const [stagePaneVisible, setStagePaneVisible] = React.useState(() => {
-        try { return localStorage.getItem('bw-hide-stage') !== '1'; } catch { return true; }
+        try { return localStorage.getItem('bw-right-pane-hidden') !== '1'; } catch { return true; }
     });
     React.useEffect(() => {
         const sync = event => {
             const detail = event.detail || {};
-            if (detail.key !== 'bw-hide-stage') return;
+            if (detail.key !== 'bw-right-pane-hidden') return;
             setStagePaneVisible(detail.value !== '1');
         };
         window.addEventListener('bw-settings-change', sync);
@@ -349,20 +349,23 @@ const GUIComponent = props => {
                                     </Tab>
                                     <button
                                         type="button"
+                                        className={tabClassNames.tab}
+                                        data-right-pane-toggle="true"
                                         title={stagePaneVisible ? 'Hide Right Pane' : 'Show Right Pane'}
                                         aria-label={stagePaneVisible ? 'Hide Right Pane' : 'Show Right Pane'}
+                                        aria-pressed={!stagePaneVisible}
                                         onClick={() => {
                                             const value = stagePaneVisible ? '1' : '0';
-                                            try { localStorage.setItem('bw-hide-stage', value); } catch { /* private mode */ }
+                                            try { localStorage.setItem('bw-right-pane-hidden', value); } catch { /* private mode */ }
                                             window.dispatchEvent(new CustomEvent('bw-settings-change', {
-                                                detail: {key: 'bw-hide-stage', value}
+                                                detail: {key: 'bw-right-pane-hidden', value}
                                             }));
                                         }}
                                         style={{
-                                            marginLeft: 'auto', alignSelf: 'center', minWidth: 38, height: 34,
-                                            border: '1px solid rgba(0,0,0,.18)', borderRadius: 4,
+                                            marginLeft: 'auto', alignSelf: 'stretch', minWidth: 44,
+                                            border: 'none', borderBottom: '3px solid transparent', borderRadius: 0,
                                             background: 'transparent', color: '#575e75', cursor: 'pointer',
-                                            fontSize: 18, lineHeight: 1
+                                            fontSize: 18, lineHeight: 1, padding: '0 10px'
                                         }}
                                     >{stagePaneVisible ? '◀' : '▶'}</button>
                                 </TabList>

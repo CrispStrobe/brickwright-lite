@@ -37,8 +37,10 @@ class CircuitTab extends React.Component {
         let hideStage = false;
         let debugDock = 'top';
         let showInStage = true; // owner default: while coding, the circuit replaces the stage
+        let rightPaneHidden = false;
         try {
             showInStage = localStorage.getItem('bw-stage-circuit') !== '0';
+            rightPaneHidden = localStorage.getItem('bw-right-pane-hidden') === '1';
         } catch { /* private mode */ }
         this._stageHost = null;
         try {
@@ -48,7 +50,7 @@ class CircuitTab extends React.Component {
         } catch { /* private mode: defaults */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
-            debugHintDismissed, hideStage, debugDock, showInStage,
+            debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, circuitData: null, loadingExample: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
@@ -86,6 +88,10 @@ class CircuitTab extends React.Component {
                 try { localStorage.setItem('bw-hide-stage', value === '1' ? '1' : '0'); } catch { /* private mode */ }
                 this.setDisplayPreference('hideStage', value === '1');
             }
+            if (key === 'bw-right-pane-hidden') {
+                try { localStorage.setItem('bw-right-pane-hidden', value === '1' ? '1' : '0'); } catch { /* private mode */ }
+                this.setState({rightPaneHidden: value === '1'});
+            }
             if (key === 'bw-circuit-theme') {
                 try { localStorage.setItem('bw-circuit-theme', value); } catch { /* private mode */ }
                 // CircuitDesigner owns the visual theme; forward the same
@@ -104,8 +110,18 @@ class CircuitTab extends React.Component {
         if (this.props.isVisible && !prevProps.isVisible) this.load();
         this._syncStageAttr();
         this._ensureStageHost();
+        // The host is created outside React's tree. When the Code tab becomes
+        // active, render once more after that host exists so the circuit is
+        // actually portalled into the right pane instead of leaving a blank
+        // stage after returning from the dedicated Circuit tab.
+        const portalNow = this._stagePortalOn();
+        if (portalNow !== !!this._portalOn && !this._portalRefreshQueued) {
+            this._portalRefreshQueued = true;
+            this.setState({});
+            Promise.resolve().then(() => { this._portalRefreshQueued = false; });
+        }
         if (this._stageHost) {
-            this._stageHost.style.display = this._portalOn ? 'block' : 'none';
+            this._stageHost.style.display = portalNow ? 'block' : 'none';
         }
     }
 
@@ -117,6 +133,8 @@ class CircuitTab extends React.Component {
             runtime.removeListener('PROJECT_STOP_ALL', this.handleProjectStop);
         }
         document.documentElement.removeAttribute('data-bw-hide-stage');
+        const oldWrap = document.querySelector('div[class*="stage-and-target-wrapper"]');
+        if (oldWrap) oldWrap.style.display = '';
         if (this._stageHost && this._stageHost.parentNode) {
             this._stageHost.parentNode.removeChild(this._stageHost);
         }
@@ -179,6 +197,7 @@ class CircuitTab extends React.Component {
         if (on) document.documentElement.setAttribute('data-bw-hide-stage', '');
         else document.documentElement.removeAttribute('data-bw-hide-stage');
         const wrap = document.querySelector('div[class*="stage-and-target-wrapper"]');
+        if (wrap) wrap.style.display = this.state.rightPaneHidden ? 'none' : '';
         const stage = wrap && wrap.querySelector('div[class*="stage-wrapper"]');
         const canvas = wrap && wrap.querySelector('div[class*="stage-canvas-wrapper"]');
         const target = wrap && wrap.querySelector('div[class*="target-wrapper"]');
@@ -219,7 +238,9 @@ class CircuitTab extends React.Component {
             // with their drivers sitting right there. Register at injection.
             if (typeof engine.registerAllDevices === 'function') engine.registerAllDevices();
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
-            ui.setEngine(engine);   // the panel takes the engine by injection, not by path
+            const setEngine = ui.setEngine || (ui.default && ui.default.setEngine);
+            if (typeof setEngine !== 'function') throw new Error('bw-circuit-ui setEngine export is unavailable');
+            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring});
             // Part sidecars (pin maps, current ratings, footprints) into the
             // parts registry. require.context because this bundle is webpack,
             // not vite. 115 files, ~464 KiB, in this same chunk.
@@ -653,6 +674,13 @@ class CircuitTab extends React.Component {
                 {this.state.debugDock === 'top' && stc && stc.pins && stc.pins.length ? (
                     <div style={{marginBottom: 10, flex: '0 0 auto'}}>
                         {this.renderDebugPanel()}
+                    </div>
+                ) : null}
+                {this.state.debugDock === 'top' && (!stc || !stc.pins || !stc.pins.length) ? (
+                    <div data-no-code-indicator style={{marginBottom: 8, padding: '6px 8px', borderRadius: 5,
+                        background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
+                        fontSize: 12, flex: '0 0 auto'}}>
+                        {'Debugger inactive — no program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}
                     </div>
                 ) : null}
                 {stc && stc.pins && stc.pins.length ? null : (

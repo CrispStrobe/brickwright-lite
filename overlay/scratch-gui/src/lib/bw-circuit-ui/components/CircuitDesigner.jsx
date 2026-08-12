@@ -157,12 +157,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, [stopToken]);
   const [leftOpen, setLeftOpen] = useState(!embedded);
   const [rightOpen, setRightOpen] = useState(!embedded);
-  useEffect(() => {
-    if (embedded) {
-      setLeftOpen(false);
-      setRightOpen(false);
-    }
-  }, [embedded]);
   const [showScope, setShowScope] = useState(false);
   const [showMeter, setShowMeter] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
@@ -754,8 +748,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 160px', width: 160, minWidth: 0, minHeight: 0, maxHeight: '100%', overflowY: 'auto', overscrollBehavior: 'contain' }}>
-          <button onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
+        <div data-parts-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 190px', width: 190, minWidth: 0, minHeight: 0, height: '100%', overflow: 'hidden', overscrollBehavior: 'contain' }}>
+          <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
             position: 'absolute', zIndex: 3, top: 4, right: 4, background: '#ffffff', border: '1px solid #cbd5e1',
             boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
             fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
@@ -764,7 +758,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           <InferPanel onLoadCircuit={handleLoadCircuit} />
         </div>
       ) : (
-        <button onClick={() => setLeftOpen(true)} style={{
+        <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(true); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(true)} style={{
           writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
           borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
           fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
@@ -808,7 +802,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
-        <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'clip', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div data-circuit-view-switcher style={{display: 'flex', gap: 4, flex: '0 0 auto', marginBottom: 6}}>
+          <button onClick={() => setShowSchematic(false)} aria-label="Realistic view" aria-pressed={!showSchematic} title="Realistic view"
+            style={{width: 38, height: 30, cursor: 'pointer', background: !showSchematic ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>◉</button>
+          <button onClick={() => setShowSchematic(true)} aria-label="Schematic view" aria-pressed={showSchematic} title="Schematic view"
+            style={{width: 38, height: 30, cursor: 'pointer', background: showSchematic ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
+        </div>
         {!showSchematic ? (<>
         <BoardCanvas
           parts={parts}
@@ -964,23 +964,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           panelNav={panelNav}
           rightOpen={rightOpen}
           onToggleRightPanel={() => setRightOpen(v => !v)}
-          viewNav={(
-            <div style={{display: 'inline-flex', gap: 4, alignItems: 'center'}}>
-              {['realistic', 'schematic'].map(vm => (
-                <button key={vm} onClick={() => setShowSchematic(vm === 'schematic')} style={{
-                  background: (vm === 'schematic') === showSchematic ? '#3498db' : '#16213e',
-                  color: (vm === 'schematic') === showSchematic ? '#fff' : '#7f8c8d',
-                  border: '1px solid #2c3e50', borderRadius: 4,
-                  width: 38, height: 34, padding: 0, cursor: 'pointer',
-                  fontFamily: 'sans-serif', fontSize: 18, lineHeight: 1,
-                }} title={vm === 'realistic' ? 'Realistic view' : 'Schematic view'}
-                aria-label={vm === 'realistic' ? 'Realistic view' : 'Schematic view'}
-                aria-pressed={(vm === 'schematic') === showSchematic}>
-                  <span aria-hidden="true">{vm === 'realistic' ? '◉' : '⌁'}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          viewNav={null}
         />
         </>) : (
           <div style={{ flex: 1, minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain',
@@ -1009,7 +993,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
       <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 280px', width: 280, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
-        <button onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
+        <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
           position: 'absolute', zIndex: 3, top: 4, left: 4, background: '#ffffff', border: '1px solid #cbd5e1',
           boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
@@ -1045,7 +1029,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {showMeter && <div style={{ width: 280 }}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
       </div>
       ) : (
-        <button onClick={() => setRightOpen(true)} style={{
+        <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(true); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(true)} style={{
           writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
           borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
           fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,

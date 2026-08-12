@@ -54,13 +54,14 @@ try {
     const paneToggle = page.getByRole('button', {name: /Right Pane/});
     check('stage/circuit pane toggle is in the main tab row', await paneToggle.count() === 1);
     await page.evaluate(() => {
-        localStorage.setItem('bw-hide-stage', '1');
-        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-hide-stage', value: '1'}}));
+        localStorage.setItem('bw-right-pane-hidden', '1');
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '1'}}));
     });
     await page.waitForTimeout(150);
     await paneToggle.click();
     await page.waitForTimeout(150);
-    check('restore button reopens the right pane', await page.evaluate(() => localStorage.getItem('bw-hide-stage')) === '0');
+    check('restore button reopens the right pane', await page.evaluate(() => localStorage.getItem('bw-right-pane-hidden')) === '0');
+    check('hide right pane removes the wrapper instead of blanking it', await page.locator('div[class*="stage-and-target-wrapper"]').evaluate(el => getComputedStyle(el).display !== 'none') === true);
 
     const stageButton = page.getByRole('button', {name: 'Scratch Stage'});
     const circuitButton = page.getByRole('button', {name: 'Circuit Designer without debugger'});
@@ -78,6 +79,7 @@ try {
     check('debugger button remains selected', await debuggerButton.getAttribute('aria-pressed') === 'true');
     check('debugger switch keeps the right pane present', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
     check('debugger view keeps the circuit portal mounted without MCU code', await page.locator('[data-bw-circuit-stage-host]').count() === 1);
+    check('debugger view explains that code is missing', await page.locator('[data-no-code-indicator]').count() === 1);
     await stageButton.click({force: true});
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
     await stageButton.click({force: true});
@@ -120,6 +122,9 @@ try {
     // compact circuit preview, where editor chrome starts collapsed.
     const fullPartsButton = designer.getByRole('button', {name: 'Collapse parts panel'});
     check('full designer shows its parts panel', await fullPartsButton.count() === 1);
+    await designer.getByRole('button', {name: 'Schematic view'}).click({force: true});
+    check('schematic view keeps an escape route', await designer.locator('[data-circuit-view-switcher]').count() === 1 && await designer.getByRole('button', {name: 'Realistic view'}).count() === 1);
+    await designer.getByRole('button', {name: 'Realistic view'}).click({force: true});
     await circuitButton.click();
     await page.waitForTimeout(250);
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
@@ -127,19 +132,19 @@ try {
     const embedded = page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer');
     const partsButton = embedded.getByRole('button', {name: 'Expand parts panel'});
     check('embedded preview starts with parts collapsed', await partsButton.count() === 1);
-    await partsButton.click({force: true});
+    await partsButton.evaluate(el => el.click());
     await page.waitForTimeout(150);
     const palettes = embedded.locator('input[placeholder="search..."]');
     const palette = palettes.first();
-    check('parts palette can reopen', await palettes.count() >= 0);
+    check('parts palette can reopen', await palettes.count() === 1, `embedded=${await embedded.count()} expand=${await partsButton.count()}`);
     const scrollable = await palettes.count() === 0 ? false : await palette.evaluate(el => {
         const panel = el.parentElement?.parentElement;
         return !!panel && panel.scrollHeight >= panel.clientHeight;
     });
-    check('parts palette column is scrollable', scrollable || await page.getByRole('button', {name: 'Expand parts panel'}).count() >= 0);
+    check('parts palette column is scrollable', scrollable, `inputs=${await palettes.count()}`);
 
     const actions = embedded.locator('[data-element-actions]');
-    check('selected-element actions are available on the grid surface', await actions.count() >= 0);
+    check('selected-element actions are contextual on the grid surface', await embedded.locator('[data-selection-actions]').count() === 0 || await embedded.locator('[data-selection-actions] button').count() >= 3);
     const undo = page.getByRole('button', {name: 'Undo'}).last();
     const undoBox = await undo.boundingBox();
     check('undo/redo controls are touch-sized', !!undoBox && undoBox.width >= 34 && undoBox.height >= 30);
@@ -147,32 +152,32 @@ try {
     const instruments = embedded.locator('[data-instruments-column]');
     const expandInstruments = page.getByRole('button', {name: 'Expand instruments panel'});
     if (await expandInstruments.count()) {
-        await expandInstruments.last().click({force: true});
+        await expandInstruments.last().evaluate(el => el.click());
         await page.waitForTimeout(100);
     }
-    check('instrument panel has a compact expand/collapse affordance', true);
+    check('instrument panel has a compact expand/collapse affordance', await instruments.count() === 1 || await expandInstruments.count() === 1);
     const scopeButtons = page.getByRole('button', {name: /Scope$/});
     for (let i = 0; i < await scopeButtons.count(); i++) {
-        await scopeButtons.nth(i).click({force: true});
+        await scopeButtons.nth(i).evaluate(el => el.click());
         await page.waitForTimeout(80);
         if (await page.locator('[data-scope-panel]').count()) break;
     }
     const meterButton = page.getByRole('button', {name: /Meter$/}).last();
-    if (await meterButton.count()) await meterButton.click({force: true});
+    if (await meterButton.count()) await meterButton.evaluate(el => el.click());
     await page.waitForTimeout(250);
     const scopePanel = page.locator('[data-scope-panel]').first();
     const meterTitle = page.getByText('Multimeter', {exact: true}).first();
-    check('oscilloscope toggle is available from the instrument panel', await scopeButtons.count() >= 0);
+    check('oscilloscope toggle is available from the instrument panel', await scopeButtons.count() >= 1 || await scopePanel.count() === 1, `embedded=${await embedded.count()} instruments=${await instruments.count()}`);
     if (await scopePanel.count()) check('oscilloscope fits inside the instrument column', await scopePanel.evaluate(el => el.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
-    check('multimeter is available from the instrument panel', await meterTitle.count() >= 0);
+    check('multimeter is available from the instrument panel', await meterTitle.count() >= 1, `titles=${await meterTitle.count()}`);
 
-    await embedded.getByRole('button', {name: 'Sim'}).click({force: true});
+    await embedded.getByRole('button', {name: 'Sim'}).evaluate(el => el.click());
     await page.waitForTimeout(100);
-    check('run/step controls are in the instrument column', true);
+    check('run/step controls are in the instrument column', await embedded.locator('[data-simulation-controls]').count() === 1, `sim=${await embedded.locator('[data-simulation-controls]').count()}`);
     const pauseButton = page.locator('button[title="Pause simulation"]');
     const pauseBox = await pauseButton.count() ? await pauseButton.boundingBox() : null;
     const designerBox = await embedded.boundingBox();
-    check('run/step controls stay in the designer instrument area', true);
+    check('run/step controls stay in the designer instrument area', !!pauseBox && !!designerBox && pauseBox.x >= designerBox.x);
 
     const summaries = page.locator('summary');
     check('top circuit notices are collapsed disclosure triangles', await summaries.count() >= 1);

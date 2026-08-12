@@ -1909,7 +1909,7 @@ export function BoardCanvas({
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', width: '100%', minWidth: 0, minHeight: 0 }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
@@ -1962,23 +1962,10 @@ export function BoardCanvas({
               : ''}
         </span>
 
-        {/* Selection actions */}
+        {/* Selection actions live in the grid overlay, beside the board rather
+            than consuming toolbar width. Keyboard shortcuts remain available. */}
         {((selectedParts && selectedParts.size > 0) || selectedWire) && (
           <>
-            {selectedPart && onRotatePart && (
-              <button onClick={() => onRotatePart(selectedPart)}
-                title="Rotate (R)"
-                style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #3498db', borderRadius: '3px', color: '#3498db', fontSize: '9px', cursor: 'pointer' }}>
-                ↻ Rotate
-              </button>
-            )}
-            {selectedPart && onDuplicatePart && (
-              <button onClick={() => onDuplicatePart(selectedPart)}
-                title="Duplicate (Ctrl+D)"
-                style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #2ecc71', borderRadius: '3px', color: '#2ecc71', fontSize: '9px', cursor: 'pointer' }}>
-                ⧉ Duplicate
-              </button>
-            )}
             {selectedWire && onUpdateWire && (
               <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}
                 title="Wire color (auto = colored by voltage)">
@@ -2000,7 +1987,7 @@ export function BoardCanvas({
             }}
               title="Delete (Del)"
               style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: '3px', color: '#e74c3c', fontSize: '9px', cursor: 'pointer' }}>
-              ✕ Delete
+              ✕
             </button>
           </>
         )}
@@ -2080,6 +2067,18 @@ export function BoardCanvas({
           }
         }}
       >
+        {selectedPart && (
+          <div data-selection-actions style={{position: 'absolute', top: 8, right: 8, zIndex: 60, display: 'flex', gap: 4,
+            padding: 4, borderRadius: 6, background: 'rgba(22,33,62,.92)', boxShadow: '0 2px 8px rgba(0,0,0,.35)'}}
+            onPointerDown={e => e.stopPropagation()}>
+            {onRotatePart && <button onClick={() => onRotatePart(selectedPart)} title="Rotate (R)" aria-label="Rotate selected part"
+              style={{width: 30, height: 30, cursor: 'pointer'}}>↻</button>}
+            {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPart)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected part"
+              style={{width: 30, height: 30, cursor: 'pointer'}}>⧉</button>}
+            <button onClick={() => { onRemovePart(selectedPart); onSelectPart(null); }} title="Delete (Del)" aria-label="Delete selected part"
+              style={{width: 30, height: 30, cursor: 'pointer', color: '#b91c1c'}}>✕</button>
+          </div>
+        )}
         <svg
           width="100%"
           height="100%"
