@@ -216,8 +216,8 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       />
 
       {/* Filter toolbar: each group stays compact and the groups share rows. */}
-      <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px'}}>
-      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap' }}>
+      <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '4px', marginBottom: '4px'}}>
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0 }}>
         <button
           onClick={() => setSelectedCategory(null)}
           style={{
@@ -299,7 +299,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
 
 function FilterRow({label, children, palette}) {
   return (
-    <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap'}}>
+    <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', flexShrink: 0}}>
       <span style={{color: palette.muted, fontSize: '12px', minWidth: 'auto', fontWeight: 600}}>{label}</span>
       {children}
     </div>
