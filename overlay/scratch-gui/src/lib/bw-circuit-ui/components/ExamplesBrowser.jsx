@@ -27,6 +27,15 @@ const CATEGORY_COLORS = {
 const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
 const DIFFICULTY_COLORS = ['#64748b', '#22c55e', '#f59e0b', '#f97316'];
 const PART_LABELS = {mcu: 'MCU', 'no-mcu': 'No MCU'};
+const TARGET_LABELS = {
+  'no-mcu': 'No MCU',
+  generic: 'Any MCU',
+  stc12: 'STC12',
+  stc89: 'STC89',
+  avr: 'AVR / Arduino',
+  'arduino-nano': 'Arduino Nano',
+  rp2040: 'RP2040 / Pico',
+};
 
 function examplePartTags(example) {
   const explicit = example.parts || example.partTags || example.components;
@@ -42,6 +51,30 @@ function partLabel(part) {
   return part.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function targetKey(target) {
+  const value = String(target).toLowerCase();
+  if (/arduino-nano/.test(value)) return 'arduino-nano';
+  if (/arduino|atmega|avr/.test(value)) return 'avr';
+  if (/pico|rp2040/.test(value)) return 'rp2040';
+  if (/stc89/.test(value)) return 'stc89';
+  if (/stc|8051/.test(value)) return 'stc12';
+  if (/generic|any/.test(value)) return 'generic';
+  return value;
+}
+
+function exampleTargetTags(example) {
+  const explicit = example.targets || example.target;
+  const targets = Array.isArray(explicit) ? explicit : explicit ? [explicit] : [];
+  if (targets.length) return [...new Set(targets.map(targetKey))];
+  if (example.device) return [targetKey(example.device)];
+  if (example.kind === 'program') return ['stc12'];
+  return ['no-mcu'];
+}
+
+function targetLabel(target) {
+  return TARGET_LABELS[target] || target.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 /**
  * @param {{ examples: Array, lang?: string, onLoadExample?: function }} props
  */
@@ -50,6 +83,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [selectedPart, setSelectedPart] = useState(null);
+  const [selectedTarget, setSelectedTarget] = useState(null);
   // The dedicated Examples mode is already an explicitly selected panel;
   // starting it collapsed made the mode look empty and hid its scroll area.
   const [open, setOpen] = useState(() => true);
@@ -70,6 +104,15 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
     });
   }, [examples]);
 
+  const targetTags = useMemo(() => {
+    if (!examples) return [];
+    return [...new Set(examples.flatMap(exampleTargetTags))].sort((a, b) => {
+      if (a === 'no-mcu') return -1;
+      if (b === 'no-mcu') return 1;
+      return targetLabel(a).localeCompare(targetLabel(b));
+    });
+  }, [examples]);
+
   const filtered = useMemo(() => {
     if (!examples) return [];
     let list = examples;
@@ -82,6 +125,9 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
     if (selectedPart) {
       list = list.filter(e => examplePartTags(e).includes(selectedPart));
     }
+    if (selectedTarget) {
+      list = list.filter(e => exampleTargetTags(e).includes(selectedTarget));
+    }
     if (filter) {
       const q = filter.toLowerCase();
       list = list.filter(e => {
@@ -90,7 +136,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
       });
     }
     return list;
-  }, [examples, filter, selectedCategory, selectedDifficulty, selectedPart, lang]);
+  }, [examples, filter, selectedCategory, selectedDifficulty, selectedPart, selectedTarget, lang]);
 
   if (!examples || examples.length === 0) {
     return (
@@ -190,6 +236,17 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
             color={part === 'mcu' ? '#38bdf8' : '#14b8a6'}
             onClick={() => setSelectedPart(selectedPart === part ? null : part)}>
             {partLabel(part)}
+          </FilterButton>
+        ))}
+      </FilterRow>
+
+      <FilterRow label="Target">
+        <FilterButton active={!selectedTarget} onClick={() => setSelectedTarget(null)}>All</FilterButton>
+        {targetTags.map(target => (
+          <FilterButton key={target} active={selectedTarget === target}
+            color={target === 'no-mcu' ? '#14b8a6' : '#6366f1'}
+            onClick={() => setSelectedTarget(selectedTarget === target ? null : target)}>
+            {targetLabel(target)}
           </FilterButton>
         ))}
       </FilterRow>
