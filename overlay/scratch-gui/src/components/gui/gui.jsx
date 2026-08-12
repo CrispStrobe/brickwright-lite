@@ -358,28 +358,6 @@ const GUIComponent = props => {
                                             id="gui.gui.circuitTab"
                                         />
                                     </Tab>
-                                    <button
-                                        type="button"
-                                        className={tabClassNames.tab}
-                                        data-right-pane-toggle="true"
-                                        title={stagePaneVisible ? 'Hide Right Pane' : 'Show Right Pane'}
-                                        aria-label={stagePaneVisible ? 'Hide Right Pane' : 'Show Right Pane'}
-                                        aria-pressed={!stagePaneVisible}
-                                        onClick={() => {
-                                            const value = stagePaneVisible ? '1' : '0';
-                                            try { localStorage.setItem('bw-right-pane-hidden', value); } catch { /* private mode */ }
-                                            window.dispatchEvent(new CustomEvent('bw-settings-change', {
-                                                detail: {key: 'bw-right-pane-hidden', value}
-                                            }));
-                                        }}
-                                        style={{
-                                            position: 'absolute', top: 0, right: 0, zIndex: 20,
-                                            minWidth: 44, height: 36,
-                                            border: 'none', borderBottom: '3px solid transparent', borderRadius: 0,
-                                            background: 'transparent', color: '#575e75', cursor: 'pointer',
-                                            fontSize: 18, lineHeight: 1, padding: '0 10px'
-                                        }}
-                                    >{stagePaneVisible ? '◀' : '▶'}</button>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent === 'code' ? (

@@ -310,6 +310,7 @@ export function InferPanel({ onLoadCircuit }) {
   const [showBoard, setShowBoard] = useState(false);
   const [showDrawable, setShowDrawable] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const handleLoad = useCallback((preset) => {
     const result = inferCircuit(preset.stc);
@@ -323,7 +324,7 @@ export function InferPanel({ onLoadCircuit }) {
   }, [onLoadCircuit]);
 
   return (
-    <div style={{
+    <div data-examples-selector style={{
       background: '#1a1a2e',
       border: '1px solid #2c3e50',
       borderRadius: '8px',
@@ -332,7 +333,14 @@ export function InferPanel({ onLoadCircuit }) {
       fontFamily: 'monospace',
       fontSize: '11px',
       flexShrink: 0,
+      position: 'relative',
     }}>
+      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
+        aria-label={open ? 'Collapse examples selector' : 'Expand examples selector'}
+        title={open ? 'Collapse examples selector' : 'Expand examples selector'}
+        style={{position: 'absolute', left: -13, top: 4, width: 24, height: 24, padding: 0, zIndex: 2,
+          border: '1px solid #94a3b8', borderRadius: '999px', background: '#16213e', color: '#e2e8f0', cursor: 'pointer'}}> {open ? '‹' : '›'} </button>
+      {!open ? null : <>
       <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6}}>
         <div style={{ color: '#ecf0f1', fontSize: '12px', fontWeight: 'bold' }}>Examples</div>
         <button type="button" onClick={() => setShowInfo(v => !v)} disabled={!lastLoaded}
@@ -433,6 +441,7 @@ export function InferPanel({ onLoadCircuit }) {
         </button>
       ))}
 
+      </>}
     </div>
   );
 }

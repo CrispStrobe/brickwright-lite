@@ -21,13 +21,13 @@ class Controls extends React.Component {
             // The circuit designer listens to the same user-level action. This
             // keeps the Scratch green flag as the single, unsurprising start
             // control for both block scripts and a visible circuit simulation.
-            window.dispatchEvent(new CustomEvent('bw-green-flag'));
+            window.setTimeout(() => window.dispatchEvent(new CustomEvent('bw-green-flag')), 0);
         }
     }
     handleStopAllClick (e) {
         e.preventDefault();
         this.props.vm.stopAll();
-        window.dispatchEvent(new CustomEvent('bw-stop-all'));
+        window.setTimeout(() => window.dispatchEvent(new CustomEvent('bw-stop-all')), 0);
     }
     render () {
         const {vm, isStarted, projectRunning, turbo, ...props} = this.props;

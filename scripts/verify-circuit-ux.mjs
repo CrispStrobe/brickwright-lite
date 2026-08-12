@@ -52,35 +52,10 @@ try {
     check('new project title is BrickWright Project', titleValue === 'BrickWright Project', titleValue || 'title input not rendered');
 
     const paneToggle = page.getByRole('button', {name: /Right Pane/});
-    check('stage/circuit pane toggle is in the main tab row', await paneToggle.count() === 1);
+    check('obsolete right-pane toggle is absent from the main tab row', await paneToggle.count() === 0);
     const editorPane = page.locator('[data-editor-pane]');
     const rightPane = page.locator('[data-right-pane]');
-    const initialEditorWidth = await editorPane.evaluate(el => el.getBoundingClientRect().width);
-    const toggleGeometry = await paneToggle.evaluate(el => {
-        const r = el.getBoundingClientRect();
-        const p = document.querySelector('[data-editor-pane]').getBoundingClientRect();
-        return {right: r.right, paneRight: p.right, top: r.top, paneTop: p.top};
-    });
-    check('right-pane toggle is aligned to the editor pane edge', Math.abs(toggleGeometry.right - toggleGeometry.paneRight) <= 2 && Math.abs(toggleGeometry.top - toggleGeometry.paneTop) <= 3, JSON.stringify(toggleGeometry));
-    await page.evaluate(() => {
-        localStorage.setItem('bw-right-pane-hidden', '1');
-        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '1'}}));
-    });
-    await page.waitForTimeout(150);
-    const hiddenGeometry = await page.evaluate(() => ({
-        editor: document.querySelector('[data-editor-pane]')?.getBoundingClientRect(),
-        columns: document.querySelector('[data-workspace-columns]')?.getBoundingClientRect(),
-        right: document.querySelector('[data-right-pane]')?.getBoundingClientRect(),
-        rightDisplay: document.querySelector('[data-right-pane]') ? getComputedStyle(document.querySelector('[data-right-pane]')).display : ''
-    }));
-    check('hidden right pane gives its width to the editor', hiddenGeometry.editor && hiddenGeometry.columns &&
-        hiddenGeometry.editor.width >= hiddenGeometry.columns.width - 2 &&
-        hiddenGeometry.editor.right >= hiddenGeometry.columns.right - 2 &&
-        hiddenGeometry.right.width === 0 && hiddenGeometry.rightDisplay === 'none', JSON.stringify(hiddenGeometry));
-    await paneToggle.click();
-    await page.waitForTimeout(150);
-    check('restore button reopens the right pane', await page.evaluate(() => localStorage.getItem('bw-right-pane-hidden')) === '0');
-    check('hide right pane removes the wrapper instead of blanking it', await page.locator('div[class*="stage-and-target-wrapper"]').evaluate(el => getComputedStyle(el).display !== 'none') === true);
+    check('right pane remains mounted for optional Circuit Designer selection', await page.locator('[data-right-pane]').count() === 1);
 
     const stageButton = page.getByRole('button', {name: 'Scratch Stage'});
     const circuitButton = page.getByRole('button', {name: 'Circuit Designer without debugger'});
@@ -113,6 +88,13 @@ try {
     // Load the first circuit example through the mounted CircuitTab instance.
     await page.getByRole('tab', {name: /Circuit/}).click();
     await page.waitForTimeout(4000);
+    await debuggerButton.click({force: true});
+    await page.waitForTimeout(500);
+    const dedicatedDesigner = page.locator('.bw-circuit-designer:visible').last();
+    check('dedicated Circuit tab keeps debugger controls visible', await dedicatedDesigner.locator('[data-instruments-column] [data-debugger-panel]').count() === 1,
+        `designers=${await page.locator('.bw-circuit-designer').count()} visible=${await page.locator('.bw-circuit-designer:visible').count()} instruments=${await dedicatedDesigner.locator('[data-instruments-column]').count()}`);
+    check('dedicated Circuit tab visibly reports missing code when applicable', await dedicatedDesigner.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1,
+        `dock=${await page.evaluate(() => localStorage.getItem('bw-debug-dock'))} noCode=${await dedicatedDesigner.locator('[data-no-code-indicator]').count()}`);
     const loaded = await page.evaluate(async () => {
         const root = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
         const key = Object.keys(root || {}).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
@@ -140,8 +122,11 @@ try {
     check('Realistic/Schematic is one segmented view toggle', await viewToggle.count() === 1 && await viewToggle.getByRole('radio').count() === 2 && await viewToggle.getByRole('radio', {name: 'Realistic view'}).getAttribute('aria-checked') === 'true');
     check('view toggle matches toolbar control height', await viewToggle.evaluate(el => el.getBoundingClientRect().height >= 34));
     check('Build/Sim is one segmented mode toggle', await modeToggle.count() === 1 && await modeToggle.getByRole('radio').count() === 2 && await modeToggle.getByRole('radio', {name: 'Build mode'}).getAttribute('aria-checked') === 'true');
+    const modeMetrics = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
+    check('Build/Sim toggle segments have equal dimensions', modeMetrics.length === 2 && modeMetrics[0].width === modeMetrics[1].width && modeMetrics[0].height === modeMetrics[1].height, JSON.stringify(modeMetrics));
     check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().locator('xpath=../..').locator('[data-build-sim-toggle]').count() === 1);
-    check('shared toolbar has panel navigation', await designer.getByRole('button', {name: 'Designer'}).count() === 1 && await designer.getByRole('button', {name: 'Warnings'}).count() === 1 && await designer.getByRole('button', {name: 'Parts list'}).count() === 1 && await designer.getByRole('button', {name: 'Examples'}).count() === 1);
+    const panelNavigation = designer.locator('[data-panel-navigation]');
+    check('shared toolbar has panel navigation', await panelNavigation.count() === 1 && await panelNavigation.locator('button').count() >= 4, `containers=${await panelNavigation.count()} buttons=${await panelNavigation.locator('button').count()}`);
     const panelButtonMetrics = await designer.getByRole('button', {name: 'Designer'}).evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
     check('panel navigation uses compact equal buttons', panelButtonMetrics.length === 1 && panelButtonMetrics[0].width <= 42 && panelButtonMetrics[0].height >= 30, JSON.stringify(panelButtonMetrics));
     const toolbarBox = await toolbar.boundingBox();
@@ -153,6 +138,22 @@ try {
     // compact circuit preview, where editor chrome starts collapsed.
     const fullPartsButton = designer.getByRole('button', {name: 'Collapse parts panel'});
     check('full designer shows its parts panel', await fullPartsButton.count() === 1);
+    if (await fullPartsButton.count()) {
+        await fullPartsButton.click({force: true});
+        await page.waitForTimeout(100);
+        check('parts selector actually collapses', await designer.getByRole('button', {name: 'Expand parts panel'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 0);
+        await designer.getByRole('button', {name: 'Expand parts panel'}).click({force: true});
+        await page.waitForTimeout(100);
+        check('parts selector actually reopens', await designer.getByRole('button', {name: 'Collapse parts panel'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 1);
+    }
+    const examplesSelector = designer.locator('[data-examples-selector]').first();
+    check('Examples selector has an independent collapse affordance', await examplesSelector.count() === 1 && await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1);
+    if (await examplesSelector.count()) {
+        await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).click({force: true});
+        check('Examples selector actually collapses', await examplesSelector.getByRole('button', {name: 'Expand examples selector'}).count() === 1 && await examplesSelector.getByText('Examples:', {exact: true}).count() === 0);
+        await examplesSelector.getByRole('button', {name: 'Expand examples selector'}).click({force: true});
+        check('Examples selector actually reopens', await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1 && await examplesSelector.getByText('Examples:', {exact: true}).count() === 1);
+    }
     await designer.locator('[data-circuit-view-switcher] button[title="Schematic view"]').first().evaluate(el => el.click());
     await page.waitForTimeout(150);
     const realisticEscape = page.locator('[data-schematic-escape] button[title="Realistic view"]');
@@ -225,6 +226,18 @@ try {
         return !!tr && !!cr && tr.bottom <= cr.top && tr.height >= 44;
     }));
     check('narrow circuit pane remains scrollable instead of static crop', narrowLayout.mainWidth > 0 && narrowLayout.mainScrollWidth > narrowLayout.mainWidth && narrowLayout.mainScrollHeight > 0, JSON.stringify(narrowLayout));
+    await page.setViewportSize({width: 760, height: 520});
+    await page.waitForTimeout(150);
+    const resizedLayout = await embedded.evaluate(root => {
+        const main = root.querySelector('[data-designer-main]');
+        const canvas = root.querySelector('[data-canvas]');
+        const mr = main.getBoundingClientRect();
+        const cr = canvas.getBoundingClientRect();
+        return {mainWidth: mr.width, mainHeight: mr.height, canvasRight: cr.right, viewport: window.innerWidth,
+            scrollWidth: main.scrollWidth, clientWidth: main.clientWidth, scrollHeight: main.scrollHeight, clientHeight: main.clientHeight};
+    });
+    check('designer resizes with a narrow window and keeps horizontal scrolling', resizedLayout.mainWidth > 0 && resizedLayout.canvasRight > resizedLayout.mainWidth && resizedLayout.scrollWidth > resizedLayout.clientWidth, JSON.stringify(resizedLayout));
+    check('designer keeps vertical scrolling after a narrow-window resize', resizedLayout.scrollHeight > resizedLayout.clientHeight, JSON.stringify(resizedLayout));
     await page.setViewportSize({width: 1024, height: 768});
     const actions = embedded.locator('[data-element-actions]');
     check('selected-element actions are contextual on the grid surface', await embedded.locator('[data-selection-actions]').count() === 0 || await embedded.locator('[data-selection-actions] button').count() >= 3);
@@ -282,6 +295,29 @@ try {
     await page.waitForTimeout(300);
     const targetText = await page.locator('body').innerText();
     check('Blocks workflow keeps Motion blocks available after example import', !targetText.includes('Stage selected: no motion blocks') && await page.getByText('Motion', {exact: true}).count() >= 1);
+    await circuitButton.click({force: true});
+    await page.waitForTimeout(250);
+    check('Circuit Designer without debugger works from Blocks mode', await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'off' && await page.locator('[data-bw-circuit-stage-host]').count() === 1);
+    check('debugger panel is absent in debugger-free Blocks mode', await page.locator('[data-bw-circuit-stage-host] [data-debugger-panel]').count() === 0);
+
+    const greenFlag = page.locator('img[title="Go"]:visible, [aria-label*="Green Flag" i]:visible, [title*="green flag" i]:visible');
+    if (await greenFlag.count()) {
+        await page.evaluate(() => { window.__bwGreenFlagSeen = 0; window.addEventListener('bw-green-flag', () => { window.__bwGreenFlagSeen++; }, {once: false}); });
+        await greenFlag.last().click({force: true});
+        await page.waitForTimeout(250);
+        const greenFlagSeen = await page.evaluate(() => window.__bwGreenFlagSeen || 0);
+        const controlsAfterGreen = await page.locator('[data-bw-circuit-stage-host] [data-simulation-controls]').count();
+        check('green flag starts the embedded simulation lifecycle', controlsAfterGreen === 1,
+            `events=${greenFlagSeen} simMode=${await page.locator('[data-bw-circuit-stage-host] [data-sim-mode="simulate"]').count()} controls=${controlsAfterGreen} direct=${await page.locator('[data-bw-circuit-stage-host] [data-simulation-controls]').count()}`);
+        const stop = page.locator('img[title="Stop"]:visible, [aria-label="Stop"]:visible, [title="Stop"]:visible').last();
+        if (await stop.count()) {
+            await stop.click({force: true});
+            await page.waitForTimeout(150);
+            check('red flag stops the embedded simulation lifecycle', await page.locator('[data-bw-circuit-stage-host] [data-simulation-controls]').count() === 0);
+        }
+    } else {
+        check('green flag control is discoverable for lifecycle testing', false, 'no green flag selector');
+    }
 } finally {
     await browser.close();
     server.close();

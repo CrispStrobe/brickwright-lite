@@ -30,6 +30,7 @@ const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
 export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
   const [filter, setFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [open, setOpen] = useState(false);
 
   const categories = useMemo(() => {
     if (!examples) return [];
@@ -64,17 +65,29 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
   }
 
   return (
-    <div style={{
+    <div data-examples-selector style={{
       background: '#1a1a2e',
       border: '1px solid #2c3e50',
       borderRadius: '8px',
       padding: '8px',
       fontFamily: 'monospace',
-      overflowY: 'auto',
+      overflow: 'hidden',
+      minHeight: 0,
+      maxHeight: '100%',
+      position: 'relative',
     }}>
-      <div style={{ color: '#ecf0f1', fontSize: '11px', marginBottom: '6px', fontWeight: 'bold' }}>
+      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
+        aria-label={open ? 'Collapse examples selector' : 'Expand examples selector'}
+        title={open ? 'Collapse examples selector' : 'Expand examples selector'}
+        style={{position: 'absolute', left: 4, top: 5, width: 24, height: 24, padding: 0, zIndex: 2,
+          border: '1px solid #64748b', borderRadius: '999px', background: '#16213e', color: '#e2e8f0', cursor: 'pointer'}}>
+        {open ? '‹' : '›'}
+      </button>
+      <div style={{ color: '#ecf0f1', fontSize: '11px', marginBottom: '6px', fontWeight: 'bold', paddingLeft: 34 }}>
         Examples
       </div>
+
+      {!open ? null : <div data-examples-selector-content style={{minHeight: 0, maxHeight: 'calc(100% - 30px)', overflowY: 'auto'}}>
 
       {/* Search */}
       <input
@@ -133,6 +146,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
           ))}
         </div>
       )}
+      </div>}
     </div>
   );
 }

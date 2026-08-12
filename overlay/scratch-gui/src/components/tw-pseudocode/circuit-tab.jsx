@@ -106,6 +106,13 @@ class CircuitTab extends React.Component {
             }
         };
         window.addEventListener('bw-settings-change', this._settingsHandler);
+        // The Scratch controls dispatch these user-level events even when the
+        // VM has no executable MCU program. Keep the designer simulation in
+        // lockstep with Green Flag/Red Flag in that case too.
+        this._greenFlagHandler = this.handleProjectStart;
+        this._stopAllHandler = this.handleProjectStop;
+        window.addEventListener('bw-green-flag', this._greenFlagHandler);
+        window.addEventListener('bw-stop-all', this._stopAllHandler);
         const runtime = this.props.vm && this.props.vm.runtime;
         if (runtime && runtime.on) {
             runtime.on('PROJECT_START', this.handleProjectStart);
@@ -134,6 +141,8 @@ class CircuitTab extends React.Component {
 
     componentWillUnmount () {
         window.removeEventListener('bw-settings-change', this._settingsHandler);
+        window.removeEventListener('bw-green-flag', this._greenFlagHandler);
+        window.removeEventListener('bw-stop-all', this._stopAllHandler);
         const runtime = this.props.vm && this.props.vm.runtime;
         if (runtime && runtime.removeListener) {
             runtime.removeListener('PROJECT_START', this.handleProjectStart);
@@ -769,8 +778,12 @@ class CircuitTab extends React.Component {
                         onDeclarationChange={this.handleDeclarationChange}
                         panelNav={this.renderPanelStrip()}
                     embedded={this._portalOn}
-                    debuggerOn={this.state.debugDock === 'top' && !this.props.isVisible}
-                    debuggerPanel={this.state.debugDock === 'top' && !this.props.isVisible ? this.renderDebugPanel() : null}
+                    // The debugger belongs to the designer's Instruments
+                    // column in both the Code Blocks portal and the dedicated
+                    // Circuit tab. The old visibility guard made “switch to
+                    // debugger” a no-op whenever Circuit itself was active.
+                    debuggerOn={this.state.debugDock === 'top'}
+                    debuggerPanel={this.state.debugDock === 'top' ? this.renderDebugPanel() : null}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                     />
@@ -829,7 +842,7 @@ class CircuitTab extends React.Component {
         const tabIcons = {designer: '▦', warnings: '⚠', bom: '☷', examples: '▤'};
         const tabTitles = {designer: 'Designer', warnings: 'Warnings', bom: 'Parts list', examples: 'Examples'};
         return (
-            <div style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flex: '0 0 auto',
+            <div data-panel-navigation style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flex: '0 0 auto',
                 fontSize: 11.5, lineHeight: 1.6}}>
             <div style={{display: 'inline-flex', gap: 1, padding: 1,
                 borderRadius: 5, background: '#f1f5f9'}}>

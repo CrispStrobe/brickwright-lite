@@ -336,11 +336,18 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   // The Scratch green flag is the shared start affordance. Pure circuits do
   // not have an MCU board to drive them, so the flag explicitly enters the
-  // designer's simulation mode; MCU-backed circuits are already externally
-  // clocked and simply continue to receive the VM's pin writes.
+  // designer's simulation mode and opens Instruments; MCU-backed circuits are
+  // already externally clocked and simply continue to receive the VM's pin writes.
   useEffect(() => {
-    const onGreenFlag = () => setMode('simulate');
-    const onStopAll = () => setSimPaused(true);
+    const onGreenFlag = () => {
+      setMode('simulate');
+      setRightOpen(true);
+      setSimPaused(false);
+    };
+    const onStopAll = () => {
+      setMode('build');
+      setSimPaused(false);
+    };
     window.addEventListener('bw-green-flag', onGreenFlag);
     window.addEventListener('bw-stop-all', onStopAll);
     return () => {
@@ -752,14 +759,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
-        <div data-parts-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 190px', width: 190, minWidth: 190, minHeight: 0, height: '100%', overflow: 'hidden', overscrollBehavior: 'contain' }}>
+        <div data-parts-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 190px', width: 190, minWidth: 190, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
           <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
-            position: 'absolute', zIndex: 3, top: 4, right: 4, background: '#ffffff', border: '1px solid #cbd5e1',
+            position: 'absolute', zIndex: 3, top: 4, left: -12, background: '#ffffff', border: '1px solid #cbd5e1',
             boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
             fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
           }}>‹</button>
           <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
-          <div style={{flex: '0 0 auto', maxHeight: '28%', minHeight: 0, overflowY: 'auto'}}>
+          <div data-examples-selector style={{flex: '0 0 auto', maxHeight: '28%', minHeight: 0, overflowY: 'auto'}}>
             <InferPanel onLoadCircuit={handleLoadCircuit} />
           </div>
         </div>
