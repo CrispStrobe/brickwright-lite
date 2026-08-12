@@ -4283,16 +4283,10 @@ class SB3Creator {
         const stc = project && project.stc;
         if (!stc || !stc.pins || !stc.pins.length) return [];
         const q = (v) => this.pyStr(v);
-        const whereOf = (pin) => pin.where || (
-            pin.port !== undefined && pin.bit !== undefined
-                ? `P${pin.port}.${pin.bit}`
-                : null
-        );
         const lines = [`scratch.device(${q(stc.device)}, ${stc.clock})`];
         for (const pin of stc.pins) {
-            const where = whereOf(pin);
-            if (!where) continue;
-            lines.push(`scratch.pin(${q(pin.name)}, ${q(where)}, `
+            const loc = pin.where || `P${pin.port}.${pin.bit}`;
+            lines.push(`scratch.pin(${q(pin.name)}, ${q(loc)}, `
                 + `${q(pin.direction)}, ${pin.activeLow ? 1 : 0})`);
         }
         return lines;
@@ -7198,7 +7192,24 @@ class SB3Creator {
             out.push('/* REPEAT counters live across yields. */',
                 ...statics.map((n) => `static unsigned int ${n};`), '');
         }
-        if (taskDefs.length) out.push(...taskDefs);
+        if (taskDefs.length) {
+            // A label must precede a STATEMENT in C. An empty script (a hat
+            // with nothing under it — the default project's shape) emits
+            // `case 0:` directly before `}`; SDCC tolerates that, gcc calls
+            // it "label at end of compound statement" and stops the build.
+            // taskDefs holds individual LINES, so the pass walks the array:
+            // a bare label whose next code line closes the block gains a
+            // null statement, legal C on every core.
+            for (let li = 0; li < taskDefs.length - 1; li++) {
+                if (!/^\s*(case \d+|default):\s*$/.test(taskDefs[li])) continue;
+                let lj = li + 1;
+                while (lj < taskDefs.length && /^\s*$/.test(taskDefs[lj])) lj++;
+                if (lj < taskDefs.length && /^\s*\}/.test(taskDefs[lj])) {
+                    taskDefs[li] += ' ;';
+                }
+            }
+            out.push(...taskDefs);
+        }
 
         const setup = [];
         out.push('/* Register setup: ports, ADC, Timer 0. Kept out of main() so the program',
