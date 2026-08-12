@@ -730,28 +730,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   else if (mode === 'simulate') statusText = 'SIMULATING — scripted MCU demo';
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
-  if (debuggerOn) {
-    return (
-      <div className="bw-circuit-designer" data-debugger-surface data-bw-circuit-theme={theme}
-        style={{display: 'flex', flexDirection: 'column', gap: 10, width: '100%', height: '100%', minHeight: 0,
-          overflow: 'auto', boxSizing: 'border-box', padding: 12, background: '#0f172a', color: '#e2e8f0',
-          fontFamily: 'system-ui, -apple-system, sans-serif'}}>
-        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-          minHeight: 40, padding: '6px 10px', borderRadius: 6, background: '#1e293b', border: '1px solid #475569'}}>
-          <strong style={{fontSize: 15}}>Debugger</strong>
-          <span style={{fontSize: 11, color: '#94a3b8'}}>Circuit execution controls</span>
-        </div>
-        {debuggerPanel ? <section data-debugger-panel style={{padding: 10, borderRadius: 6, background: '#111827', border: '1px solid #475569'}}>{debuggerPanel}</section> : <div data-debugger-loading>Loading debugger…</div>}
-        {(!stc || !stc.pins || !stc.pins.length) && (
-          <div data-no-code-indicator style={{padding: '12px 10px', borderRadius: 6, background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', fontSize: 13, lineHeight: 1.4}}>
-            <strong>Debugger inactive</strong>
-            <div>No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.</div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div
       className="bw-circuit-designer"
@@ -995,7 +973,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           })()}
           panelNav={panelNav}
           rightOpen={rightOpen}
-          onToggleRightPanel={() => setRightOpen(v => !v)}
           viewNav={(
             <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
               <button role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"

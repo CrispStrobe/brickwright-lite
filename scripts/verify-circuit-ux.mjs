@@ -98,9 +98,9 @@ try {
     check('debugger button remains selected', await debuggerButton.getAttribute('aria-pressed') === 'true');
     check('debugger switch keeps the right pane present', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
     check('debugger view keeps the circuit portal mounted without MCU code', await page.locator('[data-bw-circuit-stage-host]').count() === 1);
-    check('debugger view is an actual debugger surface', await page.locator('[data-debugger-surface]').count() === 1);
-    check('debugger view explains that code is missing in its own surface', await page.locator('[data-debugger-surface] [data-no-code-indicator]').count() === 1);
-    check('debugger controls are visible in debugger surface', await page.locator('[data-debugger-surface] [data-debugger-panel]').count() === 1);
+    check('debugger view keeps Circuit Designer mounted', await page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer').count() === 1);
+    check('debugger view shows controls in the right panel', await page.locator('[data-instruments-column] [data-debugger-panel]').count() === 1);
+    check('debugger view explains missing code in the right panel', await page.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1);
     await stageButton.click({force: true});
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
     await stageButton.click({force: true});

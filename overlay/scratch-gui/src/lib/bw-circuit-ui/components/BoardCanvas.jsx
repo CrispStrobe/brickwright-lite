@@ -1134,7 +1134,7 @@ export function BoardCanvas({
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
-  drcWarnings, panelNav, viewNav, rightOpen, onToggleRightPanel,
+  drcWarnings, panelNav, viewNav, rightOpen,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
