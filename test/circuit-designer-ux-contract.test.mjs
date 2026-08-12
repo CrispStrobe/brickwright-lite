@@ -18,6 +18,15 @@ test('Circuit Designer toolbar has one mode toggle, one view toggle, and a reada
     assert.match(source, /Remove selected part/);
 });
 
+test('part editor uses focused, native numeric controls', () => {
+    const editor = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/InlineEditor.jsx');
+    assert.match(editor, /data-inline-editor/);
+    assert.match(editor, /firstInput\.current\?\.focus/);
+    assert.match(editor, /type=\{typeof v === 'number' \? 'number' : 'text'\}/);
+    assert.match(editor, /background: '#ffffff'/);
+    assert.doesNotMatch(editor, /<SiInput/);
+});
+
 test('light circuit theme does not override toggle paint', () => {
     const theme = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/circuit-theme.css');
     assert.doesNotMatch(theme, /data-bw-circuit-theme="light"\]\s*button\)[\s\S]*background:\s*#ffffff\s*!important/);
