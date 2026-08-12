@@ -1024,7 +1024,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         pins() {
             if (!board) return [];
             return pinTable.map((p) => {
-                const id = p.where || `P${p.port}.${p.bit}`;
+                const id = p.where ? p.where.toLowerCase() : `P${p.port}.${p.bit}`;
                 const out = { name: p.name, pin: id, direction: p.direction,
                     activeLow: !!p.activeLow };
                 try {

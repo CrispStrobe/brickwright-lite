@@ -43,6 +43,17 @@ const MNA_ONLY_KINDS = new Set([
 ]);
 
 /**
+ * Board-level MCU parts: real board kinds that drive GPIO pins exactly
+ * like the generic 'mcu' kind. The solver, DRC, and pin resolution all
+ * need to treat these identically — a case for 'mcu' alone misses the
+ * designer's Arduino/Pico parts and LED brightness reads 0 because the
+ * walker never sees a driving source (diagnosed 2026-08-12).
+ */
+function isMcuKind(kind) {
+  return kind === 'mcu' || kind === 'arduino_uno' || kind === 'arduino_nano' || kind === 'pi_pico';
+}
+
+/**
  * Brightness integrator window.
  */
 const BRIGHTNESS_WINDOW_NS = 20_000_000n; // 20 ms
@@ -1252,7 +1263,7 @@ export class BoardImpl {
       }
 
       // Check for MCU pins driving into VCC or GND directly (short circuit)
-      if (part.kind === 'mcu') {
+      if (isMcuKind(part.kind)) {
         for (const terminal of part.terminals) {
           const state = this.pinStates.get(terminal);
           if (!state || state.mode === 'input') continue;
@@ -1307,7 +1318,7 @@ export class BoardImpl {
 
     // Check for output pins with nothing connected
     for (const part of this.parts) {
-      if (part.kind !== 'mcu') continue;
+      if (!isMcuKind(part.kind)) continue;
       for (const terminal of part.terminals) {
         const state = this.pinStates.get(terminal);
         if (!state || state.mode === 'input') continue;
@@ -2007,7 +2018,7 @@ export class BoardImpl {
         case 'gnd':
           out.push({ vTh: 0, rTh: rAccum });
           break;
-        case 'mcu': {
+        case 'mcu': case 'arduino_uno': case 'arduino_nano': case 'pi_pico': {
           const state = this.pinStates.get(t.terminal);
           if (!state) break;
           const thev = pinThevenin(state.mode, state.driveHigh, this.vcc);
@@ -2224,7 +2235,7 @@ export class BoardImpl {
         case 'gnd':
           return { vTh: 0, rTh: rAccum };
 
-        case 'mcu': {
+        case 'mcu': case 'arduino_uno': case 'arduino_nano': case 'pi_pico': {
           // The terminal name is the PinId
           const pinId = t.terminal;
           const state = this.pinStates.get(pinId);
@@ -2325,7 +2336,7 @@ export class BoardImpl {
     for (const net of this.nets) {
       for (const t of net.terminals) {
         const part = this.partMap.get(t.part);
-        if (part && part.kind === 'mcu' && t.terminal === pin) {
+        if (part && isMcuKind(part.kind) && t.terminal === pin) {
           return this.nodeVoltages.get(net.id) ?? 0;
         }
       }
@@ -2412,7 +2423,7 @@ export class BoardImpl {
 
       for (const t of net.terminals) {
         const p = this.partMap.get(t.part);
-        if (p && p.kind === 'mcu' && t.terminal === pin) {
+        if (p && isMcuKind(p.kind) && t.terminal === pin) {
           const edges = this.buzzerEdges.get(part.id);
           if (edges) {
             edges.push(this.timeNs);
