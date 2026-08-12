@@ -1,104 +1,71 @@
-# bw-bundle handoff — 2026-08-11
+# bw-bundle handoff — 2026-08-12
 
-## What was done
+## What was done this session (29b89ce)
+
+### Devices extension registered and fixed
+- **Re-registered** `devices` in `builtinExtensions` (`extension-manager.js`)
+  and added a picker entry in the extension library (after Circuit, before TTS).
+- **Runtime wiring bug fixed** (`devices/index.js`): constructor took no args,
+  set `this._runtime = null`. Every `_board()` call returned null — all 36 block
+  methods silently no-oped. Fixed: constructor takes `runtime`, register passes
+  `Scratch.vm && Scratch.vm.runtime` (same pattern as `stc12/index.js`).
+- 29 blocks visible, 7 stubs hidden (showdigit, setrgb, setpixel, clearmatrix,
+  devicestate, ircode, whenirreceived). NeoPixel hidden on 12T, servo/motor/
+  direction hidden on STC89 (no PCA, commit 69bd839).
+
+### Browser-verified (Playwright, local build)
+- Example 53-servo-sweep entered via Code ⇄ Blocks tab, To-blocks clicked
+- `devices` extension loaded: YES
+- `devices_setservo` blocks present: 2 (correct)
+- Zero page errors
+- STC config parsed: device=stc12c5a60s2, clock=11059200, pin led1
+- 52/52 local tests pass, build succeeds (2 expected size warnings)
+
+### Licence decision recorded
+MPL-2.0 is owner-confirmed for bw-circuit-ui, bw-cfront, bw-parts, bw-bundle,
+sb3-creator. Written into BLOCKED.md with full reasoning so nobody reopens it.
+
+## Nothing in flight
+
+All changes pushed to `main`. No branches, no stashes, no WIP.
+
+## What I learned (not yet in a spec-update)
+
+- **File ownership trap on VPS**: `overlay/scratch-vm/.../devices/` was owned by
+  root (created by a root-run agent). Rebase failed with "Permission denied" on
+  ~200 files across bw-circuit-ui, bw-board, test/. Fixed with
+  `sudo chown -R claudeuser:claudeuser` on the whole repo. Future agents should
+  check/fix ownership before rebasing if files were created by another user.
+
+- **Remote had 41 new commits** when first push was attempted. The failed rebase
+  left the repo needing recovery: `git stash`, `git reset --hard origin/main`,
+  re-apply edits, commit, push.
+
+## Prior session context (carried forward)
 
 ### Three-engine routing (649f40d)
 - `debug-target-factory.js` routes `emulator` (emu8051), `avr8js`, `rp2040js`, `serial`
-- Unknown kind throws loudly — no silent default to 8051
-- 7 assertions in `test/debug-target-routing.test.mjs`, 86/86 suite green
-
-### Lazy imports (4faecb7, verified in 649f40d)
-- avr8js and rp2040js adapters are dynamically imported inside their factory
-  functions, not at the top level. An STC12-only user never loads them.
-- Tests 6–7 in the routing suite import each adapter from the integrated
-  `packages/scratch-gui/src/` tree and assert the constructor function exists.
-
-### What those tests CANNOT see
-Entry weight is flat (+0.55% at `649f40d`) because 515 KB moved into lazy
-chunks (bw-board 150 KB, bw-circuit-ui 330 KB, bw-debug-panel 35 KB). Those
-chunks are asserted to load in Node, not in a built bundle — the weight win
-and the coverage gap are the same decision.
-
-**Built-bundle chunk resolution.** The routing tests load from
-`packages/scratch-gui/src/` (Node, pre-webpack), not from `build/chunks/`.
-A lazy chunk that 404s in production would not be caught by any test in the
-suite. This is the single most important gap: the avr8js and rp2040js
-adapters were made lazy specifically so they load on demand, and a lazy
-import that fails only for the users who need it is the exact failure shape
-this project has caught twice before (the flag gate whose `import()` fired
-before the check, and the schematic that rendered every symbol and no wires).
-
-Testing this requires a headless browser against the deployed site that
-actually triggers each engine path — which requires a compile endpoint for
-each architecture. The AVR endpoint is bw-cfront's track and not yet
-deployed. Until then, CI's webpack build is the only check that the chunks
-exist, and it says nothing about whether they resolve at runtime.
-
-### Clean-install-from-lockfile
-Not tested end-to-end locally. The lockfile is tracked (`c1692f0`) and CI
-runs `npm install` from it, so CI is the de facto test. A local
-reproduction would duplicate CI but would catch a lockfile that names a
-package the registry no longer serves.
-
-### Sidecar drift — closed (3ac31ad)
-115 → 123 sidecars, 4 renames resolved (old files deleted). Sync script
-now deletes files that vanish upstream, with a KEEP set protecting the
-MPL-2.0 LICENSE. Verified: 123 JSON, 123 SVG, LICENSE intact.
+- Lazy imports: avr8js/rp2040js loaded on demand, STC12-only users never load them
+- **Gap**: routing tests run in Node, not against the built bundle — a lazy chunk
+  that 404s in production would not be caught
 
 ### Licence notices
-- **bw-circuit-ui** (MPL-2.0): directory LICENSE in `overlay/.../bw-circuit-ui/LICENSE`.
-  MPL is file-level copyleft; vendored files stay MPL inside the BSD-3 bundle (§3.3).
-  Source availability: the vendored JS in this public repo IS the source (§3.2a).
-  Sync script cannot delete it (KEEP set).
-- **bw-board** (MIT): directory LICENSE in `overlay/.../bw-board/LICENSE`.
-  Sync script discovers only `.js` files; LICENSE is safe.
-- **sb3-creator** (MPL-2.0): `overlay/.../lib/sb3-creator-LICENSE` with file manifest.
-  Sync script writes a hardcoded FILES list that does not include it.
-- **avr8js** (MIT, 0.21.0): THIRD-PARTY-NOTICES.md entry. npm dependency in
-  `integrate.mjs`, lazy-imported.
-- **rp2040js** (MIT, 1.3.3): THIRD-PARTY-NOTICES.md entry. npm dependency in
-  `integrate.mjs`, lazy-imported.
+- bw-circuit-ui (MPL-2.0), bw-board (MIT), sb3-creator (MPL-2.0): directory LICENSEs
+- avr8js (MIT, 0.21.0), rp2040js (MIT, 1.3.3): THIRD-PARTY-NOTICES.md entries
 
-### Camera hit-testing (0c5a9d2)
-Owner's schematic camera (a798d56) verified correct. Repeatable Playwright
-spec at `scripts/verify-interaction.mjs`:
-- Pan: hit at new position, miss at old
-- Cursor-anchored zoom: hit at new, anchor keeps target in place (≤20px shift)
-- Pan+zoom: hit at new, miss at old
-
-### Device selector (1ceb065)
-Grouped dropdown in Code tab header: STC12 (6), Arduino (3), MicroPython (2).
-Reads/writes DEVICE line in pseudocode buffer. Publishes `vm.runtime.bwDeviceCore`
-and `vm.runtime.bwDeviceId` for the debug panel.
-
-### Schematic verification — closed (c49f2d7)
-Case 3 (LED chaser) went from 0→20 wire nets after vendoring 92c6450.
-Instrument committed at `scripts/verify-schematic.mjs`.
-
-## What was ruled out
-
-- **Node cannot reproduce the extension-block deserialization bug.** The browser
-  and Node disagree about whether sb3.js drops blocks with unknown extension
-  prefixes. Any guard for this class must be a headless browser test.
-- **bw-debug is not vendored.** 8 files, no sync script, no upstream repo.
-  Lite's own glue code.
-- **Devices extension unregistered** — 31 of 36 blocks were stubs. Re-register
-  when drivers exist.
+### What was ruled out
+- Node cannot reproduce the extension-block deserialization bug (browser-only)
+- bw-debug is not vendored (8 files, lite's own glue code)
 - **rp2040js execution** now exists for raw UF2/flash images: GPIO feedback,
   vector-table reset, instruction stepping, raw XIP breakpoints, registers, and
-  code/SRAM memory access are tested. It still has no MicroPython compiler,
+  code/SRAM memory access are tested. Still no MicroPython compiler,
   ELF/source-symbol mapping, yield points, or full peripheral parity.
 
-## Open cross-repo items
+## Open items
 
-- **Spec-update 006** (stale hobby_gearmotor refs): bw-circuit-ui's fix. 5 code
-  references to the old slug survive. Lite carries them via the vendor — cannot
-  fix without the next sync overwriting. Highest acted on: bw-parts 005.
-
-## AVR integration — boundary-D complete; compiler endpoint remains open
-
-Written up in BLOCKED.md. avr8js/rp2040js MIT verified, adapter contracts
-documented, Intel HEX/UF2 parsers built, factory wired, and the AVR boundary-D
-target is complete. What remains is the avr-gcc compile endpoint (bw-cfront)
-and end-to-end browser execution; AVR source symbols are supplied by the
-compiler endpoint contract.
+- **7 device stubs** hidden from palette — need drivers in bw-board before unhiding
+- **Code-tab debugger strip** — placement approved, not started
+- **SW failure-mode tests** — identified but not built
+- **Spec-update 006** (stale hobby_gearmotor refs): bw-circuit-ui's fix upstream
+- **AVR end-to-end**: boundary-D complete, Intel HEX/UF2 parsers built, factory
+  wired. Needs avr-gcc compile endpoint (bw-cfront) and browser execution test.
