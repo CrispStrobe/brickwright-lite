@@ -1,47 +1,59 @@
-# bw-bundle handoff — 2026-08-12 (session 2)
+# bw-bundle handoff — 2026-08-12 (session 3)
 
-## What was done this session (d29198f)
+## What was done this session (0c1bb42)
 
-### AVR debug chain: end-to-end wiring completed
+### Pico debug chain: wired into the app
 
 **Re-vendored:**
-- sb3-creator at e9fe382 (volatile scheduler variables on AVR)
-- bw-board at 1ab92cd (avr8js adapter with USART + ADC + debug target factory)
+- sb3-creator at 3e2659b (DEVICE PICO + real PWM on AVR/RP2040)
+- bw-board at 32582aa (rp2040js adapter + debug target + digital-input leg on both adapters)
 
-**Fixed in debug-runner.js:**
-- AVR onChange handler: now calls `glow(st.tasks)` for Level-1 position,
-  `shouldSkip()` for conditional breakpoints, `clearGlow()` on resume,
-  records variables+tasks in trace — was a stub that traced but never lit blocks
-- Device-to-target mapping: `arduino-nano` → `atmega328p` for the compile
-  endpoint (which accepts chip names, not board names)
-- `pins()` method: uses `pin.where` for Arduino-style names (D13 not Pundefined.undefined)
-- Wires `setValueResolver` and `_bwDebugVariables` for the AVR path
+**Overlay-specific fixes re-applied after vendor:**
+- avr8js-adapter.js: lowercase pin names (`name.toLowerCase()`) to match
+  bw-parts sidecar terminal conventions; ADC reads lowercase `a${channel}`
+- board.js: `isMcuKind()` helper treats `arduino_uno`, `arduino_nano`,
+  `pi_pico` identically to `mcu` in solver + walk chain
+- infer-netlist.js: `pinId` function uses `p.where` for Arduino/Pico pins;
+  fixed self-referencing bug (`const pid = pid(pin)` → `const pid = pinId(pin)`)
+- checkWiring also updated to use `where`-aware pin IDs
 
-**Fixed in infer-netlist.js:**
-- Arduino pins use `pin.where` (D13) instead of `P${port}.${bit}` — board
-  terminal names now match what the avr8js adapter drives through `setPin()`
+**Device selector (pseudocode-importer.jsx):**
+- Pico moved from MicroPython group to new "Raspberry Pi" group
+- `compile: true`, `emulator: 'rp2040js'`
 
-**Fixed in sync-bw-board.mjs:**
-- Excludes `pin-functions.js` (Node-only, imports `node:fs`)
+**debug-runner.js:**
+- `COMPILE_TARGET` map: `'pico' → 'rp2040'`
+- `selectDebugTargetKind('pico')` → `'rp2040js'`
+- `attachRp2040js`: wires serial, glow, trace, breakpoints, value resolver
+- `build()`: base64 → Uint16Array halfwords (little-endian) for Pico raw binary
+
+**debug-target-factory.js:**
+- `'rp2040js'` added to `getTargetKinds()` (label: "Simulated (RP2040)")
+
+**New file: rp2040js-debug.js**
+- Boundary-D debug target for RP2040 (from bw-board): breakpoints, stepping,
+  position reporting, halt policy = freeze-timers
 
 ### Browser-verified (Playwright, local build)
-- **Nano blink**: D13 toggles at 500ms, 5 transitions in 3s, LED brightness
-  0 ↔ 0.145
-- **Yield breakpoint**: pauses at `bw_task0/state=1` (forever yield), Level-1
-  position shown, glowing block mapped correctly
-- **Serial output**: "hello" lines accumulate via USART0
-- 1654 bytes compiled, 4 yield points, F_CPU=16MHz, bw_ms tracks correctly
+- Pico appears in device selector
+- Code compiles to blocks with DEVICE PICO
+- "Raspberry Pi Pico" and "rp2040js" confirmed in bundle
+- All chunks (bw-board, bw-debug, sb3-creator) contain rp2040/pico code
+- Debug routing: pico→rp2040 compile target, rp2040js attach path present
 - Zero page errors
 
-### Licence confirmation updated
-MPL-2.0 directly confirmed by owner (2026-08-12) for bw-parts, bw-circuit-ui,
-bw-cfront, bw-bundle, sb3-creator. BLOCKED.md updated from provisional to final.
+### Build deployed
+- Pushed to main at 0c1bb42, CI build queued
 
 ## Nothing in flight
 
 All changes pushed to `main`. No branches, no stashes, no WIP.
 
 ## Prior session context (carried forward)
+
+### AVR debug chain (session 2, d29198f)
+- Full AVR debug wiring: Nano blink, yield breakpoints, serial output
+- Licence confirmation: MPL-2.0 for bw-parts, bw-circuit-ui, bw-cfront, bw-bundle, sb3-creator
 
 ### Devices extension (e2ad1cf)
 - Re-registered in builtinExtensions, picker entry added
@@ -52,16 +64,15 @@ All changes pushed to `main`. No branches, no stashes, no WIP.
 - debug-target-factory.js routes emulator/avr8js/rp2040js/serial
 - Lazy imports: avr8js/rp2040js loaded on demand
 
-### What was ruled out
-- Node cannot reproduce the extension-block deserialization bug (browser-only)
-- bw-debug is not vendored (8 files, lite's own glue code)
-- rp2040js: GPIO/stepping/breakpoints work, no MicroPython compiler yet
-
 ## Open items
 
+- **Full Pico debug chain test**: needs stc-compiler.vercel.app to accept
+  target "rp2040" — coordinator to verify with production proof
 - **7 device stubs** hidden from palette — need drivers in bw-board
 - **Code-tab debugger strip** — placement approved, not started
 - **SW failure-mode tests** — identified but not built
 - **Spec-update 006** (stale hobby_gearmotor refs): bw-circuit-ui's fix upstream
 - **F_CPU from compile response**: stc-compiler doesn't echo f_cpu yet for AVR
   (shows as undefined in test output — adapter falls back to 16MHz correctly)
+- **bw-board pin name convention**: bw-board source still uses uppercase pin names
+  on avr8js-adapter; overlay has the lowercase fix — next sync will need re-apply

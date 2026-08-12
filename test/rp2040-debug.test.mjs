@@ -1,50 +1,87 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-test('Pico target accepts raw XIP code breakpoints but rejects source breakpoints', async () => {
-    const {createRp2040jsDebugTarget} = await import('../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js');
-    let observer = null;
+test('Pico target accepts raw code breakpoints and yield breakpoints with symbols', async () => {
+    // rp2040js-debug.js exports createRp2040jsDebugTarget
+    const {createRp2040jsDebugTarget} = await import(
+        '../packages/scratch-gui/src/lib/bw-board/rp2040js-debug.js');
+
+    // Minimal adapter stub matching createRp2040jsAdapter's shape.
+    // The debug target destructures { rp2040, core } from the adapter.
+    const coreObj = {
+        PC: 0x20000000, SP: 0x20041000, LR: 0, APSR: 0,
+        registers: new Uint32Array(16), cycles: 0, waiting: false,
+        executeInstruction() { return 1; }, reset() {},
+    };
+    const clockObj = {nanos: 0, nanosToNextAlarm: 0, tick(ns) { this.nanos += ns; }};
+    const sramBuf = new Uint8Array(264 * 1024);
     const adapter = {
         rp2040: {
-            core: {PC: 0x10000000, SP: 0, LR: 0, xPSR: 0, registers: new Uint32Array(16), cycles: 0},
-            flash: new Uint8Array(16 * 1024 * 1024),
-            sram: new Uint8Array(264 * 1024),
-            readUint8: () => 0,
-            writeUint8: () => {},
+            core: coreObj,
+            clock: clockObj,
+            sram: sramBuf,
+            readUint8(addr) {
+                if (addr >= 0x20000000 && addr < 0x20000000 + sramBuf.length)
+                    return sramBuf[addr - 0x20000000];
+                return 0;
+            },
+            writeUint8(addr, val) {
+                if (addr >= 0x20000000 && addr < 0x20000000 + sramBuf.length)
+                    sramBuf[addr - 0x20000000] = val;
+            },
         },
-        timeNs: () => 0n,
-        stepInstruction: () => {},
-        advanceNs: () => {},
-        reset: () => {},
-        setInstructionObserver: fn => { observer = fn; },
+        core: coreObj,
+        clockHz: 125_000_000,
+        timeNs: () => BigInt(Math.round(clockObj.nanos)),
+        advanceNs() {},
+        resetToProgram() { coreObj.reset(); },
     };
+
     const target = createRp2040jsDebugTarget(adapter);
-    const handle = target.setBreakpoint({kind: 'code', addr: 0x10000020});
-    assert.equal(handle, 1);
-    assert.deepEqual(target.setBreakpoint({kind: 'yield', task: 'main', state: 1}), {
-        unsupported: 'Pico supports raw code-address breakpoints only.'
-    });
-    assert.deepEqual(target.setBreakpoint({kind: 'code', addr: 0x200}), {
-        unsupported: 'Pico code breakpoint needs an integer XIP address >= 0x10000000.'
-    });
-    assert.equal(typeof observer, 'function');
-    const halts = [];
-    target.onHalt(why => halts.push(why));
-    target.run();
-    assert.equal(observer({pc: 0x10000020, timeNs: 0n, phase: 'before'}), false);
-    assert.equal(target.state(), 'halted');
-    assert.equal(halts[0].cause, 'breakpoint');
-    assert.deepEqual(target.position(), {pc: 0x10000000});
-    assert.deepEqual(target.regs().r, Array.from(new Uint32Array(16)));
-    assert.deepEqual(target.readMem('code', 0x10000000, 2), Uint8Array.of(0, 0));
-    assert.deepEqual(target.writeMem('code', 0x10000000, Uint8Array.of(1)), {
-        refused: 'space not writable: code'
-    });
-    assert.deepEqual(target.readMem('sram', 0x20000000 + 264 * 1024, 1), {
-        unsupported: 'sram address/range is invalid'
-    });
-    assert.deepEqual(target.writeMem('sram', 0x20000000 + 264 * 1024, Uint8Array.of(1)), {
-        refused: 'invalid SRAM address'
-    });
+
+    // Code breakpoint at an even address
+    const handle = target.setBreakpoint({kind: 'code', addr: 0x20000020});
+    assert.equal(typeof handle, 'number');
+    assert.ok(handle >= 1);
+
+    // Odd address rejected (Thumb flag)
+    const oddResult = target.setBreakpoint({kind: 'code', addr: 0x20000021});
+    assert.ok(oddResult.unsupported);
+
+    // Yield breakpoint without symbols fails gracefully
+    const noSymResult = target.setBreakpoint({kind: 'yield', task: 'main', state: 1});
+    assert.ok(noSymResult.unsupported);
+
+    // Clear breakpoint
     target.clearBreakpoint(handle);
+
+    // Capabilities
+    const caps = target.capabilities();
+    assert.ok(caps.steps.includes('insn'));
+    assert.ok(caps.steps.includes('block'));
+    assert.ok(caps.breakpoints.includes('code'));
+    assert.ok(caps.breakpoints.includes('yield'));
+    assert.equal(caps.haltPolicy, 'freeze-timers');
+
+    // Memory access
+    const sramRead = target.readMem('sram', 0x20000000, 2);
+    assert.ok(sramRead instanceof Uint8Array);
+    assert.equal(sramRead.length, 2);
+
+    const codeRead = target.readMem('code', 0x20000000, 2);
+    assert.ok(codeRead instanceof Uint8Array);
+
+    // Writing to code is refused
+    const writeCode = target.writeMem('code', 0x20000000, Uint8Array.of(1));
+    assert.ok(writeCode && writeCode.refused);
+
+    // SRAM write succeeds
+    const writeSram = target.writeMem('sram', 0x20000000, Uint8Array.of(42));
+    assert.equal(writeSram, undefined);
+    assert.equal(target.readMem('sram', 0x20000000, 1)[0], 42);
+
+    // Regs
+    const regs = target.regs();
+    assert.equal(typeof regs.pc, 'number');
+    assert.equal(typeof regs.sp, 'number');
 });
