@@ -78,12 +78,35 @@ function targetLabel(target) {
 /**
  * @param {{ examples: Array, lang?: string, onLoadExample?: function }} props
  */
-export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
+export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: themeProp }) {
   const [filter, setFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedTarget, setSelectedTarget] = useState(null);
+  const [storedTheme, setStoredTheme] = useState(() => {
+    try { return localStorage.getItem('bw-circuit-theme') || 'light'; } catch { return 'light'; }
+  });
+  const theme = themeProp || storedTheme;
+  const dark = theme === 'dark';
+  const palette = dark ? {
+    panel: '#1a1a2e', border: '#2c3e50', heading: '#f8fafc', text: '#ecf0f1',
+    muted: '#cbd5e1', input: '#0a0a1a', button: '#24324b', buttonBorder: '#52627a',
+    card: '#16213e', cardHover: '#1e2d4a', cardBorder: '#2c3e50', accent: '#3b82f6',
+  } : {
+    panel: '#f8fafc', border: '#cbd5e1', heading: '#0f172a', text: '#334155',
+    muted: '#475569', input: '#ffffff', button: '#e2e8f0', buttonBorder: '#94a3b8',
+    card: '#ffffff', cardHover: '#eff6ff', cardBorder: '#cbd5e1', accent: '#2563eb',
+  };
+
+  useEffect(() => {
+    const onTheme = event => {
+      const next = event.detail && event.detail.value;
+      if (next === 'light' || next === 'dark') setStoredTheme(next);
+    };
+    window.addEventListener('bw-circuit-theme', onTheme);
+    return () => window.removeEventListener('bw-circuit-theme', onTheme);
+  }, []);
   // The dedicated Examples mode is already an explicitly selected panel;
   // starting it collapsed made the mode look empty and hid its scroll area.
   const [open, setOpen] = useState(() => true);
@@ -141,8 +164,8 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
   if (!examples || examples.length === 0) {
     return (
       <div style={{
-        background: '#1a1a2e', border: '1px solid #2c3e50', borderRadius: '8px',
-        padding: '12px', fontFamily: 'monospace', fontSize: '11px', color: '#cbd5e1',
+        background: palette.panel, border: `1px solid ${palette.border}`, borderRadius: '8px',
+        padding: '12px', fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif', fontSize: '13px', color: palette.muted,
       }}>
         No examples available
       </div>
@@ -151,11 +174,11 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
 
   return (
     <div data-examples-selector style={{
-      background: '#1a1a2e',
-      border: '1px solid #2c3e50',
+      background: palette.panel,
+      border: `1px solid ${palette.border}`,
       borderRadius: '8px',
       padding: '8px',
-      fontFamily: 'monospace',
+      fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
       height: '100%',
       flex: '1 1 auto',
       overflow: 'hidden',
@@ -168,11 +191,11 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
         aria-label={open ? 'Collapse examples selector' : 'Expand examples selector'}
         title={open ? 'Collapse examples selector' : 'Expand examples selector'}
         style={{position: 'absolute', left: -13, top: 5, width: 24, height: 24, padding: 0, zIndex: 2,
-          border: '1px solid #64748b', borderRadius: '999px', background: '#16213e', color: '#e2e8f0', cursor: 'pointer'}}>
+          border: `1px solid ${palette.buttonBorder}`, borderRadius: '999px', background: palette.button, color: palette.text, cursor: 'pointer'}}>
         {open ? '‹' : '›'}
       </button>
-      <div style={{ color: '#f8fafc', fontSize: '13px', marginBottom: '8px', fontWeight: 'bold', paddingLeft: 34, letterSpacing: '.02em' }}>
-        Examples <span style={{color: '#cbd5e1', fontSize: '10px', fontWeight: 'normal'}}>({filtered.length}/{examples.length})</span>
+      <div style={{ color: palette.heading, fontSize: '16px', marginBottom: '8px', fontWeight: 700, paddingLeft: 34, letterSpacing: '.01em' }}>
+        Examples <span style={{color: palette.muted, fontSize: '12px', fontWeight: 400}}>({filtered.length}/{examples.length})</span>
       </div>
 
       {!open ? null : <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto', overscrollBehavior: 'contain'}}>
@@ -185,23 +208,24 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
         placeholder="search examples..."
         style={{
           width: '100%', padding: '4px 6px', marginBottom: '6px',
-          background: '#0a0a1a', border: '1px solid #2c3e50',
-          borderRadius: '4px', color: '#ecf0f1',
-          fontFamily: 'monospace', fontSize: '10px',
+          background: palette.input, border: `1px solid ${palette.border}`,
+          borderRadius: '4px', color: palette.text,
+          fontFamily: 'inherit', fontSize: '13px',
           boxSizing: 'border-box',
         }}
       />
 
-      {/* Category tabs */}
-      <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', marginBottom: '6px' }}>
+      {/* Filter toolbar: each group stays compact and the groups share rows. */}
+      <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px'}}>
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap' }}>
         <button
           onClick={() => setSelectedCategory(null)}
           style={{
-            padding: '2px 6px', borderRadius: '3px', fontSize: '8px',
-            fontFamily: 'monospace', cursor: 'pointer',
-            background: !selectedCategory ? '#3498db' : '#16213e',
-            color: !selectedCategory ? '#fff' : '#e2e8f0',
-            border: '1px solid #2c3e50',
+            padding: '5px 9px', borderRadius: '5px', fontSize: '12px',
+            fontFamily: 'inherit', cursor: 'pointer',
+            background: !selectedCategory ? palette.accent : palette.button,
+            color: !selectedCategory ? '#fff' : palette.text,
+            border: `1px solid ${!selectedCategory ? palette.accent : palette.buttonBorder}`,
           }}
         >All</button>
         {categories.map(cat => (
@@ -209,30 +233,30 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
             key={cat}
             onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
             style={{
-              padding: '2px 6px', borderRadius: '3px', fontSize: '8px',
-              fontFamily: 'monospace', cursor: 'pointer',
-              background: selectedCategory === cat ? (CATEGORY_COLORS[cat] || '#555') : '#16213e',
-              color: selectedCategory === cat ? '#fff' : (CATEGORY_COLORS[cat] || '#e2e8f0'),
-              border: `1px solid ${CATEGORY_COLORS[cat] || '#2c3e50'}`,
+              padding: '5px 9px', borderRadius: '5px', fontSize: '12px',
+              fontFamily: 'inherit', cursor: 'pointer',
+              background: selectedCategory === cat ? (CATEGORY_COLORS[cat] || palette.accent) : palette.button,
+              color: selectedCategory === cat ? '#fff' : (dark ? (CATEGORY_COLORS[cat] || palette.text) : palette.text),
+              border: `1px solid ${selectedCategory === cat ? (CATEGORY_COLORS[cat] || palette.accent) : palette.buttonBorder}`,
             }}
           >{CATEGORY_LABELS[cat] || cat}</button>
         ))}
       </div>
 
-      <FilterRow label="Level">
-        <FilterButton active={!selectedDifficulty} onClick={() => setSelectedDifficulty(null)}>All</FilterButton>
+      <FilterRow label="Level" palette={palette}>
+        <FilterButton palette={palette} active={!selectedDifficulty} onClick={() => setSelectedDifficulty(null)}>All</FilterButton>
         {[1, 2, 3].map(level => (
-          <FilterButton key={level} active={selectedDifficulty === level} color={DIFFICULTY_COLORS[level]}
+          <FilterButton palette={palette} key={level} active={selectedDifficulty === level} color={DIFFICULTY_COLORS[level]}
             onClick={() => setSelectedDifficulty(selectedDifficulty === level ? null : level)}>
             {DIFFICULTY_LABELS[level]}
           </FilterButton>
         ))}
       </FilterRow>
 
-      <FilterRow label="Parts">
-        <FilterButton active={!selectedPart} onClick={() => setSelectedPart(null)}>All</FilterButton>
+      <FilterRow label="Parts" palette={palette}>
+        <FilterButton palette={palette} active={!selectedPart} onClick={() => setSelectedPart(null)}>All</FilterButton>
         {partTags.map(part => (
-          <FilterButton key={part} active={selectedPart === part}
+          <FilterButton palette={palette} key={part} active={selectedPart === part}
             color={part === 'mcu' ? '#38bdf8' : '#14b8a6'}
             onClick={() => setSelectedPart(selectedPart === part ? null : part)}>
             {partLabel(part)}
@@ -240,20 +264,21 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
         ))}
       </FilterRow>
 
-      <FilterRow label="Target">
-        <FilterButton active={!selectedTarget} onClick={() => setSelectedTarget(null)}>All</FilterButton>
+      <FilterRow label="Target" palette={palette}>
+        <FilterButton palette={palette} active={!selectedTarget} onClick={() => setSelectedTarget(null)}>All</FilterButton>
         {targetTags.map(target => (
-          <FilterButton key={target} active={selectedTarget === target}
+          <FilterButton palette={palette} key={target} active={selectedTarget === target}
             color={target === 'no-mcu' ? '#14b8a6' : '#6366f1'}
             onClick={() => setSelectedTarget(selectedTarget === target ? null : target)}>
             {targetLabel(target)}
           </FilterButton>
         ))}
       </FilterRow>
+      </div>
 
       {/* Example cards */}
       {filtered.length === 0 ? (
-        <div style={{ color: '#cbd5e1', fontSize: '10px', padding: '8px 4px' }}>No examples match these filters.</div>
+        <div style={{ color: palette.muted, fontSize: '13px', padding: '8px 4px' }}>No examples match these filters.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {filtered.map(ex => (
@@ -261,6 +286,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
               key={ex.id}
               example={ex}
               lang={lang}
+              palette={palette}
               onClick={() => onLoadExample && onLoadExample(ex)}
             />
           ))}
@@ -271,29 +297,29 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
   );
 }
 
-function FilterRow({label, children}) {
+function FilterRow({label, children, palette}) {
   return (
-    <div style={{display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginBottom: '6px'}}>
-      <span style={{color: '#cbd5e1', fontSize: '9px', minWidth: 38}}>{label}</span>
+    <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap'}}>
+      <span style={{color: palette.muted, fontSize: '12px', minWidth: 'auto', fontWeight: 600}}>{label}</span>
       {children}
     </div>
   );
 }
 
-function FilterButton({active, color = '#3b82f6', onClick, children}) {
+function FilterButton({active, color = '#3b82f6', onClick, children, palette}) {
   return (
     <button type="button" onClick={onClick} style={{
-      padding: '3px 7px', borderRadius: '4px', fontSize: '9px',
-      fontFamily: 'monospace', cursor: 'pointer',
-      background: active ? color : '#24324b',
-      color: active ? '#fff' : '#e2e8f0',
-      border: `1px solid ${active ? color : '#52627a'}`,
+      padding: '5px 9px', borderRadius: '5px', fontSize: '12px',
+      fontFamily: 'inherit', cursor: 'pointer',
+      background: active ? color : palette.button,
+      color: active ? '#fff' : palette.text,
+      border: `1px solid ${active ? color : palette.buttonBorder}`,
       boxShadow: active ? '0 1px 2px rgba(0,0,0,.25)' : 'none',
     }}>{children}</button>
   );
 }
 
-function ExampleCard({ example, lang, onClick }) {
+function ExampleCard({ example, lang, onClick, palette }) {
   const [hovered, setHovered] = useState(false);
   const title = example.title?.[lang] || example.title?.en || example.id;
   const catColor = CATEGORY_COLORS[example.category] || '#555';
@@ -306,23 +332,23 @@ function ExampleCard({ example, lang, onClick }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         padding: '8px',
-        background: hovered ? '#1e2d4a' : '#16213e',
-        border: `1px solid ${hovered ? catColor : '#2c3e50'}`,
+        background: hovered ? palette.cardHover : palette.card,
+        border: `1px solid ${hovered ? catColor : palette.cardBorder}`,
         borderRadius: '6px',
         cursor: 'pointer',
         transition: 'border-color 80ms, background 80ms',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ color: '#ecf0f1', fontSize: '10px', fontWeight: 'bold' }}>{title}</div>
+        <div style={{ color: palette.heading, fontSize: '13px', fontWeight: 650 }}>{title}</div>
         <span style={{
-          fontSize: '7px', color: '#dbeafe',
+          fontSize: '10px', color: palette.text,
           background: `${catColor}22`, padding: '1px 4px',
           borderRadius: '2px',
         }}>{example.category}</span>
       </div>
       {diff && (
-        <div style={{ color: '#cbd5e1', fontSize: '8px', marginTop: '3px' }}>
+        <div style={{ color: palette.muted, fontSize: '11px', marginTop: '4px' }}>
           {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)} {diff}
         </div>
       )}

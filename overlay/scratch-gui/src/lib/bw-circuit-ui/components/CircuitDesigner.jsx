@@ -786,7 +786,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </div>
           <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto'}}>
             {examples && onLoadExample ? (
-              <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} />
+              <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} theme={theme} />
             ) : (
               <InferPanel onLoadCircuit={handleLoadCircuit} />
             )}
