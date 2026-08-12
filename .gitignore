@@ -18,3 +18,4 @@ dist/
 # Agent context (local only)
 CLAUDE.md
 .claude/
+.last-run.json

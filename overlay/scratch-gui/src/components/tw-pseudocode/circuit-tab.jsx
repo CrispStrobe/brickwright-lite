@@ -543,6 +543,12 @@ class CircuitTab extends React.Component {
      */
     handleRunnerChange (runner, ui) {
         const board = runner.board();
+        // GAP C fix: rebind the diagnostic hook to the ACTIVE board while a
+        // debug session is attached. window.__board is set once by onBoardReady
+        // (the designer's own board), but during a debug run the active board
+        // is the runner's — one-board-one-truth says reads follow the active
+        // board, and a diagnosis hook that lies costs a full probe cycle.
+        if (board && typeof window !== 'undefined') window.__activeBoard = board;
         const halted = !!(ui && ui.session && ui.session.halted);
         const why = ui && ui.session && ui.session.why;
         // The designer reads debugState.tasks and .capabilities, and this passed

@@ -64,7 +64,9 @@ export function inferNetlist(stc) {
   // Collect MCU terminals from declared pins.
   // Arduino-style pins have `where` ('D13', 'A0') but no port/bit;
   // STC-style pins have port/bit ('P1.0').
-  const pinId = (p) => p.where || `P${p.port}.${p.bit}`;
+  // Lowercase for Arduino pins: the avr8js adapter drives lowercase names
+  // (matching bw-parts sidecar terminals), so the MCU terminals must agree.
+  const pinId = (p) => p.where ? p.where.toLowerCase() : `P${p.port}.${p.bit}`;
   const mcuTerminals = stc.pins.map(pinId);
   parts.push({ id: 'MCU', kind: 'mcu', params: {}, terminals: mcuTerminals });
 

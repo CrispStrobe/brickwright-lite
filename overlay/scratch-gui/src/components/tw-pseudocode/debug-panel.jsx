@@ -361,6 +361,27 @@ class DebugPanel extends React.Component {
                     />
                 ) : null}
 
+                {/* Serial console — print output from the AVR USART / 8051 UART.
+                    The runner buffers serialLines and exposes snapshot.serialOutput;
+                    this is the UI consumer. */}
+                {ui.serialOutput && ui.serialOutput.length ? (
+                    <div style={{borderTop: '1px solid #2c3e50', paddingTop: 8}}>
+                        <div style={{color: '#7f8c8d', marginBottom: 4}}>
+                            {'Serial'}
+                            {` (${ui.serialOutput.length})`}
+                        </div>
+                        <pre
+                            data-testid="bw-serial-console"
+                            style={{
+                                margin: 0, padding: 6, maxHeight: 120, overflow: 'auto',
+                                background: '#0d1117', color: '#2ecc71', fontSize: 11,
+                                borderRadius: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                                fontFamily: 'monospace'
+                            }}
+                        >{ui.serialOutput.join('\n')}</pre>
+                    </div>
+                ) : null}
+
                 {/* Level 1 is yield-to-yield. Say so, rather than letting the
                     highlight imply a precision the position does not have. */}
                 {paused && why ? (
