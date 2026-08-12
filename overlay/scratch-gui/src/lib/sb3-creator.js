@@ -4283,10 +4283,16 @@ class SB3Creator {
         const stc = project && project.stc;
         if (!stc || !stc.pins || !stc.pins.length) return [];
         const q = (v) => this.pyStr(v);
+        const whereOf = (pin) => pin.where || (
+            pin.port !== undefined && pin.bit !== undefined
+                ? `P${pin.port}.${pin.bit}`
+                : null
+        );
         const lines = [`scratch.device(${q(stc.device)}, ${stc.clock})`];
         for (const pin of stc.pins) {
-            const loc = pin.where || `P${pin.port}.${pin.bit}`;
-            lines.push(`scratch.pin(${q(pin.name)}, ${q(loc)}, `
+            const where = whereOf(pin);
+            if (!where) continue;
+            lines.push(`scratch.pin(${q(pin.name)}, ${q(where)}, `
                 + `${q(pin.direction)}, ${pin.activeLow ? 1 : 0})`);
         }
         return lines;
