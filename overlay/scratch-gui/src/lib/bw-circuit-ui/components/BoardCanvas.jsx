@@ -1928,11 +1928,12 @@ export function BoardCanvas({
         flexWrap: 'wrap', alignContent: 'center', rowGap: '6px',
         overflow: 'visible', width: '100%', boxSizing: 'border-box',
       }}>
-        <button onClick={() => onModeChange?.(mode === 'simulate' ? 'build' : 'simulate')}
-          title={mode === 'simulate' ? 'Sim active — switch to Build' : 'Build active — switch to Sim'}
-          aria-label={mode === 'simulate' ? 'Sim active — switch to Build' : 'Build active — switch to Sim'}
-          aria-pressed={mode === 'simulate'}
-          style={{ minHeight: 34, minWidth: 82, padding: '4px 10px', background: mode === 'simulate' ? '#14532d' : '#1e3a5f', border: `1px solid ${mode === 'simulate' ? '#2ecc71' : '#3498db'}`, borderRadius: '4px', color: mode === 'simulate' ? '#86efac' : '#93c5fd', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>{mode === 'simulate' ? '▶ Sim' : '▦ Build'}</button>
+        <div role="radiogroup" aria-label="Build or Sim mode" data-build-sim-toggle style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+          <button role="radio" aria-checked={mode === 'build'} onClick={() => onModeChange?.('build')} title="Build mode" aria-label="Build mode"
+            style={{minHeight: 34, minWidth: 62, padding: '4px 9px', background: mode === 'build' ? '#1e3a5f' : 'transparent', border: 'none', borderRight: '1px solid #64748b', color: mode === 'build' ? '#93c5fd' : '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer'}}>▦ Build</button>
+          <button role="radio" aria-checked={mode === 'simulate'} onClick={() => onModeChange?.('simulate')} title="Simulation mode" aria-label="Sim mode"
+            style={{minHeight: 34, minWidth: 62, padding: '4px 9px', background: mode === 'simulate' ? '#14532d' : 'transparent', border: 'none', color: mode === 'simulate' ? '#86efac' : '#94a3b8', fontSize: '12px', fontWeight: 700, cursor: 'pointer'}}>▶ Sim</button>
+        </div>
         <button onClick={() => onPowerToggle?.()} title={powered ? 'Power on' : 'Power off'}
           style={{ minHeight: 34, padding: '4px 10px', background: powered ? '#176b3a' : '#7f1d1d', border: '1px solid transparent', borderRadius: '4px', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>{powered ? '⏻ On' : '⏻ Off'}</button>
 
@@ -2029,9 +2030,9 @@ export function BoardCanvas({
         style={{
           position: 'relative',
           flex: '0 0 auto',
-          width: 900,
+          width: 'max(100%, 900px)',
           minWidth: CANVAS_W,
-          height: 650,
+          height: 'max(100%, 650px)',
           minHeight: CANVAS_H,
           background: '#16213e',
           borderRadius: '8px',

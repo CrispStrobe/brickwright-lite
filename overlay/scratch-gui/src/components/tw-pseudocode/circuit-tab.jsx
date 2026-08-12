@@ -769,8 +769,8 @@ class CircuitTab extends React.Component {
                         onDeclarationChange={this.handleDeclarationChange}
                         panelNav={this.renderPanelStrip()}
                     embedded={this._portalOn}
-                    debuggerOn={this.state.debugDock === 'top'}
-                    debuggerPanel={this.state.debugDock === 'top' ? this.renderDebugPanel() : null}
+                    debuggerOn={this.state.debugDock === 'top' && !this.props.isVisible}
+                    debuggerPanel={this.state.debugDock === 'top' && !this.props.isVisible ? this.renderDebugPanel() : null}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                     />

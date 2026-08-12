@@ -2790,7 +2790,14 @@ class SB3Creator {
 
         const stage = this.createStage();
         this.project.targets.push(stage);
-        let currentTarget = stage;
+        // Scratch's Blocks editor has no Motion toolbox for the Stage. A
+        // pseudocode program can be stage-only, but importing it into Blocks
+        // must still leave a real sprite target selected so motion blocks are
+        // available and the generated script is visible to the user.
+        const hasSpriteHeader = lines.some(line => /^\s*SPRITE\s+[^:]+:/i.test(line));
+        const defaultSprite = hasSpriteHeader ? null : this.createSprite('Sprite1');
+        if (defaultSprite) this.project.targets.push(defaultSprite);
+        let currentTarget = defaultSprite || stage;
 
         const parseStructure = (startIndex, indentLevel, target) => {
             let i = startIndex;

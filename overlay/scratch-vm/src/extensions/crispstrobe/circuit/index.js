@@ -28,6 +28,11 @@ module.exports = makeExt(`// Name: Circuit
       "circuit.on": "on",
       "circuit.off": "off",
       "circuit.needsSim": "needs the simulator",
+      "circuit.noNets": "(no nets available)",
+      "circuit.noParts": "(no parts available)",
+      "circuit.noLeds": "(no LEDs available)",
+      "circuit.noBuzzers": "(no buzzers available)",
+      "circuit.noControls": "(no controls available)",
     },
     de: {
       "circuit.name": "Schaltkreis",
@@ -41,6 +46,11 @@ module.exports = makeExt(`// Name: Circuit
       "circuit.on": "ein",
       "circuit.off": "aus",
       "circuit.needsSim": "braucht den Simulator",
+      "circuit.noNets": "(keine Netze vorhanden)",
+      "circuit.noParts": "(keine Bauteile vorhanden)",
+      "circuit.noLeds": "(keine LEDs vorhanden)",
+      "circuit.noBuzzers": "(keine Summer vorhanden)",
+      "circuit.noControls": "(keine Bedienelemente vorhanden)",
     },
     fr: {
       "circuit.name": "Circuit",
@@ -54,6 +64,11 @@ module.exports = makeExt(`// Name: Circuit
       "circuit.on": "marche",
       "circuit.off": "arrêt",
       "circuit.needsSim": "nécessite le simulateur",
+      "circuit.noNets": "(aucun réseau disponible)",
+      "circuit.noParts": "(aucun composant disponible)",
+      "circuit.noLeds": "(aucune LED disponible)",
+      "circuit.noBuzzers": "(aucun buzzer disponible)",
+      "circuit.noControls": "(aucun contrôle disponible)",
     },
   };
 
@@ -246,7 +261,7 @@ module.exports = makeExt(`// Name: Circuit
             hideFromPalette: hw,
             text: t("circuit.voltage") + simOnly,
             arguments: {
-              NET: { type: Scratch.ArgumentType.STRING, defaultValue: "vcc" },
+              NET: { type: Scratch.ArgumentType.STRING, menu: "nets" },
             },
           },
           {
@@ -255,7 +270,7 @@ module.exports = makeExt(`// Name: Circuit
             hideFromPalette: hw,
             text: t("circuit.current") + simOnly,
             arguments: {
-              PART: { type: Scratch.ArgumentType.STRING, defaultValue: "led1" },
+              PART: { type: Scratch.ArgumentType.STRING, menu: "parts" },
             },
           },
           {
@@ -264,8 +279,8 @@ module.exports = makeExt(`// Name: Circuit
             hideFromPalette: hw,
             text: t("circuit.resistance") + simOnly,
             arguments: {
-              A: { type: Scratch.ArgumentType.STRING, defaultValue: "net1" },
-              B: { type: Scratch.ArgumentType.STRING, defaultValue: "net2" },
+              A: { type: Scratch.ArgumentType.STRING, menu: "nets" },
+              B: { type: Scratch.ArgumentType.STRING, menu: "nets" },
             },
           },
           {
@@ -274,7 +289,7 @@ module.exports = makeExt(`// Name: Circuit
             hideFromPalette: hw,
             text: t("circuit.brightness") + simOnly,
             arguments: {
-              PART: { type: Scratch.ArgumentType.STRING, defaultValue: "led1" },
+              PART: { type: Scratch.ArgumentType.STRING, menu: "leds" },
             },
           },
           {
@@ -285,7 +300,7 @@ module.exports = makeExt(`// Name: Circuit
             arguments: {
               PART: {
                 type: Scratch.ArgumentType.STRING,
-                defaultValue: "buzzer1",
+                menu: "buzzers",
               },
             },
           },
@@ -298,7 +313,7 @@ module.exports = makeExt(`// Name: Circuit
             arguments: {
               CONTROL: {
                 type: Scratch.ArgumentType.STRING,
-                defaultValue: "pot1",
+                menu: "controls",
               },
               VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 0 },
             },
@@ -317,6 +332,13 @@ module.exports = makeExt(`// Name: Circuit
           },
         ],
         menus: {
+          // Resolve element IDs from the active board, like STC12 resolves
+          // pin IDs from runtime declarations. Values remain stable IDs.
+          nets: { acceptReporters: false, items: "netNames" },
+          parts: { acceptReporters: false, items: "partNames" },
+          leds: { acceptReporters: false, items: "ledNames" },
+          buzzers: { acceptReporters: false, items: "buzzerNames" },
+          controls: { acceptReporters: false, items: "controlNames" },
           ON_OFF: {
             acceptReporters: false,
             items: [
@@ -327,6 +349,31 @@ module.exports = makeExt(`// Name: Circuit
         },
       };
     }
+
+    // ---- dynamic menus ---------------------------------------------------
+
+    _items(method, emptyKey) {
+      const board = this.board;
+      let values = [];
+      try {
+        if (board && typeof board[method] === "function") values = board[method]();
+        else if (board && method === "getNets" && Array.isArray(board.nets)) values = board.nets;
+      } catch (e) {
+        values = [];
+      }
+      const ids = values
+        .map((value) => typeof value === "string" ? value : value && value.id)
+        .filter((value) => typeof value === "string" && value.length > 0);
+      return ids.length
+        ? ids.map((value) => ({ text: value, value }))
+        : [{ text: t(emptyKey), value: "" }];
+    }
+
+    netNames() { return this._items("getNets", "circuit.noNets"); }
+    partNames() { return this._items("getParts", "circuit.noParts"); }
+    ledNames() { return this._items("getLeds", "circuit.noLeds"); }
+    buzzerNames() { return this._items("getBuzzers", "circuit.noBuzzers"); }
+    controlNames() { return this._items("getControls", "circuit.noControls"); }
 
     // ---- display-rate sampling --------------------------------------------
     //

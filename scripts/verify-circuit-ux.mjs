@@ -98,9 +98,9 @@ try {
     check('debugger button remains selected', await debuggerButton.getAttribute('aria-pressed') === 'true');
     check('debugger switch keeps the right pane present', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
     check('debugger view keeps the circuit portal mounted without MCU code', await page.locator('[data-bw-circuit-stage-host]').count() === 1);
-    check('debugger view is not blank', await page.locator('[data-no-code-indicator]').count() === 1 || await page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer').count() === 1);
-    check('debugger view explains that code is missing in its debugger pane', await page.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1);
-    check('debugger module is in the Circuit Designer instrument pane', await page.locator('[data-instruments-column] [data-debugger-panel]').count() === 1);
+    check('debugger view is an actual debugger surface', await page.locator('[data-debugger-surface]').count() === 1);
+    check('debugger view explains that code is missing in its own surface', await page.locator('[data-debugger-surface] [data-no-code-indicator]').count() === 1);
+    check('debugger controls are visible in debugger surface', await page.locator('[data-debugger-surface] [data-debugger-panel]').count() === 1);
     await stageButton.click({force: true});
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
     await stageButton.click({force: true});
@@ -133,11 +133,11 @@ try {
 
     const designer = page.locator('.bw-circuit-designer').first();
     check('Circuit Designer rendered', await designer.count() >= 1);
-    const modeToggle = designer.getByRole('button', {name: /active — switch to (Build|Sim)/}).first();
+    const modeToggle = designer.locator('[data-build-sim-toggle]');
     const toolbar = modeToggle.locator('..');
     check('shared toolbar has view buttons', await designer.getByRole('button', {name: 'Realistic view'}).count() === 1 && await designer.getByRole('button', {name: 'Schematic view'}).count() === 1);
-    check('Build/Sim is one visual mode toggle', await modeToggle.count() === 1 && await designer.getByRole('button', {name: 'Build', exact: true}).count() === 0 && await designer.getByRole('button', {name: 'Sim', exact: true}).count() === 0);
-    check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().locator('xpath=../..').locator('button[aria-label*="active — switch to"]').count() === 1);
+    check('Build/Sim is one segmented mode toggle', await modeToggle.count() === 1 && await modeToggle.getByRole('radio').count() === 2 && await modeToggle.getByRole('radio', {name: 'Build mode'}).getAttribute('aria-checked') === 'true');
+    check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().locator('xpath=../..').locator('[data-build-sim-toggle]').count() === 1);
     check('shared toolbar has panel navigation', await designer.getByRole('button', {name: 'Designer'}).count() === 1 && await designer.getByRole('button', {name: 'Warnings'}).count() === 1 && await designer.getByRole('button', {name: 'Parts list'}).count() === 1 && await designer.getByRole('button', {name: 'Examples'}).count() === 1);
     const toolbarBox = await toolbar.boundingBox();
     check('toolbar is touch-sized', !!toolbarBox && toolbarBox.height >= 40, toolbarBox ? `${toolbarBox.width}x${toolbarBox.height}` : 'missing');
@@ -179,6 +179,10 @@ try {
     await paletteBox.evaluate(el => { el.scrollTop = el.scrollHeight; el.dispatchEvent(new Event('scroll', {bubbles: true})); });
     const afterScroll = await paletteBox.evaluate(el => el.scrollTop);
     check('parts palette reaches its bottom', afterScroll > beforeScroll && afterScroll + paletteMetrics.clientHeight >= paletteMetrics.scrollHeight - 1, `${beforeScroll} -> ${afterScroll}`);
+    check('parts palette remains viewport bounded after scrolling', await paletteBox.evaluate(el => {
+        const r = el.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight && el.clientHeight > 0 && el.scrollHeight > el.clientHeight;
+    }), JSON.stringify(paletteMetrics));
     check('example info is compact and on demand', await embedded.getByText('Why active-low?', {exact: true}).count() === 0 && await embedded.getByRole('button', {name: /Example info|Info for/}).count() === 1);
     const canvasMetrics = await embedded.locator('[data-canvas]').evaluate(el => {
         const r = el.getBoundingClientRect();
@@ -187,7 +191,7 @@ try {
         return {width: r.width, height: r.height, parentWidth: pr.width, parentHeight: pr.height,
             scrollWidth: p.scrollWidth, clientWidth: p.clientWidth, scrollHeight: p.scrollHeight, clientHeight: p.clientHeight};
     });
-    check('circuit canvas fits or exceeds its available width without clipping', canvasMetrics.width >= canvasMetrics.parentWidth - 2 && canvasMetrics.scrollWidth >= canvasMetrics.clientWidth, JSON.stringify(canvasMetrics));
+    check('circuit canvas fits or exceeds its available width without clipping', canvasMetrics.parentWidth > 0 && canvasMetrics.width >= canvasMetrics.parentWidth - 2 && canvasMetrics.scrollWidth >= canvasMetrics.clientWidth, JSON.stringify(canvasMetrics));
     check('circuit designer viewport scrolls in both directions when needed', canvasMetrics.scrollWidth > canvasMetrics.clientWidth && canvasMetrics.scrollHeight > canvasMetrics.clientHeight, JSON.stringify(canvasMetrics));
     check('MCU seating indicator is rendered when a controller is seated', await embedded.getByText('SEATED • PIN RASTER', {exact: true}).count() >= 0);
 
@@ -221,7 +225,7 @@ try {
     if (await scopePanel.count()) check('oscilloscope fits inside the instrument column', await scopePanel.evaluate(el => el.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
     check('multimeter is available from the instrument panel', await meterTitle.count() >= 1, `titles=${await meterTitle.count()}`);
 
-    await embedded.getByRole('button', {name: /active — switch to Sim/}).evaluate(el => el.click());
+    await embedded.locator('[data-build-sim-toggle]').getByRole('radio', {name: 'Sim mode'}).evaluate(el => el.click());
     await page.waitForTimeout(100);
     check('run/step controls are in the instrument column', await embedded.locator('[data-simulation-controls]').count() === 1, `sim=${await embedded.locator('[data-simulation-controls]').count()}`);
     const pauseButton = page.locator('button[title="Pause simulation"]');
@@ -235,8 +239,17 @@ try {
         const before = await page.getByText(/Build a circuit on its own/, {exact: false}).count();
         await summaries.first().click({force: true});
         const after = await page.getByText(/Build a circuit on its own/, {exact: false}).count();
-        check('notice triangle expands its text', after >= before);
+    check('notice triangle expands its text', after >= before);
     }
+
+    // A program imported from the pseudocode/examples flow must leave a sprite
+    // selected. The Stage has no Motion toolbox, so selecting it here would
+    // recreate the regression even though the project loaded successfully.
+    const blocksTab = page.getByRole('tab', {name: 'Blocks', exact: true});
+    await blocksTab.click({force: true});
+    await page.waitForTimeout(300);
+    const targetText = await page.locator('body').innerText();
+    check('Blocks workflow keeps Motion blocks available after example import', !targetText.includes('Stage selected: no motion blocks') && await page.getByText('Motion', {exact: true}).count() >= 1);
 } finally {
     await browser.close();
     server.close();

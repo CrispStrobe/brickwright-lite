@@ -730,6 +730,28 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   else if (mode === 'simulate') statusText = 'SIMULATING — scripted MCU demo';
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
+  if (debuggerOn) {
+    return (
+      <div className="bw-circuit-designer" data-debugger-surface data-bw-circuit-theme={theme}
+        style={{display: 'flex', flexDirection: 'column', gap: 10, width: '100%', height: '100%', minHeight: 0,
+          overflow: 'auto', boxSizing: 'border-box', padding: 12, background: '#0f172a', color: '#e2e8f0',
+          fontFamily: 'system-ui, -apple-system, sans-serif'}}>
+        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+          minHeight: 40, padding: '6px 10px', borderRadius: 6, background: '#1e293b', border: '1px solid #475569'}}>
+          <strong style={{fontSize: 15}}>Debugger</strong>
+          <span style={{fontSize: 11, color: '#94a3b8'}}>Circuit execution controls</span>
+        </div>
+        {debuggerPanel ? <section data-debugger-panel style={{padding: 10, borderRadius: 6, background: '#111827', border: '1px solid #475569'}}>{debuggerPanel}</section> : <div data-debugger-loading>Loading debugger…</div>}
+        {(!stc || !stc.pins || !stc.pins.length) && (
+          <div data-no-code-indicator style={{padding: '12px 10px', borderRadius: 6, background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412', fontSize: 13, lineHeight: 1.4}}>
+            <strong>Debugger inactive</strong>
+            <div>No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.</div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className="bw-circuit-designer"
@@ -752,7 +774,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
-        <div data-parts-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 190px', width: 190, minWidth: 0, minHeight: 0, height: '100%', overflow: 'hidden', overscrollBehavior: 'contain' }}>
+        <div data-parts-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 190px', width: 190, minWidth: 190, minHeight: 0, height: '100%', overflow: 'hidden', overscrollBehavior: 'contain' }}>
           <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
             position: 'absolute', zIndex: 3, top: 4, right: 4, background: '#ffffff', border: '1px solid #cbd5e1',
             boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
@@ -810,7 +832,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
-        <div data-designer-main style={{ flex: '1 1 0', width: 0, minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div data-designer-main style={{ flex: '1 1 auto', width: 'auto', minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         {showSchematic && (
           <div data-schematic-escape data-circuit-view-switcher style={{display: 'inline-flex', gap: 4, alignItems: 'center', marginBottom: 8}}>
             <button onClick={() => setShowSchematic(false)} aria-label="Realistic view" aria-pressed={false} title="Realistic view"
@@ -1009,7 +1031,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
-      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 280px', width: 280, minWidth: 0, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
+      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 280px', width: 280, minWidth: 280, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
         <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
           position: 'absolute', zIndex: 3, top: 4, left: 4, background: '#ffffff', border: '1px solid #cbd5e1',
           boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
