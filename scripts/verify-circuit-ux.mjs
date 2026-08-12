@@ -122,6 +122,14 @@ try {
     const dedicatedDesigner = page.locator('.bw-circuit-designer:visible').last();
     check('dedicated Circuit tab keeps debugger controls visible', await dedicatedDesigner.locator('[data-instruments-column] [data-debugger-panel]').count() === 1,
         `designers=${await page.locator('.bw-circuit-designer').count()} visible=${await page.locator('.bw-circuit-designer:visible').count()} instruments=${await dedicatedDesigner.locator('[data-instruments-column]').count()}`);
+    const debuggerColumnMetrics = await dedicatedDesigner.locator('[data-instruments-column]').evaluate(el => ({
+        clientHeight: el.clientHeight, scrollHeight: el.scrollHeight,
+        overflowY: getComputedStyle(el).overflowY,
+        top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom,
+        viewport: window.innerHeight,
+    }));
+    check('Debugger in Instruments stays viewport-bounded and scrollable', debuggerColumnMetrics.bottom <= debuggerColumnMetrics.viewport + 1 && debuggerColumnMetrics.overflowY === 'auto' && debuggerColumnMetrics.scrollHeight >= debuggerColumnMetrics.clientHeight,
+        JSON.stringify(debuggerColumnMetrics));
     check('dedicated Circuit tab visibly reports missing code when applicable', await dedicatedDesigner.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1,
         `dock=${await page.evaluate(() => localStorage.getItem('bw-debug-dock'))} noCode=${await dedicatedDesigner.locator('[data-no-code-indicator]').count()}`);
     const loaded = await page.evaluate(async () => {

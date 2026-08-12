@@ -1033,7 +1033,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
-      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 280px', width: 280, minWidth: 280, minHeight: 0, overflowY: 'auto', height: '100%', overscrollBehavior: 'contain' }}>
+      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 280px', width: 280, minWidth: 280, minHeight: 0, maxHeight: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden', alignSelf: 'stretch', boxSizing: 'border-box', overscrollBehavior: 'contain' }}>
         <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
           position: 'absolute', zIndex: 3, top: 4, left: 4, background: '#ffffff', border: '1px solid #cbd5e1',
           boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
@@ -1046,7 +1046,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           />
         )}
         {debuggerPanel && (
-          <section data-debugger-panel style={{width: '100%', boxSizing: 'border-box', padding: 8,
+          <section data-debugger-panel style={{width: '100%', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>Debugger</div>
             {debuggerPanel}
