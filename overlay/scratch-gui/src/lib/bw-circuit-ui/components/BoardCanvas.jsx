@@ -1162,6 +1162,7 @@ export function BoardCanvas({
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const selectedPartModel = selectedPart ? parts.find(part => part.id === selectedPart) : null;
 
   // Auto-fit: when parts change significantly, zoom to fit all content
   const prevPartCount = React.useRef(0);
@@ -1921,7 +1922,7 @@ export function BoardCanvas({
       {/* Status/action bar */}
       {/* Toolbar */}
       <div data-circuit-toolbar style={{
-        display: 'flex', alignItems: 'stretch', gap: '6px',
+        display: 'flex', alignItems: 'center', gap: '6px',
         fontFamily: 'monospace', fontSize: '10px',
         marginBottom: '8px', minHeight: '44px',
         padding: '4px 6px',
@@ -1930,17 +1931,17 @@ export function BoardCanvas({
         flexWrap: 'wrap', alignContent: 'flex-start', rowGap: '8px',
         overflow: 'visible', width: '100%', boxSizing: 'border-box',
       }}>
-        <div role="radiogroup" aria-label="Build or Sim mode" data-build-sim-toggle style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+        <div role="radiogroup" aria-label="Build or Sim mode" data-build-sim-toggle style={{display: 'inline-flex', width: 70, height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
           <button data-circuit-toggle-state={mode === 'build' ? 'selected' : 'unselected'} role="radio" aria-checked={mode === 'build'} onClick={() => onModeChange?.('build')} title="Build mode" aria-label="Build mode"
-            style={{width: 40, minWidth: 40, minHeight: 34, padding: 0, background: mode === 'build' ? '#2563eb' : '#475569', border: 'none', borderRight: '1px solid #cbd5e1', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▦</button>
+            style={{width: 34, minWidth: 34, height: 34, padding: 0, background: mode === 'build' ? '#2563eb' : '#475569', border: 'none', borderRight: '1px solid #cbd5e1', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▦</button>
           <button data-circuit-toggle-state={mode === 'simulate' ? 'selected' : 'unselected'} role="radio" aria-checked={mode === 'simulate'} onClick={() => onModeChange?.('simulate')} title="Simulation mode" aria-label="Sim mode"
-            style={{width: 40, minWidth: 40, minHeight: 34, padding: 0, background: mode === 'simulate' ? '#16a34a' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▶</button>
+            style={{width: 34, minWidth: 34, height: 34, padding: 0, background: mode === 'simulate' ? '#16a34a' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▶</button>
         </div>
         <div role="radiogroup" aria-label="Power state" data-power-toggle style={{display: 'inline-flex', height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
           <button data-circuit-toggle-state={powered ? 'selected' : 'unselected'} role="radio" aria-checked={powered} onClick={() => onPowerToggle?.(true)} title="Power on" aria-label="Power on"
-            style={{width: 40, minWidth: 40, height: 34, padding: 0, background: powered ? '#16a34a' : '#475569', border: 'none', borderRight: '1px solid #cbd5e1', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>⏻</button>
+            style={{width: 34, minWidth: 34, height: 34, padding: 0, background: powered ? '#16a34a' : '#475569', border: 'none', borderRight: '1px solid #cbd5e1', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>⏻</button>
           <button data-circuit-toggle-state={!powered ? 'selected' : 'unselected'} role="radio" aria-checked={!powered} onClick={() => onPowerToggle?.(false)} title="Power off" aria-label="Power off"
-            style={{width: 40, minWidth: 40, height: 34, padding: 0, background: !powered ? '#dc2626' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>◯</button>
+            style={{width: 34, minWidth: 34, height: 34, padding: 0, background: !powered ? '#dc2626' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>◯</button>
         </div>
 
         {panelNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
@@ -1968,48 +1969,18 @@ export function BoardCanvas({
               : ''}
         </span>
 
-        {/* Selection actions live in the grid overlay, beside the board rather
-            than consuming toolbar width. Keyboard shortcuts remain available. */}
-        {((selectedParts && selectedParts.size > 0) || selectedWire) && (
-          <>
-            {selectedWire && onUpdateWire && (
-              <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}
-                title="Wire color (auto = colored by voltage)">
-                {['#e74c3c', '#2c3e50', '#3498db', '#2ecc71', '#f1c40f', '#e67e22', null].map((c, i) => (
-                  <button key={i}
-                    onClick={() => onUpdateWire(selectedWire, { color: c })}
-                    title={c ?? 'auto (voltage)'}
-                    style={{
-                      width: 14, height: 14, borderRadius: '50%', cursor: 'pointer',
-                      border: '1px solid #7f8c8d', padding: 0,
-                      background: c ?? 'conic-gradient(#e74c3c, #f1c40f, #2ecc71, #3498db, #e74c3c)',
-                    }} />
-                ))}
-              </span>
-            )}
-            <button onClick={() => {
-              if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
-              else if (selectedParts && selectedParts.size > 0) { for (const id of selectedParts) onRemovePart(id); onSelectPart(null); }
-            }}
-              title="Delete (Del)"
-              style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: '3px', color: '#e74c3c', fontSize: '9px', cursor: 'pointer' }}>
-              ✕
-            </button>
-          </>
-        )}
-
         {/* Always-visible history controls. Persistence and zoom live under one
             overflow button so the toolbar keeps a usable footprint on narrow panes. */}
         <button onClick={() => onUndo && onUndo()} title="Undo (Ctrl+Z)" aria-label="Undo"
-          style={{ width: 40, minWidth: 40, minHeight: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↶</button>
+          style={{ width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↶</button>
         <button onClick={() => onRedo && onRedo()} title="Redo (Ctrl+Y)" aria-label="Redo"
-          style={{ width: 40, minWidth: 40, minHeight: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↷</button>
+          style={{ width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↷</button>
         <div data-toolbar-more style={{position: 'relative', flex: '0 0 auto'}}>
           <button onClick={() => setToolbarMoreOpen(v => !v)} title="More circuit controls: Save, Load, Zoom" aria-label="More circuit controls" aria-expanded={toolbarMoreOpen}
-            style={{width: 40, minWidth: 40, height: 34, padding: 0, background: toolbarMoreOpen ? '#1e3a5f' : '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#e2e8f0', fontSize: '17px', cursor: 'pointer'}}>⋯</button>
+            style={{width: 34, minWidth: 34, height: 34, padding: 0, background: toolbarMoreOpen ? '#1e3a5f' : '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#e2e8f0', fontSize: '17px', cursor: 'pointer'}}>⋯</button>
           {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, display: 'flex', gap: 4, alignItems: 'center', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
-            {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 40, minWidth: 40, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
-            {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 40, minWidth: 40, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
+            {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
+            {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
             <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
           </div>}
         </div>
@@ -2066,15 +2037,15 @@ export function BoardCanvas({
           }
         }}
       >
-        {selectedPart && (
-          <div data-selection-actions style={{position: 'absolute', top: 8, right: 8, zIndex: 60, display: 'flex', gap: 4,
+        {selectedPartModel && (
+          <div data-selection-actions style={{position: 'absolute', left: `${((selectedPartModel.x - pan.x) / (containerSize.w / zoom)) * 100}%`, top: `${((selectedPartModel.y - pan.y) / (containerSize.h / zoom)) * 100}%`, transform: 'translate(18px, -50%)', zIndex: 60, display: 'flex', gap: 4,
             padding: 4, borderRadius: 6, background: 'rgba(22,33,62,.92)', boxShadow: '0 2px 8px rgba(0,0,0,.35)'}}
             onPointerDown={e => e.stopPropagation()}>
             {onRotatePart && <button onClick={() => onRotatePart(selectedPart)} title="Rotate (R)" aria-label="Rotate selected part"
               style={{width: 30, height: 30, cursor: 'pointer'}}>↻</button>}
             {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPart)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected part"
               style={{width: 30, height: 30, cursor: 'pointer'}}>⧉</button>}
-            <button onClick={() => { onRemovePart(selectedPart); onSelectPart(null); }} title="Delete (Del)" aria-label="Delete selected part"
+            <button onClick={() => { onRemovePart(selectedPart); onSelectPart(null); }} title="Remove (Del)" aria-label="Remove selected part"
               style={{width: 30, height: 30, cursor: 'pointer', color: '#b91c1c'}}>✕</button>
           </div>
         )}

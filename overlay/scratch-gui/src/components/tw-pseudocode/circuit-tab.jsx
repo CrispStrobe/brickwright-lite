@@ -863,7 +863,7 @@ class CircuitTab extends React.Component {
                         aria-label={tabTitles[id]}
                         aria-pressed={panel === id}
                         style={{
-                            width: 38, minWidth: 38, height: 34, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4,
+                            width: 34, minWidth: 34, height: 34, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4,
                             fontSize: 17, lineHeight: 1, position: 'relative', fontWeight: 600,
                             background: panel === id ? '#1d4ed8' : 'transparent',
                             boxShadow: panel === id ? '0 1px 2px rgba(15,23,42,.25)' : 'none',

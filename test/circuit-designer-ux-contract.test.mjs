@@ -14,6 +14,8 @@ test('Circuit Designer toolbar has one mode toggle, one view toggle, and a reada
     assert.match(source, /data-toolbar-more/);
     assert.match(source, /data-circuit-toolbar[\s\S]*flexWrap:\s*'wrap'/);
     assert.doesNotMatch(source, /Show right panel|Hide right panel/);
+    assert.match(source, /data-selection-actions/);
+    assert.match(source, /Remove selected part/);
 });
 
 test('light circuit theme does not override toggle paint', () => {

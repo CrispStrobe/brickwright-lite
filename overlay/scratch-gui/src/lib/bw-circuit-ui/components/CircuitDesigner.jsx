@@ -761,7 +761,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       {/* Left sidebar — collapsible. Hidden entirely in schematic view:
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
-      <div data-selectors-rail style={{position: 'relative', display: 'flex', flex: selectorsOpen ? '0 0 190px' : '0 0 28px', width: selectorsOpen ? 190 : 28, minWidth: selectorsOpen ? 190 : 28, minHeight: 0, height: '100%', overflow: 'visible'}}>
+      <div data-selectors-rail style={{position: 'relative', display: 'flex', flex: selectorsOpen ? '0 0 190px' : '0 0 0px', width: selectorsOpen ? 190 : 0, minWidth: selectorsOpen ? 190 : 0, minHeight: 0, height: '100%', overflow: 'visible'}}>
       {selectorsOpen ? (
         <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto', width: '100%', minWidth: 0, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
           <div data-parts-selector style={{position: 'relative', flex: `${selectorSplit} 1 0`, minHeight: partsOpen ? 80 : 34, display: 'flex', minWidth: 0}}>
@@ -999,11 +999,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           panelNav={panelNav}
           rightOpen={rightOpen}
           viewNav={(
-            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', width: 70, height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
               <button data-circuit-toggle-state={!showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"
-                style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
+                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
               <button data-circuit-toggle-state={showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={showSchematic} onClick={() => setShowSchematic(true)} aria-label="Schematic view" title="Schematic view"
-                style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>⌁</button>
+                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>⌁</button>
             </div>
           )}
         />

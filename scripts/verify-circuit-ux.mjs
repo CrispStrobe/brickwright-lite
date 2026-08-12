@@ -64,6 +64,9 @@ try {
         const toggleBox = await paneToggle.boundingBox();
         check('right-pane toggle is at the far end of the editor row', !!editorBox && !!toggleBox && toggleBox.x + toggleBox.width >= editorBox.x + editorBox.width - 4,
             JSON.stringify({editor: editorBox, toggle: toggleBox}));
+        const circuitTabBox = await page.getByRole('tab', {name: /Circuit/}).boundingBox();
+        check('right-pane toggle is bottom-aligned with Circuit tab', !!circuitTabBox && !!toggleBox && Math.abs((toggleBox.y + toggleBox.height) - (circuitTabBox.y + circuitTabBox.height)) <= 2,
+            JSON.stringify({circuitTab: circuitTabBox, toggle: toggleBox}));
     }
     if (await paneToggle.count()) {
         const beforePane = await paneToggle.getAttribute('aria-pressed');
@@ -150,6 +153,8 @@ try {
     check('Build/Sim is one segmented mode toggle', await modeToggle.count() === 1 && await modeToggle.getByRole('radio').count() === 2 && await modeToggle.getByRole('radio', {name: 'Build mode'}).getAttribute('aria-checked') === 'true');
     const modeMetrics = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
     check('Build/Sim toggle segments have equal dimensions', modeMetrics.length === 2 && modeMetrics[0].width === modeMetrics[1].width && modeMetrics[0].height === modeMetrics[1].height, JSON.stringify(modeMetrics));
+    const toolbarButtonMetrics = await designer.locator('[data-circuit-toolbar] button:visible').evaluateAll(buttons => buttons.map(button => ({width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height)})));
+    check('toolbar buttons share one control size', toolbarButtonMetrics.length > 8 && toolbarButtonMetrics.every(metric => metric.width === 34 && metric.height === 34), JSON.stringify(toolbarButtonMetrics));
     const modePaint = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({checked: button.getAttribute('aria-checked'), background: getComputedStyle(button).backgroundColor, color: getComputedStyle(button).color})));
     check('selected Build/Sim state is visibly painted', modePaint[0]?.checked === 'true' && modePaint[0].background !== modePaint[1].background && modePaint[0].background !== 'rgb(255, 255, 255)', JSON.stringify(modePaint));
     const powerToggle = designer.locator('[data-power-toggle]');
@@ -193,7 +198,7 @@ try {
         check('selectors collapse keeps its handle visible', await designer.getByRole('button', {name: 'Expand Selectors Panel'}).count() === 1 && await designer.locator('[data-selectors-panel]').count() === 0);
         await designer.getByRole('button', {name: 'Expand Selectors Panel'}).click({force: true});
         await page.waitForTimeout(100);
-        check('selectors panel reopens from its persistent handle', await designer.locator('[data-selectors-panel]').count() === 1);
+    check('selectors panel reopens from its persistent handle', await designer.locator('[data-selectors-panel]').count() === 1);
     }
     const examplesSelector = designer.locator('[data-examples-selector]').first();
     check('Examples selector has an independent collapse affordance', await examplesSelector.count() === 1 && await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1);
