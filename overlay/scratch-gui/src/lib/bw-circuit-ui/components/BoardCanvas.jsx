@@ -1134,7 +1134,7 @@ export function BoardCanvas({
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
-  drcWarnings, panelNav, viewNav, rightOpen,
+  drcWarnings, panelNav, viewNav, rightOpen, theme = 'light',
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
@@ -1925,7 +1925,8 @@ export function BoardCanvas({
         fontFamily: 'monospace', fontSize: '10px',
         marginBottom: '8px', minHeight: '44px',
         padding: '4px 6px',
-        background: '#16213e', borderRadius: '4px',
+        background: theme === 'light' ? '#f8fafc' : '#16213e',
+        border: theme === 'light' ? '1px solid #cbd5e1' : '1px solid transparent', borderRadius: '4px',
         flexWrap: 'wrap', alignContent: 'flex-start', rowGap: '8px',
         overflow: 'visible', width: '100%', boxSizing: 'border-box',
       }}>

@@ -58,12 +58,12 @@ try {
 
     const paneToggle = page.locator('[data-right-pane-toggle]');
     const rightPane = page.locator('[data-right-pane]');
-    check('right-pane toggle is present in the main tab row', await paneToggle.count() === 1 && await paneToggle.evaluate(el => !!el.closest('[role="tablist"]')));
+    check('right-pane toggle is present beside the editor and right pane', await paneToggle.count() === 1 && await paneToggle.evaluate(el => !el.closest('[role="tablist"]')));
     if (await paneToggle.count()) {
-        const tabListBox = await paneToggle.locator('xpath=..').boundingBox();
+        const editorBox = await page.locator('[data-editor-pane]').boundingBox();
         const toggleBox = await paneToggle.boundingBox();
-        check('right-pane toggle is at the far end of the tab row', !!tabListBox && !!toggleBox && toggleBox.x + toggleBox.width >= tabListBox.x + tabListBox.width - 4,
-            JSON.stringify({tabList: tabListBox, toggle: toggleBox}));
+        check('right-pane toggle is at the far end of the editor row', !!editorBox && !!toggleBox && toggleBox.x + toggleBox.width >= editorBox.x + editorBox.width - 4,
+            JSON.stringify({editor: editorBox, toggle: toggleBox}));
     }
     if (await paneToggle.count()) {
         const beforePane = await paneToggle.getAttribute('aria-pressed');
@@ -163,6 +163,7 @@ try {
     check('panel navigation uses compact equal buttons', panelButtonMetrics.length === 1 && panelButtonMetrics[0].width <= 42 && panelButtonMetrics[0].height >= 30, JSON.stringify(panelButtonMetrics));
     const toolbarBox = await toolbar.boundingBox();
     check('toolbar is touch-sized', !!toolbarBox && toolbarBox.height >= 40, toolbarBox ? `${toolbarBox.width}x${toolbarBox.height}` : 'missing');
+    check('light presentation uses a light toolbar', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).backgroundColor === 'rgb(248, 250, 252)'));
     const moreControls = designer.getByRole('button', {name: 'More circuit controls'});
     check('save/load/zoom controls have a single overflow slot', await moreControls.count() === 1 && await designer.locator('[data-toolbar-more]').count() === 1);
     await moreControls.click({force: true});
@@ -201,6 +202,20 @@ try {
         check('Examples selector actually collapses', await examplesSelector.getByRole('button', {name: 'Expand examples selector'}).count() === 1 && await examplesSelector.getByText('Examples:', {exact: true}).count() === 0);
         await examplesSelector.getByRole('button', {name: 'Expand examples selector'}).click({force: true});
         check('Examples selector actually reopens', await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1 && await examplesSelector.getByText('Examples:', {exact: true}).count() === 1);
+    }
+    const examplesModeButton = page.locator('[data-panel-navigation] button[aria-label="Examples"]:visible').first();
+    if (await examplesModeButton.count()) {
+        await examplesModeButton.click({force: true});
+        await page.waitForTimeout(250);
+        const examplesMode = page.locator('[data-examples-selector]:visible').last();
+        const examplesContent = examplesMode.locator('[data-examples-selector-content]');
+        check('dedicated Examples mode starts expanded', await examplesMode.getByRole('button', {name: 'Collapse examples selector'}).count() === 1 && await examplesContent.count() === 1);
+        if (await examplesContent.count()) {
+            const metrics = await examplesContent.evaluate(el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, overflowY: getComputedStyle(el).overflowY}));
+            check('dedicated Examples mode is scrollable', metrics.scrollHeight > metrics.clientHeight && metrics.overflowY === 'auto', JSON.stringify(metrics));
+        }
+        await page.locator('[data-panel-navigation] button[aria-label="Designer"]:visible').first().click({force: true});
+        await page.waitForTimeout(150);
     }
     await designer.locator('[data-circuit-view-switcher] button[title="Schematic view"]').first().evaluate(el => el.click());
     await page.waitForTimeout(150);

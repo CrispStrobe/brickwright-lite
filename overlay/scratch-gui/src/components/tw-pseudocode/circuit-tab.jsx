@@ -741,7 +741,7 @@ class CircuitTab extends React.Component {
                     content silently absent, which is the failure this strip exists to avoid.
                     So the panel body carries its own scroll. */}
                 {this.state.panel === 'designer' ? null : (
-                    <div style={{flex: '1 1 auto', minHeight: 0, overflow: 'auto'}}>
+                    <div style={{flex: '1 1 0', minHeight: 0, height: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column'}}>
                         {this.renderPanel()}
                     </div>
                 )}

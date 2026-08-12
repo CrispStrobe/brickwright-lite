@@ -32,7 +32,9 @@ const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
 export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
   const [filter, setFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [open, setOpen] = useState(false);
+  // The dedicated Examples mode is already an explicitly selected panel;
+  // starting it collapsed made the mode look empty and hid its scroll area.
+  const [open, setOpen] = useState(true);
 
   const categories = useMemo(() => {
     if (!examples) return [];
@@ -73,7 +75,8 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
       borderRadius: '8px',
       padding: '8px',
       fontFamily: 'monospace',
-      height: '100%',
+      height: 'auto',
+      flex: '1 1 auto',
       overflow: 'hidden',
       minHeight: 0,
       position: 'relative',
@@ -91,7 +94,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
         Examples
       </div>
 
-      {!open ? null : <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto'}}>
+      {!open ? null : <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto', overscrollBehavior: 'contain'}}>
 
       {/* Search */}
       <input
