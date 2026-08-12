@@ -24,6 +24,17 @@
     font-family: inherit !important;
 }
 
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] button[data-circuit-toggle-state="selected"]) {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #1d4ed8 !important;
+}
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] button[data-circuit-toggle-state="unselected"]) {
+    background: #475569 !important;
+    color: #ffffff !important;
+    border-color: #64748b !important;
+}
+
 :global(.bw-circuit-designer[data-bw-circuit-theme="light"] svg[data-schematic]) {
     background: #f8fafc !important;
 }

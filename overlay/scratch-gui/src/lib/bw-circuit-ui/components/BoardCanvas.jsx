@@ -1930,15 +1930,15 @@ export function BoardCanvas({
         overflow: 'visible', width: '100%', boxSizing: 'border-box',
       }}>
         <div role="radiogroup" aria-label="Build or Sim mode" data-build-sim-toggle style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
-          <button role="radio" aria-checked={mode === 'build'} onClick={() => onModeChange?.('build')} title="Build mode" aria-label="Build mode"
+          <button data-circuit-toggle-state={mode === 'build' ? 'selected' : 'unselected'} role="radio" aria-checked={mode === 'build'} onClick={() => onModeChange?.('build')} title="Build mode" aria-label="Build mode"
             style={{width: 40, minWidth: 40, minHeight: 34, padding: 0, background: mode === 'build' ? '#2563eb' : '#475569', border: 'none', borderRight: '1px solid #cbd5e1', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▦</button>
-          <button role="radio" aria-checked={mode === 'simulate'} onClick={() => onModeChange?.('simulate')} title="Simulation mode" aria-label="Sim mode"
+          <button data-circuit-toggle-state={mode === 'simulate' ? 'selected' : 'unselected'} role="radio" aria-checked={mode === 'simulate'} onClick={() => onModeChange?.('simulate')} title="Simulation mode" aria-label="Sim mode"
             style={{width: 40, minWidth: 40, minHeight: 34, padding: 0, background: mode === 'simulate' ? '#16a34a' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▶</button>
         </div>
         <div role="radiogroup" aria-label="Power state" data-power-toggle style={{display: 'inline-flex', height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
-          <button role="radio" aria-checked={powered} onClick={() => onPowerToggle?.(true)} title="Power on" aria-label="Power on"
+          <button data-circuit-toggle-state={powered ? 'selected' : 'unselected'} role="radio" aria-checked={powered} onClick={() => onPowerToggle?.(true)} title="Power on" aria-label="Power on"
             style={{width: 40, minWidth: 40, height: 34, padding: 0, background: powered ? '#16a34a' : '#475569', border: 'none', borderRight: '1px solid #cbd5e1', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>⏻</button>
-          <button role="radio" aria-checked={!powered} onClick={() => onPowerToggle?.(false)} title="Power off" aria-label="Power off"
+          <button data-circuit-toggle-state={!powered ? 'selected' : 'unselected'} role="radio" aria-checked={!powered} onClick={() => onPowerToggle?.(false)} title="Power off" aria-label="Power off"
             style={{width: 40, minWidth: 40, height: 34, padding: 0, background: !powered ? '#dc2626' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>◯</button>
         </div>
 

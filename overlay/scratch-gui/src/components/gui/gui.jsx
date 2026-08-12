@@ -358,6 +358,20 @@ const GUIComponent = props => {
                                             id="gui.gui.circuitTab"
                                         />
                                     </Tab>
+                                    <button
+                                        type="button"
+                                        data-right-pane-toggle="true"
+                                        aria-pressed={stagePaneVisible}
+                                        aria-label={stagePaneVisible ? 'Hide right panel' : 'Show right panel'}
+                                        title={stagePaneVisible ? 'Hide right panel' : 'Show right panel'}
+                                        onClick={() => {
+                                            const next = !stagePaneVisible;
+                                            setStagePaneVisible(next);
+                                            try { localStorage.setItem('bw-right-pane-hidden', next ? '0' : '1'); } catch { /* private mode */ }
+                                            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: next ? '0' : '1'}}));
+                                        }}
+                                        style={{marginLeft: 6, minHeight: 34, padding: '0 10px', border: '1px solid #94a3b8', borderRadius: 5, background: stagePaneVisible ? '#2563eb' : '#475569', color: '#fff', cursor: 'pointer', fontWeight: 700}}
+                                    >{stagePaneVisible ? 'Hide right panel' : 'Show right panel'}</button>
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent === 'code' ? (

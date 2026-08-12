@@ -26,6 +26,8 @@ test('Circuit Designer side selectors expose independent collapse affordances', 
     const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
     const examples = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/ExamplesBrowser.jsx');
     const presets = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/InferPanel.jsx');
+    assert.match(designer, /Collapse Selectors Panel/);
+    assert.match(designer, /Expand Selectors Panel/);
     assert.match(designer, /Collapse Parts Selector/);
     assert.match(designer, /Expand Parts Selector/);
     assert.match(designer, /data-selector-divider/);
@@ -61,10 +63,10 @@ test('Green Flag and Red Flag reach Circuit Designer even without MCU code', () 
     assert.match(controls, /setTimeout\(\(\) => window\.dispatchEvent\(new CustomEvent\('bw-stop-all'\)\), 0\)/);
 });
 
-test('main tab row no longer renders the obsolete right-pane button', () => {
+test('main tab row retains the right-pane toggle', () => {
     const gui = read('overlay/scratch-gui/src/components/gui/gui.jsx');
-    assert.doesNotMatch(gui, /data-right-pane-toggle/);
-    assert.doesNotMatch(gui, /Show Right Pane|Hide Right Pane/);
+    assert.match(gui, /data-right-pane-toggle/);
+    assert.match(gui, /Show right panel|Hide right panel/);
 });
 
 test('Settings exposes an app-internal hard reload without clearing project storage', () => {

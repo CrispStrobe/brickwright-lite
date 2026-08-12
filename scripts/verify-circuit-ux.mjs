@@ -56,8 +56,15 @@ try {
     check('Settings exposes the app-internal hard reload action', await page.getByText('Reload BrickWright', {exact: true}).count() === 1);
     await page.keyboard.press('Escape');
 
-    const paneToggle = page.getByRole('button', {name: /Right Pane/});
-    check('obsolete right-pane toggle is absent from the main tab row', await paneToggle.count() === 0);
+    const paneToggle = page.locator('[data-right-pane-toggle]');
+    check('right-pane toggle is present in the main tab row', await paneToggle.count() === 1);
+    if (await paneToggle.count()) {
+        const beforePane = await paneToggle.getAttribute('aria-pressed');
+        await paneToggle.click({force: true});
+        await page.waitForTimeout(120);
+        check('right-pane toggle visibly changes state', await paneToggle.getAttribute('aria-pressed') !== beforePane);
+        await paneToggle.click({force: true});
+    }
     const editorPane = page.locator('[data-editor-pane]');
     const rightPane = page.locator('[data-right-pane]');
     check('right pane remains mounted for optional Circuit Designer selection', await page.locator('[data-right-pane]').count() === 1);
@@ -157,10 +164,10 @@ try {
     if (await fullPartsButton.count()) {
         await fullPartsButton.click({force: true});
         await page.waitForTimeout(100);
-        check('parts selector actually collapses', await designer.getByRole('button', {name: 'Expand Parts Selector'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 0);
+        check('parts selector actually collapses without hiding selectors panel', await designer.getByRole('button', {name: 'Expand Parts Selector'}).count() === 1 && await designer.locator('[data-selectors-panel]').count() === 1 && await designer.locator('[data-parts-selector]').count() === 1);
         await designer.getByRole('button', {name: 'Expand Parts Selector'}).click({force: true});
         await page.waitForTimeout(100);
-        check('parts selector actually reopens', await designer.getByRole('button', {name: 'Collapse Parts Selector'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 1);
+        check('parts selector actually reopens', await designer.getByRole('button', {name: 'Collapse Parts Selector'}).count() === 1 && await designer.locator('[data-selectors-panel]').count() === 1);
         check('parts/examples divider is draggable', await designer.locator('[data-selector-divider]').count() === 1 && await designer.locator('[data-selector-divider]').getAttribute('role') === 'separator');
     }
     const examplesSelector = designer.locator('[data-examples-selector]').first();
@@ -181,8 +188,21 @@ try {
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await page.waitForTimeout(700);
     const embedded = page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer');
+    const embeddedRealistic = embedded.getByRole('radio', {name: 'Realistic view'});
+    if (await embeddedRealistic.count() && await embeddedRealistic.getAttribute('aria-checked') !== 'true') await embeddedRealistic.click({force: true});
+    const selectorsButton = embedded.getByRole('button', {name: 'Expand Selectors Panel'});
+    check('embedded preview starts with selectors panel collapsed', await selectorsButton.count() === 1);
+    if (await selectorsButton.count()) {
+        await selectorsButton.click({force: true});
+        await page.waitForTimeout(150);
+        if (await embedded.getAttribute('data-selectors-open') !== 'true') {
+            await embedded.evaluate(root => root.querySelector('button[aria-label="Expand Selectors Panel"]')?.click());
+            await page.waitForTimeout(150);
+        }
+    }
     const partsButton = embedded.getByRole('button', {name: 'Expand Parts Selector'});
-    check('embedded preview starts with parts collapsed', await partsButton.count() === 1);
+    check('embedded preview starts with parts collapsed', await partsButton.count() === 1,
+        `collapse=${await embedded.getByRole('button', {name: 'Collapse Parts Selector'}).count()} selectors=${await embedded.locator('[data-selectors-panel]').count()} open=${await embedded.getAttribute('data-selectors-open')} designers=${await page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer').count()} schematic=${await embedded.getByRole('radio', {name: 'Schematic view'}).count()}`);
     const collapsedPartsBox = await partsButton.boundingBox();
     const collapsedPartsStyle = await partsButton.evaluate(el => ({position: getComputedStyle(el).position, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height}));
     check('collapsed parts handle is a compact overlay', collapsedPartsStyle.position === 'absolute' && collapsedPartsStyle.width <= 40 && collapsedPartsStyle.height <= 40, JSON.stringify(collapsedPartsStyle));

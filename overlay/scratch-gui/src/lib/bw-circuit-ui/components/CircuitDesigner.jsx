@@ -155,7 +155,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     lastStopToken.current = stopToken;
     setMode('build');
   }, [stopToken]);
-  const [leftOpen, setLeftOpen] = useState(!embedded);
+  const [selectorsOpen, setSelectorsOpen] = useState(!embedded);
+  const [partsOpen, setPartsOpen] = useState(!embedded);
   const [selectorSplit, setSelectorSplit] = useState(0.68);
   const [rightOpen, setRightOpen] = useState(!embedded || debuggerOn);
   useEffect(() => {
@@ -743,6 +744,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       className="bw-circuit-designer"
       data-bw-circuit-theme={theme}
       data-sim-mode={mode}
+      data-selectors-open={selectorsOpen ? 'true' : 'false'}
       style={{
         display: 'flex',
         gap: '12px',
@@ -759,15 +761,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       {/* Left sidebar — collapsible. Hidden entirely in schematic view:
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
-      {showSchematic ? null : leftOpen ? (
-        <div data-parts-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 190px', width: 190, minWidth: 190, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
-          <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(false)} aria-label="Collapse Parts Selector" aria-expanded="true" title="Collapse Parts Selector" style={{
-            position: 'absolute', zIndex: 3, top: 4, left: -13, background: '#ffffff', border: '1px solid #cbd5e1',
+      {selectorsOpen ? (
+        <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '0 0 190px', width: 190, minWidth: 190, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
+          <button onPointerDownCapture={e => { e.stopPropagation(); setSelectorsOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setSelectorsOpen(false)} aria-label="Collapse Selectors Panel" aria-expanded="true" title="Collapse Selectors Panel" style={{
+            position: 'absolute', zIndex: 3, top: 4, right: -13, background: '#ffffff', border: '1px solid #cbd5e1',
             boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
             fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
           }}>‹</button>
-          <div data-parts-selector style={{flex: `${selectorSplit} 1 0`, minHeight: 80, display: 'flex', minWidth: 0}}>
-            <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+          <div data-parts-selector style={{position: 'relative', flex: `${selectorSplit} 1 0`, minHeight: partsOpen ? 80 : 34, display: 'flex', minWidth: 0}}>
+            <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts Selector' : 'Expand Parts Selector'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts Selector' : 'Expand Parts Selector'} style={{position: 'absolute', zIndex: 4, left: -13, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
+            {partsOpen && <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />}
           </div>
           <div data-selector-divider role="separator" aria-label="Resize Parts and Examples selectors" tabIndex={0}
             onPointerDown={event => {
@@ -789,13 +792,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </div>
         </div>
       ) : (
-        <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(true); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(true)} style={{
-          position: 'absolute', left: 4, top: 52, zIndex: 70,
+        <button onPointerDown={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(true); }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(true); }} onClick={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(true); }} style={{
+          position: 'absolute', right: 4, top: 52, zIndex: 70,
           width: 28, height: 28, padding: 0, display: 'grid', placeItems: 'center',
           background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
           boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
           color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
-        }} aria-label="Expand Parts Selector" aria-expanded="false" title="Expand Parts Selector">›</button>
+        }} aria-label="Expand Selectors Panel" aria-expanded="false" title="Expand Selectors Panel">›</button>
       )}
 
       {/* A snapshot must not LOOK like a live board. Desaturating it is the
@@ -1000,9 +1003,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           rightOpen={rightOpen}
           viewNav={(
             <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', minHeight: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
-              <button role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"
+              <button data-circuit-toggle-state={!showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"
                 style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
-              <button role="radio" aria-checked={showSchematic} onClick={() => setShowSchematic(true)} aria-label="Schematic view" title="Schematic view"
+              <button data-circuit-toggle-state={showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={showSchematic} onClick={() => setShowSchematic(true)} aria-label="Schematic view" title="Schematic view"
                 style={{width: 40, minWidth: 40, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>⌁</button>
             </div>
           )}
