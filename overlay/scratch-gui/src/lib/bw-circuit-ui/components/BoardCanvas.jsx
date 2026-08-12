@@ -15,7 +15,7 @@ import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel } from '../interaction/transform.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
-import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole } from '../interaction/breadboard-snap.js';
+import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
 import { getSidecar } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
@@ -32,11 +32,29 @@ import { ContextMenu } from './ContextMenu.jsx';
 import { InlineEditor } from './InlineEditor.jsx';
 import { getMeterReading } from '../model/meter-reading.js';
 import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
+import { getPinFunctionsForPart } from '../model/pin-functions.js';
+import { isBoardEndpoint } from '../model/wire-endpoints.js';
+import { boardGeometry } from '../model/board-geometry.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
 const CANVAS_W = 700;
 const CANVAS_H = 500;
+const DIP_PIN_PITCH = 20;
+const DIP_ROW_OFFSET = 60;
+
+function dipTerminalPositions(sidecar) {
+  const positions = {};
+  if (!sidecar?.terminals) return positions;
+  const left = sidecar.terminals.filter(t => t.x <= sidecar.w / 2).sort((a, b) => a.y - b.y);
+  const right = sidecar.terminals.filter(t => t.x > sidecar.w / 2).sort((a, b) => a.y - b.y);
+  const put = (items, y) => items.forEach((t, i) => {
+    positions[t.name] = {dx: (i - (items.length - 1) / 2) * DIP_PIN_PITCH, dy: y};
+  });
+  put(left, -DIP_ROW_OFFSET);
+  put(right, DIP_ROW_OFFSET);
+  return positions;
+}
 
 /**
  * Rotate a {dx, dy} offset by deg degrees (0, 90, 180, 270).
@@ -99,10 +117,12 @@ function terminalOffsetsForPart(part) {
       // declared-pins-only single-column layout.
       const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
       if (sc && sc.terminals && sc.terminals.length > 2) {
-        const S = 0.62;
+        // The source sidecar uses a generous 200×260 art coordinate space;
+        // the physical DIP package on this canvas is the compact 80×111
+        // footprint. Keep the same scale for pins and body.
         const offsets = {};
-        for (const t of sc.terminals) {
-          offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
+        for (const [name, position] of Object.entries(dipTerminalPositions(sc))) {
+          offsets[name] = r(position.dx, position.dy);
         }
         return offsets;
       }
@@ -114,6 +134,20 @@ function terminalOffsetsForPart(part) {
         offsets[pin] = r(-60, chipY + 30 + i * 30);
       });
       return offsets;
+    }
+    case 'arduino_uno':
+    case 'arduino_nano':
+    case 'pi_pico': {
+      const sc = getSidecar(part.kind);
+      if (sc?.terminals?.length) {
+        const S = boardGeometry(sc)?.scale || 1;
+        const offsets = {};
+        for (const t of sc.terminals) {
+          offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
+        }
+        return offsets;
+      }
+      return { a: r(-15, 0), b: r(15, 0) };
     }
     default: return { a: r(-15, 0), b: r(15, 0) };
   }
@@ -143,7 +177,7 @@ function fmtV(v) {
 function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
-    const rot = part.rotation || 0;
+    const rot = (part.rotation || 0) + ((part.kind === 'mcu' ? (part.seat?.rot || 0) * 90 : 0));
     const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
     const selStroke = isSelected ? '#f1c40f' : undefined;
@@ -182,39 +216,30 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         // offsets use - one geometry, so every leg meets its connector.
         const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
         if (sc && sc.terminals && sc.terminals.length > 2) {
-          const S = 0.62;
-          const W = sc.w * S, Hh = sc.h * S;
-          const left = sc.terminals.filter(t => t.x <= sc.w / 2);
-          const right = sc.terminals.filter(t => t.x > sc.w / 2);
-          const px = (t) => (t.x - sc.w / 2) * S;
-          const py = (t) => (t.y - sc.h / 2) * S;
-          const legLen = 10;
+          const positions = dipTerminalPositions(sc);
+          const px = (t) => positions[t.name]?.dx || 0;
+          const py = (t) => positions[t.name]?.dy || 0;
+          const bodyW = 300, bodyH = 64;
           return (
             <g key={id} transform={xform} pointerEvents="none">
-              <rect x={-W / 2 + legLen} y={-Hh / 2} width={W - 2 * legLen} height={Hh} rx={4}
+              <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
                 fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
-              <path d={`M ${-7} ${-Hh / 2} A 7 7 0 0 1 ${7} ${-Hh / 2}`}
+              <path d="M -9 -31 A 9 9 0 0 1 9 -31"
                 fill="#2c3e50" stroke={selStroke || '#555'} strokeWidth={1} />
-              <circle cx={-W / 2 + legLen + 8} cy={-Hh / 2 + 10} r={2.5} fill="#555" />
-              <text x={0} y={-6} textAnchor="middle" fill="#bbb" fontSize={11}
+              <circle cx={-bodyW / 2 + 12} cy={-bodyH / 2 + 10} r={2.5} fill="#555" />
+              <text x={0} y={-5} textAnchor="middle" fill="#bbb" fontSize={10}
                 fontFamily="monospace" fontWeight="bold"
                 transform="rotate(0)">STC12C5A60S2</text>
-              <text x={0} y={8} textAnchor="middle" fill="#777" fontSize={8}
+              <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={7}
                 fontFamily="monospace">DIP-40</text>
-              {left.map(t => (
+              {sc.terminals.map(t => (
                 <g key={t.name}>
-                  <rect x={px(t) - 1} y={py(t) - 1.6} width={legLen + 1} height={3.2}
-                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
-                  <text x={px(t) + legLen + 3} y={py(t) + 2.6} textAnchor="start"
-                    fill="#7f8c8d" fontSize={5.6} fontFamily="monospace">{t.name}</text>
-                </g>
-              ))}
-              {right.map(t => (
-                <g key={t.name}>
-                  <rect x={px(t) - legLen} y={py(t) - 1.6} width={legLen + 1} height={3.2}
-                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
-                  <text x={px(t) - legLen - 3} y={py(t) + 2.6} textAnchor="end"
-                    fill="#7f8c8d" fontSize={5.6} fontFamily="monospace">{t.name}</text>
+                  <line x1={px(t)} y1={py(t) < 0 ? -bodyH / 2 : bodyH / 2} x2={px(t)} y2={py(t)}
+                    stroke="#b0b8c0" strokeWidth={3} />
+                  <rect x={px(t) - 5} y={py(t) - 2.5} width={10} height={5}
+                    fill="#d8dee4" stroke="#8090a0" strokeWidth={0.5} />
+                  <text x={px(t)} y={py(t) + (py(t) < 0 ? -8 : 14)} textAnchor="middle"
+                    fill="#7f8c8d" fontSize={4.2} fontFamily="monospace">{t.name}</text>
                 </g>
               ))}
             </g>
@@ -269,6 +294,53 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                     fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
                   <text x={chipW / 2 + legLen + 3} y={py + 3} textAnchor="start"
                     fill="#f39c12" fontSize={7} fontFamily="monospace">{pin}</text>
+                </g>
+              );
+            })}
+          </g>
+        );
+      }
+      case 'arduino_uno':
+      case 'arduino_nano':
+      case 'pi_pico': {
+        // Board sidecars provide the audited dimensions and pin coordinates.
+        // The designer deliberately keeps this clean-room inline renderer:
+        // the sidecar is geometry/data, not an imported third-party runtime.
+        const sc = getSidecar(kind);
+        const geometry = boardGeometry(sc);
+        const W = geometry?.w ?? (kind === 'arduino_nano' ? 150 : kind === 'pi_pico' ? 150 : 450);
+        const H = geometry?.h ?? (kind === 'arduino_nano' ? 400 : kind === 'pi_pico' ? 525 : 300);
+        const boardColor = kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
+        const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : 'RASPBERRY PI PICO';
+        const S = geometry?.scale || 1;
+        const pin = (t) => ({ x: t.x * S - W / 2, y: t.y * S - H / 2 });
+        return (
+          <g key={id} transform={xform} pointerEvents="none">
+            <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
+              fill={boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
+            <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
+              rx={3} fill="#0b6b8a" opacity={0.35} />
+            <text x={0} y={kind === 'arduino_nano' ? 5 : 4} textAnchor="middle"
+              fill="#dff6ff" fontSize={kind === 'pi_pico' ? 5.5 : 9} fontFamily="monospace" fontWeight="bold">
+              {title}
+            </text>
+            <text x={0} y={kind === 'arduino_nano' ? 16 : 16} textAnchor="middle"
+              fill="#a9dbea" fontSize={6} fontFamily="monospace">
+              {kind === 'pi_pico' ? 'RP2040 · 3V3' : 'ATmega328P · 5V'}
+            </text>
+            {sc?.terminals?.map(t => {
+              const p = pin(t);
+              // Sidecars place pads on the two long edges. Labels belong
+              // beside their pad, inside the PCB: left edge → right-aligned
+              // toward the body; right edge → left-aligned toward the body.
+              const leftSide = p.x < 0;
+              return (
+                <g key={t.name}>
+                  <circle cx={p.x} cy={p.y} r={5} fill="#d8dee4" stroke="#637381" strokeWidth={1} />
+                  <text x={p.x + (leftSide ? 7 : -7)} y={p.y + 1.6}
+                    textAnchor={leftSide ? 'start' : 'end'}
+                    fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.7 : 4.5}
+                    fontFamily="monospace">{t.name.toUpperCase()}</text>
                 </g>
               );
             })}
@@ -346,6 +418,27 @@ const STC12_PIN_INFO = {
   RST: 'reset — ACTIVE HIGH', VCC: '+5 V supply (pin 40)', GND: 'ground (pin 20)',
   XTAL1: 'crystal in (internal RC works without one)', XTAL2: 'crystal out',
 };
+
+/**
+ * Board pin descriptions preserve the sidecar's audit state. A null function
+ * list is explicitly shown as unaudited; an empty list is an audited pin with
+ * no alternates.
+ */
+function pinInfoForPart(part, pin) {
+  const normalized = String(pin).toUpperCase();
+  if (part.kind === 'mcu') return STC12_PIN_INFO[normalized] || '';
+  if (/GND|VCC|5V|3V3|VIN|AREF|RESET|VBUS|VSYS|RUN|AGND|SWD/.test(normalized)) {
+    return 'power/control';
+  }
+  const functions = getPinFunctionsForPart(part.kind).find(item => item.name === pin)?.functions || [];
+  if (functions === null) return 'GPIO (?) — alternates not audited';
+  if (Array.isArray(functions)) {
+    if (functions.includes('analog_only')) return 'analog input only';
+    const alternates = functions.filter(name => name !== 'gpio');
+    return alternates.length ? `GPIO · ${alternates.join(' · ').toUpperCase()}` : 'GPIO only';
+  }
+  return '';
+}
 
 function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDown, onTerminalUp, placingProbe }) {
   const connected = new Set();
@@ -450,6 +543,11 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
   }
 
   return wires.map(wire => {
+    // Board-connected tap wires are drawn by the dedicated tap-wire layer.
+    // A board hole is not a part terminal; rendering it here as well creates
+    // a second bogus straight path alongside the real curved tap wire.
+    if (isBoardEndpoint(wire.from) || isBoardEndpoint(wire.to)) return null;
+
     const fromPart = parts.find(p => p.id === wire.from.part);
     const toPart = parts.find(p => p.id === wire.to.part);
     if (!fromPart || !toPart) return null;
@@ -1043,19 +1141,19 @@ export function BoardCanvas({
   onSelectPart, selectedPart, selectedParts,
   onSelectWire, selectedWire,
   onControlChange, onButtonDown, onButtonUp,
+  mode, onModeChange, powered, onPowerToggle,
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
-  drcWarnings,
+  drcWarnings, panelNav, viewNav, rightOpen, onToggleRightPanel,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
   // what you hit stays true for seated parts too).
   parts = resolveSeatedParts(parts);
-  const selectedPartObject = selectedPart ? parts.find(p => p.id === selectedPart) : null;
   const circuitRef = useRef(null); circuitRef.current = circuit;
   const [placeGhost, setPlaceGhost] = useState(null);
   const [dragLegs, setDragLegs] = useState(null); // hole highlights while dragging an existing part
@@ -1071,6 +1169,7 @@ export function BoardCanvas({
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
+  const [noticeOpen, setNoticeOpen] = useState(false);
   const [draggingWaypoint, setDraggingWaypoint] = useState(null); // { wireId, index }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
@@ -1207,7 +1306,7 @@ export function BoardCanvas({
       for (const q of partsRef.current) {
         if (q.kind === 'breadboard' || q.kind === 'meter') continue;
         const b = partBounds(q);
-        if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) return null;
+        if (wx >= b.minX && wx <= b.maxX && wy >= b.minY && wy <= b.maxY) return null;
       }
       for (const q of partsRef.current) {
         if (q.kind !== 'breadboard') continue;
@@ -1557,7 +1656,8 @@ export function BoardCanvas({
         // Hit-test bounding boxes, not centres
         const inside = parts.filter(p => {
           const bb = getPartBBox(p);
-          return bb.x + bb.w >= rx1 && bb.x <= rx2 && bb.y + bb.h >= ry1 && bb.y <= ry2;
+          const bounds = partBounds(p);
+          return bounds.maxX >= rx1 && bounds.minX <= rx2 && bounds.maxY >= ry1 && bounds.minY <= ry2;
         });
         if (inside.length > 0) {
           // Shift = additive (toggle into existing selection); default = replace
@@ -1832,10 +1932,27 @@ export function BoardCanvas({
       <div style={{
         display: 'flex', alignItems: 'center', gap: '6px',
         fontFamily: 'monospace', fontSize: '10px',
-        marginBottom: '4px', minHeight: '26px',
-        padding: '2px 4px',
+        marginBottom: '6px', minHeight: '44px',
+        padding: '4px 6px',
         background: '#16213e', borderRadius: '4px',
+        flexWrap: 'wrap', alignContent: 'center', rowGap: '6px',
+        overflow: 'visible', width: '100%', boxSizing: 'border-box',
       }}>
+        <button onClick={() => onModeChange?.('build')} title="Build mode"
+          style={{ minHeight: 34, padding: '4px 10px', background: mode === 'build' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'build' ? '#3498db' : '#2c3e50'}`, borderRadius: '4px', color: mode === 'build' ? '#3498db' : '#7f8c8d', fontSize: '12px', cursor: 'pointer' }}>Build</button>
+        <button onClick={() => onModeChange?.('simulate')} title="Simulation mode"
+          style={{ minHeight: 34, padding: '4px 10px', background: mode === 'simulate' ? '#2c3e50' : '#16213e', border: `1px solid ${mode === 'simulate' ? '#2ecc71' : '#2c3e50'}`, borderRadius: '4px', color: mode === 'simulate' ? '#2ecc71' : '#7f8c8d', fontSize: '12px', cursor: 'pointer' }}>Sim</button>
+        <button onClick={() => onPowerToggle?.()} title={powered ? 'Power on' : 'Power off'}
+          style={{ minHeight: 34, padding: '4px 10px', background: powered ? '#176b3a' : '#7f1d1d', border: '1px solid transparent', borderRadius: '4px', color: '#fff', fontSize: '12px', cursor: 'pointer' }}>{powered ? '⏻ On' : '⏻ Off'}</button>
+
+        {panelNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
+        {viewNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
+        {onToggleRightPanel ? <button onClick={onToggleRightPanel}
+          title={rightOpen ? 'Hide right panel' : 'Show right panel'}
+          aria-label={rightOpen ? 'Hide right panel' : 'Show right panel'}
+          aria-expanded={rightOpen}
+          style={{minHeight: 34, minWidth: 38, padding: '4px 8px', background: '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#dbeafe', fontSize: 18, cursor: 'pointer'}}>▣</button> : null}
+
         {/* Mode indicator */}
         <span style={{
           padding: '2px 8px', borderRadius: '3px',
@@ -1846,14 +1963,37 @@ export function BoardCanvas({
           {wiringFrom ? 'WIRING' : 'SELECT'}
         </span>
 
-        {/* Status text */}
+        {/* Compact status warning; click the triangle to reveal the full explanation. */}
+        {statusText && /WIRING ONLY|HARDWARE|SNAPSHOT/.test(statusText) ? (
+          <button onClick={() => setNoticeOpen(v => !v)} title={statusText} aria-label={statusText} aria-expanded={noticeOpen}
+            style={{border: 'none', background: 'transparent', color: /WIRING ONLY/.test(statusText) ? '#f59e0b' : '#ef4444', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 3px'}}>▲</button>
+        ) : null}
         <span style={{ color: '#7f8c8d', flex: 1, fontSize: '10px' }}>
           {wiringFrom
             ? `${wiringFrom.part}:${wiringFrom.terminal} → ?`
-            : statusText || (selectedParts?.size > 0 ? `${selectedParts.size} selected` : '')}
+            : (noticeOpen || !statusText || !/WIRING ONLY|HARDWARE|SNAPSHOT/.test(statusText))
+              ? (statusText || (selectedParts?.size > 0 ? `${selectedParts.size} selected` : ''))
+              : ''}
         </span>
 
-        {selectedWire && onUpdateWire && (
+        {/* Selection actions */}
+        {((selectedParts && selectedParts.size > 0) || selectedWire) && (
+          <>
+            {selectedPart && onRotatePart && (
+              <button onClick={() => onRotatePart(selectedPart)}
+                title="Rotate (R)"
+                style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #3498db', borderRadius: '3px', color: '#3498db', fontSize: '9px', cursor: 'pointer' }}>
+                ↻ Rotate
+              </button>
+            )}
+            {selectedPart && onDuplicatePart && (
+              <button onClick={() => onDuplicatePart(selectedPart)}
+                title="Duplicate (Ctrl+D)"
+                style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #2ecc71', borderRadius: '3px', color: '#2ecc71', fontSize: '9px', cursor: 'pointer' }}>
+                ⧉ Duplicate
+              </button>
+            )}
+            {selectedWire && onUpdateWire && (
               <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}
                 title="Wire color (auto = colored by voltage)">
                 {['#e74c3c', '#2c3e50', '#3498db', '#2ecc71', '#f1c40f', '#e67e22', null].map((c, i) => (
@@ -1868,19 +2008,29 @@ export function BoardCanvas({
                 ))}
               </span>
             )}
+            <button onClick={() => {
+              if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
+              else if (selectedParts && selectedParts.size > 0) { for (const id of selectedParts) onRemovePart(id); onSelectPart(null); }
+            }}
+              title="Delete (Del)"
+              style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: '3px', color: '#e74c3c', fontSize: '9px', cursor: 'pointer' }}>
+              ✕ Delete
+            </button>
+          </>
+        )}
 
         {/* Always-visible history + persistence controls */}
         <button onClick={() => onUndo && onUndo()} title="Undo (Ctrl+Z)" aria-label="Undo"
-          style={{ padding: '5px 10px', minWidth: 38, minHeight: 32, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '4px', color: '#bdc3c7', fontSize: '18px', cursor: 'pointer' }}>↶</button>
+          style={{ minWidth: 34, minHeight: 30, padding: '2px 7px', background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '11px', cursor: 'pointer' }}>↶</button>
         <button onClick={() => onRedo && onRedo()} title="Redo (Ctrl+Y)" aria-label="Redo"
-          style={{ padding: '5px 10px', minWidth: 38, minHeight: 32, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '4px', color: '#bdc3c7', fontSize: '18px', cursor: 'pointer' }}>↷</button>
+          style={{ minWidth: 34, minHeight: 30, padding: '2px 7px', background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '11px', cursor: 'pointer' }}>↷</button>
         {onSaveCircuit && (
           <button onClick={onSaveCircuit} title="Save wiring as file"
-            style={{ padding: '5px 10px', minWidth: 38, minHeight: 32, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: '4px', color: '#2ecc71', fontSize: '18px', cursor: 'pointer' }}>💾</button>
+            style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #27ae60', borderRadius: '3px', color: '#2ecc71', fontSize: '10px', cursor: 'pointer' }}>💾</button>
         )}
         {onLoadCircuit && (
           <button onClick={onLoadCircuit} title="Load wiring from file"
-            style={{ padding: '5px 10px', minWidth: 38, minHeight: 32, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: '4px', color: '#3498db', fontSize: '18px', cursor: 'pointer' }}>📂</button>
+            style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #2980b9', borderRadius: '3px', color: '#3498db', fontSize: '10px', cursor: 'pointer' }}>📂</button>
         )}
 
         {/* Zoom info */}
@@ -1944,20 +2094,6 @@ export function BoardCanvas({
           }
         }}
       >
-        {selectedPartObject && (
-          <div data-element-actions style={{
-            position: 'absolute',
-            left: `${(selectedPartObject.x - pan.x) * zoom}px`,
-            top: `${(selectedPartObject.y - pan.y) * zoom - 34}px`,
-            transform: 'translateX(-50%)', display: 'flex', gap: 3, zIndex: 20,
-            padding: 3, borderRadius: 5, background: 'rgba(15,23,42,.94)',
-            border: '1px solid #475569', boxShadow: '0 2px 8px rgba(0,0,0,.35)',
-          }}>
-            {onRotatePart && <button onClick={() => onRotatePart(selectedPart)} title="Rotate (R)" aria-label="Rotate selected element">↻</button>}
-            {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPart)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected element">⧉</button>}
-            <button onClick={() => { onRemovePart(selectedPart); onSelectPart(null); }} title="Delete (Del)" aria-label="Delete selected element">✕</button>
-          </div>
-        )}
         <svg
           width="100%"
           height="100%"
@@ -2127,9 +2263,8 @@ export function BoardCanvas({
           {parts.filter(p => p.kind === 'breadboard').map(bb => (
             <BreadboardView key={bb.id} part={bb}
               model={circuit?.breadboards?.get(bb.id)}
-              footprint={FOOTPRINTS.breadboard}
-              selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null}
-              hoveredPartId={hoveredPart} />
+              footprint={bbFootprint(bb)}
+              selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
           ))}
 
           {/* Jumper wires: colored arcs hole-to-hole */}
@@ -2153,10 +2288,10 @@ export function BoardCanvas({
           })}
 
           {/* Tap wires: part terminal → board hole, drawn as bench wires */}
-          {wires.filter(w => w.from.board || w.to.board).map(w => {
+          {wires.filter(w => isBoardEndpoint(w.from) || isBoardEndpoint(w.to)).map(w => {
             const endPos = (e) => {
-              if (e.board) {
-                const bb = parts.find(q => q.id === e.board);
+              if (isBoardEndpoint(e)) {
+                const bb = parts.find(q => q.id === (e.board || e.boardId));
                 return bb ? holeWorldPos(bb, e.hole) : null;
               }
               const pp = parts.find(q => q.id === e.part);
@@ -2402,7 +2537,7 @@ export function BoardCanvas({
                       borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontFamily: 'monospace',
                     }}>
                       <span style={{ fontSize: 11, minWidth: 46 }}>{pin}</span>
-                      <span style={{ fontSize: 9, color: '#7f8c8d' }}>{STC12_PIN_INFO[pin] || ''}</span>
+                      <span style={{ fontSize: 9, color: '#9ab0c4' }}>{pinInfoForPart(chip, pin)}</span>
                     </button>
                   ))}
                 </div>

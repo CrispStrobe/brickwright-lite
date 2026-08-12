@@ -62,6 +62,18 @@ const messages = defineMessages({
 let isRendererSupported = null;
 
 const GUIComponent = props => {
+    const [stagePaneVisible, setStagePaneVisible] = React.useState(() => {
+        try { return localStorage.getItem('bw-hide-stage') !== '1'; } catch { return true; }
+    });
+    React.useEffect(() => {
+        const sync = event => {
+            const detail = event.detail || {};
+            if (detail.key !== 'bw-hide-stage') return;
+            setStagePaneVisible(detail.value !== '1');
+        };
+        window.addEventListener('bw-settings-change', sync);
+        return () => window.removeEventListener('bw-settings-change', sync);
+    }, []);
     const {
         accountNavOpen,
         activeTabIndex,
@@ -337,12 +349,13 @@ const GUIComponent = props => {
                                     </Tab>
                                     <button
                                         type="button"
-                                        title="Show stage and circuit pane"
-                                        aria-label="Show stage and circuit pane"
+                                        title={stagePaneVisible ? 'Hide stage and circuit pane' : 'Show stage and circuit pane'}
+                                        aria-label={stagePaneVisible ? 'Hide stage and circuit pane' : 'Show stage and circuit pane'}
                                         onClick={() => {
-                                            try { localStorage.setItem('bw-hide-stage', '0'); } catch { /* private mode */ }
+                                            const value = stagePaneVisible ? '1' : '0';
+                                            try { localStorage.setItem('bw-hide-stage', value); } catch { /* private mode */ }
                                             window.dispatchEvent(new CustomEvent('bw-settings-change', {
-                                                detail: {key: 'bw-hide-stage', value: '0'}
+                                                detail: {key: 'bw-hide-stage', value}
                                             }));
                                         }}
                                         style={{

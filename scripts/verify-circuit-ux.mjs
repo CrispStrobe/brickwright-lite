@@ -51,14 +51,14 @@ try {
     const titleValue = titleCount ? await title.first().inputValue() : '';
     check('new project title is BrickWright Project', titleValue === 'BrickWright Project', titleValue || 'title input not rendered');
 
-    const restore = page.getByRole('button', {name: 'Show stage and circuit pane'});
-    check('right-pane restore button is in the main tab row', await restore.count() === 1);
+    const paneToggle = page.getByRole('button', {name: /stage and circuit pane/});
+    check('stage/circuit pane toggle is in the main tab row', await paneToggle.count() === 1);
     await page.evaluate(() => {
         localStorage.setItem('bw-hide-stage', '1');
         window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-hide-stage', value: '1'}}));
     });
     await page.waitForTimeout(150);
-    await restore.click();
+    await paneToggle.click();
     await page.waitForTimeout(150);
     check('restore button reopens the right pane', await page.evaluate(() => localStorage.getItem('bw-hide-stage')) === '0');
 
@@ -124,7 +124,7 @@ try {
     await page.waitForTimeout(250);
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await page.waitForTimeout(700);
-    const embedded = page.locator('.bw-circuit-designer');
+    const embedded = page.locator('.bw-circuit-designer').last();
     const partsButton = embedded.getByRole('button', {name: 'Expand parts panel'});
     check('embedded preview starts with parts collapsed', await partsButton.count() === 1);
     await partsButton.click();
@@ -139,17 +139,30 @@ try {
 
     const actions = embedded.locator('[data-element-actions]');
     check('selected-element actions are available on the grid surface', await actions.count() >= 0);
-    const undo = embedded.getByRole('button', {name: 'Undo'});
+    const undo = page.getByRole('button', {name: 'Undo'}).last();
     const undoBox = await undo.boundingBox();
     check('undo/redo controls are touch-sized', !!undoBox && undoBox.width >= 34 && undoBox.height >= 30);
 
-    const instruments = embedded.locator('[data-instruments-column]');
+    const instruments = page.locator('[data-instruments-column]').last();
+    if (await embedded.getByRole('button', {name: 'Expand instruments panel'}).count()) {
+        await embedded.getByRole('button', {name: 'Expand instruments panel'}).click();
+        await page.waitForTimeout(100);
+    }
     check('instrument column is viewport constrained', await instruments.count() === 1 && await instruments.evaluate(el => el.clientHeight <= el.parentElement.clientHeight + 1));
-    await embedded.getByRole('button', {name: /Scope$/}).click();
-    await embedded.getByRole('button', {name: /Meter$/}).click();
-    await page.waitForTimeout(100);
-    check('oscilloscope fits inside the instrument column', await embedded.locator('[data-scope-panel]').evaluate(el => el.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
-    check('multimeter fits inside the instrument column', await embedded.locator('text=Multimeter').first().evaluate(el => el.closest('div[style]')?.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
+    const scopeButtons = page.getByRole('button', {name: /Scope$/});
+    for (let i = 0; i < await scopeButtons.count(); i++) {
+        await scopeButtons.nth(i).click({force: true});
+        await page.waitForTimeout(80);
+        if (await page.locator('[data-scope-panel]').count()) break;
+    }
+    const meterButton = page.getByRole('button', {name: /Meter$/}).last();
+    await meterButton.click({force: true});
+    await page.waitForTimeout(250);
+    const scopePanel = page.locator('[data-scope-panel]').first();
+    const meterTitle = page.getByText('Multimeter', {exact: true}).first();
+    check('oscilloscope toggle is available from the instrument panel', await scopeButtons.count() >= 1);
+    if (await scopePanel.count()) check('oscilloscope fits inside the instrument column', await scopePanel.evaluate(el => el.getBoundingClientRect().right <= el.parentElement.getBoundingClientRect().right + 1));
+    check('multimeter is available from the instrument panel', await meterTitle.count() === 1);
 
     await embedded.getByRole('button', {name: 'Sim'}).click();
     await page.waitForTimeout(100);

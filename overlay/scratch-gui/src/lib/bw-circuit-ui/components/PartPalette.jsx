@@ -20,6 +20,15 @@ const CATEGORIES = [
         tooltip: 'Half-size breadboard (30 columns) with power rails' },
       { kind: 'breadboard', label: 'Breadboard mini', params: { size: 'mini' }, color: '#e8e4d8',
         tooltip: 'Mini 170-point breadboard (17 columns) - no power rails, like the real one' },
+      { kind: 'arduino_uno', label: 'Arduino Uno', params: {}, color: '#168aad',
+        capability: 'AVR simulation',
+        tooltip: 'ATmega328P board — 5 V logic, digital and analog headers' },
+      { kind: 'arduino_nano', label: 'Arduino Nano', params: {}, color: '#168aad',
+        capability: 'AVR simulation',
+        tooltip: 'ATmega328P Nano board — 5 V logic, compact headers' },
+      { kind: 'pi_pico', label: 'Raspberry Pi Pico', params: {}, color: '#7b2cbf',
+        capability: 'wiring only',
+        tooltip: 'RP2040 board — 3.3 V logic; do not connect 5 V signals' },
     ],
   },
   {
@@ -191,22 +200,17 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
         (p.tooltip || '').toLowerCase().includes(filter.toLowerCase()))
     : null;
 
-    return (
+  return (
     <div style={{
       background: palette.background,
       border: `1px solid ${palette.border}`,
       borderRadius: '8px',
       padding: '8px',
       width: '160px',
-      height: '100%',
-      minHeight: 0,
-      maxHeight: '100%',
-      boxSizing: 'border-box',
       fontFamily: 'inherit',
       flexShrink: 0,
       overflowY: 'auto',
-      overscrollBehavior: 'contain',
-    }} data-parts-palette>
+    }}>
       <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
         Parts
       </div>
@@ -218,26 +222,26 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
         placeholder="search..."
         style={{
           width: '100%', padding: '4px 6px', marginBottom: '6px',
-          background: palette.input, border: `1px solid ${palette.border}`,
+          background: palette.input, border: `1px solid ${palette.cardBorder}`,
           borderRadius: '4px', color: palette.inputText,
-          fontFamily: 'monospace', fontSize: '10px',
+          fontFamily: 'inherit', fontSize: '10px',
           boxSizing: 'border-box',
         }}
       />
 
       {matchingParts ? (
         matchingParts.length === 0 ? (
-          <div style={{ color: '#556', fontSize: '9px', padding: '4px' }}>No matches</div>
+          <div style={{ color: palette.muted, fontSize: '9px', padding: '4px' }}>No matches</div>
         ) : (
-          matchingParts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
+          matchingParts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
         )
       ) : (
         CATEGORIES.map(cat => (
           <div key={cat.name}>
-            <div style={{ color: palette.category, fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase' }}>
+            <div style={{ color: palette.category, fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 700 }}>
               {cat.name}
             </div>
-            {cat.parts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
+            {cat.parts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
           </div>
         ))
       )}
@@ -245,8 +249,8 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
   );
 }
 
-function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
-  const { kind, label, params, color, tooltip, hasColorPicker } = part;
+function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
+  const { kind, label, params, color, tooltip, capability, hasColorPicker } = part;
   const [hovered, setHovered] = useState(false);
 
   // For LEDs, use the selected color
@@ -271,8 +275,8 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
           width: '100%',
           padding: '4px',
           marginBottom: '3px',
-          background: hovered ? '#1e2d4a' : '#16213e',
-          border: `1px solid ${hovered ? color : '#2c3e50'}`,
+          background: hovered ? palette.hover : palette.card,
+          border: `1px solid ${hovered ? color : palette.cardBorder}`,
           borderRadius: '6px',
           cursor: 'grab',
           userSelect: 'none',
@@ -283,8 +287,8 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
       >
         <PartThumbnail kind={kind} color={color} params={effectiveParams} />
         <div style={{
-          color: hovered ? '#ecf0f1' : color,
-          fontFamily: 'monospace',
+          color: palette.text,
+          fontFamily: 'inherit',
           fontSize: '9px',
           textAlign: 'center',
           lineHeight: '1.2',
@@ -292,8 +296,17 @@ function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLed
         }}>
           {kind === 'led' ? `LED (${ledColor})` : label}
         </div>
+        {capability && (
+          <div style={{
+            color: capability === 'wiring only' ? '#a16207' : '#047857',
+            fontSize: '7px', textAlign: 'center', marginTop: '2px',
+            letterSpacing: '.02em',
+          }}>
+            {capability}
+          </div>
+        )}
         {tooltip && (
-          <div style={{ color: '#556', fontSize: '7px', textAlign: 'center' }}>{tooltip}</div>
+          <div style={{ color: '#a9bdd2', fontSize: '7px', textAlign: 'center' }}>{tooltip}</div>
         )}
       </div>
 
