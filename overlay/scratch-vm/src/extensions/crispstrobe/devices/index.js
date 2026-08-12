@@ -39,13 +39,24 @@ module.exports = makeExt(`// Name: Devices
       return /stc89/i.test(stc.device);
     }
 
+    /** Is the current target an AVR board (Arduino Nano/Uno)?
+     *  PWM/servo/motor emit stated stubs, NeoPixel timing is not ported. */
+    _isAVR() {
+      if (!this._runtime) return false;
+      const stc = this._runtime.stc;
+      if (!stc || !stc.device) return false;
+      return /arduino/i.test(stc.device) || /atmega/i.test(stc.device);
+    }
+
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def ?? 0 } });
       const is12T = this._is12T();
+      const isAVR = this._isAVR();
       // STC89 has no PCA — servo (compare/match) and motor (8-bit PWM)
       // silently produce 0 edges (ucsim-stc 356df26 measured).
-      const noPCA = is12T;
+      // AVR: PWM/servo/motor emit no-op stubs in the C back end.
+      const noPCA = is12T || isAVR;
 
       return {
         id: 'devices',
@@ -85,13 +96,13 @@ module.exports = makeExt(`// Name: Devices
             arguments: { ...n('ROW', 0), ...n('COL', 0), ...str('DISPLAY', 'display1') } },
           { opcode: 'lcdclear', blockType: Scratch.BlockType.COMMAND,
             text: 'lcd clear [DISPLAY]', arguments: str('DISPLAY', 'display1') },
-          // NeoPixel: 1T only — hidden on 12T targets
+          // NeoPixel: 1T STC only — hidden on 12T and AVR (timing not ported)
           { opcode: 'setneopixel', blockType: Scratch.BlockType.COMMAND,
-            hideFromPalette: is12T,
+            hideFromPalette: is12T || isAVR,
             text: 'set neopixel [INDEX] to R [R] G [G] B [B] on [STRIP]',
             arguments: { ...n('INDEX', 0), ...n('R', 255), ...n('G', 0), ...n('B', 0), ...str('STRIP', 'strip1') } },
           { opcode: 'clearneopixels', blockType: Scratch.BlockType.COMMAND,
-            hideFromPalette: is12T,
+            hideFromPalette: is12T || isAVR,
             text: 'clear neopixels on [STRIP]', arguments: str('STRIP', 'strip1') },
 
           // ---- Commands: stubs (hidden from palette) ----
