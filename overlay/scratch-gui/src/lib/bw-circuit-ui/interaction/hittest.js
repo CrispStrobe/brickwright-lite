@@ -28,7 +28,7 @@ export const FOOTPRINTS = {
   vcc: { w: 36, h: 40 },
   gnd: { w: 36, h: 40 },
   // STC12C5A60S2 DIP-40: 20 pins per side at the 20-unit breadboard pitch.
-  mcu: { w: 420, h: 150 },
+  mcu: { w: 280, h: 70 },
   // Sidecar art is scaled from 8-unit pin pitch to the canvas' 20-unit
   // breadboard raster. Keep hit bounds in the same world coordinates.
   arduino_uno: { w: 450, h: 300 },

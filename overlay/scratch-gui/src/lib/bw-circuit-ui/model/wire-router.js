@@ -71,7 +71,7 @@ function lShapeCrosses(a, mid, b, obstacles) {
  * @returns {BBox}
  */
 export function getPartBBox(p) {
-  if (p.kind === 'mcu') return { x: p.x - 210, y: p.y - 75, w: 420, h: 150 };
+  if (p.kind === 'mcu') return { x: p.x - 140, y: p.y - 35, w: 280, h: 70 };
   // Prefer sidecar dimensions (bw-parts owns the geometry)
   const sc = getSidecar(p.kind);
   if (sc && sc.w && sc.h) {

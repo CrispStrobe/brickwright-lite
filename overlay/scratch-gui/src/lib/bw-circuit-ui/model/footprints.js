@@ -217,7 +217,16 @@ export function computeLeadMap(footprint, refHole) {
   for (const [terminal, offset] of Object.entries(footprint.leads)) {
     let rowIdx, col;
     if (topIdx >= 0) {
-      rowIdx = topIdx + offset.dRow;
+      // A DIP straddles the breadboard gutter. Its second pin row is the
+      // first row below the gutter (f), not five rows farther down. The old
+      // generic mapping put the MCU legs in e and j, so the art could never
+      // line up with the holes and a cable on the adjacent strip was not the
+      // pin's electrical neighbour.
+      if (footprint.straddlesGutter && offset.dRow >= 5) {
+        rowIdx = 5 + (offset.dRow - 5);
+      } else {
+        rowIdx = topIdx + offset.dRow;
+      }
     } else {
       rowIdx = botIdx + 5 + offset.dRow; // 5 = gutter offset in unified index
     }

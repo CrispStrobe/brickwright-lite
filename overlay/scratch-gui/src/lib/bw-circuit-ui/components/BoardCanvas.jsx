@@ -40,11 +40,18 @@ import { boardGeometry } from '../model/board-geometry.js';
 // The actual rendered size fills the container via CSS.
 const CANVAS_W = 700;
 const CANVAS_H = 500;
-const DIP_PIN_PITCH = 20;
-const DIP_ROW_OFFSET = 60;
+const DIP_PIN_PITCH = 14;
+const DIP_ROW_OFFSET = 19;
 
-function dipTerminalPositions(sidecar) {
+function dipTerminalPositions(sidecar, seatedPart = null) {
   const positions = {};
+  if (seatedPart?._seatTerminals) {
+    for (const t of sidecar?.terminals || []) {
+      const p = seatedPart._seatTerminals[t.name];
+      if (p) positions[t.name] = {dx: p.x - seatedPart.x, dy: p.y - seatedPart.y};
+    }
+    if (Object.keys(positions).length === sidecar.terminals.length) return positions;
+  }
   if (!sidecar?.terminals) return positions;
   const left = sidecar.terminals.filter(t => t.x <= sidecar.w / 2).sort((a, b) => a.y - b.y);
   const right = sidecar.terminals.filter(t => t.x > sidecar.w / 2).sort((a, b) => a.y - b.y);
@@ -216,15 +223,15 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         // offsets use - one geometry, so every leg meets its connector.
         const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
         if (sc && sc.terminals && sc.terminals.length > 2) {
-          const positions = dipTerminalPositions(sc);
+          const positions = dipTerminalPositions(sc, part);
           const px = (t) => positions[t.name]?.dx || 0;
           const py = (t) => positions[t.name]?.dy || 0;
-          const bodyW = 300, bodyH = 64;
+          const bodyW = 266, bodyH = 30;
           return (
             <g key={id} transform={xform} pointerEvents="none">
               <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
                 fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
-              <path d="M -9 -31 A 9 9 0 0 1 9 -31"
+              <path d="M -9 -15 A 9 9 0 0 1 9 -15"
                 fill="#2c3e50" stroke={selStroke || '#555'} strokeWidth={1} />
               <circle cx={-bodyW / 2 + 12} cy={-bodyH / 2 + 10} r={2.5} fill="#555" />
               <text x={0} y={-5} textAnchor="middle" fill="#bbb" fontSize={10}

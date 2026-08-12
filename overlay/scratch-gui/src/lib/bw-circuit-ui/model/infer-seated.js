@@ -66,6 +66,7 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   const bb = circuit.addPart('breadboard', {}, 470, 330);
   const mcu = circuit.addPart(controllerKind,
     isBoard ? {} : { pins: pins.map(p => controllerPin(p)) }, 470, 40);
+  if (!isBoard) circuit.seatPart(mcu.id, bb.id, computeLeadMap(FOOTPRINTS.mcu, 'e20'));
   // A real battery feeding the rails — the bench has power OBJECTS, never
   // abstract supply symbols (those belong to the schematic projection).
   const bat = circuit.addPart('vsource', { variant: '9v', volts: 5 }, 120, 150);
