@@ -16,6 +16,7 @@ import {selectLocale} from '../../reducers/locales.js';
 import {DEFAULT_THEME, HIGH_CONTRAST_THEME, themeMap} from '../../lib/themes';
 import {persistTheme} from '../../lib/themes/themePersistance';
 import {setTheme} from '../../reducers/theme.js';
+import {hardReload} from '../../lib/hard-reload.js';
 
 const emit = (name, value) => {
     window.dispatchEvent(new CustomEvent(name, {detail: value}));
@@ -95,6 +96,13 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                     </MenuItem>
                 </MenuSection>
                 <MenuSection>
+                    <MenuItem onClick={() => { onRequestClose(); hardReload(); }}>
+                        <FormattedMessage
+                            defaultMessage="Reload BrickWright"
+                            description="Settings action that clears frontend caches and reloads the app"
+                            id="gui.menuBar.reloadBrickwright"
+                        />
+                    </MenuItem>
                     {(canChangeLanguage || canChangeTheme) && <MenuItem expanded={preferencesOpen}>
                         <div className={styles.groupRow} onClick={() => setPreferencesOpen(value => !value)}>
                             <span>Preferences</span>

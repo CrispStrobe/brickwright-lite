@@ -57,3 +57,14 @@ test('main tab row no longer renders the obsolete right-pane button', () => {
     assert.doesNotMatch(gui, /data-right-pane-toggle/);
     assert.doesNotMatch(gui, /Show Right Pane|Hide Right Pane/);
 });
+
+test('Settings exposes an app-internal hard reload without clearing project storage', () => {
+    const menu = read('overlay/scratch-gui/src/components/menu-bar/settings-menu.jsx');
+    const reload = read('overlay/scratch-gui/src/lib/hard-reload.js');
+    assert.match(menu, /Reload BrickWright/);
+    assert.match(menu, /hardReload\(\)/);
+    assert.match(reload, /caches\.keys\(\)/);
+    assert.match(reload, /getRegistrations\(\)/);
+    assert.match(reload, /bw-hard-reload/);
+    assert.doesNotMatch(reload, /localStorage\.clear/);
+});

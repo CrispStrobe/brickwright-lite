@@ -51,6 +51,11 @@ try {
     const titleValue = titleCount ? await title.first().inputValue() : '';
     check('new project title is BrickWright Project', titleValue === 'BrickWright Project', titleValue || 'title input not rendered');
 
+    const settingsMenu = page.getByText('Settings', {exact: true}).last();
+    await settingsMenu.locator('xpath=../..').click({force: true});
+    check('Settings exposes the app-internal hard reload action', await page.getByText('Reload BrickWright', {exact: true}).count() === 1);
+    await page.keyboard.press('Escape');
+
     const paneToggle = page.getByRole('button', {name: /Right Pane/});
     check('obsolete right-pane toggle is absent from the main tab row', await paneToggle.count() === 0);
     const editorPane = page.locator('[data-editor-pane]');
