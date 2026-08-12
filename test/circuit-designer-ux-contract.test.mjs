@@ -52,6 +52,8 @@ test('Circuit Designer side selectors expose independent collapse affordances', 
 test('Circuit Designer keeps simulation and debugger controls in the instruments column', () => {
     const source = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
     assert.match(source, /data-instruments-column/);
+    assert.match(source, /data-instruments-scroll/);
+    assert.match(source, /data-instruments-scroll[^\n]*style=\{\{[\s\S]*overflowY: 'auto'/);
     assert.match(source, /data-simulation-controls/);
     assert.match(source, /data-debugger-panel/);
     assert.match(source, /data-no-code-indicator/);

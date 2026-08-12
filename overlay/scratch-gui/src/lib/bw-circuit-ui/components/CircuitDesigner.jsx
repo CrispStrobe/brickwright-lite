@@ -1038,12 +1038,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
-      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 1 280px', width: 280, minWidth: 280, minHeight: 0, maxHeight: '100%', height: '100%', overflowY: 'auto', overflowX: 'hidden', alignSelf: 'stretch', boxSizing: 'border-box', overscrollBehavior: 'contain' }}>
+      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: '0 1 280px', width: 280, minWidth: 280, minHeight: 0, maxHeight: '100%', height: '100%', overflow: 'hidden', alignSelf: 'stretch', boxSizing: 'border-box' }}>
         <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
           position: 'absolute', zIndex: 3, top: 4, left: 4, background: '#ffffff', border: '1px solid #cbd5e1',
           boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
+        <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 34, boxSizing: 'border-box'}}>
         {debugState && (
           <DebugStatus
             debugState={debugState}
@@ -1088,6 +1089,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         </div>
         {showScope && <div style={{ width: 280 }}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} /></div>}
         {showMeter && <div style={{ width: 280 }}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
+        </div>
       </div>
       ) : (
         <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(true); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(true)} style={{
