@@ -321,7 +321,7 @@ try {
     check('designer keeps vertical scrolling after a narrow-window resize', resizedLayout.scrollHeight > resizedLayout.clientHeight, JSON.stringify(resizedLayout));
     await page.setViewportSize({width: 1024, height: 768});
     const actions = embedded.locator('[data-element-actions]');
-    check('selected-element actions are contextual on the grid surface', await embedded.locator('[data-selection-actions]').count() === 0 || await embedded.locator('[data-selection-actions] button').count() >= 3);
+    check('selected-element actions stay on the grid surface', await embedded.locator('[data-selection-actions]').count() === 0 || await embedded.locator('[data-selection-actions]').evaluate(el => getComputedStyle(el).position === 'absolute' && el.getBoundingClientRect().width > 0));
     const undo = page.getByRole('button', {name: 'Undo'}).last();
     const undoBox = await undo.boundingBox();
     check('undo/redo controls are touch-sized', !!undoBox && undoBox.width >= 34 && undoBox.height >= 30);

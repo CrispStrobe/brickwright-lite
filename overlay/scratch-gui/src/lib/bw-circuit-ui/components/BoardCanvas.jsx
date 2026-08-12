@@ -1162,7 +1162,8 @@ export function BoardCanvas({
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const selectedPartModel = selectedPart ? parts.find(part => part.id === selectedPart) : null;
+  const selectedPartId = selectedPart || (selectedParts && selectedParts.size === 1 ? [...selectedParts][0] : null);
+  const selectedPartModel = selectedPartId ? parts.find(part => part.id === selectedPartId) : null;
 
   // Auto-fit: when parts change significantly, zoom to fit all content
   const prevPartCount = React.useRef(0);
@@ -2041,11 +2042,11 @@ export function BoardCanvas({
           <div data-selection-actions style={{position: 'absolute', left: `${((selectedPartModel.x - pan.x) / (containerSize.w / zoom)) * 100}%`, top: `${((selectedPartModel.y - pan.y) / (containerSize.h / zoom)) * 100}%`, transform: 'translate(18px, -50%)', zIndex: 60, display: 'flex', gap: 4,
             padding: 4, borderRadius: 6, background: 'rgba(22,33,62,.92)', boxShadow: '0 2px 8px rgba(0,0,0,.35)'}}
             onPointerDown={e => e.stopPropagation()}>
-            {onRotatePart && <button onClick={() => onRotatePart(selectedPart)} title="Rotate (R)" aria-label="Rotate selected part"
+            {onRotatePart && <button onClick={() => onRotatePart(selectedPartId)} title="Rotate (R)" aria-label="Rotate selected part"
               style={{width: 30, height: 30, cursor: 'pointer'}}>↻</button>}
-            {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPart)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected part"
+            {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPartId)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected part"
               style={{width: 30, height: 30, cursor: 'pointer'}}>⧉</button>}
-            <button onClick={() => { onRemovePart(selectedPart); onSelectPart(null); }} title="Remove (Del)" aria-label="Remove selected part"
+            <button onClick={() => { onRemovePart(selectedPartId); onSelectPart(null); }} title="Remove (Del)" aria-label="Remove selected part"
               style={{width: 30, height: 30, cursor: 'pointer', color: '#b91c1c'}}>✕</button>
           </div>
         )}
