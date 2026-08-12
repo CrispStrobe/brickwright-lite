@@ -1156,6 +1156,7 @@ export function BoardCanvas({
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
   const [draggingWaypoint, setDraggingWaypoint] = useState(null); // { wireId, index }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
@@ -1934,8 +1935,12 @@ export function BoardCanvas({
           <button role="radio" aria-checked={mode === 'simulate'} onClick={() => onModeChange?.('simulate')} title="Simulation mode" aria-label="Sim mode"
             style={{width: 40, minWidth: 40, minHeight: 34, padding: 0, background: mode === 'simulate' ? '#14532d' : 'transparent', border: 'none', color: mode === 'simulate' ? '#86efac' : '#94a3b8', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▶</button>
         </div>
-        <button onClick={() => onPowerToggle?.()} title={powered ? 'Power on' : 'Power off'}
-          aria-label={powered ? 'Power on' : 'Power off'} style={{ width: 40, minWidth: 40, minHeight: 34, padding: 0, background: powered ? '#176b3a' : '#7f1d1d', border: '1px solid transparent', borderRadius: '4px', color: '#fff', fontSize: '16px', cursor: 'pointer' }}>⏻</button>
+        <div role="radiogroup" aria-label="Power state" data-power-toggle style={{display: 'inline-flex', height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+          <button role="radio" aria-checked={powered} onClick={() => onPowerToggle?.(true)} title="Power on" aria-label="Power on"
+            style={{width: 40, minWidth: 40, height: 34, padding: 0, background: powered ? '#166534' : 'transparent', border: 'none', borderRight: '1px solid #64748b', color: powered ? '#bbf7d0' : '#94a3b8', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>⏻</button>
+          <button role="radio" aria-checked={!powered} onClick={() => onPowerToggle?.(false)} title="Power off" aria-label="Power off"
+            style={{width: 40, minWidth: 40, height: 34, padding: 0, background: !powered ? '#7f1d1d' : 'transparent', border: 'none', color: !powered ? '#fecaca' : '#94a3b8', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>◯</button>
+        </div>
 
         {panelNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
         {viewNav ? <div style={{flex: '0 0 auto', minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
@@ -1992,22 +1997,21 @@ export function BoardCanvas({
           </>
         )}
 
-        {/* Always-visible history + persistence controls */}
+        {/* Always-visible history controls. Persistence and zoom live under one
+            overflow button so the toolbar keeps a usable footprint on narrow panes. */}
         <button onClick={() => onUndo && onUndo()} title="Undo (Ctrl+Z)" aria-label="Undo"
           style={{ width: 40, minWidth: 40, minHeight: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↶</button>
         <button onClick={() => onRedo && onRedo()} title="Redo (Ctrl+Y)" aria-label="Redo"
           style={{ width: 40, minWidth: 40, minHeight: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↷</button>
-        {onSaveCircuit && (
-          <button onClick={onSaveCircuit} title="Save wiring as file"
-            aria-label="Save wiring as file" style={{ width: 40, minWidth: 40, minHeight: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: '3px', color: '#2ecc71', fontSize: '14px', cursor: 'pointer' }}>💾</button>
-        )}
-        {onLoadCircuit && (
-          <button onClick={onLoadCircuit} title="Load wiring from file"
-            aria-label="Load wiring from file" style={{ width: 40, minWidth: 40, minHeight: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: '3px', color: '#3498db', fontSize: '14px', cursor: 'pointer' }}>📂</button>
-        )}
-
-        {/* Zoom info */}
-        <span data-zoom-indicator title="Canvas zoom" style={{ color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: '11px', fontWeight: 700 }}>{(zoom * 100).toFixed(0)}%</span>
+        <div data-toolbar-more style={{position: 'relative', flex: '0 0 auto'}}>
+          <button onClick={() => setToolbarMoreOpen(v => !v)} title="More circuit controls: Save, Load, Zoom" aria-label="More circuit controls" aria-expanded={toolbarMoreOpen}
+            style={{width: 40, minWidth: 40, height: 34, padding: 0, background: toolbarMoreOpen ? '#1e3a5f' : '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#e2e8f0', fontSize: '17px', cursor: 'pointer'}}>⋯</button>
+          {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, display: 'flex', gap: 4, alignItems: 'center', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
+            {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 40, minWidth: 40, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
+            {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 40, minWidth: 40, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
+            <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
+          </div>}
+        </div>
       </div>
 
       {/* Canvas — fills container, minimum 700×500 */}

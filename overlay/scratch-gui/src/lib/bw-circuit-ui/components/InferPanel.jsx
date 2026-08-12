@@ -338,7 +338,7 @@ export function InferPanel({ onLoadCircuit }) {
       <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
         aria-label={open ? 'Collapse examples selector' : 'Expand examples selector'}
         title={open ? 'Collapse examples selector' : 'Expand examples selector'}
-        style={{position: 'absolute', left: -13, top: 4, width: 24, height: 24, padding: 0, zIndex: 2,
+        style={{position: 'absolute', right: -13, top: 4, width: 24, height: 24, padding: 0, zIndex: 2,
           border: '1px solid #94a3b8', borderRadius: '999px', background: '#16213e', color: '#e2e8f0', cursor: 'pointer'}}> {open ? '‹' : '›'} </button>
       {!open ? null : <>
       <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6}}>

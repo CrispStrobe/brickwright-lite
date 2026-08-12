@@ -129,6 +129,8 @@ try {
     check('Build/Sim is one segmented mode toggle', await modeToggle.count() === 1 && await modeToggle.getByRole('radio').count() === 2 && await modeToggle.getByRole('radio', {name: 'Build mode'}).getAttribute('aria-checked') === 'true');
     const modeMetrics = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
     check('Build/Sim toggle segments have equal dimensions', modeMetrics.length === 2 && modeMetrics[0].width === modeMetrics[1].width && modeMetrics[0].height === modeMetrics[1].height, JSON.stringify(modeMetrics));
+    const powerToggle = designer.locator('[data-power-toggle]');
+    check('power is a visible two-state toggle', await powerToggle.getByRole('radio').count() === 2 && await powerToggle.getByRole('radio', {name: 'Power on'}).getAttribute('aria-checked') === 'true');
     check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().locator('xpath=../..').locator('[data-build-sim-toggle]').count() === 1);
     const panelNavigation = designer.locator('[data-panel-navigation]');
     check('shared toolbar has panel navigation', await panelNavigation.count() === 1 && await panelNavigation.locator('button').count() >= 4, `containers=${await panelNavigation.count()} buttons=${await panelNavigation.locator('button').count()}`);
@@ -136,20 +138,25 @@ try {
     check('panel navigation uses compact equal buttons', panelButtonMetrics.length === 1 && panelButtonMetrics[0].width <= 42 && panelButtonMetrics[0].height >= 30, JSON.stringify(panelButtonMetrics));
     const toolbarBox = await toolbar.boundingBox();
     check('toolbar is touch-sized', !!toolbarBox && toolbarBox.height >= 40, toolbarBox ? `${toolbarBox.width}x${toolbarBox.height}` : 'missing');
-    check('zoom indicator has readable contrast styling', await designer.locator('[data-zoom-indicator]').count() === 1 && await designer.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
+    const moreControls = designer.getByRole('button', {name: 'More circuit controls'});
+    check('save/load/zoom controls have a single overflow slot', await moreControls.count() === 1 && await designer.locator('[data-toolbar-more]').count() === 1);
+    await moreControls.click({force: true});
+    check('overflow slot exposes Save, Load, and Zoom', await designer.getByRole('button', {name: 'Save wiring as file'}).count() === 1 && await designer.getByRole('button', {name: 'Load wiring from file'}).count() === 1 && await designer.locator('[data-zoom-indicator]').count() === 1);
+    check('zoom indicator has readable contrast styling', await designer.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
+    await moreControls.click({force: true});
     check('toolbar explicitly wraps when space is constrained', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).flexWrap === 'wrap'));
 
     // The dedicated Circuit tab is the full designer. The Blocks tab embeds a
     // compact circuit preview, where editor chrome starts collapsed.
-    const fullPartsButton = designer.getByRole('button', {name: 'Collapse parts panel'});
+    const fullPartsButton = designer.getByRole('button', {name: 'Collapse Selectors Panel'});
     check('full designer shows its parts panel', await fullPartsButton.count() === 1);
     if (await fullPartsButton.count()) {
         await fullPartsButton.click({force: true});
         await page.waitForTimeout(100);
-        check('parts selector actually collapses', await designer.getByRole('button', {name: 'Expand parts panel'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 0);
-        await designer.getByRole('button', {name: 'Expand parts panel'}).click({force: true});
+        check('parts selector actually collapses', await designer.getByRole('button', {name: 'Expand Selectors Panel'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 0);
+        await designer.getByRole('button', {name: 'Expand Selectors Panel'}).click({force: true});
         await page.waitForTimeout(100);
-        check('parts selector actually reopens', await designer.getByRole('button', {name: 'Collapse parts panel'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 1);
+        check('parts selector actually reopens', await designer.getByRole('button', {name: 'Collapse Selectors Panel'}).count() === 1 && await designer.locator('[data-parts-panel]').count() === 1);
     }
     const examplesSelector = designer.locator('[data-examples-selector]').first();
     check('Examples selector has an independent collapse affordance', await examplesSelector.count() === 1 && await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1);
@@ -169,7 +176,7 @@ try {
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await page.waitForTimeout(700);
     const embedded = page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer');
-    const partsButton = embedded.getByRole('button', {name: 'Expand parts panel'});
+    const partsButton = embedded.getByRole('button', {name: 'Expand Selectors Panel'});
     check('embedded preview starts with parts collapsed', await partsButton.count() === 1);
     const collapsedPartsBox = await partsButton.boundingBox();
     const collapsedPartsStyle = await partsButton.evaluate(el => ({position: getComputedStyle(el).position, width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height}));

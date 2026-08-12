@@ -10,6 +10,8 @@ test('Circuit Designer toolbar has one mode toggle, one view toggle, and a reada
     const source = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx');
     assert.match(source, /data-build-sim-toggle/);
     assert.match(source, /data-zoom-indicator/);
+    assert.match(source, /data-power-toggle/);
+    assert.match(source, /data-toolbar-more/);
     assert.match(source, /data-circuit-toolbar[\s\S]*flexWrap:\s*'wrap'/);
     assert.doesNotMatch(source, /Show right panel|Hide right panel/);
 });
@@ -18,8 +20,8 @@ test('Circuit Designer side selectors expose independent collapse affordances', 
     const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
     const examples = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/ExamplesBrowser.jsx');
     const presets = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/InferPanel.jsx');
-    assert.match(designer, /Collapse parts panel/);
-    assert.match(designer, /Expand parts panel/);
+    assert.match(designer, /Collapse Selectors Panel/);
+    assert.match(designer, /Expand Selectors Panel/);
     assert.match(examples, /Collapse examples selector/);
     assert.match(examples, /Expand examples selector/);
     assert.match(examples, /data-examples-selector-content/);

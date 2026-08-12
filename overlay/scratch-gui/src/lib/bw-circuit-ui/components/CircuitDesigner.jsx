@@ -760,8 +760,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
         <div data-parts-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '12px', flex: '0 0 190px', width: 190, minWidth: 190, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
-          <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(false)} aria-label="Collapse parts panel" aria-expanded="true" title="Collapse parts panel" style={{
-            position: 'absolute', zIndex: 3, top: 4, left: -12, background: '#ffffff', border: '1px solid #cbd5e1',
+          <button onPointerDownCapture={e => { e.stopPropagation(); setLeftOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setLeftOpen(false)} aria-label="Collapse Selectors Panel" aria-expanded="true" title="Collapse Selectors Panel" style={{
+            position: 'absolute', zIndex: 3, top: 4, right: -12, background: '#ffffff', border: '1px solid #cbd5e1',
             boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
             fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
           }}>‹</button>
@@ -777,7 +777,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
           boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
           color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
-        }} aria-label="Expand parts panel" aria-expanded="false" title="Expand parts panel">›</button>
+        }} aria-label="Expand Selectors Panel" aria-expanded="false" title="Expand Selectors Panel">›</button>
       )}
 
       {/* A snapshot must not LOOK like a live board. Desaturating it is the
@@ -839,7 +839,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             if (nextMode === 'simulate') setRightOpen(true);
           }}
           powered={powered}
-          onPowerToggle={() => setPower(!powered)}
+          onPowerToggle={next => setPower(typeof next === 'boolean' ? next : !powered)}
           simulate={mode === 'simulate'}
           ledBrightness={readLedBrightness}
           buzzerTones={readBuzzerTone}
