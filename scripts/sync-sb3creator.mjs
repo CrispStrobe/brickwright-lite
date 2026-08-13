@@ -31,6 +31,8 @@ const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 // [source path relative to the sb3-creator repo, local vendored destination]
 const FILES = [
     ['src/utils/sb3Creator.js', path.join(lib, 'sb3-creator.js')],
+    // The referee: reference trace interpreter + comparator (corpus-and-oracles.md).
+    ['src/utils/traceOracle.js', path.join(lib, 'trace-oracle.js')],
     ['src/utils/examples.js', path.join(lib, 'sb3-creator-examples.js')],
     ['src/utils/pythonToPseudocode.js', path.join(lib, 'sb3-creator-python.js')],
     // MicroPython for a board -- micro:bit and Pico. Reached THROUGH the Python

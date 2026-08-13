@@ -60,6 +60,12 @@ const ALLOWED = new Map([
  * name; removing one means editing this list in the same commit.
  */
 const KNOWN_DEAD = new Map([
+    ['lib/trace-oracle.js',
+        'The referee (reference trace interpreter + comparator) - consumed by ' +
+        'scripts/oracle-differential.mjs, the layer-4 C-vs-referee differential, ' +
+        'which imports from the integrated packages/ tree rather than the app ' +
+        'bundle. Not app code; vendored beside sb3-creator.js so the two stay ' +
+        'in version lockstep.'],
     // pane-column.jsx was here. Its collapsed-strip branch was the only part with a
     // caller waiting for it, and pane-strip.jsx now does that job for the one column
     // that collapses; the rest of it rendered the two-slot layout, which was ruled out
