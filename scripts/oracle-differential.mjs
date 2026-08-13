@@ -15,12 +15,18 @@
  * scripted world in both executors.
  *
  * Usage:
- *   node scripts/oracle-differential.mjs             # all programs, both devices
+ *   node scripts/oracle-differential.mjs             # built-in programs, both devices
  *   node scripts/oracle-differential.mjs pico        # one device
+ *   node scripts/oracle-differential.mjs corpus 10 0 # N gallery pairs from offset,
+ *       retargeted per device, sweep stimulus — the amplified corpus under
+ *       the REAL emulators, sampled to respect the hosted compile budget
  *   COMPILER_URL=... overrides the service (default the public one).
  *
  * Exit code 0 only if every differential agrees.
  */
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
 import { interpretTrace, compareTraces } from '../packages/scratch-gui/src/lib/trace-oracle.js';
 import { createAvr8jsAdapter } from '../packages/scratch-gui/src/lib/bw-board/avr8js-adapter.js';
@@ -117,6 +123,11 @@ async function compile(code, target) {
 }
 
 function runUnderEmulator(dev, creator, out, stimulus) {
+  // Sorted by time, like the referee sorts its own copy: the lookup below
+  // breaks at the first future entry, and an unsorted per-pin-grouped list
+  // hides every later pin behind the first pin's future entries — the
+  // comparator's potB read 0 V and the OR-gate's btnB never released.
+  stimulus = [...stimulus].sort((a, b) => a.tMs - b.tMs);
   const adapter = dev.makeAdapter();
   dev.load(adapter, out);
 
@@ -174,7 +185,83 @@ function runUnderEmulator(dev, creator, out, stimulus) {
   return trace;
 }
 
+// ---- corpus mode: the amplified gallery under the real emulators -------
+const RETARGET_DEVICE = { nano: 'arduino-nano', pico: 'pico' };
+
+function sweepStimulus(pins, adc) {
+  // Same sweep the amplification harness uses (3%..85%, phase-staggered):
+  // thresholds fire both ways, paired pots cross, buttons press mid-run.
+  const stim = [];
+  let ai = 0;
+  for (const p of pins || []) {
+    if (p.direction === 'analog') {
+      const lo = adc.vref * 0.03, hi = adc.vref * 0.85;
+      const off = ai * 250;
+      stim.push({ tMs: 0, pin: p.name, volts: ai % 2 ? hi : lo });
+      stim.push({ tMs: 900 + off, pin: p.name, volts: ai % 2 ? lo : hi });
+      stim.push({ tMs: 1900 + off, pin: p.name, volts: ai % 2 ? hi : lo });
+      ai++;
+    }
+    if (p.direction === 'input') {
+      stim.push({ tMs: 0, pin: p.name, level: 0 });
+      stim.push({ tMs: 700, pin: p.name, level: 1 });
+      stim.push({ tMs: 1600, pin: p.name, level: 0 });
+    }
+  }
+  return stim;
+}
+
+async function corpusMode(count, offset) {
+  // The vendored gallery can lag the source-of-truth (the computed
+  // 'devices' lists landed in sb3-creator after lite's last example
+  // vendoring); EXAMPLES_DIR points at a fresh checkout when needed.
+  const root = process.env.EXAMPLES_DIR ||
+    join(dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'scratch-gui', 'examples');
+  const index = JSON.parse(readFileSync(join(root, 'index.json'), 'utf8'));
+  const entries = (Array.isArray(index) ? index : index.examples || [])
+    .filter((e) => e.files && e.files.program && Array.isArray(e.devices));
+  const pairs = [];
+  for (const e of entries) {
+    for (const [devName, retargetId] of Object.entries(RETARGET_DEVICE)) {
+      if (e.devices.includes(retargetId)) pairs.push({ e, devName, retargetId });
+    }
+  }
+  const sample = pairs.slice(offset, offset + count);
+  console.log(`corpus: ${pairs.length} eligible pairs, running ${sample.length} from offset ${offset}`);
+  let bad = false;
+  for (const { e, devName, retargetId } of sample) {
+    const label = `${e.id} -> ${devName}`;
+    try {
+      const src = readFileSync(join(root, e.files.program), 'utf8');
+      const r = SB3Creator.retargetPseudocode(src, retargetId);
+      if (!r.ok) { console.log(`${label}: SKIP retarget (${r.reasons[0]})`); continue; }
+      const dev = DEVICE[devName];
+      const creator = new SB3Creator();
+      creator.parse(r.pseudocode);
+      const stimulus = sweepStimulus(creator.project.stc.pins, dev.adc);
+      const ref = interpretTrace(creator.project, { horizonMs: HORIZON_MS, stimulus, adc: dev.adc });
+      if (ref.unsupported.length) { console.log(`${label}: SKIP referee (${[...new Set(ref.unsupported)][0]})`); continue; }
+      if (ref.pwm.length) { console.log(`${label}: SKIP pwm (duty recording not built yet — stated, not silent)`); continue; }
+      const c = creator.generateC(undefined, { debug: true });
+      const out = await compile(c, dev.target);
+      const actual = runUnderEmulator(dev, creator, out, stimulus);
+      const cmp = compareTraces(ref, actual, { tolMs: 5, serialMsPerByte: dev.serialMsPerByte });
+      console.log(`${label}: ${cmp.ok ? 'AGREE' : 'DIFF'} (${actual.events.length} ev, ${actual.serial.length} ser)` +
+        (cmp.ok ? '' : '\n  ' + cmp.diffs.slice(0, 3).join('\n  ')));
+      if (!cmp.ok) bad = true;
+    } catch (err) {
+      console.log(`${label}: ERROR ${String(err.message || err).slice(0, 140)}`);
+      bad = true;
+    }
+  }
+  return bad;
+}
+
 const only = process.argv[2];
+if (only === 'corpus') {
+  const bad = await corpusMode(Number(process.argv[3] ?? 10), Number(process.argv[4] ?? 0));
+  process.exit(bad ? 1 : 0);
+}
 let failed = false;
 for (const [devName, dev] of Object.entries(DEVICE)) {
   if (only && devName !== only) continue;
