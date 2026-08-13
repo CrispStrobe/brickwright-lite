@@ -1,60 +1,78 @@
-# bw-bundle handoff — 2026-08-13 (session 4)
+# bw-bundle handoff — 2026-08-13 (session 5)
 
 ## What was done this session
 
-### Per-device pin palettes (d1c499a)
+### EATER6502 wired into the bundle (ca4b69e)
 
-One extension (`stc12`), n faces — the block-palette gap from
-`reference/corpus-and-oracles.md` §5.
+Full switch-device + palette face integration for the 6502 breadboard machine.
 
-- **`stc12/index.js`**: `deviceFamily()` reads `runtime.stc.device`, returns
-  `'8051'` / `'avr'` / `'mega'` / `'pico'`. `getInfo()` uses it for:
-  - **Name**: "STC12 / 8051 Pins" / "Arduino Pins" / "Arduino Mega Pins" / "Pico Pins"
-  - **Color**: `#3d7ea6` (steel blue) / `#00878F` (Arduino teal, shared by Mega) / `#8E44AD` (purple)
-  - **Gating**: `settone`, `setport`, `readport` → `hideFromPalette: !is8051`
-    (tone not ported to gcc cores; PORT registers are an 8051 construct)
-  - **Pin hints**: empty dropdown says "(declare a PIN like D22 or A8 …)" for Mega, etc.
-- **Extension library**: 4 tiles (STC12, Arduino, Arduino Mega, Pico), all `extensionId: 'stc12'`.
-- **`apply-vm-overlay.mjs`**: patched `_refreshExtensionPrimitives` in runtime.js
-  to propagate `color1/color2/color3` on `refreshBlocks()` (upstream only updated name).
+- **sb3-creator vendored at 8f6ac0a** (f914bc0): W65C22 VIA pins (PA0-PA7,
+  PB0-PB6), cc65 C target, Timer 1 timebase, paced ACIA serial, 74HC595
+  shift_out on all cores, 08-led-chaser-595 rejoins all device gallery lists.
 
-### ATmega168P + Arduino Mega added (c7b7626)
+- **Device switcher** (pseudocode-importer.jsx): `eater6502` in a new "6502"
+  group with `core: 'w65c02'`, `emulator: null` (no browser emulator yet).
 
-- **Device switcher**: `arduino-mega` and `atmega168p` added to the Arduino (AVR) group.
-  ATmega168P = identical face to Uno/Nano. Mega gets its own "Arduino Mega Pins" name.
-- **Re-vendored sb3-creator at b999a80**: device definitions (pin maps for ports A–L,
-  MUX5 ADC for 16 analog channels, Timer 1/2 routing for PWM on D9–D12, servo on D11/D12),
-  plus 4 new device-specific examples (mega01-blink, mega02-adc-print, mega03-port-current,
-  168p01-blink) with computed device lists for 127 examples.
-- **Browser-verified** (Playwright): all 6 device faces correct (default 8051, Uno, 168P,
-  Mega, Pico, STC12). Gating, colors, names, toolbox XML confirmed.
+- **Palette face** (stc12/index.js): `deviceFamily()` returns `'6502'` for
+  `eater6502|w65c02`. Name: "6502 Pins". Color: `#B8860B` (dark goldenrod).
+  Pin hint: "(declare a PIN like PA0 or PB3 in the Code tab)".
 
-## Prior session (session 3) highlights
+- **Capability gating**: 4 blocks hidden — `setpwm` (no PWM on VIA),
+  `settone` (8051 only), `setport`/`readport` (8051 port registers).
+  8 blocks visible — setpin, toggle, writepin, read, setpart, print,
+  whenpin, tableindex.
 
-- Pico wired as third target (device selector, debug-runner, rp2040js-debug)
-- retargetPseudocode surfaced in Code tab + Circuit tab ExamplesBrowser
-- Devices extension gating: servo/motor real on all cores, NeoPixel 8051-1T only
-- Overlay patches retired — upstream owns all four fixes
-- 115/115 tests pass
+- **Extension library**: "6502 Pins" tile with VIA pin description.
+
+- **Debug runner**: eater6502 falls through to default target (no browser
+  emulator); compile target mapped as `'eater6502'`. Also wired
+  `arduino-mega` and `atmega168p` into `selectDebugTargetKind` → `avr8js`.
+
+### Playwright-verified
+
+- Device dropdown: `eater6502` present, labeled "Eater 6502"
+- Extension loads as "6502 Pins" with color `#B8860B`
+- Hidden: setpwm, settone, setport, readport
+- Visible: setpin, toggle, writepin, read, setpart, print, whenpin, tableindex
+- Zero page errors
+
+### Tests
+
+115/115 pass, 0 fail.
 
 ## Nothing in flight
 
-All changes pushed to `main`. No branches, no stashes, no WIP. Working tree clean.
+All changes pushed to `main`. No branches, no stashes, no WIP.
 
 ## What the next session should know
 
-- **Extension ID stays `stc12`** for backward compat — saved projects reference `stc12_setpin` etc. Only the palette name/color changes.
-- **`refreshBlocks()` now propagates colors** — the runtime.js patch is in `apply-vm-overlay.mjs`, re-applied on every build.
-- **Palette updates on project load**, not on device switch. `setDevice` retargets text + sets `runtime.bwDeviceId`; `runtime.stc.device` (which the extension reads) updates on Run. The palette and pin dropdowns stay consistent.
-- **`deviceFamily()` returns `'mega'` for `arduino-mega`** — tested before `'avr'` so the specific match wins. Mega shares `isAVR` gating (same hidden blocks) but gets its own palette name.
-- **`window.__brickwrightStore`** is how to access the VM from Playwright (not `window.vm`).
-- **`npx serve` is unreliable on this VPS** — use `python3 -m http.server` for build verification.
-- **`integrate.mjs` wipes `build/`** — always rebuild after integrate.
+- **`deviceFamily()` tests `eater6502|w65c02` BEFORE the Arduino regex** so it
+  won't accidentally match a future device with "6502" in the name.
+- **`hasPWM` flag** gates `setpwm` — any future device without PWM just adds
+  itself to the `is6502` check (or rename the flag to `!noPWM`).
+- **No browser emulator for 6502** — `selectDebugTargetKind` returns `'emulator'`
+  (the STC12 default), which will fail. This is intentional — the debug runner
+  already throws a clear error for unsupported targets rather than silently running
+  the wrong emulator.
+- **`compile: false`** in the device entry — the stc-compiler service doesn't have a
+  cc65 backend. When it does, flip to `true` and the compile flow will work.
+- **Pin naming**: PA0-PA7, PB0-PB6 (VIA ports). PB7 is Timer 1 output — the
+  emitter refuses it as a GPIO pin.
+- **Gallery examples**: 18 examples in sb3-creator's computed device lists include
+  eater6502 (blink, shift_out, etc.). Served at runtime from bw-cfront.
+
+## Prior session (session 4) highlights
+
+- Per-device pin palettes: one extension, n faces (STC12/Arduino/Mega/Pico)
+- ATmega168P + Arduino Mega device switcher + palette faces
+- `refreshBlocks()` propagates colors
+- 6 device faces browser-verified
 
 ## Open items
 
+- **6502 browser emulator** — no wasm engine exists yet; closest candidate is
+  a minimal 6502 core (MIT-licensed W65C02S implementations exist)
+- **cc65 compile service** — stc-compiler needs a cc65 backend endpoint
 - **7 device stubs** hidden from palette — need drivers in bw-board
 - **Code-tab debugger strip** — placement approved, not started
-- **bw-cfront gallery vendoring**: app fetches `examples/index.json` at runtime; no sync script exists
-- **Corpus campaign**: the fleet's main line now (sb3-creator reference/corpus-and-oracles.md)
-- **`setDevice` → `refreshBlocks` shortcut**: low priority — would update palette name immediately on device switch instead of waiting for Run
+- **bw-cfront gallery vendoring**: app fetches `examples/index.json` at runtime
