@@ -338,7 +338,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 code: c,
                 language: 'c',
                 target: compileTarget,
-                format: deviceLower === 'pico' ? 'uf2' : 'ihx',
+                // 'bin' — the service's name for the raw SRAM image. It
+                // refuses 'uf2' outright ("format must be ihx, hex or bin"),
+                // which made every Pico compile fail with status stuck on the
+                // stale RUNNING label (found by the production probe).
+                format: deviceLower === 'pico' ? 'bin' : 'ihx',
                 // Both, from the SAME request — see the header.
                 symbols: true
             })
