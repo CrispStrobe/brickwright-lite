@@ -129,7 +129,7 @@ function expand (name, defines, depth = 0) {
 function readMarkers (source) {
     const block = source.match(/@bw-begin([\s\S]*?)@bw-end/);
     if (!block) return null;
-    const h = { device: null, clock: null, pins: [], vars: new Map(), procs: new Map(), scripts: new Map(), yields: [] };
+    const h = { device: null, clock: null, pins: [], parts: [], machine: null, vars: new Map(), procs: new Map(), scripts: new Map(), yields: [] };
     const str = (s) => { try { return JSON.parse(s); } catch { return s; } };
     for (const line of block[1].split('\n')) {
         const m = line.match(/@bw\s+(.*?)\s*$/);
@@ -142,6 +142,26 @@ function readMarkers (source) {
         else if (kind === 'pin') {
             const p = rest.match(/^(\w+)\s+P(\d)\.(\d)\s+(\w+)(\s+active-low)?/);
             if (p) h.pins.push({ name: p[1], port: +p[2], bit: +p[3], direction: p[4], activeLow: !!p[5] });
+        } else if (kind === 'part') {
+            // `part <name> <type> <data> <clock> <latch> [active-low]` — pin
+            // spellings are the device's own (P1.0 on 8051, GP25/PA0 elsewhere).
+            const p = rest.match(/^(\w+)\s+(\w+)\s+(\S+)\s+(\S+)\s+(\S+)(\s+active-low)?/);
+            if (p) {
+                const at = (s) => { const m8 = s.match(/^P(\d)\.(\d)$/i); return m8 ? { port: +m8[1], bit: +m8[2] } : { where: s.toUpperCase() }; };
+                h.parts.push({ name: p[1], type: p[2], data: at(p[3]), clock: at(p[4]), latch: at(p[5]), activeLow: !!p[6] });
+            }
+        } else if (kind === 'map') {
+            const p = rest.match(/^(ram|rom)\s+([0-9a-f]{1,4})\s+([0-9a-f]{1,4})/i);
+            if (p) {
+                if (!h.machine) h.machine = { regions: [], chips: [] };
+                h.machine.regions.push({ kind: p[1].toLowerCase(), start: parseInt(p[2], 16), end: parseInt(p[3], 16) });
+            }
+        } else if (kind === 'chip') {
+            const p = rest.match(/^(\w+)\s+(w65c22|w65c51)\s+([0-9a-f]{1,4})/i);
+            if (p) {
+                if (!h.machine) h.machine = { regions: [], chips: [] };
+                h.machine.chips.push({ name: p[1], kind: /22$/i.test(p[2]) ? 'via' : 'acia', at: parseInt(p[3], 16) });
+            }
         } else if (kind === 'var') {
             const v = rest.match(/^(\w+)\s+("(?:[^"\\]|\\.)*")(?:\s+sprite\s+("(?:[^"\\]|\\.)*"))?/);
             if (v) h.vars.set(v[1], { name: str(v[2]), sprite: v[3] ? str(v[3]) : null });
@@ -151,7 +171,6 @@ function readMarkers (source) {
         } else if (kind === 'script') {
             const s = rest.match(/^(\w+)\s+(\d+)\s+(stage|sprite\s+("(?:[^"\\]|\\.)*"))/);
             if (s) h.scripts.set(s[1], { index: +s[2], sprite: s[4] ? str(s[4]) : null });
-        if (s) h.scripts.set(s[1], { index: +s[2], sprite: s[4] ? str(s[4]) : null });
         } else if (kind === 'yield') {
             // `yield <task> <state> <percent-encoded block id> <kind>` — the map from a
             // Level 1 position to the block the debugger should point at. Nothing on the
@@ -420,6 +439,8 @@ export default function cToPseudocode (source, opts = {}) {
         pins.set(rec.where || `P${rec.port}_${rec.bit}`, rec);
         for (const a of aliases) byName.set(a, rec);
     };
+    // PARTs from the header: needed to give shift_out calls their name back.
+    const hdrParts = (markers && markers.parts) ? markers.parts : [];
     const markerPins = markers && (markers.pins.length > 0 || !isArduino);
     if (markerPins) {
         for (const p of markers.pins) addPin({ ...p }, [p.name, `P${p.port}_${p.bit}`]);
@@ -981,6 +1002,15 @@ export default function cToPseudocode (source, opts = {}) {
             return { text: '0', level: 99, stmt: `wait ${argText} ms` };
         }
         if (SETUP.has(name) || name === '_nop_' || name === 'NOP' || name === '__nop') return { text: '0', level: 99, stmt: null };
+        // 74HC595: `shift_out(<pins...>, activeLow, value)` → `set <part> to value`.
+        // The value is always the LAST argument on every core (the pin
+        // arguments differ in shape per core); a cast wrapper is stripped.
+        if (name === 'shift_out' && args.length >= 2 && hdrParts.length) {
+            let val = args[args.length - 1].text
+                .replace(/^\(unsigned char\)\s*/, '').replace(/^\(uint8_t\)\s*/, '');
+            if (/^\(.*\)$/.test(val)) val = val.slice(1, -1);
+            return { text: '0', level: 99, stmt: `set ${hdrParts[0].name} to ${val}` };
+        }
         // Tone: `tone_set(freq)` → `set <tone-pin> to freq hz`
         if (name === 'tone_set' && args.length >= 1) {
             const tonePin = [...pins.values()].find(p => p.direction === 'tone');
@@ -1617,6 +1647,11 @@ export default function cToPseudocode (source, opts = {}) {
 
     // ---- assemble ----
     const out = [`DEVICE ${device.toUpperCase()}`, `CLOCK ${clock}`];
+    if (markers && markers.machine) {
+        const hx = (n) => '$' + n.toString(16).toUpperCase().padStart(4, '0');
+        for (const r of markers.machine.regions) out.push(`MAP ${r.kind.toUpperCase()} ${hx(r.start)}-${hx(r.end)}`);
+        for (const ch of markers.machine.chips) out.push(`CHIP ${ch.name} = ${ch.kind === 'via' ? 'W65C22' : 'W65C51'} AT ${hx(ch.at)}`);
+    }
     const pinList = [...new Set(pins.values())];
     if (pinList.length) {
         out.push('');
@@ -1626,6 +1661,13 @@ export default function cToPseudocode (source, opts = {}) {
             // sets it and is emitted exactly as before.
             const at = p.where || `P${p.port}.${p.bit}`;
             out.push(`PIN ${p.name} = ${at} ${p.direction.toUpperCase()}${p.activeLow ? ' ACTIVE LOW' : ''}`);
+        }
+    }
+    if (hdrParts.length) {
+        if (!pinList.length) out.push('');
+        for (const pt of hdrParts) {
+            const at = (x) => x.where || `P${x.port}.${x.bit}`;
+            out.push(`PART ${pt.name} = ${pt.type.toUpperCase()} data ${at(pt.data)} clock ${at(pt.clock)} latch ${at(pt.latch)}${pt.activeLow ? ' ACTIVE LOW' : ''}`);
         }
     }
     // ---- static current check (STC12C5A60S2 datasheet §4.6) ----
@@ -1669,7 +1711,7 @@ export default function cToPseudocode (source, opts = {}) {
     const IGNORE_FNS = new Set(['bw_setup', 'bw_tick', 'bw_now', 'bw_block_ms', 'delay_ms', 'adc_read',
         'pwm_set', 'bw_distance', 'bw_closer',
         'bw_neo_byte', 'bw_neo_send', 'bw_neopixel_set', 'bw_neopixel_clear',
-        'i2c_delay', 'i2c_start', 'i2c_stop', 'i2c_write',
+        'i2c_delay', 'i2c_start', 'i2c_stop', 'i2c_write', 'shift_out',
         'lcd_i2c_send', 'lcd_nibble', 'lcd_cmd', 'lcd_data',
         'bw_lcd_print', 'bw_lcd_cursor', 'bw_lcd_clear',
         'board_init', 'delay_init', 'tone_set', 'tone_stop',

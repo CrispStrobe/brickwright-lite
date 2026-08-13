@@ -47,7 +47,7 @@ const L10N = {
         reference: 'reference', referenceTitle: l => `Reference for ${l}`,
         customArt: 'Custom sprite art', customArtTitle: 'Upload SVGs and bake them in as sprite costumes',
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
-        fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all three languages',
+        fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         run: 'Run', apply: '✓ Apply art & convert to blocks', done: 'Done',
         applyTitle: n => `Assign a sprite to ${n} more file(s) first`,
         applyReady: 'Bake these costumes in and convert your code to blocks',
@@ -64,6 +64,7 @@ const L10N = {
         stWarn: w => `Loaded with warnings — ${w}`,
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
+        basicNote: 'BBC BASIC or MS BASIC 1.1. Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
         stCOneWay: 'That language cannot be compiled back to blocks.'
     },
     de: {
@@ -88,7 +89,8 @@ const L10N = {
         stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
         stWarn: w => `Mit Warnungen geladen — ${w}`,
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
-        cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken“ drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
+        cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
+        basicNote: 'BBC BASIC oder MS BASIC 1.1. Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme können nicht dargestellt werden (BASIC ist einzel-threaded).',
         stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.'
     }
 };
@@ -161,14 +163,14 @@ const SYNTAX = [
         'distance to mouse-pointer', 'set drag mode draggable', 'play note 60 for 0.5 beats, set tempo to 120']]
 ];
 
-const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C'};
+const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC'};
 
 // Languages you can compile back INTO blocks. C joined them once cToPseudocode landed:
 // it reads both our own emitted C (which carries an `@bw` marker header, so the round-trip
 // is exact) and hand-written firmware (pins from `#define LED1 P1_0`, polarity from the
 // `LED_ON 0` idiom — every inference reported as a warning, never guessed silently).
 // The one thing it will not do is invert the cooperative-scheduler form; it says so.
-const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c']);
+const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic']);
 
 // What the Python / JavaScript front-ends actually support (shown as the reference
 // when those tabs are active, so you know what round-trips to blocks).
@@ -195,6 +197,19 @@ const SUPPORTED = {
         ['Notes', ['Timer 0 at FOSC/12 — never a cycle-counted delay',
             'ACTIVE LOW: “turn on” writes a 0', 'variables are 16-bit ints',
             'motion/looks/sound → /* comments */', 'chips: stc12c5a60s2 · stc12c5a16s2 · stc89c52(rc) · stc15f2k60s2']]
+    ],
+    basic: [
+        ['Profiles', ['BBC BASIC (default): REPEAT/UNTIL, PROC, TIME',
+            'MS BASIC 1.1: GOTO, PEEK/POKE, two-char names',
+            'Use the profile toggle above the editor']],
+        ['Line numbers', ['On (default): 10 REM … / 20 LET … / 30 GOTO',
+            'Off (BBC structured): no numbers, IF/ENDIF, WHILE/ENDWHILE',
+            'MS BASIC always uses line numbers']],
+        ['Control', ['FOR/NEXT, REPEAT/UNTIL (BBC), WHILE/WEND (MS)',
+            'IF/THEN/ELSE/ENDIF (structured) or IF … GOTO (numbered)',
+            'PROC/ENDPROC (BBC custom blocks)']],
+        ['I/O', ['PRINT, INPUT (ask)', 'REM (comments)',
+            'Refusals: multi-WHEN, pen, clones → shown as reasons']]
     ]
 };
 
@@ -249,7 +264,8 @@ const KEYWORDS = {
     javascript: /^(function|if|else|while|for|of|in|return|let|const|var|true|false|null|undefined|new|typeof|do|switch|case|break|continue|try|catch|throw|class|this|void)$/,
     pseudocode: /^(set|change|say|think|ask|wait|move|turn|go|glide|point|broadcast|create|delete|stop|add|insert|replace|call|play|hide|show|switch|next|when|and|or|not|of|to|by|until|contains|mod|join|item|pick|random|round|sqrt|length|clone|myself)$/i,
     // C, plus SDCC's 8051 extras and the SFR names generateC actually writes.
-    c: /^(if|else|while|for|do|switch|case|default|break|continue|return|goto|static|const|volatile|unsigned|signed|int|char|long|short|void|sizeof|struct|typedef|enum|__interrupt|__at|sfr|sbit|bit|include|define)$/
+    c: /^(if|else|while|for|do|switch|case|default|break|continue|return|goto|static|const|volatile|unsigned|signed|int|char|long|short|void|sizeof|struct|typedef|enum|__interrupt|__at|sfr|sbit|bit|include|define)$/,
+    basic: /^(REM|LET|PRINT|INPUT|IF|THEN|ELSE|ENDIF|FOR|TO|STEP|NEXT|WHILE|WEND|ENDWHILE|REPEAT|UNTIL|GOTO|GOSUB|RETURN|DEF|PROC|ENDPROC|FN|END|DIM|DATA|READ|RESTORE|ON|AND|OR|NOT|MOD|DIV|TRUE|FALSE|ABS|INT|RND|SQR|SGN|ASC|CHR\$|STR\$|VAL|LEFT\$|RIGHT\$|MID\$|LEN|TIME|POKE|PEEK|CLS|STOP|RUN|NEW)$/i
 };
 const PSEUDO_CAPS = /^(SPRITE|STAGE|GLOBAL|LOCAL|LIST|SHAPE|COSTUME|BACKDROP|SOUND|WHEN|DEFINE|IF|THEN|ELSE|FOREVER|REPEAT|UNTIL|FAST)$/;
 
@@ -335,7 +351,8 @@ class PseudocodeImporter extends React.Component {
         // One buffer per language tab. Editing the active tab clears the others so
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
-        this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: '', c: ''},
+        this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: ''},
+            basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', busy: false, showRef: false, showInfo: false, showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
@@ -383,7 +400,7 @@ class PseudocodeImporter extends React.Component {
     get L () { return L10N[pickLocale(this.props.locale)]; }
 
     activeCode () { return this.state.buffers[this.state.lang]; }
-    setActiveCode (text) { this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', [s.lang]: text}})); }
+    setActiveCode (text) { this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', [s.lang]: text}})); }
 
     // Lazily import the compiler module.
     async lib () { return (await import(/* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js')); }
@@ -411,6 +428,7 @@ class PseudocodeImporter extends React.Component {
             if (from === 'c') pseudo = (await this.readC(src)).pseudocode;
             else if (from === 'python') pseudo = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(src).pseudocode;
             else if (from === 'javascript') pseudo = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(src).pseudocode;
+            else if (from === 'basic') pseudo = (await import(/* webpackChunkName: "sb3-creator-basic" */ '../../lib/sb3-creator-basic.js')).default(src).pseudocode;
             const creator = new SB3();
             creator.parse(pseudo);
             const proj = creator.project;
@@ -418,7 +436,10 @@ class PseudocodeImporter extends React.Component {
             if (to === 'pseudocode') code = new SB3().decompile(proj);
             else if (to === 'python') code = new SB3().generatePython(proj, this.genOpts());
             else if (to === 'c') code = new SB3().generateC(proj);
-            else code = new SB3().generateJavaScript(proj, this.genOpts());
+            else if (to === 'basic') {
+                const r = new SB3().generateBASIC(proj, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+                code = r.ok ? r.basic : `REM === Cannot show as BASIC ===\n${r.reasons.map(s => 'REM ' + s).join('\n')}`;
+            } else code = new SB3().generateJavaScript(proj, this.genOpts());
             return {code};
         } catch (e) { return {error: e.message}; }
     }
@@ -818,6 +839,9 @@ class PseudocodeImporter extends React.Component {
             } else if (lang === 'javascript') {
                 const res = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(source);
                 source = res.pseudocode; parseWarnings = res.warnings || [];
+            } else if (lang === 'basic') {
+                const res = (await import(/* webpackChunkName: "sb3-creator-basic" */ '../../lib/sb3-creator-basic.js')).default(source);
+                source = res.pseudocode; parseWarnings = res.warnings || [];
             } else if (lang === 'c') {
                 // Keil C51 is a different dialect — sbit/sfr/_at_/reg5x headers that SDCC
                 // does not accept and our front end does not model. stc-compiler already
@@ -907,6 +931,10 @@ class PseudocodeImporter extends React.Component {
             if (lang !== 'python') nb.python = new SB3Creator().generatePython(proj, this.genOpts());
             if (lang !== 'javascript') nb.javascript = new SB3Creator().generateJavaScript(proj, this.genOpts());
             nb.c = new SB3Creator().generateC(proj);
+            {
+                const br = new SB3Creator().generateBASIC(proj, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+                nb.basic = br.ok ? br.basic : `REM === Cannot show as BASIC ===\n${br.reasons.map(s => 'REM ' + s).join('\n')}`;
+            }
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             this.setState({buffers: nb, status: warns.length ?
@@ -917,22 +945,24 @@ class PseudocodeImporter extends React.Component {
         }
         this.setState({busy: false});
     }
-    // Read the running project into all three languages at once.
+    // Read the running project into all languages at once.
     async fromBlocks () {
         this.setState({busy: true, status: this.L.stReading});
         try {
             const SB3Creator = (await this.lib()).default;
             const project = JSON.parse(this.props.vm.toJSON());
+            const basicResult = new SB3Creator().generateBASIC(project, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
             const buffers = {
                 pseudocode: new SB3Creator().decompile(project),
                 python: new SB3Creator().generatePython(project, this.genOpts()),
                 javascript: new SB3Creator().generateJavaScript(project, this.genOpts()),
-                c: new SB3Creator().generateC(project)
+                c: new SB3Creator().generateC(project),
+                basic: basicResult.ok ? basicResult.basic : `REM === Cannot show as BASIC ===\n${basicResult.reasons.map(s => 'REM ' + s).join('\n')}`
             };
             const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
             this.setState({buffers, output: null, status: unsupported ?
-                `Read into all three languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
-                'Read the current project into all three languages. Edit any of them, then “To blocks”.'});
+                `Read into all languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
+                'Read the current project into all languages. Edit any of them, then “To blocks”.'});
         } catch (e) {
             this.setState({status: this.L.stError(e.message)});
         }
@@ -1042,7 +1072,7 @@ class PseudocodeImporter extends React.Component {
                 {/* Tabs (left) + Custom-art toggle (right). Plain buttons — NOT role="tab",
                     which would collide with the editor's top-level react-tabs. */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end'}}>
-                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript'], ['c', '🔧 C']].map(([l, label]) => {
+                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript'], ['c', '🔧 C'], ['basic', '📺 BASIC']].map(([l, label]) => {
                         const active = this.state.lang === l;
                         return (
                             <button key={l} type="button" aria-pressed={active} onClick={() => this.switchTab(l)}
@@ -1063,6 +1093,24 @@ class PseudocodeImporter extends React.Component {
                         🖼️ {this.L.customArt}{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
                     </button>
                 </div>
+                {this.state.lang === 'basic' && (
+                    <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}>
+                        <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                            Profile:
+                            <select value={this.state.basicProfile} onChange={e => this.setState({basicProfile: e.target.value, buffers: {...this.state.buffers, basic: ''}})}
+                                style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
+                                <option value=”bbc”>BBC BASIC</option>
+                                <option value=”ms”>MS BASIC 1.1</option>
+                            </select>
+                        </label>
+                        <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
+                            <input type=”checkbox” checked={this.state.basicLineNumbers}
+                                disabled={this.state.basicProfile === 'ms'}
+                                onChange={e => this.setState({basicLineNumbers: e.target.checked, buffers: {...this.state.buffers, basic: ''}})} />
+                            Line numbers {this.state.basicProfile === 'ms' ? '(always on for MS)' : ''}
+                        </label>
+                    </div>
+                )}
                 <CodeEditor
                     value={this.activeCode()}
                     onChange={e => this.setActiveCode(e.target.value)}
@@ -1071,10 +1119,12 @@ class PseudocodeImporter extends React.Component {
                     placeholder={this.state.lang === 'c'
                         ? '#include <stc12.h>\n#define LED1   P1_0\n#define LED_ON 0\n\nvoid main(void) {\n    for (;;) {\n        LED1 = LED_ON;\n        delay_ms(500);\n    }\n}\n\n// paste firmware here and press \u201c\u21e6 To blocks\u201d, or press \u201cFrom blocks\u201d'
                         : this.state.lang === 'pseudocode'
-                        ? 'SPRITE Cat:\n  WHEN flag clicked:\n    say "Hello!" for 2 seconds\n    FOREVER:\n      move 10 steps'
+                        ? 'SPRITE Cat:\n  WHEN flag clicked:\n    say “Hello!” for 2 seconds\n    FOREVER:\n      move 10 steps'
+                        : this.state.lang === 'basic'
+                        ? '10 REM Blink example\n20 PRINT “Hello!”\n30 FOR I = 1 TO 10\n40   PRINT I\n50 NEXT I\n\nREM paste BBC BASIC or MS BASIC here and press \u201c\u21e6 To blocks\u201d'
                         : this.state.lang === 'python'
-                            ? 'def when_flag_clicked():\n    print("Hello!")\n\nwhen_flag_clicked()\n\n# or press “From blocks” to generate this from your project'
-                            : 'function when_flag_clicked() {\n  console.log("Hello!");\n}\nwhen_flag_clicked();\n\n// or press “From blocks” to generate this from your project'}
+                            ? 'def when_flag_clicked():\n    print(“Hello!”)\n\nwhen_flag_clicked()\n\n# or press “From blocks” to generate this from your project'
+                            : 'function when_flag_clicked() {\n  console.log(“Hello!”);\n}\nwhen_flag_clicked();\n\n// or press “From blocks” to generate this from your project'}
                 />
 
                 {this.state.showArt && (
@@ -1233,6 +1283,7 @@ class PseudocodeImporter extends React.Component {
                         </button>
                     ) : null}
                     {this.state.lang === 'c' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.cNote}</span> : null}
+                    {this.state.lang === 'basic' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.basicNote}</span> : null}
                     {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
                 </div>
                 {this.state.output != null ? (

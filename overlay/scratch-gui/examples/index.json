@@ -22,7 +22,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -132,7 +133,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -158,7 +160,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -209,7 +212,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -235,7 +239,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -289,7 +294,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -315,7 +321,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -341,7 +348,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -367,7 +375,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -477,7 +486,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -503,7 +513,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -529,7 +540,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -603,7 +615,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -629,7 +642,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -655,7 +669,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -681,7 +696,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -739,7 +755,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -781,7 +798,8 @@
       "atmega168p",
       "arduino-mega",
       "arduino-nano",
-      "pico"
+      "pico",
+      "eater6502"
     ]
   },
   {
@@ -998,7 +1016,8 @@
     "devices": [
       "stc12c5a60s2",
       "stc89c52rc",
-      "arduino-mega"
+      "arduino-mega",
+      "eater6502"
     ],
     "refusals": {
       "stc15f2k60s2": "more digital outputs than stc15f2k60s2's convention offers (6)",

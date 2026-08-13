@@ -45,6 +45,7 @@ const FILES = [
     ['src/utils/scratchRuntime.js', path.join(lib, 'sb3-creator-scratchruntime.js')],
     ['src/utils/cHostRuntime.js', path.join(lib, 'sb3-creator-chostruntime.js')],
     ['src/utils/cHostToPseudocode.js', path.join(lib, 'sb3-creator-chost.js')],
+    ['src/utils/basicToPseudocode.js', path.join(lib, 'sb3-creator-basic.js')],
     ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')]
 ];
 
