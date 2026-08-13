@@ -1099,12 +1099,12 @@ class PseudocodeImporter extends React.Component {
                             Profile:
                             <select value={this.state.basicProfile} onChange={e => this.setState({basicProfile: e.target.value, buffers: {...this.state.buffers, basic: ''}})}
                                 style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
-                                <option value=”bbc”>BBC BASIC</option>
-                                <option value=”ms”>MS BASIC 1.1</option>
+                                <option value="bbc">BBC BASIC</option>
+                                <option value="ms">MS BASIC 1.1</option>
                             </select>
                         </label>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
-                            <input type=”checkbox” checked={this.state.basicLineNumbers}
+                            <input type="checkbox" checked={this.state.basicLineNumbers}
                                 disabled={this.state.basicProfile === 'ms'}
                                 onChange={e => this.setState({basicLineNumbers: e.target.checked, buffers: {...this.state.buffers, basic: ''}})} />
                             Line numbers {this.state.basicProfile === 'ms' ? '(always on for MS)' : ''}
@@ -1121,7 +1121,7 @@ class PseudocodeImporter extends React.Component {
                         : this.state.lang === 'pseudocode'
                         ? 'SPRITE Cat:\n  WHEN flag clicked:\n    say “Hello!” for 2 seconds\n    FOREVER:\n      move 10 steps'
                         : this.state.lang === 'basic'
-                        ? '10 REM Blink example\n20 PRINT “Hello!”\n30 FOR I = 1 TO 10\n40   PRINT I\n50 NEXT I\n\nREM paste BBC BASIC or MS BASIC here and press \u201c\u21e6 To blocks\u201d'
+                        ? '10 REM Blink example\n20 PRINT "Hello!"\n30 FOR I = 1 TO 10\n40   PRINT I\n50 NEXT I\n\nREM paste BBC BASIC or MS BASIC here and press \u201c\u21e6 To blocks\u201d'
                         : this.state.lang === 'python'
                             ? 'def when_flag_clicked():\n    print(“Hello!”)\n\nwhen_flag_clicked()\n\n# or press “From blocks” to generate this from your project'
                             : 'function when_flag_clicked() {\n  console.log(“Hello!”);\n}\nwhen_flag_clicked();\n\n// or press “From blocks” to generate this from your project'}
