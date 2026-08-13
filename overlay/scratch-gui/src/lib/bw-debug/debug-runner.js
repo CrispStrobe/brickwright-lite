@@ -116,8 +116,9 @@ async function installWasmCompilerIfOptedIn (setStatus) {
 export function selectDebugTargetKind(device, requested = 'emulator') {
     if (requested !== 'emulator') return requested;
     const normalized = String(device || '').toLowerCase();
-    if (['arduino-uno', 'arduino-nano', 'atmega328p'].includes(normalized)) return 'avr8js';
+    if (['arduino-uno', 'arduino-nano', 'arduino-mega', 'atmega328p', 'atmega168p'].includes(normalized)) return 'avr8js';
     if (normalized === 'pico') return 'rp2040js';
+    // 6502: no browser emulator wired yet — fall through to default
     return requested;
 }
 
@@ -327,7 +328,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const COMPILE_TARGET = {
             'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
             'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
+            'arduino-mega': 'atmega2560',
             'pico': 'rp2040',
+            'eater6502': 'eater6502',
         };
         const deviceLower = (stc.device || 'stc12c5a60s2').toLowerCase();
         const compileTarget = COMPILE_TARGET[deviceLower] || deviceLower;

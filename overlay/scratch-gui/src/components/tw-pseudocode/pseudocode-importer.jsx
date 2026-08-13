@@ -27,6 +27,9 @@ const DEVICE_GROUPS = [
     { label: 'Raspberry Pi', core: 'rp2040', devices: [
         { id: 'pico', label: 'Raspberry Pi Pico', compile: true, emulator: 'rp2040js' },
     ]},
+    { label: '6502', core: 'w65c02', devices: [
+        { id: 'eater6502', label: 'Eater 6502', compile: false, emulator: null },
+    ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
     ]},

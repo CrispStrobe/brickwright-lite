@@ -92,6 +92,13 @@ export default [
         featured: true
     },
     {
+        name: '6502 Pins',
+        extensionId: 'stc12',
+        iconURL: 'static/extension-posters/csp-badge.png',
+        description: 'Pin blocks for the Eater 6502 breadboard machine (PA0–PA7, PB0–PB6 via W65C22 VIA). Digital I/O only — no analog, no PWM.',
+        featured: true
+    },
+    {
         name: 'STC12 Live (Web Serial)',
         extensionId: 'stc12live',
         iconURL: 'static/extension-posters/csp-badge.png',

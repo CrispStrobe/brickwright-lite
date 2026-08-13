@@ -40,6 +40,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
   function deviceFamily(runtime) {
     const stc = runtime && runtime.stc;
     if (!stc || !stc.device) return '8051';
+    if (/eater6502|w65c02/i.test(stc.device)) return '6502';
     if (/pico|rp2040/i.test(stc.device)) return 'pico';
     if (/arduino-mega/i.test(stc.device)) return 'mega';
     if (/arduino|atmega/i.test(stc.device)) return 'avr';
@@ -61,13 +62,18 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
       const family = deviceFamily(this.runtime);
       const is8051 = family === '8051';
       const isAVR = family === 'avr' || family === 'mega';
-      const paletteName = family === 'pico' ? Scratch.translate('Pico Pins')
+      const is6502 = family === '6502';
+      const hasPWM = !is6502;
+      const paletteName = family === '6502' ? Scratch.translate('6502 Pins')
+        : family === 'pico' ? Scratch.translate('Pico Pins')
         : family === 'mega' ? Scratch.translate('Arduino Mega Pins')
         : family === 'avr' ? Scratch.translate('Arduino Pins')
         : Scratch.translate('STC12 / 8051 Pins');
-      const color1 = family === 'pico' ? '#8E44AD'
+      const color1 = is6502 ? '#B8860B'
+        : family === 'pico' ? '#8E44AD'
         : isAVR ? '#00878F' : '#3d7ea6';
-      const color2 = family === 'pico' ? '#6C3483'
+      const color2 = is6502 ? '#8B6914'
+        : family === 'pico' ? '#6C3483'
         : isAVR ? '#006B73' : '#2f6383';
 
       return {
@@ -114,6 +120,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "setpwm",
             blockType: Scratch.BlockType.COMMAND,
+            hideFromPalette: !hasPWM,
             text: Scratch.translate("set [PIN] to [VALUE] percent"),
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
@@ -213,7 +220,8 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
       const names = decls(this.runtime).map((p) => p.name);
       if (names.length) return names;
       const family = deviceFamily(this.runtime);
-      const hint = family === 'pico' ? '(declare a PIN like GP25 in the Code tab)'
+      const hint = family === '6502' ? '(declare a PIN like PA0 or PB3 in the Code tab)'
+        : family === 'pico' ? '(declare a PIN like GP25 in the Code tab)'
         : family === 'mega' ? '(declare a PIN like D22 or A8 in the Code tab)'
         : family === 'avr' ? '(declare a PIN like D13 or A0 in the Code tab)'
         : '(declare a PIN in the Code tab)';
