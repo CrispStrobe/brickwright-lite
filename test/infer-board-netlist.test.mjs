@@ -9,11 +9,12 @@ test('Pico inferred netlists use GP header names instead of STC port placeholder
         pins: [{name: 'led1', where: 'GP0', direction: 'output', activeLow: false}]
     });
     const mcu = result.parts.find(part => part.id === 'MCU');
-    // Terminal names are lowercased to match bw-parts sidecar conventions
-    // (the avr8js/rp2040js adapters drive lowercase pin names).
-    assert.deepEqual(mcu.terminals, ['gp0']);
+    // Header spelling as written — the board's pin join went case-blind
+    // upstream (bw-board 67a912e), so terminal case is display-only and
+    // the lowercase vendor patch this test used to pin is retired.
+    assert.deepEqual(mcu.terminals, ['GP0']);
     assert.ok(result.nets.some(net => net.terminals.some(
-        terminal => terminal.part === 'MCU' && terminal.terminal === 'gp0'
+        terminal => terminal.part === 'MCU' && terminal.terminal === 'GP0'
     )));
 });
 
