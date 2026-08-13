@@ -283,6 +283,9 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {filtered.map(ex => {
             const compat = deviceCompat(ex, currentDevice);
+            const reason = !compat.ok
+              ? deviceCompatReason(ex, currentDevice)
+              : '';
             return (
               <ExampleCard
                 key={ex.id}
@@ -290,7 +293,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                 lang={lang}
                 palette={palette}
                 disabled={!compat.ok}
-                disabledReason={!compat.ok ? `Not available for ${currentDevice}` : ''}
+                disabledReason={reason}
                 onClick={() => onLoadExample && onLoadExample(ex)}
               />
             );
@@ -332,9 +335,27 @@ function FilterButton({active, color = '#3b82f6', onClick, children, palette}) {
 function deviceCompat(example, device) {
   if (!device || !Array.isArray(example.devices)) return { ok: true };
   if (example.devices.includes(device)) return { ok: true };
-  // The example has a computed device list and the current device is not in it.
   return { ok: false };
 }
+
+/** Build a human-readable reason why this example is not available. */
+function deviceCompatReason(example, device) {
+  if (!device || !Array.isArray(example.devices)) return '';
+  // The reason cache is populated asynchronously by the parent via
+  // retargetReasons; when present, use the specific reasons from the
+  // retargeter ("no ADC on this chip" teaches more than "not available").
+  if (example._retargetReasons && example._retargetReasons[device]) {
+    return example._retargetReasons[device].join('; ');
+  }
+  // Fallback: say which devices ARE supported so the user can switch.
+  const supported = example.devices.map(d => DEVICE_LABELS[d] || d).join(', ');
+  return `Needs: ${supported}`;
+}
+
+const DEVICE_LABELS = {
+  stc12c5a60s2: 'STC12', stc89c52rc: 'STC89', stc15f2k60s2: 'STC15',
+  'arduino-uno': 'Uno', 'arduino-nano': 'Nano', pico: 'Pico',
+};
 
 function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
   const [hovered, setHovered] = useState(false);
