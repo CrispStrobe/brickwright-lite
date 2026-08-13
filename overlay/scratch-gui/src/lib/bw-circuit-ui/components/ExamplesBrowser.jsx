@@ -76,9 +76,9 @@ function targetLabel(target) {
 }
 
 /**
- * @param {{ examples: Array, lang?: string, onLoadExample?: function }} props
+ * @param {{ examples: Array, lang?: string, onLoadExample?: function, currentDevice?: string }} props
  */
-export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: themeProp }) {
+export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: themeProp, currentDevice }) {
   const [filter, setFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
@@ -281,15 +281,20 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         <div style={{ color: palette.muted, fontSize: '13px', padding: '8px 4px' }}>No examples match these filters.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {filtered.map(ex => (
-            <ExampleCard
-              key={ex.id}
-              example={ex}
-              lang={lang}
-              palette={palette}
-              onClick={() => onLoadExample && onLoadExample(ex)}
-            />
-          ))}
+          {filtered.map(ex => {
+            const compat = deviceCompat(ex, currentDevice);
+            return (
+              <ExampleCard
+                key={ex.id}
+                example={ex}
+                lang={lang}
+                palette={palette}
+                disabled={!compat.ok}
+                disabledReason={!compat.ok ? `Not available for ${currentDevice}` : ''}
+                onClick={() => onLoadExample && onLoadExample(ex)}
+              />
+            );
+          })}
         </div>
       )}
       </div>}
@@ -319,7 +324,19 @@ function FilterButton({active, color = '#3b82f6', onClick, children, palette}) {
   );
 }
 
-function ExampleCard({ example, lang, onClick, palette }) {
+/**
+ * Is this example compatible with the given device?
+ * Uses the `devices` array from index.json when present.
+ * Examples without a `devices` field (pure circuits, device-specific) are always shown.
+ */
+function deviceCompat(example, device) {
+  if (!device || !Array.isArray(example.devices)) return { ok: true };
+  if (example.devices.includes(device)) return { ok: true };
+  // The example has a computed device list and the current device is not in it.
+  return { ok: false };
+}
+
+function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
   const [hovered, setHovered] = useState(false);
   const title = example.title?.[lang] || example.title?.en || example.id;
   const catColor = CATEGORY_COLORS[example.category] || '#555';
@@ -327,16 +344,18 @@ function ExampleCard({ example, lang, onClick, palette }) {
 
   return (
     <div
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      title={disabledReason || ''}
       style={{
         padding: '8px',
-        background: hovered ? palette.cardHover : palette.card,
-        border: `1px solid ${hovered ? catColor : palette.cardBorder}`,
+        background: hovered && !disabled ? palette.cardHover : palette.card,
+        border: `1px solid ${hovered && !disabled ? catColor : palette.cardBorder}`,
         borderRadius: '6px',
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
         transition: 'border-color 80ms, background 80ms',
+        opacity: disabled ? 0.5 : 1,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -350,6 +369,11 @@ function ExampleCard({ example, lang, onClick, palette }) {
       {diff && (
         <div style={{ color: palette.muted, fontSize: '11px', marginTop: '4px' }}>
           {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)} {diff}
+        </div>
+      )}
+      {disabled && disabledReason && (
+        <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px', fontStyle: 'italic' }}>
+          {disabledReason}
         </div>
       )}
     </div>

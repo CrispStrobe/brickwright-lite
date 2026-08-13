@@ -361,6 +361,10 @@ class PseudocodeImporter extends React.Component {
             };
             vm.runtime.on('PROJECT_CHANGED', this._onProjectChanged);
         }
+        // If a device is already set (e.g. from a loaded project), compute
+        // example compatibility so the dropdown is filtered from the start.
+        const device = this.currentDevice();
+        if (device) this.computeExampleCompat(device);
     }
 
     componentWillUnmount () {

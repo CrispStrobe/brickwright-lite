@@ -9,7 +9,8 @@ const makeExt = require('../adapter');
 // projects still load.  A block that compiles to a no-op must not appear on
 // the palette as though it works.
 //
-// WS2812 (setneopixel/clearneopixels) is 1T only — hidden on 12T targets.
+// WS2812 (setneopixel/clearneopixels) is 8051-1T only — hidden on 12T,
+// AVR, and Pico (bit-timed inline assembly is not ported to those cores).
 module.exports = makeExt(`// Name: Devices
 // ID: devices
 // Description: Servo, motor, relay, sensor, display and NeoPixel blocks for circuit projects.
@@ -39,8 +40,7 @@ module.exports = makeExt(`// Name: Devices
       return /stc89/i.test(stc.device);
     }
 
-    /** Is the current target an AVR board (Arduino Nano/Uno)?
-     *  PWM/servo/motor emit stated stubs, NeoPixel timing is not ported. */
+    /** Is the current target an AVR board (Arduino Nano/Uno)? */
     _isAVR() {
       if (!this._runtime) return false;
       const stc = this._runtime.stc;
@@ -48,15 +48,24 @@ module.exports = makeExt(`// Name: Devices
       return /arduino/i.test(stc.device) || /atmega/i.test(stc.device);
     }
 
+    /** Is the current target a Pico (RP2040)? */
+    _isPico() {
+      if (!this._runtime) return false;
+      const stc = this._runtime.stc;
+      if (!stc || !stc.device) return false;
+      return /pico/i.test(stc.device) || /rp2040/i.test(stc.device);
+    }
+
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def ?? 0 } });
       const is12T = this._is12T();
       const isAVR = this._isAVR();
+      const isPico = this._isPico();
       // STC89 has no PCA — servo (compare/match) and motor (8-bit PWM)
       // silently produce 0 edges (ucsim-stc 356df26 measured).
-      // AVR: PWM/servo/motor emit no-op stubs in the C back end.
-      const noPCA = is12T || isAVR;
+      // AVR and Pico have real servo/motor drivers (sb3-creator 0970462+).
+      const noPCA = is12T;
 
       return {
         id: 'devices',
@@ -64,7 +73,8 @@ module.exports = makeExt(`// Name: Devices
         color1: '#CF6A1D',
         blocks: [
           // ---- Commands: real drivers ----
-          // Servo and motor need PCA — hidden on STC89 (no PCA, 0 edges)
+          // Servo and motor: real on 1T-8051 (PCA), AVR (Timer 1/2), Pico (PWM slices).
+          // Hidden only on STC89 (no PCA, 0 edges).
           { opcode: 'setservo', blockType: Scratch.BlockType.COMMAND,
             hideFromPalette: noPCA,
             text: 'set [SERVO] angle to [ANGLE]',
@@ -96,13 +106,13 @@ module.exports = makeExt(`// Name: Devices
             arguments: { ...n('ROW', 0), ...n('COL', 0), ...str('DISPLAY', 'display1') } },
           { opcode: 'lcdclear', blockType: Scratch.BlockType.COMMAND,
             text: 'lcd clear [DISPLAY]', arguments: str('DISPLAY', 'display1') },
-          // NeoPixel: 1T STC only — hidden on 12T and AVR (timing not ported)
+          // NeoPixel: 8051-1T only — hidden on 12T, AVR, and Pico
           { opcode: 'setneopixel', blockType: Scratch.BlockType.COMMAND,
-            hideFromPalette: is12T || isAVR,
+            hideFromPalette: is12T || isAVR || isPico,
             text: 'set neopixel [INDEX] to R [R] G [G] B [B] on [STRIP]',
             arguments: { ...n('INDEX', 0), ...n('R', 255), ...n('G', 0), ...n('B', 0), ...str('STRIP', 'strip1') } },
           { opcode: 'clearneopixels', blockType: Scratch.BlockType.COMMAND,
-            hideFromPalette: is12T || isAVR,
+            hideFromPalette: is12T || isAVR || isPico,
             text: 'clear neopixels on [STRIP]', arguments: str('STRIP', 'strip1') },
 
           // ---- Commands: stubs (hidden from palette) ----

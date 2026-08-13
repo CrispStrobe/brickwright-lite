@@ -432,9 +432,24 @@ class CircuitTab extends React.Component {
         if (!vm || !vm.loadProject) return false;
         const res = await fetch(`examples/${path}`);
         if (!res.ok) throw new Error(`program: HTTP ${res.status}`);
-        const source = await res.text();
+        let source = await res.text();
         const {default: SB3Creator} = await import(
             /* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js');
+
+        // Retarget the example to the current project device if they differ.
+        const currentStc = this.readStc();
+        const currentDevice = currentStc && currentStc.device
+            ? String(currentStc.device).toLowerCase() : null;
+        const exDevice = (source.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
+        if (currentDevice && exDevice && currentDevice !== exDevice.toLowerCase()
+            && SB3Creator.retargetPseudocode) {
+            const result = SB3Creator.retargetPseudocode(source, currentDevice);
+            if (result.ok) {
+                source = result.pseudocode;
+            }
+            // If retarget fails, load as-authored — reasons will surface in the UI
+        }
+
         const creator = new SB3Creator();
         creator.parse(source);
         const blob = await creator.generateSB3();
@@ -958,10 +973,13 @@ class CircuitTab extends React.Component {
             const {examples, examplesError} = this.state;
             if (examplesError) return note(examplesError);
             if (!examples) return note('Loading examples…');
+            const stc = this.readStc();
+            const currentDevice = stc && stc.device ? String(stc.device).toLowerCase() : null;
             return (
                 <ui.ExamplesBrowser
                     examples={examples}
                     onLoadExample={this.loadExample}
+                    currentDevice={currentDevice}
                     lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
                         .slice(0, 2) === 'de' ? 'de' : 'en'}
                 />
