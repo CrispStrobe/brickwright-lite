@@ -53,11 +53,10 @@ export const ATMEGA328P_PINS = {
   A7: { analogOnly: true, adcChannel: 7 },
 };
 
-// Lowercase pin names to match bw-parts sidecar terminal conventions.
 const PORT_PINS = { B: {}, C: {}, D: {} };
 for (const [name, def] of Object.entries(ATMEGA328P_PINS)) {
-  if (def.analogOnly) continue;
-  PORT_PINS[def.port][def.bit] = name.toLowerCase();
+  if (def.analogOnly) continue; // A6/A7 have no port register
+  PORT_PINS[def.port][def.bit] = name;
 }
 
 /**
@@ -170,7 +169,7 @@ export function createAvr8jsAdapter(opts = {}) {
     // Channels 0..7: A0..A5 are header pins; 6 and 7 are the Nano's
     // ADC-only pads — stopping at 5 here is how a pot on A6 read 0.
     if (board && board.readAnalog && input.channel <= 7) {
-      try { volts = board.readAnalog(`a${input.channel}`) ?? 0; } catch { volts = 0; }
+      try { volts = board.readAnalog(`A${input.channel}`) ?? 0; } catch { volts = 0; }
     }
     // avr8js completes the conversion after the sampling cycles elapse.
     adc.completeADCRead(Math.max(0, Math.min(1023, Math.round((volts / vcc) * 1023))));

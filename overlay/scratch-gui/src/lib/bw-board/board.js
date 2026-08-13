@@ -42,11 +42,6 @@ const MNA_ONLY_KINDS = new Set([
   'npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource',
 ]);
 
-/** Board-level MCU parts: the solver must treat these identically to 'mcu'. */
-function isMcuKind(kind) {
-  return kind === 'mcu' || kind === 'arduino_uno' || kind === 'arduino_nano' || kind === 'pi_pico';
-}
-
 /**
  * Brightness integrator window.
  */
@@ -93,6 +88,13 @@ export class BoardImpl {
     this.netMap = new Map();
 
     /** @type {Map<string, PinState>} PinId → state */
+    // Pin names join netlist terminals BY STRING, and the two sides come
+    // from different worlds: adapters speak the datasheet spelling (D13,
+    // GP15), sidecars and the inferred bench speak lowercase (d13, gp15).
+    // The join is normalized here, once, at the map that carries it — the
+    // case mismatch has now silently darkened a bench LED on two cores
+    // (the AVR was "fixed" by patching a vendored copy, which the next
+    // re-vendor would have silently destroyed).
     this.pinStates = new Map();
 
     /** @type {Map<string, number>} part id → control value (pot 0…1, button 0/1) */
@@ -270,8 +272,12 @@ export class BoardImpl {
    * @param {boolean} driveHigh
    */
   setPin(pin, mode, driveHigh) {
+    // Canonical key, original spelling kept for the read surface — the
+    // solver joins case-blind, the UI shows what the caller wrote.
+    const asGiven = String(pin);
+    pin = asGiven.toLowerCase();
     const prev = this.pinStates.get(pin);
-    this.pinStates.set(pin, { mode, driveHigh });
+    this.pinStates.set(pin, { mode, driveHigh, as: asGiven });
     this._solve();
     this._recordLedSamples();
 
@@ -290,7 +296,7 @@ export class BoardImpl {
       this._updateCube(cubeId);
     }
 
-    this._notifyChange('pin', { pin, mode, driveHigh });
+    this._notifyChange('pin', { pin: asGiven, mode, driveHigh });
   }
 
   /**
@@ -874,14 +880,14 @@ export class BoardImpl {
     let litMask = 0n;
 
     for (let layer = 0; layer < layers && layer < selectPins.length; layer++) {
-      const selState = this.pinStates.get(selectPins[layer]);
+      const selState = this.pinStates.get(String(selectPins[layer]).toLowerCase());
       if (!selState) continue;
 
       const selActive = activeHigh ? selState.driveHigh : !selState.driveHigh;
       if (!selActive) continue;
 
       for (let col = 0; col < cols && col < dataPins.length; col++) {
-        const dataState = this.pinStates.get(dataPins[col]);
+        const dataState = this.pinStates.get(String(dataPins[col]).toLowerCase());
         if (!dataState) continue;
 
         const dataActive = activeHigh ? dataState.driveHigh : !dataState.driveHigh;
@@ -986,7 +992,7 @@ export class BoardImpl {
    * @returns {{ mode: PinMode, driveHigh: boolean } | null}
    */
   getPinState(pin) {
-    const s = this.pinStates.get(pin);
+    const s = this.pinStates.get(String(pin).toLowerCase());
     return s ? { mode: s.mode, driveHigh: s.driveHigh } : null;
   }
 
@@ -1157,7 +1163,7 @@ export class BoardImpl {
    */
   getPinStates() {
     return [...this.pinStates.entries()].map(([pin, s]) => ({
-      pin, mode: s.mode, driveHigh: s.driveHigh,
+      pin: s.as ?? pin, mode: s.mode, driveHigh: s.driveHigh,
     }));
   }
 
@@ -1257,9 +1263,9 @@ export class BoardImpl {
       }
 
       // Check for MCU pins driving into VCC or GND directly (short circuit)
-      if (isMcuKind(part.kind)) {
+      if (part.kind === 'mcu') {
         for (const terminal of part.terminals) {
-          const state = this.pinStates.get(terminal);
+          const state = this.pinStates.get(String(terminal).toLowerCase());
           if (!state || state.mode === 'input') continue;
 
           // Find the net this pin is on
@@ -1314,7 +1320,7 @@ export class BoardImpl {
     for (const part of this.parts) {
       if (part.kind !== 'mcu') continue;
       for (const terminal of part.terminals) {
-        const state = this.pinStates.get(terminal);
+        const state = this.pinStates.get(String(terminal).toLowerCase());
         if (!state || state.mode === 'input') continue;
 
         const net = this.nets.find(n => n.terminals.some(
@@ -1496,12 +1502,22 @@ export class BoardImpl {
     });
   }
 
-  /** Build the pin source map from current pin states. */
+  /** Build the pin source map from current pin states.
+   *
+   * Keyed by the NETLIST'S OWN terminal spelling: the solver joins
+   * pinSources to terminals by exact string, and the terminal case is the
+   * netlist author's (sidecars say d13/gp15, hand-written tests say P1.0).
+   * pinStates keys are canonical lowercase; the bridge lives here, in
+   * board-land, so the gated solver never learns about spelling. */
   _pinSources() {
     /** @type {Map<string, import('./types.js').TheveninSource>} */
     const pinSources = new Map();
-    for (const [pinId, state] of this.pinStates) {
-      pinSources.set(pinId, pinThevenin(state.mode, state.driveHigh, this.vcc));
+    for (const part of this.parts) {
+      if (part.kind !== 'mcu') continue;
+      for (const terminal of part.terminals) {
+        const state = this.pinStates.get(String(terminal).toLowerCase());
+        if (state) pinSources.set(terminal, pinThevenin(state.mode, state.driveHigh, this.vcc));
+      }
     }
     return pinSources;
   }
@@ -2012,8 +2028,8 @@ export class BoardImpl {
         case 'gnd':
           out.push({ vTh: 0, rTh: rAccum });
           break;
-        case 'mcu': case 'arduino_uno': case 'arduino_nano': case 'pi_pico': {
-          const state = this.pinStates.get(t.terminal);
+        case 'mcu': {
+          const state = this.pinStates.get(String(t.terminal).toLowerCase());
           if (!state) break;
           const thev = pinThevenin(state.mode, state.driveHigh, this.vcc);
           if (thev !== 'high-z') {
@@ -2229,10 +2245,10 @@ export class BoardImpl {
         case 'gnd':
           return { vTh: 0, rTh: rAccum };
 
-        case 'mcu': case 'arduino_uno': case 'arduino_nano': case 'pi_pico': {
+        case 'mcu': {
           // The terminal name is the PinId
           const pinId = t.terminal;
-          const state = this.pinStates.get(pinId);
+          const state = this.pinStates.get(String(pinId).toLowerCase());
           if (!state) continue;
           const thev = pinThevenin(state.mode, state.driveHigh, this.vcc);
           if (thev === 'high-z') continue;
@@ -2326,11 +2342,12 @@ export class BoardImpl {
    * @returns {number}
    */
   _pinVoltage(pin) {
+    const key = String(pin).toLowerCase();
     // Find the MCU part and the net this pin is connected to
     for (const net of this.nets) {
       for (const t of net.terminals) {
         const part = this.partMap.get(t.part);
-        if (part && part.kind === 'mcu' && t.terminal === pin) {
+        if (part && part.kind === 'mcu' && String(t.terminal).toLowerCase() === key) {
           return this.nodeVoltages.get(net.id) ?? 0;
         }
       }
@@ -2417,7 +2434,7 @@ export class BoardImpl {
 
       for (const t of net.terminals) {
         const p = this.partMap.get(t.part);
-        if (p && p.kind === 'mcu' && t.terminal === pin) {
+        if (p && p.kind === 'mcu' && String(t.terminal).toLowerCase() === pin) {
           const edges = this.buzzerEdges.get(part.id);
           if (edges) {
             edges.push(this.timeNs);
