@@ -17,6 +17,8 @@
     "sync:circuitui:check": "node scripts/sync-bw-circuit-ui.mjs --check",
     "sync:emuwasm": "node scripts/sync-emu8051-wasm.mjs",
     "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check",
+    "sync:examples": "node scripts/sync-examples.mjs",
+    "sync:examples:check": "node scripts/sync-examples.mjs --check",
     "smoke:debugger": "node scripts/smoke-debugger.mjs",
     "verify:interaction": "node scripts/verify-interaction.mjs",
     "verify:circuit-ux": "node scripts/verify-circuit-ux.mjs",
