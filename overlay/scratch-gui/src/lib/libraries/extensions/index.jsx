@@ -67,7 +67,21 @@ export default [
         name: 'STC12 / 8051 Pins',
         extensionId: 'stc12',
         iconURL: 'static/extension-posters/csp-badge.png',
-        description: 'Drive the GPIO pins declared with PIN in the Code tab — bundled built-in.',
+        description: 'Pin blocks for 8051 cores (P1.0, P3.7) — ports, tone, PWM. One extension, adapts to the project device.',
+        featured: true
+    },
+    {
+        name: 'Arduino Pins',
+        extensionId: 'stc12',
+        iconURL: 'static/extension-posters/csp-badge.png',
+        description: 'Pin blocks for Arduino Uno/Nano (D2, A0) — digital, analog, PWM. Same extension, adapts to the project device.',
+        featured: true
+    },
+    {
+        name: 'Pico Pins',
+        extensionId: 'stc12',
+        iconURL: 'static/extension-posters/csp-badge.png',
+        description: 'Pin blocks for Raspberry Pi Pico (GP0, GP25) — digital, analog, PWM. Same extension, adapts to the project device.',
         featured: true
     },
     {

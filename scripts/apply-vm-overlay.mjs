@@ -40,6 +40,32 @@ if (rt.includes(anchor)) {
     process.exit(1);
 }
 
+// Per-device palettes: _refreshExtensionPrimitives must propagate color changes.
+// Upstream only updates `name` on refresh; our stc12 extension changes color1/color2
+// when the device family changes (8051 vs AVR vs Pico).
+const refreshAnchor = `        if (categoryInfo) {
+            categoryInfo.name = maybeFormatMessage(extensionInfo.name);
+            this._fillExtensionCategory(categoryInfo, extensionInfo);`;
+const refreshPatched = `        if (categoryInfo) {
+            categoryInfo.name = maybeFormatMessage(extensionInfo.name);
+            // Brickwright: propagate color changes on refresh (per-device palettes).
+            if (extensionInfo.color1) {
+                categoryInfo.color1 = extensionInfo.color1;
+                categoryInfo.color2 = extensionInfo.color2;
+                categoryInfo.color3 = extensionInfo.color3;
+            }
+            this._fillExtensionCategory(categoryInfo, extensionInfo);`;
+if (rt.includes('// Brickwright: propagate color changes')) {
+    console.log('  runtime.js refresh-color patch already applied');
+} else if (rt.includes(refreshAnchor)) {
+    rt = rt.replace(refreshAnchor, refreshPatched);
+    writeFileSync(runtimePath, rt);
+    console.log('  patched runtime.js (refresh extension colors)');
+} else {
+    console.error('  ! runtime.js refresh-color anchor not found — base VM version changed?');
+    process.exit(1);
+}
+
 // Brickwright UI improvement (parity with the Scratch Foundation / Xcratch
 // editor): accept full-width (double-byte) digits and signs as numbers, so
 // "１２３" typed in a number field is used as 123. One-line change to

@@ -1,10 +1,12 @@
 const makeExt = require('../adapter');
 
-// The STC12 / 8051 pin blocks — all twelve opcodes.
+// Per-device pin blocks — one implementation, n faces (STC12/Arduino/Pico).
+// Extension ID stays 'stc12' for backward compat; name, color, and block
+// visibility adapt to runtime.stc.device.  Port blocks (8051-only) and tone
+// (not ported to gcc cores) are hidden on non-8051 devices.
 //
-// This source is identical to extensions/CrispStrobe/stc12.js (the gallery
-// copy). The stc12-conformance test in sb3-creator asserts both copies agree
-// on opcodes, argument shapes, and menu identity.
+// The stc12-conformance test in sb3-creator asserts opcode/argument/menu
+// identity with the gallery copy (extensions/CrispStrobe/stc12.js).
 module.exports = makeExt(`// Name: STC12 / 8051 pins
 // ID: stc12
 // Description: Drive the pins declared with PIN in the Code tab.
@@ -34,6 +36,15 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     return stc && Array.isArray(stc.tables) ? stc.tables : [];
   }
 
+  /** Which device family is active? Drives palette name, color, and gating. */
+  function deviceFamily(runtime) {
+    const stc = runtime && runtime.stc;
+    if (!stc || !stc.device) return '8051';
+    if (/pico|rp2040/i.test(stc.device)) return 'pico';
+    if (/arduino|atmega/i.test(stc.device)) return 'avr';
+    return '8051';
+  }
+
   /** The board state this extension maintains, for whoever is watching. */
   function board(runtime) {
     if (!runtime._stc12Pins) runtime._stc12Pins = Object.create(null);
@@ -46,11 +57,21 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     }
 
     getInfo() {
+      const family = deviceFamily(this.runtime);
+      const is8051 = family === '8051';
+      const paletteName = family === 'pico' ? Scratch.translate('Pico Pins')
+        : family === 'avr' ? Scratch.translate('Arduino Pins')
+        : Scratch.translate('STC12 / 8051 Pins');
+      const color1 = family === 'pico' ? '#8E44AD'
+        : family === 'avr' ? '#00878F' : '#3d7ea6';
+      const color2 = family === 'pico' ? '#6C3483'
+        : family === 'avr' ? '#006B73' : '#2f6383';
+
       return {
         id: "stc12",
-        name: Scratch.translate("STC12 / 8051 pins"),
-        color1: "#3d7ea6",
-        color2: "#2f6383",
+        name: paletteName,
+        color1: color1,
+        color2: color2,
         blocks: [
           {
             opcode: "setpin",
@@ -99,6 +120,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "settone",
             blockType: Scratch.BlockType.COMMAND,
+            hideFromPalette: !is8051,
             text: Scratch.translate("set [PIN] to [VALUE] hz"),
             arguments: {
               PIN: { type: Scratch.ArgumentType.STRING, menu: "pins" },
@@ -108,6 +130,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "setport",
             blockType: Scratch.BlockType.COMMAND,
+            hideFromPalette: !is8051,
             text: Scratch.translate("set [PORT] to [VALUE]"),
             arguments: {
               PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" },
@@ -117,6 +140,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           {
             opcode: "readport",
             blockType: Scratch.BlockType.REPORTER,
+            hideFromPalette: !is8051,
             text: Scratch.translate("read [PORT]"),
             arguments: {
               PORT: { type: Scratch.ArgumentType.STRING, menu: "ports" },
@@ -184,9 +208,12 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     /** Declared pins, or a placeholder so the palette is never an empty dropdown. */
     pinNames() {
       const names = decls(this.runtime).map((p) => p.name);
-      return names.length
-        ? names
-        : [{ text: "(declare a PIN in the Code tab)", value: "" }];
+      if (names.length) return names;
+      const family = deviceFamily(this.runtime);
+      const hint = family === 'pico' ? '(declare a PIN like GP25 in the Code tab)'
+        : family === 'avr' ? '(declare a PIN like D13 or A0 in the Code tab)'
+        : '(declare a PIN in the Code tab)';
+      return [{ text: hint, value: "" }];
     }
 
     portNames() {
