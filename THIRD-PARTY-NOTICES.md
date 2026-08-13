@@ -781,3 +781,53 @@ buzzer, etc.) used in the circuit designer. The elements are imported as
 - **Usage:** runtime web components for part visualisation in the circuit
   designer canvas. No source code from wokwi-elements is modified; the
   components are consumed as published npm packages.
+
+## BBC BASIC interpreter attribution — zlib
+
+The BASIC tab's "BBC BASIC" profile generates code for, and the reader
+imports code from, **BBC BASIC (Z80) / PicoBB (C)** by R.T. Russell.
+
+BBC BASIC (Z80) and PicoBB (the C/Pico port) are copyright
+(c) R.T. Russell, distributed under the **zlib licence** (see
+https://github.com/rtrussell/BBCSDL/blob/master/licence.txt). The
+interpreter binaries, when shipped, are included **unmodified**.
+
+The name "BBC BASIC" is used by permission of the BBC, granted to
+R.T. Russell. This project uses the name only to describe compatibility
+("runs BBC BASIC programs") and names its own feature plain "BASIC".
+
+- **Upstream:** https://github.com/rtrussell/BBCSDL (cross-platform),
+  https://github.com/breakintoprogram/agon-bbc-basic (Z80/eZ80),
+  https://github.com/Memotech-Bill/PicoBB (RP2040)
+- **Licence:** zlib
+- **What ships:** no interpreter binary ships in this repo today; the
+  `generateBASIC` emitter and `basicToPseudocode` reader in sb3-creator
+  operate on source text only. When a console-mode interpreter is bundled
+  for the run/oracle path, the binary will ship verbatim and this notice
+  will name the exact version.
+
+## 6502 BASIC (basic-m6502-bw) — MIT
+
+The BASIC tab's "6502 BASIC" profile generates code compatible with the
+6502 BASIC interpreter. This is **derived from Microsoft's MIT-licensed
+6502 BASIC source** (https://github.com/microsoft/BASIC-M6502, MIT
+License, copyright (c) Microsoft Corporation).
+
+The derived work is named **basic-m6502-bw** to distinguish it from the
+original. It is never referred to as "Microsoft BASIC" in user-facing
+labels.
+
+- **Upstream:** https://github.com/microsoft/BASIC-M6502
+- **Licence:** MIT
+- **What ships:** no interpreter binary ships in this repo today; the
+  `generateBASIC` emitter produces source text compatible with the 6502
+  BASIC dialect. When a binary is bundled, it will be the derived
+  basic-m6502-bw build and this notice will name the exact version.
+
+## Interpreters that do NOT ship
+
+The following BASIC interpreters were evaluated but are **not bundled,
+not linked, and not distributed** in any form:
+
+- **Acorn BBC BASIC ROM** — Crown Copyright, not redistributable
+- **Enhanced BASIC (ehBASIC)** by Lee Davison — licence unclear, not used

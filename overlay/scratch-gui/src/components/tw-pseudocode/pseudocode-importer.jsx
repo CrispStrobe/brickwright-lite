@@ -64,7 +64,7 @@ const L10N = {
         stWarn: w => `Loaded with warnings — ${w}`,
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
-        basicNote: 'BBC BASIC or MS BASIC 1.1. Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
+        basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
         stCOneWay: 'That language cannot be compiled back to blocks.'
     },
     de: {
@@ -90,7 +90,7 @@ const L10N = {
         stWarn: w => `Mit Warnungen geladen — ${w}`,
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
-        basicNote: 'BBC BASIC oder MS BASIC 1.1. Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme können nicht dargestellt werden (BASIC ist einzel-threaded).',
+        basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
         stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.'
     }
 };
@@ -200,12 +200,12 @@ const SUPPORTED = {
     ],
     basic: [
         ['Profiles', ['BBC BASIC (default): REPEAT/UNTIL, PROC, TIME',
-            'MS BASIC 1.1: GOTO, PEEK/POKE, two-char names',
+            '6502 BASIC: GOTO, PEEK/POKE, two-char names',
             'Use the profile toggle above the editor']],
         ['Line numbers', ['On (default): 10 REM … / 20 LET … / 30 GOTO',
             'Off (BBC structured): no numbers, IF/ENDIF, WHILE/ENDWHILE',
-            'MS BASIC always uses line numbers']],
-        ['Control', ['FOR/NEXT, REPEAT/UNTIL (BBC), WHILE/WEND (MS)',
+            '6502 BASIC always uses line numbers']],
+        ['Control', ['FOR/NEXT, REPEAT/UNTIL (BBC), WHILE/WEND (6502)',
             'IF/THEN/ELSE/ENDIF (structured) or IF … GOTO (numbered)',
             'PROC/ENDPROC (BBC custom blocks)']],
         ['I/O', ['PRINT, INPUT (ask)', 'REM (comments)',
@@ -1099,15 +1099,15 @@ class PseudocodeImporter extends React.Component {
                             Profile:
                             <select value={this.state.basicProfile} onChange={e => this.setState({basicProfile: e.target.value, buffers: {...this.state.buffers, basic: ''}})}
                                 style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
-                                <option value="bbc">BBC BASIC</option>
-                                <option value="ms">MS BASIC 1.1</option>
+                                <option value="bbc">{'BBC BASIC'}</option>
+                                <option value="ms">{'6502 BASIC'}</option>
                             </select>
                         </label>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
                             <input type="checkbox" checked={this.state.basicLineNumbers}
                                 disabled={this.state.basicProfile === 'ms'}
                                 onChange={e => this.setState({basicLineNumbers: e.target.checked, buffers: {...this.state.buffers, basic: ''}})} />
-                            Line numbers {this.state.basicProfile === 'ms' ? '(always on for MS)' : ''}
+                            {'Line numbers '}{this.state.basicProfile === 'ms' ? '(always on for 6502)' : ''}
                         </label>
                     </div>
                 )}
@@ -1121,7 +1121,7 @@ class PseudocodeImporter extends React.Component {
                         : this.state.lang === 'pseudocode'
                         ? 'SPRITE Cat:\n  WHEN flag clicked:\n    say “Hello!” for 2 seconds\n    FOREVER:\n      move 10 steps'
                         : this.state.lang === 'basic'
-                        ? '10 REM Blink example\n20 PRINT "Hello!"\n30 FOR I = 1 TO 10\n40   PRINT I\n50 NEXT I\n\nREM paste BBC BASIC or MS BASIC here and press \u201c\u21e6 To blocks\u201d'
+                        ? '10 REM Blink example\n20 PRINT "Hello!"\n30 FOR I = 1 TO 10\n40   PRINT I\n50 NEXT I\n\nREM paste BASIC here and press To blocks'
                         : this.state.lang === 'python'
                             ? 'def when_flag_clicked():\n    print(“Hello!”)\n\nwhen_flag_clicked()\n\n# or press “From blocks” to generate this from your project'
                             : 'function when_flag_clicked() {\n  console.log(“Hello!”);\n}\nwhen_flag_clicked();\n\n// or press “From blocks” to generate this from your project'}
