@@ -1,68 +1,75 @@
-# bw-bundle handoff — 2026-08-12 (session 3)
+# bw-blocks handoff — 2026-08-13 (devices gating session)
 
-## What was done this session
+## What was completed
 
-### Pico debug chain: wired into the app (0c1bb42, 486fd62)
+### Devices extension gating updated (df194e5, already pushed by predecessor)
 
-**Re-vendored:**
-- sb3-creator at ab68d1b (DEVICE PICO + real PWM + servo on gcc cores + retargetPseudocode)
-- bw-board at 32582aa (rp2040js adapter + debug target + digital-input leg on both adapters)
+The per-device gating in `overlay/scratch-vm/src/extensions/crispstrobe/devices/index.js`
+was updated to match sb3-creator 0970462+ (motor real on gcc cores):
 
-**Overlay-specific fixes re-applied after vendor:**
-- avr8js-adapter.js: lowercase pin names to match sidecar conventions
-- board.js: `isMcuKind()` helper for `arduino_uno`/`arduino_nano`/`pi_pico`
-- infer-netlist.js: `pinId(p)` function uses `p.where` for non-STC pins;
-  fixed self-referencing bug (`const pid = pid(pin)` → `const pid = pinId(pin)`)
+- **Servo + motor**: `noPCA` changed from `is12T || isAVR` → `is12T` only.
+  Real C drivers exist on all three cores: PCA on 8051, Timer 1/2 on AVR,
+  PWM slices 0/1 on Pico.
+- **NeoPixel**: guard changed from `is12T || isAVR` → `is12T || isAVR || isPico`.
+  Bit-timed inline assembly is 8051-1T only.
+- **Added `_isPico()` helper**: matches `/pico/i` and `/rp2040/i`.
 
-**Device selector:** Pico in its own "Raspberry Pi" group, `compile: true`, `emulator: 'rp2040js'`
+### sb3-creator reference updated (d95bd41, pushed)
 
-**debug-runner.js:** `pico` → `rp2040` compile target, base64→Uint16Array for raw
-binary, `attachRp2040js` with serial/glow/trace/breakpoints
+`reference/extensions/devices.js` in sb3-creator got the same `_isAVR()`,
+`_isPico()`, and NeoPixel guard updates. It previously only had `_is12T()`.
 
-**debug-target-factory.js:** `'rp2040js'` in `getTargetKinds()` (label: "Simulated (RP2040)")
+### Browser-verified
 
-**New file: rp2040js-debug.js** — Boundary-D debug target for RP2040 from bw-board
+Playwright test against a production build verified all 6 device identifiers:
 
-**Tests fixed:** rp2040-debug, rp2040-image, sb3-creator-motion-target — matched to vendored API
+| Device | Servo | Motor | NeoPixel |
+|---|---|---|---|
+| STC12C5A60S2 | V | V | V |
+| STC89C52 | H | H | H |
+| arduino_nano | V | V | H |
+| arduino_uno | V | V | H |
+| pi_pico | V | V | H |
+| rp2040 | V | V | H |
 
-### retargetPseudocode wired into UI (2e538e6)
+Verification script: `/tmp/verify-devices2.cjs` (requires Playwright from
+`/home/claudeuser/.npm/_npx/e41f203b7505f1fb/node_modules/playwright`).
 
-**Device switcher:** changing device on code with PIN declarations calls
-`SB3Creator.retargetPseudocode()`. Pins are rewritten to the target's conventional
-wiring (RETARGET_POOLS). If the target lacks a feature (no ADC, wrong core), the
-switch is refused with reasons in the status bar.
+### sb3-creator re-vendored into lite
 
-**Example browser:** loading a hardware example with a different device selected
-retargets it automatically. Incompatible examples are greyed out with reason tooltips.
-
-**5 new tests:** STC→Pico (GP25), STC→Nano (D13), ADC refusal on STC89, unknown
-device, pool coverage.
-
-### Test counts
-- 115/115 pass locally
-- CI green for all pushed commits
+`npm run sync:sb3creator -- --dir /mnt/volume1/code/sb3-creator` picked up
+0970462 (motor) + d95bd41 (ref gating). `overlay/scratch-gui/src/lib/sb3-creator.js`
+has the AVR (D3/OC2B, D7/D8 H-bridge) and Pico (GP18 slice 1A, GP19/GP20
+H-bridge) motor drivers.
 
 ## Nothing in flight
 
-All changes pushed to `main`. No branches, no stashes, no WIP.
+All changes pushed to `main` in both repos. No branches, stashes, or WIP.
 
-## Prior session context (carried forward)
+## What I learned (not in a spec-update)
 
-### AVR debug chain (session 2, d29198f)
-- Full AVR debug wiring: Nano blink, yield breakpoints, serial output
+- **`extensionManager.refreshBlocks()`** is the correct way to force
+  `getInfo()` re-evaluation after changing `runtime.stc.device`. Neither
+  `_refreshExtensionPrimitives` nor `emitWorkspaceUpdate` triggers it.
+  The device selector in the UI presumably calls this already.
 
-### Devices extension (e2ad1cf)
-- Re-registered in builtinExtensions, picker entry added
-- 29 blocks visible, 7 stubs hidden
+- **`window.__brickwrightStore`** is how to access the VM from Playwright
+  (set in `app-state-hoc.jsx`). Not `window.vm`. Path:
+  `__brickwrightStore.getState().scratchGui.vm`.
 
-## Open items
+- **`npx serve` is unreliable on this VPS** — it silently fails to bind.
+  Use `node -e "require('http').createServer(...)..."` or `python3 -m
+  http.server` for build verification.
 
-- **Full Pico debug chain test**: needs stc-compiler.vercel.app to accept
-  target "rp2040" — coordinator runs production proof
-- **7 device stubs** hidden from palette — need drivers in bw-board
+- **`integrate.mjs` wipes the `build/` directory** inside
+  `packages/scratch-gui/` (it copies the overlay fresh). Always rebuild
+  after integrate.
+
+## Open items (carried forward from predecessor)
+
+- **7 device stubs** still hidden from palette — need drivers in bw-board
 - **Code-tab debugger strip** — placement approved, not started
-- **bw-board pin name convention**: bw-board source still uses uppercase pin names
+- **bw-board pin name convention**: bw-board source uses uppercase pin names
   on avr8js-adapter; overlay has the lowercase fix — next sync needs re-apply
-- **Example gallery (cfront)**: with retarget landed in the app, the gallery
-  can compute supported-device lists per example by dry-running retargetPseudocode;
-  manual per-device example sets (nano01-04, pico01-04) are now golden fixtures
+- **Example gallery (cfront)**: retarget landed, gallery can compute
+  supported-device lists per example
