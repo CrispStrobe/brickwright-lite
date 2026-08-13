@@ -74,7 +74,14 @@ export default [
         name: 'Arduino Pins',
         extensionId: 'stc12',
         iconURL: 'static/extension-posters/csp-badge.png',
-        description: 'Pin blocks for Arduino Uno/Nano (D2, A0) — digital, analog, PWM. Same extension, adapts to the project device.',
+        description: 'Pin blocks for Arduino Uno/Nano/ATmega168P (D0–D13, A0–A5) — digital, analog, PWM. Adapts to the project device.',
+        featured: true
+    },
+    {
+        name: 'Arduino Mega Pins',
+        extensionId: 'stc12',
+        iconURL: 'static/extension-posters/csp-badge.png',
+        description: 'Pin blocks for Arduino Mega (D0–D53, A0–A15) — PWM on D9–D12, servo on D11/D12. Adapts to the project device.',
         featured: true
     },
     {

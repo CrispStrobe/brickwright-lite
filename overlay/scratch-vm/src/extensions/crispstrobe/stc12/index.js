@@ -41,6 +41,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     const stc = runtime && runtime.stc;
     if (!stc || !stc.device) return '8051';
     if (/pico|rp2040/i.test(stc.device)) return 'pico';
+    if (/arduino-mega/i.test(stc.device)) return 'mega';
     if (/arduino|atmega/i.test(stc.device)) return 'avr';
     return '8051';
   }
@@ -59,13 +60,15 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     getInfo() {
       const family = deviceFamily(this.runtime);
       const is8051 = family === '8051';
+      const isAVR = family === 'avr' || family === 'mega';
       const paletteName = family === 'pico' ? Scratch.translate('Pico Pins')
+        : family === 'mega' ? Scratch.translate('Arduino Mega Pins')
         : family === 'avr' ? Scratch.translate('Arduino Pins')
         : Scratch.translate('STC12 / 8051 Pins');
       const color1 = family === 'pico' ? '#8E44AD'
-        : family === 'avr' ? '#00878F' : '#3d7ea6';
+        : isAVR ? '#00878F' : '#3d7ea6';
       const color2 = family === 'pico' ? '#6C3483'
-        : family === 'avr' ? '#006B73' : '#2f6383';
+        : isAVR ? '#006B73' : '#2f6383';
 
       return {
         id: "stc12",
@@ -211,6 +214,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
       if (names.length) return names;
       const family = deviceFamily(this.runtime);
       const hint = family === 'pico' ? '(declare a PIN like GP25 in the Code tab)'
+        : family === 'mega' ? '(declare a PIN like D22 or A8 in the Code tab)'
         : family === 'avr' ? '(declare a PIN like D13 or A0 in the Code tab)'
         : '(declare a PIN in the Code tab)';
       return [{ text: hint, value: "" }];

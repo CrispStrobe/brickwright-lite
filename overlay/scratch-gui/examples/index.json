@@ -19,6 +19,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -42,6 +44,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -68,6 +72,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -94,6 +100,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -121,6 +129,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -145,6 +155,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -194,6 +206,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -218,6 +232,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -241,6 +257,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -268,6 +286,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -292,6 +312,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -316,6 +338,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -340,6 +364,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -363,6 +389,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -389,6 +417,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -415,6 +445,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -442,6 +474,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -466,6 +500,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -490,6 +526,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -562,6 +600,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -586,6 +626,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -610,6 +652,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -634,6 +678,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -690,6 +736,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -730,6 +778,8 @@
       "stc89c52rc",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ]
@@ -947,7 +997,8 @@
     },
     "devices": [
       "stc12c5a60s2",
-      "stc89c52rc"
+      "stc89c52rc",
+      "arduino-mega"
     ],
     "refusals": {
       "stc15f2k60s2": "more digital outputs than stc15f2k60s2's convention offers (6)",
@@ -1065,6 +1116,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -1091,6 +1144,8 @@
       "stc12c5a60s2",
       "stc15f2k60s2",
       "arduino-uno",
+      "atmega168p",
+      "arduino-mega",
       "arduino-nano",
       "pico"
     ],
@@ -2141,5 +2196,69 @@
       "circuit": "pc62-motor-indicator/circuit.json",
       "expected": "pc62-motor-indicator/EXPECTED.md"
     }
+  },
+  {
+    "id": "mega01-blink",
+    "title": {
+      "en": "Blink an LED (Arduino Mega)",
+      "de": "LED blinken lassen (Arduino Mega)"
+    },
+    "category": "basics",
+    "difficulty": 1,
+    "device": "arduino-mega",
+    "files": {
+      "program": "mega01-blink/program.bw",
+      "circuit": "mega01-blink/circuit.json",
+      "expected": "mega01-blink/EXPECTED.md"
+    },
+    "kind": "program"
+  },
+  {
+    "id": "mega02-adc-print",
+    "title": {
+      "en": "16-channel ADC print (Arduino Mega)",
+      "de": "16-Kanal-ADC-Ausgabe (Arduino Mega)"
+    },
+    "category": "analog",
+    "difficulty": 2,
+    "device": "arduino-mega",
+    "files": {
+      "program": "mega02-adc-print/program.bw",
+      "circuit": "mega02-adc-print/circuit.json",
+      "expected": "mega02-adc-print/EXPECTED.md"
+    },
+    "kind": "program"
+  },
+  {
+    "id": "mega03-port-current",
+    "title": {
+      "en": "8-LED port walker (Arduino Mega)",
+      "de": "8-LED-Portlauflicht (Arduino Mega)"
+    },
+    "category": "basics",
+    "difficulty": 2,
+    "device": "arduino-mega",
+    "files": {
+      "program": "mega03-port-current/program.bw",
+      "circuit": "mega03-port-current/circuit.json",
+      "expected": "mega03-port-current/EXPECTED.md"
+    },
+    "kind": "program"
+  },
+  {
+    "id": "168p01-blink",
+    "title": {
+      "en": "Blink an LED (ATmega168P)",
+      "de": "LED blinken lassen (ATmega168P)"
+    },
+    "category": "basics",
+    "difficulty": 1,
+    "device": "atmega168p",
+    "files": {
+      "program": "168p01-blink/program.bw",
+      "circuit": "168p01-blink/circuit.json",
+      "expected": "168p01-blink/EXPECTED.md"
+    },
+    "kind": "program"
   }
 ]
