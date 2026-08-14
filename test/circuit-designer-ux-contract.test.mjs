@@ -45,8 +45,8 @@ test('Circuit Designer side selectors expose independent collapse affordances', 
     assert.match(examples, /Collapse examples selector/);
     assert.match(examples, /Expand examples selector/);
     assert.match(examples, /data-examples-selector-content/);
-    assert.match(presets, /Collapse examples selector/);
-    assert.match(presets, /Expand examples selector/);
+    assert.match(presets, /Collapse example presets/);
+    assert.match(presets, /Expand example presets/);
 });
 
 test('Circuit Designer keeps simulation and debugger controls in the instruments column', () => {

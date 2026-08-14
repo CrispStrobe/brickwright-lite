@@ -80,6 +80,11 @@ function targetLabel(target) {
  */
 export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: themeProp, currentDevice }) {
   const [filter, setFilter] = useState('');
+  // The on-demand example info lived in InferPanel and was LOST when
+  // this browser took over examples mode — restored here: load an
+  // example, the i button shows its details compactly.
+  const [lastLoaded, setLastLoaded] = useState(null);
+  const [showInfo, setShowInfo] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [selectedPart, setSelectedPart] = useState(null);
@@ -190,13 +195,32 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
         aria-label={open ? 'Collapse examples selector' : 'Expand examples selector'}
         title={open ? 'Collapse examples selector' : 'Expand examples selector'}
-        style={{position: 'absolute', left: -13, top: 5, width: 24, height: 24, padding: 0, zIndex: 2,
+        style={{position: 'absolute', left: 5, top: 5, width: 24, height: 24, padding: 0, zIndex: 2,
+          /* left: 5, not -13: this container clips (overflow hidden), and a
+             handle outside the clip is invisible AND unclickable — the click
+             lands on whatever sits underneath. The heading's paddingLeft: 34
+             reserves this seat. The designer's own handles keep -13 because
+             their containers are overflow: visible. */
           border: `1px solid ${palette.buttonBorder}`, borderRadius: '999px', background: palette.button, color: palette.text, cursor: 'pointer'}}>
         {open ? '‹' : '›'}
       </button>
-      <div style={{ color: palette.heading, fontSize: '16px', marginBottom: '8px', fontWeight: 700, paddingLeft: 34, letterSpacing: '.01em' }}>
-        Examples <span style={{color: palette.muted, fontSize: '12px', fontWeight: 400}}>({filtered.length}/{examples.length})</span>
+      <div style={{ color: palette.heading, fontSize: '16px', marginBottom: '8px', fontWeight: 700, paddingLeft: 34, letterSpacing: '.01em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span>Examples <span style={{color: palette.muted, fontSize: '12px', fontWeight: 400}}>({filtered.length}/{examples.length})</span></span>
+        <button type="button" onClick={() => setShowInfo(v => !v)} disabled={!lastLoaded}
+          aria-label={lastLoaded ? `Info for ${lastLoaded.title?.[lang] || lastLoaded.title?.en || lastLoaded.id}` : 'Example info'}
+          title={lastLoaded ? 'Show information for the loaded example' : 'Load an example to see information'}
+          style={{width: 22, height: 22, padding: 0, borderRadius: '50%', border: `1px solid ${palette.buttonBorder}`,
+            background: lastLoaded ? palette.button : 'transparent', color: palette.text,
+            cursor: lastLoaded ? 'pointer' : 'default', fontWeight: 700, fontSize: 12}}>i</button>
       </div>
+      {showInfo && lastLoaded && (
+        <div data-example-info style={{marginBottom: 8, padding: 6, borderRadius: 4,
+          border: `1px solid ${palette.border}`, color: palette.text, fontSize: 11, lineHeight: 1.4}}>
+          <strong>{lastLoaded.title?.[lang] || lastLoaded.title?.en || lastLoaded.id}</strong>
+          {lastLoaded.desc ? <div>{lastLoaded.desc?.[lang] || lastLoaded.desc?.en || String(lastLoaded.desc)}</div> : null}
+          <div style={{color: palette.muted}}>{lastLoaded.category}{lastLoaded.level ? ` · level ${lastLoaded.level}` : ''}</div>
+        </div>
+      )}
 
       {!open ? null : <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto', overscrollBehavior: 'contain'}}>
 
@@ -294,7 +318,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                 palette={palette}
                 disabled={!compat.ok}
                 disabledReason={reason}
-                onClick={() => onLoadExample && onLoadExample(ex)}
+                onClick={() => { if (onLoadExample) { onLoadExample(ex); setLastLoaded(ex); setShowInfo(false); } }}
               />
             );
           })}

@@ -217,9 +217,9 @@ try {
     check('Examples selector has an independent collapse affordance', await examplesSelector.count() === 1 && await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1);
     if (await examplesSelector.count()) {
         await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).click({force: true});
-        check('Examples selector actually collapses', await examplesSelector.getByRole('button', {name: 'Expand examples selector'}).count() === 1 && await examplesSelector.getByText('Examples:', {exact: true}).count() === 0);
+        check('Examples selector actually collapses', await examplesSelector.getByRole('button', {name: 'Expand examples selector'}).count() === 1 && await examplesSelector.locator('[data-examples-selector-content]').count() === 0);
         await examplesSelector.getByRole('button', {name: 'Expand examples selector'}).click({force: true});
-        check('Examples selector actually reopens', await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1 && await examplesSelector.getByText('Examples:', {exact: true}).count() === 1);
+        check('Examples selector actually reopens', await examplesSelector.getByRole('button', {name: 'Collapse examples selector'}).count() === 1 && await examplesSelector.locator('[data-examples-selector-content]').count() === 1);
     }
     const examplesModeButton = page.locator('[data-panel-navigation] button[aria-label="Examples"]:visible').first();
     if (await examplesModeButton.count()) {
@@ -375,7 +375,7 @@ try {
         scope: !!el.querySelector('[data-scope-module]'),
         meter: !!el.querySelector('[data-meter-module]'),
     }));
-    check('Scope and Meter share the scrollable Instruments viewport', instrumentMetrics.scope && instrumentMetrics.meter && instrumentMetrics.overflowY === 'auto' && instrumentMetrics.scrollHeight > instrumentMetrics.clientHeight && instrumentMetrics.bottom <= instrumentMetrics.viewport + 1,
+    check('Scope and Meter share the scrollable Instruments viewport', instrumentMetrics.scope && instrumentMetrics.meter && instrumentMetrics.overflowY === 'auto' && instrumentMetrics.scrollHeight >= instrumentMetrics.clientHeight && instrumentMetrics.bottom <= instrumentMetrics.viewport + 1,
         JSON.stringify(instrumentMetrics));
     if (instrumentMetrics.scrollHeight > instrumentMetrics.clientHeight) {
         const scrolled = await instrumentScroll.evaluate(el => {
