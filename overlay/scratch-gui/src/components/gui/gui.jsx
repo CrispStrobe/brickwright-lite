@@ -68,8 +68,18 @@ const GUIComponent = props => {
     const [stagePaneVisible, setStagePaneVisible] = React.useState(() => {
         try { return localStorage.getItem('bw-right-pane-hidden') !== '1'; } catch { return true; }
     });
+    // dockMode drives which pane the right column shows. 'microbit' replaces the
+    // sprite list with the sim; every other value keeps the normal stage+targets.
+    // Read BOTH bw-debug-dock and bw-stage-circuit so a stale localStorage value
+    // from a prior session never activates the sim pane on a mint project.
     const [dockMode, setDockMode] = React.useState(() => {
-        try { return localStorage.getItem('bw-debug-dock') || 'top'; } catch { return 'top'; }
+        try {
+            const dock = localStorage.getItem('bw-debug-dock') || 'top';
+            const circuit = localStorage.getItem('bw-stage-circuit');
+            // Only honour 'microbit' if the circuit-pane flag is also set
+            if (dock === 'microbit' && circuit !== '1') return 'top';
+            return dock;
+        } catch { return 'top'; }
     });
     React.useEffect(() => {
         const sync = event => {
@@ -78,6 +88,11 @@ const GUIComponent = props => {
                 setStagePaneVisible(detail.value !== '1');
             } else if (detail.key === 'bw-debug-dock') {
                 setDockMode(detail.value || 'top');
+            } else if (detail.key === 'bw-stage-circuit') {
+                // If the circuit pane is being deactivated while in microbit mode, reset
+                if (detail.value !== '1') {
+                    setDockMode(prev => prev === 'microbit' ? 'top' : prev);
+                }
             }
         };
         window.addEventListener('bw-settings-change', sync);
@@ -462,6 +477,15 @@ const GUIComponent = props => {
                                     onRestore={() => onSetPaneSize && onSetPaneSize('right', 'm')}
                                 />
                             ) : null}
+                            {/* StageWrapper always renders so its header (view
+                                toggle buttons) stays reachable in every mode. */}
+                            <StageWrapper
+                                isFullScreen={isFullScreen}
+                                isRendererSupported={isRendererSupported}
+                                isRtl={isRtl}
+                                stageSize={stageSize}
+                                vm={vm}
+                            />
                             {dockMode === 'microbit' ? (
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>Loading micro:bit simulator…</div>
@@ -469,21 +493,12 @@ const GUIComponent = props => {
                                     <MicrobitSimPane />
                                 </React.Suspense>
                             ) : (
-                                <React.Fragment>
-                                    <StageWrapper
-                                        isFullScreen={isFullScreen}
-                                        isRendererSupported={isRendererSupported}
-                                        isRtl={isRtl}
+                                <Box className={styles.targetWrapper}>
+                                    <TargetPane
                                         stageSize={stageSize}
                                         vm={vm}
                                     />
-                                    <Box className={styles.targetWrapper}>
-                                        <TargetPane
-                                            stageSize={stageSize}
-                                            vm={vm}
-                                        />
-                                    </Box>
-                                </React.Fragment>
+                                </Box>
                             )}
                         </Box>
                     </Box>

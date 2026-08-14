@@ -118,6 +118,7 @@ const readCircuitView = () => {
 
 const StageViewButtons = ({intl}) => {
     const [view, setView] = useState(readCircuitView);
+    const [deviceIsMicrobit, setDeviceIsMicrobit] = useState(false);
     useEffect(() => {
         const sync = event => {
             const {key, value} = event.detail || {};
@@ -125,6 +126,8 @@ const StageViewButtons = ({intl}) => {
                 setView(value === '1' ? viewForDock(localStorage.getItem('bw-debug-dock')) : 'scratch');
             } else if (key === 'bw-debug-dock') {
                 setView(localStorage.getItem('bw-stage-circuit') === '0' ? 'scratch' : viewForDock(value));
+            } else if (key === 'bw-device-id') {
+                setDeviceIsMicrobit(value === 'microbit');
             }
         };
         window.addEventListener('bw-settings-change', sync);
@@ -161,13 +164,14 @@ const StageViewButtons = ({intl}) => {
                         isSelected: view === 'solo',
                         title: intl.formatMessage(messages.debuggerOnly)
                     },
-                    {
+                    // micro:bit button only appears when DEVICE MICROBIT is declared
+                    ...(deviceIsMicrobit ? [{
                         handleClick: () => { setCircuitView({fullWidth: true, dock: 'microbit'}); setView('microbit'); },
                         icon: microbitIcon,
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'microbit',
                         title: intl.formatMessage(messages.microbitSim)
-                    },
+                    }] : []),
                     {
                         handleClick: () => {
                             setCircuitView({fullWidth: false, dock: 'top'});

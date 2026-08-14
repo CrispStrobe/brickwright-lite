@@ -611,6 +611,10 @@ class PseudocodeImporter extends React.Component {
             this.props.vm.runtime.bwDeviceCore = info.core;
             this.props.vm.runtime.bwDeviceId = deviceId;
         }
+        // Broadcast device change so the stage-header can show/hide the micro:bit button
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {
+            detail: {key: 'bw-device-id', value: deviceId}
+        }));
         this.computeExampleCompat(deviceId);
     }
 

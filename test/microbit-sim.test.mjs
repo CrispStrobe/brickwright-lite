@@ -40,13 +40,15 @@ test('gui.jsx lazy-loads MicrobitSimPane', () => {
     assert.ok(src.includes("dockMode === 'microbit'"), 'microbit dock mode check not found');
 });
 
-test('stage-header has microbit view button', () => {
+test('stage-header has conditional microbit view button', () => {
     const src = readFileSync(
         resolve(overlay, 'src/components/stage-header/stage-header.jsx'), 'utf8'
     );
     assert.ok(src.includes('microbitSim'), 'microbitSim message not found');
     assert.ok(src.includes("dock: 'microbit'"), "dock: 'microbit' not found");
     assert.ok(src.includes('icon--microbit'), 'microbit icon import not found');
+    assert.ok(src.includes('deviceIsMicrobit'), 'deviceIsMicrobit guard not found');
+    assert.ok(src.includes('bw-device-id'), 'bw-device-id listener not found');
 });
 
 test('codemirror-editor handles micropython language', () => {
