@@ -21,6 +21,31 @@ import { getSidecar } from './parts-registry.js';
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
 
+/**
+ * Board/IC kinds → engine kind. The engine knows a fixed set of kinds
+ * (resistor, led, mcu, etc.). Board-level sidecars (arduino_nano,
+ * pi_pico, retro DIPs) carry richer terminal lists and footprints but
+ * the engine treats them all as 'mcu' passthrough (null terminal
+ * validation, pin-state driven). Any kind with a sidecar that the
+ * engine doesn't know gets mapped here.
+ */
+const PASSTHROUGH_KINDS = new Set([
+  // MCU boards
+  'stc_mcu', 'arduino_nano', 'arduino_uno', 'arduino_mega',
+  'pi_pico', 'attiny85', 'microbit',
+  // Retro DIPs (6502 family)
+  'w65c02', 'w65c22', 'w65c51',
+  // Memory ICs
+  '28c256', '62256',
+  // 6507 family
+  'r6507', 'mos6532',
+  // Z80 family
+  'z80', 'mc6850',
+]);
+function engineKindFor(kind) {
+  return PASSTHROUGH_KINDS.has(kind) ? 'mcu' : kind;
+}
+
 /** Reset the ID counter (for tests). */
 export function resetIds() { _nextId = 1; }
 
@@ -670,9 +695,10 @@ export class Circuit {
    */
   _syncNetlist() {
     // Parts for the engine (strip layout fields, exclude UI-only parts like meters)
+    // Board-level MCU kinds (arduino_nano, pi_pico, etc.) map to 'mcu' for the engine.
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
-      kind: p.kind,
+      kind: engineKindFor(p.kind),
       params: p.params,
       terminals: p.terminals,
     }));
@@ -710,7 +736,15 @@ export class Circuit {
         const derived = bb.deriveNets();
         const stripNets = derived.nets.map(n => ({ ...n, terminals: [...n.terminals] }));
         // Glue each tap-wire hole into its strip's net (or fabricate the
-        // strip's net if nothing else lives there yet).
+        // strip's net if nothing else lives there yet). For column strips
+        // (not rails), track fabricated nets so multiple taps into the same
+        // unoccupied column share one net — without this, two taps to
+        // different rows of the same column each create their own net and
+        // the strip fails to conduct (the seated-board wiring pattern).
+        // Rail strips are left unfixed: merging them triggers a bw-board
+        // cap-companion bug where setPin zeros out all voltages (spec-update
+        // pending).
+        const fabricated = new Map(); // stripId → net object (columns only)
         for (const w of this.wires) {
           for (const e of [w.from, w.to]) {
             if (!e.board || e.board !== boardId) continue;
@@ -718,8 +752,15 @@ export class Circuit {
             const pseudo = { part: `@bb:${boardId}`, terminal: e.hole };
             const netId = derived.stripToNet.get(stripId);
             const target = netId ? stripNets.find(n => n.id === netId) : null;
-            if (target) target.terminals.push(pseudo);
-            else stripNets.push({ id: `n-${stripId}`, terminals: [pseudo] });
+            if (target) {
+              target.terminals.push(pseudo);
+            } else if (!stripId.startsWith('rail-') && fabricated.has(stripId)) {
+              fabricated.get(stripId).terminals.push(pseudo);
+            } else {
+              const net = { id: `n-${stripId}`, terminals: [pseudo] };
+              stripNets.push(net);
+              if (!stripId.startsWith('rail-')) fabricated.set(stripId, net);
+            }
           }
         }
         engineNets = mergeNets(engineNets, stripNets);
@@ -762,7 +803,7 @@ export class Circuit {
   syncWithExternalNets(nets) {
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
-      kind: p.kind,
+      kind: engineKindFor(p.kind),
       params: p.params,
       terminals: p.terminals,
     }));
@@ -919,13 +960,8 @@ export class Circuit {
  * Special kinds (mcu, breadboard, led_cube) need params-dependent or
  * dynamic terminals and bypass the sidecar.
  */
-function terminalsForKind(kind, params) {
-  // Special kinds with dynamic or param-dependent terminals
-  const DYNAMIC_KINDS = new Set(['mcu', 'breadboard', 'led_cube', 'dip_switch', 'header']);
-  if (!DYNAMIC_KINDS.has(kind)) {
-    const sc = sidecarTerminals(kind);
-    if (sc && sc.length > 0) return sc;
-  }
+/** @internal Exported for the contract test only. */
+export function terminalsForKind(kind, params) {
   // Fallback to local definitions (for kinds without sidecars or dynamic kinds)
   switch (kind) {
     case 'vcc': return ['vcc'];
@@ -937,7 +973,7 @@ function terminalsForKind(kind, params) {
     case 'zener': return ['anode', 'cathode'];
     case 'led': return ['anode', 'cathode'];
     case 'rgb_led': return ['r_anode', 'g_anode', 'b_anode', 'cathode'];
-    case 'potentiometer': return ['a', 'wiper', 'b'];
+    case 'potentiometer': return ['a', 'b', 'wiper'];
     case 'button': return ['a', 'b'];
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
@@ -946,13 +982,12 @@ function terminalsForKind(kind, params) {
     case 'npn': case 'pnp': return ['base', 'collector', 'emitter'];
     case 'nmos': case 'pmos': return ['gate', 'drain', 'source'];
     case 'opamp': return ['inp', 'inn', 'out'];
-    // Terminal names are the ENGINE's (bw-board board.js kind table):
-    // gate_not is in0/out there, not in/out — wires in the example
-    // gallery reference in0, and a name mismatch renders ghost terminals.
     case 'gate_and': case 'gate_or': case 'gate_nand': case 'gate_nor': case 'gate_xor': return ['in0', 'in1', 'out'];
+    // Engine name (bw-board kind table): in0, not in — gallery wires
+    // reference in0 and a mismatch renders as ghost terminals.
     case 'gate_not': return ['in0', 'out'];
-    case '555': return ['gnd', 'trigger', 'output', 'reset', 'control', 'threshold', 'discharge', 'vcc'];
-    case 'relay': return ['coil_a', 'coil_b', 'no', 'com', 'nc'];
+    case '555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
+    case 'relay': return ['coil_a', 'coil_b', 'com', 'nc', 'no'];
     case 'servo': return ['signal', 'vcc', 'gnd'];
     case 'dc_motor': case 'gearmotor': return ['a', 'b'];
     case 'vibration_motor': return ['a', 'b'];
@@ -983,7 +1018,7 @@ function terminalsForKind(kind, params) {
     case 'breadboard': return [];
     case 'vsource': case 'battery': return ['pos', 'neg'];
     case 'isource': return ['pos', 'neg'];
-    case 'timer_555': return ['gnd', 'trigger', 'output', 'reset', 'control', 'threshold', 'discharge', 'vcc'];
+    case 'timer_555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
     case 'seven_segment': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com'];
     case 'char_lcd': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'];
     case 'shift_register': return ['data', 'clock', 'latch', 'oe', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
@@ -1013,6 +1048,9 @@ function terminalsForKind(kind, params) {
       // Check logic chip definitions (74HC family)
       const chipTerms = logicChipTerminals(kind);
       if (chipTerms) return chipTerms;
+      // Sidecar fallback — for kinds without explicit switch-case entries
+      const sc = sidecarTerminals(kind);
+      if (sc && sc.length > 0) return sc;
       return ['a', 'b'];
     }
   }

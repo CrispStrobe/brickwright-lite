@@ -135,34 +135,6 @@ export function projectSchematic(parts, nets) {
     });
   }
 
-  // The solver deliberately allows a useful bench shorthand: if there is no
-  // explicit GND post, the negative terminal of the first voltage source is
-  // the reference node. The schematic must show that electrical fact instead
-  // of silently dropping the ground symbol (which made the view look broken
-  // even though the solver and multimeter were correct).
-  const hasExplicitGround = electrical.some(p => p.kind === 'gnd');
-  if (!hasExplicitGround) {
-    let groundNetId = null;
-    for (const net of nets) {
-      if (net.terminals.some(t => t.terminal === 'neg' &&
-          electrical.some(p => p.id === t.part && p.kind === 'vsource'))) {
-        groundNetId = net.id;
-        break;
-      }
-    }
-    if (groundNetId) {
-      const col = maxRank + 1;
-      const x = MARGIN_X + col * COL_W;
-      const y = MARGIN_Y;
-      symbols.push({
-        id: '__implicit_gnd__', kind: 'gnd', label: 'GND', params: {}, col, row: 0,
-        x, y,
-        pins: [{name: 'gnd', netId: groundNetId, side: 'left', x: x - PIN_HALF, y}],
-        pinsPerSide: 1,
-      });
-    }
-  }
-
   // Net routing: every trunk lives in a GAP between symbol columns, never
   // inside one — a trunk snapped to a pin midpoint used to run straight
   // through neighbouring symbols, and two nets in the same band drew as
@@ -245,14 +217,7 @@ export function projectSchematic(parts, nets) {
 function findPinNet(nets, partId, terminal) {
   for (const net of nets) {
     for (const t of net.terminals) {
-      // Board sidecars are intentionally user-facing lowercase (d13/gp0),
-      // while the silicon boundary uses canonical uppercase names (D13/GP0).
-      // The schematic combines raw designer parts with engine nets, so this
-      // lookup must treat those spellings as the same electrical terminal.
-      if (t.part === partId && (t.terminal === terminal ||
-          String(t.terminal).toLowerCase() === String(terminal).toLowerCase())) {
-        return net.id;
-      }
+      if (t.part === partId && t.terminal === terminal) return net.id;
     }
   }
   return null;

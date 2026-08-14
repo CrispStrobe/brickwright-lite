@@ -36,6 +36,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { BoardCanvas } from './BoardCanvas.jsx';
 import { PartPalette } from './PartPalette.jsx';
+import { ControlPanel } from './ControlPanel.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { Multimeter } from './Multimeter.jsx';
@@ -48,12 +49,12 @@ import { generatePartName, circuitToDeclarations } from '../model/declarations.j
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
+import { PinChooser } from './PinChooser.jsx';
+import { getPinFunctionsForPart } from '../model/pin-functions.js';
 import { Circuit } from '../model/circuit.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
 import { runDrc } from '../model/drc.js';
-import { migrateStarterAutosave } from '../model/starter-migration.js';
-import './circuit-theme.css';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -62,7 +63,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, onLoadExample }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, examples, onLoadExample }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -144,28 +145,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setSelectedWire(null);
   }, []);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
-  const lastRunToken = useRef(0);
-  const lastStopToken = useRef(0);
-  useEffect(() => {
-    if (!runToken || runToken === lastRunToken.current) return;
-    lastRunToken.current = runToken;
-    setMode('simulate');
-  }, [runToken]);
-  useEffect(() => {
-    if (!stopToken || stopToken === lastStopToken.current) return;
-    lastStopToken.current = stopToken;
-    setMode('build');
-  }, [stopToken]);
-  const [selectorsOpen, setSelectorsOpen] = useState(!embedded);
-  const [partsOpen, setPartsOpen] = useState(!embedded);
-  const [selectorSplit, setSelectorSplit] = useState(0.68);
-  const [rightOpen, setRightOpen] = useState(!embedded || debuggerOn);
-  useEffect(() => {
-    if (debuggerOn) setRightOpen(true);
-  }, [debuggerOn]);
-  const [showScope, setShowScope] = useState(false);
-  const [showMeter, setShowMeter] = useState(false);
-  const [warningsOpen, setWarningsOpen] = useState(false);
+  const [leftOpen, setLeftOpen] = useState(true);
+  // Examples panel collapse + vertical split between parts palette and examples
+  const hasExamples = !!(examples && examples.length && onLoadExample);
+  const [examplesOpen, setExamplesOpen] = useState(true);
+  const [selectorSplit, setSelectorSplit] = useState(0.65);
+  const savedSplitRef = useRef(0.65);
+  const [rightOpen, setRightOpen] = useState(true);
 
   // Breadboard model (persistent across renders)
   const [bbRev, setBbRev] = useState(0);
@@ -198,19 +184,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [placingProbe, setPlacingProbe] = useState(null);
   const [placingPart, setPlacingPart] = useState(null); // {kind, params} riding the cursor
   const [showSchematic, setShowSchematic] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem('bw-circuit-theme') || 'light'; } catch { return 'light'; }
-  });
-  useEffect(() => {
-    const onSettings = event => {
-      const {key, value} = event.detail || {};
-      if (key !== 'bw-circuit-theme' || (value !== 'light' && value !== 'dark')) return;
-      setTheme(value);
-      try { localStorage.setItem('bw-circuit-theme', value); } catch { /* private mode */ }
-    };
-    window.addEventListener('bw-settings-change', onSettings);
-    return () => window.removeEventListener('bw-settings-change', onSettings);
-  }, []);
   const [simPaused, setSimPaused] = useState(false);
   const [simSpeed, setSimSpeed] = useState(1); // 0.25 | 1 | 4 x real time
   const [probePlacement, setProbePlacement] = useState(null);
@@ -244,17 +217,15 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         if (saved) {
           const data = JSON.parse(saved);
           if (data && Array.isArray(data.parts) && data.parts.length > 0) {
-            handleLoad(migrateStarterAutosave(data));
+            handleLoad(data);
             return;
           }
         }
       } catch { /* corrupt autosave: fall through to the demo */ }
     }
-    // First-open starter: a COMPLETE no-MCU bench circuit, seated and lit.
-    // The battery taps directly into the two component strips so this simple
-    // example has one visible positive wire and one visible return wire. A
-    // rail-plus-jumper layout is electrically equivalent, but unnecessarily
-    // draws four wires and makes the starter look duplicated.
+    // First-open starter: a COMPLETE no-MCU bench circuit, seated and lit -
+    // battery tapped into the rails, jumpers to the columns, resistor + LED
+    // in the strips. Declared pins replace it with the inferred circuit.
     if (!(pins?.length > 0)) {
       try {
         const bb = addPart('breadboard', {}, 470, 300);
@@ -263,9 +234,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         const led = addPart('led', { color: 'red' }, 0, 0, 'led1');
         circuit.seatPart(r1.id, bb.id, computeLeadMap(BB_FOOTPRINTS.resistor, 'b5'));
         circuit.seatPart(led.id, bb.id, computeLeadMap(BB_FOOTPRINTS.led, 'c9'));
-        addTapWire(bat.id, 'pos', bb.id, 'a5', '#e74c3c');
-        addTapWire(bat.id, 'neg', bb.id, 'a10', '#2c3e50');
-        setAnnotations([{ x: 470, y: 130, text: 'a complete circuit — battery + → resistor → LED → battery −', color: '#7f8c8d' }]);
+        addTapWire(bat.id, 'pos', bb.id, 't+3', '#e74c3c');
+        addTapWire(bat.id, 'neg', bb.id, 't-3', '#2c3e50');
+        addHoleWire(bb.id, 't+8', 'a5', '#e74c3c');
+        addHoleWire(bb.id, 'a10', 't-8', '#2c3e50');
+        setAnnotations([{ x: 470, y: 130, text: 'a complete circuit — the battery feeds the rails, the strips do the wiring', color: '#7f8c8d' }]);
         return;
       } catch { /* fall through to the inferred demo */ }
     }
@@ -323,40 +296,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, []);
 
   useEffect(() => {
-    const onTheme = event => {
-      const next = event.detail && event.detail.value;
-      if (next !== 'light' && next !== 'dark') return;
-      setTheme(next);
-      try { localStorage.setItem('bw-circuit-theme', next); } catch { /* private mode */ }
-    };
-    window.addEventListener('bw-circuit-theme', onTheme);
-    return () => window.removeEventListener('bw-circuit-theme', onTheme);
-  }, []);
-
-  useEffect(() => {
     return () => stopAllBuzzers();
-  }, []);
-
-  // The Scratch green flag is the shared start affordance. Pure circuits do
-  // not have an MCU board to drive them, so the flag explicitly enters the
-  // designer's simulation mode and opens Instruments; MCU-backed circuits are
-  // already externally clocked and simply continue to receive the VM's pin writes.
-  useEffect(() => {
-    const onGreenFlag = () => {
-      setMode('simulate');
-      setRightOpen(true);
-      setSimPaused(false);
-    };
-    const onStopAll = () => {
-      setMode('build');
-      setSimPaused(false);
-    };
-    window.addEventListener('bw-green-flag', onGreenFlag);
-    window.addEventListener('bw-stop-all', onStopAll);
-    return () => {
-      window.removeEventListener('bw-green-flag', onGreenFlag);
-      window.removeEventListener('bw-stop-all', onStopAll);
-    };
   }, []);
 
   useEffect(() => {
@@ -389,7 +329,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       return;
     }
 
-    const mcu = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(p.kind));
+    const mcu = parts.find(p => p.kind === 'mcu');
     // No MCU is NOT "no simulation": pure circuits (battery+LED, FG+scope,
     // RC charge) need the clock just as much. Only the demo pin script
     // below is MCU-conditional.
@@ -725,10 +665,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const effectiveNodeVoltages = hasSimulation ? nodeVoltages : {};
 
   let statusText = null;
-  const picoPresent = parts.some(part => part.kind === 'pi_pico');
-  if (picoPresent && !externalBoard) {
-    statusText = 'WIRING ONLY — Pico execution is not available yet';
-  } else if (!hasSimulation && externalBoard) {
+  if (!hasSimulation && externalBoard) {
     statusText = 'HARDWARE — voltage/current readings need the simulator';
   } else if (externalBoard && halted && staleBy > 0) {
     statusText = `SNAPSHOT — the board kept running for ${
@@ -742,10 +679,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   return (
     <div
-      className="bw-circuit-designer"
-      data-bw-circuit-theme={theme}
       data-sim-mode={mode}
-      data-selectors-open={selectorsOpen ? 'true' : 'false'}
       style={{
         display: 'flex',
         gap: '12px',
@@ -753,54 +687,94 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         height: '100%',
         minHeight: 0, // allow flex shrinking
         alignItems: 'stretch',
-        position: 'relative',
         fontFamily: 'system-ui, -apple-system, sans-serif',
-        overflow: 'auto',
-        boxSizing: 'border-box',
+        overflow: 'clip',
       }}
     >
       {/* Left sidebar — collapsible. Hidden entirely in schematic view:
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
-      <div data-selectors-rail style={{position: 'relative', display: 'flex', flex: selectorsOpen ? '0 0 190px' : '0 0 0px', width: selectorsOpen ? 190 : 0, minWidth: selectorsOpen ? 190 : 0, minHeight: 0, height: '100%', overflow: 'visible'}}>
-      {selectorsOpen ? (
-        <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto', width: '100%', minWidth: 0, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
-          <div data-parts-selector style={{position: 'relative', flex: `${selectorSplit} 1 0`, minHeight: partsOpen ? 80 : 34, display: 'flex', minWidth: 0}}>
-            <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts Selector' : 'Expand Parts Selector'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts Selector' : 'Expand Parts Selector'} style={{position: 'absolute', zIndex: 4, left: -13, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
-            {partsOpen && <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />}
+      {showSchematic ? null : leftOpen ? (
+        <div data-selectors-panel style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, minHeight: 0, maxHeight: 'calc(100dvh - 130px)', width: 190, minWidth: 190 }}>
+          <button onClick={() => setLeftOpen(false)} style={{
+            background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
+            fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
+          }}>collapse</button>
+          {/* Parts palette — takes selectorSplit fraction (or all if no examples) */}
+          <div data-parts-selector style={{
+            flex: hasExamples ? `${selectorSplit} 1 0` : '1 1 0',
+            minHeight: 80, overflowY: 'auto', overscrollBehavior: 'contain',
+          }}>
+            <PartPalette onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+            <InferPanel onLoadCircuit={handleLoadCircuit} />
           </div>
-          <div data-selector-divider role="separator" aria-label="Resize Parts and Examples selectors" tabIndex={0}
-            onPointerDown={event => {
-              event.preventDefault();
-              const startY = event.clientY;
+          {/* Examples section — only shown when examples prop is provided */}
+          {hasExamples && (<>
+            {/* Drag divider */}
+            <div data-selector-divider role="separator" style={{
+              flex: '0 0 10px', cursor: 'row-resize', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              borderTop: '1px solid #2c3e50', borderBottom: '1px solid #2c3e50',
+              background: '#1a1a2e', userSelect: 'none',
+            }} onPointerDown={e => {
+              if (!examplesOpen) return;
+              e.preventDefault();
+              const startY = e.clientY;
+              const panel = e.currentTarget.closest('[data-selectors-panel]');
+              const total = panel ? panel.offsetHeight : 400;
               const start = selectorSplit;
-              const parent = event.currentTarget.parentElement;
-              const total = parent ? parent.getBoundingClientRect().height : 1;
-              const move = moveEvent => setSelectorSplit(Math.max(0.2, Math.min(0.85, start + (moveEvent.clientY - startY) / total)));
-              const end = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); };
+              const move = ev => {
+                const next = Math.max(0.2, Math.min(0.85, start + (ev.clientY - startY) / total));
+                setSelectorSplit(next);
+                savedSplitRef.current = next;
+              };
+              const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
               window.addEventListener('pointermove', move);
-              window.addEventListener('pointerup', end, {once: true});
-            }}
-            style={{height: 10, flex: '0 0 10px', cursor: 'row-resize', borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', background: '#e2e8f0', margin: '1px 0'}}>
-            <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
-          </div>
-          <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto'}}>
-            {examples && onLoadExample ? (
-              <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} theme={theme} />
-            ) : (
-              <InferPanel onLoadCircuit={handleLoadCircuit} />
-            )}
-          </div>
+              window.addEventListener('pointerup', up);
+            }}>
+              <div style={{ width: 24, height: 3, borderRadius: 1.5, background: '#34495e' }} />
+            </div>
+            {/* Examples panel — collapsible to just a handle rail */}
+            <div data-examples-selector style={{
+              flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 28px',
+              minHeight: 28, overflowY: examplesOpen ? 'auto' : 'hidden',
+              overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column',
+            }}>
+              {/* Collapse/expand handle */}
+              <button data-examples-toggle onClick={() => {
+                if (examplesOpen) {
+                  savedSplitRef.current = selectorSplit;
+                  setSelectorSplit(0.97);
+                  setExamplesOpen(false);
+                } else {
+                  setSelectorSplit(savedSplitRef.current);
+                  setExamplesOpen(true);
+                }
+              }} style={{
+                flex: '0 0 24px', background: '#1a1a2e', border: 'none',
+                borderBottom: examplesOpen ? '1px solid #2c3e50' : 'none',
+                color: '#7f8c8d', cursor: 'pointer', fontFamily: 'monospace',
+                fontSize: '10px', textAlign: 'left', padding: '4px 8px',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span style={{ fontSize: '8px' }}>{examplesOpen ? '▼' : '▶'}</span>
+                Examples
+              </button>
+              {examplesOpen && (
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                  <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} />
+                </div>
+              )}
+            </div>
+          </>)}
         </div>
-      ) : null}
-        <button data-selectors-toggle onPointerDown={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} onClick={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} style={{
-          position: 'absolute', right: -13, top: 4, zIndex: 70,
-          width: 28, height: 28, padding: 0, display: 'grid', placeItems: 'center',
-          background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
-          boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
-          color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
-        }} aria-label={selectorsOpen ? 'Collapse Selectors Panel' : 'Expand Selectors Panel'} aria-expanded={selectorsOpen} title={selectorsOpen ? 'Collapse Selectors Panel' : 'Expand Selectors Panel'}>{selectorsOpen ? '‹' : '›'}</button>
-      </div>
+      ) : (
+        <button onClick={() => setLeftOpen(true)} style={{
+          writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
+          borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
+          fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
+        }}>Parts</button>
+      )}
 
       {/* A snapshot must not LOOK like a live board. Desaturating it is the
           cheapest honest signal: the reading is real but it is of a world that
@@ -839,30 +813,47 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
-        <div data-designer-main style={{ flex: '1 1 auto', width: 'auto', minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {showSchematic && (
-          <div data-schematic-escape data-circuit-view-switcher style={{display: 'inline-flex', gap: 4, alignItems: 'center', marginBottom: 8}}>
-            <button onClick={() => setShowSchematic(false)} aria-label="Realistic view" aria-pressed={false} title="Realistic view"
-              style={{width: 34, height: 30, cursor: 'pointer', background: '#16213e', color: '#fff', border: '1px solid #3498db', borderRadius: 4}}>◉</button>
-            <button onClick={() => setShowSchematic(true)} aria-label="Schematic view" aria-pressed="true" title="Schematic view"
-              style={{width: 34, height: 30, cursor: 'pointer', background: '#3498db', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
-          </div>
-        )}
+        {/* View mode switch: one view at a time, full width */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+          {['realistic', 'schematic'].map(vm => (
+            <button key={vm} onClick={() => setShowSchematic(vm === 'schematic')} style={{
+              background: (vm === 'schematic') === showSchematic ? '#3498db' : '#16213e',
+              color: (vm === 'schematic') === showSchematic ? '#fff' : '#7f8c8d',
+              border: '1px solid #2c3e50', borderRadius: 4,
+              padding: '3px 10px', cursor: 'pointer',
+              fontFamily: 'monospace', fontSize: 10,
+            }}>{vm === 'realistic' ? 'Realistic' : 'Schematic'}</button>
+          ))}
+        </div>
+        <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'clip', display: 'flex', flexDirection: 'column' }}>
         {!showSchematic ? (<>
+        {mode === 'simulate' && (
+          <span style={{ display: 'inline-flex', gap: 4, alignSelf: 'flex-end', marginBottom: 4, marginRight: 6 }}>
+            <button onClick={() => setSimPaused(v => !v)}
+              title={simPaused ? 'Resume simulation' : 'Pause simulation (board time freezes; knobs stay live)'}
+              style={{ background: simPaused ? '#e67e22' : '#16213e', border: '1px solid #2c3e50',
+                color: simPaused ? '#000' : '#7f8c8d', borderRadius: 4, padding: '3px 10px',
+                cursor: 'pointer', fontFamily: 'monospace', fontSize: 10 }}>
+              {simPaused ? '▶ resume' : '⏸ pause'}</button>
+            <button onClick={handleSimStep} disabled={!simPaused}
+              title="Advance one 50 ms tick"
+              style={{ background: '#16213e', border: '1px solid #2c3e50',
+                color: simPaused ? '#3498db' : '#3a4a5a', borderRadius: 4, padding: '3px 10px',
+                cursor: simPaused ? 'pointer' : 'default', fontFamily: 'monospace', fontSize: 10 }}>
+              ⏭ step</button>
+            <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))}
+              title="Simulation speed"
+              style={{ background: '#16213e', color: '#7f8c8d', border: '1px solid #2c3e50',
+                borderRadius: 4, fontSize: 10, fontFamily: 'monospace' }}>
+              <option value={0.25}>0.25x</option>
+              <option value={1}>1x</option>
+              <option value={4}>4x</option>
+            </select>
+          </span>
+        )}
         <BoardCanvas
           parts={parts}
           wires={wires}
-          theme={theme}
-          mode={mode}
-          onModeChange={nextMode => {
-            setMode(nextMode);
-            // Simulation controls live in the instrument column. Selecting
-            // Sim must reveal that column even in the compact embedded view;
-            // otherwise the mode changes but its controls are unreachable.
-            if (nextMode === 'simulate') setRightOpen(true);
-          }}
-          powered={powered}
-          onPowerToggle={next => setPower(typeof next === 'boolean' ? next : !powered)}
           simulate={mode === 'simulate'}
           ledBrightness={readLedBrightness}
           buzzerTones={readBuzzerTone}
@@ -1001,16 +992,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               return drc;
             } catch { return []; }
           })()}
-          panelNav={panelNav}
-          rightOpen={rightOpen}
-          viewNav={(
-            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', width: 70, height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
-              <button data-circuit-toggle-state={!showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"
-                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
-              <button data-circuit-toggle-state={showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={showSchematic} onClick={() => setShowSchematic(true)} aria-label="Schematic view" title="Schematic view"
-                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>⌁</button>
-            </div>
-          )}
         />
         </>) : (
           <div style={{ flex: 1, minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain',
@@ -1026,79 +1007,86 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
         {/* Engine warnings — teaching feedback */}
         {warnings.length > 0 && (
-          <div style={{marginTop: '8px', fontFamily: 'monospace', fontSize: '10px'}}>
-            <button onClick={() => setWarningsOpen(v => !v)} title="Show circuit warnings" aria-label={`${warnings.length} circuit warnings`} aria-expanded={warningsOpen}
-              style={{border: 'none', background: 'transparent', color: warnings.some(w => w.severity === 'danger') ? '#dc2626' : '#d97706', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 3px'}}>▲</button>
-            {warningsOpen && <div style={{marginTop: 4, padding: '8px', background: '#1a1a0e', border: '1px solid #e67e22', borderRadius: '4px'}}>
-              {warnings.map((w, i) => <div key={i} style={{color: w.severity === 'danger' ? '#e74c3c' : '#f39c12', marginBottom: '2px'}}>{w.severity === 'danger' ? '⚠' : '!'} {w.message}</div>)}
-            </div>}
+          <div style={{
+            marginTop: '8px',
+            padding: '8px',
+            background: '#1a1a0e',
+            border: '1px solid #e67e22',
+            borderRadius: '4px',
+            fontFamily: 'monospace',
+            fontSize: '10px',
+          }}>
+            {warnings.map((w, i) => (
+              <div key={i} style={{
+                color: w.severity === 'danger' ? '#e74c3c' : '#f39c12',
+                marginBottom: '2px',
+              }}>
+                {w.severity === 'danger' ? '⚠' : '!'} {w.message}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
-      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: '0 1 280px', width: 280, minWidth: 280, minHeight: 0, maxHeight: '100%', height: '100%', overflow: 'hidden', alignSelf: 'stretch', boxSizing: 'border-box' }}>
-        <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
-          position: 'absolute', zIndex: 3, top: 4, left: 4, background: '#ffffff', border: '1px solid #cbd5e1',
-          boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
-          fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
-        }}>›</button>
-        <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 34, boxSizing: 'border-box'}}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', maxHeight: 'calc(100dvh - 130px)', overscrollBehavior: 'contain' }}>
+        <button onClick={() => setRightOpen(false)} style={{
+          background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
+          fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
+        }}>collapse</button>
         {debugState && (
           <DebugStatus
             debugState={debugState}
             capabilities={debugState.capabilities || null}
           />
         )}
-        {debuggerPanel && (
-          <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
-            borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
-            <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>Debugger</div>
-            {debuggerPanel}
-          </section>
-        )}
-        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && (
-          <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
-            background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
-            fontSize: 12, lineHeight: 1.35}}>
-            <strong>Debugger inactive</strong>
-            <div>{'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}</div>
-          </div>
-        )}
-        {mode === 'simulate' && (
-          <section data-simulation-controls style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
-            <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>Simulation controls</div>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: 5}}>
-              <button onClick={() => setSimPaused(v => !v)} title={simPaused ? 'Resume simulation' : 'Pause simulation'}
-                style={{minHeight: 32, padding: '5px 8px', cursor: 'pointer'}}>{simPaused ? '▶ Resume simulation' : '⏸ Pause simulation'}</button>
-              <button onClick={handleSimStep} disabled={!simPaused} title="Advance one 50 ms tick"
-                style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>⏭ Step one tick</button>
-            </div>
-            <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
-              <span>Speed</span>
-              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Simulation speed" style={{minHeight: 30}}>
-                <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
-              </select>
-            </label>
-          </section>
-        )}
-        <div style={{ display: 'flex', flex: '0 0 auto', gap: 4, width: 280 }}>
-          <button onClick={() => setShowScope(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showScope ? '#2c3e50' : '#16213e', border: '1px solid #3498db', borderRadius: 4, color: '#3498db', fontFamily: 'monospace', fontSize: 10 }}>{showScope ? '▣ Hide scope' : '▣ Scope'}</button>
-          <button onClick={() => setShowMeter(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showMeter ? '#2c3e50' : '#16213e', border: '1px solid #f1c40f', borderRadius: 4, color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>{showMeter ? '⌁ Hide meter' : '⌁ Meter'}</button>
-        </div>
-        {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} /></div>}
-        {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
-        </div>
+        <ControlPanel
+          mode={mode}
+          onModeChange={setMode}
+          powered={powered}
+          onPowerToggle={() => setPower(!powered)}
+          selectedPart={selectedPart}
+          selectedWire={selectedWire}
+          parts={parts}
+          onRemovePart={(id) => { removePart(id); setSelectedParts(new Set()); }}
+          onRemoveWire={(id) => { removeWire(id); setSelectedWire(null); }}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUpdateParams={updateParams}
+          onSave={handleSave}
+          onLoad={handleLoad}
+        />
+        <ScopePanel
+          board={circuit.board}
+          nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []}
+        />
+        <Multimeter
+          circuit={circuit}
+          wires={wires}
+          parts={parts}
+          placingProbe={placingProbe}
+          onStartPlacing={handleStartPlacing}
+          onStopPlacing={handleStopPlacing}
+          probePlacement={probePlacement}
+        />
+        {/* Pin functions: show when an MCU is selected */}
+        {selectedPart && (() => {
+          const p = parts.find(pp => pp.id === selectedPart);
+          if (!p || p.kind !== 'mcu') return null;
+          const pinData = getPinFunctionsForPart(p.kind);
+          if (pinData.length === 0) return null;
+          return <PinChooser pins={pinData} />;
+        })()}
       </div>
       ) : (
-        <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(true); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(true)} style={{
-          position: 'absolute', right: 4, top: 52, zIndex: 70,
-          width: 28, height: 28, padding: 0, display: 'grid', placeItems: 'center',
-          background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
-          boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
-          color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
-        }} aria-label="Expand instruments panel" aria-expanded="false" title="Expand instruments panel">‹</button>
+        <button onClick={() => setRightOpen(true)} style={{
+          writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
+          borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
+          fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
+        }}>Controls</button>
       )}
     </div>
   );

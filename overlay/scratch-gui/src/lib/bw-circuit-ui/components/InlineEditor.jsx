@@ -6,17 +6,12 @@
  * interaction in professional circuit tools.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { SiInput } from './SiInput.jsx';
 import { partLabel } from '../model/format.js';
 
 export function InlineEditor({ part, x, y, onUpdateParams, onClose }) {
   const ref = useRef(null);
-  const firstInput = useRef(null);
-
-  useEffect(() => {
-    firstInput.current?.focus();
-    firstInput.current?.select?.();
-  }, [part?.id]);
 
   // Close on click-outside or Escape
   useEffect(() => {
@@ -38,11 +33,11 @@ export function InlineEditor({ part, x, y, onUpdateParams, onClose }) {
     .filter(([k]) => k !== 'pins');
 
   return (
-    <div ref={ref} data-inline-editor onPointerDown={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} style={{
+    <div ref={ref} style={{
       position: 'fixed',
       left: x + 20,
       top: y - 10,
-      background: '#ffffff',
+      background: '#1a1a2e',
       border: '1px solid #3498db',
       borderRadius: '6px',
       padding: '8px 10px',
@@ -52,7 +47,7 @@ export function InlineEditor({ part, x, y, onUpdateParams, onClose }) {
       minWidth: '120px',
       boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
     }}>
-      <div style={{ color: '#1d4ed8', fontWeight: 'bold', marginBottom: '6px' }}>
+      <div style={{ color: '#3498db', fontWeight: 'bold', marginBottom: '6px' }}>
         {partLabel(part)}
       </div>
 
@@ -69,36 +64,43 @@ export function InlineEditor({ part, x, y, onUpdateParams, onClose }) {
             }}
             style={{
               width: '70px', padding: '2px 4px',
-              background: '#ffffff', border: '1px solid #94a3b8',
-              borderRadius: '2px', color: '#1e293b',
+              background: '#0a0a1a', border: '1px solid #3498db',
+              borderRadius: '2px', color: '#3498db',
               fontFamily: 'monospace', fontSize: '10px',
             }}
           />
         </div>
       )}
 
-      {editableParams.map(([k, v], index) => (
+      {editableParams.map(([k, v]) => (
         <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
           <span style={{ color: '#7f8c8d', fontSize: '10px', minWidth: '35px' }}>{k}:</span>
-          <input
-            ref={index === 0 ? firstInput : undefined}
-            type={typeof v === 'number' ? 'number' : 'text'}
-            inputMode={typeof v === 'number' ? 'decimal' : undefined}
-            step={typeof v === 'number' ? (k === 'ohms' ? 1 : 0.1) : undefined}
-            min={typeof v === 'number' ? 0 : undefined}
-            value={v ?? ''}
-            onChange={(e) => {
-              const newVal = typeof v === 'number' ? (e.target.value === '' ? 0 : Number(e.target.value)) : e.target.value;
-              onUpdateParams(part.id, { [k]: newVal });
-            }}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-            style={{
-              width: '72px', height: '28px', boxSizing: 'border-box', padding: '2px 4px',
-              background: '#ffffff', border: '1px solid #64748b',
-              borderRadius: '3px', color: '#1e293b',
-              fontFamily: 'monospace', fontSize: '11px',
-            }}
-          />
+          {(k === 'ohms' || k === 'farads') ? (
+            <SiInput
+              value={v}
+              onChange={(newVal) => onUpdateParams(part.id, { [k]: newVal })}
+              style={{
+                background: '#0a0a1a', border: '1px solid #2c3e50',
+                borderRadius: '2px', color: '#ecf0f1',
+                fontFamily: 'monospace', fontSize: '10px',
+              }}
+            />
+          ) : (
+            <input
+              type={typeof v === 'number' ? 'number' : 'text'}
+              value={v}
+              onChange={(e) => {
+                const newVal = typeof v === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
+                onUpdateParams(part.id, { [k]: newVal });
+              }}
+              style={{
+                width: '60px', padding: '2px 4px',
+                background: '#0a0a1a', border: '1px solid #2c3e50',
+                borderRadius: '2px', color: '#ecf0f1',
+                fontFamily: 'monospace', fontSize: '10px',
+              }}
+            />
+          )}
         </div>
       ))}
     </div>

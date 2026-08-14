@@ -49,7 +49,12 @@ const L10N = {
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
-        run: 'Run', apply: '✓ Apply art & convert to blocks', done: 'Done',
+        run: 'Run', runBasic: '▶ Run BASIC',
+        basicBudget: ms => `Stopped after ${(ms / 1000).toFixed(0)}s simulated time (endless loop?).`,
+        basicInputExhausted: 'Program asked for INPUT but no more answers were provided.',
+        basicNoPrompt: 'BASIC did not reach its ready prompt — the ROM may not have loaded.',
+        basicLoading: 'Loading BASIC machine…',
+        apply: '✓ Apply art & convert to blocks', done: 'Done',
         applyTitle: n => `Assign a sprite to ${n} more file(s) first`,
         applyReady: 'Bake these costumes in and convert your code to blocks',
         doneTitle: 'Keep these costumes; they apply on the next ⇦ To blocks',
@@ -105,7 +110,12 @@ const L10N = {
         toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
         fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
         compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
-        run: 'Ausführen', apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
+        run: 'Ausführen', runBasic: '▶ BASIC ausführen',
+        basicBudget: ms => `Nach ${(ms / 1000).toFixed(0)}s simulierter Zeit angehalten (Endlosschleife?).`,
+        basicInputExhausted: 'Programm hat INPUT erwartet, aber es waren keine weiteren Antworten vorhanden.',
+        basicNoPrompt: 'BASIC hat seine Bereit-Eingabeaufforderung nicht erreicht — das ROM wurde möglicherweise nicht geladen.',
+        basicLoading: 'BASIC-Maschine wird geladen…',
+        apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
         applyTitle: n => `Weise erst ${n} weiteren Datei(en) ein Sprite zu`,
         applyReady: 'Diese Kostüme einbacken und den Code zu Blöcken umwandeln',
         doneTitle: 'Kostüme behalten; sie werden beim nächsten „⇦ Zu Blöcken” angewendet',
@@ -917,6 +927,46 @@ class PseudocodeImporter extends React.Component {
         });
         // Send the code to the simulator pane
         window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code}}));
+    }
+
+    // Run BASIC on the real emulated machine.
+    // 6502 profile → BasicMachineRunner (pump ms), BBC profile → BbcZ80Runner (pump steps).
+    async runBasic () {
+        const code = this.activeCode();
+        if (!code.trim()) return;
+        this.setState({output: '', running: true, status: this.L.basicLoading});
+        try {
+            const isBbc = this.state.basicProfile === 'bbc';
+            let runner;
+            if (isBbc) {
+                const {BbcZ80Runner} = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/bbc-z80-runner.js');
+                const res = await fetch('static/roms/bbcbasic.com');
+                if (!res.ok) throw new Error('Failed to load bbcbasic.com');
+                const com = new Uint8Array(await res.arrayBuffer());
+                runner = new BbcZ80Runner({com}).start(code, {maxSteps: 200_000_000, inputs: []});
+            } else {
+                const {BasicMachineRunner} = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/basic-machine-runner.js');
+                const res = await fetch('static/roms/basic.rom');
+                if (!res.ok) throw new Error('Failed to load basic.rom');
+                const rom = new Uint8Array(await res.arrayBuffer());
+                runner = new BasicMachineRunner({rom}).start(code, {maxMs: 30000, inputs: []});
+            }
+            this.setState({status: ''});
+            const pumpSlice = isBbc ? 500_000 : 50;
+            const tick = () => {
+                const r = runner.pump(pumpSlice);
+                this.setState({output: r.output || '…'});
+                if (!r.done) { requestAnimationFrame(tick); return; }
+                let suffix = '';
+                if (r.reason === 'budget') suffix = '\n' + this.L.basicBudget(isBbc ? 0 : 30000);
+                else if (r.reason === 'input-exhausted') suffix = '\n' + this.L.basicInputExhausted;
+                else if (r.reason === 'no-ready-prompt') suffix = '\n' + this.L.basicNoPrompt;
+                this.setState({output: (r.output + suffix).trim() || '(no output)', running: false});
+            };
+            requestAnimationFrame(tick);
+        } catch (e) {
+            this.setState({output: `Error: ${e.message}`, running: false, status: ''});
+        }
     }
 
     // Compute which hardware examples can retarget to the given device. Returns
