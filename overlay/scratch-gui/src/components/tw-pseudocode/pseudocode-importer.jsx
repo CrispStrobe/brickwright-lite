@@ -66,6 +66,7 @@ const L10N = {
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
         basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
         asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly (8051/6502/AVR) and assemble+run. Listing mode: generated disassembly. No ASM-to-blocks path — that asymmetry is deliberate.',
+        asmInfoTitle: 'ASM info', basicInfoTitle: 'BASIC info',
         stCOneWay: 'That language cannot be compiled back to blocks.'
     },
     de: {
@@ -92,8 +93,9 @@ const L10N = {
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
         basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
-        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: geratespezifischen Assembler (8051/6502/AVR) schreiben und assemblieren+ausfuhren. Listing-Modus: generierte Disassemblierung. Kein ASM-zu-Blocke-Pfad — diese Asymmetrie ist beabsichtigt.',
-        stCOneWay: 'Diese Sprache lässt sich nicht zu Blocken zurückfuhren.'
+        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler (8051/6502/AVR) schreiben und assemblieren+ausführen. Listing-Modus: generierte Disassemblierung. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
+        asmInfoTitle: 'ASM-Info', basicInfoTitle: 'BASIC-Info',
+        stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.'
     }
 };
 const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
@@ -226,6 +228,19 @@ const SUPPORTED = {
         ['Control', ['Multi-WHEN → generator tasks + round-robin driver',
             'yield ms at every wait/loop back-edge',
             'button_a / button_b (key a/b → micro:bit buttons)']]
+    ],
+    asm: [
+        ['Workflow', ['Source mode: write, then Assemble',
+            'Listing mode: compiled view of the C tab',
+            'One-way by design — no path back to blocks']],
+        ['Syntax (sdas8051)', ['label:  starts a line', '; comment to end of line',
+            '#0x2A immediate, 0x2A direct', '.org 0x0000  /  .db 1, 2, 3',
+            '.area CSEG (CODE)']],
+        ['8051 core', ['mov A, #n / mov dir, A', 'setb P1.0 / clr P1.0 / cpl P1.0',
+            'jb / jnb bit, label', 'djnz Rn, label  (loop)',
+            'lcall sub … ret / sjmp label']],
+        ['Registers', ['A, B, PSW (flags), SP, DPTR', 'R0–R7 (4 banks, PSW.3/4)',
+            'SFRs by name: P0–P3, TCON, TMOD…', 'Bit space: P1.0, ACC.7, 20h–2Fh']]
     ]
 };
 
@@ -1246,7 +1261,8 @@ class PseudocodeImporter extends React.Component {
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))',
                         gap: 12, marginBottom: 4, padding: 10, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0',
                         fontSize: 12, flexShrink: 0}}>
-                        {(this.state.lang === 'pseudocode' ? SYNTAX : SUPPORTED[this.state.lang]).map(([h, items]) => (
+                        {/* || [] — a tab without a SUPPORTED entry must never crash the app */}
+                        {(this.state.lang === 'pseudocode' ? SYNTAX : (SUPPORTED[this.state.lang] || [])).map(([h, items]) => (
                             <div key={h}>
                                 <div style={{fontWeight: 700, marginBottom: 4}}>{h}</div>
                                 <ul style={{margin: 0, paddingLeft: 16}}>
@@ -1498,11 +1514,24 @@ class PseudocodeImporter extends React.Component {
                             style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
                                 padding: 0, border: 'none', borderRadius: '50%', background: this.state.showBasicInfo ? '#4c97ff' : '#e2e8f0',
                                 color: this.state.showBasicInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic'}}
-                            title="BASIC info" data-testid="bw-basic-info-toggle">i</button>
+                            title={this.L.basicInfoTitle} data-testid="bw-basic-info-toggle">i</button>
                     ) : null}
-                    {this.state.lang === 'asm' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.asmNote}</span> : null}
+                    {this.state.lang === 'asm' ? (
+                        <button type="button" onClick={() => this.setState(s => ({showAsmInfo: !s.showAsmInfo}))}
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
+                                padding: 0, border: 'none', borderRadius: '50%', background: this.state.showAsmInfo ? '#4c97ff' : '#e2e8f0',
+                                color: this.state.showAsmInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic'}}
+                            title={this.L.asmInfoTitle} data-testid="bw-asm-info-toggle">i</button>
+                    ) : null}
                     {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
                 </div>
+                {this.state.lang === 'asm' && this.state.showAsmInfo && (
+                    <div style={{padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                        borderRadius: 8, fontSize: 13, color: '#334155', marginTop: 4, flexShrink: 0}}
+                        data-testid="bw-asm-info-panel">
+                        {this.L.asmNote}
+                    </div>
+                )}
                 {this.state.lang === 'basic' && this.state.showBasicInfo && (
                     <div style={{padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: 8, fontSize: 13, color: '#334155', marginTop: 4, flexShrink: 0}}

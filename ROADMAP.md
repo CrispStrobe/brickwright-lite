@@ -119,7 +119,14 @@ Scratch's `<Tabs>` apart). See `BLOCKED.md`. The `PaneColumn` renderer written f
 (§1.1) — it was ~40 lines of flex divs and cheap to write again if this is ever revived; what
 would be expensive is the `<Tabs>` decomposition, and that was never started.
 
-### 3.3 Long-horizon tracks — NOT STARTED
+### 3.3 ASM tab examples — OPEN
+The ASM tab has a reference panel and a working assemble path but no examples, and an empty
+assembly editor is a wall for anyone who has not written 8051/6502 assembly before (owner,
+2026-08-14: "To make it more intuitive, we need a couple of examples in the end"). A small
+per-device set — blink, button poll, a delay loop — selectable like the code-tab examples, each
+one assembling green against the hosted `/assemble` before it ships.
+
+### 3.4 Long-horizon tracks — NOT STARTED
 All specified in `CLAUDE.md`; not repeated here.
 - **`stc12live`** tethered extension — blocked on chip-side firmware (`10-live-firmware`), step 2
   of `stc/docs/ROADMAP.md`. The compiled path (`generateC()`) is done; the flashing path is not.

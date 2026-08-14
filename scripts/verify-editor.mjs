@@ -90,8 +90,9 @@ async function verify () {
             await page.keyboard.type('say "Hello"', { delay: 20 });
             await page.waitForTimeout(200);
 
-            // Test search panel: Ctrl+F
-            await page.keyboard.press('Control+f');
+            // Test search panel: Ctrl+F (Cmd+F on mac — CM6 binds Mod-f,
+            // and Mod is Meta on darwin, so a bare Control+f silently no-ops)
+            await page.keyboard.press('ControlOrMeta+f');
             await page.waitForTimeout(500);
             const searchPanel = page.locator('.cm-search').first();
             if (await searchPanel.count() > 0) {
