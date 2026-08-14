@@ -5,6 +5,7 @@ import {
     IO_SFRS, TIMER_SFRS, formatBytes, hex8, hex16
 } from '../../lib/bw-debug/trace.js';
 import {PSW_BITS, sfrName} from '../../lib/bw-debug/opcodes.js';
+import {downloadTraceCsv} from '../../lib/bw-debug/trace-csv.js';
 
 /**
  * "Under the hood" — parity with emu8051's TUI, as a GUI.
@@ -211,6 +212,13 @@ class DebugDrawer extends React.Component {
                                 </label>
                             ))}
                     </span>
+                    <button
+                        style={BTN}
+                        title={'Export the trace as CSV — every row with time, registers, SFRs and captured variables'}
+                        disabled={!rows.length}
+                        onClick={() => downloadTraceCsv(rows,
+                            `bw-trace-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`)}
+                    >{'CSV'}</button>
                     <button style={BTN} onClick={() => runner.clearTrace()}>{this.tx('clear')}</button>
                 </div>
                 {!rows.length ? (
