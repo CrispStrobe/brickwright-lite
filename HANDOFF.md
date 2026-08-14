@@ -44,8 +44,11 @@ Added a 6th language tab — `🔩 ASM` — with dual-mode operation:
   ASM tab, dual mode, `fetchAsmListing`, `assembleAndRun` stub, L10N en+de
 
 ### Verified
+- Playwright `verify-editor.mjs`: 15 checks pass (CM render, line numbers,
+  typing, search, To blocks, dark theme, maximize, ASM source mode, ASM mode
+  dropdown, Assemble & Run button, ASM typing, asymmetry note)
 - Full test suite: 135/136 pass, 0 fail, 1 skip
-- Production build: gui.596a8887.js (2.13 MiB), 2 warnings (entrypoint size)
+- Production build: gui.233ee962.js (2.13 MiB), CM chunk ~600 KiB lazy
 - All buffer paths include `asm: ''` to prevent stale state
 
 ## Nothing in flight
