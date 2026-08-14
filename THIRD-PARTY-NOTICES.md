@@ -755,6 +755,29 @@ upstream material (SDCC). Everything else in this repository is BSD-3-Clause
 invokable program distributed alongside the BSD-3 editor; their presence does
 not change the licence of the editor code.
 
+## CodeMirror 6 — MIT
+
+**CodeMirror** (MIT License, https://codemirror.net/) provides the Code tab's
+source editor. The following packages are used (all MIT, all by Marijn
+Haverbeke and contributors):
+
+- codemirror (meta-package) — https://github.com/codemirror/dev
+- @codemirror/view — editor view layer
+- @codemirror/state — editor state
+- @codemirror/language — language support infrastructure + StreamLanguage
+- @codemirror/commands — keybindings (indent, undo, etc.)
+- @codemirror/search — search/replace panel
+- @codemirror/autocomplete — bracket closing
+- @codemirror/lang-cpp — C/C++ language mode
+- @codemirror/lang-python — Python language mode
+- @codemirror/lang-javascript — JavaScript language mode
+- @codemirror/theme-one-dark — dark theme
+
+- **Licence:** MIT
+- **Source:** https://github.com/codemirror/dev
+- **Usage:** lazy-loaded chunk for the Code tab editor. No source code is
+  modified; all packages are consumed as published npm dependencies.
+
 ## avr8js — MIT
 
 **avr8js** (MIT License, https://github.com/wokwi/avr8js) provides

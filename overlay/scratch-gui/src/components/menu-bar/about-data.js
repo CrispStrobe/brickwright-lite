@@ -406,6 +406,13 @@ const ABOUT_GROUPS = [
         titleDe: 'Wichtige Laufzeit-Abhangigkeiten',
         entries: [
             {
+                name: 'CodeMirror 6',
+                url: 'https://codemirror.net/',
+                license: 'MIT',
+                licenseUrl: 'https://github.com/codemirror/dev/blob/main/LICENSE',
+                role: 'Code editor (view, state, language, commands, search, lang-cpp, lang-python, lang-javascript)'
+            },
+            {
                 name: 'React + ReactDOM',
                 url: 'https://github.com/facebook/react',
                 license: 'MIT',
