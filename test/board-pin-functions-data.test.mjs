@@ -26,8 +26,10 @@ test('Pico sidecar records GPIO, peripheral, and power pins distinctly', async (
     assert.deepEqual(pin(pico, 'gnd_1').functions, []);
 });
 
-test('Uno sidecar does not claim unaudited alternate functions', async () => {
+test('Uno sidecar carries audited alternate functions', async () => {
     const uno = await sidecar('arduino_uno');
-    assert.equal(pin(uno, 'd13').functions, null);
-    assert.equal(pin(uno, 'gnd').functions, null);
+    // D13 is ATmega328P PB5 — GPIO + SPI SCK.
+    assert.deepEqual(pin(uno, 'd13').functions, ['gpio', 'sclk']);
+    // GND has no alternate functions.
+    assert.deepEqual(pin(uno, 'gnd').functions, []);
 });

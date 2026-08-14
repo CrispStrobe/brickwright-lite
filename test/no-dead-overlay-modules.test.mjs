@@ -77,8 +77,20 @@ const KNOWN_DEAD = new Map([
         'Written, never imported; only the right column is sized today.'],
     ['lib/bw-circuit-ui/model/demo-netlist.js', 'Vendored; used only by the standalone demo.'],
     ['lib/bw-circuit-ui/model/export-png.js', 'Vendored; PNG export is not surfaced in lite.'],
-    ['lib/bw-circuit-ui/model/simulation.js', 'Vendored; lite drives the board through bw-board.']
-    // terminal-aliases.js was here. Removed: circuit.js imports it after 92c6450 (schematic wire fix).
+    ['lib/bw-circuit-ui/model/simulation.js', 'Vendored; lite drives the board through bw-board.'],
+    ['lib/bw-circuit-ui/model/dip-geometry.js', 'Constants consumed by circuit-hit-test; no runtime import path.'],
+    // bw-board vendored tree: device-specific modules synced for completeness, wired when
+    // the corresponding device target or debug view lands. Each is a leaf — nothing within
+    // the vendored tree imports it either; the sync copies the full src/ tree.
+    ['lib/bw-board/avr-peripherals.js', 'Vendored; AVR peripheral extensions (SPI/I2C devices) — wired when AVR debug lands.'],
+    ['lib/bw-board/face-live.js', 'Vendored; live-mode face resolver — wired when tethered hardware lands.'],
+    ['lib/bw-board/m6502-extract.js', 'Vendored; 6502 memory/state extraction for debug views.'],
+    ['lib/bw-board/m6507-machine.js', 'Vendored; Atari 2600 / SBC6507 machine — future device target.'],
+    ['lib/bw-board/m74c922.js', 'Vendored; 4x4 keypad encoder IC — wired when keypad part lands.'],
+    ['lib/bw-board/ps2.js', 'Vendored; PS/2 keyboard controller — wired when keyboard part lands.'],
+    ['lib/bw-board/vdu-decoder.js', 'Vendored; VDU escape decoder for BBC BASIC screen output.'],
+    ['lib/bw-board/z80-debug.js', 'Vendored; Z80 debug adapter — wired when Z80 debug view lands.'],
+    ['lib/bw-board/z80-extract.js', 'Vendored; Z80 state extraction for debug views.']
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;
