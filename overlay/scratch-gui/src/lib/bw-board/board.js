@@ -933,6 +933,34 @@ export class BoardImpl {
   }
 
   /**
+   * Set a named parameter on a part's params object.
+   * Used by the environment-stimulus extension to inject world conditions
+   * (temperature, humidity, magnetic field, etc.) into device models.
+   * @param {string} partId
+   * @param {string} param - Parameter name (e.g. 'temperature', 'field')
+   * @param {*} value
+   */
+  setPartParam(partId, param, value) {
+    const part = this.parts.find(p => p.id === partId);
+    if (!part) return;
+    if (!part.params) part.params = {};
+    part.params[param] = value;
+    this._solve();
+    this._notifyChange('param', { partId, param, value });
+  }
+
+  /**
+   * Get a named parameter from a part's params object.
+   * @param {string} partId
+   * @param {string} param
+   * @returns {*}
+   */
+  getPartParam(partId, param) {
+    const part = this.parts.find(p => p.id === partId);
+    return part?.params?.[param];
+  }
+
+  /**
    * @param {boolean} on
    */
   setPower(on) {
@@ -1160,6 +1188,21 @@ export class BoardImpl {
     if (sr) return { shiftReg: sr.shiftReg, latchReg: sr.latchReg, oeActive: sr.oeActive ?? true };
     // Registry devices
     return this._deviceStates.get(partId) ?? null;
+  }
+
+  /**
+   * Return I2C handler objects from all devices on the board that expose them.
+   * Each entry has { onAddress, onWriteByte, onReadByte, onStop? }.
+   * Used by the TWI bridge to route hardware-TWI transactions to device models
+   * without going through the bit-level I2C slave engine.
+   * @returns {Array<{onAddress: Function, onWriteByte: Function, onReadByte: Function, onStop?: Function}>}
+   */
+  getI2CHandlers() {
+    const result = [];
+    for (const [, state] of this._deviceStates) {
+      if (state.i2cHandlers) result.push(state.i2cHandlers);
+    }
+    return result;
   }
 
   /**

@@ -839,11 +839,9 @@ R.T. Russell. This project uses the name only to describe compatibility
   https://github.com/breakintoprogram/agon-bbc-basic (Z80/eZ80),
   https://github.com/Memotech-Bill/PicoBB (RP2040)
 - **Licence:** zlib
-- **What ships:** no interpreter binary ships in this repo today; the
-  `generateBASIC` emitter and `basicToPseudocode` reader in sb3-creator
-  operate on source text only. When a console-mode interpreter is bundled
-  for the run/oracle path, the binary will ship verbatim and this notice
-  will name the exact version.
+- **What ships:** `static/roms/bbcbasic.com` — the CP/M binary of BBC
+  BASIC (Z80) from rtrussell/BBCZ80, shipped **unmodified**. Loaded at
+  run time by BbcZ80Runner over a BDOS console shim on the Z80 core.
 
 ## 6502 BASIC (basic-m6502-bw) — MIT
 
@@ -858,10 +856,9 @@ labels.
 
 - **Upstream:** https://github.com/microsoft/BASIC-M6502
 - **Licence:** MIT
-- **What ships:** no interpreter binary ships in this repo today; the
-  `generateBASIC` emitter produces source text compatible with the 6502
-  BASIC dialect. When a binary is bundled, it will be the derived
-  basic-m6502-bw build and this notice will name the exact version.
+- **What ships:** `static/roms/basic.rom` — the 32 KB BASIC ROM from
+  basic-m6502-bw, shipped **unmodified**. Loaded at run time by
+  BasicMachineRunner on the emulated 6502 machine.
 
 ## Interpreters that do NOT ship
 

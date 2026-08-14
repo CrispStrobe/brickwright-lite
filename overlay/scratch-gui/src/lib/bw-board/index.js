@@ -40,9 +40,21 @@ export { registerNamedParts } from './devices/named-parts.js';
 export { registerTier1Parts } from './devices/tier1-parts.js';
 export { registerI2CParts } from './devices/i2c-parts.js';
 export { registerBoardKinds } from './devices/board-kinds.js';
+export { registerHD44780, createHD44780, hd44780Write8, hd44780Write4, hd44780ReadBF } from './devices/hd44780.js';
 export { registerAllDevices } from './register-all.js';
+export { registerAudioParts } from './devices/audio-parts.js';
+export { registerMPU6050 } from './devices/mpu6050.js';
+export { registerSSD1306, ssd1306Pixel } from './devices/ssd1306.js';
 export { getMaxCurrent, CURRENT_RATINGS, PORT_LIMITS, aggregateCurrent, checkCurrentBudget } from './current-ratings.js';
 export { R_INPUT_PULLUP } from './pin-model.js';
+export { ControllerPanel, WIDGET_TYPES } from './controller.js';
+export { bindPanelToBoard, createControllerDriver } from './controller-binding.js';
+export { ControllerExtension } from './controller-extension.js';
+export { createControllerStageView, WIDGET_RENDER_INFO } from './controller-stage-view.js';
+export { DataLogger } from './datalogger.js';
+export { DataLoggerExtension } from './datalogger-extension.js';
+export { STIMULUS_CATALOGUE, getStimulusParams, getStimulusKinds, getStimulusParts } from './stimulus-catalogue.js';
+export { StimulusExtension } from './stimulus-extension.js';
 // pin-functions.js is NODE-ONLY (it reads the bw-parts sibling checkout via
 // node:fs) and is deliberately NOT exported here: this file is the browser
 // entry, and a bundler handed a node:fs import fails the whole app build —

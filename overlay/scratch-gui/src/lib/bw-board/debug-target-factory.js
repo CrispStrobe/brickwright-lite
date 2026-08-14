@@ -63,8 +63,11 @@ export async function createDebugTarget(kind, opts) {
   if (kind === 'emulator') {
     return createEmulatorTarget(opts);
   }
-  if (kind === 'avr8js') {
-    return createAvr8jsTarget(opts);
+  if (kind === 'avr8js' || kind === 'atmega2560' || kind === 'attiny85') {
+    return createAvr8jsTarget(kind, opts);
+  }
+  if (kind === 'eater6502') {
+    return createEater6502Target(opts);
   }
   if (kind === 'rp2040js') {
     return createRp2040jsTarget(opts);
@@ -73,7 +76,7 @@ export async function createDebugTarget(kind, opts) {
     return createSerialTarget(opts);
   }
   throw new Error(
-    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', 'rp2040js', or 'serial'.`
+    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', 'atmega2560', 'attiny85', 'eater6502', 'rp2040js', or 'serial'.`
   );
 }
 
@@ -131,19 +134,26 @@ async function createEmulatorTarget(opts) {
 
 // ─── AVR target (ATmega328P via avr8js) ─────────────────────────────────
 
-async function createAvr8jsTarget(opts) {
+async function createAvr8jsTarget(kind, opts) {
   const {
     board, hex, symbols,
-    clockHz = 16_000_000, vcc = 5.0,
+    clockHz, vcc,
   } = opts;
 
   if (!board) throw new Error('avr8js target requires opts.board');
 
+  // Map factory kind to chip name: 'avr8js' → 'atmega328p' (default)
+  const chip = kind === 'atmega2560' ? 'atmega2560'
+    : kind === 'attiny85' ? 'attiny85' : 'atmega328p';
+
   // avr8js has no destructive init — order is flexible, but we follow the
   // same adapter-first, board-second, program-third pattern for consistency.
 
-  // 1. Adapter
-  const adapter = createAvr8jsAdapter({ clockHz, vcc });
+  // 1. Adapter (chip param selects pin map, ports, timers, etc.)
+  const adapterOpts = { chip };
+  if (clockHz != null) adapterOpts.clockHz = clockHz;
+  if (vcc != null) adapterOpts.vcc = vcc;
+  const adapter = createAvr8jsAdapter(adapterOpts);
 
   // 2. Attach board
   adapter.attachBoard(board);
@@ -175,6 +185,37 @@ async function createAvr8jsTarget(opts) {
     }
   } catch {
     // avr8js-debug.js does not exist yet — adapter-only mode
+  }
+
+  return { target, adapter };
+}
+
+// ─── 6502 breadboard computer (Eater-style) ─────────────────────────────
+
+async function createEater6502Target(opts) {
+  const { board, rom, symbols } = opts;
+
+  if (!board) throw new Error('eater6502 target requires opts.board');
+
+  const { createM6502Adapter } = await import('./m6502-adapter.js');
+  const adapterOpts = {};
+  if (rom) adapterOpts.rom = rom instanceof Uint8Array ? rom : new Uint8Array(rom);
+  const adapter = createM6502Adapter(adapterOpts);
+  if (rom) {
+    // Set reset vector if the ROM image includes it at its natural position
+    // ($FFFC/$FFFD relative to the ROM base). The adapter's loadRom + reset
+    // in attachBoard handles this.
+  }
+  adapter.attachBoard(board);
+
+  let target = null;
+  try {
+    const mod = await import('./m6502-debug.js');
+    if (mod.createM6502DebugTarget) {
+      target = mod.createM6502DebugTarget(adapter, { symbols });
+    }
+  } catch {
+    // m6502-debug.js not available — adapter-only mode
   }
 
   return { target, adapter };
@@ -250,6 +291,21 @@ export function getTargetKinds() {
       kind: 'avr8js',
       label: 'Simulated (ATmega328P)',
       description: 'AVR instruction-level emulation. Arduino Nano/Uno programs.',
+    },
+    {
+      kind: 'atmega2560',
+      label: 'Simulated (ATmega2560)',
+      description: 'AVR instruction-level emulation. Arduino Mega programs.',
+    },
+    {
+      kind: 'attiny85',
+      label: 'Simulated (ATtiny85)',
+      description: 'AVR instruction-level emulation. ATtiny85/Digispark programs.',
+    },
+    {
+      kind: 'eater6502',
+      label: 'Simulated (6502 breadboard)',
+      description: '6502 instruction-level emulation. VIA/ACIA-based breadboard computers.',
     },
     {
       kind: 'rp2040js',
