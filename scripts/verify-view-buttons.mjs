@@ -62,10 +62,9 @@ async function verify () {
         // The view buttons should be: Circuit, Debugger, Debugger-only, Scratch Stage
         // (4 buttons, no micro:bit on a mint project)
         const buttonTitles = [
-            'without debugger',   // Circuit Designer without debugger → dock='off'
-            'Switch to debugger', // Circuit + debugger → dock='top'
-            'Debugger only',      // dock='solo'
-            'Scratch Stage'       // dock='top', fullWidth=false
+            'Circuit Designer',   // Circuit Designer (only) → dock='off'
+            'Debugger',           // Full debugger → dock='solo'
+            'Scratch Stage'       // → scratch
         ];
 
         for (const titleSubstr of buttonTitles) {
@@ -103,15 +102,15 @@ async function verify () {
         }
 
         // ── 4. Verify the debugger button specifically does NOT show micro:bit pane ──
-        const debuggerBtn = page.locator('button[title*="Switch to debugger" i]').first();
+        const debuggerBtn = page.locator('button[title*="Debugger" i]').first();
         if (await debuggerBtn.count() > 0) {
             await debuggerBtn.click();
             await page.waitForTimeout(1000);
             const dockVal = await page.evaluate(() => localStorage.getItem('bw-debug-dock'));
-            if (dockVal === 'top') {
-                pass('Debugger button sets dock to "top" (not "microbit")');
+            if (dockVal === 'solo') {
+                pass('Debugger button sets dock to "solo" (full debugger)');
             } else {
-                fail(`Debugger button set dock to "${dockVal}" instead of "top"`);
+                fail(`Debugger button set dock to "${dockVal}" instead of "solo"`);
             }
             const simPaneAfterDebug = page.locator('[data-testid="bw-microbit-sim-pane"]');
             if (await simPaneAfterDebug.count() === 0) {

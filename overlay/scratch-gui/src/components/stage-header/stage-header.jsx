@@ -16,7 +16,6 @@ import largeStageIcon from './icon--large-stage.svg';
 import smallStageIcon from './icon--small-stage.svg';
 import unFullScreenIcon from './icon--unfullscreen.svg';
 import circuitIcon from './icon--circuit.svg';
-import debuggerIcon from './icon--debugger.svg';
 import debuggerSoloIcon from './icon--debugger-solo.svg';
 import microbitIcon from './icon--microbit.svg';
 import scratchStageIcon from './icon--scratch-stage.svg';
@@ -50,20 +49,15 @@ const messages = defineMessages({
         description: 'Button to enter/exit full screen mode',
         id: 'gui.stageHeader.fullscreenControl'
     },
-    circuitDebugger: {
-        defaultMessage: 'Switch to debugger',
-        description: 'Button to show the Circuit Designer with its debugger',
-        id: 'gui.stageHeader.circuitDebugger'
+    circuitOnly: {
+        defaultMessage: 'Circuit Designer (only)',
+        description: 'Button to show the Circuit Designer without panels — clean view for inspection',
+        id: 'gui.stageHeader.circuitOnly'
     },
-    circuitNoDebugger: {
-        defaultMessage: 'Circuit Designer without debugger',
-        description: 'Button to show the full-width Circuit Designer without debugger',
-        id: 'gui.stageHeader.circuitNoDebugger'
-    },
-    debuggerOnly: {
-        defaultMessage: 'Debugger only (full pane)',
-        description: 'Button to give the whole right pane to the debugger, next to the code editor',
-        id: 'gui.stageHeader.debuggerOnly'
+    debuggerFull: {
+        defaultMessage: 'Debugger',
+        description: 'Button to show the full debugger enlarged in the right pane',
+        id: 'gui.stageHeader.debuggerFull'
     },
     microbitSim: {
         defaultMessage: 'micro:bit Simulator',
@@ -100,7 +94,8 @@ const viewForDock = dock => {
     if (dock === 'off') return 'circuit';
     if (dock === 'solo') return 'solo';
     if (dock === 'microbit') return 'microbit';
-    return 'debugger';
+    // 'top' and any other value default to scratch stage
+    return 'scratch';
 };
 
 const readCircuitView = () => {
@@ -145,24 +140,16 @@ const StageViewButtons = ({intl}) => {
                         icon: circuitIcon,
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'circuit',
-                        title: intl.formatMessage(messages.circuitNoDebugger)
+                        title: intl.formatMessage(messages.circuitOnly)
                     },
                     {
-                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'top'}); setView('debugger'); },
-                        icon: debuggerIcon,
-                        iconClassName: styles.stageButtonIcon,
-                        isSelected: view === 'debugger',
-                        title: intl.formatMessage(messages.circuitDebugger)
-                    },
-                    {
-                        // The whole pane to the debugger, no designer around
-                        // it — run control and registers directly beside the
-                        // code editor.
+                        // Full debugger enlarged in the right pane — run
+                        // control, registers, trace, all at full size.
                         handleClick: () => { setCircuitView({fullWidth: true, dock: 'solo'}); setView('solo'); },
                         icon: debuggerSoloIcon,
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'solo',
-                        title: intl.formatMessage(messages.debuggerOnly)
+                        title: intl.formatMessage(messages.debuggerFull)
                     },
                     // micro:bit button only appears when DEVICE MICROBIT is declared
                     ...(deviceIsMicrobit ? [{
