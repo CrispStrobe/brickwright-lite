@@ -199,6 +199,62 @@ async function verify () {
             console.log('  note: chunk verification inconclusive (may use different loading mechanism)');
         }
 
+        // ── ASM tab tests ────────────────────────────────────────
+        // Click the ASM tab
+        const asmTab = page.locator('button:has-text("ASM")').first();
+        if (await asmTab.count() > 0) {
+            await asmTab.click();
+            await page.waitForTimeout(1000);
+
+            // Check editor is present and editable (source mode default)
+            const cmContent3 = page.locator('.cm-content').first();
+            if (await cmContent3.count() > 0) {
+                const editable = await cmContent3.getAttribute('contenteditable');
+                if (editable === 'true') {
+                    pass('ASM tab: editor is editable in source mode');
+                } else {
+                    fail('ASM tab: editor not editable in source mode');
+                }
+            }
+
+            // Check mode dropdown is present
+            const modeSelect = page.locator('select:has(option[value="listing"])').first();
+            if (await modeSelect.count() > 0) {
+                pass('ASM tab: mode dropdown present');
+            } else {
+                fail('ASM tab: mode dropdown not found');
+            }
+
+            // Check Assemble & Run button is present
+            const asmRunBtn = page.locator('[data-testid="bw-asm-assemble"]').first();
+            if (await asmRunBtn.count() > 0) {
+                pass('ASM tab: Assemble & Run button present');
+            } else {
+                fail('ASM tab: Assemble & Run button not found');
+            }
+
+            // Type some assembly
+            await cmContent3.click();
+            await page.keyboard.type('; test assembly\nmov A, #0x55', { delay: 20 });
+            await page.waitForTimeout(300);
+            const asmText = await cmContent3.innerText();
+            if (asmText.includes('mov') || asmText.includes('MOV')) {
+                pass('ASM tab: typing assembly works');
+            } else {
+                fail('ASM tab: typed text not found');
+            }
+
+            // Check the note about no ASM-to-blocks
+            const bodyText = await page.locator('body').innerText();
+            if (bodyText.includes('ASM-to-blocks') || bodyText.includes('ASM-zu')) {
+                pass('ASM tab: asymmetry note present');
+            } else {
+                fail('ASM tab: asymmetry note not found');
+            }
+        } else {
+            fail('ASM tab button not found');
+        }
+
     } catch (err) {
         fail(err.message);
     } finally {
