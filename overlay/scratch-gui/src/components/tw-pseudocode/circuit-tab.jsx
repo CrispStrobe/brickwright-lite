@@ -211,7 +211,7 @@ class CircuitTab extends React.Component {
         // Keep the stage header controls above the portal: the portal owns the
         // stage surface, but must never intercept the three view buttons.
         host.dataset.bwCircuitStageHost = 'true';
-        host.style.cssText = 'position:absolute;inset:0;z-index:0;background:#fff;display:none;overflow:hidden;';
+        host.style.cssText = 'position:absolute;inset:0;z-index:0;background:#fff;display:none;overflow:auto;';
         wrap.appendChild(host);
         this._stageHost = host;
         return host;
@@ -687,8 +687,12 @@ class CircuitTab extends React.Component {
         // stage was hidden correctly the whole time; the tab simply never grew
         // into the space it was given. `flex` is stated too, so this does not
         // depend on which of the two upstream happens to honour.
-        const box = {height: '100%', width: '100%', flex: '1 1 auto',
-            overflow: 'clip', padding: 8, boxSizing: 'border-box',
+        // minHeight:0 breaks the flex min-height:auto trap so the designer
+        // content can scroll when portalled into the right pane (where the
+        // host has overflow:auto). Without it, the box grows to its content
+        // height and the portal host clips silently.
+        const box = {height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0,
+            overflow: 'auto', padding: 8, boxSizing: 'border-box',
             display: 'flex', flexDirection: 'column'};
         if (reloading) {
             return (
