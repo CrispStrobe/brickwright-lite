@@ -62,8 +62,8 @@ class ChromeToggle extends React.Component {
                 aria-pressed={compact}
                 className={this.props.className}
                 title={compact
-                    ? 'Show the menu bar and tab labels'
-                    : 'Collapse the menu bar and tabs into one strip'}
+                    ? (/^de/i.test(navigator.language) ? 'Menüleiste und Tab-Beschriftungen anzeigen' : 'Show the menu bar and tab labels')
+                    : (/^de/i.test(navigator.language) ? 'Menüleiste und Tabs zu einem Streifen zusammenfalten' : 'Collapse the menu bar and tabs into one strip')}
                 onClick={this.toggle}
             >
                 {/* Three dots when there is something folded away, a chevron when

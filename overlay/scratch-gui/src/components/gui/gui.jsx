@@ -441,8 +441,12 @@ const GUIComponent = props => {
                                 type="button"
                                 data-right-pane-toggle="true"
                                 aria-pressed={stagePaneVisible}
-                                aria-label={stagePaneVisible ? 'Hide right panel' : 'Show right panel'}
-                                title={stagePaneVisible ? 'Hide right panel' : 'Show right panel'}
+                                aria-label={stagePaneVisible
+                                    ? (/^de/i.test(navigator.language) ? 'Rechtes Panel ausblenden' : 'Hide right panel')
+                                    : (/^de/i.test(navigator.language) ? 'Rechtes Panel einblenden' : 'Show right panel')}
+                                title={stagePaneVisible
+                                    ? (/^de/i.test(navigator.language) ? 'Rechtes Panel ausblenden' : 'Hide right panel')
+                                    : (/^de/i.test(navigator.language) ? 'Rechtes Panel einblenden' : 'Show right panel')}
                                 onClick={() => {
                                     const next = !stagePaneVisible;
                                     setStagePaneVisible(next);
@@ -488,7 +492,7 @@ const GUIComponent = props => {
                             />
                             {dockMode === 'microbit' ? (
                                 <React.Suspense fallback={
-                                    <div style={{padding: 24, color: '#64748b'}}>Loading micro:bit simulator…</div>
+                                    <div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'micro:bit-Simulator wird geladen…' : 'Loading micro:bit simulator…'}</div>
                                 }>
                                     <MicrobitSimPane />
                                 </React.Suspense>

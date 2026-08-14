@@ -48,6 +48,7 @@ const L10N = {
         customArt: 'Custom sprite art', customArtTitle: 'Upload SVGs and bake them in as sprite costumes',
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
+        compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
         run: 'Run', apply: '✓ Apply art & convert to blocks', done: 'Done',
         applyTitle: n => `Assign a sprite to ${n} more file(s) first`,
         applyReady: 'Bake these costumes in and convert your code to blocks',
@@ -57,6 +58,9 @@ const L10N = {
         notInCode: 'not in code', replaceCostume: 'replace costume', addFrame: 'add as frame',
         driverShim: 'driver: shim', driverRemote: 'driver: remote (bridge)', driverOnbrick: 'driver: on-brick',
         driverSim: 'driver: simulated board',
+        driverTitle: 'Hardware-extension driver: shim (neutral) · remote (bridge over WebSocket) · on-brick (device transpiler). The program is driver-agnostic; this only swaps the driver.',
+        asyncLabel: 'async', asyncTitle: 'await hardware calls (BLE is async) and make functions async',
+        eventsLabel: 'events', eventsTitle: 'turn extension event hats (when button pressed …) into driver callbacks',
         stConverting: to => `Converting to ${to}…`, stCantShow: (to, e) => `Can't show as ${to}: ${e}`,
         stRegen: 'Regenerating…', stCompiling: 'Compiling…', stReading: 'Reading current project…',
         stLoadingPy: 'Loading Python (Skulpt)…', stError: e => `Error: ${e}`,
@@ -66,8 +70,32 @@ const L10N = {
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
         basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
         asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly (8051/6502/AVR) and assemble+run. Listing mode: generated disassembly. No ASM-to-blocks path — that asymmetry is deliberate.',
-        asmInfoTitle: 'ASM info', basicInfoTitle: 'BASIC info',
-        stCOneWay: 'That language cannot be compiled back to blocks.'
+        stCOneWay: 'That language cannot be compiled back to blocks.',
+        // BASIC / ASM mode bar
+        profile: 'Profile:', lineNumbers: 'Line numbers', alwaysOn6502: '(always on for 6502)',
+        asmModeLabel: 'Mode:', asmSource: 'Source (editable)', asmListing: 'Listing (from compiler)',
+        assembleAndRun: '🔩 Assemble & Run',
+        basicInfoTitle: 'BASIC info', asmInfoTitle: 'ASM info',
+        // micro:bit bar
+        micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
+        runOnSimulator: '▶ Run on Simulator',
+        // device selector / maximize
+        devicePlaceholder: 'Device…', deviceTitle: 'Target device — sets pin names, compile target and emulator',
+        maximizeTitle: 'Maximize editor', restoreTitle: 'Restore panels',
+        asmWriteFirst: 'Write assembly source first.',
+        asmEndpointStub: 'Assemble & Run: the raw-assemble endpoint is not yet available. This button will send your ASM source to the hosted assembler and run the result.',
+        // reference section headers
+        h: {
+            Structure: 'Structure', EventsHats: 'Events (hats)', Control: 'Control',
+            ClonesBroadcasts: 'Clones & broadcasts', MotionLooks: 'Motion & Looks',
+            DataLists: 'Data & lists', Expressions: 'Expressions', Conditions: 'Conditions',
+            CustomBlocks: 'Custom blocks', PlaneteMaths: 'Planète Maths (extension)',
+            ArraysVectors: 'Arrays & Vectors (extension)', SensingMore: 'Sensing & more',
+            Statements: 'Statements', Declare: 'Declare (pseudocode tab)', Pins: 'Pins',
+            Notes: 'Notes', Profiles: 'Profiles', LineNumbers: 'Line numbers', IO: 'I/O',
+            Overview: 'Overview', Verbs: 'Verbs',
+            Registers: 'Registers', Workflow: 'Workflow', Addressing: 'Addressing'
+        }
     },
     de: {
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
@@ -75,16 +103,20 @@ const L10N = {
         reference: 'Referenz', referenceTitle: l => `Referenz für ${l}`,
         customArt: 'Eigene Sprite-Grafik', customArtTitle: 'SVGs hochladen und als Sprite-Kostüme einbacken',
         toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
-        fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle drei Sprachen einlesen',
+        fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
+        compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
         run: 'Ausführen', apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
         applyTitle: n => `Weise erst ${n} weiteren Datei(en) ein Sprite zu`,
         applyReady: 'Diese Kostüme einbacken und den Code zu Blöcken umwandeln',
-        doneTitle: 'Kostüme behalten; sie werden beim nächsten „⇦ Zu Blöcken“ angewendet',
+        doneTitle: 'Kostüme behalten; sie werden beim nächsten „⇦ Zu Blöcken” angewendet',
         needSprite: n => `${n} Datei(en) brauchen noch ein Sprite.`,
         svgFile: 'SVG-Datei', sprite: 'Sprite', mode: 'Modus', chooseSprite: '— Sprite wählen —',
         notInCode: 'nicht im Code', replaceCostume: 'Kostüm ersetzen', addFrame: 'als Bild hinzufügen',
         driverShim: 'Treiber: Shim', driverRemote: 'Treiber: Remote (Bridge)', driverOnbrick: 'Treiber: auf dem Stein',
         driverSim: 'Treiber: simuliertes Board',
+        driverTitle: 'Hardware-Extension-Treiber: Shim (neutral) · Remote (Bridge über WebSocket) · auf dem Stein (Geräte-Transpiler). Das Programm ist treiberunabhängig; dies wechselt nur den Treiber.',
+        asyncLabel: 'async', asyncTitle: 'Hardware-Aufrufe awaiten (BLE ist async) und Funktionen async machen',
+        eventsLabel: 'events', eventsTitle: 'Extension-Event-Hats (wenn Knopf gedrückt …) in Treiber-Callbacks umwandeln',
         stConverting: to => `Wird zu ${to} umgewandelt…`, stCantShow: (to, e) => `Kann nicht als ${to} angezeigt werden: ${e}`,
         stRegen: 'Wird neu erzeugt…', stCompiling: 'Wird kompiliert…', stReading: 'Aktuelles Projekt wird gelesen…',
         stLoadingPy: 'Python wird geladen (Skulpt)…', stError: e => `Fehler: ${e}`,
@@ -94,8 +126,32 @@ const L10N = {
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
         basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
         asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler (8051/6502/AVR) schreiben und assemblieren+ausführen. Listing-Modus: generierte Disassemblierung. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
-        asmInfoTitle: 'ASM-Info', basicInfoTitle: 'BASIC-Info',
-        stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.'
+        stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.',
+        // BASIC / ASM mode bar
+        profile: 'Profil:', lineNumbers: 'Zeilennummern', alwaysOn6502: '(immer an bei 6502)',
+        asmModeLabel: 'Modus:', asmSource: 'Source (editierbar)', asmListing: 'Listing (vom Compiler)',
+        assembleAndRun: '🔩 Assemblieren & Ausführen',
+        basicInfoTitle: 'BASIC-Info', asmInfoTitle: 'ASM-Info',
+        // micro:bit bar
+        micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
+        runOnSimulator: '▶ Im Simulator ausführen',
+        // device selector / maximize
+        devicePlaceholder: 'Gerät…', deviceTitle: 'Zielgerät — bestimmt Pinbenennung, Compile-Ziel und Emulator',
+        maximizeTitle: 'Editor maximieren', restoreTitle: 'Panels wiederherstellen',
+        asmWriteFirst: 'Schreibe zuerst Assembler-Quellcode.',
+        asmEndpointStub: 'Assemblieren & Ausführen: der Assembler-Endpunkt ist noch nicht verfügbar. Dieser Button wird deinen ASM-Quellcode an den gehosteten Assembler senden und das Ergebnis ausführen.',
+        // reference section headers
+        h: {
+            Structure: 'Struktur', EventsHats: 'Events (Hats)', Control: 'Steuerung',
+            ClonesBroadcasts: 'Klone & Nachrichten', MotionLooks: 'Bewegung & Aussehen',
+            DataLists: 'Daten & Listen', Expressions: 'Ausdrücke', Conditions: 'Bedingungen',
+            CustomBlocks: 'Eigene Blöcke', PlaneteMaths: 'Planète Maths (Extension)',
+            ArraysVectors: 'Arrays & Vektoren (Extension)', SensingMore: 'Fühlen & mehr',
+            Statements: 'Anweisungen', Declare: 'Deklarieren (Pseudocode-Tab)', Pins: 'Pins',
+            Notes: 'Hinweise', Profiles: 'Profile', LineNumbers: 'Zeilennummern', IO: 'Ein/Ausgabe',
+            Overview: 'Übersicht', Verbs: 'Verben',
+            Registers: 'Register', Workflow: 'Arbeitsablauf', Addressing: 'Adressierung'
+        }
     }
 };
 const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
@@ -138,32 +194,33 @@ const GROUPS = [
     ]}
 ];
 
+// Section header keys map to L10N.h — the code snippet items stay English (they ARE code).
 const SYNTAX = [
     ['Structure', ['SPRITE Name:', 'STAGE:', 'GLOBAL score / LOCAL hp', 'LIST inventory',
         'SHAPE rect 16 90 / circle 18', 'SHAPE polygon 20 0 40 40 0 40 #f53',
         'COSTUME walk2 / BACKDROP night', 'SOUND jump 660', '# comment']],
-    ['Events (hats)', ['WHEN flag clicked:', 'WHEN space key pressed:', 'WHEN sprite clicked:',
+    ['EventsHats', ['WHEN flag clicked:', 'WHEN space key pressed:', 'WHEN sprite clicked:',
         'WHEN I receive "go":', 'WHEN I start as a clone:']],
     ['Control', ['FOREVER:', 'REPEAT 10:', 'REPEAT UNTIL x > 5:', 'IF cond THEN: / ELSE:',
         'wait until cond', 'stop all / stop this script']],
-    ['Clones & broadcasts', ['create clone of myself', 'create clone of Bullet', 'delete this clone',
+    ['ClonesBroadcasts', ['create clone of myself', 'create clone of Bullet', 'delete this clone',
         'broadcast "go"', 'broadcast "go" and wait']],
-    ['Motion & Looks', ['move 10 steps', 'go to x: 0 y: 0', 'glide 1 secs to x: 50 y: 0',
+    ['MotionLooks', ['move 10 steps', 'go to x: 0 y: 0', 'glide 1 secs to x: 50 y: 0',
         'point towards mouse-pointer', 'set size to 80 / set ghost effect to 50']],
-    ['Data & lists', ['set score to 0', 'change score by 1', 'add 5 to nums',
+    ['DataLists', ['set score to 0', 'change score by 1', 'add 5 to nums',
         'delete all of nums', 'replace item 1 of nums with 9']],
     ['Expressions', ['(a + b) * c, 7 mod 3', 'pick random 1 to 10', 'round x, sqrt of x',
         '"Score: " join score', 'x position, size, timer, answer']],
     ['Conditions', ['a > b, a <= b, a = b', 'cond and cond / or / not cond',
         'touching Sprite / touching color #ff0000', 'key space pressed? / mouse down?', 'nums contains 3']],
-    ['Custom blocks', ['DEFINE draw box (col) (row):', 'DEFINE FAST render: (warp)',
+    ['CustomBlocks', ['DEFINE draw box (col) (row):', 'DEFINE FAST render: (warp)',
         '<flag> = boolean parameter', 'call: draw box 3 4', 'params in body: go to x: col y: row']],
-    ['Planète Maths (extension)', ['factorial of 5', 'sum of digits of 123', 'min of a and b / max of a and b',
+    ['PlaneteMaths', ['factorial of 5', 'sum of digits of 123', 'min of a and b / max of a and b',
         '2 to the power of 8', 'pi, euler', 'x is multiple of 3']],
-    ['Arrays & Vectors (extension)', ['new array "v" = [1,2,3]  (0-based)', 'new array "v" = range 1 to 5',
+    ['ArraysVectors', ['new array "v" = [1,2,3]  (0-based)', 'new array "v" = range 1 to 5',
         'push x to array "v" / set item i of array "v" to x', 'item i of array "v" / sum of array "v"',
         'largest / smallest / length / mean of array "v"', 'array "v" contains x / array "v" as text']],
-    ['Sensing & more', ['x position of Player', 'current year, day of week',
+    ['SensingMore', ['x position of Player', 'current year, day of week',
         'distance to mouse-pointer', 'set drag mode draggable', 'play note 60 for 0.5 beats, set tempo to 120']]
 ];
 
@@ -178,6 +235,7 @@ const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic']);
 
 // What the Python / JavaScript front-ends actually support (shown as the reference
 // when those tabs are active, so you know what round-trips to blocks).
+// Section header keys map to L10N.h — code snippets stay English (they ARE code).
 const SUPPORTED = {
     python: [
         ['Structure', ['def when_flag_clicked():', 'def do_myblock(a, b):', 'x = 0 / xs = []  (module state)', 'when_flag_clicked()  (run)']],
@@ -191,9 +249,8 @@ const SUPPORTED = {
         ['Statements', ['x = expr;  /  x += expr;', 'console.log(x)  →  say', 'prompt(p)  →  ask', 'xs.push/splice, xs.length', 'xs[i-1] = v']],
         ['Expressions', ['+ - * / %,  === → =', '&& / || / !', '_eq(a, b), _rand(a, b)', 'String()/Number()', 'Math.floor(x), arr[i-1]']]
     ],
-    // The STC12 / 8051 target. Written in the pseudocode tab; the C tab shows the result.
     c: [
-        ['Declare (pseudocode tab)', ['DEVICE STC12C5A60S2', 'CLOCK 11059200  /  CLOCK 12 MHz',
+        ['Declare', ['DEVICE STC12C5A60S2', 'CLOCK 11059200  /  CLOCK 12 MHz',
             'PIN led = P1.0 OUTPUT ACTIVE LOW', 'PIN pot = P1.3 ANALOG   (ADC n is on P1.n)', 'PIN btn = P3.2 INPUT']],
         ['Pins', ['turn on led / turn off led', 'set led high / set led low', 'toggle led', 'read pot   (reporter or condition)']],
         ['Control', ['WHEN flag clicked:  → one script, or', 'several → cooperative tasks',
@@ -204,16 +261,26 @@ const SUPPORTED = {
     ],
     basic: [
         ['Profiles', ['BBC BASIC (default): REPEAT/UNTIL, PROC, TIME',
-            '6502 BASIC: GOTO, PEEK/POKE, two-char names',
-            'Use the profile toggle above the editor']],
-        ['Line numbers', ['On (default): 10 REM … / 20 LET … / 30 GOTO',
+            '6502 BASIC: GOTO, PEEK/POKE, two-char names']],
+        ['LineNumbers', ['On (default): 10 REM … / 20 LET … / 30 GOTO',
             'Off (BBC structured): no numbers, IF/ENDIF, WHILE/ENDWHILE',
             '6502 BASIC always uses line numbers']],
         ['Control', ['FOR/NEXT, REPEAT/UNTIL (BBC), WHILE/WEND (6502)',
             'IF/THEN/ELSE/ENDIF (structured) or IF … GOTO (numbered)',
             'PROC/ENDPROC (BBC custom blocks)']],
-        ['I/O', ['PRINT, INPUT (ask)', 'REM (comments)',
+        ['IO', ['PRINT, INPUT (ask)', 'REM (comments)',
             'Refusals: multi-WHEN, pen, clones → shown as reasons']]
+    ],
+    asm: [
+        ['Workflow', ['Source mode: write, assemble, run',
+            'Listing mode: view compiled disassembly',
+            'Per-device: 8051 (sdas8051), 6502 (ca65), AVR (avr-as)']],
+        ['Registers', ['A, B, DPTR, SP, PSW (8051)',
+            'R0–R7 (register bank), SFRs',
+            'Carry (C), Overflow (OV), Parity (P)']],
+        ['Addressing', ['MOV A, #imm / MOV A, addr',
+            'MOV @R0, A (indirect)', 'MOVC A, @A+DPTR (code memory)',
+            'SJMP / LJMP / AJMP, LCALL / ACALL']]
     ],
     micropython: [
         ['Overview', ['MicroPython for micro:bit v2',
@@ -228,19 +295,6 @@ const SUPPORTED = {
         ['Control', ['Multi-WHEN → generator tasks + round-robin driver',
             'yield ms at every wait/loop back-edge',
             'button_a / button_b (key a/b → micro:bit buttons)']]
-    ],
-    asm: [
-        ['Workflow', ['Source mode: write, then Assemble',
-            'Listing mode: compiled view of the C tab',
-            'One-way by design — no path back to blocks']],
-        ['Syntax (sdas8051)', ['label:  starts a line', '; comment to end of line',
-            '#0x2A immediate, 0x2A direct', '.org 0x0000  /  .db 1, 2, 3',
-            '.area CSEG (CODE)']],
-        ['8051 core', ['mov A, #n / mov dir, A', 'setb P1.0 / clr P1.0 / cpl P1.0',
-            'jb / jnb bit, label', 'djnz Rn, label  (loop)',
-            'lcall sub … ret / sjmp label']],
-        ['Registers', ['A, B, PSW (flags), SP, DPTR', 'R0–R7 (4 banks, PSW.3/4)',
-            'SFRs by name: P0–P3, TCON, TMOD…', 'Bit space: P1.0, ACC.7, 20h–2Fh']]
     ]
 };
 
@@ -547,12 +601,11 @@ class PseudocodeImporter extends React.Component {
     async assembleAndRun () {
         const source = this.state.buffers.asm;
         if (!source || !source.trim()) {
-            this.setState({status: 'Write assembly source first.'});
+            this.setState({status: this.L.asmWriteFirst});
             return;
         }
         // Stub: endpoint not yet available
-        this.setState({status: 'Assemble & Run: the raw-assemble endpoint is not yet available. ' +
-            'This button will send your ASM source to the hosted assembler and run the result.'});
+        this.setState({status: this.L.asmEndpointStub});
     }
 
     // Keil C51 gives itself away: keywords SDCC spells differently, and its register headers.
@@ -1163,8 +1216,8 @@ class PseudocodeImporter extends React.Component {
                                 i
                             </button>
                             <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
-                                style={{...csel, alignSelf: 'center'}} title="Target device">
-                                <option value="" disabled>Device…</option>
+                                style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}>
+                                <option value="" disabled>{this.L.devicePlaceholder}</option>
                                 {DEVICE_GROUPS.map(g => (
                                     <optgroup key={g.label} label={g.label}>
                                         {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
@@ -1211,20 +1264,20 @@ class PseudocodeImporter extends React.Component {
                                 title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
                                 style={{...csel, cursor: 'pointer', fontWeight: 600, alignSelf: 'center',
                                     background: 'linear-gradient(135deg,#4c97ff,#4280d7)', color: '#fff', border: 'none'}}>
-                                ⇦ Blocks
+                                {this.L.compactToBlocks}
                             </button>
                             <button onClick={this.fromBlocks} disabled={this.state.busy}
                                 title={this.L.fromBlocksTitle}
                                 style={{...csel, cursor: 'pointer', fontWeight: 600, alignSelf: 'center',
                                     background: 'linear-gradient(135deg,#a55b80,#8e4a6c)', color: '#fff', border: 'none'}}>
-                                Blocks ⇨
+                                {this.L.compactFromBlocks}
                             </button>
                         </React.Fragment>
                     )}
                     <button onClick={() => this.toggleMaximize()}
                         style={{...csel, cursor: 'pointer', background: max ? '#4c97ff' : '#f1f5f9',
                             color: max ? '#fff' : 'inherit', minWidth: 24, border: '1px solid #cbd5e1', alignSelf: 'center'}}
-                        title={max ? 'Restore panels' : 'Maximize editor'}
+                        title={max ? this.L.restoreTitle : this.L.maximizeTitle}
                         data-testid="bw-editor-maximize">
                         {max ? '⊡' : '⊞'}
                     </button>
@@ -1261,10 +1314,9 @@ class PseudocodeImporter extends React.Component {
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))',
                         gap: 12, marginBottom: 4, padding: 10, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0',
                         fontSize: 12, flexShrink: 0}}>
-                        {/* || [] — a tab without a SUPPORTED entry must never crash the app */}
-                        {(this.state.lang === 'pseudocode' ? SYNTAX : (SUPPORTED[this.state.lang] || [])).map(([h, items]) => (
+                        {(this.state.lang === 'pseudocode' ? SYNTAX : SUPPORTED[this.state.lang] || []).map(([h, items]) => (
                             <div key={h}>
-                                <div style={{fontWeight: 700, marginBottom: 4}}>{h}</div>
+                                <div style={{fontWeight: 700, marginBottom: 4}}>{this.L.h[h] || h}</div>
                                 <ul style={{margin: 0, paddingLeft: 16}}>
                                     {items.map((it, i) => (
                                         <li key={i}><code style={{fontSize: 11}}>{it}</code></li>
@@ -1277,7 +1329,7 @@ class PseudocodeImporter extends React.Component {
                 {this.state.lang === 'basic' && !max && (
                     <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
-                            Profile:
+                            {this.L.profile}
                             <select value={this.state.basicProfile} onChange={e => this.setState({basicProfile: e.target.value, buffers: {...this.state.buffers, basic: ''}})}
                                 style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
                                 <option value="bbc">{'BBC BASIC'}</option>
@@ -1288,14 +1340,14 @@ class PseudocodeImporter extends React.Component {
                             <input type="checkbox" checked={this.state.basicLineNumbers}
                                 disabled={this.state.basicProfile === 'ms'}
                                 onChange={e => this.setState({basicLineNumbers: e.target.checked, buffers: {...this.state.buffers, basic: ''}})} />
-                            {'Line numbers '}{this.state.basicProfile === 'ms' ? '(always on for 6502)' : ''}
+                            {this.L.lineNumbers}{' '}{this.state.basicProfile === 'ms' ? this.L.alwaysOn6502 : ''}
                         </label>
                     </div>
                 )}
                 {this.state.lang === 'asm' && !max && (
                     <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
-                            Mode:
+                            {this.L.asmModeLabel}
                             <select value={this.state.asmMode}
                                 onChange={e => {
                                     const mode = e.target.value;
@@ -1303,8 +1355,8 @@ class PseudocodeImporter extends React.Component {
                                     if (mode === 'listing') this.fetchAsmListing();
                                 }}
                                 style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
-                                <option value="source">Source (editable)</option>
-                                <option value="listing">Listing (from compiler)</option>
+                                <option value="source">{this.L.asmSource}</option>
+                                <option value="listing">{this.L.asmListing}</option>
                             </select>
                         </label>
                         {this.state.asmMode === 'source' && (
@@ -1315,7 +1367,7 @@ class PseudocodeImporter extends React.Component {
                                     cursor: 'pointer', fontWeight: 600, fontSize: 12,
                                     background: 'linear-gradient(135deg,#37b24d,#2f9e44)', color: '#fff'}}
                                 data-testid="bw-asm-assemble">
-                                {'🔩 Assemble & Run'}
+                                {this.L.assembleAndRun}
                             </button>
                         )}
                     </div>
@@ -1323,7 +1375,7 @@ class PseudocodeImporter extends React.Component {
                 {this.state.lang === 'micropython' && !max && (
                     <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}
                         data-testid="bw-micropython-bar">
-                        <span style={{color: '#166534'}}>Read-only — generated from your blocks for the micro:bit.</span>
+                        <span style={{color: '#166534'}}>{this.L.micropythonReadonly}</span>
                         <span style={{flex: 1}} />
                         <button type="button"
                             onClick={() => this.flashMicrobitSim()}
@@ -1332,7 +1384,7 @@ class PseudocodeImporter extends React.Component {
                                 cursor: 'pointer', fontWeight: 600, fontSize: 12,
                                 background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff'}}
                             data-testid="bw-microbit-flash">
-                            {'▶ Run on Simulator'}
+                            {this.L.runOnSimulator}
                         </button>
                     </div>
                 )}
@@ -1482,7 +1534,7 @@ class PseudocodeImporter extends React.Component {
                     </button>
                     {this.state.lang !== 'pseudocode' && this.state.lang !== 'c' && /_[a-z]+\.|Driver/.test(this.activeCode()) ? (
                         <span style={{fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 8}}>
-                            <label title="Hardware-extension driver: shim (neutral) · remote (bridge over WebSocket) · on-brick (device transpiler). The program is driver-agnostic; this only swaps the driver.">
+                            <label title={this.L.driverTitle}>
                                 🔌{' '}
                                 <select value={this.state.driverMode} onChange={e => this.setGenOpt({driverMode: e.target.value})} disabled={this.state.busy}
                                     style={{padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', font: 'inherit'}}>
@@ -1492,13 +1544,13 @@ class PseudocodeImporter extends React.Component {
                                     <option value="simulator">{this.L.driverSim}</option>
                                 </select>
                             </label>
-                            <label title="await hardware calls (BLE is async) and make functions async">
+                            <label title={this.L.asyncTitle}>
                                 <input type="checkbox" checked={this.state.asyncMode} disabled={this.state.busy}
-                                    onChange={e => this.setGenOpt({asyncMode: e.target.checked})} /> async
+                                    onChange={e => this.setGenOpt({asyncMode: e.target.checked})} /> {this.L.asyncLabel}
                             </label>
-                            <label title="turn extension event hats (when button pressed …) into driver callbacks">
+                            <label title={this.L.eventsTitle}>
                                 <input type="checkbox" checked={this.state.eventsMode} disabled={this.state.busy}
-                                    onChange={e => this.setGenOpt({eventsMode: e.target.checked})} /> events
+                                    onChange={e => this.setGenOpt({eventsMode: e.target.checked})} /> {this.L.eventsLabel}
                             </label>
                         </span>
                     ) : null}
@@ -1525,18 +1577,18 @@ class PseudocodeImporter extends React.Component {
                     ) : null}
                     {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
                 </div>
-                {this.state.lang === 'asm' && this.state.showAsmInfo && (
-                    <div style={{padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
-                        borderRadius: 8, fontSize: 13, color: '#334155', marginTop: 4, flexShrink: 0}}
-                        data-testid="bw-asm-info-panel">
-                        {this.L.asmNote}
-                    </div>
-                )}
                 {this.state.lang === 'basic' && this.state.showBasicInfo && (
                     <div style={{padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: 8, fontSize: 13, color: '#334155', marginTop: 4, flexShrink: 0}}
                         data-testid="bw-basic-info-panel">
                         {this.L.basicNote}
+                    </div>
+                )}
+                {this.state.lang === 'asm' && this.state.showAsmInfo && (
+                    <div style={{padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                        borderRadius: 8, fontSize: 13, color: '#334155', marginTop: 4, flexShrink: 0}}
+                        data-testid="bw-asm-info-panel">
+                        {this.L.asmNote}
                     </div>
                 )}
                 {this.state.output != null ? (

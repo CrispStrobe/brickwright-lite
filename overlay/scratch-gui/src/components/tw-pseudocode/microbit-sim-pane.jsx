@@ -1,5 +1,21 @@
 import React from 'react';
 
+const L10N = {
+    en: {
+        simTitle: 'micro:bit simulator',
+        stop: '⏹ Stop', reset: '🔄 Reset', clear: '🗑 Clear',
+        running: 'Running', ready: 'Ready', loading: 'Loading…',
+        serialPlaceholder: '(serial output appears here)'
+    },
+    de: {
+        simTitle: 'micro:bit-Simulator',
+        stop: '⏹ Stopp', reset: '🔄 Zurücksetzen', clear: '🗑 Leeren',
+        running: 'Läuft', ready: 'Bereit', loading: 'Wird geladen…',
+        serialPlaceholder: '(serielle Ausgabe erscheint hier)'
+    }
+};
+const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' : 'en'; } catch { return 'en'; } };
+
 /**
  * MicrobitSimPane — hosts the self-hosted micro:bit MicroPython simulator
  * in an iframe and wires the postMessage protocol.
@@ -106,6 +122,7 @@ class MicrobitSimPane extends React.Component {
     }
 
     render () {
+        const t = L10N[pickLocale()];
         const btn = {
             padding: '4px 12px', borderRadius: 6, border: 'none',
             cursor: 'pointer', fontWeight: 600, fontSize: 12, color: '#fff'
@@ -118,7 +135,7 @@ class MicrobitSimPane extends React.Component {
                     <iframe
                         ref={this._iframeRef}
                         src={SIM_URL}
-                        title="micro:bit simulator"
+                        title={t.simTitle}
                         data-testid="bw-microbit-iframe"
                         style={{
                             width: '100%', height: '100%', border: 'none',
@@ -133,21 +150,21 @@ class MicrobitSimPane extends React.Component {
                         disabled={!this.state.running}
                         style={{...btn, background: this.state.running ? '#dc2626' : '#94a3b8'}}
                         data-testid="bw-microbit-stop">
-                        {'⏹ Stop'}
+                        {t.stop}
                     </button>
                     <button type="button" onClick={() => this._reset()}
                         style={{...btn, background: '#2563eb'}}
                         data-testid="bw-microbit-reset">
-                        {'🔄 Reset'}
+                        {t.reset}
                     </button>
                     <button type="button" onClick={() => this.setState({serial: ''})}
                         style={{...btn, background: '#6b7280'}}
                         data-testid="bw-microbit-clear-serial">
-                        {'🗑 Clear'}
+                        {t.clear}
                     </button>
                     <span style={{flex: 1}} />
                     <span style={{fontSize: 11, color: '#64748b'}}>
-                        {this.state.simReady ? (this.state.running ? 'Running' : 'Ready') : 'Loading…'}
+                        {this.state.simReady ? (this.state.running ? t.running : t.ready) : t.loading}
                     </span>
                 </div>
                 {/* Serial terminal */}
@@ -159,7 +176,7 @@ class MicrobitSimPane extends React.Component {
                     whiteSpace: 'pre-wrap', wordBreak: 'break-all'
                 }}
                     data-testid="bw-microbit-serial">
-                    {this.state.serial || '(serial output appears here)'}
+                    {this.state.serial || t.serialPlaceholder}
                 </div>
             </div>
         );
