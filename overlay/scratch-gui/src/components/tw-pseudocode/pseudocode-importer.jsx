@@ -65,7 +65,7 @@ const L10N = {
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
         basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
-        asmNote: 'Read-only disassembly from the hosted compiler. There is no ASM-to-blocks path — this view is for inspection. The line map stored here will drive the future current-PC highlight.',
+        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly (8051/6502/AVR) and assemble+run. Listing mode: generated disassembly. No ASM-to-blocks path — that asymmetry is deliberate.',
         stCOneWay: 'That language cannot be compiled back to blocks.'
     },
     de: {
@@ -92,7 +92,7 @@ const L10N = {
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
         basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
-        asmNote: 'Nur-Lese-Disassemblierung vom gehosteten Compiler. Kein ASM-zu-Blocke-Pfad — diese Ansicht dient der Inspektion. Die gespeicherte Zeilentabelle wird den zukünftigen PC-Cursor antreiben.',
+        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: geratespezifischen Assembler (8051/6502/AVR) schreiben und assemblieren+ausfuhren. Listing-Modus: generierte Disassemblierung. Kein ASM-zu-Blocke-Pfad — diese Asymmetrie ist beabsichtigt.',
         stCOneWay: 'Diese Sprache lässt sich nicht zu Blocken zurückfuhren.'
     }
 };
@@ -295,9 +295,13 @@ class PseudocodeImporter extends React.Component {
             driverMode: 'shim', asyncMode: false, eventsMode: false,
             // Editor maximize: collapses reference/art panels and hides the right stage pane
             maximized: false,
+            // ASM tab mode: 'source' = editable author buffer, 'listing' = read-only disassembly
+            asmMode: 'source',
             // ASM listing line map from the compile service (addr/file/line triples).
             // Future current-PC highlight will drive setHighlightedLine via this.
-            asmLineMap: null};
+            asmLineMap: null,
+            // ASM listing buffer (separate from the editable asm buffer)
+            asmListing: ''};
         this._cmEditor = null;
         // Cache compiled ASM by source hash so tab switching doesn't recompile.
         this._asmCache = {hash: null, asm: '', lineMap: null};
@@ -343,8 +347,14 @@ class PseudocodeImporter extends React.Component {
     // Current-locale string table for this tab's own UI (see L10N above).
     get L () { return L10N[pickLocale(this.props.locale)]; }
 
-    activeCode () { return this.state.buffers[this.state.lang]; }
-    setActiveCode (text) { this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', [s.lang]: text}})); }
+    activeCode () {
+        if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return this.state.asmListing;
+        return this.state.buffers[this.state.lang];
+    }
+    setActiveCode (text) {
+        if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
+        this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', [s.lang]: text}}));
+    }
 
     // Lazily import the compiler module.
     async lib () { return (await import(/* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js')); }
@@ -393,8 +403,8 @@ class PseudocodeImporter extends React.Component {
     switchTab (to) {
         const from = this.state.lang;
         if (to === from || this.state.busy) return;
-        // ASM tab: fetch from compile service with disassemble=true
-        if (to === 'asm') { this.switchToAsm(); return; }
+        // ASM tab: just switch — author mode by default, listing on demand
+        if (to === 'asm') { this.setState({lang: 'asm', output: null, status: ''}); return; }
         const existing = this.state.buffers[to];
         const src = this.state.buffers[from];
         if ((existing && existing.trim()) || !src || !src.trim()) { this.setState({lang: to, output: null, status: ''}); return; }
@@ -415,9 +425,8 @@ class PseudocodeImporter extends React.Component {
         return h.toString(16);
     }
 
-    /** Switch to the ASM tab: compile via the hosted service with disassemble=true.
-     *  Caches by source hash so tab switching doesn't recompile. */
-    async switchToAsm () {
+    /** Fetch the ASM listing (compile with disassemble=true) for the listing mode. */
+    async fetchAsmListing () {
         // Need C source to compile. Derive it from whatever is active.
         let cSrc = this.state.buffers.c;
         if (!cSrc || !cSrc.trim()) {
@@ -439,11 +448,11 @@ class PseudocodeImporter extends React.Component {
         // Check cache
         const hash = this._hashSource(cSrc);
         if (this._asmCache.hash === hash && this._asmCache.asm) {
-            this.setState(s => ({
-                lang: 'asm', busy: false, output: null, status: '',
-                buffers: {...s.buffers, asm: this._asmCache.asm},
+            this.setState({
+                lang: 'asm', asmMode: 'listing', busy: false, output: null, status: '',
+                asmListing: this._asmCache.asm,
                 asmLineMap: this._asmCache.lineMap
-            }));
+            });
             return;
         }
 
@@ -485,16 +494,32 @@ class PseudocodeImporter extends React.Component {
             }
             // Cache it
             this._asmCache = {hash, asm: asmText, lineMap};
-            this.setState(s => ({
-                lang: 'asm', busy: false, output: null,
+            this.setState({
+                lang: 'asm', asmMode: 'listing', busy: false, output: null,
                 status: lineMap ? `${lineMap.length} source mapping(s)` : '',
-                buffers: {...s.buffers, asm: asmText},
+                asmListing: asmText,
                 asmLineMap: lineMap
-            }));
+            });
         } catch (e) {
-            this.setState({busy: false, lang: 'asm', status: this.L.stError(e.message),
-                buffers: {...this.state.buffers, asm: `; Compile error: ${e.message}`}});
+            this.setState({busy: false, lang: 'asm', asmMode: 'listing',
+                status: this.L.stError(e.message),
+                asmListing: `; Compile error: ${e.message}`});
         }
+    }
+
+    /** Assemble and run: send authored ASM to the assemble endpoint.
+     *  Stub — the bw-cfront raw-assemble endpoint is being built.
+     *  When it lands, this will POST {source, target, format} and get
+     *  back {hex, listing, errors}. Errors will surface as CM diagnostics. */
+    async assembleAndRun () {
+        const source = this.state.buffers.asm;
+        if (!source || !source.trim()) {
+            this.setState({status: 'Write assembly source first.'});
+            return;
+        }
+        // Stub: endpoint not yet available
+        this.setState({status: 'Assemble & Run: the raw-assemble endpoint is not yet available. ' +
+            'This button will send your ASM source to the hosted assembler and run the result.'});
     }
 
     // Keil C51 gives itself away: keywords SDCC spells differently, and its register headers.
@@ -1178,18 +1203,46 @@ class PseudocodeImporter extends React.Component {
                         </label>
                     </div>
                 )}
+                {this.state.lang === 'asm' && (
+                    <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}>
+                        <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                            Mode:
+                            <select value={this.state.asmMode}
+                                onChange={e => {
+                                    const mode = e.target.value;
+                                    this.setState({asmMode: mode});
+                                    if (mode === 'listing') this.fetchAsmListing();
+                                }}
+                                style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
+                                <option value="source">Source (editable)</option>
+                                <option value="listing">Listing (from compiler)</option>
+                            </select>
+                        </label>
+                        {this.state.asmMode === 'source' && (
+                            <button type="button"
+                                onClick={() => this.assembleAndRun()}
+                                disabled={this.state.busy || !this.state.buffers.asm.trim()}
+                                style={{padding: '4px 12px', borderRadius: 6, border: 'none',
+                                    cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                    background: 'linear-gradient(135deg,#37b24d,#2f9e44)', color: '#fff'}}
+                                data-testid="bw-asm-assemble">
+                                {'🔩 Assemble & Run'}
+                            </button>
+                        )}
+                    </div>
+                )}
                 <React.Suspense fallback={
                     <FallbackEditor
                         value={this.activeCode()}
                         onChange={text => this.setActiveCode(text)}
-                        readOnly={!TWO_WAY.has(this.state.lang)}
+                        readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
                     />
                 }>
                     <CMEditor
                         ref={ref => { this._cmEditor = ref; }}
                         value={this.activeCode()}
                         onChange={text => this.setActiveCode(text)}
-                        readOnly={!TWO_WAY.has(this.state.lang)}
+                        readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
                         lang={this.state.lang}
                     />
                 </React.Suspense>
