@@ -107,7 +107,9 @@ const pseudocodeIndent = EditorView.updateListener.of(update => {
 
 // ── Theme styles ──────────────────────────────────────────────────
 const bwLightTheme = EditorView.theme({
-    '&': {fontSize: '13px', fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace'},
+    // Fill the flex container so CM6's own scroller handles overflow
+    '&': {fontSize: '13px', fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace', height: '100%'},
+    '.cm-scroller': {overflow: 'auto'},
     '.cm-content': {padding: '8px 0'},
     '.cm-gutters': {background: '#f8fafc', borderRight: '1px solid #e2e8f0', color: '#94a3b8'},
     '.cm-activeLine': {background: 'hsla(215, 100%, 95%, 0.5)'},
@@ -256,9 +258,13 @@ class CodeMirrorEditor extends React.Component {
     }
 
     render () {
+        // flex:1 + minHeight:0 is the classic flex column trick: it makes
+        // this container take remaining space, and minHeight:0 overrides
+        // the default min-height:auto that prevents shrinking below content.
+        // CM6's .cm-editor gets height:100% so its .cm-scroller scrolls.
         const style = {
-            flex: 1,
-            minHeight: 240,
+            flex: '1 1 0',
+            minHeight: 0,
             width: '100%',
             border: this.props.readOnly ? '1px solid #e2e8f0' : '1px solid #cbd5e1',
             borderRadius: 8,

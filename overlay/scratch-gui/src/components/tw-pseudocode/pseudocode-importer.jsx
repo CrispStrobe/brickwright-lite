@@ -286,7 +286,7 @@ const FallbackEditor = ({value, onChange, readOnly}) => (
         readOnly={readOnly}
         spellCheck={false}
         style={{
-            flex: 1, minHeight: 240, width: '100%', resize: 'none',
+            flex: '1 1 0', minHeight: 0, width: '100%', resize: 'none',
             fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace',
             fontSize: 13, lineHeight: '1.5', padding: 12,
             border: '1px solid #cbd5e1', borderRadius: 8,
@@ -1106,7 +1106,10 @@ class PseudocodeImporter extends React.Component {
         // The selected .tab-panel is display:flex (row); like .blocks-wrapper we must
         // flex-grow to fill the column width, else we shrink to content (~660px) and
         // leave a big gap before the stage.
-        const wrap = {height: '100%', flex: '1 1 auto', minWidth: 0, boxSizing: 'border-box', padding: 16, overflow: 'auto',
+        // overflow:hidden so the Code tab container does NOT scroll — CM6's own
+        // .cm-scroller handles scrolling inside the editor. minHeight:0 prevents
+        // the flex min-height:auto trap that makes tall content overflow.
+        const wrap = {height: '100%', flex: '1 1 auto', minWidth: 0, minHeight: 0, boxSizing: 'border-box', padding: 16, overflow: 'hidden',
             display: 'flex', flexDirection: 'column', font: '14px/1.5 sans-serif', color: '#575e75'};
         const btn = {padding: '10px 18px', borderRadius: 8, border: 'none', color: '#fff', cursor: 'pointer',
             fontWeight: 600, background: 'linear-gradient(135deg,#4c97ff,#4280d7)'};
@@ -1177,18 +1180,23 @@ class PseudocodeImporter extends React.Component {
                         borderRadius: 8, fontSize: 13, color: '#334155'}}>
                         {pickLocale(this.props.locale) === 'de' ? (
                             <React.Fragment>
-                                Schreibe dein Projekt als <strong>Pseudocode</strong>, <strong>Python</strong> oder{' '}
-                                <strong>JavaScript</strong> — alle drei sind wechselseitig. <strong>⇦ Zu Blöcken</strong>{' '}
-                                kompiliert den aktiven Tab; <strong>Von Blöcken ⇨</strong> liest das aktuelle Projekt in jede
-                                Sprache ein. Beim Tab-Wechsel wird umgewandelt. Sprite-/Stift-Verhalten liegt in den Blöcken
-                                (die Wahrheit), daher zeigen die Code-Tabs die algorithmischen Teile — Kommentare bleiben erhalten.
+                                Schreibe dein Projekt als Code in jedem Tab. <strong>Pseudocode</strong>, <strong>Python</strong>,{' '}
+                                <strong>JavaScript</strong>, <strong>C</strong> und <strong>BASIC</strong> sind wechselseitig:{' '}
+                                <strong>⇦ Zu Blöcken</strong> kompiliert den aktiven Tab, <strong>Von Blöcken ⇨</strong>{' '}
+                                liest das aktuelle Projekt in jede Sprache ein, Tab-Wechsel wandelt um.{' '}
+                                <strong>ASM</strong> ist bewusst einbahnig — schreiben, assemblieren, ausführen; kein Rückweg zu Blöcken.{' '}
+                                <strong>micro:bit</strong> wird für DEVICE MICROBIT generiert (noch kein Rücklesen).{' '}
+                                Sprite-/Stift-Verhalten liegt in den Blöcken (die Wahrheit) — die Code-Tabs zeigen die algorithmischen Teile. Kommentare bleiben erhalten.
                             </React.Fragment>
                         ) : (
                             <React.Fragment>
-                                Write your project as <strong>Pseudocode</strong>, <strong>Python</strong>, or <strong>JavaScript</strong> —
-                                all three are two-way. <strong>⇦ To blocks</strong> compiles the active tab; <strong>From blocks ⇨</strong>{' '}
-                                reads the current project into every language. Switching tabs converts between them. Sprite/pen behaviour
-                                lives in the blocks (the ground truth), so the code tabs show the algorithmic parts — comments are kept.
+                                Write your project as code in any tab. <strong>Pseudocode</strong>, <strong>Python</strong>,{' '}
+                                <strong>JavaScript</strong>, <strong>C</strong> and <strong>BASIC</strong> are two-way:{' '}
+                                <strong>⇦ To blocks</strong> compiles the active tab, <strong>From blocks ⇨</strong>{' '}
+                                reads the current project into every language, switching tabs converts.{' '}
+                                <strong>ASM</strong> is deliberately one-way — write, assemble and run; it never decompiles to blocks.{' '}
+                                <strong>micro:bit</strong> is generated for DEVICE MICROBIT (no reader yet).{' '}
+                                Sprite/pen behaviour lives in the blocks (the ground truth), so the code tabs show the algorithmic parts — comments are kept.
                             </React.Fragment>
                         )}
                     </div>
@@ -1462,17 +1470,30 @@ class PseudocodeImporter extends React.Component {
                             </label>
                         </span>
                     ) : null}
-                    {this.state.lang !== 'pseudocode' && this.state.lang !== 'c' && this.activeCode().trim() ? (
+                    {(this.state.lang === 'python' || this.state.lang === 'javascript') && this.activeCode().trim() ? (
                         <button onClick={this.run} disabled={this.state.running}
                             style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
-                            ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JS'}
+                            ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JavaScript'}
                         </button>
                     ) : null}
                     {this.state.lang === 'c' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.cNote}</span> : null}
-                    {this.state.lang === 'basic' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.basicNote}</span> : null}
+                    {this.state.lang === 'basic' ? (
+                        <button type="button" onClick={() => this.setState(s => ({showBasicInfo: !s.showBasicInfo}))}
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
+                                padding: 0, border: 'none', borderRadius: '50%', background: this.state.showBasicInfo ? '#4c97ff' : '#e2e8f0',
+                                color: this.state.showBasicInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic'}}
+                            title="BASIC info" data-testid="bw-basic-info-toggle">i</button>
+                    ) : null}
                     {this.state.lang === 'asm' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.asmNote}</span> : null}
                     {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
                 </div>
+                {this.state.lang === 'basic' && this.state.showBasicInfo && (
+                    <div style={{padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                        borderRadius: 8, fontSize: 13, color: '#334155', marginTop: 4, flexShrink: 0}}
+                        data-testid="bw-basic-info-panel">
+                        {this.L.basicNote}
+                    </div>
+                )}
                 {this.state.output != null ? (
                     <pre style={{marginTop: 10, padding: 12, background: '#0c3a44', color: '#c7f0e0', borderRadius: 8,
                         fontFamily: 'monospace', fontSize: 13, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap'}}>

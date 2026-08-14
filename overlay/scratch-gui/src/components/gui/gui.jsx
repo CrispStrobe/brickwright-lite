@@ -370,9 +370,9 @@ const GUIComponent = props => {
                                     </Tab>
                                     <Tab className={tabClassNames.tab}>
                                         <FormattedMessage
-                                            defaultMessage="Code ⇄ Blocks"
-                                            description="Brickwright pseudocode/Python/JS code tab"
-                                            id="gui.gui.pseudocodeTab"
+                                            defaultMessage="Code"
+                                            description="Brickwright code editor tab"
+                                            id="gui.gui.codeTab"
                                         />
                                     </Tab>
                                     <Tab className={tabClassNames.tab}>
