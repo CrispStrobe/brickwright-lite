@@ -25,6 +25,7 @@
     "verify:interaction": "node scripts/verify-interaction.mjs",
     "verify:circuit-ux": "node scripts/verify-circuit-ux.mjs",
     "verify:instruments": "node scripts/verify-instruments-scroll.mjs",
+    "verify:microbit": "node scripts/verify-microbit.mjs",
     "test": "node --test test/*.test.mjs",
     "test:all": "npm run test && npm run smoke:debugger",
     "probe:layout": "node scripts/probe-layout.mjs"
