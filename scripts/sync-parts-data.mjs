@@ -11,14 +11,22 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const src = join(HERE, '..', '..', '..', 'bw-circuit-ui', 'src', 'parts-data');
+// --dir <bw-circuit-ui checkout> overrides the historical local layout
+// (../../../bw-circuit-ui, i.e. lite living under lego/). CI passes it
+// explicitly so the workspace shape stays flat and boring there.
+const dirIdx = process.argv.indexOf('--dir');
+const srcRoot = dirIdx !== -1 ? process.argv[dirIdx + 1]
+    : join(HERE, '..', '..', '..', 'bw-circuit-ui');
+const src = join(srcRoot, 'src', 'parts-data');
 const dst = join(HERE, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-circuit-ui', 'parts-data');
 const check = process.argv.includes('--check');
 
 if (!existsSync(src)) {
     console.error(`sync-parts-data: source not found: ${src}`);
-    console.error('(expected bw-circuit-ui at ../../bw-circuit-ui relative to lite)');
-    process.exit(check ? 0 : 1); // --check on CI without the source is not a failure
+    // An EXPLICIT --dir that does not exist is a broken invocation and
+    // must never green a gate; only the implicit local default may be
+    // absent harmlessly under --check.
+    process.exit(dirIdx !== -1 ? 2 : (check ? 0 : 1));
 }
 
 mkdirSync(dst, { recursive: true });

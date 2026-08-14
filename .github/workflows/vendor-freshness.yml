@@ -22,12 +22,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      # lite sits one level deep (lego/) so sync-parts-data's relative
-      # ../../../bw-circuit-ui resolves to the workspace root, exactly
-      # like the local ~/code layout it was written for.
       - uses: actions/checkout@v4
         with:
-          path: lego/brickwright-lite
+          path: brickwright-lite
       - uses: actions/checkout@v4
         with:
           repository: CrispStrobe/bw-circuit-ui
@@ -47,18 +44,17 @@ jobs:
       # Each check exits non-zero on drift; run ALL of them even after a
       # failure so one report names every stale tree, then fail once.
       - name: circuit designer tree
-        run: node lego/brickwright-lite/scripts/sync-bw-circuit-ui.mjs --check --dir bw-circuit-ui
+        run: node brickwright-lite/scripts/sync-bw-circuit-ui.mjs --check --dir bw-circuit-ui
         if: always()
       - name: board engine tree
-        run: node lego/brickwright-lite/scripts/sync-bw-board.mjs --check --dir bw-board
+        run: node brickwright-lite/scripts/sync-bw-board.mjs --check --dir bw-board
         if: always()
       - name: sb3-creator transpiler
-        run: node lego/brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator
+        run: node brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator
         if: always()
       - name: examples gallery
-        run: node lego/brickwright-lite/scripts/sync-examples.mjs --check --dir sb3-creator/examples
+        run: node brickwright-lite/scripts/sync-examples.mjs --check --dir sb3-creator/examples
         if: always()
       - name: parts-data sidecars (bw-circuit-ui -> overlay)
-        # sync-parts-data resolves ../../bw-circuit-ui relative to lite
-        run: node lego/brickwright-lite/scripts/sync-parts-data.mjs --check
+        run: node brickwright-lite/scripts/sync-parts-data.mjs --check --dir bw-circuit-ui
         if: always()
