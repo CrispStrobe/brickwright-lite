@@ -4,22 +4,8 @@ import React from 'react';
 import {connect} from 'react-redux';
 
 import styles from './bw-about.css';
+import ABOUT_GROUPS from './about-data.js';
 
-/**
- * Brickwright: the About box, and the build stamp behind it.
- *
- * This exists because "which version am I looking at?" had no answer from inside the running app.
- * Working that out meant fetching the deployed index.html, reading the hashed entry filename out
- * of it, and comparing that against a local build — which is not something a user can be asked to
- * do, and it made every bug report ambiguous: a report of "not fixed" could equally mean a stale
- * tab, a deploy that had not landed yet, or a real regression, with no way to tell them apart.
- *
- * The version is stamped in at build time by webpack's DefinePlugin (see webpack.config.js), from
- * GITHUB_SHA in CI, VERCEL_GIT_COMMIT_SHA on Vercel, or `git rev-parse` locally.
- */
-
-// Substituted at build time. The fallbacks keep this component honest in a dev server or any
-// other build that did not define them, rather than rendering "undefined" as if it were a version.
 const VERSION = (typeof process.env.BW_VERSION === 'string' && process.env.BW_VERSION) || 'unknown';
 const BUILD_TIME = (typeof process.env.BW_BUILD_TIME === 'string' && process.env.BW_BUILD_TIME) || '';
 
@@ -28,25 +14,12 @@ const NOTICES_URL = `${REPO_URL}/blob/main/THIRD-PARTY-NOTICES.md`;
 const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
 const COMPILER_HEALTH_URL = 'https://stc-compiler.vercel.app/health';
 
-// The imprint block, mirroring the compiler service's About (its
-// IMPRINT_* defaults) — one provider, stated identically in both places.
 const PROVIDER = {
-    name: 'Christian Ströbele',
+    name: 'Christian Strobele',
     address: ['Nikolausstr. 5', '70190 Stuttgart', 'Deutschland / Germany'],
     email: 'postmaster@crispstro.be',
     phone: '+49 176 6421 8601'
 };
-
-/** Component / licence table. Rows are [what, licence, url]. */
-const COMPONENTS = [
-    ['Brickwright-lite — this app', 'MIT + BSD-3/Apache-2.0 (pre-relicense Scratch stack)', `${REPO_URL}/blob/main/LICENSE`],
-    ['bw-board · bw-circuit-ui · sb3-creator (engine, designer, transpiler)', 'MIT', 'https://github.com/CrispStrobe'],
-    ['@wokwi/elements (part artwork) · avr8js (AVR emulator)', 'MIT', 'https://github.com/wokwi'],
-    ['emu8051 fork (8051 emulator)', 'MIT', 'https://github.com/CrispStrobe/emu8051-stc'],
-    ['Skulpt (Python preview)', 'MIT', 'https://github.com/skulpt/skulpt'],
-    ['SDCC — hosted compile service (separate program, not bundled)', 'GPL-2.0+, runs server-side', COMPILER_ABOUT_URL],
-    ['SDCC-WASM — optional local compiler (opt-in download)', 'GPL-2.0+, separate artifact', NOTICES_URL]
-];
 
 const L10N = {
     en: {
@@ -79,19 +52,19 @@ const L10N = {
         affilText: 'Not affiliated with or endorsed by Scratch / MIT, STC, Arduino, or ' +
             'Raspberry Pi. Trademarks belong to their owners.',
         toolchain: 'Compile service',
-        toolchainLoading: 'asking the service…',
+        toolchainLoading: 'asking the service...',
         toolchainDown: 'service not reachable right now — compiling will say why'
     },
     de: {
-        about: 'Über Brickwright',
+        about: 'Uber Brickwright',
         version: 'Version',
         built: 'Erstellt',
         source: 'Quellcode',
         commit: 'Diesen Commit ansehen',
-        close: 'Schließen',
+        close: 'Schliessen',
         unknownVersion: 'Dieser Build wurde ohne Commit-Stempel erzeugt.',
-        blurb: 'Ein vollständig permissiver Fork des Scratch-Stacks vor der Lizenzänderung — ' +
-            'durchgängig BSD-3, Apache-2.0 und MIT, also überall bündelbar und auslieferbar.',
+        blurb: 'Ein vollstandig permissiver Fork des Scratch-Stacks vor der Lizenzanderung — ' +
+            'durchgangig BSD-3, Apache-2.0 und MIT, also uberall bundelbar und auslieferbar.',
         copied: 'Kopiert',
         copy: 'Versionsdetails kopieren',
         provider: 'Anbieter (Impressum)',
@@ -105,15 +78,15 @@ const L10N = {
             'vermeidet auch das.',
         disclaimer: 'Haftungsausschluss',
         disclaimerText: 'Ein Lernwerkzeug. Die Simulation ist ein Modell, kein Silizium: vor ' +
-            'echter Hardware Polung, Spannungen und Stromgrenzen prüfen; alles ohne Nachweis ' +
+            'echter Hardware Polung, Spannungen und Stromgrenzen prufen; alles ohne Nachweis ' +
             'auf echtem Chip gilt als unverifiziert.',
         components: 'Komponenten und Lizenzen',
-        notices: 'Vollständige Third-Party-Hinweise',
-        affil: 'Zugehörigkeit',
-        affilText: 'Nicht verbunden mit oder unterstützt von Scratch / MIT, STC, Arduino oder ' +
-            'Raspberry Pi. Marken gehören ihren Eigentümern.',
+        notices: 'Vollstandige Third-Party-Hinweise',
+        affil: 'Zugehorigkeit',
+        affilText: 'Nicht verbunden mit oder unterstutzt von Scratch / MIT, STC, Arduino oder ' +
+            'Raspberry Pi. Marken gehoren ihren Eigentumern.',
         toolchain: 'Compile-Dienst',
-        toolchainLoading: 'frage den Dienst…',
+        toolchainLoading: 'frage den Dienst...',
         toolchainDown: 'Dienst gerade nicht erreichbar — beim Kompilieren steht warum'
     }
 };
@@ -123,11 +96,70 @@ const tx = (locale, key) => {
     return (L10N[language] || L10N.en)[key] || L10N.en[key] || key;
 };
 
-/** @param {string} iso An ISO timestamp. @return {string} A readable local date, or ''. */
 const formatBuildTime = iso => {
     if (!iso) return '';
     const date = new Date(iso);
     return isNaN(date.getTime()) ? '' : date.toLocaleString();
+};
+
+/** Render one licence group with collapsible entries. */
+const LicenceGroup = ({group, locale}) => {
+    const isDe = String(locale || 'en').split('-')[0] === 'de';
+    const groupTitle = isDe && group.titleDe ? group.titleDe : group.title;
+    return (
+        <div className={styles.group}>
+            <div className={styles.groupHeading}>{groupTitle}</div>
+            <table className={styles.licences}>
+                <tbody>
+                    {group.entries.map(entry => (
+                        <tr key={entry.name}>
+                            <td className={styles.entryName}>
+                                {entry.url ? (
+                                    <a
+                                        href={entry.url}
+                                        rel="noopener noreferrer"
+                                        target="_blank"
+                                    >{entry.name}</a>
+                                ) : entry.name}
+                            </td>
+                            <td className={styles.entryRole}>{entry.role}</td>
+                            <td className={styles.entryLicense}>
+                                {entry.licenseUrl ? (
+                                    <a
+                                        href={entry.licenseUrl}
+                                        rel="noopener noreferrer"
+                                        target="_blank"
+                                    >{entry.license}</a>
+                                ) : entry.license}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            {/* Render notes for entries that have them */}
+            {group.entries.filter(e => e.note).map(entry => (
+                <p key={`${entry.name}-note`} className={styles.entryNote}>
+                    {entry.name}: {entry.note}
+                </p>
+            ))}
+        </div>
+    );
+};
+
+LicenceGroup.propTypes = {
+    group: PropTypes.shape({
+        title: PropTypes.string.isRequired,
+        titleDe: PropTypes.string,
+        entries: PropTypes.arrayOf(PropTypes.shape({
+            name: PropTypes.string.isRequired,
+            url: PropTypes.string,
+            license: PropTypes.string.isRequired,
+            licenseUrl: PropTypes.string,
+            role: PropTypes.string.isRequired,
+            note: PropTypes.string
+        })).isRequired
+    }).isRequired,
+    locale: PropTypes.string
 };
 
 class BwAbout extends React.Component {
@@ -154,9 +186,6 @@ class BwAbout extends React.Component {
     handleToggle () {
         const opening = !this.state.open;
         this.setState({open: opening, copied: false});
-        // The dialog states the WHOLE chain: this build, and the toolchains
-        // that will compile for it. Fetched on open, never blocking render;
-        // /health carries CORS and reports the service's own deploy commit.
         if (opening && !this.state.toolchain) {
             fetch(COMPILER_HEALTH_URL, {cache: 'no-store'})
                 .then(r => r.json())
@@ -168,7 +197,6 @@ class BwAbout extends React.Component {
         this.setState({open: false});
     }
     handleCopy () {
-        // The whole point is pasting this into a bug report, so copy the details as one block.
         const text = `Brickwright ${VERSION}${BUILD_TIME ? ` (built ${BUILD_TIME})` : ''}\n` +
             `${navigator.userAgent}`;
         const done = () => this.setState({copied: true});
@@ -233,19 +261,18 @@ class BwAbout extends React.Component {
                                 <p className={styles.body}>{t('privacyText')}</p>
                                 <div className={styles.heading}>{t('disclaimer')}</div>
                                 <p className={styles.body}>{t('disclaimerText')}</p>
+
                                 <div className={styles.heading}>{t('components')}</div>
-                                <table className={styles.licences}>
-                                    <tbody>
-                                        {COMPONENTS.map(([what, lic, url]) => (
-                                            <tr key={what}>
-                                                <td>{what}</td>
-                                                <td>
-                                                    <a href={url} rel="noopener noreferrer" target="_blank">{lic}</a>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                <div className={styles.groupList} data-testid="about-licence-groups">
+                                    {ABOUT_GROUPS.map(group => (
+                                        <LicenceGroup
+                                            key={group.title}
+                                            group={group}
+                                            locale={locale}
+                                        />
+                                    ))}
+                                </div>
+
                                 <p className={styles.body}>
                                     <a href={NOTICES_URL} rel="noopener noreferrer" target="_blank">{t('notices')}</a>
                                 </p>
@@ -257,7 +284,7 @@ class BwAbout extends React.Component {
                                                 `service ${this.state.toolchain.version}` : null,
                                             this.state.toolchain.sdcc || null,
                                             this.state.toolchain.avr_gcc || null
-                                        ].filter(Boolean).join(' · ')}
+                                        ].filter(Boolean).join(' \u00b7 ')}
                                 </p>
                                 <div className={styles.heading}>{t('affil')}</div>
                                 <p className={styles.body}>{t('affilText')}</p>

@@ -2,10 +2,7 @@
 @import "../../css/units.css";
 @import "../../css/z-index.css";
 
-/* Brickwright: the version badge in the menu bar, and the About dialog it opens.
-   Note this is scratch-GUI, whose units.css defines $space (0.5rem) and has no $grid-unit —
-   that one belongs to scratch-paint. Spacing here is written in plain rem to keep the two
-   conventions from being mistaken for each other. */
+/* Brickwright: the version badge in the menu bar, and the About dialog it opens. */
 
 .trigger {
     font-family: inherit;
@@ -36,12 +33,11 @@
     align-items: center;
     justify-content: center;
     background: hsla(215, 100%, 15%, 0.45);
-    /* Above the menu bar and every editor pane. */
     z-index: 1000;
 }
 
 .dialog {
-    width: 26rem;
+    width: 40rem;
     max-width: calc(100vw - 2rem);
     max-height: calc(100vh - 4rem);
     overflow-y: auto;
@@ -134,9 +130,9 @@
 /* The extended About: imprint / privacy / licences, compact and scrollable. */
 .section {
     margin-top: 0.75rem;
-    max-height: 40vh;
+    max-height: 55vh;
     overflow-y: auto;
-    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
     padding-top: 0.5rem;
     font-size: 0.8rem;
 }
@@ -149,12 +145,69 @@
     font-style: normal;
     line-height: 1.4;
 }
+
+/* Grouped licence list */
+.group-list {
+    margin: 0.5rem 0;
+}
+
+.group {
+    margin-bottom: 0.75rem;
+}
+
+.group-heading {
+    font-weight: bold;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: hsla(215, 50%, 40%, 1);
+    margin: 0.5rem 0 0.25rem;
+    padding-bottom: 0.15rem;
+    border-bottom: 1px solid hsla(215, 30%, 88%, 1);
+}
+
 .licences {
     border-collapse: collapse;
     width: 100%;
+    font-size: 0.75rem;
 }
+
 .licences td {
-    padding: 0.15rem 0.4rem 0.15rem 0;
+    padding: 0.2rem 0.5rem 0.2rem 0;
     vertical-align: top;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid hsla(215, 30%, 94%, 1);
+}
+
+.licences a {
+    color: $looks-secondary;
+    text-decoration: none;
+}
+
+.licences a:hover {
+    text-decoration: underline;
+}
+
+.entry-name {
+    white-space: nowrap;
+    font-weight: 500;
+    min-width: 8rem;
+}
+
+.entry-role {
+    color: hsla(215, 20%, 45%, 1);
+}
+
+.entry-license {
+    white-space: nowrap;
+    text-align: right;
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.entry-note {
+    margin: 0.1rem 0 0.2rem 0;
+    font-size: 0.7rem;
+    font-style: italic;
+    color: hsla(215, 20%, 50%, 1);
+    padding-left: 0.5rem;
 }
