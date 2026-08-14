@@ -18,6 +18,7 @@ import unFullScreenIcon from './icon--unfullscreen.svg';
 import circuitIcon from './icon--circuit.svg';
 import debuggerIcon from './icon--debugger.svg';
 import debuggerSoloIcon from './icon--debugger-solo.svg';
+import microbitIcon from './icon--microbit.svg';
 import scratchStageIcon from './icon--scratch-stage.svg';
 
 import scratchLogo from '../menu-bar/scratch-logo.svg';
@@ -64,6 +65,11 @@ const messages = defineMessages({
         description: 'Button to give the whole right pane to the debugger, next to the code editor',
         id: 'gui.stageHeader.debuggerOnly'
     },
+    microbitSim: {
+        defaultMessage: 'micro:bit Simulator',
+        description: 'Button to show the micro:bit simulator in the right pane',
+        id: 'gui.stageHeader.microbitSim'
+    },
     scratchStage: {
         defaultMessage: 'Scratch Stage',
         description: 'Button to show the Scratch stage while coding',
@@ -93,6 +99,7 @@ const setCircuitView = ({fullWidth, dock}) => {
 const viewForDock = dock => {
     if (dock === 'off') return 'circuit';
     if (dock === 'solo') return 'solo';
+    if (dock === 'microbit') return 'microbit';
     return 'debugger';
 };
 
@@ -153,6 +160,13 @@ const StageViewButtons = ({intl}) => {
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'solo',
                         title: intl.formatMessage(messages.debuggerOnly)
+                    },
+                    {
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'microbit'}); setView('microbit'); },
+                        icon: microbitIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'microbit',
+                        title: intl.formatMessage(messages.microbitSim)
                     },
                     {
                         handleClick: () => {

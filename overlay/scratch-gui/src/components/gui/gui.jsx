@@ -8,6 +8,9 @@ import MediaQuery from 'react-responsive';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import PseudocodeImporter from '../tw-pseudocode/pseudocode-importer.jsx';
 import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
+const MicrobitSimPane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-microbit-sim" */ '../tw-pseudocode/microbit-sim-pane.jsx')
+);
 import tabStyles from 'react-tabs/style/react-tabs.css';
 import VM from 'scratch-vm';
 import Renderer from 'scratch-render';
@@ -65,11 +68,17 @@ const GUIComponent = props => {
     const [stagePaneVisible, setStagePaneVisible] = React.useState(() => {
         try { return localStorage.getItem('bw-right-pane-hidden') !== '1'; } catch { return true; }
     });
+    const [dockMode, setDockMode] = React.useState(() => {
+        try { return localStorage.getItem('bw-debug-dock') || 'top'; } catch { return 'top'; }
+    });
     React.useEffect(() => {
         const sync = event => {
             const detail = event.detail || {};
-            if (detail.key !== 'bw-right-pane-hidden') return;
-            setStagePaneVisible(detail.value !== '1');
+            if (detail.key === 'bw-right-pane-hidden') {
+                setStagePaneVisible(detail.value !== '1');
+            } else if (detail.key === 'bw-debug-dock') {
+                setDockMode(detail.value || 'top');
+            }
         };
         window.addEventListener('bw-settings-change', sync);
         return () => window.removeEventListener('bw-settings-change', sync);
@@ -453,19 +462,29 @@ const GUIComponent = props => {
                                     onRestore={() => onSetPaneSize && onSetPaneSize('right', 'm')}
                                 />
                             ) : null}
-                            <StageWrapper
-                                isFullScreen={isFullScreen}
-                                isRendererSupported={isRendererSupported}
-                                isRtl={isRtl}
-                                stageSize={stageSize}
-                                vm={vm}
-                            />
-                            <Box className={styles.targetWrapper}>
-                                <TargetPane
-                                    stageSize={stageSize}
-                                    vm={vm}
-                                />
-                            </Box>
+                            {dockMode === 'microbit' ? (
+                                <React.Suspense fallback={
+                                    <div style={{padding: 24, color: '#64748b'}}>Loading micro:bit simulator…</div>
+                                }>
+                                    <MicrobitSimPane />
+                                </React.Suspense>
+                            ) : (
+                                <React.Fragment>
+                                    <StageWrapper
+                                        isFullScreen={isFullScreen}
+                                        isRendererSupported={isRendererSupported}
+                                        isRtl={isRtl}
+                                        stageSize={stageSize}
+                                        vm={vm}
+                                    />
+                                    <Box className={styles.targetWrapper}>
+                                        <TargetPane
+                                            stageSize={stageSize}
+                                            vm={vm}
+                                        />
+                                    </Box>
+                                </React.Fragment>
+                            )}
                         </Box>
                     </Box>
                 </Box>
