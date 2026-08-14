@@ -46,7 +46,7 @@ class CircuitTab extends React.Component {
         try {
             hideStage = localStorage.getItem('bw-hide-stage') === '1';
             const d = localStorage.getItem('bw-debug-dock');
-            if (d === 'right' || d === 'off') debugDock = d;
+            if (d === 'right' || d === 'off' || d === 'solo') debugDock = d;
         } catch { /* private mode: defaults */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
@@ -58,6 +58,7 @@ class CircuitTab extends React.Component {
         this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
         this.handleProjectStart = this.handleProjectStart.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
+        this.handleProjectChanged = this.handleProjectChanged.bind(this);
     }
 
     componentDidMount () {
@@ -85,7 +86,7 @@ class CircuitTab extends React.Component {
                 // mounted but not selected. Request the designer here too;
                 // otherwise the portal host is visible before its content has
                 // ever been loaded and the user sees a blank debugger pane.
-                if (value === 'top' && this.state.showInStage) this.load();
+                if ((value === 'top' || value === 'solo') && this.state.showInStage) this.load();
             }
             if (key === 'stageCircuit' || key === 'bw-stage-circuit') {
                 this.setDisplayPreference('showInStage', value === '1');
@@ -120,6 +121,13 @@ class CircuitTab extends React.Component {
         if (runtime && runtime.on) {
             runtime.on('PROJECT_START', this.handleProjectStart);
             runtime.on('PROJECT_STOP_ALL', this.handleProjectStop);
+            // "To blocks" in the Code tab lands fresh pin declarations on
+            // runtime.stc and announces them with PROJECT_CHANGED — but until
+            // this subscription existed, nothing here re-read them: the
+            // portalled debugger (any dock, and 'solo' most visibly, since it
+            // is nothing BUT the debugger) kept the previous project's pins
+            // until some view toggle happened to call load().
+            runtime.on('PROJECT_CHANGED', this.handleProjectChanged);
         }
     }
 
@@ -153,6 +161,7 @@ class CircuitTab extends React.Component {
         if (runtime && runtime.removeListener) {
             runtime.removeListener('PROJECT_START', this.handleProjectStart);
             runtime.removeListener('PROJECT_STOP_ALL', this.handleProjectStop);
+            runtime.removeListener('PROJECT_CHANGED', this.handleProjectChanged);
         }
         document.documentElement.removeAttribute('data-bw-hide-stage');
         const oldWrap = document.querySelector('div[class*="stage-and-target-wrapper"]');
@@ -163,7 +172,7 @@ class CircuitTab extends React.Component {
     }
 
     setDock (d) {
-        if (d !== 'top' && d !== 'right' && d !== 'off') return;
+        if (d !== 'top' && d !== 'right' && d !== 'off' && d !== 'solo') return;
         this.setState({debugDock: d});
         try { localStorage.setItem('bw-debug-dock', d); } catch { /* private mode */ }
     }
@@ -180,6 +189,14 @@ class CircuitTab extends React.Component {
 
     handleProjectStop () {
         this.setState(state => ({stopToken: (state.stopToken || 0) + 1}));
+    }
+
+    /** Re-read runtime.stc when the project changes (e.g. "To blocks" landed
+     *  new pin declarations). Reference-compare first: PROJECT_CHANGED also
+     *  fires for block edits that leave stc untouched. */
+    handleProjectChanged () {
+        const next = this.readStc();
+        if (next !== this.state.stc) this.setState({stc: next});
     }
 
     /** The overlay div inside the stage column that hosts the portal. Created
@@ -672,10 +689,36 @@ class CircuitTab extends React.Component {
                 </div>
             );
         }
+        // Debugger-only right pane: dock 'solo' gives the DebugPanel the whole
+        // stage column, no designer around it — the mode for working the
+        // debugger directly beside the code editor. It deliberately does not
+        // wait for the Designer chunk (the panel has its own Suspense), and it
+        // only applies while portalled: on the dedicated Circuit tab, 'solo'
+        // falls back to the instruments-column dock below, so the designer —
+        // and the compact debugger in its Instruments panel — stay reachable.
+        if (this.state.debugDock === 'solo' && this._stagePortalOn()) {
+            this._portalOn = true;
+            const solo = (
+                <div style={{...box, overflow: 'auto'}}>
+                    {stc && stc.pins && stc.pins.length ? this.renderDebugPanel() : (
+                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8}}>
+                            {'The debugger needs a program and a chip to drive. ' +
+                             'Declare pins in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ' +
+                             'ACTIVE LOW — or switch back to the circuit view in the ' +
+                             'header above.'}
+                        </div>
+                    )}
+                </div>
+            );
+            return ReactDOM.createPortal(solo, this._stageHost);
+        }
         if (!Designer) {
             return <div style={{...box, color: '#64748b'}}>{'Loading the circuit designer…'}</div>;
         }
         this._portalOn = this._stagePortalOn();
+        // On the dedicated Circuit tab 'solo' behaves as 'top': the designer
+        // with the compact debugger in its Instruments column.
+        const dock = this.state.debugDock === 'solo' ? 'top' : this.state.debugDock;
         const content = (
             <div style={box}>
                 {/* A circuit does not need a microcontroller.
@@ -811,21 +854,24 @@ class CircuitTab extends React.Component {
                     // column in both the Code Blocks portal and the dedicated
                     // Circuit tab. The old visibility guard made “switch to
                     // debugger” a no-op whenever Circuit itself was active.
-                    debuggerOn={this.state.debugDock === 'top'}
-                    debuggerPanel={this.state.debugDock === 'top' ? this.renderDebugPanel() : null}
+                    debuggerOn={dock === 'top'}
+                    debuggerPanel={dock === 'top' ? this.renderDebugPanel() : null}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                     />
                 </div>
                 </div>
-                {this.state.debugDock !== 'top' && stc && stc.pins && stc.pins.length ? (
-                    <div style={this.state.debugDock === 'right' ?
-                        {flex: '0 0 320px', minWidth: 0, overflow: 'auto'} : {display: 'none'}}>
-                        {this.renderDebugPanel()}
-                    </div>
-                ) : null}
-                {this.state.debugDock === 'off' && stc && stc.pins && stc.pins.length ? (
-                    <div style={{display: 'none'}} aria-hidden="true">
+                {/* One block covers both non-top docks: 'right' shows the
+                    column, 'off' keeps the panel mounted but hidden (the
+                    runner survives the toggle). This used to be two blocks,
+                    and dock 'off' matched BOTH — two live DebugPanel
+                    instances, two runners. */}
+                {dock !== 'top' && stc && stc.pins && stc.pins.length ? (
+                    <div
+                        style={dock === 'right' ?
+                            {flex: '0 0 320px', minWidth: 0, overflow: 'auto'} : {display: 'none'}}
+                        aria-hidden={dock === 'right' ? undefined : 'true'}
+                    >
                         {this.renderDebugPanel()}
                     </div>
                 ) : null}
@@ -837,8 +883,9 @@ class CircuitTab extends React.Component {
     }
 
     /** One DebugPanel instance, wherever it docks. Moving between the top
-     *  slot and the right column remounts it (different tree positions), so
-     *  the runner restarts on a dock change — a rare, user-initiated action.
+     *  slot, the right column and the solo pane remounts it (different tree
+     *  positions), so the runner restarts on a dock change — a rare,
+     *  user-initiated action.
      *  Toggling right<->off does NOT remount: off keeps it hidden, alive. */
     renderDebugPanel () {
         const {stc} = this.state;

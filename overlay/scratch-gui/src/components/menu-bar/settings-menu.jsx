@@ -79,8 +79,9 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                                 value => setWorkspace('bw-debug-dock', value), [
                                     {value: 'top', label: 'Top'},
                                     {value: 'right', label: 'Right'},
+                                    {value: 'solo', label: 'Full pane'},
                                     {value: 'off', label: 'Off'}
-                                ], 'Choose where the circuit debugger appears')}
+                                ], 'Choose where the circuit debugger appears — Full pane gives it the whole right pane while coding')}
                             {workspaceSelect('While coding', workspaceValue('bw-stage-circuit', '1'),
                                 value => setWorkspace('bw-stage-circuit', value), [
                                     {value: '1', label: 'Circuit'},

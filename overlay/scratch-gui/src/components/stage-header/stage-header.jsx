@@ -17,6 +17,7 @@ import smallStageIcon from './icon--small-stage.svg';
 import unFullScreenIcon from './icon--unfullscreen.svg';
 import circuitIcon from './icon--circuit.svg';
 import debuggerIcon from './icon--debugger.svg';
+import debuggerSoloIcon from './icon--debugger-solo.svg';
 import scratchStageIcon from './icon--scratch-stage.svg';
 
 import scratchLogo from '../menu-bar/scratch-logo.svg';
@@ -58,6 +59,11 @@ const messages = defineMessages({
         description: 'Button to show the full-width Circuit Designer without debugger',
         id: 'gui.stageHeader.circuitNoDebugger'
     },
+    debuggerOnly: {
+        defaultMessage: 'Debugger only (full pane)',
+        description: 'Button to give the whole right pane to the debugger, next to the code editor',
+        id: 'gui.stageHeader.debuggerOnly'
+    },
     scratchStage: {
         defaultMessage: 'Scratch Stage',
         description: 'Button to show the Scratch stage while coding',
@@ -65,11 +71,11 @@ const messages = defineMessages({
     }
 });
 
-const setCircuitView = ({fullWidth, debuggerOn}) => {
+const setCircuitView = ({fullWidth, dock}) => {
     const values = {
         'bw-hide-stage': fullWidth ? '1' : '0',
         'bw-right-pane-hidden': '0',
-        'bw-debug-dock': debuggerOn ? 'top' : 'off',
+        'bw-debug-dock': dock,
         'bw-stage-circuit': fullWidth ? '1' : '0',
         'bw-circuit-theme': 'light'
     };
@@ -81,6 +87,15 @@ const setCircuitView = ({fullWidth, debuggerOn}) => {
     });
 };
 
+// The dock value alone names the view while the circuit owns the pane:
+// 'off' → bare circuit, 'solo' → debugger-only pane, anything else → the
+// circuit with its instruments-column debugger.
+const viewForDock = dock => {
+    if (dock === 'off') return 'circuit';
+    if (dock === 'solo') return 'solo';
+    return 'debugger';
+};
+
 const readCircuitView = () => {
     try {
         const coding = localStorage.getItem('bw-stage-circuit');
@@ -88,7 +103,7 @@ const readCircuitView = () => {
         // circuit/debugger choices become active only after the user chooses
         // them or selects them in Settings.
         if (coding !== '1') return 'scratch';
-        return localStorage.getItem('bw-debug-dock') === 'off' ? 'circuit' : 'debugger';
+        return viewForDock(localStorage.getItem('bw-debug-dock'));
     } catch {
         return 'scratch';
     }
@@ -100,9 +115,9 @@ const StageViewButtons = ({intl}) => {
         const sync = event => {
             const {key, value} = event.detail || {};
             if (key === 'bw-stage-circuit') {
-                setView(value === '1' ? (localStorage.getItem('bw-debug-dock') === 'off' ? 'circuit' : 'debugger') : 'scratch');
+                setView(value === '1' ? viewForDock(localStorage.getItem('bw-debug-dock')) : 'scratch');
             } else if (key === 'bw-debug-dock') {
-                setView(localStorage.getItem('bw-stage-circuit') === '0' ? 'scratch' : (value === 'off' ? 'circuit' : 'debugger'));
+                setView(localStorage.getItem('bw-stage-circuit') === '0' ? 'scratch' : viewForDock(value));
             }
         };
         window.addEventListener('bw-settings-change', sync);
@@ -116,22 +131,32 @@ const StageViewButtons = ({intl}) => {
             <ToggleButtons
                 buttons={[
                     {
-                        handleClick: () => { setCircuitView({fullWidth: true, debuggerOn: false}); setView('circuit'); },
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'off'}); setView('circuit'); },
                         icon: circuitIcon,
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'circuit',
                         title: intl.formatMessage(messages.circuitNoDebugger)
                     },
                     {
-                        handleClick: () => { setCircuitView({fullWidth: true, debuggerOn: true}); setView('debugger'); },
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'top'}); setView('debugger'); },
                         icon: debuggerIcon,
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'debugger',
                         title: intl.formatMessage(messages.circuitDebugger)
                     },
                     {
+                        // The whole pane to the debugger, no designer around
+                        // it — run control and registers directly beside the
+                        // code editor.
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'solo'}); setView('solo'); },
+                        icon: debuggerSoloIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'solo',
+                        title: intl.formatMessage(messages.debuggerOnly)
+                    },
+                    {
                         handleClick: () => {
-                            setCircuitView({fullWidth: false, debuggerOn: true});
+                            setCircuitView({fullWidth: false, dock: 'top'});
                             setView('scratch');
                         },
                         icon: scratchStageIcon,

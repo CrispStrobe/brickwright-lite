@@ -64,8 +64,28 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
 
 test('debugger selection is not disabled merely because the Circuit tab is active', () => {
     const source = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
-    assert.match(source, /debuggerOn=\{this\.state\.debugDock === 'top'\}/);
-    assert.match(source, /debuggerPanel=\{this\.state\.debugDock === 'top' \? this\.renderDebugPanel\(\) : null\}/);
+    // `dock` is debugDock with 'solo' folded back to 'top' on the dedicated
+    // Circuit tab — the designer keeps its instruments-column debugger there.
+    assert.match(source, /const dock = this\.state\.debugDock === 'solo' \? 'top' : this\.state\.debugDock;/);
+    assert.match(source, /debuggerOn=\{dock === 'top'\}/);
+    assert.match(source, /debuggerPanel=\{dock === 'top' \? this\.renderDebugPanel\(\) : null\}/);
+});
+
+test("debugger-only pane: dock 'solo' portals just the DebugPanel while coding", () => {
+    const source = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
+    const header = read('overlay/scratch-gui/src/components/stage-header/stage-header.jsx');
+    const settings = read('overlay/scratch-gui/src/components/menu-bar/settings-menu.jsx');
+    // The solo branch renders before the Designer-chunk gate (the panel has
+    // its own Suspense) and only while portalled into the stage column.
+    assert.match(source, /this\.state\.debugDock === 'solo' && this\._stagePortalOn\(\)/);
+    // Fresh declarations reach the pane: "To blocks" announces via
+    // PROJECT_CHANGED and the tab re-reads runtime.stc.
+    assert.match(source, /runtime\.on\('PROJECT_CHANGED', this\.handleProjectChanged\)/);
+    assert.match(source, /runtime\.removeListener\('PROJECT_CHANGED', this\.handleProjectChanged\)/);
+    // The stage header offers the fourth view; Settings offers the dock value.
+    assert.match(header, /dock: 'solo'/);
+    assert.match(header, /debuggerOnly/);
+    assert.match(settings, /\{value: 'solo', label: 'Full pane'\}/);
 });
 
 test('Green Flag and Red Flag reach Circuit Designer even without MCU code', () => {
