@@ -1114,70 +1114,110 @@ class PseudocodeImporter extends React.Component {
         const btn = {padding: '10px 18px', borderRadius: 8, border: 'none', color: '#fff', cursor: 'pointer',
             fontWeight: 600, background: 'linear-gradient(135deg,#4c97ff,#4280d7)'};
         const sel = {padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', font: 'inherit'};
+        const max = this.state.maximized;
+        const csel = {...sel, padding: '4px 8px', fontSize: 12}; // compact select
         return (
             <div style={wrap}>
-                {/* One compact row: mascot · title · info tooltip · example loader · reference toggle */}
-                <div style={{display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10}}>
-                    <img src={brickRobot} alt="Brickwright mascot" width={28} height={33} draggable={false} />
-                    <strong style={{fontSize: 15}}>Brickwright Code</strong>
-                    <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
-                        aria-label={this.L.infoAria} title={this.L.infoTitle}
-                        style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
-                            padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
-                            color: this.state.showInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic'}}>
-                        i
-                    </button>
-                    <span style={{flex: 1}} />
-                    {/* Device selector: drives MCU sidecar, pin names, compile target, emulator */}
-                    <select
-                        value={this.currentDevice() || ''}
-                        onChange={e => this.setDevice(e.target.value)}
-                        style={sel}
-                        title="Target device — sets pin names, compile target and emulator"
-                    >
-                        <option value="" disabled>Device…</option>
-                        {DEVICE_GROUPS.map(g => (
-                            <optgroup key={g.label} label={g.label}>
-                                {g.devices.map(d => (
-                                    <option key={d.id} value={d.id}>{d.label}</option>
+                {/* ── Single merged row: language tabs (left) + compact controls (right) ── */}
+                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'nowrap', flexShrink: 0}}
+                    data-testid="bw-lang-row">
+                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
+                        ...(this.currentDevice() === 'microbit' ? [['micropython', '🤖 µ:bit']] : [])].map(([l, label]) => {
+                        const active = this.state.lang === l;
+                        return (
+                            <button key={l} type="button" aria-pressed={active} onClick={() => this.switchTab(l)}
+                                disabled={this.state.busy && !active}
+                                style={{padding: '6px 10px', border: '1px solid #cbd5e1', borderBottom: active ? '1px solid #fff' : '1px solid #cbd5e1',
+                                    borderRadius: '8px 8px 0 0', cursor: 'pointer', fontWeight: active ? 700 : 500, fontSize: 13,
+                                    background: active ? '#fff' : '#eef2f7', color: active ? '#1e293b' : '#64748b',
+                                    position: 'relative', top: active ? 0 : 1, whiteSpace: 'nowrap'}}>
+                                {label}
+                            </button>
+                        );
+                    })}
+                    <span style={{flex: 1, minWidth: 4}} />
+                    {/* Compact controls — hidden in maximize mode */}
+                    {!max && (
+                        <React.Fragment>
+                            <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
+                                aria-label={this.L.infoAria} title={this.L.infoTitle}
+                                style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20,
+                                    padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
+                                    color: this.state.showInfo ? '#fff' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                                    fontStyle: 'italic', alignSelf: 'center'}}>
+                                i
+                            </button>
+                            <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
+                                style={{...csel, alignSelf: 'center'}} title="Target device">
+                                <option value="" disabled>Device…</option>
+                                {DEVICE_GROUPS.map(g => (
+                                    <optgroup key={g.label} label={g.label}>
+                                        {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                                    </optgroup>
                                 ))}
-                            </optgroup>
-                        ))}
-                    </select>
-                    <select defaultValue="" onChange={e => this.loadExample(e.target.value)} style={sel} title={this.L.loadExampleTitle}>
-                        <option value="" disabled>{this.L.loadExample}</option>
-                        {GROUPS.map(g => (
-                            <optgroup key={g.label} label={g.label}>
-                                {g.items.filter(([k]) => examples[k]).map(([k, label]) => {
-                                    const compat = this.exampleCompat(k);
-                                    const blocked = compat && !compat.ok;
-                                    return (
-                                        <option key={k} value={k} disabled={blocked}
-                                            title={blocked ? compat.reasons.join('; ') : ''}>
-                                            {blocked ? `${label} ⛔` : label}
-                                        </option>
-                                    );
-                                })}
-                            </optgroup>
-                        ))}
-                    </select>
-                    <button onClick={() => this.setState(s => ({showRef: !s.showRef}))}
-                        style={{...sel, cursor: 'pointer', background: this.state.showRef ? '#e2e8f0' : '#f1f5f9'}}
-                        title={this.L.referenceTitle(this.state.lang)}>
-                        📝 {LANG_LABEL[this.state.lang]} {this.L.reference}
-                    </button>
+                            </select>
+                            <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
+                                style={{...csel, alignSelf: 'center'}} title={this.L.loadExampleTitle}>
+                                <option value="" disabled>{this.L.loadExample}</option>
+                                {GROUPS.map(g => (
+                                    <optgroup key={g.label} label={g.label}>
+                                        {g.items.filter(([k]) => examples[k]).map(([k, label]) => {
+                                            const compat = this.exampleCompat(k);
+                                            const blocked = compat && !compat.ok;
+                                            return (
+                                                <option key={k} value={k} disabled={blocked}
+                                                    title={blocked ? compat.reasons.join('; ') : ''}>
+                                                    {blocked ? `${label} ⛔` : label}
+                                                </option>
+                                            );
+                                        })}
+                                    </optgroup>
+                                ))}
+                            </select>
+                            <button onClick={() => this.setState(s => ({showRef: !s.showRef}))}
+                                style={{...csel, cursor: 'pointer', background: this.state.showRef ? '#e2e8f0' : '#f1f5f9',
+                                    border: '1px solid #cbd5e1', alignSelf: 'center'}}
+                                title={this.L.referenceTitle(this.state.lang)}>
+                                📝 {this.L.reference}
+                            </button>
+                            <button type="button" onClick={() => this.setState(s => ({showArt: !s.showArt}))}
+                                title={this.L.customArtTitle}
+                                style={{...csel, cursor: 'pointer', border: '1px solid #cbd5e1',
+                                    background: this.state.showArt ? '#e2e8f0' : '#f1f5f9', alignSelf: 'center'}}>
+                                🖼️{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
+                            </button>
+                        </React.Fragment>
+                    )}
+                    {/* In maximize mode: compact To/From-blocks in the tab row */}
+                    {max && (
+                        <React.Fragment>
+                            <button onClick={this.compile}
+                                disabled={this.state.busy || !this.activeCode().trim() || !TWO_WAY.has(this.state.lang)}
+                                title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
+                                style={{...csel, cursor: 'pointer', fontWeight: 600, alignSelf: 'center',
+                                    background: 'linear-gradient(135deg,#4c97ff,#4280d7)', color: '#fff', border: 'none'}}>
+                                ⇦ Blocks
+                            </button>
+                            <button onClick={this.fromBlocks} disabled={this.state.busy}
+                                title={this.L.fromBlocksTitle}
+                                style={{...csel, cursor: 'pointer', fontWeight: 600, alignSelf: 'center',
+                                    background: 'linear-gradient(135deg,#a55b80,#8e4a6c)', color: '#fff', border: 'none'}}>
+                                Blocks ⇨
+                            </button>
+                        </React.Fragment>
+                    )}
                     <button onClick={() => this.toggleMaximize()}
-                        style={{...sel, cursor: 'pointer', background: this.state.maximized ? '#4c97ff' : '#f1f5f9',
-                            color: this.state.maximized ? '#fff' : 'inherit', minWidth: 32}}
-                        title={this.state.maximized ? 'Restore panels' : 'Maximize editor'}
+                        style={{...csel, cursor: 'pointer', background: max ? '#4c97ff' : '#f1f5f9',
+                            color: max ? '#fff' : 'inherit', minWidth: 24, border: '1px solid #cbd5e1', alignSelf: 'center'}}
+                        title={max ? 'Restore panels' : 'Maximize editor'}
                         data-testid="bw-editor-maximize">
-                        {this.state.maximized ? '⊡' : '⊞'}
+                        {max ? '⊡' : '⊞'}
                     </button>
                 </div>
 
-                {this.state.showInfo && (
-                    <div style={{marginBottom: 10, padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
-                        borderRadius: 8, fontSize: 13, color: '#334155'}}>
+                {this.state.showInfo && !max && (
+                    <div style={{padding: '6px 10px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                        borderRadius: '0 0 8px 8px', fontSize: 12, color: '#334155', flexShrink: 0}}>
                         {pickLocale(this.props.locale) === 'de' ? (
                             <React.Fragment>
                                 Schreibe dein Projekt als Code in jedem Tab. <strong>Pseudocode</strong>, <strong>Python</strong>,{' '}
@@ -1186,7 +1226,7 @@ class PseudocodeImporter extends React.Component {
                                 liest das aktuelle Projekt in jede Sprache ein, Tab-Wechsel wandelt um.{' '}
                                 <strong>ASM</strong> ist bewusst einbahnig — schreiben, assemblieren, ausführen; kein Rückweg zu Blöcken.{' '}
                                 <strong>micro:bit</strong> wird für DEVICE MICROBIT generiert (noch kein Rücklesen).{' '}
-                                Sprite-/Stift-Verhalten liegt in den Blöcken (die Wahrheit) — die Code-Tabs zeigen die algorithmischen Teile. Kommentare bleiben erhalten.
+                                Sprite-/Stift-Verhalten liegt in den Blöcken (die Wahrheit) — Kommentare bleiben erhalten.
                             </React.Fragment>
                         ) : (
                             <React.Fragment>
@@ -1194,56 +1234,31 @@ class PseudocodeImporter extends React.Component {
                                 <strong>JavaScript</strong>, <strong>C</strong> and <strong>BASIC</strong> are two-way:{' '}
                                 <strong>⇦ To blocks</strong> compiles the active tab, <strong>From blocks ⇨</strong>{' '}
                                 reads the current project into every language, switching tabs converts.{' '}
-                                <strong>ASM</strong> is deliberately one-way — write, assemble and run; it never decompiles to blocks.{' '}
+                                <strong>ASM</strong> is deliberately one-way — write, assemble and run.{' '}
                                 <strong>micro:bit</strong> is generated for DEVICE MICROBIT (no reader yet).{' '}
-                                Sprite/pen behaviour lives in the blocks (the ground truth), so the code tabs show the algorithmic parts — comments are kept.
+                                Sprite/pen behaviour lives in the blocks (ground truth) — comments are kept.
                             </React.Fragment>
                         )}
                     </div>
                 )}
 
-                {this.state.showRef && (
+                {this.state.showRef && !max && (
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(210px,1fr))',
-                        gap: 12, marginBottom: 12, padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0'}}>
+                        gap: 12, marginBottom: 4, padding: 10, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0',
+                        fontSize: 12, flexShrink: 0}}>
                         {(this.state.lang === 'pseudocode' ? SYNTAX : SUPPORTED[this.state.lang]).map(([h, items]) => (
                             <div key={h}>
                                 <div style={{fontWeight: 700, marginBottom: 4}}>{h}</div>
                                 <ul style={{margin: 0, paddingLeft: 16}}>
                                     {items.map((it, i) => (
-                                        <li key={i}><code style={{fontSize: 12}}>{it}</code></li>
+                                        <li key={i}><code style={{fontSize: 11}}>{it}</code></li>
                                     ))}
                                 </ul>
                             </div>
                         ))}
                     </div>
                 )}
-
-                {/* Tabs (left) + Custom-art toggle (right). Plain buttons — NOT role="tab",
-                    which would collide with the editor's top-level react-tabs. */}
-                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end'}}>
-                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript'], ['c', '🔧 C'], ['basic', '📺 BASIC'], ['asm', '🔩 ASM'],
-                        ...(this.currentDevice() === 'microbit' ? [['micropython', '🤖 micro:bit']] : [])].map(([l, label]) => {
-                        const active = this.state.lang === l;
-                        return (
-                            <button key={l} type="button" aria-pressed={active} onClick={() => this.switchTab(l)}
-                                disabled={this.state.busy && !active}
-                                style={{padding: '8px 16px', border: '1px solid #cbd5e1', borderBottom: active ? '1px solid #fff' : '1px solid #cbd5e1',
-                                    borderRadius: '8px 8px 0 0', cursor: 'pointer', fontWeight: active ? 700 : 500,
-                                    background: active ? '#fff' : '#eef2f7', color: active ? '#1e293b' : '#64748b',
-                                    position: 'relative', top: active ? 0 : 1}}>
-                                {label}
-                            </button>
-                        );
-                    })}
-                    <span style={{flex: 1}} />
-                    <button type="button" onClick={() => this.setState(s => ({showArt: !s.showArt}))}
-                        title={this.L.customArtTitle}
-                        style={{alignSelf: 'center', padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
-                            border: '1px solid #cbd5e1', background: this.state.showArt ? '#e2e8f0' : '#f1f5f9', fontSize: 13}}>
-                        🖼️ {this.L.customArt}{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
-                    </button>
-                </div>
-                {this.state.lang === 'basic' && (
+                {this.state.lang === 'basic' && !max && (
                     <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
                             Profile:
@@ -1261,7 +1276,7 @@ class PseudocodeImporter extends React.Component {
                         </label>
                     </div>
                 )}
-                {this.state.lang === 'asm' && (
+                {this.state.lang === 'asm' && !max && (
                     <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
                             Mode:
@@ -1289,7 +1304,7 @@ class PseudocodeImporter extends React.Component {
                         )}
                     </div>
                 )}
-                {this.state.lang === 'micropython' && (
+                {this.state.lang === 'micropython' && !max && (
                     <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}
                         data-testid="bw-micropython-bar">
                         <span style={{color: '#166534'}}>Read-only — generated from your blocks for the micro:bit.</span>
@@ -1436,7 +1451,8 @@ class PseudocodeImporter extends React.Component {
                 </div>
                 )}
 
-                <div style={{marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'}}>
+                {/* Bottom controls row — hidden in maximize mode (compact To/From are in the tab row) */}
+                <div style={{marginTop: max ? 4 : 12, display: max ? 'none' : 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0}}>
                     <button onClick={this.compile}
                         disabled={this.state.busy || !this.activeCode().trim() || !TWO_WAY.has(this.state.lang)}
                         title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
