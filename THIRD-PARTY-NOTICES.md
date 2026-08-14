@@ -778,6 +778,22 @@ Haverbeke and contributors):
 - **Usage:** lazy-loaded chunk for the Code tab editor. No source code is
   modified; all packages are consumed as published npm dependencies.
 
+## micropython-microbit-v2-simulator — MIT
+
+**micropython-microbit-v2-simulator** (MIT License,
+https://github.com/microbit-foundation/micropython-microbit-v2-simulator)
+provides a client-side micro:bit v2 MicroPython simulator compiled to WASM.
+Self-hosted under `static/microbit-sim/` (built from source with emscripten).
+
+- **Licence:** MIT
+- **Source:** https://github.com/microbit-foundation/micropython-microbit-v2-simulator
+- **Author:** Micro:bit Educational Foundation
+- **Usage:** The simulator runs MicroPython programs on a virtual micro:bit
+  board (5x5 LED display, buttons, pins, accelerometer, radio) entirely
+  client-side. Loaded in an iframe from the Code tab when the micro:bit
+  device is selected. The built assets (firmware.js, firmware.wasm,
+  simulator.js) are vendored; the source repo provides the build recipe.
+
 ## avr8js — MIT
 
 **avr8js** (MIT License, https://github.com/wokwi/avr8js) provides

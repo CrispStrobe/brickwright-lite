@@ -10,6 +10,7 @@ packages/scratch-audio/
 packages/scratch-storage/
 packages/scratch-svg-renderer/
 build/
+!overlay/scratch-gui/static/microbit-sim/build/
 dist/
 /tmp/
 *.tgz

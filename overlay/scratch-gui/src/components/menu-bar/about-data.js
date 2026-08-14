@@ -33,6 +33,14 @@ const ABOUT_GROUPS = [
                 note: 'Fork of emu8051 by Jari Komppa (MIT)'
             },
             {
+                name: 'micropython-microbit-v2-simulator',
+                url: 'https://github.com/microbit-foundation/micropython-microbit-v2-simulator',
+                license: 'MIT',
+                licenseUrl: 'https://github.com/microbit-foundation/micropython-microbit-v2-simulator/blob/main/LICENSE',
+                role: 'micro:bit v2 MicroPython simulator (WASM)',
+                note: 'By the Micro:bit Educational Foundation'
+            },
+            {
                 name: 'rp2040js',
                 url: 'https://github.com/wokwi/rp2040js',
                 license: 'MIT',

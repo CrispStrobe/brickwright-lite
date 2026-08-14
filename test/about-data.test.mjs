@@ -25,7 +25,7 @@ test('every group has title and at least one entry', () => {
 
 test('key entries are present', () => {
     const required = [
-        'avr8js', 'emu8051-stc', 'rp2040js',
+        'avr8js', 'emu8051-stc', 'micropython-microbit-v2-simulator', 'rp2040js',
         'BBC BASIC', 'PicoBB', 'CP/M 2.2', 'basic-m6502-bw',
         'SDCC', 'cc65',
         'scratch-gui', 'scratch-vm', 'scratch-blocks',
