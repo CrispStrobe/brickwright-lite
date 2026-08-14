@@ -94,12 +94,15 @@ let installed = false;
  */
 export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en', onCondition = null) {
     const inert = { repaint() {}, uninstall() {} };
-    if (installed || !ScratchBlocks || !ScratchBlocks.BlockSvg) return inert;
-    installed = true;
+    if (!ScratchBlocks || !ScratchBlocks.BlockSvg) return inert;
 
-    const style = document.createElement('style');
-    style.textContent = CSS;
-    document.head.appendChild(style);
+    // CSS injection is idempotent — only done once even across remounts.
+    if (!installed) {
+        installed = true;
+        const style = document.createElement('style');
+        style.textContent = CSS;
+        document.head.appendChild(style);
+    }
 
     /**
      * Does this project have hardware to debug?
@@ -138,6 +141,9 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
 
         const stc = runtime.stc;
         if (stc && stc.pins && stc.pins.length) return true;
+        // The Code tab publishes the device id to the runtime; any non-null
+        // device means the user has chosen a hardware target.
+        if (runtime.bwDeviceId) return true;
 
         const em = vm.extensionManager;
         if (em && typeof em.isExtensionLoaded === 'function') {
