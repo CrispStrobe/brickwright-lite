@@ -1610,6 +1610,13 @@ class PseudocodeImporter extends React.Component {
                             ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JavaScript'}
                         </button>
                     ) : null}
+                    {this.state.lang === 'basic' && this.activeCode().trim() ? (
+                        <button onClick={() => this.runBasic()} disabled={this.state.running}
+                            style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
+                            data-testid="bw-basic-run">
+                            {this.L.runBasic}
+                        </button>
+                    ) : null}
                     {this.state.lang === 'c' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.cNote}</span> : null}
                     {this.state.lang === 'basic' ? (
                         <button type="button" onClick={() => this.setState(s => ({showBasicInfo: !s.showBasicInfo}))}
