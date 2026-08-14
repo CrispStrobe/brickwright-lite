@@ -254,96 +254,30 @@ const PY_WORKER = [
     '};'
 ].join('\n');
 
-// ---- Lightweight syntax highlighter (dependency-free, CSP-safe) ------------------
-// A textarea can't render coloured text, so the editor is an overlay: a highlighted
-// <pre> sits behind a transparent <textarea> whose caret stays visible. This function
-// turns source into safe HTML for that <pre>. It's deliberately regex-simple —
-// strings, comments, numbers and a per-language keyword set — not a full lexer.
-const KEYWORDS = {
-    python: /^(def|if|elif|else|while|for|in|return|pass|and|or|not|True|False|None|import|from|as|global|range|del|break|continue|lambda|with|try|except|is)$/,
-    javascript: /^(function|if|else|while|for|of|in|return|let|const|var|true|false|null|undefined|new|typeof|do|switch|case|break|continue|try|catch|throw|class|this|void)$/,
-    pseudocode: /^(set|change|say|think|ask|wait|move|turn|go|glide|point|broadcast|create|delete|stop|add|insert|replace|call|play|hide|show|switch|next|when|and|or|not|of|to|by|until|contains|mod|join|item|pick|random|round|sqrt|length|clone|myself)$/i,
-    // C, plus SDCC's 8051 extras and the SFR names generateC actually writes.
-    c: /^(if|else|while|for|do|switch|case|default|break|continue|return|goto|static|const|volatile|unsigned|signed|int|char|long|short|void|sizeof|struct|typedef|enum|__interrupt|__at|sfr|sbit|bit|include|define)$/,
-    basic: /^(REM|LET|PRINT|INPUT|IF|THEN|ELSE|ENDIF|FOR|TO|STEP|NEXT|WHILE|WEND|ENDWHILE|REPEAT|UNTIL|GOTO|GOSUB|RETURN|DEF|PROC|ENDPROC|FN|END|DIM|DATA|READ|RESTORE|ON|AND|OR|NOT|MOD|DIV|TRUE|FALSE|ABS|INT|RND|SQR|SGN|ASC|CHR\$|STR\$|VAL|LEFT\$|RIGHT\$|MID\$|LEN|TIME|POKE|PEEK|CLS|STOP|RUN|NEW)$/i
-};
-const PSEUDO_CAPS = /^(SPRITE|STAGE|GLOBAL|LOCAL|LIST|SHAPE|COSTUME|BACKDROP|SOUND|WHEN|DEFINE|IF|THEN|ELSE|FOREVER|REPEAT|UNTIL|FAST)$/;
+// ── CodeMirror 6 editor (lazy-loaded) ──────────────────────────────
+// The CM chunk (~200 KB) loads only when the Code tab activates.
+// Blocks-only users never download it.
+const CMEditor = React.lazy(() =>
+    import(/* webpackChunkName: "bw-codemirror" */ '../../lib/codemirror-editor.jsx')
+);
 
-function escHtml (s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-function highlight (code, lang) {
-    // C is mostly /* … */ (that is what generateC emits) but `//` is legal too.
-    const commentPat = lang === 'c' ? '\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*'
-        : lang === 'javascript' ? '\\/\\/[^\\n]*' : '#[^\\n]*';
-    const re = new RegExp(`(${commentPat})|("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\b\\d+(?:\\.\\d+)?\\b)|([A-Za-z_][A-Za-z0-9_]*)`, 'g');
-    const kw = KEYWORDS[lang] || KEYWORDS.pseudocode;
-    let out = '', last = 0, m;
-    const wrap = (color, text, extra) => `<span style="color:${color}${extra || ''}">${escHtml(text)}</span>`;
-    while ((m = re.exec(code))) {
-        out += escHtml(code.slice(last, m.index));
-        last = re.lastIndex;
-        const [, comment, str, num, word] = m;
-        if (comment !== undefined) out += wrap('#6a737d', comment, ';font-style:italic');
-        else if (str !== undefined) out += wrap('#22863a', str);
-        else if (num !== undefined) out += wrap('#005cc5', num);
-        else if (word !== undefined) {
-            if (lang === 'pseudocode' && PSEUDO_CAPS.test(word)) out += wrap('#6f42c1', word, ';font-weight:600');
-            else if (kw.test(word)) out += wrap('#d73a49', word);
-            else out += escHtml(word);
-        }
-    }
-    out += escHtml(code.slice(last));
-    return out;
-}
-
-// Overlaid highlighted editor. Shares exact metrics between the <pre> and <textarea>
-// so the coloured layer lines up with the caret; scroll is mirrored on input/scroll.
-class CodeEditor extends React.Component {
-    constructor (props) {
-        super(props);
-        this.pre = React.createRef();
-        this.ta = React.createRef();
-        this.sync = this.sync.bind(this);
-        this.onKeyDown = this.onKeyDown.bind(this);
-    }
-    sync () { const pre = this.pre.current, ta = this.ta.current; if (pre && ta) { pre.scrollTop = ta.scrollTop; pre.scrollLeft = ta.scrollLeft; } }
-    onKeyDown (e) {
-        if (e.key !== 'Tab' || this.props.readOnly) return;
-        e.preventDefault();
-        const ta = e.target;
-        const s = ta.selectionStart, en = ta.selectionEnd, val = ta.value;
-        const next = val.slice(0, s) + '  ' + val.slice(en);
-        this.props.onChange({target: {value: next}});
-        requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = s + 2; });
-    }
-    render () {
-        const {value, onChange, readOnly, lang, placeholder} = this.props;
-        const shared = {margin: 0, boxSizing: 'border-box', fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace',
-            fontSize: 13, lineHeight: '1.5', padding: 12, border: '1px solid #cbd5e1', borderRadius: 8,
-            whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word', tabSize: 2, letterSpacing: 'normal'};
-        const html = value ? highlight(value, lang) + '<br/>' : `<span style="color:#94a3b8">${escHtml(placeholder || '')}</span>`;
-        return (
-            <div style={{position: 'relative', flex: 1, minHeight: 240, width: '100%'}}>
-                <pre ref={this.pre} aria-hidden="true" dangerouslySetInnerHTML={{__html: html}}
-                    style={{...shared, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'auto',
-                        background: readOnly ? '#f8fafc' : '#fff', color: '#24292e', pointerEvents: 'none',
-                        borderColor: readOnly ? '#e2e8f0' : '#cbd5e1'}} />
-                <textarea ref={this.ta} value={value} onChange={onChange} onScroll={this.sync} onKeyDown={this.onKeyDown}
-                    spellCheck={false} readOnly={readOnly}
-                    style={{...shared, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, resize: 'none', overflow: 'auto',
-                        background: 'transparent', color: 'transparent', caretColor: '#24292e', WebkitTextFillColor: 'transparent',
-                        borderColor: 'transparent'}} />
-            </div>
-        );
-    }
-}
-CodeEditor.propTypes = {
-    value: PropTypes.string,
-    onChange: PropTypes.func,
-    readOnly: PropTypes.bool,
-    lang: PropTypes.string,
-    placeholder: PropTypes.string
-};
+// Fallback while the CM chunk loads — a plain textarea that matches the old editor
+// closely enough to prevent layout jump. Also used if CM fails to load.
+const FallbackEditor = ({value, onChange, readOnly}) => (
+    <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        readOnly={readOnly}
+        spellCheck={false}
+        style={{
+            flex: 1, minHeight: 240, width: '100%', resize: 'none',
+            fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace',
+            fontSize: 13, lineHeight: '1.5', padding: 12,
+            border: '1px solid #cbd5e1', borderRadius: 8,
+            boxSizing: 'border-box'
+        }}
+    />
+);
 
 class PseudocodeImporter extends React.Component {
     constructor (props) {
@@ -356,7 +290,10 @@ class PseudocodeImporter extends React.Component {
             uploads: [], status: '', busy: false, showRef: false, showInfo: false, showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
-            driverMode: 'shim', asyncMode: false, eventsMode: false};
+            driverMode: 'shim', asyncMode: false, eventsMode: false,
+            // Editor maximize: collapses reference/art panels and hides the right stage pane
+            maximized: false};
+        this._cmEditor = null;
         this.handleFiles = this.handleFiles.bind(this);
         this.compile = this.compile.bind(this);
         this.fromBlocks = this.fromBlocks.bind(this);
@@ -968,6 +905,26 @@ class PseudocodeImporter extends React.Component {
         }
         this.setState({busy: false});
     }
+
+    /** Imperative API: highlight a source line (1-based) in the editor.
+     *  Used by the debugger for BASIC TRACE glow and current-PC highlight. */
+    setHighlightedLine (n) {
+        if (this._cmEditor && this._cmEditor.setHighlightedLine) {
+            this._cmEditor.setHighlightedLine(n);
+        }
+    }
+
+    /** Toggle maximize: collapse reference/art/info panels and hide the right pane. */
+    toggleMaximize () {
+        const next = !this.state.maximized;
+        this.setState({maximized: next, showRef: false, showArt: false, showInfo: false});
+        try { localStorage.setItem('bw-editor-max', next ? '1' : '0'); } catch { /* noop */ }
+        // Toggle the right pane via the existing mechanic
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {
+            detail: {key: 'bw-right-pane-hidden', value: next ? '1' : '0'}
+        }));
+    }
+
     render () {
         // The selected .tab-panel is display:flex (row); like .blocks-wrapper we must
         // flex-grow to fill the column width, else we shrink to content (~660px) and
@@ -1028,6 +985,13 @@ class PseudocodeImporter extends React.Component {
                         style={{...sel, cursor: 'pointer', background: this.state.showRef ? '#e2e8f0' : '#f1f5f9'}}
                         title={this.L.referenceTitle(this.state.lang)}>
                         📝 {LANG_LABEL[this.state.lang]} {this.L.reference}
+                    </button>
+                    <button onClick={() => this.toggleMaximize()}
+                        style={{...sel, cursor: 'pointer', background: this.state.maximized ? '#4c97ff' : '#f1f5f9',
+                            color: this.state.maximized ? '#fff' : 'inherit', minWidth: 32}}
+                        title={this.state.maximized ? 'Restore panels' : 'Maximize editor'}
+                        data-testid="bw-editor-maximize">
+                        {this.state.maximized ? '⊡' : '⊞'}
                     </button>
                 </div>
 
@@ -1111,21 +1075,21 @@ class PseudocodeImporter extends React.Component {
                         </label>
                     </div>
                 )}
-                <CodeEditor
-                    value={this.activeCode()}
-                    onChange={e => this.setActiveCode(e.target.value)}
-                    readOnly={!TWO_WAY.has(this.state.lang)}
-                    lang={this.state.lang}
-                    placeholder={this.state.lang === 'c'
-                        ? '#include <stc12.h>\n#define LED1   P1_0\n#define LED_ON 0\n\nvoid main(void) {\n    for (;;) {\n        LED1 = LED_ON;\n        delay_ms(500);\n    }\n}\n\n// paste firmware here and press \u201c\u21e6 To blocks\u201d, or press \u201cFrom blocks\u201d'
-                        : this.state.lang === 'pseudocode'
-                        ? 'SPRITE Cat:\n  WHEN flag clicked:\n    say “Hello!” for 2 seconds\n    FOREVER:\n      move 10 steps'
-                        : this.state.lang === 'basic'
-                        ? '10 REM Blink example\n20 PRINT "Hello!"\n30 FOR I = 1 TO 10\n40   PRINT I\n50 NEXT I\n\nREM paste BASIC here and press To blocks'
-                        : this.state.lang === 'python'
-                            ? 'def when_flag_clicked():\n    print(“Hello!”)\n\nwhen_flag_clicked()\n\n# or press “From blocks” to generate this from your project'
-                            : 'function when_flag_clicked() {\n  console.log(“Hello!”);\n}\nwhen_flag_clicked();\n\n// or press “From blocks” to generate this from your project'}
-                />
+                <React.Suspense fallback={
+                    <FallbackEditor
+                        value={this.activeCode()}
+                        onChange={text => this.setActiveCode(text)}
+                        readOnly={!TWO_WAY.has(this.state.lang)}
+                    />
+                }>
+                    <CMEditor
+                        ref={ref => { this._cmEditor = ref; }}
+                        value={this.activeCode()}
+                        onChange={text => this.setActiveCode(text)}
+                        readOnly={!TWO_WAY.has(this.state.lang)}
+                        lang={this.state.lang}
+                    />
+                </React.Suspense>
 
                 {this.state.showArt && (
                 <div style={{margin: '12px 0 4px', padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8}}>

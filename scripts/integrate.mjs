@@ -61,7 +61,16 @@ pkg.dependencies['scratch-vm'] = '4.8.115';                      // last BSD-3; 
 // overlay. webpack builds it from src (package `browser` field), and apply-paint-overlay.mjs
 // lays our delta over node_modules/scratch-paint after install.
 pkg.dependencies['scratch-paint'] = '2.2.518';                   // last BSD-3
+// CodeMirror 6 — MIT, lazy-loaded for the Code tab editor. The `codemirror` meta-package
+// bundles view/state/commands/autocomplete/lint/language basics + bracket matching.
+pkg.dependencies['codemirror'] = pkg.dependencies['codemirror'] || '^6.0.1';                       // MIT
+pkg.dependencies['@codemirror/lang-cpp'] = pkg.dependencies['@codemirror/lang-cpp'] || '^6.0.2';   // MIT
+pkg.dependencies['@codemirror/lang-python'] = pkg.dependencies['@codemirror/lang-python'] || '^6.1.6'; // MIT
+pkg.dependencies['@codemirror/lang-javascript'] = pkg.dependencies['@codemirror/lang-javascript'] || '^6.2.2'; // MIT
+pkg.dependencies['@codemirror/language'] = pkg.dependencies['@codemirror/language'] || '^6.10.8';   // MIT
+pkg.dependencies['@codemirror/search'] = pkg.dependencies['@codemirror/search'] || '^6.5.8';       // MIT
+pkg.dependencies['@codemirror/theme-one-dark'] = pkg.dependencies['@codemirror/theme-one-dark'] || '^6.1.2'; // MIT
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-console.log('  ensured deps (skulpt, jszip, lit + wokwi elements) + pinned avr8js@0.21.0, rp2040js@1.3.3, scratch-vm@4.8.115, scratch-paint@2.2.518');
+console.log('  ensured deps (skulpt, jszip, lit + wokwi elements, codemirror) + pinned avr8js@0.21.0, rp2040js@1.3.3, scratch-vm@4.8.115, scratch-paint@2.2.518');
 
 console.log('Integration applied. `cd packages/scratch-gui && npm install --ignore-scripts && npm run build`.');
