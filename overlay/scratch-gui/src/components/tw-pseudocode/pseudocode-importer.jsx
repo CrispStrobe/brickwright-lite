@@ -65,6 +65,7 @@ const L10N = {
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
         basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
+        asmNote: 'Read-only disassembly from the hosted compiler. There is no ASM-to-blocks path — this view is for inspection. The line map stored here will drive the future current-PC highlight.',
         stCOneWay: 'That language cannot be compiled back to blocks.'
     },
     de: {
@@ -91,7 +92,8 @@ const L10N = {
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
         basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
-        stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.'
+        asmNote: 'Nur-Lese-Disassemblierung vom gehosteten Compiler. Kein ASM-zu-Blocke-Pfad — diese Ansicht dient der Inspektion. Die gespeicherte Zeilentabelle wird den zukünftigen PC-Cursor antreiben.',
+        stCOneWay: 'Diese Sprache lässt sich nicht zu Blocken zurückfuhren.'
     }
 };
 const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
@@ -163,7 +165,7 @@ const SYNTAX = [
         'distance to mouse-pointer', 'set drag mode draggable', 'play note 60 for 0.5 beats, set tempo to 120']]
 ];
 
-const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC'};
+const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM'};
 
 // Languages you can compile back INTO blocks. C joined them once cToPseudocode landed:
 // it reads both our own emitted C (which carries an `@bw` marker header, so the round-trip
@@ -285,15 +287,20 @@ class PseudocodeImporter extends React.Component {
         // One buffer per language tab. Editing the active tab clears the others so
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
-        this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: ''},
+        this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', busy: false, showRef: false, showInfo: false, showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
             driverMode: 'shim', asyncMode: false, eventsMode: false,
             // Editor maximize: collapses reference/art panels and hides the right stage pane
-            maximized: false};
+            maximized: false,
+            // ASM listing line map from the compile service (addr/file/line triples).
+            // Future current-PC highlight will drive setHighlightedLine via this.
+            asmLineMap: null};
         this._cmEditor = null;
+        // Cache compiled ASM by source hash so tab switching doesn't recompile.
+        this._asmCache = {hash: null, asm: '', lineMap: null};
         this.handleFiles = this.handleFiles.bind(this);
         this.compile = this.compile.bind(this);
         this.fromBlocks = this.fromBlocks.bind(this);
@@ -337,7 +344,7 @@ class PseudocodeImporter extends React.Component {
     get L () { return L10N[pickLocale(this.props.locale)]; }
 
     activeCode () { return this.state.buffers[this.state.lang]; }
-    setActiveCode (text) { this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', [s.lang]: text}})); }
+    setActiveCode (text) { this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', [s.lang]: text}})); }
 
     // Lazily import the compiler module.
     async lib () { return (await import(/* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js')); }
@@ -386,6 +393,8 @@ class PseudocodeImporter extends React.Component {
     switchTab (to) {
         const from = this.state.lang;
         if (to === from || this.state.busy) return;
+        // ASM tab: fetch from compile service with disassemble=true
+        if (to === 'asm') { this.switchToAsm(); return; }
         const existing = this.state.buffers[to];
         const src = this.state.buffers[from];
         if ((existing && existing.trim()) || !src || !src.trim()) { this.setState({lang: to, output: null, status: ''}); return; }
@@ -394,6 +403,98 @@ class PseudocodeImporter extends React.Component {
             if (error) { this.setState({busy: false, status: this.L.stCantShow(to, error)}); return; }
             this.setState(s => ({lang: to, busy: false, output: null, status: '', buffers: {...s.buffers, [to]: code}}));
         });
+    }
+
+    /** Simple hash for cache key — FNV-1a 32-bit on the source string. */
+    _hashSource (str) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+            h ^= str.charCodeAt(i);
+            h = (h * 0x01000193) >>> 0;
+        }
+        return h.toString(16);
+    }
+
+    /** Switch to the ASM tab: compile via the hosted service with disassemble=true.
+     *  Caches by source hash so tab switching doesn't recompile. */
+    async switchToAsm () {
+        // Need C source to compile. Derive it from whatever is active.
+        let cSrc = this.state.buffers.c;
+        if (!cSrc || !cSrc.trim()) {
+            // Derive C from the current active buffer first
+            const src = this.state.buffers[this.state.lang] || this.state.buffers.pseudocode;
+            if (!src || !src.trim()) {
+                this.setState({lang: 'asm', output: null, status: 'No source to compile — write code in another tab first.'});
+                return;
+            }
+            this.setState({busy: true, status: this.L.stCompiling});
+            const result = await this.deriveBuffer(src, this.state.lang === 'asm' ? 'pseudocode' : this.state.lang, 'c');
+            if (result.error) {
+                this.setState({busy: false, lang: 'asm', status: `Cannot derive C: ${result.error}`});
+                return;
+            }
+            cSrc = result.code;
+        }
+
+        // Check cache
+        const hash = this._hashSource(cSrc);
+        if (this._asmCache.hash === hash && this._asmCache.asm) {
+            this.setState(s => ({
+                lang: 'asm', busy: false, output: null, status: '',
+                buffers: {...s.buffers, asm: this._asmCache.asm},
+                asmLineMap: this._asmCache.lineMap
+            }));
+            return;
+        }
+
+        this.setState({busy: true, status: this.L.stCompiling});
+        try {
+            const stc = this.currentStc();
+            const deviceId = (stc && stc.device || 'stc12c5a60s2').toLowerCase();
+            // Map device to compile target (same map as debug-runner.js)
+            const COMPILE_TARGET = {
+                'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
+                'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
+                'arduino-mega': 'atmega2560', 'pico': 'rp2040', 'eater6502': 'eater6502'
+            };
+            const compileTarget = COMPILE_TARGET[deviceId] || deviceId;
+            const res = await fetch('https://stc-compiler.vercel.app/compile', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    code: cSrc,
+                    language: 'c',
+                    target: compileTarget,
+                    format: deviceId === 'pico' ? 'bin' : 'ihx',
+                    disassemble: true
+                })
+            });
+            const out = await res.json();
+            if (!out.success) throw new Error(out.error || 'the compiler refused this program');
+            // v1 listing shape: {asm, lineMap, format, v}
+            // Fallback: old response.disassembly string
+            let asmText = '';
+            let lineMap = null;
+            if (out.listing && out.listing.asm) {
+                asmText = out.listing.asm;
+                lineMap = out.listing.lineMap || null;
+            } else if (out.disassembly) {
+                asmText = out.disassembly;
+            } else {
+                asmText = '; (no disassembly returned by the compiler service)';
+            }
+            // Cache it
+            this._asmCache = {hash, asm: asmText, lineMap};
+            this.setState(s => ({
+                lang: 'asm', busy: false, output: null,
+                status: lineMap ? `${lineMap.length} source mapping(s)` : '',
+                buffers: {...s.buffers, asm: asmText},
+                asmLineMap: lineMap
+            }));
+        } catch (e) {
+            this.setState({busy: false, lang: 'asm', status: this.L.stError(e.message),
+                buffers: {...this.state.buffers, asm: `; Compile error: ${e.message}`}});
+        }
     }
 
     // Keil C51 gives itself away: keywords SDCC spells differently, and its register headers.
@@ -720,17 +821,17 @@ class PseudocodeImporter extends React.Component {
             if (result.ok) {
                 this.setState({lang: 'pseudocode', output: null,
                     status: result.warnings.length ? result.warnings.join('; ') : '',
-                    buffers: {pseudocode: result.pseudocode, python: '', javascript: '', c: ''}});
+                    buffers: {pseudocode: result.pseudocode, python: '', javascript: '', c: '', basic: '', asm: ''}});
                 return;
             }
             // Show what blocked the retarget — the example stays loaded in its original form.
             this.setState({lang: 'pseudocode', output: null,
                 status: `Loaded for ${exampleDevice} (cannot retarget to ${device}: ${result.reasons.join('; ')})`,
-                buffers: {pseudocode: src, python: '', javascript: '', c: ''}});
+                buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: ''}});
             return;
         }
         this.setState({lang: 'pseudocode', output: null, status: '',
-            buffers: {pseudocode: src, python: '', javascript: '', c: ''}});
+            buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: ''}});
     }
     // Sprite names declared in the current pseudocode — used to populate the
     // "associate SVG → sprite" dropdowns so you pick a real sprite, not guess a name.
@@ -872,6 +973,7 @@ class PseudocodeImporter extends React.Component {
                 const br = new SB3Creator().generateBASIC(proj, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
                 nb.basic = br.ok ? br.basic : `REM === Cannot show as BASIC ===\n${br.reasons.map(s => 'REM ' + s).join('\n')}`;
             }
+            nb.asm = ''; // cleared — re-fetched on next ASM tab switch
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             this.setState({buffers: nb, status: warns.length ?
@@ -894,7 +996,8 @@ class PseudocodeImporter extends React.Component {
                 python: new SB3Creator().generatePython(project, this.genOpts()),
                 javascript: new SB3Creator().generateJavaScript(project, this.genOpts()),
                 c: new SB3Creator().generateC(project),
-                basic: basicResult.ok ? basicResult.basic : `REM === Cannot show as BASIC ===\n${basicResult.reasons.map(s => 'REM ' + s).join('\n')}`
+                basic: basicResult.ok ? basicResult.basic : `REM === Cannot show as BASIC ===\n${basicResult.reasons.map(s => 'REM ' + s).join('\n')}`,
+                asm: '' // cleared — re-fetched on next ASM tab switch
             };
             const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
             this.setState({buffers, output: null, status: unsupported ?
@@ -1036,7 +1139,7 @@ class PseudocodeImporter extends React.Component {
                 {/* Tabs (left) + Custom-art toggle (right). Plain buttons — NOT role="tab",
                     which would collide with the editor's top-level react-tabs. */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end'}}>
-                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript'], ['c', '🔧 C'], ['basic', '📺 BASIC']].map(([l, label]) => {
+                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript'], ['c', '🔧 C'], ['basic', '📺 BASIC'], ['asm', '🔩 ASM']].map(([l, label]) => {
                         const active = this.state.lang === l;
                         return (
                             <button key={l} type="button" aria-pressed={active} onClick={() => this.switchTab(l)}
@@ -1248,6 +1351,7 @@ class PseudocodeImporter extends React.Component {
                     ) : null}
                     {this.state.lang === 'c' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.cNote}</span> : null}
                     {this.state.lang === 'basic' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.basicNote}</span> : null}
+                    {this.state.lang === 'asm' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.asmNote}</span> : null}
                     {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
                 </div>
                 {this.state.output != null ? (

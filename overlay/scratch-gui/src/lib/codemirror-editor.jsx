@@ -32,6 +32,7 @@ import {python} from '@codemirror/lang-python';
 import {javascript} from '@codemirror/lang-javascript';
 import {pseudocode as pseudocodeLang} from './cm-lang-pseudocode.js';
 import {basic as basicLang} from './cm-lang-basic.js';
+import {asm as asmLang} from './cm-lang-asm.js';
 import {Decoration, ViewPlugin} from '@codemirror/view';
 import {StateField, StateEffect} from '@codemirror/state';
 
@@ -61,6 +62,7 @@ function langExtension (lang) {
     case 'python': return python();
     case 'javascript': return javascript();
     case 'basic': return basicLang();
+    case 'asm': return asmLang();
     case 'pseudocode':
     default:
         return pseudocodeLang();
