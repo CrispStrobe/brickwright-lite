@@ -581,6 +581,15 @@ class CircuitTab extends React.Component {
      */
     handleRunnerChange (runner, ui) {
         const board = runner.board();
+        // A stopped runner must not leave a ghost session on screen: after
+        // Stop the phase is 'idle' (or 'error'), ui.session is stale or
+        // null, and passing the last debugState through kept the designer's
+        // status panel glowing green RUNNING forever. No session — no panel.
+        const phase = ui && ui.phase;
+        if (phase === 'idle' || phase === 'error') {
+            if (this.state.debugState !== null) this.setState({debugState: null});
+            return;
+        }
         // GAP C fix: rebind the diagnostic hook to the ACTIVE board while a
         // debug session is attached. window.__board is set once by onBoardReady
         // (the designer's own board), but during a debug run the active board
@@ -600,7 +609,11 @@ class CircuitTab extends React.Component {
         const tasks = (why && why.tasks ? why.tasks : (runner.state().session || {}).tasks) || null;
         const enriched = tasks && tasks.map(t => {
             const blockId = ui && ui.blockOfTask ? ui.blockOfTask[`${t.task}/${t.state}`] : undefined;
-            return {...t, blockId, kind: blockId && kinds ? kinds[blockId] : undefined};
+            // A raw Scratch block id ("FWr0@1h…") on screen is worse than
+            // nothing; only this side owns the VM, so the human label is
+            // resolved here and the designer renders label, never blockId.
+            return {...t, blockId, label: blockId ? this.labelForBlock(blockId) : undefined,
+                kind: blockId && kinds ? kinds[blockId] : undefined};
         });
         const haltReason = why ? why.cause : null;
         // bwMs: the cooperative scheduler's millisecond tick, read from RAM via
@@ -623,6 +636,24 @@ class CircuitTab extends React.Component {
                 }
             });
         }
+    }
+
+    /** Resolve a Scratch block id to something a person can read: the
+     *  block's opcode with its extension prefix dropped and underscores
+     *  spaced ("stc12_setpin" → "setpin"). Null when the block is gone —
+     *  the caller renders nothing rather than an opaque id. */
+    labelForBlock (blockId) {
+        const vm = this.props.vm;
+        const targets = vm && vm.runtime && vm.runtime.targets;
+        if (!targets) return null;
+        for (const t of targets) {
+            const b = t.blocks && t.blocks.getBlock && t.blocks.getBlock(blockId);
+            if (b && b.opcode) {
+                const bare = b.opcode.includes('_') ? b.opcode.slice(b.opcode.indexOf('_') + 1) : b.opcode;
+                return bare.replace(/_/g, ' ');
+            }
+        }
+        return null;
     }
 
     /** The project's own hardware declarations — device, clock, and the pin table.
