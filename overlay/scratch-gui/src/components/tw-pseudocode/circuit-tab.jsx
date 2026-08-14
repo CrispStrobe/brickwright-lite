@@ -117,6 +117,9 @@ class CircuitTab extends React.Component {
         this._stopAllHandler = this.handleProjectStop;
         window.addEventListener('bw-green-flag', this._greenFlagHandler);
         window.addEventListener('bw-stop-all', this._stopAllHandler);
+        // Power off in the designer = MCU loses power = runner stops.
+        this._powerOffHandler = this.handleProjectStop;
+        window.addEventListener('bw-power-off', this._powerOffHandler);
         const runtime = this.props.vm && this.props.vm.runtime;
         if (runtime && runtime.on) {
             runtime.on('PROJECT_START', this.handleProjectStart);
@@ -157,6 +160,7 @@ class CircuitTab extends React.Component {
         window.removeEventListener('bw-settings-change', this._settingsHandler);
         window.removeEventListener('bw-green-flag', this._greenFlagHandler);
         window.removeEventListener('bw-stop-all', this._stopAllHandler);
+        window.removeEventListener('bw-power-off', this._powerOffHandler);
         const runtime = this.props.vm && this.props.vm.runtime;
         if (runtime && runtime.removeListener) {
             runtime.removeListener('PROJECT_START', this.handleProjectStart);
