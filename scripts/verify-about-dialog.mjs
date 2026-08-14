@@ -95,7 +95,9 @@ async function verify() {
             }
         }
 
-        // Check that group headings are present
+        // Check that group headings are present (CSS text-transform: uppercase
+        // means innerText returns uppercased text, so compare case-insensitively)
+        const textLower = text.toLowerCase();
         const groupHeadings = [
             'Emulation engines',
             'Interpreters and OS',
@@ -109,7 +111,7 @@ async function verify() {
             'Tauri',
         ];
         for (const heading of groupHeadings) {
-            if (text.includes(heading)) {
+            if (textLower.includes(heading.toLowerCase())) {
                 pass(`Group: ${heading}`);
             } else {
                 fail(`Missing group heading: "${heading}"`);
