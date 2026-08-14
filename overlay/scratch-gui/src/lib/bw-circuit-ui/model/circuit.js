@@ -946,6 +946,11 @@ function terminalsForKind(kind, params) {
     case 'npn': case 'pnp': return ['base', 'collector', 'emitter'];
     case 'nmos': case 'pmos': return ['gate', 'drain', 'source'];
     case 'opamp': return ['inp', 'inn', 'out'];
+    // Terminal names are the ENGINE's (bw-board board.js kind table):
+    // gate_not is in0/out there, not in/out — wires in the example
+    // gallery reference in0, and a name mismatch renders ghost terminals.
+    case 'gate_and': case 'gate_or': case 'gate_nand': case 'gate_nor': case 'gate_xor': return ['in0', 'in1', 'out'];
+    case 'gate_not': return ['in0', 'out'];
     case '555': return ['gnd', 'trigger', 'output', 'reset', 'control', 'threshold', 'discharge', 'vcc'];
     case 'relay': return ['coil_a', 'coil_b', 'no', 'com', 'nc'];
     case 'servo': return ['signal', 'vcc', 'gnd'];
