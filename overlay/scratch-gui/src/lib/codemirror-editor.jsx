@@ -59,7 +59,8 @@ const highlightedLineField = StateField.define({
 function langExtension (lang) {
     switch (lang) {
     case 'c': return cpp();
-    case 'python': return python();
+    case 'python':
+    case 'micropython': return python();
     case 'javascript': return javascript();
     case 'basic': return basicLang();
     case 'asm': return asmLang();

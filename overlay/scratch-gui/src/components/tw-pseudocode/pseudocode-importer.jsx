@@ -165,7 +165,7 @@ const SYNTAX = [
         'distance to mouse-pointer', 'set drag mode draggable', 'play note 60 for 0.5 beats, set tempo to 120']]
 ];
 
-const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM'};
+const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit'};
 
 // Languages you can compile back INTO blocks. C joined them once cToPseudocode landed:
 // it reads both our own emitted C (which carries an `@bw` marker header, so the round-trip
@@ -212,6 +212,20 @@ const SUPPORTED = {
             'PROC/ENDPROC (BBC custom blocks)']],
         ['I/O', ['PRINT, INPUT (ask)', 'REM (comments)',
             'Refusals: multi-WHEN, pen, clones → shown as reasons']]
+    ],
+    micropython: [
+        ['Overview', ['MicroPython for micro:bit v2',
+            'from microbit import * (auto-generated)',
+            'Generators as cooperative scheduler (yield ms)']],
+        ['Verbs', ['display.scroll() — show text on LEDs',
+            'print() — serial output',
+            'say/think → stage speech (degraded)']],
+        ['Pins', ['PIN led = P0 OUTPUT → pin0.write_digital()',
+            'ACTIVE LOW inverts on/off',
+            'read pin → pin0.read_digital/read_analog()']],
+        ['Control', ['Multi-WHEN → generator tasks + round-robin driver',
+            'yield ms at every wait/loop back-edge',
+            'button_a / button_b (key a/b → micro:bit buttons)']]
     ]
 };
 
@@ -287,7 +301,7 @@ class PseudocodeImporter extends React.Component {
         // One buffer per language tab. Editing the active tab clears the others so
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
-        this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: ''},
+        this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', busy: false, showRef: false, showInfo: false, showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
@@ -311,6 +325,7 @@ class PseudocodeImporter extends React.Component {
         this.loadExample = this.loadExample.bind(this);
         this.run = this.run.bind(this);
         this.switchTab = this.switchTab.bind(this);
+        this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
     }
 
     componentDidMount () {
@@ -353,7 +368,7 @@ class PseudocodeImporter extends React.Component {
     }
     setActiveCode (text) {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
-        this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', [s.lang]: text}}));
+        this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', [s.lang]: text}}));
     }
 
     // Lazily import the compiler module.
@@ -393,6 +408,9 @@ class PseudocodeImporter extends React.Component {
             else if (to === 'basic') {
                 const r = new SB3().generateBASIC(proj, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
                 code = r.ok ? r.basic : `REM === Cannot show as BASIC ===\n${r.reasons.map(s => 'REM ' + s).join('\n')}`;
+            } else if (to === 'micropython') {
+                const r = new SB3().generateMicroPython(proj);
+                code = r.ok ? r.py : `# === Cannot generate MicroPython ===\n${r.reasons.map(s => '# ' + s).join('\n')}`;
             } else code = new SB3().generateJavaScript(proj, this.genOpts());
             return {code};
         } catch (e) { return {error: e.message}; }
@@ -808,6 +826,27 @@ class PseudocodeImporter extends React.Component {
             finish(String(e.message || e));
         }
     }
+    // Flash the micro:bit simulator with the current MicroPython code.
+    // Activates the simulator pane (stage-header dock='microbit') and posts
+    // the code via the CustomEvent bus; the MicrobitSimPane picks it up.
+    flashMicrobitSim () {
+        const code = this.state.buffers.micropython;
+        if (!code || !code.trim() || /^# ===/.test(code)) return;
+        // Switch the right pane to the micro:bit simulator view
+        const values = {
+            'bw-hide-stage': '1',
+            'bw-right-pane-hidden': '0',
+            'bw-debug-dock': 'microbit',
+            'bw-stage-circuit': '1'
+        };
+        try { Object.entries(values).forEach(([k, v]) => localStorage.setItem(k, v)); } catch { /* noop */ }
+        Object.entries(values).forEach(([k, v]) => {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
+        });
+        // Send the code to the simulator pane
+        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code}}));
+    }
+
     // Compute which hardware examples can retarget to the given device. Returns
     // { [exampleKey]: { ok, reasons } }. Cached by device so render stays cheap.
     _exampleCompatCache = {};
@@ -846,13 +885,13 @@ class PseudocodeImporter extends React.Component {
             if (result.ok) {
                 this.setState({lang: 'pseudocode', output: null,
                     status: result.warnings.length ? result.warnings.join('; ') : '',
-                    buffers: {pseudocode: result.pseudocode, python: '', javascript: '', c: '', basic: '', asm: ''}});
+                    buffers: {pseudocode: result.pseudocode, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
                 return;
             }
             // Show what blocked the retarget — the example stays loaded in its original form.
             this.setState({lang: 'pseudocode', output: null,
                 status: `Loaded for ${exampleDevice} (cannot retarget to ${device}: ${result.reasons.join('; ')})`,
-                buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: ''}});
+                buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
             return;
         }
         this.setState({lang: 'pseudocode', output: null, status: '',
@@ -999,6 +1038,10 @@ class PseudocodeImporter extends React.Component {
                 nb.basic = br.ok ? br.basic : `REM === Cannot show as BASIC ===\n${br.reasons.map(s => 'REM ' + s).join('\n')}`;
             }
             nb.asm = ''; // cleared — re-fetched on next ASM tab switch
+            {
+                const mp = new SB3Creator().generateMicroPython(proj);
+                nb.micropython = mp.ok ? mp.py : `# === Cannot generate MicroPython ===\n${mp.reasons.map(s => '# ' + s).join('\n')}`;
+            }
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             this.setState({buffers: nb, status: warns.length ?
@@ -1016,13 +1059,15 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const project = JSON.parse(this.props.vm.toJSON());
             const basicResult = new SB3Creator().generateBASIC(project, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+            const mpResult = new SB3Creator().generateMicroPython(project);
             const buffers = {
                 pseudocode: new SB3Creator().decompile(project),
                 python: new SB3Creator().generatePython(project, this.genOpts()),
                 javascript: new SB3Creator().generateJavaScript(project, this.genOpts()),
                 c: new SB3Creator().generateC(project),
                 basic: basicResult.ok ? basicResult.basic : `REM === Cannot show as BASIC ===\n${basicResult.reasons.map(s => 'REM ' + s).join('\n')}`,
-                asm: '' // cleared — re-fetched on next ASM tab switch
+                asm: '', // cleared — re-fetched on next ASM tab switch
+                micropython: mpResult.ok ? mpResult.py : `# === Cannot generate MicroPython ===\n${mpResult.reasons.map(s => '# ' + s).join('\n')}`
             };
             const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
             this.setState({buffers, output: null, status: unsupported ?
@@ -1164,7 +1209,8 @@ class PseudocodeImporter extends React.Component {
                 {/* Tabs (left) + Custom-art toggle (right). Plain buttons — NOT role="tab",
                     which would collide with the editor's top-level react-tabs. */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end'}}>
-                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript'], ['c', '🔧 C'], ['basic', '📺 BASIC'], ['asm', '🔩 ASM']].map(([l, label]) => {
+                    {[['pseudocode', '🧩 Pseudocode'], ['python', '🐍 Python'], ['javascript', '🟨 JavaScript'], ['c', '🔧 C'], ['basic', '📺 BASIC'], ['asm', '🔩 ASM'],
+                        ...(this.currentDevice() === 'microbit' ? [['micropython', '🤖 micro:bit']] : [])].map(([l, label]) => {
                         const active = this.state.lang === l;
                         return (
                             <button key={l} type="button" aria-pressed={active} onClick={() => this.switchTab(l)}
@@ -1229,6 +1275,22 @@ class PseudocodeImporter extends React.Component {
                                 {'🔩 Assemble & Run'}
                             </button>
                         )}
+                    </div>
+                )}
+                {this.state.lang === 'micropython' && (
+                    <div style={{display: 'flex', gap: 16, padding: '6px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderTop: 'none', fontSize: 13, alignItems: 'center'}}
+                        data-testid="bw-micropython-bar">
+                        <span style={{color: '#166534'}}>Read-only — generated from your blocks for the micro:bit.</span>
+                        <span style={{flex: 1}} />
+                        <button type="button"
+                            onClick={() => this.flashMicrobitSim()}
+                            disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
+                            style={{padding: '4px 12px', borderRadius: 6, border: 'none',
+                                cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff'}}
+                            data-testid="bw-microbit-flash">
+                            {'▶ Run on Simulator'}
+                        </button>
                     </div>
                 )}
                 <React.Suspense fallback={

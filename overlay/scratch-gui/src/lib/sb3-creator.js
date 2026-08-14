@@ -2080,6 +2080,19 @@ class SB3Creator {
             block[id].fields.MODE = ['number', null];
             return ret(block);
         }
+        // ---- micro:bit display (explicit device verb: say is STAGE, this is LEDs) ----
+        if ((match = line.match(/^(?:display|scroll)\s+"([^"]*)"\s*$/i))) {
+            const { id, block } = cmd('microbit_display');
+            block[id].inputs.VALUE = [1, [10, match[1]]];
+            block[id].fields.MODE = ['text', null];
+            return ret(block);
+        }
+        if ((match = line.match(/^(?:display|scroll)\s+(.+)$/i))) {
+            const { id, block } = cmd('microbit_display');
+            block[id].inputs.VALUE = val(match[1]);
+            block[id].fields.MODE = ['number', null];
+            return ret(block);
+        }
         // ---- Circuit extension commands (boundary B) --------------------------------
         if ((match = line.match(/^set control\s+(.+?)\s+to\s+(.+)$/i))) {
             const { id, block } = cmd('circuit_setcontrol');
@@ -3990,6 +4003,11 @@ class SB3Creator {
                 const mode = f('MODE');
                 if (mode === 'text') return line(`print "${this.dval(b.inputs.VALUE, blocks).replace(/^"|"$/g, '')}"`);
                 return line(`print ${v('VALUE')}`);
+            }
+            case 'microbit_display': {
+                const mode = f('MODE');
+                if (mode === 'text') return line(`display "${this.dval(b.inputs.VALUE, blocks).replace(/^"|"$/g, '')}"`);
+                return line(`display ${v('VALUE')}`);
             }
             // circuit extension commands
             case 'circuit_setcontrol': return line(`set control ${v('CONTROL')} to ${v('VALUE')}`);
@@ -6155,6 +6173,314 @@ class SB3Creator {
      * the dialect grows reporter procedures.
      * Returns { ok, basic?, reasons: [], warnings: [] }.
      */
+    /**
+     * MicroPython for the micro:bit — the board's own dialect, where
+     * hardware blocks map to the microbit API (say → display.scroll) and
+     * MULTIPLE WHEN SCRIPTS run on a single thread via the settled
+     * cooperative-scheduling contract in its Python-native form: every
+     * script is a GENERATOR yielding milliseconds at each wait and 0 at
+     * every loop back-edge; a round-robin driver on running_time() walks
+     * them. Same semantics as the C state machines, a tenth of the
+     * machinery, because yield is a language feature here.
+     *
+     * Degradations are NAMED, never silent: blocks with no board meaning
+     * (pen, motion) and sensing that would need the host shim come back
+     * as warnings; reasons[] only for programs that cannot run at all.
+     *
+     * @returns {{ok: boolean, py?: string, reasons: string[], warnings: string[]}}
+     */
+    generateMicroPython(project = this.project, opts = {}) {
+        // The shared pure-Python expression layer (pyVal/pyCond/varRef)
+        // reads the same context generatePython sets up.
+        this._pyNames = new Map();
+        this._pyUses = { random: false, math: false, time: false, eq: false, answer: false, arrays: false, json: false, sumdigits: false };
+        this._runtimesUsed = new Set();
+        this._async = false;
+        this._emitComments = false;
+        this._driverPins = (project.stc && project.stc.pins) || null;
+        this._curPrefix = '';
+        this._curLocals = new Set();
+        const warnings = [];
+        const reasons = [];
+        const targets = project.targets || [];
+        const stage = targets.find((t) => t.isStage);
+        const stateDecls = [];
+        const seen = new Set();
+        const declVar = (name, init) => {
+            const n = this.pyName(name);
+            if (!seen.has(n)) { seen.add(n); stateDecls.push(`${n} = ${init}`); }
+            return n;
+        };
+        if (stage) {
+            for (const v of Object.values(stage.variables || {})) declVar(v[0], '0');
+            for (const l of Object.values(stage.lists || {})) declVar(l[0], '[]');
+        }
+
+        const KEYMAP = { a: 'button_a', b: 'button_b' };
+        const uses = { music: false, buttons: false };
+        const degrade = (msg) => { if (!warnings.includes(msg)) warnings.push(msg); };
+
+        // PIN declarations → microbit pin objects. where P0-P20; the
+        // platform convention holds: on/off is LOGICAL (ACTIVE LOW
+        // inverts), high/low and computed writes are PHYSICAL levels.
+        const pinMap = new Map();
+        for (const p of (project.stc && project.stc.pins) || []) {
+            const m = /^P(\d{1,2})$/i.exec(p.where || '');
+            if (m && Number(m[1]) <= 20) {
+                pinMap.set(p.name, { expr: `pin${Number(m[1])}`, activeLow: !!p.activeLow });
+            } else {
+                degrade(`pin ${p.name} at "${p.where}" is not a micro:bit pin (P0-P20); its operations are stubs`);
+            }
+        }
+        const pinOf = (name) => pinMap.get(name) || null;
+
+        // Expression via the shared pure-Python layer; anything that came
+        // out needing the host shim is a named degradation, not a lie.
+        const guard = (expr, what) => {
+            if (String(expr).includes('scratch.')) {
+                degrade(`${what} has no micro:bit form yet; emitted as 0`);
+                return '0';
+            }
+            return expr;
+        };
+        // Pin reporters get intercepted BEFORE the shared layer: reading a
+        // pin is board-native here, not a shim call.
+        const pinReporter = (input, blocks) => {
+            if (!Array.isArray(input) || typeof input[1] !== 'string') return null;
+            const rb = blocks[input[1]];
+            if (!rb) return null;
+            if (rb.opcode === 'stc12_readpin') {
+                const p = pinOf(rb.fields.PIN ? rb.fields.PIN[0] : '');
+                if (!p) return '0';
+                return p.activeLow ? `(1 - ${p.expr}.read_digital())` : `${p.expr}.read_digital()`;
+            }
+            if (rb.opcode === 'stc12_read') {
+                const p = pinOf(rb.fields.PIN ? rb.fields.PIN[0] : '');
+                if (!p) return '0';
+                return `${p.expr}.read_analog()`;
+            }
+            return null;
+        };
+        const val = (b, k, blocks) => pinReporter(b.inputs[k], blocks)
+            ?? guard(this.pyVal(b.inputs[k], blocks), b.opcode);
+        const cond = (b, blocks) => {
+            const ref = b.inputs.CONDITION ? b.inputs.CONDITION[1] : null;
+            if (ref && blocks[ref] && blocks[ref].opcode === 'stc12_readpin') {
+                const p = pinOf(blocks[ref].fields.PIN ? blocks[ref].fields.PIN[0] : '');
+                if (!p) return 'False';
+                return `${p.expr}.read_digital() == ${p.activeLow ? 0 : 1}`;
+            }
+            if (ref && blocks[ref] && blocks[ref].opcode === 'sensing_keypressed') {
+                const kb = blocks[ref];
+                const opt = kb.inputs.KEY_OPTION ? blocks[kb.inputs.KEY_OPTION[1]] : null;
+                const key = opt && opt.fields.KEY_OPTION ? String(opt.fields.KEY_OPTION[0]).toLowerCase() : '';
+                if (KEYMAP[key]) { uses.buttons = true; return `${KEYMAP[key]}.is_pressed()`; }
+                degrade(`key '${key}' maps to no micro:bit button (a/b only); condition is False`);
+                return 'False';
+            }
+            return guard(this.pyCond(ref, blocks), (ref && blocks[ref] ? blocks[ref].opcode : 'condition'));
+        };
+
+        const stmt = (b, blocks, pad) => {
+            const v = (k) => val(b, k, blocks);
+            const vs = (k) => `str(${val(b, k, blocks)})`;
+            const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
+            const sub = (k) => (b.inputs[k] ? walk(b.inputs[k][1], blocks, pad + '    ') : [`${pad}    pass`]);
+            switch (b.opcode) {
+                case 'data_setvariableto': {
+                    const n = declVar(f('VARIABLE'), '0');
+                    return [`${pad}${n} = ${v('VALUE')}`];
+                }
+                case 'data_changevariableby': {
+                    const n = declVar(f('VARIABLE'), '0');
+                    return [`${pad}${n} = ${n} + ${v('VALUE')}`];
+                }
+                // say is STAGE speech — the board has no stage, so it is a
+                // NAMED degradation; putting text on the LEDs is the explicit
+                // `display` verb, and serial output is `print`. Two intents,
+                // two verbs, per the owner's correction.
+                case 'looks_say':
+                case 'looks_think':
+                    degrade('say/think is stage speech — use `display` for the LEDs or `print` for serial');
+                    return [`${pad}pass  # say (stage)`];
+                case 'looks_sayforsecs':
+                case 'looks_thinkforsecs':
+                    degrade('say/think is stage speech — use `display` for the LEDs or `print` for serial');
+                    return [`${pad}yield int((${v('SECS')}) * 1000)  # say (stage)`];
+                case 'microbit_display':
+                    return [`${pad}display.scroll(${vs('VALUE')}, wait=False, loop=False)`];
+                case 'stc12_print':
+                    return [`${pad}print(${vs('VALUE')})`];
+                case 'stc12_setpin': {
+                    const p = pinOf(f('PIN'));
+                    if (!p) { degrade(`undeclared pin ${f('PIN')}`); return [`${pad}pass  # pin ${f('PIN')}`]; }
+                    const st = f('STATE');
+                    // on/off logical (ACTIVE LOW inverts); high/low physical.
+                    const level = st === 'high' ? 1 : st === 'low' ? 0
+                        : (st === 'on') !== p.activeLow ? 1 : 0;
+                    return [`${pad}${p.expr}.write_digital(${level})`];
+                }
+                case 'stc12_toggle': {
+                    const p = pinOf(f('PIN'));
+                    if (!p) { degrade(`undeclared pin ${f('PIN')}`); return [`${pad}pass`]; }
+                    return [`${pad}${p.expr}.write_digital(1 - ${p.expr}.read_digital())`];
+                }
+                case 'stc12_writepin': {
+                    const p = pinOf(f('PIN'));
+                    if (!p) { degrade(`undeclared pin ${f('PIN')}`); return [`${pad}pass`]; }
+                    return [`${pad}${p.expr}.write_digital(1 if (${v('VALUE')}) else 0)`];
+                }
+                case 'stc12_setpwm': {
+                    const p = pinOf(f('PIN'));
+                    if (!p) { degrade(`undeclared pin ${f('PIN')}`); return [`${pad}pass`]; }
+                    return [`${pad}${p.expr}.write_analog(int((${v('VALUE')}) * 1023 / 100))`];
+                }
+                case 'stc12_settone': {
+                    uses.music = true;
+                    degrade('tone plays on the board speaker/pin0 — the micro:bit has no per-pin tone routing');
+                    return [`${pad}music.pitch(int(${v('VALUE')}), wait=False)`];
+                }
+                case 'control_wait':
+                    return [`${pad}yield int((${v('DURATION')}) * 1000)`];
+                case 'control_wait_until':
+                    return [`${pad}while not (${cond(b, blocks)}):`, `${pad}    yield 0`];
+                case 'control_forever':
+                    return [`${pad}while True:`, ...sub('SUBSTACK'), `${pad}    yield 0`];
+                case 'control_repeat':
+                    return [`${pad}for _ in range(int(${v('TIMES')})):`, ...sub('SUBSTACK'), `${pad}    yield 0`];
+                case 'control_repeat_until':
+                    return [`${pad}while not (${cond(b, blocks)}):`, ...sub('SUBSTACK'), `${pad}    yield 0`];
+                case 'control_if':
+                    return [`${pad}if ${cond(b, blocks)}:`, ...sub('SUBSTACK')];
+                case 'control_if_else':
+                    return [`${pad}if ${cond(b, blocks)}:`, ...sub('SUBSTACK'),
+                        `${pad}else:`, ...sub('SUBSTACK2')];
+                case 'control_stop':
+                    return [`${pad}return`];
+                case 'sound_playnoteforbeats': {
+                    uses.music = true;
+                    // Scratch note number → frequency; 60 beats/min default tempo.
+                    return [`${pad}music.pitch(int(440 * 2 ** ((${v('NOTE')} - 69) / 12)), wait=False)`,
+                        `${pad}yield int((${v('BEATS')}) * 500)`,
+                        `${pad}music.stop()`];
+                }
+                case 'event_broadcast': {
+                    const msg = this.pyVal(b.inputs.BROADCAST_INPUT, blocks);
+                    return [`${pad}_pending.append(${msg})`];
+                }
+                default: {
+                    const desc = this.decompileBlock ? this.decompileBlock(b, blocks) : b.opcode;
+                    degrade(`${b.opcode} has no micro:bit form yet (${String(desc).slice(0, 40)})`);
+                    return [`${pad}pass  # ${b.opcode}`];
+                }
+            }
+        };
+
+        const walk = (id, blocks, pad) => {
+            const out = [];
+            let b = blocks[id];
+            while (b) {
+                out.push(...stmt(b, blocks, pad));
+                b = blocks[b.next];
+            }
+            return out.length ? out : [`${pad}pass`];
+        };
+
+        // ---- hats → generator defs ------------------------------------
+        const taskDefs = [];
+        const starts = [];       // started at flag
+        const receivers = [];    // [message, fnName]
+        let taskSeq = 0;
+        for (const t of targets) {
+            const blocks = t.blocks || {};
+            for (const b of Object.values(blocks)) {
+                if (!b.topLevel) continue;
+                if (b.opcode === 'event_whenflagclicked') {
+                    const fn = `_task_${taskSeq++}`;
+                    const body = walk(b.next, blocks, '    ');
+                    taskDefs.push([`def ${fn}():`, ...globalsFor(this, body), ...body].join('\n'));
+                    starts.push(fn);
+                } else if (b.opcode === 'event_whenbroadcastreceived') {
+                    const fn = `_task_${taskSeq++}`;
+                    const msg = b.fields.BROADCAST_OPTION ? b.fields.BROADCAST_OPTION[0] : '';
+                    const body = walk(b.next, blocks, '    ');
+                    taskDefs.push([`def ${fn}():`, ...globalsFor(this, body), ...body].join('\n'));
+                    receivers.push([msg, fn]);
+                } else if (b.opcode === 'stc12_whenpin') {
+                    // Edge-triggered pin hat as an edge-polling generator:
+                    // the body (yields and all) runs on each matching edge.
+                    const p = pinOf(b.fields.PIN ? b.fields.PIN[0] : '');
+                    if (!p) { degrade(`WHEN on undeclared pin ${b.fields.PIN ? b.fields.PIN[0] : '?'}; script skipped`); continue; }
+                    const edge = b.fields.EDGE ? String(b.fields.EDGE[0]).toLowerCase() : 'on';
+                    const activeVal = (edge === 'on' || edge === 'pressed') !== p.activeLow ? 1 : 0;
+                    const fn = `_task_${taskSeq++}`;
+                    const body = walk(b.next, blocks, '            ');
+                    taskDefs.push([`def ${fn}():`,
+                        ...globalsFor(this, body),
+                        '    _prev = False',
+                        '    while True:',
+                        `        _cur = ${p.expr}.read_digital() == ${activeVal}`,
+                        '        if _cur and not _prev:',
+                        ...body,
+                        '        _prev = _cur',
+                        '        yield 0'].join('\n'));
+                    starts.push(fn);
+                } else if (this.isHat(b.opcode)) {
+                    degrade(`hat ${b.opcode} has no micro:bit form yet; script skipped`);
+                }
+            }
+        }
+        if (!taskDefs.length) reasons.push('no runnable scripts (a when-flag-clicked hat is required)');
+        if (reasons.length) return { ok: false, reasons, warnings };
+
+        function globalsFor(self, bodyLines) {
+            const names = new Set();
+            for (const line of bodyLines) {
+                const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*) = /);
+                if (m && seen.has(m[1])) names.add(m[1]);
+            }
+            return names.size ? [`    global ${[...names].join(', ')}`] : [];
+        }
+
+        const header = ['# generated for micro:bit (MicroPython)',
+            'from microbit import *'];
+        if (uses.music) header.push('import music');
+
+        const driver = [
+            '',
+            '_pending = []',
+            `_receivers = {${receivers.map(([m, fn]) => `${this.pyStr(m)}: ${fn}`).join(', ')}}`,
+            '',
+            'def _run(tasks):',
+            '    # The scheduling contract: every task yields ms to sleep (0 at',
+            '    # loop back-edges), the driver round-robins on running_time().',
+            '    tasks = [[t, 0] for t in tasks]',
+            '    while tasks:',
+            '        while _pending:',
+            '            fn = _receivers.get(_pending.pop(0))',
+            '            if fn: tasks.append([fn(), 0])',
+            '        now = running_time()',
+            '        alive = []',
+            '        for entry in tasks:',
+            '            gen, wake = entry',
+            '            if now >= wake:',
+            '                try:',
+            '                    entry[1] = now + next(gen)',
+            '                    alive.append(entry)',
+            '                except StopIteration:',
+            '                    pass',
+            '            else:',
+            '                alive.append(entry)',
+            '        tasks = alive',
+            '        sleep(1)',
+            '',
+            `_run([${starts.map((fn) => `${fn}()`).join(', ')}])`,
+        ];
+
+        const py = [...header, '', ...stateDecls, '', ...taskDefs, ...driver].join('\n') + '\n';
+        return { ok: true, py, reasons: [], warnings };
+    }
+
     generateBASIC(project = this.project, opts = {}) {
         const profile = opts.profile || 'bbc';
         const bbc = profile === 'bbc';
@@ -6178,13 +6504,35 @@ class SB3Creator {
         const machine = stc.machine || null;
         const viaAt = (machine && (machine.chips || []).find((c) => c.kind === 'via') || { at: 0x6000 }).at;
         const pins = new Map((stc.pins || []).map((p) => [String(p.name).toLowerCase(), p]));
+        // Pin pokes are addresses on the 6502 MACHINE's VIA. Another device's
+        // pins (P1.0, D13, GP25) have no meaning as BASIC pokes — on the
+        // w65c02 they are real pokes; on anything else they degrade to
+        // REM-commented stubs that still RUN (host-C's report-stub pattern).
+        const devPart = SB3Creator.STC_PARTS[String(stc.device || '').toLowerCase()];
+        const pokeable = !stc.device || (devPart && devPart.core === 'w65c02');
+        if (!pokeable && pins.size) {
+            warnings.push(`DEVICE ${String(stc.device).toUpperCase()} pin operations emitted as REM stubs — `
+                + 'BASIC pokes drive the 6502 machine\'s VIA; retarget to EATER6502 for real pokes');
+        }
+
+        // ---- shim tracking (like _cUses: emit DEF PROCs on demand) ----
+        const basUses = { answer: false, lists: new Map(), pen: false, motionXY: false, timer: false };
+        // String-type tracking: BASIC needs name$ for string variables.
+        // We track which Scratch variable names are known-string (from
+        // assignments of string literals, join, letter-of, ask/answer).
+        const stringVars = new Set();
+        // Lists: track name -> { lenVar, dimmed }; Scratch lists map to
+        // parallel DIM arrays + a length counter variable.
+        const listMeta = (raw) => {
+            const k = String(raw);
+            if (basUses.lists.has(k)) return basUses.lists.get(k);
+            const bn = basName(k);
+            const meta = { baseName: bn, lenVar: bn + '_n', dimmed: false };
+            basUses.lists.set(k, meta);
+            return meta;
+        };
 
         // ---- names ----------------------------------------------------
-        // BeebEater's serial layer UPPERCASES input, and BBC's conditional
-        // tokenizer eats a keyword only on an EXACT match (COUNT=0 breaks,
-        // COUNTX=0 is a fine variable — measured on the live machine, along
-        // with underscores working). So the rule is exact-collision
-        // avoidance against the FULL keyword/function set, case-blind.
         const KEYWORDS = new Set(('print time for next if then else goto gosub return repeat '
             + 'until end def proc fn local endproc rem let dim to step and or not eor mod div '
             + 'true false rnd int abs sgn sqr len peek poke input count pos page top lomem '
@@ -6205,20 +6553,33 @@ class SB3Creator {
                 const taken = new Set([...names.values()].map((x) => x.toLowerCase()));
                 while (taken.has(n)) n += 'x';
             } else {
-                // MS BASIC 1.1 keeps TWO significant characters; mint V0..Z9
-                // and carry the real name in a REM at declaration time.
                 n = 'V' + (msSeq++).toString(36).toUpperCase();
             }
             names.set(k, n);
             return n;
         };
+        // String-safe variable reference: appends $ if we know it's a string.
+        const basVarRef = (raw) => {
+            const n = basName(raw);
+            return stringVars.has(String(raw)) ? n + '$' : n;
+        };
 
         // ---- the two-pass line store -----------------------------------
-        const outLines = [];   // strings, or {label: id} markers, or {goto: id} inside text as @L<id>@
+        // lineBlocks runs PARALLEL to outLines: lineBlocks[i] is the Scratch
+        // block id whose lowering emitted outLines[i] (null for scaffolding).
+        // It becomes the returned lineMap, which is what lets BBC BASIC's own
+        // TRACE output — line numbers in the serial stream — glow the block
+        // that owns the line. The one splice below mirrors into it.
+        const outLines = [];
+        const lineBlocks = [];
+        let curBlockId = null;
         let labelSeq = 0;
         const newLabel = () => `@L${labelSeq++}@`;
-        const emit = (s) => outLines.push(structured ? '  '.repeat(depth) + s : s);
-        const emitLabel = (l) => outLines.push({ label: l });
+        const emit = (s) => {
+            outLines.push(structured ? '  '.repeat(depth) + s : s);
+            lineBlocks.push(curBlockId);
+        };
+        const emitLabel = (l) => { outLines.push({ label: l }); lineBlocks.push(null); };
 
         // ---- expressions ----------------------------------------------
         const num = (v) => {
@@ -6233,18 +6594,55 @@ class SB3Creator {
                 : `((PEEK(${pinPort(p)}) AND ${mask})/${mask})`;
             return p.activeLow ? `(1-${raw})` : raw;
         };
+        // String-literal detection: if the input is a literal string (not a
+        // number and not a block), yield it quoted for BASIC string ops.
+        const basValStr = (input, blocks) => {
+            if (!input) return '""';
+            const v = input[1];
+            if (Array.isArray(v)) {
+                if (v[0] === 12) return basVarRef(v[1]);
+                // Literal: if it looks like a number return the number, else quote it.
+                const s = String(v[1]);
+                const n = Number(s);
+                if (Number.isFinite(n) && s === String(n)) return s;
+                return `"${s.replace(/"/g, '""')}"`;
+            }
+            if (typeof v === 'string' && blocks[v]) return basRep(blocks[v], blocks);
+            return '""';
+        };
         const basVal = (input, blocks) => {
             if (!input) return '0';
             const v = input[1];
             if (Array.isArray(v)) {
-                if (v[0] === 12) return basName(v[1]);       // variable reporter
+                if (v[0] === 12) return basVarRef(v[1]);
                 return num(v[1]);
             }
             if (typeof v === 'string' && blocks[v]) return basRep(blocks[v], blocks);
             return '0';
         };
+        // BBC BASIC math-op mapping (operator_mathop OPERATOR field).
+        const basMathop = (op, arg) => {
+            switch (String(op).toLowerCase()) {
+                case 'abs': return `ABS(${arg})`;
+                case 'floor': return `INT(${arg})`;
+                case 'ceiling': return `(INT(${arg})+(${arg}<>INT(${arg})))`;
+                case 'sqrt': return `SQR(${arg})`;
+                case 'sin': return `SIN(RAD(${arg}))`;
+                case 'cos': return `COS(RAD(${arg}))`;
+                case 'tan': return `TAN(RAD(${arg}))`;
+                case 'asin': return `DEG(ASN(${arg}))`;
+                case 'acos': return `DEG(ACS(${arg}))`;
+                case 'atan': return `DEG(ATN(${arg}))`;
+                case 'ln': return `LN(${arg})`;
+                case 'log': return `(LN(${arg})/LN(10))`;
+                case 'e ^': return `EXP(${arg})`;
+                case '10 ^': return `(10^${arg})`;
+                default: return `(${arg})`;
+            }
+        };
         const basRep = (b, blocks) => {
             const v = (k2) => basVal(b.inputs[k2], blocks);
+            const vs = (k2) => basValStr(b.inputs[k2], blocks);
             const f = (k2) => (b.fields[k2] ? b.fields[k2][0] : '');
             switch (b.opcode) {
                 case 'operator_add': return `(${v('NUM1')}+${v('NUM2')})`;
@@ -6257,13 +6655,54 @@ class SB3Creator {
                 case 'operator_random':
                     return bbc ? `(RND(${v('TO')}-${v('FROM')}+1)+${v('FROM')}-1)`
                         : `(INT(RND(1)*(${v('TO')}-${v('FROM')}+1))+${v('FROM')})`;
+                case 'operator_round': return `INT(${v('NUM')}+0.5)`;
+                case 'operator_mathop': return basMathop(f('OPERATOR'), v('NUM'));
+                case 'operator_join': return `(${vs('STRING1')}+${vs('STRING2')})`;
+                case 'operator_letter_of': return `MID$(${vs('STRING')},${v('LETTER')},1)`;
+                case 'operator_length': return `LEN(${vs('STRING')})`;
+                case 'operator_contains': return `(INSTR(${vs('STRING1')},${vs('STRING2')})>0)`;
                 case 'operator_equals': return `${v('OPERAND1')}=${v('OPERAND2')}`;
                 case 'operator_gt': return `${v('OPERAND1')}>${v('OPERAND2')}`;
                 case 'operator_lt': return `${v('OPERAND1')}<${v('OPERAND2')}`;
                 case 'operator_and': return `(${v('OPERAND1')}) AND (${v('OPERAND2')})`;
                 case 'operator_or': return `(${v('OPERAND1')}) OR (${v('OPERAND2')})`;
                 case 'operator_not': return `NOT (${v('OPERAND')})`;
+                // ---- sensing reporters ----
+                case 'sensing_answer': basUses.answer = true; return 'answer$';
+                case 'sensing_timer': basUses.timer = true; return '(TIME/100)';
+                case 'sensing_mousex': return '0:REM mouse x (no input device)';
+                case 'sensing_mousey': return '0:REM mouse y (no input device)';
+                case 'sensing_loudness': return '0';
+                case 'sensing_keypressed': return `(INKEY(-${this._basInkeyCode(f('KEY_OPTION'))})=-1)`;
+                case 'sensing_mousedown': return '0';
+                // ---- motion reporters ----
+                case 'motion_xposition': basUses.motionXY = true; return 'bw_x%';
+                case 'motion_yposition': basUses.motionXY = true; return 'bw_y%';
+                case 'motion_direction': return 'bw_dir%';
+                // ---- looks reporters ----
+                case 'looks_costumenumbername': return '1:REM costume ' + f('NUMBER_NAME');
+                case 'looks_backdropnumbername': return '1:REM backdrop ' + f('NUMBER_NAME');
+                case 'looks_size': return '100';
+                // ---- data / list reporters ----
+                case 'data_itemoflist': {
+                    const lm = listMeta(f('LIST'));
+                    return `${lm.baseName}(${v('INDEX')})`;
+                }
+                case 'data_lengthoflist': {
+                    const lm = listMeta(f('LIST'));
+                    return lm.lenVar;
+                }
+                case 'data_listcontainsitem': {
+                    const lm = listMeta(f('LIST'));
+                    return `FNlist_contains(${lm.baseName}(),${lm.lenVar},${vs('ITEM')})`;
+                }
+                case 'data_itemnumoflist': {
+                    const lm = listMeta(f('LIST'));
+                    return `FNlist_indexof(${lm.baseName}(),${lm.lenVar},${vs('ITEM')})`;
+                }
+                // ---- pin reads (hardware) ----
                 case 'stc12_read': case 'stc12_readpin': {
+                    if (!pokeable) { return '0:REM read ' + f('PIN'); }
                     const p = pins.get(String(f('PIN')).toLowerCase());
                     if (!p) { warnings.push(`read of undeclared pin "${f('PIN')}" — 0`); return '0'; }
                     return peekPin(p);
@@ -6271,9 +6710,45 @@ class SB3Creator {
                 case 'argument_reporter_string_number':
                 case 'argument_reporter_boolean':
                     return basName(f('VALUE'));
-                default:
-                    reasons.push(`"${b.opcode}" has no BASIC form yet`);
+                // ---- Planete Maths extension ----
+                case 'planetemaths_add': return `(${v('A')}+${v('B')})`;
+                case 'planetemaths_substract': return `(${v('A')}-${v('B')})`;
+                case 'planetemaths_multiply': return `(${v('A')}*${v('B')})`;
+                case 'planetemaths_divide': return `(${v('A')}/${v('B')})`;
+                case 'planetemaths_pow': return `(${v('A')}^${v('B')})`;
+                case 'planetemaths_oppose': return `(0-${v('A')})`;
+                case 'planetemaths_inverse': return `(1/${v('A')})`;
+                case 'planetemaths_pourcent': return `(${v('A')}/100)`;
+                case 'planetemaths_nombre_pi': return 'PI';
+                case 'planetemaths_nombre_e': return 'EXP(1)';
+                case 'planetemaths_factorial': return `FNfact(${v('A')})`;
+                case 'planetemaths_min': return `FNmin(${v('A')},${v('B')})`;
+                case 'planetemaths_max': return `FNmax(${v('A')},${v('B')})`;
+                case 'planetemaths_random': return `(RND(${v('B')}-${v('A')}+1)+${v('A')}-1)`;
+                case 'planetemaths_join': return `(${vs('A')}+${vs('B')})`;
+                case 'planetemaths_letterOf': return `MID$(${vs('S')},${v('L')},1)`;
+                case 'planetemaths_length': return `LEN(${vs('S')})`;
+                case 'planetemaths_sommechiffres': return `FNsumdigits(${v('N')})`;
+                case 'planetemaths_gt': return `${v('A')}<${v('B')}`;
+                case 'planetemaths_gte': return `${v('A')}<=${v('B')}`;
+                case 'planetemaths_lt': return `${v('A')}>${v('B')}`;
+                case 'planetemaths_lte': return `${v('A')}>=${v('B')}`;
+                case 'planetemaths_equals': return `${v('A')}=${v('B')}`;
+                case 'planetemaths_and': return `(${v('A')}) AND (${v('B')})`;
+                case 'planetemaths_or': return `(${v('A')}) OR (${v('B')})`;
+                case 'planetemaths_not': return `NOT (${v('A')})`;
+                case 'planetemaths_contains': return `(INSTR(${vs('A')},${vs('B')})>0)`;
+                case 'planetemaths_multiple': return `((${v('A')}) MOD (${v('B')})=0)`;
+                // ---- arrays extension reporters ----
+                case 'arrays_get': return `${basName(this._basUnq(v('NAME')))}(${v('INDEX')})`;
+                case 'arrays_length': return `${basName(this._basUnq(v('NAME')))}_n`;
+                case 'arrays_contains': return `FNlist_contains(${basName(this._basUnq(v('NAME')))}(),${basName(this._basUnq(v('NAME')))}_n,${vs('VALUE')})`;
+                default: {
+                    // Unsupported reporter — degrade to 0 with a warning, not a hard refusal.
+                    const desc = this.decompileBlock ? this.decompileBlock(b, blocks) : b.opcode;
+                    warnings.push(`no BASIC form for reporter "${desc}" — 0`);
                     return '0';
+                }
             }
         };
 
@@ -6292,17 +6767,198 @@ class SB3Creator {
         const basChain = (id, blocks) => {
             let b = blocks[id];
             while (b) {
+                // Save/restore means a control block's TAIL lines (NEXT,
+                // UNTIL, ENDWHILE) emitted after the nested basChain returns
+                // still map to the CONTROL block, not to the last statement
+                // inside it — each nested iteration restores its caller's id.
+                const saved = curBlockId;
+                curBlockId = id;
                 basStmt(b, blocks);
-                b = blocks[b.next];
+                curBlockId = saved;
+                id = b.next;
+                b = blocks[id];
             }
         };
         const basStmt = (b, blocks) => {
             const v = (k2) => basVal(b.inputs[k2], blocks);
+            const vs = (k2) => basValStr(b.inputs[k2], blocks);
             const f = (k2) => (b.fields[k2] ? b.fields[k2][0] : '');
             switch (b.opcode) {
-                case 'data_setvariableto': emit(`${basName(f('VARIABLE'))}=${v('VALUE')}`); return;
-                case 'data_changevariableby': { const n = basName(f('VARIABLE')); emit(`${n}=${n}+${v('VALUE')}`); return; }
+                case 'data_setvariableto': emit(`${basVarRef(f('VARIABLE'))}=${v('VALUE')}`); return;
+                case 'data_changevariableby': { const n = basVarRef(f('VARIABLE')); emit(`${n}=${n}+${v('VALUE')}`); return; }
+                // ---- looks ----
+                case 'looks_say': emit(`PRINT ${vs('MESSAGE')}`); return;
+                case 'looks_sayforsecs': {
+                    emit(`PRINT ${vs('MESSAGE')}`);
+                    if (bbc) {
+                        emit(`time_target=TIME+${v('SECS')}*100`);
+                        emit('REPEAT UNTIL TIME>=time_target');
+                    }
+                    return;
+                }
+                case 'looks_think': emit(`PRINT ${vs('MESSAGE')}`); return;
+                case 'looks_thinkforsecs': {
+                    emit(`PRINT ${vs('MESSAGE')}`);
+                    if (bbc) {
+                        emit(`time_target=TIME+${v('SECS')}*100`);
+                        emit('REPEAT UNTIL TIME>=time_target');
+                    }
+                    return;
+                }
+                case 'looks_show': emit('REM show'); return;
+                case 'looks_hide': emit('REM hide'); return;
+                case 'looks_switchcostumeto': emit(`REM switch costume to ${vs('COSTUME')}`); return;
+                case 'looks_nextcostume': emit('REM next costume'); return;
+                case 'looks_setsizeto': emit(`REM set size to ${v('SIZE')}`); return;
+                case 'looks_changesizeby': emit(`REM change size by ${v('CHANGE')}`); return;
+                case 'looks_seteffectto': emit(`REM set ${f('EFFECT')} effect to ${v('VALUE')}`); return;
+                case 'looks_changeeffectby': emit(`REM change ${f('EFFECT')} effect by ${v('CHANGE')}`); return;
+                // ---- sensing ----
+                case 'sensing_askandwait': {
+                    basUses.answer = true;
+                    emit(`PRINT ${vs('QUESTION')}`);
+                    emit('INPUT answer$');
+                    return;
+                }
+                case 'sensing_resettimer': basUses.timer = true; emit('TIME=0'); return;
+                // ---- sound (REM stubs) ----
+                case 'sound_play': emit(`REM play sound ${vs('SOUND_MENU')}`); return;
+                case 'sound_playuntildone': emit(`REM play sound ${vs('SOUND_MENU')} until done`); return;
+                case 'sound_stopallsounds': emit('REM stop all sounds'); return;
+                case 'sound_setvolumeto': emit(`REM set volume to ${v('VOLUME')}`); return;
+                case 'sound_changevolumeby': emit(`REM change volume by ${v('VOLUME')}`); return;
+                // ---- pen (VDU path for BBC BASIC) ----
+                case 'pen_clear': basUses.pen = true; emit('CLG'); return;
+                case 'pen_penDown': basUses.pen = true; emit('bw_pen%=TRUE'); return;
+                case 'pen_penUp': basUses.pen = true; emit('bw_pen%=FALSE'); return;
+                case 'pen_setPenColorToColor': {
+                    basUses.pen = true;
+                    emit(`PROCpen_colour(${v('COLOR')})`);
+                    return;
+                }
+                case 'pen_setPenSizeTo': basUses.pen = true; emit(`REM set pen size to ${v('SIZE')}`); return;
+                case 'pen_changePenSizeBy': basUses.pen = true; emit(`REM change pen size by ${v('SIZE')}`); return;
+                case 'pen_stamp': basUses.pen = true; emit('REM stamp'); return;
+                case 'pen_changePenColorParamBy': emit(`REM change pen ${f('COLOR_PARAM')} by ${v('VALUE')}`); return;
+                case 'pen_setPenColorParamTo': emit(`REM set pen ${f('COLOR_PARAM')} to ${v('VALUE')}`); return;
+                // ---- motion (tracked x/y + pen integration) ----
+                case 'motion_gotoxy': {
+                    basUses.motionXY = true;
+                    emit(`bw_x%=${v('X')}:bw_y%=${v('Y')}`);
+                    emit('IF bw_pen% THEN DRAW bw_x%*4+640,bw_y%*4+512 ELSE MOVE bw_x%*4+640,bw_y%*4+512');
+                    return;
+                }
+                case 'motion_glidesecstoxy': {
+                    basUses.motionXY = true;
+                    emit(`bw_x%=${v('X')}:bw_y%=${v('Y')}`);
+                    emit('IF bw_pen% THEN DRAW bw_x%*4+640,bw_y%*4+512 ELSE MOVE bw_x%*4+640,bw_y%*4+512');
+                    if (bbc) { emit(`time_target=TIME+${v('SECS')}*100`); emit('REPEAT UNTIL TIME>=time_target'); }
+                    return;
+                }
+                case 'motion_movesteps': {
+                    basUses.motionXY = true;
+                    const s = v('STEPS');
+                    emit(`bw_x%=bw_x%+INT(${s}*SIN(RAD(bw_dir%)))`);
+                    emit(`bw_y%=bw_y%+INT(${s}*COS(RAD(bw_dir%)))`);
+                    emit('IF bw_pen% THEN DRAW bw_x%*4+640,bw_y%*4+512 ELSE MOVE bw_x%*4+640,bw_y%*4+512');
+                    return;
+                }
+                case 'motion_changexby': basUses.motionXY = true; emit(`bw_x%=bw_x%+${v('DX')}`); emit('IF bw_pen% THEN DRAW bw_x%*4+640,bw_y%*4+512 ELSE MOVE bw_x%*4+640,bw_y%*4+512'); return;
+                case 'motion_changeyby': basUses.motionXY = true; emit(`bw_y%=bw_y%+${v('DY')}`); emit('IF bw_pen% THEN DRAW bw_x%*4+640,bw_y%*4+512 ELSE MOVE bw_x%*4+640,bw_y%*4+512'); return;
+                case 'motion_setx': basUses.motionXY = true; emit(`bw_x%=${v('X')}`); emit('IF bw_pen% THEN DRAW bw_x%*4+640,bw_y%*4+512 ELSE MOVE bw_x%*4+640,bw_y%*4+512'); return;
+                case 'motion_sety': basUses.motionXY = true; emit(`bw_y%=${v('Y')}`); emit('IF bw_pen% THEN DRAW bw_x%*4+640,bw_y%*4+512 ELSE MOVE bw_x%*4+640,bw_y%*4+512'); return;
+                case 'motion_turnright': basUses.motionXY = true; emit(`bw_dir%=(bw_dir%+${v('DEGREES')}) MOD 360`); return;
+                case 'motion_turnleft': basUses.motionXY = true; emit(`bw_dir%=(bw_dir%-${v('DEGREES')}+360) MOD 360`); return;
+                case 'motion_pointindirection': basUses.motionXY = true; emit(`bw_dir%=${v('DIRECTION')}`); return;
+                // ---- events (broadcasts as REM stubs) ----
+                case 'event_broadcast': emit(`REM broadcast ${vs('BROADCAST_INPUT')}`); return;
+                case 'event_broadcastandwait': emit(`REM broadcast ${vs('BROADCAST_INPUT')} and wait`); return;
+                // ---- control (clones as REM stubs) ----
+                case 'control_create_clone_of': emit(`REM create clone of ${vs('CLONE_OPTION')}`); return;
+                case 'control_delete_this_clone': emit('REM delete this clone'); return;
+                case 'control_stop': {
+                    const opt = f('STOP_OPTION');
+                    if (opt === 'this script') { emit('ENDPROC'); return; }
+                    emit('END'); return;
+                }
+                // ---- data (monitor visibility — REM stubs) ----
+                case 'data_showvariable': emit(`REM show variable ${f('VARIABLE')}`); return;
+                case 'data_hidevariable': emit(`REM hide variable ${f('VARIABLE')}`); return;
+                case 'data_showlist': emit(`REM show list ${f('LIST')}`); return;
+                case 'data_hidelist': emit(`REM hide list ${f('LIST')}`); return;
+                // ---- list operations ----
+                case 'data_addtolist': {
+                    const lm = listMeta(f('LIST'));
+                    emit(`${lm.lenVar}=${lm.lenVar}+1`);
+                    emit(`${lm.baseName}(${lm.lenVar})=${vs('ITEM')}`);
+                    return;
+                }
+                case 'data_deleteoflist': {
+                    const lm = listMeta(f('LIST'));
+                    emit(`PROClist_del(${lm.baseName}(),${lm.lenVar},${v('INDEX')})`);
+                    emit(`${lm.lenVar}=${lm.lenVar}-1`);
+                    return;
+                }
+                case 'data_deletealloflist': {
+                    const lm = listMeta(f('LIST'));
+                    emit(`${lm.lenVar}=0`);
+                    return;
+                }
+                case 'data_insertatlist': {
+                    const lm = listMeta(f('LIST'));
+                    emit(`PROClist_ins(${lm.baseName}(),${lm.lenVar},${v('INDEX')},${vs('ITEM')})`);
+                    emit(`${lm.lenVar}=${lm.lenVar}+1`);
+                    return;
+                }
+                case 'data_replaceitemoflist': {
+                    const lm = listMeta(f('LIST'));
+                    emit(`${lm.baseName}(${v('INDEX')})=${vs('ITEM')}`);
+                    return;
+                }
+                // ---- arrays extension ----
+                case 'arrays_create1D': {
+                    const an = basName(this._basUnq(v('NAME')));
+                    emit(`DIM ${an}(200)`);
+                    emit(`${an}_n=0`);
+                    return;
+                }
+                case 'arrays_createEmpty': {
+                    const an = basName(this._basUnq(v('NAME')));
+                    emit(`DIM ${an}(200)`);
+                    emit(`${an}_n=0`);
+                    return;
+                }
+                case 'arrays_push': {
+                    const an = basName(this._basUnq(v('NAME')));
+                    emit(`${an}_n=${an}_n+1`);
+                    emit(`${an}(${an}_n)=${vs('VALUE')}`);
+                    return;
+                }
+                case 'arrays_set': {
+                    const an = basName(this._basUnq(v('NAME')));
+                    emit(`${an}(${v('INDEX')})=${vs('VALUE')}`);
+                    return;
+                }
+                case 'arrays_remove': {
+                    const an = basName(this._basUnq(v('NAME')));
+                    emit(`PROClist_del(${an}(),${an}_n,${v('INDEX')})`);
+                    emit(`${an}_n=${an}_n-1`);
+                    return;
+                }
+                case 'arrays_delete': {
+                    const an = basName(this._basUnq(v('NAME')));
+                    emit(`${an}_n=0`);
+                    return;
+                }
+                case 'arrays_insert': {
+                    const an = basName(this._basUnq(v('NAME')));
+                    emit(`PROClist_ins(${an}(),${an}_n,${v('INDEX')},${vs('VALUE')})`);
+                    emit(`${an}_n=${an}_n+1`);
+                    return;
+                }
+                // ---- hardware pin operations ----
                 case 'stc12_setpin': {
+                    if (!pokeable) { emit(`REM turn ${f('STATE')} ${f('PIN')}`); return; }
                     const p = pins.get(String(f('PIN')).toLowerCase());
                     if (!p) { warnings.push(`undeclared pin "${f('PIN')}"`); return; }
                     const st = f('STATE');
@@ -6310,6 +6966,7 @@ class SB3Creator {
                     emit(pokePin(p, on)); return;
                 }
                 case 'stc12_toggle': {
+                    if (!pokeable) { emit(`REM toggle ${f('PIN')}`); return; }
                     const p = pins.get(String(f('PIN')).toLowerCase());
                     if (!p) { warnings.push(`undeclared pin "${f('PIN')}"`); return; }
                     const mask = pinMask(p); const port = pinPort(p);
@@ -6329,7 +6986,7 @@ class SB3Creator {
                         emit(`time_target=TIME+${v('DURATION')}*100`);
                         emit('REPEAT UNTIL TIME>=time_target');
                     } else {
-                        emit(`REM delay: calibrate DC for the machine (units per second)`);
+                        emit('REM delay: calibrate DC for the machine (units per second)');
                         emit(`FOR TD=1 TO ${v('DURATION')}*DC:NEXT TD`);
                         this._basNeedsDC = true;
                     }
@@ -6351,9 +7008,6 @@ class SB3Creator {
                     return;
                 }
                 case 'control_repeat': {
-                    // Deterministic loop names: a plain counter, so equivalent
-                    // programs emit identical text on every pass (labelSeq
-                    // varies between the numbered and structured modes).
                     const i = basName(`loop${this._basLoopSeq++}`);
                     emit(`FOR ${i}=1 TO ${v('TIMES')}`);
                     depth++;
@@ -6363,11 +7017,6 @@ class SB3Creator {
                     return;
                 }
                 case 'control_repeat_until': {
-                    // Scratch's `repeat until` checks BEFORE each pass; BBC's
-                    // REPEAT/UNTIL checks after (runs once even when the
-                    // condition already holds). Pre-check forms only:
-                    // WHILE NOT in the structured mode (ch. 12), a guarded
-                    // GOTO in the numbered ones.
                     if (structured) {
                         emit(`WHILE NOT (${basVal(b.inputs.CONDITION, blocks)})`);
                         depth++;
@@ -6436,8 +7085,12 @@ class SB3Creator {
                     emit(`PROC${proc}${args.length ? `(${args.join(',')})` : ''}`);
                     return;
                 }
-                default:
-                    reasons.push(`"${b.opcode}" has no BASIC form yet`);
+                default: {
+                    // Unsupported statement — REM stub that still RUNs.
+                    const desc = this.decompileBlock ? this.decompileBlock(b, blocks) : b.opcode;
+                    warnings.push(`no BASIC form for "${desc}" — emitted as REM`);
+                    emit(`REM ${b.opcode}`);
+                }
             }
         };
 
@@ -6445,36 +7098,60 @@ class SB3Creator {
         const targets = project.targets || [];
         const scripts = [];
         const procs = [];
+        const otherHats = [];
         for (const t of targets) {
             const blocks = t.blocks || {};
             for (const b of Object.values(blocks)) {
                 if (!b.topLevel) continue;
                 if (b.opcode === 'event_whenflagclicked') scripts.push({ b, blocks });
                 else if (b.opcode === 'procedures_definition') procs.push({ b, blocks });
-                else if (this.isHat(b.opcode)) reasons.push(`"${b.opcode}" scripts have no BASIC form — BASIC is single-threaded`);
+                else if (this.isHat(b.opcode)) otherHats.push({ b, blocks });
             }
         }
+        // Multi-WHEN flag scripts: BASIC is single-threaded, so we
+        // serialize them sequentially with a REM warning. True concurrency
+        // (event_whenkeypressed, broadcast-receives, clone starts) cannot
+        // be serialized — emit REM stubs for those.
         if (scripts.length > 1) {
-            reasons.push(`${scripts.length} WHEN scripts — BASIC is single-threaded; one script per program (the cooperative scheduler is exactly what BASIC does not have)`);
+            warnings.push(`${scripts.length} WHEN flag scripts serialized — BASIC is single-threaded; concurrent semantics lost`);
         }
-        if (!scripts.length) reasons.push('no "when flag clicked" script — nothing to run');
+        for (const h of otherHats) {
+            warnings.push(`"${h.b.opcode}" script emitted as REM — BASIC is single-threaded`);
+        }
+        if (!scripts.length && !otherHats.length) reasons.push('no "when flag clicked" script — nothing to run');
         if (reasons.length) return { ok: false, reasons: [...new Set(reasons)], warnings };
 
         // ---- header + pin setup ----------------------------------------
         emit(`REM generated by Brickwright (${profile.toUpperCase()} BASIC profile)`);
-        emit(`REM @bw device ${stc.device || 'eater6502'}`);
-        for (const p of pins.values()) emit(`REM @bw pin ${p.name} ${p.where} ${p.direction}${p.activeLow ? ' active-low' : ''}`);
-        const ddr = { a: 0, b: 0 };
-        for (const p of pins.values()) {
-            if (p.direction === 'output') ddr[/^PB/i.test(p.where) ? 'b' : 'a'] |= pinMask(p);
+        if (stc.device) emit(`REM @bw device ${stc.device}`);
+        for (const p of pins.values()) emit(`REM @bw pin ${p.name} ${p.where || `P${p.port}.${p.bit}`} ${p.direction}${p.activeLow ? ' active-low' : ''}`);
+        if (pokeable) {
+            const ddr = { a: 0, b: 0 };
+            for (const p of pins.values()) {
+                if (p.direction === 'output') ddr[/^PB/i.test(p.where) ? 'b' : 'a'] |= pinMask(p);
+            }
+            if (ddr.a) emit(bbc ? `?&${(viaAt + 3).toString(16).toUpperCase()}=${ddr.a}` : `POKE ${viaAt + 3},${ddr.a}`);
+            if (ddr.b) emit(bbc ? `?&${(viaAt + 2).toString(16).toUpperCase()}=${ddr.b}` : `POKE ${viaAt + 2},${ddr.b}`);
         }
-        if (ddr.a) emit(bbc ? `?&${(viaAt + 3).toString(16).toUpperCase()}=${ddr.a}` : `POKE ${viaAt + 3},${ddr.a}`);
-        if (ddr.b) emit(bbc ? `?&${(viaAt + 2).toString(16).toUpperCase()}=${ddr.b}` : `POKE ${viaAt + 2},${ddr.b}`);
+        if (bbc && !pokeable && !stc.device) {
+            // Pure Scratch programs get a graphics mode for pen art.
+            emit('MODE 1');
+        }
         this._basNeedsDC = false;
         const headerEnd = outLines.length;
 
         // ---- main + procedures -----------------------------------------
-        basChain(scripts[0].b.next, scripts[0].blocks);
+        // Serialize all when-flag-clicked scripts sequentially.
+        for (let si = 0; si < scripts.length; si++) {
+            if (si > 0) emit(`REM --- script ${si + 1} ---`);
+            basChain(scripts[si].b.next, scripts[si].blocks);
+        }
+        // Other hats: emit bodies as REM-commented blocks.
+        for (const h of otherHats) {
+            const hatDesc = h.b.opcode.replace(/^event_/, '').replace(/^control_/, '');
+            emit(`REM --- ${hatDesc} (single-threaded: runs after main) ---`);
+            basChain(h.b.next, h.blocks);
+        }
         emit('END');
         for (const { b, blocks } of procs) {
             if (!bbc) { reasons.push('MS BASIC 1.1 has no named procedures — custom blocks need the bbc profile'); break; }
@@ -6482,40 +7159,103 @@ class SB3Creator {
             const m = proto.mutation;
             const argNames = JSON.parse(m.argumentnames || '[]').map((n) => basName(n));
             const pn = basName('proc:' + this.pyProcRaw(m.proccode));
-            // Chapter 16's contract: parameters are the PROC's own (auto-
-            // LOCAL); anything else the body assigns stays global, as in BBC.
             emit(`DEF PROC${pn}${argNames.length ? `(${argNames.join(',')})` : ''}`);
             basChain(b.next, blocks);
             emit('ENDPROC');
         }
-        // Post-body splices at the header seam: the ms-profile name legend
-        // (names exist only after the body walked) and the delay constant.
+        // ---- on-demand shim procedures (emitted after END) ----
+        if (bbc) {
+            // List helpers: insert, delete, contains, index-of.
+            if (basUses.lists.size) {
+                emit('DEF PROClist_del(a(),BYREF n%,i%)');
+                emit('LOCAL j%:FOR j%=i% TO n%-1:a(j%)=a(j%+1):NEXT j%');
+                emit('ENDPROC');
+                emit('DEF PROClist_ins(a(),BYREF n%,i%,v)');
+                emit('LOCAL j%:FOR j%=n% TO i% STEP -1:a(j%+1)=a(j%):NEXT j%:a(i%)=v');
+                emit('ENDPROC');
+                emit('DEF FNlist_contains(a(),n%,v)');
+                emit('LOCAL j%:FOR j%=1 TO n%:IF a(j%)=v THEN =TRUE');
+                emit('NEXT j%:=FALSE');
+                emit('DEF FNlist_indexof(a(),n%,v)');
+                emit('LOCAL j%:FOR j%=1 TO n%:IF a(j%)=v THEN =j%');
+                emit('NEXT j%:=0');
+            }
+            // Pen colour: Scratch colour number (0-based hue) to BBC GCOL.
+            if (basUses.pen) {
+                emit('DEF PROCpen_colour(c%)');
+                emit('GCOL 0,(c% MOD 8)+1');
+                emit('ENDPROC');
+            }
+            // Planète Maths helpers.
+            if (names.has('FNfact')) {
+                // Not checking — emitting all potential helpers is cheap and safe.
+            }
+        }
+        // Always-needed math helpers (emitted if referenced by the walk).
+        const needsFact = outLines.some((l) => typeof l === 'string' && l.includes('FNfact('));
+        const needsMin = outLines.some((l) => typeof l === 'string' && l.includes('FNmin('));
+        const needsMax = outLines.some((l) => typeof l === 'string' && l.includes('FNmax('));
+        const needsSumDigits = outLines.some((l) => typeof l === 'string' && l.includes('FNsumdigits('));
+        if (bbc && needsFact) { emit('DEF FNfact(n%):IF n%<=1 THEN =1 ELSE =n%*FNfact(n%-1)'); }
+        if (bbc && needsMin) { emit('DEF FNmin(a,b):IF a<b THEN =a ELSE =b'); }
+        if (bbc && needsMax) { emit('DEF FNmax(a,b):IF a>b THEN =a ELSE =b'); }
+        if (bbc && needsSumDigits) { emit('DEF FNsumdigits(n%):LOCAL s%,a%:a%=ABS(n%):s%=0:WHILE a%>0:s%=s%+a% MOD 10:a%=a% DIV 10:ENDWHILE:=s%'); }
+        // Post-body splices at the header seam.
         const seam = [];
         if (!bbc) for (const [raw, nm] of names) seam.push(`REM ${nm} = ${raw.replace(/^proc:/, '')}`);
         if (this._basNeedsDC) seam.push('DC=1000:REM delay units/second - CALIBRATE');
+        // List DIM declarations at top.
+        for (const [, lm] of basUses.lists) {
+            seam.push(`DIM ${lm.baseName}(200)`);
+            seam.push(`${lm.lenVar}=0`);
+        }
+        // Motion init.
+        if (basUses.motionXY) {
+            seam.push('bw_x%=0:bw_y%=0:bw_dir%=90:bw_pen%=FALSE');
+        }
         outLines.splice(headerEnd, 0, ...seam);
+        lineBlocks.splice(headerEnd, 0, ...seam.map(() => null));
         if (reasons.length) return { ok: false, reasons: [...new Set(reasons)], warnings };
 
         // ---- number the lines, resolve labels --------------------------
+        // lineMap: emitted-line key → Scratch block id (only lines a block
+        // owns appear). Numbered mode keys by the BASIC line number — the
+        // token TRACE prints — structured mode by 1-based output line.
         if (structured) {
-            // No labels exist in structured mode by construction.
-            const basic = outLines.filter((l) => typeof l === 'string').join('\n') + '\n';
-            return { ok: true, basic, reasons: [], warnings };
+            const kept = [];
+            const lineMap = {};
+            for (let i = 0; i < outLines.length; i++) {
+                if (typeof outLines[i] !== 'string') continue;
+                kept.push(outLines[i]);
+                if (lineBlocks[i]) lineMap[kept.length] = lineBlocks[i];
+            }
+            const basic = kept.join('\n') + '\n';
+            return { ok: true, basic, lineMap, reasons: [], warnings };
         }
         const lineNo = new Map();
         let n = 10;
         const numberedOut = [];
-        for (const l of outLines) {
+        const lineMap = {};
+        for (let i = 0; i < outLines.length; i++) {
+            const l = outLines[i];
             if (typeof l === 'object' && l.label) { lineNo.set(l.label, n); continue; }
             numberedOut.push({ n, text: l });
+            if (lineBlocks[i]) lineMap[n] = lineBlocks[i];
             n += 10;
         }
-        // A trailing label cannot occur: END / ENDPROC always follow the
-        // last branch, so every label resolves to a real line.
         const resolve = (text) => text.replace(/@L\d+@/g, (m) => String(lineNo.get(m) ?? n));
         const basic = numberedOut.map((l) => `${l.n} ${resolve(l.text)}`).join('\n') + '\n';
-        return { ok: true, basic, reasons: [], warnings };
+        return { ok: true, basic, lineMap, reasons: [], warnings };
     }
+
+    // INKEY code lookup for BBC BASIC key detection.
+    _basInkeyCode(key) {
+        const map = { space: 99, 'left arrow': 25, 'right arrow': 121, 'up arrow': 57, 'down arrow': 41, a: 65, b: 100, c: 82, d: 50, e: 34, f: 67, g: 83, h: 84, i: 37, j: 69, k: 70, l: 86, m: 101, n: 85, o: 54, p: 55, q: 16, r: 51, s: 81, t: 35, u: 53, v: 99, w: 33, x: 66, y: 68, z: 97, '0': 39, '1': 48, '2': 49, '3': 17, '4': 18, '5': 19, '6': 52, '7': 36, '8': 21, '9': 38, 'any': 0 };
+        return map[String(key).toLowerCase()] || 0;
+    }
+
+    // Helper: strip quotes from a BASIC array name reference.
+    _basUnq(s) { return String(s).replace(/^"|"$/g, ''); }
 
     generateC(project = this.project, opts = {}) {
         // Which C? The project decides. Declared pins mean the chip and bare
