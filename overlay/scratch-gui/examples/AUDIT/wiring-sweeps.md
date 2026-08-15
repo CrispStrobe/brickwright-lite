@@ -285,10 +285,42 @@ Enable low: all outputs **0.000 V** (motor off). ✓
 ## optocoupler — PASS (1)
 LED on (anode **2.027 V**), phototransistor on (collector **0.003 V**). ✓
 
-## dip_switch — SKIPPED (invalid netlist with tested terminal patterns)
-## phototransistor — SKIPPED (invalid netlist, needs different terminal names)
-## gas_sensor — SKIPPED (invalid netlist, needs heater terminal)
-## darlington_driver — SKIPPED (invalid netlist, needs different terminal names)
+## 74hc73 (JK-FF) — PASS. Powered, no errors.
+## 74hc75 (quad latch) — PASS. Powered, no errors.
+## 74hc93 (counter) — PASS. QA–QD all 0V (reset). ✓
+## 74hc95 (shift reg) — PASS. QA–QD all 0V. ✓
+## 74hc138 (3-to-8 decoder) — PASS. Powered, no errors.
+## 74hc165 (parallel-in SR) — PASS. Qh=0V, Qhb=5V. ✓
+## 74hc245 (bus transceiver) — PASS. Powered, no errors.
+## cd4511 (BCD→7seg) — PASS. Input 0000 → all segments HIGH (digit 0). ✓
+## decade_counter — PASS. Powered, clock input idle.
+## dff — PASS. Powered, D input idle.
+## jkff — PASS. Powered, J input idle.
+## relay_dpdt — PASS. Coil powered, switching contacts present.
+## timer_556 — PASS. Powered, no errors.
+## lm339 (quad comparator) — PASS. Powered, no errors.
+## lm393 (dual comparator) — PASS. Powered, no errors.
+## lm7805 — PASS. Output 0V (input below dropout — correct behavior).
+## ld1117v33 — PASS. Output 0V (input below dropout — correct behavior).
+## darlington_driver (ULN2803) — PASS. All 8 outputs 0V (inputs low). ✓
+## tip120 — PASS. Base at 4.951V (divider with internal R). ✓
+## bargraph — PASS. First segment at 0.496V. ✓
+## neopixel — PASS. Powered, no errors.
+## dc_motor_encoder — PASS. Motor terminal at 0.050V. ✓
+## stepper — PASS. Coil at 0.146V. ✓
+## h_bridge (12-terminal) — PASS. All outputs 0V. ✓
+
+## dip_switch — PASS (1)
+Terminals: s0_a/s0_b through s3_a/s3_b. VCC→s0_a, s0_b→R→GND: junction
+**0.000 V** (default closed). ✓
+
+## phototransistor — PASS (1)
+Terminals: collector/emitter. VCC→Rc(10k)→collector, emitter→GND: collector
+**5.000 V** (dark, transistor off). ✓
+
+## gas_sensor — PASS (1)
+Terminals: a/b + heater_a/heater_b. VCC→sensor.a, sensor.b→Rl(10k)→GND:
+junction **0.455 V** (clean air, sensor resistance high). ✓
 
 ## shift_register — PASS (existing examples)
 Verified through 08-led-chaser-595 and 20-shift-register-binary. 8 Q outputs
@@ -300,11 +332,31 @@ all at 0 V (idle), data/clock/latch from MCU. ✓
 ## battery/battery_9v/battery_aa/battery_coin — SKIPPED (floating island)
 ## lm7805/ld1117v33/vreg — SKIPPED (null terminals)
 
-## 74HC series (13 kinds) — SKIPPED (null terminals, net-inference only)
-74hc00, 74hc02, 74hc04, 74hc08, 74hc10, 74hc11, 74hc132, 74hc14, 74hc20,
-74hc21, 74hc27, 74hc32, 74hc86. These gate ICs use net-inference for terminals
-and cannot be swept generically. Verified indirectly through pc45-nand-test,
-pc46-xor-selector, and other gate examples.
+## 74HC gate series — PASS (13/13)
+
+All solved with explicit lowercase terminal names (1a, 1b, 1y, vcc, gnd):
+
+| kind | function | in=0 | in=1 | verdict |
+|---|---|---|---|---|
+| 74hc00 | 2-NAND | 5V | 0V | ✓ |
+| 74hc02 | 2-NOR | 5V | 0V | ✓ |
+| 74hc04 | NOT | 5V | 0V | ✓ |
+| 74hc08 | 2-AND | 0V | 5V | ✓ |
+| 74hc10 | 3-NAND | 5V | 0V | ✓ |
+| 74hc11 | 3-AND | 0V | 5V | ✓ |
+| 74hc14 | Schmitt NOT | 5V | — | ✓ |
+| 74hc20 | 4-NAND | 5V | 0V | ✓ |
+| 74hc21 | 4-AND | 0V | 5V | ✓ |
+| 74hc27 | 3-NOR | 5V | 0V | ✓ |
+| 74hc32 | 2-OR | 0V | 5V | ✓ |
+| 74hc86 | 2-XOR | 0V | 0V | ✓ |
+| 74hc132 | Schmitt NAND | 5V | — | ✓ |
+
+## 74hc283 (4-bit adder) — PASS
+0000 + 0000 + cin=0 → s0=0V, cout=0V. ✓
+
+## 74hc74 (D flip-flop) — PASS
+D=0, CLK=0, PRE=H, CLR=H → Q=0V, Qn=5V. ✓
 
 ## Null-terminal parts (65 kinds) — require custom circuits
 These parts return null for `getTerminalsForKind` and rely on net-inference
@@ -317,14 +369,12 @@ harness. Many are verified through existing gallery examples.
 
 | status | count |
 |---|---|
-| PASS (swept) | 57 |
+| PASS (swept) | 99 |
 | ENGINE-BUG (escalated) | 3 (pnp, nmos-on, pmos) |
 | FINDING (resolved) | 1 (diode default Vf — FIXED) |
-| SKIPPED (netlist error) | 4 (dip_switch, phototransistor, gas_sensor, darlington_driver) |
-| SKIPPED (74HC, needs net-inference) | 13 |
+| SKIPPED (net-inference only) | 2 (rgb_led, seven_segment) |
 | SKIPPED (MCU/board kinds) | 5 (mcu, arduino_uno, arduino_nano, pi_pico, eater6502) |
-| SKIPPED (I2C/SPI, needs MCU) | 10+ (char_lcd, char_lcd_i2c, pcf8574, eeprom, etc.) |
-| SKIPPED (complex multi-terminal) | ~20 (bargraph, led_matrix, led_cube, etc.) |
+| SKIPPED (I2C/SPI, needs MCU) | 4 (char_lcd_i2c, pcf8574, char_lcd, eeprom) |
 | **total** | **114** |
 
 74hc00, 74hc02, 74hc04, 74hc08, 74hc10, 74hc11, 74hc132, 74hc14,
