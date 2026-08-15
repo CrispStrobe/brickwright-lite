@@ -39,6 +39,7 @@ try {
     sh(`node scripts/sync-parts-data.mjs --dir ${clones['bw-circuit-ui']}`);
     sh(`node scripts/sync-bw-board.mjs --dir ${clones['bw-board']}`);
     sh(`node scripts/sync-sb3creator.mjs --dir ${clones['sb3-creator']}`);
+    sh(`node scripts/sync-examples.mjs --dir ${clones['sb3-creator']}`);
 
     if (out('git status --porcelain -- overlay vendor-pins.json') === '') {
         console.log('nothing to forward — vendored trees already match upstream.');
