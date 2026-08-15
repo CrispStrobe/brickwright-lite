@@ -8361,16 +8361,63 @@ class SB3Creator {
                 '    BW_PWM_CSR(slice) = 1u;                  /* enable */',
                 '}', '');
         } else if ((this._cUses.pwm || this._cUses.motor) && this._core === 'avr' && this._cMega) {
-            out.push('/* PWM on the OC pins of Timers 1 and 2, Mega routing: OC1A=D11,',
-                ' * OC1B=D12, OC2A=D10, OC2B=D9 — 8-bit fast PWM at F_CPU/64/256',
-                ' * = 977 Hz. Timer 0 is the millisecond tick; its pins (D13/D4',
-                ' * here) are refused at emit time. */',
+            out.push('/* PWM on ATmega2560: Timers 1-5, 8-bit fast PWM at F_CPU/64/256',
+                ' * = 977 Hz. Timer 0 is the ms tick (D13/D4 refused at emit time).',
+                ' * D2-D8 use Timers 3+4, D9-D12 use Timers 1+2, D44-D46 Timer 5. */',
                 'static void pwm_set(unsigned char pin, unsigned int percent)',
                 '{',
                 '    uint8_t v;',
                 '    if (percent > 100) percent = 100;',
                 '    v = (uint8_t)((percent * 255u + 50u) / 100u);',
                 '    switch (pin) {',
+                '    case 2:   /* OC3B = PE4 */',
+                '        DDRE |= (1 << 4);',
+                '        if (v == 0)        { TCCR3A &= (uint8_t)~(1 << COM3B1); PORTE &= (uint8_t)~(1 << 4); }',
+                '        else if (v == 255) { TCCR3A &= (uint8_t)~(1 << COM3B1); PORTE |= (1 << 4); }',
+                '        else               { TCCR3A |= (1 << COM3B1); OCR3B = v; }',
+                '        break;',
+                '    case 3:   /* OC3C = PE5 */',
+                '        DDRE |= (1 << 5);',
+                '        if (v == 0)        { TCCR3A &= (uint8_t)~(1 << COM3C1); PORTE &= (uint8_t)~(1 << 5); }',
+                '        else if (v == 255) { TCCR3A &= (uint8_t)~(1 << COM3C1); PORTE |= (1 << 5); }',
+                '        else               { TCCR3A |= (1 << COM3C1); OCR3C = v; }',
+                '        break;',
+                '    case 5:   /* OC3A = PE3 */',
+                '        DDRE |= (1 << 3);',
+                '        if (v == 0)        { TCCR3A &= (uint8_t)~(1 << COM3A1); PORTE &= (uint8_t)~(1 << 3); }',
+                '        else if (v == 255) { TCCR3A &= (uint8_t)~(1 << COM3A1); PORTE |= (1 << 3); }',
+                '        else               { TCCR3A |= (1 << COM3A1); OCR3A = v; }',
+                '        break;',
+                '    case 6:   /* OC4A = PH3 */',
+                '        DDRH |= (1 << 3);',
+                '        if (v == 0)        { TCCR4A &= (uint8_t)~(1 << COM4A1); PORTH &= (uint8_t)~(1 << 3); }',
+                '        else if (v == 255) { TCCR4A &= (uint8_t)~(1 << COM4A1); PORTH |= (1 << 3); }',
+                '        else               { TCCR4A |= (1 << COM4A1); OCR4A = v; }',
+                '        break;',
+                '    case 7:   /* OC4B = PH4 */',
+                '        DDRH |= (1 << 4);',
+                '        if (v == 0)        { TCCR4A &= (uint8_t)~(1 << COM4B1); PORTH &= (uint8_t)~(1 << 4); }',
+                '        else if (v == 255) { TCCR4A &= (uint8_t)~(1 << COM4B1); PORTH |= (1 << 4); }',
+                '        else               { TCCR4A |= (1 << COM4B1); OCR4B = v; }',
+                '        break;',
+                '    case 8:   /* OC4C = PH5 */',
+                '        DDRH |= (1 << 5);',
+                '        if (v == 0)        { TCCR4A &= (uint8_t)~(1 << COM4C1); PORTH &= (uint8_t)~(1 << 5); }',
+                '        else if (v == 255) { TCCR4A &= (uint8_t)~(1 << COM4C1); PORTH |= (1 << 5); }',
+                '        else               { TCCR4A |= (1 << COM4C1); OCR4C = v; }',
+                '        break;',
+                '    case 9:   /* OC2B = PH6 */',
+                '        DDRH |= (1 << 6);',
+                '        if (v == 0)        { TCCR2A &= (uint8_t)~(1 << COM2B1); PORTH &= (uint8_t)~(1 << 6); }',
+                '        else if (v == 255) { TCCR2A &= (uint8_t)~(1 << COM2B1); PORTH |= (1 << 6); }',
+                '        else               { TCCR2A |= (1 << COM2B1); OCR2B = v; }',
+                '        break;',
+                '    case 10:  /* OC2A = PB4 */',
+                '        DDRB |= (1 << 4);',
+                '        if (v == 0)        { TCCR2A &= (uint8_t)~(1 << COM2A1); PORTB &= (uint8_t)~(1 << 4); }',
+                '        else if (v == 255) { TCCR2A &= (uint8_t)~(1 << COM2A1); PORTB |= (1 << 4); }',
+                '        else               { TCCR2A |= (1 << COM2A1); OCR2A = v; }',
+                '        break;',
                 '    case 11:  /* OC1A = PB5 */',
                 '        DDRB |= (1 << 5);',
                 '        if (v == 0)        { TCCR1A &= (uint8_t)~(1 << COM1A1); PORTB &= (uint8_t)~(1 << 5); }',
@@ -8383,17 +8430,23 @@ class SB3Creator {
                 '        else if (v == 255) { TCCR1A &= (uint8_t)~(1 << COM1B1); PORTB |= (1 << 6); }',
                 '        else               { TCCR1A |= (1 << COM1B1); OCR1B = v; }',
                 '        break;',
-                '    case 10:  /* OC2A = PB4 */',
-                '        DDRB |= (1 << 4);',
-                '        if (v == 0)        { TCCR2A &= (uint8_t)~(1 << COM2A1); PORTB &= (uint8_t)~(1 << 4); }',
-                '        else if (v == 255) { TCCR2A &= (uint8_t)~(1 << COM2A1); PORTB |= (1 << 4); }',
-                '        else               { TCCR2A |= (1 << COM2A1); OCR2A = v; }',
+                '    case 44:  /* OC5C = PL5 */',
+                '        DDRL |= (1 << 5);',
+                '        if (v == 0)        { TCCR5A &= (uint8_t)~(1 << COM5C1); PORTL &= (uint8_t)~(1 << 5); }',
+                '        else if (v == 255) { TCCR5A &= (uint8_t)~(1 << COM5C1); PORTL |= (1 << 5); }',
+                '        else               { TCCR5A |= (1 << COM5C1); OCR5C = v; }',
                 '        break;',
-                '    case 9:   /* OC2B = PH6 */',
-                '        DDRH |= (1 << 6);',
-                '        if (v == 0)        { TCCR2A &= (uint8_t)~(1 << COM2B1); PORTH &= (uint8_t)~(1 << 6); }',
-                '        else if (v == 255) { TCCR2A &= (uint8_t)~(1 << COM2B1); PORTH |= (1 << 6); }',
-                '        else               { TCCR2A |= (1 << COM2B1); OCR2B = v; }',
+                '    case 45:  /* OC5B = PL4 */',
+                '        DDRL |= (1 << 4);',
+                '        if (v == 0)        { TCCR5A &= (uint8_t)~(1 << COM5B1); PORTL &= (uint8_t)~(1 << 4); }',
+                '        else if (v == 255) { TCCR5A &= (uint8_t)~(1 << COM5B1); PORTL |= (1 << 4); }',
+                '        else               { TCCR5A |= (1 << COM5B1); OCR5B = v; }',
+                '        break;',
+                '    case 46:  /* OC5A = PL3 */',
+                '        DDRL |= (1 << 3);',
+                '        if (v == 0)        { TCCR5A &= (uint8_t)~(1 << COM5A1); PORTL &= (uint8_t)~(1 << 3); }',
+                '        else if (v == 255) { TCCR5A &= (uint8_t)~(1 << COM5A1); PORTL |= (1 << 3); }',
+                '        else               { TCCR5A |= (1 << COM5A1); OCR5A = v; }',
                 '        break;',
                 '    default: break;',
                 '    }',
@@ -8461,6 +8514,73 @@ class SB3Creator {
                 '        if (v > 255) PCA_PWM1 |= 0x02; else PCA_PWM1 &= (unsigned char)~0x02;',
                 '    }',
                 '}', '');
+        }
+
+        // tone_set: software square-wave on the declared TONE pin.
+        if (this._cUses.tone && this._core === 'avr') {
+            // Find the tone pin's port and bit
+            const tonePin = pins.find(p => p.direction === 'tone');
+            const pinMap = this._cMega ? SB3Creator.AVR_PINS_MEGA : SB3Creator.AVR_PINS;
+            if (tonePin) {
+                const hw = pinMap[tonePin.where.toUpperCase()];
+                if (hw) {
+                    const [port, bit] = hw;
+                    out.push('/* tone_set: software square-wave via Timer2 CTC + ISR toggle.',
+                        ` * Pin ${tonePin.where} (P${port}${bit}) is the declared TONE output.`,
+                        ' * Frequency = F_CPU / (2 * prescaler * (OCR2A+1)).',
+                        ' * freq=0 stops the tone (silences the pin). */',
+                        `static volatile uint8_t _tone_active;`,
+                        '',
+                        `ISR(TIMER2_COMPA_vect) { if (_tone_active) PIN${port} = (1 << ${bit}); }`,
+                        '',
+                        'static void tone_set(unsigned int freq)',
+                        '{',
+                        '    if (freq == 0) {',
+                        '        TIMSK2 &= (uint8_t)~(1 << OCIE2A);',
+                        '        _tone_active = 0;',
+                        `        PORT${port} &= (uint8_t)~(1 << ${bit});`,
+                        '        return;',
+                        '    }',
+                        '    /* Pick a prescaler that fits the 8-bit OCR2A range. */',
+                        '    uint32_t ocr;',
+                        '    uint8_t cs;',
+                        '    ocr = F_CPU / (2UL * 1UL * freq) - 1;',
+                        '    if (ocr <= 255) { cs = (1 << CS20); }',
+                        '    else { ocr = F_CPU / (2UL * 8UL * freq) - 1;',
+                        '           if (ocr <= 255) cs = (1 << CS21);',
+                        '           else { ocr = F_CPU / (2UL * 64UL * freq) - 1;',
+                        '                  if (ocr <= 255) cs = (1 << CS22);',
+                        '                  else { ocr = F_CPU / (2UL * 256UL * freq) - 1;',
+                        '                         if (ocr <= 255) cs = (1 << CS22) | (1 << CS21);',
+                        '                         else { ocr = F_CPU / (2UL * 1024UL * freq) - 1;',
+                        '                                cs = (1 << CS22) | (1 << CS21) | (1 << CS20);',
+                        '                                if (ocr > 255) ocr = 255; } } } }',
+                        `    DDR${port} |= (1 << ${bit});`,
+                        '    TCCR2A = (1 << WGM21);          /* CTC mode */',
+                        '    TCCR2B = cs;',
+                        '    OCR2A  = (uint8_t)ocr;',
+                        '    TCNT2  = 0;',
+                        '    _tone_active = 1;',
+                        '    TIMSK2 |= (1 << OCIE2A);',
+                        '}', '');
+                }
+            }
+        }
+        if (this._cUses.tone && this._core === '8051') {
+            // 8051 tone via Timer2 (T2CON) — TODO: not all STC parts have Timer2.
+            // For now, emit a stub that warns at compile time.
+            const tonePin = pins.find(p => p.direction === 'tone');
+            if (tonePin) {
+                out.push('/* tone_set stub: 8051 tone not yet implemented. */',
+                    'static void tone_set(unsigned int freq)',
+                    '{',
+                    `    (void)freq; /* P${tonePin.port}_${tonePin.bit} */`,
+                    '}', '');
+            }
+        }
+        if (this._cUses.tone && this._core === 'arm') {
+            // ARM tone — PWM on the declared tone pin. TODO: implement.
+            out.push('static void tone_set(unsigned int freq) { (void)freq; }', '');
         }
 
         // Lookup tables: constant bytes in code space (__code flash).
@@ -9384,6 +9504,23 @@ class SB3Creator {
             if (this._cUses.pwm || this._cUses.motor) {
                 out.push('    TCCR2A = (1 << WGM20) | (1 << WGM21);  /* Timer 2: fast PWM */',
                     '    TCCR2B = (1 << CS22);          /* F_CPU/64 */');
+                if (this._cMega) {
+                    // Mega: Timers 3/4/5 are 16-bit; 8-bit fast PWM uses WGM mode 5
+                    // (WGMn2:0 = 101, TOP = 0xFF). Same F_CPU/64 prescaler as Timer 1.
+                    const megaPwmPins = new Set(pins.filter(p => p.direction === 'pwm' || p.direction === 'motor').map(p => {
+                        const m = String(p.where).match(/^D(\d+)$/i);
+                        return m ? Number(m[1]) : -1;
+                    }));
+                    const needT3 = [2, 3, 5].some(d => megaPwmPins.has(d));
+                    const needT4 = [6, 7, 8].some(d => megaPwmPins.has(d));
+                    const needT5 = [44, 45, 46].some(d => megaPwmPins.has(d));
+                    if (needT3) out.push('    TCCR3A = (1 << WGM30);         /* Timer 3: 8-bit fast PWM */',
+                        '    TCCR3B = (1 << WGM32) | (1 << CS31) | (1 << CS30);  /* F_CPU/64 */');
+                    if (needT4) out.push('    TCCR4A = (1 << WGM40);         /* Timer 4: 8-bit fast PWM */',
+                        '    TCCR4B = (1 << WGM42) | (1 << CS41) | (1 << CS40);  /* F_CPU/64 */');
+                    if (needT5) out.push('    TCCR5A = (1 << WGM50);         /* Timer 5: 8-bit fast PWM */',
+                        '    TCCR5B = (1 << WGM52) | (1 << CS51) | (1 << CS50);  /* F_CPU/64 */');
+                }
             }
             if (this._cUses.print) {
                 out.push(`    UBRR0 = (uint16_t)(F_CPU / 16UL / 9600UL - 1UL);`,
