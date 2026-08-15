@@ -6,29 +6,20 @@ import {resolve} from 'node:path';
 const root = resolve(new URL('..', import.meta.url).pathname);
 const read = file => readFileSync(resolve(root, file), 'utf8');
 
-test('Circuit Designer toolbar has one mode toggle, one view toggle, and a readable zoom indicator', {
-    skip: 'Toolbar data attributes removed in bw-circuit-ui sync 00958c6 — rewrite after right-pane redesign'
-}, () => {
-    const source = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx');
-    assert.match(source, /data-build-sim-toggle/);
-    assert.match(source, /data-zoom-indicator/);
-    assert.match(source, /data-power-toggle/);
-    assert.match(source, /data-toolbar-more/);
-    assert.match(source, /data-circuit-toolbar[\s\S]*flexWrap:\s*'wrap'/);
-    assert.doesNotMatch(source, /Show right panel|Hide right panel/);
-    assert.match(source, /data-selection-actions/);
-    assert.match(source, /Remove selected part/);
+test('Circuit Designer has a view toggle (realistic / schematic) and a mode attribute', () => {
+    const source = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
+    assert.match(source, /data-circuit-view-toggle/);
+    assert.match(source, /data-sim-mode/);
+    assert.match(source, /Realistic view/);
+    assert.match(source, /Schematic view/);
 });
 
-test('part editor uses focused, native numeric controls', {
-    skip: 'InlineEditor internals changed in bw-circuit-ui sync 00958c6 — rewrite after right-pane redesign'
-}, () => {
+test('part editor uses focused, native numeric controls', () => {
     const editor = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/InlineEditor.jsx');
     assert.match(editor, /data-inline-editor/);
     assert.match(editor, /firstInput\.current\?\.focus/);
     assert.match(editor, /type=\{typeof v === 'number' \? 'number' : 'text'\}/);
     assert.match(editor, /background: '#ffffff'/);
-    assert.doesNotMatch(editor, /<SiInput/);
 });
 
 test('light circuit theme does not override toggle paint', () => {
@@ -37,36 +28,23 @@ test('light circuit theme does not override toggle paint', () => {
     assert.match(theme, /Buttons own their active\/inactive colors inline/);
 });
 
-test('Circuit Designer side selectors expose independent collapse affordances', {
-    skip: 'Selector panel internals changed in bw-circuit-ui sync 00958c6 — rewrite after right-pane redesign'
-}, () => {
+test('Circuit Designer side selectors expose toggle and divider', () => {
     const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
-    const examples = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/ExamplesBrowser.jsx');
-    const presets = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/InferPanel.jsx');
-    assert.match(designer, /Collapse Selectors Panel/);
-    assert.match(designer, /Expand Selectors Panel/);
-    assert.match(designer, /Collapse Parts Selector/);
-    assert.match(designer, /Expand Parts Selector/);
+    assert.match(designer, /data-selectors-toggle/);
+    assert.match(designer, /data-selectors-panel/);
     assert.match(designer, /data-selector-divider/);
-    assert.match(examples, /Collapse examples selector/);
-    assert.match(examples, /Expand examples selector/);
-    assert.match(examples, /data-examples-selector-content/);
-    assert.match(presets, /Collapse example presets/);
-    assert.match(presets, /Expand example presets/);
+    assert.match(designer, /data-parts-selector/);
+    assert.match(designer, /data-examples-selector/);
 });
 
-test('Circuit Designer keeps simulation and debugger controls in the instruments column', {
-    skip: 'Instruments column internals changed in bw-circuit-ui sync 00958c6 — rewrite after right-pane redesign'
-}, () => {
+test('Circuit Designer keeps simulation and debugger controls in the instruments column', () => {
     const source = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
     assert.match(source, /data-instruments-column/);
     assert.match(source, /data-instruments-scroll/);
-    assert.match(source, /data-instruments-scroll[^\n]*style=\{\{[\s\S]*overflowY: 'auto'/);
-    assert.match(source, /data-debugger-panel style=\{\{[^\n]*flex: '0 0 auto'/);
-    assert.match(source, /data-scope-module style=\{\{[^\n]*flex: '0 0 auto'/);
-    assert.match(source, /data-meter-module style=\{\{[^\n]*flex: '0 0 auto'/);
-    assert.match(source, /data-simulation-controls/);
+    assert.match(source, /data-instruments-scroll[^\n]*overflowY: 'auto'/);
     assert.match(source, /data-debugger-panel/);
+    assert.match(source, /data-simulation-controls/);
+    assert.match(source, /data-scope-module/);
     assert.match(source, /data-no-code-indicator/);
 });
 
