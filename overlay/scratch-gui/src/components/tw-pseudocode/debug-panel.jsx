@@ -5,6 +5,12 @@ import {connect} from 'react-redux';
 import DebugDrawer from './debug-drawer.jsx';
 import DebugInspector from './debug-inspector.jsx';
 
+// VDP screen — lazy-loaded, only renders when the runner has video output.
+const VdpScreen = React.lazy(() =>
+    import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/VdpScreen.jsx')
+        .then(m => ({default: m.VdpScreen}))
+);
+
 /**
  * The debugger's controls: ⚑ ⏸ ⏭ ⏹, a speed dial, and what the program is doing.
  *
@@ -341,6 +347,19 @@ class DebugPanel extends React.Component {
                         </div>
                     )}
                 </div>
+
+                {/* VDP screen — video output from machines with a TMS9918A.
+                    Polls runner.video() per animation frame. Only renders
+                    when video() returns non-null (the machine has a VDP). */}
+                {this.state.runner && typeof this.state.runner.video === 'function' ? (
+                    <React.Suspense fallback={null}>
+                        <VdpScreen
+                            videoFn={() => this.state.runner.video()}
+                            lang={this.props.locale}
+                            data-testid="bw-vdp-screen"
+                        />
+                    </React.Suspense>
+                ) : null}
 
                 {/* What is happening, in the user's own nouns. This comes FIRST
                     and the machine's view comes underneath — the order every
