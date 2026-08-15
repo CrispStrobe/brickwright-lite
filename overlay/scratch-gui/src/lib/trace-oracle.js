@@ -30,7 +30,7 @@ const KNOWN = new Set([
     'control_wait', 'control_wait_until', 'control_repeat_until',
     'data_setvariableto', 'data_changevariableby',
     'stc12_setpin', 'stc12_toggle', 'stc12_writepin', 'stc12_setpwm',
-    'stc12_print', 'stc12_read', 'stc12_setpart',
+    'stc12_settone', 'stc12_print', 'stc12_read', 'stc12_setpart',
     'devices_setservo', 'devices_servoangle',
     'devices_setmotor', 'devices_motorspeed', 'devices_motordirection',
     'devices_setdirection',
@@ -66,7 +66,7 @@ export function interpretTrace(project, opts = {}) {
     const pinsByName = new Map((stc.pins || []).map((p) => [String(p.name).toLowerCase(), p]));
     const partsByName = new Map((stc.parts || []).map((p) => [String(p.name).toLowerCase(), p]));
 
-    const trace = { events: [], pwm: [], serial: [], devices: [], vars: {}, horizon: horizonMs, unsupported: [] };
+    const trace = { events: [], pwm: [], tones: [], serial: [], devices: [], vars: {}, horizon: horizonMs, unsupported: [] };
     // Device state: servo angle, motor speed/direction — readable by reporters.
     const deviceState = new Map(); // name → { angle?, speed?, dir? }
     // Every pin starts at intent 0 — the implicit boot state on every core
