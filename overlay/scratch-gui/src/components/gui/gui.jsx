@@ -78,6 +78,13 @@ const GUIComponent = props => {
             const circuit = localStorage.getItem('bw-stage-circuit');
             // Only honour 'microbit' if the circuit-pane flag is also set
             if (dock === 'microbit' && circuit !== '1') return 'top';
+            // A restored 'microbit' pane must also match the PROJECT: a
+            // pure-circuit or STC/AVR project reopening after a micro:bit
+            // session was showing the sim for no reason (owner report).
+            // The button still switches explicitly; only the silent
+            // restore is gated on the device actually being a micro:bit.
+            if (dock === 'microbit'
+                && props.vm?.runtime?.stc?.device !== 'microbit') return 'top';
             return dock;
         } catch { return 'top'; }
     });

@@ -738,9 +738,9 @@ class CircuitTab extends React.Component {
         if (this.state.debugDock === 'solo' && this._stagePortalOn()) {
             this._portalOn = true;
             const solo = (
-                <div style={{...box, overflow: 'auto'}}>
+                <div style={{...box, overflow: 'auto'}} data-debugger-solo-pane>
                     {stc && stc.pins && stc.pins.length ? this.renderDebugPanel() : (
-                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8}}>
+                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8}} data-no-code-indicator>
                             {/^de/i.test(navigator.language)
                                 ? 'Der Debugger braucht ein Programm und einen Chip. Deklariere Pins im Code-Tab, z.\u00a0B. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — oder wechsle oben zurück zur Schaltungsansicht.'
                                 : 'The debugger needs a program and a chip to drive. Declare pins in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — or switch back to the circuit view in the header above.'}

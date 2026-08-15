@@ -87,8 +87,8 @@ try {
     check('right pane remains mounted for optional Circuit Designer selection', await page.locator('[data-right-pane]').count() === 1);
 
     const stageButton = page.getByRole('button', {name: 'Scratch Stage'});
-    const circuitButton = page.getByRole('button', {name: 'Circuit Designer without debugger'});
-    const debuggerButton = page.getByRole('button', {name: /Circuit Designer with debugger|Switch to debugger/});
+    const circuitButton = page.getByRole('button', {name: 'Circuit Designer (only)'});
+    const debuggerButton = page.getByRole('button', {name: 'Debugger', exact: true});
     check('stage-view buttons are present', await stageButton.count() === 1 && await circuitButton.count() === 1 && await debuggerButton.count() === 1);
     check('Scratch Stage is selected on a fresh editor', await stageButton.getAttribute('aria-pressed') === 'true');
     await circuitButton.click();
@@ -98,13 +98,15 @@ try {
     check('Circuit view keeps the stage controls available in Code mode', await page.locator('button').filter({has: page.locator('img')}).count() >= 3, await page.locator('body').innerText().catch(() => ''));
     await debuggerButton.click({force: true});
     await page.waitForTimeout(900);
-    check('debugger button changes dock', await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'top');
+    // The redesigned Debugger mode (owner spec 2026-08-14): a STANDALONE
+    // full-debugger pane (dock 'solo'), not the old designer-with-strip.
+    check('debugger button changes dock', await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'solo');
     check('debugger button remains selected', await debuggerButton.getAttribute('aria-pressed') === 'true');
     check('debugger switch keeps the right pane present', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
-    check('debugger view keeps the circuit portal mounted without MCU code', await page.locator('[data-bw-circuit-stage-host]').count() === 1);
-    check('debugger view keeps Circuit Designer mounted', await page.locator('[data-bw-circuit-stage-host] .bw-circuit-designer').count() === 1);
-    check('debugger view shows controls in the right panel', await page.locator('[data-instruments-column] [data-debugger-panel]').count() === 1);
-    check('debugger view explains missing code in the right panel', await page.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1);
+    check('debugger view mounts the solo pane', await page.locator('[data-debugger-solo-pane]').count() === 1);
+    check('debugger view shows the panel or explains missing code',
+        (await page.locator('[data-debugger-solo-pane] [data-debugger-panel]').count())
+        + (await page.locator('[data-debugger-solo-pane] [data-no-code-indicator]').count()) >= 1);
     await stageButton.click({force: true});
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
     await stageButton.click({force: true});
