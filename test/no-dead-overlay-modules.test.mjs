@@ -84,13 +84,13 @@ const KNOWN_DEAD = new Map([
     // the vendored tree imports it either; the sync copies the full src/ tree.
     ['lib/bw-board/avr-peripherals.js', 'Vendored; AVR peripheral extensions (SPI/I2C devices) — wired when AVR debug lands.'],
     ['lib/bw-board/face-live.js', 'Vendored; live-mode face resolver — wired when tethered hardware lands.'],
-    ['lib/bw-board/m6502-extract.js', 'Vendored; 6502 memory/state extraction for debug views.'],
+    // m6502-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
     ['lib/bw-board/m6507-machine.js', 'Vendored; Atari 2600 / SBC6507 machine — future device target.'],
     ['lib/bw-board/m74c922.js', 'Vendored; 4x4 keypad encoder IC — wired when keypad part lands.'],
     ['lib/bw-board/ps2.js', 'Vendored; PS/2 keyboard controller — wired when keyboard part lands.'],
     ['lib/bw-board/vdu-decoder.js', 'Vendored; VDU escape decoder for BBC BASIC screen output.'],
     ['lib/bw-board/z80-debug.js', 'Vendored; Z80 debug adapter — wired when Z80 debug view lands.'],
-    ['lib/bw-board/z80-extract.js', 'Vendored; Z80 state extraction for debug views.']
+    // z80-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;

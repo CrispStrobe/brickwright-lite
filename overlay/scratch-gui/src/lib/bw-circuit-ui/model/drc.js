@@ -56,6 +56,13 @@ function getCurrentRatings() {
 // Thresholds are read at call time from the engine, not at import time,
 // so the engine can be injected after this module loads.
 
+// Retro-bench bus extractors — statically imported. They have no heavy
+// deps and the DRC must stay synchronous. If either file is missing
+// (sync drift), the import fails at build time, which is correct — the
+// vendored bw-board tree should always include them.
+import { extract6502Machine as _extract6502 } from '../../bw-board/m6502-extract.js';
+import { extractZ80Machine as _extractZ80 } from '../../bw-board/z80-extract.js';
+
 /**
  * Run all design-rule checks against a circuit.
  *
@@ -500,6 +507,59 @@ export function runDrc(circuit, board) {
           `but ${unratedKinds.join(', ')} cannot be rated — ` +
           `the total is a lower bound, not a sum. The actual current may exceed the limit.`,
         fix: 'Check the current through unrated parts with the multimeter.',
+      });
+    }
+  }
+
+  // ── Retro-bench extractors ────────────────────────────────────────
+  // If the circuit contains a W65C02 or Z80 CPU, run the bus extractor
+  // to check for contention, open vectors, and wiring errors. Refusals
+  // surface as DRC warnings so the user sees them in the Warnings panel.
+  const hasW65c02 = parts.some(p => p.kind === 'w65c02');
+  const hasZ80 = parts.some(p => p.kind === 'z80');
+  if (hasW65c02 || hasZ80) {
+    try {
+      const circuitData = { parts, wires };
+      if (hasW65c02 && _extract6502) {
+        const result = _extract6502(circuitData);
+        for (const reason of result.reasons || []) {
+          warnings.push({
+            severity: 'danger', rule: 'bus-extract-6502',
+            partId: parts.find(p => p.kind === 'w65c02')?.id,
+            explanation: reason,
+            fix: 'Check the address decode wiring on the breadboard.',
+          });
+        }
+        for (const note of result.notes || []) {
+          warnings.push({
+            severity: 'info', rule: 'bus-extract-6502-note',
+            partId: parts.find(p => p.kind === 'w65c02')?.id,
+            explanation: note,
+          });
+        }
+      }
+      if (hasZ80 && _extractZ80) {
+        const result = _extractZ80(circuitData);
+        for (const reason of result.reasons || []) {
+          warnings.push({
+            severity: 'danger', rule: 'bus-extract-z80',
+            partId: parts.find(p => p.kind === 'z80')?.id,
+            explanation: reason,
+            fix: 'Check the address decode wiring on the breadboard.',
+          });
+        }
+        for (const note of result.notes || []) {
+          warnings.push({
+            severity: 'info', rule: 'bus-extract-z80-note',
+            partId: parts.find(p => p.kind === 'z80')?.id,
+            explanation: note,
+          });
+        }
+      }
+    } catch (e) {
+      warnings.push({
+        severity: 'warning', rule: 'bus-extract-error',
+        explanation: `Bus extractor failed: ${e.message}`,
       });
     }
   }
