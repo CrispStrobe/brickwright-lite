@@ -155,7 +155,10 @@ jobs:
       # broken pane, or a dead button. These gates drive the ACTUAL
       # BUILT APP and block the deploy when it is visibly wrong.
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        # The verify scripts import the playwright package from the repo
+        # root; it is a gate-only tool, not an app dependency — install
+        # it ephemerally (--no-save) plus its chromium.
+        run: npm install --no-save playwright && npx playwright install --with-deps chromium
       - name: Serve the built app
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
