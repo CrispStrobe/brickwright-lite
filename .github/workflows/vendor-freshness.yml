@@ -53,7 +53,7 @@ jobs:
         run: node brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator
         if: always()
       - name: examples gallery
-        run: node brickwright-lite/scripts/sync-examples.mjs --check --dir sb3-creator/examples
+        run: node brickwright-lite/scripts/sync-examples.mjs --check --dir sb3-creator
         if: always()
       - name: parts-data sidecars (bw-circuit-ui -> overlay)
         run: node brickwright-lite/scripts/sync-parts-data.mjs --check --dir bw-circuit-ui
