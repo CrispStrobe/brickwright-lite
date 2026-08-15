@@ -356,6 +356,11 @@ const CMEditor = React.lazy(() =>
     import(/* webpackChunkName: "bw-codemirror" */ '../../lib/codemirror-editor.jsx')
 );
 
+// ── VDU terminal for BBC BASIC graphics (lazy-loaded) ──────────────
+const VduTerminal = React.lazy(() =>
+    import(/* webpackChunkName: "bw-vdu-terminal" */ './vdu-terminal.jsx')
+);
+
 // Fallback while the CM chunk loads — a plain textarea that matches the old editor
 // closely enough to prevent layout jump. Also used if CM fails to load.
 const FallbackEditor = ({value, onChange, readOnly}) => (
@@ -934,7 +939,7 @@ class PseudocodeImporter extends React.Component {
     async runBasic () {
         const code = this.activeCode();
         if (!code.trim()) return;
-        this.setState({output: '', running: true, status: this.L.basicLoading});
+        this.setState({output: '', running: true, status: this.L.basicLoading, basicRawOutput: '', basicIsBbc: false});
         try {
             const isBbc = this.state.basicProfile === 'bbc';
             let runner;
@@ -951,17 +956,18 @@ class PseudocodeImporter extends React.Component {
                 const rom = new Uint8Array(await res.arrayBuffer());
                 runner = new BasicMachineRunner({rom}).start(code, {maxMs: 30000, inputs: []});
             }
-            this.setState({status: ''});
+            this.setState({status: '', basicIsBbc: isBbc});
             const pumpSlice = isBbc ? 500_000 : 50;
             const tick = () => {
                 const r = runner.pump(pumpSlice);
-                this.setState({output: r.output || '…'});
+                this.setState({output: r.output || '…', basicRawOutput: isBbc ? runner.rawOutput : ''});
                 if (!r.done) { requestAnimationFrame(tick); return; }
                 let suffix = '';
                 if (r.reason === 'budget') suffix = '\n' + this.L.basicBudget(isBbc ? 0 : 30000);
                 else if (r.reason === 'input-exhausted') suffix = '\n' + this.L.basicInputExhausted;
                 else if (r.reason === 'no-ready-prompt') suffix = '\n' + this.L.basicNoPrompt;
-                this.setState({output: (r.output + suffix).trim() || '(no output)', running: false});
+                this.setState({output: (r.output + suffix).trim() || '(no output)', running: false,
+                    basicRawOutput: isBbc ? runner.rawOutput : ''});
             };
             requestAnimationFrame(tick);
         } catch (e) {
@@ -1648,6 +1654,12 @@ class PseudocodeImporter extends React.Component {
                         {this.L.asmNote}
                     </div>
                 )}
+                {/* VDU terminal for BBC BASIC — renders DRAW/MOVE/PLOT graphics */}
+                {this.state.basicIsBbc && this.state.basicRawOutput ? (
+                    <React.Suspense fallback={null}>
+                        <VduTerminal output={this.state.basicRawOutput} />
+                    </React.Suspense>
+                ) : null}
                 {this.state.output != null ? (
                     <pre style={{marginTop: 10, padding: 12, background: '#0c3a44', color: '#c7f0e0', borderRadius: 8,
                         fontFamily: 'monospace', fontSize: 13, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap'}}>
