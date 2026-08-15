@@ -1,3 +1,68 @@
+# bw-bundle handoff — 2026-08-15 (session 8)
+
+## What was done this session (42 tasks, all pushed)
+
+### micro:bit MicroPython integration (8a05485–bc15da1)
+- Synced `generateMicroPython` from sb3-creator (cooperative generators)
+- Conditional `🤖 micro:bit` tab in Code tab (read-only, python mode)
+- Self-hosted micro:bit simulator (MIT, built from source with emscripten)
+- MicrobitSimPane: iframe + postMessage flash/stop/reset/serial terminal
+- Stage-header micro:bit toggle (conditional on DEVICE MICROBIT)
+
+### P1 regression fix (4192b77)
+- StageWrapper always renders (view buttons never vanish)
+- dockMode guards stale localStorage; micro:bit button conditional on device
+
+### Chrome sweep (4e5a6f9, 7a16445)
+- Editor scroll: CM6 height:100% + .cm-scroller overflow:auto
+- BASIC Run guard: button only for python/javascript
+- Tab renamed "Code ⇄ Blocks" → "Code"
+- Chrome compression: title row merged into language tabs, maximize mode
+- Hamburger menu: compact mode hides menu bar entirely (39f0970)
+
+### i18n sweep (073a587)
+- 40+ strings moved to L10N dict (EN+DE) in pseudocode-importer
+- microbit-sim-pane, gui.jsx, chrome-toggle localised
+- L10N parity test: en/de key sets must match
+
+### BASIC real-machine run (0952333, 25553e9, 8b28bf0)
+- BasicMachineRunner (6502 MS BASIC, MIT ROM) + BbcZ80Runner (BBC BASIC Z80, zlib COM)
+- Both profiles: rAF pump loop, reason handling, Playwright verified
+
+### VDU terminal (b82287d)
+- VduDecoder → canvas: DRAW/MOVE/PLOT as lines, text as character grid
+- Renders in real time during BBC BASIC runs
+
+### Debugger UX (82e22d2–9662f11)
+- Suite RED fixed: 6 features restored from sync-deleted vendored code
+- Semantic right-pane redesign: 3 modes (Circuit | Debugger | Scratch)
+- "Pause here" block menu: installed flag fix + bwDeviceId gate
+- Power toggle → runner stop; designer scroll in right-pane portal
+- Retro-bench extractors wired to DRC (contention/open vectors as warnings)
+
+### Upstream reconciliation (54fda1b)
+- Carried all lite patches upstream to bw-circuit-ui (fd19b43)
+- Zero divergence between lite and upstream; sync guard passes
+- setExtractors() injection pattern for cross-repo integration
+
+### Example loading + instruments (d52ff27, 5e26e0d, a868831)
+- Example loader: kind:circuit examples now load program.bw
+- Debugger panel gated on MCU presence (not shown for pure circuits)
+- Scope/Meter toggles persisted to localStorage
+- vcc voltage editable via InlineEditor (dynamic label)
+
+### VdpScreen (ad4b7bb)
+- TMS9918A video output wired into debug panel (polls runner.video())
+
+## Blocked / open
+
+- **VDP gallery example** — VdpScreen renders but no gallery example with CHIP vdp exists yet
+- **ASM assemble endpoint** — button stubbed, waiting for bw-cfront
+- **ili9341 body face** — TFT face not in upstream yet
+- **Examples intro.md rendering** — pilot audit lane writing content; wiring later
+
+---
+
 # bw-bundle handoff — 2026-08-14 (session 7, continued)
 
 ## What was done this session
