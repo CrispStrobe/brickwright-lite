@@ -60,14 +60,23 @@ const FRAME_TSTATES = 69888; // 48K frame at 3.5 MHz → 50.08 Hz
 const INT_LENGTH = 32;
 
 export class ZXULA {
-    /** @param {Uint8Array} mem the machine's 64K (screen read live) */
-    constructor(mem) {
+    /**
+     * @param {Uint8Array} mem the machine's 64K (screen read live)
+     * @param {{frameTstates?: number, screen?: Uint8Array}} [opts]
+     *   frameTstates: 69888 (48K, default) or 70908 (128K timing).
+     *   screen: a 16K view the bitmap+attrs live in; defaults to the
+     *   $4000 window of mem. The 128K machine swaps this on OUT $7FFD
+     *   bit 3 — the shadow screen in page 7.
+     */
+    constructor(mem, opts = {}) {
         this.mem = mem;
+        this._frameTstates = opts.frameTstates ?? FRAME_TSTATES;
+        this.screen = opts.screen ?? mem.subarray(0x4000, 0x8000);
         this.border = 7;           // boots white
         this.speaker = 0;
         this.speakerEdges = [];    // [tStateStamp, level]
         this.rows = new Uint8Array(8).fill(0x1f); // active-low, idle high
-        this._toFrame = FRAME_TSTATES;
+        this._toFrame = this._frameTstates;
         this._intLeft = 0;
         this.frame = 0;
         this.tStates = 0;          // total T-states, the edge clock
@@ -110,6 +119,40 @@ export class ZXULA {
         this.speakerEdges.length = 0;
     }
 
+    // ── Contention ─────────────────────────────────────────────────
+    // Per-instruction approximation: given the current T-state position
+    // in the frame, return the wait-state penalty from the 8-T-state
+    // contention pattern. Returns 0 during border/blanking time.
+    // The contention table: pattern offset 0→6, 1→5, ..., 6→0, 7→0.
+
+    /** @type {number} T-states per scan line (224 for 48K, 228 for 128K) */
+    get _lineTstates() { return this._frameTstates === 70908 ? 228 : 224; }
+
+    /** @type {number} first contended scan line (48K: 64, 128K: 63) */
+    get _firstContendedLine() { return this._frameTstates === 70908 ? 63 : 64; }
+
+    /** @type {number} last contended scan line (exclusive) */
+    get _lastContendedLine() { return this._firstContendedLine + 192; }
+
+    /**
+     * Memory contention penalty for a bus access at the current frame
+     * position. Returns 0 when not in the contended display area.
+     * @param {number} frameTs — T-states into the current frame
+     *   (typically machine.cycles % frameTstates)
+     * @returns {number} wait states (0-6)
+     */
+    contend(frameTs) {
+        const lineTs = this._lineTstates;
+        const line = Math.floor(frameTs / lineTs);
+        if (line < this._firstContendedLine || line >= this._lastContendedLine) return 0;
+        const col = frameTs % lineTs;
+        // Only the first 128 T-states of each line are contended
+        // (the pixel/attr fetch area)
+        if (col >= 128) return 0;
+        const pattern = col & 7; // 0-7 position in the 8-T-state cycle
+        return pattern < 6 ? 6 - pattern : 0;
+    }
+
     /** Face-input contract: the currently held key names. */
     setKeys(names) {
         this.rows.fill(0x1f);
@@ -147,7 +190,7 @@ export class ZXULA {
         if (this._intLeft > 0) this._intLeft = Math.max(0, this._intLeft - t);
         this._toFrame -= t;
         while (this._toFrame <= 0) {
-            this._toFrame += FRAME_TSTATES;
+            this._toFrame += this._frameTstates;
             this._intLeft = INT_LENGTH;
             this.frame++;
         }
@@ -165,13 +208,12 @@ export class ZXULA {
         const flashPhase = (this.frame >> 4) & 1;
         for (let y = 0; y < ZX_H; y++) {
             // The interleave: bits [7:6]=Y7Y6, [5:3]=Y2Y1Y0, [2:0]=Y5Y4Y3
-            const addr = 0x4000
-                | ((y & 0xc0) << 5)   // Y7Y6 → A12..A11
+            const addr = ((y & 0xc0) << 5)   // Y7Y6 → A12..A11
                 | ((y & 0x07) << 8)   // Y2Y1Y0 → A10..A8
                 | ((y & 0x38) << 2);  // Y5Y4Y3 → A7..A5
             for (let cx = 0; cx < 32; cx++) {
-                const bits = this.mem[addr + cx];
-                const attr = this.mem[0x5800 + (y >> 3) * 32 + cx];
+                const bits = this.screen[addr + cx];
+                const attr = this.screen[0x1800 + (y >> 3) * 32 + cx];
                 const bright = (attr & 0x40) ? 8 : 0;
                 let ink = (attr & 0x07) + bright;
                 let paper = ((attr >> 3) & 0x07) + bright;
@@ -203,8 +245,13 @@ export default ZXULA;
  * This turns every Spectrum acceptance test from pixel-counting into
  * string assertion — the same jump the HD44780's text state gave.
  * @param {Uint8Array} mem the machine's 64K (ROM font + screen)
+ * @param {{font?: Uint8Array}} [opts] the 768-byte character set
+ *   (chars 32-127 × 8 rows). Defaults to mem's $3D00 — right for a
+ *   48K machine; a BANKED machine's flat mem has no ROM, so pass
+ *   machine.roms[1].subarray(0x3d00, 0x4000) there.
  */
-export function zxScreenText(mem) {
+export function zxScreenText(mem, opts = {}) {
+    const font = opts.font ?? mem.subarray(0x3d00, 0x4000);
     const lines = [];
     for (let row = 0; row < 24; row++) {
         let line = '';
@@ -220,9 +267,9 @@ export function zxScreenText(mem) {
             if (cell.every((b) => b === 0)) { ch = ' '; }
             else {
                 for (let c = 32; c < 128; c++) {
-                    const g = 0x3d00 + (c - 32) * 8;
+                    const g = (c - 32) * 8;
                     let ok = true;
-                    for (let dy = 0; dy < 8; dy++) if (mem[g + dy] !== cell[dy]) { ok = false; break; }
+                    for (let dy = 0; dy < 8; dy++) if (font[g + dy] !== cell[dy]) { ok = false; break; }
                     if (ok) { ch = String.fromCharCode(c); break; }
                 }
             }

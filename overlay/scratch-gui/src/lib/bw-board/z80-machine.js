@@ -22,6 +22,7 @@ import { Z80CTC } from './z80-ctc.js';
 import { MC6845 } from './mc6845.js';
 import { ZXULA } from './zx-ula.js';
 import { ZXTape } from './zx-tape.js';
+import { AY38912 } from './ay-3-8912.js';
 
 export const SEARLE = Object.freeze({
     clockHz: 7_372_800,
@@ -106,30 +107,107 @@ export class Z80Machine {
         // A Spectrum-shaped machine: config.ula = true attaches the ULA,
         // which decodes ONLY A0 (every even port) and shares the
         // machine's memory for the live screen.
-        this.ula = config.ula ? new ZXULA(this.mem) : null;
+        //
+        // config.zx128 = true builds the 128K memory model on top:
+        // 8×16K RAM pages, two 16K ROMs, port $7FFD banking. The flat
+        // 64K keeps holding the two FIXED windows — page 5 at $4000 and
+        // page 2 at $8000 are subarray VIEWS into it, so the 48K screen
+        // path, tape trap and debug reads stay truthful there — while
+        // $C000 pages and the ROM window go through the bus closures.
+        this._zx128 = !!config.zx128;
+        if (this._zx128) {
+            this.pages = Array.from({ length: 8 }, (_, i) =>
+                i === 5 ? this.mem.subarray(0x4000, 0x8000)
+                    : i === 2 ? this.mem.subarray(0x8000, 0xc000)
+                        : new Uint8Array(16384));
+            this.roms = [new Uint8Array(16384), new Uint8Array(16384)];
+            this._bank = { page: 0, rom: 0, shadow: 0, locked: 0 };
+        }
+        this.ula = (config.ula || this._zx128)
+            ? new ZXULA(this.mem, this._zx128 ? { frameTstates: 70908 } : {})
+            : null;
         if (this.ula) this.chips.ula = this.ula;
         // Kempston joystick (config.kempston, default ON with the ULA):
         // the interface most archive games probe. Decoded the classic
         // way — A5 low on an ODD port (the ULA owns even ports) — and
         // read as 000FUDLR active-HIGH, idle $00.
         this._kempston = (config.kempston ?? !!config.ula) ? 0 : null;
+        // AY-3-8912 PSG: always present on 128K machines. Port decode
+        // per the 128K schematic: $FFFD (A15=1,A14=1,A1=0) = select/read,
+        // $BFFD (A15=1,A14=0,A1=0) = data write.
+        this.ay = this._zx128 ? new AY38912({ clockHz: config.clockHz }) : null;
+        if (this.ay) this.chips.ay = this.ay;
         this.tape = null; // insertTape() attaches; the $0556 trap consumes
         this._romRanges = (config.regions || []).filter((r) => r.kind === 'rom');
-        this.cpu = new Z80({
-            read: (a) => this.mem[a & 0xffff],
-            write: (a, v) => {
+        const read48 = (a) => this.mem[a & 0xffff];
+        const write48 = (a, v) => {
+            a &= 0xffff;
+            for (const r of this._romRanges) if (a >= r.start && a <= r.end) return;
+            this.mem[a] = v & 0xff;
+        };
+        const read128 = (a) => {
+            a &= 0xffff;
+            if (a < 0x4000) return this.roms[this._bank.rom][a];
+            if (a < 0xc000) return this.mem[a];
+            return this.pages[this._bank.page][a - 0xc000];
+        };
+        const write128 = (a, v) => {
+            a &= 0xffff;
+            if (a < 0x4000) return; // ROM
+            if (a < 0xc000) { this.mem[a] = v & 0xff; return; }
+            this.pages[this._bank.page][a - 0xc000] = v & 0xff;
+        };
+        this.readBus = this._zx128 ? read128 : read48;
+        this.writeBus = this._zx128 ? write128 : write48;
+
+        // Contention: opt-in via config.contention. Wraps bus callbacks
+        // to add ULA wait-state penalties on contended-range accesses.
+        // Per-instruction approximation (see spec-updates/ula-contention.md).
+        this._contention = !!(config.contention && this.ula);
+        const isContended = this._zx128
+            ? (a) => { // 128K: pages 1,3,5,7 are contended
                 a &= 0xffff;
-                for (const r of this._romRanges) if (a >= r.start && a <= r.end) return;
-                this.mem[a] = v & 0xff;
-            },
+                if (a >= 0x4000 && a < 0x8000) return true; // page 5 (always mapped)
+                if (a >= 0xc000) return (this._bank.page & 1) === 1;
+                return false;
+              }
+            : (a) => (a & 0xffff) >= 0x4000 && (a & 0xffff) < 0x8000;
+
+        const applyContention = (a) => {
+            if (!this._contention || !isContended(a)) return;
+            const penalty = this.ula.contend(this.cycles % this.ula._frameTstates);
+            if (penalty > 0) this.cycles += penalty;
+        };
+
+        const readContended = (a) => { applyContention(a); return this.readBus(a); };
+        const writeContended = (a, v) => { applyContention(a); return this.writeBus(a, v); };
+
+        const readFn = this._contention ? readContended : this.readBus;
+        const writeFn = this._contention ? writeContended : this.writeBus;
+
+        this.cpu = new Z80({
+            read: readFn,
+            write: writeFn,
             in: (port) => {
+                // Port contention: even ports (ULA-decoded) are contended
+                if (this._contention && (port & 1) === 0) applyContention(0x4000);
                 if (this.ula && (port & 1) === 0) return this.ula.in(port);
                 if (this._kempston !== null && (port & 0x21) === 0x01) return this._kempston;
+                // AY read: $FFFD (A15=1, A14=1, A1=0)
+                if (this.ay && (port & 0xc002) === 0xc000) return this.ay.read();
                 const e = this._portMap.get(port & 0xff);
                 return e ? e.chip.read(e.rs) : 0xff;
             },
             out: (port, v) => {
+                if (this._contention && (port & 1) === 0) applyContention(0x4000);
                 if (this.ula && (port & 1) === 0) { this.ula.out(port, v, this.cycles); return; }
+                // 128K banking: $7FFD partial decode (A15 and A1 low),
+                // write-only, dead once the lock bit has been set.
+                if (this._zx128 && (port & 0x8002) === 0) { this._setBank(v); return; }
+                // AY select: $FFFD (A15=1, A14=1, A1=0)
+                if (this.ay && (port & 0xc002) === 0xc000) { this.ay.select(v); return; }
+                // AY data: $BFFD (A15=1, A14=0, A1=0)
+                if (this.ay && (port & 0xc002) === 0x8000) { this.ay.write(v); return; }
                 const e = this._portMap.get(port & 0xff);
                 if (e) e.chip.write(e.rs, v);
             },
@@ -143,6 +221,26 @@ export class Z80Machine {
 
     /** Insert a .TAP; the $0556 trap serves blocks in order. */
     insertTape(tapBuf) { this.tape = new ZXTape(tapBuf); }
+
+    /** OUT $7FFD: bits 0-2 page at $C000, bit 3 shadow screen (page 7),
+     *  bit 4 ROM select, bit 5 lock-until-reset. */
+    _setBank(v) {
+        if (this._bank.locked) return;
+        this._bank.page = v & 0x07;
+        this._bank.rom = (v >> 4) & 1;
+        const shadow = (v >> 3) & 1;
+        if (shadow !== this._bank.shadow) {
+            this._bank.shadow = shadow;
+            this.ula.screen = shadow ? this.pages[7] : this.mem.subarray(0x4000, 0x8000);
+        }
+        this._bank.locked = (v >> 5) & 1;
+    }
+
+    /** Load a 16K ROM image into slot 0 (128 editor) or 1 (48 BASIC). */
+    loadRom128(slot, bytes) {
+        if (!this._zx128) throw new Error('loadRom128 needs a zx128 machine');
+        this.roms[slot & 1].set(bytes.subarray(0, 16384));
+    }
 
     /**
      * Face-input contract, joystick side: the same button mask the
@@ -185,6 +283,12 @@ export class Z80Machine {
             mem: this.mem.slice(),
             tapePos: this.tape ? this.tape.pos : null,
             chips,
+            // 128K: the six real pages (5 and 2 live in mem) + banking.
+            // ROMs are load-time configuration, like the 48K ROM.
+            zx128: this._zx128 ? {
+                pages: [0, 1, 3, 4, 6, 7].map((i) => this.pages[i].slice()),
+                bank: { ...this._bank },
+            } : null,
         };
     }
 
@@ -202,6 +306,15 @@ export class Z80Machine {
         for (const [name, cs] of Object.entries(s.chips ?? {})) {
             const c = this.chips[name];
             if (c && typeof c.loadState === 'function') c.loadState(cs);
+        }
+        if (s.zx128 && this._zx128) {
+            [0, 1, 3, 4, 6, 7].forEach((page, i) => this.pages[page].set(s.zx128.pages[i]));
+            this._bank.locked = 0;                        // let _setBank apply
+            this._setBank(
+                s.zx128.bank.page
+                | (s.zx128.bank.shadow << 3)
+                | (s.zx128.bank.rom << 4)
+                | (s.zx128.bank.locked << 5));
         }
     }
 
@@ -254,8 +367,12 @@ export class Z80Machine {
         }
         // LD-BYTES fast-load trap: with a tape inserted, entering the
         // ROM's loader at $0556 loads the next block instantly and RETs.
-        if (this.tape && this.cpu.pc === 0x0556 && this.ula) {
-            this.tape.trap(this.cpu, this.mem);
+        // On a 128K machine the address only means LD-BYTES when the
+        // 48 BASIC ROM (slot 1) is mapped — the 128 editor ROM has
+        // different code at $0556 and must not be trapped.
+        if (this.tape && this.cpu.pc === 0x0556 && this.ula
+            && (!this._zx128 || this._bank.rom === 1)) {
+            this.tape.trap(this.cpu, this.mem, this.writeBus);
             this.cpu.pc = this.cpu._pop16();
             this.cycles += 100; // a token cost; the real routine took minutes
             this._advanceChips(100);

@@ -1,0 +1,54 @@
+{
+  "kind": "ze08_ch2o",
+  "w": 40,
+  "h": 45,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "tx",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "rx",
+      "x": 32,
+      "y": 45,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "ZE08-CH2O formaldehyde sensor module. 4-terminal: VCC, GND, TX, RX. UART interface.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "tx": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "rx": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}
