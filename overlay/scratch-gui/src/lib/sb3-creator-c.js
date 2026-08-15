@@ -140,8 +140,19 @@ function readMarkers (source) {
         if (kind === 'device') h.device = rest.trim();
         else if (kind === 'clock') h.clock = Number(rest.trim());
         else if (kind === 'pin') {
+            // 8051 style: `led P1.0 output`
             const p = rest.match(/^(\w+)\s+P(\d)\.(\d)\s+(\w+)(\s+active-low)?/);
             if (p) h.pins.push({ name: p[1], port: +p[2], bit: +p[3], direction: p[4], activeLow: !!p[5] });
+            // AVR/6502 style: `col0 PB0 output` or `led PA0 output`
+            if (!p) {
+                const q = rest.match(/^(\w+)\s+P([A-Z])(\d)\s+(\w+)(\s+active-low)?/);
+                if (q) h.pins.push({ name: q[1], portLetter: q[2], bit: +q[3], direction: q[4], activeLow: !!q[5] });
+            }
+            // Arduino style: `led D13 output`
+            if (!p) {
+                const r = rest.match(/^(\w+)\s+([DA]\d+|GP\d+)\s+(\w+)(\s+active-low)?/);
+                if (r) h.pins.push({ name: r[1], where: r[2].toUpperCase(), direction: r[3], activeLow: !!r[4] });
+            }
         } else if (kind === 'part') {
             // `part <name> <type> <data> <clock> <latch> [active-low]` — pin
             // spellings are the device's own (P1.0 on 8051, GP25/PA0 elsewhere).
@@ -446,14 +457,18 @@ export default function cToPseudocode (source, opts = {}) {
     const pins = new Map();       // c-expression (P1_0) -> {name, port, bit, direction, activeLow}
     const byName = new Map();     // source spelling (LED1) -> the same record
     const addPin = (rec, aliases) => {
-        pins.set(rec.where || `P${rec.port}_${rec.bit}`, rec);
+        const key = rec.where || (rec.portLetter ? `P${rec.portLetter}${rec.bit}` : `P${rec.port}_${rec.bit}`);
+        pins.set(key, rec);
         for (const a of aliases) byName.set(a, rec);
     };
     // PARTs from the header: needed to give shift_out calls their name back.
     const hdrParts = (markers && markers.parts) ? markers.parts : [];
     const markerPins = markers && (markers.pins.length > 0 || !isArduino);
     if (markerPins) {
-        for (const p of markers.pins) addPin({ ...p }, [p.name, `P${p.port}_${p.bit}`]);
+        for (const p of markers.pins) {
+            const portId = p.portLetter ? `P${p.portLetter}${p.bit}` : `P${p.port}_${p.bit}`;
+            addPin({ ...p }, [p.name, portId]);
+        }
     } else if (isArduino) {
         // An Arduino pin is a NUMBER, not a {port, bit}: there is no register
         // to find it in and no sbit to declare it with, so it is discovered
@@ -628,7 +643,8 @@ export default function cToPseudocode (source, opts = {}) {
     // Special-function registers and generated helpers: setup, never program logic.
     const SFRS = /^(P[0-5]|P[0-5]M[01]|P[0-5]_[0-7]|P1ASF|P4SW|AUXR1?|TMOD|TCON|T[HL][01]|TR[01]|TF[01]|IE|IP|EA|ET[01]|EX[01]|SCON|SBUF|S2CON|S2BUF|BRT|PCON|PSW|CLK_DIV|ADC_CONTR|ADC_RES|ADC_RESL|CCON|CMOD|CCAPM[01]|C[LH]|CCAP[01]H|PCA_PWM[01]|WDT_CONTR|bw_ms|bw_task\d+_(state|until)|bw_i\d+)$/;
     const DELAYS = new Set(['delay_ms', 'bw_block_ms', 'Delay_ms', 'delayms', 'delay']);
-    const SETUP = new Set(['board_init', 'delay_init', 'adc_init', 'uart_init', 'init', 'bw_setup']);
+    const SETUP = new Set(['board_init', 'delay_init', 'adc_init', 'uart_init', 'init', 'bw_setup',
+        'sei', 'cli']);
 
     // Parse a `{ … }` block into pseudocode lines at `depth`.
     function block (cur, depth) {
@@ -1009,6 +1025,22 @@ export default function cToPseudocode (source, opts = {}) {
                 const rhs = expr(cur);
                 cur.eat(';');
                 if (SFRS.test(name)) return [];   // register setup, not program logic
+                // Port-register pin write: PORTB |= (1 << N) → turn on pin
+                // PORTB &= ~(1 << N) → turn off pin. Uses @bw pin markers.
+                const portMatch = name.match(/^PORT([A-Z])$/);
+                if (portMatch && markers && (op === '|=' || op === '&=')) {
+                    const portLetter = portMatch[1];
+                    // Match `(1 << N)` or `bitnot (1 << N)` in the rhs
+                    const bitMatch = rhs.text.match(/^(?:bitnot\s+)?(?:\()?1 shiftleft (\d+)(?:\))?$/);
+                    if (bitMatch) {
+                        const bit = Number(bitMatch[1]);
+                        const pin = markers.pins.find(p => p.portLetter === portLetter && p.bit === bit);
+                        if (pin) {
+                            if (op === '|=') return [`${pad}${pinWrite(pin, '1')}`];
+                            if (op === '&=') return [`${pad}${pinWrite(pin, '0')}`];
+                        }
+                    }
+                }
                 const BITOP = { '&=': 'bitand', '|=': 'bitor', '^=': 'bitxor', '<<=': 'shiftleft', '>>=': 'shiftright' };
                 const v = varName(name); usedVars.add(v);
                 return [`${pad}set ${v} to ${v} ${BITOP[op]} ${rhs.text}`];
@@ -1802,7 +1834,7 @@ export default function cToPseudocode (source, opts = {}) {
             // `where` carries the board's own spelling when the board does not
             // have 8051 {port, bit} pins at all -- D13, A0. The 8051 path never
             // sets it and is emitted exactly as before.
-            const at = p.where || `P${p.port}.${p.bit}`;
+            const at = p.where || (p.portLetter ? `P${p.portLetter}${p.bit}` : `P${p.port}.${p.bit}`);
             out.push(`PIN ${p.name} = ${at} ${p.direction.toUpperCase()}${p.activeLow ? ' ACTIVE LOW' : ''}`);
         }
     }
@@ -1852,7 +1884,7 @@ export default function cToPseudocode (source, opts = {}) {
     }
 
     const IGNORE_FNS = new Set(['bw_setup', 'bw_tick', 'bw_now', 'bw_block_ms', 'delay_ms', 'adc_read',
-        'pwm_set', 'bw_distance', 'bw_closer',
+        'pwm_set', 'bw_distance', 'bw_closer', 'ISR', 'sei', 'cli',
         'bw_neo_byte', 'bw_neo_send', 'bw_neopixel_set', 'bw_neopixel_clear',
         'i2c_delay', 'i2c_start', 'i2c_stop', 'i2c_write', 'shift_out',
         'lcd_i2c_send', 'lcd_nibble', 'lcd_cmd', 'lcd_data',
@@ -1892,6 +1924,10 @@ export default function cToPseudocode (source, opts = {}) {
         ? procFns
         : funcs.filter((f) => !IGNORE_FNS.has(f.name) && f.name !== 'main'
             && !DELAYS.has(f.name) && !SETUP.has(f.name)
+            && !f.name.startsWith('bw_')       // runtime/device helpers
+            && !f.name.startsWith('tone_')      // tone helpers
+            && !f.name.startsWith('scratch_')   // scratch runtime stubs
+            && !f.name.startsWith('__')         // compiler intrinsics
             // setup() and loop() are the script itself, not procedures called
             // by it; emitting DEFINE blocks for them would say the sketch has
             // two custom blocks it never calls.
