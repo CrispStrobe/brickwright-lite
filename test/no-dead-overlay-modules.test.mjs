@@ -78,7 +78,6 @@ const KNOWN_DEAD = new Map([
     ['lib/bw-circuit-ui/model/demo-netlist.js', 'Vendored; used only by the standalone demo.'],
     ['lib/bw-circuit-ui/model/export-png.js', 'Vendored; PNG export is not surfaced in lite.'],
     ['lib/bw-circuit-ui/model/simulation.js', 'Vendored; lite drives the board through bw-board.'],
-    ['lib/bw-circuit-ui/model/dip-geometry.js', 'Constants consumed by circuit-hit-test; no runtime import path.'],
     // bw-board vendored tree: device-specific modules synced for completeness, wired when
     // the corresponding device target or debug view lands. Each is a leaf — nothing within
     // the vendored tree imports it either; the sync copies the full src/ tree.
