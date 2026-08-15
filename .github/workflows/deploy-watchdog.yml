@@ -1,16 +1,22 @@
 # The 60-red-runs lesson (2026-08-15): every push failed for a full day
 # and no lane noticed, because nobody owns WATCHING lite's CI. This
-# watchdog owns it: every 6 hours, if the last 3 build runs on main all
+# watchdog owns it: hourly, if the last 3 build runs on main all
 # failed, it opens (or refreshes) a loud issue. Closing the issue is
 # the ack; it reopens while the condition holds.
+#
+# The zombie-run lesson (same day): one build hung in_progress for 35
+# minutes and the concurrency group queued every later build behind it —
+# Pages froze on a stale deploy while everything LOOKED green. The
+# stuck-run step cancels any build run in flight longer than 25 minutes
+# (a healthy build takes ~10–15) and says so in an issue.
 name: deploy-watchdog
 on:
   schedule:
-    - cron: '17 */6 * * *'
+    - cron: '17 * * * *'
   workflow_dispatch:
 permissions:
   issues: write
-  actions: read
+  actions: write
 jobs:
   watch:
     runs-on: ubuntu-latest
@@ -30,3 +36,21 @@ jobs:
             else gh issue create --repo "${{ github.repository }}" --title "$title" --body "$body"; fi
             exit 1
           fi
+      - name: Cancel stuck build runs (zombie blocks the concurrency group)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          now=$(date -u +%s)
+          gh api "repos/${{ github.repository }}/actions/workflows/build.yml/runs?status=in_progress&per_page=10" \
+            --jq '.workflow_runs[] | "\(.id) \(.run_started_at)"' | while read -r id started; do
+            [ -n "$started" ] || continue
+            age=$(( (now - $(date -u -d "$started" +%s)) / 60 ))
+            if [ "$age" -gt 25 ]; then
+              echo "run $id in_progress for ${age}m — cancelling"
+              gh api -X POST "repos/${{ github.repository }}/actions/runs/$id/cancel"
+              title="deploy watchdog: cancelled a stuck build run"
+              body="Build run $id was in_progress for ${age} minutes (healthy: 10–15). Cancelled it so the concurrency group unblocks and the next push deploys. If this recurs, something in the build hangs — check that run's logs."
+              gh issue create --repo "${{ github.repository }}" --title "$title" --body "$body" || true
+            fi
+          done
