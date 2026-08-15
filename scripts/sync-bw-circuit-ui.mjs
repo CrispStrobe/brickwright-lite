@@ -36,19 +36,52 @@ async function walk (rel = '') {
     return out.sort();
 }
 
+// ── Local-divergence guard ─────────────────────────────────────────────
+// The 930000d incident: a sync overwrote weeks of lite-local patches
+// that had never been upstreamed, and production regressed wall to wall.
+// The sync now records a manifest of what IT last wrote; if the vendored
+// tree has since been edited locally, a write refuses and lists the
+// files — those patches belong UPSTREAM first (or pass
+// --overwrite-local to knowingly discard them).
+import { createHash } from 'node:crypto';
+const manifestPath = path.join(dest, '.vendor-manifest.json');
+const sha = (s) => createHash('sha1').update(s).digest('hex');
+const overwriteLocal = process.argv.includes('--overwrite-local');
+if (!check) {
+    const manifest = await readFile(manifestPath, 'utf8').then(JSON.parse).catch(() => null);
+    if (manifest) {
+        const diverged = [];
+        for (const [rel, hash] of Object.entries(manifest)) {
+            const cur = await readFile(path.join(dest, rel), 'utf8').catch(() => null);
+            if (cur !== null && sha(cur) !== hash) diverged.push(rel);
+        }
+        if (diverged.length && !overwriteLocal) {
+            console.error(`REFUSING to sync: ${diverged.length} vendored file(s) carry LOCAL edits not present at the last sync:`);
+            for (const f of diverged) console.error(`  local ${f}`);
+            console.error('\nUpstream these patches to bw-circuit-ui first, then re-sync.');
+            console.error('To knowingly DISCARD them instead: --overwrite-local');
+            process.exit(3);
+        }
+        if (diverged.length) console.error(`--overwrite-local: discarding local edits in ${diverged.length} file(s)`);
+    }
+}
+
 let stale = 0;
 const files = await walk();
+const written = {};
 for (const rel of files) {
     const out = path.join(dest, rel);
     const next = await readFile(path.join(srcDir, 'src', rel), 'utf8');
     const current = await readFile(out, 'utf8').catch(() => null);
-    if (current === next) { console.log(`  ok    ${rel}`); continue; }
+    if (current === next) { console.log(`  ok    ${rel}`); written[rel] = sha(next); continue; }
     stale++;
     if (check) { console.log(`  STALE ${rel}`); continue; }
     await mkdir(path.dirname(out), {recursive: true});
     await writeFile(out, next);
+    written[rel] = sha(next);
     console.log(`  wrote ${rel}`);
 }
+if (!check) await writeFile(manifestPath, JSON.stringify(written, null, 1));
 
 // Delete vendored files that no longer exist upstream. Without this, a
 // rename (e.g. hobby_gearmotor → gearmotor) leaves both names live, and
