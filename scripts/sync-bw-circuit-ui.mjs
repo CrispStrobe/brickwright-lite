@@ -13,6 +13,7 @@
 //   --dir <path> read from a local checkout instead of over HTTP.
 
 import {readFile, writeFile, mkdir, readdir, unlink} from 'node:fs/promises';
+import { guardSource } from './lib-source-guard.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -21,6 +22,7 @@ const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-c
 const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
+if (dirIdx !== -1 && srcDir) guardSource(srcDir);
 if (!srcDir) { console.error('needs --dir <bw-circuit-ui checkout> for now'); process.exit(2); }
 
 // main.jsx is the Vite harness entry and has no business in the fork.

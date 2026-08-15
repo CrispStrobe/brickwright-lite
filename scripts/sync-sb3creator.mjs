@@ -17,6 +17,7 @@
 // Override the HTTP source with SB3CREATOR_REF (branch/tag/sha), default "main".
 
 import {readFile, writeFile} from 'node:fs/promises';
+import { guardSource } from './lib-source-guard.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -27,6 +28,7 @@ const lib = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib');
 const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
+if (dirIdx !== -1 && srcDir) guardSource(srcDir);
 
 // [source path relative to the sb3-creator repo, local vendored destination]
 const FILES = [

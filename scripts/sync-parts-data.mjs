@@ -7,6 +7,7 @@
 // --check verifies the overlay matches bw-circuit-ui's parts-data without writing.
 
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { guardSource } from './lib-source-guard.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +18,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const dirIdx = process.argv.indexOf('--dir');
 const srcRoot = dirIdx !== -1 ? process.argv[dirIdx + 1]
     : join(HERE, '..', '..', '..', 'bw-circuit-ui');
+if (dirIdx !== -1 && srcRoot) guardSource(srcRoot);
 const src = join(srcRoot, 'src', 'parts-data');
 const dst = join(HERE, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-circuit-ui', 'parts-data');
 const check = process.argv.includes('--check');

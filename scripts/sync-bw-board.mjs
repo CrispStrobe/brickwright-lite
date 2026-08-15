@@ -12,6 +12,7 @@
 //   --dir <path> read from a local bw-board checkout instead of over HTTP.
 
 import {readFile, writeFile, mkdir, readdir} from 'node:fs/promises';
+import { guardSource } from './lib-source-guard.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -22,6 +23,7 @@ const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-b
 const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
+if (dirIdx !== -1 && srcDir) guardSource(srcDir);
 
 // DISCOVER the file list; do not hardcode it. A fixed list silently drops files the engine
 // grows (it gained validate.js the day this script was written) and produces a vendored copy

@@ -1,0 +1,32 @@
+# The 60-red-runs lesson (2026-08-15): every push failed for a full day
+# and no lane noticed, because nobody owns WATCHING lite's CI. This
+# watchdog owns it: every 6 hours, if the last 3 build runs on main all
+# failed, it opens (or refreshes) a loud issue. Closing the issue is
+# the ack; it reopens while the condition holds.
+name: deploy-watchdog
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  issues: write
+  actions: read
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for a red streak
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs=$(gh api "repos/${{ github.repository }}/actions/workflows/build.yml/runs?branch=main&per_page=3" \
+            --jq '[.workflow_runs[].conclusion] | join(",")')
+          echo "last 3 build conclusions: $runs"
+          if [ "$runs" = "failure,failure,failure" ]; then
+            title="deploy watchdog: lite build is RED on main (3+ consecutive)"
+            existing=$(gh issue list --repo "${{ github.repository }}" --state open --search "$title" --json number --jq '.[0].number // empty')
+            body="The last 3 build.yml runs on main all failed — GH Pages is NOT deploying. See the Actions tab. This issue reopens every 6h while the streak holds."
+            if [ -n "$existing" ]; then gh issue comment "$existing" --repo "${{ github.repository }}" --body "$body (still red)"; \
+            else gh issue create --repo "${{ github.repository }}" --title "$title" --body "$body"; fi
+            exit 1
+          fi
