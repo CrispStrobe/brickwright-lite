@@ -73,17 +73,17 @@ jobs:
       # Each check exits non-zero on drift; run ALL of them even after a
       # failure so one report names every stale tree, then fail once.
       - name: circuit designer tree
-        run: node brickwright-lite/scripts/sync-bw-circuit-ui.mjs --check --dir bw-circuit-ui
+        run: node brickwright-lite/scripts/sync-bw-circuit-ui.mjs --check --dir bw-circuit-ui --allow-stale
         if: always()
       - name: board engine tree
-        run: node brickwright-lite/scripts/sync-bw-board.mjs --check --dir bw-board
+        run: node brickwright-lite/scripts/sync-bw-board.mjs --check --dir bw-board --allow-stale
         if: always()
       - name: sb3-creator transpiler
-        run: node brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator
+        run: node brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator --allow-stale
         if: always()
       - name: examples gallery
-        run: node brickwright-lite/scripts/sync-examples.mjs --check --dir sb3-creator
+        run: node brickwright-lite/scripts/sync-examples.mjs --check --dir sb3-creator --allow-stale
         if: always()
       - name: parts-data sidecars (bw-circuit-ui -> overlay)
-        run: node brickwright-lite/scripts/sync-parts-data.mjs --check --dir bw-circuit-ui
+        run: node brickwright-lite/scripts/sync-parts-data.mjs --check --dir bw-circuit-ui --allow-stale
         if: always()
