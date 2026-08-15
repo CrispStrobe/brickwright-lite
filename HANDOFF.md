@@ -1,4 +1,4 @@
-# bw-bundle handoff — 2026-08-15 (session 8)
+# bw-bundle handoff — 2026-08-15 (session 8, continued)
 
 ## What was done this session (42 tasks, all pushed)
 
@@ -54,9 +54,25 @@
 ### VdpScreen (ad4b7bb)
 - TMS9918A video output wired into debug panel (polls runner.video())
 
+### intro.md rendering (a14d9c0)
+- ExamplesBrowser: (i) toggle per card, fetches intro.md / intro.de.md
+- YAML frontmatter → level/age badges + teaches tags + prereq links
+- Minimal markdown renderer (## headings, **bold**, `code`, lists, links)
+- Playwright verified: "What you see" section visible, badges present
+
+### Vendor re-sync (d1e53aa)
+- sb3-creator@6ab5fbe3, bw-board@c8a13781, bw-circuit-ui@9dfa08c3
+- 130 intro.md + intro.de.md files synced from audit lanes
+- eater6502-vdp-hello example now present
+- mc6845 CRT controller added to KNOWN_DEAD
+
+### Skipped tests restored (eab0fe6)
+- 4 circuit-designer-ux-contract tests rewritten for current code
+- Suite: 148 pass, 0 fail, 1 skip (corpus env-gate only)
+
 ## Blocked / open
 
-- **VDP gallery example** — VdpScreen renders but no gallery example with CHIP vdp exists yet
+- **VDP gallery Playwright test** — eater6502-vdp-hello exists but needs the compile service for C
 - **ASM assemble endpoint** — button stubbed, waiting for bw-cfront
 - **ili9341 body face** — TFT face not in upstream yet
 - **Examples intro.md rendering** — pilot audit lane writing content; wiring later
