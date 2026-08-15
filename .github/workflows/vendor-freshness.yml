@@ -29,14 +29,28 @@ jobs:
         with:
           repository: CrispStrobe/bw-circuit-ui
           path: bw-circuit-ui
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           repository: CrispStrobe/bw-board
           path: bw-board
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           repository: CrispStrobe/sb3-creator
           path: sb3-creator
+          fetch-depth: 0
+      # PUSH runs are an INTEGRITY gate: lite's tree must match what it
+      # PINS. Comparing against live upstream HEAD made every push red
+      # while the fleet was active — freshness-vs-HEAD is the NIGHTLY
+      # run's job (the staleness alarm), not a push blocker.
+      - name: Pin upstreams to vendor-pins.json (push runs)
+        if: github.event_name == 'push'
+        run: |
+          for repo in bw-circuit-ui bw-board sb3-creator; do
+            sha=$(node -e "const p=require('./brickwright-lite/vendor-pins.json'); const v=p['$repo']||p[Object.keys(p).find(k=>k.includes('$repo'))]; console.log((typeof v==='string'?v:v.sha||v.commit||'').trim())")
+            if [ -n "$sha" ]; then (cd "$repo" && git checkout -q "$sha" && echo "$repo pinned to $sha") || echo "$repo: pin $sha not found, staying on HEAD"; fi
+          done
       - uses: actions/setup-node@v4
         with:
           node-version: 22

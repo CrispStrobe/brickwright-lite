@@ -1,93 +1,92 @@
 {
   "kind": "lm393",
-  "w": 60,
-  "h": 48,
+  "w": 70,
+  "h": 31,
   "terminals": [
     {
-      "name": "1_pos",
+      "name": "1out",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "1_neg",
+      "name": "1inp",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "1_out",
+      "name": "1inn",
       "x": 0,
-      "y": 18,
-      "functions": []
-    },
-    {
-      "name": "2_pos",
-      "x": 0,
-      "y": 23,
-      "functions": []
-    },
-    {
-      "name": "2_neg",
-      "x": 60,
-      "y": 8,
-      "functions": []
-    },
-    {
-      "name": "2_out",
-      "x": 60,
-      "y": 13,
-      "functions": []
-    },
-    {
-      "name": "vcc",
-      "x": 60,
       "y": 18,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 60,
+      "x": 0,
       "y": 23,
+      "functions": []
+    },
+    {
+      "name": "2inn",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "2inp",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "2out",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 8,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "LM393 dual comparator. DIP-8. Two independent comparators with open-collector outputs.",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "1out",
     "leads": {
-      "1_pos": {
+      "1out": {
         "dRow": 0,
         "dCol": 0
       },
-      "1_neg": {
+      "1inp": {
         "dRow": 0,
         "dCol": 1
       },
-      "1_out": {
+      "1inn": {
         "dRow": 0,
         "dCol": 2
       },
-      "2_pos": {
+      "gnd": {
         "dRow": 0,
         "dCol": 3
       },
-      "2_neg": {
+      "2inn": {
         "dRow": 5,
-        "dCol": 0
+        "dCol": 3
       },
-      "2_out": {
+      "2inp": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "2out": {
         "dRow": 5,
         "dCol": 1
       },
       "vcc": {
         "dRow": 5,
-        "dCol": 2
-      },
-      "gnd": {
-        "dRow": 5,
-        "dCol": 3
+        "dCol": 0
       }
     },
     "straddlesGutter": true,
