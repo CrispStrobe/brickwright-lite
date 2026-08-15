@@ -56,12 +56,17 @@ function getCurrentRatings() {
 // Thresholds are read at call time from the engine, not at import time,
 // so the engine can be injected after this module loads.
 
-// Retro-bench bus extractors — statically imported. They have no heavy
-// deps and the DRC must stay synchronous. If either file is missing
-// (sync drift), the import fails at build time, which is correct — the
-// vendored bw-board tree should always include them.
-import { extract6502Machine as _extract6502 } from '../../bw-board/m6502-extract.js';
-import { extractZ80Machine as _extractZ80 } from '../../bw-board/z80-extract.js';
+// Retro-bench bus extractors — optional. In lite these resolve against
+// the sibling bw-board vendor tree; in standalone bw-circuit-ui they are
+// absent and the extractor DRC rules simply do not run. Injected via
+// setExtractors() rather than a static import so the same source works
+// in both environments.
+let _extract6502 = null;
+let _extractZ80 = null;
+export function setExtractors({ extract6502Machine, extractZ80Machine } = {}) {
+    if (extract6502Machine) _extract6502 = extract6502Machine;
+    if (extractZ80Machine) _extractZ80 = extractZ80Machine;
+}
 
 /**
  * Run all design-rule checks against a circuit.

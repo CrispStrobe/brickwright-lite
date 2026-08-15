@@ -31,7 +31,7 @@ async function walk (rel = '') {
     for (const e of await readdir(path.join(srcDir, 'src', rel), {withFileTypes: true})) {
         const r = rel ? `${rel}/${e.name}` : e.name;
         if (e.isDirectory()) out.push(...await walk(r));
-        else if (/\.(jsx?|json|svg)$/.test(e.name) && !SKIP.has(e.name)) out.push(r);
+        else if (/\.(jsx?|json|svg|css)$/.test(e.name) && !SKIP.has(e.name)) out.push(r);
     }
     return out.sort();
 }
@@ -131,7 +131,7 @@ if (!check) {
             if (spec.startsWith('.')) {
                 // resolve relative to this file, allowing an omitted .js/.jsx extension
                 const target = path.posix.normalize(path.posix.join(path.posix.dirname(rel), spec));
-                const ok = have.has(target) || have.has(`${target}.js`) || have.has(`${target}.jsx`);
+                const ok = have.has(target) || have.has(`${target}.js`) || have.has(`${target}.jsx`) || have.has(`${target}.css`);
                 if (!ok) throw new Error(`${rel} imports ${spec}, which was not vendored`);
             } else if (![...allowed].some(a => spec === a || spec.startsWith(`${a}/`))) {
                 throw new Error(`${rel} imports an unexpected package "${spec}" — add it to the allow-list and to integrate.mjs deliberately`);

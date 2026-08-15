@@ -3,6 +3,14 @@ import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 
+// Inject the retro-bench bus extractors into the DRC so contention and
+// open-vector errors surface as warnings. This lives here (not in the
+// vendored drc.js) so the vendored file stays identical to upstream.
+import {setExtractors} from '../../lib/bw-circuit-ui/model/drc.js';
+import {extract6502Machine} from '../../lib/bw-board/m6502-extract.js';
+import {extractZ80Machine} from '../../lib/bw-board/z80-extract.js';
+setExtractors({extract6502Machine, extractZ80Machine});
+
 const DebugPanel = React.lazy(() =>
     import(/* webpackChunkName: "bw-debug-panel" */ './debug-panel.jsx')
 );
