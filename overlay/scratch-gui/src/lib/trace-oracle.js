@@ -592,6 +592,21 @@ export function compareTraces(ref, actual, opts = {}) {
         }
     }
 
+    // Tone events: pin + frequency, ±5 Hz tolerance (timer resolution).
+    const rt = ref.tones ?? [], at_ = actual.tones ?? [];
+    for (let i = 0; i < Math.min(rt.length, at_.length); i++) {
+        if (rt[i].pin !== at_[i].pin) {
+            diffs.push(`tone ${i}: pin "${rt[i].pin}" vs "${at_[i].pin}"`);
+        } else if (Math.abs(rt[i].hz - at_[i].hz) > 5) {
+            diffs.push(`tone ${i} ("${rt[i].pin}"): ${rt[i].hz} Hz vs ${at_[i].hz} Hz`);
+        } else if (Math.abs(rt[i].tMs - at_[i].tMs) > tolAt(rt[i].tMs)) {
+            diffs.push(`tone ${i} ("${rt[i].pin}"): time ${rt[i].tMs} vs ${at_[i].tMs}`);
+        }
+    }
+    if (rt.length !== at_.length) {
+        diffs.push(`tone count: referee ${rt.length} vs actual ${at_.length}`);
+    }
+
     // Device events: servo angle, motor speed/direction, shift_out value.
     // Compared by kind+name sequence within tolerance, same rules as serial.
     const rd = (ref.devices ?? []).filter(inWindow);

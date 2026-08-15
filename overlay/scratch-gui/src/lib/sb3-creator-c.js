@@ -319,7 +319,10 @@ class ExprParser {
         let n = 0;
         const types = new Set(['unsigned', 'signed', 'int', 'char', 'long', 'short', 'void', 'float', 'double',
             'uint8_t', 'uint16_t', 'uint32_t', 'int8_t', 'int16_t', 'int32_t', 'size_t',
-            'uchar', 'BYTE', 'WORD', 'DWORD', 'BOOL', 'bool']);
+            'uchar', 'uint', 'ulong', 'ushort',
+            'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32',
+            'u8', 'u16', 'u32', 's8', 's16', 's32',
+            'BYTE', 'WORD', 'DWORD', 'BOOL', 'bool', 'UINT', 'UCHAR', 'ULONG']);
         while (this.c.peek(n).t === 'id' && types.has(this.c.peek(n).v)) n++;
         if (n === 0) return false;
         // Allow trailing `*` for pointer casts.
@@ -653,8 +656,19 @@ export default function cToPseudocode (source, opts = {}) {
         // A local declaration (`unsigned char i;`) carries no meaning here.
         // Keil keywords (`sbit`, `sfr`, `bit`, `code`, `data`, `xdata`, etc.) are
         // also declaration specifiers.
-        if (t.t === 'id' && ['unsigned', 'signed', 'int', 'char', 'long', 'short', 'static', 'volatile', 'const', 'float', 'double',
-            'sbit', 'sfr', 'sfr16', 'bit', 'code', 'data', 'xdata', 'idata', 'pdata', 'void', 'extern', 'register', 'typedef', 'struct', 'union', 'enum'].includes(t.v)) {
+        // Common typedef aliases in 8051 / embedded C that the preprocessor
+        // does not resolve (they are source-level typedefs, not #defines).
+        const TYPE_ALIASES = new Set([
+            'uchar', 'uint', 'ulong', 'ushort',
+            'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32',
+            'u8', 'u16', 'u32', 's8', 's16', 's32',
+            'uint8_t', 'uint16_t', 'uint32_t', 'int8_t', 'int16_t', 'int32_t',
+            'size_t', 'ssize_t', 'ptrdiff_t', 'wchar_t', 'bool', 'BOOL',
+            'BYTE', 'WORD', 'DWORD', 'UINT', 'UCHAR', 'ULONG',
+        ]);
+        if (t.t === 'id' && (['unsigned', 'signed', 'int', 'char', 'long', 'short', 'static', 'volatile', 'const', 'float', 'double',
+            'sbit', 'sfr', 'sfr16', 'bit', 'code', 'data', 'xdata', 'idata', 'pdata', 'void', 'extern', 'register', 'typedef', 'struct', 'union', 'enum'].includes(t.v)
+            || TYPE_ALIASES.has(t.v))) {
             // Capture what is being skipped so the warning can name it.
             // cur.peek() returned t but did not advance; skip it before collecting.
             cur.next();
@@ -671,20 +685,41 @@ export default function cToPseudocode (source, opts = {}) {
                 warn(`declaration dropped (no block equivalent): ${declText}${declTokens.length > 8 ? ' …' : ''}`);
                 return [];
             }
-            // Simple scalar declaration with initializer: `int count = 0;` → `set count to 0`
-            // Pattern: type-keywords... varName = expr
-            const eqIdx = declTokens.indexOf('=');
-            if (eqIdx > 0 && eqIdx < declTokens.length - 1) {
-                const varTok = declTokens[eqIdx - 1];
-                if (/^[A-Za-z_]\w*$/.test(varTok) && !SFRS.test(varTok)) {
-                    const v = varName(varTok); usedVars.add(v);
-                    const initTokens = declTokens.slice(eqIdx + 1);
-                    const initCur = new Cursor(initTokens.map((tok) => ({ t: /^[0-9]/.test(tok) || /^0x/i.test(tok) ? 'num' : /^[A-Za-z_]/.test(tok) ? 'id' : 'op', v: tok })));
-                    const initExpr = new ExprParser(initCur, ctx).parse(0);
-                    return [`${pad}set ${v} to ${initExpr.text}`];
+            // Simple scalar declaration(s) with initializer(s).
+            // Handles single: `int count = 0;` → `set count to 0`
+            // and multi: `int a = 0, b = 1;` → two set statements.
+            // Split on commas to handle multi-var declarations.
+            const setLines = [];
+            // Find declarators: everything after the type keywords.
+            // Type keywords are at the start; the first non-type id is a var name.
+            const allTypeWords = new Set(['unsigned', 'signed', 'int', 'char', 'long', 'short',
+                'static', 'volatile', 'const', 'float', 'double', 'void', 'extern', 'register',
+                ...TYPE_ALIASES]);
+            let firstVar = 1; // skip the initial type keyword (index 0)
+            while (firstVar < declTokens.length && allTypeWords.has(declTokens[firstVar])) firstVar++;
+            // Split remaining tokens by ',' into declarator groups
+            const declarators = [];
+            let current = [];
+            for (let di = firstVar; di < declTokens.length; di++) {
+                if (declTokens[di] === ',') { declarators.push(current); current = []; }
+                else current.push(declTokens[di]);
+            }
+            if (current.length) declarators.push(current);
+            for (const decl of declarators) {
+                const eq = decl.indexOf('=');
+                if (eq > 0 && eq < decl.length - 1) {
+                    const varTok = decl[eq - 1];
+                    if (/^[A-Za-z_]\w*$/.test(varTok) && !SFRS.test(varTok)) {
+                        const v = varName(varTok); usedVars.add(v);
+                        const rhsTokens = decl.slice(eq + 1);
+                        const rhsCur = new Cursor(rhsTokens.map((tok) => ({
+                            t: /^[0-9]/.test(tok) || /^0x/i.test(tok) ? 'num' : /^[A-Za-z_]/.test(tok) ? 'id' : 'op', v: tok })));
+                        const rhsExpr = new ExprParser(rhsCur, ctx).parse(0);
+                        setLines.push(`${pad}set ${v} to ${rhsExpr.text}`);
+                    }
                 }
             }
-            return [];
+            return setLines;
         }
 
         if (t.v === 'for') {
@@ -709,7 +744,11 @@ export default function cToPseudocode (source, opts = {}) {
             // Strip type specifiers from init so `uint8_t i = 0` → `i = 0`.
             const TYPE_WORDS = new Set(['unsigned', 'signed', 'int', 'char', 'long', 'short',
                 'static', 'volatile', 'const', 'uint8_t', 'uint16_t', 'uint32_t',
-                'int8_t', 'int16_t', 'int32_t', 'BYTE', 'WORD', 'DWORD']);
+                'int8_t', 'int16_t', 'int32_t', 'BYTE', 'WORD', 'DWORD',
+                'uchar', 'uint', 'ulong', 'ushort',
+                'uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32',
+                'u8', 'u16', 'u32', 's8', 's16', 's32', 'bool', 'BOOL',
+                'UINT', 'UCHAR', 'ULONG', 'size_t']);
             const initClean = init.filter(t => !TYPE_WORDS.has(t));
             const initStr = initClean.join('').replace(/\s+/g, '').trim();
             // Extract loop variable name and initial value from init.
@@ -1019,7 +1058,15 @@ export default function cToPseudocode (source, opts = {}) {
                         cur.i = scan;
                     }
                 }
-                const rhs = expr(cur);
+                // Handle chained assignment: `A = B = C = val;`
+                // Collect the chain of lvalues, then the final rvalue.
+                const chain = [name];
+                let rhs = expr(cur);
+                while (op === '=' && cur.is('=')) {
+                    chain.push(rhs.text);
+                    cur.next(); // eat '='
+                    rhs = expr(cur);
+                }
                 cur.eat(';');
                 // A declared pin IS an SFR bit, so check it BEFORE the register filter,
                 // or every `P1_0 = 0;` is mistaken for setup and the program disappears.
@@ -1029,6 +1076,16 @@ export default function cToPseudocode (source, opts = {}) {
                     if (op !== '=') { warn(`"${name} ${op}" on a pin is not expressible — skipped`); return []; }
                     if (rhs.text === `not read ${pin.name}` || rhs.text === `read ${pin.name}`) return [`${pad}toggle ${pin.name}`];
                     return [`${pad}${pinWrite(pin, rhs.text)}`];
+                }
+                // Emit set statements for each name in the chain
+                if (op === '=' && chain.length > 1) {
+                    const lines = [];
+                    for (const lv of chain) {
+                        if (SFRS.test(lv)) continue;
+                        const v = varName(lv); usedVars.add(v);
+                        lines.push(`${pad}set ${v} to ${rhs.text}`);
+                    }
+                    return lines;
                 }
                 const v = varName(name); usedVars.add(v);
                 if (op === '=') return [`${pad}set ${v} to ${rhs.text}`];

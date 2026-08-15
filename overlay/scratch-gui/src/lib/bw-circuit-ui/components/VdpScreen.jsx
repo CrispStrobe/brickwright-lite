@@ -36,6 +36,7 @@ export function VdpScreen({ videoFn, setButtonsFn, lang = 'en' }) {
   const maskRef = useRef(0);
   const [focused, setFocused] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [nativeSize, setNativeSize] = useState({ w: 256, h: 192 });
 
   // Button input via keyboard
   const updateButtons = useCallback((mask) => {

@@ -55,6 +55,7 @@ const MATRIX = {
     space: [7, 0], sym: [7, 1], m: [7, 2], n: [7, 3], b: [7, 4],
 };
 
+const CLOCK_HZ = 3_500_000;  // the 48K machine's fixed clock
 const FRAME_TSTATES = 69888; // 48K frame at 3.5 MHz → 50.08 Hz
 const INT_LENGTH = 32;
 
@@ -69,6 +70,44 @@ export class ZXULA {
         this._toFrame = FRAME_TSTATES;
         this._intLeft = 0;
         this.frame = 0;
+        this.tStates = 0;          // total T-states, the edge clock
+    }
+
+    /**
+     * The audio-face contract, shaped like the buzzer's {hz, on}: the
+     * dominant beeper frequency over the recent window, estimated from
+     * speaker edges. Fewer than 4 edges in the window = silence — a
+     * lone level change is a click, not a tone.
+     * @param {number} [windowTs] look-back in T-states (default 50 ms)
+     */
+    audioTone(windowTs = 175_000) {
+        const since = this.tStates - windowTs;
+        const e = this.speakerEdges;
+        let first = e.length;
+        while (first > 0 && e[first - 1][0] >= since) first--;
+        const n = e.length - first;
+        if (n < 4) return { hz: 0, on: false };
+        const span = e[e.length - 1][0] - e[first][0];
+        if (span <= 0) return { hz: 0, on: false };
+        // n edges bound n-1 half-periods; a full period is two of them.
+        const hz = CLOCK_HZ / (2 * (span / (n - 1)));
+        return { hz: Math.round(hz), on: true };
+    }
+
+    /** Machine-snapshot hooks. Held keys and recorded speaker edges
+     *  are transients and reset; timing state carries over exactly. */
+    saveState() {
+        return {
+            border: this.border, speaker: this.speaker, frame: this.frame,
+            tStates: this.tStates, toFrame: this._toFrame, intLeft: this._intLeft,
+        };
+    }
+
+    loadState(s) {
+        this.border = s.border; this.speaker = s.speaker; this.frame = s.frame;
+        this.tStates = s.tStates; this._toFrame = s.toFrame; this._intLeft = s.intLeft;
+        this.rows.fill(0x1f);
+        this.speakerEdges.length = 0;
     }
 
     /** Face-input contract: the currently held key names. */
@@ -104,6 +143,7 @@ export class ZXULA {
 
     /** @param {number} t T-states elapsed */
     advance(t) {
+        this.tStates += t;
         if (this._intLeft > 0) this._intLeft = Math.max(0, this._intLeft - t);
         this._toFrame -= t;
         while (this._toFrame <= 0) {
@@ -120,6 +160,9 @@ export class ZXULA {
     renderFrame() {
         const W = ZX_W + 2 * ZX_BORDER, H = ZX_H + 2 * ZX_BORDER;
         const indices = new Uint8Array(W * H).fill(this.border);
+        // FLASH: attribute bit 7 swaps ink/paper for 16 frames of
+        // every 32 — the real ULA's cursor blink.
+        const flashPhase = (this.frame >> 4) & 1;
         for (let y = 0; y < ZX_H; y++) {
             // The interleave: bits [7:6]=Y7Y6, [5:3]=Y2Y1Y0, [2:0]=Y5Y4Y3
             const addr = 0x4000
@@ -130,8 +173,9 @@ export class ZXULA {
                 const bits = this.mem[addr + cx];
                 const attr = this.mem[0x5800 + (y >> 3) * 32 + cx];
                 const bright = (attr & 0x40) ? 8 : 0;
-                const ink = (attr & 0x07) + bright;
-                const paper = ((attr >> 3) & 0x07) + bright;
+                let ink = (attr & 0x07) + bright;
+                let paper = ((attr >> 3) & 0x07) + bright;
+                if ((attr & 0x80) && flashPhase) { const s = ink; ink = paper; paper = s; }
                 const row = (y + ZX_BORDER) * W + ZX_BORDER + cx * 8;
                 for (let b = 0; b < 8; b++) {
                     indices[row + b] = (bits >> (7 - b)) & 1 ? ink : paper;
