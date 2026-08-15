@@ -8,15 +8,14 @@
  * modifier class would be a far larger change than the feature is worth.
  */
 
-/* The toggle itself: quiet, in the corner, and the same size in both states so
-   the chrome does not jump under the cursor that just clicked it. */
+/* The toggle lives in the tab list DOM. In expanded mode it is pulled out
+   to the top-right corner via absolute positioning (above the menu bar).
+   In compact mode the absolute positioning is removed (below) so it flows
+   inline as the first item in the tab row — the hamburger icon. */
 .chrome-toggle {
     position: absolute;
     top: 6px;
     right: 8px;
-    /* Above the menu bar, which sits at 491 and would otherwise swallow every
-       click on this button — found by driving the deployed editor, where the
-       About icon intercepted the pointer and the toggle looked simply dead. */
     z-index: 600;
     width: 28px;
     height: 28px;
@@ -28,6 +27,7 @@
     font-size: 15px;
     line-height: 1;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .chrome-toggle:hover {
@@ -37,35 +37,22 @@
 
 /* ---- collapsed ---------------------------------------------------------- */
 
-/* The menu bar folds away. Not `display: none`: it keeps its box so the toggle
-   stays where it was and the click target does not move out from under you. */
+/* The menu bar hides entirely — its functionality is one click away via the
+   hamburger icon that now lives in the tab row. */
 :global(body.bw-compact-chrome) [class*="menu-bar_menu-bar"] {
-    height: 32px;
-    min-height: 32px;
-    overflow: hidden;
+    display: none !important;
 }
 
-/* Its contents scale with it rather than being clipped mid-glyph. */
-:global(body.bw-compact-chrome) [class*="menu-bar_menu-bar-item"] {
-    height: 32px;
-    font-size: 0.72rem;
-}
-
-:global(body.bw-compact-chrome) [class*="menu-bar_logo-wrapper"],
-:global(body.bw-compact-chrome) [class*="menu-bar_feedback"] {
-    display: none;
-}
-
-/* The tab row keeps every tab -- capability, not permanence -- but drops the
+/* The tab row keeps every tab — capability, not permanence — but drops the
    words. The icons and emoji stay, so nothing becomes unreachable. */
 :global(body.bw-compact-chrome) [class*="gui_tab-list"] {
-    height: 28px;
+    height: 32px;
 }
 
 :global(body.bw-compact-chrome) [class*="gui_tab"] {
     padding: 0 10px !important;
     font-size: 0;             /* hides the label text */
-    line-height: 28px;
+    line-height: 32px;
 }
 
 /* …but not the icon, which is a child element and needs its size back. */
@@ -75,7 +62,17 @@
     margin: 0;
 }
 
-/* The body reclaims exactly what the two rows gave up. */
+/* The body takes back the entire menu-bar row. */
 :global(body.bw-compact-chrome) [class*="gui_body-wrapper"] {
-    height: calc(100% - 32px);
+    height: calc(100% - 0px);
+}
+
+/* The hamburger toggle moves into the tab row in compact mode (positioned
+   by the JSX render that puts it in the tab list). In expanded mode it
+   stays in the top-right corner of the menu bar area. */
+:global(body.bw-compact-chrome) .chrome-toggle {
+    position: static;
+    z-index: auto;
+    margin-right: 4px;
+    flex-shrink: 0;
 }

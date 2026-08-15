@@ -308,7 +308,6 @@ const GUIComponent = props => {
                     onStartSelectingFileUpload={onStartSelectingFileUpload}
                     onToggleLoginOpen={onToggleLoginOpen}
                 />
-                <ChromeToggle className={chromeStyles.chromeToggle} />
                 <Box className={styles.bodyWrapper}>
                     <Box
                         className={styles.flexWrapper}
@@ -332,6 +331,7 @@ const GUIComponent = props => {
                                 onSelect={onActivateTab}
                             >
                                 <TabList className={tabClassNames.tabList}>
+                                    <ChromeToggle className={chromeStyles.chromeToggle} />
                                     <Tab className={tabClassNames.tab}>
                                         <img
                                             draggable={false}
