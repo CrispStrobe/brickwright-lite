@@ -517,11 +517,16 @@ class CircuitTab extends React.Component {
         // An example with a program replaces the project, which undo cannot
         // recover — so ask, once, and say what is at stake. A circuit-only
         // example touches nothing but the board and needs no permission.
-        const hasProgram = !!(ex.files && ex.files.program && ex.kind !== 'circuit');
+        // Whether the example ships a program file. The kind field is a
+        // categorisation tag, not a file-presence gate: an example can be
+        // kind:'circuit' (it is ABOUT a circuit) and still declare pins
+        // that need loading. The gate must be the file, not the tag.
+        const hasProgram = !!(ex.files && ex.files.program);
         if (hasProgram && typeof confirm === 'function') {
-            const ok = confirm(
-                `Open "${ex.id}"?\n\nThis replaces the current project — its blocks, its ` +
-                'pins and its board. Anything unsaved is lost.');
+            const msg = /^de/i.test(navigator.language)
+                ? `„${ex.id}" öffnen?\n\nDas ersetzt das aktuelle Projekt — seine Blöcke, Pins und sein Board. Nicht Gespeichertes geht verloren.`
+                : `Open "${ex.id}"?\n\nThis replaces the current project — its blocks, its pins and its board. Anything unsaved is lost.`;
+            const ok = confirm(msg);
             if (!ok) return;
         }
         this.setState({loadingExample: ex.id, examplesError: null});
