@@ -9,11 +9,16 @@
  */
 
 /* The toggle lives in the tab list DOM. In expanded mode it is pulled out
-   to the top-right corner via absolute positioning (above the menu bar).
-   In compact mode the absolute positioning is removed (below) so it flows
+   to the VIEWPORT top-right corner (above the menu bar). This must be
+   position:fixed — absolute resolved against the nearest positioned
+   ancestor, which is the editor wrapper, landing the button exactly on
+   top of the right-pane toggle at 1024px and eating its clicks (the
+   red-CI streak of 2026-08-15: dead pane toggle, vanished stage-view
+   buttons once the mis-click collapsed the chrome).
+   In compact mode the positioning is removed (below) so it flows
    inline as the first item in the tab row — the hamburger icon. */
 .chrome-toggle {
-    position: absolute;
+    position: fixed;
     top: 6px;
     right: 8px;
     z-index: 600;

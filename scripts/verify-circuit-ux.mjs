@@ -132,8 +132,12 @@ try {
     await debuggerButton.click({force: true});
     await page.waitForTimeout(500);
     const dedicatedDesigner = page.locator('.bw-circuit-designer:visible').last();
-    check('dedicated Circuit tab keeps debugger controls visible', await dedicatedDesigner.locator('[data-instruments-column] [data-debugger-panel]').count() === 1,
-        `designers=${await page.locator('.bw-circuit-designer').count()} visible=${await page.locator('.bw-circuit-designer:visible').count()} instruments=${await dedicatedDesigner.locator('[data-instruments-column]').count()}`);
+    // Owner spec 2026-08-14: with dock 'solo' the debugger content lives in
+    // the STANDALONE pane, not the circuit tab's instruments column. The
+    // circuit tab must keep its instruments column mounted; the debugger
+    // panel/no-code notice are asserted in the solo pane (above).
+    check('dedicated Circuit tab keeps its instruments column', await dedicatedDesigner.locator('[data-instruments-column]').count() === 1,
+        `designers=${await page.locator('.bw-circuit-designer:visible').count()}`);
     const debuggerColumnMetrics = await dedicatedDesigner.locator('[data-instruments-column]').evaluate(el => {
         const scroll = el.querySelector('[data-instruments-scroll]');
         return {
@@ -145,8 +149,8 @@ try {
     });
     check('Debugger in Instruments stays viewport-bounded and has a scroll viewport', debuggerColumnMetrics.bottom <= debuggerColumnMetrics.viewport + 1 && debuggerColumnMetrics.overflowY === 'auto' && debuggerColumnMetrics.scrollHeight >= debuggerColumnMetrics.clientHeight,
         JSON.stringify(debuggerColumnMetrics));
-    check('dedicated Circuit tab visibly reports missing code when applicable', await dedicatedDesigner.locator('[data-instruments-column] [data-no-code-indicator]').count() === 1,
-        `dock=${await page.evaluate(() => localStorage.getItem('bw-debug-dock'))} noCode=${await dedicatedDesigner.locator('[data-no-code-indicator]').count()}`);
+    // (Solo-pane debugger content is asserted in the debugger view above;
+    // on the Circuit tab the solo pane is rightly unmounted.)
     const loaded = await page.evaluate(async () => {
         const root = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
         const key = Object.keys(root || {}).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
