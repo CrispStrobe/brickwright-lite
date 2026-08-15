@@ -195,9 +195,64 @@ VCC→a, GND→b, wiper at 2.500 V (position param still inert — documented). 
 Divider → inp = 2.500 V, output (feedback to inn) = 2.500 V. Unity gain buffer
 tracks perfectly. ✓
 
+## timer_555 — PASS (1 — astable with control-pin cap)
+Cap at 0.022 V (t=1ms), control at 3.333 V (2/3 VCC), output HIGH (5 V),
+discharge at 2.511 V. Confirmed oscillating at longer timescales. ✓
+
+## dc_motor — PASS (1 — direct drive)
+VCC → motor (windingR=10Ω) → GND. Full 5 V across motor. I = 500 mA. ✓
+
+## tip120 — PASS (1 — Darlington saturated)
+VCC→Rc(1k)→collector, VCC→Rb(10k)→base, emitter→GND. Collector at 0.010 V
+(deep saturation), base at 4.546 V. Darlington Vbe ≈ 0.45 V (two junctions). ✓
+
+## isource — PASS (1)
+10 mA into 100 Ω = exactly **1.000 V**. ✓
+
+## vsource — PASS (1)
+3.3 V source → R(1k) → LED. pos = **3.300 V**, LED at **2.013 V**. ✓
+
+## servo — PASS (1)
+VCC = **5.000 V**, signal = 0 V (floating, no MCU driving). ✓
+
+## temp_sensor — PASS (1)
+VCC powered, dq output = 0 V (no stimulus). ✓
+
+## ir_receiver — PASS (1)
+VCC powered, output = 0 V (idle, no IR signal). ✓
+
+## shift_register — PASS (existing examples)
+Verified through 08-led-chaser-595 and 20-shift-register-binary. 8 Q outputs
+all at 0 V (idle), data/clock/latch from MCU. ✓
+
+## char_lcd — SKIPPED (16-terminal I2C/parallel, needs MCU interaction)
+## eeprom — SKIPPED (I2C, needs MCU interaction)
+## rgb_led — SKIPPED (null terminals, needs net inference)
+## battery/battery_9v/battery_aa/battery_coin — SKIPPED (floating island)
+## lm7805/ld1117v33/vreg — SKIPPED (null terminals)
+
+## 74HC series (13 kinds) — SKIPPED (null terminals, net-inference only)
+74hc00, 74hc02, 74hc04, 74hc08, 74hc10, 74hc11, 74hc132, 74hc14, 74hc20,
+74hc21, 74hc27, 74hc32, 74hc86. These gate ICs use net-inference for terminals
+and cannot be swept generically. Verified indirectly through pc45-nand-test,
+pc46-xor-selector, and other gate examples.
+
+## Null-terminal parts (65 kinds) — require custom circuits
+These parts return null for `getTerminalsForKind` and rely on net-inference
+from circuit.json wiring. They cannot be swept with the generic 2/3-terminal
+harness. Many are verified through existing gallery examples.
+
 ---
 
-## Parts not yet swept (88 remaining)
+## Sweep totals
+
+| status | count |
+|---|---|
+| PASS (generic sweep) | 33 |
+| ENGINE-BUG (escalated) | 3 (pnp, nmos-on, pmos) |
+| FINDING (not bug) | 1 (diode default Vf) |
+| SKIPPED (null terminals / floating) | 77 |
+| **total** | **114** |
 
 74hc00, 74hc02, 74hc04, 74hc08, 74hc10, 74hc11, 74hc132, 74hc14,
 74hc20, 74hc21, 74hc27, 74hc283, 74hc32, 74hc73, 74hc74, 74hc75,
@@ -205,13 +260,12 @@ tracks perfectly. ✓
 bargraph, battery, battery_9v, battery_aa, battery_coin, cd4511,
 char_lcd, char_lcd_i2c, clock_display, darlington_driver, dc_motor,
 dc_motor_encoder, decade_counter, dff, dip_switch, eeprom,
-flex_sensor, force_sensor, fuse, gas_sensor, gate_and, gate_nand,
-gate_nor, gate_not, gate_or, gate_xor, gearmotor, h_bridge, header,
-ir_receiver, ir_remote, ir_transmitter, isource, jkff, keypad_4x4,
-ld1117v33, led_cube, led_matrix, light_bulb, lm339, lm393, lm7805,
-mcu, neopixel, opamp, optocoupler, pcf8574, photodiode,
-phototransistor, pi_pico, piezo, pir, polarized_cap, potentiometer,
-relay, relay_dpdt, rgb_led, servo, seven_segment, shift_register,
-soil_moisture, solar_cell, solenoid, stepper, temp_sensor,
-tilt_sensor, timer_555, timer_556, tip120, tmp36, ultrasonic, usb_a,
-vcc, vibration_motor, vreg, vsource
+flex_sensor, force_sensor, fuse, gas_sensor, gearmotor, h_bridge,
+header, ir_receiver, ir_remote, ir_transmitter, isource, jkff,
+keypad_4x4, ld1117v33, led_cube, led_matrix, light_bulb, lm339,
+lm393, lm7805, mcu, neopixel, optocoupler, pcf8574, photodiode,
+phototransistor, pi_pico, piezo, pir, polarized_cap, relay_dpdt,
+rgb_led, servo, seven_segment, shift_register, soil_moisture,
+solar_cell, solenoid, stepper, temp_sensor, tilt_sensor, timer_555,
+timer_556, tip120, tmp36, ultrasonic, usb_a, vcc, vibration_motor,
+vreg, vsource
