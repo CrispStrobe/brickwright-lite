@@ -860,6 +860,17 @@ labels.
   basic-m6502-bw, shipped **unmodified**. Loaded at run time by
   BasicMachineRunner on the emulated 6502 machine.
 
+## Tali Forth 2 — Public Domain
+
+**Tali Forth 2** (Public Domain, https://github.com/SamCoVT/TaliForth2)
+is a Forth interpreter for the 6502, running on the py65mon memory map.
+
+- **Upstream:** https://github.com/SamCoVT/TaliForth2
+- **Licence:** Public Domain (no warranty)
+- **What ships:** `static/roms/taliforth-py65mon.bin` — the 32 KB
+  prebuilt binary, shipped **unmodified**. Loaded at run time by the
+  eater6502 debug target with `py65mon: true` for interactive Forth.
+
 ## Interpreters that do NOT ship
 
 The following BASIC interpreters were evaluated but are **not bundled,

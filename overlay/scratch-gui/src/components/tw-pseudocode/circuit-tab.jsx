@@ -364,6 +364,18 @@ class CircuitTab extends React.Component {
      */
     handleCircuitReady (circuit) {
         this.setState({circuit});
+        // Detect CPU parts on the board and publish the core so the debug
+        // panel creates the right target kind (z80, eater6502, avr8js).
+        if (circuit && circuit.parts) {
+            const rt = this.props.vm && this.props.vm.runtime;
+            if (rt && !rt.bwDeviceCore) {
+                if (circuit.parts.some(p => p.kind === 'z80')) {
+                    rt.bwDeviceCore = 'z80';
+                } else if (circuit.parts.some(p => p.kind === 'w65c02')) {
+                    rt.bwDeviceCore = 'w65c02';
+                }
+            }
+        }
     }
 
     /**

@@ -414,6 +414,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             );
         }
 
+        if (selectedTargetKind === 'z80') {
+            return attachZ80();
+        }
+
+        if (selectedTargetKind === 'eater6502') {
+            return attachEater6502();
+        }
+
         if (selectedTargetKind === 'rp2040js') {
             return attachRp2040js(built);
         }
@@ -687,6 +695,91 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
+    // ── 6502 interactive Forth (Tali Forth 2 over py65mon memory map) ───
+    async function attachEater6502() {
+        setStatus('attaching', 'loading Tali Forth 2…');
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+
+        const res = await fetch(new URL('static/roms/taliforth-py65mon.bin', document.baseURI).href);
+        if (!res.ok) throw new Error(`Failed to load taliforth-py65mon.bin: HTTP ${res.status}`);
+        const rom = new Uint8Array(await res.arrayBuffer());
+
+        const result = await createDebugTarget('eater6502', { py65mon: true, rom });
+        target = result.target;
+        const adapter = result.adapter || result;
+
+        if (adapter.onSerial) {
+            adapter.onSerial((byte) => {
+                const ch = String.fromCharCode(byte & 0x7f);
+                serialLines.push(ch);
+                if (serialLines.length > 500) serialLines.splice(0, serialLines.length - 500);
+            });
+        }
+
+        session = createDebugSession(target, {
+            onHalt: (snapshot) => {
+                setStatus('paused', `PC=$${snapshot.pc.toString(16).padStart(4, '0')}`);
+            },
+            onRun: () => setStatus('running'),
+        });
+
+        runner.sendSerial = (text) => {
+            if (adapter.sendSerial) {
+                for (let i = 0; i < text.length; i++) {
+                    adapter.sendSerial(text.charCodeAt(i));
+                }
+            }
+        };
+
+        setStatus('ready', 'Tali Forth 2 — type at the ok prompt');
+        return session;
+    }
+
+    // ── Z80 interactive BASIC (BBC BASIC over CP/M BDOS shim) ───────────
+    async function attachZ80() {
+        setStatus('attaching', 'loading BBC BASIC…');
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+
+        // Fetch the BBCBASIC.COM (zlib, rtrussell/BBCZ80)
+        const res = await fetch(new URL('static/roms/bbcbasic.com', document.baseURI).href);
+        if (!res.ok) throw new Error(`Failed to load bbcbasic.com: HTTP ${res.status}`);
+        const com = new Uint8Array(await res.arrayBuffer());
+
+        const result = await createDebugTarget('z80', { cpm: { com } });
+        target = result.target;
+        const adapter = result.adapter || result;
+
+        // Wire serial output so the console face receives it
+        if (adapter.onSerial) {
+            adapter.onSerial((byte) => {
+                const ch = String.fromCharCode(byte & 0x7f);
+                serialLines.push(ch);
+                if (serialLines.length > 500) serialLines.splice(0, serialLines.length - 500);
+            });
+        }
+
+        session = createDebugSession(target, {
+            onHalt: (snapshot) => {
+                setStatus('paused', `PC=$${snapshot.pc.toString(16).padStart(4, '0')}`);
+            },
+            onRun: () => setStatus('running'),
+        });
+
+        // Expose sendSerial for the console face
+        runner.sendSerial = (text) => {
+            if (adapter.sendSerial) {
+                for (let i = 0; i < text.length; i++) {
+                    adapter.sendSerial(text.charCodeAt(i));
+                }
+            }
+        };
+
+        setStatus('ready', 'BBC BASIC (Z80) — type at the > prompt');
+        return session;
+    }
+
     /**
      * Should this halt be swallowed?
      *
@@ -804,7 +897,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         async start() {
             try {
                 if (!session) {
-                    const built = await build();
+                    const device = String(projectStc(null)?.device || '').toLowerCase();
+                    const selectedKind = selectDebugTargetKind(device, targetKind);
+                    // Z80/6502 interactive interpreters: no compile step
+                    const built = (selectedKind === 'z80' || selectedKind === 'eater6502') ? null : await build();
                     await attach(built);
                     // The user's breakpoints only became SETTABLE now: until a
                     // target exists there is nothing to set them on, and until

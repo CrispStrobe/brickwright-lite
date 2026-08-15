@@ -92,7 +92,7 @@ const KNOWN_DEAD = new Map([
     ['lib/bw-board/ps2.js', 'Vendored; PS/2 keyboard controller — wired when keyboard part lands.'],
     ['lib/bw-board/zx-tzx.js', 'Vendored; ZX Spectrum tape format — wired when tape loading lands.'],
     // vdu-decoder.js removed from KNOWN_DEAD: now imported by vdu-terminal.jsx (BBC BASIC VDU canvas).
-    ['lib/bw-board/z80-debug.js', 'Vendored; Z80 debug adapter — wired when Z80 debug view lands.'],
+    // z80-debug.js removed from KNOWN_DEAD: now imported by debug-target-factory (Z80 interactive target).
     // z80-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
 ]);
 

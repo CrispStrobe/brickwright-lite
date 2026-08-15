@@ -132,7 +132,7 @@ class DebugPanel extends React.Component {
         const core = rt.bwDeviceCore;
         if (core === this._lastCore) return;
         this._lastCore = core;
-        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', micropython: 'rp2040js' };
+        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
         const kind = CORE_TO_KIND[core];
         if (kind && kind !== this.state.kind) {
             // Changing the kind while a runner exists would leave it on the
