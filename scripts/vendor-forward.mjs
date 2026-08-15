@@ -47,6 +47,12 @@ try {
     }
 
     sh('npm run integrate');
+    // The unit suite runs BEFORE the expensive build: a vendored-tree
+    // change that breaks a lite test must fail here, not in CI after the
+    // push (2026-08-15: the mcu footprint orientation flip landed green
+    // through all three browser gates and then failed CI on a unit test
+    // asserting the old geometry — this line closes that hole).
+    sh('npm test');
     sh('npm run build', { cwd: path.join(ROOT, 'packages', 'scratch-gui'), env: { ...process.env, NODE_ENV: 'production', NODE_OPTIONS: '--max-old-space-size=2560' } });
 
     // Gates against the fresh build.

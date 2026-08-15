@@ -50,15 +50,19 @@ test('STC12 footprint uses the breadboard-pitch DIP geometry', () => {
 test('STC12 DIP leads land on adjacent breadboard rows and the same strips as cables', {
   skip: FOOTPRINTS.mcu ? false : 'FOOTPRINTS.mcu removed in bw-circuit-ui sync — DIP seating moved to sidecar data'
 }, () => {
+  // Physical orientation (upstream f6779f5): pin 1 (P1.0) sits BOTTOM-left
+  // like the real DIP-40, so the ref terminal is VCC (pin 40, top-left).
+  // The pre-flip expectations here (P1.0 in the e-row) asserted the very
+  // upside-down rendering the owner reported.
   const leadMap = computeLeadMap(FOOTPRINTS.mcu, 'e20');
-  assert.equal(leadMap['P1.0'], 'e20');
-  assert.equal(leadMap.GND, 'e39');
-  assert.equal(leadMap['P2.0'], 'f39');
-  assert.equal(leadMap.VCC, 'f20');
+  assert.equal(leadMap.VCC, 'e20');
+  assert.equal(leadMap['P2.0'], 'e39');
+  assert.equal(leadMap['P1.0'], 'f20');
+  assert.equal(leadMap.GND, 'f39');
   const geometry = seatGeometry({x: 470, y: 330, params: {}}, leadMap);
   assert.equal(geometry.terminals['P1.0'].y, geometry.terminals['GND'].y);
   assert.equal(geometry.terminals['P2.0'].y, geometry.terminals.VCC.y);
-  assert.equal(geometry.terminals['P1.0'].y + 38, geometry.terminals['P2.0'].y);
+  assert.equal(geometry.terminals.VCC.y + 38, geometry.terminals['P1.0'].y);
   const breadboard = new BreadboardModel();
   breadboard.occupy('mcu', leadMap);
   breadboard.addWire('jumper', 'b20', 't+1');
