@@ -30,7 +30,10 @@
  */
 import { chromium } from 'playwright';
 
-const URL = 'https://crispstrobe.github.io/brickwright-lite/';
+// PROOF_URL overrides for local builds — every verify gate honors it;
+// this one silently probing production while "passing" a local check
+// was a measurement lie (found during the 930000d recovery).
+const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 const SS = '/tmp';
 
 const browser = await chromium.launch();
