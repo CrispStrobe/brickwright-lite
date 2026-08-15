@@ -69,6 +69,7 @@ const L10N = {
         stepInsn: 'Step instruction', over: 'Step over', out: 'Step out',
         setPc: 'Set PC', breakAt: 'Break at', reset: 'Reset', wipe: 'Wipe',
         stepTen: 'Step ×10', clear: 'Clear',
+        csvTitle: 'Export the trace as CSV — every row with time, registers, SFRs and captured variables',
         tenHint: 'Ten instructions, each one a row in the trace',
         empty: 'Nothing has run yet. Press Run, then pause or hit a pause point.',
         gapNote: 'A row is recorded whenever the program stops — so stepping traces it ' +
@@ -91,6 +92,7 @@ const L10N = {
         stepInsn: 'Ein Befehl', over: 'Überspringen', out: 'Heraus',
         setPc: 'PC setzen', breakAt: 'Halt bei', reset: 'Reset', wipe: 'Löschen',
         stepTen: 'Schritt ×10', clear: 'Leeren',
+        csvTitle: 'Trace als CSV exportieren — jede Zeile mit Zeit, Registern, SFRs und erfassten Variablen',
         tenHint: 'Zehn Befehle, jeder eine Zeile im Protokoll',
         empty: 'Es lief noch nichts. Auf Start drücken, dann anhalten.',
         gapNote: 'Eine Zeile entsteht bei jedem Anhalten — Einzelschritte protokollieren ' +
@@ -214,7 +216,7 @@ class DebugDrawer extends React.Component {
                     </span>
                     <button
                         style={BTN}
-                        title={'Export the trace as CSV — every row with time, registers, SFRs and captured variables'}
+                        title={this.tx('csvTitle')}
                         disabled={!rows.length}
                         onClick={() => downloadTraceCsv(rows,
                             `bw-trace-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`)}
