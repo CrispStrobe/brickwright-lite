@@ -9,6 +9,7 @@
  */
 import { disasmZ80 } from './z80-disasm.js';
 import { loadSNA, SNA_SIZE } from './zx-sna.js';
+import { loadZ80 } from './zx-z80file.js';
 
 /** @param {{ machine: import('./z80-machine.js').Z80Machine }} adapter */
 export function createZ80DebugTarget(adapter) {
@@ -154,6 +155,12 @@ export function createZ80DebugTarget(adapter) {
 
     timeNs() { return BigInt(Math.round(machine.tMs * 1e6)); },
 
+    /** Face-input contract, joystick side: the VdpScreen button mask
+     *  onto the Kempston port. False without the interface. */
+    setButtons(mask) {
+      return typeof machine.setButtons === 'function' ? machine.setButtons(mask) : false;
+    },
+
     /**
      * Face-input contract, Spectrum flavor: key NAMES, not a button
      * mask — the ULA scans a real 8x5 matrix and the face's keyboard
@@ -190,12 +197,19 @@ export function createZ80DebugTarget(adapter) {
       return true;
     },
 
-    /** Load a 48K .SNA snapshot — the face's drag-a-snapshot-in path.
-     *  Returns false on machines without a ULA (not a Spectrum). */
+    /** Load a 48K snapshot — the face's drag-a-file-in path. A 48K
+     *  .SNA is exactly its fixed size; anything else is tried as .z80
+     *  (all three header generations). Returns false on machines
+     *  without a ULA or on formats that refuse (128K, junk). */
     loadSnapshot(buf) {
-      if (!machine.ula || buf.length < SNA_SIZE) return false;
-      loadSNA(machine, buf);
-      return true;
+      if (!machine.ula) return false;
+      try {
+        if (buf.length === SNA_SIZE) loadSNA(machine, buf);
+        else loadZ80(machine, buf);
+        return true;
+      } catch {
+        return false;
+      }
     },
 
     readMem(space, addr, len) {
