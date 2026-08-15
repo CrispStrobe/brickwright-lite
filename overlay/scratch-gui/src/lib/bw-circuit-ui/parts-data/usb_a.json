@@ -1,46 +1,47 @@
 {
   "kind": "usb_a",
-  "w": 24,
-  "h": 16,
+  "w": 40,
+  "h": 30,
   "terminals": [
     {
-      "name": "vcc",
-      "x": 7,
-      "y": 16,
+      "name": "vbus",
+      "x": 8,
+      "y": 30,
       "functions": []
     },
     {
-      "name": "d_minus",
-      "x": 11,
-      "y": 16,
+      "name": "dm",
+      "x": 16,
+      "y": 30,
       "functions": []
     },
     {
-      "name": "d_plus",
-      "x": 15,
-      "y": 16,
+      "name": "dp",
+      "x": 24,
+      "y": 30,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 19,
-      "y": 16,
+      "x": 32,
+      "y": 30,
       "functions": []
     }
   ],
   "variants": null,
+  "_note": "USB Type-A connector. 4-terminal: VBUS (+5V), D-, D+, GND.",
   "footprint": {
-    "refTerminal": "vcc",
+    "refTerminal": "vbus",
     "leads": {
-      "vcc": {
+      "vbus": {
         "dRow": 0,
         "dCol": 0
       },
-      "d_minus": {
+      "dm": {
         "dRow": 0,
         "dCol": 1
       },
-      "d_plus": {
+      "dp": {
         "dRow": 0,
         "dCol": 2
       },
