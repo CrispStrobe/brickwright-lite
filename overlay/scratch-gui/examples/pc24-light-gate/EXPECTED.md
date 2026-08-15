@@ -1,5 +1,40 @@
-# Light gate
+# pc24-light-gate
 
-The LDR and 10 kΩ resistor form a light-dependent divider. Moving the light
-control changes the base voltage; the transistor crosses its turn-on threshold
-and the protected LED follows it.
+## Circuit
+An LDR from VCC and a 10 kΩ resistor to ground form a light-dependent divider;
+the divider node drives an NPN base. Collector load is 1 kΩ + a yellow LED;
+emitter to ground.
+
+**Direction:** the LDR is the *upper* leg, so **bright light pulls the base up
+and turns the LED on**; darkness lets it fall and the LED goes off.
+
+## Expected — physically
+LDR 100 kΩ dark → 1 kΩ bright, against a 10 kΩ lower leg:
+
+| light | R_LDR | divider node | transistor |
+|---|---|---|---|
+| dark (0.0) | 100 kΩ | 5 · 10/110 = 0.45 V | off, below V_be |
+| mid (0.5) | 10 kΩ | 5 · 10/20 = 2.5 V, clamped to ~0.7 by the base | on |
+| bright (1.0) | 1 kΩ | 5 · 10/11 = 4.5 V, clamped to ~0.7 | hard on |
+
+Threshold at V_be ≈ 0.7 V, i.e. around R_LDR ≈ 61 kΩ. Collector should sit at
+V_ce_sat with the LED at (5.0 − 2.0 − 0.2) / 1000 ≈ 2.8 mA once on.
+
+## Measured (`audit-solve pc24-light-gate`)
+
+Dark state (default LDR control = 0.0):
+
+| node | volts |
+|---|---|
+| base (ldr1.b, r1.a) | 0.4545 V |
+| collector (led1.cathode) | 3.0000 V |
+| emitter | 0.0000 V |
+
+Base at 0.45 V (below V_be = 0.7 V), transistor off, LED dark. Correct sensing
+behaviour.
+
+## Content defect fixed during the earlier audit
+The LDR declared `minOhms: 1000, maxOhms: 100000`. The device reads
+**`rDark` / `rLight`**, so both were silently ignored. Renamed to
+`rDark: 100000, rLight: 1000`; the base now reads 0.4545 V dark, as the
+declared parts say it should.

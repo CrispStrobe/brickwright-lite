@@ -30,6 +30,12 @@
  *     matching pin declarations — standalone circuits have no MCU.
  *     Set to null/undefined after loading to allow the next load.
  *
+ *   onProgramChange?: (program: {source: string, device?: string, pins?: Array}) => void
+ *     Called when an example with both circuit AND program is loaded.
+ *     The host uses this to load the program into the blocks/runtime
+ *     (without it, examples with program.bw load only the circuit half
+ *     and the debugger says "no pins declared").
+ *
  * Every electrical value comes from bw-board. Nothing is fabricated.
  */
 
@@ -64,7 +70,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, onLoadExample, lang = 'en' }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, onLoadExample, onProgramChange, lang = 'en' }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -174,6 +180,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const toggleScope = () => setShowScope(v => { const n = !v; try { localStorage.setItem('bw-instr-scope', n ? '1' : '0'); } catch {} return n; });
   const toggleMeter = () => setShowMeter(v => { const n = !v; try { localStorage.setItem('bw-instr-meter', n ? '1' : '0'); } catch {} return n; });
   const [warningsOpen, setWarningsOpen] = useState(false);
+  const hasMcuPins = !!(projectData?.pins?.length > 0);
 
   // Breadboard model (persistent across renders)
   const [bbRev, setBbRev] = useState(0);
@@ -794,7 +801,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </div>
           <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto'}}>
             {examples && onLoadExample ? (
-              <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} theme={theme} />
+              <ExamplesBrowser examples={examples} onLoadExample={(ex) => {
+                onLoadExample(ex);
+                // When the example carries a program, notify the host so it
+                // can load the program half (blocks/runtime.stc). Without this,
+                // examples with both circuit.json and program.bw load only the
+                // circuit and the debugger says "no pins declared".
+                if (onProgramChange && ex.program) onProgramChange(ex.program);
+              }} theme={theme} />
             ) : (
               <InferPanel onLoadCircuit={handleLoadCircuit} />
             )}
@@ -1011,6 +1025,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           })()}
           panelNav={panelNav}
           rightOpen={rightOpen}
+          lang={lang}
           viewNav={(
             <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', width: 70, height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
               <button data-circuit-toggle-state={!showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"
@@ -1053,19 +1068,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
         <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 34, boxSizing: 'border-box'}}>
-        {debugState && (
+        {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins). */}
+        {hasMcuPins && debugState && (
           <DebugStatus
             debugState={debugState}
             capabilities={debugState.capabilities || null}
           />
         )}
-        {debugState && typeof debugState.video === 'function' && (
-          <VdpScreen videoFn={debugState.video} lang={lang} />
+        {hasMcuPins && debugState && typeof debugState.video === 'function' && (
+          <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} lang={lang} />
         )}
-        {/* Debugger section — hidden entirely for pure circuits (no MCU/pins).
-            When pins ARE declared, the full panel renders; when the dock is set
-            to debugger mode but no pins exist yet, a hint explains why. */}
-        {debuggerPanel && (
+        {hasMcuPins && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>
@@ -1111,8 +1124,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             {showMeter ? (/^de/i.test(lang) ? '⌁ Multimeter verbergen' : '⌁ Hide meter') : (/^de/i.test(lang) ? '⌁ Multimeter' : '⌁ Meter')}
           </button>
         </div>
-        {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} /></div>}
-        {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
+        {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
+        {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} lang={lang} /></div>}
         </div>
       </div>
       ) : (

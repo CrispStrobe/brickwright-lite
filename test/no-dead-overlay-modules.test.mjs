@@ -86,6 +86,7 @@ const KNOWN_DEAD = new Map([
     // m6502-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
     ['lib/bw-board/m6507-machine.js', 'Vendored; Atari 2600 / SBC6507 machine — future device target.'],
     ['lib/bw-board/m74c922.js', 'Vendored; 4x4 keypad encoder IC — wired when keypad part lands.'],
+    ['lib/bw-board/mc6845.js', 'Vendored; MC6845 CRT controller — wired when VDP text mode lands.'],
     ['lib/bw-board/ps2.js', 'Vendored; PS/2 keyboard controller — wired when keyboard part lands.'],
     // vdu-decoder.js removed from KNOWN_DEAD: now imported by vdu-terminal.jsx (BBC BASIC VDU canvas).
     ['lib/bw-board/z80-debug.js', 'Vendored; Z80 debug adapter — wired when Z80 debug view lands.'],
