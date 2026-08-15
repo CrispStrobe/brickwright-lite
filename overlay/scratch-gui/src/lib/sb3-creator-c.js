@@ -291,10 +291,12 @@ class ExprParser {
         if (t.t === 'id') {
             if (this.c.is('(')) return this.call(t.v);
             let result = { text: this.ctx.readName(t.v), level: 99 };
-            // Array subscript(s): `name[expr]` or `name[expr][expr]`
+            // Array subscript(s): `name[expr]` → `item expr of name`
             while (this.c.is('[')) {
-                this.c.skip('[', ']');
-                result = { text: result.text, level: 99, array: true };
+                this.c.next();   // eat '['
+                const idx = this.parse(0);
+                this.c.expect(']');
+                result = { text: `item ${idx.text} of ${result.text}`, level: 99, array: true };
             }
             // Postfix ++ / --: `i++` or `i--` used as an expression.
             if (this.c.is('++') || this.c.is('--')) {
@@ -662,14 +664,25 @@ export default function cToPseudocode (source, opts = {}) {
                 else declTokens.push(cur.next().v);
             }
             cur.eat(';');
-            // Warn for non-trivial declarations that carry program state.
-            // Simple locals (`unsigned char i;`) inside function bodies are noise.
-            // Structs, arrays, pointers, typedefs, and named struct variables are
-            // the ones a user expects to survive.
             const declJoined = declTokens.join(' ');
             const declText = declTokens.slice(0, 8).join(' ');
+            // Structs, arrays, pointers, typedefs are genuinely inexpressible.
             if (/struct|union|enum|typedef|\*|\[/.test(declJoined)) {
                 warn(`declaration dropped (no block equivalent): ${declText}${declTokens.length > 8 ? ' …' : ''}`);
+                return [];
+            }
+            // Simple scalar declaration with initializer: `int count = 0;` → `set count to 0`
+            // Pattern: type-keywords... varName = expr
+            const eqIdx = declTokens.indexOf('=');
+            if (eqIdx > 0 && eqIdx < declTokens.length - 1) {
+                const varTok = declTokens[eqIdx - 1];
+                if (/^[A-Za-z_]\w*$/.test(varTok) && !SFRS.test(varTok)) {
+                    const v = varName(varTok); usedVars.add(v);
+                    const initTokens = declTokens.slice(eqIdx + 1);
+                    const initCur = new Cursor(initTokens.map((tok) => ({ t: /^[0-9]/.test(tok) || /^0x/i.test(tok) ? 'num' : /^[A-Za-z_]/.test(tok) ? 'id' : 'op', v: tok })));
+                    const initExpr = new ExprParser(initCur, ctx).parse(0);
+                    return [`${pad}set ${v} to ${initExpr.text}`];
+                }
             }
             return [];
         }
@@ -764,6 +777,45 @@ export default function cToPseudocode (source, opts = {}) {
                 return transformLoopBody(inner, head, depth);
             }
             const inner = bodyOf(cur, depth + 1);
+            if (count === null && condStr) {
+                // Non-trivial for-loop: emit init + REPEAT UNTIL + step in body.
+                // `for (mask = 0x80; mask != 0; mask >>= 1)` becomes:
+                //   set mask to 128
+                //   REPEAT UNTIL mask = 0:
+                //     <body>
+                //     set mask to mask shiftright 1
+                const out = [];
+                // Emit the init as a set statement
+                if (initVar && initVal) {
+                    const v = varName(initVar); usedVars.add(v);
+                    const initCur2 = new Cursor([{ t: /^[0-9]/.test(initVal) || /^0x/i.test(initVal) ? 'num' : 'id', v: initVal }]);
+                    const initExpr = new ExprParser(initCur2, ctx).parse(0);
+                    out.push(`${pad}set ${v} to ${initExpr.text}`);
+                }
+                // Parse the condition as a negation for REPEAT UNTIL
+                const condCur = new Cursor(cond.map((tok) => ({ t: /^[0-9]/.test(tok) || /^0x/i.test(tok) ? 'num' : /^[A-Za-z_]/.test(tok) ? 'id' : 'op', v: tok })));
+                const condExpr = new ExprParser(condCur, ctx).parse(0);
+                // Parse the step as a statement
+                const stepStr = step.join('').replace(/\s+/g, '').trim();
+                const stepLines = [];
+                const stepCompound = stepStr.match(/^(\w+)(\+\+|--)$/);
+                const stepAssign = stepStr.match(/^(\w+)(<<=|>>=|\+=|-=|\*=|\/=|%=|&=|\|=|\^=)(.+)$/);
+                if (stepCompound) {
+                    const sv = varName(stepCompound[1]); usedVars.add(sv);
+                    stepLines.push(`${'  '.repeat(depth + 1)}change ${sv} by ${stepCompound[2] === '++' ? 1 : -1}`);
+                } else if (stepAssign) {
+                    const sv = varName(stepAssign[1]); usedVars.add(sv);
+                    const sop = stepAssign[2];
+                    const srhs = stepAssign[3];
+                    const srhsCur = new Cursor([{ t: /^[0-9]/.test(srhs) || /^0x/i.test(srhs) ? 'num' : 'id', v: srhs }]);
+                    const srhsExpr = new ExprParser(srhsCur, ctx).parse(0);
+                    const OPS = { '<<=': 'shiftleft', '>>=': 'shiftright', '+=': '+', '-=': '-', '*=': '*', '/=': '/', '%=': '%', '&=': 'bitand', '|=': 'bitor', '^=': 'bitxor' };
+                    stepLines.push(`${'  '.repeat(depth + 1)}set ${sv} to ${sv} ${OPS[sop] || sop} ${srhsExpr.text}`);
+                }
+                const bodyWithStep = [...inner, ...stepLines];
+                out.push(...transformLoopBody(bodyWithStep, `${pad}REPEAT UNTIL ${negate(condExpr.text)}:`, depth));
+                return out;
+            }
             if (count === null) {
                 warn('a `for` loop that is not `for(;;)` or a simple counter became REPEAT UNTIL false');
                 return transformLoopBody(inner, `${pad}REPEAT UNTIL 1 = 1:`, depth);
@@ -888,6 +940,30 @@ export default function cToPseudocode (source, opts = {}) {
         const start = cur.i;
         if (t.t === 'id') {
             const name = cur.next().v;
+            // Array subscript on the left: `arr[i] = expr;` → `replace item i of arr with expr`
+            if (cur.is('[')) {
+                cur.next();   // eat '['
+                const idx = expr(cur);
+                cur.expect(']');
+                if (cur.is('=')) {
+                    cur.next();
+                    const rhs = expr(cur);
+                    cur.eat(';');
+                    const v = varName(name); usedVars.add(v);
+                    return [`${pad}replace item ${idx.text} of ${v} with ${rhs.text}`];
+                }
+                if (cur.is('++') || cur.is('--')) {
+                    const op = cur.next().v; cur.eat(';');
+                    const v = varName(name); usedVars.add(v);
+                    const itemRef = `item ${idx.text} of ${v}`;
+                    return [`${pad}replace item ${idx.text} of ${v} with ${itemRef} ${op === '++' ? '+' : '-'} 1`];
+                }
+                // Other operators on array elements: skip to ';' with warning
+                while (!cur.is(';') && cur.peek().t !== 'eof') cur.next();
+                cur.eat(';');
+                warn(`statement dropped (array operation not expressible): ${name}[${idx.text}]`);
+                return [];
+            }
             // `X = expr;`  /  `X += expr;`
             if (cur.is('&=') || cur.is('|=') || cur.is('^=') || cur.is('<<=') || cur.is('>>=')) {
                 const op = cur.next().v;
@@ -898,7 +974,7 @@ export default function cToPseudocode (source, opts = {}) {
                 const v = varName(name); usedVars.add(v);
                 return [`${pad}set ${v} to ${v} ${BITOP[op]} ${rhs.text}`];
             }
-            if (cur.is('=') || cur.is('+=') || cur.is('-=')) {
+            if (cur.is('=') || cur.is('+=') || cur.is('-=') || cur.is('*=') || cur.is('/=') || cur.is('%=')) {
                 const op = cur.next().v;
                 // Detect `x = cond ? a : b;` and expand to if/else instead of
                 // dropping the else branch. Scan ahead for `?` before `;`.
@@ -956,7 +1032,9 @@ export default function cToPseudocode (source, opts = {}) {
                 }
                 const v = varName(name); usedVars.add(v);
                 if (op === '=') return [`${pad}set ${v} to ${rhs.text}`];
-                return [`${pad}change ${v} by ${op === '-=' ? negNum(rhs.text) : rhs.text}`];
+                if (op === '+=' || op === '-=') return [`${pad}change ${v} by ${op === '-=' ? negNum(rhs.text) : rhs.text}`];
+                const COMPOUND = { '*=': '*', '/=': '/', '%=': '%' };
+                if (COMPOUND[op]) return [`${pad}set ${v} to ${v} ${COMPOUND[op]} ${rhs.text}`];
             }
             if (cur.is('++') || cur.is('--')) {
                 const op = cur.next().v; cur.eat(';');

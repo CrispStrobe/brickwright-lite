@@ -19,6 +19,8 @@
 import { Z80 } from './z80.js';
 import { MC6850 } from './mc6850.js';
 import { Z80CTC } from './z80-ctc.js';
+import { ZXULA } from './zx-ula.js';
+import { ZXTape } from './zx-tape.js';
 
 export const SEARLE = Object.freeze({
     clockHz: 7_372_800,
@@ -76,6 +78,12 @@ export class Z80Machine {
                 throw new Error(`unknown port chip kind: ${p.kind}`);
             }
         }
+        // A Spectrum-shaped machine: config.ula = true attaches the ULA,
+        // which decodes ONLY A0 (every even port) and shares the
+        // machine's memory for the live screen.
+        this.ula = config.ula ? new ZXULA(this.mem) : null;
+        if (this.ula) this.chips.ula = this.ula;
+        this.tape = null; // insertTape() attaches; the $0556 trap consumes
         this._romRanges = (config.regions || []).filter((r) => r.kind === 'rom');
         this.cpu = new Z80({
             read: (a) => this.mem[a & 0xffff],
@@ -85,10 +93,12 @@ export class Z80Machine {
                 this.mem[a] = v & 0xff;
             },
             in: (port) => {
+                if (this.ula && (port & 1) === 0) return this.ula.in(port);
                 const e = this._portMap.get(port & 0xff);
                 return e ? e.chip.read(e.rs) : 0xff;
             },
             out: (port, v) => {
+                if (this.ula && (port & 1) === 0) { this.ula.out(port, v, this.cycles); return; }
                 const e = this._portMap.get(port & 0xff);
                 if (e) e.chip.write(e.rs, v);
             },
@@ -99,6 +109,9 @@ export class Z80Machine {
 
     /** Load an image into memory (ROM regions included — loading is not a bus write). */
     load(bytes, at = 0) { this.mem.set(bytes.subarray ? bytes.subarray(0, 65536 - at) : bytes, at); }
+
+    /** Insert a .TAP; the $0556 trap serves blocks in order. */
+    insertTape(tapBuf) { this.tape = new ZXTape(tapBuf); }
 
     _advanceChips(n) {
         for (const k of Object.keys(this.chips)) {
@@ -146,6 +159,15 @@ export class Z80Machine {
             this.cycles += 13;
             this._advanceChips(13);
             return 13;
+        }
+        // LD-BYTES fast-load trap: with a tape inserted, entering the
+        // ROM's loader at $0556 loads the next block instantly and RETs.
+        if (this.tape && this.cpu.pc === 0x0556 && this.ula) {
+            this.tape.trap(this.cpu, this.mem);
+            this.cpu.pc = this.cpu._pop16();
+            this.cycles += 100; // a token cost; the real routine took minutes
+            this._advanceChips(100);
+            return 100;
         }
         const n = this.cpu.step();
         this.cycles += n;
