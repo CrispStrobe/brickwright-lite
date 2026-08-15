@@ -72,15 +72,25 @@ try {
         const beforePane = await paneToggle.getAttribute('aria-pressed');
         const beforeEditorWidth = await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width);
         const beforeRightWidth = await rightPane.evaluate(el => el.getBoundingClientRect().width);
+        // Await the STATE, not the clock: a fixed 120ms sampled stale
+        // aria-pressed on loaded CI runners, and the follow-up restore
+        // click then double-toggled the pane into hidden — killing every
+        // later right-pane check (the red-CI streak of 2026-08-15).
+        const settled = async (want) => {
+            await page.waitForFunction(
+                ([sel, v]) => document.querySelector(sel)?.getAttribute('aria-pressed') === v,
+                ['[data-right-pane-toggle]', want], {timeout: 5000}).catch(() => {});
+            return paneToggle.getAttribute('aria-pressed');
+        };
+        const wantAfter = beforePane === 'true' ? 'false' : 'true';
         await paneToggle.click({force: true});
-        await page.waitForTimeout(120);
-        check('right-pane toggle visibly changes state', await paneToggle.getAttribute('aria-pressed') !== beforePane);
+        check('right-pane toggle visibly changes state', await settled(wantAfter) !== beforePane);
         const hiddenEditorWidth = await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width);
         const hiddenRightWidth = await rightPane.evaluate(el => el.getBoundingClientRect().width);
         check('hiding right pane gives its width to the editor', hiddenEditorWidth > beforeEditorWidth && hiddenRightWidth === 0,
             JSON.stringify({beforeEditorWidth, hiddenEditorWidth, beforeRightWidth, hiddenRightWidth}));
         await paneToggle.click({force: true});
-        await page.waitForTimeout(120);
+        await settled(beforePane);
         check('showing right pane restores its layout width', await rightPane.evaluate(el => el.getBoundingClientRect().width) > 0);
     }
     const editorPane = page.locator('[data-editor-pane]');
