@@ -353,6 +353,11 @@ export function interpretTrace(project, opts = {}) {
                     trace.pwm.push({ tMs: now, pin: String(fld('PIN')).toLowerCase(), percent: pct });
                     frame.block = b.next; continue;
                 }
+                case 'stc12_settone': {
+                    const hz = Math.max(0, Math.round(num(inp('VALUE'))));
+                    trace.tones.push({ tMs: now, pin: String(fld('PIN')).toLowerCase(), hz });
+                    frame.block = b.next; continue;
+                }
                 case 'stc12_print': {
                     const v = inp('VALUE');
                     trace.serial.push({ tMs: now, line: String(v) });
@@ -480,6 +485,7 @@ export function interpretTrace(project, opts = {}) {
     trace.events = trace.events.filter((e) => e.tMs <= horizonMs);
     trace.serial = trace.serial.filter((e) => e.tMs <= horizonMs);
     trace.devices = trace.devices.filter((e) => e.tMs <= horizonMs);
+    trace.tones = trace.tones.filter((e) => e.tMs <= horizonMs);
     return trace;
 }
 
