@@ -142,3 +142,17 @@ if (!check) {
 }
 if (check && stale) { console.error(`\n${stale} stale — run: npm run sync:circuitui`); process.exit(1); }
 console.log(check ? '\nvendored panel up to date.' : '\nsynced. Next: npm run integrate');
+
+// Record the upstream commit this sync captured, so vendor-freshness CI
+// compares against the PIN, not a moving HEAD (bump = re-run this sync).
+if (!check && srcDir) {
+    try {
+        const { execSync } = await import('node:child_process');
+        const pinSha = execSync(`git -C ${JSON.stringify(srcDir)} rev-parse HEAD`).toString().trim();
+        const pinsFile = path.join(here, '..', 'vendor-pins.json');
+        const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
+        pins['bw-circuit-ui'] = pinSha;
+        await writeFile(pinsFile, JSON.stringify(pins, null, 1));
+        console.log(`  pinned bw-circuit-ui@${pinSha.slice(0, 8)}`);
+    } catch (e) { console.warn(`  (pin not recorded: ${e.message})`); }
+}

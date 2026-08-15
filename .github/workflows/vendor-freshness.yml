@@ -41,6 +41,21 @@ jobs:
         with:
           node-version: 22
 
+      # Compare against the PINNED upstream commits (vendor-pins.json,
+      # written by each forward sync), not whatever HEAD moved to since
+      # — upstream advancing must not red lite until a deliberate
+      # vendor bump. Missing pin → stay on HEAD.
+      - name: Check out pinned upstream commits
+        run: |
+          for repo in bw-circuit-ui bw-board sb3-creator; do
+            pin=$(jq -r --arg r "$repo" '.[$r] // empty' lego/brickwright-lite/vendor-pins.json 2>/dev/null || true)
+            [ -z "$pin" ] && pin=$(jq -r --arg r "$repo" '.[$r] // empty' brickwright-lite/vendor-pins.json 2>/dev/null || true)
+            if [ -n "$pin" ]; then
+              git -C "$repo" fetch --depth 1 origin "$pin" && git -C "$repo" checkout "$pin" \
+                || echo "::warning::$repo pin $pin not fetchable — comparing against HEAD"
+            fi
+          done
+
       # Each check exits non-zero on drift; run ALL of them even after a
       # failure so one report names every stale tree, then fail once.
       - name: circuit designer tree
