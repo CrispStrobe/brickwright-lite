@@ -149,6 +149,24 @@ jobs:
             fi
           }
 
+      # Browser acceptance BEFORE the artifact leaves this job. The
+      # 930000d incident shipped a wall-to-wall visual regression on
+      # green unit tests — unit suites cannot see a lost theme, a
+      # broken pane, or a dead button. These gates drive the ACTUAL
+      # BUILT APP and block the deploy when it is visibly wrong.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Serve the built app
+        run: |
+          python3 -m http.server 8617 --directory packages/scratch-gui/build &
+          for i in $(seq 1 30); do curl -sf http://localhost:8617/ >/dev/null && break; sleep 1; done
+      - name: Browser gate — circuit UX
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
+      - name: Browser gate — view buttons
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs
+      - name: Browser gate — editor
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor.mjs
+
       - uses: actions/upload-pages-artifact@v3
         with: { path: packages/scratch-gui/build }
 

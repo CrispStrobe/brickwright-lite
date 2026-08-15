@@ -246,11 +246,21 @@ async function verify () {
             }
 
             // Check the note about no ASM-to-blocks
-            const bodyText = await page.locator('body').innerText();
-            if (bodyText.includes('ASM-to-blocks') || bodyText.includes('ASM-zu')) {
-                pass('ASM tab: asymmetry note present');
+            // The note moved behind an (i) toggle (owner ask); the check
+            // opens it first — grepping body text tested the RETIRED
+            // always-visible layout and failed on the new one.
+            const asmInfo = page.locator('[data-testid="bw-asm-info-toggle"]');
+            if (await asmInfo.count() === 1) {
+                await asmInfo.click();
+                await page.waitForTimeout(300);
+                const noteText = await page.locator('body').innerText();
+                if (noteText.includes('ASM-to-blocks') || noteText.includes('ASM-zu')) {
+                    pass('ASM tab: asymmetry note behind the (i) toggle');
+                } else {
+                    fail('ASM tab: (i) opened but the note text is missing');
+                }
             } else {
-                fail('ASM tab: asymmetry note not found');
+                fail('ASM tab: info toggle not found');
             }
         } else {
             fail('ASM tab button not found');

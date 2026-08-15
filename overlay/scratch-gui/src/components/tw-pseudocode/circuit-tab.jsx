@@ -23,6 +23,15 @@ const DebugPanel = React.lazy(() =>
  *    re-read each time the tab is opened; the user may well have edited the declarations
  *    in the Code tab in between.
  */
+// Locale strings for the debugger-solo empty state. The app's i18n is
+// MODULAR (locale from the redux store, per-key dicts, en fallback) so a
+// language is added by adding a key — never by sniffing
+// navigator.language inline, which can neither be extended nor tested.
+const SOLO_L10N = {
+    en: {noCode: 'The debugger needs a program and a chip to drive. Declare pins in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — or switch back to the circuit view in the header above.'},
+    de: {noCode: 'Der Debugger braucht ein Programm und einen Chip. Deklariere Pins im Code-Tab, z. B. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — oder wechsle oben zurück zur Schaltungsansicht.'}
+};
+
 class CircuitTab extends React.Component {
     constructor (props) {
         super(props);
@@ -741,9 +750,8 @@ class CircuitTab extends React.Component {
                 <div style={{...box, overflow: 'auto'}} data-debugger-solo-pane>
                     {stc && stc.pins && stc.pins.length ? this.renderDebugPanel() : (
                         <div style={{color: '#64748b', fontSize: 12.5, padding: 8}} data-no-code-indicator>
-                            {/^de/i.test(navigator.language)
-                                ? 'Der Debugger braucht ein Programm und einen Chip. Deklariere Pins im Code-Tab, z.\u00a0B. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — oder wechsle oben zurück zur Schaltungsansicht.'
-                                : 'The debugger needs a program and a chip to drive. Declare pins in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — or switch back to the circuit view in the header above.'}
+                            {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
+                                || SOLO_L10N.en).noCode}
                         </div>
                     )}
                 </div>
@@ -1081,5 +1089,6 @@ CircuitTab.propTypes = {
 
 export default connect(state => ({
     vm: state.scratchGui.vm,
+    locale: state.locales.locale,
     isVisible: state.scratchGui.editorTab.activeTabIndex === 4
 }))(CircuitTab);
