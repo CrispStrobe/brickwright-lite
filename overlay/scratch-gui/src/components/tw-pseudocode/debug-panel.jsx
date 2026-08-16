@@ -123,6 +123,8 @@ class DebugPanel extends React.Component {
     async _onMediaLoad (e) {
         const {slotId, bytes, kind, profile, name} = e.detail || {};
         if (!bytes) return;
+        // Consumed — a remount must not replay a program the user already ran.
+        window.__bwPendingMedia = null;
         if (this.state.runner) this.state.runner.destroy();
         this._bootMedia = {
             slot: slotId,
@@ -158,6 +160,20 @@ class DebugPanel extends React.Component {
         window.addEventListener('bw-machine-extracted', this._onMachineExtracted);
         window.addEventListener('bw-machine-media-load', this._onMediaLoad);
         window.addEventListener('bw-asm-rom-ready', this._onAsmRomReady);
+        // Replay what was dispatched before this panel existed: the panel
+        // mounts LAZILY in response to bw-machine-extracted, so the first
+        // of these events is structurally always gone by the time the
+        // listeners above are registered. circuit-tab stashes them.
+        if (window.__bwMachineExtracted && window.__bwMachineExtracted.config &&
+            !this.state.machineConfig) {
+            this._onMachineExtracted({detail: window.__bwMachineExtracted});
+        }
+        const pending = window.__bwPendingMedia;
+        if (pending) {
+            window.__bwPendingMedia = null;
+            if (pending.type === 'asm') this._onAsmRomReady({detail: pending.detail});
+            else this._onMediaLoad({detail: pending.detail});
+        }
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')

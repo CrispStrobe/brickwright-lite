@@ -130,9 +130,26 @@ class CircuitTab extends React.Component {
         window.addEventListener('bw-settings-change', this._settingsHandler);
         // Machine bench: Build Machine dispatches this when the bus extractor
         // succeeds. The DebugPanel needs to render even without declared pins
-        // so the user can load a program and run the machine.
-        this._machineExtractedHandler = () => this.setState({machineBooted: true});
+        // so the user can load a program and run the machine. The detail is
+        // ALSO stashed on window: the DebugPanel mounts lazily BECAUSE of
+        // this event, so its own listener structurally cannot have heard the
+        // first one — it replays the stash on mount. Same for a program
+        // delivered (preset / file / ASM) before the panel finished mounting.
+        this._machineExtractedHandler = e => {
+            window.__bwMachineExtracted = e && e.detail;
+            this.setState({machineBooted: true});
+        };
         window.addEventListener('bw-machine-extracted', this._machineExtractedHandler);
+        this._mediaStashHandler = e => {
+            window.__bwPendingMedia = {type: 'media', detail: e && e.detail};
+            this.setState({machineBooted: true});
+        };
+        window.addEventListener('bw-machine-media-load', this._mediaStashHandler);
+        this._asmStashHandler = e => {
+            window.__bwPendingMedia = {type: 'asm', detail: e && e.detail};
+            this.setState({machineBooted: true});
+        };
+        window.addEventListener('bw-asm-rom-ready', this._asmStashHandler);
         // The Scratch controls dispatch these user-level events even when the
         // VM has no executable MCU program. Keep the designer simulation in
         // lockstep with Green Flag/Red Flag in that case too.
@@ -182,6 +199,8 @@ class CircuitTab extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('bw-settings-change', this._settingsHandler);
         window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
+        window.removeEventListener('bw-machine-media-load', this._mediaStashHandler);
+        window.removeEventListener('bw-asm-rom-ready', this._asmStashHandler);
         window.removeEventListener('bw-green-flag', this._greenFlagHandler);
         window.removeEventListener('bw-stop-all', this._stopAllHandler);
         window.removeEventListener('bw-power-off', this._powerOffHandler);
