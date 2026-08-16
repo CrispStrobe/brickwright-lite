@@ -943,7 +943,7 @@ class CircuitTab extends React.Component {
                     onLoadExample={this.loadExample}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
-                    onCircuitReady={c => { window.__circuit = c; this.handleCircuitReady(c); }}
+                    onCircuitReady={c => { window.__circuit = c; if (this.props.vm && this.props.vm.runtime) this.props.vm.runtime.circuitModel = c; this.handleCircuitReady(c); }}
                     circuitData={this.state.circuitData || undefined}
                     onBoardReady={(board) => {
                         // Same diagnosis hook the standalone harness exposes —

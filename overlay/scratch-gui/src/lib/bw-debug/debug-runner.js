@@ -156,6 +156,18 @@ async function resolveNetlist(vm, stc, inferNetlist, waitMs = 2500) {
         n = fromDesigner();
     }
     if (!n) {
+        // Distinguish "designer not mounted" from "designer REJECTED the
+        // netlist": a rejected netlist leaves the board empty, and falling
+        // back to inference here made the emulator drive a phantom bench of
+        // auto-generated LEDs while the canvas showed the real circuit (the
+        // retro console, 2026-08-16 — the 'Blink stopped blinking' family).
+        // A rejection is the user's to see, never ours to paper over.
+        const model = vm && vm.runtime && vm.runtime.circuitModel;
+        if (model && model.netlistError) {
+            throw new Error('the circuit on the canvas was rejected by the engine — ' +
+                'refusing to run against a phantom inferred bench. First error: ' +
+                String(model.netlistError).split('\n')[0]);
+        }
         console.warn('[bw-debug] designer board not ready after ' + waitMs +
             'ms — falling back to the inferred netlist');
         return inferNetlist(stc);
