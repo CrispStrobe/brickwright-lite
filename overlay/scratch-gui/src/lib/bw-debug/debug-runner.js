@@ -1096,8 +1096,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return target.writeMem(space, addr, Uint8Array.from([value & 0xFF]));
         },
 
-        /** The instruction at an address, as text. */
-        disasm(addr) { return target ? target.disasm(addr) : ''; },
+        /** The instruction at an address, as text. Capability, not assumption:
+         * only the 8051 targets carry a disassembler; an AVR/RP2040 target
+         * without one must yield '' — calling through unconditionally crashed
+         * the whole app from "under the hood" on the pendant (owner report,
+         * 2026-08-16). */
+        disasm(addr) { return (target && typeof target.disasm === 'function') ? target.disasm(addr) : ''; },
 
         /**
          * A short listing from `addr`, walking with the opcode length table.
@@ -1106,7 +1110,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          * table makes it free.
          */
         listing(addr, count = 16) {
-            if (!target) return [];
+            // No disassembler (or no code-space reads) on this target → no
+            // listing. Same crash as disasm() above; the instruction-length
+            // walk below is 8051-shaped anyway.
+            if (!target || typeof target.disasm !== 'function' || typeof target.readMem !== 'function') return [];
             const rows = [];
             let a = addr & 0xFFFF;
             for (let i = 0; i < count; i++) {

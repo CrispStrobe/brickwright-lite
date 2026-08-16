@@ -314,6 +314,18 @@ class DebugDrawer extends React.Component {
         const snap = runner.inspect();
         if (!snap) return null;
         const rows = runner.listing(snap.pc, 12);
+        // A target without a disassembler (AVR, RP2040) yields no listing —
+        // say so instead of an empty pane, and never crash the app over it.
+        if (!rows.length) {
+            return (
+                <div style={{...PANE, maxHeight: 240}}>
+                    <div style={TITLE}>{this.tx('code')}</div>
+                    <div style={{opacity: 0.7, fontStyle: 'italic'}}>
+                        {'no disassembly on this target'}
+                    </div>
+                </div>
+            );
+        }
         const bps = new Set(runner.addressBreakpoints());
         return (
             <div style={{...PANE, maxHeight: 240}}>
