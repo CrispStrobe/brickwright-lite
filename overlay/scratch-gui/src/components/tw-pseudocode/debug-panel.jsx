@@ -130,10 +130,22 @@ class DebugPanel extends React.Component {
         const rt = this.props.vm && this.props.vm.runtime;
         if (!rt) return;
         const core = rt.bwDeviceCore;
-        if (core === this._lastCore) return;
-        this._lastCore = core;
-        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
-        const kind = CORE_TO_KIND[core];
+        const dev = rt.bwDeviceId;
+        const key = `${core}/${dev}`;
+        if (key === this._lastCore) return;
+        this._lastCore = key;
+        // Device-specific engines first: an ATtiny88 on the coarse
+        // core→kind map landed on avr8js (ATmega328P memory map) — or,
+        // when no core was published at all, stayed on the 8051 emulator
+        // and the pendant's matrix never lit (owner report, 3791c09).
+        const DEVICE_TO_KIND = {
+            attiny88: 'attiny88', attiny85: 'attiny85',
+            'arduino-mega': 'atmega2560', atmega2560: 'atmega2560',
+            pico: 'rp2040js', eater6502: 'eater6502',
+            z80: 'z80', zx48: 'z80', zx128: 'z80',
+        };
+        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
+        const kind = DEVICE_TO_KIND[dev] || CORE_TO_KIND[core];
         if (kind && kind !== this.state.kind) {
             // Changing the kind while a runner exists would leave it on the
             // wrong engine. Destroy it so the next Start creates a fresh one.

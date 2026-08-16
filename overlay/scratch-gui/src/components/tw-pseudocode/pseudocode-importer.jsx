@@ -23,6 +23,8 @@ const DEVICE_GROUPS = [
         { id: 'arduino-mega', label: 'Arduino Mega', compile: false, emulator: 'avr8js' },
         { id: 'atmega328p', label: 'ATmega328P (bare)', compile: false, emulator: 'avr8js' },
         { id: 'atmega168p', label: 'ATmega168P (bare)', compile: false, emulator: 'avr8js' },
+        { id: 'attiny88', label: 'ATtiny88 (bare)', compile: false, emulator: 'attiny88' },
+        { id: 'attiny85', label: 'ATtiny85', compile: false, emulator: 'attiny85' },
     ]},
     { label: 'Raspberry Pi', core: 'rp2040', devices: [
         { id: 'pico', label: 'Raspberry Pi Pico', compile: true, emulator: 'rp2040js' },

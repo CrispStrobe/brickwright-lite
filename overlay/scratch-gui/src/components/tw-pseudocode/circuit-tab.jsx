@@ -486,19 +486,15 @@ class CircuitTab extends React.Component {
         const {default: SB3Creator} = await import(
             /* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js');
 
-        // Retarget the example to the current project device if they differ.
-        const currentStc = this.readStc();
-        const currentDevice = currentStc && currentStc.device
-            ? String(currentStc.device).toLowerCase() : null;
+        // An example is a curated PAIRING of program and circuit: the
+        // circuit.json has the example's own device seated and wired. This
+        // used to retarget the program to the CURRENT project's device,
+        // which silently broke the pairing — the ATtiny88 pendant retargeted
+        // to an STC12 program (or, when retarget refused, loaded as-authored
+        // but with the OLD device's engine still selected), and the matrix
+        // never lit (owner report, 3791c09). The example's device wins;
+        // retargeting stays available afterwards in the Code tab.
         const exDevice = (source.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
-        if (currentDevice && exDevice && currentDevice !== exDevice.toLowerCase()
-            && SB3Creator.retargetPseudocode) {
-            const result = SB3Creator.retargetPseudocode(source, currentDevice);
-            if (result.ok) {
-                source = result.pseudocode;
-            }
-            // If retarget fails, load as-authored — reasons will surface in the UI
-        }
 
         const creator = new SB3Creator();
         creator.parse(source);
@@ -513,6 +509,22 @@ class CircuitTab extends React.Component {
         // The importer reads this on mount/update and fills its buffer
         // when it sees the project changed.
         vm.runtime.bwPseudocodeSource = source;
+        // Publish the example's device on the runtime, exactly like the
+        // importer's device switch does — the debug panel reads these to
+        // select the matching engine. Without this the pendant (ATTINY88)
+        // ran on "Simulated (STC12 / 8051)" and every pin stayed off.
+        if (exDevice) {
+            const id = exDevice.toLowerCase();
+            vm.runtime.bwDeviceId = id;
+            const core =
+                /^stc/.test(id) ? '8051' :
+                /^(arduino-|atmega|attiny)/.test(id) ? 'arduino' :
+                id === 'pico' ? 'rp2040' :
+                /^(eater6502|6502|w65c02)$/.test(id) ? 'w65c02' :
+                /^(z80|zx48|zx128)$/.test(id) ? 'z80' :
+                id === 'microbit' ? 'micropython' : null;
+            if (core) vm.runtime.bwDeviceCore = core;
+        }
         // Emit a project change so the importer knows to re-read.
         vm.runtime.emit('PROJECT_CHANGED');
         // Not just a boolean: whether the "no pins" advisory is even true

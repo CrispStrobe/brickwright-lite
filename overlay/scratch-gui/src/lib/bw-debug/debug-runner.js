@@ -116,9 +116,17 @@ async function installWasmCompilerIfOptedIn (setStatus) {
 export function selectDebugTargetKind(device, requested = 'emulator') {
     if (requested !== 'emulator') return requested;
     const normalized = String(device || '').toLowerCase();
-    if (['arduino-uno', 'arduino-nano', 'arduino-mega', 'atmega328p', 'atmega168p'].includes(normalized)) return 'avr8js';
+    if (['arduino-uno', 'arduino-nano', 'atmega328p', 'atmega168p'].includes(normalized)) return 'avr8js';
+    if (['arduino-mega', 'atmega2560'].includes(normalized)) return 'atmega2560';
+    // Chip-specific AVR kinds — the coarse avr8js kind is an ATmega328P
+    // memory map, which is NOT where an ATtiny's ports live. Falling
+    // through to the 8051 emulator here fed AVR opcodes to an 8051 core
+    // (the pendant's frozen 2433 ms, every pin off — owner report).
+    if (normalized === 'attiny88') return 'attiny88';
+    if (normalized === 'attiny85') return 'attiny85';
     if (normalized === 'pico') return 'rp2040js';
-    // 6502: no browser emulator wired yet — fall through to default
+    if (['eater6502', '6502', 'w65c02'].includes(normalized)) return 'eater6502';
+    if (['z80', 'zx48', 'zx128'].includes(normalized)) return 'z80';
     return requested;
 }
 
