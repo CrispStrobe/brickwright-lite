@@ -98,6 +98,16 @@ class DebugPanel extends React.Component {
          *  {slot, bytes, profile, name}. Kept off state: the bytes are
          *  runner input, not render input. */
         this._bootMedia = null;
+        /** STABLE identity, bound once: the panel re-renders on every
+         *  runner emit (rAF cadence), and an inline arrow here gave
+         *  VdpScreen a new videoFn each render — its paint effect then
+         *  cancelled and rescheduled its own rAF every frame, so the
+         *  paint callback never once ran and the screen stayed black
+         *  while the machine rendered perfect frames behind it. */
+        this._videoFn = () => {
+            const r = this.state.runner;
+            return r && typeof r.video === 'function' ? r.video() : null;
+        };
     }
 
     /** Build Machine succeeded: the bus extractor's {regions, chips}.
@@ -107,7 +117,7 @@ class DebugPanel extends React.Component {
     _onMachineExtracted (e) {
         const detail = e.detail || {};
         if (!detail.config) return;
-        if (this.state.runner) this.state.runner.destroy();
+        this._teardownRunner();
         this._bootMedia = null;
         const kind = detail.kind === 'z80' ? 'z80'
             : detail.kind === 'eater6502' || detail.kind === '6502' ? 'eater6502'
@@ -123,7 +133,7 @@ class DebugPanel extends React.Component {
     async _onMediaLoad (e) {
         const {slotId, bytes, kind, profile, name} = e.detail || {};
         if (!bytes) return;
-        if (this.state.runner) this.state.runner.destroy();
+        this._teardownRunner();
         this._bootMedia = {
             slot: slotId,
             bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
@@ -152,7 +162,6 @@ class DebugPanel extends React.Component {
 
     componentDidMount () {
         this.syncDeviceKind();
-        this.syncProjectTokens({}, true);
         // The machine-bench pipeline: Build Machine → config; Machine
         // Loader / ASM tab → image; both meet in _onMediaLoad's reboot.
         window.addEventListener('bw-machine-extracted', this._onMachineExtracted);
@@ -176,6 +185,12 @@ class DebugPanel extends React.Component {
             if (pending.type === 'asm') this._onAsmRomReady({detail: pending.detail});
             else this._onMediaLoad({detail: pending.detail});
         }
+        // AFTER the replays: an example's auto-run token fired onStart()
+        // here, BEFORE the config/media replays ran — so the token built a
+        // second runner with neither, and on a machine bench that runner
+        // booted the extracted machine with an EMPTY ROM, won state.runner,
+        // and put a black VDP on screen while the real program ran unseen.
+        this.syncProjectTokens({}, true);
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
@@ -229,7 +244,7 @@ class DebugPanel extends React.Component {
         if (kind && kind !== this.state.kind) {
             // Changing the kind while a runner exists would leave it on the
             // wrong engine. Destroy it so the next Start creates a fresh one.
-            if (this.state.runner) { this.state.runner.destroy(); }
+            this._teardownRunner();
             this.setState({ kind, runner: null, ui: { phase: 'idle', message: '' } });
         }
     }
@@ -247,7 +262,7 @@ class DebugPanel extends React.Component {
         window.removeEventListener('bw-machine-extracted', this._onMachineExtracted);
         window.removeEventListener('bw-machine-media-load', this._onMediaLoad);
         window.removeEventListener('bw-asm-rom-ready', this._onAsmRomReady);
-        if (this.state.runner) this.state.runner.destroy();
+        this._teardownRunner();
     }
 
     tx (key) {
@@ -255,8 +270,26 @@ class DebugPanel extends React.Component {
         return table[key] || L10N.en[key];
     }
 
+    /** Destroy whatever runner exists OR is still being created. The
+     *  creation is async (a chunk import), so a plain state check races —
+     *  two concurrent runner() calls once produced two live machines. */
+    _teardownRunner () {
+        const p = this._runnerPromise;
+        this._runnerPromise = null;
+        if (p) {
+            p.then(r => { if (r) r.destroy(); }).catch(() => {});
+        } else if (this.state.runner) {
+            this.state.runner.destroy();
+        }
+    }
+
     async runner () {
-        if (this.state.runner) return this.state.runner;
+        if (this._runnerPromise) return this._runnerPromise;
+        this._runnerPromise = this._createRunner();
+        return this._runnerPromise;
+    }
+
+    async _createRunner () {
         const {createDebugRunner} = await import(
             /* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/debug-runner.js');
         const runner = createDebugRunner({
@@ -451,7 +484,7 @@ class DebugPanel extends React.Component {
                 {this.state.runner && typeof this.state.runner.video === 'function' ? (
                     <React.Suspense fallback={null}>
                         <VdpScreen
-                            videoFn={() => this.state.runner.video()}
+                            videoFn={this._videoFn}
                             lang={this.props.locale}
                             data-testid="bw-vdp-screen"
                         />

@@ -814,6 +814,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
         };
 
+        // Diagnosis hook, same stance as window.__activeBoard: production
+        // incidents get measured, not guessed at. The bench target carries
+        // regs/readMem/video — everything a probe needs to say what the
+        // machine is actually doing.
+        if (typeof window !== 'undefined') window.__benchTarget = target;
+
         // Video face: only exposed when the machine actually has a chip
         // answering the videoFrame() contract (TMS9918, simplevga, …) —
         // the panel mounts VdpScreen on the presence of runner.video, and
