@@ -104,7 +104,16 @@ class CircuitTab extends React.Component {
                 // mounted but not selected. Request the designer here too;
                 // otherwise the portal host is visible before its content has
                 // ever been loaded and the user sees a blank debugger pane.
-                if ((value === 'top' || value === 'solo') && this.state.showInStage) this.load();
+                //
+                // EVERY dock, not just 'top' and 'solo'. 'right' and 'off' live
+                // INSIDE the designer's tree, so they need it loaded more than
+                // 'solo' does (which renders the panel on its own) — and they
+                // were the two values excluded from this call. Settings →
+                // Workspace → Debugger → Right, from any tab but Circuit, left
+                // the portal host displayed and empty: the blank pane the owner
+                // reported, and the same blank the Scratch stage showed on a
+                // fresh load before anyone had opened the Circuit tab.
+                if (this.state.showInStage) this.load();
             }
             if (key === 'stageCircuit' || key === 'bw-stage-circuit') {
                 this.setDisplayPreference('showInStage', value === '1');
@@ -191,8 +200,23 @@ class CircuitTab extends React.Component {
             this.setState({});
             Promise.resolve().then(() => { this._portalRefreshQueued = false; });
         }
+        // The event above covers a dock CHANGE; this covers every other way the
+        // portal turns on — a dock persisted in localStorage, a tab switch, the
+        // host appearing after the first render. The host is the stage column
+        // while coding, so if it is going to be shown, its content has to exist.
+        if (portalNow && !this.state.Designer && !this.loading &&
+            !this.state.error && !this.state.reloading) {
+            this.load();
+        }
         if (this._stageHost) {
-            this._stageHost.style.display = portalNow ? 'block' : 'none';
+            // Never show an EMPTY host. It is an opaque white overlay pinned
+            // over the stage column: displayed with nothing portalled into it,
+            // it does not read as "still loading", it reads as a blank pane —
+            // which is exactly what a fresh editor showed where the Scratch
+            // stage should be, and what dock 'right' showed instead of the
+            // debugger. _portalRendered is set by render at the points where
+            // it actually returns a portal, so this can never drift from it.
+            this._stageHost.style.display = portalNow && this._portalRendered ? 'block' : 'none';
         }
     }
 
@@ -809,6 +833,11 @@ class CircuitTab extends React.Component {
         const box = {height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0,
             overflow: 'auto', padding: 8, boxSizing: 'border-box',
             display: 'flex', flexDirection: 'column'};
+        // Nothing below returns a portal until it says so. componentDidUpdate
+        // shows the stage host only when this is true, so the three early
+        // returns here (reloading / error / designer not loaded) leave the
+        // Scratch stage visible instead of covering it with a white box.
+        this._portalRendered = false;
         if (reloading) {
             return (
                 <div style={{...box, color: '#64748b'}}>
@@ -858,6 +887,7 @@ class CircuitTab extends React.Component {
                     )}
                 </div>
             );
+            this._portalRendered = true;
             return ReactDOM.createPortal(solo, this._stageHost);
         }
         if (!Designer) {
@@ -1031,7 +1061,10 @@ class CircuitTab extends React.Component {
                 </div>
             </div>
         );
-        if (this._portalOn) return ReactDOM.createPortal(content, this._stageHost);
+        if (this._portalOn) {
+            this._portalRendered = true;
+            return ReactDOM.createPortal(content, this._stageHost);
+        }
         return content;
     }
 

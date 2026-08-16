@@ -806,11 +806,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             onRun: () => setStatus('running'),
         });
 
-        runner.sendSerial = (text) => {
-            if (adapter.sendSerial) {
-                for (let i = 0; i < text.length; i++) {
-                    adapter.sendSerial(text.charCodeAt(i));
-                }
+        // RX into the machine. Accepts a STRING (a typed line) or a single
+        // BYTE — bw-circuit-ui's SerialConsole calls its sendSerialFn one
+        // keycode at a time, and a number reaching the string branch used to
+        // send nothing at all (`(5).length` is undefined, the loop never runs,
+        // no error). Same producer/consumer shape mismatch this codebase keeps
+        // paying for, so both shapes are honoured rather than assumed.
+        runner.sendSerial = (data) => {
+            if (!adapter.sendSerial) return;
+            if (typeof data === 'number') {
+                adapter.sendSerial(data & 0xff);
+                return;
+            }
+            const text = String(data);
+            for (let i = 0; i < text.length; i++) {
+                adapter.sendSerial(text.charCodeAt(i));
             }
         };
 

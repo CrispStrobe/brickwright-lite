@@ -40,6 +40,8 @@ const L10N = {
         ready: 'ready', running: 'running', paused: 'paused', stepping: 'stepping…',
         error: 'error',
         stepHint: 'Run to the next block boundary',
+        serialHint: 'type a line, Enter sends it',
+        serialSend: 'Send this line to the machine (ends with CR)',
         consumes: 'Debugging this board uses:',
         pausedAt: 'Paused at', afterMs: 'after',
         noPins: 'Declare pins in the Code tab to debug this project.',
@@ -57,6 +59,8 @@ const L10N = {
         ready: 'bereit', running: 'läuft', paused: 'angehalten', stepping: 'Schritt…',
         error: 'Fehler',
         stepHint: 'Bis zur nächsten Blockgrenze laufen',
+        serialHint: 'Zeile eingeben, Enter sendet',
+        serialSend: 'Diese Zeile an die Maschine senden (endet mit CR)',
         consumes: 'Das Debuggen dieser Platine belegt:',
         pausedAt: 'Angehalten bei', afterMs: 'nach',
         noPins: 'Für das Debuggen im Code-Tab Pins deklarieren.',
@@ -84,12 +88,16 @@ class DebugPanel extends React.Component {
         // The target is chosen BEFORE a runner exists, so it lives here rather
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
-        this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null, machineConfig: null};
+        this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
+            machineConfig: null, serialInput: ''};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
         this.onStop = this.onStop.bind(this);
         this.onSpeed = this.onSpeed.bind(this);
+        this.onSerialInput = this.onSerialInput.bind(this);
+        this.onSerialKeyDown = this.onSerialKeyDown.bind(this);
+        this.onSerialSend = this.onSerialSend.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -319,6 +327,33 @@ class DebugPanel extends React.Component {
         else await runner.start();
     }
 
+    onSerialInput (e) { this.setState({serialInput: e.target.value}); }
+
+    onSerialKeyDown (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        this.onSerialSend();
+    }
+
+    /** Send the typed line to the machine's UART, terminated with CR.
+     *
+     *  CR (0x0d), not LF: that is what an ACIA monitor and every BASIC on
+     *  these benches read as "line ends here" — bw-circuit-ui's SerialConsole
+     *  defaults to the same byte.
+     *
+     *  NO local echo. BBC BASIC, Tali Forth and the Searle monitor all echo
+     *  what they receive, so painting the line here too would double every
+     *  character. The console shows what the MACHINE said; if nothing comes
+     *  back, that is a fact about the machine worth seeing, not one to hide
+     *  behind an echo the UI invented. */
+    onSerialSend () {
+        const runner = this.state.runner;
+        const line = this.state.serialInput;
+        if (!runner || typeof runner.sendSerial !== 'function') return;
+        runner.sendSerial(`${line}\r`);
+        this.setState({serialInput: ''});
+    }
+
     onPause () { if (this.state.runner) this.state.runner.pause(); }
     onStop () { if (this.state.runner) this.state.runner.stop(); }
     async onStep () { (await this.runner()).step('block'); }
@@ -337,6 +372,11 @@ class DebugPanel extends React.Component {
         // so the buttons reflect the phase alone.
         const caps = ui.capabilities;
         const canStep = !caps || caps.steps.includes('block');
+        // A capability, asked of the runner — the same stance as the step
+        // buttons. An 8051 that only prints has no sendSerial and gets no
+        // input line rather than a dead one.
+        const canSendSerial = !!(this.state.runner &&
+            typeof this.state.runner.sendSerial === 'function');
 
         return (
             <div style={{
@@ -510,14 +550,21 @@ class DebugPanel extends React.Component {
                     />
                 ) : null}
 
-                {/* Serial console — print output from the AVR USART / 8051 UART.
-                    The runner buffers serialLines and exposes snapshot.serialOutput;
-                    this is the UI consumer. */}
-                {ui.serialOutput && ui.serialOutput.length ? (
+                {/* Serial console — print output from the AVR USART / 8051 UART,
+                    and the BASIC/monitor prompt on a retro bench. The runner
+                    buffers serialLines and exposes snapshot.serialOutput; this
+                    is the UI consumer.
+
+                    It shows as soon as the machine can RECEIVE, not only once
+                    it has said something: a console that is output-only is a
+                    terminal with the keyboard unplugged — you can watch BBC
+                    BASIC print its banner and have no way to answer it. */}
+                {(ui.serialOutput && ui.serialOutput.length) || canSendSerial ? (
                     <div style={{borderTop: '1px solid #2c3e50', paddingTop: 8}}>
                         <div style={{color: '#7f8c8d', marginBottom: 4}}>
                             {'Serial'}
-                            {` (${ui.serialOutput.length})`}
+                            {ui.serialOutput && ui.serialOutput.length
+                                ? ` (${ui.serialOutput.length})` : ''}
                         </div>
                         <pre
                             data-testid="bw-serial-console"
@@ -527,7 +574,33 @@ class DebugPanel extends React.Component {
                                 borderRadius: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                                 fontFamily: 'monospace'
                             }}
-                        >{ui.serialOutput.join('\n')}</pre>
+                        >{(ui.serialOutput || []).join('\n')}</pre>
+                        {canSendSerial ? (
+                            <div style={{display: 'flex', gap: 6, marginTop: 4, alignItems: 'center'}}>
+                                <span style={{color: '#2ecc71'}}>{'>'}</span>
+                                <input
+                                    data-testid="bw-serial-input"
+                                    type="text"
+                                    value={this.state.serialInput}
+                                    onChange={this.onSerialInput}
+                                    onKeyDown={this.onSerialKeyDown}
+                                    placeholder={this.tx('serialHint')}
+                                    aria-label={this.tx('serialSend')}
+                                    style={{
+                                        flex: '1 1 auto', minWidth: 0, padding: '4px 6px',
+                                        background: '#0d1117', color: '#2ecc71',
+                                        border: '1px solid #2c3e50', borderRadius: 4,
+                                        fontFamily: 'monospace', fontSize: 11
+                                    }}
+                                />
+                                <button
+                                    data-testid="bw-serial-send"
+                                    style={{...BTN, padding: '3px 10px'}}
+                                    onClick={this.onSerialSend}
+                                    title={this.tx('serialSend')}
+                                >{'⏎'}</button>
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
 
