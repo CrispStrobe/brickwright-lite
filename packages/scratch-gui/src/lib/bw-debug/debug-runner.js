@@ -759,22 +759,26 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
-    // ── Z80 interactive BASIC (BBC BASIC over CP/M BDOS shim) ───────────
+    // ── Z80 machine (wired-extractor config or BBC BASIC fallback) ──────
     async function attachZ80() {
-        setStatus('attaching', 'loading BBC BASIC…');
+        const hasConfig = !!machineConfig;
+        setStatus('attaching', hasConfig ? 'booting extracted Z80 machine…' : 'loading BBC BASIC…');
         const { createDebugTarget, createDebugSession } =
             await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
 
-        // Fetch the BBCBASIC.COM (zlib, rtrussell/BBCZ80)
-        const res = await fetch(new URL('static/roms/bbcbasic.com', document.baseURI).href);
-        if (!res.ok) throw new Error(`Failed to load bbcbasic.com: HTTP ${res.status}`);
-        const com = new Uint8Array(await res.arrayBuffer());
+        const targetOpts = {};
+        if (hasConfig) {
+            targetOpts.config = machineConfig;
+        } else {
+            const res = await fetch(new URL('static/roms/bbcbasic.com', document.baseURI).href);
+            if (!res.ok) throw new Error(`Failed to load bbcbasic.com: HTTP ${res.status}`);
+            targetOpts.cpm = { com: new Uint8Array(await res.arrayBuffer()) };
+        }
 
-        const result = await createDebugTarget('z80', { cpm: { com } });
+        const result = await createDebugTarget('z80', targetOpts);
         target = result.target;
         const adapter = result.adapter || result;
 
-        // Wire serial output so the console face receives it
         if (adapter.onSerial) {
             adapter.onSerial((byte) => {
                 const ch = String.fromCharCode(byte & 0x7f);
@@ -790,7 +794,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             onRun: () => setStatus('running'),
         });
 
-        // Expose sendSerial for the console face
         runner.sendSerial = (text) => {
             if (adapter.sendSerial) {
                 for (let i = 0; i < text.length; i++) {
@@ -799,7 +802,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
         };
 
-        setStatus('ready', 'BBC BASIC (Z80) — type at the > prompt');
+        // Expose ROM loading for the machine loader / ASM tab
+        runner.loadRom = (bytes) => {
+            const load = adapter.loadRom || adapter.load;
+            if (load) load.call(adapter, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+        };
+
+        setStatus('ready', hasConfig
+            ? `Z80 machine booted (${machineConfig.chips?.map(c => c.kind).join(', ') || 'custom'})`
+            : 'BBC BASIC (Z80) — type at the > prompt');
         return session;
     }
 

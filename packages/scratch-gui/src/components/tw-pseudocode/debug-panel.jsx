@@ -93,6 +93,7 @@ class DebugPanel extends React.Component {
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onAsmRomReady = this._onAsmRomReady.bind(this);
+        this._onMediaLoad = this._onMediaLoad.bind(this);
     }
 
     _onMachineExtracted (e) {
@@ -113,11 +114,23 @@ class DebugPanel extends React.Component {
         }
     }
 
+    async _onMediaLoad (e) {
+        const { slotId, bytes, kind } = e.detail || {};
+        if (!bytes) return;
+        // Ensure runner exists — create if needed
+        const runner = await this.runner();
+        if (runner.loadRom) {
+            runner.loadRom(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+            runner.start().catch(() => {});
+        }
+    }
+
     componentDidMount () {
         this.syncDeviceKind();
         this.syncProjectTokens({}, true);
         window.addEventListener('bw-machine-extracted', this._onMachineExtracted);
         window.addEventListener('bw-asm-rom-ready', this._onAsmRomReady);
+        window.addEventListener('bw-machine-media-load', this._onMediaLoad);
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
@@ -176,6 +189,7 @@ class DebugPanel extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('bw-machine-extracted', this._onMachineExtracted);
         window.removeEventListener('bw-asm-rom-ready', this._onAsmRomReady);
+        window.removeEventListener('bw-machine-media-load', this._onMediaLoad);
         if (this.state.runner) this.state.runner.destroy();
     }
 

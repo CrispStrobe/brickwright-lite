@@ -30,6 +30,9 @@ const DEVICE_GROUPS = [
     { label: '6502', core: 'w65c02', devices: [
         { id: 'eater6502', label: 'Eater 6502', compile: false, emulator: null },
     ]},
+    { label: 'Z80', core: 'z80', devices: [
+        { id: 'z80', label: 'Z80 (Searle)', compile: false, emulator: null },
+    ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
     ]},
