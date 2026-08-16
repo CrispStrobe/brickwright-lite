@@ -123,8 +123,6 @@ class DebugPanel extends React.Component {
     async _onMediaLoad (e) {
         const {slotId, bytes, kind, profile, name} = e.detail || {};
         if (!bytes) return;
-        // Consumed — a remount must not replay a program the user already ran.
-        window.__bwPendingMedia = null;
         if (this.state.runner) this.state.runner.destroy();
         this._bootMedia = {
             slot: slotId,
@@ -168,9 +166,13 @@ class DebugPanel extends React.Component {
             !this.state.machineConfig) {
             this._onMachineExtracted({detail: window.__bwMachineExtracted});
         }
+        // The stash is deliberately NOT cleared on consumption: the runner
+        // dies with this panel (tab switches remount the whole designer),
+        // and a bench that forgets its program on every tab switch is a
+        // bench the ASM workflow cannot use. Replaying the last program is
+        // the bench's continuity — same stance as the config replay above.
         const pending = window.__bwPendingMedia;
         if (pending) {
-            window.__bwPendingMedia = null;
             if (pending.type === 'asm') this._onAsmRomReady({detail: pending.detail});
             else this._onMediaLoad({detail: pending.detail});
         }
