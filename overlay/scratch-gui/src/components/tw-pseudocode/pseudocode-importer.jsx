@@ -48,6 +48,13 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 const L10N = {
     en: {
         loadExample: '📚 Load example…', loadExampleTitle: 'Load a built-in example',
+        loadCatalogTitle: 'Load a catalog example for this device',
+        noChips: 'no chips (Scratch stage)',
+        searchExamples: 'Search examples…',
+        catalogLoading: 'Loading example catalog…',
+        catalogEmpty: 'No catalog examples for this device.',
+        catalogNoMatch: 'No examples match that search.',
+        catalogUnavailable: e => `Example catalog unavailable (${e})`,
         infoTitle: 'Click for info', infoAria: 'About the Code tab',
         reference: 'reference', referenceTitle: l => `Reference for ${l}`,
         customArt: 'Custom sprite art', customArtTitle: 'Upload SVGs and bake them in as sprite costumes',
@@ -108,6 +115,13 @@ const L10N = {
     },
     de: {
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
+        loadCatalogTitle: 'Ein Katalog-Beispiel für dieses Gerät laden',
+        noChips: 'ohne Chip (Scratch-Bühne)',
+        searchExamples: 'Beispiele suchen…',
+        catalogLoading: 'Beispiel-Katalog wird geladen…',
+        catalogEmpty: 'Keine Katalog-Beispiele für dieses Gerät.',
+        catalogNoMatch: 'Keine Beispiele passen zur Suche.',
+        catalogUnavailable: e => `Beispiel-Katalog nicht verfügbar (${e})`,
         infoTitle: 'Für Infos klicken', infoAria: 'Über den Code-Tab',
         reference: 'Referenz', referenceTitle: l => `Referenz für ${l}`,
         customArt: 'Eigene Sprite-Grafik', customArtTitle: 'SVGs hochladen und als Sprite-Kostüme einbacken',
@@ -402,7 +416,12 @@ class PseudocodeImporter extends React.Component {
             // Future current-PC highlight will drive setHighlightedLine via this.
             asmLineMap: null,
             // ASM listing buffer (separate from the editable asm buffer)
-            asmListing: ''};
+            asmListing: '',
+            // Catalog examples (examples/index.json — same file the Circuit tab's
+            // gallery loads). Fetched once, on demand, when a chip is selected:
+            // the "Load example…" control then lists catalog programs for that
+            // device instead of the built-in stage games.
+            catalog: null, catalogError: null, showCatalog: false, exampleFilter: ''};
         this._cmEditor = null;
         // Cache compiled ASM by source hash so tab switching doesn't recompile.
         this._asmCache = {hash: null, asm: '', lineMap: null};
@@ -436,7 +455,10 @@ class PseudocodeImporter extends React.Component {
         // If a device is already set (e.g. from a loaded project), compute
         // example compatibility so the dropdown is filtered from the start.
         const device = this.currentDevice();
-        if (device) this.computeExampleCompat(device);
+        if (device) {
+            this.computeExampleCompat(device);
+            this.loadCatalog();
+        }
     }
 
     componentWillUnmount () {
@@ -697,8 +719,25 @@ class PseudocodeImporter extends React.Component {
     // any hard blockers ("no ADC on this chip"). Code without pins just gets its
     // DEVICE line rewritten — there is nothing to refuse.
     async setDevice (deviceId) {
+        if (!deviceId) {
+            // "no chips" — pure Scratch stage mode. Drop the DEVICE line and the
+            // runtime device hints; "Load example…" goes back to the stage games.
+            this.setState(s => ({
+                showCatalog: false, status: '',
+                buffers: {...s.buffers, pseudocode: (s.buffers.pseudocode || '').replace(/^DEVICE\s+[\w-]+[^\n]*\n?/im, '')}
+            }));
+            if (this.props.vm && this.props.vm.runtime) {
+                this.props.vm.runtime.bwDeviceCore = null;
+                this.props.vm.runtime.bwDeviceId = null;
+            }
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-device-id', value: ''}
+            }));
+            return;
+        }
         const info = DEVICE_BY_ID[deviceId];
         if (!info) return;
+        this.loadCatalog();
         const src = this.state.buffers.pseudocode || '';
         const hasPins = /^\s*PIN\s/im.test(src);
 
@@ -1041,6 +1080,76 @@ class PseudocodeImporter extends React.Component {
         return this._exampleCompatCache[key];
     }
 
+    // Fetch examples/index.json once — the same file the Circuit tab's gallery
+    // loads (see circuit-tab.jsx loadExamples). Kept as a fetch, not an import:
+    // the catalog is data for a control most users never open. Only entries that
+    // are programs (kind 'program' or 'full') with an actual program.bw file are
+    // kept; circuit-only entries have nothing to put in the editor.
+    async loadCatalog () {
+        if (this.state.catalog || this._catalogLoading) return;
+        this._catalogLoading = true;
+        try {
+            const res = await fetch('examples/index.json');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const list = (Array.isArray(data) ? data : (data.examples || []))
+                .filter(ex => (ex.kind === 'program' || ex.kind === 'full') && ex.files && ex.files.program);
+            this.setState({catalog: list, catalogError: null});
+        } catch (e) {
+            this.setState({catalogError: e.message});
+        }
+        this._catalogLoading = false;
+    }
+
+    // Normalize a device id for matching the catalog's `devices` values against
+    // the Device dropdown's ids. Both sides are lowercase-with-dashes today
+    // ('arduino-uno', 'stc12c5a60s2', 'attiny88', 'pico', 'eater6502'); the
+    // normalization keeps a case or underscore drift from silently emptying the list.
+    _normDevice (id) {
+        return String(id || '').toLowerCase().replace(/_/g, '-');
+    }
+
+    /** Catalog entries compatible with the given device id. */
+    catalogForDevice (device) {
+        const dev = this._normDevice(device);
+        return (this.state.catalog || []).filter(
+            ex => (ex.devices || []).some(d => this._normDevice(d) === dev));
+    }
+
+    // Load a catalog example's program.bw into the pseudocode editor. If the
+    // program's DEVICE line differs from the selected device, retarget it via
+    // SB3Creator.retargetPseudocode; a refusal shows its reasons in the status
+    // line (the tab's existing warning surface) and loads nothing.
+    async loadCatalogExample (ex) {
+        const device = this.currentDevice();
+        this.setState({showCatalog: false, busy: true, status: ''});
+        try {
+            const res = await fetch(`examples/${ex.files.program}`);
+            if (!res.ok) throw new Error(`program: HTTP ${res.status}`);
+            let src = await res.text();
+            const exDevice = ((src.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '').toLowerCase();
+            let warnings = [];
+            if (device && exDevice && exDevice !== device) {
+                const SB3Creator = (await this.lib()).default;
+                if (SB3Creator.retargetPseudocode) {
+                    const result = SB3Creator.retargetPseudocode(src, device);
+                    if (!result.ok) {
+                        this.setState({busy: false,
+                            status: `Cannot load "${ex.id}" for ${device}: ${(result.reasons || []).join('; ')}`});
+                        return;
+                    }
+                    src = result.pseudocode;
+                    warnings = result.warnings || [];
+                }
+            }
+            this.setState({busy: false, lang: 'pseudocode', output: null,
+                status: warnings.length ? warnings.join('; ') : '',
+                buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
+        } catch (e) {
+            this.setState({busy: false, status: this.L.stError(e.message)});
+        }
+    }
+
     async loadExample (key) {
         const src = key && examples[key];
         if (!src) return;
@@ -1277,6 +1386,82 @@ class PseudocodeImporter extends React.Component {
         }));
     }
 
+    // The "Load example…" control when a chip is selected: a button opening a
+    // searchable popover over the catalog (examples/index.json). A native
+    // <select> cannot hold a search input, and the catalog is large enough
+    // (100+ programs, up to ~90 per device) that scrolling unaided is not an
+    // answer — hence the filter box the spec asks for.
+    renderCatalogControl (csel) {
+        const device = this.currentDevice();
+        const list = this.catalogForDevice(device);
+        const q = this.state.exampleFilter.trim().toLowerCase();
+        const locale = pickLocale(this.props.locale);
+        const rows = q ? list.filter(ex => {
+            const t = ex.title || {};
+            return [t.en || '', t.de || '', ex.id].some(s => String(s).toLowerCase().includes(q));
+        }) : list;
+        const open = this.state.showCatalog;
+        return (
+            <span style={{position: 'relative', alignSelf: 'center'}}>
+                <button type="button"
+                    onClick={() => { this.loadCatalog(); this.setState(s => ({showCatalog: !s.showCatalog})); }}
+                    style={{...csel, cursor: 'pointer', border: '1px solid #cbd5e1',
+                        background: open ? '#e2e8f0' : '#f1f5f9'}}
+                    title={this.L.loadCatalogTitle} data-testid="bw-catalog-toggle">
+                    {this.L.loadExample}
+                </button>
+                {open && (
+                    <div style={{position: 'absolute', top: '100%', right: 0, zIndex: 60, marginTop: 4,
+                        width: 340, maxHeight: 380, display: 'flex', flexDirection: 'column',
+                        background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
+                        boxShadow: '0 8px 24px rgba(15,23,42,.18)', textAlign: 'left'}}
+                        data-testid="bw-catalog-panel">
+                        <input type="search" value={this.state.exampleFilter} autoFocus
+                            onChange={e => this.setState({exampleFilter: e.target.value})}
+                            placeholder={this.L.searchExamples}
+                            style={{margin: 8, padding: '6px 10px', border: '1px solid #cbd5e1',
+                                borderRadius: 6, font: 'inherit', fontSize: 13}}
+                            data-testid="bw-catalog-search" />
+                        <div style={{overflowY: 'auto', padding: '0 8px 8px', minHeight: 0}}>
+                            {this.state.catalogError ? (
+                                <div style={{padding: '6px 8px', fontSize: 12, color: '#b45309'}}>
+                                    {this.L.catalogUnavailable(this.state.catalogError)}
+                                </div>
+                            ) : !this.state.catalog ? (
+                                <div style={{padding: '6px 8px', fontSize: 12, color: '#64748b'}}>
+                                    {this.L.catalogLoading}
+                                </div>
+                            ) : list.length === 0 ? (
+                                <div style={{padding: '6px 8px', fontSize: 12, color: '#64748b'}}>
+                                    {this.L.catalogEmpty}
+                                </div>
+                            ) : rows.length === 0 ? (
+                                <div style={{padding: '6px 8px', fontSize: 12, color: '#64748b'}}>
+                                    {this.L.catalogNoMatch}
+                                </div>
+                            ) : rows.map(ex => {
+                                const t = ex.title || {};
+                                const title = (locale === 'de' ? t.de : t.en) || t.en || ex.id;
+                                return (
+                                    <button key={ex.id} type="button"
+                                        onClick={() => this.loadCatalogExample(ex)}
+                                        style={{display: 'block', width: '100%', textAlign: 'left',
+                                            padding: '5px 8px', border: 'none', borderRadius: 6,
+                                            background: 'transparent', cursor: 'pointer',
+                                            font: 'inherit', fontSize: 13, color: '#1e293b'}}
+                                        title={ex.id} data-testid="bw-catalog-item">
+                                        {title}
+                                        <span style={{marginLeft: 6, fontSize: 11, color: '#94a3b8'}}>{ex.id}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </span>
+        );
+    }
+
     render () {
         // The selected .tab-panel is display:flex (row); like .blocks-wrapper we must
         // flex-grow to fill the column width, else we shrink to content (~660px) and
@@ -1323,32 +1508,36 @@ class PseudocodeImporter extends React.Component {
                                 i
                             </button>
                             <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
-                                style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}>
-                                <option value="" disabled>{this.L.devicePlaceholder}</option>
+                                style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}
+                                data-testid="bw-device-select">
+                                <option value="">{this.L.noChips}</option>
                                 {DEVICE_GROUPS.map(g => (
                                     <optgroup key={g.label} label={g.label}>
                                         {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
                                     </optgroup>
                                 ))}
                             </select>
-                            <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
-                                style={{...csel, alignSelf: 'center'}} title={this.L.loadExampleTitle}>
-                                <option value="" disabled>{this.L.loadExample}</option>
-                                {GROUPS.map(g => (
-                                    <optgroup key={g.label} label={g.label}>
-                                        {g.items.filter(([k]) => examples[k]).map(([k, label]) => {
-                                            const compat = this.exampleCompat(k);
-                                            const blocked = compat && !compat.ok;
-                                            return (
-                                                <option key={k} value={k} disabled={blocked}
-                                                    title={blocked ? compat.reasons.join('; ') : ''}>
-                                                    {blocked ? `${label} ⛔` : label}
-                                                </option>
-                                            );
-                                        })}
-                                    </optgroup>
-                                ))}
-                            </select>
+                            {this.currentDevice() ? this.renderCatalogControl(csel) : (
+                                <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
+                                    style={{...csel, alignSelf: 'center'}} title={this.L.loadExampleTitle}
+                                    data-testid="bw-load-example">
+                                    <option value="" disabled>{this.L.loadExample}</option>
+                                    {GROUPS.map(g => (
+                                        <optgroup key={g.label} label={g.label}>
+                                            {g.items.filter(([k]) => examples[k]).map(([k, label]) => {
+                                                const compat = this.exampleCompat(k);
+                                                const blocked = compat && !compat.ok;
+                                                return (
+                                                    <option key={k} value={k} disabled={blocked}
+                                                        title={blocked ? compat.reasons.join('; ') : ''}>
+                                                        {blocked ? `${label} ⛔` : label}
+                                                    </option>
+                                                );
+                                            })}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                            )}
                             <button onClick={() => this.setState(s => ({showRef: !s.showRef}))}
                                 style={{...csel, cursor: 'pointer', background: this.state.showRef ? '#e2e8f0' : '#f1f5f9',
                                     border: '1px solid #cbd5e1', alignSelf: 'center'}}
