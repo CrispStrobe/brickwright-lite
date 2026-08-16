@@ -35,6 +35,9 @@ const PASSTHROUGH_KINDS = new Set([
   'pi_pico', 'attiny85', 'attiny88', 'attiny13', 'attiny2313', 'microbit',
   // Retro DIPs (6502 family)
   'w65c02', 'w65c22', 'w65c51',
+  // Machine-layer peripherals (bw-board implements them chip-level; the
+  // electrical board only needs their terminals seatable and driveable)
+  'ps2',
   // Memory ICs
   '28c256', '62256',
   // 6507 family
@@ -44,7 +47,7 @@ const PASSTHROUGH_KINDS = new Set([
   // Video / retro DIPs (machine-class, engine has device models)
   'tms9918', 'mc6845', 'ns16c550',
   // Board / module variants
-  'microbit_breakout',
+  'microbit_breakout', 'pololu_motor_ctrl',
   // Video cards (machine-class sidecars, rendered as machine faces)
   'simplevga_card', 'tilevga', 'vga_prop_card',
   // Parallel display variant
@@ -1026,7 +1029,12 @@ export function terminalsForKind(kind, params) {
     case 'relay': return ['coil_a', 'coil_b', 'com', 'nc', 'no'];
     case 'servo': return ['signal', 'vcc', 'gnd'];
     case 'ili9341': return ['vcc', 'gnd', 'cs', 'rst', 'dc', 'mosi', 'sck', 'miso', 'led'];
-    case 'hd44780': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'];
+    // Engine device names = datasheet names (vss/vdd/v0, a/k backlight).
+    // The sidecar already says these; this list disagreeing was the ghost-
+    // terminal disease: every wire to 'vcc'/'vo'/'bl_a' failed engine
+    // validation and the WHOLE bench board went phantom (eater6502-full-
+    // build, 2026-08-16). Old spellings migrate via TERMINAL_ALIASES.
+    case 'hd44780': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vss', 'vdd', 'v0', 'a', 'k'];
     case 'at24c64': return ['a0', 'a1', 'a2', 'gnd', 'sda', 'scl', 'wp', 'vcc'];
     case 'adxl335': return ['vcc', 'gnd', 'xout', 'yout', 'zout', 'st'];
     case 'memsic2125': return ['vcc', 'gnd', 'xout', 'yout'];
@@ -1062,6 +1070,7 @@ export function terminalsForKind(kind, params) {
     case 'isource': return ['pos', 'neg'];
     case 'timer_555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
     case 'seven_segment': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com'];
+    case 'seven_seg_3': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com0', 'com1', 'com2'];
     case 'char_lcd': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'];
     case 'shift_register': return ['data', 'clock', 'latch', 'oe', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
     case 'ir_receiver': return ['vcc', 'gnd', 'out'];
