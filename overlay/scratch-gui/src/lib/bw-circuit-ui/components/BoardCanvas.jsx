@@ -38,6 +38,10 @@ const DIP_CHIP_LABELS = {
   '74hc32': '74HC32', '74hc74': '74HC74', '74hc138': '74HC138',
   '74hc245': '74HC245', '74hc374': '74HC374', '74hc595': '74HC595',
   '74c922': '74C922', r6507: 'R6507', mos6532: 'MOS6532',
+  // Device-true MCU DIPs: without these the blinkenrocket pendant's
+  // seated ATtiny88 rendered as a ghost outline (owner screenshot) —
+  // 28 pin names floating around no body at all.
+  attiny88: 'ATtiny88', attiny85: 'ATtiny85',
 };
 import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
@@ -275,9 +279,11 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <g key={id} transform={xform} pointerEvents="none">
               <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
                 fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
-              <path d="M -9 -31 A 9 9 0 0 1 9 -31"
+              {/* Notch at left end — pin-1-bottom convention */}
+              <path d={`M ${-bodyW / 2} -5 A 5 5 0 0 1 ${-bodyW / 2} 5`}
                 fill="#2c3e50" stroke={selStroke || '#555'} strokeWidth={1} />
-              <circle cx={-bodyW / 2 + 12} cy={-bodyH / 2 + 10} r={2.5} fill="#555" />
+              {/* Pin 1 dot — bottom-left */}
+              <circle cx={-bodyW / 2 + 10} cy={bodyH / 2 - 8} r={2.5} fill="#555" />
               <text x={0} y={-5} textAnchor="middle" fill="#bbb" fontSize={10}
                 fontFamily="monospace" fontWeight="bold"
                 transform="rotate(0)">{chipInfo.label}</text>
@@ -556,7 +562,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         );
 
       default: {
-        // Generic DIP body for retro/logic ICs that have sidecars
+        // Generic DIP body for retro/logic ICs that have sidecars.
+        // Pin-1-bottom convention: left column (pin 1 side) at bottom row,
+        // right column at top row. Notch at left end, pin-1 dot bottom-left.
         const dipLabel = DIP_CHIP_LABELS[kind];
         if (dipLabel) {
           const sc = typeof getSidecar === 'function' ? getSidecar(kind) : null;
@@ -572,17 +580,17 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 {/* DIP package body */}
                 <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={3}
                   fill="#1a1a1a" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
-                {/* Notch */}
-                <path d={`M -6 ${-bodyH / 2} A 6 6 0 0 1 6 ${-bodyH / 2}`}
+                {/* Notch at left end — pin-1-bottom: the wrap-around is at the left */}
+                <path d={`M ${-bodyW / 2} -5 A 5 5 0 0 1 ${-bodyW / 2} 5`}
                   fill="#2c3e50" stroke={selStroke || '#666'} strokeWidth={0.8} />
-                {/* Pin 1 dot */}
-                <circle cx={-bodyW / 2 + 8} cy={-bodyH / 2 + 7} r={2} fill="#666" />
+                {/* Pin 1 dot — bottom-left, near first pin of left column */}
+                <circle cx={-bodyW / 2 + 8} cy={bodyH / 2 - 7} r={2} fill="#666" />
                 {/* Label */}
                 <text x={0} y={-2} textAnchor="middle" fill="#ccc" fontSize={8}
                   fontFamily="monospace" fontWeight="bold">{dipLabel}</text>
                 <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={6}
                   fontFamily="monospace">DIP-{pinCount}</text>
-                {/* Pin legs */}
+                {/* Pin legs + sidecar labels */}
                 {sc.terminals.map(t => {
                   const pos = positions[t.name];
                   if (!pos) return null;
@@ -593,6 +601,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                         stroke="#b0b8c0" strokeWidth={2} />
                       <rect x={pos.dx - 3} y={pos.dy - 1.5} width={6} height={3}
                         fill="#d8dee4" stroke="#8090a0" strokeWidth={0.3} />
+                      <text x={pos.dx} y={pos.dy + (pos.dy < 0 ? -6 : 10)}
+                        textAnchor="middle" fill="#7f8c8d" fontSize={3.5}
+                        fontFamily="monospace">{t.name}</text>
                     </g>
                   );
                 })}
@@ -759,6 +770,37 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
     set.add(`${w.to.part}:${w.to.terminal}`);
   }
 
+  // ── Cross-board wire bundling ──────────────────────────────────
+  // Group wires that span two different boards into corridor bundles.
+  // Each bundle routes as parallel straight paths through the gap
+  // between the two boards, like a real bus harness.
+  const bundleOffsets = new Map(); // wireId → offset within its corridor
+  {
+    const corridors = new Map(); // "boardA:boardB" → [wireId, ...]
+    for (const w of wires) {
+      if (isBoardEndpoint(w.from) || isBoardEndpoint(w.to)) continue;
+      const fp = parts.find(p => p.id === w.from.part);
+      const tp = parts.find(p => p.id === w.to.part);
+      if (!fp || !tp) continue;
+      if (!fp.seat?.boardId || !tp.seat?.boardId) continue;
+      if (fp.seat.boardId === tp.seat.boardId) continue;
+      // Canonical key: sorted board IDs so A→B and B→A share a corridor
+      const key = [fp.seat.boardId, tp.seat.boardId].sort().join(':');
+      if (!corridors.has(key)) corridors.set(key, []);
+      corridors.get(key).push(w.id);
+    }
+    for (const group of corridors.values()) {
+      if (group.length < 2) continue; // single wires keep default arc
+      // Sort by wire id for stable ordering, then assign offsets
+      group.sort();
+      const spacing = 4; // pixels between parallel wires
+      const half = (group.length - 1) / 2;
+      for (let i = 0; i < group.length; i++) {
+        bundleOffsets.set(group[i], (i - half) * spacing);
+      }
+    }
+  }
+
   return wires.map(wire => {
     // Board-connected tap wires are drawn by the dedicated tap-wire layer.
     // A board hole is not a part terminal; rendering it here as well creates
@@ -784,13 +826,37 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
-    // Wires draw as jumper-style arcs; each wire's id hashes to a distinct
-    // curvature so parallel runs SEPARATE instead of overlapping into one
-    // unreadable stroke. User waypoints still win.
     let pathD;
     if (wire.waypoints && wire.waypoints.length > 0) {
       pathD = routeWireWithWaypoints(a, b, wire.waypoints);
+    } else if (bundleOffsets.has(wire.id)) {
+      // ── Corridor bundle path ─────────────────────────────────
+      // Route as a tidy parallel path through the gap between boards,
+      // like a real bus harness. Detects whether boards are separated
+      // vertically or horizontally and routes through the appropriate gap.
+      const offset = bundleOffsets.get(wire.id);
+      const boardA = parts.find(p => p.id === fromPart.seat?.boardId);
+      const boardB = parts.find(p => p.id === toPart.seat?.boardId);
+      if (boardA && boardB) {
+        const dx = Math.abs(boardB.x - boardA.x);
+        const dy = Math.abs(boardB.y - boardA.y);
+        if (dy >= dx) {
+          // Boards stacked vertically: route through the Y gap
+          const corridorY = (boardA.y + boardB.y) / 2 + offset;
+          pathD = `M ${a.x} ${a.y} L ${a.x} ${corridorY} L ${b.x} ${corridorY} L ${b.x} ${b.y}`;
+        } else {
+          // Boards side by side: route through the X gap
+          const corridorX = (boardA.x + boardB.x) / 2 + offset;
+          pathD = `M ${a.x} ${a.y} L ${corridorX} ${a.y} L ${corridorX} ${b.y} L ${b.x} ${b.y}`;
+        }
+      } else {
+        // Fallback: straight line with offset
+        const dist = Math.hypot(b.x - a.x, b.y - a.y);
+        const nx = -(b.y - a.y) / (dist || 1), ny = (b.x - a.x) / (dist || 1);
+        pathD = `M ${a.x} ${a.y} Q ${(a.x + b.x) / 2 + nx * offset} ${(a.y + b.y) / 2 + ny * offset} ${b.x} ${b.y}`;
+      }
     } else {
+      // Single wires: jumper-style arcs with hash-derived curvature
       let h = 0;
       for (const ch of wire.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
       const dist = Math.hypot(b.x - a.x, b.y - a.y);
@@ -1593,11 +1659,30 @@ export function BoardCanvas({
             setSnapTarget(snap && snap.autoWire ? snap : null);
             // The holes this part's legs would take, live under the finger —
             // green free / red taken — BEFORE release commits anything.
+            // Uses the SAME two-pass logic as endMove: tight snap first,
+            // then seatSnapHole loose fallback — what you see is what the
+            // drop does.
             if (pp.kind !== 'breadboard') {
               const fp = BB_FOOTPRINTS[pp.kind];
               const anchor = fp && terminalOffsetsForPart(pp)[fp.refTerminal];
               const sg = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y, anchorDx: anchor?.dx || 0, anchorDy: anchor?.dy || 0 }, partsRef.current);
-              const g = sg.snapped ? ghostWithLegs(sg) : null;
+              let g = sg.snapped ? ghostWithLegs(sg) : null;
+              // Loose fallback: seatSnapHole finds the nearest valid seat
+              // even when the ref pin isn't directly over a hole.
+              if (!g && fp) {
+                const ax = pp.x + (anchor?.dx || 0);
+                const ay = pp.y + (anchor?.dy || 0);
+                for (const bb of partsRef.current) {
+                  if (bb.kind !== 'breadboard') continue;
+                  const hole = seatSnapHole(bb, fp, ax, ay, (h) => {
+                    try { computeLeadMap(fp, h); return true; } catch { return false; }
+                  });
+                  if (hole) {
+                    g = ghostWithLegs({ ...sg, snapped: true, boardId: bb.id, hole, kind: pp.kind });
+                    break;
+                  }
+                }
+              }
               setDragLegs(g && g.legs ? g.legs : null);
             }
           }
@@ -1653,7 +1738,25 @@ export function BoardCanvas({
       wirePreview: (from, toPos) => { setWiringFrom({ part: from.partId, terminal: from.terminal }); setMousePos(toPos); },
       clearWirePreview: () => { setWiringFrom(null); setMousePos(null); },
       marqueeRect: (r) => setRubberBand(r ? { startX: r.x1, startY: r.y1, endX: r.x2, endY: r.y2 } : null),
-      placeGhost: (g) => setPlaceGhost(g ? ghostWithLegs(snapGhost(g, partsRef.current)) : null),
+      placeGhost: (g) => {
+        if (!g) { setPlaceGhost(null); return; }
+        const sg = snapGhost(g, partsRef.current);
+        let result = ghostWithLegs(sg);
+        // Loose fallback for palette drags too
+        if (!result.snapped) {
+          const fp = BB_FOOTPRINTS[g.kind];
+          if (fp) {
+            for (const bb of partsRef.current) {
+              if (bb.kind !== 'breadboard') continue;
+              const hole = seatSnapHole(bb, fp, g.x, g.y, (h) => {
+                try { computeLeadMap(fp, h); return true; } catch { return false; }
+              });
+              if (hole) { result = ghostWithLegs({ ...sg, snapped: true, boardId: bb.id, hole, kind: g.kind }); break; }
+            }
+          }
+        }
+        setPlaceGhost(result);
+      },
       placePart: (kind, params, x, y) => {
         const s = ghostWithLegs(snapGhost({ kind, x, y }, partsRef.current));
         if (s.snapped && s.legs && !s.ok) {

@@ -60,6 +60,7 @@ import { Circuit } from '../model/circuit.js';
 import { extractMachine } from '../model/machine-extract.js';
 import { OrientationInput } from './OrientationInput.jsx';
 import { SerialConsole } from './SerialConsole.jsx';
+import { ArchitectureFace } from './ArchitectureFace.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -286,11 +287,21 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // ── Project prop → infer circuit ────────────────────────────────
   // Re-infer when the project's pins change.
   const prevPinsRef = useRef(null);
+  // Set the moment a circuitData FILE is applied (the effect below).
+  // Loading an example loads its PROGRAM first; the resulting project
+  // change ripples new pins into THIS effect, which used to rebuild
+  // the bench from declarations and WIPE the just-loaded file — a race
+  // the thermostat happened to win and the blinkenrocket pendant lost
+  // (owner screenshot: the inferred 8-of-18-pins bench where the
+  // curated seated build should be). A loaded file wins until another
+  // file loads or the user explicitly rebuilds via the Infer panel.
+  const fileLoadedRef = useRef(false);
   useEffect(() => {
     const pins = projectData?.pins;
     // Shallow compare: skip if same array reference
     if (pins === prevPinsRef.current) return;
     prevPinsRef.current = pins;
+    if (fileLoadedRef.current) return;
 
     // No declared pins: the last session's autosaved wiring beats the
     // canned demo - losing an evening's circuit to a reload was the bug.
@@ -675,6 +686,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
+    // An EXPLICIT rebuild hands the canvas back to inference: future
+    // declaration edits may re-derive again.
+    fileLoadedRef.current = false;
     setAnnotations(ann || []);
     setSelectedParts(new Set());
     setSelectedWire(null);
@@ -768,6 +782,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       } catch { /* fall through: load the file as-is */ }
     }
     handleLoad(circuitData);
+    // A file is now on the canvas: the pin-inference effect must not
+    // rebuild over it when the example's program load ripples new pins
+    // through projectData a tick later (the pendant race).
+    fileLoadedRef.current = true;
     // Auto-seat: if a breadboard and an unseated MCU-class part both exist,
     // seat the MCU onto the breadboard. Many legacy examples ship the MCU
     // floating off the breadboard; this is the leveraged fix rather than
@@ -1185,6 +1203,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             </div>
             <SerialConsole onSerialFn={debugState.onSerial} sendSerialFn={debugState.sendSerial} lang={lang} />
           </section>
+        )}
+        {/* Architecture face — block diagram with live register state */}
+        {hasMcuPins && debugState && typeof debugState.regs === 'function' && (
+          <ArchitectureFace debugState={debugState} lang={lang} />
         )}
         {hasMcuPins && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,

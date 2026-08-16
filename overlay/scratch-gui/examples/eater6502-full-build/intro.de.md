@@ -2,24 +2,30 @@
 level: advanced
 age: 14+
 prereqs: [eater6502-bench]
-teaches: [full-build, binary-counting, bar-graph, lcd, 555-clock, address-decode]
+teaches: [full-build, binary-counting, bar-graph, lcd-4bit, ps2-keyboard, acia-serial, decoupling, reset-circuit]
 ---
 ## Was du siehst
-Der vollständige Ben-Eater-6502-Breadboard-Computer: W65C02-CPU, RAM, ROM, VIA, ACIA, zwei NAND-Dekodier-Gatter — plus die Vollausbau-Extras: ein 10-LED-Balkendiagramm an VIA-Port A zeigt einen Binärzähler, ein HD44780-LCD an Port B und ein 555-Timer als Taktquelle.
+Der vollständige Ben-Eater-6502-Breadboard-Computer mit der BeebEater-Peripherie-Verdrahtung: W65C02-CPU, 16 KB RAM (62256, untere Hälfte), 32 KB ROM (28C256), W65C22 VIA mit HD44780-LCD im 4-Bit-Modus an PORTB und PS/2-Tastatur an PORTA, W65C51 ACIA mit 115200 Baud und 1,8432-MHz-Quarz, zwei 74HC00-NAND-Dekodier-Gatter, Entkopplungskondensatoren pro Chip, Reset-Taster, Balkendiagramm-Status-LEDs und 1-MHz-Taktoszillator.
+
+Dieselbe Schaltung, auf der BeebEater (chelsea6502, MIT) läuft — und später das lieferbare MIT-MS-BASIC-ROM.
 
 ## Probier das
-1. Starte das Programm — das Balkendiagramm zählt binär (0–255) und springt zurück.
-2. Beobachte den Zähler in der seriellen Ausgabe neben dem LED-Muster.
-3. Ändere die Wartezeit von 0,25 auf 0,05 Sekunden — der Zähler rast.
-4. Zähle nur die unteren 4 Bits (mod 16 statt mod 256) — nur die ersten 4 LEDs leuchten.
+1. Starte das Programm — das Balkendiagramm zählt binär am VIA-Port-A-Ausgang.
+2. Drücke Reset — der Zähler startet bei 0 neu.
+3. Prüfe das Warnungen-Panel: RAM $0000–$3FFF, ROM $8000–$FFFF, VIA $6000, ACIA $5000.
 
 ## Was passiert hier
-Port A des VIA treibt 8 LEDs über das Balkendiagramm. Das Programm inkrementiert einen Zähler und extrahiert mit Bitmaskierung (Division durch Zweierpotenzen, dann mod 2) jedes Bit für die entsprechende LED.
+Die Peripherie-Verdrahtung folgt der BeebEater-Konvention (chelsea6502/BeebEater, MIT):
+- **VIA PORTB** (Pins 10–16): HD44780-LCD im 4-Bit-Modus. PB7 muss auf GND gelegt werden, wenn das LCD nicht angeschlossen ist.
+- **VIA PORTA** (Pins 2–9): PS/2-Tastatur. Die Taktflanke der Tastatur löst über CA1 einen Interrupt aus.
+- **ACIA**: 115200-Baud-Seriell bei $5000, angetrieben von einem 1,8432-MHz-Quarz.
+
+**Errata aus den KiCad-Schaltplänen** (tebl/BE6502, MIT): der echte Aufbau braucht eine dedizierte Reset-Schaltung mit Kondensator für die Einschaltverzögerung sowie Pull-Ups an den Bus-Steuerleitungen (RWB, BE). Die Bus-Trace-Ansicht des Debuggers ist das Software-Äquivalent von tebls Arduino-Mega-Busmonitor-Shield.
 
 ## Warum das wichtig ist
-Das ist der Vollausbau — alles, was ein Retro-Computer braucht: CPU, Speicher, Ein/Ausgabe, Anzeige und Takt.
+Diese Schaltung ist die Plattform für BBC BASIC, Forth und schließlich ein vollständiges Betriebssystem.
 
 ## Weiter geht's
-- [eater6502-bench](../eater6502-bench) — die Minimalversion ohne Extras.
-- [eater6502-contention-bug](../eater6502-contention-bug) — ein absichtlicher Verdrahtungsfehler zum Debuggen.
-- Versuche ein Knight-Rider-Muster (LEDs scannen links-rechts) statt Binärzählung.
+- [eater6502-bench](../eater6502-bench) — die Minimalversion zum Architekturstudium.
+- [eater6502-contention-bug](../eater6502-contention-bug) — eine fehlerhafte Adressdekodierung debuggen.
+- [ttl-clock-module](../ttl-clock-module) — das Taktmodul bauen, das diese CPU antreibt.
