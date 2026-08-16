@@ -554,11 +554,11 @@ export default function cToPseudocode (source, opts = {}) {
     } else {
         const seen = new Map();
         for (const [k, v] of pre.defines) {
-            const m = String(v).match(/^P([0-4])_([0-7])$/);
+            const m = String(v).match(/^P([0-5])_([0-7])$/);
             if (m) seen.set(k, { port: +m[1], bit: +m[2] });
         }
         for (const line of pre.body) {
-            const m = line.match(/\bsbit\s+(\w+)\s*=\s*P([0-4])\s*\^\s*([0-7])/);
+            const m = line.match(/\bsbit\s+(\w+)\s*=\s*P([0-5])\s*\^\s*([0-7])/);
             if (m) seen.set(m[1], { port: +m[2], bit: +m[3] });
             // SDCC spells the same declaration by ADDRESS: `__sbit __at (0x90) LED1;`.
             // This is what Keil source looks like after stc-compiler normalises it, so
@@ -570,6 +570,10 @@ export default function cToPseudocode (source, opts = {}) {
                 if (addr >= 0x80 && addr <= 0xB7 && (addr & 0xF8) % 0x10 === 0) {
                     seen.set(a[2], { port: (addr - 0x80) >> 4, bit: addr & 7 });
                 }
+                // P4 (0xC0) and the STC15's P5 (0xC8) are bit-addressable too,
+                // but off the 0x10 grid the formula above walks.
+                if (addr >= 0xC0 && addr <= 0xC7) seen.set(a[2], { port: 4, bit: addr & 7 });
+                if (addr >= 0xC8 && addr <= 0xCF) seen.set(a[2], { port: 5, bit: addr & 7 });
             }
         }
         const text = pre.body.join('\n');
@@ -1257,6 +1261,13 @@ export default function cToPseudocode (source, opts = {}) {
             // NeoPixel
             case 'bw_neopixel_set': return { text: '0', level: 99, stmt: `set neopixel ${a(1)} to R ${a(2)} G ${a(3)} B ${a(4)} on ${a(0)}` };
             case 'bw_neopixel_clear': return { text: '0', level: 99, stmt: `clear neopixels on ${a(0)}` };
+            // TFT (ILI9341)
+            case 'bw_tft_pixel': return { text: '0', level: 99, stmt: `tft pixel ${a(1)} ${a(2)} R ${a(3)} G ${a(4)} B ${a(5)} on ${a(0)}` };
+            case 'bw_tft_fill': return { text: '0', level: 99, stmt: `tft fill ${a(1)} ${a(2)} ${a(3)} ${a(4)} R ${a(5)} G ${a(6)} B ${a(7)} on ${a(0)}` };
+            case 'bw_tft_clear': return { text: '0', level: 99, stmt: `tft clear ${a(0)}` };
+            case 'bw_tft_print_s': return { text: '0', level: 99, stmt: `tft print ${a(1)} on ${a(0)}` };
+            case 'bw_tft_print_n': return { text: '0', level: 99, stmt: `tft print ${a(1)} on ${a(0)}` };
+            case 'bw_tft_cursor': return { text: '0', level: 99, stmt: `tft set cursor ${a(1)} ${a(2)} on ${a(0)}` };
             // Sensors (reporters)
             case 'bw_temperature': return { text: `temperature from ${a(0)}`, level: 99 };
             case 'bw_light': return { text: `light from ${a(0)}`, level: 99 };
@@ -1893,6 +1904,10 @@ export default function cToPseudocode (source, opts = {}) {
         'i2c_delay', 'i2c_start', 'i2c_stop', 'i2c_write', 'shift_out',
         'lcd_i2c_send', 'lcd_nibble', 'lcd_cmd', 'lcd_data',
         'bw_lcd_print', 'bw_lcd_print_s', 'bw_lcd_print_n', 'bw_lcd_cursor', 'bw_lcd_clear',
+        'bw_tft_pixel', 'bw_tft_fill', 'bw_tft_clear',
+        'bw_tft_print_s', 'bw_tft_print_n', 'bw_tft_cursor',
+        'tft_spi_write', 'tft_cmd', 'tft_data', 'tft_set_window',
+        'tft_pixel16', 'rgb565',
         'board_init', 'delay_init', 'tone_set', 'tone_stop',
         'bw_cube_scan', 'bw_cube_set', 'bw_cube_get', 'bw_cube_clear',
         'bw_cube_fill_layer', 'bw_cube_shift', 'bw_cube_hold',
@@ -1904,6 +1919,10 @@ export default function cToPseudocode (source, opts = {}) {
         'bw_lcd_print', 'bw_lcd_print_s', 'bw_lcd_print_n', 'bw_lcd_cursor', 'bw_lcd_clear', 'bw_7seg_show',
         'bw_rgb_set', 'bw_matrix_set', 'bw_matrix_clear',
         'bw_neopixel_set', 'bw_neopixel_clear',
+        'bw_tft_pixel', 'bw_tft_fill', 'bw_tft_clear',
+        'bw_tft_print_s', 'bw_tft_print_n', 'bw_tft_cursor',
+        'tft_spi_write', 'tft_cmd', 'tft_data', 'tft_set_window',
+        'tft_pixel16', 'rgb565',
         'bw_temperature', 'bw_light', 'bw_distance', 'bw_flex', 'bw_force',
         'bw_ir_code', 'bw_device_state',
         'bw_pressed', 'bw_above', 'bw_closer', 'bw_motion', 'bw_tilted', 'bw_energised',
