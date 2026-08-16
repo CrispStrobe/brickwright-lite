@@ -1249,12 +1249,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             let a = addr & 0xFFFF;
             try {
                 for (let i = 0; i < count; i++) {
+                    // The machine targets (6502, Z80) return self-describing
+                    // rows — { text, bytes, length } — so the walk needs no
+                    // readMem and no 8051 length table. Prefer that shape.
+                    const d = target.disasm(a);
+                    if (d && typeof d === 'object' && Array.isArray(d.bytes) && d.length >= 1) {
+                        rows.push({ addr: a, bytes: d.bytes.slice(), text: String(d.text ?? '') });
+                        a = (a + d.length) & 0xFFFF;
+                        continue;
+                    }
                     const head = target.readMem('code', a, 1);
                     if (!head || typeof head[Symbol.iterator] !== 'function' || head.length < 1) break;
                     const len = instructionLength(head[0]);
                     const bytes = target.readMem('code', a, len);
                     if (!bytes || typeof bytes[Symbol.iterator] !== 'function') break;
-                    rows.push({ addr: a, bytes: [...bytes], text: String(target.disasm(a) ?? '') });
+                    rows.push({ addr: a, bytes: [...bytes], text: String(d ?? '') });
                     a = (a + len) & 0xFFFF;
                 }
             } catch {
