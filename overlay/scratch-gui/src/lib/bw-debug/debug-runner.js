@@ -852,6 +852,22 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return adapter;
     }
 
+    // The designer's own board, when it holds real parts: machine boots
+    // attach it so VIA/port edges (chip-qualified pin ids, engine
+    // 26efcbd5c) light whatever the bench wires to them — the Eater
+    // build's HD44780 above all. No board, or an empty one, keeps the
+    // proven board-less stub: never boot against a phantom.
+    function designerBoard() {
+        const b = vm && vm.runtime && vm.runtime.circuitBoard;
+        if (!b || typeof b.setPin !== 'function' || typeof b.advanceTo !== 'function') return null;
+        try {
+            const parts = typeof b.getParts === 'function' ? b.getParts() : b.parts;
+            return parts && parts.length ? b : null;
+        } catch {
+            return null;
+        }
+    }
+
     // ── 6502 machine bench ──────────────────────────────────────────────
     // Boot precedence: a preset's own profile ('py65mon' — Tali Forth;
     // 'eater' — MS BASIC on the default Eater map) wins, because those
@@ -892,6 +908,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             readyMsg = 'Tali Forth 2 — type at the ok prompt';
         }
 
+        const db = designerBoard();
+        if (db) targetOpts.board = db;
         const result = await createDebugTarget('eater6502', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
@@ -933,6 +951,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             readyMsg = 'BBC BASIC (Z80) — type at the > prompt';
         }
 
+        const db = designerBoard();
+        if (db) targetOpts.board = db;
         const result = await createDebugTarget('z80', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
