@@ -300,7 +300,11 @@ class CircuitTab extends React.Component {
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
             const setEngine = ui.setEngine || (ui.default && ui.default.setEngine);
             if (typeof setEngine !== 'function') throw new Error('bw-circuit-ui setEngine export is unavailable');
-            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring});
+            // hasDevice lets the designer keep registered board kinds
+            // (arduino_uno, attiny85, ...) as themselves in the engine
+            // netlist instead of collapsing them to 'mcu' — power pins
+            // source, inputs read. Optional: older engines simply lack it.
+            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring, hasDevice: engine.hasDevice});
             // Part sidecars (pin maps, current ratings, footprints) into the
             // parts registry. require.context because this bundle is webpack,
             // not vite. 115 files, ~464 KiB, in this same chunk.
