@@ -515,7 +515,16 @@ class CircuitTab extends React.Component {
         vm.runtime.bwPseudocodeSource = source;
         // Emit a project change so the importer knows to re-read.
         vm.runtime.emit('PROJECT_CHANGED');
-        return !!(stc && stc.pins && stc.pins.length);
+        // Not just a boolean: whether the "no pins" advisory is even true
+        // depends on WHAT the program is. A PART binding (PART leds =
+        // 74HC595 data P1.0 ...) drives pins without a single PIN line,
+        // and a machine-class device (6502/Z80 bench) has no pin concept
+        // at all — scolding either one misleads (owner report).
+        return {
+            pins: !!(stc && stc.pins && stc.pins.length),
+            hasPart: /^PART\s+/im.test(source),
+            device: (exDevice || '').toLowerCase(),
+        };
     }
 
     async loadExample (ex) {
@@ -554,15 +563,16 @@ class CircuitTab extends React.Component {
             // fatal — a board with no pins is still a board, and the panel now
             // says why the debugger is absent — so the circuit still loads and
             // the reason is reported.
-            let pins = false;
+            let prog = null;
             let programError = null;
             if (hasProgram) {
                 try {
-                    pins = await this.loadExampleProgram(ex);
+                    prog = await this.loadExampleProgram(ex);
                 } catch (e) {
                     programError = e.message;
                 }
             }
+            const pins = !!(prog && prog.pins);
             // Switching to the Designer is the point of clicking an example —
             // leaving the user on the gallery with an invisible change would be
             // the same silence this panel strip exists to avoid.
@@ -578,7 +588,12 @@ class CircuitTab extends React.Component {
                     `Opened the circuit for "${ex.id}", but its program did not load ` +
                     `(${programError}), so there are no pins and no debugger.` : null
             });
-            if (hasProgram && !pins && !programError) {
+            // Machine-class devices (the 6502/Z80 benches) have no pin
+            // concept — their debugger comes from the bus extract, not
+            // from PIN lines. PART bindings drive pins without PIN lines.
+            // Scolding either case was wrong (owner report, twice).
+            const machineClass = prog && /^(eater6502|z80|zx48|zx128|6502|w65c02)$/.test(prog.device);
+            if (hasProgram && !pins && !programError && prog && !prog.hasPart && !machineClass) {
                 this.setState({examplesError:
                     `"${ex.id}" loaded, but its program declares no pins, so the ` +
                     'debugger stays hidden.'});
@@ -1089,18 +1104,42 @@ class CircuitTab extends React.Component {
             // bilingual titles, and a `kind` of "circuit" or "program" — so the
             // browser is fed from that or says why it is not.
             const {examples, examplesError} = this.state;
-            if (examplesError) return note(examplesError);
-            if (!examples) return note('Loading examples…');
+            if (!examples) return note(examplesError || 'Loading examples…');
             const stc = this.readStc();
             const currentDevice = stc && stc.device ? String(stc.device).toLowerCase() : null;
+            // An advisory renders as a DISMISSIBLE STRIP above the list —
+            // it used to replace the entire browser, so one sticky message
+            // rendered "where the actual examples list should have been"
+            // (owner report, with screenshot).
             return (
-                <ui.ExamplesBrowser
-                    examples={examples}
-                    onLoadExample={this.loadExample}
-                    currentDevice={currentDevice}
-                    lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
-                        .slice(0, 2) === 'de' ? 'de' : 'en'}
-                />
+                <div style={{display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%'}}>
+                    {examplesError ? (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '6px 10px', fontSize: '12px',
+                            background: 'rgba(230, 126, 34, 0.12)',
+                            borderBottom: '1px solid rgba(230, 126, 34, 0.4)',
+                            flexShrink: 0
+                        }}>
+                            <span style={{flex: 1}}>{examplesError}</span>
+                            <button
+                                type="button"
+                                onClick={() => this.setState({examplesError: null})}
+                                style={{border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', lineHeight: 1}}
+                                aria-label="Dismiss"
+                            >{'×'}</button>
+                        </div>
+                    ) : null}
+                    <div style={{flex: 1, minHeight: 0, overflow: 'auto'}}>
+                        <ui.ExamplesBrowser
+                            examples={examples}
+                            onLoadExample={this.loadExample}
+                            currentDevice={currentDevice}
+                            lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
+                                .slice(0, 2) === 'de' ? 'de' : 'en'}
+                        />
+                    </div>
+                </div>
             );
         }
         return null;
