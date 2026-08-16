@@ -1004,6 +1004,11 @@ class CircuitTab extends React.Component {
                     // debugger” a no-op whenever Circuit itself was active.
                     debuggerOn={dock === 'top'}
                     debuggerPanel={dock === 'top' ? this.renderDebugPanel() : null}
+                    // Remount-proof "a machine was built here": the designer's
+                    // own machineResult dies with it on a tab switch, and the
+                    // debugger slot must survive the Code-tab round trip the
+                    // ASM workflow requires. This state lives up here and does.
+                    benchOpen={this.state.machineBooted}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                     />

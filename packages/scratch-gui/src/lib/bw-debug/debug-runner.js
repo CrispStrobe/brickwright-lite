@@ -266,7 +266,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
              * one there is no `bw_ms` address to read and a zero would be a
              * fabrication.
              */
-            bwMs: target ? target.bwMs() : undefined,
+            // Machine-bench targets (z80/6502 debug) have no scheduler
+            // tick — bwMs is an 8051/AVR concept. Guard by capability,
+            // not by kind (snapshot() must never take the panel down).
+            bwMs: target && typeof target.bwMs === 'function' ? target.bwMs() : undefined,
             conditions: allConditions(),
             conditionErrors,
             skippedHits: skipped,
@@ -785,9 +788,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const adapter = result.adapter || result;
 
         if (adapter.onSerial) {
+            // LINE-buffer the byte stream: one array entry per byte rendered
+            // "B\nB\nC\n…" in the console. CR is display noise; LF ends a line.
             adapter.onSerial((byte) => {
                 const ch = String.fromCharCode(byte & 0x7f);
-                serialLines.push(ch);
+                if (ch === '\r') return;
+                if (ch === '\n' || serialLines.length === 0) serialLines.push('');
+                if (ch !== '\n') serialLines[serialLines.length - 1] += ch;
                 if (serialLines.length > 500) serialLines.splice(0, serialLines.length - 500);
             });
         }
@@ -968,6 +975,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      */
     function stillWaiting(why) {
         if (!target || !why || !why.tasks) return false;
+        if (typeof target.bwMs !== 'function') return false;
         const ms = target.bwMs();
         if (ms === undefined) return false;
         for (const t of why.tasks) {
