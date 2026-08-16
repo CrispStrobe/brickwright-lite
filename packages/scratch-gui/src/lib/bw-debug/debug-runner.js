@@ -116,13 +116,54 @@ async function installWasmCompilerIfOptedIn (setStatus) {
 export function selectDebugTargetKind(device, requested = 'emulator') {
     if (requested !== 'emulator') return requested;
     const normalized = String(device || '').toLowerCase();
-    if (['arduino-uno', 'arduino-nano', 'arduino-mega', 'atmega328p', 'atmega168p'].includes(normalized)) return 'avr8js';
+    if (['arduino-uno', 'arduino-nano', 'atmega328p', 'atmega168p'].includes(normalized)) return 'avr8js';
+    if (['arduino-mega', 'atmega2560'].includes(normalized)) return 'atmega2560';
+    // Chip-specific AVR kinds — the coarse avr8js kind is an ATmega328P
+    // memory map, which is NOT where an ATtiny's ports live. Falling
+    // through to the 8051 emulator here fed AVR opcodes to an 8051 core
+    // (the pendant's frozen 2433 ms, every pin off — owner report).
+    if (normalized === 'attiny88') return 'attiny88';
+    if (normalized === 'attiny85') return 'attiny85';
     if (normalized === 'pico') return 'rp2040js';
-    // 6502: no browser emulator wired yet — fall through to default
+    if (['eater6502', '6502', 'w65c02'].includes(normalized)) return 'eater6502';
+    if (['z80', 'zx48', 'zx128'].includes(normalized)) return 'z80';
     return requested;
 }
 
-export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, onChange = () => {} }) {
+/**
+ * One-board-one-truth, with the CLOCK taken seriously: the designer board
+ * and the auto-run race. An example loads its PROGRAM first (loadProject
+ * fires the run token, and a cache-warm compile returns in well under a
+ * second) while the circuit fetch and the designer's own render are still
+ * in flight — so at attach time vm.runtime.circuitBoard can be legitimately
+ * empty for a few hundred milliseconds and legitimately full right after.
+ * Falling back to the inferred netlist on that first read is how the
+ * pendant ran on a synthesized LED_colX bench while the real ATtiny88 +
+ * matrix sat on screen (owner report, 2026-08-16). Wait briefly; fall back
+ * only when the designer genuinely never shows up.
+ */
+async function resolveNetlist(vm, stc, inferNetlist, waitMs = 2500) {
+    const fromDesigner = () => {
+        const b = vm && vm.runtime && vm.runtime.circuitBoard;
+        return (b && Array.isArray(b.parts) && b.parts.length &&
+            typeof b.getNets === 'function')
+            ? { parts: b.parts, nets: b.getNets() } : null;
+    };
+    let n = fromDesigner();
+    const deadline = Date.now() + waitMs;
+    while (!n && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        n = fromDesigner();
+    }
+    if (!n) {
+        console.warn('[bw-debug] designer board not ready after ' + waitMs +
+            'ms — falling back to the inferred netlist');
+        return inferNetlist(stc);
+    }
+    return n;
+}
+
+export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', onChange = () => {} }) {
     let session = null;
     let target = null;
     let board = null;
@@ -426,8 +467,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachRp2040js(built);
         }
 
-        if (selectedTargetKind === 'avr8js') {
-            return attachAvr8js(built);
+        // All AVR-family kinds share one attach path; the kind picks the
+        // chip in the factory (memory map, ports, timers). Listing only
+        // 'avr8js' here made every chip-specific kind — including a
+        // user's explicit picker choice of ATtiny88/85 or ATmega2560 —
+        // fall through to the 8051 emulator below, which then ran the
+        // AVR image as 8051 opcodes on an inferred STC bench. The picker
+        // said ATtiny88, the run was an 8051: plausible and wrong, twice.
+        if (selectedTargetKind === 'avr8js' || selectedTargetKind === 'atmega2560' ||
+            selectedTargetKind === 'attiny85' || selectedTargetKind === 'attiny88') {
+            return attachAvr8js(built, selectedTargetKind);
         }
 
         setStatus('attaching', 'starting the emulator…');
@@ -462,7 +511,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         //   2. board    — attached before anything runs, so no edge is missed
         //   3. image    — after the last emu_init
         //   4. target   — symbols last; nothing may re-init behind it
-        const adapter = createEmu8051Adapter(wasm, { fosc });
+        // part: DEVICE STC15F2K60S2 must reach the emulator or console
+        // firmware loses P5 silently (adapter warns until the wasm ships
+        // _emu_set_part — the ABI is documented at the adapter).
+        const adapter = createEmu8051Adapter(wasm, { fosc, part: String(stc.device || '').toLowerCase() });
 
         // The board, so the LEDs light and the buzzer sounds while debugging.
         // It is driven by the emulator through boundary A and knows nothing
@@ -477,11 +529,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // while the emulator dutifully toggled a phantom LED. The inference
         // remains only as the fallback for a project that never opened the
         // Circuit tab's designer.
-        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
-        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
-            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
-            ? {parts: designerBoard.parts, nets: designerBoard.getNets()}
-            : inferNetlist(stc);
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl();
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
@@ -551,7 +599,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // adapter drives the board through the same boundary A as emu8051.
     // Boundary D currently supports run/pause/resume and instruction stepping.
     // It does not claim block-level positions until AVR symbols are mapped.
-    async function attachAvr8js(built) {
+    async function attachAvr8js(built, avrKind = 'avr8js') {
         setStatus('attaching', 'starting the AVR emulator…');
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
@@ -565,11 +613,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const clockHz = built.f_cpu || built.clockHz || 16_000_000;
 
         // Board — same one-board-one-truth rule as emu8051.
-        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
-        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
-            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
-            ? { parts: designerBoard.parts, nets: designerBoard.getNets() }
-            : inferNetlist(stc);
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl();
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
@@ -578,7 +622,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // Intel HEX into Uint16Array words, loads the program, and — if
         // symbols are present — creates the boundary-D debug target with
         // yield breakpoints and block-level position reporting.
-        const {target: avrTarget, adapter: avrAdapter} = await createDebugTarget('avr8js', {
+        const {target: avrTarget, adapter: avrAdapter} = await createDebugTarget(avrKind, {
             board, hex: built.hex, symbols: built.symbols, clockHz,
         });
 
@@ -638,11 +682,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const clockHz = built.f_cpu || built.clockHz || 125_000_000;
 
         // Board — one-board-one-truth, same as AVR.
-        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
-        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
-            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
-            ? { parts: designerBoard.parts, nets: designerBoard.getNets() }
-            : inferNetlist(stc);
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl(3.3);
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
@@ -695,26 +735,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
-    // ── 6502 machine (wired-extractor config or Tali Forth fallback) ────
+    // ── 6502 interactive Forth (Tali Forth 2 over py65mon memory map) ───
     async function attachEater6502() {
-        const hasConfig = !!machineConfig;
-        setStatus('attaching', hasConfig ? 'booting extracted machine…' : 'loading Tali Forth 2…');
+        setStatus('attaching', 'loading Tali Forth 2…');
         const { createDebugTarget, createDebugSession } =
             await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
 
-        const targetOpts = {};
-        if (hasConfig) {
-            // Wired-extractor path: config from bw-machine-extracted event.
-            targetOpts.config = machineConfig;
-        } else {
-            // Default: py65mon console shape (Tali Forth 2).
-            const res = await fetch(new URL('static/roms/taliforth-py65mon.bin', document.baseURI).href);
-            if (!res.ok) throw new Error(`Failed to load taliforth-py65mon.bin: HTTP ${res.status}`);
-            targetOpts.rom = new Uint8Array(await res.arrayBuffer());
-            targetOpts.py65mon = true;
-        }
+        const res = await fetch(new URL('static/roms/taliforth-py65mon.bin', document.baseURI).href);
+        if (!res.ok) throw new Error(`Failed to load taliforth-py65mon.bin: HTTP ${res.status}`);
+        const rom = new Uint8Array(await res.arrayBuffer());
 
-        const result = await createDebugTarget('eater6502', targetOpts);
+        const result = await createDebugTarget('eater6502', { py65mon: true, rom });
         target = result.target;
         const adapter = result.adapter || result;
 
@@ -741,21 +772,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
         };
 
-        // Expose ROM loading for the ASM tab's Assemble & Run path.
-        runner.loadRom = (bytes) => {
-            if (adapter.loadRom) adapter.loadRom(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
-            adapter.machine.reset();
-        };
-
-        // Expose video() for VdpScreen: find a TMS9918 chip in the machine.
-        const vdpChip = Object.values(adapter.machine.chips).find(c => c && typeof c.renderFrame === 'function');
-        if (vdpChip) {
-            runner.video = () => vdpChip.renderFrame();
-        }
-
-        setStatus('ready', hasConfig
-            ? `Machine booted (${machineConfig.chips?.map(c => c.kind).join(', ') || 'custom'})`
-            : 'Tali Forth 2 — type at the ok prompt');
+        setStatus('ready', 'Tali Forth 2 — type at the ok prompt');
         return session;
     }
 
@@ -1093,8 +1110,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return target.writeMem(space, addr, Uint8Array.from([value & 0xFF]));
         },
 
-        /** The instruction at an address, as text. */
-        disasm(addr) { return target ? target.disasm(addr) : ''; },
+        /** The instruction at an address, as text. Capability, not assumption:
+         * only the 8051 targets carry a disassembler; an AVR/RP2040 target
+         * without one must yield '' — calling through unconditionally crashed
+         * the whole app from "under the hood" on the pendant (owner report,
+         * 2026-08-16). */
+        disasm(addr) { return (target && typeof target.disasm === 'function') ? target.disasm(addr) : ''; },
 
         /**
          * A short listing from `addr`, walking with the opcode length table.
@@ -1103,7 +1124,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          * table makes it free.
          */
         listing(addr, count = 16) {
-            if (!target) return [];
+            // No disassembler (or no code-space reads) on this target → no
+            // listing. Same crash as disasm() above; the instruction-length
+            // walk below is 8051-shaped anyway.
+            if (!target || typeof target.disasm !== 'function' || typeof target.readMem !== 'function') return [];
             const rows = [];
             let a = addr & 0xFFFF;
             for (let i = 0; i < count; i++) {
