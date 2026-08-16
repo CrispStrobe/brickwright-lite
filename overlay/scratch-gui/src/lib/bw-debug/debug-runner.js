@@ -434,8 +434,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachRp2040js(built);
         }
 
-        if (selectedTargetKind === 'avr8js') {
-            return attachAvr8js(built);
+        // All AVR-family kinds share one attach path; the kind picks the
+        // chip in the factory (memory map, ports, timers). Listing only
+        // 'avr8js' here made every chip-specific kind — including a
+        // user's explicit picker choice of ATtiny88/85 or ATmega2560 —
+        // fall through to the 8051 emulator below, which then ran the
+        // AVR image as 8051 opcodes on an inferred STC bench. The picker
+        // said ATtiny88, the run was an 8051: plausible and wrong, twice.
+        if (selectedTargetKind === 'avr8js' || selectedTargetKind === 'atmega2560' ||
+            selectedTargetKind === 'attiny85' || selectedTargetKind === 'attiny88') {
+            return attachAvr8js(built, selectedTargetKind);
         }
 
         setStatus('attaching', 'starting the emulator…');
@@ -559,7 +567,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // adapter drives the board through the same boundary A as emu8051.
     // Boundary D currently supports run/pause/resume and instruction stepping.
     // It does not claim block-level positions until AVR symbols are mapped.
-    async function attachAvr8js(built) {
+    async function attachAvr8js(built, avrKind = 'avr8js') {
         setStatus('attaching', 'starting the AVR emulator…');
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
@@ -586,7 +594,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // Intel HEX into Uint16Array words, loads the program, and — if
         // symbols are present — creates the boundary-D debug target with
         // yield breakpoints and block-level position reporting.
-        const {target: avrTarget, adapter: avrAdapter} = await createDebugTarget('avr8js', {
+        const {target: avrTarget, adapter: avrAdapter} = await createDebugTarget(avrKind, {
             board, hex: built.hex, symbols: built.symbols, clockHz,
         });
 
