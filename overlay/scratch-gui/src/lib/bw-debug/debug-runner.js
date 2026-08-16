@@ -1237,17 +1237,28 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // listing. Same crash as disasm() above; the instruction-length
             // walk below is 8051-shaped anyway.
             if (!target || typeof target.disasm !== 'function' || typeof target.readMem !== 'function') return [];
+            // Capability at the DATA, not just the method: the z80 target
+            // has both methods but its readMem answers a refusal object,
+            // and spreading a non-iterable crashed the whole app from
+            // 'under the hood' (owner report #2 of this crash family —
+            // the method-presence guard was the pendant fix and it was
+            // not enough). Anything that is not real bytes ends the
+            // listing; the drawer then says 'no disassembly on this
+            // target' instead of dying.
             const rows = [];
             let a = addr & 0xFFFF;
-            for (let i = 0; i < count; i++) {
-                const opcode = target.readMem('code', a, 1)[0];
-                const len = instructionLength(opcode);
-                rows.push({
-                    addr: a,
-                    bytes: [...target.readMem('code', a, len)],
-                    text: target.disasm(a)
-                });
-                a = (a + len) & 0xFFFF;
+            try {
+                for (let i = 0; i < count; i++) {
+                    const head = target.readMem('code', a, 1);
+                    if (!head || typeof head[Symbol.iterator] !== 'function' || head.length < 1) break;
+                    const len = instructionLength(head[0]);
+                    const bytes = target.readMem('code', a, len);
+                    if (!bytes || typeof bytes[Symbol.iterator] !== 'function') break;
+                    rows.push({ addr: a, bytes: [...bytes], text: String(target.disasm(a) ?? '') });
+                    a = (a + len) & 0xFFFF;
+                }
+            } catch {
+                return [];
             }
             return rows;
         },
