@@ -511,7 +511,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         //   2. board    — attached before anything runs, so no edge is missed
         //   3. image    — after the last emu_init
         //   4. target   — symbols last; nothing may re-init behind it
-        const adapter = createEmu8051Adapter(wasm, { fosc });
+        // part: DEVICE STC15F2K60S2 must reach the emulator or console
+        // firmware loses P5 silently (adapter warns until the wasm ships
+        // _emu_set_part — the ABI is documented at the adapter).
+        const adapter = createEmu8051Adapter(wasm, { fosc, part: String(stc.device || '').toLowerCase() });
 
         // The board, so the LEDs light and the buzzer sounds while debugging.
         // It is driven by the emulator through boundary A and knows nothing
