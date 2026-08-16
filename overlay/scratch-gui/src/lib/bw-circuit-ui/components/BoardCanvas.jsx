@@ -145,6 +145,7 @@ function terminalOffsetsForPart(part) {
     case 'led_matrix': return { a: r(-20, 0), b: r(20, 0) };
     case 'temp_sensor': return { dq: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
     case 'eeprom': return { sda: r(-10, 15), scl: r(10, 15) };
+    case 'ssd1306': return { vcc: r(-12, 24), gnd: r(-4, 24), sda: r(4, 24), scl: r(12, 24) };
     case 'mcu': {
       // Sidecar geometry (datasheet DIP-40) scaled to the canvas: every
       // physical pin sits where the package puts it. Fallback: the old
@@ -524,6 +525,64 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fontFamily="monospace">OFF</text>
             )}
             <text x={14} y={66} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── SSD1306 128×64 monochrome OLED ───────────────────────────
+      case 'ssd1306': {
+        const ds = deviceStates?.get(id);
+        const dark = ds && !ds.displayOn;
+        // 4-pin module: 3 gaps × BB_PITCH when seated.
+        const W = 48, H = 28;
+        const seatK = part.seat ? (3 * BB_PITCH) / W : 1;
+        return (
+          <g key={id} transform={xform + (seatK !== 1 ? ` scale(${seatK.toFixed(3)})` : '')} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* PCB body */}
+            <rect x={-W/2 - 2} y={-H/2 - 2} width={W + 4} height={H + 14} rx={3}
+              fill="#0a0a1e" stroke={selStroke || '#3498db'} strokeWidth={1.5} />
+            {/* Screen area — 128×64 rendered into 48×24 */}
+            <rect x={-W/2} y={-H/2 + 2} width={W} height={H - 4} rx={1}
+              fill={dark ? '#111' : '#000'} stroke="#333" strokeWidth={0.5} />
+            {ds && ds.fb && !dark && (
+              <foreignObject x={-W/2} y={-H/2 + 2} width={W} height={H - 4}>
+                <canvas
+                  ref={el => {
+                    if (!el) return;
+                    const FW = 128, FH = 64;
+                    const rgba = new Uint8ClampedArray(FW * FH * 4);
+                    const inv = ds.inverted;
+                    for (let page = 0; page < 8; page++) {
+                      for (let col = 0; col < FW; col++) {
+                        const byte = ds.fb[page * FW + col];
+                        for (let bit = 0; bit < 8; bit++) {
+                          const y = page * 8 + bit;
+                          const on = ((byte >> bit) & 1) !== 0;
+                          const lit = inv ? !on : on;
+                          const idx = (y * FW + col) * 4;
+                          rgba[idx] = rgba[idx + 1] = rgba[idx + 2] = lit ? 255 : 0;
+                          rgba[idx + 3] = 255;
+                        }
+                      }
+                    }
+                    if (el.width !== FW) el.width = FW;
+                    if (el.height !== FH) el.height = FH;
+                    el.style.width = `${W}px`;
+                    el.style.height = `${H - 4}px`;
+                    el.style.imageRendering = 'pixelated';
+                    const ctx = el.getContext('2d');
+                    ctx.putImageData(new ImageData(rgba, FW, FH), 0, 0);
+                  }}
+                  style={{ width: W, height: H - 4, imageRendering: 'pixelated' }}
+                />
+              </foreignObject>
+            )}
+            {dark && (
+              <text x={0} y={2} textAnchor="middle" fill="#333" fontSize={6}
+                fontFamily="monospace">OFF</text>
+            )}
+            <text x={0} y={H/2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -1072,7 +1131,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -1245,7 +1304,14 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             style={{ ...baseStyle, left: x - 30, top: y - 35, cursor: 'move' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
-            <WokwiSevenSegment digits={1} values={[1,1,1,1,1,1,0,0]} color="#e74c3c" pins="none" />
+            <WokwiSevenSegment digits={1} values={(() => {
+              // REAL segments from the engine — this literal used to be
+              // hardcoded [1,1,1,1,1,1,0,0]: every 7-seg showed "0"
+              // forever, whatever the program did (owner report).
+              const seg = sevenSegments?.(id);
+              if (!seg) return [0, 0, 0, 0, 0, 0, 0, 0];
+              return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'].map(k => (seg[k] > 0.2 ? 1 : 0));
+            })()} color="#e74c3c" pins="none" />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>
@@ -1253,6 +1319,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         );
       case 'char_lcd':
       case 'hd44780':
+      case 'char_lcd_i2c':
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 60, top: y - 25, cursor: 'move' }}
@@ -1260,8 +1327,10 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             {...dragProps()}>
             <WokwiLcd1602 text={(() => {
               const ds = deviceStates?.get(id);
-              if (ds && ds.text) return ds.text.join('\n');
-              return '';
+              // Parallel LCD models expose .text, the I2C backpack model
+              // exposes .display — same rows-of-chars idea, two spellings.
+              const rows = ds && (ds.text || ds.display);
+              return rows ? rows.join('\n') : '';
             })()} pins="none" screenOnly={true} />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
@@ -1517,7 +1586,7 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit, engineBoard, fitToken,
+  circuit, engineBoard, fitToken, sevenSegments,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
@@ -2527,15 +2596,30 @@ export function BoardCanvas({
         data-canvas
         style={{
           position: 'relative',
-          flex: '0 0 auto',
-          width: 'max(100%, 900px)',
+          // A true flex child. The old 'max(100%, 900px)' floor demanded
+          // more width than the row could give beside the 190px rail, so
+          // the container slid UNDER the rail (87px of every bench hidden
+          // behind an opaque panel — measured with elementsFromPoint) and
+          // grew scrollbars on small windows. The viewBox + measured-fit
+          // pipeline adapts to ANY container size now; the floors were
+          // pre-responsive crutches.
+          // flex 1 1 auto: fill what the row offers (large windows fill,
+          // mid windows fit beside the 190px rail with no underlap). The
+          // floor is the LOGICAL canvas (700x500), not the old 900 —
+          // 900 exceeded the ~810 available beside the rail and slid the
+          // container UNDER it; with no floor at all the browser gate
+          // proved the canvas collapses to 2px on narrow panes, killing
+          // the narrow-window scroll story. 700 fits the mid case and
+          // still forces a scrollbar (not a crush) below it.
+          flex: '1 1 auto',
+          width: 'auto',
           minWidth: CANVAS_W,
-          height: 'max(100%, 650px)',
+          height: '100%',
           minHeight: CANVAS_H,
           background: '#16213e',
           borderRadius: '8px',
           border: '1px solid #2c3e50',
-          overflow: 'visible',
+          overflow: 'hidden',
           touchAction: 'none',
         }}
         onPointerDown={handlePointerDown}
@@ -2828,7 +2912,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'matrix8x8') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'ssd1306') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
@@ -3057,6 +3141,7 @@ export function BoardCanvas({
           <WokwiParts
             parts={parts}
             ledBrightness={ledBrightness}
+            sevenSegments={sevenSegments}
             buzzerTones={buzzerTones}
             meterReadings={(() => {
               const readings = {};
@@ -3088,7 +3173,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'char_lcd') {
+                if (p.kind === 'char_lcd' || p.kind === 'char_lcd_i2c') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
