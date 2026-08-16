@@ -47,6 +47,7 @@ import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { t } from '../i18n/strings.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
+import { SweepPanel } from './SweepPanel.jsx';
 import { SchematicPanel } from './SchematicPanel.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
@@ -197,6 +198,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   });
   const toggleScope = () => setShowScope(v => { const n = !v; try { localStorage.setItem('bw-instr-scope', n ? '1' : '0'); } catch {} return n; });
   const toggleMeter = () => setShowMeter(v => { const n = !v; try { localStorage.setItem('bw-instr-meter', n ? '1' : '0'); } catch {} return n; });
+  const [showSweep, setShowSweep] = useState(() => {
+    try { return localStorage.getItem('bw-instr-sweep') === '1'; } catch { return false; }
+  });
+  const toggleSweep = () => setShowSweep(v => { const n = !v; try { localStorage.setItem('bw-instr-sweep', n ? '1' : '0'); } catch {} return n; });
   const [warningsOpen, setWarningsOpen] = useState(false);
   const hasMcuPins = !!(projectData?.pins?.length > 0);
   const [machineResult, setMachineResult] = useState(null); // extractMachine result
@@ -1229,7 +1234,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
         <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 34, boxSizing: 'border-box'}}>
-        {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins). */}
+        {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
+            The FACES below gate on capability, not on pins: a machine-class
+            bench (6502/Z80) has no PIN concept, yet its booted machine has
+            video/serial/registers. Gating faces on hasMcuPins kept the
+            VdpScreen dark on a booted VDP machine (deploy probe, 2026-08-16).
+            "Capabilities decide what is offered — never an assumption." */}
         {hasMcuPins && debugState && (
           <DebugStatus
             debugState={debugState}
@@ -1241,11 +1251,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             lang={lang}
           />
         )}
-        {hasMcuPins && debugState && typeof debugState.video === 'function' && (
+        {debugState && typeof debugState.video === 'function' && (
           <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} setKeysFn={debugState.setKeys} loadSnapshotFn={debugState.loadSnapshot} lang={lang} />
         )}
         {/* Serial console — for machines with ACIA serial (z80-bench, eater6502) */}
-        {hasMcuPins && debugState && typeof debugState.onSerial === 'function' && (
+        {debugState && typeof debugState.onSerial === 'function' && (
           <section style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box'}}>
             <div style={{fontSize: 11, fontWeight: 600, color: '#e2e8f0', marginBottom: 4, fontFamily: 'monospace'}}>
               {t('serialConsole', lang)}
@@ -1255,7 +1265,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </section>
         )}
         {/* Framebuffer face — 1bpp monochrome video from machine chips */}
-        {hasMcuPins && debugState && debugState.framebuffer && (
+        {debugState && debugState.framebuffer && (
           <FramebufferFace chipState={debugState.framebuffer}
             width={debugState.framebuffer.width || 128}
             height={debugState.framebuffer.height || 64}
@@ -1263,7 +1273,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             lang={lang} />
         )}
         {/* Architecture face — block diagram with live register state */}
-        {hasMcuPins && debugState && typeof debugState.regs === 'function' && (
+        {debugState && typeof debugState.regs === 'function' && (
           <ArchitectureFace debugState={debugState} lang={lang} />
         )}
         {hasMcuPins && debuggerPanel && (
@@ -1348,9 +1358,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           <button onClick={toggleMeter} style={{ flex: 1, padding: '4px 6px', background: showMeter ? '#2c3e50' : '#16213e', border: '1px solid #f1c40f', borderRadius: 4, color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>
             {showMeter ? (/^de/i.test(lang) ? '⌁ Multimeter verbergen' : '⌁ Hide meter') : (/^de/i.test(lang) ? '⌁ Multimeter' : '⌁ Meter')}
           </button>
+          <button onClick={toggleSweep} data-testid="bw-sweep-toggle" style={{ flex: 1, padding: '4px 6px', background: showSweep ? '#2c3e50' : '#16213e', border: '1px solid #9b59b6', borderRadius: 4, color: '#9b59b6', fontFamily: 'monospace', fontSize: 10 }}>
+            {showSweep ? (/^de/i.test(lang) ? '∿ Sweep verbergen' : '∿ Hide sweep') : '∿ Sweep'}
+          </button>
         </div>
         {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
         {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} lang={lang} /></div>}
+        {showSweep && <div data-sweep-module style={{width: 280, flex: '0 0 auto'}}><SweepPanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
         {/* Orientation input — for accelerometer parts (mpu6050, adxl335, memsic2125) */}
         {parts.filter(p => ['mpu6050', 'adxl335', 'memsic2125'].includes(p.kind)).map(p => (
           <OrientationInput key={p.id} partId={p.id} kind={p.kind} lang={lang}
