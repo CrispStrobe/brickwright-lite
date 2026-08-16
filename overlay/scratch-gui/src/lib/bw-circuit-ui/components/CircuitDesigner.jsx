@@ -142,6 +142,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   const [selectedParts, setSelectedParts] = useState(new Set());
   const [selectedWire, setSelectedWire] = useState(null);
+  const [fitToken, setFitToken] = useState(0); // bumps on file load → BoardCanvas auto-fits
 
   // Convenience: first selected part (for single-selection UI like property editor)
   const selectedPart = selectedParts.size === 1 ? [...selectedParts][0] : null;
@@ -743,6 +744,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setSelectedParts(new Set());
     setSelectedWire(null);
     setMode('build');
+    // A loaded file always deserves a fresh fit — keying auto-fit on part
+    // COUNT skipped it whenever the new file matched the old project's
+    // count (SOS opened half off-screen, self-taken screenshot).
+    setFitToken(t => t + 1);
   }, [circuit]);
 
   // ── circuitData prop: load an example or saved circuit declaratively ──
@@ -809,7 +814,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // floating off the breadboard; this is the leveraged fix rather than
     // re-authoring 200 circuits.
     try {
-      const mcuKinds = new Set(['mcu', 'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85', 'attiny88']);
+      const mcuKinds = new Set(['mcu', 'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85', 'attiny88', 'attiny13', 'attiny2313']);
       const bb = circuit.parts.find(p => p.kind === 'breadboard');
       const unseatMcu = circuit.parts.find(p => mcuKinds.has(p.kind) && !p.seat);
       if (bb && unseatMcu && BB_FOOTPRINTS[unseatMcu.kind]) {
@@ -984,6 +989,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {!showSchematic ? (<>
         <BoardCanvas
           engineBoard={activeBoard}
+          fitToken={fitToken}
           parts={parts}
           wires={wires}
           theme={theme}

@@ -43,6 +43,7 @@ const DIP_CHIP_LABELS = {
   // seated ATtiny88 rendered as a ghost outline (owner screenshot) —
   // 28 pin names floating around no body at all.
   attiny88: 'ATtiny88', attiny85: 'ATtiny85',
+  attiny2313: 'ATtiny2313', attiny13: 'ATtiny13',
 };
 import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
@@ -80,8 +81,10 @@ function rotateOffset(dx, dy, deg) {
  */
 function mcuChipInfo(device) {
   const d = String(device || '').toLowerCase();
+  if (/attiny2313/.test(d)) return { label: 'ATtiny2313', pkg: 'DIP-20' };
   if (/attiny88/.test(d)) return { label: 'ATtiny88', pkg: 'DIP-28' };
   if (/attiny85/.test(d)) return { label: 'ATtiny85', pkg: 'DIP-8' };
+  if (/attiny13/.test(d)) return { label: 'ATtiny13', pkg: 'DIP-8' };
   if (/atmega168/.test(d)) return { label: 'ATmega168P', pkg: 'DIP-28' };
   if (/atmega2560/.test(d)) return { label: 'ATmega2560', pkg: 'TQFP-100' };
   if (/atmega328/.test(d)) return { label: 'ATmega328P', pkg: 'DIP-28' };
@@ -1149,14 +1152,30 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           </div>
         );
       }
-      case 'potentiometer':
+      case 'potentiometer': {
+        // When seated, scale and position the Wokwi element so its three
+        // drawn pin graphics land exactly on the seat's three holes.
+        // The Wokwi pot element is ~60px wide with pins at ~10/30/50px.
+        // Seat holes are at BB_PITCH intervals (14px): cols 0/2/4 = 0/28/56px.
+        const potSeated = part.seat && part._seatTerminals;
+        let potLeft = x - 30, potTop = y - 30, potScale;
+        if (potSeated) {
+          const aPos = part._seatTerminals.a;
+          const bPos = part._seatTerminals.b;
+          if (aPos && bPos) {
+            const seatSpan = Math.abs(bPos.x - aPos.x);
+            // The Wokwi element's internal pin span is ~40px (10px to 50px in a 60px body)
+            potScale = seatSpan / 40;
+            const cx = (aPos.x + bPos.x) / 2;
+            const cy = aPos.y;
+            potLeft = cx - 30 * potScale;
+            potTop = cy - 50 * potScale; // pins are near the bottom of the 60px body
+          }
+        }
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 30, top: y - 30,
-              // Build: transparent to events so body drags reach the canvas.
-              // Sim: the knob IS the interface — rolling it must change the
-              // resistance (it was pointerEvents:'none' in both modes, so
-              // the pot could never be used at all).
+            style={{ ...baseStyle, left: potLeft, top: potTop,
+              ...(potScale ? { transform: `scale(${potScale})`, transformOrigin: 'top left' } : {}),
               cursor: simulate ? 'pointer' : 'move',
               pointerEvents: simulate ? 'auto' : 'none' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}>
@@ -1172,6 +1191,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
+      }
       case 'buzzer': {
         const tone = buzzerTones?.(id);
         return (
@@ -1497,7 +1517,7 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit, engineBoard,
+  circuit, engineBoard, fitToken,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
@@ -1531,10 +1551,18 @@ export function BoardCanvas({
   const selectedPartId = selectedPart || (selectedParts && selectedParts.size === 1 ? [...selectedParts][0] : null);
   const selectedPartModel = selectedPartId ? parts.find(part => part.id === selectedPartId) : null;
 
-  // Auto-fit: when parts change significantly, zoom to fit all content
+  // Auto-fit: on every LOAD (fitToken bumps), plus when the part count
+  // changes. Keying on count alone skipped the fit whenever a loaded
+  // example happened to have the same number of parts as the previous
+  // project — SOS opened half off-screen because the last bench's pan
+  // survived (self-taken deployed screenshot, 2026-08-16).
   const prevPartCount = React.useRef(0);
+  const prevFitToken = React.useRef(fitToken);
   React.useEffect(() => {
-    if (parts.length === 0 || parts.length === prevPartCount.current) return;
+    if (parts.length === 0) return;
+    const tokenChanged = fitToken !== prevFitToken.current;
+    if (!tokenChanged && parts.length === prevPartCount.current) return;
+    prevFitToken.current = fitToken;
     prevPartCount.current = parts.length;
     // Bounding box from REAL part bounds. The old center±80 guess
     // undershot a full breadboard by ~385px per side (the body is 930
@@ -1561,7 +1589,7 @@ export function BoardCanvas({
       x: minX - 20 - Math.max(0, (viewW - contentW) / 2),
       y: minY - 20 - Math.max(0, (viewH - contentH) / 2),
     });
-  }, [parts.length]);
+  }, [parts.length, fitToken]);
   const [panning, setPanning] = useState(false);
   const panStart = React.useRef(null);
 
