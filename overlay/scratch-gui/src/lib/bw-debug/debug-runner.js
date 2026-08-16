@@ -1192,6 +1192,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         inspect() {
             if (!target) return null;
             const regs = target.regs();
+            // The SFR window and the 0x08..SP stack walk below are 8051
+            // anatomy. A machine target (6502, Z80) answers a different regs
+            // shape — on the Z80, `r` is the REFRESH register, a number, and
+            // mapping over it crashed the drawer. The 8051 shape is the one
+            // with the bank-register array; anything else inspects as
+            // 'generic' with no sfr/stack, and the drawer renders what the
+            // target actually has instead of what an 8051 would have.
+            if (!Array.isArray(regs.r)) {
+                return { regs, sfr: null, stack: null, pc: regs.pc, tNs: target.timeNs(), flavor: 'generic' };
+            }
             const sfr = {};
             for (const { name, addr } of [...IO_SFRS, ...TIMER_SFRS]) {
                 sfr[name] = target.readMem('sfr', addr, 1)[0];
@@ -1203,7 +1213,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             for (let a = 0x08; a <= regs.sp && a <= 0xFF; a++) {
                 stack.push({ addr: a, value: target.readMem('iram', a, 1)[0] });
             }
-            return { regs, sfr, stack, pc: regs.pc, tNs: target.timeNs() };
+            return { regs, sfr, stack, pc: regs.pc, tNs: target.timeNs(), flavor: '8051' };
         },
 
         /** Raw bytes, for the hex view. Returns [] rather than throwing. */

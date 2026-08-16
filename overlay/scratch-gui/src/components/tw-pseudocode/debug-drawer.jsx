@@ -107,6 +107,11 @@ const L10N = {
     }
 };
 
+// Machine-class targets (6502, Z80) have one flat 64K space; the 8051
+// list below would page through spaces their readMem refuses.
+const MACHINE_SPACES = [
+    {id: 'mem', label: 'Memory', size: 0x10000}
+];
 const SPACES = [
     {id: 'iram', label: 'Internal RAM', size: 0x100},
     {id: 'sfr', label: 'SFR', size: 0x100, base: 0x80},
@@ -374,6 +379,7 @@ class DebugDrawer extends React.Component {
         const snap = this.props.runner.inspect();
         if (!snap) return null;
         const {regs} = snap;
+        if (snap.flavor === 'generic') return this.renderNowGeneric(regs);
         const editable = (name, value, where) => (
             <span
                 key={name}
@@ -449,9 +455,49 @@ class DebugDrawer extends React.Component {
         );
     }
 
+    // The machine targets' registers, as the target names them — PC stays
+    // editable (setPc is generic); everything else reads out. 16-bit when the
+    // name says so or the value needs it.
+    renderNowGeneric (regs) {
+        const WIDE = new Set(['pc', 'sp', 'bc', 'de', 'hl', 'ix', 'iy', 'af_', 'bc_', 'de_', 'hl_', 'dptr']);
+        const entries = Object.entries(regs).filter(([k, v]) =>
+            k !== 'cycles' && (typeof v === 'number' || typeof v === 'boolean'));
+        return (
+            <div style={PANE}>
+                <div style={TITLE}>{this.tx('now')}</div>
+                <div style={{display: 'flex', gap: 12, flexWrap: 'wrap'}}>
+                    <span
+                        role="button"
+                        tabIndex={-1}
+                        title={this.tx('setPc')}
+                        style={{cursor: 'pointer'}}
+                        onClick={() => {
+                            const a = this.askAddress(this.tx('setPc'), regs.pc);
+                            if (a !== null) { this.props.runner.setPc(a); this.forceUpdate(); }
+                        }}
+                    >
+                        <span style={{color: '#7f8c8d'}}>{'PC '}</span>
+                        <span style={{color: '#ecf0f1', borderBottom: '1px dotted #2c3e50'}}>
+                            {hex16(regs.pc)}
+                        </span>
+                    </span>
+                    {entries.filter(([k]) => k !== 'pc').map(([k, v]) => (
+                        <span key={k}>
+                            <span style={{color: '#7f8c8d'}}>{`${k.toUpperCase().replace(/_$/, "'")} `}</span>
+                            <span style={{color: '#ecf0f1'}}>
+                                {typeof v === 'boolean' ? (v ? '1' : '0') :
+                                    (WIDE.has(k) || v > 0xFF) ? hex16(v) : hex8(v)}
+                            </span>
+                        </span>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     renderSfrs () {
         const snap = this.props.runner.inspect();
-        if (!snap) return null;
+        if (!snap || !snap.sfr) return null;
         return (
             <div style={PANE}>
                 <div style={TITLE}>{this.tx('sfrs')}</div>
@@ -474,7 +520,7 @@ class DebugDrawer extends React.Component {
 
     renderStack () {
         const snap = this.props.runner.inspect();
-        if (!snap) return null;
+        if (!snap || !snap.stack) return null;
         return (
             <div style={{...PANE, maxHeight: 160}}>
                 <div style={TITLE}>{this.tx('stack')}</div>
@@ -494,7 +540,9 @@ class DebugDrawer extends React.Component {
 
     renderMemory () {
         const {runner} = this.props;
-        const spec = SPACES.find(s => s.id === this.state.space) || SPACES[0];
+        const snap = runner.inspect();
+        const spaces = snap && snap.flavor === 'generic' ? MACHINE_SPACES : SPACES;
+        const spec = spaces.find(s => s.id === this.state.space) || spaces[0];
         const base = spec.base || 0;
         const perPage = 128;
         const start = base + (this.state.page * perPage);
@@ -508,11 +556,11 @@ class DebugDrawer extends React.Component {
                 <div style={{...TITLE, display: 'flex', gap: 8, alignItems: 'center'}}>
                     <span>{this.tx('memory')}</span>
                     <select
-                        value={this.state.space}
+                        value={spec.id}
                         onChange={e => this.setState({space: e.target.value, page: 0})}
                         style={{...BTN, textTransform: 'none'}}
                     >
-                        {SPACES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                        {spaces.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                     </select>
                     <button
                         style={BTN}
