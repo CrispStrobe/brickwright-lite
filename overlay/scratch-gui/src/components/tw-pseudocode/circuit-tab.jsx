@@ -514,6 +514,16 @@ class CircuitTab extends React.Component {
         creator.parse(source);
         const blob = await creator.generateSB3();
         await vm.loadProject(await blob.arrayBuffer());
+        // Auto-select the first sprite with scripts so the Blocks palette
+        // shows meaningful blocks, not "Stage selected — no motion blocks".
+        if (vm.runtime && vm.runtime.targets) {
+            const best = vm.runtime.targets.find(
+                t => !t.isStage && t.blocks.getScripts().length > 0
+            ) || vm.runtime.targets.find(t => !t.isStage);
+            if (best) {
+                vm.setEditingTarget(best.id);
+            }
+        }
         // scratch-vm's serializer drops unknown top-level keys, so `stc` never
         // survives toJSON. Keep it on the runtime, which lives as long as the
         // project does — the same reason the importer does it.

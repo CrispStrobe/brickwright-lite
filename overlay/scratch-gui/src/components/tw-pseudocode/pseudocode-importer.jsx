@@ -1103,6 +1103,17 @@ class PseudocodeImporter extends React.Component {
             });
             const blob = await creator.generateSB3();
             await this.props.vm.loadProject(await blob.arrayBuffer());
+            // Auto-select the first sprite with scripts so the Blocks palette
+            // shows meaningful blocks, not "Stage selected — no motion blocks".
+            const vm = this.props.vm;
+            if (vm.runtime && vm.runtime.targets) {
+                const best = vm.runtime.targets.find(
+                    t => !t.isStage && t.blocks.getScripts().length > 0
+                ) || vm.runtime.targets.find(t => !t.isStage);
+                if (best) {
+                    vm.setEditingTarget(best.id);
+                }
+            }
             // The .sb3 carries the STC12 declarations as a top-level `stc` key, but
             // scratch-vm's serializer only knows targets/monitors/extensions/meta and
             // drops everything else — so vm.toJSON().stc has always come back
