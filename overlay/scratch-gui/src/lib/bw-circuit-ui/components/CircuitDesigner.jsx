@@ -207,6 +207,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [warningsOpen, setWarningsOpen] = useState(false);
   const hasMcuPins = !!(projectData?.pins?.length > 0);
   const [machineResult, setMachineResult] = useState(null); // extractMachine result
+  const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
 
   // Detect retro CPU on the board for the Build Machine action
   const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80');
@@ -235,10 +236,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const result = extractMachine(flatCircuit, extractors);
     setMachineResult(result);
 
-    // On success, notify the host so it can boot the machine
+    // On success, notify the host so it can boot the machine. The two
+    // extractors shape their bus differently — 6502 memory-maps its
+    // chips, the Z80 decodes I/O ports — so both fields travel and the
+    // machine constructor reads the one its architecture has.
     if (result.ok && typeof window !== 'undefined') {
+      const config = { regions: result.regions };
+      if (result.chips) config.chips = result.chips;
+      if (result.ports) config.ports = result.ports;
       window.dispatchEvent(new CustomEvent('bw-machine-extracted', {
-        detail: { kind: result.kind, config: { regions: result.regions, chips: result.chips } },
+        detail: { kind: result.kind, config },
       }));
     }
   }, [parts, wires]);
@@ -737,6 +744,23 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setMode('build');
   }, [loadInferred]);
 
+  // Clear everything: wipe parts/wires/boards/annotations, save history
+  // so Ctrl+Z recovers, and clear the autosave slot deliberately.
+  const handleClear = useCallback(() => {
+    circuit._saveHistory();
+    circuit.parts.length = 0;
+    circuit.wires.length = 0;
+    circuit.breadboards = new Map();
+    circuit._syncNetlist();
+    setAnnotations([]);
+    setSelectedParts(new Set());
+    setSelectedWire(null);
+    setMode('build');
+    fileLoadedRef.current = false;
+    try { localStorage.removeItem('bw-circuit-autosave'); } catch { /* ok */ }
+    try { localStorage.removeItem('bw-circuit-file-loaded'); } catch { /* ok */ }
+  }, [circuit]);
+
   // Save circuit to JSON file download
   const handleSave = useCallback(() => {
     const json = JSON.stringify(circuit.toJSON(), null, 2);
@@ -1172,6 +1196,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}
           onSaveCircuit={handleSave}
+          onClearCircuit={handleClear}
           onLoadCircuit={() => {
             const input = document.createElement('input');
             input.type = 'file';
@@ -1269,14 +1294,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
-        <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 34, boxSizing: 'border-box'}}>
+        <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 36, padding: '36px 6px 6px', boxSizing: 'border-box'}}>
         {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
             The FACES below gate on capability, not on pins: a machine-class
             bench (6502/Z80) has no PIN concept, yet its booted machine has
             video/serial/registers. Gating faces on hasMcuPins kept the
             VdpScreen dark on a booted VDP machine (deploy probe, 2026-08-16).
             "Capabilities decide what is offered — never an assumption." */}
-        {hasMcuPins && debugState && (
+        {/* DebugStatus/step controls mount when the runner is active —
+            either via MCU pins (STC/Arduino) or via machine-class runner
+            (6502/Z80). The gate is debugState presence, not hasMcuPins:
+            a machine bench has no PIN concept but its runner provides
+            step/stepOver/registers. (widened per 57617b3 principle) */}
+        {debugState && (
           <DebugStatus
             debugState={debugState}
             capabilities={debugState.capabilities || null}
@@ -1312,7 +1342,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {debugState && typeof debugState.regs === 'function' && (
           <ArchitectureFace debugState={debugState} lang={lang} />
         )}
-        {hasMcuPins && debuggerPanel && (
+        {(hasMcuPins || debugState) && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>
@@ -1331,7 +1361,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         ) && (
           <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
-            fontSize: 12, lineHeight: 1.35}}>
+            fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
             <strong>{/^de/i.test(lang) ? 'Debugger inaktiv' : 'Debugger inactive'}</strong>
             <div>{/^de/i.test(lang)
               ? 'Noch keine Programm-Pins deklariert. Füge eine PIN-Deklaration in den Blöcken hinzu, um Ausführen und Einzelschritt zu aktivieren.'
@@ -1341,7 +1371,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {debuggerOn && hasRetroCpu && (!stc || !stc.pins || !stc.pins.length) && (
           <div data-machine-hint style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#eff6ff', border: '1px solid #93c5fd', color: '#1e40af',
-            fontSize: 12, lineHeight: 1.35}}>
+            fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
             <strong>{/^de/i.test(lang) ? 'Maschinen-Werkbank' : 'Machine bench'}</strong>
             <div>{/^de/i.test(lang)
               ? 'Dieser Rechner hat keine Pins — er hat einen Bus. „Build Machine" bootet ihn aus der Verdrahtung; das Programm kommt aus dem ASM-Tab.'
@@ -1385,32 +1415,48 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             )}
             {/* Machine Loader — visible after successful Build Machine */}
             {machineResult && machineResult.ok && (() => {
-              const kind = machineResult.kind === '6502' ? 'eater6502' : machineResult.kind === 'z80' ? 'z80' : null;
+              // extractMachine reports kind 'eater6502' (not '6502') for the
+              // W65C02 bench — matching only '6502' here left the 6502 loader
+              // with zero presets on deploy (owner report, 2038790).
+              const kind = (machineResult.kind === 'eater6502' || machineResult.kind === '6502') ? 'eater6502'
+                : machineResult.kind === 'z80' ? 'z80' : null;
+              // Each preset names its SLOT (machine-media routing) and its
+              // boot PROFILE — the machine shape the image was built for.
+              // Tali Forth is a py65mon build and MS BASIC an Eater-map/ACIA
+              // build; booting either on the user's extracted bus map would
+              // run silently into open bus, which is worse than saying so.
               const presets = kind === 'eater6502' ? [
-                { id: 'forth', label: 'Tali Forth 2', rom: 'taliforth-py65mon.bin', hint: 'Interactive Forth — type at the ok prompt' },
-                { id: 'basic', label: '6502 BASIC', rom: 'basic.rom', hint: 'MS BASIC (Woz monitor)' },
+                { id: 'forth', label: 'Tali Forth 2', rom: 'taliforth-py65mon.bin', slot: 'rom', profile: 'py65mon',
+                  hint: 'Interactive Forth (public domain) — py65mon console map, type at the ok prompt' },
+                { id: 'basic', label: 'MS BASIC (6502)', rom: 'basic.rom', slot: 'rom', profile: 'eater',
+                  hint: 'Microsoft BASIC 1.1 (MIT reconstruction) — Eater map, ACIA serial' },
               ] : kind === 'z80' ? [
-                { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', hint: 'R.T. Russell — type at the > prompt' },
+                { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', slot: 'com', profile: 'cpm',
+                  hint: 'R.T. Russell (zlib) — CP/M .COM over the BDOS shim, type at the > prompt' },
               ] : [];
-              const dispatchLoad = (slotId, bytes) => {
+              const dispatchLoad = (slotId, bytes, profile, name) => {
                 window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
-                  detail: { slotId, bytes, kind },
+                  detail: { slotId, bytes, kind, profile, name },
                 }));
               };
               const loadPreset = async (p) => {
                 try {
+                  setLoaderNote(`fetching ${p.rom}…`);
                   const url = new URL(`static/roms/${p.rom}`, document.baseURI).href;
                   const res = await fetch(url);
                   if (!res.ok) throw new Error(`HTTP ${res.status}`);
                   const bytes = new Uint8Array(await res.arrayBuffer());
-                  dispatchLoad(p.id === 'bbcbasic' ? 'com' : 'rom', bytes);
+                  dispatchLoad(p.slot, bytes, p.profile, p.rom);
+                  setLoaderNote(`${p.rom} (${bytes.length} bytes) → bench`);
                 } catch (e) {
-                  console.warn('preset load failed:', e);
+                  setLoaderNote(`✗ ${p.rom}: ${e.message}`);
                 }
               };
               const loadFile = async (file) => {
                 const bytes = new Uint8Array(await file.arrayBuffer());
-                dispatchLoad('rom', bytes);
+                const slot = /\.com$/i.test(file.name) ? 'com' : 'rom';
+                dispatchLoad(slot, bytes, slot === 'com' ? 'cpm' : null, file.name);
+                setLoaderNote(`${file.name} (${bytes.length} bytes) → bench`);
               };
               return (
                 <div style={{marginTop: 8, padding: 6, borderRadius: 4, background: '#1e293b', border: '1px solid #334155'}}>
@@ -1437,6 +1483,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                     <div style={{fontSize: 9, color: '#64748b', marginTop: 2}}>
                       …or write ASM in the Code tab and Assemble &amp; Run
                     </div>
+                    {loaderNote && (
+                      <div data-loader-note style={{fontSize: 9, marginTop: 2,
+                        color: loaderNote.startsWith('✗') ? '#f87171' : '#22c55e'}}>
+                        {loaderNote}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
