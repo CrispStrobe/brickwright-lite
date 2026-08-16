@@ -1108,7 +1108,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 schedule();
             } catch (e) {
                 unschedule();
-                setStatus('error', e.message);
+                // A failed lazy chunk (emu8051, bw-board) inside this try is
+                // exactly the caught-import blind spot the page recovery
+                // documents: the rejection is handled here, so the global
+                // unhandledrejection listener never sees it, and the user got
+                // 'Loading chunk 344 failed' as a dead debugger (owner report,
+                // 2026-08-16). Ask the recovery first; only show the error if
+                // this is not a stale build.
+                const recovering = typeof window !== 'undefined' &&
+                    window.__bwRecoverFromStaleBuild &&
+                    window.__bwRecoverFromStaleBuild(e && e.message);
+                if (recovering) setStatus('attaching', 'app updated — reloading the new build…');
+                else setStatus('error', e.message);
             }
         },
 
