@@ -304,7 +304,12 @@ class CircuitTab extends React.Component {
             // (arduino_uno, attiny85, ...) as themselves in the engine
             // netlist instead of collapsing them to 'mcu' — power pins
             // source, inputs read. Optional: older engines simply lack it.
-            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring, hasDevice: engine.hasDevice});
+            // The machine extractors ride the SAME injection: Build Machine
+            // reads eng.extract6502Machine from getEngine(). They were wired
+            // into the DRC (setExtractors, top of this file) but not into the
+            // engine object, so every deployed Build Machine answered "no
+            // retro CPU found" with the W65C02 seated in plain sight.
+            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring, hasDevice: engine.hasDevice, extract6502Machine, extractZ80Machine});
             // Part sidecars (pin maps, current ratings, footprints) into the
             // parts registry. require.context because this bundle is webpack,
             // not vite. 115 files, ~464 KiB, in this same chunk.
