@@ -9,7 +9,7 @@ const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 page.on('dialog', d => d.accept());
 page.on('console', m => { if (m.type() === 'error') console.log('JSERR:', m.text().slice(0, 200)); });
 await page.addInitScript(() => { localStorage.clear(); });
-await page.goto('https://crispstrobe.github.io/brickwright-lite/', { waitUntil: 'networkidle', timeout: 90000 });
+await page.goto(process.env.BW_URL || 'https://crispstrobe.github.io/brickwright-lite/', { waitUntil: 'networkidle', timeout: 90000 });
 await page.waitForSelector('[role="tab"]', { timeout: 60000 });
 await page.locator('[role="tab"]', { hasText: 'Circuit' }).first().click();
 await page.waitForTimeout(2500);
