@@ -309,7 +309,12 @@ class CircuitTab extends React.Component {
             // into the DRC (setExtractors, top of this file) but not into the
             // engine object, so every deployed Build Machine answered "no
             // retro CPU found" with the W65C02 seated in plain sight.
-            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring, hasDevice: engine.hasDevice, extract6502Machine, extractZ80Machine});
+            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring, hasDevice: engine.hasDevice, extract6502Machine, extractZ80Machine,
+                // The sweep instrument (SweepPanel): Kennlinien + Bode run
+                // these on an offline board copy. Same contract as the
+                // extractors above — if they are absent, the panel refuses
+                // truthfully instead of blaming the circuit.
+                runDcSweep: engine.runDcSweep, runAcSweep: engine.runAcSweep, logSpace: engine.logSpace});
             // Part sidecars (pin maps, current ratings, footprints) into the
             // parts registry. require.context because this bundle is webpack,
             // not vite. 115 files, ~464 KiB, in this same chunk.
