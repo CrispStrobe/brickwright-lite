@@ -130,6 +130,39 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     return requested;
 }
 
+/**
+ * One-board-one-truth, with the CLOCK taken seriously: the designer board
+ * and the auto-run race. An example loads its PROGRAM first (loadProject
+ * fires the run token, and a cache-warm compile returns in well under a
+ * second) while the circuit fetch and the designer's own render are still
+ * in flight — so at attach time vm.runtime.circuitBoard can be legitimately
+ * empty for a few hundred milliseconds and legitimately full right after.
+ * Falling back to the inferred netlist on that first read is how the
+ * pendant ran on a synthesized LED_colX bench while the real ATtiny88 +
+ * matrix sat on screen (owner report, 2026-08-16). Wait briefly; fall back
+ * only when the designer genuinely never shows up.
+ */
+async function resolveNetlist(vm, stc, inferNetlist, waitMs = 2500) {
+    const fromDesigner = () => {
+        const b = vm && vm.runtime && vm.runtime.circuitBoard;
+        return (b && Array.isArray(b.parts) && b.parts.length &&
+            typeof b.getNets === 'function')
+            ? { parts: b.parts, nets: b.getNets() } : null;
+    };
+    let n = fromDesigner();
+    const deadline = Date.now() + waitMs;
+    while (!n && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        n = fromDesigner();
+    }
+    if (!n) {
+        console.warn('[bw-debug] designer board not ready after ' + waitMs +
+            'ms — falling back to the inferred netlist');
+        return inferNetlist(stc);
+    }
+    return n;
+}
+
 export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', onChange = () => {} }) {
     let session = null;
     let target = null;
@@ -493,11 +526,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // while the emulator dutifully toggled a phantom LED. The inference
         // remains only as the fallback for a project that never opened the
         // Circuit tab's designer.
-        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
-        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
-            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
-            ? {parts: designerBoard.parts, nets: designerBoard.getNets()}
-            : inferNetlist(stc);
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl();
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
@@ -581,11 +610,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const clockHz = built.f_cpu || built.clockHz || 16_000_000;
 
         // Board — same one-board-one-truth rule as emu8051.
-        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
-        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
-            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
-            ? { parts: designerBoard.parts, nets: designerBoard.getNets() }
-            : inferNetlist(stc);
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl();
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
@@ -654,11 +679,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const clockHz = built.f_cpu || built.clockHz || 125_000_000;
 
         // Board — one-board-one-truth, same as AVR.
-        const designerBoard = vm && vm.runtime && vm.runtime.circuitBoard;
-        const netlist = (designerBoard && Array.isArray(designerBoard.parts) &&
-            designerBoard.parts.length && typeof designerBoard.getNets === 'function')
-            ? { parts: designerBoard.parts, nets: designerBoard.getNets() }
-            : inferNetlist(stc);
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl(3.3);
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
