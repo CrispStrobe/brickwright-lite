@@ -859,13 +859,25 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // proven board-less stub: never boot against a phantom.
     function designerBoard() {
         const b = vm && vm.runtime && vm.runtime.circuitBoard;
-        if (!b || typeof b.setPin !== 'function' || typeof b.advanceTo !== 'function') return null;
-        try {
-            const parts = typeof b.getParts === 'function' ? b.getParts() : b.parts;
-            return parts && parts.length ? b : null;
-        } catch {
-            return null;
+        let board = null;
+        let why = 'no designer board';
+        if (b && typeof b.setPin === 'function' && typeof b.advanceTo === 'function') {
+            try {
+                const parts = typeof b.getParts === 'function' ? b.getParts() : b.parts;
+                if (parts && parts.length) {
+                    board = b;
+                    why = `designer board attached (${parts.length} parts)`;
+                } else {
+                    why = 'designer board empty';
+                }
+            } catch (e) {
+                why = `designer board unreadable: ${e && e.message}`;
+            }
         }
+        // Truth hook: the decision is invisible from outside otherwise —
+        // probes and bug reports read this instead of guessing.
+        if (typeof window !== 'undefined') window.__bwMachineBoard = { why, board };
+        return { board, why };
     }
 
     // ── 6502 machine bench ──────────────────────────────────────────────
@@ -909,7 +921,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         const db = designerBoard();
-        if (db) targetOpts.board = db;
+        if (db.board) targetOpts.board = db.board;
+        readyMsg += ` — ${db.why}`;
         const result = await createDebugTarget('eater6502', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
@@ -952,7 +965,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         const db = designerBoard();
-        if (db) targetOpts.board = db;
+        if (db.board) targetOpts.board = db.board;
+        readyMsg += ` — ${db.why}`;
         const result = await createDebugTarget('z80', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
