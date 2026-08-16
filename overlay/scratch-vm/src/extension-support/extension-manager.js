@@ -272,7 +272,9 @@ class ExtensionManager {
      * @returns {Promise} resolved once all the extensions have been reinitialized
      */
     refreshBlocks () {
-        const allPromises = Array.from(this._loadedExtensions.values()).map(serviceName =>
+        // Deduplicate: an extension loaded by URL is keyed by both URL and ID,
+        // so iterating values() would call getInfo twice for the same service.
+        const allPromises = Array.from(new Set(this._loadedExtensions.values())).map(serviceName =>
             dispatch.call(serviceName, 'getInfo')
                 .then(info => {
                     info = this._prepareExtensionInfo(serviceName, info);
