@@ -115,7 +115,7 @@ if (!check) {
 
 if (!check) {
     const have = new Set(files);
-    const allowed = new Set(['react', 'prop-types', '@lit/react', 'lit', '@wokwi/elements']);
+    const allowed = new Set(['react', 'react-dom', 'prop-types', '@lit/react', 'lit', '@wokwi/elements']); // react-dom: createPortal for the intro reader modal (deliberate, 2026-08-16)
     for (const rel of files) {
         const src = await readFile(path.join(dest, rel), 'utf8');
         // Only a real module specifier counts: a `from '...'` clause, or a
