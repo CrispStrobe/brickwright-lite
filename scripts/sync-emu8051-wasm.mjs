@@ -24,9 +24,9 @@ import path from 'node:path';
 // Pinned to the commit whose BUILD-INFO.md records these hashes. Bump both together.
 // Current with emu8051-stc HEAD e04b15a as of 2026-08-16 — the P5/STC15
 // build that also exports _emu_set_part (part selection ABI).
-const PIN = 'e04b15a';
+const PIN = '2f1855a';
 const EXPECT = {
-    'emu8051.wasm': '2a1abc495a1e81e19a6751569cb7df77836931038b10b86733260f65726991c4',
+    'emu8051.wasm': '329a85f5a3fc93c02e4a3e8604d11c04dca221ca89ccc46c1c836e4ba50bc808',
     'emu8051.js': 'b8cdeacdda0b7fb2e5608881deead877d0a497f60b4a074d91bec3e9733ee365'
 };
 
