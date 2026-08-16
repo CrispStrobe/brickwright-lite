@@ -1414,7 +1414,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (unsubscribeBps) { unsubscribeBps(); unsubscribeBps = null; }
             clearGlow();
             if (session) session.destroy();
-            if (target) target.destroy();
+            // Machine-bench targets carry no destroy (nothing to free — the
+            // machine is plain JS); the 8051 target's tears down WASM state.
+            if (target && typeof target.destroy === 'function') target.destroy();
             session = target = board = symbols = null;
         }
     };
