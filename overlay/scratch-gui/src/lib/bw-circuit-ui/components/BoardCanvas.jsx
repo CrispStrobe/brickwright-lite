@@ -1099,10 +1099,17 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
     });
 
     switch (kind) {
-      case 'resistor':
+      case 'resistor': {
+        // For seated resistors, span the Wokwi element across the actual
+        // seat hole positions so the body aligns with the breadboard grid
+        // instead of rendering at a fixed offset that looks ghostly/tiny.
+        const rSeated = part.seat && part._seatTerminals;
+        const rLeft = rSeated ? Math.min(part._seatTerminals.a?.x ?? x, part._seatTerminals.b?.x ?? x) : x - 30;
+        const rWidth = rSeated ? Math.abs((part._seatTerminals.b?.x ?? x) - (part._seatTerminals.a?.x ?? x)) + 10 : undefined;
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 30, top: y - 6, cursor: 'move' }}
+            style={{ ...baseStyle, left: rSeated ? rLeft - 5 : x - 30, top: y - 6, cursor: 'move',
+              ...(rSeated && rWidth ? { width: rWidth } : {}) }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
@@ -1111,6 +1118,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
+      }
       case 'led': {
         const b = ledBrightness?.(id) ?? 0;
         const isOn = b > 0.01;
@@ -2666,15 +2674,22 @@ export function BoardCanvas({
             </g>
           )}
 
-          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(q.kind)).map(q => (
-            <g key={`seat-badge-${q.id}`} style={{pointerEvents: 'none'}}>
-              <rect x={q.x - 42} y={q.y - 42} width={84} height={16} rx={8}
-                fill="#166534" stroke="#86efac" strokeWidth={1} />
-              <text x={q.x} y={q.y - 31} textAnchor="middle" fill="#dcfce7" fontSize={8} fontFamily="system-ui, sans-serif" fontWeight="bold">
-                SEATED • PIN RASTER
-              </text>
-            </g>
-          ))}
+          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(q.kind)).map(q => {
+            // Offset badge to the part's top-left, never over another part's body.
+            // For straddling DIPs the body extends ~150px left and ~30px up from
+            // center; place the badge above-left of the body outline.
+            const bx = q.x - 150;
+            const by = q.y - 50;
+            return (
+              <g key={`seat-badge-${q.id}`} style={{pointerEvents: 'none'}}>
+                <rect x={bx} y={by} width={84} height={16} rx={8}
+                  fill="#166534" stroke="#86efac" strokeWidth={1} />
+                <text x={bx + 42} y={by + 11} textAnchor="middle" fill="#dcfce7" fontSize={8} fontFamily="system-ui, sans-serif" fontWeight="bold">
+                  SEATED • PIN RASTER
+                </text>
+              </g>
+            );
+          })}
 
 
           {/* Live jumper preview while dragging hole-to-hole */}
@@ -2742,111 +2757,20 @@ export function BoardCanvas({
               return m.size > 0 ? m : null;
             })()} />
 
-          {/* Inline warning indicators on parts */}
-          {warnings && warnings.map((w, i) => {
-            if (!w.partId) return null;
-            const part = parts.find(p => p.id === w.partId);
-            if (!part) return null;
-            const color = w.severity === 'danger' ? '#e74c3c' : '#f39c12';
-            return (
-              <g key={`warn-${i}`}>
-                <circle cx={part.x + 20} cy={part.y - 25} r={8}
-                  fill={color} fillOpacity={0.9} />
-                <text x={part.x + 20} y={part.y - 21} textAnchor="middle"
-                  fill="#fff" fontSize={12} fontWeight="bold"
-                  fontFamily="monospace" style={{ pointerEvents: 'none' }}>!</text>
-                <title>{w.message}</title>
-              </g>
-            );
-          })}
-
-          {/* Active-block part highlights (debugger shows which part the halted block controls) */}
-          {activePartIds && activePartIds.map(partId => {
-            const part = parts.find(p => p.id === partId || p.declName === partId);
-            if (!part) return null;
-            return (
-              <g key={`active-${partId}`}>
-                <circle cx={part.x} cy={part.y} r={30}
-                  fill="none" stroke="#3498db" strokeWidth={2}
-                  strokeDasharray="4,3" opacity={0.8}>
-                  <animate attributeName="stroke-dashoffset"
-                    from="0" to="14" dur="1s" repeatCount="indefinite" />
-                </circle>
-              </g>
-            );
-          })}
-
-          <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom}
-                onTerminalClick={handleTerminalClick}
-                onTerminalDown={handleTerminalDown}
-                onTerminalUp={handleTerminalUp}
-                placingProbe={placingProbe} />
-
-          {/* DRC warning badges on parts */}
-          {drcWarnings && drcWarnings.length > 0 && (
-            <DrcOverlay warnings={drcWarnings} parts={parts} />
-          )}
-        </svg>
-
-        {/* Wokwi element layer — transformed to match SVG viewBox */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          transformOrigin: '0 0',
-          transform: `scale(${zoom}) translate(${-pan.x}px, ${-pan.y}px)`,
-          pointerEvents: 'none', // let SVG handle clicks; children re-enable
-        }}>
-          <WokwiParts
-            parts={parts}
-            ledBrightness={ledBrightness}
-            buzzerTones={buzzerTones}
-            meterReadings={(() => {
-              const readings = {};
-              for (const p of parts) {
-                if (p.kind === 'meter' && circuit) {
-                  readings[p.id] = getMeterReading(p, wires, circuit);
-                }
-              }
-              return readings;
-            })()}
-            cubeScans={cubeScans}
-            onSelectPart={onSelectPart}
-            selectedParts={selectedParts}
-            simulate={!!simulate}
-            onControlChange={onControlChange}
-            onButtonDown={onButtonDown}
-            onButtonUp={onButtonUp}
-            onDragStart={(partId) => setDragging(partId)}
-            onHoverPart={(partId, cx, cy) => {
-              setHoveredPart(partId);
-              if (partId) setHoverPos({ x: cx, y: cy });
-            }}
-            onPartBodyClick={handlePartBodyClick}
-            onDoubleClick={(partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
-            deviceStates={(() => {
-              // Active-board rule, same as the SvgParts faces above.
-              const eb = (engineBoard && engineBoard.getDeviceState) ? engineBoard
-                : (circuit && circuit.board && circuit.board.getDeviceState) ? circuit.board : null;
-              if (!eb) return null;
-              const m = new Map();
-              for (const p of parts) {
-                if (p.kind === 'char_lcd') {
-                  const ds = eb.getDeviceState(p.id);
-                  if (ds) m.set(p.id, ds);
-                }
-              }
-              return m.size > 0 ? m : null;
-            })()}
-          />
-
-          {/* ── WIRE LAYERS ── painted AFTER the boards and the parts:
+          {/* ── WIRE LAYERS ── INSIDE the svg, painted after the substrate and
+              the SvgParts chip bodies:
               the z contract is boards → parts → wires (owner spec,
               stated twice — the first enforcement of this order died
               UNCOMMITTED in a working tree and never shipped, which is
               why test/z-contract-order.test.js now pins the mount
               order at source level). Selection handles and the rewire
-              preview stay last: overlays above everything. */}
+              preview stay last: overlays above everything. NOTE the
+              WokwiParts layer is an HTML OVERLAY mounted after this
+              svg closes — svg wire elements placed after it are inert
+              DOM and render NOTHING (that exact mistake shipped once:
+              every jumper vanished from the deployed Blink). Wires
+              live here, inside the svg, above the chip bodies; the
+              HTML part bodies overlay them, which is bench-real. */}
           <Wires wires={wires} parts={parts}
             selectedWire={selectedWire} onSelectWire={onSelectWire}
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
@@ -2995,6 +2919,105 @@ export function BoardCanvas({
               strokeWidth={2.5} strokeDasharray="6,4" strokeLinecap="round"
               style={{ pointerEvents: 'none' }} />
           )}
+
+          {/* Inline warning indicators on parts */}
+          {warnings && warnings.map((w, i) => {
+            if (!w.partId) return null;
+            const part = parts.find(p => p.id === w.partId);
+            if (!part) return null;
+            const color = w.severity === 'danger' ? '#e74c3c' : '#f39c12';
+            return (
+              <g key={`warn-${i}`}>
+                <circle cx={part.x + 20} cy={part.y - 25} r={8}
+                  fill={color} fillOpacity={0.9} />
+                <text x={part.x + 20} y={part.y - 21} textAnchor="middle"
+                  fill="#fff" fontSize={12} fontWeight="bold"
+                  fontFamily="monospace" style={{ pointerEvents: 'none' }}>!</text>
+                <title>{w.message}</title>
+              </g>
+            );
+          })}
+
+          {/* Active-block part highlights (debugger shows which part the halted block controls) */}
+          {activePartIds && activePartIds.map(partId => {
+            const part = parts.find(p => p.id === partId || p.declName === partId);
+            if (!part) return null;
+            return (
+              <g key={`active-${partId}`}>
+                <circle cx={part.x} cy={part.y} r={30}
+                  fill="none" stroke="#3498db" strokeWidth={2}
+                  strokeDasharray="4,3" opacity={0.8}>
+                  <animate attributeName="stroke-dashoffset"
+                    from="0" to="14" dur="1s" repeatCount="indefinite" />
+                </circle>
+              </g>
+            );
+          })}
+
+          <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom}
+                onTerminalClick={handleTerminalClick}
+                onTerminalDown={handleTerminalDown}
+                onTerminalUp={handleTerminalUp}
+                placingProbe={placingProbe} />
+
+          {/* DRC warning badges on parts */}
+          {drcWarnings && drcWarnings.length > 0 && (
+            <DrcOverlay warnings={drcWarnings} parts={parts} />
+          )}
+        </svg>
+
+        {/* Wokwi element layer — transformed to match SVG viewBox */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          transformOrigin: '0 0',
+          transform: `scale(${zoom}) translate(${-pan.x}px, ${-pan.y}px)`,
+          pointerEvents: 'none', // let SVG handle clicks; children re-enable
+        }}>
+          <WokwiParts
+            parts={parts}
+            ledBrightness={ledBrightness}
+            buzzerTones={buzzerTones}
+            meterReadings={(() => {
+              const readings = {};
+              for (const p of parts) {
+                if (p.kind === 'meter' && circuit) {
+                  readings[p.id] = getMeterReading(p, wires, circuit);
+                }
+              }
+              return readings;
+            })()}
+            cubeScans={cubeScans}
+            onSelectPart={onSelectPart}
+            selectedParts={selectedParts}
+            simulate={!!simulate}
+            onControlChange={onControlChange}
+            onButtonDown={onButtonDown}
+            onButtonUp={onButtonUp}
+            onDragStart={(partId) => setDragging(partId)}
+            onHoverPart={(partId, cx, cy) => {
+              setHoveredPart(partId);
+              if (partId) setHoverPos({ x: cx, y: cy });
+            }}
+            onPartBodyClick={handlePartBodyClick}
+            onDoubleClick={(partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
+            deviceStates={(() => {
+              // Active-board rule, same as the SvgParts faces above.
+              const eb = (engineBoard && engineBoard.getDeviceState) ? engineBoard
+                : (circuit && circuit.board && circuit.board.getDeviceState) ? circuit.board : null;
+              if (!eb) return null;
+              const m = new Map();
+              for (const p of parts) {
+                if (p.kind === 'char_lcd') {
+                  const ds = eb.getDeviceState(p.id);
+                  if (ds) m.set(p.id, ds);
+                }
+              }
+              return m.size > 0 ? m : null;
+            })()}
+          />
+
         </div>
 
         {/* Inline property editor (double-click) */}
