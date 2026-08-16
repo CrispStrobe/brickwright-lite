@@ -175,7 +175,17 @@ async function resolveNetlist(vm, stc, inferNetlist, waitMs = 2500) {
     return n;
 }
 
-export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', onChange = () => {} }) {
+/**
+ * @param {object} [opts.machineConfig] wired-extractor {regions, chips} from
+ *   Build Machine (bw-machine-extracted) — threads into createDebugTarget
+ *   so the bench boots the machine the user wired, not a hardcoded preset.
+ * @param {object} [opts.bootMedia] {slot, bytes, profile, name} from the
+ *   Machine Loader / ASM tab — the image the machine boots WITH, so the
+ *   reset vector is read from real bytes. profile 'py65mon'/'eater'/'cpm'
+ *   names the machine shape a preset image was built for; absent, the
+ *   extracted config (or the target's default map) is used.
+ */
+export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, onChange = () => {} }) {
     let session = null;
     let target = null;
     let board = null;
@@ -747,17 +757,30 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
-    // ── 6502 interactive Forth (Tali Forth 2 over py65mon memory map) ───
-    async function attachEater6502() {
-        setStatus('attaching', 'loading Tali Forth 2…');
-        const { createDebugTarget, createDebugSession } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+    /** The extractors publish {regions, chips|ports} but no clock — the
+     *  machines require one (M6502Machine/Z80Machine read config.clockHz
+     *  with no default). 1 MHz / 4 MHz are the canonical bench clocks. */
+    const benchConfig6502 = () => ({ clockHz: 1_000_000, chips: [], ...machineConfig });
+    const benchConfigZ80 = () => ({ clockHz: 4_000_000, ...machineConfig });
 
-        const res = await fetch(new URL('static/roms/taliforth-py65mon.bin', document.baseURI).href);
-        if (!res.ok) throw new Error(`Failed to load taliforth-py65mon.bin: HTTP ${res.status}`);
-        const rom = new Uint8Array(await res.arrayBuffer());
+    /** Boot media as {bytes, origin}: Intel HEX text (file picker accepts
+     *  .hex/.ihx and hands over raw file bytes) is parsed; binaries pass
+     *  through with no origin, so the machine's own ROM base applies. */
+    async function resolveMediaImage(media) {
+        const bytes = media.bytes;
+        if (bytes.length > 1 && bytes[0] === 0x3a) { // ':' — Intel HEX text
+            const { parseIhex } = await import(
+                /* webpackChunkName: "bw-board" */ '../bw-board/machine-media.js');
+            const parsed = parseIhex(new TextDecoder().decode(bytes));
+            return { bytes: parsed.bytes, origin: parsed.origin };
+        }
+        return { bytes, origin: null };
+    }
 
-        const result = await createDebugTarget('eater6502', { py65mon: true, rom });
+    /** Shared wiring for the machine benches: serial face, session,
+     *  keyboard input, video face (when the machine's chips include one),
+     *  and a hot loadRom for media applied to a live machine. */
+    function wireMachineBench(result, createDebugSession) {
         target = result.target;
         const adapter = result.adapter || result;
 
@@ -784,51 +807,112 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
         };
 
-        setStatus('ready', 'Tali Forth 2 — type at the ok prompt');
+        // Video face: only exposed when the machine actually has a chip
+        // answering the videoFrame() contract (TMS9918, simplevga, …) —
+        // the panel mounts VdpScreen on the presence of runner.video, and
+        // a dead screen on a serial-only machine would be a lie.
+        if (target && typeof target.video === 'function' && target.video()) {
+            runner.video = () => (target && target.video ? target.video() : null);
+        } else {
+            delete runner.video;
+        }
+
+        // Media applied to a LIVE machine (loader while running). A boot
+        // image should arrive via bootMedia instead — recreating the
+        // runner is what makes the reset vector come from the real bytes.
+        runner.loadRom = (bytes, at) => {
+            const load = adapter.loadRom || adapter.load;
+            if (load) load.call(adapter, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), at);
+            if (target && target.reset) target.reset();
+        };
+
+        return adapter;
+    }
+
+    // ── 6502 machine bench ──────────────────────────────────────────────
+    // Boot precedence: a preset's own profile ('py65mon' — Tali Forth;
+    // 'eater' — MS BASIC on the default Eater map) wins, because those
+    // images were built for those maps and would run into open bus on
+    // anything else. Otherwise the wired-extractor config boots the
+    // user's own machine with the delivered image; with nothing at all,
+    // the default remains Tali Forth 2 on py65mon.
+    async function attachEater6502() {
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+
+        const targetOpts = {};
+        let readyMsg;
+        if (bootMedia) {
+            setStatus('attaching', `booting ${bootMedia.name || 'image'}…`);
+            const img = await resolveMediaImage(bootMedia);
+            targetOpts.rom = img.bytes;
+            if (img.origin != null) targetOpts.romAt = img.origin;
+            if (bootMedia.profile === 'py65mon') {
+                targetOpts.py65mon = true;
+                readyMsg = `${bootMedia.name || 'image'} on the py65mon console map`;
+            } else if (machineConfig && bootMedia.profile !== 'eater') {
+                targetOpts.config = benchConfig6502();
+                readyMsg = `${bootMedia.name || 'image'} on the extracted machine (${(machineConfig.chips || []).map(c => c.kind).join(', ') || 'ram/rom'})`;
+            } else {
+                readyMsg = `${bootMedia.name || 'image'} on the Eater map (VIA $6000, ACIA $5000)`;
+            }
+        } else if (machineConfig) {
+            setStatus('attaching', 'booting extracted 6502 machine…');
+            targetOpts.config = benchConfig6502();
+            readyMsg = 'extracted machine booted with an empty ROM — load a program (presets, file, or ASM tab)';
+        } else {
+            setStatus('attaching', 'loading Tali Forth 2…');
+            const res = await fetch(new URL('static/roms/taliforth-py65mon.bin', document.baseURI).href);
+            if (!res.ok) throw new Error(`Failed to load taliforth-py65mon.bin: HTTP ${res.status}`);
+            targetOpts.rom = new Uint8Array(await res.arrayBuffer());
+            targetOpts.py65mon = true;
+            readyMsg = 'Tali Forth 2 — type at the ok prompt';
+        }
+
+        const result = await createDebugTarget('eater6502', targetOpts);
+        wireMachineBench(result, createDebugSession);
+        setStatus('ready', readyMsg);
         return session;
     }
 
-    // ── Z80 interactive BASIC (BBC BASIC over CP/M BDOS shim) ───────────
+    // ── Z80 machine bench ───────────────────────────────────────────────
+    // A CP/M .COM (BBC BASIC — slot 'com' / profile 'cpm') boots over the
+    // BDOS shim regardless of the wiring: the shim IS its machine. A raw
+    // ROM boots the extracted config (or the default Searle map). With no
+    // media at all, the default remains BBC BASIC.
     async function attachZ80() {
-        setStatus('attaching', 'loading BBC BASIC…');
         const { createDebugTarget, createDebugSession } =
             await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
 
-        // Fetch the BBCBASIC.COM (zlib, rtrussell/BBCZ80)
-        const res = await fetch(new URL('static/roms/bbcbasic.com', document.baseURI).href);
-        if (!res.ok) throw new Error(`Failed to load bbcbasic.com: HTTP ${res.status}`);
-        const com = new Uint8Array(await res.arrayBuffer());
-
-        const result = await createDebugTarget('z80', { cpm: { com } });
-        target = result.target;
-        const adapter = result.adapter || result;
-
-        // Wire serial output so the console face receives it
-        if (adapter.onSerial) {
-            adapter.onSerial((byte) => {
-                const ch = String.fromCharCode(byte & 0x7f);
-                serialLines.push(ch);
-                if (serialLines.length > 500) serialLines.splice(0, serialLines.length - 500);
-            });
+        const targetOpts = {};
+        let readyMsg;
+        const isCom = bootMedia && (bootMedia.slot === 'com' || bootMedia.profile === 'cpm');
+        if (isCom) {
+            setStatus('attaching', `booting ${bootMedia.name || '.com'} over the CP/M shim…`);
+            targetOpts.cpm = { com: (await resolveMediaImage(bootMedia)).bytes };
+            readyMsg = `${bootMedia.name || 'CP/M program'} — type at the prompt`;
+        } else if (bootMedia) {
+            setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
+            const img = await resolveMediaImage(bootMedia);
+            targetOpts.rom = img.bytes;
+            if (img.origin != null) targetOpts.romAt = img.origin;
+            if (machineConfig) targetOpts.config = benchConfigZ80();
+            readyMsg = `${bootMedia.name || 'ROM'} on ${machineConfig ? 'the extracted machine' : 'the Searle map'}`;
+        } else if (machineConfig) {
+            setStatus('attaching', 'booting extracted Z80 machine…');
+            targetOpts.config = benchConfigZ80();
+            readyMsg = 'extracted machine booted with an empty ROM — load a program (presets, file, or ASM tab)';
+        } else {
+            setStatus('attaching', 'loading BBC BASIC…');
+            const res = await fetch(new URL('static/roms/bbcbasic.com', document.baseURI).href);
+            if (!res.ok) throw new Error(`Failed to load bbcbasic.com: HTTP ${res.status}`);
+            targetOpts.cpm = { com: new Uint8Array(await res.arrayBuffer()) };
+            readyMsg = 'BBC BASIC (Z80) — type at the > prompt';
         }
 
-        session = createDebugSession(target, {
-            onHalt: (snapshot) => {
-                setStatus('paused', `PC=$${snapshot.pc.toString(16).padStart(4, '0')}`);
-            },
-            onRun: () => setStatus('running'),
-        });
-
-        // Expose sendSerial for the console face
-        runner.sendSerial = (text) => {
-            if (adapter.sendSerial) {
-                for (let i = 0; i < text.length; i++) {
-                    adapter.sendSerial(text.charCodeAt(i));
-                }
-            }
-        };
-
-        setStatus('ready', 'BBC BASIC (Z80) — type at the > prompt');
+        const result = await createDebugTarget('z80', targetOpts);
+        wireMachineBench(result, createDebugSession);
+        setStatus('ready', readyMsg);
         return session;
     }
 

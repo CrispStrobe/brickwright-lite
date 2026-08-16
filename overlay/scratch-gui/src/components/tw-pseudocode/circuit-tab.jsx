@@ -68,7 +68,8 @@ class CircuitTab extends React.Component {
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
-            examples: null, examplesError: null, circuitData: null, loadingExample: null};
+            examples: null, examplesError: null, circuitData: null, loadingExample: null,
+            machineBooted: false};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
         this.loadExample = this.loadExample.bind(this);
@@ -127,6 +128,11 @@ class CircuitTab extends React.Component {
             }
         };
         window.addEventListener('bw-settings-change', this._settingsHandler);
+        // Machine bench: Build Machine dispatches this when the bus extractor
+        // succeeds. The DebugPanel needs to render even without declared pins
+        // so the user can load a program and run the machine.
+        this._machineExtractedHandler = () => this.setState({machineBooted: true});
+        window.addEventListener('bw-machine-extracted', this._machineExtractedHandler);
         // The Scratch controls dispatch these user-level events even when the
         // VM has no executable MCU program. Keep the designer simulation in
         // lockstep with Green Flag/Red Flag in that case too.
@@ -175,6 +181,7 @@ class CircuitTab extends React.Component {
 
     componentWillUnmount () {
         window.removeEventListener('bw-settings-change', this._settingsHandler);
+        window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
         window.removeEventListener('bw-green-flag', this._greenFlagHandler);
         window.removeEventListener('bw-stop-all', this._stopAllHandler);
         window.removeEventListener('bw-power-off', this._powerOffHandler);
@@ -824,7 +831,7 @@ class CircuitTab extends React.Component {
             this._portalOn = true;
             const solo = (
                 <div style={{...box, overflow: 'auto'}} data-debugger-solo-pane>
-                    {stc && stc.pins && stc.pins.length ? this.renderDebugPanel() : (
+                    {(stc && stc.pins && stc.pins.length) || this.state.machineBooted ? this.renderDebugPanel() : (
                         <div style={{color: '#64748b', fontSize: 12.5, padding: 8}} data-no-code-indicator>
                             {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
                                 || SOLO_L10N.en).noCode}
@@ -849,7 +856,7 @@ class CircuitTab extends React.Component {
                     as a misconfigured MCU project. The board, the solver, the instruments and
                     the design-rule check all work with no MCU in the netlist at all. So this
                     is an invitation, shown once and dismissible, not a warning. */}
-                {(stc && stc.pins && stc.pins.length) || this.state.hintDismissed ? null : (
+                {(stc && stc.pins && stc.pins.length) || this.state.machineBooted || this.state.hintDismissed ? null : (
                     <details style={{marginBottom: 6, flex: '0 0 auto', color: '#075985'}}>
                     <summary style={{cursor: 'pointer', color: '#d97706', fontSize: 18, lineHeight: 1, padding: '2px 4px'}} title="Show circuit hint">▲</summary>
                     <div style={{padding: '5px 8px', borderRadius: 5,
@@ -879,7 +886,7 @@ class CircuitTab extends React.Component {
                     puts them in the stage header; they are here because that header is
                     shown for every project including pure Scratch ones — see the panel's
                     own comment. The block glow lands in the Blocks tab regardless. */}
-                {stc && stc.pins && stc.pins.length ? null : (
+                {(stc && stc.pins && stc.pins.length) || this.state.machineBooted ? null : (
                     // The panel is correctly absent — there is no program to run
                     // control over — but absent and broken look identical, and a
                     // reader who came here for the debugger finds nothing and no
@@ -988,7 +995,7 @@ class CircuitTab extends React.Component {
                     runner survives the toggle). This used to be two blocks,
                     and dock 'off' matched BOTH — two live DebugPanel
                     instances, two runners. */}
-                {dock !== 'top' && stc && stc.pins && stc.pins.length ? (
+                {dock !== 'top' && ((stc && stc.pins && stc.pins.length) || this.state.machineBooted) ? (
                     <div
                         style={dock === 'right' ?
                             {flex: '0 0 320px', minWidth: 0, overflow: 'auto'} : {display: 'none'}}

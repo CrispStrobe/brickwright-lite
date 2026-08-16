@@ -130,8 +130,8 @@ class CircuitTab extends React.Component {
         window.addEventListener('bw-settings-change', this._settingsHandler);
         // Machine bench: Build Machine dispatches this when the bus extractor
         // succeeds. The DebugPanel needs to render even without declared pins
-        // so the user can Run the machine.
-        this._machineExtractedHandler = () => this.setState({ machineBooted: true });
+        // so the user can load a program and run the machine.
+        this._machineExtractedHandler = () => this.setState({machineBooted: true});
         window.addEventListener('bw-machine-extracted', this._machineExtractedHandler);
         // The Scratch controls dispatch these user-level events even when the
         // VM has no executable MCU program. Keep the designer simulation in
@@ -181,10 +181,10 @@ class CircuitTab extends React.Component {
 
     componentWillUnmount () {
         window.removeEventListener('bw-settings-change', this._settingsHandler);
+        window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
         window.removeEventListener('bw-green-flag', this._greenFlagHandler);
         window.removeEventListener('bw-stop-all', this._stopAllHandler);
         window.removeEventListener('bw-power-off', this._powerOffHandler);
-        window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
         const runtime = this.props.vm && this.props.vm.runtime;
         if (runtime && runtime.removeListener) {
             runtime.removeListener('PROJECT_START', this.handleProjectStart);
@@ -307,7 +307,21 @@ class CircuitTab extends React.Component {
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
             const setEngine = ui.setEngine || (ui.default && ui.default.setEngine);
             if (typeof setEngine !== 'function') throw new Error('bw-circuit-ui setEngine export is unavailable');
-            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring});
+            // hasDevice lets the designer keep registered board kinds
+            // (arduino_uno, attiny85, ...) as themselves in the engine
+            // netlist instead of collapsing them to 'mcu' — power pins
+            // source, inputs read. Optional: older engines simply lack it.
+            // The machine extractors ride the SAME injection: Build Machine
+            // reads eng.extract6502Machine from getEngine(). They were wired
+            // into the DRC (setExtractors, top of this file) but not into the
+            // engine object, so every deployed Build Machine answered "no
+            // retro CPU found" with the W65C02 seated in plain sight.
+            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring, hasDevice: engine.hasDevice, extract6502Machine, extractZ80Machine,
+                // The sweep instrument (SweepPanel): Kennlinien + Bode run
+                // these on an offline board copy. Same contract as the
+                // extractors above — if they are absent, the panel refuses
+                // truthfully instead of blaming the circuit.
+                runDcSweep: engine.runDcSweep, runAcSweep: engine.runAcSweep, logSpace: engine.logSpace});
             // Part sidecars (pin maps, current ratings, footprints) into the
             // parts registry. require.context because this bundle is webpack,
             // not vite. 115 files, ~464 KiB, in this same chunk.
@@ -493,24 +507,30 @@ class CircuitTab extends React.Component {
         const {default: SB3Creator} = await import(
             /* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js');
 
-        // Retarget the example to the current project device if they differ.
-        const currentStc = this.readStc();
-        const currentDevice = currentStc && currentStc.device
-            ? String(currentStc.device).toLowerCase() : null;
+        // An example is a curated PAIRING of program and circuit: the
+        // circuit.json has the example's own device seated and wired. This
+        // used to retarget the program to the CURRENT project's device,
+        // which silently broke the pairing — the ATtiny88 pendant retargeted
+        // to an STC12 program (or, when retarget refused, loaded as-authored
+        // but with the OLD device's engine still selected), and the matrix
+        // never lit (owner report, 3791c09). The example's device wins;
+        // retargeting stays available afterwards in the Code tab.
         const exDevice = (source.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
-        if (currentDevice && exDevice && currentDevice !== exDevice.toLowerCase()
-            && SB3Creator.retargetPseudocode) {
-            const result = SB3Creator.retargetPseudocode(source, currentDevice);
-            if (result.ok) {
-                source = result.pseudocode;
-            }
-            // If retarget fails, load as-authored — reasons will surface in the UI
-        }
 
         const creator = new SB3Creator();
         creator.parse(source);
         const blob = await creator.generateSB3();
         await vm.loadProject(await blob.arrayBuffer());
+        // Auto-select the first sprite with scripts so the Blocks palette
+        // shows meaningful blocks, not "Stage selected — no motion blocks".
+        if (vm.runtime && vm.runtime.targets) {
+            const best = vm.runtime.targets.find(
+                t => !t.isStage && t.blocks.getScripts().length > 0
+            ) || vm.runtime.targets.find(t => !t.isStage);
+            if (best) {
+                vm.setEditingTarget(best.id);
+            }
+        }
         // scratch-vm's serializer drops unknown top-level keys, so `stc` never
         // survives toJSON. Keep it on the runtime, which lives as long as the
         // project does — the same reason the importer does it.
@@ -520,9 +540,34 @@ class CircuitTab extends React.Component {
         // The importer reads this on mount/update and fills its buffer
         // when it sees the project changed.
         vm.runtime.bwPseudocodeSource = source;
+        // Publish the example's device on the runtime, exactly like the
+        // importer's device switch does — the debug panel reads these to
+        // select the matching engine. Without this the pendant (ATTINY88)
+        // ran on "Simulated (STC12 / 8051)" and every pin stayed off.
+        if (exDevice) {
+            const id = exDevice.toLowerCase();
+            vm.runtime.bwDeviceId = id;
+            const core =
+                /^stc/.test(id) ? '8051' :
+                /^(arduino-|atmega|attiny)/.test(id) ? 'arduino' :
+                id === 'pico' ? 'rp2040' :
+                /^(eater6502|6502|w65c02)$/.test(id) ? 'w65c02' :
+                /^(z80|zx48|zx128)$/.test(id) ? 'z80' :
+                id === 'microbit' ? 'micropython' : null;
+            if (core) vm.runtime.bwDeviceCore = core;
+        }
         // Emit a project change so the importer knows to re-read.
         vm.runtime.emit('PROJECT_CHANGED');
-        return !!(stc && stc.pins && stc.pins.length);
+        // Not just a boolean: whether the "no pins" advisory is even true
+        // depends on WHAT the program is. A PART binding (PART leds =
+        // 74HC595 data P1.0 ...) drives pins without a single PIN line,
+        // and a machine-class device (6502/Z80 bench) has no pin concept
+        // at all — scolding either one misleads (owner report).
+        return {
+            pins: !!(stc && stc.pins && stc.pins.length),
+            hasPart: /^PART\s+/im.test(source),
+            device: (exDevice || '').toLowerCase(),
+        };
     }
 
     async loadExample (ex) {
@@ -561,15 +606,16 @@ class CircuitTab extends React.Component {
             // fatal — a board with no pins is still a board, and the panel now
             // says why the debugger is absent — so the circuit still loads and
             // the reason is reported.
-            let pins = false;
+            let prog = null;
             let programError = null;
             if (hasProgram) {
                 try {
-                    pins = await this.loadExampleProgram(ex);
+                    prog = await this.loadExampleProgram(ex);
                 } catch (e) {
                     programError = e.message;
                 }
             }
+            const pins = !!(prog && prog.pins);
             // Switching to the Designer is the point of clicking an example —
             // leaving the user on the gallery with an invisible change would be
             // the same silence this panel strip exists to avoid.
@@ -585,7 +631,12 @@ class CircuitTab extends React.Component {
                     `Opened the circuit for "${ex.id}", but its program did not load ` +
                     `(${programError}), so there are no pins and no debugger.` : null
             });
-            if (hasProgram && !pins && !programError) {
+            // Machine-class devices (the 6502/Z80 benches) have no pin
+            // concept — their debugger comes from the bus extract, not
+            // from PIN lines. PART bindings drive pins without PIN lines.
+            // Scolding either case was wrong (owner report, twice).
+            const machineClass = prog && /^(eater6502|z80|zx48|zx128|6502|w65c02)$/.test(prog.device);
+            if (hasProgram && !pins && !programError && prog && !prog.hasPart && !machineClass) {
                 this.setState({examplesError:
                     `"${ex.id}" loaded, but its program declares no pins, so the ` +
                     'debugger stays hidden.'});
@@ -899,7 +950,7 @@ class CircuitTab extends React.Component {
                     onLoadExample={this.loadExample}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
-                    onCircuitReady={c => { window.__circuit = c; this.handleCircuitReady(c); }}
+                    onCircuitReady={c => { window.__circuit = c; if (this.props.vm && this.props.vm.runtime) this.props.vm.runtime.circuitModel = c; this.handleCircuitReady(c); }}
                     circuitData={this.state.circuitData || undefined}
                     onBoardReady={(board) => {
                         // Same diagnosis hook the standalone harness exposes —
@@ -1096,18 +1147,42 @@ class CircuitTab extends React.Component {
             // bilingual titles, and a `kind` of "circuit" or "program" — so the
             // browser is fed from that or says why it is not.
             const {examples, examplesError} = this.state;
-            if (examplesError) return note(examplesError);
-            if (!examples) return note('Loading examples…');
+            if (!examples) return note(examplesError || 'Loading examples…');
             const stc = this.readStc();
             const currentDevice = stc && stc.device ? String(stc.device).toLowerCase() : null;
+            // An advisory renders as a DISMISSIBLE STRIP above the list —
+            // it used to replace the entire browser, so one sticky message
+            // rendered "where the actual examples list should have been"
+            // (owner report, with screenshot).
             return (
-                <ui.ExamplesBrowser
-                    examples={examples}
-                    onLoadExample={this.loadExample}
-                    currentDevice={currentDevice}
-                    lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
-                        .slice(0, 2) === 'de' ? 'de' : 'en'}
-                />
+                <div style={{display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%'}}>
+                    {examplesError ? (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            padding: '6px 10px', fontSize: '12px',
+                            background: 'rgba(230, 126, 34, 0.12)',
+                            borderBottom: '1px solid rgba(230, 126, 34, 0.4)',
+                            flexShrink: 0
+                        }}>
+                            <span style={{flex: 1}}>{examplesError}</span>
+                            <button
+                                type="button"
+                                onClick={() => this.setState({examplesError: null})}
+                                style={{border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', lineHeight: 1}}
+                                aria-label="Dismiss"
+                            >{'×'}</button>
+                        </div>
+                    ) : null}
+                    <div style={{flex: 1, minHeight: 0, overflow: 'auto'}}>
+                        <ui.ExamplesBrowser
+                            examples={examples}
+                            onLoadExample={this.loadExample}
+                            currentDevice={currentDevice}
+                            lang={(typeof navigator !== 'undefined' && navigator.language || 'en')
+                                .slice(0, 2) === 'de' ? 'de' : 'en'}
+                        />
+                    </div>
+                </div>
             );
         }
         return null;

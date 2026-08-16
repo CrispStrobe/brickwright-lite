@@ -84,18 +84,80 @@ class DebugPanel extends React.Component {
         // The target is chosen BEFORE a runner exists, so it lives here rather
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
-        this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null};
+        this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null, machineConfig: null};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
         this.onStop = this.onStop.bind(this);
         this.onSpeed = this.onSpeed.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
+        this._onMachineExtracted = this._onMachineExtracted.bind(this);
+        this._onMediaLoad = this._onMediaLoad.bind(this);
+        this._onAsmRomReady = this._onAsmRomReady.bind(this);
+        /** Boot image handed over by the Machine Loader / ASM tab —
+         *  {slot, bytes, profile, name}. Kept off state: the bytes are
+         *  runner input, not render input. */
+        this._bootMedia = null;
+    }
+
+    /** Build Machine succeeded: the bus extractor's {regions, chips}.
+     *  Stored, and any live runner destroyed, so the NEXT boot threads
+     *  the config into createDebugTarget — the machine the user wired,
+     *  not a hardcoded preset. */
+    _onMachineExtracted (e) {
+        const detail = e.detail || {};
+        if (!detail.config) return;
+        if (this.state.runner) this.state.runner.destroy();
+        this._bootMedia = null;
+        const kind = detail.kind === 'z80' ? 'z80'
+            : detail.kind === 'eater6502' || detail.kind === '6502' ? 'eater6502'
+                : this.state.kind;
+        this.setState({machineConfig: detail.config, kind, runner: null,
+            ui: {phase: 'idle', message: 'machine extracted — load a program (presets, file, or ASM tab)'}});
+    }
+
+    /** Machine Loader (presets / file picker) delivered an image. The
+     *  runner is recreated rather than hot-patched: config and image
+     *  must boot TOGETHER so the CPU reads its reset vector from the
+     *  real bytes, not from a zero-filled ROM it booted with earlier. */
+    async _onMediaLoad (e) {
+        const {slotId, bytes, kind, profile, name} = e.detail || {};
+        if (!bytes) return;
+        if (this.state.runner) this.state.runner.destroy();
+        this._bootMedia = {
+            slot: slotId,
+            bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
+            profile: profile || null,
+            name: name || null
+        };
+        const nextKind = kind === 'z80' ? 'z80'
+            : kind === 'eater6502' || kind === '6502' ? 'eater6502'
+                : this.state.kind;
+        await new Promise(resolve => this.setState(
+            {kind: nextKind, runner: null, ui: {phase: 'idle', message: ''}}, resolve));
+        const runner = await this.runner();
+        await runner.start();
+    }
+
+    /** ASM tab assembled a binary — same delivery path as the loader. */
+    _onAsmRomReady (e) {
+        const {rom, target} = e.detail || {};
+        if (!rom) return;
+        this._onMediaLoad({detail: {
+            slotId: 'rom', bytes: rom,
+            kind: target === 'z80' ? 'z80' : 'eater6502',
+            name: 'assembled image'
+        }});
     }
 
     componentDidMount () {
         this.syncDeviceKind();
         this.syncProjectTokens({}, true);
+        // The machine-bench pipeline: Build Machine → config; Machine
+        // Loader / ASM tab → image; both meet in _onMediaLoad's reboot.
+        window.addEventListener('bw-machine-extracted', this._onMachineExtracted);
+        window.addEventListener('bw-machine-media-load', this._onMediaLoad);
+        window.addEventListener('bw-asm-rom-ready', this._onAsmRomReady);
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
@@ -164,6 +226,9 @@ class DebugPanel extends React.Component {
     }
 
     componentWillUnmount () {
+        window.removeEventListener('bw-machine-extracted', this._onMachineExtracted);
+        window.removeEventListener('bw-machine-media-load', this._onMediaLoad);
+        window.removeEventListener('bw-asm-rom-ready', this._onAsmRomReady);
         if (this.state.runner) this.state.runner.destroy();
     }
 
@@ -179,6 +244,8 @@ class DebugPanel extends React.Component {
         const runner = createDebugRunner({
             vm: this.props.vm,
             targetKind: this.state.kind,
+            machineConfig: this.state.machineConfig,
+            bootMedia: this._bootMedia,
             onChange: (ui) => {
                 this.setState({ui});
                 // The board only exists after attach, and the tab has to be told:

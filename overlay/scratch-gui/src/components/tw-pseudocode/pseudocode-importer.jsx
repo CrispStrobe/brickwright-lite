@@ -32,6 +32,9 @@ const DEVICE_GROUPS = [
     { label: '6502', core: 'w65c02', devices: [
         { id: 'eater6502', label: 'Eater 6502', compile: false, emulator: null },
     ]},
+    { label: 'Z80', core: 'z80', devices: [
+        { id: 'z80', label: 'Z80 bench', compile: false, emulator: null },
+    ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
     ]},
@@ -76,7 +79,7 @@ const L10N = {
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
         basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
-        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly (8051/6502/AVR) and assemble+run. Listing mode: generated disassembly. No ASM-to-blocks path — that asymmetry is deliberate.',
+        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly (8051/6502/Z80/AVR, assembled by the hosted toolchain) and assemble+run — the 6502/Z80 benches boot the image directly. Listing mode: generated disassembly. No ASM-to-blocks path — that asymmetry is deliberate.',
         stCOneWay: 'That language cannot be compiled back to blocks.',
         // BASIC / ASM mode bar
         profile: 'Profile:', lineNumbers: 'Line numbers', alwaysOn6502: '(always on for 6502)',
@@ -90,7 +93,6 @@ const L10N = {
         devicePlaceholder: 'Device…', deviceTitle: 'Target device — sets pin names, compile target and emulator',
         maximizeTitle: 'Maximize editor', restoreTitle: 'Restore panels',
         asmWriteFirst: 'Write assembly source first.',
-        asmEndpointStub: 'Assemble & Run: the raw-assemble endpoint is not yet available. This button will send your ASM source to the hosted assembler and run the result.',
         // reference section headers
         h: {
             Structure: 'Structure', EventsHats: 'Events (hats)', Control: 'Control',
@@ -137,7 +139,7 @@ const L10N = {
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
         basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
-        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler (8051/6502/AVR) schreiben und assemblieren+ausführen. Listing-Modus: generierte Disassemblierung. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
+        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler (8051/6502/Z80/AVR, assembliert vom gehosteten Toolchain-Dienst) schreiben und assemblieren+ausführen — die 6502/Z80-Werkbänke booten das Image direkt. Listing-Modus: generierte Disassemblierung. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
         stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.',
         // BASIC / ASM mode bar
         profile: 'Profil:', lineNumbers: 'Zeilennummern', alwaysOn6502: '(immer an bei 6502)',
@@ -151,7 +153,6 @@ const L10N = {
         devicePlaceholder: 'Gerät…', deviceTitle: 'Zielgerät — bestimmt Pinbenennung, Compile-Ziel und Emulator',
         maximizeTitle: 'Editor maximieren', restoreTitle: 'Panels wiederherstellen',
         asmWriteFirst: 'Schreibe zuerst Assembler-Quellcode.',
-        asmEndpointStub: 'Assemblieren & Ausführen: der Assembler-Endpunkt ist noch nicht verfügbar. Dieser Button wird deinen ASM-Quellcode an den gehosteten Assembler senden und das Ergebnis ausführen.',
         // reference section headers
         h: {
             Structure: 'Struktur', EventsHats: 'Events (Hats)', Control: 'Steuerung',
@@ -611,18 +612,55 @@ class PseudocodeImporter extends React.Component {
         }
     }
 
-    /** Assemble and run: send authored ASM to the assemble endpoint.
-     *  Stub — the bw-cfront raw-assemble endpoint is being built.
-     *  When it lands, this will POST {source, target, format} and get
-     *  back {hex, listing, errors}. Errors will surface as CM diagnostics. */
+    /** Assemble and run: POST authored ASM to the hosted assembler
+     *  (stc-compiler /assemble — sdas8051, ca65+ld65, sdasz80, avr-gcc),
+     *  then dispatch the raw image so the debug panel can boot it on the
+     *  machine bench. Auto-run is wired for the 6502/Z80 benches; other
+     *  targets assemble (errors surface here) but have no load path yet
+     *  — the status says which of the two happened. */
     async assembleAndRun () {
         const source = this.state.buffers.asm;
         if (!source || !source.trim()) {
             this.setState({status: this.L.asmWriteFirst});
             return;
         }
-        // Stub: endpoint not yet available
-        this.setState({status: this.L.asmEndpointStub});
+        const stc = this.currentStc();
+        const device = (stc && stc.device || '').toLowerCase();
+        // /assemble takes device ids directly (stc*, atmega*, attiny*);
+        // the two machine benches normalize to their toolchain names.
+        const target = /6502|eater/.test(device) ? 'eater6502'
+            : /^(z80|zx48|zx128)$/.test(device) ? 'z80'
+            : device || 'stc12c5a60s2';
+        const isBench = target === 'eater6502' || target === 'z80';
+        this.setState({busy: true, status: 'Assembling…'});
+        try {
+            const res = await fetch('https://stc-compiler.vercel.app/assemble', {
+                method: 'POST',
+                headers: {'content-type': 'application/json'},
+                body: JSON.stringify({asm: source, target}),
+            });
+            if (!res.ok) throw new Error(`Assembler HTTP ${res.status}`);
+            const result = await res.json();
+            if (!result.success) {
+                const msgs = (result.errors || []).map(e => (e.line ? `L${e.line}: ` : '') + e.message);
+                this.setState({busy: false,
+                    status: `Assembly errors: ${msgs.join('; ') || result.error || 'assembly failed'}`});
+                return;
+            }
+            if (!result.base64) throw new Error('Assembler returned no image');
+            const rom = Uint8Array.from(atob(result.base64), c => c.charCodeAt(0));
+            if (isBench) {
+                window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {
+                    detail: {rom, listing: result.listing, target}
+                }));
+                this.setState({busy: false, status: `Assembled ${rom.length} bytes — booting the ${target === 'z80' ? 'Z80' : '6502'} bench…`});
+            } else {
+                this.setState({busy: false,
+                    status: `Assembled OK (${rom.length} bytes). Auto-run from ASM is wired for the 6502/Z80 benches; for ${target} use the compile path.`});
+            }
+        } catch (e) {
+            this.setState({busy: false, status: `Assemble error: ${e.message}`});
+        }
     }
 
     // Keil C51 gives itself away: keywords SDCC spells differently, and its register headers.

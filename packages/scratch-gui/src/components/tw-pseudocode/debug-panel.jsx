@@ -92,45 +92,72 @@ class DebugPanel extends React.Component {
         this.onSpeed = this.onSpeed.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
-        this._onAsmRomReady = this._onAsmRomReady.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
+        this._onAsmRomReady = this._onAsmRomReady.bind(this);
+        /** Boot image handed over by the Machine Loader / ASM tab —
+         *  {slot, bytes, profile, name}. Kept off state: the bytes are
+         *  runner input, not render input. */
+        this._bootMedia = null;
     }
 
+    /** Build Machine succeeded: the bus extractor's {regions, chips}.
+     *  Stored, and any live runner destroyed, so the NEXT boot threads
+     *  the config into createDebugTarget — the machine the user wired,
+     *  not a hardcoded preset. */
     _onMachineExtracted (e) {
-        const { config } = e.detail || {};
-        if (!config) return;
-        // Store the extracted config and destroy any existing runner so the
-        // next Start creates a fresh one with the new config threaded in.
-        if (this.state.runner) { this.state.runner.destroy(); }
-        this.setState({ machineConfig: config, runner: null, ui: { phase: 'idle', message: '' } });
+        const detail = e.detail || {};
+        if (!detail.config) return;
+        if (this.state.runner) this.state.runner.destroy();
+        this._bootMedia = null;
+        const kind = detail.kind === 'z80' ? 'z80'
+            : detail.kind === 'eater6502' || detail.kind === '6502' ? 'eater6502'
+                : this.state.kind;
+        this.setState({machineConfig: detail.config, kind, runner: null,
+            ui: {phase: 'idle', message: 'machine extracted — load a program (presets, file, or ASM tab)'}});
     }
 
-    _onAsmRomReady (e) {
-        const { rom } = e.detail || {};
-        if (!rom || !this.state.runner) return;
-        if (this.state.runner.loadRom) {
-            this.state.runner.loadRom(rom);
-            this.state.runner.start();
-        }
-    }
-
+    /** Machine Loader (presets / file picker) delivered an image. The
+     *  runner is recreated rather than hot-patched: config and image
+     *  must boot TOGETHER so the CPU reads its reset vector from the
+     *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
-        const { slotId, bytes, kind } = e.detail || {};
+        const {slotId, bytes, kind, profile, name} = e.detail || {};
         if (!bytes) return;
-        // Ensure runner exists — create if needed
+        if (this.state.runner) this.state.runner.destroy();
+        this._bootMedia = {
+            slot: slotId,
+            bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
+            profile: profile || null,
+            name: name || null
+        };
+        const nextKind = kind === 'z80' ? 'z80'
+            : kind === 'eater6502' || kind === '6502' ? 'eater6502'
+                : this.state.kind;
+        await new Promise(resolve => this.setState(
+            {kind: nextKind, runner: null, ui: {phase: 'idle', message: ''}}, resolve));
         const runner = await this.runner();
-        if (runner.loadRom) {
-            runner.loadRom(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
-            runner.start().catch(() => {});
-        }
+        await runner.start();
+    }
+
+    /** ASM tab assembled a binary — same delivery path as the loader. */
+    _onAsmRomReady (e) {
+        const {rom, target} = e.detail || {};
+        if (!rom) return;
+        this._onMediaLoad({detail: {
+            slotId: 'rom', bytes: rom,
+            kind: target === 'z80' ? 'z80' : 'eater6502',
+            name: 'assembled image'
+        }});
     }
 
     componentDidMount () {
         this.syncDeviceKind();
         this.syncProjectTokens({}, true);
+        // The machine-bench pipeline: Build Machine → config; Machine
+        // Loader / ASM tab → image; both meet in _onMediaLoad's reboot.
         window.addEventListener('bw-machine-extracted', this._onMachineExtracted);
-        window.addEventListener('bw-asm-rom-ready', this._onAsmRomReady);
         window.addEventListener('bw-machine-media-load', this._onMediaLoad);
+        window.addEventListener('bw-asm-rom-ready', this._onAsmRomReady);
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
@@ -165,10 +192,22 @@ class DebugPanel extends React.Component {
         const rt = this.props.vm && this.props.vm.runtime;
         if (!rt) return;
         const core = rt.bwDeviceCore;
-        if (core === this._lastCore) return;
-        this._lastCore = core;
-        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
-        const kind = CORE_TO_KIND[core];
+        const dev = rt.bwDeviceId;
+        const key = `${core}/${dev}`;
+        if (key === this._lastCore) return;
+        this._lastCore = key;
+        // Device-specific engines first: an ATtiny88 on the coarse
+        // core→kind map landed on avr8js (ATmega328P memory map) — or,
+        // when no core was published at all, stayed on the 8051 emulator
+        // and the pendant's matrix never lit (owner report, 3791c09).
+        const DEVICE_TO_KIND = {
+            attiny88: 'attiny88', attiny85: 'attiny85',
+            'arduino-mega': 'atmega2560', atmega2560: 'atmega2560',
+            pico: 'rp2040js', eater6502: 'eater6502',
+            z80: 'z80', zx48: 'z80', zx128: 'z80',
+        };
+        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
+        const kind = DEVICE_TO_KIND[dev] || CORE_TO_KIND[core];
         if (kind && kind !== this.state.kind) {
             // Changing the kind while a runner exists would leave it on the
             // wrong engine. Destroy it so the next Start creates a fresh one.
@@ -188,8 +227,8 @@ class DebugPanel extends React.Component {
 
     componentWillUnmount () {
         window.removeEventListener('bw-machine-extracted', this._onMachineExtracted);
-        window.removeEventListener('bw-asm-rom-ready', this._onAsmRomReady);
         window.removeEventListener('bw-machine-media-load', this._onMediaLoad);
+        window.removeEventListener('bw-asm-rom-ready', this._onAsmRomReady);
         if (this.state.runner) this.state.runner.destroy();
     }
 
@@ -206,6 +245,7 @@ class DebugPanel extends React.Component {
             vm: this.props.vm,
             targetKind: this.state.kind,
             machineConfig: this.state.machineConfig,
+            bootMedia: this._bootMedia,
             onChange: (ui) => {
                 this.setState({ui});
                 // The board only exists after attach, and the tab has to be told:
