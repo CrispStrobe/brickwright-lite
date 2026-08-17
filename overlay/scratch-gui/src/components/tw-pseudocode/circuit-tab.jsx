@@ -78,6 +78,8 @@ class CircuitTab extends React.Component {
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
         this.loadExample = this.loadExample.bind(this);
+        this._boxRef = React.createRef();
+        this._measureBox = this._measureBox.bind(this);
         this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
         this.handleProjectStart = this.handleProjectStart.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
@@ -89,6 +91,7 @@ class CircuitTab extends React.Component {
             this.load();
             this.loadExamples();
         }
+        window.addEventListener('resize', this._measureBox);
         // The stage-hiding CSS lives here rather than in a stylesheet because
         // the wrapper's class is a hashed CSS-module name; the attribute-
         // contains selector survives rebuilds.
@@ -214,6 +217,7 @@ class CircuitTab extends React.Component {
     }
 
     componentDidUpdate (prevProps) {
+        this._measureBox();
         if (this.props.isVisible && !prevProps.isVisible) {
             this.load();
             this.loadExamples();
@@ -250,7 +254,25 @@ class CircuitTab extends React.Component {
         }
     }
 
+    /** The tab panel gives height:100% nothing definite to resolve
+     *  against, so the designer sat at its 700x500 MINIMUM in any window
+     *  ("does not use the screen size", owner, roughly the tenth time).
+     *  Measure where the box actually starts and claim the rest of the
+     *  viewport explicitly. */
+    _measureBox () {
+        const el = this._boxRef.current;
+        if (!el || this._portalOn) return;
+        const r = el.getBoundingClientRect();
+        const top = Math.round(r.top);
+        const left = Math.round(r.left);
+        if (Math.abs((this.state.boxTop ?? -99) - top) > 1 ||
+            Math.abs((this.state.boxLeft ?? -99) - left) > 1) {
+            this.setState({boxTop: top, boxLeft: left});
+        }
+    }
+
     componentWillUnmount () {
+        window.removeEventListener('resize', this._measureBox);
         window.removeEventListener('bw-settings-change', this._settingsHandler);
         window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
         window.removeEventListener('bw-machine-media-load', this._mediaStashHandler);
@@ -904,6 +926,12 @@ class CircuitTab extends React.Component {
         const box = {height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0,
             overflow: 'auto', padding: 8, boxSizing: 'border-box',
             display: 'flex', flexDirection: 'column'};
+        // Claim the real viewport once we know where the box starts —
+        // see _measureBox. The portal path keeps the stage host's sizing.
+        if (!this._portalOn && this.state.boxTop != null) {
+            box.height = `calc(100vh - ${this.state.boxTop + 4}px)`;
+            box.width = `calc(100vw - ${this.state.boxLeft + 4}px)`;
+        }
         // Nothing below returns a portal until it says so. componentDidUpdate
         // shows the stage host only when this is true, so the three early
         // returns here (reloading / error / designer not loaded) leave the
@@ -973,7 +1001,7 @@ class CircuitTab extends React.Component {
         // with the compact debugger in its Instruments column.
         const dock = this.state.debugDock === 'solo' ? 'top' : this.state.debugDock;
         const content = (
-            <div style={box}>
+            <div ref={this._boxRef} style={box}>
                 {/* A circuit does not need a microcontroller.
                     This used to read "declares no pins, so the board starts empty", which
                     framed a battery-LED-resistor circuit — the first circuit anyone builds —
