@@ -1,0 +1,130 @@
+# A usable pocket calculator: a GME12864-70 OLED (SSD1306, 128x64,
+# 4-pin I2C) for the display, fifteen keys on a 4x4 scan matrix
+# (rows out, columns in with pull-downs), classic chain arithmetic
+# with + - = C AC. The OLED speaks I2C on the Nano's real bus pins
+# (A4 = SDA, A5 = SCL).
+DEVICE ARDUINO-NANO
+CLOCK 16000000
+PIN sda = A4 OUTPUT
+PIN scl = A5 OUTPUT
+PIN row0 = D2 OUTPUT
+PIN row1 = D3 OUTPUT
+PIN row2 = D4 OUTPUT
+PIN row3 = D5 OUTPUT
+PIN col0 = D6 INPUT
+PIN col1 = D7 INPUT
+PIN col2 = D8 INPUT
+PIN col3 = D12 INPUT
+
+DEFINE FAST show number (n):
+  oled clear 1
+  oled set cursor 0 0 on 1
+  oled print "CALC" on 1
+  oled set cursor 0 14 on 1
+  IF op = 1 THEN:
+    oled print "+" on 1
+  IF op = 2 THEN:
+    oled print "-" on 1
+  oled set cursor 3 4 on 1
+  oled print (n) on 1
+
+DEFINE FAST apply pending:
+  IF op = 0 THEN:
+    set acc to cur
+  IF op = 1 THEN:
+    set acc to acc + cur
+  IF op = 2 THEN:
+    set acc to acc - cur
+
+DEFINE handle key (k):
+  IF k < 10 THEN:
+    IF entering = 0 THEN:
+      set cur to 0
+      set entering to 1
+    IF cur < 100000 THEN:
+      set cur to cur * 10 + k
+    show number (cur)
+  IF k = 10 THEN:
+    IF entering = 1 THEN:
+      apply pending
+      set entering to 0
+    set op to 1
+    show number (acc)
+  IF k = 11 THEN:
+    IF entering = 1 THEN:
+      apply pending
+      set entering to 0
+    set op to 2
+    show number (acc)
+  IF k = 12 THEN:
+    IF entering = 1 THEN:
+      apply pending
+      set entering to 0
+    set op to 0
+    show number (acc)
+  IF k = 13 THEN:
+    set cur to 0
+    set entering to 0
+    show number 0
+  IF k = 14 THEN:
+    set cur to 0
+    set acc to 0
+    set op to 0
+    set entering to 0
+    show number 0
+
+STAGE:
+  WHEN flag clicked:
+    set acc to 0
+    set cur to 0
+    set op to 0
+    set entering to 0
+    set held to 0
+    show number 0
+    FOREVER:
+      set key to 99
+      turn on row0
+      if read col0 then:
+        set key to 7
+      if read col1 then:
+        set key to 8
+      if read col2 then:
+        set key to 9
+      if read col3 then:
+        set key to 10
+      turn off row0
+      turn on row1
+      if read col0 then:
+        set key to 4
+      if read col1 then:
+        set key to 5
+      if read col2 then:
+        set key to 6
+      if read col3 then:
+        set key to 11
+      turn off row1
+      turn on row2
+      if read col0 then:
+        set key to 1
+      if read col1 then:
+        set key to 2
+      if read col2 then:
+        set key to 3
+      if read col3 then:
+        set key to 12
+      turn off row2
+      turn on row3
+      if read col0 then:
+        set key to 0
+      if read col1 then:
+        set key to 13
+      if read col2 then:
+        set key to 14
+      turn off row3
+      IF key = 99 THEN:
+        set held to 0
+      IF key < 99 THEN:
+        IF held = 0 THEN:
+          set held to 1
+          handle key (key)
+      wait 0.02 seconds
