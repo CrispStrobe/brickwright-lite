@@ -63,7 +63,7 @@ test("debugger-only pane: dock 'solo' portals just the DebugPanel while coding",
     const settings = read('overlay/scratch-gui/src/components/menu-bar/settings-menu.jsx');
     // The solo branch renders before the Designer-chunk gate (the panel has
     // its own Suspense) and only while portalled into the stage column.
-    assert.match(source, /this\.state\.debugDock === 'solo' && this\._stagePortalOn\(\)/);
+    assert.match(source, /\(this\.state\.debugDock === 'solo' \|\| this\.state\.debugDock === 'right'\) && this\._stagePortalOn\(\)/);
     // Fresh declarations reach the pane: "To blocks" announces via
     // PROJECT_CHANGED and the tab re-reads runtime.stc.
     assert.match(source, /runtime\.on\('PROJECT_CHANGED', this\.handleProjectChanged\)/);

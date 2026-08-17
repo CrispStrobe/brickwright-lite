@@ -94,6 +94,14 @@ const hostState = page => page.evaluate(() => {
         // The full DebugPanel, not the compact status strip: run control and
         // the speed dial are what "the debugger is here" means.
         hasDebugger: /Speed|Tempo/.test(text) && /Run|Start/.test(text),
+        // STRUCTURAL identity, not text: the squeezed-designer regression
+        // passed the text check because the designer's instruments column
+        // contains the panel's words. While coding, a debugger dock must
+        // portal the PANEL (data-debugger-solo-pane), and must not be the
+        // designer (its toolbar carries the SELECT mode chip).
+        soloPane: !!host.querySelector('[data-debugger-solo-pane]'),
+        looksLikeDesigner: /SELECT/.test(text),
+        noCodeHint: !!host.querySelector('[data-no-code-indicator]'),
         hasSerial: !!host.querySelector('[data-testid="bw-serial-console"]'),
         hasSerialInput: !!host.querySelector('[data-testid="bw-serial-input"]'),
         text: text.slice(0, 120).replace(/\s+/g, ' ')
@@ -121,8 +129,19 @@ try {
         !fresh.exists || !fresh.shown || fresh.children > 0,
         `shown=${fresh.shown} children=${fresh.children}`);
 
+    // THE OWNER'S CASE (2026-08-17): a fresh project — no pins, no machine —
+    // dock 'right' while coding. This must be the debugger shell saying WHY
+    // it is empty, never a squeezed designer and never a blank strip.
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
     await page.waitForTimeout(1000);
+    await setDock(page, 'right');
+    const freshRight = await waitFor(() => hostState(page), s => s.soloPane, 15000);
+    check('no-pins coding: dock "right" portals the panel shell, not the designer',
+        freshRight.soloPane && !freshRight.looksLikeDesigner,
+        `soloPane=${freshRight.soloPane} designer=${freshRight.looksLikeDesigner} text="${freshRight.text}"`);
+    check('no-pins coding: the shell says why it is empty', freshRight.noCodeHint || freshRight.hasDebugger,
+        `noCodeHint=${freshRight.noCodeHint}`);
+    await setDock(page, 'top');
     const cm = page.locator('.cm-content').first();
     await cm.click();
     await page.keyboard.press('Control+a');
@@ -137,6 +156,9 @@ try {
     const mcuRight = await waitFor(() => hostState(page), s => s.hasDebugger, 20000);
     check('mcu bench: dock "right" renders the full debugger', mcuRight.hasDebugger,
         `children=${mcuRight.children} text="${mcuRight.text}"`);
+    check('mcu bench: while coding, dock "right" is the PANEL, not a squeezed designer',
+        mcuRight.soloPane && !mcuRight.looksLikeDesigner,
+        `soloPane=${mcuRight.soloPane} designer=${mcuRight.looksLikeDesigner}`);
 
     // Round trip: the other docks still work, and coming back to 'right'
     // (designer now loaded) is the path that always worked.
