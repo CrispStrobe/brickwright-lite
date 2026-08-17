@@ -291,7 +291,15 @@ class SB3Creator {
     stc12SimulatorDriver(lang, pins) {
         const table = {};
         for (const p of pins) {
-            table[p.name] = { pin: `P${p.port}.${p.bit}`, dir: p.direction, low: !!p.activeLow };
+            // 8051 pins are spelled P<port>.<bit>; board-class devices
+            // (Nano A4/D2, Pico GP0) carry their terminal name in `where`
+            // and have no port/bit — emitting the template anyway produced
+            // "Pundefined.undefined" and every setPin landed on a pin the
+            // board does not have.
+            const pin = p.port !== undefined
+                ? `P${p.port}.${p.bit}`
+                : String(p.where || p.pin || p.name).toLowerCase();
+            table[p.name] = { pin, dir: p.direction, low: !!p.activeLow };
         }
         const json = JSON.stringify(table);
         // `set high`/`set low` are levels; `turn on`/`off` are states and respect the polarity.
@@ -506,6 +514,11 @@ class SB3Creator {
                 '    def lcdPrint(self, d, t): pass',
                 '    def lcdCursor(self, d, r, c): pass',
                 '    def lcdClear(self, d): pass',
+                '    # oled: implemented (I2C bit-bang) in the JS driver; py parity is TODO',
+                '    def oledPrint(self, t, d): pass',
+                '    def oledCursor(self, r, c, d): pass',
+                '    def oledClear(self, d): pass',
+                '    def oledPixel(self, x, y, v, d): pass',
                 '    def setPixel(self, m, x, y, b): pass',
                 '    def clearMatrix(self, m): pass',
                 '    def setNeopixel(self, s, i, r, g, b): pass',
@@ -536,8 +549,65 @@ class SB3Creator {
             '    // Commands — no-ops in the simulator driver (the board handles them through pins)',
             '    setServo: () => {}, setMotor: () => {}, setDirection: () => {}, setRelay: () => {},',
             '    activate: () => {}, deactivate: () => {}, showDigit: () => {}, setRgb: () => {},',
-            '    lcdPrint: () => {}, lcdCursor: () => {}, lcdClear: () => {},',
             '    setPixel: () => {}, clearMatrix: () => {}, setNeopixel: () => {}, clearNeopixels: () => {},',
+            '    // I2C displays are NOT side-channelled: the driver bit-bangs the',
+            '    // same wire protocol the C flavors emit, on the declared sda/scl',
+            '    // pins, and the board\'s SSD1306 / PCF8574+HD44780 models decode',
+            '    // the edges. Unwired or miswired sda/scl = dark display — which',
+            '    // is the lesson the simulator exists to teach.',
+            '    _i2c: () => {',
+            '        if (typeof _stc12_pins === "undefined") return null;',
+            '        const find = (n) => { for (const k in _stc12_pins) { if (k.toLowerCase() === n) return _stc12_pins[k]; } return null; };',
+            '        const sda = find("sda"), scl = find("scl"), b = _board();',
+            '        return (sda && scl && b) ? { sda, scl, b } : null; },',
+            '    _w: (i, p, v) => { i.b.setPin(p.pin, "pushpull", !!v); },',
+            '    _start: (i) => { _devices._w(i, i.sda, 1); _devices._w(i, i.scl, 1); _devices._w(i, i.sda, 0); _devices._w(i, i.scl, 0); },',
+            '    _stopB: (i) => { _devices._w(i, i.sda, 0); _devices._w(i, i.scl, 1); _devices._w(i, i.sda, 1); },',
+            '    _byte: (i, dat) => {',
+            '        for (let k = 0; k < 8; k++) { _devices._w(i, i.sda, dat & 0x80); dat = (dat << 1) & 0xFF;',
+            '            _devices._w(i, i.scl, 1); _devices._w(i, i.scl, 0); }',
+            '        _devices._w(i, i.sda, 1); _devices._w(i, i.scl, 1); _devices._w(i, i.scl, 0); },  // ACK clock, unchecked',
+            '    // ── SSD1306 (0x3C): control 0x00 = command, 0x40 = data ──',
+            '    _oledCmd: (i, c) => { _devices._start(i); _devices._byte(i, 0x78); _devices._byte(i, 0x00); _devices._byte(i, c); _devices._stopB(i); },',
+            '    _oledData: (i, bytes) => { _devices._start(i); _devices._byte(i, 0x78); _devices._byte(i, 0x40);',
+            '        for (const d of bytes) _devices._byte(i, d); _devices._stopB(i); },',
+            '    _oledInit: (i) => { if (_devices._oledUp) return; _devices._oledUp = true;',
+            '        for (const c of [0xAE, 0x20, 0x02, 0xA1, 0xC8, 0x8D, 0x14, 0xAF]) _devices._oledCmd(i, c);',
+            '        _devices.oledClear(0); },',
+            '    _oledPageCol: (i, page, col) => { _devices._oledCmd(i, 0xB0 | (page & 0x07));',
+            '        _devices._oledCmd(i, col & 0x0F); _devices._oledCmd(i, 0x10 | ((col >> 4) & 0x0F)); },',
+            `    _font5x7: [0,0,0,0,0,0,0,95,0,0,0,7,0,7,0,20,127,20,127,20,36,42,127,42,18,35,19,8,100,98,54,73,85,34,80,0,5,3,0,0,0,28,34,65,0,0,65,34,28,0,20,8,62,8,20,8,8,62,8,8,0,80,48,0,0,8,8,8,8,8,0,96,96,0,0,32,16,8,4,2,62,81,73,69,62,0,66,127,64,0,66,97,81,73,70,33,65,69,75,49,24,20,18,127,16,39,69,69,69,57,60,74,73,73,48,1,113,9,5,3,54,73,73,73,54,6,73,73,41,30,0,54,54,0,0,0,86,54,0,0,8,20,34,65,0,20,20,20,20,20,0,65,34,20,8,2,1,81,9,6,50,73,121,65,62,126,17,17,17,126,127,73,73,73,54,62,65,65,65,34,127,65,65,34,28,127,73,73,73,65,127,9,9,9,1,62,65,73,73,122,127,8,8,8,127,0,65,127,65,0,32,64,65,63,1,127,8,20,34,65,127,64,64,64,64,127,2,12,2,127,127,4,8,16,127,62,65,65,65,62,127,9,9,9,6,62,65,81,33,94,127,9,25,41,70,70,73,73,73,49,1,1,127,1,1,63,64,64,64,63,31,32,64,32,31,63,64,56,64,63,99,20,8,20,99,7,8,112,8,7,97,81,73,69,67,0,127,65,65,0,2,4,8,16,32,0,65,65,127,0,4,2,1,2,4,64,64,64,64,64,0,1,2,4,0,32,84,84,84,120,127,72,68,68,56,56,68,68,68,32,56,68,68,72,127,56,84,84,84,24,8,126,9,1,2,12,82,82,82,62,127,8,4,4,120,0,68,125,64,0,32,64,68,61,0,127,16,40,68,0,0,65,127,64,0,124,4,24,4,120,124,8,4,4,120,56,68,68,68,56,124,20,20,20,8,8,20,20,24,124,124,8,4,4,8,72,84,84,84,32,4,63,68,64,32,60,64,64,32,124,28,32,64,32,28,60,64,48,64,60,68,40,16,40,68,12,80,80,80,60,68,100,84,76,68,0,8,54,65,0,0,0,127,0,0,0,65,54,8,0,16,8,8,16,8],`,
+            '    oledClear: (d) => { const i = _devices._i2c(); if (!i) return; _devices._oledInit(i);',
+            '        for (const c of [0x20, 0x00, 0x21, 0x00, 0x7F, 0x22, 0x00, 0x07]) _devices._oledCmd(i, c);',
+            '        _devices._oledData(i, new Uint8Array(1024));',
+            '        _devices._oledCmd(i, 0x20); _devices._oledCmd(i, 0x02);',
+            '        _devices._oledPageCol(i, 0, 0); },',
+            '    oledCursor: (r, c, d) => { const i = _devices._i2c(); if (!i) return; _devices._oledInit(i);',
+            '        _devices._oledPageCol(i, Number(r) & 0x07, (Number(c) * 6) & 0x7F); },',
+            '    oledPrint: (t, d) => { const i = _devices._i2c(); if (!i) return; _devices._oledInit(i);',
+            '        for (const ch of String(t)) { let c = ch.charCodeAt(0);',
+            '            if (c < 0x20 || c > 0x7E) c = 0x20;',
+            '            const idx = (c - 0x20) * 5;',
+            '            _devices._oledData(i, _devices._font5x7.slice(idx, idx + 5).concat([0x00])); } },',
+            '    oledPixel: (x, y, v, d) => { const i = _devices._i2c(); if (!i) return; _devices._oledInit(i);',
+            '        _devices._oledPageCol(i, (Number(y) >> 3) & 0x07, Number(x) & 0x7F);',
+            '        _devices._oledData(i, [Number(v) ? (1 << (Number(y) & 7)) : 0x00]); },',
+            '    // ── HD44780 via PCF8574 backpack (0x27): D7 D6 D5 D4 BL EN RW RS ──',
+            '    _lcdSend: (i, val) => { _devices._start(i); _devices._byte(i, 0x4E); _devices._byte(i, val); _devices._stopB(i); },',
+            '    _lcdNib: (i, nib, rs) => { const v = (nib & 0xF0) | 0x08 | rs;',
+            '        _devices._lcdSend(i, v | 0x04); _devices._lcdSend(i, v & ~0x04); },',
+            '    _lcdCmd: (i, c) => { _devices._lcdNib(i, c & 0xF0, 0); _devices._lcdNib(i, (c << 4) & 0xF0, 0); },',
+            '    _lcdData: (i, c) => { _devices._lcdNib(i, c & 0xF0, 1); _devices._lcdNib(i, (c << 4) & 0xF0, 1); },',
+            '    _lcdInit: (i) => { if (_devices._lcdUp) return; _devices._lcdUp = true;',
+            '        _devices._lcdNib(i, 0x30, 0); _devices._lcdNib(i, 0x30, 0); _devices._lcdNib(i, 0x30, 0);',
+            '        _devices._lcdNib(i, 0x20, 0);',
+            '        for (const c of [0x28, 0x0C, 0x06, 0x01]) _devices._lcdCmd(i, c); },',
+            '    lcdPrint: (t, d) => { const i = _devices._i2c(); if (!i) return; _devices._lcdInit(i);',
+            '        for (const ch of String(t)) _devices._lcdData(i, ch.charCodeAt(0) & 0xFF); },',
+            '    lcdCursor: (r, c, d) => { const i = _devices._i2c(); if (!i) return; _devices._lcdInit(i);',
+            '        _devices._lcdCmd(i, 0x80 | ((Number(r) & 1) ? 0x40 : 0x00) | (Number(c) & 0x0F)); },',
+            '    lcdClear: (d) => { const i = _devices._i2c(); if (!i) return; _devices._lcdInit(i);',
+            '        _devices._lcdCmd(i, 0x01); },',
             '};',
         ];
     }
@@ -6454,14 +6524,29 @@ class SB3Creator {
         }
 
         const KEYMAP = { a: 'button_a', b: 'button_b' };
-        const uses = { music: false, buttons: false };
+        const uses = { music: false, buttons: false, oled: false };
         const degrade = (msg) => { if (!warnings.includes(msg)) warnings.push(msg); };
 
-        // PIN declarations → microbit pin objects. where P0-P20; the
-        // platform convention holds: on/off is LOGICAL (ACTIVE LOW
-        // inverts), high/low and computed writes are PHYSICAL levels.
+        // TWO boards run MicroPython here. The micro:bit's pins are ambient
+        // objects (pin0..pin20); the Pico's are CONSTRUCTED — Pin(n, Pin.IN,
+        // Pin.PULL_UP) — and an ACTIVE LOW input gets the INTERNAL pull-up,
+        // the button-to-GND idiom with no external resistor, exactly the
+        // real builds' wiring. The platform convention holds on both:
+        // on/off is LOGICAL (ACTIVE LOW inverts), high/low and computed
+        // writes are PHYSICAL levels.
+        const isPico = /^pico$/i.test(String((project.stc && project.stc.device) || ''));
         const pinMap = new Map();
         for (const p of (project.stc && project.stc.pins) || []) {
+            if (isPico) {
+                const m = /^GP(\d{1,2})$/i.exec(p.where || '');
+                if (m && Number(m[1]) <= 28) {
+                    pinMap.set(p.name, { expr: `_pin_${p.name}`, gpio: Number(m[1]),
+                        activeLow: !!p.activeLow, direction: p.direction });
+                } else {
+                    degrade(`pin ${p.name} at "${p.where}" is not a Pico pin (GP0-GP28); its operations are stubs`);
+                }
+                continue;
+            }
             const m = /^P(\d{1,2})$/i.exec(p.where || '');
             if (m && Number(m[1]) <= 20) {
                 pinMap.set(p.name, { expr: `pin${Number(m[1])}`, activeLow: !!p.activeLow });
@@ -6470,6 +6555,9 @@ class SB3Creator {
             }
         }
         const pinOf = (name) => pinMap.get(name) || null;
+        const readExpr = (pin) => isPico
+            ? (pin.activeLow ? `(1 - ${pin.expr}.value())` : `${pin.expr}.value()`)
+            : (pin.activeLow ? `(1 - ${pin.expr}.read_digital())` : `${pin.expr}.read_digital()`);
 
         // Expression via the shared pure-Python layer; anything that came
         // out needing the host shim is a named degradation, not a lie.
@@ -6489,11 +6577,12 @@ class SB3Creator {
             if (rb.opcode === 'stc12_readpin') {
                 const p = pinOf(rb.fields.PIN ? rb.fields.PIN[0] : '');
                 if (!p) return '0';
-                return p.activeLow ? `(1 - ${p.expr}.read_digital())` : `${p.expr}.read_digital()`;
+                return readExpr(p);
             }
             if (rb.opcode === 'stc12_read') {
                 const p = pinOf(rb.fields.PIN ? rb.fields.PIN[0] : '');
                 if (!p) return '0';
+                if (isPico) { degrade(`analog read of ${p.expr} needs machine.ADC — not emitted yet`); return '0'; }
                 return `${p.expr}.read_analog()`;
             }
             return null;
@@ -6505,6 +6594,7 @@ class SB3Creator {
             if (ref && blocks[ref] && blocks[ref].opcode === 'stc12_readpin') {
                 const p = pinOf(blocks[ref].fields.PIN ? blocks[ref].fields.PIN[0] : '');
                 if (!p) return 'False';
+                if (isPico) return `${p.expr}.value() == ${p.activeLow ? 0 : 1}`;
                 return `${p.expr}.read_digital() == ${p.activeLow ? 0 : 1}`;
             }
             if (ref && blocks[ref] && blocks[ref].opcode === 'sensing_keypressed') {
@@ -6555,7 +6645,7 @@ class SB3Creator {
                     // on/off logical (ACTIVE LOW inverts); high/low physical.
                     const level = st === 'high' ? 1 : st === 'low' ? 0
                         : (st === 'on') !== p.activeLow ? 1 : 0;
-                    return [`${pad}${p.expr}.write_digital(${level})`];
+                    return [`${pad}${p.expr}.${isPico ? 'value' : 'write_digital'}(${level})`];
                 }
                 case 'stc12_toggle': {
                     const p = pinOf(f('PIN'));
@@ -6605,12 +6695,44 @@ class SB3Creator {
                     const msg = this.pyVal(b.inputs.BROADCAST_INPUT, blocks);
                     return [`${pad}_pending.append(${msg})`];
                 }
+                case 'procedures_call': {
+                    const m = b.mutation;
+                    const argIds = JSON.parse(m.argumentids || '[]');
+                    let ai = 0; const args = [];
+                    m.proccode.replace(/%[sb]/g, () => {
+                        const input = b.inputs[argIds[ai++]];
+                        args.push(pinReporter(input, blocks)
+                            ?? guard(this.pyVal(input, blocks), 'procedure argument'));
+                        return '';
+                    });
+                    const fn = this.pyName('_proc_' + this.pyProcRaw(m.proccode));
+                    // yield from: a DEFINE may wait — the call must thread
+                    // the scheduler through. A fast DEFINE simply has no
+                    // yields inside and runs atomically.
+                    return [`${pad}yield from ${fn}(${args.join(', ')})`];
+                }
+                // OLED verbs, Pico only: the page-mode driver in the header
+                // (validated on the real GME12864-70 — an SH1106, which
+                // ignores the SSD1306 window commands; page mode works on
+                // BOTH controllers). Cursor is text cells, 8x8 font.
+                case 'devices_oledclear':
+                    if (isPico) { uses.oled = true; return [`${pad}_oled.fill(0)`, `${pad}_oled.show()`]; }
+                    break;
+                case 'devices_oledcursor':
+                    if (isPico) { uses.oled = true; return [`${pad}_oled.crow = int(${v('ROW')})`, `${pad}_oled.ccol = int(${v('COL')})`]; }
+                    break;
+                case 'devices_oledprint':
+                    if (isPico) { uses.oled = true; return [`${pad}_oled_print(${v('VALUE')})`]; }
+                    break;
                 default: {
                     const desc = this.decompileBlock ? this.decompileBlock(b, blocks) : b.opcode;
-                    degrade(`${b.opcode} has no micro:bit form yet (${String(desc).slice(0, 40)})`);
+                    degrade(`${b.opcode} has no ${isPico ? 'Pico' : 'micro:bit'} form yet (${String(desc).slice(0, 40)})`);
                     return [`${pad}pass  # ${b.opcode}`];
                 }
             }
+            // A cased verb that only one board lowers falls through to here.
+            degrade(`${b.opcode} has no ${isPico ? 'Pico' : 'micro:bit'} form yet`);
+            return [`${pad}pass  # ${b.opcode}`];
         };
 
         const walk = (id, blocks, pad) => {
@@ -6625,6 +6747,8 @@ class SB3Creator {
 
         // ---- hats → generator defs ------------------------------------
         const taskDefs = [];
+        const procDefs = [];     // DEFINEs — assembled AFTER all walking so
+                                 // globalsFor sees the complete variable set
         const starts = [];       // started at flag
         const receivers = [];    // [message, fnName]
         let taskSeq = 0;
@@ -6662,10 +6786,32 @@ class SB3Creator {
                         '        _prev = _cur',
                         '        yield 0'].join('\n'));
                     starts.push(fn);
+                } else if (b.opcode === 'procedures_definition') {
+                    // DEFINE → a GENERATOR function; calls are `yield from`,
+                    // so a waiting procedure threads the scheduler and a
+                    // fast one runs straight through. `if False: yield`
+                    // makes the yield-less body a generator all the same.
+                    const proto = blocks[b.inputs.custom_block ? b.inputs.custom_block[1] : ''];
+                    if (!proto || !proto.mutation) { degrade('procedure without a prototype; skipped'); continue; }
+                    const m = proto.mutation;
+                    const fn = this.pyName('_proc_' + this.pyProcRaw(m.proccode));
+                    const argNames = JSON.parse(m.argumentnames || '[]').map((a) => this.pyName(a));
+                    const body = walk(b.next, blocks, '    ');
+                    procDefs.push({ fn, argNames, body });
                 } else if (this.isHat(b.opcode)) {
-                    degrade(`hat ${b.opcode} has no micro:bit form yet; script skipped`);
+                    degrade(`hat ${b.opcode} has no ${isPico ? 'Pico' : 'micro:bit'} form yet; script skipped`);
                 }
             }
+        }
+        for (const { fn, argNames, body } of procDefs) {
+            const globals = globalsFor(this, body)
+                .map((l) => argNames.length
+                    ? l.replace(new RegExp(`\\b(${argNames.join('|')})\\b,? ?`, 'g'), '')
+                        .replace(/, *$/, '').replace(/global *$/, '')
+                    : l)
+                .filter((l) => /global \w/.test(l));
+            taskDefs.unshift([`def ${fn}(${argNames.join(', ')}):`,
+                ...globals, ...body, '    if False:', '        yield 0'].join('\n'));
         }
         if (!taskDefs.length) reasons.push('no runnable scripts (a when-flag-clicked hat is required)');
         if (reasons.length) return { ok: false, reasons, warnings };
@@ -6679,9 +6825,88 @@ class SB3Creator {
             return names.size ? [`    global ${[...names].join(', ')}`] : [];
         }
 
-        const header = ['# generated for micro:bit (MicroPython)',
-            'from microbit import *'];
-        if (uses.music) header.push('import music');
+        const header = isPico
+            ? ['# generated for Raspberry Pi Pico (MicroPython)',
+                'from machine import Pin, I2C',
+                'import time',
+                '',
+                '# The shared scheduler speaks micro:bit; two shims make the',
+                '# Pico fluent in it.',
+                'def running_time():',
+                '    return time.ticks_ms()',
+                '',
+                'def sleep(ms):',
+                '    time.sleep_ms(int(ms))']
+            : ['# generated for micro:bit (MicroPython)',
+                'from microbit import *'];
+        if (uses.music && !isPico) header.push('import music');
+        if (isPico) {
+            // Pin objects. sda/scl by NAME feed the hardware I2C when the
+            // program drives an OLED — they must not be constructed as
+            // plain outputs on top of the peripheral.
+            const i2cNames = new Set(uses.oled ? ['sda', 'scl'] : []);
+            for (const [name, p] of pinMap) {
+                if (i2cNames.has(String(name).toLowerCase())) continue;
+                if (p.direction === 'input') {
+                    const pull = p.activeLow ? ', Pin.PULL_UP' : ', Pin.PULL_DOWN';
+                    header.push(`${p.expr} = Pin(${p.gpio}, Pin.IN${pull})`);
+                } else {
+                    header.push(`${p.expr} = Pin(${p.gpio}, Pin.OUT)`);
+                }
+            }
+            if (uses.oled) {
+                const sdaPin = [...pinMap.entries()].find(([n]) => n.toLowerCase() === 'sda');
+                const sclPin = [...pinMap.entries()].find(([n]) => n.toLowerCase() === 'scl');
+                const sdaN = sdaPin ? sdaPin[1].gpio : 0;
+                const sclN = sclPin ? sclPin[1].gpio : 1;
+                const bus = (sdaN % 4 === 0) ? 0 : 1;   // RP2040 I2C pin muxing
+                header.push('', 'import framebuf',
+                    '',
+                    '# Page-mode OLED driver: works on SSD1306 AND SH1106 (the',
+                    '# GME12864-70 carries an SH1106, which ignores the SSD1306',
+                    '# window commands — horizontal-mode drivers show only noise).',
+                    'class _OLED(framebuf.FrameBuffer):',
+                    '    COL_OFFSET = 2  # SH1106 window; harmless 2px shift on a true SSD1306',
+                    '',
+                    '    def __init__(self, i2c, addr=0x3C, width=128, height=64):',
+                    '        self.i2c = i2c; self.addr = addr',
+                    '        self.width = width; self.height = height',
+                    '        self.pages = height // 8',
+                    '        self.buf = bytearray(self.pages * width)',
+                    '        super().__init__(self.buf, width, height, framebuf.MONO_VLSB)',
+                    '        self.crow = 0; self.ccol = 0',
+                    '        for c in (0xAE, 0x40, 0xA0, 0xA8, height - 1, 0xC0, 0xD3, 0x00,',
+                    '                  0xDA, 0x12, 0xD5, 0x80, 0xD9, 0xF1, 0xDB, 0x30,',
+                    '                  0x81, 0xFF, 0xA4, 0xA6, 0x8D, 0x14, 0xAF):',
+                    '            self.cmd(c)',
+                    '        self.fill(0); self.show()',
+                    '',
+                    '    def cmd(self, c):',
+                    '        self.i2c.writeto(self.addr, bytes((0x80, c)))',
+                    '',
+                    '    def show(self):',
+                    '        for page in range(self.pages):',
+                    '            self.cmd(0xB0 | page)',
+                    '            self.cmd(0x00 | (self.COL_OFFSET & 0x0F))',
+                    '            self.cmd(0x10 | (self.COL_OFFSET >> 4))',
+                    '            s = page * self.width',
+                    '            self.i2c.writeto(self.addr, b"\\x40" + self.buf[s:s + self.width])',
+                    '',
+                    `_i2c = I2C(${bus}, sda=Pin(${sdaN}), scl=Pin(${sclN}), freq=400_000)`,
+                    '_oled = _OLED(_i2c)',
+                    '',
+                    'def _fmt(v):',
+                    '    if isinstance(v, float) and v == int(v):',
+                    '        v = int(v)',
+                    '    return str(v)',
+                    '',
+                    'def _oled_print(v):',
+                    '    s = _fmt(v)',
+                    '    _oled.text(s, _oled.ccol * 8, _oled.crow * 8)',
+                    '    _oled.ccol += len(s)',
+                    '    _oled.show()');
+            }
+        }
 
         const driver = [
             '',
@@ -6714,7 +6939,19 @@ class SB3Creator {
             `_run([${starts.map((fn) => `${fn}()`).join(', ')}])`,
         ];
 
-        const py = [...header, '', ...stateDecls, '', ...taskDefs, ...driver].join('\n') + '\n';
+        // Shared-layer helpers the expressions leaned on. The micro:bit
+        // programs never tripped these; the Pico calculator's _eq(error, 0)
+        // was a NameError at the first key press.
+        const helpers = [];
+        if (this._pyUses.eq) {
+            helpers.push('def _eq(a, b):  # Scratch-style loose equality',
+                '    try:',
+                '        return float(a) == float(b)',
+                '    except (ValueError, TypeError):',
+                '        return str(a).lower() == str(b).lower()',
+                '');
+        }
+        const py = [...header, '', ...helpers, ...stateDecls, '', ...taskDefs, ...driver].join('\n') + '\n';
         return { ok: true, py, reasons: [], warnings };
     }
 
@@ -10247,8 +10484,19 @@ class SB3Creator {
                     // The pad's INPUT ENABLE is not a given (rp2040js resets
                     // it off; the SDK's gpio_init sets it) — without IE the
                     // SIO GPIO_IN bit reads 0 whatever the pin does.
+                    // ACTIVE LOW inputs get the INTERNAL pull-up (PUE, bit 3):
+                    // the button-to-GND idiom with no external resistor — the
+                    // real Pico builds are wired exactly so, and rp2040js
+                    // reports the pad as InputPullUp so the board model sees
+                    // the same weak high the silicon gives.
+                    // ACTIVE LOW → internal pull-up (button to GND);
+                    // active high → internal pull-DOWN (button to 3V3) —
+                    // both real-build idioms, no external resistors, and
+                    // the SDK's gpio_init defaults pull-down the same way.
+                    const pad = p.activeLow ? '0x4au' : '0x46u';
+                    const padNote = p.activeLow ? 'pad IE + schmitt + PULL-UP' : 'pad IE + schmitt + PULL-DOWN';
                     out.push(`    BW_IOBANK0_CTRL(${hw.gpio}) = 5u;   /* ${p.name} = ${p.where}: funcsel SIO, input */`,
-                        `    BW_PADS(${hw.gpio}) = 0x42u;   /* ${p.name}: pad IE + schmitt */`);
+                        `    BW_PADS(${hw.gpio}) = ${pad};   /* ${p.name}: ${padNote} */`);
                 } else if (p.direction === 'analog') {
                     // The datasheet's ADC pad state: input buffer off, output
                     // disable on — the pad becomes purely analog.
@@ -10801,6 +11049,14 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             lcdprint: { kind: 'command', method: 'lcdPrint', args: ['TEXT', 'DISPLAY'] },
             lcdcursor: { kind: 'command', method: 'lcdCursor', args: ['ROW', 'COL', 'DISPLAY'] },
             lcdclear: { kind: 'command', method: 'lcdClear', args: ['DISPLAY'] },
+            // ssd1306 oled (I2C) — absent entries here made the JS
+            // generator emit every oled op as a COMMENT, so the in-app
+            // simulator never drew a pixel while the C flavors worked on
+            // silicon (the owner's "OLED always black").
+            oledprint: { kind: 'command', method: 'oledPrint', args: ['TEXT', 'DISPLAY'] },
+            oledcursor: { kind: 'command', method: 'oledCursor', args: ['ROW', 'COL', 'DISPLAY'] },
+            oledclear: { kind: 'command', method: 'oledClear', args: ['DISPLAY'] },
+            oledpixel: { kind: 'command', method: 'oledPixel', args: ['X', 'Y', 'VALUE', 'DISPLAY'] },
             // led_matrix
             setpixel: { kind: 'command', method: 'setPixel', args: ['X', 'Y', 'BRIGHTNESS', 'MATRIX'] },
             clearmatrix: { kind: 'command', method: 'clearMatrix', args: ['MATRIX'] },
