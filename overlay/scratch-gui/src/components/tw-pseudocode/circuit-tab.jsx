@@ -36,6 +36,19 @@ const DebugPanel = React.lazy(() =>
 // language is added by adding a key — never by sniffing
 // navigator.language inline, which can neither be extended nor tested.
 
+// A dock SLOT: adopts the persistent debug-host DOM node. The DebugPanel
+// renders through ONE portal into ONE node that never changes identity —
+// docking moves the NODE between slots, so the runner survives the move
+// (owner requirement: '>>' must not reset a running session).
+const HostMount = ({host, style}) => (
+    <div
+        data-debug-host-slot
+        style={{display: 'flex', flexDirection: 'column', flex: '1 1 auto',
+            minHeight: 0, minWidth: 0, ...style}}
+        ref={el => { if (el && host && host.parentElement !== el) el.appendChild(host); }}
+    />
+);
+
 // A program drives the board when it declares PINs OR binds a PART
 // (PART leds = 74HC595 ... claims pins with zero PIN lines — the
 // 8-LED chaser showed 'No program pins declared' forever, owner
@@ -258,7 +271,10 @@ class CircuitTab extends React.Component {
             // stage should be, and what dock 'right' showed instead of the
             // debugger. _portalRendered is set by render at the points where
             // it actually returns a portal, so this can never drift from it.
-            this._stageHost.style.display = portalNow && this._portalRendered ? 'block' : 'none';
+            const rightHere = this.props.isVisible &&
+                this.state.debugDock === 'right' && this._stageRightRendered;
+            this._stageHost.style.display =
+                (portalNow && this._portalRendered) || rightHere ? 'block' : 'none';
         }
     }
 
@@ -336,6 +352,17 @@ class CircuitTab extends React.Component {
     /** The overlay div inside the stage column that hosts the portal. Created
      *  lazily OUTSIDE render (DOM mutation is a lifecycle affair); render only
      *  uses it if it already exists — the first eligible update supplies it. */
+    _ensureDebugHost () {
+        if (!this._debugHost) {
+            const el = document.createElement('div');
+            el.dataset.bwDebugHost = 'true';
+            el.style.cssText = 'display:flex;flex-direction:column;flex:1 1 auto;' +
+                'min-height:0;width:100%;height:100%;overflow:auto;';
+            this._debugHost = el;
+        }
+        return this._debugHost;
+    }
+
     _ensureStageHost () {
         if (this._stageHost && document.contains(this._stageHost)) return this._stageHost;
         const wrap = document.querySelector('div[class*="stage-and-target-wrapper"]');
@@ -1038,7 +1065,7 @@ class CircuitTab extends React.Component {
                 // read as misplaced (owner report, 2026-08-17 — and 7 hours
                 // before that).
                 <div style={{...box, overflow: 'auto', paddingTop: 48}} data-debugger-solo-pane>
-                    {stcDrives(stc) || this.state.machineBooted ? this.renderDebugPanel() : (
+                    {stcDrives(stc) || this.state.machineBooted ? <HostMount host={this._ensureDebugHost()} /> : (
                         <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
                             {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
                                 || SOLO_L10N.en).noCode}
@@ -1047,7 +1074,10 @@ class CircuitTab extends React.Component {
                 </div>
             );
             this._portalRendered = true;
-            return ReactDOM.createPortal(solo, this._stageHost);
+            return [
+                ReactDOM.createPortal(solo, this._stageHost),
+                ReactDOM.createPortal(this.renderDebugPanel(), this._ensureDebugHost())
+            ];
         }
         if (!Designer) {
             return <div style={{...box, color: '#64748b'}}>{'Loading the circuit designer…'}</div>;
@@ -1192,7 +1222,7 @@ class CircuitTab extends React.Component {
                     // Circuit tab. The old visibility guard made “switch to
                     // debugger” a no-op whenever Circuit itself was active.
                     debuggerOn={dock === 'top'}
-                    debuggerPanel={dock === 'top' ? this.renderDebugPanel() : null}
+                    debuggerPanel={dock === 'top' ? <HostMount host={this._ensureDebugHost()} /> : null}
                     // The >> / << move buttons in the Designer's instruments
                     // debugger header (cui 526dc9b) are gated on this
                     // callback — without it they never rendered, and the
@@ -1216,46 +1246,50 @@ class CircuitTab extends React.Component {
                     />
                 </div>
                 </div>
-                {/* One block covers both non-top docks: 'right' shows the
-                    column, 'off' keeps the panel mounted but hidden (the
-                    runner survives the toggle). This used to be two blocks,
-                    and dock 'off' matched BOTH — two live DebugPanel
-                    instances, two runners. */}
-                {dock !== 'top' ? (
-                    <div
-                        style={dock === 'right' ?
-                            {flex: '0 0 320px', minWidth: 0, overflow: 'auto'} : {display: 'none'}}
-                        aria-hidden={dock === 'right' ? undefined : 'true'}
-                    >
+{/* dock 'right' renders in the ACTUAL right pane (the stage
+                    column, right of the GUI splitter) via the stage-host portal
+                    below — the inline column that sat BETWEEN the instruments
+                    and the splitter is gone (owner screenshot, 2026-08-17). */}
+                </div>
+            </div>
+        );
+        const panelPortal = ReactDOM.createPortal(
+            this.renderDebugPanel(), this._ensureDebugHost());
+        if (this._portalOn) {
+            this._portalRendered = true;
+            return [ReactDOM.createPortal(content, this._stageHost), panelPortal];
+        }
+        // Dedicated Circuit tab, dock 'right': the panel lives in the REAL
+        // right pane — the stage column beyond the movable splitter.
+        this._stageRightRendered = false;
+        let stagePane = null;
+        if (this.state.debugDock === 'right') {
+            const host = this._ensureStageHost();
+            if (host) {
+                this._stageRightRendered = true;
+                stagePane = ReactDOM.createPortal(
+                    <div style={{height: '100%', width: '100%', boxSizing: 'border-box',
+                        overflow: 'auto', padding: 8, paddingTop: 48,
+                        display: 'flex', flexDirection: 'column'}} data-debugger-solo-pane>
                         {stcDrives(stc) || this.state.machineBooted
-                            ? this.renderDebugPanel()
+                            ? <HostMount host={this._ensureDebugHost()} />
                             : (
-                                // Empty and broken look identical: the column
-                                // rendered NOTHING without pins or a machine and
-                                // the owner met a blank pane where the debugger
-                                // was promised (report, 2026-08-17). Say why.
-                                <div style={{color: '#64748b', fontSize: 12.5, padding: 8}} data-no-code-indicator>
+                                <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
                                     {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
                                         || SOLO_L10N.en).noCode}
                                 </div>
                             )}
-                    </div>
-                ) : null}
-                </div>
-            </div>
-        );
-        if (this._portalOn) {
-            this._portalRendered = true;
-            return ReactDOM.createPortal(content, this._stageHost);
+                    </div>, host);
+            }
         }
-        return content;
+        return [content, stagePane, panelPortal];
     }
 
-    /** One DebugPanel instance, wherever it docks. Moving between the top
-     *  slot, the right column and the solo pane remounts it (different tree
-     *  positions), so the runner restarts on a dock change — a rare,
-     *  user-initiated action.
-     *  Toggling right<->off does NOT remount: off keeps it hidden, alive. */
+    /** One DebugPanel instance, rendered through ONE portal into ONE
+     *  persistent DOM node (_ensureDebugHost). Docking moves the NODE
+     *  between slots (HostMount adopts it), so the panel never remounts
+     *  and a running session SURVIVES every dock change — including
+     *  '>>' to the right pane and back (owner requirement, 2026-08-17). */
     renderDebugPanel () {
         const {stc} = this.state;
         return (

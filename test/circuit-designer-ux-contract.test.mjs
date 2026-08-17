@@ -54,7 +54,9 @@ test('debugger selection is not disabled merely because the Circuit tab is activ
     // Circuit tab — the designer keeps its instruments-column debugger there.
     assert.match(source, /const dock = this\.state\.debugDock === 'solo' \? 'top' : this\.state\.debugDock;/);
     assert.match(source, /debuggerOn=\{dock === 'top'\}/);
-    assert.match(source, /debuggerPanel=\{dock === 'top' \? this\.renderDebugPanel\(\) : null\}/);
+    // The panel now renders through ONE portal into a persistent host node;
+    // the instruments slot ADOPTS that node when dock is 'top' (HostMount).
+    assert.match(source, /debuggerPanel=\{dock === 'top' \? <HostMount host=\{this\._ensureDebugHost\(\)\} \/> : null\}/);
 });
 
 test("debugger-only pane: dock 'solo' portals just the DebugPanel while coding", () => {
