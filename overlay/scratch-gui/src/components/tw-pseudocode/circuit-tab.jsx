@@ -1180,6 +1180,19 @@ class CircuitTab extends React.Component {
                     // debugger” a no-op whenever Circuit itself was active.
                     debuggerOn={dock === 'top'}
                     debuggerPanel={dock === 'top' ? this.renderDebugPanel() : null}
+                    // The >> / << move buttons in the Designer's instruments
+                    // debugger header (cui 526dc9b) are gated on this
+                    // callback — without it they never rendered, and the
+                    // owner's 'move the debugger to the right pane' spec
+                    // silently had no UI. Persist + broadcast so the
+                    // stage-header view buttons stay in sync.
+                    debugDock={dock}
+                    onDebugDockChange={(d) => {
+                        try { localStorage.setItem('bw-debug-dock', d); } catch { /* private mode */ }
+                        this.setDock(d);
+                        window.dispatchEvent(new CustomEvent('bw-settings-change',
+                            {detail: {key: 'bw-debug-dock', value: d}}));
+                    }}
                     // Remount-proof "a machine was built here": the designer's
                     // own machineResult dies with it on a tab switch, and the
                     // debugger slot must survive the Code-tab round trip the
