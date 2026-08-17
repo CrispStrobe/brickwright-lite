@@ -63,7 +63,7 @@ async function verify () {
         // (4 buttons, no micro:bit on a mint project)
         const buttonTitles = [
             'Circuit Designer',   // Circuit Designer (only) → dock='off'
-            'Debugger',           // Full debugger → dock='solo'
+            'Debugger',           // Full debugger → dock='right' (right pane, owner spec 2026-08-17)
             'Scratch Stage'       // → scratch
         ];
 
@@ -107,10 +107,10 @@ async function verify () {
             await debuggerBtn.click();
             await page.waitForTimeout(1000);
             const dockVal = await page.evaluate(() => localStorage.getItem('bw-debug-dock'));
-            if (dockVal === 'solo') {
-                pass('Debugger button sets dock to "solo" (full debugger)');
+            if (dockVal === 'right') {
+                pass('Debugger button sets dock to "right" (full panel in the right pane)');
             } else {
-                fail(`Debugger button set dock to "${dockVal}" instead of "solo"`);
+                fail(`Debugger button set dock to "${dockVal}" instead of "right"`);
             }
             const simPaneAfterDebug = page.locator('[data-testid="bw-microbit-sim-pane"]');
             if (await simPaneAfterDebug.count() === 0) {
