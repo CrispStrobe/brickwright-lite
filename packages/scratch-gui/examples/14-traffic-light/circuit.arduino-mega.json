@@ -27,7 +27,7 @@
    "terminals": [
     "gnd"
    ],
-   "x": 220,
+   "x": 156,
    "y": 60
   },
   {
@@ -39,7 +39,7 @@
     "d22",
     "d23"
    ],
-   "x": 360,
+   "x": 232,
    "y": 60
   },
   {
@@ -65,6 +65,7 @@
   {
    "id": "LED_red",
    "kind": "led",
+   "declName": "red",
    "params": {
     "vf": 2,
     "color": "red"
@@ -106,6 +107,7 @@
   {
    "id": "LED_yellow",
    "kind": "led",
+   "declName": "yellow",
    "params": {
     "vf": 2,
     "color": "red"
@@ -147,6 +149,7 @@
   {
    "id": "LED_green",
    "kind": "led",
+   "declName": "green",
    "params": {
     "vf": 2,
     "color": "red"
@@ -276,5 +279,5 @@
    "color": "black"
   }
  ],
- "generated": "benchFor+seat batch 2026-08-16"
+ "generated": "benchFor+seat"
 }

@@ -27,7 +27,7 @@
    "terminals": [
     "gnd"
    ],
-   "x": 220,
+   "x": 156,
    "y": 60
   },
   {
@@ -91,6 +91,7 @@
   {
    "id": "POT_ldr",
    "kind": "potentiometer",
+   "declName": "ldr",
    "params": {
     "ohms": 10000
    },
@@ -133,6 +134,7 @@
   {
    "id": "LED_led1",
    "kind": "led",
+   "declName": "led1",
    "params": {
     "vf": 2,
     "color": "red"
@@ -174,6 +176,7 @@
   {
    "id": "LED_led2",
    "kind": "led",
+   "declName": "led2",
    "params": {
     "vf": 2,
     "color": "red"
@@ -215,6 +218,7 @@
   {
    "id": "LED_led3",
    "kind": "led",
+   "declName": "led3",
    "params": {
     "vf": 2,
     "color": "red"
@@ -400,5 +404,5 @@
    "color": "black"
   }
  ],
- "generated": "benchFor+seat batch 2026-08-16"
+ "generated": "benchFor+seat"
 }

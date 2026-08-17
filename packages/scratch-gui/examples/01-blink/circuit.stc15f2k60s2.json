@@ -27,7 +27,7 @@
    "terminals": [
     "gnd"
    ],
-   "x": 220,
+   "x": 156,
    "y": 60
   },
   {
@@ -108,6 +108,7 @@
   {
    "id": "LED_led1",
    "kind": "led",
+   "declName": "led1",
    "params": {
     "vf": 2,
     "color": "red"
@@ -197,5 +198,5 @@
    "color": "black"
   }
  ],
- "generated": "benchFor+seat 2026-08-16"
+ "generated": "benchFor+seat"
 }
