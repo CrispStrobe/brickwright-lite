@@ -52,7 +52,12 @@ class CircuitTab extends React.Component {
             debugHintDismissed = localStorage.getItem('bw-debug-hint') === '1';
         } catch { /* private mode */ }
         let hideStage = false;
-        let debugDock = 'top';
+        // 'right' by default: the FULL DebugPanel in the Circuit editor's
+        // right column. 'top' tucked it into the Designer's Instruments
+        // column, which reads as "there is no debugger here" — the owner
+        // asked for the right-pane debugger roughly ten times before this
+        // default changed (2026-08-17). 'top' stays selectable in settings.
+        let debugDock = 'right';
         let showInStage = true; // owner default: while coding, the circuit replaces the stage
         let rightPaneHidden = false;
         try {
@@ -63,7 +68,7 @@ class CircuitTab extends React.Component {
         try {
             hideStage = localStorage.getItem('bw-hide-stage') === '1';
             const d = localStorage.getItem('bw-debug-dock');
-            if (d === 'right' || d === 'off' || d === 'solo') debugDock = d;
+            if (d === 'top' || d === 'right' || d === 'off' || d === 'solo') debugDock = d;
         } catch { /* private mode: defaults */ }
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
@@ -565,7 +570,7 @@ class CircuitTab extends React.Component {
      *
      * @returns {Promise<boolean>} whether pins were loaded
      */
-    async loadExampleProgram (ex) {
+    async loadExampleProgram (ex, pick) {
         const path = ex && ex.files && ex.files.program;
         if (!path) return false;
         const vm = this.props.vm;
@@ -584,7 +589,22 @@ class CircuitTab extends React.Component {
         // but with the OLD device's engine still selected), and the matrix
         // never lit (owner report, 3791c09). The example's device wins;
         // retargeting stays available afterwards in the Code tab.
-        const exDevice = (source.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
+        let exDevice = (source.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
+        // A picked device retargets the program; a refusal keeps the
+        // authored pairing and says why instead of silently substituting.
+        const pickNorm = (pick || '').toLowerCase().replace(/_/g, '-');
+        if (pickNorm && exDevice &&
+            pickNorm !== exDevice.toLowerCase().replace(/_/g, '-') &&
+            SB3Creator.retargetPseudocode) {
+            const r = SB3Creator.retargetPseudocode(source, pickNorm);
+            if (r.ok) {
+                source = r.pseudocode;
+                exDevice = pickNorm;
+            } else {
+                throw new Error(`cannot retarget to ${pickNorm}: ` +
+                    `${(r.reasons || []).join('; ') || 'unknown reason'}`);
+            }
+        }
 
         const creator = new SB3Creator();
         creator.parse(source);
@@ -639,7 +659,16 @@ class CircuitTab extends React.Component {
         };
     }
 
-    async loadExample (ex) {
+    async loadExample (ex, opts) {
+        // The Examples browser's device chip arrives here as opts.device
+        // (with opts.bench naming the generated per-device circuit). It
+        // used to be DROPPED: clicking Pico on any example loaded the
+        // authored device anyway (owner report, 2026-08-17). The authored
+        // circuit still outranks a generated bench for the example's own
+        // device — the bench is a generic approximation.
+        const pick = (opts && opts.device ? String(opts.device) : '')
+            .toLowerCase().replace(/_/g, '-') || null;
+        const benchOverride = (opts && opts.bench) || null;
         const path = ex && ex.files && ex.files.circuit;
         if (!path) {
             this.setState({examplesError:
@@ -664,7 +693,22 @@ class CircuitTab extends React.Component {
         }
         this.setState({loadingExample: ex.id, examplesError: null});
         try {
-            const res = await fetch(`examples/${path}`);
+            // Which circuit: the authored one for the authored device, the
+            // generated bench for a genuinely different picked device.
+            let circuitPath = path;
+            if (pick && hasProgram) {
+                try {
+                    const pres = await fetch(`examples/${ex.files.program}`);
+                    const psrc = pres.ok ? await pres.text() : '';
+                    const exDev = ((psrc.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '')
+                        .toLowerCase().replace(/_/g, '-');
+                    if (exDev && pick !== exDev) {
+                        const bench = benchOverride || (ex.benches && ex.benches[pick]) || null;
+                        if (bench && bench !== path) circuitPath = bench;
+                    }
+                } catch { /* authored circuit stays */ }
+            }
+            const res = await fetch(`examples/${circuitPath}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             if (!data || !Array.isArray(data.parts) ||
@@ -680,7 +724,7 @@ class CircuitTab extends React.Component {
             let programError = null;
             if (hasProgram) {
                 try {
-                    prog = await this.loadExampleProgram(ex);
+                    prog = await this.loadExampleProgram(ex, pick);
                 } catch (e) {
                     programError = e.message;
                 }

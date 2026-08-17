@@ -1146,12 +1146,15 @@ class PseudocodeImporter extends React.Component {
                 status: warnings.length ? warnings.join('; ') : '',
                 buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
             // The PROGRAM retargeted; the BENCH must follow or the runner
-            // falls back to an inferred, unseated board. The WORE pipeline
-            // generates a seated circuit per device (index `benches` map);
-            // hand the matching one to the Circuit tab. Falls back to the
-            // authored circuit when no per-device bench exists.
-            const benchPath = (ex.benches && device && ex.benches[device]) ||
-                (ex.files && ex.files.circuit) || null;
+            // falls back to an inferred, unseated board. But the AUTHORED
+            // circuit outranks any generated bench for the example's own
+            // device: the calculator's authored board has the real 16-button
+            // matrix and the OLED, while the generated bench is a generic
+            // LED-per-pin approximation (owner screenshots, 2026-08-17).
+            // Only a genuinely retargeted device gets its generated bench.
+            const authored = (ex.files && ex.files.circuit) || null;
+            const retargeted = device && exDevice && device !== exDevice;
+            const benchPath = (retargeted && ex.benches && ex.benches[device]) || authored;
             if (benchPath && typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('bw-example-bench', {
                     detail: {benchPath, exampleId: ex.id, device: device || exDevice}

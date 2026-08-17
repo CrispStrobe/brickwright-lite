@@ -1368,7 +1368,7 @@ class SB3Creator {
         // A numbered pin (D13, A0) for the boards that have them. Kept as its
         // own branch: an Arduino pin has no port and no bit, so every check
         // below it is about a coordinate system it is not in.
-        if ((m = trimmed.match(/^PIN\s+([A-Za-z_]\w*)\s*=\s*([DA]\d+|GP\d+|P[A-D]\d|P\d+|BUTTON_[AB])\s+(OUTPUT|INPUT|ANALOG|PWM|TONE)(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
+        if ((m = trimmed.match(/^PIN\s+([A-Za-z_]\w*)\s*=\s*([DA]\d+|GP\d+|P[A-D]\d|P\d+|BUTTON_[AB]|(?:OUT|IN)\d)\s+(OUTPUT|INPUT|ANALOG|PWM|TONE)(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
             const [, name, where, direction, active] = m;
             const cfg = this.stcConfig();
             const part = SB3Creator.STC_PARTS[cfg.device];
@@ -1389,7 +1389,8 @@ class SB3Creator {
                 pico: [/^GP\d+$/i, 'GP0-GP28'],
                 // PB7 is Timer 1's square-wave pin and the machine's timebase
                 // guard: the emitter would refuse it anyway, refuse it here too.
-                eater6502: [/^(PA[0-7]|PB[0-6])$/i, 'PA0-PA7 or PB0-PB6 (PB7 belongs to Timer 1)'],
+                eater6502: [/^(PA[0-7]|PB[0-7])$/i, 'PA0-PA7 or PB0-PB7'],  // PB7 is plain I/O while ACR7=0 (W65C22 §2.5); our runtime sets ACR=0x40, so it never claims PB7
+                z80: [/^(OUT[0-7]|IN[0-7])$/i, 'OUT0-OUT7 (latch) or IN0-IN7 (buffer)'],
                 attiny88: [/^(PA[0-3]|PB[0-7]|PC[0-7]|PD[0-7])$/i, 'PA0-PA3, PB0-PB7, PC0-PC7, PD0-PD7'],
                 attiny85: [/^PB[0-4]$/i, 'PB0-PB4 (PB5 is RESET)']
             };
@@ -1405,7 +1406,7 @@ class SB3Creator {
             const LAST = { 'arduino-uno': { D: 13, A: 5 }, 'arduino-nano': { D: 13, A: 7 },
                 'atmega168p': { D: 13, A: 5 }, 'arduino-mega': { D: 53, A: 15 },
                 atmega328p: { D: 13, A: 5 }, microbit: { P: 20 }, pico: { GP: 28 },
-                eater6502: { PA: 7, PB: 6 } };
+                eater6502: { PA: 7, PB: 7 } };  // PB7: plain I/O while ACR7=0, same as the SPOKEN gate
             const edge = LAST[cfg.device] || {};
             const num = where.match(/^([A-Z]+)(\d+)$/i);
             if (num && edge[num[1].toUpperCase()] !== undefined && Number(num[2]) > edge[num[1].toUpperCase()]) {
@@ -5258,6 +5259,13 @@ class SB3Creator {
         return { port: m[1], bit: Number(m[2]) };
     }
 
+    /** Z80 bench pin → bit number (0-7). Output pins are OUT0-OUT7, input pins are IN0-IN7. */
+    z80Hw(pin) {
+        const w = String(pin.where || pin.name || '').toUpperCase();
+        const m = w.match(/^(?:OUT|IN)([0-7])$/);
+        return m ? Number(m[1]) : 0;
+    }
+
     // The SFR bit name for a driveable pin (`P1_0`), or null with a warning.
     // On the AVR core there is no bit-addressable lvalue; callers that need
     // to WRITE go through cSetPin/cTogglePin instead, and this returns the
@@ -5298,6 +5306,9 @@ class SB3Creator {
                 return null;
             }
             return `BW_VIA:${pin.name}`;   // same non-lvalue discipline as the AVR
+        }
+        if (this._core === 'z80') {
+            return `BW_Z80:${pin.name}`;   // same non-lvalue discipline
         }
         return `P${pin.port}_${pin.bit}`;
     }
@@ -5358,6 +5369,11 @@ class SB3Creator {
             const raw = `((BW_VIA_IR${hw.port} >> ${hw.bit}) & 1)`;
             return pin.activeLow ? `!${raw}` : raw;
         }
+        if (this._core === 'z80') {
+            const bit = this.z80Hw(pin);
+            const raw = `((BW_PORT_IN >> ${bit}) & 1)`;
+            return pin.activeLow ? `!${raw}` : raw;
+        }
         const sfr = `P${pin.port}_${pin.bit}`;
         return pin.activeLow ? `!${sfr}` : sfr;
     }
@@ -5391,6 +5407,13 @@ class SB3Creator {
             return high
                 ? `BW_VIA_OR${hw.port} |= (uint8_t)(1 << ${hw.bit});`
                 : `BW_VIA_OR${hw.port} &= (uint8_t)~(1 << ${hw.bit});`;
+        }
+        if (this._core === 'z80') {
+            // Shadow byte + OUT to the latch port.
+            const bit = this.z80Hw(pin);
+            return high
+                ? `_z80_sh |= (uint8_t)(1 << ${bit}); BW_PORT_OUT = _z80_sh;`
+                : `_z80_sh &= (uint8_t)~(1 << ${bit}); BW_PORT_OUT = _z80_sh;`;
         }
         return `${sfr} = ${high ? 1 : 0};`;
     }
@@ -5609,6 +5632,11 @@ class SB3Creator {
                     return line(`if (${v('VALUE')}) BW_VIA_OR${hw.port} |= (uint8_t)(1 << ${hw.bit}); `
                         + `else BW_VIA_OR${hw.port} &= (uint8_t)~(1 << ${hw.bit});`);
                 }
+                if (this._core === 'z80') {
+                    const bit = this.z80Hw(this.cPin(f('PIN')));
+                    return line(`if (${v('VALUE')}) _z80_sh |= (uint8_t)(1 << ${bit}); `
+                        + `else _z80_sh &= (uint8_t)~(1 << ${bit}); BW_PORT_OUT = _z80_sh;`);
+                }
                 return line(`${sfr} = (${v('VALUE')}) ? 1 : 0;`);
             }
             case 'stc12_toggle': {
@@ -5629,12 +5657,15 @@ class SB3Creator {
                     const hw = this.viaHw(this.cPin(f('PIN')));
                     return line(`BW_VIA_OR${hw.port} ^= (uint8_t)(1 << ${hw.bit});`);
                 }
+                if (this._core === 'z80') {
+                    const bit = this.z80Hw(this.cPin(f('PIN')));
+                    return line(`_z80_sh ^= (uint8_t)(1 << ${bit}); BW_PORT_OUT = _z80_sh;`);
+                }
                 return line(`${sfr} = !${sfr};`);
             }
             case 'stc12_setpwm': {
-                if (this._core === '6502') {
-                    this.cWarn('no PWM on the 6502 machine: the VIA has no compare unit, '
-                        + 'and Timer 1 is the millisecond timebase');
+                if (this._core === '6502' || this._core === 'z80') {
+                    this.cWarn(`no PWM on the ${this._core} machine`);
                     return line(`/* no PWM on ${this.cComment(f('PIN'))} */`);
                 }
                 this._cUses.pwm = true;
@@ -5663,11 +5694,8 @@ class SB3Creator {
                 return line(`pwm_set(${module}, ${v('VALUE')});`);
             }
             case 'stc12_settone': {
-                if (this._core === '6502') {
-                    // T1's PB7 square wave COULD sound a tone, but T1 is the
-                    // millisecond timebase — one timer cannot serve two masters.
-                    this.cWarn('no tone on the 6502 machine: Timer 1 is the millisecond '
-                        + 'timebase, and the VIA has no second waveform timer');
+                if (this._core === '6502' || this._core === 'z80') {
+                    this.cWarn(`no tone on the ${this._core} machine`);
                     return line('/* no tone on this machine */');
                 }
                 this._cUses.tone = true;
@@ -7506,11 +7534,12 @@ class SB3Creator {
         // to the AVR unchanged.
         this._core = (part && part.core === 'arduino') ? 'avr'
             : (part && part.core === 'rp2040') ? 'arm'
-                : (part && part.core === 'w65c02') ? '6502' : '8051';
+                : (part && part.core === 'w65c02') ? '6502'
+                    : (part && part.core === 'z80') ? 'z80' : '8051';
         this._cMega = !!(part && part.mega);
         this._cTiny88 = !!(part && part.tiny88);
         if (part && part.core && part.core !== '8051' && part.core !== 'arduino'
-            && part.core !== 'rp2040' && part.core !== 'w65c02') {
+            && part.core !== 'rp2040' && part.core !== 'w65c02' && part.core !== 'z80') {
             const how = part.core === 'micropython'
                 ? 'runs MicroPython, where the program IS the artefact and there is nothing to compile'
                 : 'has numbered pins and no 8051 registers';
@@ -7571,14 +7600,14 @@ class SB3Creator {
         const stateDecls = [];
         const markVars = [], markProcs = [], markScripts = [];
         for (const entry of Object.values((stage && stage.variables) || {})) {
-            stateDecls.push(`static int ${this.cName(entry[0])} = ${this.cInit(entry[1])};`);
+            stateDecls.push(`static long ${this.cName(entry[0])} = ${this.cInit(entry[1])};`);
             markVars.push(`var ${this.cName(entry[0])} ${this.pyStr(entry[0])}`);
         }
         sections.forEach((t, idx) => {
             if (t.isStage) return;
             const pfx = spritePrefix(idx);
             for (const entry of Object.values(t.variables || {})) {
-                stateDecls.push(`static int ${this.cName(pfx + entry[0])} = ${this.cInit(entry[1])};   /* ${this.cComment(t.name)}: ${this.cComment(entry[0])} */`);
+                stateDecls.push(`static long ${this.cName(pfx + entry[0])} = ${this.cInit(entry[1])};   /* ${this.cComment(t.name)}: ${this.cComment(entry[0])} */`);
                 markVars.push(`var ${this.cName(pfx + entry[0])} ${this.pyStr(entry[0])} sprite ${this.pyStr(t.name)}`);
             }
         });
@@ -7603,7 +7632,7 @@ class SB3Creator {
                     const m = proto.mutation;
                     const argNames = JSON.parse(m.argumentnames || '[]').map((a) => this.cName(a));
                     const fn = this.cName(pfx + this.pyProcRaw(m.proccode));
-                    const params = argNames.length ? argNames.map((a) => `int ${a}`).join(', ') : 'void';
+                    const params = argNames.length ? argNames.map((a) => `long ${a}`).join(', ') : 'void';
                     procProtos.push(`static void ${fn}(${params});`);
                     markProcs.push(`proc ${fn} ${this.pyStr(m.proccode)} warp=${m.warp === 'true' ? 1 : 0}`);
                     procDefs.push(`/* ${this.cComment(m.proccode.replace(/%[sb]/g, '').trim())} */`,
@@ -8064,6 +8093,32 @@ class SB3Creator {
                     `#define BW_VDP_DATA (*(volatile uint8_t *)${hx(vdpChip.at)}u)`,
                     `#define BW_VDP_CTRL (*(volatile uint8_t *)${hx(vdpChip.at + 1)}u)`, '');
             }
+        } else if (this._core === 'z80') {
+            // Z80 breadboard machine: OUT latch + IN buffer on I/O port 0.
+            // Shadow byte for the OUT latch avoids reading back the latch
+            // (which would return the IN buffer on the shared port address).
+            const machine = stored.machine || null;
+            const outPort = 0;  // port 0 for both OUT and IN
+            out.push('#include <stdint.h>', '');
+            out.push(`#define F_CPU ${clock}UL`, '');
+            out.push('/* Z80 breadboard machine: OUT latch (74HC374) + IN buffer (74HC244)',
+                ' * on I/O port 0. sdcc -mz80 compatible C. */',
+                `__sfr __at 0x${outPort.toString(16).padStart(2, '0')} BW_PORT_OUT;`,
+                `__sfr __at 0x${outPort.toString(16).padStart(2, '0')} BW_PORT_IN;`,
+                'static uint8_t _z80_sh;  /* shadow byte for the OUT latch */',
+                '');
+            // Z80: no timer, no ISR. delay_ms is a calibrated busy loop.
+            if (this._cUses.delay || this._cUses.blockDelay) {
+                const inner = Math.max(1, Math.round(clock / 10000));
+                out.push('/* Busy-loop delay (no timer on this machine). */',
+                    'static void delay_ms(unsigned int ms)',
+                    '{',
+                    `    unsigned int i;`,
+                    '    while (ms--) {',
+                    `        for (i = 0; i < ${inner}u; i++) ;`,
+                    '    }',
+                    '}', '');
+            }
         } else if (this._core === 'arm') {
             out.push('#include <stdint.h>', '');
             out.push(`#define F_CPU ${clock}UL`, '');
@@ -8302,7 +8357,7 @@ class SB3Creator {
                 '    uint32_t start = bw_now();',
                 '    while ((int32_t)(bw_now() - start - ms) < 0) ;',
                 '}', '');
-        } else if (this._cUses.delay && this._core !== '6502') {
+        } else if (this._cUses.delay && this._core !== '6502' && this._core !== 'z80') {
             out.push(...(this._core === 'avr' ? [
                 '/* No scheduler in this build; the tick still runs (main() starts it),',
                 ' * so a blocking delay is a wait on bw_ms, never on a cycle count. */',
@@ -8519,7 +8574,7 @@ class SB3Creator {
         if (this._cUses.adc && this._core === 'avr' && this._cMega) {
             out.push('/* 10-bit ADC, polled, AVcc reference. The Mega has 16 channels;',
                 ' * channels 8-15 need MUX5 in ADCSRB on top of ADMUX MUX4:0. */',
-                'static unsigned int adc_read(unsigned char channel)',
+                'static long adc_read(unsigned char channel)',
                 '{',
                 '    ADMUX = (uint8_t)((1 << REFS0) | (channel & 0x07));',
                 '    if (channel & 0x08) ADCSRB |= (1 << MUX5); else ADCSRB &= (uint8_t)~(1 << MUX5);',
@@ -8530,7 +8585,7 @@ class SB3Creator {
         } else if (this._cUses.adc && this._core === 'arm') {
             out.push('/* 12-bit ADC, polled over APB. Channel n is GP(26+n). The datasheet',
                 ' * sequence: enable, wait READY, START_ONCE, wait READY, read RESULT. */',
-                'static unsigned int adc_read(unsigned char channel)',
+                'static long adc_read(unsigned char channel)',
                 '{',
                 '    BW_ADC_CS = 1u | ((uint32_t)channel << 12);        /* EN | AINSEL */',
                 '    while (!(BW_ADC_CS & (1u << 8))) ;                 /* READY */',
@@ -8541,7 +8596,7 @@ class SB3Creator {
         } else if (this._cUses.adc && this._core === 'avr') {
             out.push('/* 10-bit ADC, polled, AVcc reference. Channel = the A-pin number;',
                 ' * A6/A7 exist on the Nano as ADC-only pads and work here too. */',
-                'static unsigned int adc_read(unsigned char channel)',
+                'static long adc_read(unsigned char channel)',
                 '{',
                 '    ADMUX = (uint8_t)((1 << REFS0) | (channel & 0x0F));',
                 '    ADCSRA |= (1 << ADSC);',
@@ -8551,7 +8606,7 @@ class SB3Creator {
         } else if (this._cUses.adc) {
             out.push('/* 10-bit ADC, polled. Channel n is on P1.n; the channel is selected and the',
                 ' * conversion started in one write, as STC\'s own examples do. */',
-                'static unsigned int adc_read(unsigned char channel)',
+                'static long adc_read(unsigned char channel)',
                 '{',
                 `    /* Mux settle: datasheet §10.5 requires ~8 oscillator clocks after`,
                 `     * channel selection.  At FOSC ${(clock / 1e6).toFixed(4)} MHz that is`,
@@ -10045,7 +10100,7 @@ class SB3Creator {
         }
 
         if (stateDecls.length) {
-            out.push('/* Variables (16-bit signed, like Scratch\'s integers). */', ...stateDecls, '');
+            out.push('/* Variables: long, matching Scratch\'s number range — int is 16-bit on', ' * sdcc/avr-gcc/cc65 and silently wraps mid-expression (76-multimeter). */', ...stateDecls, '');
         }
         if (procProtos.length) out.push(...procProtos, '');
         if (procDefs.length) out.push(...procDefs);
@@ -10472,7 +10527,7 @@ class SB3Creator {
         }
         }
         out.push('}', '',
-            this._core !== '8051' ? 'int main(void)' : 'void main(void)',
+            (this._core !== '8051' && this._core !== 'z80') ? 'int main(void)' : 'void main(void)',
             '{', '    bw_setup();');
         if (this._cTasks && (this._core === 'arm' || this._core === '6502')) {
             out.push('',
@@ -10842,6 +10897,11 @@ SB3Creator.RETARGET_POOLS = (() => {
         eater6502: { digital: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
             analog: [], input: ['PB0', 'PB1', 'PB2', 'PB3', 'PB4', 'PB5', 'PB6'],
             pwm: [], ledActiveLow: false },
+        // Z80 bench: OUT latch (port 0 write) provides 8 output bits,
+        // IN buffer (port 0 read) provides 8 input bits. No analog, no PWM.
+        z80: { digital: seq('OUT%', 0, 7),
+            analog: [], input: seq('IN%', 0, 7),
+            pwm: [], ledActiveLow: false },
         // ATtiny88 as the BARE CHIP: all of B/C/D bar RESET (PC6). The old
         // input pool was the PENDANT's two buttons — board truth, not chip
         // truth, and generated benches seat the chip.
@@ -10934,6 +10994,10 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     if (!part || !pools) return { ok: false, reasons: [`unknown device: ${device}`], warnings: [] };
     const core = part.core === 'arduino' ? 'avr' : part.core === 'rp2040' ? 'arm' : part.core || '8051';
     if (core === 'micropython') return { ok: false, reasons: [`${device} runs MicroPython — no C retarget`], warnings: [] };
+    if (core === 'z80') {
+        // Z80 retarget: output pins are OUT0-OUT7, input pins are IN0-IN7.
+        // No ADC, no PWM, no timer tick — delay-only programs.
+    }
 
     const c = new SB3Creator();
     c.parse(src);
@@ -11102,6 +11166,12 @@ SB3Creator.STC_PARTS = {
     // bits (PA0-PA7, PB0-PB6). No ADC, no PWM -- the VIA has neither, and
     // Timer 1 is the millisecond timebase.
     eater6502: { core: 'w65c02', header: null, portModes: false, aux1T: false, adc: false },
+    // core: 'z80' -- the composable Z80 breadboard machine. Pins are bits of
+    // an OUT latch + IN buffer on I/O port 0 (74HC374 + 74HC244). No ADC, no
+    // PWM, no interrupt-driven tick (delay-only timebase via busy loop).
+    // generateC() emits sdcc -mz80 compatible C: __sfr __at port declarations,
+    // shadow byte + OUT for pin writes, IN & mask for pin reads.
+    z80: { core: 'z80', header: null, portModes: false, aux1T: false, adc: false },
     // ATtiny88: 28-pin DIP, avr25 family. Pins are PB0-7/PC0-7/PD0-7/PA0-3
     // (port/bit, not Arduino Dn numbering). Timer0 has NO CTC mode — the ms
     // tick uses Timer1 CTC instead. ADC on PC0-PC5 (channels 0-5).
