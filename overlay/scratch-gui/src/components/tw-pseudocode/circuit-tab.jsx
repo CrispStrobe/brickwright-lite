@@ -550,6 +550,19 @@ class CircuitTab extends React.Component {
      * half-worked: the panels kept saying they had no circuit.)
      */
     handleCircuitReady (circuit) {
+        // Deleting/clearing the circuit must STOP the debugger: a live
+        // runner kept driving a board that no longer exists (owner
+        // report, 2026-08-17). An empty board with a runner attached =
+        // bump the stop token; the panel tears its session down.
+        try {
+            const nParts = circuit && circuit.parts
+                ? (circuit.parts.size ?? circuit.parts.length ?? 0) : 0;
+            const hadParts = this.state.circuit && this.state.circuit.parts
+                ? (this.state.circuit.parts.size ?? this.state.circuit.parts.length ?? 0) : 0;
+            if (nParts === 0 && hadParts > 0) {
+                this.setState(st => ({stopToken: (st.stopToken || 0) + 1}));
+            }
+        } catch { /* never block circuit publication */ }
         this.setState({circuit});
         // Detect CPU parts on the board and publish the core so the debug
         // panel creates the right target kind (z80, eater6502, avr8js).
