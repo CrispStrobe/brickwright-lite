@@ -919,12 +919,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // machine is actually doing.
         if (typeof window !== 'undefined') window.__benchTarget = target;
 
-        // Video face: only exposed when the machine actually has a chip
-        // answering the videoFrame() contract (TMS9918, simplevga, …) —
-        // the panel mounts VdpScreen on the presence of runner.video, and
-        // a dead screen on a serial-only machine would be a lie.
-        if (target && typeof target.video === 'function' && target.video()) {
-            runner.video = () => (target && target.video ? target.video() : null);
+        // Video face: lazy — the VDP chip may not initialise until after ROM
+        // injection boots the machine. A static check at build time deleted
+        // runner.video before the ROM ever ran, keeping VdpScreen dark
+        // (root-caused 2026-08-17). The getter re-evaluates on every frame
+        // so the component mounts as soon as target.video() returns a
+        // framebuffer. Only exposed when the target declares a video method
+        // at all — serial-only machines (no VDP) shouldn't show NO SIGNAL.
+        if (target && typeof target.video === 'function') {
+            runner.video = () => target.video();
         } else {
             delete runner.video;
         }
