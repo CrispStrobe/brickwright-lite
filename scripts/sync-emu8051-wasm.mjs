@@ -40,8 +40,22 @@ await mkdir(dest, {recursive: true});
 let changed = 0;
 for (const [name, want] of Object.entries(EXPECT)) {
     const url = `https://raw.githubusercontent.com/CrispStrobe/emu8051-stc/${ref}/build/${name}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`fetch ${name} @ ${ref}: HTTP ${res.status}`);
+    // raw.githubusercontent rate-limits CI bursts (HTTP 429 killed two
+    // deploys on 2026-08-17 after the ancestry check had already passed).
+    // Retry with backoff, honoring Retry-After when present.
+    let res;
+    for (let attempt = 1; ; attempt++) {
+        res = await fetch(url);
+        if (res.ok) break;
+        const retryable = res.status === 429 || res.status >= 500;
+        if (!retryable || attempt >= 4) {
+            throw new Error(`fetch ${name} @ ${ref}: HTTP ${res.status} (after ${attempt} attempt${attempt > 1 ? 's' : ''})`);
+        }
+        const ra = Number(res.headers.get('retry-after')) || 0;
+        const delay = Math.max(ra * 1000, attempt * 20_000);
+        console.log(`  retry ${name}: HTTP ${res.status}, waiting ${Math.round(delay / 1000)}s (attempt ${attempt}/3)`);
+        await new Promise(r => setTimeout(r, delay));
+    }
     const buf = Buffer.from(await res.arrayBuffer());
     const got = createHash('sha256').update(buf).digest('hex');
     if (got !== want) {
