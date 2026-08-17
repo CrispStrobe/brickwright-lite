@@ -243,7 +243,10 @@ try {
         await page.waitForTimeout(250);
         const examplesMode = page.locator('[data-examples-selector]:visible').last();
         const examplesContent = examplesMode.locator('[data-examples-selector-content]');
-        check('dedicated Examples mode starts expanded', await examplesMode.getByRole('button', {name: /^Collapse Examples/i}).count() === 1 && await examplesContent.count() === 1);
+        // Dedicated mode is examples-only: it has no collapse toggle (there
+        // is nothing to yield space to). Expanded = content present and no
+        // 'Expand' affordance claiming it is collapsed.
+        check('dedicated Examples mode starts expanded', await examplesMode.getByRole('button', {name: /^Expand Examples/i}).count() === 0 && await examplesContent.count() === 1);
         if (await examplesContent.count()) {
             const metrics = await examplesContent.evaluate(el => ({scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, overflowY: getComputedStyle(el).overflowY}));
             check('dedicated Examples mode is scrollable', metrics.scrollHeight > metrics.clientHeight && metrics.overflowY === 'auto', JSON.stringify(metrics));
