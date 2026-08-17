@@ -260,6 +260,7 @@ class CircuitTab extends React.Component {
      *  Measure where the box actually starts and claim the rest of the
      *  viewport explicitly. */
     _measureBox () {
+        this._sizeStageHost();
         const el = this._boxRef.current;
         if (!el || this._portalOn) return;
         const r = el.getBoundingClientRect();
@@ -272,6 +273,7 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
         window.removeEventListener('bw-settings-change', this._settingsHandler);
         window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
@@ -338,7 +340,40 @@ class CircuitTab extends React.Component {
         host.style.cssText = 'position:absolute;inset:0;z-index:0;background:#fff;display:none;overflow:auto;';
         wrap.appendChild(host);
         this._stageHost = host;
+        this._sizeStageHost();
+        // Layout-driven, not render-driven: the wrapper reaches its final
+        // (oversized) width after our render pass, so a one-shot measure
+        // reads pre-layout numbers and the cap never applies.
+        // Per-host wiring: the stage wrapper is REPLACED when a project
+        // loads, and an observer bound once watched the dead wrapper while
+        // the new one grew to 1992px unobserved.
+        if (typeof ResizeObserver !== 'undefined') {
+            if (this._hostRO) this._hostRO.disconnect();
+            this._hostRO = new ResizeObserver(() => this._sizeStageHost());
+            this._hostRO.observe(wrap);
+        }
         return host;
+    }
+
+    /** The stage wrapper can be laid out WIDER than the viewport (it gets
+     *  clipped by an ancestor), so an inset:0 host inherits a phantom
+     *  ~2x width and everything portalled into it lays out off-screen —
+     *  the Code-mode debugger sat 'too much to the right' with its right
+     *  half cut (owner report + measured: pane 1992px wide at x=1018 in a
+     *  2000px window). Cap the host at what is actually visible. */
+    _sizeStageHost () {
+        const host = this._stageHost;
+        if (!host || !host.parentElement) return;
+        const wl = host.parentElement.getBoundingClientRect().left;
+        const visible = Math.max(280, Math.round(window.innerWidth - wl - 4));
+        const wrapW = Math.round(host.parentElement.getBoundingClientRect().width);
+        if (wrapW > visible + 8) {
+            host.style.right = 'auto';
+            host.style.width = `${visible}px`;
+        } else {
+            host.style.right = '0';
+            host.style.width = '';
+        }
     }
 
     /** While coding (any other tab), the circuit takes the stage's column —
@@ -929,13 +964,12 @@ class CircuitTab extends React.Component {
         // Claim the real viewport once we know where the box starts —
         // see _measureBox. The portal path keeps the stage host's sizing.
         if (!this._portalOn && this.state.boxTop != null) {
+            // HEIGHT only. Width claims override the GUI's right-pane
+            // splitter and, in the Code-mode portal, laid the debugger out
+            // for a phantom 1992px column (owner reports; the first attempt
+            // at this fix was reverted by a concurrent agent's reset --hard
+            // between edit and commit — verify the COMMITTED bytes).
             box.height = `calc(100vh - ${this.state.boxTop + 4}px)`;
-            // clientWidth excludes the scrollbar; 100vw does not — the
-            // difference pushed the debugger's right column off-screen
-            // and froze its slider (owner report, 2026-08-17).
-            const cw = (typeof document !== 'undefined' &&
-                document.documentElement.clientWidth) || 0;
-            if (cw > 0) box.width = `${Math.max(720, cw - this.state.boxLeft - 8)}px`;
         }
         // Nothing below returns a portal until it says so. componentDidUpdate
         // shows the stage host only when this is true, so the three early

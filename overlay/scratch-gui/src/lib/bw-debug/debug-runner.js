@@ -620,7 +620,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // part: DEVICE STC15F2K60S2 must reach the emulator or console
         // firmware loses P5 silently (adapter warns until the wasm ships
         // _emu_set_part — the ABI is documented at the adapter).
-        const adapter = createEmu8051Adapter(wasm, { fosc, part: String(stc.device || '').toLowerCase() });
+        // ALL ports. The adapter's default is [1, 3] — a relic that meant
+        // ports 0, 2, 4 and 5 were NEVER published to the board: the I2C
+        // bus on P2 sat silent (sda/scl 'off forever', blank LCD while the
+        // program visibly counted), P0 display buses never lit, the STC15
+        // buzzer on P5 never sounded. Push mode is callback-driven, so
+        // unused ports cost nothing. (First application of this fix was
+        // reverted by a concurrent reset --hard before it was committed.)
+        const adapter = createEmu8051Adapter(wasm, { fosc, ports: [0, 1, 2, 3, 4, 5],
+            part: String(stc.device || '').toLowerCase() });
 
         // The board, so the LEDs light and the buzzer sounds while debugging.
         // It is driven by the emulator through boundary A and knows nothing
