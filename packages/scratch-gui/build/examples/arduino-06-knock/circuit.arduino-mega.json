@@ -1,0 +1,210 @@
+{
+ "vcc": 5,
+ "parts": [
+  {
+   "id": "bb1",
+   "kind": "breadboard",
+   "params": {},
+   "terminals": [],
+   "x": 470,
+   "y": 330,
+   "rotation": 0
+  },
+  {
+   "id": "board",
+   "kind": "arduino_mega",
+   "params": {},
+   "x": 80,
+   "y": -60,
+   "rotation": 0
+  },
+  {
+   "id": "piezo",
+   "kind": "piezo",
+   "declName": "piezo",
+   "params": {},
+   "x": 470,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "a32",
+     "b": "a33"
+    }
+   }
+  },
+  {
+   "id": "r1",
+   "kind": "resistor",
+   "params": {
+    "ohms": 1000000
+   },
+   "x": 302,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "a20",
+     "b": "a24"
+    }
+   }
+  },
+  {
+   "id": "led1",
+   "kind": "led",
+   "declName": "led",
+   "params": {
+    "color": "red"
+   },
+   "x": 512,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "anode": "a35",
+     "cathode": "a36"
+    }
+   }
+  },
+  {
+   "id": "r2",
+   "kind": "resistor",
+   "params": {
+    "ohms": 220
+   },
+   "x": 386,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "a26",
+     "b": "a30"
+    }
+   }
+  },
+  {
+   "id": "vcc1",
+   "kind": "vcc",
+   "params": {
+    "volts": 5
+   },
+   "x": 80,
+   "y": 60
+  },
+  {
+   "id": "gnd1",
+   "kind": "gnd",
+   "params": {},
+   "x": 220,
+   "y": 60
+  }
+ ],
+ "wires": [
+  {
+   "from": "piezo",
+   "fromTerminal": "b",
+   "to": "gnd1",
+   "toTerminal": "gnd"
+  },
+  {
+   "from": "r1",
+   "fromTerminal": "b",
+   "to": "gnd1",
+   "toTerminal": "gnd"
+  },
+  {
+   "from": "r2",
+   "fromTerminal": "b",
+   "to": "led1",
+   "toTerminal": "anode"
+  },
+  {
+   "from": "led1",
+   "fromTerminal": "cathode",
+   "to": "gnd1",
+   "toTerminal": "gnd"
+  },
+  {
+   "from": "gnd1",
+   "fromTerminal": "gnd",
+   "to": {
+    "board": "bb1",
+    "hole": "b-2"
+   },
+   "color": "black",
+   "genPower": true
+  },
+  {
+   "from": "board",
+   "fromTerminal": "a0",
+   "to": "piezo",
+   "toTerminal": "a"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "a0",
+   "to": "r1",
+   "toTerminal": "a"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "d13",
+   "to": "r2",
+   "toTerminal": "a"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "5v",
+   "to": "vcc1",
+   "toTerminal": "vcc"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "gnd",
+   "to": "gnd1",
+   "toTerminal": "gnd"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "gnd",
+   "to": "led1",
+   "toTerminal": "cathode"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "gnd",
+   "to": "piezo",
+   "toTerminal": "b"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "gnd",
+   "to": "r1",
+   "toTerminal": "b"
+  }
+ ],
+ "holeWires": [
+  {
+   "ref": "bbw:bb1:gen_0",
+   "boardId": "bb1",
+   "a": "b24",
+   "b": "b-24",
+   "color": "black"
+  },
+  {
+   "ref": "bbw:bb1:gen_1",
+   "boardId": "bb1",
+   "a": "b30",
+   "b": "b35",
+   "color": "green"
+  },
+  {
+   "ref": "bbw:bb1:gen_2",
+   "boardId": "bb1",
+   "a": "b36",
+   "b": "b-36",
+   "color": "black"
+  }
+ ],
+ "generated": "benchFor+authored"
+}

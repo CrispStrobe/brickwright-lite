@@ -1,0 +1,366 @@
+{
+ "vcc": 5,
+ "parts": [
+  {
+   "id": "bb1",
+   "kind": "breadboard",
+   "params": {},
+   "terminals": [],
+   "x": 470,
+   "y": 330,
+   "rotation": 0
+  },
+  {
+   "id": "mcu",
+   "kind": "arduino_mega",
+   "params": {},
+   "x": 80,
+   "y": -60,
+   "rotation": 0
+  },
+  {
+   "id": "matrix",
+   "kind": "matrix8x8",
+   "declName": "matrix",
+   "params": {
+    "polarity": "788AS",
+    "colActiveHigh": false,
+    "rowActiveHigh": true
+   },
+   "x": 302,
+   "y": 311,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "col0": "e20",
+     "col1": "e21",
+     "col2": "e22",
+     "col3": "e23",
+     "col4": "e24",
+     "col5": "e25",
+     "col6": "e26",
+     "col7": "e27",
+     "row0": "f20",
+     "row1": "f21",
+     "row2": "f22",
+     "row3": "f23",
+     "row4": "f24",
+     "row5": "f25",
+     "row6": "f26",
+     "row7": "f27"
+    }
+   }
+  },
+  {
+   "id": "btnL",
+   "kind": "button",
+   "declName": "btnLeft",
+   "params": {},
+   "x": 624,
+   "y": 311,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "e43",
+     "b": "f43"
+    }
+   }
+  },
+  {
+   "id": "btnR",
+   "kind": "button",
+   "declName": "btnRight",
+   "params": {},
+   "x": 680,
+   "y": 311,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "e47",
+     "b": "f47"
+    }
+   }
+  },
+  {
+   "id": "rL",
+   "kind": "resistor",
+   "params": {
+    "ohms": 10000
+   },
+   "x": 456,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "a31",
+     "b": "a35"
+    }
+   }
+  },
+  {
+   "id": "rR",
+   "kind": "resistor",
+   "params": {
+    "ohms": 10000
+   },
+   "x": 540,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "a37",
+     "b": "a41"
+    }
+   }
+  },
+  {
+   "id": "vcc1",
+   "kind": "vcc",
+   "params": {
+    "volts": 5
+   },
+   "x": 80,
+   "y": 60
+  },
+  {
+   "id": "gnd1",
+   "kind": "gnd",
+   "params": {},
+   "x": 220,
+   "y": 60
+  }
+ ],
+ "wires": [
+  {
+   "from": "vcc1",
+   "fromTerminal": "vcc",
+   "to": "btnL",
+   "toTerminal": "a"
+  },
+  {
+   "from": "rL",
+   "fromTerminal": "b",
+   "to": "gnd1",
+   "toTerminal": "gnd"
+  },
+  {
+   "from": "vcc1",
+   "fromTerminal": "vcc",
+   "to": "btnR",
+   "toTerminal": "a"
+  },
+  {
+   "from": "rR",
+   "fromTerminal": "b",
+   "to": "gnd1",
+   "toTerminal": "gnd"
+  },
+  {
+   "from": "vcc1",
+   "fromTerminal": "vcc",
+   "to": {
+    "board": "bb1",
+    "hole": "t+2"
+   },
+   "color": "red",
+   "genPower": true
+  },
+  {
+   "from": "gnd1",
+   "fromTerminal": "gnd",
+   "to": {
+    "board": "bb1",
+    "hole": "b-2"
+   },
+   "color": "black",
+   "genPower": true
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d27",
+   "to": "matrix",
+   "toTerminal": "col6"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d28",
+   "to": "matrix",
+   "toTerminal": "col7"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d34",
+   "to": "matrix",
+   "toTerminal": "row5"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d35",
+   "to": "matrix",
+   "toTerminal": "row6"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d36",
+   "to": "matrix",
+   "toTerminal": "row7"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d13",
+   "to": "matrix",
+   "toTerminal": "col0"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d29",
+   "to": "matrix",
+   "toTerminal": "row0"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d30",
+   "to": "matrix",
+   "toTerminal": "row1"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d31",
+   "to": "matrix",
+   "toTerminal": "row2"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d32",
+   "to": "matrix",
+   "toTerminal": "row3"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d33",
+   "to": "matrix",
+   "toTerminal": "row4"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d2",
+   "to": "btnL",
+   "toTerminal": "b"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d2",
+   "to": "rL",
+   "toTerminal": "a"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d3",
+   "to": "btnR",
+   "toTerminal": "b"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d3",
+   "to": "rR",
+   "toTerminal": "a"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d22",
+   "to": "matrix",
+   "toTerminal": "col1"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d23",
+   "to": "matrix",
+   "toTerminal": "col2"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d24",
+   "to": "matrix",
+   "toTerminal": "col3"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d25",
+   "to": "matrix",
+   "toTerminal": "col4"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "d26",
+   "to": "matrix",
+   "toTerminal": "col5"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "gnd",
+   "to": "gnd1",
+   "toTerminal": "gnd"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "gnd",
+   "to": "rL",
+   "toTerminal": "b"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "gnd",
+   "to": "rR",
+   "toTerminal": "b"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "5v",
+   "to": "btnL",
+   "toTerminal": "a"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "5v",
+   "to": "btnR",
+   "toTerminal": "a"
+  },
+  {
+   "from": "mcu",
+   "fromTerminal": "5v",
+   "to": "vcc1",
+   "toTerminal": "vcc"
+  }
+ ],
+ "holeWires": [
+  {
+   "ref": "bbw:bb1:gen_16",
+   "boardId": "bb1",
+   "a": "a43",
+   "b": "t+43",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_19",
+   "boardId": "bb1",
+   "a": "b35",
+   "b": "b-35",
+   "color": "black"
+  },
+  {
+   "ref": "bbw:bb1:gen_20",
+   "boardId": "bb1",
+   "a": "a47",
+   "b": "t+47",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_23",
+   "boardId": "bb1",
+   "a": "b41",
+   "b": "b-41",
+   "color": "black"
+  }
+ ],
+ "generated": "benchFor+authored"
+}

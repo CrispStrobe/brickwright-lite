@@ -1,0 +1,873 @@
+"use strict";
+(self["webpackChunkGUI"] = self["webpackChunkGUI"] || []).push([["src_lib_sb3-creator-scratchruntime_js"],{
+
+/***/ "./src/lib/sb3-creator-scratchruntime.js":
+/*!***********************************************!*\
+  !*** ./src/lib/sb3-creator-scratchruntime.js ***!
+  \***********************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   OP_TO_ARRAYS: () => (/* binding */ OP_TO_ARRAYS),
+/* harmony export */   OP_TO_SCRATCH: () => (/* binding */ OP_TO_SCRATCH),
+/* harmony export */   SCRATCH_METHODS: () => (/* binding */ SCRATCH_METHODS),
+/* harmony export */   arraysCallToPseudo: () => (/* binding */ arraysCallToPseudo),
+/* harmony export */   sanitizeIdent: () => (/* binding */ sanitizeIdent),
+/* harmony export */   scratchCallToPseudo: () => (/* binding */ scratchCallToPseudo),
+/* harmony export */   spritePrefix: () => (/* binding */ spritePrefix),
+/* harmony export */   stripSpritePrefix: () => (/* binding */ stripSpritePrefix),
+/* harmony export */   unq: () => (/* binding */ unq)
+/* harmony export */ });
+// Single source of truth for the "scratch runtime" shim used by the Python/JavaScript
+// code generators (blocks -> code) and the reverse parsers (code -> pseudocode).
+//
+// The algorithmic subset (variables, math, loops, lists) maps to plain Python/JS.
+// Everything Scratch-specific (motion, looks, sensing, sound, pen, clones, broadcasts)
+// used to be dropped to `# comments` / `None` / `False`, which made round-tripping code
+// back to blocks destroy the project (sprites merged, costumes gone, collisions dead).
+//
+// Instead we emit those blocks as calls into a `scratch` runtime object —
+// `scratch.go_to(px, py)`, `scratch.touching("Apple")` — exactly mirroring the pluggable
+// hardware-driver convention. The calls are real (a shim makes the code runnable) and,
+// crucially, reversible: this table drives both the generator and the parser, so every
+// hop (pseudocode -> blocks -> js -> blocks -> python -> ...) preserves the project.
+//
+// Sprite/costume structure is carried by `scratch.sprite(...)` / `scratch.costume(...)`
+// marker calls and `s<idx>_` prefixes on generated function names (see naming helpers).
+
+// Strip a JSON string literal ("hero") back to its raw value (hero). Non-literals pass
+// through unchanged (e.g. a dynamic costume expression).
+function unq(s) {
+  if (typeof s !== 'string') return s;
+  const t = s.trim();
+  if (t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"') {
+    try {
+      return JSON.parse(t);
+    } catch (_unused) {/* fall through */}
+  }
+  return t;
+}
+function lower(s) {
+  return String(s).toLowerCase();
+}
+function dprop(p) {
+  return p === 'costume #' ? 'costume number' : p === 'backdrop #' ? 'backdrop number' : p;
+}
+
+// Each entry: method name (same in Python and JS), the Scratch opcode it represents, its
+// kind, how the generator builds its args, and how the parser rebuilds the pseudocode.
+//   gen specs: {v:KEY} value input | {m:KEY} menu shadow | {f:KEY} field | {bc:KEY} broadcast
+//   ps(a, u): a = arg strings (already pseudocode); u = unq helper for menu/field literals
+const ENTRIES = [
+// ---- motion (commands) ----
+{
+  m: 'move',
+  op: 'motion_movesteps',
+  gen: [{
+    v: 'STEPS'
+  }],
+  ps: a => "move ".concat(a[0], " steps")
+}, {
+  m: 'turn_right',
+  op: 'motion_turnright',
+  gen: [{
+    v: 'DEGREES'
+  }],
+  ps: a => "turn right ".concat(a[0], " degrees")
+}, {
+  m: 'turn_left',
+  op: 'motion_turnleft',
+  gen: [{
+    v: 'DEGREES'
+  }],
+  ps: a => "turn left ".concat(a[0], " degrees")
+}, {
+  m: 'go_to_xy',
+  op: 'motion_gotoxy',
+  gen: [{
+    v: 'X'
+  }, {
+    v: 'Y'
+  }],
+  ps: a => "go to x: ".concat(a[0], " y: ").concat(a[1])
+}, {
+  m: 'glide_to_xy',
+  op: 'motion_glidesecstoxy',
+  gen: [{
+    v: 'SECS'
+  }, {
+    v: 'X'
+  }, {
+    v: 'Y'
+  }],
+  ps: a => "glide ".concat(a[0], " secs to x: ").concat(a[1], " y: ").concat(a[2])
+}, {
+  m: 'change_x',
+  op: 'motion_changexby',
+  gen: [{
+    v: 'DX'
+  }],
+  ps: a => "change x by ".concat(a[0])
+}, {
+  m: 'change_y',
+  op: 'motion_changeyby',
+  gen: [{
+    v: 'DY'
+  }],
+  ps: a => "change y by ".concat(a[0])
+}, {
+  m: 'set_x',
+  op: 'motion_setx',
+  gen: [{
+    v: 'X'
+  }],
+  ps: a => "set x to ".concat(a[0])
+}, {
+  m: 'set_y',
+  op: 'motion_sety',
+  gen: [{
+    v: 'Y'
+  }],
+  ps: a => "set y to ".concat(a[0])
+}, {
+  m: 'point_in_direction',
+  op: 'motion_pointindirection',
+  gen: [{
+    v: 'DIRECTION'
+  }],
+  ps: a => "point in direction ".concat(a[0])
+},
+// ---- motion (reporters) ----
+{
+  m: 'x_position',
+  op: 'motion_xposition',
+  kind: 'reporter',
+  gen: [],
+  ps: () => 'x position'
+}, {
+  m: 'y_position',
+  op: 'motion_yposition',
+  kind: 'reporter',
+  gen: [],
+  ps: () => 'y position'
+}, {
+  m: 'direction',
+  op: 'motion_direction',
+  kind: 'reporter',
+  gen: [],
+  ps: () => 'direction'
+},
+// ---- looks (commands) ----
+{
+  m: 'say',
+  op: 'looks_say',
+  gen: [{
+    v: 'MESSAGE'
+  }],
+  ps: a => "say ".concat(a[0])
+}, {
+  m: 'say',
+  op: 'looks_sayforsecs',
+  gen: [{
+    v: 'MESSAGE'
+  }, {
+    v: 'SECS'
+  }],
+  ps: a => "say ".concat(a[0], " for ").concat(a[1], " seconds")
+}, {
+  m: 'think',
+  op: 'looks_think',
+  gen: [{
+    v: 'MESSAGE'
+  }],
+  ps: a => "think ".concat(a[0])
+}, {
+  m: 'think',
+  op: 'looks_thinkforsecs',
+  gen: [{
+    v: 'MESSAGE'
+  }, {
+    v: 'SECS'
+  }],
+  ps: a => "think ".concat(a[0], " for ").concat(a[1], " seconds")
+}, {
+  m: 'show',
+  op: 'looks_show',
+  gen: [],
+  ps: () => 'show'
+}, {
+  m: 'hide',
+  op: 'looks_hide',
+  gen: [],
+  ps: () => 'hide'
+}, {
+  m: 'switch_costume',
+  op: 'looks_switchcostumeto',
+  gen: [{
+    m: 'COSTUME'
+  }],
+  ps: (a, u) => "switch costume to ".concat(u(a[0]))
+}, {
+  m: 'next_costume',
+  op: 'looks_nextcostume',
+  gen: [],
+  ps: () => 'next costume'
+}, {
+  m: 'set_size',
+  op: 'looks_setsizeto',
+  gen: [{
+    v: 'SIZE'
+  }],
+  ps: a => "set size to ".concat(a[0])
+}, {
+  m: 'change_size',
+  op: 'looks_changesizeby',
+  gen: [{
+    v: 'CHANGE'
+  }],
+  ps: a => "change size by ".concat(a[0])
+}, {
+  m: 'set_effect',
+  op: 'looks_seteffectto',
+  gen: [{
+    f: 'EFFECT'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: (a, u) => "set ".concat(lower(u(a[0])), " effect to ").concat(a[1])
+}, {
+  m: 'change_effect',
+  op: 'looks_changeeffectby',
+  gen: [{
+    f: 'EFFECT'
+  }, {
+    v: 'CHANGE'
+  }],
+  ps: (a, u) => "change ".concat(lower(u(a[0])), " effect by ").concat(a[1])
+},
+// ---- pen ----
+{
+  m: 'pen_clear',
+  op: 'pen_clear',
+  gen: [],
+  ps: () => 'clear'
+}, {
+  m: 'stamp',
+  op: 'pen_stamp',
+  gen: [],
+  ps: () => 'stamp'
+}, {
+  m: 'pen_down',
+  op: 'pen_penDown',
+  gen: [],
+  ps: () => 'pen down'
+}, {
+  m: 'pen_up',
+  op: 'pen_penUp',
+  gen: [],
+  ps: () => 'pen up'
+}, {
+  m: 'set_pen_color',
+  op: 'pen_setPenColorToColor',
+  gen: [{
+    v: 'COLOR'
+  }],
+  ps: (a, u) => "set pen color to ".concat(u(a[0]))
+}, {
+  m: 'set_pen_size',
+  op: 'pen_setPenSizeTo',
+  gen: [{
+    v: 'SIZE'
+  }],
+  ps: a => "set pen size to ".concat(a[0])
+}, {
+  m: 'change_pen_size',
+  op: 'pen_changePenSizeBy',
+  gen: [{
+    v: 'SIZE'
+  }],
+  ps: a => "change pen size by ".concat(a[0])
+}, {
+  m: 'change_pen_param',
+  op: 'pen_changePenColorParamBy',
+  gen: [{
+    m: 'COLOR_PARAM',
+    field: 'colorParam'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: (a, u) => "change pen ".concat(u(a[0]), " by ").concat(a[1])
+}, {
+  m: 'set_pen_param',
+  op: 'pen_setPenColorParamTo',
+  gen: [{
+    m: 'COLOR_PARAM',
+    field: 'colorParam'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: (a, u) => "set pen ".concat(u(a[0]), " to ").concat(a[1])
+},
+// ---- sound ----
+{
+  m: 'play_sound',
+  op: 'sound_play',
+  gen: [{
+    v: 'SOUND_MENU'
+  }],
+  ps: a => "play sound ".concat(a[0])
+}, {
+  m: 'play_sound_until_done',
+  op: 'sound_playuntildone',
+  gen: [{
+    v: 'SOUND_MENU'
+  }],
+  ps: a => "play sound ".concat(a[0], " until done")
+}, {
+  m: 'stop_sounds',
+  op: 'sound_stopallsounds',
+  gen: [],
+  ps: () => 'stop all sounds'
+}, {
+  m: 'set_volume',
+  op: 'sound_setvolumeto',
+  gen: [{
+    v: 'VOLUME'
+  }],
+  ps: a => "set volume to ".concat(a[0])
+}, {
+  m: 'change_volume',
+  op: 'sound_changevolumeby',
+  gen: [{
+    v: 'VOLUME'
+  }],
+  ps: a => "change volume by ".concat(a[0])
+},
+// ---- sensing (commands + reporters) ----
+{
+  m: 'reset_timer',
+  op: 'sensing_resettimer',
+  gen: [],
+  ps: () => 'reset timer'
+}, {
+  m: 'mouse_x',
+  op: 'sensing_mousex',
+  kind: 'reporter',
+  gen: [],
+  ps: () => 'mouse x'
+}, {
+  m: 'mouse_y',
+  op: 'sensing_mousey',
+  kind: 'reporter',
+  gen: [],
+  ps: () => 'mouse y'
+}, {
+  m: 'timer',
+  op: 'sensing_timer',
+  kind: 'reporter',
+  gen: [],
+  ps: () => 'timer'
+}, {
+  m: 'loudness',
+  op: 'sensing_loudness',
+  kind: 'reporter',
+  gen: [],
+  ps: () => 'loudness'
+}, {
+  m: 'distance_to',
+  op: 'sensing_distanceto',
+  kind: 'reporter',
+  gen: [{
+    m: 'DISTANCETOMENU'
+  }],
+  ps: (a, u) => "distance to ".concat(u(a[0]))
+}, {
+  m: 'property_of',
+  op: 'sensing_of',
+  kind: 'reporter',
+  gen: [{
+    f: 'PROPERTY'
+  }, {
+    m: 'OBJECT'
+  }],
+  ps: (a, u) => "".concat(dprop(u(a[0])), " of ").concat(u(a[1]))
+},
+// ---- sensing (booleans) ----
+{
+  m: 'touching',
+  op: 'sensing_touchingobject',
+  kind: 'boolean',
+  gen: [{
+    m: 'TOUCHINGOBJECTMENU'
+  }],
+  ps: (a, u) => "touching ".concat(u(a[0]))
+}, {
+  m: 'touching_color',
+  op: 'sensing_touchingcolor',
+  kind: 'boolean',
+  gen: [{
+    v: 'COLOR'
+  }],
+  ps: (a, u) => "touching color ".concat(u(a[0]))
+}, {
+  m: 'key_pressed',
+  op: 'sensing_keypressed',
+  kind: 'boolean',
+  gen: [{
+    m: 'KEY_OPTION'
+  }],
+  ps: (a, u) => "key ".concat(u(a[0]), " pressed?")
+}, {
+  m: 'mouse_down',
+  op: 'sensing_mousedown',
+  kind: 'boolean',
+  gen: [],
+  ps: () => 'mouse down?'
+},
+// ---- control ----
+// wait / wait_until are emitted explicitly by the generators (op:null — not opcode-driven),
+// but need reverse entries so `scratch.wait(x)` / `scratch.wait_until(c)` map back.
+{
+  m: 'wait',
+  op: null,
+  gen: [{
+    v: 'DURATION'
+  }],
+  ps: a => "wait ".concat(a[0], " seconds")
+}, {
+  m: 'wait_until',
+  op: null,
+  gen: [{
+    v: 'COND'
+  }],
+  ps: a => "wait until ".concat(a[0])
+},
+// stop: 'this script' stays a plain return in codegen; 'all' / 'other scripts in
+// sprite' come through here so the option round-trips (field value == pseudocode tail).
+{
+  m: 'stop',
+  op: 'control_stop',
+  gen: [{
+    f: 'STOP_OPTION'
+  }],
+  ps: (a, u) => "stop ".concat(u(a[0]))
+}, {
+  m: 'create_clone',
+  op: 'control_create_clone_of',
+  gen: [{
+    m: 'CLONE_OPTION'
+  }],
+  ps: (a, u) => "create clone of ".concat(u(a[0]))
+}, {
+  m: 'delete_clone',
+  op: 'control_delete_this_clone',
+  gen: [],
+  ps: () => 'delete this clone'
+},
+// ---- data (monitor visibility) ----
+{
+  m: 'show_variable',
+  op: 'data_showvariable',
+  gen: [{
+    f: 'VARIABLE'
+  }],
+  ps: (a, u) => "show variable ".concat(u(a[0]))
+}, {
+  m: 'hide_variable',
+  op: 'data_hidevariable',
+  gen: [{
+    f: 'VARIABLE'
+  }],
+  ps: (a, u) => "hide variable ".concat(u(a[0]))
+}, {
+  m: 'show_list',
+  op: 'data_showlist',
+  gen: [{
+    f: 'LIST'
+  }],
+  ps: (a, u) => "show list ".concat(u(a[0]))
+}, {
+  m: 'hide_list',
+  op: 'data_hidelist',
+  gen: [{
+    f: 'LIST'
+  }],
+  ps: (a, u) => "hide list ".concat(u(a[0]))
+},
+// ---- events (broadcasts) ----
+{
+  m: 'broadcast',
+  op: 'event_broadcast',
+  gen: [{
+    bc: 'BROADCAST_INPUT'
+  }],
+  ps: a => "broadcast ".concat(a[0])
+}, {
+  m: 'broadcast_and_wait',
+  op: 'event_broadcastandwait',
+  gen: [{
+    bc: 'BROADCAST_INPUT'
+  }],
+  ps: a => "broadcast ".concat(a[0], " and wait")
+}];
+
+// ---- Arrays & Vectors extension (id `arrays`) ------------------------------------
+// Same reversible-call convention, but on the `_arrays` registry object instead of
+// `scratch`. Array NAME args arrive already quoted (v('NAME')), so pseudocode keeps the
+// quotes exactly as decompile emits them (`new array "v"`). 0-based indices, verbatim.
+const ARRAY_ENTRIES = [
+// commands
+{
+  m: 'create1d',
+  op: 'arrays_create1D',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'JSON'
+  }],
+  ps: (a, u) => "new array ".concat(a[0], " = ").concat(u(a[1]))
+}, {
+  m: 'create',
+  op: 'arrays_createEmpty',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "new array ".concat(a[0])
+}, {
+  m: 'create_range',
+  op: 'arrays_createRange',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'START'
+  }, {
+    v: 'END'
+  }],
+  ps: a => "new array ".concat(a[0], " = range ").concat(a[1], " to ").concat(a[2])
+}, {
+  m: 'set',
+  op: 'arrays_set',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'INDEX'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: a => "set item ".concat(a[1], " of array ").concat(a[0], " to ").concat(a[2])
+}, {
+  m: 'push',
+  op: 'arrays_push',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: a => "push ".concat(a[1], " to array ").concat(a[0])
+}, {
+  m: 'insert',
+  op: 'arrays_insert',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'INDEX'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: a => "insert ".concat(a[2], " at ").concat(a[1], " of array ").concat(a[0])
+}, {
+  m: 'remove',
+  op: 'arrays_remove',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'INDEX'
+  }],
+  ps: a => "remove item ".concat(a[1], " of array ").concat(a[0])
+}, {
+  m: 'drop',
+  op: 'arrays_delete',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "delete array ".concat(a[0])
+},
+// reporters
+{
+  m: 'get',
+  op: 'arrays_get',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'INDEX'
+  }],
+  ps: a => "item ".concat(a[1], " of array ").concat(a[0])
+}, {
+  m: 'pop',
+  op: 'arrays_pop',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "pop from array ".concat(a[0])
+}, {
+  m: 'length',
+  op: 'arrays_length',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "length of array ".concat(a[0])
+}, {
+  m: 'sum',
+  op: 'arrays_sum',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "sum of array ".concat(a[0])
+}, {
+  m: 'mean',
+  op: 'arrays_mean',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "mean of array ".concat(a[0])
+}, {
+  m: 'min',
+  op: 'arrays_min',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "smallest of array ".concat(a[0])
+}, {
+  m: 'max',
+  op: 'arrays_max',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "largest of array ".concat(a[0])
+}, {
+  m: 'index_of',
+  op: 'arrays_indexOf',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: a => "index of ".concat(a[1], " in array ").concat(a[0])
+}, {
+  m: 'reverse',
+  op: 'arrays_reverse',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "reverse of array ".concat(a[0])
+}, {
+  m: 'flatten',
+  op: 'arrays_flatten',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "flatten of array ".concat(a[0])
+}, {
+  m: 'sort',
+  op: 'arrays_sort',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    f: 'ORDER'
+  }],
+  ps: (a, u) => "sort of array ".concat(a[0], " ").concat(u(a[1]) || 'ascending')
+}, {
+  m: 'slice',
+  op: 'arrays_slice',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'START'
+  }, {
+    v: 'END'
+  }],
+  ps: a => "slice of array ".concat(a[0], " from ").concat(a[1], " to ").concat(a[2])
+}, {
+  m: 'to_text',
+  op: 'arrays_toJSON',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "array ".concat(a[0], " as text")
+},
+// 2D / matrix ops
+{
+  m: 'create2d',
+  op: 'arrays_create2D',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'JSON'
+  }],
+  ps: (a, u) => "new 2D array ".concat(a[0], " = ").concat(u(a[1]))
+}, {
+  m: 'get2d',
+  op: 'arrays_get2D',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'ROW'
+  }, {
+    v: 'COL'
+  }],
+  ps: a => "item row ".concat(a[1], " col ").concat(a[2], " of array ").concat(a[0])
+}, {
+  m: 'set2d',
+  op: 'arrays_set2D',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'ROW'
+  }, {
+    v: 'COL'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: a => "set item row ".concat(a[1], " col ").concat(a[2], " of array ").concat(a[0], " to ").concat(a[3])
+}, {
+  m: 'transpose',
+  op: 'arrays_transpose',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }],
+  ps: a => "transpose of array ".concat(a[0])
+}, {
+  m: 'reshape',
+  op: 'arrays_reshape',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'SHAPE'
+  }],
+  ps: (a, u) => "reshape array ".concat(a[0], " to ").concat(u(a[1]))
+},
+// functional ops -- FUNC stays a quoted JS-arrow string end-to-end (the runtime
+// shim compiles it), so these round-trip through code hops like any other reporter.
+{
+  m: 'map',
+  op: 'arrays_map',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'FUNC'
+  }],
+  ps: a => "map ".concat(a[1], " over array ").concat(a[0])
+}, {
+  m: 'filter',
+  op: 'arrays_filter',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'FUNC'
+  }],
+  ps: a => "filter array ".concat(a[0], " by ").concat(a[1])
+}, {
+  m: 'reduce',
+  op: 'arrays_reduce',
+  kind: 'reporter',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'FUNC'
+  }, {
+    v: 'INIT'
+  }],
+  ps: a => "reduce array ".concat(a[0], " with ").concat(a[1], " from ").concat(a[2])
+},
+// boolean
+{
+  m: 'contains',
+  op: 'arrays_contains',
+  kind: 'boolean',
+  gen: [{
+    v: 'NAME'
+  }, {
+    v: 'VALUE'
+  }],
+  ps: a => "array ".concat(a[0], " contains ").concat(a[1])
+}];
+const OP_TO_ARRAYS = {};
+for (const e of ARRAY_ENTRIES) OP_TO_ARRAYS[e.op] = e;
+OP_TO_ARRAYS.arrays_toString = OP_TO_ARRAYS.arrays_toJSON; // both decompile to `array N as text`
+const ARRAY_METHODS = {};
+for (const e of ARRAY_ENTRIES) (ARRAY_METHODS[e.m] || (ARRAY_METHODS[e.m] = [])).push(e);
+function arraysCallToPseudo(method, args) {
+  const cands = ARRAY_METHODS[method];
+  if (!cands) return null;
+  const e = cands.find(c => c.gen.length === args.length) || cands[0];
+  return {
+    text: e.ps(args, unq),
+    kind: e.kind || 'command'
+  };
+}
+
+// opcode -> entry (generator lookup); entries with op:null are reverse-only.
+const OP_TO_SCRATCH = {};
+for (const e of ENTRIES) if (e.op) OP_TO_SCRATCH[e.op] = e;
+
+// method -> [entries] keyed by arg count (parser lookup; say/think overload by arity).
+const SCRATCH_METHODS = {};
+for (const e of ENTRIES) (SCRATCH_METHODS[e.m] || (SCRATCH_METHODS[e.m] = [])).push(e);
+
+// Rebuild the pseudocode for a `scratch.<method>(args)` call, or null if unknown.
+// `args` are already-translated pseudocode strings.
+function scratchCallToPseudo(method, args) {
+  const cands = SCRATCH_METHODS[method];
+  if (!cands) return null;
+  const e = cands.find(c => c.gen.length === args.length) || cands.find(c => c.gen.length <= args.length) || cands[0];
+  return {
+    text: e.ps(args, unq),
+    kind: e.kind || 'command'
+  };
+}
+
+// ---- generated-function naming (sprite disambiguation) ----------------------
+// Generated hat/def function names are prefixed `s<idx>_` so every sprite's flag hat is a
+// distinct Python/JS function. The parser strips the prefix (and any pyName `_N` dedup
+// suffix) to recover the semantic name.
+function spritePrefix(idx) {
+  return "s".concat(idx, "_");
+}
+function stripSpritePrefix(name) {
+  return String(name).replace(/^s\d+_/, '');
+}
+
+// Sanitize an arbitrary Scratch name (which may contain spaces/punctuation) into a valid
+// Python/JS identifier. Single source of truth shared by the generator (SB3Creator.pyName)
+// and the parser (to rebuild the original name via a rename map). No dedup here — callers
+// that need uniqueness add it (pyName) or avoid collisions structurally (sprite prefixes).
+const RESERVED = new Set(['for', 'while', 'if', 'else', 'elif', 'and', 'or', 'not', 'in', 'is', 'def', 'return', 'True', 'False', 'None', 'import', 'class', 'lambda', 'global', 'pass', 'break', 'continue', 'answer', 'function', 'var', 'let', 'const', 'null', 'undefined', 'new', 'delete', 'typeof', 'void', 'this', 'super', 'switch', 'case', 'default', 'try', 'catch', 'finally', 'throw', 'yield', 'await', 'async', 'do']);
+function sanitizeIdent(name) {
+  let id = String(name).trim().replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || 'v';
+  if (/^[0-9]/.test(id)) id = 'v_' + id;
+  if (RESERVED.has(id)) id += '_';
+  return id;
+}
+
+/***/ })
+
+}]);
