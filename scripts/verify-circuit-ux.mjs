@@ -110,7 +110,11 @@ try {
     await page.waitForTimeout(900);
     // The redesigned Debugger mode (owner spec 2026-08-14): a STANDALONE
     // full-debugger pane (dock 'solo'), not the old designer-with-strip.
-    check('debugger button changes dock', await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'solo');
+    // Owner spec 2026-08-17: the button docks RIGHT — the full panel in
+    // the right pane on BOTH tabs ('solo' fell back to the tiny
+    // instruments dock on the Circuit tab). The stage column still shows
+    // the solo pane while coding (viewForDock maps 'right' → 'solo').
+    check('debugger button changes dock', await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'right');
     check('debugger button remains selected', await debuggerButton.getAttribute('aria-pressed') === 'true');
     check('debugger switch keeps the right pane present', await page.locator('div[class*="stage-and-target-wrapper"]').count() > 0);
     check('debugger view mounts the solo pane', await page.locator('[data-debugger-solo-pane]').count() === 1);
