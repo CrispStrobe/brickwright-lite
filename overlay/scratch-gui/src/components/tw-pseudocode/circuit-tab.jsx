@@ -35,6 +35,14 @@ const DebugPanel = React.lazy(() =>
 // MODULAR (locale from the redux store, per-key dicts, en fallback) so a
 // language is added by adding a key — never by sniffing
 // navigator.language inline, which can neither be extended nor tested.
+
+// A program drives the board when it declares PINs OR binds a PART
+// (PART leds = 74HC595 ... claims pins with zero PIN lines — the
+// 8-LED chaser showed 'No program pins declared' forever, owner
+// report 2026-08-17).
+const stcDrives = stc => !!(stc && ((stc.pins && stc.pins.length) ||
+    (stc.parts && stc.parts.length)));
+
 const SOLO_L10N = {
     en: {noCode: 'The debugger needs a program and a chip to drive. Declare pins in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — or switch back to the circuit view in the header above.'},
     de: {noCode: 'Der Debugger braucht ein Programm und einen Chip. Deklariere Pins im Code-Tab, z. B. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — oder wechsle oben zurück zur Schaltungsansicht.'}
@@ -710,7 +718,7 @@ class CircuitTab extends React.Component {
         // and a machine-class device (6502/Z80 bench) has no pin concept
         // at all — scolding either one misleads (owner report).
         return {
-            pins: !!(stc && stc.pins && stc.pins.length),
+            pins: !!stcDrives(stc),
             hasPart: /^PART\s+/im.test(source),
             device: (exDevice || '').toLowerCase(),
         };
@@ -1025,7 +1033,7 @@ class CircuitTab extends React.Component {
                 // read as misplaced (owner report, 2026-08-17 — and 7 hours
                 // before that).
                 <div style={{...box, overflow: 'auto', paddingTop: 48}} data-debugger-solo-pane>
-                    {(stc && stc.pins && stc.pins.length) || this.state.machineBooted ? this.renderDebugPanel() : (
+                    {stcDrives(stc) || this.state.machineBooted ? this.renderDebugPanel() : (
                         <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
                             {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
                                 || SOLO_L10N.en).noCode}
@@ -1051,7 +1059,7 @@ class CircuitTab extends React.Component {
                     as a misconfigured MCU project. The board, the solver, the instruments and
                     the design-rule check all work with no MCU in the netlist at all. So this
                     is an invitation, shown once and dismissible, not a warning. */}
-                {(stc && stc.pins && stc.pins.length) || this.state.machineBooted || this.state.hintDismissed ? null : (
+                {stcDrives(stc) || this.state.machineBooted || this.state.hintDismissed ? null : (
                     <details style={{marginBottom: 6, flex: '0 0 auto', color: '#075985'}}>
                     <summary style={{cursor: 'pointer', color: '#d97706', fontSize: 18, lineHeight: 1, padding: '2px 4px'}} title="Show circuit hint">▲</summary>
                     <div style={{padding: '5px 8px', borderRadius: 5,
@@ -1081,7 +1089,7 @@ class CircuitTab extends React.Component {
                     puts them in the stage header; they are here because that header is
                     shown for every project including pure Scratch ones — see the panel's
                     own comment. The block glow lands in the Blocks tab regardless. */}
-                {(stc && stc.pins && stc.pins.length) || this.state.machineBooted ? null : (
+                {stcDrives(stc) || this.state.machineBooted ? null : (
                     // The panel is correctly absent — there is no program to run
                     // control over — but absent and broken look identical, and a
                     // reader who came here for the debugger finds nothing and no
@@ -1214,7 +1222,7 @@ class CircuitTab extends React.Component {
                             {flex: '0 0 320px', minWidth: 0, overflow: 'auto'} : {display: 'none'}}
                         aria-hidden={dock === 'right' ? undefined : 'true'}
                     >
-                        {(stc && stc.pins && stc.pins.length) || this.state.machineBooted
+                        {stcDrives(stc) || this.state.machineBooted
                             ? this.renderDebugPanel()
                             : (
                                 // Empty and broken look identical: the column
