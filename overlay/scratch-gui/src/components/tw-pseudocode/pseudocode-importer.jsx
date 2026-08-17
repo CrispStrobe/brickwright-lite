@@ -1156,9 +1156,14 @@ class PseudocodeImporter extends React.Component {
             const retargeted = device && exDevice && device !== exDevice;
             const benchPath = (retargeted && ex.benches && ex.benches[device]) || authored;
             if (benchPath && typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('bw-example-bench', {
-                    detail: {benchPath, exampleId: ex.id, device: device || exDevice}
-                }));
+                const detail = {benchPath, exampleId: ex.id, device: device || exDevice};
+                // Stash before dispatch: the Circuit tab consumes the event,
+                // but the debug RUNNER may boot later (or without that tab
+                // ever mounting) and must find the example's real circuit
+                // instead of inferring a phantom bench (owner report — the
+                // multimeter showed 8 auto-LEDs where the LM358 build was).
+                window.__bwExampleBench = detail;
+                window.dispatchEvent(new CustomEvent('bw-example-bench', {detail}));
             }
         } catch (e) {
             this.setState({busy: false, status: this.L.stError(e.message)});
