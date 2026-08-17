@@ -2440,6 +2440,17 @@ class SB3Creator {
             block[id].inputs.DISPLAY = val(match[2]);
             return ret(block);
         }
+        // ---- grey blocks (the MakeCode lesson) ----
+        // `raw "<line>"` carries source a reader could not translate.
+        // It round-trips VERBATIM through the MicroPython emitter and
+        // degrades to a comment everywhere else — an import loses
+        // nothing, it just shows what it could not understand.
+        if ((match = line.match(/^raw\s+"(.*)"\s*$/i))) {
+            const text = match[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+            const { id, block } = cmd('bw_raw');
+            block[id].fields.TEXT = [text, null];
+            return ret(block);
+        }
         if ((match = line.match(/^oled set cursor\s+(.+?)\s+(.+?)\s+on\s+(.+)$/i))) {
             const { id, block } = cmd('devices_oledcursor');
             block[id].inputs.ROW = val(match[1]);
@@ -4251,6 +4262,10 @@ class SB3Creator {
             case 'devices_tftprint': return line(`tft print ${v('TEXT')} on ${v('DISPLAY')}`);
             case 'devices_tftcursor': return line(`tft set cursor ${v('ROW')} ${v('COL')} on ${v('DISPLAY')}`);
             case 'devices_oledpixel': return line(`oled pixel ${v('X')} ${v('Y')} ${v('VALUE')} on ${v('DISPLAY')}`);
+            case 'bw_raw': {
+                const t = String(b.fields.TEXT ? b.fields.TEXT[0] : '');
+                return line(`raw "${t.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
+            }
             case 'devices_oledclear': return line(`oled clear ${v('DISPLAY')}`);
             case 'devices_oledprint': return line(`oled print ${v('TEXT')} on ${v('DISPLAY')}`);
             case 'devices_oledcursor': return line(`oled set cursor ${v('ROW')} ${v('COL')} on ${v('DISPLAY')}`);
@@ -6720,6 +6735,13 @@ class SB3Creator {
                     // the scheduler through. A fast DEFINE simply has no
                     // yields inside and runs atomically.
                     return [`${pad}yield from ${fn}(${args.join(', ')})`];
+                }
+                case 'bw_raw': {
+                    // The grey block comes home: the exact line the reader
+                    // could not translate, re-emitted verbatim. This is
+                    // what makes import → edit → export lossless.
+                    const t = String(b.fields.TEXT ? b.fields.TEXT[0] : '');
+                    return [`${pad}${t}`];
                 }
                 // OLED verbs, Pico only: the page-mode driver in the header
                 // (validated on the real GME12864-70 — an SH1106, which
@@ -9926,6 +9948,23 @@ class SB3Creator {
                             '#define I2C_SCL_LO() ((void)0)',
                             '');
                     }
+                } else if (this._core === 'z80') {
+                    // Z80: shadow byte + OUT to the latch port, same discipline
+                    // as the 6502 VIA shadow. SDA/SCL on OUT port bits.
+                    const sdaPin = pins.find((p) => p.name.toLowerCase() === 'sda');
+                    const sclPin = pins.find((p) => p.name.toLowerCase() === 'scl');
+                    const sdaBit = sdaPin ? this.z80Hw(sdaPin) : 0;
+                    const sclBit = sclPin ? this.z80Hw(sclPin) : 1;
+                    out.push(
+                        '/* I2C bus: bit-banged via Z80 OUT latch (shadow-byte RMW). */',
+                        `#define I2C_SDA_MASK (1u << ${sdaBit})`,
+                        `#define I2C_SCL_MASK (1u << ${sclBit})`,
+                        '/* _z80_sh is the OUT latch shadow, already declared in the header. */',
+                        '#define I2C_SDA_HI() (_z80_sh |= I2C_SDA_MASK, BW_PORT_OUT = _z80_sh)',
+                        '#define I2C_SDA_LO() (_z80_sh &= (unsigned char)~I2C_SDA_MASK, BW_PORT_OUT = _z80_sh)',
+                        '#define I2C_SCL_HI() (_z80_sh |= I2C_SCL_MASK, BW_PORT_OUT = _z80_sh)',
+                        '#define I2C_SCL_LO() (_z80_sh &= (unsigned char)~I2C_SCL_MASK, BW_PORT_OUT = _z80_sh)',
+                        '');
                 } else {
                     // 8051: resolve from declared sda/scl pins, default P2.1/P2.2.
                     let sdaRef = 'P2_1', sclRef = 'P2_2';
@@ -10712,6 +10751,10 @@ class SB3Creator {
                 out.push(`    BW_VIA_DDR${port} |= 0x${mask.toString(16).padStart(2, '0')};  /* SDA+SCL output */`,
                     `    _i2c_sh = I2C_SDA_MASK | I2C_SCL_MASK;  /* bus idle: both HIGH */`,
                     `    BW_VIA_OR${port} = _i2c_sh;`);
+            } else if (this._core === 'z80') {
+                // Z80: SDA/SCL are OUT latch bits. Init shadow with both HIGH.
+                out.push('    _z80_sh |= I2C_SDA_MASK | I2C_SCL_MASK;  /* I2C bus idle */',
+                    '    BW_PORT_OUT = _z80_sh;');
             } else {
                 // 8051: open-drain port mode, release bus.
                 if (chip.portModes) {
