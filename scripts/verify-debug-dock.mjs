@@ -185,7 +185,12 @@ try {
         await bench.waitForTimeout(800);
     } catch { /* the example list may not be searchable in this build */ }
     await bench.locator('text=Z80 Breadboard Computer').first().click();
-    await bench.waitForTimeout(3500);
+    await bench.waitForTimeout(600);
+    // The example row now opens cui's confirm dialog (device chooser,
+    // bbd2fc2) instead of a native confirm — accept it when it appears.
+    const okBtn = bench.locator('button', {hasText: /^OK$/}).first();
+    if (await okBtn.count()) await okBtn.click({timeout: 5000}).catch(() => {});
+    await bench.waitForTimeout(3000);
     await bench.locator('button', {hasText: 'Build Machine'}).first().click({timeout: 15000});
     await bench.waitForTimeout(2500);
     await bench.locator('[data-build-machine] button', {hasText: 'BBC BASIC'}).first().click({timeout: 15000});

@@ -170,6 +170,24 @@ class DebugPanel extends React.Component {
 
     componentDidMount () {
         this.syncDeviceKind();
+        // A NEW PROGRAM must not debug through the OLD program's runner:
+        // loading an example kept the previous runner alive whenever the
+        // device stayed the same, and the PINS panel showed the former
+        // example's pins (owner report, 2026-08-17). Keyed on the pin
+        // SIGNATURE, not the event alone — PROJECT_CHANGED also fires on
+        // every block edit, and killing a live run for an unrelated edit
+        // would be worse than the staleness.
+        const rt0 = this.props.vm && this.props.vm.runtime;
+        this._pinSig = JSON.stringify((rt0 && rt0.stc && rt0.stc.pins) || []);
+        this._onProjectChanged = () => {
+            const rt = this.props.vm && this.props.vm.runtime;
+            const sig = JSON.stringify((rt && rt.stc && rt.stc.pins) || []);
+            if (sig === this._pinSig) return;
+            this._pinSig = sig;
+            this._teardownRunner();
+            this.setState({runner: null, ui: {phase: 'idle', message: ''}});
+        };
+        if (rt0 && rt0.on) rt0.on('PROJECT_CHANGED', this._onProjectChanged);
         // The machine-bench pipeline: Build Machine → config; Machine
         // Loader / ASM tab → image; both meet in _onMediaLoad's reboot.
         window.addEventListener('bw-machine-extracted', this._onMachineExtracted);
@@ -267,6 +285,9 @@ class DebugPanel extends React.Component {
     }
 
     componentWillUnmount () {
+        const rt = this.props.vm && this.props.vm.runtime;
+        if (rt && rt.off && this._onProjectChanged) rt.off('PROJECT_CHANGED', this._onProjectChanged);
+        else if (rt && rt.removeListener && this._onProjectChanged) rt.removeListener('PROJECT_CHANGED', this._onProjectChanged);
         window.removeEventListener('bw-machine-extracted', this._onMachineExtracted);
         window.removeEventListener('bw-machine-media-load', this._onMediaLoad);
         window.removeEventListener('bw-asm-rom-ready', this._onAsmRomReady);
