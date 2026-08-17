@@ -2,6 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import examples from '../../lib/sb3-creator-examples.js';
+import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import brickRobot from './brick-robot.svg';
 
 // Device groups for the device selector. Mirrors STC_PARTS in sb3-creator.js; the parser
@@ -258,12 +259,7 @@ const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'Jav
 // is exact) and hand-written firmware (pins from `#define LED1 P1_0`, polarity from the
 // `LED_ON 0` idiom — every inference reported as a warning, never guessed silently).
 // The one thing it will not do is invert the cooperative-scheduler form; it says so.
-const DEVICE_CHIP_LABELS = {
-    'stc12c5a60s2': 'STC12', 'stc15f2k60s2': 'STC15', 'stc89c52rc': 'STC89',
-    'arduino-uno': 'Uno', 'arduino-nano': 'Nano', 'arduino-mega': 'Mega',
-    'atmega168p': '168P', 'pico': 'Pico', 'attiny85': 't85', 'attiny88': 't88',
-    'eater6502': '6502', 'z80': 'Z80', 'microbit': 'micro:bit',
-};
+// DEVICE_CHIP_LABELS imported from ../../lib/device-labels.js
 const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic']);
 
 // What the Python / JavaScript front-ends actually support (shown as the reference

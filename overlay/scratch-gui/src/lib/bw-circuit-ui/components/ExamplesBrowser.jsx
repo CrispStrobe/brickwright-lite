@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { DEVICE_LABELS } from '../../../lib/device-labels.js';
 
 const INTRO_L10N = {
   en: { intro: 'About this example', loading: 'Loading…', noIntro: 'No introduction available.',
@@ -567,13 +568,7 @@ function deviceCompatReason(example, device, lang = 'en') {
   return `${/^de/i.test(lang) ? 'Benötigt' : 'Needs'}: ${supported}`;
 }
 
-export const DEVICE_LABELS = {
-  stc12c5a60s2: 'STC12', stc89c52rc: 'STC89', stc15f2k60s2: 'STC15',
-  'arduino-uno': 'Uno', 'arduino-nano': 'Nano', 'arduino-mega': 'Mega',
-  pico: 'Pico', attiny85: 'ATtiny85', attiny88: 'ATtiny88', attiny13: 'ATtiny13', attiny2313: 'ATtiny2313',
-  atmega168p: 'ATmega168P', atmega328p: 'ATmega328P', atmega2560: 'ATmega2560',
-  eater6502: '6502 Breadboard', gpascal: 'G-Pascal', z80: 'Z80', microbit: 'micro:bit',
-};
+// DEVICE_LABELS imported from ../../../lib/device-labels.js
 
 // ── Per-example device persistence ────────────────────────────────
 const DEVICE_STORAGE_KEY = 'bw-example-device';
