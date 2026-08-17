@@ -289,8 +289,17 @@ jobs:
           BUNDLE_VERSION=$(node -p "require('./apps/tauri/src-tauri/tauri.conf.json').version")
           echo "Uploading iOS $BUNDLE_VERSION from $IPA"
 
+          # --apple-id is REQUIRED here, unlike the macOS validate in
+          # release.yml. Without it altool resolves the app from bundle id +
+          # platform, and that lookup fails for iOS because this app record has
+          # no iOS appStoreVersion yet (macOS has one, which is why the macOS
+          # job gets away with omitting it):
+          #   ERROR: Cannot determine the Apple ID from Bundle ID
+          #   'com.crispstrobe.brickwright' and platform 'IOS'. (19)
           xcrun altool --validate-app -f "$IPA" \
             --type ios \
+            --apple-id ${{ vars.APPSTORE_APP_ID }} \
+            --bundle-id com.crispstrobe.brickwright \
             --api-key ${{ secrets.APPSTORE_API_KEY_ID }} \
             --api-issuer ${{ secrets.APPSTORE_API_ISSUER_ID }}
 
