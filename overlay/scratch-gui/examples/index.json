@@ -10,7 +10,8 @@
   "files": {
    "circuit": "eater6502-contention-bug/circuit.json",
    "intro": "eater6502-contention-bug/intro.md",
-   "introDE": "eater6502-contention-bug/intro.de.md"
+   "introDE": "eater6502-contention-bug/intro.de.md",
+   "expected": "eater6502-contention-bug/EXPECTED.md"
   },
   "kind": "circuit",
   "devices": [
@@ -50,7 +51,6 @@
    "arduino-nano": "01-blink/circuit.arduino-nano.json",
    "arduino-uno": "01-blink/circuit.arduino-uno.json",
    "atmega168p": "01-blink/circuit.atmega168p.json",
-   "attiny88": "01-blink/circuit.attiny88.json",
    "pico": "01-blink/circuit.pico.json",
    "stc12c5a60s2": "01-blink/circuit.stc12c5a60s2.json",
    "stc15f2k60s2": "01-blink/circuit.stc15f2k60s2.json",
@@ -1471,10 +1471,7 @@
   "kind": "program",
   "devices": [
    "stc12c5a60s2"
-  ],
-  "benches": {
-   "stc12c5a60s2": "55-oled-hello/circuit.stc12c5a60s2.json"
-  }
+  ]
  },
  {
   "id": "50-7seg-chase",
@@ -1506,6 +1503,23 @@
    "pico": "50-7seg-chase/circuit.pico.json",
    "stc12c5a60s2": "50-7seg-chase/circuit.stc12c5a60s2.json",
    "stc89c52rc": "50-7seg-chase/circuit.stc89c52rc.json"
+  }
+ },
+ {
+  "id": "51-tft-pixels",
+  "title": {
+   "en": "ILI9341 TFT: first pixels",
+   "de": "ILI9341-TFT: erste Pixel"
+  },
+  "kind": "full",
+  "category": "digital",
+  "difficulty": 3,
+  "files": {
+   "program": "51-tft-pixels/program.bw",
+   "circuit": "51-tft-pixels/circuit.json",
+   "expected": "51-tft-pixels/EXPECTED.md",
+   "intro": "51-tft-pixels/intro.md",
+   "introDE": "51-tft-pixels/intro.de.md"
   }
  },
  {
@@ -4604,7 +4618,8 @@
   "files": {
    "circuit": "ttl-clock-module/circuit.json",
    "intro": "ttl-clock-module/intro.md",
-   "introDE": "ttl-clock-module/intro.de.md"
+   "introDE": "ttl-clock-module/intro.de.md",
+   "expected": "ttl-clock-module/EXPECTED.md"
   },
   "kind": "circuit"
  },
@@ -5164,6 +5179,128 @@
    "stc12c5a60s2": "72-pico-oled-hello/circuit.stc12c5a60s2.json",
    "stc15f2k60s2": "72-pico-oled-hello/circuit.stc15f2k60s2.json",
    "stc89c52rc": "72-pico-oled-hello/circuit.stc89c52rc.json"
+  }
+ },
+ {
+  "id": "73-voltmeter",
+  "title": {
+   "en": "Voltmeter",
+   "de": "Voltmeter"
+  },
+  "category": "analog",
+  "difficulty": 2,
+  "files": {
+   "program": "73-voltmeter/program.bw",
+   "circuit": "73-voltmeter/circuit.json",
+   "intro": "73-voltmeter/intro.md",
+   "introDE": "73-voltmeter/intro.de.md"
+  },
+  "kind": "full",
+  "devices": [
+   "arduino-nano",
+   "arduino-uno",
+   "arduino-mega",
+   "atmega168p",
+   "pico",
+   "stc12c5a60s2",
+   "stc15f2k60s2",
+   "attiny85"
+  ],
+  "benches": {
+   "arduino-mega": "73-voltmeter/circuit.arduino-mega.json",
+   "arduino-nano": "73-voltmeter/circuit.arduino-nano.json",
+   "arduino-uno": "73-voltmeter/circuit.arduino-uno.json",
+   "atmega168p": "73-voltmeter/circuit.atmega168p.json",
+   "pico": "73-voltmeter/circuit.pico.json",
+   "stc12c5a60s2": "73-voltmeter/circuit.stc12c5a60s2.json",
+   "stc15f2k60s2": "73-voltmeter/circuit.stc15f2k60s2.json"
+  }
+ },
+ {
+  "id": "74-ammeter",
+  "title": {
+   "en": "Ammeter",
+   "de": "Amperemeter"
+  },
+  "category": "analog",
+  "difficulty": 2,
+  "files": {
+   "program": "74-ammeter/program.bw",
+   "circuit": "74-ammeter/circuit.json",
+   "intro": "74-ammeter/intro.md",
+   "introDE": "74-ammeter/intro.de.md"
+  },
+  "kind": "full",
+  "devices": [
+   "arduino-nano",
+   "arduino-uno",
+   "arduino-mega",
+   "atmega168p",
+   "pico",
+   "stc12c5a60s2",
+   "stc15f2k60s2",
+   "attiny85"
+  ],
+  "benches": {
+   "arduino-mega": "74-ammeter/circuit.arduino-mega.json",
+   "arduino-nano": "74-ammeter/circuit.arduino-nano.json",
+   "arduino-uno": "74-ammeter/circuit.arduino-uno.json",
+   "atmega168p": "74-ammeter/circuit.atmega168p.json",
+   "pico": "74-ammeter/circuit.pico.json",
+   "stc12c5a60s2": "74-ammeter/circuit.stc12c5a60s2.json",
+   "stc15f2k60s2": "74-ammeter/circuit.stc15f2k60s2.json"
+  }
+ },
+ {
+  "id": "75-battery-tester",
+  "title": {
+   "en": "Battery Tester",
+   "de": "Batterietester"
+  },
+  "category": "analog",
+  "difficulty": 2,
+  "files": {
+   "program": "75-battery-tester/program.bw",
+   "circuit": "75-battery-tester/circuit.json",
+   "intro": "75-battery-tester/intro.md",
+   "introDE": "75-battery-tester/intro.de.md"
+  },
+  "kind": "full",
+  "devices": [
+   "arduino-nano",
+   "arduino-uno",
+   "arduino-mega",
+   "atmega168p",
+   "pico",
+   "stc12c5a60s2",
+   "stc15f2k60s2",
+   "attiny85"
+  ],
+  "benches": {
+   "arduino-mega": "75-battery-tester/circuit.arduino-mega.json",
+   "arduino-nano": "75-battery-tester/circuit.arduino-nano.json",
+   "arduino-uno": "75-battery-tester/circuit.arduino-uno.json",
+   "atmega168p": "75-battery-tester/circuit.atmega168p.json",
+   "pico": "75-battery-tester/circuit.pico.json",
+   "stc12c5a60s2": "75-battery-tester/circuit.stc12c5a60s2.json",
+   "stc15f2k60s2": "75-battery-tester/circuit.stc15f2k60s2.json"
+  }
+ },
+ {
+  "id": "76-multimeter",
+  "title": {
+   "en": "Bausatz Multimeter (HU-050)",
+   "de": "Bausatz-Multimeter (HU-050)"
+  },
+  "kind": "full",
+  "category": "analog",
+  "difficulty": 4,
+  "files": {
+   "program": "76-multimeter/program.bw",
+   "circuit": "76-multimeter/circuit.json",
+   "expected": "76-multimeter/EXPECTED.md",
+   "intro": "76-multimeter/intro.md",
+   "introDE": "76-multimeter/intro.de.md"
   }
  }
 ]
