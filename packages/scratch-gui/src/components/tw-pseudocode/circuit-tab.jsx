@@ -553,6 +553,11 @@ class CircuitTab extends React.Component {
         const vm = this.props.vm;
         if (!vm) return;
         const current = (vm.runtime && vm.runtime.stc) || {};
+        // An EMPTY derived pin list must never erase a loaded program's
+        // non-empty pins: a stale bench that derives nothing would wipe
+        // runtime.stc and kill the debugger ('No program pins' on a
+        // program that has them). Peer-suggested guard (stc-e1).
+        if (!decls.pins.length && current.pins && current.pins.length) return;
         const next = {
             ...current,
             device: decls.device,

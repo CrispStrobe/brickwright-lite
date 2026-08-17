@@ -756,6 +756,10 @@ export class Circuit {
     for (const [boardId, bb] of this.breadboards) {
       try {
         const derived = bb.deriveNets();
+        // Retained for the canvas: hole -> net resolution at render time
+        // (voltage labels on breadboard jumpers need the strip's net id).
+        if (!this.boardStripNets) this.boardStripNets = new Map();
+        this.boardStripNets.set(boardId, derived.stripToNet);
         const stripNets = derived.nets.map(n => ({ ...n, terminals: [...n.terminals] }));
         // Glue each tap-wire hole into its strip's net (or fabricate the
         // strip's net if nothing else lives there yet). For column strips
@@ -800,6 +804,11 @@ export class Circuit {
       }))
       .filter(n => n.terminals.length > 0);
 
+    // The resolved view — wires, rows and jumpers unioned into single
+    // nodes — is what net-aware consumers (declaration derivation for
+    // seated benches) need; keep it accessible after the sync.
+    this.resolvedNets = engineNets;
+
     // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
     const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
 
@@ -839,6 +848,8 @@ export class Circuit {
       params: p.params,
       terminals: p.terminals,
     }));
+
+    this.resolvedNets = nets;
 
     const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
     this.board = new this._BoardImpl(this.vcc);
