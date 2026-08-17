@@ -34,30 +34,9 @@
    "id": "MCU",
    "kind": "arduino_nano",
    "params": {},
-   "terminals": [
-    "d13"
-   ],
-   "seat": {
-    "boardId": "bb1",
-    "leadMap": {
-     "D0": "a3",
-     "D1": "a4",
-     "D2": "a5",
-     "D3": "a6",
-     "D4": "a7",
-     "D5": "a8",
-     "D6": "a9",
-     "D7": "a10",
-     "D8": "a11",
-     "D9": "a12",
-     "D10": "a13",
-     "D11": "a14",
-     "D12": "a15",
-     "D13": "a16"
-    }
-   },
-   "x": 64,
-   "y": 255
+   "x": 80,
+   "y": -60,
+   "rotation": 0
   },
   {
    "id": "R_opto",
@@ -103,12 +82,6 @@
  ],
  "wires": [
   {
-   "from": "MCU",
-   "fromTerminal": "d13",
-   "to": "R_opto",
-   "toTerminal": "a"
-  },
-  {
    "from": "R_opto",
    "fromTerminal": "b",
    "to": "LED_opto",
@@ -129,6 +102,12 @@
    },
    "color": "black",
    "genPower": true
+  },
+  {
+   "from": "MCU",
+   "fromTerminal": "d2",
+   "to": "R_opto",
+   "toTerminal": "a"
   }
  ],
  "holeWires": [
@@ -147,5 +126,5 @@
    "color": "black"
   }
  ],
- "generated": "benchFor+seat"
+ "generated": "benchFor+authored"
 }

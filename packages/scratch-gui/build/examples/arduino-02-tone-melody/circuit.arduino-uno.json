@@ -27,7 +27,7 @@
    "terminals": [
     "gnd"
    ],
-   "x": 220,
+   "x": 156,
    "y": 60
   },
   {
@@ -35,33 +35,15 @@
    "kind": "arduino_uno",
    "params": {},
    "terminals": [
-    "d13"
+    "d8"
    ],
-   "seat": {
-    "boardId": "bb1",
-    "leadMap": {
-     "D0": "a3",
-     "D1": "a4",
-     "D2": "a5",
-     "D3": "a6",
-     "D4": "a7",
-     "D5": "a8",
-     "D6": "a9",
-     "D7": "a10",
-     "D8": "a11",
-     "D9": "a12",
-     "D10": "a13",
-     "D11": "a14",
-     "D12": "a15",
-     "D13": "a16"
-    }
-   },
-   "x": 64,
-   "y": 255
+   "x": 232,
+   "y": 60
   },
   {
    "id": "BUZZ_speaker",
    "kind": "buzzer",
+   "declName": "speaker",
    "params": {},
    "terminals": [
     "a",
@@ -70,18 +52,18 @@
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "a": "a20",
-     "b": "a22"
+     "a": "a3",
+     "b": "a5"
     }
    },
-   "x": 302,
+   "x": 64,
    "y": 255
   }
  ],
  "wires": [
   {
    "from": "MCU",
-   "fromTerminal": "d13",
+   "fromTerminal": "d8",
    "to": "BUZZ_speaker",
    "toTerminal": "a"
   },
@@ -106,8 +88,8 @@
   {
    "ref": "bbw:bb1:gen_0",
    "boardId": "bb1",
-   "a": "b22",
-   "b": "b-22",
+   "a": "b5",
+   "b": "b-5",
    "color": "black"
   }
  ],

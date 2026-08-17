@@ -10526,6 +10526,35 @@ class SB3Creator {
                 '    P1M1 |=  0x02; P1M0 &= ~0x02;    /* P1.1 high-impedance */');
         }
         }
+        // AVR/ARM: the LCD/OLED init sequences above live inside the
+        // 8051/6502 setup section — these cores got the full bit-banged
+        // DRIVER but never the panel bring-up, so the display sat in its
+        // power-on state: SSD1306 with charge pump off and display off,
+        // decoding GDDRAM writes into a panel that never lit. Found by
+        // the pico-calculator chain test (owner: 'runs but OLED black'),
+        // and true on real silicon too, not just under emulation.
+        if ((this._core === 'avr' || this._core === 'arm') && (this._cUses.lcd || this._cUses.oled)) {
+            out.push('    I2C_SDA_HI(); I2C_SCL_HI();      /* release bus */');
+            if (this._cUses.lcd) {
+                out.push('    /* HD44780 init: 4-bit mode, 2-line, 5x8 font */',
+                    '    lcd_nibble(0x30, 0); lcd_nibble(0x30, 0); lcd_nibble(0x30, 0);',
+                    '    lcd_nibble(0x20, 0);             /* switch to 4-bit */',
+                    '    lcd_cmd(0x28);                    /* 2 lines, 5x8 */',
+                    '    lcd_cmd(0x0C);                    /* display on, cursor off */',
+                    '    lcd_cmd(0x06);                    /* increment, no shift */',
+                    '    lcd_cmd(0x01);                    /* clear */');
+            }
+            if (this._cUses.oled) {
+                out.push('    /* SSD1306 init: off, page mode, remap, charge pump, on, clear */',
+                    '    oled_cmd(0xAE);                    /* display off */',
+                    '    oled_cmd(0x20); oled_cmd(0x02);    /* page addressing mode */',
+                    '    oled_cmd(0xA1);                    /* segment remap */',
+                    '    oled_cmd(0xC8);                    /* COM scan direction */',
+                    '    oled_cmd(0x8D); oled_cmd(0x14);    /* charge pump enable */',
+                    '    oled_cmd(0xAF);                    /* display on */',
+                    '    bw_oled_clear(0);                  /* zero GDDRAM */');
+            }
+        }
         out.push('}', '',
             (this._core !== '8051' && this._core !== 'z80') ? 'int main(void)' : 'void main(void)',
             '{', '    bw_setup();');
@@ -10864,9 +10893,18 @@ SB3Creator.RETARGET_POOLS = (() => {
     const unoDigital = ['D13', 'D12', 'D8', 'D7', 'D4', 'D2', 'D3', 'D5', 'D6', 'D9', 'D10', 'D11', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5'];
     const unoInput = ['D2', 'D4', 'D7', 'D8', 'D3', 'D5', 'D6', 'D9', 'D10', 'D11', 'D12', 'D13', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5'];
     return {
-        stc12c5a60s2: { digital: ['P1.0', 'P1.1', 'P1.2', 'P1.5', 'P1.6', 'P1.7', 'P3.4', 'P3.5', ...P(2), ...P(0), 'P4.4', 'P4.5', 'P4.6', 'P4.7'],
+        // P1.3/P1.4 (the PCA/CCP pair) close BOTH the digital and input
+        // pools — appended LAST, so they are touched only when 26+ pins of
+        // a role are already taken and a PWM-less program needs the full
+        // 34-GPIO silicon truth (the retro console's 28 outputs + 5
+        // inputs = 33 distinct coordinates; the pools' previous 32 made
+        // the console refuse a chip that physically fits it). A program
+        // that dims a pin still gets the pair first via pools.pwm — only
+        // a 27-output-plus-PWM program could collide, and that refusal
+        // is honest.
+        stc12c5a60s2: { digital: ['P1.0', 'P1.1', 'P1.2', 'P1.5', 'P1.6', 'P1.7', 'P3.4', 'P3.5', ...P(2), ...P(0), 'P4.4', 'P4.5', 'P4.6', 'P4.7', 'P1.3', 'P1.4'],
             analog: ['P1.3', 'P1.4', 'P1.5', 'P1.6'],
-            input: ['P3.2', 'P3.3', 'P3.6', 'P3.7', ...P(2), ...P(0), 'P1.0', 'P1.1', 'P1.2', 'P1.5', 'P1.6', 'P1.7'],
+            input: ['P3.2', 'P3.3', 'P3.6', 'P3.7', ...P(2), ...P(0), 'P1.0', 'P1.1', 'P1.2', 'P1.5', 'P1.6', 'P1.7', 'P1.3', 'P1.4'],
             pwm: ['P1.3', 'P1.4'], ledActiveLow: true },
         stc89c52rc: { digital: [...P(1), ...P(2), ...P(0)],
             analog: [], input: ['P3.2', 'P3.3', 'P3.6', 'P3.7', ...P(2), ...P(0), ...P(1)],

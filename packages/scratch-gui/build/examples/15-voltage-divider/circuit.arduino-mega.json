@@ -27,7 +27,7 @@
    "terminals": [
     "gnd"
    ],
-   "x": 220,
+   "x": 156,
    "y": 60
   },
   {
@@ -38,12 +38,13 @@
     "a0",
     "d13"
    ],
-   "x": 360,
+   "x": 232,
    "y": 60
   },
   {
    "id": "POT_sense",
    "kind": "potentiometer",
+   "declName": "sense",
    "params": {
     "ohms": 10000
    },
@@ -86,6 +87,7 @@
   {
    "id": "LED_led1",
    "kind": "led",
+   "declName": "led1",
    "params": {
     "vf": 2,
     "color": "red"

@@ -27,7 +27,7 @@
    "terminals": [
     "gnd"
    ],
-   "x": 220,
+   "x": 156,
    "y": 60
   },
   {
@@ -110,6 +110,7 @@
   {
    "id": "LED_red",
    "kind": "led",
+   "declName": "red",
    "params": {
     "vf": 2,
     "color": "red"
@@ -151,9 +152,10 @@
   {
    "id": "LED_yellow",
    "kind": "led",
+   "declName": "yellow",
    "params": {
     "vf": 2,
-    "color": "yellow"
+    "color": "red"
    },
    "terminals": [
     "anode",
@@ -192,9 +194,10 @@
   {
    "id": "LED_green",
    "kind": "led",
+   "declName": "green",
    "params": {
     "vf": 2,
-    "color": "green"
+    "color": "red"
    },
    "terminals": [
     "anode",
