@@ -21,6 +21,18 @@
   <key>com.apple.security.device.bluetooth</key>
   <true/>
 
+  <!-- Pico deploy (src/pico.rs): a MicroPython Pico is a USB-CDC serial
+       device; both keys are needed for /dev/cu.usbmodem* under the sandbox.
+       NOTE the BOOTSEL fallback (writing firmware.uf2 onto the RPI-RP2
+       volume) writes OUTSIDE the container, which the sandbox denies —
+       under a Mac App Store build the UI must route that path through a
+       save dialog (user-selected read-write then covers the volume the
+       user picks). Direct-signed builds write it directly. -->
+  <key>com.apple.security.device.usb</key>
+  <true/>
+  <key>com.apple.security.device.serial</key>
+  <true/>
+
   <key>com.apple.security.device.camera</key>
   <true/>
   <key>com.apple.security.device.audio-input</key>

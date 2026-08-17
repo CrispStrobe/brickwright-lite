@@ -7,6 +7,11 @@
   <!-- Mac App Store validation requires a category declaration. -->
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.education</string>
+  <!-- Export compliance answered in the binary, so macOS uploads stop parking
+       at MISSING_EXPORT_COMPLIANCE (Info.ios.plist already carries this; the
+       macOS 0.1.3 build needed a manual PATCH on 2026-08-17). -->
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
   <key>NSBluetoothAlwaysUsageDescription</key>
   <string>Brickwright uses Bluetooth to connect to LEGO hubs (SPIKE, Boost, WeDo, Powered-Up, and more).</string>
   <key>NSBluetoothPeripheralUsageDescription</key>

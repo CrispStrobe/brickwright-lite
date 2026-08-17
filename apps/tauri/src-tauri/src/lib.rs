@@ -3,6 +3,7 @@
 mod assetserver;
 mod downloads;
 mod fileio;
+mod pico;
 mod scratchlink;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -26,6 +27,10 @@ pub fn run() {
     #[cfg(mobile)]
     let builder = builder.plugin(tauri_plugin_share::init());
 
+    // Pico USB serial state — desktop only (the mobile pico commands are stubs).
+    #[cfg(desktop)]
+    let builder = builder.manage(pico::PicoSerial(std::sync::Mutex::new(None)));
+
     builder
         .invoke_handler(tauri::generate_handler![
             fileio::save_project,
@@ -34,7 +39,14 @@ pub fn run() {
             downloads::download_pack,
             downloads::download_pack_zip,
             downloads::pack_present,
-            downloads::remove_pack
+            downloads::remove_pack,
+            pico::pico_serial_list,
+            pico::pico_serial_open,
+            pico::pico_serial_write,
+            pico::pico_serial_read,
+            pico::pico_serial_close,
+            pico::pico_bootsel_volume,
+            pico::pico_flash_uf2
         ])
         .setup(|app| {
             // Bring up the local ScratchLink WS server the web VM dials.
