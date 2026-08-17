@@ -8,7 +8,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { DEVICE_LABELS } from '../../../lib/device-labels.js';
 
 const INTRO_L10N = {
   en: { intro: 'About this example', loading: 'Loading…', noIntro: 'No introduction available.',
@@ -442,10 +441,11 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         const hasDevices = pDevices.length > 1;
         const handleOk = () => {
           if (onLoadExample) {
-            // Read the select's CURRENT value to avoid stale-closure issues
+            // Read the select's CURRENT DOM value to avoid stale-closure issues
             // when external tools (Playwright) change the select between renders.
-            const selEl = document.querySelector('[data-device-chooser-select]');
-            const d = (selEl && selEl.value) || pendingLoad.device || pDevices[0];
+            const selEl = typeof document !== 'undefined'
+              ? document.querySelector('[data-device-chooser-select]') : null;
+            const d = (selEl?.value) || pendingLoad.device || pDevices[0];
             // Picking the AUTHORED device means the authored pairing —
             // no opts, so the host loads the curated circuit instead of a
             // generated bench (a single-entry list used to silently
@@ -568,7 +568,13 @@ function deviceCompatReason(example, device, lang = 'en') {
   return `${/^de/i.test(lang) ? 'Benötigt' : 'Needs'}: ${supported}`;
 }
 
-// DEVICE_LABELS imported from ../../../lib/device-labels.js
+export const DEVICE_LABELS = {
+  stc12c5a60s2: 'STC12', stc89c52rc: 'STC89', stc15f2k60s2: 'STC15',
+  'arduino-uno': 'Uno', 'arduino-nano': 'Nano', 'arduino-mega': 'Mega',
+  pico: 'Pico', attiny85: 'ATtiny85', attiny88: 'ATtiny88', attiny13: 'ATtiny13', attiny2313: 'ATtiny2313',
+  atmega168p: 'ATmega168P', atmega328p: 'ATmega328P', atmega2560: 'ATmega2560',
+  eater6502: '6502 Breadboard', gpascal: 'G-Pascal', z80: 'Z80', microbit: 'micro:bit',
+};
 
 // ── Per-example device persistence ────────────────────────────────
 const DEVICE_STORAGE_KEY = 'bw-example-device';

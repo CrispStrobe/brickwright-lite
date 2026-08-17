@@ -184,8 +184,15 @@ try {
     check('Build/Sim is one segmented mode toggle', await modeToggle.count() === 1 && await modeToggle.getByRole('radio').count() === 2 && await modeToggle.getByRole('radio', {name: 'Build mode'}).getAttribute('aria-checked') === 'true');
     const modeMetrics = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
     check('Build/Sim toggle segments have equal dimensions', modeMetrics.length === 2 && modeMetrics[0].width === modeMetrics[1].width && modeMetrics[0].height === modeMetrics[1].height, JSON.stringify(modeMetrics));
-    const toolbarButtonMetrics = await designer.locator('[data-circuit-toolbar] button:visible').evaluateAll(buttons => buttons.map(button => ({width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height)})));
+    // The warnings chip is a count-badged CHIP ("⚠ 3"), so its width is
+    // content-driven by design; it still shares the 34px control height.
+    const toolbarButtonMetrics = await designer.locator('[data-circuit-toolbar] button:visible:not([data-warnings-chip])').evaluateAll(buttons => buttons.map(button => ({width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height)})));
     check('toolbar buttons share one control size', toolbarButtonMetrics.length > 8 && toolbarButtonMetrics.every(metric => metric.width === 34 && metric.height === 34), JSON.stringify(toolbarButtonMetrics));
+    const warningsChip = designer.locator('[data-circuit-toolbar] [data-warnings-chip]:visible');
+    if (await warningsChip.count()) {
+        const chipMetrics = await warningsChip.first().evaluate(el => ({height: Math.round(el.getBoundingClientRect().height)}));
+        check('warnings chip shares the toolbar control height', chipMetrics.height === 34, JSON.stringify(chipMetrics));
+    }
     const toolbarGroupMetrics = await designer.locator('[data-circuit-toolbar] [data-circuit-control-group]:visible').evaluateAll(groups => groups.map(group => ({width: Math.round(group.getBoundingClientRect().width), height: Math.round(group.getBoundingClientRect().height), y: Math.round(group.getBoundingClientRect().y)})));
     check('toolbar control groups share one baseline', toolbarGroupMetrics.length >= 4 && toolbarGroupMetrics.every(metric => metric.height === 34 && metric.y === toolbarGroupMetrics[0].y), JSON.stringify(toolbarGroupMetrics));
     const modePaint = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({checked: button.getAttribute('aria-checked'), background: getComputedStyle(button).backgroundColor, color: getComputedStyle(button).color})));
