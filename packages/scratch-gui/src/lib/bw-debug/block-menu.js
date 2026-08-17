@@ -83,6 +83,7 @@ const CSS = `
 `;
 
 let installed = false;
+let styleEl = null;
 
 /**
  * Install the context-menu item and the marker.
@@ -97,11 +98,16 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
     if (!ScratchBlocks || !ScratchBlocks.BlockSvg) return inert;
 
     // CSS injection is idempotent — only done once even across remounts.
+    // The element is MODULE-scoped: it used to be a const inside this if,
+    // while uninstall() referenced it unconditionally — any remount (second
+    // install) left `style` undeclared in the closure and teardown threw
+    // ReferenceError, finishing off an app that a render error had already
+    // wounded (the Step x10 total-crash chain, owner report 2026-08-17).
     if (!installed) {
         installed = true;
-        const style = document.createElement('style');
-        style.textContent = CSS;
-        document.head.appendChild(style);
+        styleEl = document.createElement('style');
+        styleEl.textContent = CSS;
+        document.head.appendChild(styleEl);
     }
 
     /**
@@ -354,7 +360,8 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
             unsubscribe();
             ScratchBlocks.BlockSvg.prototype.generateContextMenu = previous;
             delete ScratchBlocks.BlockSvg.prototype.bwAddDebugMenu;
-            if (style.parentNode) style.parentNode.removeChild(style);
+            if (styleEl && styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
+            styleEl = null;
             installed = false;
         }
     };

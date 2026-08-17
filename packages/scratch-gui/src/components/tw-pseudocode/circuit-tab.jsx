@@ -36,6 +36,27 @@ const DebugPanel = React.lazy(() =>
 // language is added by adding a key — never by sniffing
 // navigator.language inline, which can neither be extended nor tested.
 
+// A panel render-crash must never take the whole app down: degrade to a
+// card with the error and a remount button (the Step x10 chain unmounted
+// the entire GUI before this existed).
+class PanelBoundary extends React.Component {
+    constructor (props) { super(props); this.state = {err: null}; }
+    static getDerivedStateFromError (err) { return {err}; }
+    componentDidCatch (err) { console.error('[brickwright] debug panel crashed:', err); }
+    render () {
+        if (this.state.err) {
+            return (
+                <div style={{padding: 10, color: '#b91c1c', fontSize: 12.5}} data-debug-panel-crash>
+                    <div>{`The debugger hit an error: ${String(this.state.err && this.state.err.message || this.state.err).slice(0, 200)}`}</div>
+                    <button style={{marginTop: 8, padding: '4px 10px', cursor: 'pointer'}}
+                        onClick={() => this.setState({err: null})}>{'Restart the debugger panel'}</button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
 // A dock SLOT: adopts the persistent debug-host DOM node. The DebugPanel
 // renders through ONE portal into ONE node that never changes identity —
 // docking moves the NODE between slots, so the runner survives the move
@@ -550,6 +571,19 @@ class CircuitTab extends React.Component {
      * half-worked: the panels kept saying they had no circuit.)
      */
     handleCircuitReady (circuit) {
+        // Deleting/clearing the circuit must STOP the debugger: a live
+        // runner kept driving a board that no longer exists (owner
+        // report, 2026-08-17). An empty board with a runner attached =
+        // bump the stop token; the panel tears its session down.
+        try {
+            const nParts = circuit && circuit.parts
+                ? (circuit.parts.size ?? circuit.parts.length ?? 0) : 0;
+            const hadParts = this.state.circuit && this.state.circuit.parts
+                ? (this.state.circuit.parts.size ?? this.state.circuit.parts.length ?? 0) : 0;
+            if (nParts === 0 && hadParts > 0) {
+                this.setState(st => ({stopToken: (st.stopToken || 0) + 1}));
+            }
+        } catch { /* never block circuit publication */ }
         this.setState({circuit});
         // Detect CPU parts on the board and publish the core so the debug
         // panel creates the right target kind (z80, eater6502, avr8js).
@@ -1293,14 +1327,16 @@ class CircuitTab extends React.Component {
     renderDebugPanel () {
         const {stc} = this.state;
         return (
-            <React.Suspense fallback={null}>
-                <DebugPanel
-                    clockHz={(stc && Number(stc.clock)) || 11059200}
-                    runToken={this.state.runToken}
-                    stopToken={this.state.stopToken}
-                    onRunnerChange={this.handleRunnerChange}
-                />
-            </React.Suspense>
+            <PanelBoundary>
+                <React.Suspense fallback={null}>
+                    <DebugPanel
+                        clockHz={(stc && Number(stc.clock)) || 11059200}
+                        runToken={this.state.runToken}
+                        stopToken={this.state.stopToken}
+                        onRunnerChange={this.handleRunnerChange}
+                    />
+                </React.Suspense>
+            </PanelBoundary>
         );
     }
 

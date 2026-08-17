@@ -81,6 +81,11 @@ const L10N = {
         stConverting: to => `Converting to ${to}…`, stCantShow: (to, e) => `Can't show as ${to}: ${e}`,
         stRegen: 'Regenerating…', stCompiling: 'Compiling…', stReading: 'Reading current project…',
         stLoadingPy: 'Loading Python (Skulpt)…', stError: e => `Error: ${e}`,
+        deployPico: '🔌 Deploy to Pico',
+        deployPicoTitle: 'Send this program to a real Raspberry Pi Pico over USB (MicroPython)',
+        deployPicoDone: 'Deployed to the Pico — main.py is running (and survives reboot).',
+        deployPicoSaved: 'This browser cannot talk to USB serial (Chrome or Edge can). Saved main.py instead — copy it to the Pico with Thonny, or `bw flash` from the sb3-creator CLI.',
+        deployPicoFail: e => `Pico deploy failed: ${e}`,
         stLoaded: 'Compiled to blocks and loaded. Switch to the Code tab to see them.',
         stWarn: w => `Loaded with warnings — ${w}`,
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
@@ -148,6 +153,11 @@ const L10N = {
         stConverting: to => `Wird zu ${to} umgewandelt…`, stCantShow: (to, e) => `Kann nicht als ${to} angezeigt werden: ${e}`,
         stRegen: 'Wird neu erzeugt…', stCompiling: 'Wird kompiliert…', stReading: 'Aktuelles Projekt wird gelesen…',
         stLoadingPy: 'Python wird geladen (Skulpt)…', stError: e => `Fehler: ${e}`,
+        deployPico: '🔌 Auf Pico übertragen',
+        deployPicoTitle: 'Dieses Programm per USB auf einen echten Raspberry Pi Pico übertragen (MicroPython)',
+        deployPicoDone: 'Auf den Pico übertragen — main.py läuft (auch nach Neustart).',
+        deployPicoSaved: 'Dieser Browser kann kein USB-Serial (Chrome oder Edge können es). main.py wurde stattdessen gespeichert — mit Thonny auf den Pico kopieren, oder `bw flash` aus der sb3-creator-CLI.',
+        deployPicoFail: e => `Pico-Übertragung fehlgeschlagen: ${e}`,
         stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
         stWarn: w => `Mit Warnungen geladen — ${w}`,
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
@@ -438,6 +448,7 @@ class PseudocodeImporter extends React.Component {
         this.run = this.run.bind(this);
         this.switchTab = this.switchTab.bind(this);
         this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
+        this.deployToPico = this.deployToPico.bind(this);
     }
 
     componentDidMount () {
@@ -801,6 +812,55 @@ class PseudocodeImporter extends React.Component {
             detail: {key: 'bw-device-id', value: deviceId}
         }));
         this.computeExampleCompat(deviceId);
+    }
+
+    // Real hardware, two minutes: generate MicroPython and push it to a
+    // Pico over WebSerial (raw REPL, main.py — survives reboot). WebSerial
+    // is Chromium-only, so everywhere else this degrades to downloading
+    // main.py with a hint at Thonny / `bw flash`. The protocol core lives
+    // in pico-repl.js (vendored from sb3-creator, tested against a mock).
+    async deployToPico () {
+        const src = this.state.buffers.pseudocode || '';
+        if (!src.trim()) return;
+        this.setState({busy: true, status: ''});
+        try {
+            const SB3Creator = (await this.lib()).default;
+            const creator = new SB3Creator();
+            creator.parse(src);
+            const r = creator.generateMicroPython();
+            if (!r.ok) {
+                this.setState({busy: false,
+                    status: this.L.deployPicoFail((r.reasons || []).join('; ') || 'not expressible in MicroPython')});
+                return;
+            }
+            if (typeof navigator !== 'undefined' && navigator.serial) {
+                // Chromium: straight onto the board. 0x2e8a = Raspberry Pi.
+                const port = await navigator.serial.requestPort({filters: [{usbVendorId: 0x2e8a}]});
+                await port.open({baudRate: 115200});
+                const {webSerialTransport, createPicoRepl} = await import(
+                    /* webpackChunkName: "pico-repl" */ '../../lib/pico-repl.js');
+                const transport = webSerialTransport(port);
+                try {
+                    await createPicoRepl(transport).deployMainPy(r.py);
+                    this.setState({busy: false, status: this.L.deployPicoDone});
+                } finally {
+                    await transport.close().catch(() => {});
+                }
+            } else {
+                // Safari & friends: hand over main.py and say why.
+                const url = URL.createObjectURL(new Blob([r.py], {type: 'text/x-python'}));
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'main.py';
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                this.setState({busy: false, status: this.L.deployPicoSaved});
+            }
+        } catch (e) {
+            // A cancelled port picker is a choice, not an error.
+            const cancelled = e && (e.name === 'NotFoundError' || /No port selected/i.test(e.message));
+            this.setState({busy: false, status: cancelled ? '' : this.L.deployPicoFail(e.message)});
+        }
     }
 
     // The project's hardware declarations. `vm.runtime.stc` is where they live while
@@ -1902,6 +1962,14 @@ class PseudocodeImporter extends React.Component {
                         style={{...btn, background: 'linear-gradient(135deg,#a55b80,#8e4a6c)'}}>
                         {this.L.fromBlocks}
                     </button>
+                    {this.currentDevice() === 'pico' ? (
+                        <button onClick={this.deployToPico} disabled={this.state.busy}
+                            data-testid="bw-deploy-pico"
+                            title={this.L.deployPicoTitle}
+                            style={{...btn, background: 'linear-gradient(135deg,#2f9e44,#237a34)'}}>
+                            {this.L.deployPico}
+                        </button>
+                    ) : null}
                     {this.state.lang !== 'pseudocode' && this.state.lang !== 'c' && /_[a-z]+\.|Driver/.test(this.activeCode()) ? (
                         <span style={{fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 8}}>
                             <label title={this.L.driverTitle}>

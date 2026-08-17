@@ -73,6 +73,7 @@ const TEXT = {
  */
 const CSS = "\n.".concat(MARKED_CLASS, " > .blocklyPath {\n    stroke: #e74c3c;\n    stroke-width: 2px;\n}\n.bw-bp-dot {\n    pointer-events: none;\n}\n.bw-hover-values {\n    position: fixed;\n    z-index: 1000;\n    pointer-events: none;\n    background: #12121f;\n    border: 1px solid #2c3e50;\n    border-radius: 6px;\n    padding: 6px 9px;\n    font: 12px/1.45 monospace;\n    color: #ecf0f1;\n    box-shadow: 0 4px 14px rgba(0,0,0,.45);\n    max-width: 280px;\n}\n.bw-hover-values .bw-when { color: #7f8c8d; font-size: 11px; }\n.bw-hover-values .bw-name { color: #bdc3c7; }\n.bw-hover-values .bw-val  { color: #f39c12; }\n");
 let installed = false;
+let styleEl = null;
 
 /**
  * Install the context-menu item and the marker.
@@ -92,11 +93,16 @@ function installBreakpointMenu(ScratchBlocks, vm) {
   if (!ScratchBlocks || !ScratchBlocks.BlockSvg) return inert;
 
   // CSS injection is idempotent — only done once even across remounts.
+  // The element is MODULE-scoped: it used to be a const inside this if,
+  // while uninstall() referenced it unconditionally — any remount (second
+  // install) left `style` undeclared in the closure and teardown threw
+  // ReferenceError, finishing off an app that a render error had already
+  // wounded (the Step x10 total-crash chain, owner report 2026-08-17).
   if (!installed) {
     installed = true;
-    const style = document.createElement('style');
-    style.textContent = CSS;
-    document.head.appendChild(style);
+    styleEl = document.createElement('style');
+    styleEl.textContent = CSS;
+    document.head.appendChild(styleEl);
   }
 
   /**
@@ -341,7 +347,8 @@ function installBreakpointMenu(ScratchBlocks, vm) {
       unsubscribe();
       ScratchBlocks.BlockSvg.prototype.generateContextMenu = previous;
       delete ScratchBlocks.BlockSvg.prototype.bwAddDebugMenu;
-      if (style.parentNode) style.parentNode.removeChild(style);
+      if (styleEl && styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
+      styleEl = null;
       installed = false;
     }
   };

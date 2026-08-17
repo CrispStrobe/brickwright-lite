@@ -2642,7 +2642,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _mna_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./mna.js */ "./src/lib/bw-board/mna.js");
 /* harmony import */ var _validate_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./validate.js */ "./src/lib/bw-board/validate.js");
 /* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./devices.js */ "./src/lib/bw-board/devices.js");
-/* harmony import */ var _current_ratings_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./current-ratings.js */ "./src/lib/bw-board/current-ratings.js");
+/* harmony import */ var _devices_i2c_slave_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./devices/i2c-slave.js */ "./src/lib/bw-board/devices/i2c-slave.js");
+/* harmony import */ var _current_ratings_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./current-ratings.js */ "./src/lib/bw-board/current-ratings.js");
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -2662,6 +2663,7 @@ function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = 
 /** @typedef {import('./types.js').PinId} PinId */
 /** @typedef {import('./types.js').PinMode} PinMode */
 /** @typedef {import('./types.js').TheveninSource} TheveninSource */
+
 
 
 
@@ -4109,6 +4111,52 @@ class BoardImpl {
    * @param {string} partId
    * @returns {object | null}
    */
+  /**
+   * Fast-path I2C: feed one complete transaction (address byte first,
+   * payload after) straight into every I2C-slave device's decoder —
+   * synthesized edges on the pure state machine, ZERO solver work.
+   *
+   * Why it exists: the simulator JS driver bit-bangs the bus through
+   * setPin, and every edge is a full MNA solve — a single 1024-byte
+   * display clear is ~29k solves, and the calculator's first frame took
+   * longer than the app's run budget (found 2026-08-17: displayOn
+   * arrived, the text never did). The C/emulator chains keep the real
+   * electrical bit-bang; this is the honest shortcut for the pure-JS
+   * runner, same decoder, same handlers, same framing rules.
+   *
+   * @param {number[]} bytes — [addressByte, ...payload]
+   * @returns {number} how many slave decoders were fed
+   */
+  i2cInject(bytes) {
+    let fed = 0;
+    for (const [, st] of this._deviceStates) {
+      if (!st || !st._i2c || !st._i2c.handlers) continue;
+      const s = st._i2c;
+      const edge = (scl, sda) => (0,_devices_i2c_slave_js__WEBPACK_IMPORTED_MODULE_4__.feedI2CSlave)(s, scl, sda);
+      edge(true, true); // bus idle
+      edge(true, false);
+      edge(false, false); // START
+      for (const b of bytes) {
+        for (let k = 7; k >= 0; k--) {
+          const bit = (b >> k & 1) === 1;
+          edge(false, bit);
+          edge(true, bit);
+          edge(false, bit);
+        }
+        edge(false, true);
+        edge(true, true);
+        edge(false, true); // ACK clock
+      }
+      edge(false, false);
+      edge(true, false);
+      edge(true, true); // STOP
+      fed++;
+    }
+    if (fed) this._notifyChange('device', {
+      i2cInject: bytes.length
+    });
+    return fed;
+  }
   getDeviceState(partId) {
     var _sr$oeActive, _this$_deviceStates$g;
     // Built-in shift register
@@ -4340,7 +4388,7 @@ class BoardImpl {
         if (i !== undefined && i > 0) solvedCurrents.set(part.id, i);
       }
     }
-    const budgetWarnings = (0,_current_ratings_js__WEBPACK_IMPORTED_MODULE_4__.checkCurrentBudget)(this.parts, solvedCurrents.size > 0 ? solvedCurrents : undefined);
+    const budgetWarnings = (0,_current_ratings_js__WEBPACK_IMPORTED_MODULE_5__.checkCurrentBudget)(this.parts, solvedCurrents.size > 0 ? solvedCurrents : undefined);
     for (const w of budgetWarnings) warnings.push(w);
     return warnings;
   }

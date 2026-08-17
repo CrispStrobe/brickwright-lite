@@ -656,7 +656,7 @@ class DebugPanel extends React.Component {
                             {this.tx('pausedAt')}
                             {' '}
                             <code style={{color: '#ecf0f1'}}>
-                                {`PC 0x${why.pc.toString(16).padStart(4, '0')}`}
+                                {`PC ${Number.isFinite(why.pc) ? '0x' + why.pc.toString(16).padStart(4, '0') : '?'}`}
                             </code>
                             {' '}
                             {this.tx('afterMs')}

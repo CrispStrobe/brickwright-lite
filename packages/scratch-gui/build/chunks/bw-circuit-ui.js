@@ -8598,13 +8598,23 @@ function CircuitDesigner(_ref) {
     // declaration-built bench threw away every shipped MCU seat (the owner
     // saw 187 re-authored examples all render the chip floating).
     const reauthored = Array.isArray(circuitData.holeWires) && circuitData.holeWires.length > 0 || Array.isArray(circuitData.parts) && circuitData.parts.some(p => p && p.seat);
+    // "The declarations carry strictly more truth" is only true when the
+    // file holds nothing the declaration bench can rebuild. The bench
+    // synthesizes exactly LED+resistor / button / potentiometer per pin —
+    // so a legacy file carrying ANY other part kind (an SSD1306, an LCD,
+    // a 7-segment block, an LM358, a buzzer…) knows more than the pins
+    // do, and rebuilding turned the Pocket Calculator's OLED + 15-key
+    // matrix into eight generic LEDs (owner report, and five more
+    // instrument examples lost their displays the same way).
+    const SYNTHESIZABLE = /^(breadboard|vcc|gnd|vsource|battery|led|resistor|button|potentiometer|slide_switch|mcu|stc_mcu|arduino_(uno|nano)|pi_pico|attiny\d*)/;
+    const richFile = Array.isArray(circuitData.parts) && circuitData.parts.some(p => p && p.kind && !SYNTHESIZABLE.test(p.kind));
     const pins = projectData === null || projectData === void 0 ? void 0 : projectData.pins;
     // fileOnly: the host says this circuit arrived WITHOUT a program — a
     // pure-circuit example. Pins still in the project then belong to
     // whatever was loaded before, and inferring from them would rebuild
     // the PREVIOUS bench over this file (that is exactly what happened:
     // examples 47-53 all showed example 46's 19-part board).
-    if (legacy && !reauthored && (pins === null || pins === void 0 ? void 0 : pins.length) > 0 && !circuitData.fileOnly) {
+    if (legacy && !reauthored && !richFile && (pins === null || pins === void 0 ? void 0 : pins.length) > 0 && !circuitData.fileOnly) {
       try {
         circuit._saveHistory();
         circuit.parts.length = 0;
@@ -24683,8 +24693,10 @@ function terminalsForKind(kind, params) {
       return ['vcc', 'gnd', 'vout'];
     case 'gas_sensor':
       return ['vcc', 'gnd', 'aout', 'dout'];
+    // Engine + sidecar say 'com' — 'common' here was the ghost-terminal
+    // disease again (a power switch wired to com failed netlist validation).
     case 'slide_switch':
-      return ['a', 'common', 'b'];
+      return ['a', 'com', 'b'];
     // Engine + sidecar agree: FOUR switches, s0..s3 (0-indexed), and
     // params.switches is the CLOSED-switch BITMASK — this case used to
     // read it as a switch COUNT and mint s1..sN terminals, a third

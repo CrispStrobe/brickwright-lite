@@ -2102,7 +2102,7 @@ class DebugPanel extends react__WEBPACK_IMPORTED_MODULE_0__.Component {
       style: {
         color: '#ecf0f1'
       }
-    }, "PC 0x".concat(why.pc.toString(16).padStart(4, '0'))), ' ', this.tx('afterMs'), ' ', "".concat((Number(why.tNs) / 1e6).toFixed(2), " ms")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", {
+    }, "PC ".concat(Number.isFinite(why.pc) ? '0x' + why.pc.toString(16).padStart(4, '0') : '?')), ' ', this.tx('afterMs'), ' ', "".concat((Number(why.tNs) / 1e6).toFixed(2), " ms")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", {
       style: {
         fontSize: 11,
         marginTop: 4
