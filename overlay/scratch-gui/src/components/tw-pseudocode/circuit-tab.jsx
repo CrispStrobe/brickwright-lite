@@ -159,6 +159,31 @@ class CircuitTab extends React.Component {
             this.setState({machineBooted: true});
         };
         window.addEventListener('bw-asm-rom-ready', this._asmStashHandler);
+        // Code-tab catalog loads name the bench for the chosen device; the
+        // board must show THAT wiring and seating, not the authored default
+        // and never the runner's inferred fallback.
+        this._benchHandler = async (e) => {
+            const {benchPath, exampleId} = (e && e.detail) || {};
+            if (!benchPath) return;
+            try {
+                const res = await fetch(`examples/${benchPath}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                // Generated benches carry {parts, nets}; authored circuits
+                // carry {parts, wires}. The designer accepts both (its
+                // loader feeds nets to syncWithExternalNets directly).
+                if (!data || !Array.isArray(data.parts) ||
+                    !(Array.isArray(data.wires) || Array.isArray(data.nets))) {
+                    throw new Error('not a circuit (no parts with wires or nets)');
+                }
+                this.setState({circuitData: {...data, fileOnly: true},
+                    loadingExample: null, examplesError: null});
+            } catch (err) {
+                this.setState({examplesError:
+                    `bench for "${exampleId}": ${err.message}`});
+            }
+        };
+        window.addEventListener('bw-example-bench', this._benchHandler);
         // The Scratch controls dispatch these user-level events even when the
         // VM has no executable MCU program. Keep the designer simulation in
         // lockstep with Green Flag/Red Flag in that case too.
@@ -225,6 +250,7 @@ class CircuitTab extends React.Component {
         window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
         window.removeEventListener('bw-machine-media-load', this._mediaStashHandler);
         window.removeEventListener('bw-asm-rom-ready', this._asmStashHandler);
+        window.removeEventListener('bw-example-bench', this._benchHandler);
         window.removeEventListener('bw-green-flag', this._greenFlagHandler);
         window.removeEventListener('bw-stop-all', this._stopAllHandler);
         window.removeEventListener('bw-power-off', this._powerOffHandler);
@@ -641,8 +667,9 @@ class CircuitTab extends React.Component {
             const res = await fetch(`examples/${path}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            if (!data || !Array.isArray(data.parts) || !Array.isArray(data.wires)) {
-                throw new Error('not a circuit (no parts/wires)');
+            if (!data || !Array.isArray(data.parts) ||
+                !(Array.isArray(data.wires) || Array.isArray(data.nets))) {
+                throw new Error('not a circuit (no parts with wires or nets)');
             }
             // The program first: it calls vm.loadProject, which would otherwise
             // discard a circuit loaded a moment earlier. Its failure is not

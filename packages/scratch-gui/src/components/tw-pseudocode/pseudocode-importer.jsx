@@ -1145,6 +1145,18 @@ class PseudocodeImporter extends React.Component {
             this.setState({busy: false, lang: 'pseudocode', output: null,
                 status: warnings.length ? warnings.join('; ') : '',
                 buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
+            // The PROGRAM retargeted; the BENCH must follow or the runner
+            // falls back to an inferred, unseated board. The WORE pipeline
+            // generates a seated circuit per device (index `benches` map);
+            // hand the matching one to the Circuit tab. Falls back to the
+            // authored circuit when no per-device bench exists.
+            const benchPath = (ex.benches && device && ex.benches[device]) ||
+                (ex.files && ex.files.circuit) || null;
+            if (benchPath && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-example-bench', {
+                    detail: {benchPath, exampleId: ex.id, device: device || exDevice}
+                }));
+            }
         } catch (e) {
             this.setState({busy: false, status: this.L.stError(e.message)});
         }
