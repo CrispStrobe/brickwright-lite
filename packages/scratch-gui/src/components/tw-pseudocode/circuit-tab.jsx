@@ -619,13 +619,34 @@ class CircuitTab extends React.Component {
         // runtime.stc and kill the debugger ('No program pins' on a
         // program that has them). Peer-suggested guard (stc-e1).
         if (!decls.pins.length && current.pins && current.pins.length) return;
+        // A loaded PROGRAM's declarations are the contract; the designer's
+        // wiring-derived pins are heuristics (their polarity walk falls
+        // back to the 8051 active-low idiom when nets have not resolved
+        // yet). Letting the derivation REPLACE parsed pins flipped the
+        // Pico calculator's 17 ACTIVE-HIGH keys to active-low mid-load:
+        // the firmware then armed pull-UPS, every key read as pressed
+        // forever, and the OLED never drew. Program-declared names win;
+        // derived pins only add names the program does not declare.
+        const rt = vm.runtime;
+        const hasProgram = current.pinsSource === 'program' &&
+            Array.isArray(current.pins) && current.pins.length > 0;
+        let pins = decls.pins;
+        if (hasProgram) {
+            const progByName = new Map(current.pins.map(p => [p.name, p]));
+            pins = decls.pins.map(dp => progByName.get(dp.name) || dp);
+            for (const p of current.pins) {
+                if (!pins.some(m => m.name === p.name)) pins.push(p);
+            }
+        }
         const next = {
             ...current,
             device: decls.device,
-            pins: decls.pins,
+            pins,
+            pinsSource: hasProgram ? 'program' : 'derived',
             ports: decls.ports || [],
             parts: decls.parts || []
         };
+        { const stcTraceObj = next; if (typeof window !== 'undefined') { (window.__bwStcTrace = window.__bwStcTrace || []).push({who: 'declChange', t: Date.now(), b4: JSON.stringify((stcTraceObj && stcTraceObj.pins || []).find(p => p.name === 'b4') || null), dbg: JSON.stringify({hasProgram, src: !!(rt && rt.bwPseudocodeSource), curLen: (current.pins || []).length, curB4: (current.pins || []).find(p => p.name === 'b4') || null})}); } }
         if (vm.setStc) vm.setStc(next);
         else if (vm.runtime) vm.runtime.stc = next;
         this.setState({stc: next});
@@ -755,6 +776,12 @@ class CircuitTab extends React.Component {
         // survives toJSON. Keep it on the runtime, which lives as long as the
         // project does — the same reason the importer does it.
         const stc = creator.project.stc || null;
+        // Pins parsed from a PROGRAM outrank wiring-derived heuristics —
+        // the marker travels on the object because the importer consumes
+        // (and clears) bwPseudocodeSource before the designer's first
+        // declaration pass fires.
+        if (stc) stc.pinsSource = 'program';
+        { const stcTraceObj = stc; if (typeof window !== 'undefined') { (window.__bwStcTrace = window.__bwStcTrace || []).push({who: 'loadExampleProgram', t: Date.now(), b4: JSON.stringify((stcTraceObj && stcTraceObj.pins || []).find(p => p.name === 'b4') || null)}); } }
         if (vm.setStc) vm.setStc(stc); else vm.runtime.stc = stc;
         // Store the pseudocode source so the Code tab can show it.
         // The importer reads this on mount/update and fills its buffer

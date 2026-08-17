@@ -1388,6 +1388,8 @@ class PseudocodeImporter extends React.Component {
             // survives a save/reload cycle. readStc recovers from the comment if
             // the top-level key was stripped by a foreign round trip.
             const stc = creator.project.stc || null;
+            if (stc) stc.pinsSource = 'program';
+            { const stcTraceObj = stc; if (typeof window !== 'undefined') { (window.__bwStcTrace = window.__bwStcTrace || []).push({who: 'importerCompile', t: Date.now(), b4: JSON.stringify((stcTraceObj && stcTraceObj.pins || []).find(p => p.name === 'b4') || null)}); } }
             if (this.props.vm.setStc) {
                 this.props.vm.setStc(stc);
             } else {
