@@ -986,9 +986,13 @@ class CircuitTab extends React.Component {
         if ((this.state.debugDock === 'solo' || this.state.debugDock === 'right') && this._stagePortalOn()) {
             this._portalOn = true;
             const solo = (
-                <div style={{...box, overflow: 'auto'}} data-debugger-solo-pane>
+                // paddingTop clears the stage-header row: the panel (and the
+                // no-code warning) rendered flush against the tab strip and
+                // read as misplaced (owner report, 2026-08-17 — and 7 hours
+                // before that).
+                <div style={{...box, overflow: 'auto', paddingTop: 48}} data-debugger-solo-pane>
                     {(stc && stc.pins && stc.pins.length) || this.state.machineBooted ? this.renderDebugPanel() : (
-                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8}} data-no-code-indicator>
+                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
                             {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
                                 || SOLO_L10N.en).noCode}
                         </div>
