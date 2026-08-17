@@ -87,6 +87,8 @@ const L10N = {
         deployPicoDone: 'Deployed to the Pico — main.py is running (and survives reboot).',
         deployPicoSaved: 'This browser cannot talk to USB serial (Chrome or Edge can). Saved main.py instead — copy it to the Pico with Thonny, or `bw flash` from the sb3-creator CLI.',
         deployPicoFail: e => `Pico deploy failed: ${e}`,
+        deployPicoNoPort: 'No Pico found on USB. Plug it in (a normal boot, not BOOTSEL) and try again.',
+        deployPicoBootsel: 'The Pico is in BOOTSEL mode — it needs MicroPython first. Flash a MicroPython UF2 onto the RPI-RP2 volume, then deploy again.',
         stLoaded: 'Compiled to blocks and loaded. Switch to the Code tab to see them.',
         stWarn: w => `Loaded with warnings — ${w}`,
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
@@ -159,6 +161,8 @@ const L10N = {
         deployPicoDone: 'Auf den Pico übertragen — main.py läuft (auch nach Neustart).',
         deployPicoSaved: 'Dieser Browser kann kein USB-Serial (Chrome oder Edge können es). main.py wurde stattdessen gespeichert — mit Thonny auf den Pico kopieren, oder `bw flash` aus der sb3-creator-CLI.',
         deployPicoFail: e => `Pico-Übertragung fehlgeschlagen: ${e}`,
+        deployPicoNoPort: 'Kein Pico am USB gefunden. Anstecken (normaler Start, nicht BOOTSEL) und erneut versuchen.',
+        deployPicoBootsel: 'Der Pico ist im BOOTSEL-Modus — er braucht zuerst MicroPython. Ein MicroPython-UF2 auf das RPI-RP2-Laufwerk kopieren, dann erneut übertragen.',
         stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
         stWarn: w => `Mit Warnungen geladen — ${w}`,
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
@@ -829,7 +833,30 @@ class PseudocodeImporter extends React.Component {
                     status: this.L.deployPicoFail((r.reasons || []).join('; ') || 'not expressible in MicroPython')});
                 return;
             }
-            if (typeof navigator !== 'undefined' && navigator.serial) {
+            const tauri = await import(
+                /* webpackChunkName: "pico-repl" */ '../../lib/pico-tauri-transport.js');
+            if (tauri.available()) {
+                // Desktop app: native serial through the Rust commands —
+                // works in Safari-engine webviews and driverless on Windows.
+                const ports = await tauri.listPorts();
+                if (!ports.length) {
+                    const inBootsel = await tauri.bootselVolume().catch(() => false);
+                    this.setState({busy: false, status: inBootsel
+                        ? this.L.deployPicoBootsel
+                        : this.L.deployPicoNoPort});
+                    return;
+                }
+                const path = ports.find(p => /usbmodem|ttyACM/i.test(p)) || ports[0];
+                const {createPicoRepl} = await import(
+                    /* webpackChunkName: "pico-repl" */ '../../lib/pico-repl.js');
+                const transport = await tauri.openTransport(path);
+                try {
+                    await createPicoRepl(transport).deployMainPy(r.py);
+                    this.setState({busy: false, status: this.L.deployPicoDone});
+                } finally {
+                    await transport.close().catch(() => {});
+                }
+            } else if (typeof navigator !== 'undefined' && navigator.serial) {
                 // Chromium: straight onto the board. 0x2e8a = Raspberry Pi.
                 const port = await navigator.serial.requestPort({filters: [{usbVendorId: 0x2e8a}]});
                 await port.open({baudRate: 115200});
