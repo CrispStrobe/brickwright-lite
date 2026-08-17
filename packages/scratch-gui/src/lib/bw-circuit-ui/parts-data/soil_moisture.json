@@ -1,0 +1,43 @@
+{
+  "kind": "soil_moisture",
+  "w": 20,
+  "h": 60,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 4,
+      "y": 60,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 10,
+      "y": 60,
+      "functions": []
+    },
+    {
+      "name": "sig",
+      "x": 16,
+      "y": 60,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "sig": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

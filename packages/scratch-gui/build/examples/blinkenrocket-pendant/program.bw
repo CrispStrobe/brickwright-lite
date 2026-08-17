@@ -1,0 +1,203 @@
+# OUR OWN heartbeat firmware for the blinkenrocket pendant.
+# NOT derived from the blinkenrocket GPL firmware.
+#
+# Two heart frames alternate — big and small — scanned one column at a
+# time: turn on exactly this column's rows, strobe the column for 2 ms,
+# turn the same rows off. Deliberately explicit (no incremental row
+# bookkeeping between columns): the previous revision claimed to scroll
+# text and painted three fixed pixels forever — the owner read "stale"
+# off the deployed matrix and was right (2026-08-16). Holding either
+# button pauses the beat.
+DEVICE ATTINY88
+CLOCK 8000000
+PIN col0 = PB0 OUTPUT
+PIN col1 = PB1 OUTPUT
+PIN col2 = PB2 OUTPUT
+PIN col3 = PB3 OUTPUT
+PIN col4 = PB4 OUTPUT
+PIN col5 = PB5 OUTPUT
+PIN col6 = PB6 OUTPUT
+PIN col7 = PB7 OUTPUT
+PIN row0 = PD0 OUTPUT
+PIN row1 = PD1 OUTPUT
+PIN row2 = PD2 OUTPUT
+PIN row3 = PD3 OUTPUT
+PIN row4 = PD4 OUTPUT
+PIN row5 = PD5 OUTPUT
+PIN row6 = PD6 OUTPUT
+PIN row7 = PD7 OUTPUT
+PIN btnLeft = PC3 INPUT
+PIN btnRight = PC7 INPUT
+
+WHEN flag clicked:
+  FOREVER:
+    # big heart, ~20 scan passes = 0.32 s
+    REPEAT 20:
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on col0
+      wait 0.002 seconds
+      turn off col0
+      turn off row2
+      turn off row3
+      turn off row4
+      turn on row1
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on col1
+      wait 0.002 seconds
+      turn off col1
+      turn off row1
+      turn off row2
+      turn off row3
+      turn off row4
+      turn off row5
+      turn on row1
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on row6
+      turn on col2
+      wait 0.002 seconds
+      turn off col2
+      turn off row1
+      turn off row2
+      turn off row3
+      turn off row4
+      turn off row5
+      turn off row6
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on row6
+      turn on row7
+      turn on col3
+      wait 0.002 seconds
+      turn off col3
+      turn off row2
+      turn off row3
+      turn off row4
+      turn off row5
+      turn off row6
+      turn off row7
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on row6
+      turn on row7
+      turn on col4
+      wait 0.002 seconds
+      turn off col4
+      turn off row2
+      turn off row3
+      turn off row4
+      turn off row5
+      turn off row6
+      turn off row7
+      turn on row1
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on row6
+      turn on col5
+      wait 0.002 seconds
+      turn off col5
+      turn off row1
+      turn off row2
+      turn off row3
+      turn off row4
+      turn off row5
+      turn off row6
+      turn on row1
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on col6
+      wait 0.002 seconds
+      turn off col6
+      turn off row1
+      turn off row2
+      turn off row3
+      turn off row4
+      turn off row5
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on col7
+      wait 0.002 seconds
+      turn off col7
+      turn off row2
+      turn off row3
+      turn off row4
+    # small heart, ~20 scan passes = 0.32 s
+    REPEAT 20:
+      turn on row3
+      turn on row4
+      turn on col1
+      wait 0.002 seconds
+      turn off col1
+      turn off row3
+      turn off row4
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on col2
+      wait 0.002 seconds
+      turn off col2
+      turn off row2
+      turn off row3
+      turn off row4
+      turn off row5
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on row6
+      turn on col3
+      wait 0.002 seconds
+      turn off col3
+      turn off row3
+      turn off row4
+      turn off row5
+      turn off row6
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on row6
+      turn on col4
+      wait 0.002 seconds
+      turn off col4
+      turn off row3
+      turn off row4
+      turn off row5
+      turn off row6
+      turn on row2
+      turn on row3
+      turn on row4
+      turn on row5
+      turn on col5
+      wait 0.002 seconds
+      turn off col5
+      turn off row2
+      turn off row3
+      turn off row4
+      turn off row5
+      turn on row3
+      turn on row4
+      turn on col6
+      wait 0.002 seconds
+      turn off col6
+      turn off row3
+      turn off row4
+    IF read btnLeft THEN:
+      wait 0.2 seconds
+    IF read btnRight THEN:
+      wait 0.2 seconds

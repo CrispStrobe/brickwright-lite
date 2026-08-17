@@ -1,0 +1,33 @@
+{
+  "kind": "ntc",
+  "w": 40,
+  "h": 28,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 5,
+      "y": 14,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 35,
+      "y": 14,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 4
+      }
+    }
+  }
+}

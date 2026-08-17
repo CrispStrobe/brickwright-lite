@@ -1,0 +1,30 @@
+{
+  "kind": "seven_segment",
+  "w": 50,
+  "h": 70,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 15,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 35,
+      "y": 70,
+      "functions": []
+    }
+  ],
+  "variants": [
+    {
+      "param": "digits",
+      "values": [
+        1,
+        2,
+        4
+      ]
+    }
+  ],
+  "footprint": null
+}

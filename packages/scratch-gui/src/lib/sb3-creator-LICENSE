@@ -1,0 +1,20 @@
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+Copyright (c) CrispStrobe
+
+This notice covers the following files in this directory, vendored from
+CrispStrobe/sb3-creator (relicensed to MPL-2.0 as of f72f1e7):
+
+  sb3-creator.js
+  sb3-creator-c.js
+  sb3-creator-chost.js
+  sb3-creator-chostruntime.js
+  sb3-creator-examples.js
+  sb3-creator-javascript.js
+  sb3-creator-micropython.js
+  sb3-creator-python.js
+  sb3-creator-runtime.js
+  sb3-creator-scratchruntime.js
+  cubeDirections.js

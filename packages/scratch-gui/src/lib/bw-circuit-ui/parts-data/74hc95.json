@@ -1,0 +1,155 @@
+{
+  "kind": "74hc95",
+  "w": 70,
+  "h": 46,
+  "terminals": [
+    {
+      "name": "ser",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "a",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "c",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "d",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "mode",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "clk",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "qd",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "qc",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "qb",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "qa",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "nc",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "footprint": {
+    "refTerminal": "ser",
+    "leads": {
+      "ser": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "a": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "c": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "d": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "mode": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "clk": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "qd": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "qc": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "qb": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "qa": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "nc": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 7
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "kind": "tmp36",
+  "w": 24,
+  "h": 40,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 6,
+      "y": 40,
+      "functions": []
+    },
+    {
+      "name": "vout",
+      "x": 12,
+      "y": 40,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 18,
+      "y": 40,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "vout": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

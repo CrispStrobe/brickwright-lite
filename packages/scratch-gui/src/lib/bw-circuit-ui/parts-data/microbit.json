@@ -1,0 +1,52 @@
+{
+  "kind": "microbit",
+  "w": 120,
+  "h": 56,
+  "terminals": [
+    {
+      "name": "p0",
+      "x": 19,
+      "y": 56,
+      "functions": [
+        "gpio",
+        "adc0",
+        "pwm"
+      ]
+    },
+    {
+      "name": "p1",
+      "x": 35,
+      "y": 56,
+      "functions": [
+        "gpio",
+        "adc1",
+        "pwm"
+      ]
+    },
+    {
+      "name": "p2",
+      "x": 51,
+      "y": 56,
+      "functions": [
+        "gpio",
+        "adc2",
+        "pwm"
+      ]
+    },
+    {
+      "name": "3v",
+      "x": 67,
+      "y": 56,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 83,
+      "y": 56,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "micro:bit V2 (nRF52833). Confirmed as V2 for the simulator: V2 adds touch logo, speaker, microphone. Edge connector shows the 5 large pads accessible without a breakout board. P0/P1/P2 support GPIO, ADC, and PWM (nRF52833 PWM is software-routable to any pin). P0 and P2 also support capacitive touch on V2. Small edge-connector pins require a breakout board (see microbit_breakout).",
+  "footprint": null
+}

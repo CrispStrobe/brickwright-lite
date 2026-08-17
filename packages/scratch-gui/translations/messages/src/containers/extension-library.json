@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gui.extensionLibrary.chooseAnExtension",
+    "description": "Heading for the extension library",
+    "defaultMessage": "Choose an Extension"
+  },
+  {
+    "id": "gui.extensionLibrary.extensionUrl",
+    "description": "Prompt for unoffical extension url",
+    "defaultMessage": "Enter the URL of the extension"
+  },
+  {
+    "id": "gui.extensionLibrary.customName",
+    "description": "Tile that lets you load any TurboWarp/Xcratch extension by URL",
+    "defaultMessage": "➕ Extension from URL"
+  },
+  {
+    "id": "gui.extensionLibrary.customDescription",
+    "description": "Description of the custom-extension-from-URL tile",
+    "defaultMessage": "Load any TurboWarp- or Xcratch-style extension directly from a URL."
+  },
+  {
+    "id": "gui.extensionLibrary.untrusted",
+    "description": "Confirmation before running a custom extension from an untrusted URL",
+    "defaultMessage": "Load and run code from:\n\n{url}\n\nOnly continue if you trust the source — the extension runs with full access to this page."
+  },
+  {
+    "id": "gui.extensionLibrary.loadFailed",
+    "description": "Alert shown when a custom extension URL fails to load",
+    "defaultMessage": "Could not load the extension from {url}\n\n{error}"
+  }
+]

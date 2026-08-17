@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gui.library.filterPlaceholder",
+    "description": "Placeholder text for library search field",
+    "defaultMessage": "Search"
+  },
+  {
+    "id": "gui.library.allTag",
+    "description": "Label for library tag to revert to all items after filtering by tag.",
+    "defaultMessage": "All"
+  },
+  {
+    "id": "gui.library.gettingStarted",
+    "description": "Label for getting started category",
+    "defaultMessage": "Getting Started"
+  },
+  {
+    "id": "gui.library.basics",
+    "description": "Label for basics category",
+    "defaultMessage": "Basics"
+  },
+  {
+    "id": "gui.library.intermediate",
+    "description": "Label for intermediate category",
+    "defaultMessage": "Intermediate"
+  },
+  {
+    "id": "gui.library.prompts",
+    "description": "Label for prompts category",
+    "defaultMessage": "Prompts"
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "name": "Brickwright",
+  "short_name": "Brickwright",
+  "description": "Build with blocks, read and edit as Python or JavaScript, and drive real LEGO bricks and robots.",
+  "start_url": "../",
+  "scope": "../",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#22c3d6",
+  "icons": [
+    {"src": "images/192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "images/512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "images/512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+    {"src": "images/brick-robot.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

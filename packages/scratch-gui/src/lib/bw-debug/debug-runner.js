@@ -106,8 +106,10 @@ async function installWasmCompilerIfOptedIn (setStatus) {
  * Choose a faithful execution backend when the user has not explicitly
  * requested a different transport. Arduino boards are ATmega328P targets;
  * routing them through the STC emulator would make every result plausible
- * but wrong. Pico is deliberately reported as unavailable until its
- * RP2040/MicroPython backend exists.
+ * but wrong. Pico routes to the rp2040js target (the code below has
+ * done so since the hosted compile chain closed) — an earlier version
+ * of this comment claimed Pico was unavailable long after it wasn't,
+ * and the stale claim was believed over the code (2026-08-17).
  *
  * @param {string} device project device identifier
  * @param {string} requested target picker selection
