@@ -1112,6 +1112,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           parts={parts}
           wires={wires}
           theme={theme}
+          lang={lang}
           mode={mode}
           onModeChange={nextMode => {
             setMode(nextMode);
