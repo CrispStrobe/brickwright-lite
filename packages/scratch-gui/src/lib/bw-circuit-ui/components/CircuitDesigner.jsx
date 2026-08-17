@@ -79,7 +79,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en' }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -471,6 +471,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, []);
 
   useEffect(() => {
+    if (mode !== 'simulate') return; // only produce audio while simulating
     const buzzers = parts.filter(p => p.kind === 'buzzer');
     for (const bz of buzzers) {
       try {
@@ -478,7 +479,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         updateBuzzerAudio(bz.id, tone);
       } catch {}
     }
-  }, [rev, parts, readBuzzerTone, renderState]);
+  }, [rev, parts, readBuzzerTone, renderState, mode]);
 
   useEffect(() => {
     if (mode !== 'simulate') stopAllBuzzers();
@@ -925,10 +926,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const effectiveNodeVoltages = hasSimulation ? nodeVoltages : {};
 
   let statusText = null;
-  const picoPresent = parts.some(part => part.kind === 'pi_pico');
-  if (picoPresent && !externalBoard) {
-    statusText = 'WIRING ONLY — Pico execution is not available yet';
-  } else if (!hasSimulation && externalBoard) {
+  if (!hasSimulation && externalBoard) {
     statusText = 'HARDWARE — voltage/current readings need the simulator';
   } else if (externalBoard && halted && staleBy > 0) {
     statusText = `SNAPSHOT — the board kept running for ${
@@ -1331,6 +1329,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             (6502/Z80). The gate is debugState presence, not hasMcuPins:
             a machine bench has no PIN concept but its runner provides
             step/stepOver/registers. (widened per 57617b3 principle) */}
+        {/* ── Debugger dock: 'top' = render here in instruments; 'right' = host
+            renders full-size in the right column. The >> / << button flips. */}
+        {debugDock === 'top' && (<>
         {debugState && (
           <DebugStatus
             debugState={debugState}
@@ -1345,7 +1346,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {debugState && typeof debugState.video === 'function' && (
           <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} setKeysFn={debugState.setKeys} loadSnapshotFn={debugState.loadSnapshot} lang={lang} />
         )}
-        {/* Serial console — for machines with ACIA serial (z80-bench, eater6502) */}
         {debugState && typeof debugState.onSerial === 'function' && (
           <section style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box'}}>
             <div style={{fontSize: 11, fontWeight: 600, color: '#e2e8f0', marginBottom: 4, fontFamily: 'monospace'}}>
@@ -1355,7 +1355,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               newline={debugState.serialNewline || 0x0d} lang={lang} />
           </section>
         )}
-        {/* Framebuffer face — 1bpp monochrome video from machine chips */}
         {debugState && debugState.framebuffer && (
           <FramebufferFace chipState={debugState.framebuffer}
             width={debugState.framebuffer.width || 128}
@@ -1363,26 +1362,36 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             stride={debugState.framebuffer.stride}
             lang={lang} />
         )}
-        {/* Architecture face — block diagram with live register state */}
         {debugState && typeof debugState.regs === 'function' && (
           <ArchitectureFace debugState={debugState} lang={lang} />
         )}
-        {/* A machine bench (Build Machine succeeded) opens this slot too:
-            the host's DebugPanel lives INSIDE it, and its runner is what
-            eventually produces debugState — gating on debugState alone was
-            a deadlock the bench could never leave (no pins, no panel, no
-            runner, no debugState). benchOpen is the HOST's memory of the
-            same fact: this component remounts on tab switches and loses
-            machineResult, while the host's state survives — without it,
-            leaving for the Code tab (to write ASM!) closed the slot and
-            killed the bench. */}
         {(hasMcuPins || debugState || benchOpen || (machineResult && machineResult.ok)) && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
-            <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>
-              {/^de/i.test(lang) ? 'Debugger' : 'Debugger'}
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+              <span style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0'}}>Debugger</span>
+              {onDebugDockChange && (
+                <button type="button" onClick={() => onDebugDockChange('right')}
+                  title="Move debugger to full-size right pane"
+                  style={{padding: '1px 6px', fontSize: 10, background: '#1e293b', color: '#94a3b8',
+                    border: '1px solid #475569', borderRadius: 3, cursor: 'pointer'}}>&gt;&gt;</button>
+              )}
             </div>
             {debuggerPanel}
+          </section>
+        )}
+        </>)}
+        {/* When docked right, show a << button to bring it back to instruments */}
+        {debugDock === 'right' && onDebugDockChange && (debugState || benchOpen || debuggerOn) && (
+          <section style={{width: '100%', flex: '0 0 auto', padding: 8, borderRadius: 6,
+            background: '#0f172a', border: '1px solid #475569'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <span style={{fontSize: 11, color: '#94a3b8'}}>Debugger in right pane</span>
+              <button type="button" onClick={() => onDebugDockChange('top')}
+                title="Move debugger back to instruments"
+                style={{padding: '1px 6px', fontSize: 10, background: '#1e293b', color: '#94a3b8',
+                  border: '1px solid #475569', borderRadius: 3, cursor: 'pointer'}}>&lt;&lt;</button>
+            </div>
           </section>
         )}
         {/* MCU-class benches without pins get PIN advice; a MACHINE-class
@@ -1390,18 +1399,25 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             "add a PIN declaration" points them at a door that does not
             exist (owner report, z80-bench 2026-08-16). It gets the truth:
             Build Machine, then the ASM tab. */}
-        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && !hasRetroCpu && parts.some(p =>
-            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'pi_pico'
-        ) && (
-          <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
-            background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
-            fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
-            <strong>{/^de/i.test(lang) ? 'Debugger inaktiv' : 'Debugger inactive'}</strong>
-            <div>{/^de/i.test(lang)
-              ? 'Noch keine Programm-Pins deklariert. Füge eine PIN-Deklaration in den Blöcken hinzu, um Ausführen und Einzelschritt zu aktivieren.'
-              : 'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}</div>
-          </div>
-        )}
+        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && !hasRetroCpu && (() => {
+          const mcuPart = parts.find(p =>
+            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'pi_pico');
+          if (!mcuPart) return null;
+          const chipName = mcuPart.kind === 'pi_pico' ? 'Pico (RP2040)'
+            : mcuPart.kind === 'arduino_nano' ? 'Arduino Nano'
+            : mcuPart.kind === 'arduino_uno' ? 'Arduino Uno'
+            : mcuPart.declName || mcuPart.kind;
+          return (
+            <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
+              background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
+              fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
+              <strong>{/^de/i.test(lang) ? 'Debugger inaktiv' : 'Debugger inactive'}</strong>
+              <div>{/^de/i.test(lang)
+                ? `Keine Programm-Pins für ${chipName}. Programm laden oder PIN-Deklaration in Blöcken hinzufügen.`
+                : `No program pins for ${chipName}. Load a program or add a PIN declaration in Blocks. If you retargeted an example, the pin mapping may not be available for this chip.`}</div>
+            </div>
+          );
+        })()}
         {debuggerOn && hasRetroCpu && (!stc || !stc.pins || !stc.pins.length) && (
           <div data-machine-hint style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#eff6ff', border: '1px solid #93c5fd', color: '#1e40af',

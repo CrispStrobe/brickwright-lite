@@ -126,6 +126,8 @@ function terminalOffsetsForPart(part) {
     case 'button': return { a: r(-15, 0), b: r(15, 0) };
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
+    case 'diode':
+    case 'zener': return { anode: r(-20, 0), cathode: r(20, 0) };
     case 'meter': return { probe_a: r(-25, 20), probe_b: r(25, 20) };
     case 'vsource': {
       const variant = String(part.params?.variant ?? (part.params?.wave && part.params.wave !== 'dc' ? 'fg' : '9v'));
@@ -245,7 +247,8 @@ function fmtV(v) {
 function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
-    const rot = (part.rotation || 0) + ((part.kind === 'mcu' ? (part.seat?.rot || 0) * 90 : 0));
+    const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
+    const rot = (part.rotation || 0) + seatRot;
     const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
     const selStroke = isSelected ? '#f1c40f' : undefined;
@@ -409,8 +412,20 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         const pin = needsTranspose
           ? (t) => ({ x: t.y * S - W / 2, y: t.x * S - H / 2 })
           : (t) => ({ x: t.x * S - W / 2, y: t.y * S - H / 2 });
+        // When seated on a breadboard, scale the body down to match the
+        // hole span. Footprint leads span (maxCol) gaps × BB_PITCH wide.
+        let seatK = 1;
+        if (part.seat && part._seatTerminals) {
+          const terms = Object.values(part._seatTerminals);
+          if (terms.length >= 2) {
+            const xs = terms.map(t => t.x);
+            const worldSpan = Math.max(...xs) - Math.min(...xs);
+            if (worldSpan > 0 && W > 0) seatK = worldSpan / W;
+          }
+        }
+        const seatXform = seatK !== 1 ? ` scale(${seatK.toFixed(4)})` : '';
         return (
-          <g key={id} transform={xform} pointerEvents="none">
+          <g key={id} transform={xform + seatXform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
               fill={boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
             <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
@@ -426,7 +441,6 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             {sc?.terminals?.map(t => {
               const p = pin(t);
               if (needsTranspose) {
-                // Transposed: top/bottom rows, labels above/below.
                 const topSide = p.y < 0;
                 return (
                   <g key={t.name}>
@@ -439,7 +453,6 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                   </g>
                 );
               }
-              // Landscape (Uno): left/right columns, labels beside pins.
               const leftSide = p.x < 0;
               return (
                 <g key={t.name}>
@@ -1363,6 +1376,36 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
+      case 'diode':
+      case 'zener': {
+        // Diode symbol: triangle (anode→cathode) + bar at cathode.
+        // Zener adds angled ticks on the bar.
+        const dsel = selectedParts?.has(id);
+        const isZener = kind === 'zener';
+        return (
+          <div key={id} style={{ ...baseStyle, left: x - 22, top: y - 12 }}>
+            <svg width={44} height={24} viewBox="-22 -12 44 24">
+              {/* Anode lead */}
+              <line x1={-20} y1={0} x2={-6} y2={0} stroke="#95a5a6" strokeWidth={2} />
+              {/* Diode triangle (pointing right → current flow direction) */}
+              <polygon points="-6,-8 -6,8 6,0" fill="#2c3e50"
+                stroke={dsel ? '#f1c40f' : '#555'} strokeWidth={1.5} strokeLinejoin="round" />
+              {/* Cathode bar */}
+              <line x1={6} y1={-8} x2={6} y2={8}
+                stroke={dsel ? '#f1c40f' : '#95a5a6'} strokeWidth={2} />
+              {isZener && <>
+                {/* Zener ticks on bar ends */}
+                <line x1={6} y1={-8} x2={3} y2={-10} stroke="#95a5a6" strokeWidth={1.5} />
+                <line x1={6} y1={8} x2={9} y2={10} stroke="#95a5a6" strokeWidth={1.5} />
+              </>}
+              {/* Cathode lead */}
+              <line x1={6} y1={0} x2={20} y2={0} stroke="#95a5a6" strokeWidth={2} />
+              {/* Cathode band marker (like a real diode package) */}
+              <rect x={14} y={-5} width={3} height={10} rx={0.5} fill="#95a5a6" opacity={0.6} />
+            </svg>
+          </div>
+        );
+      }
       case 'capacitor': {
         const csel = selectedParts?.has(id);
         return (
@@ -2704,13 +2747,14 @@ export function BoardCanvas({
       onSelectWire(null);
     }, [onSelectPart, onSelectWire]),
     onLongPress: useCallback((clientX, clientY) => {
+      if (simulate) return; // SIM: long-press is not an edit gesture
       if ((selectedParts && selectedParts.size > 0) || selectedWire) {
         setContextMenu({
           x: clientX, y: clientY,
           type: (selectedParts && selectedParts.size === 1) ? 'part' : selectedWire ? 'wire' : 'part',
         });
       }
-    }, [selectedParts, selectedWire]),
+    }, [selectedParts, selectedWire, simulate]),
     onPinch: useCallback((scale) => {
       setZoom(z => Math.max(0.3, Math.min(3, z * scale)));
     }, []),
@@ -2721,7 +2765,12 @@ export function BoardCanvas({
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', width: '100%', minWidth: 0, minHeight: 0 }}
+      // stretch + a real height chain: alignItems 'center' pinned the
+      // canvas child at its 700px minimum, centered in whatever space the
+      // row offered — the owner's tenth 'the grid does not use the screen'
+      // report was THIS line. The canvas is flex 1 1 auto; give it a
+      // column that lets it grow both ways.
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', position: 'relative', width: '100%', height: '100%', flex: '1 1 auto', minWidth: 0, minHeight: 0 }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
@@ -2847,6 +2896,9 @@ export function BoardCanvas({
         onContextMenu={(e) => {
           e.preventDefault();
           // Right-click selects what is under the cursor, then opens the menu.
+          // In SIM mode there is nothing to edit: a pot click must TURN the
+          // pot, never surface Rotate/Remove (owner report, repeatedly).
+          if (simulate) return;
           const { x, y } = eventToWorld(e);
           const pid = machineRef.current.hit.partAt(x, y);
           if (pid && !(selectedParts && selectedParts.has(pid))) {
@@ -2859,7 +2911,7 @@ export function BoardCanvas({
           }
         }}
       >
-        {selectedPartModel && (
+        {selectedPartModel && !simulate && (
           <div data-selection-actions style={{position: 'absolute', left: `${((selectedPartModel.x - pan.x) / (containerSize.w / zoom)) * 100}%`, top: `${((selectedPartModel.y - pan.y) / (containerSize.h / zoom)) * 100}%`, transform: 'translate(18px, -50%)', zIndex: 60, display: 'flex', gap: 4,
             padding: 4, borderRadius: 6, background: 'rgba(22,33,62,.92)', boxShadow: '0 2px 8px rgba(0,0,0,.35)'}}
             onPointerDown={e => e.stopPropagation()}>

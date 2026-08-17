@@ -30,8 +30,8 @@ const L10N = {
         commit: 'View this commit',
         close: 'Close',
         unknownVersion: 'This build was made without a commit stamp.',
-        blurb: 'A fully-permissive fork of the pre-relicense Scratch stack — BSD-3, Apache-2.0 ' +
-            'and MIT throughout, so it can be bundled and shipped anywhere.',
+        blurb: 'Build circuits on breadboards, program them in blocks or pseudocode, ' +
+            'run them on emulated chips — 8051, AVR, RP2040, 6502, Z80 — and debug them live, in the browser.',
         copied: 'Copied',
         copy: 'Copy version details',
         provider: 'Provider (Impressum)',
@@ -47,6 +47,8 @@ const L10N = {
             'polarity, voltage and current limits before wiring real hardware, and treat ' +
             'anything not verified on a real chip as unverified.',
         components: 'Components and licences',
+        licenseNote: 'BSD-3-Clause / Apache-2.0 / MIT throughout. A permissive fork of the ' +
+            'pre-relicense Scratch stack, so it can be bundled and shipped anywhere.',
         notices: 'Full third-party notices',
         affil: 'Affiliation',
         affilText: 'Not affiliated with or endorsed by Scratch / MIT, STC, Arduino, or ' +
@@ -63,8 +65,8 @@ const L10N = {
         commit: 'Diesen Commit ansehen',
         close: 'Schliessen',
         unknownVersion: 'Dieser Build wurde ohne Commit-Stempel erzeugt.',
-        blurb: 'Ein vollstandig permissiver Fork des Scratch-Stacks vor der Lizenzanderung — ' +
-            'durchgangig BSD-3, Apache-2.0 und MIT, also uberall bundelbar und auslieferbar.',
+        blurb: 'Schaltungen auf Steckplatinen bauen, in Bloecken oder Pseudocode programmieren, ' +
+            'auf emulierten Chips ausfuehren — 8051, AVR, RP2040, 6502, Z80 — und live im Browser debuggen.',
         copied: 'Kopiert',
         copy: 'Versionsdetails kopieren',
         provider: 'Anbieter (Impressum)',
@@ -81,6 +83,8 @@ const L10N = {
             'echter Hardware Polung, Spannungen und Stromgrenzen prufen; alles ohne Nachweis ' +
             'auf echtem Chip gilt als unverifiziert.',
         components: 'Komponenten und Lizenzen',
+        licenseNote: 'Durchgaengig BSD-3-Clause / Apache-2.0 / MIT. Ein permissiver Fork des ' +
+            'Scratch-Stacks vor der Lizenzaenderung, also ueberall buendelbar und auslieferbar.',
         notices: 'Vollstandige Third-Party-Hinweise',
         affil: 'Zugehorigkeit',
         affilText: 'Nicht verbunden mit oder unterstutzt von Scratch / MIT, STC, Arduino oder ' +
@@ -263,6 +267,7 @@ class BwAbout extends React.Component {
                                 <p className={styles.body}>{t('disclaimerText')}</p>
 
                                 <div className={styles.heading}>{t('components')}</div>
+                                <p className={styles.body}>{t('licenseNote')}</p>
                                 <div className={styles.groupList} data-testid="about-licence-groups">
                                     {ABOUT_GROUPS.map(group => (
                                         <LicenceGroup

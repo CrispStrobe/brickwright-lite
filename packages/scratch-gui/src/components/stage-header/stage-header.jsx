@@ -92,7 +92,10 @@ const setCircuitView = ({fullWidth, dock}) => {
 // circuit with its instruments-column debugger.
 const viewForDock = dock => {
     if (dock === 'off') return 'circuit';
-    if (dock === 'solo') return 'solo';
+    // 'right' claims the stage column exactly like 'solo' while coding;
+    // on the Circuit tab it renders the FULL panel in the right column
+    // instead of falling back to the tiny instruments dock (owner spec).
+    if (dock === 'solo' || dock === 'right') return 'solo';
     if (dock === 'microbit') return 'microbit';
     // 'top' and any other value default to scratch stage
     return 'scratch';
@@ -145,7 +148,12 @@ const StageViewButtons = ({intl}) => {
                     {
                         // Full debugger enlarged in the right pane — run
                         // control, registers, trace, all at full size.
-                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'solo'}); setView('solo'); },
+                        // dock 'right', not 'solo': on the dedicated
+                        // Circuit tab 'solo' fell back to the tiny
+                        // instruments-column debugger — the owner asked for
+                        // the FULL panel in the right pane, which is what
+                        // dock 'right' renders in both tabs.
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'right'}); setView('solo'); },
                         icon: debuggerSoloIcon,
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'solo',

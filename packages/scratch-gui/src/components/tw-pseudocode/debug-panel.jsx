@@ -170,6 +170,30 @@ class DebugPanel extends React.Component {
 
     componentDidMount () {
         this.syncDeviceKind();
+        // A NEW PROGRAM must not debug through the OLD program's runner:
+        // loading an example kept the previous runner alive whenever the
+        // device stayed the same, and the PINS panel showed the former
+        // example's pins (owner report, 2026-08-17). Keyed on the pin
+        // SIGNATURE, not the event alone — PROJECT_CHANGED also fires on
+        // every block edit, and killing a live run for an unrelated edit
+        // would be worse than the staleness.
+        const rt0 = this.props.vm && this.props.vm.runtime;
+        this._pinSig = JSON.stringify((rt0 && rt0.stc && rt0.stc.pins) || []);
+        this._onProjectChanged = () => {
+            const rt = this.props.vm && this.props.vm.runtime;
+            const sig = JSON.stringify((rt && rt.stc && rt.stc.pins) || []);
+            if (sig === this._pinSig) return;
+            this._pinSig = sig;
+            this._teardownRunner();
+            this.setState({runner: null, ui: {phase: 'idle', message: ''}});
+        };
+        if (rt0 && rt0.on) rt0.on('PROJECT_CHANGED', this._onProjectChanged);
+        // The runner announces WHICH board it drives (designer / example /
+        // inferred). An inferred LED-per-pin board must announce itself in
+        // red instead of impersonating the example's circuit.
+        this._onBoardSource = (e) => this.setState({boardSource: (e.detail && e.detail.source) || null});
+        window.addEventListener('bw-board-source', this._onBoardSource);
+        if (window.__bwBoardSource) this.setState({boardSource: window.__bwBoardSource.source});
         // The machine-bench pipeline: Build Machine → config; Machine
         // Loader / ASM tab → image; both meet in _onMediaLoad's reboot.
         window.addEventListener('bw-machine-extracted', this._onMachineExtracted);
@@ -267,7 +291,11 @@ class DebugPanel extends React.Component {
     }
 
     componentWillUnmount () {
+        const rt = this.props.vm && this.props.vm.runtime;
+        if (rt && rt.off && this._onProjectChanged) rt.off('PROJECT_CHANGED', this._onProjectChanged);
+        else if (rt && rt.removeListener && this._onProjectChanged) rt.removeListener('PROJECT_CHANGED', this._onProjectChanged);
         window.removeEventListener('bw-machine-extracted', this._onMachineExtracted);
+        if (this._onBoardSource) window.removeEventListener('bw-board-source', this._onBoardSource);
         window.removeEventListener('bw-machine-media-load', this._onMediaLoad);
         window.removeEventListener('bw-asm-rom-ready', this._onAsmRomReady);
         this._teardownRunner();
@@ -378,12 +406,28 @@ class DebugPanel extends React.Component {
         const canSendSerial = !!(this.state.runner &&
             typeof this.state.runner.sendSerial === 'function');
 
+        const inferredBoard = this.state.boardSource === 'inferred';
         return (
             <div style={{
                 display: 'flex', flexDirection: 'column', gap: 8, padding: 10,
                 background: '#1a1a2e', border: '1px solid #2c3e50', borderRadius: 8,
                 fontFamily: 'monospace', fontSize: 12, color: '#bdc3c7'
             }}>
+                {inferredBoard ? (
+                    <div data-inferred-board-warning role="alert" style={{
+                        display: 'flex', gap: 8, alignItems: 'flex-start',
+                        background: '#7f1d1d', border: '1px solid #ef4444',
+                        borderRadius: 6, padding: '6px 8px', color: '#fecaca',
+                        fontWeight: 700
+                    }}>
+                        <span aria-hidden style={{fontSize: 14}}>{'\u26a0'}</span>
+                        <span>
+                            {/^de/i.test(String(this.props.locale || (typeof navigator !== 'undefined' && navigator.language) || 'en'))
+                                ? 'IMPROVISIERTES Testboard: Der Debugger hat aus den PIN-Zeilen ein Ersatzboard erraten — das ist NICHT die Schaltung des Beispiels. Öffne den Circuit-Tab, um das echte Board zu laden.'
+                                : 'IMPROVISED test board: the debugger guessed a stand-in from the PIN lines — this is NOT the example\u2019s circuit. Open the Circuit tab to load the real board.'}
+                        </span>
+                    </div>
+                ) : null}
                 <div style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'}}>
                     <button
                         style={running || busy ? OFF : {...BTN, borderColor: '#2ecc71', color: '#2ecc71'}}

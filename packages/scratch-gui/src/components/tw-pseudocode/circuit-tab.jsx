@@ -78,6 +78,8 @@ class CircuitTab extends React.Component {
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
         this.loadExample = this.loadExample.bind(this);
+        this._boxRef = React.createRef();
+        this._measureBox = this._measureBox.bind(this);
         this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
         this.handleProjectStart = this.handleProjectStart.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
@@ -89,6 +91,7 @@ class CircuitTab extends React.Component {
             this.load();
             this.loadExamples();
         }
+        window.addEventListener('resize', this._measureBox);
         // The stage-hiding CSS lives here rather than in a stylesheet because
         // the wrapper's class is a hashed CSS-module name; the attribute-
         // contains selector survives rebuilds.
@@ -214,6 +217,7 @@ class CircuitTab extends React.Component {
     }
 
     componentDidUpdate (prevProps) {
+        this._measureBox();
         if (this.props.isVisible && !prevProps.isVisible) {
             this.load();
             this.loadExamples();
@@ -250,7 +254,27 @@ class CircuitTab extends React.Component {
         }
     }
 
+    /** The tab panel gives height:100% nothing definite to resolve
+     *  against, so the designer sat at its 700x500 MINIMUM in any window
+     *  ("does not use the screen size", owner, roughly the tenth time).
+     *  Measure where the box actually starts and claim the rest of the
+     *  viewport explicitly. */
+    _measureBox () {
+        this._sizeStageHost();
+        const el = this._boxRef.current;
+        if (!el || this._portalOn) return;
+        const r = el.getBoundingClientRect();
+        const top = Math.round(r.top);
+        const left = Math.round(r.left);
+        if (Math.abs((this.state.boxTop ?? -99) - top) > 1 ||
+            Math.abs((this.state.boxLeft ?? -99) - left) > 1) {
+            this.setState({boxTop: top, boxLeft: left});
+        }
+    }
+
     componentWillUnmount () {
+        if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
+        window.removeEventListener('resize', this._measureBox);
         window.removeEventListener('bw-settings-change', this._settingsHandler);
         window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
         window.removeEventListener('bw-machine-media-load', this._mediaStashHandler);
@@ -316,7 +340,40 @@ class CircuitTab extends React.Component {
         host.style.cssText = 'position:absolute;inset:0;z-index:0;background:#fff;display:none;overflow:auto;';
         wrap.appendChild(host);
         this._stageHost = host;
+        this._sizeStageHost();
+        // Layout-driven, not render-driven: the wrapper reaches its final
+        // (oversized) width after our render pass, so a one-shot measure
+        // reads pre-layout numbers and the cap never applies.
+        // Per-host wiring: the stage wrapper is REPLACED when a project
+        // loads, and an observer bound once watched the dead wrapper while
+        // the new one grew to 1992px unobserved.
+        if (typeof ResizeObserver !== 'undefined') {
+            if (this._hostRO) this._hostRO.disconnect();
+            this._hostRO = new ResizeObserver(() => this._sizeStageHost());
+            this._hostRO.observe(wrap);
+        }
         return host;
+    }
+
+    /** The stage wrapper can be laid out WIDER than the viewport (it gets
+     *  clipped by an ancestor), so an inset:0 host inherits a phantom
+     *  ~2x width and everything portalled into it lays out off-screen —
+     *  the Code-mode debugger sat 'too much to the right' with its right
+     *  half cut (owner report + measured: pane 1992px wide at x=1018 in a
+     *  2000px window). Cap the host at what is actually visible. */
+    _sizeStageHost () {
+        const host = this._stageHost;
+        if (!host || !host.parentElement) return;
+        const wl = host.parentElement.getBoundingClientRect().left;
+        const visible = Math.max(280, Math.round(window.innerWidth - wl - 4));
+        const wrapW = Math.round(host.parentElement.getBoundingClientRect().width);
+        if (wrapW > visible + 8) {
+            host.style.right = 'auto';
+            host.style.width = `${visible}px`;
+        } else {
+            host.style.right = '0';
+            host.style.width = '';
+        }
     }
 
     /** While coding (any other tab), the circuit takes the stage's column —
@@ -904,6 +961,16 @@ class CircuitTab extends React.Component {
         const box = {height: '100%', width: '100%', flex: '1 1 auto', minHeight: 0,
             overflow: 'auto', padding: 8, boxSizing: 'border-box',
             display: 'flex', flexDirection: 'column'};
+        // Claim the real viewport once we know where the box starts —
+        // see _measureBox. The portal path keeps the stage host's sizing.
+        if (!this._portalOn && this.state.boxTop != null) {
+            // HEIGHT only. Width claims override the GUI's right-pane
+            // splitter and, in the Code-mode portal, laid the debugger out
+            // for a phantom 1992px column (owner reports; the first attempt
+            // at this fix was reverted by a concurrent agent's reset --hard
+            // between edit and commit — verify the COMMITTED bytes).
+            box.height = `calc(100vh - ${this.state.boxTop + 4}px)`;
+        }
         // Nothing below returns a portal until it says so. componentDidUpdate
         // shows the stage host only when this is true, so the three early
         // returns here (reloading / error / designer not loaded) leave the
@@ -953,9 +1020,13 @@ class CircuitTab extends React.Component {
         if ((this.state.debugDock === 'solo' || this.state.debugDock === 'right') && this._stagePortalOn()) {
             this._portalOn = true;
             const solo = (
-                <div style={{...box, overflow: 'auto'}} data-debugger-solo-pane>
+                // paddingTop clears the stage-header row: the panel (and the
+                // no-code warning) rendered flush against the tab strip and
+                // read as misplaced (owner report, 2026-08-17 — and 7 hours
+                // before that).
+                <div style={{...box, overflow: 'auto', paddingTop: 48}} data-debugger-solo-pane>
                     {(stc && stc.pins && stc.pins.length) || this.state.machineBooted ? this.renderDebugPanel() : (
-                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8}} data-no-code-indicator>
+                        <div style={{color: '#64748b', fontSize: 12.5, padding: 8, marginTop: 6}} data-no-code-indicator>
                             {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
                                 || SOLO_L10N.en).noCode}
                         </div>
@@ -973,7 +1044,7 @@ class CircuitTab extends React.Component {
         // with the compact debugger in its Instruments column.
         const dock = this.state.debugDock === 'solo' ? 'top' : this.state.debugDock;
         const content = (
-            <div style={box}>
+            <div ref={this._boxRef} style={box}>
                 {/* A circuit does not need a microcontroller.
                     This used to read "declares no pins, so the board starts empty", which
                     framed a battery-LED-resistor circuit — the first circuit anyone builds —

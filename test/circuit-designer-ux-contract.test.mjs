@@ -69,7 +69,9 @@ test("debugger-only pane: dock 'solo' portals just the DebugPanel while coding",
     assert.match(source, /runtime\.on\('PROJECT_CHANGED', this\.handleProjectChanged\)/);
     assert.match(source, /runtime\.removeListener\('PROJECT_CHANGED', this\.handleProjectChanged\)/);
     // The stage header offers the fourth view; Settings offers the dock value.
-    assert.match(header, /dock: 'solo'/);
+    // The button docks RIGHT (full panel in the right pane on both tabs);
+    // 'solo' on the Circuit tab fell back to the tiny instruments dock.
+    assert.match(header, /dock: 'right'/);
     assert.match(header, /debuggerFull/);
     assert.match(settings, /\{value: 'solo', label: 'Full pane'\}/);
 });

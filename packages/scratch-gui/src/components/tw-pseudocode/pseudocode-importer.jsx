@@ -1142,9 +1142,19 @@ class PseudocodeImporter extends React.Component {
                     warnings = result.warnings || [];
                 }
             }
+            // Loading an example must produce a RUNNABLE project, not just
+            // editor text: without the compile the VM kept the previous
+            // project's pins and device, the Circuit tab rendered the OLD
+            // chip and the debugger said 'no pins declared' (owner report:
+            // Nano + 8-LED chaser showed an stc12, 2026-08-17). setState is
+            // async — compile in its callback, on the NEW buffer.
             this.setState({busy: false, lang: 'pseudocode', output: null,
                 status: warnings.length ? warnings.join('; ') : '',
-                buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
+                buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}},
+            () => {
+                Promise.resolve(this.compile()).catch(e => this.setState(
+                    {status: `Loaded, but building the project failed: ${e.message}`}));
+            });
             // The PROGRAM retargeted; the BENCH must follow or the runner
             // falls back to an inferred, unseated board. But the AUTHORED
             // circuit outranks any generated bench for the example's own
@@ -1156,9 +1166,14 @@ class PseudocodeImporter extends React.Component {
             const retargeted = device && exDevice && device !== exDevice;
             const benchPath = (retargeted && ex.benches && ex.benches[device]) || authored;
             if (benchPath && typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('bw-example-bench', {
-                    detail: {benchPath, exampleId: ex.id, device: device || exDevice}
-                }));
+                const detail = {benchPath, exampleId: ex.id, device: device || exDevice};
+                // Stash before dispatch: the Circuit tab consumes the event,
+                // but the debug RUNNER may boot later (or without that tab
+                // ever mounting) and must find the example's real circuit
+                // instead of inferring a phantom bench (owner report — the
+                // multimeter showed 8 auto-LEDs where the LM358 build was).
+                window.__bwExampleBench = detail;
+                window.dispatchEvent(new CustomEvent('bw-example-bench', {detail}));
             }
         } catch (e) {
             this.setState({busy: false, status: this.L.stError(e.message)});
