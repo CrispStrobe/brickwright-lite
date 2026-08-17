@@ -930,7 +930,12 @@ class CircuitTab extends React.Component {
         // see _measureBox. The portal path keeps the stage host's sizing.
         if (!this._portalOn && this.state.boxTop != null) {
             box.height = `calc(100vh - ${this.state.boxTop + 4}px)`;
-            box.width = `calc(100vw - ${this.state.boxLeft + 4}px)`;
+            // clientWidth excludes the scrollbar; 100vw does not — the
+            // difference pushed the debugger's right column off-screen
+            // and froze its slider (owner report, 2026-08-17).
+            const cw = (typeof document !== 'undefined' &&
+                document.documentElement.clientWidth) || 0;
+            if (cw > 0) box.width = `${Math.max(720, cw - this.state.boxLeft - 8)}px`;
         }
         // Nothing below returns a portal until it says so. componentDidUpdate
         // shows the stage host only when this is true, so the three early

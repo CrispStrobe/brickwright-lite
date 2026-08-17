@@ -1142,9 +1142,19 @@ class PseudocodeImporter extends React.Component {
                     warnings = result.warnings || [];
                 }
             }
+            // Loading an example must produce a RUNNABLE project, not just
+            // editor text: without the compile the VM kept the previous
+            // project's pins and device, the Circuit tab rendered the OLD
+            // chip and the debugger said 'no pins declared' (owner report:
+            // Nano + 8-LED chaser showed an stc12, 2026-08-17). setState is
+            // async — compile in its callback, on the NEW buffer.
             this.setState({busy: false, lang: 'pseudocode', output: null,
                 status: warnings.length ? warnings.join('; ') : '',
-                buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
+                buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}},
+            () => {
+                Promise.resolve(this.compile()).catch(e => this.setState(
+                    {status: `Loaded, but building the project failed: ${e.message}`}));
+            });
             // The PROGRAM retargeted; the BENCH must follow or the runner
             // falls back to an inferred, unseated board. But the AUTHORED
             // circuit outranks any generated bench for the example's own

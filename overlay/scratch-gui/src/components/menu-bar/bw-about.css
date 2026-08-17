@@ -37,6 +37,10 @@
 }
 
 .dialog {
+    /* The dialog portal renders inside the menu trigger, which sets
+       white-space: nowrap — inherited, it clipped every paragraph at the
+       modal edge instead of wrapping (owner screenshot, 2026-08-17). */
+    white-space: normal;
     width: 40rem;
     max-width: calc(100vw - 2rem);
     max-height: calc(100vh - 4rem);
