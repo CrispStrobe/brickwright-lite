@@ -852,6 +852,34 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return adapter;
     }
 
+    // The designer's own board, when it holds real parts: machine boots
+    // attach it so VIA/port edges (chip-qualified pin ids, engine
+    // 26efcbd5c) light whatever the bench wires to them — the Eater
+    // build's HD44780 above all. No board, or an empty one, keeps the
+    // proven board-less stub: never boot against a phantom.
+    function designerBoard() {
+        const b = vm && vm.runtime && vm.runtime.circuitBoard;
+        let board = null;
+        let why = 'no designer board';
+        if (b && typeof b.setPin === 'function' && typeof b.advanceTo === 'function') {
+            try {
+                const parts = typeof b.getParts === 'function' ? b.getParts() : b.parts;
+                if (parts && parts.length) {
+                    board = b;
+                    why = `designer board attached (${parts.length} parts)`;
+                } else {
+                    why = 'designer board empty';
+                }
+            } catch (e) {
+                why = `designer board unreadable: ${e && e.message}`;
+            }
+        }
+        // Truth hook: the decision is invisible from outside otherwise —
+        // probes and bug reports read this instead of guessing.
+        if (typeof window !== 'undefined') window.__bwMachineBoard = { why, board };
+        return { board, why };
+    }
+
     // ── 6502 machine bench ──────────────────────────────────────────────
     // Boot precedence: a preset's own profile ('py65mon' — Tali Forth;
     // 'eater' — MS BASIC on the default Eater map) wins, because those
@@ -892,6 +920,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             readyMsg = 'Tali Forth 2 — type at the ok prompt';
         }
 
+        const db = designerBoard();
+        if (db.board) targetOpts.board = db.board;
+        readyMsg += ` — ${db.why}`;
         const result = await createDebugTarget('eater6502', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
@@ -933,6 +964,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             readyMsg = 'BBC BASIC (Z80) — type at the > prompt';
         }
 
+        const db = designerBoard();
+        if (db.board) targetOpts.board = db.board;
+        readyMsg += ` — ${db.why}`;
         const result = await createDebugTarget('z80', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
@@ -1074,7 +1108,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 schedule();
             } catch (e) {
                 unschedule();
-                setStatus('error', e.message);
+                // A failed lazy chunk (emu8051, bw-board) inside this try is
+                // exactly the caught-import blind spot the page recovery
+                // documents: the rejection is handled here, so the global
+                // unhandledrejection listener never sees it, and the user got
+                // 'Loading chunk 344 failed' as a dead debugger (owner report,
+                // 2026-08-16). Ask the recovery first; only show the error if
+                // this is not a stale build.
+                const recovering = typeof window !== 'undefined' &&
+                    window.__bwRecoverFromStaleBuild &&
+                    window.__bwRecoverFromStaleBuild(e && e.message);
+                if (recovering) setStatus('attaching', 'app updated — reloading the new build…');
+                else setStatus('error', e.message);
             }
         },
 
@@ -1192,6 +1237,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         inspect() {
             if (!target) return null;
             const regs = target.regs();
+            // The SFR window and the 0x08..SP stack walk below are 8051
+            // anatomy. A machine target (6502, Z80) answers a different regs
+            // shape — on the Z80, `r` is the REFRESH register, a number, and
+            // mapping over it crashed the drawer. The 8051 shape is the one
+            // with the bank-register array; anything else inspects as
+            // 'generic' with no sfr/stack, and the drawer renders what the
+            // target actually has instead of what an 8051 would have.
+            if (!Array.isArray(regs.r)) {
+                return { regs, sfr: null, stack: null, pc: regs.pc, tNs: target.timeNs(), flavor: 'generic' };
+            }
             const sfr = {};
             for (const { name, addr } of [...IO_SFRS, ...TIMER_SFRS]) {
                 sfr[name] = target.readMem('sfr', addr, 1)[0];
@@ -1203,7 +1258,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             for (let a = 0x08; a <= regs.sp && a <= 0xFF; a++) {
                 stack.push({ addr: a, value: target.readMem('iram', a, 1)[0] });
             }
-            return { regs, sfr, stack, pc: regs.pc, tNs: target.timeNs() };
+            return { regs, sfr, stack, pc: regs.pc, tNs: target.timeNs(), flavor: '8051' };
         },
 
         /** Raw bytes, for the hex view. Returns [] rather than throwing. */
@@ -1237,17 +1292,37 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // listing. Same crash as disasm() above; the instruction-length
             // walk below is 8051-shaped anyway.
             if (!target || typeof target.disasm !== 'function' || typeof target.readMem !== 'function') return [];
+            // Capability at the DATA, not just the method: the z80 target
+            // has both methods but its readMem answers a refusal object,
+            // and spreading a non-iterable crashed the whole app from
+            // 'under the hood' (owner report #2 of this crash family —
+            // the method-presence guard was the pendant fix and it was
+            // not enough). Anything that is not real bytes ends the
+            // listing; the drawer then says 'no disassembly on this
+            // target' instead of dying.
             const rows = [];
             let a = addr & 0xFFFF;
-            for (let i = 0; i < count; i++) {
-                const opcode = target.readMem('code', a, 1)[0];
-                const len = instructionLength(opcode);
-                rows.push({
-                    addr: a,
-                    bytes: [...target.readMem('code', a, len)],
-                    text: target.disasm(a)
-                });
-                a = (a + len) & 0xFFFF;
+            try {
+                for (let i = 0; i < count; i++) {
+                    // The machine targets (6502, Z80) return self-describing
+                    // rows — { text, bytes, length } — so the walk needs no
+                    // readMem and no 8051 length table. Prefer that shape.
+                    const d = target.disasm(a);
+                    if (d && typeof d === 'object' && Array.isArray(d.bytes) && d.length >= 1) {
+                        rows.push({ addr: a, bytes: d.bytes.slice(), text: String(d.text ?? '') });
+                        a = (a + d.length) & 0xFFFF;
+                        continue;
+                    }
+                    const head = target.readMem('code', a, 1);
+                    if (!head || typeof head[Symbol.iterator] !== 'function' || head.length < 1) break;
+                    const len = instructionLength(head[0]);
+                    const bytes = target.readMem('code', a, len);
+                    if (!bytes || typeof bytes[Symbol.iterator] !== 'function') break;
+                    rows.push({ addr: a, bytes: [...bytes], text: String(d ?? '') });
+                    a = (a + len) & 0xFFFF;
+                }
+            } catch {
+                return [];
             }
             return rows;
         },

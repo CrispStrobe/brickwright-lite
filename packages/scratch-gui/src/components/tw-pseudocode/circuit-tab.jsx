@@ -868,14 +868,18 @@ class CircuitTab extends React.Component {
                 </div>
             );
         }
-        // Debugger-only right pane: dock 'solo' gives the DebugPanel the whole
-        // stage column, no designer around it — the mode for working the
-        // debugger directly beside the code editor. It deliberately does not
-        // wait for the Designer chunk (the panel has its own Suspense), and it
-        // only applies while portalled: on the dedicated Circuit tab, 'solo'
-        // falls back to the instruments-column dock below, so the designer —
-        // and the compact debugger in its Instruments panel — stay reachable.
-        if (this.state.debugDock === 'solo' && this._stagePortalOn()) {
+        // Debugger-only right pane: docks 'solo' AND 'right' give the
+        // DebugPanel the stage column while coding — 'right' used to fall
+        // through to the FULL DESIGNER portal squeezed into ~350px: the
+        // canvas swallowed the width, the instruments column was clipped
+        // off, and the owner met an "unusable debugger" whose clicks landed
+        // on breadboard SVG (report, 2026-08-17). While coding, a debugger
+        // dock means the DEBUGGER. It deliberately does not wait for the
+        // Designer chunk (the panel has its own Suspense), and it only
+        // applies while portalled: on the dedicated Circuit tab, 'right'
+        // keeps the designer beside the panel (below) and 'solo' falls back
+        // to the instruments-column dock, so the designer stays reachable.
+        if ((this.state.debugDock === 'solo' || this.state.debugDock === 'right') && this._stagePortalOn()) {
             this._portalOn = true;
             const solo = (
                 <div style={{...box, overflow: 'auto'}} data-debugger-solo-pane>
@@ -1049,13 +1053,24 @@ class CircuitTab extends React.Component {
                     runner survives the toggle). This used to be two blocks,
                     and dock 'off' matched BOTH — two live DebugPanel
                     instances, two runners. */}
-                {dock !== 'top' && ((stc && stc.pins && stc.pins.length) || this.state.machineBooted) ? (
+                {dock !== 'top' ? (
                     <div
                         style={dock === 'right' ?
                             {flex: '0 0 320px', minWidth: 0, overflow: 'auto'} : {display: 'none'}}
                         aria-hidden={dock === 'right' ? undefined : 'true'}
                     >
-                        {this.renderDebugPanel()}
+                        {(stc && stc.pins && stc.pins.length) || this.state.machineBooted
+                            ? this.renderDebugPanel()
+                            : (
+                                // Empty and broken look identical: the column
+                                // rendered NOTHING without pins or a machine and
+                                // the owner met a blank pane where the debugger
+                                // was promised (report, 2026-08-17). Say why.
+                                <div style={{color: '#64748b', fontSize: 12.5, padding: 8}} data-no-code-indicator>
+                                    {(SOLO_L10N[String(this.props.locale || 'en').slice(0, 2)]
+                                        || SOLO_L10N.en).noCode}
+                                </div>
+                            )}
                     </div>
                 ) : null}
                 </div>
