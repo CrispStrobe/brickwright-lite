@@ -258,6 +258,12 @@ const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'Jav
 // is exact) and hand-written firmware (pins from `#define LED1 P1_0`, polarity from the
 // `LED_ON 0` idiom — every inference reported as a warning, never guessed silently).
 // The one thing it will not do is invert the cooperative-scheduler form; it says so.
+const DEVICE_CHIP_LABELS = {
+    'stc12c5a60s2': 'STC12', 'stc15f2k60s2': 'STC15', 'stc89c52rc': 'STC89',
+    'arduino-uno': 'Uno', 'arduino-nano': 'Nano', 'arduino-mega': 'Mega',
+    'atmega168p': '168P', 'pico': 'Pico', 'attiny85': 't85', 'attiny88': 't88',
+    'eater6502': '6502', 'z80': 'Z80', 'microbit': 'micro:bit',
+};
 const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic']);
 
 // What the Python / JavaScript front-ends actually support (shown as the reference
@@ -739,7 +745,11 @@ class PseudocodeImporter extends React.Component {
         if (!info) return;
         this.loadCatalog();
         const src = this.state.buffers.pseudocode || '';
-        const hasPins = /^\s*PIN\s/im.test(src);
+        // PIN or PART: a 74HC595 chaser declares no PIN lines yet claims
+        // three pins through its PART binding. The PIN-only test meant
+        // switching the device on such a program silently kept DEVICE
+        // STC12 — 'we choose Nano, we get stc12' (owner, repeatedly).
+        const hasPins = /^\s*(PIN|PART)\s/im.test(src);
 
         if (hasPins) {
             const SB3Creator = (await this.lib()).default;
@@ -750,6 +760,19 @@ class PseudocodeImporter extends React.Component {
                     status: result.warnings.length
                         ? `Retargeted to ${info.label}: ${result.warnings.join('; ')}`
                         : `Retargeted to ${info.label}.`
+                }, () => {
+                    // The switch must produce a RUNNABLE project and a
+                    // matching bench, exactly like loading an example does —
+                    // retargeting only the text left the VM and the Circuit
+                    // tab on the old device.
+                    Promise.resolve(this.compile()).catch(() => {});
+                    const ex = this._lastCatalogExample;
+                    const bench = ex && ex.benches && ex.benches[deviceId];
+                    if (bench && typeof window !== 'undefined') {
+                        const detail = {benchPath: bench, exampleId: ex.id, device: deviceId};
+                        window.__bwExampleBench = detail;
+                        window.dispatchEvent(new CustomEvent('bw-example-bench', {detail}));
+                    }
                 });
             } else {
                 this.setState({status: `Cannot retarget to ${info.label}: ${result.reasons.join('; ')}`});
@@ -1120,8 +1143,14 @@ class PseudocodeImporter extends React.Component {
     // program's DEVICE line differs from the selected device, retarget it via
     // SB3Creator.retargetPseudocode; a refusal shows its reasons in the status
     // line (the tab's existing warning surface) and loads nothing.
-    async loadCatalogExample (ex) {
-        const device = this.currentDevice();
+    async loadCatalogExample (ex, deviceOverride) {
+        this._lastCatalogExample = ex;
+        // A row's device chip passes its device explicitly; a plain row
+        // click keeps the buffer's DEVICE. Before the chips existed the
+        // only way to pick was the separate device dropdown, which nobody
+        // found — 'we click Nano and receive stc12 anyway' (owner).
+        const device = (deviceOverride && this._normDevice(deviceOverride)) ||
+            this.currentDevice();
         this.setState({showCatalog: false, busy: true, status: ''});
         try {
             const res = await fetch(`examples/${ex.files.program}`);
@@ -1482,6 +1511,21 @@ class PseudocodeImporter extends React.Component {
                                         title={ex.id} data-testid="bw-catalog-item">
                                         {title}
                                         <span style={{marginLeft: 6, fontSize: 11, color: '#94a3b8'}}>{ex.id}</span>
+                                        {(ex.devices || []).length > 1 ? (
+                                            <span style={{display: 'block', marginTop: 2}}>
+                                                {(ex.devices || []).map(d => (
+                                                    <span key={d} role="button" tabIndex={0}
+                                                        data-testid="bw-catalog-device"
+                                                        onClick={e => { e.stopPropagation(); this.loadCatalogExample(ex, d); }}
+                                                        onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); this.loadCatalogExample(ex, d); } }}
+                                                        style={{display: 'inline-block', margin: '0 4px 2px 0',
+                                                            padding: '0 6px', borderRadius: 8, fontSize: 10,
+                                                            background: '#e2e8f0', color: '#334155', cursor: 'pointer'}}>
+                                                        {DEVICE_CHIP_LABELS[d] || d}
+                                                    </span>
+                                                ))}
+                                            </span>
+                                        ) : null}
                                     </button>
                                 );
                             })}
