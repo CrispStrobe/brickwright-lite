@@ -46,7 +46,6 @@
     max-height: calc(100vh - 4rem);
     overflow-y: auto;
     overflow-x: hidden;
-    white-space: normal;
     padding: 1.5rem;
     color: $text-primary;
     background: white;
