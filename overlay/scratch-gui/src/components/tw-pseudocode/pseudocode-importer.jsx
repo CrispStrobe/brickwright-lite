@@ -105,6 +105,7 @@ const L10N = {
         // micro:bit bar
         micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
         runOnSimulator: '▶ Run on Simulator',
+        debugOnSimulator: '🐞 Debug',
         // device selector / maximize
         devicePlaceholder: 'Device…', deviceTitle: 'Target device — sets pin names, compile target and emulator',
         maximizeTitle: 'Maximize editor', restoreTitle: 'Restore panels',
@@ -180,6 +181,7 @@ const L10N = {
         // micro:bit bar
         micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
         runOnSimulator: '▶ Im Simulator ausführen',
+        debugOnSimulator: '🐞 Debuggen',
         // device selector / maximize
         devicePlaceholder: 'Gerät…', deviceTitle: 'Zielgerät — bestimmt Pinbenennung, Compile-Ziel und Emulator',
         maximizeTitle: 'Editor maximieren', restoreTitle: 'Panels wiederherstellen',
@@ -450,6 +452,7 @@ class PseudocodeImporter extends React.Component {
         this.run = this.run.bind(this);
         this.switchTab = this.switchTab.bind(this);
         this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
+        this.flashMicrobitSimDebug = this.flashMicrobitSimDebug.bind(this);
         this.deployToPico = this.deployToPico.bind(this);
     }
 
@@ -1119,6 +1122,49 @@ class PseudocodeImporter extends React.Component {
         });
         // Send the code to the simulator pane
         window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code}}));
+    }
+
+    // Debug on the simulator: regenerate the MicroPython as an INSTRUMENTED
+    // build — `generateMicroPython(project, {debug:true, breakpoints})` prints
+    // RS(0x1e) position markers over serial and HALTS at the breakpoints — and
+    // hand the sim pane the `positions` map so it can highlight the live block
+    // and drive step/continue (microbit-sim-pane.jsx, microbit-debug.js).
+    // Breakpoints are the block ids the user right-clicked (bw-debug/breakpoints.js,
+    // reused unchanged); runtime add/remove mid-run is out of scope — set, then run.
+    async flashMicrobitSimDebug () {
+        let breakpoints = [];
+        try {
+            const bp = await import(/* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/breakpoints.js');
+            breakpoints = bp.listBreakpoints ? bp.listBreakpoints() : [];
+        } catch { /* no breakpoints module — debug with none, still useful for stepping */ }
+        let code;
+        let positions;
+        try {
+            const SB3Creator = (await this.lib()).default;
+            const proj = JSON.parse(this.props.vm.toJSON());
+            const r = new SB3Creator().generateMicroPython(proj, {debug: true, breakpoints});
+            if (!r.ok) {
+                this.setState({status: this.L.stError((r.reasons || []).join(' · '))});
+                return;
+            }
+            code = r.py;
+            positions = r.positions || [];
+        } catch (e) {
+            this.setState({status: this.L.stError(e.message)});
+            return;
+        }
+        // Activate the micro:bit sim pane, same as the plain run.
+        const values = {
+            'bw-hide-stage': '1',
+            'bw-right-pane-hidden': '0',
+            'bw-debug-dock': 'microbit',
+            'bw-stage-circuit': '1'
+        };
+        try { Object.entries(values).forEach(([k, v]) => localStorage.setItem(k, v)); } catch { /* noop */ }
+        Object.entries(values).forEach(([k, v]) => {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
+        });
+        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code, debug: true, positions}}));
     }
 
     // Run BASIC on the real emulated machine.
@@ -1862,6 +1908,15 @@ class PseudocodeImporter extends React.Component {
                         data-testid="bw-micropython-bar">
                         <span style={{color: '#166534'}}>{this.L.micropythonReadonly}</span>
                         <span style={{flex: 1}} />
+                        <button type="button"
+                            onClick={() => this.flashMicrobitSimDebug()}
+                            disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
+                            style={{padding: '4px 12px', borderRadius: 6, border: '1px solid #a855f7',
+                                cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                background: '#faf5ff', color: '#7c3aed'}}
+                            data-testid="bw-microbit-debug">
+                            {this.L.debugOnSimulator}
+                        </button>
                         <button type="button"
                             onClick={() => this.flashMicrobitSim()}
                             disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}

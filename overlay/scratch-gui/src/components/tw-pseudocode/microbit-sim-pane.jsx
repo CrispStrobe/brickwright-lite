@@ -1,17 +1,25 @@
 import React from 'react';
+import PropTypes from 'prop-types';
+import {connect} from 'react-redux';
+
+import {createMicrobitDebugController} from '../../lib/bw-debug/microbit-debug.js';
 
 const L10N = {
     en: {
         simTitle: 'micro:bit simulator',
         stop: '⏹ Stop', reset: '🔄 Reset', clear: '🗑 Clear',
         running: 'Running', ready: 'Ready', loading: 'Loading…',
-        serialPlaceholder: '(serial output appears here)'
+        serialPlaceholder: '(serial output appears here)',
+        step: '⏭ Step', continue: '▶ Continue',
+        paused: 'Paused', debugging: 'Debugging', pausedAt: 'Paused at block'
     },
     de: {
         simTitle: 'micro:bit-Simulator',
         stop: '⏹ Stopp', reset: '🔄 Zurücksetzen', clear: '🗑 Leeren',
         running: 'Läuft', ready: 'Bereit', loading: 'Wird geladen…',
-        serialPlaceholder: '(serielle Ausgabe erscheint hier)'
+        serialPlaceholder: '(serielle Ausgabe erscheint hier)',
+        step: '⏭ Schritt', continue: '▶ Weiter',
+        paused: 'Angehalten', debugging: 'Debugging', pausedAt: 'Angehalten bei Block'
     }
 };
 const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' : 'en'; } catch { return 'en'; } };
@@ -28,8 +36,24 @@ const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' :
  *
  * Protocol (parent → simulator):
  *   {kind: 'flash', filesystem}     send {filename: Uint8Array} to run
+ *   {kind: 'serial_input', data}    write a string to the program's serial-IN
  *   {kind: 'stop'}                  stop the program
  *   {kind: 'reset'}                 reset and re-run
+ *
+ * ## Debugging (MICROBIT-NATIVE Stage 3, Path A)
+ *
+ * A DEBUG flash carries `{code, debug:true, positions}`: the code is the
+ * instrumented build from `generateMicroPython(project, {debug:true,
+ * breakpoints})`, which prints RS(0x1e)-prefixed position markers over serial
+ * and HALTS at breakpoints on `input()`. This pane owns the iframe — hence both
+ * serial directions — so it hosts the micro:bit debug controller: it feeds every
+ * serial_output chunk through the controller (which splits the markers from real
+ * output and highlights `positions[n].block` via `vm.runtime.glowBlock`, the
+ * SAME call the 8051 debugger uses), and its Step/Continue buttons resume the
+ * halted program by writing `\x1es` / `\x1ec` back over serial_input. The
+ * controller is a SEPARATE lightweight thing, NOT forced into the emulator's
+ * `runFor` boundary-D contract (the sim has no program clock) — see
+ * microbit-debug.js.
  */
 
 const SIM_URL = 'static/microbit-sim/simulator.html';
@@ -40,12 +64,30 @@ class MicrobitSimPane extends React.Component {
         this.state = {
             serial: '',
             simReady: false,
-            running: false
+            running: false,
+            // Mirror of the debug controller, for the render.
+            dbg: {active: false, running: false, halted: false, block: null, index: null}
         };
         this._iframeRef = React.createRef();
         this._pendingCode = null;
+        this._pendingDebug = null;   // {positions} when the pending flash is a debug run
         this._onMessage = this._onMessage.bind(this);
         this._onFlashEvent = this._onFlashEvent.bind(this);
+
+        // The debug controller. Its highlight sink is vm.runtime.glowBlock —
+        // read at call time so it survives a late-arriving vm — and its
+        // serial-IN sink posts into the iframe. Kept off React state; it is a
+        // controller, not render data (the render reads its snapshot via dbg).
+        this._dbg = createMicrobitDebugController({
+            glow: (blockId, on) => {
+                const rt = this.props.vm && this.props.vm.runtime;
+                if (rt && typeof rt.glowBlock === 'function') {
+                    try { rt.glowBlock(blockId, on); } catch { /* stale block id */ }
+                }
+            },
+            sendSerialIn: (text) => this._serialIn(text),
+            onChange: (dbg) => this.setState({dbg})
+        });
     }
 
     componentDidMount () {
@@ -56,15 +98,20 @@ class MicrobitSimPane extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('message', this._onMessage);
         window.removeEventListener('bw-microbit-flash', this._onFlashEvent);
+        // Clear any lingering block highlight when the pane goes away.
+        this._dbg.stop();
     }
 
     _onFlashEvent (e) {
-        const code = e.detail && e.detail.code;
+        const detail = (e && e.detail) || {};
+        const code = detail.code;
         if (!code) return;
+        const debug = detail.debug ? {positions: detail.positions || []} : null;
         if (this.state.simReady) {
-            this._flash(code);
+            this._flash(code, debug);
         } else {
             this._pendingCode = code;
+            this._pendingDebug = debug;
         }
     }
 
@@ -76,20 +123,27 @@ class MicrobitSimPane extends React.Component {
         case 'ready':
             this.setState({simReady: true});
             if (this._pendingCode) {
-                this._flash(this._pendingCode);
+                this._flash(this._pendingCode, this._pendingDebug);
                 this._pendingCode = null;
+                this._pendingDebug = null;
             }
             break;
         case 'request_flash':
             // User clicked the play button inside the sim
             if (this._pendingCode) {
-                this._flash(this._pendingCode);
+                this._flash(this._pendingCode, this._pendingDebug);
                 this._pendingCode = null;
+                this._pendingDebug = null;
             }
             break;
         case 'serial_output':
             if (typeof e.data.data === 'string') {
-                this.setState(s => ({serial: s.serial + e.data.data}));
+                // Route through the debug controller: it splits RS-prefixed
+                // markers out (driving the highlight/halt state) and returns
+                // only the real program output. Outside a debug run it is a
+                // passthrough, so this is unconditional.
+                const text = this._dbg.feedSerial(e.data.data);
+                if (text) this.setState(s => ({serial: s.serial + text}));
             }
             break;
         case 'state_change':
@@ -98,19 +152,30 @@ class MicrobitSimPane extends React.Component {
         }
     }
 
-    _flash (code) {
+    _flash (code, debug) {
         const iframe = this._iframeRef.current;
         if (!iframe || !iframe.contentWindow) return;
+        // A new flash ends any prior debug run (clears the old highlight).
+        this._dbg.stop();
+        if (debug) this._dbg.begin(debug.positions);
         const encoder = new TextEncoder();
         const filesystem = {'main.py': encoder.encode(code)};
         iframe.contentWindow.postMessage({kind: 'flash', filesystem}, '*');
         this.setState({running: true, serial: ''});
     }
 
+    /** Write a string to the program's serial-IN (the debug resume bytes). */
+    _serialIn (text) {
+        const iframe = this._iframeRef.current;
+        if (!iframe || !iframe.contentWindow) return;
+        iframe.contentWindow.postMessage({kind: 'serial_input', data: String(text)}, '*');
+    }
+
     _stop () {
         const iframe = this._iframeRef.current;
         if (!iframe || !iframe.contentWindow) return;
         iframe.contentWindow.postMessage({kind: 'stop'}, '*');
+        this._dbg.stop();
         this.setState({running: false});
     }
 
@@ -118,11 +183,13 @@ class MicrobitSimPane extends React.Component {
         const iframe = this._iframeRef.current;
         if (!iframe || !iframe.contentWindow) return;
         iframe.contentWindow.postMessage({kind: 'reset'}, '*');
+        this._dbg.stop();
         this.setState({serial: '', running: true});
     }
 
     render () {
         const t = L10N[pickLocale()];
+        const {dbg} = this.state;
         const btn = {
             padding: '4px 12px', borderRadius: 6, border: 'none',
             cursor: 'pointer', fontWeight: 600, fontSize: 12, color: '#fff'
@@ -144,6 +211,36 @@ class MicrobitSimPane extends React.Component {
                         sandbox="allow-scripts allow-same-origin"
                     />
                 </div>
+                {/* Debug controls — only while a debug run is active. Step and
+                    Continue are enabled only when the program is HALTED at a
+                    breakpoint; otherwise the program is free-running and there
+                    is nothing to resume. Block-level only, matching
+                    capabilities().steps = ['block']. */}
+                {dbg.active ? (
+                    <div style={{display: 'flex', gap: 8, padding: '6px 8px', alignItems: 'center',
+                        flexShrink: 0, background: '#fef3c7', borderTop: '1px solid #fcd34d'}}
+                    data-testid="bw-microbit-debug-bar">
+                        <button type="button" onClick={() => this._dbg.step()}
+                            disabled={!dbg.halted}
+                            style={{...btn, background: dbg.halted ? '#7c3aed' : '#c4b5fd'}}
+                            data-testid="bw-microbit-debug-step">
+                            {t.step}
+                        </button>
+                        <button type="button" onClick={() => this._dbg.cont()}
+                            disabled={!dbg.halted}
+                            style={{...btn, background: dbg.halted ? '#16a34a' : '#86efac'}}
+                            data-testid="bw-microbit-debug-continue">
+                            {t.continue}
+                        </button>
+                        <span style={{fontSize: 11, fontWeight: 700,
+                            color: dbg.halted ? '#b45309' : '#166534'}}
+                        data-testid="bw-microbit-debug-status">
+                            {dbg.halted
+                                ? `${t.pausedAt} #${dbg.index}`
+                                : t.debugging}
+                        </span>
+                    </div>
+                ) : null}
                 {/* Controls */}
                 <div style={{display: 'flex', gap: 8, padding: '6px 8px', alignItems: 'center', flexShrink: 0}}>
                     <button type="button" onClick={() => this._stop()}
@@ -183,4 +280,10 @@ class MicrobitSimPane extends React.Component {
     }
 }
 
-export default MicrobitSimPane;
+MicrobitSimPane.propTypes = {
+    vm: PropTypes.shape({runtime: PropTypes.object})
+};
+
+export default connect(state => ({
+    vm: state.scratchGui.vm
+}))(MicrobitSimPane);
