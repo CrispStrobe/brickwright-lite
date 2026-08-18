@@ -114,6 +114,16 @@ module.exports = makeExt(`// Name: Devices
           { opcode: 'clearneopixels', blockType: Scratch.BlockType.COMMAND,
             hideFromPalette: is12T || isAVR || isPico,
             text: 'clear neopixels on [STRIP]', arguments: str('STRIP', 'strip1') },
+          // 8x8 dot matrix: the micro:bit-style paintable grid. IMAGE is a
+          // 64-char '0'..'3' brightness string (row-major, top-down/left);
+          // the led8x8 argument renders the FieldLed8x8 editor grid.
+          { opcode: 'showimage', blockType: Scratch.BlockType.COMMAND,
+            text: 'show image [IMAGE] on [MATRIX]',
+            arguments: {
+              IMAGE: { type: 'led8x8',
+                defaultValue: '03300330' + '33333333' + '33333333' + '33333333' +
+                              '03333330' + '00333300' + '00033000' + '00000000' },
+              ...str('MATRIX', 'matrix1') } },
 
           // ---- Commands: stubs (hidden from palette) ----
           { opcode: 'showdigit', blockType: Scratch.BlockType.COMMAND,
@@ -226,6 +236,7 @@ module.exports = makeExt(`// Name: Devices
     lcdclear(a) { const b = this._board(); if (b && b.setDeviceControl) b.setDeviceControl(a.DISPLAY, 'clear', 1); }
     setneopixel(a) { const b = this._board(); if (b && b.setDeviceControl) b.setDeviceControl(a.STRIP, 'neopixel', [num(a.INDEX), num(a.R), num(a.G), num(a.B)]); }
     clearneopixels(a) { const b = this._board(); if (b && b.setDeviceControl) b.setDeviceControl(a.STRIP, 'clearNeopixels', 1); }
+    showimage(a) { const b = this._board(); if (b && b.setDeviceControl) b.setDeviceControl(a.MATRIX, 'image', String(a.IMAGE)); }
 
     // ---- Commands (stubs — methods exist so saved projects load) ----
     showdigit() {}

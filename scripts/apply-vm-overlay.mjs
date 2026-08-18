@@ -66,6 +66,36 @@ if (rt.includes('// Brickwright: propagate color changes')) {
     process.exit(1);
 }
 
+// A2 8x8 brightness matrix: add a `led8x8` argument type that plugs the
+// FieldLed8x8 grid (registered in the GUI at lazy-scratch-blocks load) into a
+// command block via a `led8x8` shadow — the exact parallel of the built-in
+// MATRIX -> `matrix` shadow micro:bit uses. One map entry, too small to carry
+// the whole runtime.js as an overlay, so patched like the fixes above.
+const led8x8Anchor = `    map[ArgumentType.MATRIX] = {
+        shadow: {
+            type: 'matrix',
+            fieldName: 'MATRIX'
+        }
+    };`;
+const led8x8Patched = led8x8Anchor + `
+    // Brickwright: the A2 8x8 brightness grid (FieldLed8x8).
+    map['led8x8'] = {
+        shadow: {
+            type: 'led8x8',
+            fieldName: 'MATRIX'
+        }
+    };`;
+if (rt.includes("map['led8x8']")) {
+    console.log('  runtime.js led8x8 argument-type patch already applied');
+} else if (rt.includes(led8x8Anchor)) {
+    rt = rt.replace(led8x8Anchor, led8x8Patched);
+    writeFileSync(runtimePath, rt);
+    console.log('  patched runtime.js (led8x8 argument type)');
+} else {
+    console.error('  ! runtime.js MATRIX argument-type anchor not found — base VM version changed?');
+    process.exit(1);
+}
+
 // Brickwright UI improvement (parity with the Scratch Foundation / Xcratch
 // editor): accept full-width (double-byte) digits and signs as numbers, so
 // "１２３" typed in a number field is used as 123. One-line change to
