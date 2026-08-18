@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Import the data-model modules (no DOM dependency)
 import { ControllerPanel, WIDGET_TYPES } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
@@ -507,5 +512,187 @@ describe('ControllerPanel — dial widget', () => {
     assert.equal(calls[0].value, 0.5); // 180/360
 
     binding.dispose();
+  });
+});
+
+// ─── Project persistence round-trip ──────────────────────────────────────────
+// Simulates the gui.jsx save/restore path: panel → toJSON → stc.controller →
+// project load → fromJSON → replace widgets in a live panel.
+
+describe('ControllerPanel — project persistence round-trip', () => {
+
+  /** The same restore logic gui.jsx uses on PROJECT_LOADED. */
+  function restoreIntoPanel(livePanel, controllerData) {
+    const restored = ControllerPanel.fromJSON(controllerData);
+    for (const name of livePanel.getWidgetNames()) {
+      livePanel.removeWidget(name);
+    }
+    for (const w of restored.getWidgets()) {
+      const added = livePanel.addWidget(w.name, w.type, w.config, w.layout);
+      if (w.binding) added.binding = { ...w.binding };
+    }
+  }
+
+  it('save → load restores all widget types with bindings', () => {
+    // Build a panel with one of each widget type, each bound to a part
+    const original = new ControllerPanel();
+    original.addWidget('slider1', 'slider', { min: 0, max: 255, value: 128 }, { x: 10, y: 20 });
+    original.bindToPart('slider1', 'pot1');
+    original.addWidget('btn1', 'button', { toggle: true }, { x: 50, y: 20 });
+    original.bindToPart('btn1', 'led1');
+    original.addWidget('dpad1', 'dpad', {}, { x: 10, y: 80 });
+    original.bindToPart('dpad1', 'switch1', 'x');
+    original.addWidget('dial1', 'dial', { min: 0, max: 360 }, { x: 50, y: 80 });
+    original.bindToPart('dial1', 'pot2');
+    original.addWidget('joy1', 'joystick', {}, { x: 90, y: 50 });
+    original.bindToPart('joy1', 'pot3', 'y');
+
+    // Simulate project save: toJSON → stored in stc.controller
+    const savedData = original.toJSON();
+
+    // Simulate project load: restore into a fresh live panel
+    const livePanel = new ControllerPanel();
+    // Pre-populate with a stale widget to verify it gets replaced
+    livePanel.addWidget('stale', 'button');
+    restoreIntoPanel(livePanel, savedData);
+
+    // Stale widget should be gone
+    assert.equal(livePanel.getWidget('stale'), null);
+
+    // All original widgets present with correct types and bindings
+    assert.deepEqual(livePanel.getWidgetNames(), ['slider1', 'btn1', 'dpad1', 'dial1', 'joy1']);
+
+    const s = livePanel.getWidget('slider1');
+    assert.equal(s.type, 'slider');
+    assert.equal(s.config.max, 255);
+    assert.equal(s.layout.x, 10);
+    assert.deepEqual(s.binding, { target: 'part', partId: 'pot1', param: null });
+
+    const b = livePanel.getWidget('btn1');
+    assert.equal(b.type, 'button');
+    assert.equal(b.config.toggle, true);
+    assert.deepEqual(b.binding, { target: 'part', partId: 'led1', param: null });
+
+    const d = livePanel.getWidget('dpad1');
+    assert.equal(d.type, 'dpad');
+    assert.deepEqual(d.binding, { target: 'part', partId: 'switch1', param: 'x' });
+
+    const dl = livePanel.getWidget('dial1');
+    assert.equal(dl.type, 'dial');
+    assert.equal(dl.config.max, 360);
+
+    const j = livePanel.getWidget('joy1');
+    assert.equal(j.type, 'joystick');
+    assert.deepEqual(j.binding, { target: 'part', partId: 'pot3', param: 'y' });
+  });
+
+  it('restored panel bindings drive board.setControl', () => {
+    // Build, serialize, restore
+    const original = new ControllerPanel();
+    original.addWidget('slider1', 'slider', { min: 0, max: 100 });
+    original.bindToPart('slider1', 'pot1');
+    const savedData = original.toJSON();
+
+    const livePanel = new ControllerPanel();
+    restoreIntoPanel(livePanel, savedData);
+
+    // Bind to a mock board and verify inputs still drive it
+    const calls = [];
+    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const binding = bindPanelToBoard(livePanel, mockBoard);
+
+    livePanel.setSliderInput('slider1', 50);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].partId, 'pot1');
+    assert.equal(calls[0].value, 0.5); // 50/100 normalized
+
+    binding.dispose();
+  });
+
+  it('double restore does not duplicate widgets', () => {
+    const original = new ControllerPanel();
+    original.addWidget('btn1', 'button');
+    const savedData = original.toJSON();
+
+    const livePanel = new ControllerPanel();
+    restoreIntoPanel(livePanel, savedData);
+    restoreIntoPanel(livePanel, savedData); // restore again
+
+    assert.deepEqual(livePanel.getWidgetNames(), ['btn1']);
+  });
+
+  it('corrupt/empty data does not crash fromJSON', () => {
+    const livePanel = new ControllerPanel();
+    livePanel.addWidget('safe', 'button');
+
+    // fromJSON with bad data should throw; gui.jsx catches these
+    assert.throws(() => ControllerPanel.fromJSON(null));
+    assert.throws(() => ControllerPanel.fromJSON({}));
+
+    // Panel should be untouched
+    assert.deepEqual(livePanel.getWidgetNames(), ['safe']);
+  });
+});
+
+// ─── Demo fixture: slider + toggle-button bound to parts ─────────────────────
+
+describe('ControllerPanel — demo fixture (brightness slider + on/off button)', () => {
+
+  const demoData = JSON.parse(
+    readFileSync(join(__dirname, 'fixtures', 'controller-demo-panel.json'), 'utf8')
+  );
+
+  it('loads from the fixture JSON', () => {
+    const panel = ControllerPanel.fromJSON(demoData);
+    assert.deepEqual(panel.getWidgetNames(), ['brightness', 'onoff']);
+    assert.equal(panel.getWidget('brightness').type, 'slider');
+    assert.equal(panel.getWidget('onoff').type, 'button');
+    assert.equal(panel.getWidget('onoff').config.toggle, true);
+  });
+
+  it('slider drives pot1, button drives led1 via board.setControl', () => {
+    const panel = ControllerPanel.fromJSON(demoData);
+    const calls = [];
+    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    // Slide brightness to 50% (128 out of 255)
+    panel.setSliderInput('brightness', 128);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].partId, 'pot1');
+    assert.ok(Math.abs(calls[0].value - 128 / 255) < 0.01);
+
+    // Toggle the button on
+    panel.setButtonInput('onoff', true);
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1].partId, 'led1');
+    assert.equal(calls[1].value, 1);
+
+    // Toggle it off (press again to toggle)
+    panel.setButtonInput('onoff', true);
+    assert.equal(calls.length, 3);
+    assert.equal(calls[2].value, 0);
+
+    binding.dispose();
+  });
+
+  it('round-trips through save → load preserving bindings', () => {
+    const panel = ControllerPanel.fromJSON(demoData);
+    // Modify a value
+    panel.setSliderInput('brightness', 200);
+
+    // Save → load
+    const saved = panel.toJSON();
+    const restored = ControllerPanel.fromJSON(saved);
+
+    assert.deepEqual(restored.getWidgetNames(), ['brightness', 'onoff']);
+    assert.deepEqual(
+      restored.getWidget('brightness').binding,
+      { target: 'part', partId: 'pot1', param: null }
+    );
+    assert.deepEqual(
+      restored.getWidget('onoff').binding,
+      { target: 'part', partId: 'led1', param: null }
+    );
   });
 });
