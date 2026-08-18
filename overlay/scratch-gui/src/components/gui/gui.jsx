@@ -540,14 +540,18 @@ const GUIComponent = props => {
                                 />
                             ) : null}
                             {/* StageWrapper always renders so its header (view
-                                toggle buttons) stays reachable in every mode. */}
-                            <StageWrapper
-                                isFullScreen={isFullScreen}
-                                isRendererSupported={isRendererSupported}
-                                isRtl={isRtl}
-                                stageSize={stageSize}
-                                vm={vm}
-                            />
+                                toggle buttons) stays reachable in every mode.
+                                In controller mode the stage canvas is hidden
+                                so the panel owns the full column. */}
+                            <div style={dockMode === 'controller' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0} : undefined}>
+                                <StageWrapper
+                                    isFullScreen={isFullScreen}
+                                    isRendererSupported={isRendererSupported}
+                                    isRtl={isRtl}
+                                    stageSize={stageSize}
+                                    vm={vm}
+                                />
+                            </div>
                             {dockMode === 'microbit' ? (
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'micro:bit-Simulator wird geladen…' : 'Loading micro:bit simulator…'}</div>
