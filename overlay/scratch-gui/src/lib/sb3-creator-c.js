@@ -169,9 +169,21 @@ function readMarkers (source) {
                     rows: [kp[2], kp[3], kp[4], kp[5]].map(at),
                     cols: [kp[6], kp[7], kp[8], kp[9]].map(at) });
             }
+            // `part <name> sevenseg8 P<n> Pa.x Pb.y Pc.z [anode]`
+            const ss = kp ? null : rest.match(/^(\w+)\s+sevenseg8\s+P(\d)\s+(\S+)\s+(\S+)\s+(\S+)(\s+anode)?/i);
+            if (ss) {
+                const at = (t) => { const m8 = t.match(/^P(\d)\.(\d)$/i); return m8 ? { port: +m8[1], bit: +m8[2] } : { where: t.toUpperCase() }; };
+                h.parts.push({ name: ss[1], type: 'sevenseg8', segPort: +ss[2],
+                    selPins: [ss[3], ss[4], ss[5]].map(at), commonAnode: !!ss[6] });
+            }
+            // `part <name> ledbank8 P<n> [active-low]`
+            const lb = (kp || ss) ? null : rest.match(/^(\w+)\s+ledbank8\s+P(\d)(\s+active-low)?/i);
+            if (lb) {
+                h.parts.push({ name: lb[1], type: 'ledbank8', ledPort: +lb[2], activeLow: !!lb[3] });
+            }
             // `part <name> <type> <data> <clock> <latch> [active-low]` — pin
             // spellings are the device's own (P1.0 on 8051, GP25/PA0 elsewhere).
-            const p = kp ? null : rest.match(/^(\w+)\s+(\w+)\s+(\S+)\s+(\S+)\s+(\S+)(\s+active-low)?/);
+            const p = (kp || ss || lb) ? null : rest.match(/^(\w+)\s+(\w+)\s+(\S+)\s+(\S+)\s+(\S+)(\s+active-low)?/);
             if (p) {
                 const at = (s) => { const m8 = s.match(/^P(\d)\.(\d)$/i); return m8 ? { port: +m8[1], bit: +m8[2] } : { where: s.toUpperCase() }; };
                 h.parts.push({ name: p[1], type: p[2], data: at(p[3]), clock: at(p[4]), latch: at(p[5]), activeLow: !!p[6] });
@@ -200,8 +212,12 @@ function readMarkers (source) {
             const p = rest.match(/^(\w+)\s+("(?:[^"\\]|\\.)*")\s+warp=(\d)/);
             if (p) h.procs.set(p[1], { proccode: str(p[2]), warp: p[3] === '1' });
         } else if (kind === 'script') {
-            const s = rest.match(/^(\w+)\s+(\d+)\s+(stage|sprite\s+("(?:[^"\\]|\\.)*"))/);
-            if (s) h.scripts.set(s[1], { index: +s[2], sprite: s[4] ? str(s[4]) : null });
+            // Optional trailer `hat pin <name> <edge>` / `hat key <n> <edge>`
+            // (emitter 2026-08-18): without it every hat task degraded to
+            // `WHEN flag clicked:` on the way back.
+            const s = rest.match(/^(\w+)\s+(\d+)\s+(stage|sprite\s+("(?:[^"\\]|\\.)*"))(?:\s+hat\s+(pin|key)\s+(\S+)\s+(pressed|released))?/);
+            if (s) h.scripts.set(s[1], { index: +s[2], sprite: s[4] ? str(s[4]) : null,
+                hat: s[5] ? { kind: s[5], what: s[6], edge: s[7] } : null });
         } else if (kind === 'yield') {
             // `yield <task> <state> <percent-encoded block id> <kind>` — the map from a
             // Level 1 position to the block the debugger should point at. Nothing on the
@@ -1288,6 +1304,35 @@ export default function cToPseudocode (source, opts = {}) {
         // Reporters return a text value; statements return { stmt }.
         const MOTOR_DIRS = ['forward', 'reverse', 'brake', 'coast'];
         const a = (n) => args[n] ? args[n].text : '0';
+
+        // SEVENSEG8 / LEDBANK8: `bw_<part>_<verb>(...)` → the display/LED
+        // verbs — guarded by the part actually being declared in the header,
+        // so a helper that merely LOOKS like one (bw_lcd_clear and friends
+        // are matched by exact name below) is left alone.
+        {
+            const aa = (n) => {
+                let t = args[n] ? args[n].text : '0';
+                t = t.replace(/^\(unsigned char\)\s*/, '');
+                if (/^\(.*\)$/.test(t)) t = t.slice(1, -1);
+                return t;
+            };
+            const sv = name.match(/^bw_(\w+?)_(show_number|show_digit|set_segments|clear|on|off|set|only)$/);
+            const hp = sv && hdrParts.find(pp => pp.name === sv[1]);
+            if (sv && hp && hp.type === 'sevenseg8') {
+                const n = sv[1];
+                if (sv[2] === 'show_number') return { text: '0', level: 99, stmt: `show number ${aa(0)} on ${n}` };
+                if (sv[2] === 'show_digit') return { text: '0', level: 99, stmt: `show digit ${aa(0)} = value ${aa(1)} on ${n}` };
+                if (sv[2] === 'set_segments') return { text: '0', level: 99, stmt: `set digit ${aa(0)} to segments ${aa(1)} on ${n}` };
+                if (sv[2] === 'clear') return { text: '0', level: 99, stmt: `clear ${n}` };
+            }
+            if (sv && hp && hp.type === 'ledbank8') {
+                const n = sv[1];
+                if (sv[2] === 'on') return { text: '0', level: 99, stmt: `turn on led ${aa(0)} on ${n}` };
+                if (sv[2] === 'off') return { text: '0', level: 99, stmt: `turn off led ${aa(0)} on ${n}` };
+                if (sv[2] === 'set') return { text: '0', level: 99, stmt: `set leds to ${aa(0)} on ${n}` };
+                if (sv[2] === 'only') return { text: '0', level: 99, stmt: `light only led ${aa(0)} on ${n}` };
+            }
+        }
         switch (name) {
             // Servo
             case 'bw_servo_set': return { text: '0', level: 99, stmt: `set ${a(0)} angle to ${a(1)}` };
@@ -1582,10 +1627,18 @@ export default function cToPseudocode (source, opts = {}) {
     // `switch (task_state) { case 0: … }` Duff's device; this walks the interior
     // structurally, matching each shape and recovering the original pseudocode.
 
-    function taskLines (taskTokens, funcName, depth) {
+    function taskLines (taskTokens, funcName, depth, hat) {
         const tc = new Cursor(taskTokens);
         // Enter the function body: { switch (…state) { case 0: <stmts> } …end… }
         tc.expect('{');
+        if (hat) {
+            // A hat task carries an edge-test preamble before the switch
+            // (`now = …; fired = …; _prev = now;`) and its case 0 is the
+            // test (`if (!fired) return; state = 1;`) — the script body
+            // starts at case 1. All of it was reconstructed from the hat
+            // marker, so skip to the body rather than translating it.
+            while (!tc.is('switch') && tc.peek().t !== 'eof') tc.next();
+        }
         if (!tc.eat('switch')) { warn(`${funcName}: expected switch in task`); return []; }
         tc.skip('(', ')');     // skip (task_state)
         tc.expect('{');
@@ -1594,6 +1647,11 @@ export default function cToPseudocode (source, opts = {}) {
             warn(`${funcName}: expected case 0 in task`); return [];
         }
         tc.next(); tc.next(); tc.expect(':');   // eat `case 0:`
+        if (hat) {
+            // Skip the edge test up to `case 1:`, then eat that label too.
+            while (!(tc.is('case') && tc.peek(1).v === '1') && tc.peek().t !== 'eof') tc.next();
+            if (tc.is('case')) { tc.next(); tc.next(); tc.expect(':'); }
+        }
         const lines = taskBody(tc, funcName, depth);
         return lines;
     }
@@ -1904,7 +1962,10 @@ export default function cToPseudocode (source, opts = {}) {
                     continue;
                 }
             }
-            const DRIVER_TABLES = /\bfont5x7\b|\b_neo_buf\b|\bbw_cube_frame\b/;
+            // Part-runtime state the emitter regenerates from the PART
+            // declaration alone — the 7-seg font + frame buffers and the
+            // matrix bit-plane buffers/row table are not information loss.
+            const DRIVER_TABLES = /\bfont5x7\b|\b_neo_buf\b|\bbw_cube_frame\b|\bbw_7seg_font\b|\bbw_\w+_fb\b|\bbw_scr_\w+\b/;
             if (/struct|union|enum|typedef|\*|\[/.test(declSpan) && !SFRS.test(declSpan) && !DRIVER_TABLES.test(declSpan)) {
                 const brief = tokens.slice(start, Math.min(cur.i, start + 8)).map(t => t.v).join(' ');
                 warn(`top-level declaration dropped (no block equivalent): ${brief}${cur.i - start > 8 ? ' …' : ''}`);
@@ -1945,6 +2006,14 @@ export default function cToPseudocode (source, opts = {}) {
             const at = (x) => x.where || `P${x.port}.${x.bit}`;
             if (pt.type === 'keypad4x4') {
                 out.push(`PART ${pt.name} = KEYPAD4X4 ROWS ${pt.rows.map(at).join(' ')} COLS ${pt.cols.map(at).join(' ')}`);
+                continue;
+            }
+            if (pt.type === 'sevenseg8') {
+                out.push(`PART ${pt.name} = SEVENSEG8 SEGMENTS P${pt.segPort} SELECT ${pt.selPins.map(at).join(' ')}${pt.commonAnode ? ' COMMON ANODE' : ''}`);
+                continue;
+            }
+            if (pt.type === 'ledbank8') {
+                out.push(`PART ${pt.name} = LEDBANK8 ON P${pt.ledPort}${pt.activeLow ? ' ACTIVE LOW' : ''}`);
                 continue;
             }
             out.push(`PART ${pt.name} = ${pt.type.toUpperCase()} data ${at(pt.data)} clock ${at(pt.clock)} latch ${at(pt.latch)}${pt.activeLow ? ' ACTIVE LOW' : ''}`);
@@ -2172,9 +2241,12 @@ export default function cToPseudocode (source, opts = {}) {
         const hatComments = commentsFor(f.name);
         out.push('');
         for (const c of hatComments) out.push(c);
-        out.push('WHEN flag clicked:');
+        const hat = markers && markers.scripts.get(f.name) && markers.scripts.get(f.name).hat;
+        if (hat && hat.kind === 'pin') out.push(`WHEN ${hat.what} ${hat.edge}:`);
+        else if (hat && hat.kind === 'key') out.push(`WHEN key ${hat.what} ${hat.edge}:`);
+        else out.push('WHEN flag clicked:');
         if (isTask) {
-            const body = taskLines(tokens.slice(f.from, f.to), f.name, 1);
+            const body = taskLines(tokens.slice(f.from, f.to), f.name, 1, hat);
             out.push(...(body.length ? body : ['  stop']));
         } else {
             const body = linesFor(f, 1).filter((l) => l.trim() !== 'stop');

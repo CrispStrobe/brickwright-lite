@@ -959,8 +959,8 @@ class SB3Creator {
             const ch = s[i];
             if (ch === '"') { inStr = !inStr; continue; }
             if (inStr) continue;
-            if (ch === '(') { depth++; continue; }
-            if (ch === ')') { depth--; continue; }
+            if (ch === '(' || ch === '[') { depth++; continue; }
+            if (ch === ')' || ch === ']') { depth--; continue; }
             if (depth !== 0) continue;
             for (const op of ops) {
                 const seg = s.substr(i, op.length);
@@ -1406,6 +1406,16 @@ class SB3Creator {
         return cfg.parts.find((p) => p.name.toLowerCase() === lower) || null;
     }
 
+    // The one KEYPAD4X4, for the phrases that do not name it (`a key is
+    // pressed`, `key N is pressed`, `WHEN key N pressed`). Mirrors the
+    // oracle's sole_keypad (stc-compiler dec1f17): every A2-class board has
+    // exactly one keypad, so naming it would be noise.
+    stcSoleKeypad() {
+        const cfg = this.project && this.project.stc;
+        const pads = ((cfg && cfg.parts) || []).filter((p) => p.type === 'keypad4x4');
+        return pads.length === 1 ? pads[0] : null;
+    }
+
     // Whether the program declares any MATRIX8X8 PART. A matrix refreshes
     // itself in the Timer-0 ISR, so its mere presence forces the cooperative
     // scheduler path (gotcha #1 of the parity mirror — see generateC).
@@ -1430,6 +1440,188 @@ class SB3Creator {
         if (!cfg || !cfg.parts) return null;
         const screens = cfg.parts.filter((p) => p.type === 'matrix8x8');
         return screens.length === 1 ? screens[0] : null;
+    }
+
+    // The declared SEVENSEG8 / LEDBANK8 parts, for the C emitter (mirror of
+    // stc-compiler 05744c9). 8051 family only, like the matrix.
+    _cSevenSegParts() {
+        if (this._core !== '8051') return [];
+        const cfg = this.project && this.project.stc;
+        return ((cfg && cfg.parts) || []).filter((p) => p.type === 'sevenseg8');
+    }
+
+    _cLedBankParts() {
+        if (this._core !== '8051') return [];
+        const cfg = this.project && this.project.stc;
+        return ((cfg && cfg.parts) || []).filter((p) => p.type === 'ledbank8');
+    }
+
+    _stcHasSevenSeg() {
+        const cfg = this.project && this.project.stc;
+        return !!(cfg && cfg.parts && cfg.parts.some((p) => p.type === 'sevenseg8'));
+    }
+
+    _stcHasLedBank() {
+        const cfg = this.project && this.project.stc;
+        return !!(cfg && cfg.parts && cfg.parts.some((p) => p.type === 'ledbank8'));
+    }
+
+    _stcSevenSeg(name) {
+        const p = this.stcPart(name);
+        return p && p.type === 'sevenseg8' ? p : null;
+    }
+
+    _stcLedBank(name) {
+        const p = this.stcPart(name);
+        return p && p.type === 'ledbank8' ? p : null;
+    }
+
+    // SEVENSEG8 state: the shared 0-F font (once), then per display the
+    // 8-byte frame buffer + scan cursor. Verbatim mirror of
+    // Stc8051Target.runtime() in stc_pseudocode.py (05744c9).
+    _cSevenSegState() {
+        const parts = this._cSevenSegParts();
+        if (!parts.length) return [];
+        const out = [
+            '/* 7-segment font: 0-9, A-F. Common-cathode segment encoding:',
+            ' *   bit 0 = a (top), 1 = b (upper-right), 2 = c (lower-right),',
+            ' *   3 = d (bottom), 4 = e (lower-left), 5 = f (upper-left),',
+            ' *   6 = g (middle), 7 = dp (decimal point). */',
+            'static const __code unsigned char bw_7seg_font[16] = {',
+            '    0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07,',
+            '    0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71',
+            '};',
+            ''
+        ];
+        for (const p of parts) {
+            out.push(
+                `/* ${p.name}: 8-digit frame buffer and scan cursor. */`,
+                `static unsigned char bw_${p.name}_fb[8];`,
+                `static unsigned char bw_${p.name}_cur;`,
+                '');
+        }
+        return out;
+    }
+
+    _cLedBankState() {
+        const parts = this._cLedBankParts();
+        const out = [];
+        for (const p of parts) {
+            out.push(
+                `/* ${p.name}: LED shadow byte — the ISR is the sole port writer. */`,
+                `static unsigned char bw_${p.name}_shadow;`,
+                '');
+        }
+        return out;
+    }
+
+    // The per-tick digit advance: blank during switch, set the 138 address,
+    // then the new digit's segments (inverted for common anode).
+    _cSevenSegScan() {
+        const out = [];
+        for (const ss of this._cSevenSegParts()) {
+            const [a, b, c] = ss.selPins;
+            const seg = `P${ss.segPort}`;
+            out.push(
+                `    /* ${ss.name}: advance one digit */`,
+                `    ${seg} = 0x00;           /* blank during switch */`,
+                `    P${a.port}_${a.bit} = bw_${ss.name}_cur & 0x01 ? 1 : 0;`,
+                `    P${b.port}_${b.bit} = bw_${ss.name}_cur & 0x02 ? 1 : 0;`,
+                `    P${c.port}_${c.bit} = bw_${ss.name}_cur & 0x04 ? 1 : 0;`,
+                ss.commonAnode
+                    ? `    ${seg} = (unsigned char)~bw_${ss.name}_fb[bw_${ss.name}_cur];`
+                    : `    ${seg} = bw_${ss.name}_fb[bw_${ss.name}_cur];`,
+                `    bw_${ss.name}_cur = (bw_${ss.name}_cur + 1) & 0x07;`);
+        }
+        return out;
+    }
+
+    _cLedBankScan() {
+        const out = [];
+        for (const lb of this._cLedBankParts()) {
+            out.push(lb.activeLow
+                ? `    P${lb.ledPort} = (unsigned char)~bw_${lb.name}_shadow;  /* LEDs active low */`
+                : `    P${lb.ledPort} = bw_${lb.name}_shadow;`);
+        }
+        return out;
+    }
+
+    _cSevenSegHelpers() {
+        const out = [];
+        for (const p of this._cSevenSegParts()) {
+            const n = p.name;
+            out.push(
+                `/* ${n}: show a decimal number right-aligned across 8 digits. */`,
+                `static void bw_${n}_show_number(int n)`,
+                '{',
+                '    unsigned char i, neg = 0;',
+                '    unsigned int u;',
+                `    for (i = 0; i < 8; i++) bw_${n}_fb[i] = 0x00;`,
+                '    if (n < 0) { neg = 1; u = (unsigned int)(-n); }',
+                '    else       { u = (unsigned int)n; }',
+                '    i = 7;',
+                '    do {',
+                `        bw_${n}_fb[i] = bw_7seg_font[u % 10];`,
+                '        u /= 10;',
+                '        if (i == 0) break;',
+                '        i--;',
+                '    } while (u);',
+                '    if (neg && i > 0)',
+                `        bw_${n}_fb[i - 1] = 0x40;  /* minus = segment g */`,
+                '}',
+                '',
+                `static void bw_${n}_show_digit(unsigned char d, unsigned char v)`,
+                '{',
+                '    if (d > 7) return;',
+                `    bw_${n}_fb[d] = bw_7seg_font[v & 0x0F];`,
+                '}',
+                '',
+                `static void bw_${n}_set_segments(unsigned char d, unsigned char segs)`,
+                '{',
+                '    if (d > 7) return;',
+                `    bw_${n}_fb[d] = segs;`,
+                '}',
+                '',
+                `static void bw_${n}_clear(void)`,
+                '{',
+                '    unsigned char i;',
+                `    for (i = 0; i < 8; i++) bw_${n}_fb[i] = 0x00;`,
+                '}',
+                '');
+        }
+        return out;
+    }
+
+    _cLedBankHelpers() {
+        const out = [];
+        for (const p of this._cLedBankParts()) {
+            const n = p.name;
+            out.push(
+                `/* ${n}: LED helpers — writes go through the shadow byte. */`,
+                `static void bw_${n}_on(unsigned char n)`,
+                '{',
+                '    if (n > 7) return;',
+                `    bw_${n}_shadow |= (unsigned char)(1 << n);`,
+                '}',
+                '',
+                `static void bw_${n}_off(unsigned char n)`,
+                '{',
+                '    if (n > 7) return;',
+                `    bw_${n}_shadow &= (unsigned char)~(1 << n);`,
+                '}',
+                '',
+                `static void bw_${n}_set(unsigned char pattern)`,
+                '{',
+                `    bw_${n}_shadow = pattern;`,
+                '}',
+                '',
+                `static void bw_${n}_only(unsigned char n)`,
+                '{',
+                `    bw_${n}_shadow = (n > 7) ? 0 : (unsigned char)(1 << n);`,
+                '}',
+                '');
+        }
+        return out;
     }
 
     // The declared MATRIX8X8 parts, for the C emitter. 8051 family only.
@@ -1505,6 +1697,7 @@ class SB3Creator {
                 ' * port; mainline only ever writes this RAM. */',
                 `static unsigned char bw_scr_${n}[8 * MATRIX_PLANES];`,
                 `static unsigned char bw_scr_${n}_scan;                 /* row cursor 0..7 */`,
+                `static unsigned char bw_scr_${n}_phase;                /* BCM phase 0..MATRIX_LEVELS-2 */`,
                 `static unsigned char bw_scr_${n}_dim = MATRIX_LEVELS - 1;  /* global brightness */`,
                 '/* Row select, active-high, Q7 = top: row y is 595 output Q(7-y)',
                 ' * == bit (0x80 >> y). A table so the ISR shifts no variable. */',
@@ -1543,16 +1736,38 @@ class SB3Creator {
                 `            ${clockSfr} = 1; ${clockSfr} = 0;`,
                 '        }',
                 `        ${latchSfr} = 1; ${latchSfr} = 0;              /* transfer to the 595 outputs */`,
-                '        /* Threshold render: lit iff level != 0 == OR of the bit-planes.',
-                '         * BCM SEAM -- a later ISR-only change swaps this OR for a',
-                `         * bw_scr_${n}_phase-selected plane with weighted dwell; the 2-bit`,
-                '         * levels are already in the buffer, so no drawing verb changes. */',
-                `        if (bw_scr_${n}_dim == 0) bw_lit = 0;`,
-                `        else bw_lit = (unsigned char)(bw_scr_${n}[bw_scr_${n}_scan]`,
-                `                                    | bw_scr_${n}[bw_scr_${n}_scan + 8]);`,
+                '        /* Grayscale by bit-plane phase render (BCM). Over a cycle of',
+                '         * MATRIX_LEVELS-1 phases a pixel of level L is lit in L of them,',
+                '         * so its duty is L/(MATRIX_LEVELS-1): 0, 1/3, 2/3, 1 for the 4',
+                "         * levels. The phase mask says 'level > phase', read straight off",
+                '         * the two bit-planes p0 (LSB) and p1 (MSB):',
+                '         *   phase 0: level>=1 = p0 | p1',
+                '         *   phase 1: level>=2 = p1',
+                '         *   phase 2: level>=3 = p0 & p1',
+                `         * The global dim caps every pixel at min(level, bw_scr_${n}_dim):`,
+                '         * a phase renders only while dim > phase. Table-free, no mul/div;',
+                '         * still one row per tick. (The masks are 2-plane specific -- a',
+                '         * widen to 4 planes/16 levels generalizes them to a level compare.) */',
+                `        if (bw_scr_${n}_dim > bw_scr_${n}_phase) {`,
+                `            unsigned char bw_p0 = bw_scr_${n}[bw_scr_${n}_scan];`,
+                `            unsigned char bw_p1 = bw_scr_${n}[bw_scr_${n}_scan + 8];`,
+                `            if (bw_scr_${n}_phase == 0) bw_lit = (unsigned char)(bw_p0 | bw_p1);`,
+                `            else if (bw_scr_${n}_phase == 1) bw_lit = bw_p1;`,
+                '            else bw_lit = (unsigned char)(bw_p0 & bw_p1);',
+                '        } else {',
+                '            bw_lit = 0;',
+                '        }',
                 `        ${colSfr} = (unsigned char)~bw_lit;        /* active-low columns: lit -> 0 */`,
+                '        /* Advance the row; a completed frame steps the BCM phase. The',
+                '         * phase cycle is MATRIX_LEVELS-1 frames long (3 frames = 24 ms',
+                '         * = ~42 Hz grayscale cycle at 8 ms/frame; the anti-flicker timer',
+                '         * choice is a bench decision, this is the duty-correct reference). */',
                 `        bw_scr_${n}_scan++;`,
-                `        if (bw_scr_${n}_scan >= 8) bw_scr_${n}_scan = 0;`,
+                `        if (bw_scr_${n}_scan >= 8) {`,
+                `            bw_scr_${n}_scan = 0;`,
+                `            bw_scr_${n}_phase++;`,
+                `            if (bw_scr_${n}_phase >= MATRIX_LEVELS - 1) bw_scr_${n}_phase = 0;`,
+                '        }',
                 '    }'
             );
         }
@@ -1825,6 +2040,13 @@ class SB3Creator {
                 this.warn(lineIndex, `${where.toUpperCase()} is a button and can only be an INPUT`);
                 return true;
             }
+            // PART-claims conflict: a keypad or other part that owns this pin.
+            const partClash = cfg.parts.find((prev) =>
+                (prev.claims || []).some((c) => typeof c === 'string' && c.toUpperCase() === where.toUpperCase()));
+            if (partClash) {
+                this.warn(lineIndex, `${where.toUpperCase()} is already claimed by "${partClash.name}"; a PART owns that pin`);
+                return true;
+            }
             cfg.pins.push({
                 name,
                 where: where.toUpperCase(),
@@ -2052,6 +2274,66 @@ class SB3Creator {
             });
             return true;
         }
+        // PART <name> = KEYPAD4X4 ROWS <pin> x4 COLS <pin> x4 — generic pin form
+        // for non-8051 cores (micro:bit P0-P20, Pico GP0-GP28). The scanner
+        // tri-states rows between scans (Pico: Pin.IN; micro:bit: read_digital
+        // + set_pull). Debounced two-agreeing-reads, scheduled first at 5 ms.
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*KEYPAD4X4\s+ROWS\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+COLS\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$/i))
+            && !trimmed.match(/^PART\s+\S+\s*=\s*KEYPAD4X4\s+ROWS\s+P[0-4]\.[0-7]/i)) {
+            const name = m[1];
+            const cfg = this.stcConfig();
+            const part = SB3Creator.STC_PARTS[cfg.device];
+            const core = part && part.core;
+            if (!core || (core !== 'micropython' && core !== 'rp2040')) {
+                this.warn(lineIndex, `KEYPAD4X4 with this pin syntax is for micro:bit (P0-P20) or Pico (GP0-GP28); ${cfg.device || 'this device'} uses P<port>.<bit>`);
+                return true;
+            }
+            if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
+                this.warn(lineIndex, `"${name}" declared twice`);
+                return true;
+            }
+            // Validate each pin token against the device's vocabulary
+            const SPOKEN = {
+                microbit: [/^P\d+$/i, 'P0-P20'],
+                pico: [/^GP\d+$/i, 'GP0-GP28']
+            };
+            const spoken = SPOKEN[cfg.device];
+            const tokens = m.slice(2, 10);
+            const claims = [];
+            for (const tok of tokens) {
+                if (spoken && !spoken[0].test(tok)) {
+                    this.warn(lineIndex, `"${tok}" is not a valid pin for ${cfg.device}; it uses ${spoken[1]}`);
+                    return true;
+                }
+                claims.push(tok.toUpperCase());
+            }
+            if (new Set(claims).size !== 8) {
+                this.warn(lineIndex, `"${name}" names the same pin twice; a 4x4 keypad claims eight different pins`);
+                return true;
+            }
+            // Conflict: a PIN declaration on a claimed pin
+            for (const w of claims) {
+                const pinConflict = cfg.pins.find((pin) => (pin.where || '').toUpperCase() === w);
+                if (pinConflict) {
+                    this.warn(lineIndex, `${w} is already declared as "${pinConflict.name}"; a PART claims its pins`);
+                    return true;
+                }
+                for (const prev of cfg.parts) {
+                    if ((prev.claims || []).some((c) => typeof c === 'string' && c.toUpperCase() === w)) {
+                        this.warn(lineIndex, `${w} is already claimed by "${prev.name}"`);
+                        return true;
+                    }
+                }
+            }
+            cfg.parts.push({
+                name,
+                type: 'keypad4x4',
+                claims,
+                rows: claims.slice(0, 4).map((w) => ({ where: w })),
+                cols: claims.slice(4).map((w) => ({ where: w }))
+            });
+            return true;
+        }
         // PART <name> = MATRIX8X8 ROWS 74HC595 DATA P<..> CLOCK P<..> LATCH P<..>
         // COLUMNS P<n> — an 8x8 LED dot matrix that refreshes itself in the
         // Timer-0 ISR (one row per tick -> 125 Hz), so the drawing verbs are
@@ -2109,6 +2391,79 @@ class SB3Creator {
                 }
             }
             cfg.parts.push({ name, type: 'matrix8x8', claims, data, clock, latch, colPort, columns });
+            return true;
+        }
+        // PART <name> = SEVENSEG8 SEGMENTS P<n> SELECT Pa.x Pb.y Pc.z [COMMON CATHODE|ANODE]
+        // — 8-digit 7-seg via 74HC245 (segments on a whole port) + 74HC138
+        // (3 select pins). ISR-scanned, one digit per tick. Mirror of the
+        // reference (stc-compiler 05744c9); 8051 family only, like MATRIX8X8.
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*SEVENSEG8\s+SEGMENTS\s+P([0-4])\s+SELECT\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])(?:\s+COMMON\s+(CATHODE|ANODE))?$/i))) {
+            const name = m[1];
+            const cfg = this.stcConfig();
+            const part = SB3Creator.STC_PARTS[cfg.device];
+            if (!part || (part.core && part.core !== '8051')) {
+                this.warn(lineIndex, `SEVENSEG8 is not available on ${cfg.device}: the digit scan lives in the 8051 Timer-0 ISR (8051 family). Devices that have it: the STC parts.`);
+                return true;
+            }
+            if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
+                this.warn(lineIndex, `"${name}" declared twice`);
+                return true;
+            }
+            const segPort = Number(m[2]);
+            const selPins = [{ port: Number(m[3]), bit: Number(m[4]) },
+                { port: Number(m[5]), bit: Number(m[6]) },
+                { port: Number(m[7]), bit: Number(m[8]) }];
+            if (new Set(selPins.map((p) => `${p.port}.${p.bit}`)).size !== 3) {
+                this.warn(lineIndex, `"${name}" names the same select pin twice`);
+                return true;
+            }
+            const claims = selPins.map((p) => [p.port, p.bit]);
+            for (const [pp, b] of claims) {
+                const pinConflict = cfg.pins.find((pin) => pin.port === pp && pin.bit === b);
+                if (pinConflict) {
+                    this.warn(lineIndex, `P${pp}.${b} is already declared as "${pinConflict.name}"; a PART claims its pins`);
+                    return true;
+                }
+                for (const prev of cfg.parts) {
+                    if ((prev.claims || []).some((c) => Array.isArray(c) && c[0] === pp && c[1] === b)) {
+                        this.warn(lineIndex, `P${pp}.${b} is already claimed by "${prev.name}"`);
+                        return true;
+                    }
+                }
+            }
+            const portConflict = cfg.ports.find((w) => w.port === segPort);
+            if (portConflict) {
+                this.warn(lineIndex, `P${segPort} is already declared as port "${portConflict.name}"`);
+                return true;
+            }
+            cfg.parts.push({ name, type: 'sevenseg8', segPort, selPins, claims,
+                commonAnode: /anode/i.test(m[9] || '') });
+            return true;
+        }
+        // PART <name> = LEDBANK8 ON P<n> [ACTIVE LOW] — 8 LEDs on a port,
+        // written ONLY through an ISR-owned shadow byte (the ISR is the sole
+        // port writer; on the A2, P2 carries both the 138 select and the LEDs).
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*LEDBANK8\s+ON\s+P([0-4])(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
+            const name = m[1];
+            const cfg = this.stcConfig();
+            const part = SB3Creator.STC_PARTS[cfg.device];
+            if (!part || (part.core && part.core !== '8051')) {
+                this.warn(lineIndex, `LEDBANK8 is not available on ${cfg.device}: the shadow-byte push lives in the 8051 Timer-0 ISR (8051 family). Devices that have it: the STC parts.`);
+                return true;
+            }
+            if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
+                this.warn(lineIndex, `"${name}" declared twice`);
+                return true;
+            }
+            const ledPort = Number(m[2]);
+            for (const ss of cfg.parts) {
+                if (ss.type === 'sevenseg8' && (ss.selPins || []).some((p) => p.port === ledPort)) {
+                    this.warn(lineIndex, `${name} on P${ledPort} shares a port with ${ss.name}'s select pins; the ISR scan will flicker the LEDs during digit multiplexing. LED writes go through the shadow byte.`);
+                    break;
+                }
+            }
+            cfg.parts.push({ name, type: 'ledbank8', ledPort, claims: [],
+                activeLow: !/high/i.test(m[3] || '') && /low/i.test(m[3] || '') });
             return true;
         }
         // TABLE <name> = <value>, <value>, ... — constant lookup table in code space.
@@ -2174,6 +2529,25 @@ class SB3Creator {
     parseCondition(conditionStr, context) {
         let s = this.stripOuterParens((conditionStr || '').trim());
         const push = (op, inputs = {}, fields = {}) => this.pushBlock(context, op, inputs, fields);
+
+        // Keypad phrase sugar (oracle parity, stc-compiler dec1f17): rewrite
+        // to the canonical compare BEFORE any other parsing, so the blocks
+        // are identical to hand-written `keys >= 0` / `keys = N` and the
+        // printed fixed point is the desugared form on both sides. Guarded
+        // by the full phrase, so Scratch's own `key X pressed?` (no `is`)
+        // and a VARIABLE named `key` are untouched.
+        {
+            let km;
+            if (/^a key is pressed$/i.test(s) && this.stcSoleKeypad()) {
+                s = `${this.stcSoleKeypad().name} >= 0`;
+            } else if ((km = s.match(/^key\s+(\d+)\s+is\s+(pressed|released)$/i))
+                    && this.stcSoleKeypad()) {
+                if (+km[1] > 15) this.warn(null, `key ${km[1]} does not exist; a KEYPAD4X4 has keys 0..15`);
+                s = km[2].toLowerCase() === 'released'
+                    ? `not ${this.stcSoleKeypad().name} = ${km[1]}`
+                    : `${this.stcSoleKeypad().name} = ${km[1]}`;
+            }
+        }
 
         // Boolean precedence, loosest first — Python's, which is the
         // reference dialect's (stc-compiler c34ad1b): or < and < not <
@@ -2538,6 +2912,23 @@ class SB3Creator {
             block[id].inputs.SENSOR = [1, [10, match[1]]];
             return { block, extraBlocks: {} };
         }
+        // KEYPAD4X4 event hat: `when key N pressed` / `released` on the sole
+        // keypad (oracle parity, stc-compiler dec1f17). Checked before the
+        // pin hat: the digit makes it unambiguous even if a pin is named `key`.
+        if ((match = line.match(/^when\s+key\s+(\d+)\s+(pressed|released)$/i))) {
+            const pad = this.stcSoleKeypad();
+            if (!pad) {
+                throw new ParseError(`"when key ${match[1]} ${match[2].toLowerCase()}" needs a KEYPAD4X4; `
+                    + `declare one with PART <name> = KEYPAD4X4 ROWS ... COLS ...`);
+            }
+            if (+match[1] > 15) {
+                throw new ParseError(`key ${match[1]} does not exist; a KEYPAD4X4 has keys 0..15`);
+            }
+            const { id, block } = this.createBlock('stc12_whenkey', { topLevel: true });
+            block[id].fields.KEY = [String(+match[1]), null];
+            block[id].fields.EDGE = [match[2].toLowerCase(), null];
+            return { block, extraBlocks: {} };
+        }
         // STC12 event hat: `when <pin> pressed` / `when <pin> released` for INPUT pins.
         if ((match = line.match(/^when\s+([A-Za-z_]\w*)\s+(pressed|released)$/i)) && this.stcPin(match[1])) {
             const pin = this.stcPin(match[1]);
@@ -2712,6 +3103,57 @@ class SB3Creator {
                 return ret(block);
             }
         }
+        // ---- SEVENSEG8 verbs (mirror of the reference; all write the RAM
+        // frame buffer only — the Timer-0 ISR scans it). Named-part forms,
+        // placed AHEAD of the generic pin/variable catch-alls.
+        if (this._stcHasSevenSeg()) {
+            if ((match = line.match(/^show\s+number\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcSevenSeg(match[2])) {
+                const { id, block } = cmd('stc12_seg_shownum');
+                block[id].fields.PART = [this._stcSevenSeg(match[2]).name, null];
+                block[id].inputs.NUM = val(match[1]);
+                return ret(block);
+            }
+            if ((match = line.match(/^show\s+digit\s+(.+?)\s*=\s*value\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcSevenSeg(match[3])) {
+                const { id, block } = cmd('stc12_seg_showdigit');
+                block[id].fields.PART = [this._stcSevenSeg(match[3]).name, null];
+                block[id].inputs.DIGIT = val(match[1]);
+                block[id].inputs.VALUE = val(match[2]);
+                return ret(block);
+            }
+            if ((match = line.match(/^set\s+digit\s+(.+?)\s+to\s+segments\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcSevenSeg(match[3])) {
+                const { id, block } = cmd('stc12_seg_setsegs');
+                block[id].fields.PART = [this._stcSevenSeg(match[3]).name, null];
+                block[id].inputs.DIGIT = val(match[1]);
+                block[id].inputs.SEGS = val(match[2]);
+                return ret(block);
+            }
+            if ((match = line.match(/^clear\s+(\w+)$/i)) && this._stcSevenSeg(match[1])) {
+                const { id, block } = cmd('stc12_seg_clear');
+                block[id].fields.PART = [this._stcSevenSeg(match[1]).name, null];
+                return ret(block);
+            }
+        }
+        // ---- LEDBANK8 verbs — all write the shadow byte; the ISR pushes it.
+        if (this._stcHasLedBank()) {
+            if ((match = line.match(/^turn\s+(on|off)\s+led\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcLedBank(match[3])) {
+                const { id, block } = cmd(match[1].toLowerCase() === 'on' ? 'stc12_led_on' : 'stc12_led_off');
+                block[id].fields.PART = [this._stcLedBank(match[3]).name, null];
+                block[id].inputs.N = val(match[2]);
+                return ret(block);
+            }
+            if ((match = line.match(/^set\s+leds\s+to\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcLedBank(match[2])) {
+                const { id, block } = cmd('stc12_led_set');
+                block[id].fields.PART = [this._stcLedBank(match[2]).name, null];
+                block[id].inputs.VALUE = val(match[1]);
+                return ret(block);
+            }
+            if ((match = line.match(/^light\s+only\s+led\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcLedBank(match[2])) {
+                const { id, block } = cmd('stc12_led_only');
+                block[id].fields.PART = [this._stcLedBank(match[2]).name, null];
+                block[id].inputs.N = val(match[1]);
+                return ret(block);
+            }
+        }
         // `set <part> to <n>` — shifts a byte out to a 74HC595.
         if ((match = line.match(/^set\s+([A-Za-z_]\w*)\s+to\s+(.+)$/i)) && this.stcPart(match[1])) {
             const part = this.stcPart(match[1]);
@@ -2721,6 +3163,14 @@ class SB3Creator {
             }
             if (part.type === 'matrix8x8') {
                 this.warn(null, `"${part.name}" is an 8x8 screen; use a drawing verb (light pixel / draw row / show image / clear ${part.name}), not "set ... to"`);
+                return ret(null);
+            }
+            if (part.type === 'sevenseg8') {
+                this.warn(null, `"${part.name}" is an 8-digit display; use a display verb (show number / show digit / set digit / clear ${part.name}), not "set ... to"`);
+                return ret(null);
+            }
+            if (part.type === 'ledbank8') {
+                this.warn(null, `"${part.name}" is an LED bank; use an LED verb (turn on led / set leds to <byte> on ${part.name} / light only led), not "set ... to"`);
                 return ret(null);
             }
             const { id, block } = cmd('stc12_setpart');
@@ -4469,6 +4919,14 @@ class SB3Creator {
                     out.push(`PART ${p.name} = MATRIX8X8 ROWS 74HC595 DATA ${pinStr(p.data)} CLOCK ${pinStr(p.clock)} LATCH ${pinStr(p.latch)} COLUMNS P${p.colPort}`);
                     continue;
                 }
+                if (p.type === 'sevenseg8') {
+                    out.push(`PART ${p.name} = SEVENSEG8 SEGMENTS P${p.segPort} SELECT ${p.selPins.map(pinStr).join(' ')}${p.commonAnode ? ' COMMON ANODE' : ''}`);
+                    continue;
+                }
+                if (p.type === 'ledbank8') {
+                    out.push(`PART ${p.name} = LEDBANK8 ON P${p.ledPort}${p.activeLow ? ' ACTIVE LOW' : ''}`);
+                    continue;
+                }
                 out.push(`PART ${p.name} = 74HC595 data ${pinStr(p.data)} clock ${pinStr(p.clock)} latch ${pinStr(p.latch)}${p.activeLow ? ' ACTIVE LOW' : ''}`);
             }
             for (const t of cfg.tables || []) {
@@ -4756,6 +5214,7 @@ class SB3Creator {
             case 'event_whenbroadcastreceived': return `WHEN I receive "${f('BROADCAST_OPTION')}":`;
             case 'control_start_as_clone': return 'WHEN I start as a clone:';
             case 'stc12_whenpin': return `WHEN ${f('PIN')} ${f('EDGE')}:`;
+            case 'stc12_whenkey': return `WHEN key ${f('KEY')} ${f('EDGE')}:`;
             case 'devices_whenabove': return `WHEN ${v('SENSOR')} above ${v('THRESHOLD')}:`;
             case 'devices_whencloser': return `WHEN ${v('SENSOR')} closer than ${v('DISTANCE')}:`;
             case 'devices_whenmotion': return `WHEN motion on ${v('SENSOR')}:`;
@@ -4935,6 +5394,14 @@ class SB3Creator {
             case 'devices_clearmatrix': return line(`clear matrix ${v('MATRIX')}`);
             // MATRIX8X8 drawing verbs (the PART-based 8x8 screen).
             case 'stc12_matrix_clear': return line(`clear ${f('PART')}`);
+            case 'stc12_seg_shownum': return line(`show number ${v('NUM')} on ${f('PART')}`);
+            case 'stc12_seg_showdigit': return line(`show digit ${v('DIGIT')} = value ${v('VALUE')} on ${f('PART')}`);
+            case 'stc12_seg_setsegs': return line(`set digit ${v('DIGIT')} to segments ${v('SEGS')} on ${f('PART')}`);
+            case 'stc12_seg_clear': return line(`clear ${f('PART')}`);
+            case 'stc12_led_on': return line(`turn on led ${v('N')} on ${f('PART')}`);
+            case 'stc12_led_off': return line(`turn off led ${v('N')} on ${f('PART')}`);
+            case 'stc12_led_set': return line(`set leds to ${v('VALUE')} on ${f('PART')}`);
+            case 'stc12_led_only': return line(`light only led ${v('N')} on ${f('PART')}`);
             case 'stc12_matrix_setpx': {
                 const st = f('STYLE');
                 if (st === 'light') return line(`light pixel ${v('X')} ${v('Y')}`);
@@ -5007,7 +5474,7 @@ class SB3Creator {
     isHat(op) {
         return ['event_whenflagclicked', 'event_whenkeypressed', 'event_whenthisspriteclicked',
             'event_whenbroadcastreceived', 'control_start_as_clone', 'procedures_definition',
-            'stc12_whenpin',
+            'stc12_whenpin', 'stc12_whenkey',
             'devices_whenabove', 'devices_whencloser', 'devices_whenmotion',
             'devices_whentilted', 'devices_whenirreceived'].includes(op);
     }
@@ -6646,6 +7113,14 @@ class SB3Creator {
             // Timer-0 ISR scans the buffer onto the panel. Mirrors matrix_stmt_c
             // in stc_pseudocode.py (a91981a).
             case 'stc12_matrix_clear': { this._cUses.matrix = true; return line(`bw_scr_${f('PART')}_clear();`); }
+            case 'stc12_seg_shownum': { this._cUses.sevenseg = true; return line(`bw_${f('PART')}_show_number(${v('NUM')});`); }
+            case 'stc12_seg_showdigit': { this._cUses.sevenseg = true; return line(`bw_${f('PART')}_show_digit((unsigned char)(${v('DIGIT')}), (unsigned char)(${v('VALUE')}));`); }
+            case 'stc12_seg_setsegs': { this._cUses.sevenseg = true; return line(`bw_${f('PART')}_set_segments((unsigned char)(${v('DIGIT')}), (unsigned char)(${v('SEGS')}));`); }
+            case 'stc12_seg_clear': { this._cUses.sevenseg = true; return line(`bw_${f('PART')}_clear();`); }
+            case 'stc12_led_on': { this._cUses.ledbank = true; return line(`bw_${f('PART')}_on((unsigned char)(${v('N')}));`); }
+            case 'stc12_led_off': { this._cUses.ledbank = true; return line(`bw_${f('PART')}_off((unsigned char)(${v('N')}));`); }
+            case 'stc12_led_set': { this._cUses.ledbank = true; return line(`bw_${f('PART')}_set((unsigned char)(${v('VALUE')}));`); }
+            case 'stc12_led_only': { this._cUses.ledbank = true; return line(`bw_${f('PART')}_only((unsigned char)(${v('N')}));`); }
             case 'stc12_matrix_setpx': {
                 this._cUses.matrix = true;
                 const st = f('STYLE');
@@ -7288,7 +7763,16 @@ class SB3Creator {
      *
      * @returns {{ok: boolean, py?: string, reasons: string[], warnings: string[]}}
      */
-    generateMicroPython(project = this.project) {
+    generateMicroPython(project = this.project, opts = {}) {
+        // Debug build: instrument each block with a position marker over serial
+        // — the micro:bit analogue of the 8051's <task>_state lever (read
+        // position, do not VM-step; DEBUG-CONTROL-MODEL.md §2, MICROBIT-NATIVE.md
+        // Stage 3). `positions[n] = {block}` lets the debug host map a marker back
+        // to the source block; `breakpoints` (block ids) pause the program at
+        // those blocks until the host resumes over serial.
+        const dbg = !!(opts && opts.debug);
+        const dbgPos = [];                     // n -> { block: <scratch block id> }
+        const dbgBreaks = new Set((opts && opts.breakpoints) || []);
         // The shared pure-Python expression layer (pyVal/pyCond/varRef)
         // reads the same context generatePython sets up.
         this._pyNames = new Map();
@@ -7432,6 +7916,12 @@ class SB3Creator {
             }
             if (rb.opcode === 'microbitplus_radiolastnum') { uses.radio = true; return '_radio_last_num'; }
             if (rb.opcode === 'microbitplus_radiolaststr') { uses.radio = true; return '_radio_last_str'; }
+            // KEYPAD4X4 reporter — the scan function is emitted in the header.
+            if (rb.opcode === 'stc12_keypad') {
+                const partName = rb.fields.PART ? rb.fields.PART[0] : '';
+                uses.keypad = partName;
+                return `_scan_keypad_${partName}()`;
+            }
             return null;
         };
         const val = (b, k, blocks) => pinReporter(b.inputs[k], blocks)
@@ -7668,10 +8158,19 @@ class SB3Creator {
 
         const walk = (id, blocks, pad) => {
             const out = [];
-            let b = blocks[id];
+            let cur = id;
+            let b = blocks[cur];
             while (b) {
+                if (dbg) {
+                    const n = dbgPos.length;
+                    dbgPos.push({ block: cur });
+                    // Emit the marker BEFORE the statement runs; `bp=1` flags a
+                    // block the host asked to break on, so the helper can pause.
+                    out.push(`${pad}_bw_pos(${n}${dbgBreaks.has(cur) ? ', 1' : ''})`);
+                }
                 out.push(...stmt(b, blocks, pad));
-                b = blocks[b.next];
+                cur = b.next;
+                b = blocks[cur];
             }
             return out.length ? out : [`${pad}pass`];
         };
@@ -7775,6 +8274,93 @@ class SB3Creator {
         if (uses.radio) header.push('import radio');
         if (uses._pitch) header.push('', 'def _pitch():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(-y, -z) * 180 / math.pi');
         if (uses._roll) header.push('', 'def _roll():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(x, -z) * 180 / math.pi');
+        // BrickWright debug instrumentation. _bw_pos(n) prints a position marker
+        // over serial before each block runs; the debug host (debug-panel) reads
+        // the stream, splits the RS(0x1e)-prefixed markers from real print()
+        // output, and highlights positions[n].block. When a block is a breakpoint
+        // (bp=1) or a single-step is pending, the program HALTS — prints the
+        // halted marker and spins on `input()` until the host resumes over
+        // serial-in with '\x1ec' (continue) or '\x1es' (step to next block).
+        // Control uses the RS prefix so it can never be confused with a program's
+        // own input(), which anyway never runs while halted. Every byte is RS-led,
+        // so nothing here can collide with ordinary program text.
+        if (dbg) {
+            header.push('',
+                '# --- BrickWright debug: position markers + breakpoints over serial ---',
+                '_bw_step = 0',
+                'def _bw_pos(n, bp=0):',
+                '    global _bw_step',
+                "    print('\\x1e' + str(n))",
+                '    if bp or _bw_step:',
+                '        _bw_step = 0',
+                "        print('\\x1e!' + str(n))",
+                '        while True:',
+                '            try:',
+                '                c = input()',
+                '            except Exception:',
+                '                return',
+                "            if c == '\\x1es':",
+                '                _bw_step = 1',
+                '                return',
+                "            if c == '\\x1ec':",
+                '                return');
+        }
+        // KEYPAD4X4 scanner — per-core tri-state + pull-up, debounced.
+        if (uses.keypad) {
+            const parts = ((project.stc && project.stc.parts) || []).filter((p) => p.type === 'keypad4x4');
+            for (const kp of parts) {
+                const nm = kp.name;
+                if (isPico) {
+                    // Pico: rows Pin(n, Pin.OUT, value=0) to scan, Pin(n, Pin.IN) to tri-state
+                    // cols Pin(n, Pin.IN, Pin.PULL_UP), read value()
+                    const rowGpios = kp.rows.map((r) => r.where.replace(/^GP/i, ''));
+                    const colGpios = kp.cols.map((c) => c.where.replace(/^GP/i, ''));
+                    header.push('',
+                        `# ${nm}: 4x4 matrix keypad scanner (Pico)`,
+                        `# Rows: ${kp.rows.map((r) => r.where).join(', ')} — tri-state between scans`,
+                        `# Cols: ${kp.cols.map((c) => c.where).join(', ')} — pull-up, read 0 when pressed`,
+                        ...colGpios.map((g) => `_kp_c${g} = Pin(${g}, Pin.IN, Pin.PULL_UP)`),
+                        `_kp_${nm}_prev = -1`,
+                        '',
+                        `def _scan_keypad_${nm}():`,
+                        '    """Scan the 4x4 matrix: drive one row low, read cols."""');
+                    for (let ri = 0; ri < 4; ri++) {
+                        const rg = rowGpios[ri];
+                        header.push(`    _r = Pin(${rg}, Pin.OUT, value=0)`);
+                        for (let ci = 0; ci < 4; ci++) {
+                            const cg = colGpios[ci];
+                            header.push(`    if _kp_c${cg}.value() == 0: Pin(${rg}, Pin.IN); return ${ri * 4 + ci}`);
+                        }
+                        header.push(`    Pin(${rg}, Pin.IN)`);
+                    }
+                    header.push('    return -1');
+                } else {
+                    // micro:bit: rows write_digital(0) to scan, read_digital() to tri-state
+                    // cols set_pull(PULL_UP), read_digital() == 0 when pressed
+                    const rowPins = kp.rows.map((r) => `pin${r.where.replace(/^P/i, '')}`);
+                    const colPins = kp.cols.map((c) => `pin${c.where.replace(/^P/i, '')}`);
+                    header.push('',
+                        `# ${nm}: 4x4 matrix keypad scanner (micro:bit)`,
+                        `# Rows: ${kp.rows.map((r) => r.where).join(', ')} — tri-state between scans`,
+                        `# Cols: ${kp.cols.map((c) => c.where).join(', ')} — pull-up, read 0 when pressed`,
+                        ...colPins.map((p) => `${p}.set_pull(${p}.PULL_UP)`),
+                        `_kp_${nm}_prev = -1`,
+                        '',
+                        `def _scan_keypad_${nm}():`,
+                        '    """Scan the 4x4 matrix: drive one row low, read cols."""');
+                    for (let ri = 0; ri < 4; ri++) {
+                        const rp = rowPins[ri];
+                        header.push(`    ${rp}.write_digital(0)`);
+                        for (let ci = 0; ci < 4; ci++) {
+                            const cp = colPins[ci];
+                            header.push(`    if ${cp}.read_digital() == 0: ${rp}.read_digital(); return ${ri * 4 + ci}`);
+                        }
+                        header.push(`    ${rp}.read_digital()`);
+                    }
+                    header.push('    return -1');
+                }
+            }
+        }
         if (isPico) {
             // Pin objects. sda/scl by NAME feed the hardware I2C when the
             // program drives an OLED — they must not be constructed as
@@ -7887,7 +8473,7 @@ class SB3Creator {
                 '');
         }
         const py = [...header, '', ...helpers, ...stateDecls, '', ...taskDefs, ...driver].join('\n') + '\n';
-        return { ok: true, py, reasons: [], warnings };
+        return { ok: true, py, reasons: [], warnings, ...(dbg ? { positions: dbgPos } : {}) };
     }
 
     generateBASIC(project = this.project, opts = {}) {
@@ -8750,6 +9336,9 @@ class SB3Creator {
                     const pc = this._cPins && this._cPins.get(pn.toLowerCase());
                     if (pc && pc.direction === 'input') { scriptCount++; hasEventHat = true; }
                 }
+                if (b.opcode === 'stc12_whenkey' && this.stcSoleKeypad()) {
+                    scriptCount++; hasEventHat = true;
+                }
                 if (['devices_whenabove', 'devices_whencloser', 'devices_whenmotion', 'devices_whentilted'].includes(b.opcode)) {
                     scriptCount++; hasEventHat = true;
                 }
@@ -8767,7 +9356,7 @@ class SB3Creator {
         // cooperative-scheduler path emits — so its presence forces tasks even
         // for a lone WHEN that would otherwise run straight-line (gotcha #1;
         // reference: Program.has_matrix feeding the tasks decision in emit_c).
-        this._cTasks = scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || this._stcHasMatrix();
+        this._cTasks = scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || this._stcHasMatrix() || this._stcHasSevenSeg() || this._stcHasLedBank();
         const taskNames = Array.from({ length: scriptCount }, (_, n) => `bw_task${n}`);
         const yieldMap = [];   // only emitted for a debug build — see the marker header below
 
@@ -8794,6 +9383,7 @@ class SB3Creator {
         let mainBody = [];
         let mainNote = [];   // a comment on the single script's hat
         let taskIndex = 0;
+        this._cKeyHatPads = [];
         sections.forEach((t, idx) => {
             const pfx = spritePrefix(idx);
             this._curPrefix = pfx;
@@ -8859,8 +9449,13 @@ class SB3Creator {
                         const task = taskNames[n];
                         const where = t.isStage ? '' : `, ${this.cComment(t.name)}`;
                         const hatNote = this.codeCommentLines(topId, '', '//');
+                        // `hat pin <name> <edge>` rides on the script marker so the C
+                        // reader can rebuild the WHEN header instead of degrading the
+                        // script to `WHEN flag clicked:` (which it silently did until
+                        // 2026-08-18 — the hat round trip was a fiction).
                         markScripts.push(`script ${task} ${n}`
-                            + (t.isStage ? ' stage' : ` sprite ${this.pyStr(t.name)}`));
+                            + (t.isStage ? ' stage' : ` sprite ${this.pyStr(t.name)}`)
+                            + ` hat pin ${pinName} ${edge}`);
                         const ctx = { task, state: 0, statics, tasks: taskNames, yields: debug ? yieldMap : [] };
                         if (debug) yieldMap.push({ task, state: 0, block: topId, kind: 'hat' });
                         // Body starts at case 1 — case 0 is the edge test.
@@ -8886,6 +9481,57 @@ class SB3Creator {
                             ` * is low. */`,
                             `static void ${task}(void)`, '{',
                             `    unsigned char now   = (${level}) ? 1 : 0;`,
+                            `    unsigned char fired = (${test}) ? 1 : 0;`,
+                            `    ${task}_prev = now;`,
+                            '',
+                            `    switch (${task}_state) {`,
+                            '    case 0:',
+                            '        if (!fired)',
+                            '            return;',
+                            `        ${task}_state = 1;`,
+                            '    case 1:',
+                            ...body,
+                            '    }',
+                            `    ${task}_state = 0;   /* ready for the next edge */`,
+                            '}', '');
+                    }
+                } else if (b.opcode === 'stc12_whenkey') {
+                    const keyN = b.fields.KEY ? +b.fields.KEY[0] : 0;
+                    const edge = b.fields.EDGE ? b.fields.EDGE[0] : 'pressed';
+                    const pad = this.stcSoleKeypad();
+                    if (!pad) {
+                        this.cWarn(`"when key ${keyN} ${edge}" — no KEYPAD4X4 declared; script skipped`);
+                    } else {
+                        const n = taskIndex++;
+                        const task = taskNames[n];
+                        const where = t.isStage ? '' : `, ${this.cComment(t.name)}`;
+                        const hatNote = this.codeCommentLines(topId, '', '//');
+                        markScripts.push(`script ${task} ${n}`
+                            + (t.isStage ? ' stage' : ` sprite ${this.pyStr(t.name)}`)
+                            + ` hat key ${keyN} ${edge}`);
+                        if (!this._cKeyHatPads.includes(pad.name)) this._cKeyHatPads.push(pad.name);
+                        this._cUses.now = true;   // the shared poll reads bw_now()
+                        const ctx = { task, state: 0, statics, tasks: taskNames, yields: debug ? yieldMap : [] };
+                        if (debug) yieldMap.push({ task, state: 0, block: topId, kind: 'hat' });
+                        // Body starts at case 1 — case 0 is the edge test.
+                        ctx.state = 1;
+                        const body = this.cTaskFrom(b.next, blocks, 1, ctx);
+                        const test = edge === 'pressed'
+                            ? `now && !${task}_prev`
+                            : `!now && ${task}_prev`;
+                        taskDefs.push(`static unsigned int ${task}_state;`);
+                        if (this.cHasWait(b.next, blocks)) taskDefs.push(`static unsigned int ${task}_until;`);
+                        taskDefs.push(`static unsigned char ${task}_prev;`);
+                        // Byte-shaped like the reference (stc-compiler dec1f17,
+                        // test_keypad.py TestKeypadHats pins that side's C).
+                        taskDefs.push(...hatNote,
+                            `/* WHEN key ${keyN} ${edge}: (script ${n + 1}${where})`,
+                            ' *',
+                            ' * Edge-triggered on the DEBOUNCED key from the shared poll task: a',
+                            ' * held key runs the body once, and a bouncing contact cannot fire',
+                            ' * twice, because the poll only updates after two agreeing scans. */',
+                            `static void ${task}(void)`, '{',
+                            `    unsigned char now = (bw_kp_${pad.name}_key == ${keyN}) ? 1 : 0;`,
                             `    unsigned char fired = (${test}) ? 1 : 0;`,
                             `    ${task}_prev = now;`,
                             '',
@@ -9203,6 +9849,12 @@ class SB3Creator {
                     if (pt.type === 'keypad4x4') {
                         return `part ${pt.name} keypad4x4 rows ${pt.rows.map(w).join(' ')} cols ${pt.cols.map(w).join(' ')}`;
                     }
+                    if (pt.type === 'sevenseg8') {
+                        return `part ${pt.name} sevenseg8 P${pt.segPort} ${pt.selPins.map(w).join(' ')}${pt.commonAnode ? ' anode' : ''}`;
+                    }
+                    if (pt.type === 'ledbank8') {
+                        return `part ${pt.name} ledbank8 P${pt.ledPort}${pt.activeLow ? ' active-low' : ''}`;
+                    }
                     return `part ${pt.name} ${pt.type} ${w(pt.data)} ${w(pt.clock)} ${w(pt.latch)}${pt.activeLow ? ' active-low' : ''}`;
                 })),
                 // The declared machine survives into the header for the same
@@ -9396,6 +10048,10 @@ class SB3Creator {
             '#define T0_RELOAD (65536UL - (FOSC_HZ / 12UL / 1000UL))', '');
         // MATRIX8X8 frame buffer(s) + level clamp, before the tick that scans them.
         out.push(...this._cMatrixState());
+        // SEVENSEG8 font + frame buffers, LEDBANK8 shadow bytes — before the
+        // tick that scans/pushes them (verbatim mirror of the reference).
+        out.push(...this._cSevenSegState());
+        out.push(...this._cLedBankState());
         }
 
         if (this._core === '6502'
@@ -9488,6 +10144,10 @@ class SB3Creator {
                     // MATRIX8X8 self-scan: one row per tick, AFTER bw_ms++ so the
                     // millisecond math is never skewed. Table-driven, no mul/div.
                     ...this._cMatrixScan(),
+                    // SEVENSEG8 digit advance + LEDBANK8 shadow push — after
+                    // bw_ms++ and the matrix scan (reference order).
+                    ...this._cSevenSegScan(),
+                    ...this._cLedBankScan(),
                     '}', ''
                 ]));
             if (this._cUses.now || this._cUses.blockDelay) {
@@ -9744,6 +10404,8 @@ class SB3Creator {
         // MATRIX8X8 drawing helpers — after bw_now, before the tables (reference
         // order). Emitted for any declared screen, verb-used or not, like the ref.
         out.push(...this._cMatrixHelpers());
+        out.push(...this._cSevenSegHelpers());
+        out.push(...this._cLedBankHelpers());
         if (this._cUses.keypad && this._core === '8051') {
             const parts = ((this.project && this.project.stc && this.project.stc.parts) || []).filter((p) => p.type === 'keypad4x4');
             for (const kp of parts) {
@@ -11432,6 +12094,36 @@ class SB3Creator {
                 'static void bw_print_num(long n);', '');
         }
 
+        // `WHEN key N` hats share one debounced scan per keypad: a poll task
+        // (dispatched before the hats) reads the matrix at most every 5 ms and
+        // a key only becomes current after two agreeing reads, so a scan
+        // mid-bounce — which reads -1 or a neighbour for one pass — cannot
+        // fire a hat. Mirrors the reference emitter line for line.
+        this._cPollTasks = [];
+        if (this._cKeyHatPads && this._cKeyHatPads.length) {
+            const pollDefs = [];
+            for (const padName of this._cKeyHatPads) {
+                pollDefs.push(
+                    `/* ${padName}: debounced key state shared by the \`WHEN key N\` hats. */`,
+                    `static signed char bw_kp_${padName}_raw = -1;`,
+                    `static signed char bw_kp_${padName}_key = -1;`,
+                    `static unsigned int bw_kp_${padName}_t;`,
+                    `static void bw_kp_${padName}_poll(void)`,
+                    '{',
+                    '    signed char r;',
+                    `    if ((unsigned int)(bw_now() - bw_kp_${padName}_t) < 5)`,
+                    '        return;                     /* scan every 5 ms */',
+                    `    bw_kp_${padName}_t = bw_now();`,
+                    `    r = bw_part_${padName}_read();`,
+                    `    if (r == bw_kp_${padName}_raw)`,
+                    `        bw_kp_${padName}_key = r;`,
+                    `    bw_kp_${padName}_raw = r;`,
+                    '}', '');
+                this._cPollTasks.push(`bw_kp_${padName}_poll`);
+            }
+            taskDefs.unshift(...pollDefs);
+        }
+
         if (taskDefs.length) {
             // A label must precede a STATEMENT in C. An empty script (a hat
             // with nothing under it — the default project's shape) emits
@@ -11908,13 +12600,13 @@ class SB3Creator {
         if (this._cTasks && (this._core === 'arm' || this._core === '6502')) {
             out.push('',
                 '    for (;;) {                     /* no tick to start: time is read */',
-                ...taskNames.map((n) => `        ${n}();`),
+                ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
                 '    }');
         } else if (this._cTasks && this._core === 'avr') {
             out.push('    sei();                         /* tick on */',
                 '',
                 '    for (;;) {',
-                ...taskNames.map((n) => `        ${n}();`),
+                ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
                 '    }');
         } else if (this._cTasks) {
             out.push('    TL0 = (unsigned char)(T0_RELOAD & 0xFF);',
@@ -11924,7 +12616,7 @@ class SB3Creator {
                 '    TR0 = 1;',
                 '',
                 '    for (;;) {',
-                ...taskNames.map((n) => `        ${n}();`),
+                ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
                 '    }');
         } else if (this._core === 'avr') {
             out.push('    sei();', '');
@@ -12107,6 +12799,7 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             keypad: { kind: 'reporter', method: 'readKeypad', args: ['PART'], neutral: '-1' },
             print: { kind: 'command', method: 'print', args: ['VALUE', 'MODE'] },
             whenpin: { kind: 'hat', method: 'whenpin', args: ['PIN', 'EDGE'] },
+            whenkey: { kind: 'hat', method: 'whenkey', args: ['KEY', 'EDGE'] },
             tableindex: { kind: 'reporter', method: 'tableIndex', args: ['TABLE', 'INDEX'], neutral: '0' }
         }
     },
@@ -12543,6 +13236,16 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     const newParts = [];
     for (const p of (stc.parts || [])) {
         const newPart = { ...p };
+        if (!p.data && !p.clock && !p.latch) {
+            // KEYPAD4X4 / SEVENSEG8 / LEDBANK8 carry no 595-shaped roles —
+            // they keep their 8051 coordinates, and the honest refusal on a
+            // non-8051 target happens at re-parse (each is 8051-gated).
+            // Allocating data/clock/latch for them consumed pool pins and
+            // crashed on LEDBANK8, which has no pin fields at all (found
+            // authoring 79-a2-sampler, 2026-08-18).
+            newParts.push(newPart);
+            continue;
+        }
         for (const role of ['data', 'clock', 'latch']) {
             const where = take(pools.digital);
             if (!where) {
