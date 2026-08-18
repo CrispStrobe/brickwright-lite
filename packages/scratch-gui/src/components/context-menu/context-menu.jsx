@@ -4,11 +4,19 @@ import classNames from 'classnames';
 
 import styles from './context-menu.css';
 
-const StyledContextMenu = props => (
+// react-contextmenu's keyboard-navigation collector guards `!child` (null,
+// undefined, false) but then reads `child.props` — which throws
+// "undefined is not an object (evaluating 'e.disabled')" for a truthy
+// NON-element child (a stray string/number/text node between MenuItems).
+// Passing only valid elements through makes that path unreachable for
+// every menu that uses this wrapper (all of them).
+const StyledContextMenu = ({children, ...props}) => (
     <ContextMenu
         {...props}
         className={styles.contextMenu}
-    />
+    >
+        {React.Children.toArray(children).filter(React.isValidElement)}
+    </ContextMenu>
 );
 
 const StyledMenuItem = props => (

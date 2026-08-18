@@ -1,1 +1,298 @@
-"use strict";(self.webpackChunkGUI=self.webpackChunkGUI||[]).push([[874],{86438:(e,t,n)=>{n.r(t),n.d(t,{createPicoRepl:()=>d,pyBytesLiteral:()=>f,webSerialTransport:()=>s});var r=n(48287).Buffer;function i(e,t,n,r,i,o,c){try{var l=e[o](c),a=l.value}catch(e){return void n(e)}l.done?t(a):Promise.resolve(a).then(r,i)}function o(e){return function(){var t=this,n=arguments;return new Promise((function(r,o){var c=e.apply(t,n);function l(e){i(c,r,o,l,a,"next",e)}function a(e){i(c,r,o,l,a,"throw",e)}l(void 0)}))}}const c="",l="",a="",u="";function s(e){const t=e.writable.getWriter(),n=e.readable.getReader(),r=new TextEncoder,i=new TextDecoder;return{write:e=>o((function*(){yield t.write(r.encode(e))}))(),read:()=>o((function*(){const{value:e,done:t}=yield n.read();return t?"":i.decode(e)}))(),close:()=>o((function*(){t.releaseLock(),yield n.cancel().catch((()=>{})),n.releaseLock(),yield e.close()}))()}}function d(e){var t;const n=null!==(t=(arguments.length>1&&void 0!==arguments[1]?arguments[1]:{}).timeoutMs)&&void 0!==t?t:5e3;let i="";function s(e){return d.apply(this,arguments)}function d(){return(d=o((function*(t){const r=Date.now()+n;for(;;){const n=i.indexOf(t);if(n>=0){const e=i.slice(0,n+t.length);return i=i.slice(n+t.length),e}if(Date.now()>r)throw new Error("timeout waiting for ".concat(JSON.stringify(t)," — got ").concat(JSON.stringify(i.slice(-80))));i+=(yield e.read())}}))).apply(this,arguments)}function p(){return y.apply(this,arguments)}function y(){return(y=o((function*(){yield e.write(a+a),yield e.write("\r"+c),yield s("raw REPL; CTRL-B to exit")}))).apply(this,arguments)}function w(e){return h.apply(this,arguments)}function h(){return(h=o((function*(t){yield e.write(t+u),yield s("OK");const n=yield s(u),r=(yield s(u)).slice(0,-1);if(r.trim())throw new Error("device error: ".concat(r.trim()));return n.slice(0,-1)}))).apply(this,arguments)}return{enterRaw:p,exec:w,deployMainPy:t=>o((function*(){yield p(),yield w('f = open("main.py", "wb")');for(let e=0;e<t.length;e+=512){const n=t.slice(e,e+512);yield w("f.write(".concat(f(n),")"))}yield w("f.close()");const n=yield w('import os\nprint(os.stat("main.py")[6])'),i=parseInt(n.trim(),10),o=(a=t,"undefined"!=typeof TextEncoder?(new TextEncoder).encode(a).length:r.byteLength(a,"utf8"));var a;if(i!==o)throw new Error("main.py is ".concat(i," bytes on the device, expected ").concat(o));return yield e.write(l),yield e.write("\r"+c),yield s("raw REPL; CTRL-B to exit"),yield e.write("import machine\nmachine.reset()"+u),i}))()}}function f(e){const t="undefined"!=typeof TextEncoder?(new TextEncoder).encode(e):r.from(e,"utf8");let n='b"';for(const e of t)n+=34===e?'\\"':92===e?"\\\\":e>=32&&e<127?String.fromCharCode(e):10===e?"\\n":13===e?"\\r":9===e?"\\t":"\\x"+e.toString(16).padStart(2,"0");return n+'"'}},31864:(e,t,n)=>{function r(e,t,n,r,i,o,c){try{var l=e[o](c),a=l.value}catch(e){return void n(e)}l.done?t(a):Promise.resolve(a).then(r,i)}function i(e){return function(){var t=this,n=arguments;return new Promise((function(i,o){var c=e.apply(t,n);function l(e){r(c,i,o,l,a,"next",e)}function a(e){r(c,i,o,l,a,"throw",e)}l(void 0)}))}}n.r(t),n.d(t,{available:()=>c,bootselVolume:()=>a,flashUf2:()=>u,listPorts:()=>l,openTransport:()=>s});const o=function(){return window.__TAURI__.core.invoke(...arguments)},c=()=>"undefined"!=typeof window&&!(!window.__TAURI__||!window.__TAURI__.core),l=()=>o("pico_serial_list"),a=()=>o("pico_bootsel_volume"),u=e=>{let t="";for(let n=0;n<e.length;n+=32768)t+=String.fromCharCode.apply(null,e.subarray(n,n+32768));return o("pico_flash_uf2",{uf2Base64:btoa(t)})},s=function(){var e=i((function*(e,t){return yield o("pico_serial_open",{path:e,baud:t}),{write:e=>o("pico_serial_write",{data:e}),read:(n=i((function*(){const e=yield o("pico_serial_read");return""===e&&(yield new Promise((e=>setTimeout(e,20)))),e})),function(){return n.apply(this,arguments)}),close:()=>o("pico_serial_close")};var n}));return function(t,n){return e.apply(this,arguments)}}()}}]);
+"use strict";
+(self["webpackChunkGUI"] = self["webpackChunkGUI"] || []).push([["pico-repl"],{
+
+/***/ "./src/lib/pico-repl.js":
+/*!******************************!*\
+  !*** ./src/lib/pico-repl.js ***!
+  \******************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   createPicoRepl: () => (/* binding */ createPicoRepl),
+/* harmony export */   pyBytesLiteral: () => (/* binding */ pyBytesLiteral),
+/* harmony export */   webSerialTransport: () => (/* binding */ webSerialTransport)
+/* harmony export */ });
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "./node_modules/buffer/index.js")["Buffer"];
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+// picoRepl — MicroPython raw-REPL upload protocol, transport-agnostic.
+//
+// The app's path from blocks to a live Pico over USB: generateMicroPython
+// gives main.py, THIS speaks the wire protocol, and the transport is
+// whatever can move bytes — the browser's WebSerial port, a node serial
+// stream, or the scripted mock in the tests. It is exactly the dance
+// mpremote and Thonny do:
+//
+//   Ctrl-C Ctrl-C   interrupt whatever runs
+//   Ctrl-A          enter raw REPL        → "raw REPL; CTRL-B to exit"
+//   <code> Ctrl-D   execute               → "OK" then output, then \x04
+//   Ctrl-B          back to friendly REPL
+//
+// Deployment writes main.py via a small exec'd program (open/write/close),
+// then soft-reboots so the stored file runs standalone — surviving
+// unplug/replug, like a flashed firmware.
+//
+// Browser wiring (Chromium only — Safari has no WebSerial, which is why
+// the app must ALSO offer the main.py download and the `bw flash` CLI):
+//
+//   const port = await navigator.serial.requestPort({
+//     filters: [{ usbVendorId: 0x2e8a }]   // Raspberry Pi
+//   });
+//   await port.open({ baudRate: 115200 });
+//   const repl = createPicoRepl(webSerialTransport(port));
+//   await repl.deployMainPy(py);
+
+const CTRL_A = '\x01';
+const CTRL_B = '\x02';
+const CTRL_C = '\x03';
+const CTRL_D = '\x04';
+
+/**
+ * @typedef {object} Transport
+ * @property {(text: string) => Promise<void>} write
+ * @property {() => Promise<string>} read — resolves with the next chunk
+ */
+
+/**
+ * Wrap a WebSerial port into the Transport this module speaks.
+ * Lives here so the app's glue stays one call — but the module never
+ * touches navigator itself, which is what keeps it testable in node.
+ * @param {*} port — an open WebSerial SerialPort
+ * @returns {Transport & {close: () => Promise<void>}}
+ */
+function webSerialTransport(port) {
+  const writer = port.writable.getWriter();
+  const reader = port.readable.getReader();
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+  return {
+    write(text) {
+      return _asyncToGenerator(function* () {
+        yield writer.write(enc.encode(text));
+      })();
+    },
+    read() {
+      return _asyncToGenerator(function* () {
+        const {
+          value,
+          done
+        } = yield reader.read();
+        return done ? '' : dec.decode(value);
+      })();
+    },
+    close() {
+      return _asyncToGenerator(function* () {
+        writer.releaseLock();
+        yield reader.cancel().catch(() => {});
+        reader.releaseLock();
+        yield port.close();
+      })();
+    }
+  };
+}
+
+/**
+ * @param {Transport} transport
+ * @param {{ timeoutMs?: number }} [opts]
+ */
+function createPicoRepl(transport) {
+  var _opts$timeoutMs;
+  let opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+  const timeoutMs = (_opts$timeoutMs = opts.timeoutMs) !== null && _opts$timeoutMs !== void 0 ? _opts$timeoutMs : 5000;
+  let buffer = '';
+  /** Read until the buffer contains `marker`; returns everything up to and
+   *  including it, consuming it from the buffer. */
+  function readUntil(_x) {
+    return _readUntil.apply(this, arguments);
+  }
+  function _readUntil() {
+    _readUntil = _asyncToGenerator(function* (marker) {
+      const deadline = Date.now() + timeoutMs;
+      for (;;) {
+        const i = buffer.indexOf(marker);
+        if (i >= 0) {
+          const out = buffer.slice(0, i + marker.length);
+          buffer = buffer.slice(i + marker.length);
+          return out;
+        }
+        if (Date.now() > deadline) {
+          throw new Error("timeout waiting for ".concat(JSON.stringify(marker), " \u2014 got ").concat(JSON.stringify(buffer.slice(-80))));
+        }
+        buffer += yield transport.read();
+      }
+    });
+    return _readUntil.apply(this, arguments);
+  }
+  function enterRaw() {
+    return _enterRaw.apply(this, arguments);
+  }
+  /** Execute code in raw REPL; returns its stdout. Throws on a traceback. */
+  function _enterRaw() {
+    _enterRaw = _asyncToGenerator(function* () {
+      yield transport.write(CTRL_C + CTRL_C); // interrupt a running program
+      yield transport.write('\r' + CTRL_A);
+      yield readUntil('raw REPL; CTRL-B to exit');
+    });
+    return _enterRaw.apply(this, arguments);
+  }
+  function exec(_x2) {
+    return _exec.apply(this, arguments);
+  }
+  function _exec() {
+    _exec = _asyncToGenerator(function* (code) {
+      yield transport.write(code + CTRL_D);
+      yield readUntil('OK');
+      // Output ends with \x04, then the error channel, then another \x04.
+      const out = yield readUntil(CTRL_D);
+      const err = yield readUntil(CTRL_D);
+      const errText = err.slice(0, -1);
+      if (errText.trim()) throw new Error("device error: ".concat(errText.trim()));
+      return out.slice(0, -1);
+    });
+    return _exec.apply(this, arguments);
+  }
+  return {
+    enterRaw,
+    exec,
+    /** The whole deployment: write main.py, verify the byte count, reboot
+     *  so the stored program runs standalone. */
+    deployMainPy(py) {
+      return _asyncToGenerator(function* () {
+        yield enterRaw();
+        // Write in chunks through a file handle — a single exec string
+        // holding the WHOLE program would need escaping it into a literal
+        // anyway, so do exactly that, but chunked to respect the device's
+        // raw-REPL input buffer.
+        yield exec('f = open("main.py", "wb")');
+        const CHUNK = 512;
+        for (let i = 0; i < py.length; i += CHUNK) {
+          const part = py.slice(i, i + CHUNK);
+          yield exec("f.write(".concat(pyBytesLiteral(part), ")"));
+        }
+        yield exec('f.close()');
+        const size = yield exec('import os\nprint(os.stat("main.py")[6])');
+        const written = parseInt(size.trim(), 10);
+        const expected = utf8Length(py);
+        if (written !== expected) {
+          throw new Error("main.py is ".concat(written, " bytes on the device, expected ").concat(expected));
+        }
+        // Leave raw REPL, then hard-reset via machine — main.py boots.
+        yield transport.write(CTRL_B);
+        yield transport.write('\r' + CTRL_A);
+        yield readUntil('raw REPL; CTRL-B to exit');
+        yield transport.write('import machine\nmachine.reset()' + CTRL_D);
+        return written;
+      })();
+    }
+  };
+}
+
+/** A Python bytes literal for arbitrary text, UTF-8 encoded. */
+function pyBytesLiteral(text) {
+  const bytes = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(text) : Buffer.from(text, 'utf8');
+  let out = 'b"';
+  for (const b of bytes) {
+    if (b === 0x22) out += '\\"';else if (b === 0x5c) out += '\\\\';else if (b >= 0x20 && b < 0x7f) out += String.fromCharCode(b);else if (b === 0x0a) out += '\\n';else if (b === 0x0d) out += '\\r';else if (b === 0x09) out += '\\t';else out += '\\x' + b.toString(16).padStart(2, '0');
+  }
+  return out + '"';
+}
+function utf8Length(text) {
+  return typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(text).length : Buffer.byteLength(text, 'utf8');
+}
+
+/***/ }),
+
+/***/ "./src/lib/pico-tauri-transport.js":
+/*!*****************************************!*\
+  !*** ./src/lib/pico-tauri-transport.js ***!
+  \*****************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   available: () => (/* binding */ available),
+/* harmony export */   bootselVolume: () => (/* binding */ bootselVolume),
+/* harmony export */   flashUf2: () => (/* binding */ flashUf2),
+/* harmony export */   listPorts: () => (/* binding */ listPorts),
+/* harmony export */   openTransport: () => (/* binding */ openTransport)
+/* harmony export */ });
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+// Brickwright: the Tauri half of Pico deploy. picoRepl (sb3-creator's
+// transport-agnostic MicroPython raw-REPL codec) speaks {write, read, close};
+// on the web that transport is WebSerial, here it is four invoke() commands
+// backed by the Rust serialport crate — which is what makes deploy work on
+// Safari-engine webviews and on Windows without drivers.
+//
+// The UI side decides when to call this; everything here is a no-op outside
+// Tauri (window.__TAURI__ absent → available() is false).
+
+const invoke = function invoke() {
+  return window.__TAURI__.core.invoke(...arguments);
+};
+const available = () => typeof window !== 'undefined' && !!(window.__TAURI__ && window.__TAURI__.core);
+
+/** @returns {Promise<string[]>} candidate serial ports (callout devices only) */
+const listPorts = () => invoke('pico_serial_list');
+
+/** True when a Pico in BOOTSEL mode is mounted (its RPI-RP2 volume found). */
+const bootselVolume = () => invoke('pico_bootsel_volume');
+
+/**
+ * Write a .uf2 to the mounted BOOTSEL volume — first-time flashing
+ * (MicroPython itself, or a baked firmware+littlefs image).
+ * @param {Uint8Array} uf2
+ * @returns {Promise<string>} human-readable result
+ */
+const flashUf2 = uf2 => {
+  let binary = '';
+  for (let i = 0; i < uf2.length; i += 0x8000) {
+    binary += String.fromCharCode.apply(null, uf2.subarray(i, i + 0x8000));
+  }
+  return invoke('pico_flash_uf2', {
+    uf2Base64: btoa(binary)
+  });
+};
+
+/**
+ * Open a port and wrap it in the Transport shape picoRepl consumes.
+ * The Rust read has a 50 ms timeout returning '' — picoRepl polls, so map
+ * empty reads to a small delay to avoid a hot loop.
+ * @param {string} path — one of listPorts()
+ * @param {number} [baud]
+ */
+const openTransport = /*#__PURE__*/function () {
+  var _ref = _asyncToGenerator(function* (path, baud) {
+    yield invoke('pico_serial_open', {
+      path,
+      baud
+    });
+    return {
+      write: data => invoke('pico_serial_write', {
+        data
+      }),
+      read: function () {
+        var _read = _asyncToGenerator(function* () {
+          const chunk = yield invoke('pico_serial_read');
+          if (chunk === '') {
+            yield new Promise(resolve => setTimeout(resolve, 20));
+          }
+          return chunk;
+        });
+        function read() {
+          return _read.apply(this, arguments);
+        }
+        return read;
+      }(),
+      close: () => invoke('pico_serial_close')
+    };
+  });
+  return function openTransport(_x, _x2) {
+    return _ref.apply(this, arguments);
+  };
+}();
+
+/***/ })
+
+}]);
