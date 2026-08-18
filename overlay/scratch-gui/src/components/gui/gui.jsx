@@ -11,6 +11,9 @@ import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
 const MicrobitSimPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-microbit-sim" */ '../tw-pseudocode/microbit-sim-pane.jsx')
 );
+const ControllerPanelView = React.lazy(() =>
+    import(/* webpackChunkName: "bw-controller-panel" */ '../tw-pseudocode/controller-panel-view.jsx')
+);
 import tabStyles from 'react-tabs/style/react-tabs.css';
 import VM from 'scratch-vm';
 import Renderer from 'scratch-render';
@@ -46,6 +49,7 @@ import layout, {STAGE_SIZE_MODES} from '../../lib/layout-constants';
 import {resolveStageSize} from '../../lib/screen-utils';
 import {themeMap} from '../../lib/themes';
 
+import { ControllerPanel } from '../../lib/bw-board/controller.js';
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
 import codeIcon from './icon--code.svg';
@@ -105,6 +109,53 @@ const GUIComponent = props => {
         window.addEventListener('bw-settings-change', sync);
         return () => window.removeEventListener('bw-settings-change', sync);
     }, []);
+
+    // ── Controller panel ──────────────────────────────────────────────
+    const controllerPanelRef = React.useRef(null);
+    if (!controllerPanelRef.current) controllerPanelRef.current = new ControllerPanel();
+    const controllerPanel = controllerPanelRef.current;
+    // Expose on vm.runtime so ControllerExtension can find it
+    React.useEffect(() => {
+        if (props.vm && props.vm.runtime) {
+            props.vm.runtime.controllerPanel = controllerPanel;
+        }
+    }, [props.vm, controllerPanel]);
+    // Restore panel from project data when project loads
+    React.useEffect(() => {
+        const onProjectLoad = () => {
+            try {
+                const stc = props.vm?.runtime?.stc;
+                if (stc && stc.controller) {
+                    const restored = ControllerPanel.fromJSON(stc.controller);
+                    // Replace widgets in the existing panel
+                    for (const name of controllerPanel.getWidgetNames()) {
+                        controllerPanel.removeWidget(name);
+                    }
+                    for (const w of restored.getWidgets()) {
+                        const added = controllerPanel.addWidget(w.name, w.type, w.config, w.layout);
+                        if (w.binding) added.binding = { ...w.binding };
+                    }
+                }
+            } catch { /* ignore corrupt data */ }
+        };
+        if (props.vm) props.vm.on('PROJECT_LOADED', onProjectLoad);
+        return () => { if (props.vm) props.vm.removeListener('PROJECT_LOADED', onProjectLoad); };
+    }, [props.vm, controllerPanel]);
+    // Listen for persistence events from the panel view
+    React.useEffect(() => {
+        const onChanged = (e) => {
+            // Store controller data on the runtime stc object for project save
+            if (props.vm && props.vm.runtime && props.vm.runtime.stc) {
+                props.vm.runtime.stc.controller = e.detail.data;
+            }
+        };
+        window.addEventListener('bw-controller-changed', onChanged);
+        return () => window.removeEventListener('bw-controller-changed', onChanged);
+    }, [props.vm, controllerPanel]);
+
+    // Resolve the board instance from the runtime (circuit-tab creates it)
+    const board = props.vm?.runtime?.stc?.board || null;
+
     const {
         accountNavOpen,
         activeTabIndex,
@@ -502,6 +553,18 @@ const GUIComponent = props => {
                                     <div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'micro:bit-Simulator wird geladen…' : 'Loading micro:bit simulator…'}</div>
                                 }>
                                     <MicrobitSimPane />
+                                </React.Suspense>
+                            ) : dockMode === 'controller' ? (
+                                <React.Suspense fallback={
+                                    <div style={{padding: 24, color: '#64748b'}}>Loading controller…</div>
+                                }>
+                                    <div style={{position: 'relative', flex: 1, minHeight: 0}}>
+                                        <ControllerPanelView
+                                            panel={controllerPanel}
+                                            board={board}
+                                            vm={vm}
+                                        />
+                                    </div>
                                 </React.Suspense>
                             ) : (
                                 <Box className={styles.targetWrapper}>
