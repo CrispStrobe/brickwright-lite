@@ -27,6 +27,7 @@ const builtinExtensions = {
     // this line the id fell to the SANDBOXED loader: importScripts('bitops')
     // 404'd and the blocks were dropped (gallery sweep, 2026-08-10).
     bitops: () => require('../extensions/crispstrobe/bitops'),
+    microbitplus: () => require('../extensions/crispstrobe/microbitplus'),
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     circuit: () => require('../extensions/crispstrobe/circuit'),

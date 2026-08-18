@@ -64,6 +64,14 @@ export default [
         featured: true
     },
     {
+        name: 'micro:bit+',
+        extensionId: 'microbitplus',
+        iconURL: 'static/extension-posters/microbit.png',
+        insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzAwQTNBMyIvPjx0ZXh0IHg9IjI0IiB5PSIxNiIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPm1pY3JvOmJpdDwvdGV4dD48dGV4dCB4PSIyNCIgeT0iMzgiIGZvbnQtc2l6ZT0iMjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4rPC90ZXh0Pjwvc3ZnPg==',
+        description: 'Display, sensors, pins, radio — for the MicroPython simulator.',
+        featured: true
+    },
+    {
         name: 'STC12 / 8051 Pins',
         extensionId: 'stc12',
         iconURL: 'static/extension-posters/csp-badge.png',
