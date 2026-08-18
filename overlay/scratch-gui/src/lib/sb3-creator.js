@@ -1087,6 +1087,39 @@ class SB3Creator {
             return B(op, {}, { VALUE: [s, null] });
         }
 
+        // ---- micro:bit+ SENSORS/MOTION reporters (DUAL-LOWERING-ORACLE M1–E3).
+        // BEFORE pin reads: `read accel x` must not fall through to stcPin. ----
+        if ((m = s.match(/^read\s+accel\s+(x|y|z|strength)$/i))) {
+            return B('microbitplus_accel', {}, { AXIS: [m[1].toLowerCase(), null] });
+        }
+        if (/^read\s+pitch$/i.test(s)) return B('microbitplus_pitch');
+        if (/^read\s+roll$/i.test(s)) return B('microbitplus_roll');
+        if (/^read\s+compass$/i.test(s)) return B('microbitplus_compass');
+        if ((m = s.match(/^read\s+magforce\s+(x|y|z|absolute)$/i))) {
+            return B('microbitplus_magforce', {}, { AXIS: [m[1].toLowerCase(), null] });
+        }
+        if (/^read\s+light$/i.test(s)) return B('microbitplus_light');
+        if (/^read\s+temperature$/i.test(s)) return B('microbitplus_temp');
+        if (/^read\s+sound$/i.test(s)) return B('microbitplus_sound');
+        // micro:bit+ pin/button reporters
+        if ((m = s.match(/^pin\s+(P\d+)\s+digital(?:\s+value)?$/i))) {
+            return B('microbitplus_digitalread', {}, { PIN: [m[1].toUpperCase(), null] });
+        }
+        if ((m = s.match(/^analog\s+(?:value\s+of\s+)?pin\s+(P\d+)$/i))) {
+            return B('microbitplus_analogread', {}, { PIN: [m[1].toUpperCase(), null] });
+        }
+        if ((m = s.match(/^button\s+([ABab])\s+pressed\??$/i))) {
+            return B('microbitplus_isbutton', {}, { BTN: [m[1].toLowerCase(), null] });
+        }
+        if ((m = s.match(/^read\s+button_([ABab])$/i))) {
+            return B('microbitplus_isbutton', {}, { BTN: [m[1].toLowerCase(), null] });
+        }
+        if ((m = s.match(/^read\s+last\s+radio\s+number$/i))) {
+            return B('microbitplus_radiolastnum');
+        }
+        if ((m = s.match(/^read\s+last\s+radio\s+text$/i))) {
+            return B('microbitplus_radiolaststr');
+        }
         // STC12 pin read: digital level, or the 10-bit ADC value for an ANALOG pin.
         if ((m = s.match(/^read\s+([A-Za-z_]\w*)$/i)) && this.stcPin(m[1])) {
             return B('stc12_read', {}, { PIN: [this.stcPin(m[1]).name, null] });
@@ -2706,6 +2739,100 @@ class SB3Creator {
             const { id, block } = cmd('stc12_print');
             block[id].inputs.VALUE = val(match[1]);
             block[id].fields.MODE = ['number', null];
+            return ret(block);
+        }
+        // ---- micro:bit+ display group (docs/microbitplus/DUAL-LOWERING-ORACLE.md D1–D5).
+        // BEFORE the stock display/scroll parse: `scroll text "..."` must not be
+        // grabbed by the generic `scroll <expr>` rule below. ----
+        if ((match = line.match(/^show\s+pattern\s+([0-9:]+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_showmatrix');
+            block[id].fields.MATRIX = [match[1].replace(/[^0-9]/g, ''), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^show\s+text\s+"([^"]*)"\s*$/i))) {
+            const { id, block } = cmd('microbitplus_showtext');
+            block[id].inputs.TEXT = [1, [10, match[1]]];
+            return ret(block);
+        }
+        if ((match = line.match(/^scroll\s+text\s+"([^"]*)"\s+delay\s+(\d+)\s*ms\s*$/i))) {
+            const { id, block } = cmd('microbitplus_scrolltext');
+            block[id].inputs.TEXT = [1, [10, match[1]]];
+            block[id].inputs.MS = [1, [4, match[2]]];
+            return ret(block);
+        }
+        if (/^clear\s+display\s*$/i.test(line)) {
+            const { id, block } = cmd('microbitplus_cleardisplay');
+            return ret(block);
+        }
+        if ((match = line.match(/^plot\s+x\s+(\d+)\s+y\s+(\d+)\s+(on|off)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_plot');
+            block[id].inputs.X = [1, [4, match[1]]];
+            block[id].inputs.Y = [1, [4, match[2]]];
+            block[id].fields.STATE = [match[3].toLowerCase(), null];
+            return ret(block);
+        }
+        // ---- micro:bit+ PINS group (DUAL-LOWERING-ORACLE P1–P7) ----
+        if ((match = line.match(/^set\s+pin\s+(P\d+)\s+(?:to\s+|digital\s+)([01])\s*$/i))) {
+            const { id, block } = cmd('microbitplus_digitalwrite');
+            block[id].fields.PIN = [match[1].toUpperCase(), null];
+            block[id].fields.LEVEL = [match[2], null];
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+pin\s+(P\d+)\s+analog\s+(\S+)\s*%?\s*$/i))) {
+            const { id, block } = cmd('microbitplus_analogwrite');
+            block[id].fields.PIN = [match[1].toUpperCase(), null];
+            block[id].inputs.PCT = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+pin\s+(P\d+)\s+pull\s+(none|up|down)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_setpull');
+            block[id].fields.PIN = [match[1].toUpperCase(), null];
+            block[id].fields.MODE = [match[2].toLowerCase(), null];
+            return ret(block);
+        }
+        // ---- micro:bit+ ACTUATORS group (DUAL-LOWERING-ORACLE A1–A4) ----
+        if ((match = line.match(/^(?:set\s+buzzer\s+to|play\s+tone)\s+(\S+)\s*hz(?:\s+for\s+(\S+)\s*ms)?\s*$/i))) {
+            const { id, block } = cmd('microbitplus_playtone');
+            block[id].inputs.FREQ = val(match[1]);
+            block[id].inputs.MS = [1, [4, match[2] || '-1']];
+            return ret(block);
+        }
+        if ((match = line.match(/^play\s+note\s+([A-G]#?\d)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_playnote');
+            block[id].fields.NOTE = [match[1].toUpperCase(), null];
+            return ret(block);
+        }
+        if (/^stop\s+(?:buzzer|tone)\s*$/i.test(line)) {
+            const { id, block } = cmd('microbitplus_stoptone');
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+(?:pin\s+)?(P\d+)\s+servo(?:\s+angle)?\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_servo');
+            block[id].fields.PIN = [match[1].toUpperCase(), null];
+            block[id].inputs.DEG = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+servo\s+to\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_servo');
+            block[id].fields.PIN = ['P1', null];
+            block[id].inputs.DEG = val(match[1]);
+            return ret(block);
+        }
+        // ---- micro:bit+ RADIO group (DUAL-LOWERING-ORACLE R1–R5) ----
+        if ((match = line.match(/^radio\s+on\s+group\s+(\S+)\s+power\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_radioon');
+            block[id].inputs.GROUP = val(match[1]);
+            block[id].inputs.POWER = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^radio\s+send\s+number\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_radiosendnum');
+            block[id].inputs.NUM = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^radio\s+send\s+text\s+"([^"]*)"\s*$/i))) {
+            const { id, block } = cmd('microbitplus_radiosendstr');
+            block[id].inputs.TEXT = [1, [10, match[1]]];
             return ret(block);
         }
         // ---- micro:bit display (explicit device verb: say is STAGE, this is LEDs) ----
@@ -4519,6 +4646,24 @@ class SB3Creator {
             case 'arrays_map': return `map ${this.dval(b.inputs.FUNC, blocks)} over array ${v('NAME')}`;
             case 'arrays_filter': return `filter array ${v('NAME')} by ${this.dval(b.inputs.FUNC, blocks)}`;
             case 'arrays_reduce': return `reduce array ${v('NAME')} with ${this.dval(b.inputs.FUNC, blocks)} from ${v('INIT')}`;
+            // micro:bit+ sensor/motion reporters (decompile to dialect).
+            case 'microbitplus_accel': return `read accel ${f('AXIS')}`;
+            case 'microbitplus_pitch': return 'read pitch';
+            case 'microbitplus_roll': return 'read roll';
+            case 'microbitplus_compass': return 'read compass';
+            case 'microbitplus_magforce': return `read magforce ${f('AXIS')}`;
+            case 'microbitplus_light': return 'read light';
+            case 'microbitplus_temp': return 'read temperature';
+            case 'microbitplus_sound': return 'read sound';
+            // micro:bit+ pin/button/radio reporters (decompile to dialect).
+            case 'microbitplus_digitalread': return `pin ${f('PIN')} digital`;
+            case 'microbitplus_analogread': return `analog value of pin ${f('PIN')}`;
+            case 'microbitplus_isbutton': return `read button_${f('BTN')}`;
+            case 'microbitplus_ispinhigh': return `pin ${f('PIN')} is high`;
+            case 'microbitplus_isgesture': return `${f('GESTURE')} happening`;
+            case 'microbitplus_istouch': return `pin ${f('PIN')} touched`;
+            case 'microbitplus_radiolastnum': return 'read last radio number';
+            case 'microbitplus_radiolaststr': return 'read last radio text';
             // STC12 / 8051 pin read (digital level or ADC value).
             case 'stc12_read': return `read ${f('PIN')}`;
             case 'stc12_readport': return `read ${f('PORT')}`;
@@ -4755,6 +4900,22 @@ class SB3Creator {
                 if (mode === 'text') return line(`display "${this.dval(b.inputs.VALUE, blocks).replace(/^"|"$/g, '')}"`);
                 return line(`display ${v('VALUE')}`);
             }
+            // micro:bit+ command blocks (decompile to dialect)
+            case 'microbitplus_showmatrix': return line(`show pattern ${f('MATRIX')}`);
+            case 'microbitplus_showtext': return line(`show text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            case 'microbitplus_scrolltext': return line(`scroll text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}" delay ${v('MS')} ms`);
+            case 'microbitplus_cleardisplay': return line('clear display');
+            case 'microbitplus_plot': return line(`plot x ${v('X')} y ${v('Y')} ${f('STATE')}`);
+            case 'microbitplus_digitalwrite': return line(`set pin ${f('PIN')} to ${f('LEVEL')}`);
+            case 'microbitplus_analogwrite': return line(`set pin ${f('PIN')} analog ${v('PCT')} %`);
+            case 'microbitplus_setpull': return line(`set pin ${f('PIN')} pull ${f('MODE')}`);
+            case 'microbitplus_playtone': return line(`play tone ${v('FREQ')} hz for ${v('MS')} ms`);
+            case 'microbitplus_playnote': return line(`play note ${f('NOTE')}`);
+            case 'microbitplus_stoptone': return line('stop buzzer');
+            case 'microbitplus_servo': return line(`set pin ${f('PIN')} servo ${v('DEG')}`);
+            case 'microbitplus_radioon': return line(`radio on group ${v('GROUP')} power ${v('POWER')}`);
+            case 'microbitplus_radiosendnum': return line(`radio send number ${v('NUM')}`);
+            case 'microbitplus_radiosendstr': return line(`radio send text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
             // circuit extension commands
             case 'circuit_setcontrol': return line(`set control ${v('CONTROL')} to ${v('VALUE')}`);
             case 'circuit_setpower': return line(`turn power ${f('STATE')}`);
@@ -7216,6 +7377,61 @@ class SB3Creator {
                 if (isPico) { degrade(`analog read of ${p.expr} needs machine.ADC — not emitted yet`); return '0'; }
                 return `${p.expr}.read_analog()`;
             }
+            // ---- micro:bit+ SENSORS/MOTION reporters (DUAL-LOWERING-ORACLE M1–E3) ----
+            const rf = (k) => (rb.fields[k] ? rb.fields[k][0] : '');
+            if (rb.opcode === 'microbitplus_accel') {
+                const ax = String(rf('AXIS')).toLowerCase();
+                if (ax === 'strength') {
+                    uses.math = true;
+                    return 'math.sqrt(accelerometer.get_x()**2 + accelerometer.get_y()**2 + accelerometer.get_z()**2)';
+                }
+                return `accelerometer.get_${ax}()`;
+            }
+            if (rb.opcode === 'microbitplus_pitch') { uses.math = true; uses._pitch = true; return '_pitch()'; }
+            if (rb.opcode === 'microbitplus_roll')  { uses.math = true; uses._roll = true; return '_roll()'; }
+            if (rb.opcode === 'microbitplus_compass') return 'compass.heading()';
+            if (rb.opcode === 'microbitplus_magforce') {
+                const ax = String(rf('AXIS')).toLowerCase();
+                if (ax === 'absolute') {
+                    uses.math = true;
+                    return 'math.sqrt(compass.get_x()**2 + compass.get_y()**2 + compass.get_z()**2)';
+                }
+                return `compass.get_${ax}()`;
+            }
+            if (rb.opcode === 'microbitplus_light') return 'display.read_light_level()';
+            if (rb.opcode === 'microbitplus_temp') return 'temperature()';
+            if (rb.opcode === 'microbitplus_sound') return 'microphone.sound_level()';
+            // ---- micro:bit+ PIN reporters (DUAL-LOWERING-ORACLE P4) ----
+            if (rb.opcode === 'microbitplus_digitalread') {
+                const pin = String(rf('PIN')).toLowerCase();
+                const n = pin.replace(/^p/, '');
+                return `pin${n}.read_digital()`;
+            }
+            if (rb.opcode === 'microbitplus_analogread') {
+                const pin = String(rf('PIN')).toLowerCase();
+                const n = pin.replace(/^p/, '');
+                return `pin${n}.read_analog()`;
+            }
+            if (rb.opcode === 'microbitplus_isbutton') {
+                const btn = String(rf('BTN')).toLowerCase();
+                uses.buttons = true;
+                return `button_${btn}.is_pressed()`;
+            }
+            if (rb.opcode === 'microbitplus_ispinhigh') {
+                const pin = String(rf('PIN')).toLowerCase();
+                const n = pin.replace(/^p/, '');
+                return `pin${n}.read_digital()`;
+            }
+            if (rb.opcode === 'microbitplus_isgesture') {
+                return `accelerometer.is_gesture('${String(rf('GESTURE')).toLowerCase()}')`;
+            }
+            if (rb.opcode === 'microbitplus_istouch') {
+                const pin = String(rf('PIN')).toLowerCase();
+                const n = pin.replace(/^p/, '');
+                return `pin${n}.is_touched()`;
+            }
+            if (rb.opcode === 'microbitplus_radiolastnum') { uses.radio = true; return '_radio_last_num'; }
+            if (rb.opcode === 'microbitplus_radiolaststr') { uses.radio = true; return '_radio_last_str'; }
             return null;
         };
         const val = (b, k, blocks) => pinReporter(b.inputs[k], blocks)
@@ -7244,6 +7460,16 @@ class SB3Creator {
             const vs = (k) => `str(${val(b, k, blocks)})`;
             const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
             const sub = (k) => (b.inputs[k] ? walk(b.inputs[k][1], blocks, pad + '    ') : [`${pad}    pass`]);
+            // A Python string literal from a text input: single-quoted for a
+            // literal text shadow ([.., [10, "..."]]) so it matches the micro:bit
+            // idiom; str(expr) for anything computed.
+            const pyText = (k) => {
+                const inp = b.inputs[k];
+                if (Array.isArray(inp) && Array.isArray(inp[1]) && inp[1][0] === 10) {
+                    return `'${String(inp[1][1]).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+                }
+                return `str(${val(b, k, blocks)})`;
+            };
             switch (b.opcode) {
                 case 'data_setvariableto': {
                     const n = declVar(f('VARIABLE'), '0');
@@ -7267,6 +7493,73 @@ class SB3Creator {
                     return [`${pad}yield int((${v('SECS')}) * 1000)  # say (stage)`];
                 case 'microbit_display':
                     return [`${pad}display.scroll(${vs('VALUE')}, wait=False, loop=False)`];
+                // micro:bit+ DISPLAY group — the REFERENCE lowering the other
+                // microbitPlus groups mirror (docs/microbitplus/DUAL-LOWERING-
+                // ORACLE.md, table D1–D3). MicroPython display API: show(Image),
+                // scroll(text), clear(), set_pixel(x,y,level).
+                case 'microbitplus_showmatrix': {
+                    // MATRIX is a 25-char '0'..'9' grid; Image() wants five
+                    // colon-separated 5-char rows.
+                    const raw = String(f('MATRIX') || val(b, 'MATRIX', blocks) || '').replace(/[^0-9]/g, '');
+                    const s = (raw + '0'.repeat(25)).slice(0, 25);
+                    const img = s.match(/.{5}/g).join(':');
+                    return [`${pad}display.show(Image('${img}'))`];
+                }
+                case 'microbitplus_showtext':
+                    return [`${pad}display.scroll(${pyText('TEXT')})`];
+                case 'microbitplus_scrolltext':
+                    return [`${pad}display.scroll(${pyText('TEXT')}, delay=int(${v('MS')}))`];
+                case 'microbitplus_cleardisplay':
+                    return [`${pad}display.clear()`];
+                case 'microbitplus_plot':
+                    return [`${pad}display.set_pixel(int(${v('X')}), int(${v('Y')}), ${f('STATE') === 'off' ? 0 : 9})`];
+                // micro:bit+ PINS group (DUAL-LOWERING-ORACLE P1–P7)
+                case 'microbitplus_digitalwrite': {
+                    const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
+                    return [`${pad}pin${pin}.write_digital(${f('LEVEL')})`];
+                }
+                case 'microbitplus_analogwrite': {
+                    const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
+                    return [`${pad}pin${pin}.write_analog(int(${v('PCT')} / 100 * 1023))`];
+                }
+                case 'microbitplus_setpull': {
+                    const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
+                    const mode = String(f('MODE')).toLowerCase();
+                    const pull = mode === 'up' ? `pin${pin}.PULL_UP`
+                        : mode === 'down' ? `pin${pin}.PULL_DOWN` : `pin${pin}.NO_PULL`;
+                    return [`${pad}pin${pin}.set_pull(${pull})`];
+                }
+                // micro:bit+ ACTUATORS group (DUAL-LOWERING-ORACLE A1–A4)
+                case 'microbitplus_playtone': {
+                    uses.music = true;
+                    const ms = v('MS');
+                    if (ms === '-1' || ms === -1) return [`${pad}music.pitch(int(${v('FREQ')}), pin=pin0)`];
+                    return [`${pad}music.pitch(int(${v('FREQ')}), int(${ms}), pin=pin0)`];
+                }
+                case 'microbitplus_playnote': {
+                    uses.music = true;
+                    const NOTE_FREQ = { C4:262, D4:294, E4:330, F4:349, G4:392, A4:440, B4:494,
+                        C5:523, D5:587, E5:659, F5:698, G5:784, A5:880, B5:988 };
+                    const freq = NOTE_FREQ[f('NOTE')] || 440;
+                    return [`${pad}music.pitch(${freq}, 500, pin=pin0)`];
+                }
+                case 'microbitplus_stoptone':
+                    uses.music = true;
+                    return [`${pad}music.stop()`];
+                case 'microbitplus_servo': {
+                    const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
+                    return [`${pad}pin${pin}.write_analog(int(${v('DEG')} / 180 * 1023))`];
+                }
+                // micro:bit+ RADIO group (DUAL-LOWERING-ORACLE R1–R5)
+                case 'microbitplus_radioon':
+                    uses.radio = true;
+                    return [`${pad}radio.config(group=int(${v('GROUP')}), power=int(${v('POWER')}))`, `${pad}radio.on()`];
+                case 'microbitplus_radiosendnum':
+                    uses.radio = true;
+                    return [`${pad}radio.send(str(${v('NUM')}))`];
+                case 'microbitplus_radiosendstr':
+                    uses.radio = true;
+                    return [`${pad}radio.send(${pyText('TEXT')})`];
                 case 'stc12_print':
                     return [`${pad}print(${vs('VALUE')})`];
                 case 'stc12_setpin': {
@@ -7478,6 +7771,10 @@ class SB3Creator {
             : ['# generated for micro:bit (MicroPython)',
                 'from microbit import *'];
         if (uses.music && !isPico) header.push('import music');
+        if (uses.math) header.push('import math');
+        if (uses.radio) header.push('import radio');
+        if (uses._pitch) header.push('', 'def _pitch():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(-y, -z) * 180 / math.pi');
+        if (uses._roll) header.push('', 'def _roll():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(x, -z) * 180 / math.pi');
         if (isPico) {
             // Pin objects. sda/scl by NAME feed the hardware I2C when the
             // program drives an OLED — they must not be constructed as
