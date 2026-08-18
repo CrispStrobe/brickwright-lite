@@ -1671,7 +1671,7 @@ class PseudocodeImporter extends React.Component {
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'nowrap', flexShrink: 0}}
                     data-testid="bw-lang-row">
                     {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
-                        ...(this.currentDevice() === 'microbit' ? [['micropython', '🤖 µ:bit']] : [])].map(([l, label]) => {
+                        ...(this.currentDevice() === 'microbit' ? [['micropython', '🤖 micro:bit']] : [])].map(([l, label]) => {
                         const active = this.state.lang === l;
                         return (
                             <button key={l} type="button" aria-pressed={active} onClick={() => this.switchTab(l)}
