@@ -1,5 +1,7 @@
 // Lazy loader for scratch-blocks — loads the ~1 MiB blockly core as a separate webpack
 // chunk instead of bundling it synchronously in gui.js. Ported from TurboWarp.
+import registerFieldLed8x8 from './blocks/field-led8x8';
+
 let _ScratchBlocks = null;
 
 const isLoaded = () => !!_ScratchBlocks;
@@ -46,6 +48,14 @@ const load = () => {
                 };
                 proto.setVisible.__bwGuarded = true;
                 if (typeof window !== 'undefined') window.__bwBubbleGuard.push(name);
+            }
+            // Register the A2 8x8 brightness-matrix field + its shadow block
+            // against the loaded Blockly, the same runtime-patch pattern as
+            // the bubble guard above (no scratch-blocks recompile needed).
+            try {
+                registerFieldLed8x8(_ScratchBlocks);
+            } catch (e) {
+                console.warn('[brickwright] FieldLed8x8 registration skipped:', e && e.message);
             }
             return _ScratchBlocks;
         });
