@@ -19,7 +19,7 @@ import PropTypes from 'prop-types';
 import {EditorView, keymap, lineNumbers, highlightActiveLine, highlightSpecialChars,
     drawSelection, rectangularSelection} from '@codemirror/view';
 import {EditorState, Compartment} from '@codemirror/state';
-import {defaultKeymap, indentWithTab, history, historyKeymap, undo, redo} from '@codemirror/commands';
+import {defaultKeymap, indentWithTab, history, historyKeymap, undo, redo, selectAll} from '@codemirror/commands';
 import {searchKeymap, openSearchPanel} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
 import {closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
@@ -151,6 +151,12 @@ class CodeMirrorEditor extends React.Component {
             foldGutter(),
             syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
             keymap.of([
+                // On macOS, CodeMirror's defaultKeymap binds Ctrl-a to the
+                // emacs "cursor to line start" command (Mod-a / Cmd-a is
+                // select-all there). Web users — and cross-platform tooling —
+                // expect Ctrl-a to select all everywhere, so bind it explicitly
+                // ahead of the defaults on every OS.
+                {key: 'Ctrl-a', run: selectAll, preventDefault: true},
                 ...closeBracketsKeymap,
                 ...defaultKeymap,
                 ...historyKeymap,
