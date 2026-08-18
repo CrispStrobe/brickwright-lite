@@ -1,0 +1,15 @@
+DEVICE MICROBIT
+PIN led1 = P0 OUTPUT ACTIVE LOW
+PIN buzzer = P0 TONE
+
+# micro:bit pins demo — blink an LED and beep
+WHEN flag clicked:
+  FOREVER:
+    turn on led1
+    set buzzer to 440 hz
+    show pattern 00000:00000:00100:00000:00000
+    wait 0.5 seconds
+    turn off led1
+    stop buzzer
+    clear display
+    wait 0.5 seconds
