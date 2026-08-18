@@ -56,6 +56,7 @@ const L10N = {
         catalogEmpty: 'No catalog examples for this device.',
         catalogNoMatch: 'No examples match that search.',
         catalogUnavailable: e => `Example catalog unavailable (${e})`,
+        catalogNeeds: devs => `Needs: ${devs}`,
         infoTitle: 'Click for info', infoAria: 'About the Code tab',
         reference: 'reference', referenceTitle: l => `Reference for ${l}`,
         customArt: 'Custom sprite art', customArtTitle: 'Upload SVGs and bake them in as sprite costumes',
@@ -130,6 +131,7 @@ const L10N = {
         catalogEmpty: 'Keine Katalog-Beispiele für dieses Gerät.',
         catalogNoMatch: 'Keine Beispiele passen zur Suche.',
         catalogUnavailable: e => `Beispiel-Katalog nicht verfügbar (${e})`,
+        catalogNeeds: devs => `Benötigt: ${devs}`,
         infoTitle: 'Für Infos klicken', infoAria: 'Über den Code-Tab',
         reference: 'Referenz', referenceTitle: l => `Referenz für ${l}`,
         customArt: 'Eigene Sprite-Grafik', customArtTitle: 'SVGs hochladen und als Sprite-Kostüme einbacken',
@@ -1215,11 +1217,14 @@ class PseudocodeImporter extends React.Component {
         return String(id || '').toLowerCase().replace(/_/g, '-');
     }
 
-    /** Catalog entries compatible with the given device id. */
+    /** All catalog entries, with compatibility flag for the given device. */
     catalogForDevice (device) {
         const dev = this._normDevice(device);
-        return (this.state.catalog || []).filter(
-            ex => (ex.devices || []).some(d => this._normDevice(d) === dev));
+        return (this.state.catalog || []).map(ex => {
+            const devices = ex.devices || [];
+            const compatible = devices.length === 0 || devices.some(d => this._normDevice(d) === dev);
+            return { ...ex, _compatible: compatible };
+        });
     }
 
     // Load a catalog example's program.bw into the pseudocode editor. If the
@@ -1232,8 +1237,16 @@ class PseudocodeImporter extends React.Component {
         // click keeps the buffer's DEVICE. Before the chips existed the
         // only way to pick was the separate device dropdown, which nobody
         // found — 'we click Nano and receive stc12 anyway' (owner).
-        const device = (deviceOverride && this._normDevice(deviceOverride)) ||
-            this.currentDevice();
+        // kind:'full' examples (retro console, calculator) default to their
+        // AUTHORED device — current-chip-first loaded a generated LED bench
+        // where the curated build's matrices belonged (parity with cui's
+        // ExamplesBrowser ca6d810).
+        let device = (deviceOverride && this._normDevice(deviceOverride)) ||
+            null;
+        if (!device && ex.kind === 'full' && ex.authored) {
+            device = this._normDevice(ex.authored);
+        }
+        if (!device) device = this.currentDevice();
         this.setState({showCatalog: false, busy: true, status: ''});
         try {
             const res = await fetch(`examples/${ex.files.program}`);
@@ -1537,7 +1550,9 @@ class PseudocodeImporter extends React.Component {
     // answer — hence the filter box the spec asks for.
     renderCatalogControl (csel) {
         const device = this.currentDevice();
-        const list = this.catalogForDevice(device);
+        const unsorted = this.catalogForDevice(device);
+        // Compatible examples first, then incompatible (greyed with "Needs:")
+        const list = unsorted.sort((a, b) => (b._compatible ? 1 : 0) - (a._compatible ? 1 : 0));
         const q = this.state.exampleFilter.trim().toLowerCase();
         const locale = pickLocale(this.props.locale);
         const rows = q ? list.filter(ex => {
@@ -1575,7 +1590,7 @@ class PseudocodeImporter extends React.Component {
                                 <div style={{padding: '6px 8px', fontSize: 12, color: '#64748b'}}>
                                     {this.L.catalogLoading}
                                 </div>
-                            ) : list.length === 0 ? (
+                            ) : list.every(ex => ex._compatible === false) ? (
                                 <div style={{padding: '6px 8px', fontSize: 12, color: '#64748b'}}>
                                     {this.L.catalogEmpty}
                                 </div>
@@ -1586,29 +1601,44 @@ class PseudocodeImporter extends React.Component {
                             ) : rows.map(ex => {
                                 const t = ex.title || {};
                                 const title = (locale === 'de' ? t.de : t.en) || t.en || ex.id;
+                                const compat = ex._compatible !== false;
+                                const needsLabel = !compat && (ex.devices || []).length > 0
+                                    ? this.L.catalogNeeds((ex.devices || []).map(d => DEVICE_CHIP_LABELS[d] || d).join(', '))
+                                    : null;
                                 return (
                                     <button key={ex.id} type="button"
                                         onClick={() => this.loadCatalogExample(ex)}
                                         style={{display: 'block', width: '100%', textAlign: 'left',
                                             padding: '5px 8px', border: 'none', borderRadius: 6,
                                             background: 'transparent', cursor: 'pointer',
-                                            font: 'inherit', fontSize: 13, color: '#1e293b'}}
+                                            font: 'inherit', fontSize: 13,
+                                            color: compat ? '#1e293b' : '#94a3b8',
+                                            opacity: compat ? 1 : 0.7}}
                                         title={ex.id} data-testid="bw-catalog-item">
                                         {title}
                                         <span style={{marginLeft: 6, fontSize: 11, color: '#94a3b8'}}>{ex.id}</span>
+                                        {needsLabel && (
+                                            <span style={{display: 'block', fontSize: 10, fontStyle: 'italic',
+                                                color: '#b45309', marginTop: 1}}>{needsLabel}</span>
+                                        )}
                                         {(ex.devices || []).length > 1 ? (
                                             <span style={{display: 'block', marginTop: 2}}>
-                                                {(ex.devices || []).map(d => (
-                                                    <span key={d} role="button" tabIndex={0}
-                                                        data-testid="bw-catalog-device"
-                                                        onClick={e => { e.stopPropagation(); this.loadCatalogExample(ex, d); }}
-                                                        onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); this.loadCatalogExample(ex, d); } }}
-                                                        style={{display: 'inline-block', margin: '0 4px 2px 0',
-                                                            padding: '0 6px', borderRadius: 8, fontSize: 10,
-                                                            background: '#e2e8f0', color: '#334155', cursor: 'pointer'}}>
-                                                        {DEVICE_CHIP_LABELS[d] || d}
-                                                    </span>
-                                                ))}
+                                                {(ex.devices || []).map(d => {
+                                                    const isActive = this._normDevice(d) === this._normDevice(device);
+                                                    return (
+                                                        <span key={d} role="button" tabIndex={0}
+                                                            data-testid="bw-catalog-device"
+                                                            onClick={e => { e.stopPropagation(); this.loadCatalogExample(ex, d); }}
+                                                            onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); this.loadCatalogExample(ex, d); } }}
+                                                            style={{display: 'inline-block', margin: '0 4px 2px 0',
+                                                                padding: '0 6px', borderRadius: 8, fontSize: 10,
+                                                                background: isActive ? '#3b82f6' : '#e2e8f0',
+                                                                color: isActive ? '#fff' : '#334155',
+                                                                cursor: 'pointer'}}>
+                                                            {DEVICE_CHIP_LABELS[d] || d}
+                                                        </span>
+                                                    );
+                                                })}
                                             </span>
                                         ) : null}
                                     </button>
