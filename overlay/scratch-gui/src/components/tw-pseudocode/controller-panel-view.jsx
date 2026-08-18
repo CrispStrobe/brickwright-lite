@@ -142,6 +142,72 @@ class JoystickWidget extends React.Component {
     }
 }
 
+// ─── D-pad widget ─────────────────────────────────────────────────────────
+
+const DPAD_SIZE = 120;
+const DPAD_BTN = 36;
+
+function DpadWidget({ widget, name, mode, panel }) {
+    const playable = mode === 'play';
+    const { up = false, down = false, left = false, right = false } = widget.state;
+    const dirs = [
+        { key: 'up',    label: '▲', x: (DPAD_SIZE - DPAD_BTN) / 2, y: 0 },
+        { key: 'down',  label: '▼', x: (DPAD_SIZE - DPAD_BTN) / 2, y: DPAD_SIZE - DPAD_BTN },
+        { key: 'left',  label: '◄', x: 0, y: (DPAD_SIZE - DPAD_BTN) / 2 },
+        { key: 'right', label: '►', x: DPAD_SIZE - DPAD_BTN, y: (DPAD_SIZE - DPAD_BTN) / 2 },
+    ];
+    const pressed = { up, down, left, right };
+    return (
+        <div style={{
+            width: DPAD_SIZE, height: DPAD_SIZE,
+            position: 'relative', userSelect: 'none',
+        }}>
+            {/* Center cross background */}
+            <div style={{
+                position: 'absolute',
+                left: (DPAD_SIZE - DPAD_BTN) / 2, top: 0,
+                width: DPAD_BTN, height: DPAD_SIZE,
+                background: '#e2e8f0', borderRadius: 6,
+            }} />
+            <div style={{
+                position: 'absolute',
+                left: 0, top: (DPAD_SIZE - DPAD_BTN) / 2,
+                width: DPAD_SIZE, height: DPAD_BTN,
+                background: '#e2e8f0', borderRadius: 6,
+            }} />
+            {dirs.map(d => (
+                <button
+                    key={d.key}
+                    disabled={!playable}
+                    onPointerDown={() => panel.setDpadInput(name, d.key, true)}
+                    onPointerUp={() => panel.setDpadInput(name, d.key, false)}
+                    onPointerLeave={() => { if (pressed[d.key]) panel.setDpadInput(name, d.key, false); }}
+                    style={{
+                        position: 'absolute', left: d.x, top: d.y,
+                        width: DPAD_BTN, height: DPAD_BTN,
+                        border: 'none', borderRadius: 6,
+                        background: pressed[d.key] ? '#7C3AED' : '#cbd5e1',
+                        color: pressed[d.key] ? '#fff' : '#334155',
+                        fontSize: 16, fontWeight: 700,
+                        cursor: playable ? 'pointer' : 'default',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'background 0.1s',
+                    }}
+                >
+                    {d.label}
+                </button>
+            ))}
+            {/* Readout */}
+            <div style={{
+                position: 'absolute', bottom: -20, left: 0, right: 0,
+                textAlign: 'center', fontSize: 11, color: '#64748b', fontFamily: 'monospace'
+            }}>
+                {up ? '↑' : ''}{down ? '↓' : ''}{left ? '←' : ''}{right ? '→' : ''}{(!up && !down && !left && !right) ? '·' : ''}
+            </div>
+        </div>
+    );
+}
+
 // ─── Widget card (edit mode wrapper) ──────────────────────────────────────
 
 function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
@@ -187,6 +253,15 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
                     name={widget.name}
                     mode={mode}
                     onInput={onInput}
+                />
+            )}
+
+            {widget.type === 'dpad' && (
+                <DpadWidget
+                    widget={widget}
+                    name={widget.name}
+                    mode={mode}
+                    panel={panel}
                 />
             )}
 

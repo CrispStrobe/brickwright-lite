@@ -253,3 +253,259 @@ describe('ControllerPanel — widget CRUD', () => {
     assert.deepEqual(panel.getWidgetsByType('button'), ['btn1']);
   });
 });
+
+// ─── D-pad widget tests ───────────────────────────────────────────────────
+
+describe('ControllerPanel — D-pad widget', () => {
+
+  it('adds a dpad with default state (all directions false)', () => {
+    const panel = new ControllerPanel();
+    const w = panel.addWidget('dpad1', 'dpad');
+    assert.equal(w.type, 'dpad');
+    assert.equal(w.state.up, false);
+    assert.equal(w.state.down, false);
+    assert.equal(w.state.left, false);
+    assert.equal(w.state.right, false);
+  });
+
+  it('setDpadInput sets direction state', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    panel.setDpadInput('dpad1', 'up', true);
+    panel.setDpadInput('dpad1', 'right', true);
+    const w = panel.getWidget('dpad1');
+    assert.equal(w.state.up, true);
+    assert.equal(w.state.right, true);
+    assert.equal(w.state.down, false);
+    assert.equal(w.state.left, false);
+  });
+
+  it('setDpadInput rejects invalid direction', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    assert.throws(() => panel.setDpadInput('dpad1', 'diagonal', true), /Invalid D-pad direction/);
+  });
+
+  it('getValue returns bitmask (up=1, down=2, left=4, right=8)', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    assert.equal(panel.getValue('dpad1'), 0);
+    panel.setDpadInput('dpad1', 'up', true);
+    assert.equal(panel.getValue('dpad1'), 1);
+    panel.setDpadInput('dpad1', 'right', true);
+    assert.equal(panel.getValue('dpad1'), 1 | 8); // 9
+    panel.setDpadInput('dpad1', 'down', true);
+    assert.equal(panel.getValue('dpad1'), 1 | 2 | 8); // 11
+  });
+
+  it('getX returns -1/0/1 for dpad left/right', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    assert.equal(panel.getX('dpad1'), 0);
+    panel.setDpadInput('dpad1', 'right', true);
+    assert.equal(panel.getX('dpad1'), 1);
+    panel.setDpadInput('dpad1', 'left', true);
+    assert.equal(panel.getX('dpad1'), 0); // both pressed = 0
+    panel.setDpadInput('dpad1', 'right', false);
+    assert.equal(panel.getX('dpad1'), -1);
+  });
+
+  it('getY returns -1/0/1 for dpad up/down', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    assert.equal(panel.getY('dpad1'), 0);
+    panel.setDpadInput('dpad1', 'up', true);
+    assert.equal(panel.getY('dpad1'), 1);
+    panel.setDpadInput('dpad1', 'down', true);
+    assert.equal(panel.getY('dpad1'), 0); // both pressed = 0
+    panel.setDpadInput('dpad1', 'up', false);
+    assert.equal(panel.getY('dpad1'), -1);
+  });
+
+  it('isPressed returns true if any direction pressed', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    assert.equal(panel.isPressed('dpad1'), false);
+    panel.setDpadInput('dpad1', 'left', true);
+    assert.equal(panel.isPressed('dpad1'), true);
+    panel.setDpadInput('dpad1', 'left', false);
+    assert.equal(panel.isPressed('dpad1'), false);
+  });
+
+  it('dpad resets on entering play mode', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    panel.getWidget('dpad1').state.up = true;
+    panel.getWidget('dpad1').state.right = true;
+    panel.setMode('play');
+    const w = panel.getWidget('dpad1');
+    assert.equal(w.state.up, false);
+    assert.equal(w.state.right, false);
+  });
+
+  it('dpad persists via toJSON/fromJSON', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad', {}, { x: 5, y: 10 });
+    panel.bindToPart('dpad1', 'switch1', 'x');
+    const json = panel.toJSON();
+    const restored = ControllerPanel.fromJSON(json);
+    const w = restored.getWidget('dpad1');
+    assert.equal(w.type, 'dpad');
+    assert.equal(w.layout.x, 5);
+    assert.deepEqual(w.binding, { target: 'part', partId: 'switch1', param: 'x' });
+  });
+});
+
+describe('ControllerPanel — D-pad world-facing binding', () => {
+
+  it('dpad bound to part calls board.setControl on direction press', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    panel.bindToPart('dpad1', 'switch1', 'x');
+
+    const calls = [];
+    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setDpadInput('dpad1', 'right', true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].partId, 'switch1');
+    // right pressed, no left → x = (1 + 1) / 2 = 1.0
+    assert.equal(calls[0].value, 1.0);
+
+    panel.setDpadInput('dpad1', 'right', false);
+    assert.equal(calls.length, 2);
+    // neither → x = (0 + 1) / 2 = 0.5
+    assert.equal(calls[1].value, 0.5);
+
+    binding.dispose();
+  });
+
+  it('dpad y-axis binding works', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('dpad1', 'dpad');
+    panel.bindToPart('dpad1', 'pot1', 'y');
+
+    const calls = [];
+    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setDpadInput('dpad1', 'up', true);
+    assert.equal(calls[0].value, 1.0); // (1 + 1) / 2
+
+    panel.setDpadInput('dpad1', 'down', true);
+    assert.equal(calls[1].value, 0.5); // both pressed, (0 + 1) / 2
+
+    binding.dispose();
+  });
+});
+
+// ─── Button widget tests ──────────────────────────────────────────────────
+
+describe('ControllerPanel — button widget', () => {
+
+  it('momentary button press/release', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('btn1', 'button');
+    panel.setButtonInput('btn1', true);
+    assert.equal(panel.isPressed('btn1'), true);
+    assert.equal(panel.getValue('btn1'), 1);
+    panel.setButtonInput('btn1', false);
+    assert.equal(panel.isPressed('btn1'), false);
+    assert.equal(panel.getValue('btn1'), 0);
+  });
+
+  it('toggle button toggles on press, ignores release', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('btn1', 'button', { toggle: true });
+    panel.setButtonInput('btn1', true);  // press → on
+    assert.equal(panel.isPressed('btn1'), true);
+    panel.setButtonInput('btn1', false); // release → still on
+    assert.equal(panel.isPressed('btn1'), true);
+    panel.setButtonInput('btn1', true);  // press again → off
+    assert.equal(panel.isPressed('btn1'), false);
+  });
+
+  it('button world-facing binding calls setControl', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('btn1', 'button');
+    panel.bindToPart('btn1', 'sw1');
+
+    const calls = [];
+    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setButtonInput('btn1', true);
+    assert.equal(calls[0].value, 1);
+    panel.setButtonInput('btn1', false);
+    assert.equal(calls[1].value, 0);
+
+    binding.dispose();
+  });
+});
+
+// ─── Slider widget tests ─────────────────────────────────────────────────
+
+describe('ControllerPanel — slider widget', () => {
+
+  it('slider input clamps to range', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('s1', 'slider', { min: 10, max: 50 });
+    panel.setSliderInput('s1', 100);
+    assert.equal(panel.getValue('s1'), 50);
+    panel.setSliderInput('s1', -5);
+    assert.equal(panel.getValue('s1'), 10);
+    panel.setSliderInput('s1', 30);
+    assert.equal(panel.getValue('s1'), 30);
+  });
+
+  it('slider world-facing binding normalizes to 0..1', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('s1', 'slider', { min: 0, max: 200 });
+    panel.bindToPart('s1', 'pot1');
+
+    const calls = [];
+    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setSliderInput('s1', 100);
+    assert.equal(calls[0].value, 0.5); // 100/200
+
+    panel.setSliderInput('s1', 200);
+    assert.equal(calls[1].value, 1.0);
+
+    panel.setSliderInput('s1', 0);
+    assert.equal(calls[2].value, 0.0);
+
+    binding.dispose();
+  });
+});
+
+// ─── Dial widget tests ────────────────────────────────────────────────────
+
+describe('ControllerPanel — dial widget', () => {
+
+  it('dial input clamps to range', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('d1', 'dial', { min: 0, max: 360 });
+    panel.setSliderInput('d1', 400);
+    assert.equal(panel.getValue('d1'), 360);
+    panel.setSliderInput('d1', -10);
+    assert.equal(panel.getValue('d1'), 0);
+  });
+
+  it('dial world-facing binding normalizes to 0..1', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('d1', 'dial', { min: 0, max: 360 });
+    panel.bindToPart('d1', 'pot2');
+
+    const calls = [];
+    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setSliderInput('d1', 180);
+    assert.equal(calls[0].value, 0.5); // 180/360
+
+    binding.dispose();
+  });
+});
