@@ -6606,5 +6606,25 @@
    "intro": "mb05-faceplate-calc/intro.md",
    "introDE": "mb05-faceplate-calc/intro.de.md"
   }
+ },
+ {
+  "id": "blinkenrocket-animation",
+  "title": {
+   "en": "Blinkenrocket animation (controller panel)",
+   "de": "Blinkenrocket-Animation (Controller-Panel)"
+  },
+  "category": "digital",
+  "difficulty": 2,
+  "kind": "program",
+  "devices": [
+   "attiny88"
+  ],
+  "authored": "attiny88",
+  "files": {
+   "program": "blinkenrocket-animation/program.bw",
+   "controller": "blinkenrocket-animation/controller.json",
+   "intro": "blinkenrocket-animation/intro.md",
+   "introDE": "blinkenrocket-animation/intro.de.md"
+  }
  }
 ]
