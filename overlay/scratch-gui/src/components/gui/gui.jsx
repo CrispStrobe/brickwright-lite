@@ -276,6 +276,14 @@ const GUIComponent = props => {
             background: '#ffffff', overflow: 'auto'
         } : null;
 
+        // Scratch Stage full screen: the stock presentation mode is defeated by
+        // brickwright's inline pane widths, so the stage stayed a half-width
+        // panel with the editor still showing beside it. When the plain stage is
+        // the full-screen target (dockMode 'top'/'scratch' — controller/micro:bit
+        // have their own overlay; circuit/debugger live in the left pane), hide
+        // the editor and let the stage column fill the window.
+        const stageFullScreen = isFullScreen && (dockMode === 'top' || dockMode === 'scratch');
+
         return isPlayerOnly ? (
             <StageWrapper
                 isFullScreen={isFullScreen}
@@ -411,10 +419,10 @@ const GUIComponent = props => {
                         <Box
                             className={styles.editorWrapper}
                             data-editor-pane="true"
-                            style={stagePaneVisible ? undefined : {
+                            style={stageFullScreen ? {display: 'none'} : (stagePaneVisible ? undefined : {
                                 display: 'flex', width: '100%', maxWidth: 'none', height: '100%',
                                 flex: 'none', flexBasis: 'auto', minWidth: 0
-                            }}
+                            })}
                         >
                             <Tabs
                                 forceRenderTabPanel
@@ -577,9 +585,11 @@ const GUIComponent = props => {
 
                         <Box className={classNames(styles.stageAndTargetWrapper, styles[stageSize])}
                             data-right-pane="true"
-                            style={stagePaneVisible ? paneStyles.right : {
+                            style={stageFullScreen ? {
+                                flex: '1 1 100%', width: '100%', minWidth: 0, height: '100%'
+                            } : (stagePaneVisible ? paneStyles.right : {
                                 display: 'none', flex: '0 0 0', width: 0, minWidth: 0
-                            }}>
+                            })}>
                             {/* Covers the column rather than replacing it — the stage stays
                                 mounted underneath, clipped to 28px, so restoring is instant
                                 and scratch-render's canvas is never torn down. */}
