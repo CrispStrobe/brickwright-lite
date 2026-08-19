@@ -8,7 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Import the data-model modules (no DOM dependency)
 import { ControllerPanel, WIDGET_TYPES } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
-import { bindPanelToBoard, createControllerDriver } from '../overlay/scratch-gui/src/lib/bw-board/controller-binding.js';
+import { bindPanelToBoard, createControllerDriver, bindPanelToVariables } from '../overlay/scratch-gui/src/lib/bw-board/controller-binding.js';
 
 describe('ControllerPanel — joystick widget', () => {
 
@@ -694,5 +694,56 @@ describe('ControllerPanel — demo fixture (brightness slider + on/off button)',
       restored.getWidget('onoff').binding,
       { target: 'part', partId: 'led1', param: null }
     );
+  });
+});
+
+// ─── Widgets-editor engine guarantees (layout model + decorations) ─────────
+
+describe('ControllerPanel — layout editor model', () => {
+  it('full layout survives addWidget + toJSON/fromJSON (w/h/rotation/color/label)', () => {
+    const p = new ControllerPanel();
+    p.addWidget('j', 'joystick', {}, { x: 8, y: 16, w: 120, h: 90, rotation: 15, color: '#f00', label: 'Steer' });
+    const r = ControllerPanel.fromJSON(p.toJSON());
+    assert.deepEqual(r.getWidget('j').layout,
+      { x: 8, y: 16, w: 120, h: 90, rotation: 15, color: '#f00', label: 'Steer' });
+  });
+
+  it('renameWidget keeps the binding and paint order; refuses collisions', () => {
+    const p = new ControllerPanel();
+    p.addWidget('a', 'button');
+    p.addWidget('b', 'button');
+    p.bindToVariable('a', 'btnA');
+    p.renameWidget('a', 'fire');
+    assert.deepEqual(p.getWidget('fire').binding, { target: 'variable', variableName: 'btnA' });
+    assert.deepEqual(p.getWidgetNames(), ['fire', 'b']);
+    assert.throws(() => p.renameWidget('fire', 'b'), /already exists/);
+  });
+
+  it('decorations (text/image) persist and the variable pump skips them', () => {
+    const p = new ControllerPanel();
+    p.addWidget('t', 'text', { text: 'Hi', fontSize: 20 }, { x: 4, rotation: 30 });
+    p.addWidget('i', 'image', { src: 'data:image/png;base64,AA' }, { w: 80 });
+    p.bindToVariable('t', 'oops');
+    const vars = { id_oops: { name: 'oops', value: 7 } };
+    const vm = { runtime: { getTargetForStage: () => ({ variables: vars,
+      lookupVariableByNameAndType: (n) => Object.values(vars).find((v) => v.name === n) || null }) } };
+    const b = bindPanelToVariables(p, vm, { autoPump: false });
+    b.pump();
+    assert.equal(vars.id_oops.value, 7, 'decorations never touch variables');
+    b.dispose();
+    const r = ControllerPanel.fromJSON(p.toJSON());
+    assert.equal(r.getWidget('t').config.text, 'Hi');
+    assert.equal(r.getWidget('t').layout.rotation, 30);
+    assert.equal(r.getWidget('i').config.src, 'data:image/png;base64,AA');
+  });
+
+  it('setWidgetConfig edits a decoration and emits config', () => {
+    const p = new ControllerPanel();
+    p.addWidget('t', 'text');
+    const events = [];
+    p.addListener((e) => events.push(e));
+    p.setWidgetConfig('t', { text: 'Edited' });
+    assert.equal(p.getWidget('t').config.text, 'Edited');
+    assert.ok(events.includes('config'));
   });
 });

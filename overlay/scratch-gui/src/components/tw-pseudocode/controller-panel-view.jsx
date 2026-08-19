@@ -302,12 +302,287 @@ function SevenSegWidget({ widget }) {
     );
 }
 
+// ─── Positioned widget (the layout editor's canvas item) ──────────────────
+// Applies layout.{x,y,w,h,rotation}; in EDIT mode adds drag-to-move (grid
+// snapped by the host), a corner resize handle and a rotate handle (15deg
+// steps). layout is PLACEMENT — a joystick's state.{x,y} INPUT is unrelated.
+
+function PositionedWidget({ widget, mode, selected, snap, onSelect, onLayout, children }) {
+    const L = widget.layout || {};
+    const ref = React.useRef(null);
+    const gesture = React.useRef(null);
+
+    const beginDrag = e => {
+        if (mode !== 'edit') return;
+        onSelect();
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic events have no active pointer */ }
+        gesture.current = { kind: 'move', px: e.clientX, py: e.clientY, x: L.x || 0, y: L.y || 0 };
+    };
+    const beginResize = e => {
+        e.stopPropagation();
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic events have no active pointer */ }
+        const el = ref.current;
+        gesture.current = { kind: 'resize', px: e.clientX, py: e.clientY,
+            w: L.w || (el ? el.offsetWidth : 120), h: L.h || (el ? el.offsetHeight : 120) };
+    };
+    const beginRotate = e => {
+        e.stopPropagation();
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* synthetic events have no active pointer */ }
+        const el = ref.current;
+        const r = el.getBoundingClientRect();
+        gesture.current = { kind: 'rotate', cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    };
+    const move = e => {
+        const g = gesture.current;
+        if (!g) return;
+        if (g.kind === 'move') {
+            onLayout({ x: Math.max(0, snap(g.x + e.clientX - g.px)),
+                y: Math.max(0, snap(g.y + e.clientY - g.py)) }, false);
+        } else if (g.kind === 'resize') {
+            onLayout({ w: Math.max(40, snap(g.w + e.clientX - g.px)),
+                h: Math.max(32, snap(g.h + e.clientY - g.py)) }, false);
+        } else if (g.kind === 'rotate') {
+            const deg = Math.atan2(e.clientY - g.cy, e.clientX - g.cx) * 180 / Math.PI + 90;
+            onLayout({ rotation: ((Math.round(deg / 15) * 15) % 360 + 360) % 360 }, false);
+        }
+    };
+    const end = () => {
+        if (gesture.current) { gesture.current = null; onLayout({}, true); /* persist once */ }
+    };
+
+    return (
+        <div
+            ref={ref}
+            data-testid={'bw-ctl-widget-' + widget.name}
+            onPointerDown={beginDrag}
+            onPointerMove={move}
+            onPointerUp={end}
+            onPointerCancel={end}
+            style={{
+                position: 'absolute',
+                left: L.x || 0,
+                top: L.y || 0,
+                width: L.w || undefined,
+                height: L.h || undefined,
+                transform: L.rotation ? 'rotate(' + L.rotation + 'deg)' : undefined,
+                transformOrigin: 'center center',
+                outline: selected ? '2px solid #7C3AED' : 'none',
+                outlineOffset: 2,
+                borderRadius: 8,
+                cursor: mode === 'edit' ? 'move' : 'default',
+                touchAction: 'none',
+                userSelect: 'none',
+            }}
+        >
+            {children}
+            {mode === 'edit' && selected && (
+                <React.Fragment>
+                    <div
+                        data-testid={'bw-ctl-resize-' + widget.name}
+                        onPointerDown={beginResize}
+                        onPointerMove={move}
+                        onPointerUp={end}
+                        style={{
+                            position: 'absolute', right: -7, bottom: -7, width: 14, height: 14,
+                            background: '#7C3AED', borderRadius: 3, cursor: 'nwse-resize',
+                            border: '2px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                        }}
+                    />
+                    <div
+                        data-testid={'bw-ctl-rotate-' + widget.name}
+                        onPointerDown={beginRotate}
+                        onPointerMove={move}
+                        onPointerUp={end}
+                        style={{
+                            position: 'absolute', left: '50%', top: -22, marginLeft: -7,
+                            width: 14, height: 14, background: '#fff',
+                            border: '2px solid #7C3AED', borderRadius: '50%', cursor: 'grab',
+                        }}
+                    />
+                </React.Fragment>
+            )}
+        </div>
+    );
+}
+
+// ─── Widget inspector (edit mode, selected widget) ─────────────────────────
+// Name (stable/unique — the engine refuses collisions and the binding rides
+// the widget object), label, colour, numeric layout entry, and the
+// decoration configs (text content / image source).
+
+function WidgetInspector({ widget, onRename, onLayout, onConfig, onOpenLibrary }) {
+    const L = widget.layout || {};
+    const [name, setName] = React.useState(widget.name);
+    React.useEffect(() => { setName(widget.name); }, [widget.name]);
+    const commitName = () => { if (name !== widget.name && !onRename(name)) setName(widget.name); };
+    const row = { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 };
+    const lbl = { width: 52, color: '#64748b', flexShrink: 0 };
+    const inp = { flex: 1, minWidth: 0, fontSize: 12, padding: '3px 6px',
+        border: '1px solid #cbd5e1', borderRadius: 4 };
+    const num = (key, val, extra) => (
+        <input type="number" value={val ?? ''} placeholder="auto"
+            data-testid={'bw-ctl-insp-' + key}
+            onChange={e => onLayout({ [key]: e.target.value === '' ? undefined : Number(e.target.value) })}
+            style={{ ...inp, width: 54, flex: 'none' }} {...(extra || {})} />
+    );
+    return (
+        <div data-testid="bw-ctl-inspector"
+            style={{
+                position: 'absolute', top: 12, right: 12, width: 210,
+                background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: 10,
+                display: 'flex', flexDirection: 'column', gap: 8, zIndex: 50,
+            }}
+            onPointerDown={e => e.stopPropagation()}
+        >
+            <div style={{ fontWeight: 700, fontSize: 12, color: '#7C3AED' }}>
+                {widget.type} · {widget.name}
+            </div>
+            <div style={row}>
+                <span style={lbl}>name</span>
+                <input value={name} data-testid="bw-ctl-insp-name" style={inp}
+                    onChange={e => setName(e.target.value)}
+                    onBlur={commitName}
+                    onKeyDown={e => { if (e.key === 'Enter') commitName(); }} />
+            </div>
+            <div style={row}>
+                <span style={lbl}>label</span>
+                <input value={L.label || ''} data-testid="bw-ctl-insp-label" style={inp}
+                    onChange={e => onLayout({ label: e.target.value || undefined })} />
+            </div>
+            <div style={row}>
+                <span style={lbl}>colour</span>
+                <input type="color" value={L.color || '#7C3AED'} data-testid="bw-ctl-insp-color"
+                    onChange={e => onLayout({ color: e.target.value })}
+                    style={{ width: 40, height: 24, padding: 0, border: '1px solid #cbd5e1', borderRadius: 4 }} />
+            </div>
+            <div style={row}>
+                <span style={lbl}>x / y</span>
+                {num('x', L.x)}{num('y', L.y)}
+            </div>
+            <div style={row}>
+                <span style={lbl}>w / h</span>
+                {num('w', L.w)}{num('h', L.h)}
+            </div>
+            <div style={row}>
+                <span style={lbl}>rotate</span>
+                {num('rotation', L.rotation, { step: 15 })}
+                <span style={{ color: '#94a3b8' }}>deg</span>
+            </div>
+            {widget.type === 'text' && (
+                <React.Fragment>
+                    <div style={row}>
+                        <span style={lbl}>text</span>
+                        <input value={widget.config.text} data-testid="bw-ctl-insp-text" style={inp}
+                            onChange={e => onConfig({ text: e.target.value })} />
+                    </div>
+                    <div style={row}>
+                        <span style={lbl}>size</span>
+                        <input type="number" value={widget.config.fontSize} data-testid="bw-ctl-insp-fontsize"
+                            onChange={e => onConfig({ fontSize: Number(e.target.value) || 16 })}
+                            style={{ ...inp, width: 54, flex: 'none' }} />
+                        <input type="color" value={widget.config.color || '#334155'}
+                            data-testid="bw-ctl-insp-textcolor"
+                            onChange={e => onConfig({ color: e.target.value })}
+                            style={{ width: 40, height: 24, padding: 0, border: '1px solid #cbd5e1', borderRadius: 4 }} />
+                    </div>
+                </React.Fragment>
+            )}
+            {widget.type === 'image' && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                    <button data-testid="bw-ctl-insp-library" onClick={onOpenLibrary}
+                        style={{ flex: 1, fontSize: 12, padding: '4px 8px', borderRadius: 4,
+                            border: '1px solid #7C3AED', background: '#faf5ff', color: '#7C3AED',
+                            cursor: 'pointer', fontWeight: 600 }}>
+                        Library…
+                    </button>
+                    <label style={{ flex: 1, fontSize: 12, padding: '4px 8px', borderRadius: 4,
+                        border: '1px solid #cbd5e1', background: '#f8fafc', color: '#334155',
+                        cursor: 'pointer', fontWeight: 600, textAlign: 'center' }}>
+                        Upload…
+                        <input type="file" accept="image/*" data-testid="bw-ctl-insp-upload"
+                            style={{ display: 'none' }}
+                            onChange={e => {
+                                const f = e.target.files && e.target.files[0];
+                                if (!f) return;
+                                const r = new FileReader();
+                                r.onload = () => onConfig({ src: String(r.result), alt: f.name });
+                                r.readAsDataURL(f);
+                            }} />
+                    </label>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Scratch-library image picker (reuses the costume library UI) ──────────
+// Lazy: the library component + costume catalogue only load when opened.
+
+const LazyLibrary = React.lazy(() => Promise.all([
+    import(/* webpackChunkName: "bw-ctl-library" */ '../library/library.jsx'),
+    import(/* webpackChunkName: "bw-ctl-library" */ '../../lib/libraries/costumes.json'),
+]).then(([lib, data]) => ({
+    default: function CostumePicker({ onSelect, onClose }) {
+        const LibraryComponent = lib.default;
+        return (
+            <LibraryComponent
+                data={data.default}
+                id="bwControllerImageLibrary"
+                title="Choose an Image"
+                onItemSelected={onSelect}
+                onRequestClose={onClose}
+            />
+        );
+    },
+})));
+
+function ScratchImagePicker({ vm, onSelect, onClose }) {
+    return (
+        <React.Suspense fallback={null}>
+            <LazyLibrary onSelect={onSelect} onClose={onClose} />
+        </React.Suspense>
+    );
+}
+
+// ─── Decoration faces ──────────────────────────────────────────────────────
+
+function TextWidget({ widget }) {
+    return (
+        <div data-testid={'bw-ctl-text-' + widget.name}
+            style={{
+                fontSize: widget.config.fontSize || 16,
+                color: widget.config.color || '#334155',
+                fontWeight: 600, whiteSpace: 'pre-wrap', padding: 4,
+            }}>
+            {widget.config.text}
+        </div>
+    );
+}
+
+function ImageWidget({ widget }) {
+    return widget.config.src ? (
+        <img data-testid={'bw-ctl-image-' + widget.name}
+            src={widget.config.src} alt={widget.config.alt || ''}
+            draggable={false}
+            style={{ maxWidth: '100%', maxHeight: '100%', display: 'block', pointerEvents: 'none' }} />
+    ) : (
+        <div data-testid={'bw-ctl-image-' + widget.name}
+            style={{ width: 96, height: 72, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', background: '#f1f5f9', color: '#94a3b8',
+                borderRadius: 6, fontSize: 24 }}>
+            {'\u{1F5BC}️'}
+        </div>
+    );
+}
+
 // ─── Widget card (edit mode wrapper) ──────────────────────────────────────
 
 function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
-        dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg'
+        dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg',
+        text: 'Text', image: 'Image'
     };
     const bindingLabel = widget.binding
         ? (widget.binding.target === 'part'
@@ -333,12 +608,15 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
                 display: 'flex', alignItems: 'center', gap: 6
             }}>
                 <span style={{
-                    background: '#7C3AED', color: '#fff', borderRadius: 4,
+                    background: (widget.layout && widget.layout.color) || '#7C3AED',
+                    color: '#fff', borderRadius: 4,
                     padding: '1px 6px', fontSize: 10, textTransform: 'uppercase'
                 }}>
                     {typeLabels[widget.type] || widget.type}
                 </span>
-                {widget.name}
+                <span data-testid={'bw-ctl-title-' + widget.name}>
+                    {(widget.layout && widget.layout.label) || widget.name}
+                </span>
             </div>
 
             {widget.type === 'joystick' && (
@@ -425,6 +703,14 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
                 <SevenSegWidget widget={widget} />
             )}
 
+            {widget.type === 'text' && (
+                <TextWidget widget={widget} />
+            )}
+
+            {widget.type === 'image' && (
+                <ImageWidget widget={widget} />
+            )}
+
             {mode === 'edit' && (
                 <div style={{ display: 'flex', gap: 4, fontSize: 11 }}>
                     <button
@@ -454,6 +740,10 @@ class ControllerPanelView extends React.Component {
         this.state = {
             addMenuOpen: false,
             revision: 0,    // bump to force re-render on panel events
+            selected: null, // widget name selected in EDIT mode (inspector)
+            snap: true,     // grid snapping for move/resize
+            grid: 8,        // snap step in px
+            libraryOpen: false, // the image widget's Scratch-library picker
         };
         this._onPanelEvent = this._onPanelEvent.bind(this);
         this._binding = null;
@@ -558,6 +848,50 @@ class ControllerPanelView extends React.Component {
         this._getPanel().setJoystickInput(name, x, y);
     }
 
+    _snap(v) {
+        const g = this.state.grid || 8;
+        return this.state.snap ? Math.round(v / g) * g : Math.round(v);
+    }
+
+    _layout(name, patch, persist) {
+        this._getPanel().setWidgetLayout(name, patch);
+        if (persist) this._persist();
+    }
+
+    _config(name, patch) {
+        this._getPanel().setWidgetConfig(name, patch);
+        this._persist();
+    }
+
+    _rename(oldName, newName) {
+        try {
+            this._getPanel().renameWidget(oldName, newName);
+            this.setState({ selected: newName });
+            this._persist();
+            return true;
+        } catch (e) {
+            return false;   // collision/empty: the inspector keeps the old name
+        }
+    }
+
+    async _pickLibraryImage(item) {
+        // A Scratch-library costume becomes the image widget's src as a
+        // self-contained dataURL, so controller.json stays portable.
+        const name = this.state.selected;
+        this.setState({ libraryOpen: false });
+        if (!name) return;
+        try {
+            const storage = this.props.vm.runtime.storage;
+            const md5ext = item.md5ext || (item.costumes && item.costumes[0] && item.costumes[0].md5ext);
+            const [md5, ext] = String(md5ext).split('.');
+            const type = ext === 'svg' ? storage.AssetType.ImageVector : storage.AssetType.ImageBitmap;
+            const asset = await storage.load(type, md5, ext);
+            this._config(name, { src: asset.encodeDataURI(), alt: item.name || '' });
+        } catch (e) {
+            // the picker failing must not wedge the panel
+        }
+    }
+
     render() {
         const panel = this._getPanel();
         const mode = panel.mode;
@@ -612,6 +946,22 @@ class ControllerPanelView extends React.Component {
                             {t('play')}
                         </button>
                     </div>
+                    {/* Grid snap toggle (edit mode only) */}
+                    {mode === 'edit' && (
+                        <button
+                            data-testid="bw-ctl-snap-toggle"
+                            onClick={() => this.setState(st => ({ snap: !st.snap }))}
+                            title={'Grid snap ' + (this.state.snap ? 'on' : 'off') + ' (' + this.state.grid + 'px)'}
+                            style={{
+                                padding: '4px 10px', fontSize: 12, borderRadius: 6,
+                                border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: 600,
+                                background: this.state.snap ? '#ede9fe' : '#f1f5f9',
+                                color: this.state.snap ? '#7C3AED' : '#64748b',
+                            }}
+                        >
+                            {'\u229e ' + (this.state.snap ? this.state.grid + 'px' : 'free')}
+                        </button>
+                    )}
                     {/* Add widget (edit mode only) */}
                     {mode === 'edit' && (
                         <div style={{ position: 'relative' }}>
@@ -654,12 +1004,15 @@ class ControllerPanelView extends React.Component {
                     )}
                 </div>
 
-                {/* Widget area */}
-                <div style={{
-                    flex: 1, overflow: 'auto', padding: 16,
-                    display: 'flex', flexWrap: 'wrap', gap: 16,
-                    alignContent: 'flex-start', justifyContent: 'center',
-                }}>
+                {/* Widget canvas: absolute placement from layout.{x,y}, size from
+                    layout.{w,h}, rotation + colour + label applied. In EDIT mode
+                    widgets drag (grid-snapped), resize by the corner handle and
+                    rotate by the top handle; click selects for the inspector. */}
+                <div data-testid="bw-controller-canvas"
+                    style={{ flex: 1, overflow: 'auto', position: 'relative' }}
+                    onPointerDown={e => {
+                        if (e.target === e.currentTarget) this.setState({ selected: null });
+                    }}>
                     {widgets.length === 0 && (
                         <div style={{
                             color: '#94a3b8', fontSize: 14, textAlign: 'center',
@@ -669,16 +1022,41 @@ class ControllerPanelView extends React.Component {
                         </div>
                     )}
                     {widgets.map(w => (
-                        <WidgetCard
+                        <PositionedWidget
                             key={w.name}
                             widget={w}
                             mode={mode}
-                            panel={panel}
-                            onInput={(name, x, y) => this._handleJoystickInput(name, x, y)}
-                            onRemove={() => this._removeWidget(w.name)}
-                        />
+                            selected={mode === 'edit' && this.state.selected === w.name}
+                            snap={v => this._snap(v)}
+                            onSelect={() => this.setState({ selected: w.name })}
+                            onLayout={(patch, persist) => this._layout(w.name, patch, persist)}
+                        >
+                            <WidgetCard
+                                widget={w}
+                                mode={mode}
+                                panel={panel}
+                                onInput={(name, x, y) => this._handleJoystickInput(name, x, y)}
+                                onRemove={() => { this._removeWidget(w.name); this.setState({ selected: null }); }}
+                            />
+                        </PositionedWidget>
                     ))}
+                    {mode === 'edit' && this.state.selected && panel.getWidget(this.state.selected) && (
+                        <WidgetInspector
+                            widget={panel.getWidget(this.state.selected)}
+                            onRename={n => this._rename(this.state.selected, n)}
+                            onLayout={patch => this._layout(this.state.selected, patch, true)}
+                            onConfig={patch => this._config(this.state.selected, patch)}
+                            onOpenLibrary={() => this.setState({ libraryOpen: true })}
+                        />
+                    )}
                 </div>
+                {this.state.libraryOpen && (
+                    <ScratchImagePicker
+                        vm={this.props.vm}
+                        onSelect={item => this._pickLibraryImage(item)}
+                        onClose={() => this.setState({ libraryOpen: false })}
+                    />
+                )}
             </div>
         );
     }
