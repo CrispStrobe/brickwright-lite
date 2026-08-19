@@ -1,6 +1,6 @@
-# Lego hub virtual face — abstracted faceplate demo.
+# Spike Prime hub virtual face — representative Lego hub faceplate.
 #
-# Simulates a Spike Prime / Robot Inventor hub with:
+# Simulates a Spike Prime (also Robot Inventor — same hardware) with:
 #   - 5x5 light matrix (25-bit bitmask, same as micro:bit)
 #   - Motor angle gauge (-180..180 degrees)
 #   - Distance sensor gauge (0..200 cm)

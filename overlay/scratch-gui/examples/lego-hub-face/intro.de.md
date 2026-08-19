@@ -5,13 +5,13 @@ prereqs: []
 teaches: [Variablen, Steuerfeld, Matrix-Widget, Anzeige-Widget, Lego-Hub]
 ---
 
-## Lego Hub — Virtuelles Bedienfeld
+## Spike Prime Hub — Virtuelles Bedienfeld
 
-Ein abstrahiertes virtuelles Bedienfeld fuer einen Spike Prime / Robot
-Inventor Hub. Das Steuerfeld zeigt, was die Sensoren und Motoren des
+Ein virtuelles Bedienfeld fuer den Spike Prime Hub (auch Robot Inventor —
+gleiche Hardware). Das Steuerfeld zeigt, was die Sensoren und Motoren des
 Hubs gerade tun — ohne echten Hub.
 
-- **5x5-Lichtmatrix** — das LED-Gitter des Hubs, mit rotierender Linie
+- **5x5-Lichtmatrix** — das LED-Gitter des Spike Prime, mit rotierender Linie
 - **Motor-Anzeige** — Winkel von -180° bis +180°
 - **Distanz-Anzeige** — simulierter Ultraschallsensor, 10–190 cm
 - **Farb-Anzeige** — Lego-Farb-IDs durchlaufend (0–10)
@@ -32,3 +32,12 @@ lesen diese Variablen und stellen sie live dar.
 Auf echter Hardware wuerden die Ausgaben ueber die Lego-Laufzeittreiber
 (Remote oder On-Device ueber brickwright-bridges) laufen. Die Widget-Anzeigen
 sind identisch — sie zeigen, was die Variablen enthalten.
+
+## Andere Lego-Hubs
+
+Dieses Bedienfeld ist fuer den Spike Prime gebaut, aber dasselbe Muster
+gilt fuer jeden Lego-Hub — sie unterscheiden sich in Matrixgroesse und
+Sensorausstattung, nicht im Modell. Um ein Bedienfeld fuer einen anderen
+Hub zu erstellen: dieses Beispiel klonen, Matrixgroesse anpassen (oder
+entfernen fuer Hubs ohne Gitter) und die Anzeigen an die Sensoren des
+jeweiligen Hubs anpassen.
