@@ -1,0 +1,18 @@
+DEVICE MICROBIT
+PIN led1 = P0 OUTPUT ACTIVE LOW
+PIN buzzer = P0 TONE
+
+# Combined demo: display + pin + sensor + actuator
+WHEN flag clicked:
+  show text "Go"
+  FOREVER:
+    set variable temp to read temperature
+    if temp > 25 then
+      turn on led1
+      set buzzer to 880 hz
+      show pattern 00100:01010:10001:01010:00100
+    else
+      turn off led1
+      stop buzzer
+      show pattern 00000:01110:01010:01110:00000
+    wait 1 seconds

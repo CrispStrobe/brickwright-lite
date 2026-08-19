@@ -1,0 +1,30 @@
+DEVICE MICROBIT
+
+# Arcade: dodge falling enemies
+# Player on bottom row, enemies fall from top
+WHEN flag clicked:
+  set variable score to 0
+  set variable px to 2
+  set variable ey to 0
+  set variable ex to pick random 0 to 4
+  FOREVER:
+    clear display
+    plot x px y 4 on
+    plot x ex y ey on
+    change variable ey by 1
+    if ey > 4 then
+      set variable ey to 0
+      set variable ex to pick random 0 to 4
+      change variable score by 1
+    if ey = 4 then
+      if ex = px then
+        show text score
+        wait 2 seconds
+        stop all
+    if read button_a then
+      if px > 0 then
+        change variable px by -1
+    if read button_b then
+      if px < 4 then
+        change variable px by 1
+    wait 0.3 seconds

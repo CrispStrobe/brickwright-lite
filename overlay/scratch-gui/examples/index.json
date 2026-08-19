@@ -6443,5 +6443,81 @@
   "devices": [
    "microbit"
   ]
+ },
+ {
+  "id": "mbit05-combined",
+  "title": {
+   "en": "micro:bit Temperature Alarm",
+   "de": "micro:bit Temperaturalarm"
+  },
+  "category": "microbit",
+  "difficulty": 2,
+  "files": {
+   "program": "mbit05-combined/program.bw",
+   "intro": "mbit05-combined/intro.md",
+   "introDE": "mbit05-combined/intro.de.md",
+   "expected": "mbit05-combined/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ]
+ },
+ {
+  "id": "mbit06-gesture",
+  "title": {
+   "en": "micro:bit Shake Dice",
+   "de": "micro:bit Sch\u00fcttelw\u00fcrfel"
+  },
+  "category": "microbit",
+  "difficulty": 1,
+  "files": {
+   "program": "mbit06-gesture/program.bw",
+   "intro": "mbit06-gesture/intro.md",
+   "introDE": "mbit06-gesture/intro.de.md",
+   "expected": "mbit06-gesture/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ]
+ },
+ {
+  "id": "arcade01-dodge",
+  "title": {
+   "en": "Dodge Game",
+   "de": "Ausweichspiel"
+  },
+  "category": "microbit",
+  "difficulty": 2,
+  "files": {
+   "program": "arcade01-dodge/program.bw",
+   "intro": "arcade01-dodge/intro.md",
+   "introDE": "arcade01-dodge/intro.de.md",
+   "expected": "arcade01-dodge/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ]
+ },
+ {
+  "id": "arcade02-pong",
+  "title": {
+   "en": "Pong",
+   "de": "Pong"
+  },
+  "category": "microbit",
+  "difficulty": 2,
+  "files": {
+   "program": "arcade02-pong/program.bw",
+   "intro": "arcade02-pong/intro.md",
+   "introDE": "arcade02-pong/intro.de.md",
+   "expected": "arcade02-pong/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ]
  }
 ]

@@ -1,0 +1,50 @@
+DEVICE MICROBIT
+
+# Arcade: single-player pong
+# Paddle on right column, ball bounces
+WHEN flag clicked:
+  set variable score to 0
+  set variable bx to 2
+  set variable by to 2
+  set variable dx to 1
+  set variable dy to 1
+  set variable paddle to 2
+  FOREVER:
+    clear display
+    plot x 4 y paddle on
+    if paddle > 0 then
+      plot x 4 y paddle - 1 on
+    if paddle < 4 then
+      plot x 4 y paddle + 1 on
+    plot x bx y by on
+    change variable bx by dx
+    change variable by by dy
+    if by < 0 then
+      set variable by to 0
+      set variable dy to 1
+    if by > 4 then
+      set variable by to 4
+      set variable dy to -1
+    if bx < 0 then
+      set variable bx to 0
+      set variable dx to 1
+    if bx > 3 then
+      if by >= paddle - 1 then
+        if by <= paddle + 1 then
+          set variable dx to -1
+          change variable score by 1
+        else
+          show text score
+          wait 2 seconds
+          stop all
+      else
+        show text score
+        wait 2 seconds
+        stop all
+    if read button_a then
+      if paddle > 0 then
+        change variable paddle by -1
+    if read button_b then
+      if paddle < 4 then
+        change variable paddle by 1
+    wait 0.2 seconds
