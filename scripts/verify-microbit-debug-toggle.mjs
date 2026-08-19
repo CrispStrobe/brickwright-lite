@@ -45,6 +45,8 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 const consoleErrs = [];
 page.on('console', (m) => { if (m.type() === 'error') consoleErrs.push(m.text()); });
+const diag = [];
+page.on('console', (m) => { if (/\[bw-diag\]/.test(m.text())) { diag.push(m.text()); console.log('  ' + m.text()); } });
 
 await page.goto(URL_, { waitUntil: 'load' });
 // the VM rides the redux store (no window.vm in this GUI build)
@@ -97,6 +99,18 @@ await page.getByRole('button', { name: /micro:bit/i }).first().click();
 await page.waitForTimeout(800);
 await page.locator('[data-testid="bw-micropython-bar"]').waitFor({ timeout: 15000 });
 pass('MicroPython tab active, debug bar present');
+
+// raw serial tap: the sim posts serial_output to the top window, so a
+// page-level listener sees exactly what the pane's controller is fed
+await page.evaluate(() => {
+    window.__rawSerial = '';
+    window.__rawEvents = [];
+    window.addEventListener('message', (e) => {
+        const d = e.data || {};
+        if (d.kind === 'serial_output' && typeof d.data === 'string') window.__rawSerial += d.data;
+        else if (d.kind) window.__rawEvents.push(d.kind + (d.kind === 'state_change' ? ':' + JSON.stringify(d.change || {}).slice(0, 60) : d.kind === 'internal_error' ? ':' + String((d.error && (d.error.message || d.error.stack)) || JSON.stringify(d.error)).slice(0, 200) : ''));
+    });
+});
 
 // glow hook: both debuggers highlight via vm.runtime.glowBlock
 await page.evaluate(() => {
@@ -224,7 +238,9 @@ const expectHalt = async (label, timeout) => {
     await page.waitForFunction(() => (window.__glows || []).length > 0, { timeout: 25000 })
         .then(() => pass('BLOCK: marker stream drives the block highlight (glowBlock called)'))
         .catch(async () => fail('BLOCK: no glowBlock calls within 25s; status=' +
-            JSON.stringify(await page.locator('[data-testid="bw-microbit-debug-status"]').textContent().catch(() => '(no status el)'))));
+            JSON.stringify(await page.locator('[data-testid="bw-microbit-debug-status"]').textContent().catch(() => '(no status el)')) +
+            ' rawSerial=' + JSON.stringify(await page.evaluate(() => (window.__rawSerial || '').slice(0, 200))) +
+            ' events=' + JSON.stringify(await page.evaluate(() => (window.__rawEvents || []).slice(0, 20)))));
     if (bpSet) {
         await expectHalt('BLOCK', 25000);
         await page.locator('[data-testid="bw-microbit-debug-step"]').click().catch(() => {});
