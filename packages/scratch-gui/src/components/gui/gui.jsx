@@ -295,6 +295,34 @@ const GUIComponent = props => {
                 dir={isRtl ? 'rtl' : 'ltr'}
                 {...componentProps}
             >
+                {/* Guaranteed exit-fullscreen control. In the dock modes the
+                    stage-header's own un-fullscreen button is buried UNDER the
+                    100vw overlay (z-4000) and can't be clicked — so full screen
+                    could only be left with ESC (controller) or trapped the pane
+                    entirely (debugger/circuit). This sits above everything
+                    (z-6000), centred so it never collides with a dock toolbar,
+                    and exits by clicking the real control (programmatic clicks
+                    ignore z-order) with an Escape fallback. */}
+                {isFullScreen ? (
+                    <button
+                        type="button"
+                        data-testid="bw-fs-exit-overlay"
+                        aria-label="Exit full screen"
+                        title="Exit full screen"
+                        onClick={() => {
+                            const btn = document.querySelector('[data-testid="bw-exit-fullscreen"]');
+                            if (btn) btn.click();
+                            try { document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', keyCode: 27, which: 27, bubbles: true})); } catch (e) { /* older browsers */ }
+                        }}
+                        style={{
+                            position: 'fixed', top: 8, left: '50%', transform: 'translateX(-50%)',
+                            zIndex: 6000, display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '6px 14px', border: 'none', borderRadius: 20,
+                            background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 13,
+                            cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.4)'
+                        }}
+                    >{'✕'} Exit full screen</button>
+                ) : null}
                 {telemetryModalVisible ? (
                     <TelemetryModal
                         isRtl={isRtl}

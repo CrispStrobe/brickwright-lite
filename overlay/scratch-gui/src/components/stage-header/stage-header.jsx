@@ -232,12 +232,14 @@ const StageHeaderComponent = function (props) {
             <div className={styles.unselectWrapper}>
                 <Button
                     className={styles.stageButton}
+                    data-testid="bw-exit-fullscreen"
                     onClick={onSetStageUnFull}
                     onKeyPress={onKeyPress}
                 >
                     <img
                         alt={props.intl.formatMessage(messages.unFullStageSizeMessage)}
                         className={styles.stageButtonIcon}
+                        data-testid="bw-exit-fullscreen-img"
                         draggable={false}
                         src={unFullScreenIcon}
                         title={props.intl.formatMessage(messages.fullscreenControl)}
