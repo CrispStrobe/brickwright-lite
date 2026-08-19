@@ -292,3 +292,61 @@ test('controller: begin/stop clear the call stack', () => {
     c.stop();
     assert.deepEqual(c.state().stack, []);
 });
+
+// ---- settrace (trace) mode: \x1eL line events, \x1eK stack, \x1eV halt ----
+
+test('splitter: \\x1eL decodes to a line event, \\x1eK to a stack event', () => {
+    const s = createMarkerSplitter();
+    const r = s.feed(`${RS}L110\n${RS}K["bump","_task_0","<module>"]\n`);
+    assert.deepEqual(r.events, [
+        {type: 'line', n: 110},
+        {type: 'kstack', data: ['bump', '_task_0', '<module>']}
+    ]);
+});
+
+test('controller trace: line events map to blocks via lineMap + highlight', () => {
+    const glows = [];
+    const c = createMicrobitDebugController({glow: (id, on) => glows.push([id, on])});
+    c.beginTrace({110: 'blkA', 111: 'blkB'});
+    c.feedSerial(`${RS}L110\n`);
+    assert.equal(c.state().block, 'blkA');
+    assert.deepEqual(glows.at(-1), ['blkA', true]);
+    c.feedSerial(`${RS}L111\n`);
+    assert.equal(c.state().block, 'blkB');
+    assert.deepEqual(c.state().trace.map(t => t.n), [110, 111]);
+});
+
+test('controller trace: \\x1eV signals the halt (no \\x1e! in settrace)', () => {
+    const c = createMicrobitDebugController();
+    c.beginTrace({110: 'blkA'});
+    c.feedSerial(`${RS}L110\n`);
+    assert.equal(c.state().halted, false, 'a plain line is running');
+    c.feedSerial(`${RS}V{"score": 4}\n`);
+    assert.equal(c.state().halted, true, 'the vars frame signals the halt');
+    assert.deepEqual(c.state().vars, {score: 4});
+});
+
+test('controller trace: \\x1eK fills the stack outermost-first', () => {
+    const c = createMicrobitDebugController();
+    c.beginTrace({110: 'blkA'});
+    c.feedSerial(`${RS}L110\n${RS}K["bump","_task_0","<module>"]\n`);
+    assert.deepEqual(c.state().stack.map(f => f.name), ['<module>', '_task_0', 'bump']);
+});
+
+test('controller trace: capabilities report line-level stepping', () => {
+    const c = createMicrobitDebugController();
+    c.beginTrace({});
+    const caps = c.capabilities();
+    assert.deepEqual(caps.steps, ['line']);
+    assert.equal(caps.line, true);
+    assert.equal(caps.insn, false);
+});
+
+test('controller: marker mode is unaffected by the trace additions', () => {
+    const c = createMicrobitDebugController();
+    c.begin([{block: 'a'}]);
+    assert.deepEqual(c.capabilities().steps, ['block']);
+    // in marker mode, a vars frame does NOT by itself halt (｜x1e! does)
+    c.feedSerial(`${RS}0\n${RS}V{"x": 1}\n`);
+    assert.equal(c.state().halted, false, 'marker vars without \\x1e! is not a halt');
+});

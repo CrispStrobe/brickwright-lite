@@ -120,6 +120,14 @@ export function createMarkerSplitter() {
                     events.push({type: 'enter', n: parseInt(token.slice(1), 10)});
                 } else if (kind === 0x3c /* < */) {
                     events.push({type: 'exit'});
+                } else if (kind === 0x4c /* L */) {
+                    // settrace line event: position is a Python line number.
+                    events.push({type: 'line', n: parseInt(token.slice(1), 10)});
+                } else if (kind === 0x4b /* K */) {
+                    // settrace call stack: a JSON list of frame names (innermost first).
+                    let data = null;
+                    try { data = JSON.parse(token.slice(1)); } catch { data = null; }
+                    if (data !== null) events.push({type: 'kstack', data});
                 } else {
                     events.push({type: 'pos', n: parseInt(token, 10)});
                 }
@@ -158,6 +166,10 @@ export function createMicrobitDebugController(opts = {}) {
     let positions = [];
     /** @type {string[]} k -> proc display name, from generateMicroPython. */
     let procNames = [];
+    /** 'marker' (\x1e<n> block-level) or 'trace' (\x1eL line-level, settrace). */
+    let mode = 'marker';
+    /** @type {Object<number,string>} python line -> block id, settrace mode. */
+    let lineMap = {};
     /** The block currently lit, so a re-glow is a no-op and stop clears exactly one. */
     let litBlock = null;
 
@@ -219,8 +231,27 @@ export function createMicrobitDebugController(opts = {}) {
          * and reset the marker parser. The flash itself is the pane's job.
          */
         begin(pos, procs) {
+            mode = 'marker';
             positions = Array.isArray(pos) ? pos : [];
             procNames = Array.isArray(procs) ? procs : [];
+            splitter.reset();
+            setGlow(null);
+            state = {active: true, running: true, halted: false, block: null,
+                index: null, vars: null, board: null, trace: [], stack: []};
+            emit();
+        },
+
+        /**
+         * Begin a LINE-LEVEL (settrace) debug run. Position arrives as a Python
+         * line number (\x1eL) mapped to a block via `map` ({line: blockId}); the
+         * program halts on a breakpoint line or a step, signalled by the \x1eV
+         * state frame (there is no separate halt marker — _bw_halt blocks on
+         * input() right after dumping state). Needs the debug firmware.
+         */
+        beginTrace(map) {
+            mode = 'trace';
+            lineMap = (map && typeof map === 'object') ? map : {};
+            positions = []; procNames = [];
             splitter.reset();
             setGlow(null);
             state = {active: true, running: true, halted: false, block: null,
@@ -244,14 +275,39 @@ export function createMicrobitDebugController(opts = {}) {
                     // State frame — attaches to the halt we are already paused at,
                     // no position change. The last frame of a name wins. This is
                     // also when a conditional breakpoint is decided: the variables
-                    // it tests have just arrived.
+                    // it tests have just arrived. In TRACE mode there is no \x1e!
+                    // marker: \x1eV itself signals the halt (_bw_halt blocks on
+                    // input() right after printing it).
                     state.vars = ev.data;
+                    if (mode === 'trace') { state.halted = true; state.running = false; }
                     changed = true;
                     if (state.halted && conditionUnmet(state.block, state.vars)) autoContinue = true;
                     continue;
                 }
                 if (ev.type === 'board') {
                     state.board = ev.data;
+                    changed = true;
+                    continue;
+                }
+                if (ev.type === 'line') {
+                    // settrace position: a Python line number -> block via lineMap.
+                    const block = lineMap[ev.n] || null;
+                    state.index = ev.n;
+                    state.block = block;
+                    // A fresh line while halted means we resumed and moved on.
+                    state.halted = false;
+                    state.running = true;
+                    state.trace.push({n: ev.n, block});
+                    if (state.trace.length > TRACE_CAP) state.trace.shift();
+                    setGlow(block);
+                    changed = true;
+                    continue;
+                }
+                if (ev.type === 'kstack') {
+                    // settrace call stack: [innermost..outermost] frame names.
+                    // Store outermost-first, matching the marker stack's order.
+                    state.stack = (Array.isArray(ev.data) ? ev.data : [])
+                        .map((name) => ({name: String(name)})).reverse();
                     changed = true;
                     continue;
                 }
@@ -331,11 +387,15 @@ export function createMicrobitDebugController(opts = {}) {
          * greys them out rather than pretending.
          */
         capabilities() {
+            // Trace mode (settrace, debug firmware) steps by source LINE with
+            // real frames; marker mode (stock firmware) steps by block. Honest
+            // either way — insn/over/out are refused; there is no VM stepping.
+            const line = mode === 'trace';
             return {
-                steps: ['block'],
-                breakpoints: ['block'],
+                steps: [line ? 'line' : 'block'],
+                breakpoints: [line ? 'line' : 'block'],
                 insn: false,
-                line: false,
+                line,
                 over: false,
                 out: false,
                 consumes: []
