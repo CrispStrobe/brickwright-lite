@@ -49,6 +49,12 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 const L10N = {
     en: {
         loadExample: '📚 Load example…', loadExampleTitle: 'Load a built-in example',
+        openFile: '📂 Open', openFileTitle: t => `Open a source file (${t})`,
+        saveFile: '💾 Save', saveFileTitle: n => `Save this tab as ${n}`,
+        openBad: e => `Don't know that file type (${e}).`,
+        openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
+        saveEmpty: 'Nothing to save — this tab is empty.',
+        restored: t => `Restored your unsaved ${t}.`,
         loadCatalogTitle: 'Load a catalog example for this device',
         noChips: 'no chips (Scratch stage)',
         searchExamples: 'Search examples…',
@@ -129,6 +135,12 @@ const L10N = {
     },
     de: {
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
+        openFile: '📂 Öffnen', openFileTitle: t => `Eine Quelldatei öffnen (${t})`,
+        saveFile: '💾 Speichern', saveFileTitle: n => `Diesen Tab als ${n} speichern`,
+        openBad: e => `Unbekannter Dateityp (${e}).`,
+        openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
+        saveEmpty: 'Nichts zu speichern — dieser Tab ist leer.',
+        restored: t => `Nicht gespeicherter ${t} wiederhergestellt.`,
         loadCatalogTitle: 'Ein Katalog-Beispiel für dieses Gerät laden',
         noChips: 'ohne Chip (Scratch-Bühne)',
         searchExamples: 'Beispiele suchen…',
@@ -277,6 +289,31 @@ const SYNTAX = [
     ['SensingMore', ['x position of Player', 'current year, day of week',
         'distance to mouse-pointer', 'set drag mode draggable', 'play note 60 for 0.5 beats, set tempo to 120']]
 ];
+
+// What each tab is, as a FILE. Every tab can now be opened from and saved to
+// disk, so each needs an extension, a MIME type and a default basename.
+// `.py` is claimed by two tabs; openBwFile resolves that in favour of the tab
+// you are already on, else the first match here (python).
+const CODE_FILES = {
+    pseudocode:  {ext: 'bw',  mime: 'text/plain',      base: 'program'},
+    python:      {ext: 'py',  mime: 'text/x-python',   base: 'program'},
+    javascript:  {ext: 'js',  mime: 'text/javascript', base: 'program'},
+    c:           {ext: 'c',   mime: 'text/x-csrc',     base: 'program'},
+    basic:       {ext: 'bas', mime: 'text/plain',      base: 'program'},
+    asm:         {ext: 'asm', mime: 'text/plain',      base: 'program'},
+    // main.py is not a preference: it is the name the Pico and the micro:bit
+    // boot, and what deployToPico already hands over on non-Chromium.
+    micropython: {ext: 'py',  mime: 'text/x-python',   base: 'main'}
+};
+const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`)), '.s', '.lst'].join(',');
+
+// The pseudocode buffer used to be the only thing kept across reloads, and it
+// was kept wrong: the editor's onChange (setActiveCode) CLEARS every buffer
+// except the one being typed in, so editing any other tab drove pseudocode to
+// '' and wiped the save. Track the ACTIVE buffer instead — that is the one the
+// user is actually working in, and it is never emptied by that rule.
+const BW_AUTOSAVE_KEY = 'bw-code-autosave';
+const BW_AUTOSAVE_MAX = 512 * 1024;   // localStorage is ~5MB total; don't hog it
 
 const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit'};
 
@@ -465,6 +502,9 @@ class PseudocodeImporter extends React.Component {
         this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
         this.flashMicrobitSimDebug = this.flashMicrobitSimDebug.bind(this);
         this.deployToPico = this.deployToPico.bind(this);
+        this.openCodeFile = this.openCodeFile.bind(this);
+        this.saveCodeFile = this.saveCodeFile.bind(this);
+        this._autosaveTimer = null;
     }
 
     componentDidMount () {
@@ -485,6 +525,19 @@ class PseudocodeImporter extends React.Component {
             };
             vm.runtime.on('PROJECT_CHANGED', this._onProjectChanged);
         }
+        // Bring back whatever was in the editor when the tab was last closed.
+        // Only when EVERY buffer is empty: an example loaded through the
+        // Circuit tab (above) or a restored project must win over the autosave.
+        if (!Object.values(this.state.buffers).some(b => b && b.trim())) {
+            const saved = this.readAutosave();
+            if (saved) {
+                this.setState(st => ({
+                    lang: saved.lang,
+                    buffers: {...st.buffers, [saved.lang]: saved.code},
+                    status: this.L.restored(LANG_LABEL[saved.lang] || saved.lang)
+                }));
+            }
+        }
         // If a device is already set (e.g. from a loaded project), compute
         // example compatibility so the dropdown is filtered from the start.
         const device = this.currentDevice();
@@ -494,10 +547,122 @@ class PseudocodeImporter extends React.Component {
         }
     }
 
+    componentDidUpdate (prevProps, prevState) {
+        // Debounced so a fast typist writes localStorage once per pause, not
+        // once per keystroke. Watches the ACTIVE tab, both its language and
+        // its text, so switching tabs re-saves under the new language.
+        if (prevState.lang !== this.state.lang ||
+            prevState.buffers[this.state.lang] !== this.state.buffers[this.state.lang]) {
+            if (this._autosaveTimer) clearTimeout(this._autosaveTimer);
+            this._autosaveTimer = setTimeout(() => {
+                this._autosaveTimer = null;
+                this.writeAutosave();
+            }, 600);
+        }
+    }
+
+    readAutosave () {
+        try {
+            const raw = localStorage.getItem(BW_AUTOSAVE_KEY);
+            if (!raw) return null;
+            const v = JSON.parse(raw);
+            if (!v || !CODE_FILES[v.lang] || typeof v.code !== 'string' || !v.code.trim()) return null;
+            return v;
+        } catch { return null; }   // absent, unparseable, or a shape we no longer write
+    }
+
+    writeAutosave () {
+        const lang = this.state.lang;
+        const code = this.state.buffers[lang] || '';
+        try {
+            if (!code.trim()) {
+                // Only drop the record if it is THIS tab's — emptying the C tab
+                // must not throw away saved pseudocode.
+                const cur = this.readAutosave();
+                if (cur && cur.lang === lang) localStorage.removeItem(BW_AUTOSAVE_KEY);
+            } else if (code.length <= BW_AUTOSAVE_MAX) {
+                localStorage.setItem(BW_AUTOSAVE_KEY, JSON.stringify({lang, code}));
+            }
+        } catch { /* private mode, or the quota is full: autosave is a courtesy */ }
+    }
+
+    /** Which tab owns a filename, preferring the one already open (.py is shared). */
+    langForFile (name) {
+        const ext = (String(name).match(/\.([^.]+)$/) || [])[1];
+        if (!ext) return null;
+        const e = ext.toLowerCase();
+        if (e === 's') return 'asm';           // gas-style suffix
+        if (e === 'lst') return 'asm';
+        if (CODE_FILES[this.state.lang] && CODE_FILES[this.state.lang].ext === e) return this.state.lang;
+        return Object.keys(CODE_FILES).find(k => CODE_FILES[k].ext === e) || null;
+    }
+
+    // Open a source file from disk into the tab that owns its extension. A
+    // plain file input rather than showOpenFilePicker: that API is
+    // Chromium-only and this has to work in Safari too, which is the same
+    // reason deployToPico falls back to downloading main.py.
+    openCodeFile (e) {
+        const file = (e.target.files || [])[0];
+        e.target.value = '';           // so re-opening the same file fires again
+        if (!file) return;
+        const lang = this.langForFile(file.name);
+        if (!lang) {
+            this.setState({status: this.L.openBad(file.name)});
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => this.setState(st => ({
+            lang,
+            // Same exclusivity the editor's own onChange uses: one authored
+            // buffer at a time, so a stale translation of the PREVIOUS source
+            // cannot sit in another tab pretending to match.
+            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
+                asm: '', micropython: '', [lang]: String(reader.result)},
+            asmMode: lang === 'asm' ? 'source' : st.asmMode,
+            output: null,
+            status: this.L.openDone(file.name, LANG_LABEL[lang] || lang)
+        }));
+        reader.readAsText(file);
+    }
+
+    /** What `Save` would call this tab's file. */
+    saveFileName () {
+        const lang = this.state.lang;
+        if (lang === 'asm' && this.state.asmMode === 'listing') return 'program.lst';
+        const f = CODE_FILES[lang] || CODE_FILES.pseudocode;
+        // The pseudocode names itself after its target, which is the one piece
+        // of identity a .bw always carries.
+        const dev = lang === 'pseudocode' &&
+            (this.state.buffers.pseudocode || '').match(/^DEVICE\s+([\w-]+)/im);
+        return `${(dev ? dev[1].toLowerCase() : f.base)}.${f.ext}`;
+    }
+
+    // Save the code ITSELF, comments and all. The .sb3 round-trip preserves a
+    // program but not a single comment — blocks carry no file-level text — so
+    // a documented source can only survive as its own file.
+    saveCodeFile () {
+        const code = this.activeCode() || '';
+        if (!code.trim()) { this.setState({status: this.L.saveEmpty}); return; }
+        const name = this.saveFileName();
+        const mime = (CODE_FILES[this.state.lang] || CODE_FILES.pseudocode).mime;
+        const url = URL.createObjectURL(new Blob([code], {type: mime}));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+
     componentWillUnmount () {
         const vm = this.props.vm;
         if (vm && vm.runtime && this._onProjectChanged) {
             vm.runtime.removeListener('PROJECT_CHANGED', this._onProjectChanged);
+        }
+        // A pending debounce would otherwise lose the last edits on unmount.
+        if (this._autosaveTimer) {
+            clearTimeout(this._autosaveTimer);
+            this._autosaveTimer = null;
+            this.writeAutosave();
         }
     }
 
@@ -1811,6 +1976,24 @@ class PseudocodeImporter extends React.Component {
                                     </optgroup>
                                 ))}
                             </select>
+                            {/* Your own files, beside the built-in catalog: the examples
+                                are read-only, and code you write yourself had nowhere
+                                to live. Open routes by extension to the tab that owns
+                                it; Save writes whichever tab you are looking at. */}
+                            <label style={{...csel, alignSelf: 'center', cursor: 'pointer',
+                                border: '1px solid #cbd5e1', background: '#f1f5f9'}}
+                                title={this.L.openFileTitle(CODE_ACCEPT)} data-testid="bw-open-file">
+                                {this.L.openFile}
+                                <input type="file" accept={CODE_ACCEPT} style={{display: 'none'}}
+                                    onChange={this.openCodeFile} />
+                            </label>
+                            <button type="button" onClick={this.saveCodeFile}
+                                style={{...csel, alignSelf: 'center', cursor: 'pointer',
+                                    border: '1px solid #cbd5e1', background: '#f1f5f9'}}
+                                title={this.L.saveFileTitle(this.saveFileName())}
+                                data-testid="bw-save-file">
+                                {this.L.saveFile}
+                            </button>
                             {this.currentDevice() ? this.renderCatalogControl(csel) : (
                                 <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
                                     style={{...csel, alignSelf: 'center'}} title={this.L.loadExampleTitle}
