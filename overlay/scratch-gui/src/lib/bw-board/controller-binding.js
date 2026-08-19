@@ -34,8 +34,8 @@ export function bindPanelToBoard(panel, board) {
     const w = panel.getWidget(detail.name);
     if (!w || !w.binding) return;
 
-    // Gauges are read-only — they don't push values out
-    if (w.type === 'gauge') return;
+    // Display widgets are read-only — they don't push values out
+    if (w.type === 'gauge' || w.type === 'oled') return;
 
     if (w.binding.target === 'part') {
       const { partId, param } = w.binding;
@@ -59,7 +59,7 @@ export function bindPanelToBoard(panel, board) {
     sync() {
       for (const w of panel.getWidgets()) {
         if (!w.binding) continue;
-        if (w.type === 'gauge') continue; // read-only
+        if (w.type === 'gauge' || w.type === 'oled') continue; // display-only
         if (w.binding.target === 'part') {
           const mapped = mapWidgetToControl(w, w.binding.param);
           if (mapped !== null) {

@@ -27,6 +27,7 @@ export const WIDGET_TYPES = /** @type {const} */ ({
   DPAD:     'dpad',
   DIAL:     'dial',
   GAUGE:    'gauge',
+  OLED:     'oled',
 });
 
 /** Default configs per widget type. */
@@ -37,6 +38,7 @@ const DEFAULTS = {
   dpad:     { up: false, down: false, left: false, right: false },
   dial:     { min: 0, max: 360, value: 0 },
   gauge:    { min: 0, max: 100, value: 0, label: '' },
+  oled:     { rows: 4, cols: 21, text: '' },
 };
 
 // ─── ControllerPanel ────────────────────────────────────────────────────────
@@ -96,6 +98,7 @@ export class ControllerPanel {
     if (type === 'slider') w.state = { value: config.value ?? w.config.min };
     if (type === 'dial') w.state = { value: config.value ?? w.config.min };
     if (type === 'gauge') w.state = { value: config.value ?? w.config.min };
+    if (type === 'oled') w.state = { text: config.text ?? '' };
     this._widgets.set(name, w);
     this._emit('add', { name, type });
     return w;
@@ -202,9 +205,40 @@ export class ControllerPanel {
     this._emit('input', { name, value: w.state.value });
   }
 
+  /**
+   * Set OLED text.  OLEDs are display-only widgets driven by the program
+   * or by a variable binding — the text is split into rows for rendering.
+   * @param {string} name
+   * @param {string} text - Text content; newlines separate rows.
+   */
+  setOledText(name, text) {
+    const w = this._requireWidget(name, 'oled');
+    w.state.text = String(text);
+    this._emit('input', { name, text: w.state.text });
+  }
+
+  /**
+   * Get the OLED text rows as an array.
+   * @param {string} name
+   * @returns {string[]}
+   */
+  getOledRows(name) {
+    const w = this._widgets.get(name);
+    if (!w || w.type !== 'oled') return [];
+    const { rows, cols } = w.config;
+    const text = w.state.text || '';
+    const lines = text.split('\n');
+    const result = [];
+    for (let i = 0; i < rows; i++) {
+      const line = (lines[i] || '').slice(0, cols);
+      result.push(line.padEnd(cols, ' '));
+    }
+    return result;
+  }
+
   // ── State query (program-facing API for extension blocks) ─────────────
 
-  /** Scalar value for any widget (slider/dial/gauge value, button 0/1, joystick magnitude, dpad bitmask). */
+  /** Scalar value for any widget (slider/dial/gauge/oled value, button 0/1, joystick magnitude, dpad bitmask). */
   getValue(name) {
     const w = this._widgets.get(name);
     if (!w) return 0;
@@ -221,6 +255,8 @@ export class ControllerPanel {
         // Bitmask: up=1, down=2, left=4, right=8
         return (w.state.up ? 1 : 0) | (w.state.down ? 2 : 0)
              | (w.state.left ? 4 : 0) | (w.state.right ? 8 : 0);
+      case 'oled':
+        return w.state.text || '';
       default:
         return 0;
     }
