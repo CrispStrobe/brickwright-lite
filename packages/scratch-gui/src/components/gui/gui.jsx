@@ -276,13 +276,14 @@ const GUIComponent = props => {
             background: '#ffffff', overflow: 'auto'
         } : null;
 
-        // Scratch Stage full screen: the stock presentation mode is defeated by
-        // brickwright's inline pane widths, so the stage stayed a half-width
-        // panel with the editor still showing beside it. When the plain stage is
-        // the full-screen target (dockMode 'top'/'scratch' — controller/micro:bit
-        // have their own overlay; circuit/debugger live in the left pane), hide
-        // the editor and let the stage column fill the window.
-        const stageFullScreen = isFullScreen && (dockMode === 'top' || dockMode === 'scratch');
+        // Right-pane full screen: the stock presentation mode is defeated by
+        // brickwright's inline pane widths, so the right pane stayed a half-width
+        // panel with the editor still showing beside it. The stage, the circuit
+        // designer (dockMode 'off') and the debugger (dockMode 'right'/'solo')
+        // all render in the RIGHT pane, so for every right-pane mode EXCEPT
+        // controller/micro:bit (which paint their own 100vw overlay), hide the
+        // editor and let the right pane fill the window.
+        const stageFullScreen = isFullScreen && dockMode !== 'controller' && dockMode !== 'microbit';
 
         return isPlayerOnly ? (
             <StageWrapper
