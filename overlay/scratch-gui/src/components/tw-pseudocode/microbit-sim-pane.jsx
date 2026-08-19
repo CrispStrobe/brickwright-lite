@@ -63,6 +63,9 @@ const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' :
  */
 
 const SIM_URL = 'static/microbit-sim/simulator.html';
+// The line-level (settrace) debugger loads a separate page that pulls the
+// settrace-enabled debug firmware. Switching to it reloads the iframe.
+const SIM_DEBUG_URL = 'static/microbit-sim/simulator-debug.html';
 
 class MicrobitSimPane extends React.Component {
     constructor (props) {
@@ -70,6 +73,7 @@ class MicrobitSimPane extends React.Component {
         this.state = {
             serial: '',
             simReady: false,
+            simUrl: SIM_URL,   // switched to SIM_DEBUG_URL for a line-level (trace) run
             running: false,
             // Mirror of the debug controller, for the render.
             dbg: {active: false, running: false, halted: false, block: null, index: null,
@@ -113,10 +117,24 @@ class MicrobitSimPane extends React.Component {
         const detail = (e && e.detail) || {};
         const code = detail.code;
         if (!code) return;
-        const debug = detail.debug
-            ? {positions: detail.positions || [], procNames: detail.procNames || []}
-            : null;
-        if (this.state.simReady) {
+        const debug = detail.trace
+            ? {trace: true, lineMap: detail.lineMap || {}}
+            : detail.debug
+                ? {positions: detail.positions || [], procNames: detail.procNames || []}
+                : null;
+        // A line-level (trace) run needs the settrace debug firmware — a
+        // different sim page. Switching src reloads the iframe; flash once it
+        // re-signals ready (marker/plain) or on the play gesture (trace).
+        const targetUrl = (debug && debug.trace) ? SIM_DEBUG_URL : SIM_URL;
+        if (this.state.simUrl !== targetUrl) {
+            this._pendingCode = code;
+            this._pendingDebug = debug;
+            this.setState({simUrl: targetUrl, simReady: false});
+            return;
+        }
+        // Trace: defer to the play gesture (request_flash) so the AudioContext
+        // exists before board.flash — the settrace firmware throws otherwise.
+        if (this.state.simReady && !(debug && debug.trace)) {
             this._flash(code, debug);
         } else {
             this._pendingCode = code;
@@ -131,7 +149,9 @@ class MicrobitSimPane extends React.Component {
         switch (kind) {
         case 'ready':
             this.setState({simReady: true});
-            if (this._pendingCode) {
+            // Auto-flash a pending marker/plain run. A TRACE run waits for the
+            // play gesture (request_flash) — see _onFlashEvent.
+            if (this._pendingCode && !(this._pendingDebug && this._pendingDebug.trace)) {
                 this._flash(this._pendingCode, this._pendingDebug);
                 this._pendingCode = null;
                 this._pendingDebug = null;
@@ -166,7 +186,8 @@ class MicrobitSimPane extends React.Component {
         if (!iframe || !iframe.contentWindow) return;
         // A new flash ends any prior debug run (clears the old highlight).
         this._dbg.stop();
-        if (debug) { this._dbg.begin(debug.positions, debug.procNames); this._wireConditions(); }
+        if (debug && debug.trace) { this._dbg.beginTrace(debug.lineMap); this._wireConditions(); }
+        else if (debug) { this._dbg.begin(debug.positions, debug.procNames); this._wireConditions(); }
         const encoder = new TextEncoder();
         const filesystem = {'main.py': encoder.encode(code)};
         iframe.contentWindow.postMessage({kind: 'flash', filesystem}, '*');
@@ -250,7 +271,7 @@ class MicrobitSimPane extends React.Component {
                 <div style={{flex: '1 1 auto', minHeight: 200, position: 'relative'}}>
                     <iframe
                         ref={this._iframeRef}
-                        src={SIM_URL}
+                        src={this.state.simUrl}
                         title={t.simTitle}
                         data-testid="bw-microbit-iframe"
                         style={{

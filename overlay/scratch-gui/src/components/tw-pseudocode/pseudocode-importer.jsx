@@ -1124,13 +1124,15 @@ class PseudocodeImporter extends React.Component {
         window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code}}));
     }
 
-    // Debug on the simulator: regenerate the MicroPython as an INSTRUMENTED
-    // build — `generateMicroPython(project, {debug:true, breakpoints})` prints
-    // RS(0x1e) position markers over serial and HALTS at the breakpoints — and
-    // hand the sim pane the `positions` map so it can highlight the live block
-    // and drive step/continue (microbit-sim-pane.jsx, microbit-debug.js).
+    // Debug on the simulator: regenerate the MicroPython as a LINE-LEVEL trace
+    // build — `generateMicroPython(project, {trace:true, breakpoints})` installs
+    // a sys.settrace hook that prints RS(0x1e)L line markers over serial and
+    // HALTS at breakpoint lines, dumping real locals (\x1eV) and the call stack
+    // (\x1eK). The sim pane loads the settrace-enabled debug firmware and gets
+    // the `lineMap` (python line -> block id) to highlight the live block and
+    // drive step/continue (microbit-sim-pane.jsx, microbit-debug.js).
     // Breakpoints are the block ids the user right-clicked (bw-debug/breakpoints.js,
-    // reused unchanged); runtime add/remove mid-run is out of scope — set, then run.
+    // reused unchanged); the codegen bakes them to a line set.
     async flashMicrobitSimDebug () {
         let breakpoints = [];
         try {
@@ -1138,19 +1140,17 @@ class PseudocodeImporter extends React.Component {
             breakpoints = bp.listBreakpoints ? bp.listBreakpoints() : [];
         } catch { /* no breakpoints module — debug with none, still useful for stepping */ }
         let code;
-        let positions;
-        let procNames;
+        let lineMap;
         try {
             const SB3Creator = (await this.lib()).default;
             const proj = JSON.parse(this.props.vm.toJSON());
-            const r = new SB3Creator().generateMicroPython(proj, {debug: true, breakpoints});
+            const r = new SB3Creator().generateMicroPython(proj, {trace: true, breakpoints});
             if (!r.ok) {
                 this.setState({status: this.L.stError((r.reasons || []).join(' · '))});
                 return;
             }
             code = r.py;
-            positions = r.positions || [];
-            procNames = r.procNames || [];
+            lineMap = r.lineMap || {};
         } catch (e) {
             this.setState({status: this.L.stError(e.message)});
             return;
@@ -1166,7 +1166,7 @@ class PseudocodeImporter extends React.Component {
         Object.entries(values).forEach(([k, v]) => {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
         });
-        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code, debug: true, positions, procNames}}));
+        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code, trace: true, lineMap}}));
     }
 
     // Run BASIC on the real emulated machine.
