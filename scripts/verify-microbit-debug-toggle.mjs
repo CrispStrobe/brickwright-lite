@@ -295,7 +295,18 @@ const expectHalt = async (label, timeout) => {
         // clear BEFORE continuing: the loop re-halts at the same breakpoint
         // within ~0.3s, so the post-resume line events land immediately
         await page.evaluate(() => { window.__glows = []; });
-        await page.locator('[data-testid="bw-microbit-debug-continue"]').click().catch(() => {});
+        // deterministic continue: wait for the enabled button, then dispatch
+        // the click in-page — playwright's actionability wait raced a
+        // re-render and sometimes swallowed the click entirely (observed:
+        // pane posts [] on flaky runs, the resume bytes on good ones)
+        await page.waitForFunction(() => {
+            const b = document.querySelector('[data-testid="bw-microbit-debug-continue"]');
+            return b && !b.disabled;
+        }, { timeout: 10000 }).catch(() => {});
+        await page.evaluate(() => {
+            const b = document.querySelector('[data-testid="bw-microbit-debug-continue"]');
+            if (b && !b.disabled) b.click();
+        });
         await page.waitForFunction(() => (window.__glows || []).length > 0, { timeout: 15000 })
             .then(() => pass('LINE: resumed after continue — line events keep flowing'))
             .catch(async () => {
