@@ -642,50 +642,65 @@ describe('ControllerPanel — demo fixture (brightness slider + on/off button)',
     readFileSync(join(__dirname, 'fixtures', 'controller-demo-panel.json'), 'utf8')
   );
 
-  it('loads from the fixture JSON', () => {
+  it('loads all 4 widgets from the fixture JSON', () => {
     const panel = ControllerPanel.fromJSON(demoData);
-    assert.deepEqual(panel.getWidgetNames(), ['brightness', 'onoff']);
+    assert.deepEqual(panel.getWidgetNames(), ['brightness', 'onoff', 'steering', 'voltage']);
     assert.equal(panel.getWidget('brightness').type, 'slider');
     assert.equal(panel.getWidget('onoff').type, 'button');
     assert.equal(panel.getWidget('onoff').config.toggle, true);
+    assert.equal(panel.getWidget('steering').type, 'joystick');
+    assert.equal(panel.getWidget('voltage').type, 'gauge');
+    assert.equal(panel.getWidget('voltage').config.label, 'V');
   });
 
-  it('slider drives pot1, button drives led1 via board.setControl', () => {
+  it('slider drives pot1, button drives led1, joystick drives pin', () => {
     const panel = ControllerPanel.fromJSON(demoData);
-    const calls = [];
-    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const partCalls = [];
+    const pinCalls = [];
+    const mockBoard = {
+      setControl(partId, value) { partCalls.push({ partId, value }); },
+      writePin(pinName, value) { pinCalls.push({ pinName, value }); },
+    };
     const binding = bindPanelToBoard(panel, mockBoard);
 
     // Slide brightness to 50% (128 out of 255)
     panel.setSliderInput('brightness', 128);
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].partId, 'pot1');
-    assert.ok(Math.abs(calls[0].value - 128 / 255) < 0.01);
+    assert.equal(partCalls.length, 1);
+    assert.equal(partCalls[0].partId, 'pot1');
+    assert.ok(Math.abs(partCalls[0].value - 128 / 255) < 0.01);
 
     // Toggle the button on
     panel.setButtonInput('onoff', true);
-    assert.equal(calls.length, 2);
-    assert.equal(calls[1].partId, 'led1');
-    assert.equal(calls[1].value, 1);
+    assert.equal(partCalls.length, 2);
+    assert.equal(partCalls[1].partId, 'led1');
+    assert.equal(partCalls[1].value, 1);
 
     // Toggle it off (press again to toggle)
     panel.setButtonInput('onoff', true);
-    assert.equal(calls.length, 3);
-    assert.equal(calls[2].value, 0);
+    assert.equal(partCalls.length, 3);
+    assert.equal(partCalls[2].value, 0);
+
+    // Joystick → pin
+    panel.setJoystickInput('steering', 50, 0);
+    assert.equal(pinCalls.length, 1);
+    assert.equal(pinCalls[0].pinName, 'P1.3');
+
+    // Gauge is read-only — setGaugeValue must not push
+    panel.setGaugeValue('voltage', 3.3);
+    assert.equal(pinCalls.length, 1); // unchanged
+    assert.equal(partCalls.length, 3); // unchanged
 
     binding.dispose();
   });
 
-  it('round-trips through save → load preserving bindings', () => {
+  it('round-trips through save → load preserving all bindings', () => {
     const panel = ControllerPanel.fromJSON(demoData);
-    // Modify a value
     panel.setSliderInput('brightness', 200);
 
-    // Save → load
     const saved = panel.toJSON();
     const restored = ControllerPanel.fromJSON(saved);
 
-    assert.deepEqual(restored.getWidgetNames(), ['brightness', 'onoff']);
+    assert.deepEqual(restored.getWidgetNames(), ['brightness', 'onoff', 'steering', 'voltage']);
     assert.deepEqual(
       restored.getWidget('brightness').binding,
       { target: 'part', partId: 'pot1', param: null }
@@ -694,5 +709,283 @@ describe('ControllerPanel — demo fixture (brightness slider + on/off button)',
       restored.getWidget('onoff').binding,
       { target: 'part', partId: 'led1', param: null }
     );
+    assert.deepEqual(
+      restored.getWidget('steering').binding,
+      { target: 'pin', pinName: 'P1.3' }
+    );
+    assert.deepEqual(
+      restored.getWidget('voltage').binding,
+      { target: 'pin', pinName: 'P1.7' }
+    );
+  });
+});
+
+// ─── Gauge widget ────────────────────────────────────────────────────────────
+
+describe('ControllerPanel — gauge (read-only indicator)', () => {
+
+  it('adds a gauge with default config and state', () => {
+    const panel = new ControllerPanel();
+    const w = panel.addWidget('meter', 'gauge', { min: 0, max: 5, label: 'Volts' });
+    assert.equal(w.type, 'gauge');
+    assert.equal(w.config.min, 0);
+    assert.equal(w.config.max, 5);
+    assert.equal(w.config.label, 'Volts');
+    assert.equal(w.state.value, 0); // starts at min
+  });
+
+  it('setGaugeValue clamps to [min, max]', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('meter', 'gauge', { min: 0, max: 100 });
+    panel.setGaugeValue('meter', 50);
+    assert.equal(panel.getValue('meter'), 50);
+    panel.setGaugeValue('meter', 200);
+    assert.equal(panel.getValue('meter'), 100); // clamped
+    panel.setGaugeValue('meter', -10);
+    assert.equal(panel.getValue('meter'), 0); // clamped
+  });
+
+  it('setGaugeValue rejects non-gauge widgets', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('btn1', 'button');
+    assert.throws(() => panel.setGaugeValue('btn1', 42));
+  });
+
+  it('gauge emits input event', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('meter', 'gauge', { min: 0, max: 100 });
+    const events = [];
+    panel.addListener((ev, detail) => events.push({ ev, detail }));
+    panel.setGaugeValue('meter', 75);
+    assert.equal(events.length, 1);
+    assert.equal(events[0].ev, 'input');
+    assert.equal(events[0].detail.value, 75);
+  });
+
+  it('gauge does NOT drive board.setControl (read-only)', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('meter', 'gauge', { min: 0, max: 100 });
+    panel.bindToPart('meter', 'voltmeter1');
+
+    const calls = [];
+    const mockBoard = { setControl(partId, value) { calls.push({ partId, value }); } };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setGaugeValue('meter', 50);
+    assert.equal(calls.length, 0); // gauge is read-only
+
+    binding.dispose();
+  });
+
+  it('gauge persists via toJSON/fromJSON', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('meter', 'gauge', { min: 0, max: 5, label: 'V' }, { x: 20, y: 30 });
+    panel.bindToPin('meter', 'P1.3');
+    panel.setGaugeValue('meter', 3.3);
+
+    const json = panel.toJSON();
+    const restored = ControllerPanel.fromJSON(json);
+    const w = restored.getWidget('meter');
+    assert.equal(w.type, 'gauge');
+    assert.equal(w.config.max, 5);
+    assert.equal(w.config.label, 'V');
+    assert.equal(w.layout.x, 20);
+    assert.deepEqual(w.binding, { target: 'pin', pinName: 'P1.3' });
+  });
+});
+
+// ─── Pin and variable bindings ───────────────────────────────────────────────
+
+describe('ControllerPanel — pin binding', () => {
+
+  it('bindToPin sets binding with target=pin', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('slider1', 'slider', { min: 0, max: 255 });
+    panel.bindToPin('slider1', 'P1.0');
+    assert.deepEqual(panel.getWidget('slider1').binding, { target: 'pin', pinName: 'P1.0' });
+  });
+
+  it('pin-bound slider calls board.writePin on input', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('slider1', 'slider', { min: 0, max: 100 });
+    panel.bindToPin('slider1', 'P1.0');
+
+    const calls = [];
+    const mockBoard = {
+      setControl() {},
+      writePin(pinName, value) { calls.push({ pinName, value }); },
+    };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setSliderInput('slider1', 50);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].pinName, 'P1.0');
+    assert.equal(calls[0].value, 0.5); // normalized 50/100
+
+    binding.dispose();
+  });
+
+  it('pin-bound joystick calls board.writePin', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('joy1', 'joystick');
+    panel.bindToPin('joy1', 'P1.3');
+
+    const calls = [];
+    const mockBoard = {
+      setControl() {},
+      writePin(pinName, value) { calls.push({ pinName, value }); },
+    };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setJoystickInput('joy1', 100, 0);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].pinName, 'P1.3');
+    assert.equal(calls[0].value, 1.0); // (100+100)/200
+
+    binding.dispose();
+  });
+
+  it('pin binding persists via toJSON/fromJSON', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('slider1', 'slider');
+    panel.bindToPin('slider1', 'P2.5');
+
+    const json = panel.toJSON();
+    const restored = ControllerPanel.fromJSON(json);
+    assert.deepEqual(restored.getWidget('slider1').binding, { target: 'pin', pinName: 'P2.5' });
+  });
+});
+
+describe('ControllerPanel — variable binding', () => {
+
+  it('bindToVariable sets binding with target=variable', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('slider1', 'slider');
+    panel.bindToVariable('slider1', 'speed');
+    assert.deepEqual(
+      panel.getWidget('slider1').binding,
+      { target: 'variable', variableName: 'speed' }
+    );
+  });
+
+  it('variable-bound gauge persists via toJSON/fromJSON', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('meter', 'gauge', { min: 0, max: 100, label: 'RPM' });
+    panel.bindToVariable('meter', 'motor_speed');
+
+    const json = panel.toJSON();
+    const restored = ControllerPanel.fromJSON(json);
+    const w = restored.getWidget('meter');
+    assert.equal(w.type, 'gauge');
+    assert.deepEqual(w.binding, { target: 'variable', variableName: 'motor_speed' });
+  });
+
+  it('variable-bound widgets do not call board methods', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('slider1', 'slider', { min: 0, max: 100 });
+    panel.bindToVariable('slider1', 'level');
+
+    const calls = [];
+    const mockBoard = {
+      setControl(partId, value) { calls.push({ partId, value }); },
+      writePin(pinName, value) { calls.push({ pinName, value }); },
+    };
+    const binding = bindPanelToBoard(panel, mockBoard);
+
+    panel.setSliderInput('slider1', 50);
+    assert.equal(calls.length, 0); // variable binding is handled by extension, not board
+
+    binding.dispose();
+  });
+});
+
+// ─── Steering widgets: full persistence round-trip ───────────────────────────
+
+describe('Steering widgets — joystick + slider + gauge persistence round-trip', () => {
+
+  /** gui.jsx restore logic. */
+  function restoreIntoPanel(livePanel, controllerData) {
+    const restored = ControllerPanel.fromJSON(controllerData);
+    for (const name of livePanel.getWidgetNames()) {
+      livePanel.removeWidget(name);
+    }
+    for (const w of restored.getWidgets()) {
+      const added = livePanel.addWidget(w.name, w.type, w.config, w.layout);
+      if (w.binding) added.binding = { ...w.binding };
+    }
+  }
+
+  it('all three steering widgets survive save → load with mixed bindings', () => {
+    const original = new ControllerPanel();
+    original.addWidget('joy1', 'joystick', {}, { x: 10, y: 10 });
+    original.bindToPin('joy1', 'P1.3');
+    original.addWidget('speed', 'slider', { min: 0, max: 255 }, { x: 120, y: 10 });
+    original.bindToVariable('speed', 'motor_pwm');
+    original.addWidget('volts', 'gauge', { min: 0, max: 5, label: 'V' }, { x: 10, y: 100 });
+    original.bindToPin('volts', 'P1.7');
+
+    const savedData = original.toJSON();
+    const livePanel = new ControllerPanel();
+    livePanel.addWidget('stale', 'button'); // will be replaced
+    restoreIntoPanel(livePanel, savedData);
+
+    assert.equal(livePanel.getWidget('stale'), null);
+    assert.deepEqual(livePanel.getWidgetNames(), ['joy1', 'speed', 'volts']);
+
+    const j = livePanel.getWidget('joy1');
+    assert.equal(j.type, 'joystick');
+    assert.deepEqual(j.binding, { target: 'pin', pinName: 'P1.3' });
+    assert.equal(j.layout.x, 10);
+
+    const s = livePanel.getWidget('speed');
+    assert.equal(s.type, 'slider');
+    assert.equal(s.config.max, 255);
+    assert.deepEqual(s.binding, { target: 'variable', variableName: 'motor_pwm' });
+
+    const g = livePanel.getWidget('volts');
+    assert.equal(g.type, 'gauge');
+    assert.equal(g.config.label, 'V');
+    assert.deepEqual(g.binding, { target: 'pin', pinName: 'P1.7' });
+  });
+
+  it('restored bindings still function after round-trip', () => {
+    const original = new ControllerPanel();
+    original.addWidget('joy1', 'joystick');
+    original.bindToPin('joy1', 'P1.0');
+    original.addWidget('slider1', 'slider', { min: 0, max: 100 });
+    original.bindToPart('slider1', 'pot1');
+    original.addWidget('meter', 'gauge', { min: 0, max: 100 });
+    original.bindToPin('meter', 'P1.5');
+
+    const savedData = original.toJSON();
+    const livePanel = new ControllerPanel();
+    restoreIntoPanel(livePanel, savedData);
+
+    const pinCalls = [];
+    const partCalls = [];
+    const mockBoard = {
+      setControl(partId, value) { partCalls.push({ partId, value }); },
+      writePin(pinName, value) { pinCalls.push({ pinName, value }); },
+    };
+    const binding = bindPanelToBoard(livePanel, mockBoard);
+
+    // Joystick → pin
+    livePanel.setJoystickInput('joy1', 50, 0);
+    assert.equal(pinCalls.length, 1);
+    assert.equal(pinCalls[0].pinName, 'P1.0');
+    assert.ok(Math.abs(pinCalls[0].value - 0.75) < 0.01); // (50+100)/200
+
+    // Slider → part
+    livePanel.setSliderInput('slider1', 50);
+    assert.equal(partCalls.length, 1);
+    assert.equal(partCalls[0].partId, 'pot1');
+    assert.equal(partCalls[0].value, 0.5);
+
+    // Gauge → read-only, no calls
+    livePanel.setGaugeValue('meter', 75);
+    assert.equal(pinCalls.length, 1); // unchanged
+    assert.equal(partCalls.length, 1); // unchanged
+
+    binding.dispose();
   });
 });
