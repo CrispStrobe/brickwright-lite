@@ -1,0 +1,40 @@
+# 6502 serial terminal faceplate
+#
+# A serial echo/processor: reads characters from the keyboard widget
+# (serial_in variable), echoes them to the terminal widget (serial_out),
+# and processes simple commands. The keyboard writes single characters;
+# the program accumulates a line buffer and processes on newline.
+#
+# Inspired by 6502 + ACIA 6551 serial I/O — the classic terminal loop.
+
+WHEN flag clicked:
+  set serial_in to ""
+  set serial_out to "6502 Terminal Ready\n> "
+  set variable line to ""
+  set variable lastChar to ""
+  FOREVER:
+    # Check for new keyboard input
+    IF serial_in != lastChar THEN:
+      IF serial_in != "" THEN:
+        set lastChar to serial_in
+
+        # Echo the character to the terminal
+        set serial_out to join serial_out serial_in
+
+        # Accumulate the line buffer
+        set line to join line serial_in
+
+        # On Enter (newline), process the line
+        IF serial_in = "\n" THEN:
+          # Simple command processor
+          IF line = "hello\n" THEN:
+            set serial_out to join serial_out "Hello, world!\n"
+          IF line = "help\n" THEN:
+            set serial_out to join serial_out "Commands: hello, help, clear\n"
+          IF line = "clear\n" THEN:
+            set serial_out to "> "
+          # Reset line buffer and show prompt
+          set line to ""
+          set serial_out to join serial_out "> "
+
+        set serial_in to ""

@@ -6646,5 +6646,25 @@
    "intro": "retro-console/intro.md",
    "introDE": "retro-console/intro.de.md"
   }
+ },
+ {
+  "id": "6502-terminal",
+  "title": {
+   "en": "6502 serial terminal (controller panel)",
+   "de": "6502 Serielles Terminal (Controller-Panel)"
+  },
+  "category": "digital",
+  "difficulty": 3,
+  "kind": "program",
+  "devices": [
+   "eater6502"
+  ],
+  "authored": "eater6502",
+  "files": {
+   "program": "6502-terminal/program.bw",
+   "controller": "6502-terminal/controller.json",
+   "intro": "6502-terminal/intro.md",
+   "introDE": "6502-terminal/intro.de.md"
+  }
  }
 ]
