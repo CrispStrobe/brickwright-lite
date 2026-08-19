@@ -1132,7 +1132,14 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
         });
         // Send the code to the simulator pane
-        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code}}));
+        {
+            // Park on a module latch too: opening the dock mounts the sim pane
+            // in the same tick, so its window listener may not exist yet — the
+            // pane reads this latch on mount (first-click fix).
+            const detail = {code};
+            try { window.__bwMicrobitPendingFlash = detail; } catch { /* noop */ }
+            window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail}));
+        }
     }
 
     // Debug on the simulator: regenerate the MicroPython as a LINE-LEVEL trace
@@ -1188,9 +1195,12 @@ class PseudocodeImporter extends React.Component {
         Object.entries(values).forEach(([k, v]) => {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
         });
-        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: line
+        const detail = line
             ? {code, trace: true, lineMap}
-            : {code, debug: true, positions, procNames}}));
+            : {code, debug: true, positions, procNames};
+        // Park on a module latch (first-click mount-race fix — see plain run).
+        try { window.__bwMicrobitPendingFlash = detail; } catch { /* noop */ }
+        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail}));
     }
 
     // Run BASIC on the real emulated machine.

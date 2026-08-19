@@ -104,6 +104,14 @@ class MicrobitSimPane extends React.Component {
     componentDidMount () {
         window.addEventListener('message', this._onMessage);
         window.addEventListener('bw-microbit-flash', this._onFlashEvent);
+        // Mount race: the importer opens the dock (mounting THIS pane) and
+        // dispatches the flash in the SAME tick — before this listener exists,
+        // so the event is lost and only a second Debug click worked. The
+        // importer also parks the detail on a module latch; pick it up on mount
+        // so the FIRST Debug click runs.
+        let pending = null;
+        try { pending = window.__bwMicrobitPendingFlash || null; } catch { /* noop */ }
+        if (pending) this._handleFlash(pending);
     }
 
     componentWillUnmount () {
@@ -113,8 +121,10 @@ class MicrobitSimPane extends React.Component {
         this._dbg.stop();
     }
 
-    _onFlashEvent (e) {
-        const detail = (e && e.detail) || {};
+    _onFlashEvent (e) { this._handleFlash((e && e.detail) || {}); }
+
+    _handleFlash (detail) {
+        try { window.__bwMicrobitPendingFlash = null; } catch { /* noop */ }
         const code = detail.code;
         if (!code) return;
         const debug = detail.trace
@@ -123,23 +133,17 @@ class MicrobitSimPane extends React.Component {
                 ? {positions: detail.positions || [], procNames: detail.procNames || []}
                 : null;
         // A line-level (trace) run needs the settrace debug firmware — a
-        // different sim page. Switching src reloads the iframe; flash once it
-        // re-signals ready (marker/plain) or on the play gesture (trace).
+        // different sim page. Switching src reloads the iframe.
         const targetUrl = (debug && debug.trace) ? SIM_DEBUG_URL : SIM_URL;
         if (this.state.simUrl !== targetUrl) {
-            this._pendingCode = code;
-            this._pendingDebug = debug;
             this.setState({simUrl: targetUrl, simReady: false});
-            return;
         }
-        // Trace: defer to the play gesture (request_flash) so the AudioContext
-        // exists before board.flash — the settrace firmware throws otherwise.
-        if (this.state.simReady && !(debug && debug.trace)) {
-            this._flash(code, debug);
-        } else {
-            this._pendingCode = code;
-            this._pendingDebug = debug;
-        }
+        // Park the run; the FLASH happens on the play gesture (request_flash),
+        // never on 'ready'. board.flash before a real in-iframe user gesture
+        // throws "Context must be pre-created from a user event" — the sim's own
+        // audio guard, for BOTH firmwares. The play button is that gesture.
+        this._pendingCode = code;
+        this._pendingDebug = debug;
     }
 
     _onMessage (e) {
@@ -148,14 +152,10 @@ class MicrobitSimPane extends React.Component {
         const {kind} = e.data || {};
         switch (kind) {
         case 'ready':
+            // Do NOT auto-flash here: board.flash before an in-iframe user
+            // gesture throws (the sim's AudioContext guard). The play button
+            // (request_flash) is that gesture and drives every flash.
             this.setState({simReady: true});
-            // Auto-flash a pending marker/plain run. A TRACE run waits for the
-            // play gesture (request_flash) — see _onFlashEvent.
-            if (this._pendingCode && !(this._pendingDebug && this._pendingDebug.trace)) {
-                this._flash(this._pendingCode, this._pendingDebug);
-                this._pendingCode = null;
-                this._pendingDebug = null;
-            }
             break;
         case 'request_flash':
             // User clicked the play button inside the sim
