@@ -49,9 +49,15 @@
 }
 
 /* The tab row keeps every tab — capability, not permanence — but drops the
-   words. The icons and emoji stay, so nothing becomes unreachable. */
+   words. The icons and emoji stay, so nothing becomes unreachable.
+   position:relative + a stacking context above the editor body guarantees the
+   tabs AND the ⋯ toggle stay on top and clickable: with the menu bar gone the
+   strip was being overlaid by the body/workspace and swallowing every click. */
 :global(body.bw-compact-chrome) [class*="gui_tab-list"] {
     height: 32px;
+    position: relative;
+    z-index: 600;
+    pointer-events: auto;
 }
 
 :global(body.bw-compact-chrome) [class*="gui_tab"] {

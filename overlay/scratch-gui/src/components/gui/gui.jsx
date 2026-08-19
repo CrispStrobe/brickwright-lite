@@ -265,6 +265,17 @@ const GUIComponent = props => {
         const middleContent = paneLayout?.middle?.upper || 'blocks-canvas';
         const paneStyles = computePaneStyles(leftSize, middleSize, rightSize);
 
+        // Full screen for the RIGHT-PANE docks (controller / micro:bit): make the
+        // active pane fill the viewport as its OWN content instead of fullscreening
+        // the (hidden) Scratch stage. z-index stays UNDER the stage-header's fixed
+        // exit overlay ($z-index-stage-header = 5000), so the return control is
+        // always painted on top and clickable — never a trap.
+        const dockFullScreenStyle = isFullScreen ? {
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            width: '100vw', height: '100vh', margin: 0, zIndex: 4000,
+            background: '#ffffff', overflow: 'auto'
+        } : null;
+
         return isPlayerOnly ? (
             <StageWrapper
                 isFullScreen={isFullScreen}
@@ -553,7 +564,7 @@ const GUIComponent = props => {
                                 toggle buttons) stays reachable in every mode.
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
-                            <div style={dockMode === 'controller' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '2px solid #94a3b8', background: '#e2e8f0', boxSizing: 'border-box'} : undefined}>
+                            <div style={dockMode === 'controller' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
@@ -566,13 +577,17 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'micro:bit-Simulator wird geladen…' : 'Loading micro:bit simulator…'}</div>
                                 }>
-                                    <MicrobitSimPane />
+                                    {dockFullScreenStyle ? (
+                                        <div style={dockFullScreenStyle}><MicrobitSimPane /></div>
+                                    ) : (
+                                        <MicrobitSimPane />
+                                    )}
                                 </React.Suspense>
                             ) : dockMode === 'controller' ? (
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>Loading controller…</div>
                                 }>
-                                    <div style={{position: 'relative', flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
                                         <ControllerPanelView
                                             panel={controllerPanel}
                                             board={board}
