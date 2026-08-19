@@ -238,6 +238,10 @@ class SB3Creator {
         if (mode === 'simulator' && extId === 'ledcube') {
             return this.ledcubeSimulatorDriver(lang);
         }
+        // Controller panel: reads from the live panel via vm.runtime.controllerPanel.
+        if (mode === 'simulator' && extId === 'controller') {
+            return this.controllerSimulatorDriver(lang);
+        }
         const banner = {
             shim: 'neutral stub — drives nothing; implement to drive real hardware',
             simulator: 'simulated board — no board attached for this runtime, so neutral',
@@ -702,6 +706,31 @@ class SB3Creator {
             '    hold: (ms) => { scratch.wait(ms / 1000); },',
             '    readVoxel: (x, y, z) => { const [s, b] = _ledcube._addr(x, y, z);',
             `        return (s >= 0 && s < ${S} && b >= 0 && b < 8) ? (_ledcube_frame[s] >> b) & 1 : 0; },`,
+            '};',
+        ];
+    }
+
+    controllerSimulatorDriver(lang) {
+        if (lang === 'py') {
+            return [
+                '# _controller driver — reads from the live controller panel.',
+                'class _ControllerDriver:',
+                '    def controllerValue(self, name): return scratch.call("controller_value", name)',
+                '    def controllerX(self, name): return scratch.call("controller_x", name)',
+                '    def controllerY(self, name): return scratch.call("controller_y", name)',
+                '    def controllerPressed(self, name): return scratch.call("controller_pressed", name)',
+                '    def setWidget(self, name, value): scratch.call("controller_set", name, value)',
+                '_controller = _ControllerDriver()',
+            ];
+        }
+        return [
+            '// _controller driver — reads from the live controller panel.',
+            'const _controller = {',
+            '    controllerValue: (name) => scratch.call("controller_value", name),',
+            '    controllerX: (name) => scratch.call("controller_x", name),',
+            '    controllerY: (name) => scratch.call("controller_y", name),',
+            '    controllerPressed: (name) => scratch.call("controller_pressed", name),',
+            '    setWidget: (name, value) => scratch.call("controller_set", name, value),',
             '};',
         ];
     }

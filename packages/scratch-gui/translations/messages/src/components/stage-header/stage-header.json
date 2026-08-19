@@ -40,6 +40,11 @@
     "defaultMessage": "micro:bit Simulator"
   },
   {
+    "id": "gui.stageHeader.controllerPanel",
+    "description": "Button to show the controller panel with interactive widgets",
+    "defaultMessage": "Controller"
+  },
+  {
     "id": "gui.stageHeader.scratchStage",
     "description": "Button to show the Scratch stage while coding",
     "defaultMessage": "Scratch Stage"

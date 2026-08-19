@@ -18,6 +18,7 @@ import unFullScreenIcon from './icon--unfullscreen.svg';
 import circuitIcon from './icon--circuit.svg';
 import debuggerSoloIcon from './icon--debugger-solo.svg';
 import microbitIcon from './icon--microbit.svg';
+import controllerIcon from './icon--controller.svg';
 import scratchStageIcon from './icon--scratch-stage.svg';
 
 import scratchLogo from '../menu-bar/scratch-logo.svg';
@@ -64,6 +65,11 @@ const messages = defineMessages({
         description: 'Button to show the micro:bit simulator in the right pane',
         id: 'gui.stageHeader.microbitSim'
     },
+    controllerPanel: {
+        defaultMessage: 'Controller',
+        description: 'Button to show the controller panel with interactive widgets',
+        id: 'gui.stageHeader.controllerPanel'
+    },
     scratchStage: {
         defaultMessage: 'Scratch Stage',
         description: 'Button to show the Scratch stage while coding',
@@ -97,6 +103,7 @@ const viewForDock = dock => {
     // instead of falling back to the tiny instruments dock (owner spec).
     if (dock === 'solo' || dock === 'right') return 'solo';
     if (dock === 'microbit') return 'microbit';
+    if (dock === 'controller') return 'controller';
     // 'top' and any other value default to scratch stage
     return 'scratch';
 };
@@ -167,6 +174,13 @@ const StageViewButtons = ({intl}) => {
                         isSelected: view === 'microbit',
                         title: intl.formatMessage(messages.microbitSim)
                     }] : []),
+                    {
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'controller'}); setView('controller'); },
+                        icon: controllerIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'controller',
+                        title: intl.formatMessage(messages.controllerPanel)
+                    },
                     {
                         handleClick: () => {
                             setCircuitView({fullWidth: false, dock: 'top'});

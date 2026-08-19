@@ -118,10 +118,20 @@ class SB3Creator {
     // Strip a trailing `// comment` that is outside any double-quoted string.
     stripComment(line) {
         let inStr = false;
-        for (let i = 0; i < line.length - 1; i++) {
+        for (let i = 0; i < line.length; i++) {
             const c = line[i];
             if (c === '"') inStr = !inStr;
             else if (!inStr && c === '/' && line[i + 1] === '/') return line.slice(0, i);
+            // The reference dialect strips inline `# …` too (14-a2-keyshow.bw
+            // annotates statements this way) — but ONLY when a statement
+            // precedes it AND the `#` reads as a comment: whitespace on both
+            // sides. `#ff0000` is a COLOR LITERAL in this dialect (SHAPE, pen,
+            // touching color) and must survive; a full-line comment (any
+            // indentation) passes through to become a Scratch block comment.
+            else if (!inStr && c === '#'
+                && /[ \t]/.test(line[i - 1] || '')
+                && (i + 1 >= line.length || /[ \t]/.test(line[i + 1]))
+                && line.slice(0, i).trim() !== '') return line.slice(0, i);
         }
         return line;
     }
@@ -228,6 +238,10 @@ class SB3Creator {
         if (mode === 'simulator' && extId === 'ledcube') {
             return this.ledcubeSimulatorDriver(lang);
         }
+        // Controller panel: reads from the live panel via vm.runtime.controllerPanel.
+        if (mode === 'simulator' && extId === 'controller') {
+            return this.controllerSimulatorDriver(lang);
+        }
         const banner = {
             shim: 'neutral stub — drives nothing; implement to drive real hardware',
             simulator: 'simulated board — no board attached for this runtime, so neutral',
@@ -333,6 +347,14 @@ class SB3Creator {
                 '        # An ANALOG pin reads volts from the board; the MCU scales to counts.',
                 '        if p["dir"] == "analog": return int(_board().readAnalog(p["pin"]) / 5.0 * 1023)',
                 '        return (not _board().readPin(p["pin"])) if p["low"] else _board().readPin(p["pin"])',
+                '    def readKeypad(self, name):',
+                '        # The scanned key 0..15, or -1 — same contract as the C',
+                '        # scanner and the stc12 extension (board.keypad_<name>).',
+                '        b = _board()',
+                '        if not b: return -1',
+                '        v = getattr(b, "keypad_" + name, None)',
+                '        if v is None and hasattr(b, "get"): v = b.get("keypad_" + name)',
+                '        return -1 if v is None else int(v)',
                 '    def setPwm(self, name, value):',
                 '        p = self._p(name)',
                 '        if p and _board(): _board().setPwm(p["pin"], int(value))',
@@ -375,6 +397,11 @@ class SB3Creator {
             '        // An ANALOG pin reads volts from the board; the MCU scales to counts.',
             '        if (p.dir === "analog") return Math.round(b.readAnalog(p.pin) / 5.0 * 1023);',
             '        return p.low ? (b.readPin(p.pin) ? 0 : 1) : b.readPin(p.pin); },',
+            '    readKeypad: (name) => { const b = _board();',
+            '        // 0..15 or -1 — the C scanner\'s contract; the circuit',
+            '        // layer feeds board.keypad_<name> (see the stc12 extension).',
+            '        const v = b && b["keypad_" + name];',
+            '        return (v === undefined || v === null) ? -1 : Number(v); },',
             '    setPwm: (name, v) => { const p = _stc12_pins[name], b = _board();',
             '        if (p && b && b.setPwm) b.setPwm(p.pin, Number(v)); },',
             '    setTone: (name, v) => { const p = _stc12_pins[name], b = _board();',
@@ -679,6 +706,31 @@ class SB3Creator {
             '    hold: (ms) => { scratch.wait(ms / 1000); },',
             '    readVoxel: (x, y, z) => { const [s, b] = _ledcube._addr(x, y, z);',
             `        return (s >= 0 && s < ${S} && b >= 0 && b < 8) ? (_ledcube_frame[s] >> b) & 1 : 0; },`,
+            '};',
+        ];
+    }
+
+    controllerSimulatorDriver(lang) {
+        if (lang === 'py') {
+            return [
+                '# _controller driver — reads from the live controller panel.',
+                'class _ControllerDriver:',
+                '    def controllerValue(self, name): return scratch.call("controller_value", name)',
+                '    def controllerX(self, name): return scratch.call("controller_x", name)',
+                '    def controllerY(self, name): return scratch.call("controller_y", name)',
+                '    def controllerPressed(self, name): return scratch.call("controller_pressed", name)',
+                '    def setWidget(self, name, value): scratch.call("controller_set", name, value)',
+                '_controller = _ControllerDriver()',
+            ];
+        }
+        return [
+            '// _controller driver — reads from the live controller panel.',
+            'const _controller = {',
+            '    controllerValue: (name) => scratch.call("controller_value", name),',
+            '    controllerX: (name) => scratch.call("controller_x", name),',
+            '    controllerY: (name) => scratch.call("controller_y", name),',
+            '    controllerPressed: (name) => scratch.call("controller_pressed", name),',
+            '    setWidget: (name, value) => scratch.call("controller_set", name, value),',
             '};',
         ];
     }
@@ -1072,6 +1124,21 @@ class SB3Creator {
         if ((m = s.match(/^read\s+([A-Za-z_]\w*)$/i)) && this.stcPort(m[1])) {
             return B('stc12_readport', {}, { PORT: [this.stcPort(m[1]).name, null] });
         }
+        // KEYPAD4X4 read — the scanned key 0..15, or -1 for none. The oracle
+        // dialect spells it as the bare part name; `read <name>` is accepted
+        // for symmetry with pin/port reads. A part name can never be a
+        // variable (writes to it are refused), so the bare form is safe.
+        if ((m = s.match(/^(?:read\s+)?([A-Za-z_]\w*)$/i)) && this.stcPart(m[1])
+            && this.stcPart(m[1]).type === 'keypad4x4') {
+            return B('stc12_keypad', {}, { PART: [this.stcPart(m[1]).name, null] });
+        }
+        // MATRIX8X8 reporter — `pixel X Y is on` is true iff that pixel's level
+        // is non-zero (the OR of the bit-planes). Addresses the sole screen.
+        if ((m = s.match(/^pixel\s+(\S+)\s+(\S+)\s+is\s+on$/i)) && this.stcSoleMatrix()) {
+            return B('stc12_matrix_getpx',
+                { X: this.parseValue(m[1], context), Y: this.parseValue(m[2], context) },
+                { PART: [this.stcSoleMatrix().name, null] });
+        }
         // TABLE lookup: table[index] — a constant byte from code-space flash.
         if ((m = s.match(/^([A-Za-z_]\w*)\[(.+)\]$/)) && this.stcTable(m[1])) {
             return B('stc12_tableindex', { INDEX: this.parseValue(m[2], context) },
@@ -1335,6 +1402,243 @@ class SB3Creator {
         return cfg.parts.find((p) => p.name.toLowerCase() === lower) || null;
     }
 
+    // Whether the program declares any MATRIX8X8 PART. A matrix refreshes
+    // itself in the Timer-0 ISR, so its mere presence forces the cooperative
+    // scheduler path (gotcha #1 of the parity mirror — see generateC).
+    _stcHasMatrix() {
+        const cfg = this.project && this.project.stc;
+        return !!(cfg && cfg.parts && cfg.parts.some((p) => p.type === 'matrix8x8'));
+    }
+
+    // The MATRIX8X8 called `name`, or null if `name` is not one. Used by the
+    // verbs that CARRY the screen name (clear/scroll/show image/brightness).
+    stcMatrix(name) {
+        const p = this.stcPart(name);
+        return p && p.type === 'matrix8x8' ? p : null;
+    }
+
+    // The single MATRIX8X8 in the program, or null if there is not exactly
+    // one. The pixel/row verbs address it implicitly — naming which screen
+    // would be noise on a board with a single matrix, which is every A2-class
+    // board. Reference: sole_matrix() in stc_pseudocode.py.
+    stcSoleMatrix() {
+        const cfg = this.project && this.project.stc;
+        if (!cfg || !cfg.parts) return null;
+        const screens = cfg.parts.filter((p) => p.type === 'matrix8x8');
+        return screens.length === 1 ? screens[0] : null;
+    }
+
+    // The declared MATRIX8X8 parts, for the C emitter. 8051 family only.
+    _cMatrixParts() {
+        if (this._core !== '8051') return [];
+        const cfg = this.project && this.project.stc;
+        return ((cfg && cfg.parts) || []).filter((p) => p.type === 'matrix8x8');
+    }
+
+    // Read a paint block's 8x8 grid as exactly 64 brightness levels (0..3),
+    // row-major top-down / column 0 left — the FieldLed8x8 value format and the
+    // IMAGE literal (docs/A2-BOARD-SUPPORT.md). Handles both carriers: a direct
+    // GRID field (the pseudocode-parsed path sets one) and a `led8x8` shadow
+    // input (the block editor path — the value rides in the shadow's inner
+    // field). This is what lets the paint EDITOR and the dialect meet: one
+    // block, two front doors, one 64-level array the C emitter expands.
+    _paintLevels(b, blocks) {
+        let s = '';
+        if (b.fields && b.fields.GRID) {
+            s = String(b.fields.GRID[0] || '');
+        } else if (b.inputs && b.inputs.GRID) {
+            const inp = b.inputs.GRID;
+            const shadowId = Array.isArray(inp) ? (inp[1] || inp[2]) : null;
+            const sh = shadowId && blocks && blocks[shadowId];
+            if (sh && sh.fields) {
+                const fld = sh.fields.MATRIX || sh.fields.GRID ||
+                    (Object.values(sh.fields)[0]);
+                if (fld) s = String(fld[0] || '');
+            }
+        }
+        const out = [];
+        for (let i = 0; i < 64; i++) {
+            let c = s.charCodeAt(i) - 48;                 // '0' -> 0
+            if (!(c >= 0 && c <= 3)) c = c > 3 ? 3 : 0;   // clamp/coerce
+            out.push(c);
+        }
+        return out;
+    }
+
+    // The 64-level grid as a compact '0'..'3' string, for the decompiler.
+    _paintStr(b, blocks) {
+        return this._paintLevels(b, blocks).join('');
+    }
+
+    // MATRIX8X8 state: the depth #defines + level clamp (once), then per screen
+    // the bit-plane frame buffer, the scan cursor, the global-dim byte and the
+    // Q7=top row-select table. Emitted BEFORE bw_ms/bw_tick, which read them.
+    // Verbatim mirror of Stc8051Target.runtime() in stc_pseudocode.py (a91981a).
+    _cMatrixState() {
+        const parts = this._cMatrixParts();
+        if (!parts.length) return [];
+        const out = [
+            '/* MATRIX8X8 brightness depth. 2 planes = 4 levels; the whole',
+            ' * surface (buffer size, every verb) is written in terms of these,',
+            ' * so widening to 4 planes / 16 levels is a one-line change. */',
+            '#define MATRIX_PLANES 2',
+            '#define MATRIX_LEVELS 4              /* 1 << MATRIX_PLANES */',
+            '',
+            '/* Clamp a (signed) level to 0..MATRIX_LEVELS-1. */',
+            'static unsigned char bw_scr_level(int v)',
+            '{',
+            '    if (v < 0) return 0;',
+            '    if (v > MATRIX_LEVELS - 1) return MATRIX_LEVELS - 1;',
+            '    return (unsigned char)v;',
+            '}',
+            ''
+        ];
+        for (const p of parts) {
+            const n = p.name;
+            out.push(
+                `/* ${n}: 8x8 bit-plane frame buffer (see the packing note above).`,
+                ' * The Timer-0 ISR is the SOLE writer of the 595 and the column',
+                ' * port; mainline only ever writes this RAM. */',
+                `static unsigned char bw_scr_${n}[8 * MATRIX_PLANES];`,
+                `static unsigned char bw_scr_${n}_scan;                 /* row cursor 0..7 */`,
+                `static unsigned char bw_scr_${n}_dim = MATRIX_LEVELS - 1;  /* global brightness */`,
+                '/* Row select, active-high, Q7 = top: row y is 595 output Q(7-y)',
+                ' * == bit (0x80 >> y). A table so the ISR shifts no variable. */',
+                `static const __code unsigned char bw_scr_${n}_rowbit[8] =`,
+                '    { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };',
+                ''
+            );
+        }
+        return out;
+    }
+
+    // The per-tick scan, spliced into bw_tick AFTER bw_ms++. One row per tick
+    // (8 rows -> 125 Hz), table-driven, NO mul/div. The 595 selects the row
+    // active-high (Q7=top); columns are active-low. The ISR is the sole writer
+    // of the 595 pins and the column port.
+    _cMatrixScan() {
+        const parts = this._cMatrixParts();
+        const out = [];
+        for (const p of parts) {
+            const n = p.name;
+            const dataSfr = `P${p.data.port}_${p.data.bit}`;
+            const clockSfr = `P${p.clock.port}_${p.clock.bit}`;
+            const latchSfr = `P${p.latch.port}_${p.latch.bit}`;
+            const colSfr = `P${p.colPort}`;
+            out.push(
+                `    /* MATRIX8X8 '${n}': advance one row (8 rows -> 125 Hz). The 595`,
+                '     * selects the row active-high (Q7=top); columns are active-low. */',
+                '    {',
+                '        unsigned char bw_lit, bw_rb, bw_i;',
+                `        ${colSfr} = 0xFF;                          /* blank columns during the row change */`,
+                `        bw_rb = bw_scr_${n}_rowbit[bw_scr_${n}_scan];`,
+                `        ${latchSfr} = 0;`,
+                '        for (bw_i = 0; bw_i < 8; bw_i++) {   /* clock the byte in, MSB first */',
+                `            ${dataSfr} = (bw_rb & 0x80) ? 1 : 0;`,
+                '            bw_rb = (unsigned char)(bw_rb << 1);',
+                `            ${clockSfr} = 1; ${clockSfr} = 0;`,
+                '        }',
+                `        ${latchSfr} = 1; ${latchSfr} = 0;              /* transfer to the 595 outputs */`,
+                '        /* Threshold render: lit iff level != 0 == OR of the bit-planes.',
+                '         * BCM SEAM -- a later ISR-only change swaps this OR for a',
+                `         * bw_scr_${n}_phase-selected plane with weighted dwell; the 2-bit`,
+                '         * levels are already in the buffer, so no drawing verb changes. */',
+                `        if (bw_scr_${n}_dim == 0) bw_lit = 0;`,
+                `        else bw_lit = (unsigned char)(bw_scr_${n}[bw_scr_${n}_scan]`,
+                `                                    | bw_scr_${n}[bw_scr_${n}_scan + 8]);`,
+                `        ${colSfr} = (unsigned char)~bw_lit;        /* active-low columns: lit -> 0 */`,
+                `        bw_scr_${n}_scan++;`,
+                `        if (bw_scr_${n}_scan >= 8) bw_scr_${n}_scan = 0;`,
+                '    }'
+            );
+        }
+        return out;
+    }
+
+    // The drawing verbs for each screen: plain frame-buffer writes the ISR
+    // scans. Emitted AFTER bw_now, BEFORE the tables (matching the reference).
+    _cMatrixHelpers() {
+        const parts = this._cMatrixParts();
+        const out = [];
+        for (const p of parts) {
+            const n = p.name;
+            out.push(
+                `/* Drawing verbs for MATRIX8X8 '${n}'. All write the RAM frame buffer;`,
+                ' * the Timer-0 ISR scans it. x = column 0..7 (left->right), y = row',
+                ' * 0..7 (top->bottom). bit7 of a row byte is the LEFT column, matching',
+                ' * the image literals and the column wiring. */',
+                `static void bw_scr_${n}_clear(void)`,
+                '{',
+                '    unsigned char i;',
+                `    for (i = 0; i < 8 * MATRIX_PLANES; i++) bw_scr_${n}[i] = 0;`,
+                '}',
+                '',
+                `static void bw_scr_${n}_setpx(unsigned char x, unsigned char y, unsigned char level)`,
+                '{',
+                '    unsigned char m, p;',
+                '    if (x > 7 || y > 7) return;',
+                '    m = (unsigned char)(0x80 >> x);            /* bit7 = left */',
+                '    for (p = 0; p < MATRIX_PLANES; p++) {',
+                `        if (level & 1) bw_scr_${n}[y + (unsigned char)(p << 3)] |=  m;`,
+                `        else           bw_scr_${n}[y + (unsigned char)(p << 3)] &= (unsigned char)~m;`,
+                '        level = (unsigned char)(level >> 1);',
+                '    }',
+                '}',
+                '',
+                `static unsigned char bw_scr_${n}_getpx(unsigned char x, unsigned char y)`,
+                '{',
+                '    unsigned char m, p, level = 0;',
+                '    if (x > 7 || y > 7) return 0;',
+                '    m = (unsigned char)(0x80 >> x);',
+                '    for (p = 0; p < MATRIX_PLANES; p++)',
+                `        if (bw_scr_${n}[y + (unsigned char)(p << 3)] & m) level |= (unsigned char)(1 << p);`,
+                '    return level;',
+                '}',
+                '',
+                '/* A whole row from an 8-bit image byte: bit7 = left, 1 -> full, 0 -> off. */',
+                `static void bw_scr_${n}_row(unsigned char y, unsigned char bits)`,
+                '{',
+                '    unsigned char p;',
+                '    if (y > 7) return;',
+                `    for (p = 0; p < MATRIX_PLANES; p++) bw_scr_${n}[y + (unsigned char)(p << 3)] = bits;`,
+                '}',
+                '',
+                '/* Blit 8 image bytes, top row first (the heart demo, one call). */',
+                `static void bw_scr_${n}_image(const __code unsigned char *img)`,
+                '{',
+                '    unsigned char y;',
+                `    for (y = 0; y < 8; y++) bw_scr_${n}_row(y, img[y]);`,
+                '}',
+                '',
+                '/* Shift the whole frame one pixel; the vacated edge clears.',
+                ' * 0 left, 1 right, 2 up, 3 down. Left is toward x=0 == toward the',
+                ' * MSB, so a row byte shifts left. */',
+                `static void bw_scr_${n}_scroll(unsigned char dir)`,
+                '{',
+                '    unsigned char p, y, base;',
+                '    for (p = 0; p < MATRIX_PLANES; p++) {',
+                '        base = (unsigned char)(p << 3);',
+                '        if (dir == 0)',
+                '            for (y = 0; y < 8; y++)',
+                `                bw_scr_${n}[base + y] = (unsigned char)(bw_scr_${n}[base + y] << 1);`,
+                '        else if (dir == 1)',
+                '            for (y = 0; y < 8; y++)',
+                `                bw_scr_${n}[base + y] = (unsigned char)(bw_scr_${n}[base + y] >> 1);`,
+                '        else if (dir == 2) {',
+                `            for (y = 0; y < 7; y++) bw_scr_${n}[base + y] = bw_scr_${n}[base + y + 1];`,
+                `            bw_scr_${n}[base + 7] = 0;`,
+                '        } else {',
+                `            for (y = 7; y != 0; y--) bw_scr_${n}[base + y] = bw_scr_${n}[base + y - 1];`,
+                `            bw_scr_${n}[base] = 0;`,
+                '        }',
+                '    }',
+                '}',
+                ''
+            );
+        }
+        return out;
+    }
+
     // Parse a top-level DEVICE / CLOCK / PIN declaration. Returns true if the line was one.
     parseStcDeclaration(trimmed, lineIndex) {
         let m;
@@ -1470,7 +1774,7 @@ class SB3Creator {
                 // PB7 is Timer 1's square-wave pin and the machine's timebase
                 // guard: the emitter would refuse it anyway, refuse it here too.
                 eater6502: [/^(PA[0-7]|PB[0-7]|MK\d+)$/i, 'PA0-PA7, PB0-PB7, or MK0-MK19 (matrix keypad)'],
-                z80: [/^(OUT[0-7]|IN[0-7])$/i, 'OUT0-OUT7 (latch) or IN0-IN7 (buffer)'],
+                z80: [/^(OUT[0-7]|IN[0-7]|MK\d+)$/i, 'OUT0-OUT7 (latch), IN0-IN7 (buffer), or MK0-MK19 (matrix keypad)'],
                 attiny88: [/^(PA[0-3]|PB[0-7]|PC[0-7]|PD[0-7])$/i, 'PA0-PA3, PB0-PB7, PC0-PC7, PD0-PD7'],
                 attiny85: [/^PB[0-4]$/i, 'PB0-PB4 (PB5 is RESET)']
             };
@@ -1544,6 +1848,16 @@ class SB3Creator {
                 this.warn(lineIndex, `P${port} is already declared as the whole port "${conflict.name}"; a PORT write covers all eight bits and would clobber P${port}.${bit}`);
                 return true;
             }
+            // A PART (595, keypad, MATRIX8X8) that claims this pin owns its
+            // latch — its ISR/driver is the sole writer, so a bare PIN on it
+            // would fight. Refused in BOTH orders (the PART branches check the
+            // reverse); this closes the same gap the PORT branch closes above.
+            const partClash = cfg.parts.find((prev) =>
+                (prev.claims || []).some((c) => Array.isArray(c) && c[0] === Number(port) && c[1] === Number(bit)));
+            if (partClash) {
+                this.warn(lineIndex, `P${port}.${bit} is already claimed by "${partClash.name}"; a PART owns that pin`);
+                return true;
+            }
             cfg.pins.push({
                 name,
                 port: Number(port),
@@ -1571,6 +1885,17 @@ class SB3Creator {
             // Two PORTs on the same physical port.
             if (cfg.ports.some((p) => p.port === portNum)) {
                 this.warn(lineIndex, `P${port} is already declared as "${cfg.ports.find((p) => p.port === portNum).name}"`);
+                return true;
+            }
+            // A PART (595, keypad, MATRIX8X8) that claims any pin on this port
+            // owns that latch — a whole-port write would clobber its bits and,
+            // for an ISR-scanned part, race the scan on the write-back. Refused
+            // in BOTH declaration orders: the PART branches check the reverse,
+            // this closes the pre-existing gap the other way round (gotcha #3).
+            const claimClash = cfg.parts.find((prev) =>
+                (prev.claims || []).some((c) => Array.isArray(c) && c[0] === portNum));
+            if (claimClash) {
+                this.warn(lineIndex, `P${port} overlaps pins already claimed by "${claimClash.name}"; a PART owns those latches`);
                 return true;
             }
             cfg.ports.push({
@@ -1668,6 +1993,119 @@ class SB3Creator {
                 });
                 return true;
             }
+        }
+        // PART <name> = KEYPAD4X4 ROWS P<..> x4 COLS P<..> x4 — sixteen keys for
+        // eight pins, read-only (the scanned key 0..15, or -1). The emitted
+        // scanner is the one verified on Prechin A2 silicon (2026-08-17);
+        // reference semantics: stc-compiler 58a1048. 8051 family only — the
+        // scan drives one quasi row low at a time; push-pull cores would need
+        // row tri-stating and have not opted in.
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*KEYPAD4X4\s+ROWS\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])\s+COLS\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])$/i))) {
+            const name = m[1];
+            const cfg = this.stcConfig();
+            const part = SB3Creator.STC_PARTS[cfg.device];
+            // No explicit core key = 8051 (the P<p>.<b> pin form), same
+            // convention as the 74HC595 branches above.
+            if (!part || (part.core && part.core !== '8051')) {
+                this.warn(lineIndex, `KEYPAD4X4 is not available on ${cfg.device}: the scan relies on quasi-bidirectional rows (8051 family). Devices that have it: the STC parts.`);
+                return true;
+            }
+            if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
+                this.warn(lineIndex, `"${name}" declared twice`);
+                return true;
+            }
+            const nums = m.slice(2, 18).map(Number);
+            const claims = [];
+            for (let i = 0; i < 8; i++) claims.push([nums[2 * i], nums[2 * i + 1]]);
+            if (new Set(claims.map(([p, b]) => `${p}.${b}`)).size !== 8) {
+                this.warn(lineIndex, `"${name}" names the same pin twice; a 4x4 keypad claims eight different pins`);
+                return true;
+            }
+            for (const [p, b] of claims) {
+                const pinConflict = cfg.pins.find((pin) => pin.port === p && pin.bit === b);
+                if (pinConflict) {
+                    this.warn(lineIndex, `P${p}.${b} is already declared as "${pinConflict.name}"; a PART claims its pins`);
+                    return true;
+                }
+                const portConflict = cfg.ports.find((w) => w.port === p);
+                if (portConflict) {
+                    this.warn(lineIndex, `P${p}.${b} is inside the whole port "${portConflict.name}", which would clobber it`);
+                    return true;
+                }
+                for (const prev of cfg.parts) {
+                    if ((prev.claims || []).some((c) => Array.isArray(c) && c[0] === p && c[1] === b)) {
+                        this.warn(lineIndex, `P${p}.${b} is already claimed by "${prev.name}"`);
+                        return true;
+                    }
+                }
+            }
+            cfg.parts.push({
+                name,
+                type: 'keypad4x4',
+                claims,
+                rows: claims.slice(0, 4).map(([port, bit]) => ({ port, bit })),
+                cols: claims.slice(4).map(([port, bit]) => ({ port, bit }))
+            });
+            return true;
+        }
+        // PART <name> = MATRIX8X8 ROWS 74HC595 DATA P<..> CLOCK P<..> LATCH P<..>
+        // COLUMNS P<n> — an 8x8 LED dot matrix that refreshes itself in the
+        // Timer-0 ISR (one row per tick -> 125 Hz), so the drawing verbs are
+        // plain frame-buffer writes and the WHEN block keeps running. Measured
+        // A2 wiring (docs/BOARD-PRECHIN-A2.md): 595 rows active-HIGH Q7=top,
+        // port columns active-LOW bit7=left — both baked into the scan so image
+        // bytes read top-down / MSB-left. Reference: stc-compiler a91981a.
+        // 8051 family only (needs a whole port + the ISR tick), like KEYPAD4X4.
+        // Claims eleven pins (three 595 + eight column-port bits); the ISR is
+        // the SOLE writer of all of them, which closes the read-modify-write
+        // hazard on the shared column-port latch.
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*MATRIX8X8\s+ROWS\s+74HC595\s+DATA\s+P([0-4])\.([0-7])\s+CLOCK\s+P([0-4])\.([0-7])\s+LATCH\s+P([0-4])\.([0-7])\s+COLUMNS\s+P([0-4])$/i))) {
+            const name = m[1];
+            const cfg = this.stcConfig();
+            const part = SB3Creator.STC_PARTS[cfg.device];
+            if (!part || (part.core && part.core !== '8051')) {
+                this.warn(lineIndex, `MATRIX8X8 is not available on ${cfg.device}: the self-scan lives in the 8051 Timer-0 ISR and drives a whole quasi-bidirectional port (8051 family). Devices that have it: the STC parts.`);
+                return true;
+            }
+            if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
+                this.warn(lineIndex, `"${name}" declared twice`);
+                return true;
+            }
+            const data = { port: Number(m[2]), bit: Number(m[3]) };
+            const clock = { port: Number(m[4]), bit: Number(m[5]) };
+            const latch = { port: Number(m[6]), bit: Number(m[7]) };
+            const colPort = Number(m[8]);
+            // Eight whole-port column bits + the three 595 control pins = the
+            // eleven claimed pins. The ISR writes the column port a byte at a
+            // time; the eight pins exist for the claim machinery.
+            const columns = [];
+            for (let b = 0; b < 8; b++) columns.push({ port: colPort, bit: b });
+            const claims = [[data.port, data.bit], [clock.port, clock.bit], [latch.port, latch.bit],
+                ...columns.map((c) => [c.port, c.bit])];
+            if (new Set(claims.map(([p, b]) => `${p}.${b}`)).size !== 11) {
+                this.warn(lineIndex, `"${name}" names the same pin twice; a MATRIX8X8 claims three 595 pins and eight column pins`);
+                return true;
+            }
+            for (const [p, b] of claims) {
+                const pinConflict = cfg.pins.find((pin) => pin.port === p && pin.bit === b);
+                if (pinConflict) {
+                    this.warn(lineIndex, `P${p}.${b} is already declared as "${pinConflict.name}"; a PART claims its pins`);
+                    return true;
+                }
+                const portConflict = cfg.ports.find((w) => w.port === p);
+                if (portConflict) {
+                    this.warn(lineIndex, `P${p}.${b} is inside the whole port "${portConflict.name}", which would clobber it`);
+                    return true;
+                }
+                for (const prev of cfg.parts) {
+                    if ((prev.claims || []).some((c) => Array.isArray(c) && c[0] === p && c[1] === b)) {
+                        this.warn(lineIndex, `P${p}.${b} is already claimed by "${prev.name}"`);
+                        return true;
+                    }
+                }
+            }
+            cfg.parts.push({ name, type: 'matrix8x8', claims, data, clock, latch, colPort, columns });
+            return true;
         }
         // TABLE <name> = <value>, <value>, ... — constant lookup table in code space.
         // Values are bytes (0–255), separated by commas. Supports hex (0x3F) and
@@ -2185,9 +2623,102 @@ class SB3Creator {
             block[id].inputs.VALUE = val(match[2]);
             return ret(block);
         }
+        // ---- MATRIX8X8 drawing verbs (docs/A2-BOARD-SUPPORT.md; reference
+        // stc-compiler a91981a). All write the RAM frame buffer; the Timer-0
+        // ISR scans it. The pixel/row verbs address the sole screen implicitly;
+        // clear/scroll/show image/brightness carry its name. Placed AHEAD of the
+        // generic `set <part> to`, the micro:bit `scroll`, `clear matrix`, and
+        // the variable set/change catch-alls so a screen program never mis-parses.
+        if (this._stcHasMatrix()) {
+            // light|clear pixel X Y  ->  setpx level MAX|0 on the sole screen.
+            if ((match = line.match(/^(light|clear)\s+pixel\s+(\S+)\s+(\S+)$/i)) && this.stcSoleMatrix()) {
+                const { id, block } = cmd('stc12_matrix_setpx');
+                block[id].fields.PART = [this.stcSoleMatrix().name, null];
+                block[id].fields.STYLE = [match[1].toLowerCase(), null];
+                block[id].inputs.X = val(match[2]);
+                block[id].inputs.Y = val(match[3]);
+                return ret(block);
+            }
+            // set pixel X Y to on|off.
+            if ((match = line.match(/^set\s+pixel\s+(\S+)\s+(\S+)\s+to\s+(on|off)$/i)) && this.stcSoleMatrix()) {
+                const { id, block } = cmd('stc12_matrix_setpx');
+                block[id].fields.PART = [this.stcSoleMatrix().name, null];
+                block[id].fields.STYLE = [match[3].toLowerCase(), null];
+                block[id].inputs.X = val(match[1]);
+                block[id].inputs.Y = val(match[2]);
+                return ret(block);
+            }
+            // set pixel X Y brightness B.
+            if ((match = line.match(/^set\s+pixel\s+(\S+)\s+(\S+)\s+brightness\s+(.+)$/i)) && this.stcSoleMatrix()) {
+                const { id, block } = cmd('stc12_matrix_setpx');
+                block[id].fields.PART = [this.stcSoleMatrix().name, null];
+                block[id].fields.STYLE = ['brightness', null];
+                block[id].inputs.X = val(match[1]);
+                block[id].inputs.Y = val(match[2]);
+                block[id].inputs.LEVEL = val(match[3]);
+                return ret(block);
+            }
+            // draw row Y = <byte>.
+            if ((match = line.match(/^draw\s+row\s+(\S+)\s*=\s*(.+)$/i)) && this.stcSoleMatrix()) {
+                const { id, block } = cmd('stc12_matrix_row');
+                block[id].fields.PART = [this.stcSoleMatrix().name, null];
+                block[id].inputs.Y = val(match[1]);
+                block[id].inputs.BITS = val(match[2]);
+                return ret(block);
+            }
+            // show image <table> on <screen>  (1-bit blit, full brightness).
+            if ((match = line.match(/^show\s+image\s+(\w+)\s+on\s+(\w+)$/i)) && this.stcMatrix(match[2])) {
+                if (!this.stcTable(match[1])) {
+                    this.warn(null, `"${match[1]}" is not a TABLE; 'show image' blits an 8-byte TABLE onto ${match[2]}`);
+                    return ret(null);
+                }
+                const { id, block } = cmd('stc12_matrix_image');
+                block[id].fields.PART = [this.stcMatrix(match[2]).name, null];
+                block[id].fields.TABLE = [this.stcTable(match[1]).name, null];
+                return ret(block);
+            }
+            // paint <64 brightness digits '0'..'3'> on <screen>  — the editor's
+            // painted grid, round-tripped as a compact literal. GRID is a field
+            // here (the C emitter also reads it from a led8x8 shadow when the
+            // block is built in the editor); both feed _paintLevels.
+            if ((match = line.match(/^paint\s+([0-3]{64})\s+on\s+(\w+)$/i)) && this.stcMatrix(match[2])) {
+                const { id, block } = cmd('stc12_matrix_paint');
+                block[id].fields.PART = [this.stcMatrix(match[2]).name, null];
+                block[id].fields.GRID = [match[1], null];
+                return ret(block);
+            }
+            // scroll <screen> left|right|up|down.
+            if ((match = line.match(/^scroll\s+(\w+)\s+(left|right|up|down)$/i)) && this.stcMatrix(match[1])) {
+                const { id, block } = cmd('stc12_matrix_scroll');
+                block[id].fields.PART = [this.stcMatrix(match[1]).name, null];
+                block[id].fields.DIR = [match[2].toLowerCase(), null];
+                return ret(block);
+            }
+            // set <screen> brightness B  (global dim, 0..MAX).
+            if ((match = line.match(/^set\s+(\w+)\s+brightness\s+(.+)$/i)) && this.stcMatrix(match[1])) {
+                const { id, block } = cmd('stc12_matrix_dim');
+                block[id].fields.PART = [this.stcMatrix(match[1]).name, null];
+                block[id].inputs.LEVEL = val(match[2]);
+                return ret(block);
+            }
+            // clear <screen>.
+            if ((match = line.match(/^clear\s+(\w+)$/i)) && this.stcMatrix(match[1])) {
+                const { id, block } = cmd('stc12_matrix_clear');
+                block[id].fields.PART = [this.stcMatrix(match[1]).name, null];
+                return ret(block);
+            }
+        }
         // `set <part> to <n>` — shifts a byte out to a 74HC595.
         if ((match = line.match(/^set\s+([A-Za-z_]\w*)\s+to\s+(.+)$/i)) && this.stcPart(match[1])) {
             const part = this.stcPart(match[1]);
+            if (part.type === 'keypad4x4') {
+                this.warn(null, `"${part.name}" is a keypad and cannot be written; read it in an expression (\`set k to ${part.name}\`)`);
+                return ret(null);
+            }
+            if (part.type === 'matrix8x8') {
+                this.warn(null, `"${part.name}" is an 8x8 screen; use a drawing verb (light pixel / draw row / show image / clear ${part.name}), not "set ... to"`);
+                return ret(null);
+            }
             const { id, block } = cmd('stc12_setpart');
             block[id].fields.PART = [part.name, null];
             block[id].inputs.VALUE = val(match[2]);
@@ -3832,6 +4363,14 @@ class SB3Creator {
             }
             for (const p of cfg.parts || []) {
                 const pinStr = (pin) => pin.where || `P${pin.port}.${pin.bit}`;
+                if (p.type === 'keypad4x4') {
+                    out.push(`PART ${p.name} = KEYPAD4X4 ROWS ${p.rows.map(pinStr).join(' ')} COLS ${p.cols.map(pinStr).join(' ')}`);
+                    continue;
+                }
+                if (p.type === 'matrix8x8') {
+                    out.push(`PART ${p.name} = MATRIX8X8 ROWS 74HC595 DATA ${pinStr(p.data)} CLOCK ${pinStr(p.clock)} LATCH ${pinStr(p.latch)} COLUMNS P${p.colPort}`);
+                    continue;
+                }
                 out.push(`PART ${p.name} = 74HC595 data ${pinStr(p.data)} clock ${pinStr(p.clock)} latch ${pinStr(p.latch)}${p.activeLow ? ' ACTIVE LOW' : ''}`);
             }
             for (const t of cfg.tables || []) {
@@ -4012,6 +4551,8 @@ class SB3Creator {
             // STC12 / 8051 pin read (digital level or ADC value).
             case 'stc12_read': return `read ${f('PIN')}`;
             case 'stc12_readport': return `read ${f('PORT')}`;
+            case 'stc12_keypad': return f('PART');
+            case 'stc12_matrix_getpx': return `pixel ${v('X')} ${v('Y')} is on`;
             case 'stc12_tableindex': return `${f('TABLE')}[${v('INDEX')}]`;
             case 'ledcube_readvoxel': return `voxel ${v('X')} ${v('Y')} ${v('Z')}`;
             // Device reporters
@@ -4260,6 +4801,20 @@ class SB3Creator {
             case 'devices_lcdclear': return line(`lcd clear ${v('DISPLAY')}`);
             case 'devices_setpixel': return line(`set pixel ${v('X')} ${v('Y')} to ${v('BRIGHTNESS')} on ${v('MATRIX')}`);
             case 'devices_clearmatrix': return line(`clear matrix ${v('MATRIX')}`);
+            // MATRIX8X8 drawing verbs (the PART-based 8x8 screen).
+            case 'stc12_matrix_clear': return line(`clear ${f('PART')}`);
+            case 'stc12_matrix_setpx': {
+                const st = f('STYLE');
+                if (st === 'light') return line(`light pixel ${v('X')} ${v('Y')}`);
+                if (st === 'clear') return line(`clear pixel ${v('X')} ${v('Y')}`);
+                if (st === 'on' || st === 'off') return line(`set pixel ${v('X')} ${v('Y')} to ${st}`);
+                return line(`set pixel ${v('X')} ${v('Y')} brightness ${v('LEVEL')}`);
+            }
+            case 'stc12_matrix_row': return line(`draw row ${v('Y')} = ${v('BITS')}`);
+            case 'stc12_matrix_image': return line(`show image ${f('TABLE')} on ${f('PART')}`);
+            case 'stc12_matrix_scroll': return line(`scroll ${f('PART')} ${f('DIR')}`);
+            case 'stc12_matrix_dim': return line(`set ${f('PART')} brightness ${v('LEVEL')}`);
+            case 'stc12_matrix_paint': return line(`paint ${this._paintStr(b, blocks)} on ${f('PART')}`);
             case 'devices_setneopixel': return line(`set neopixel ${v('INDEX')} to R ${v('R')} G ${v('G')} B ${v('B')} on ${v('STRIP')}`);
             case 'devices_clearneopixels': return line(`clear neopixels on ${v('STRIP')}`);
             case 'devices_tftpixel': return line(`tft pixel ${v('X')} ${v('Y')} R ${v('R')} G ${v('G')} B ${v('B')} on ${v('DISPLAY')}`);
@@ -5551,6 +6106,17 @@ class SB3Creator {
                 const portCfg = this.project && this.project.stc && (this.project.stc.ports || []).find((p) => p.name.toLowerCase() === f('PORT').toLowerCase());
                 return portCfg ? `P${portCfg.port}` : `0 /* read ${this.cComment(f('PORT'))} */`;
             }
+            case 'stc12_keypad': {
+                this._cUses.keypad = true;
+                const kp = this.stcPart(f('PART'));
+                return kp ? `bw_part_${kp.name}_read()` : `(-1) /* read ${this.cComment(f('PART'))} */`;
+            }
+            case 'stc12_matrix_getpx': {
+                this._cUses.matrix = true;
+                const mx = this.stcPart(f('PART'));
+                const nm = mx ? mx.name : f('PART').toLowerCase();
+                return `(bw_scr_${nm}_getpx((unsigned char)(${v('X')}), (unsigned char)(${v('Y')})) != 0)`;
+            }
             case 'stc12_tableindex': {
                 const tbl = this.stcTable(f('TABLE'));
                 const tName = tbl ? `bw_tab_${tbl.name}` : `bw_tab_${f('TABLE').toLowerCase()}`;
@@ -5627,6 +6193,17 @@ class SB3Creator {
             case 'stc12_readport': {
                 const portCfg = this.project && this.project.stc && (this.project.stc.ports || []).find((p) => p.name.toLowerCase() === f('PORT').toLowerCase());
                 return portCfg ? `P${portCfg.port}` : `0 /* read ${this.cComment(f('PORT'))} */`;
+            }
+            case 'stc12_keypad': {
+                this._cUses.keypad = true;
+                const kp = this.stcPart(f('PART'));
+                return kp ? `bw_part_${kp.name}_read()` : `(-1) /* read ${this.cComment(f('PART'))} */`;
+            }
+            case 'stc12_matrix_getpx': {
+                this._cUses.matrix = true;
+                const mx = this.stcPart(f('PART'));
+                const nm = mx ? mx.name : f('PART').toLowerCase();
+                return `(bw_scr_${nm}_getpx((unsigned char)(${v('X')}), (unsigned char)(${v('Y')})) != 0)`;
             }
             case 'argument_reporter_boolean': return this.cName(f('VALUE'));
             default: return `(${this.cRep(b, blocks)})`;
@@ -5933,6 +6510,52 @@ class SB3Creator {
             case 'devices_setrgb': { this._cUses.devices = true; return line(`bw_rgb_set(${v('LED')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
             case 'devices_setpixel': { this._cUses.devices = true; return line(`bw_matrix_set(${v('MATRIX')}, ${v('X')}, ${v('Y')}, ${v('BRIGHTNESS')});`); }
             case 'devices_clearmatrix': { this._cUses.devices = true; return line(`bw_matrix_clear(${v('MATRIX')});`); }
+            // MATRIX8X8 drawing verbs — plain RAM frame-buffer writes; the
+            // Timer-0 ISR scans the buffer onto the panel. Mirrors matrix_stmt_c
+            // in stc_pseudocode.py (a91981a).
+            case 'stc12_matrix_clear': { this._cUses.matrix = true; return line(`bw_scr_${f('PART')}_clear();`); }
+            case 'stc12_matrix_setpx': {
+                this._cUses.matrix = true;
+                const st = f('STYLE');
+                let lvl;
+                if (st === 'light' || st === 'on') lvl = 'MATRIX_LEVELS - 1';
+                else if (st === 'clear' || st === 'off') lvl = '0';
+                else lvl = `bw_scr_level(${v('LEVEL')})`;
+                return line(`bw_scr_${f('PART')}_setpx((unsigned char)(${v('X')}), (unsigned char)(${v('Y')}), (unsigned char)(${lvl}));`);
+            }
+            case 'stc12_matrix_row': { this._cUses.matrix = true; return line(`bw_scr_${f('PART')}_row((unsigned char)(${v('Y')}), (unsigned char)(${v('BITS')}));`); }
+            case 'stc12_matrix_image': {
+                this._cUses.matrix = true;
+                this._cUses.table = true;
+                const tbl = this.stcTable(f('TABLE'));
+                const tName = tbl ? `bw_tab_${tbl.name}` : `bw_tab_${f('TABLE').toLowerCase()}`;
+                return line(`bw_scr_${f('PART')}_image(${tName});`);
+            }
+            case 'stc12_matrix_scroll': {
+                this._cUses.matrix = true;
+                const code = { left: 0, right: 1, up: 2, down: 3 }[f('DIR')];
+                return line(`bw_scr_${f('PART')}_scroll(${code});   /* ${f('DIR')} */`);
+            }
+            case 'stc12_matrix_dim': { this._cUses.matrix = true; return line(`bw_scr_${f('PART')}_dim = bw_scr_level(${v('LEVEL')});`); }
+            // The block editor's bridge to firmware: a painted 8x8 grid becomes
+            // a clear + one setpx per lit pixel, at that pixel's brightness. It
+            // rides ONLY the mirror's verified helpers (bw_scr_<n>_clear /
+            // _setpx, a91981a / 35943b0), so what the learner paints is exactly
+            // what the Timer-0 ISR scans onto the panel. Brightness is preserved
+            // per pixel (the whole point of FieldLed8x8); a compact table+loop
+            // form is a later optimization, not a correctness need.
+            case 'stc12_matrix_paint': {
+                this._cUses.matrix = true;
+                const part = f('PART');
+                const g = this._paintLevels(b, blocks);
+                const out = [pad + `bw_scr_${part}_clear();`];
+                for (let i = 0; i < 64; i++) {
+                    if (g[i] > 0) {
+                        out.push(pad + `bw_scr_${part}_setpx(${i & 7}, ${i >> 3}, ${g[i]});`);
+                    }
+                }
+                return out;
+            }
             case 'devices_setneopixel': { this._cUses.devices = true; this._cUses.neopixel = true; return line(`bw_neopixel_set(${v('STRIP')}, ${v('INDEX')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
             case 'devices_clearneopixels': { this._cUses.devices = true; this._cUses.neopixel = true; return line(`bw_neopixel_clear(${v('STRIP')});`); }
             case 'devices_tftpixel': { this._cUses.devices = true; this._cUses.tft = true; return line(`bw_tft_pixel(${v('DISPLAY')}, ${v('X')}, ${v('Y')}, ${v('R')}, ${v('G')}, ${v('B')});`); }
@@ -7872,7 +8495,11 @@ class SB3Creator {
         // Release builds are untouched. See reference/debugger-ui.md §7.
         // Event hats always force the scheduler — a polled task has no straight-line form.
         const debug = !!(opts && opts.debug);
-        this._cTasks = scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug);
+        // A MATRIX8X8 refreshes itself in the Timer-0 ISR, which only the
+        // cooperative-scheduler path emits — so its presence forces tasks even
+        // for a lone WHEN that would otherwise run straight-line (gotcha #1;
+        // reference: Program.has_matrix feeding the tasks decision in emit_c).
+        this._cTasks = scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || this._stcHasMatrix();
         const taskNames = Array.from({ length: scriptCount }, (_, n) => `bw_task${n}`);
         const yieldMap = [];   // only emitted for a debug build — see the marker header below
 
@@ -8296,11 +8923,18 @@ class SB3Creator {
                 `device ${device}`,
                 `clock ${clock}`,
                 ...pins.map((p) => `pin ${p.name} ${p.where || `P${p.port}.${p.bit}`} ${p.direction}${p.activeLow ? ' active-low' : ''}`),
+                // PORTs must survive the header like PARTs do, or bare
+                // `P0 = …` writes are silently dropped on the way back
+                // (found by the A2 keyshow round-trip, 2026-08-18).
+                ...((stored.ports || []).map((w) => `port ${w.name} P${w.port} ${w.direction}${w.activeLow ? ' active-low' : ''}`)),
                 // PARTs must survive the header too, or the C reader cannot
                 // reconstruct the declaration and shift_out calls come back
                 // as nothing (found via the chaser's round-trip, 2026-08-13).
                 ...((stored.parts || []).map((pt) => {
                     const w = (x) => x.where || `P${x.port}.${x.bit}`;
+                    if (pt.type === 'keypad4x4') {
+                        return `part ${pt.name} keypad4x4 rows ${pt.rows.map(w).join(' ')} cols ${pt.cols.map(w).join(' ')}`;
+                    }
                     return `part ${pt.name} ${pt.type} ${w(pt.data)} ${w(pt.clock)} ${w(pt.latch)}${pt.activeLow ? ' active-low' : ''}`;
                 })),
                 // The declared machine survives into the header for the same
@@ -8492,6 +9126,8 @@ class SB3Creator {
             ' * timing-correct on a 12T STC89 and a 1T STC12 or STC15. Nothing generated here',
             ' * ever busy-waits on a cycle count. */',
             '#define T0_RELOAD (65536UL - (FOSC_HZ / 12UL / 1000UL))', '');
+        // MATRIX8X8 frame buffer(s) + level clamp, before the tick that scans them.
+        out.push(...this._cMatrixState());
         }
 
         if (this._core === '6502'
@@ -8581,6 +9217,9 @@ class SB3Creator {
                     '    TL0 = (unsigned char)(T0_RELOAD & 0xFF);',
                     '    TH0 = (unsigned char)(T0_RELOAD >> 8);',
                     '    bw_ms++;',
+                    // MATRIX8X8 self-scan: one row per tick, AFTER bw_ms++ so the
+                    // millisecond math is never skewed. Table-driven, no mul/div.
+                    ...this._cMatrixScan(),
                     '}', ''
                 ]));
             if (this._cUses.now || this._cUses.blockDelay) {
@@ -8833,6 +9472,31 @@ class SB3Creator {
                 '    }',
                 '    BW_SIO_GPIO_OUT_SET = (1UL << latch_gpio);     /* latch high — output */',
                 '}', '');
+        }
+        // MATRIX8X8 drawing helpers — after bw_now, before the tables (reference
+        // order). Emitted for any declared screen, verb-used or not, like the ref.
+        out.push(...this._cMatrixHelpers());
+        if (this._cUses.keypad && this._core === '8051') {
+            const parts = ((this.project && this.project.stc && this.project.stc.parts) || []).filter((p) => p.type === 'keypad4x4');
+            for (const kp of parts) {
+                out.push(`/* ${kp.name}: a 4x4 matrix keypad, sixteen keys for eight pins.`,
+                    ' * Drives one row low and reads the columns — the scanner verified',
+                    ' * on Prechin A2 silicon (06-matrix89 mapped it, 09-keyshow89',
+                    ' * consumed it). Idle rows sit quasi-high, so two keys in one',
+                    " * column short through the port's weak pull-up only. The nops",
+                    " * respect the 1T core's 4-clock I/O read-back. */",
+                    `static signed char bw_part_${kp.name}_read(void)`,
+                    '{');
+                kp.rows.forEach((r, ri) => {
+                    out.push(`    P${r.port}_${r.bit} = 0;`);
+                    out.push('    __asm__("nop"); __asm__("nop");');
+                    kp.cols.forEach((c, ci) => {
+                        out.push(`    if (!P${c.port}_${c.bit}) { P${r.port}_${r.bit} = 1; return ${ri * 4 + ci}; }`);
+                    });
+                    out.push(`    P${r.port}_${r.bit} = 1;`);
+                });
+                out.push('    return -1;', '}', '');
+            }
         }
         if (this._cUses.shiftOut && this._core === '8051') {
             // The 8051 has bit-addressable SFR lvalues: simpler signature.
@@ -10429,8 +11093,41 @@ class SB3Creator {
                         '    return (_mk_state[row] >> _mk_cols[col]) & 1;',
                         '}',
                         '');
+                } else if (this._core === 'z80') {
+                    // Z80: rows on OUT latch bits, cols on IN buffer bits.
+                    // Shadow byte (_z80_sh) drives rows; BW_PORT_IN reads cols.
+                    const rowBits = mx.rows.map(r => Number(r.match(/\d+/)[0]));
+                    const colBits = mx.cols.map(c => Number(c.match(/\d+/)[0]));
+                    const rowMask = rowBits.reduce((m, b) => m | (1 << b), 0);
+                    out.push(
+                        `/* Matrix keypad: ${nRows} rows × ${nCols} cols = ${nRows * nCols} keys. */`,
+                        `static const unsigned char _mk_rows[${nRows}] = { ${rowBits.join(', ')} };`,
+                        `static const unsigned char _mk_cols[${nCols}] = { ${colBits.join(', ')} };`,
+                        `static unsigned char _mk_state[${nRows}];`,
+                        '',
+                        'static void bw_key_scan(void)',
+                        '{',
+                        '    unsigned char r;',
+                        `    for (r = 0; r < ${nRows}; r++) {`,
+                        `        _z80_sh = (unsigned char)((_z80_sh | 0x${rowMask.toString(16).padStart(2, '0')}) & (unsigned char)~(1u << _mk_rows[r]));`,
+                        '        BW_PORT_OUT = _z80_sh;',
+                        '        { unsigned char d; for (d = 0; d < 8; d++) ; }',
+                        '        _mk_state[r] = BW_PORT_IN;',
+                        '    }',
+                        `    _z80_sh |= 0x${rowMask.toString(16).padStart(2, '0')};  /* rows idle */`,
+                        '    BW_PORT_OUT = _z80_sh;',
+                        '}',
+                        '',
+                        'static int bw_key_read(unsigned char idx)',
+                        '{',
+                        `    unsigned char row = idx / ${nCols};`,
+                        `    unsigned char col = idx % ${nCols};`,
+                        '    bw_key_scan();',
+                        '    return (_mk_state[row] >> _mk_cols[col]) & 1;',
+                        '}',
+                        '');
                 } else {
-                    // Stub for non-VIA cores — runtime refusal.
+                    // Stub for unsupported cores.
                     out.push(
                         '/* Matrix keypad: not implemented for this core. */',
                         'static int bw_key_read(unsigned char idx) { (void)idx; return 0; }',
@@ -10826,14 +11523,19 @@ class SB3Creator {
                 out.push('    I2C_SDA_HI(); I2C_SCL_HI();      /* release bus */');
             }
         }
-        // Matrix keypad: row pins as output, col pins as input.
-        if (this._cUses.matrixKeypad && this._core === '6502') {
+        // Matrix keypad: row pins as output, idle HIGH.
+        if (this._cUses.matrixKeypad) {
             const pool = SB3Creator.RETARGET_POOLS[device] || {};
             const mx = pool.matrix || { rows: ['PA2', 'PA3', 'PA4', 'PA5'], cols: ['PB0', 'PB1', 'PB2', 'PB3', 'PB4'] };
             const rowBits = mx.rows.map(r => Number(r.match(/\d+/)[0]));
             const rowMask = rowBits.reduce((m, b) => m | (1 << b), 0);
-            out.push(`    BW_VIA_DDRA |= 0x${rowMask.toString(16).padStart(2, '0')};  /* matrix rows output */`,
-                `    BW_VIA_ORA  |= 0x${rowMask.toString(16).padStart(2, '0')};  /* rows idle HIGH */`);
+            if (this._core === '6502') {
+                out.push(`    BW_VIA_DDRA |= 0x${rowMask.toString(16).padStart(2, '0')};  /* matrix rows output */`,
+                    `    BW_VIA_ORA  |= 0x${rowMask.toString(16).padStart(2, '0')};  /* rows idle HIGH */`);
+            } else if (this._core === 'z80') {
+                out.push(`    _z80_sh |= 0x${rowMask.toString(16).padStart(2, '0')};  /* matrix rows idle HIGH */`,
+                    '    BW_PORT_OUT = _z80_sh;');
+            }
         }
         // LCD (HD44780 via PCF8574): 4-bit mode init sequence.
         if (this._cUses.lcd) {
@@ -10906,8 +11608,12 @@ class SB3Creator {
         // decoding GDDRAM writes into a panel that never lit. Found by
         // the pico-calculator chain test (owner: 'runs but OLED black'),
         // and true on real silicon too, not just under emulation.
-        if ((this._core === 'avr' || this._core === 'arm') && (this._cUses.lcd || this._cUses.oled)) {
-            out.push('    I2C_SDA_HI(); I2C_SCL_HI();      /* release bus */');
+        if ((this._core === 'avr' || this._core === 'arm' || this._core === '6502' || this._core === 'z80') && (this._cUses.lcd || this._cUses.oled)) {
+            // 6502/Z80: bus release is already in their I2C init above.
+            // AVR/ARM: need it here.
+            if (this._core === 'avr' || this._core === 'arm') {
+                out.push('    I2C_SDA_HI(); I2C_SCL_HI();      /* release bus */');
+            }
             if (this._cUses.lcd) {
                 out.push('    /* HD44780 init: 4-bit mode, 2-line, 5x8 font */',
                     '    lcd_nibble(0x30, 0); lcd_nibble(0x30, 0); lcd_nibble(0x30, 0);',
@@ -11130,6 +11836,7 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             setport: { kind: 'command', method: 'setPort', args: ['PORT', 'VALUE'] },
             readport: { kind: 'reporter', method: 'readPort', args: ['PORT'], neutral: '0' },
             setpart: { kind: 'command', method: 'setPart', args: ['PART', 'VALUE'] },
+            keypad: { kind: 'reporter', method: 'readKeypad', args: ['PART'], neutral: '-1' },
             print: { kind: 'command', method: 'print', args: ['VALUE', 'MODE'] },
             whenpin: { kind: 'hat', method: 'whenpin', args: ['PIN', 'EDGE'] },
             tableindex: { kind: 'reporter', method: 'tableIndex', args: ['TABLE', 'INDEX'], neutral: '0' }
@@ -11326,9 +12033,12 @@ SB3Creator.RETARGET_POOLS = (() => {
             matrix: { rows: ['PA2', 'PA3', 'PA4', 'PA5'], cols: ['PB0', 'PB1', 'PB2', 'PB3', 'PB4'] } },
         // Z80 bench: OUT latch (port 0 write) provides 8 output bits,
         // IN buffer (port 0 read) provides 8 input bits. No analog, no PWM.
+        // Matrix-virtual MK0-MK19 extend the input pool for programs needing
+        // more than 8 keys (like the calculator): 4 OUT rows × 5 IN cols.
         z80: { digital: seq('OUT%', 0, 7),
-            analog: [], input: seq('IN%', 0, 7),
-            pwm: [], ledActiveLow: false },
+            analog: [], input: [...seq('IN%', 0, 7), ...seq('MK%', 0, 19)],
+            pwm: [], ledActiveLow: false,
+            matrix: { rows: ['OUT2', 'OUT3', 'OUT4', 'OUT5'], cols: ['IN0', 'IN1', 'IN2', 'IN3', 'IN4'] } },
         // ATtiny88 as the BARE CHIP: all of B/C/D bar RESET (PC6). The old
         // input pool was the PENDANT's two buttons — board truth, not chip
         // truth, and generated benches seat the chip.
