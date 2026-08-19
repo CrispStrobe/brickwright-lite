@@ -251,3 +251,44 @@ test('controller: setConditionFn injects the lookup after construction', () => {
     c.feedSerial(`${RS}!0\n${RS}V{}\n`);
     assert.equal(c.state().halted, false, 'injected condition (always false) auto-continues');
 });
+
+// ---- call stack: \x1e> enter / \x1e< exit frames ----
+
+test('splitter: enter/exit tokens decode to enter/exit events', () => {
+    const s = createMarkerSplitter();
+    const r = s.feed(`${RS}>0\n${RS}1\n${RS}<\n`);
+    assert.deepEqual(r.events, [
+        {type: 'enter', n: 0},
+        {type: 'pos', n: 1},
+        {type: 'exit'}
+    ]);
+});
+
+test('controller: enter pushes a named frame, exit pops it', () => {
+    const c = createMicrobitDebugController();
+    c.begin([{block: 'a'}, {block: 'b'}], ['flash box', 'beep']);
+    c.feedSerial(`${RS}>0\n`);
+    assert.deepEqual(c.state().stack, [{k: 0, name: 'flash box'}]);
+    c.feedSerial(`${RS}>1\n`);       // nested call
+    assert.deepEqual(c.state().stack.map(f => f.name), ['flash box', 'beep']);
+    c.feedSerial(`${RS}<\n`);        // inner returns
+    assert.deepEqual(c.state().stack.map(f => f.name), ['flash box']);
+    c.feedSerial(`${RS}<\n`);        // outer returns
+    assert.deepEqual(c.state().stack, []);
+});
+
+test('controller: an unnamed frame index falls back to a label', () => {
+    const c = createMicrobitDebugController();
+    c.begin([{block: 'a'}], []);     // no procNames provided
+    c.feedSerial(`${RS}>3\n`);
+    assert.deepEqual(c.state().stack, [{k: 3, name: 'proc 3'}]);
+});
+
+test('controller: begin/stop clear the call stack', () => {
+    const c = createMicrobitDebugController();
+    c.begin([{block: 'a'}], ['p']);
+    c.feedSerial(`${RS}>0\n`);
+    assert.equal(c.state().stack.length, 1);
+    c.stop();
+    assert.deepEqual(c.state().stack, []);
+});

@@ -1139,6 +1139,7 @@ class PseudocodeImporter extends React.Component {
         } catch { /* no breakpoints module — debug with none, still useful for stepping */ }
         let code;
         let positions;
+        let procNames;
         try {
             const SB3Creator = (await this.lib()).default;
             const proj = JSON.parse(this.props.vm.toJSON());
@@ -1149,6 +1150,7 @@ class PseudocodeImporter extends React.Component {
             }
             code = r.py;
             positions = r.positions || [];
+            procNames = r.procNames || [];
         } catch (e) {
             this.setState({status: this.L.stError(e.message)});
             return;
@@ -1164,7 +1166,7 @@ class PseudocodeImporter extends React.Component {
         Object.entries(values).forEach(([k, v]) => {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
         });
-        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code, debug: true, positions}}));
+        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code, debug: true, positions, procNames}}));
     }
 
     // Run BASIC on the real emulated machine.

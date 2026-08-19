@@ -33,6 +33,10 @@
  * and, immediately after a HALT, one state frame each (the 8051-parity panes):
  *   `\x1eV<json>\n` — VARIABLES: {name: value} of the user's variables/lists
  *   `\x1eB<json>\n` — BOARD: micro:bit snapshot {display, buttonA/B, accel, temp}
+ * and, around every procedure call (the call-stack pane):
+ *   `\x1e>k\n`      — ENTER procedure index k (push a frame)
+ *   `\x1e<\n`       — EXIT (pop the innermost frame)
+ * `procNames[k]` maps a frame index to its display name.
  * The `V`/`B` payloads are single-line JSON (no `\n`, no RS), so the newline
  * delimiter is unambiguous. `\x1e` is RS (0x1e, 0o036). Markers interleave with
  * real `print()` output and MUST be split out. The host resumes over serial-IN:
@@ -112,6 +116,10 @@ export function createMarkerSplitter() {
                     if (data !== null) {
                         events.push({type: kind === 0x56 ? 'vars' : 'board', data});
                     }
+                } else if (kind === 0x3e /* > */) {
+                    events.push({type: 'enter', n: parseInt(token.slice(1), 10)});
+                } else if (kind === 0x3c /* < */) {
+                    events.push({type: 'exit'});
                 } else {
                     events.push({type: 'pos', n: parseInt(token, 10)});
                 }
@@ -148,6 +156,8 @@ export function createMicrobitDebugController(opts = {}) {
     const splitter = createMarkerSplitter();
     /** @type {Array<{block: string}>} n -> {block} from generateMicroPython. */
     let positions = [];
+    /** @type {string[]} k -> proc display name, from generateMicroPython. */
+    let procNames = [];
     /** The block currently lit, so a re-glow is a no-op and stop clears exactly one. */
     let litBlock = null;
 
@@ -162,7 +172,8 @@ export function createMicrobitDebugController(opts = {}) {
         index: null,     // position marker index n
         vars: null,      // {name: value} snapshot from the last halt (the memory pane)
         board: null,     // micro:bit board snapshot from the last halt (pin/sensor pane)
-        trace: []        // execution history: [{n, block}, …] (most recent last, capped)
+        trace: [],       // execution history: [{n, block}, …] (most recent last, capped)
+        stack: []        // call stack: [{k, name}, …] (outermost first) from enter/exit
     };
 
     function snapshot() { return {...state}; }
@@ -207,12 +218,13 @@ export function createMicrobitDebugController(opts = {}) {
          * Begin a debug run: adopt the positions map from generateMicroPython
          * and reset the marker parser. The flash itself is the pane's job.
          */
-        begin(pos) {
+        begin(pos, procs) {
             positions = Array.isArray(pos) ? pos : [];
+            procNames = Array.isArray(procs) ? procs : [];
             splitter.reset();
             setGlow(null);
             state = {active: true, running: true, halted: false, block: null,
-                index: null, vars: null, board: null, trace: []};
+                index: null, vars: null, board: null, trace: [], stack: []};
             emit();
         },
 
@@ -240,6 +252,18 @@ export function createMicrobitDebugController(opts = {}) {
                 }
                 if (ev.type === 'board') {
                     state.board = ev.data;
+                    changed = true;
+                    continue;
+                }
+                if (ev.type === 'enter') {
+                    // Push a call-stack frame (a procedure was entered).
+                    state.stack = state.stack.concat({k: ev.n, name: procNames[ev.n] || `proc ${ev.n}`});
+                    changed = true;
+                    continue;
+                }
+                if (ev.type === 'exit') {
+                    // Pop the innermost frame (the procedure returned/closed).
+                    state.stack = state.stack.slice(0, -1);
                     changed = true;
                     continue;
                 }
@@ -297,7 +321,7 @@ export function createMicrobitDebugController(opts = {}) {
             splitter.reset();
             setGlow(null);
             state = {active: false, running: false, halted: false, block: null,
-                index: null, vars: null, board: null, trace: []};
+                index: null, vars: null, board: null, trace: [], stack: []};
             emit();
         },
 

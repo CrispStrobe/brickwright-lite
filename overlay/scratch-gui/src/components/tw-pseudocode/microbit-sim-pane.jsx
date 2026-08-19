@@ -12,7 +12,8 @@ const L10N = {
         serialPlaceholder: '(serial output appears here)',
         step: '⏭ Step', continue: '▶ Continue',
         paused: 'Paused', debugging: 'Debugging', pausedAt: 'Paused at block',
-        vars: 'Variables', board: 'Board', trace: 'Trace',
+        vars: 'Variables', board: 'Board', trace: 'Trace', stack: 'Stack',
+        topLevel: '(top level)',
         noVars: '(no variables)', pauseToInspect: 'Pause to inspect state'
     },
     de: {
@@ -22,7 +23,8 @@ const L10N = {
         serialPlaceholder: '(serielle Ausgabe erscheint hier)',
         step: '⏭ Schritt', continue: '▶ Weiter',
         paused: 'Angehalten', debugging: 'Debugging', pausedAt: 'Angehalten bei Block',
-        vars: 'Variablen', board: 'Board', trace: 'Verlauf',
+        vars: 'Variablen', board: 'Board', trace: 'Verlauf', stack: 'Stapel',
+        topLevel: '(oberste Ebene)',
         noVars: '(keine Variablen)', pauseToInspect: 'Zum Inspizieren anhalten'
     }
 };
@@ -70,7 +72,8 @@ class MicrobitSimPane extends React.Component {
             simReady: false,
             running: false,
             // Mirror of the debug controller, for the render.
-            dbg: {active: false, running: false, halted: false, block: null, index: null}
+            dbg: {active: false, running: false, halted: false, block: null, index: null,
+                vars: null, board: null, trace: [], stack: []}
         };
         this._iframeRef = React.createRef();
         this._pendingCode = null;
@@ -110,7 +113,9 @@ class MicrobitSimPane extends React.Component {
         const detail = (e && e.detail) || {};
         const code = detail.code;
         if (!code) return;
-        const debug = detail.debug ? {positions: detail.positions || []} : null;
+        const debug = detail.debug
+            ? {positions: detail.positions || [], procNames: detail.procNames || []}
+            : null;
         if (this.state.simReady) {
             this._flash(code, debug);
         } else {
@@ -161,7 +166,7 @@ class MicrobitSimPane extends React.Component {
         if (!iframe || !iframe.contentWindow) return;
         // A new flash ends any prior debug run (clears the old highlight).
         this._dbg.stop();
-        if (debug) { this._dbg.begin(debug.positions); this._wireConditions(); }
+        if (debug) { this._dbg.begin(debug.positions, debug.procNames); this._wireConditions(); }
         const encoder = new TextEncoder();
         const filesystem = {'main.py': encoder.encode(code)};
         iframe.contentWindow.postMessage({kind: 'flash', filesystem}, '*');
@@ -293,7 +298,7 @@ class MicrobitSimPane extends React.Component {
                         borderTop: '1px solid #e5e7eb', background: '#f8fafc', fontSize: 11}}
                     data-testid="bw-microbit-debug-inspector">
                         {/* Variables — the memory/register-equivalent pane. */}
-                        <div style={{flex: '1 1 40%', overflow: 'auto', padding: '6px 8px',
+                        <div style={{flex: '1 1 34%', overflow: 'auto', padding: '6px 8px',
                             borderRight: '1px solid #e5e7eb'}}
                         data-testid="bw-microbit-debug-vars">
                             <div style={inspHead}>{t.vars}</div>
@@ -313,7 +318,7 @@ class MicrobitSimPane extends React.Component {
                             )}
                         </div>
                         {/* Board — the pin/sensor-status pane (micro:bit only). */}
-                        <div style={{flex: '1 1 32%', overflow: 'auto', padding: '6px 8px',
+                        <div style={{flex: '1 1 24%', overflow: 'auto', padding: '6px 8px',
                             borderRight: '1px solid #e5e7eb'}}
                         data-testid="bw-microbit-debug-board">
                             <div style={inspHead}>{t.board}</div>
@@ -341,8 +346,28 @@ class MicrobitSimPane extends React.Component {
                                 <div style={inspHint}>{dbg.halted ? '—' : t.pauseToInspect}</div>
                             )}
                         </div>
+                        {/* Stack — the procedure call frames (outermost first). */}
+                        <div style={{flex: '1 1 22%', overflow: 'auto', padding: '6px 8px',
+                            borderRight: '1px solid #e5e7eb'}}
+                        data-testid="bw-microbit-debug-stack">
+                            <div style={inspHead}>{t.stack}</div>
+                            {dbg.stack && dbg.stack.length ? (
+                                <div style={{display: 'flex', flexDirection: 'column', gap: 2}}>
+                                    {dbg.stack.map((f, i) => (
+                                        <span key={i} style={{...inspChip, alignSelf: 'flex-start',
+                                            marginLeft: i * 8,
+                                            background: i === dbg.stack.length - 1 ? '#7c3aed' : '#e2e8f0',
+                                            color: i === dbg.stack.length - 1 ? '#fff' : '#334155'}}>
+                                            {f.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div style={inspHint}>{t.topLevel}</div>
+                            )}
+                        </div>
                         {/* Trace — the execution history (position markers, in order). */}
-                        <div style={{flex: '1 1 28%', overflow: 'auto', padding: '6px 8px'}}
+                        <div style={{flex: '1 1 22%', overflow: 'auto', padding: '6px 8px'}}
                         data-testid="bw-microbit-debug-trace">
                             <div style={inspHead}>{t.trace}</div>
                             <div style={{display: 'flex', flexWrap: 'wrap', gap: 3}}>
