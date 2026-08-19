@@ -140,7 +140,7 @@ class CircuitTab extends React.Component {
         if (!document.getElementById('bw-layout-style')) {
             const st = document.createElement('style');
             st.id = 'bw-layout-style';
-            st.textContent = 'html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-canvas-wrapper"],html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="target-wrapper"]{display:none !important} html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-wrapper"]{position:relative;z-index:3;background:transparent !important}';
+            st.textContent = 'html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-canvas-wrapper"],html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="target-wrapper"]{display:none !important} html[data-bw-hide-stage] div[class*="stage-and-target-wrapper"] div[class*="stage-wrapper"]{position:relative;z-index:3;background:transparent !important} details > summary::-webkit-details-marker{display:none} details > summary::marker{content:""}';
             document.head.appendChild(st);
         }
         this._syncStageAttr();
@@ -1157,7 +1157,7 @@ class CircuitTab extends React.Component {
                     is an invitation, shown once and dismissible, not a warning. */}
                 {stcDrives(stc) || this.state.machineBooted || this.state.hintDismissed ? null : (
                     <details style={{marginBottom: 6, flex: '0 0 auto', color: '#075985'}}>
-                    <summary style={{cursor: 'pointer', color: '#d97706', fontSize: 18, lineHeight: 1, padding: '2px 4px'}} title="Show circuit hint">▲</summary>
+                    <summary style={{cursor: 'pointer', color: '#d97706', fontSize: 18, lineHeight: 1, padding: '2px 4px', listStyle: 'none'}} title="Show circuit hint">▲</summary>
                     <div style={{padding: '5px 8px', borderRadius: 5,
                         background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: 12,
                         color: '#075985', display: 'flex', alignItems: 'center', gap: 8,
@@ -1193,7 +1193,7 @@ class CircuitTab extends React.Component {
                     // empty; this one used to be the exception.
                     this.state.debugHintDismissed ? null : (
                         <details style={{marginBottom: 8, flex: '0 0 auto', color: '#64748b'}}>
-                        <summary style={{cursor: 'pointer', color: '#ca8a04', fontSize: 18, lineHeight: 1, padding: '2px 4px'}} title="Show debugger hint">▲</summary>
+                        <summary style={{cursor: 'pointer', color: '#ca8a04', fontSize: 18, lineHeight: 1, padding: '2px 4px', listStyle: 'none'}} title="Show debugger hint">▲</summary>
                         <div style={{padding: '4px 8px', borderRadius: 4,
                             background: '#f8fafc', border: '1px solid #e2e8f0', flex: '0 0 auto',
                             fontSize: 11.5, color: '#64748b',
