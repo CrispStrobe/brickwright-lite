@@ -1,18 +1,30 @@
-# Spike Prime hub virtual face — representative Lego hub faceplate.
+# Spike Prime hub — offline virtual face.
 #
-# Simulates a Spike Prime (also Robot Inventor — same hardware) with:
-#   - 5x5 light matrix (25-bit bitmask, same as micro:bit)
-#   - Motor angle gauge (-180..180 degrees)
-#   - Distance sensor gauge (0..200 cm)
-#   - Colour sensor gauge (0..10, Lego colour IDs)
+# This is the in-app faceplate shown when no hub is connected. It
+# visualizes the same device the spikeprime extension drives:
+#   - 5x5 LED matrix (displayImage / displayText / setPixel)
+#   - Motor on port A (getPosition / getSpeed / motorRunFor)
+#   - Distance sensor on port D (getDistance)
+#   - Color sensor on port C (getColor)
 #
-# No DEVICE line: the Lego hub dialect is not yet in the compiler.
-# When it lands, add DEVICE SPIKE_PRIME and replace variable writes
-# with actual motor/sensor blocks. The widget faces are the same
-# either way — they read variables, not hardware.
+# A program written with the spikeprime extension blocks maps onto this
+# face 1:1: the extension writes spike_display / spike_position_A /
+# spike_distance_D / spike_color_C, and the face reads them.
 #
-# The program sweeps the motor angle and cycles through sensor readings
-# to prove the gauges are live. The matrix shows a rotating line.
+# The matrix widget reads a 25-bit row-major bitmask (bit = row*5+col).
+# The extension's displayImage uses a 25-char binary string internally;
+# the program converts to a bitmask for the widget. On a real hub the
+# runtime driver does this conversion.
+#
+# Variable naming matches the extension's block opcodes:
+#   spike_display     <- displayImage (25-bit bitmask for the face)
+#   spike_position_A  <- getPosition A (degrees, -180..180)
+#   spike_distance_D  <- getDistance D (cm, 0..200)
+#   spike_color_C     <- getColor C (Lego color ID 0..10)
+#
+# No DEVICE line: the Spike Prime dialect is not yet in the .bw compiler.
+# When it lands, add DEVICE SPIKE_PRIME and replace variable writes with
+# actual extension blocks. The face bindings stay identical.
 #
 # 5x5 bit layout (row-major, bit = row*5+col):
 #   row 0: bits  0- 4  (top)
@@ -21,27 +33,27 @@
 #   row 3: bits 15-19
 #   row 4: bits 20-24  (bottom)
 
-# Precomputed rotation frames: a line sweeping 0/45/90/135 degrees.
-# Frame 0: vertical bar (col 2)    = bits 2,7,12,17,22
-# Frame 1: diagonal \              = bits 0,6,12,18,24
-# Frame 2: horizontal bar (row 2)  = bits 10,11,12,13,14
-# Frame 3: diagonal /              = bits 4,8,12,16,20
-TABLE frames = 4329604, 17043521, 31744, 1118480
+# Precomputed display frames (25-bit bitmasks):
+# Frame 0: heart      01101 11111 11111 01110 00100
+# Frame 1: smiley     11111 10001 00000 10001 01110
+# Frame 2: X          10001 01010 00100 01010 10001
+# Frame 3: bar        00000 00000 11111 00000 00000
+TABLE frames = 14679492, 33063470, 18157905, 31744
 
 WHEN flag clicked:
-  set variable hub_matrix to 0
-  set variable motor_angle to 0
-  set variable dist_cm to 100
-  set variable colour_id to 0
+  set variable spike_display to 0
+  set variable spike_position_A to 0
+  set variable spike_distance_D to 100
+  set variable spike_color_C to 0
   set variable frame to 0
   set variable sweep to 0
   set variable sweep_dir to 3
   FOREVER:
-    # Rotate the matrix pattern through 4 frames
-    set variable hub_matrix to frames[frame mod 4]
+    # Cycle display through 4 patterns (heart, smiley, X, bar)
+    set variable spike_display to frames[frame mod 4]
     change frame by 1
 
-    # Sweep motor angle: -180 → +180 → -180, step 3
+    # Sweep motor A position: -180 -> +180 -> -180, step 3
     change sweep by sweep_dir
     IF sweep > 180 THEN:
       set variable sweep_dir to -3
@@ -49,13 +61,14 @@ WHEN flag clicked:
     IF sweep < -180 THEN:
       set variable sweep_dir to 3
       set variable sweep to -180
-    set variable motor_angle to sweep
+    set variable spike_position_A to sweep
 
-    # Simulate distance sensor: a slow triangle wave 10..190 cm
-    set variable dist_cm to 100 + sweep * 90 / 180
+    # Distance sensor D: triangle wave 10..190 cm
+    set variable spike_distance_D to 100 + sweep * 90 / 180
 
-    # Cycle colour ID: 0..10 (Lego palette: black, magenta, violet,
-    # blue, cyan, green, yellow, orange, red, white, none)
-    set variable colour_id to frame mod 11
+    # Color sensor C: cycle through Lego color IDs 0..10
+    # (0=black 1=magenta 2=violet 3=blue 4=cyan 5=green
+    #  6=yellow 7=orange 8=red 9=white 10=none)
+    set variable spike_color_C to frame mod 11
 
     wait 200 ms

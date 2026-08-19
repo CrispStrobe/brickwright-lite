@@ -2,32 +2,32 @@
   "version": 1,
   "widgets": [
     {
-      "name": "lights",
+      "name": "display",
       "type": "matrix",
       "config": { "rows": 5, "cols": 5, "value": 0 },
       "layout": { "x": 10, "y": 10, "w": 150, "h": 150 },
-      "binding": { "target": "variable", "variableName": "hub_matrix" }
+      "binding": { "target": "variable", "variableName": "spike_display" }
     },
     {
-      "name": "motor",
+      "name": "motorA",
       "type": "gauge",
-      "config": { "min": -180, "max": 180, "value": 0, "label": "Motor °" },
+      "config": { "min": -180, "max": 180, "value": 0, "label": "A position °" },
       "layout": { "x": 180, "y": 10, "w": 80, "h": 80 },
-      "binding": { "target": "variable", "variableName": "motor_angle" }
+      "binding": { "target": "variable", "variableName": "spike_position_A" }
     },
     {
-      "name": "distance",
+      "name": "distD",
       "type": "gauge",
-      "config": { "min": 0, "max": 200, "value": 0, "label": "Dist cm" },
+      "config": { "min": 0, "max": 200, "value": 0, "label": "D distance cm" },
       "layout": { "x": 180, "y": 100, "w": 80, "h": 80 },
-      "binding": { "target": "variable", "variableName": "dist_cm" }
+      "binding": { "target": "variable", "variableName": "spike_distance_D" }
     },
     {
-      "name": "colour",
+      "name": "colorC",
       "type": "gauge",
-      "config": { "min": 0, "max": 10, "value": 0, "label": "Colour" },
+      "config": { "min": 0, "max": 10, "value": 0, "label": "C color" },
       "layout": { "x": 180, "y": 190, "w": 80, "h": 80 },
-      "binding": { "target": "variable", "variableName": "colour_id" }
+      "binding": { "target": "variable", "variableName": "spike_color_C" }
     }
   ]
 }

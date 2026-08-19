@@ -2,48 +2,48 @@
 level: Einsteiger
 age: 8+
 prereqs: []
-teaches: [Variablen, Steuerfeld, Matrix-Widget, Anzeige-Widget, Lego-Hub]
+teaches: [Variablen, Steuerfeld, Matrix-Widget, Anzeige-Widget, Spike-Prime]
 ---
 
 ## Spike Prime Hub — Virtuelles Bedienfeld
 
-Ein virtuelles Bedienfeld fuer den Spike Prime Hub (auch Robot Inventor —
-gleiche Hardware). Das Steuerfeld zeigt, was die Sensoren und Motoren des
-Hubs gerade tun — ohne echten Hub.
+Das Offline-Gegenstueck zur `spikeprime`-Erweiterung. Wenn kein Hub
+verbunden ist, zeigt dieses Bedienfeld, was das Programm auf einem
+echten Spike Prime (oder Robot Inventor) anzeigen und lesen wuerde.
 
-- **5x5-Lichtmatrix** — das LED-Gitter des Spike Prime, mit rotierender Linie
-- **Motor-Anzeige** — Winkel von -180° bis +180°
-- **Distanz-Anzeige** — simulierter Ultraschallsensor, 10–190 cm
-- **Farb-Anzeige** — Lego-Farb-IDs durchlaufend (0–10)
+- **5x5-LED-Matrix** — spiegelt `displayImage` / `setPixel` (Herz, Smiley, X, Balken)
+- **Motor A Position** — spiegelt `getPosition A` (Grad, -180..180)
+- **Distanz D** — spiegelt `getDistance D` (cm, 0..200)
+- **Farbe C** — spiegelt `getColor C` (Lego-Farb-ID 0..10)
+
+Die Variablennamen entsprechen den Bloecken der Erweiterung:
+`spike_display`, `spike_position_A`, `spike_distance_D`, `spike_color_C`.
 
 ## Probiere das
 
 1. Klicke auf die gruene Flagge — alle vier Anzeigen starten.
-2. Beobachte die Matrix: die Linie dreht sich durch vier Positionen.
-3. Beobachte die Motoranzeige: sie pendelt gleichmaessig.
+2. Beobachte die Matrix: vier Spike-Prime-Muster wechseln sich ab.
+3. Beobachte die Motoranzeige: sie pendelt wie ein laufender Motor.
 4. Distanz und Farbe folgen demselben Zyklus.
 
 ## Was passiert hier
 
-Das Programm schreibt vier Variablen pro Takt: `hub_matrix` (25-Bit-Maske),
-`motor_angle`, `dist_cm` und `colour_id`. Die Matrix- und Anzeige-Widgets
-lesen diese Variablen und stellen sie live dar.
-
-Auf echter Hardware wuerden die Ausgaben ueber die Lego-Laufzeittreiber
-(Remote oder On-Device ueber brickwright-bridges) laufen. Die Widget-Anzeigen
-sind identisch — sie zeigen, was die Variablen enthalten.
+Das Programm schreibt vier Variablen pro Takt. Die Matrix liest
+`spike_display` (25-Bit-Maske, Bit `Zeile*5+Spalte` = LED an). Die drei
+Anzeige-Widgets lesen die Sensor-/Motor-Variablen. Auf einem echten Hub
+wuerden die Laufzeittreiber (Scratch Link / Web Bluetooth /
+brickwright-bridges) diese Variablen von der Hardware befuellen.
 
 ## Andere Lego-Hubs
 
-Die anderen Lego-Hubs sind eigenstaendige Geraete — jeder braucht sein
-eigenes Bedienfeld mit passenden Anzeige- und Eingabe-Widgets:
+Jeder Lego-Hub ist ein eigenstaendiges Geraet mit eigener
+Display-Hardware — jeder braucht sein eigenes Bedienfeld:
 
-- **EV3**: 178x128 Mono-LCD, 4 Ein- + 4 Ausgangsports — braucht ein LCD-Widget (kuenftig)
-- **NXT**: 100x64 Mono-LCD, 4 Sensor- + 3 Motorports — braucht ein LCD-Widget (kuenftig)
-- **WeDo 2.0 / Boost**: nur RGB-Statuslicht, 2 Ports — braucht ein RGB-Licht-Widget (kuenftig)
+- **EV3** (`ev3comprehensive`): 178x128 Mono-LCD — braucht ein LCD-Widget (kuenftig)
+- **NXT** (`legonxt`): 100x64 Mono-LCD — braucht ein LCD-Widget (kuenftig)
+- **WeDo 2.0** (`wedo2unified`): nur RGB-Statuslicht — braucht ein RGB-Widget (kuenftig)
+- **Boost** (`legoboostunified`): nur RGB-Statuslicht — braucht ein RGB-Widget (kuenftig)
 
-Ein Matrix-Widget und ein LCD-Widget sind verschiedene Dinge — eines
-kann nicht alle abdecken. Was geteilt wird, ist das Bedienfeld-Framework:
-das Anzeige-/Eingabe-Widget-Bindungsmodell, die Variablen-Pumpe und das
-controller.json-Format. Jeder Hub bekommt sein eigenes Beispiel auf
-diesem Framework mit den richtigen Widgets fuer seine Hardware.
+Was geteilt wird, ist das Bedienfeld-Framework (Variablen-Bindung,
+Widget-Pumpe, controller.json-Format). Jeder Hub bekommt sein eigenes
+Beispiel mit den passenden Widgets fuer sein Geraetemodell.

@@ -2,52 +2,52 @@
 level: beginner
 age: 8+
 prereqs: []
-teaches: [variables, controller-panel, matrix-widget, gauge-widget, lego-hub]
+teaches: [variables, controller-panel, matrix-widget, gauge-widget, spike-prime]
 ---
 
 ## Spike Prime Hub — Virtual Face
 
-A virtual faceplate for the Spike Prime hub (also Robot Inventor — same
-hardware). The controller panel shows what the hub's sensors and motors
-are doing — no physical hub needed.
+The offline visual complement to the `spikeprime` extension. When no hub
+is connected, this faceplate shows what the program would display and
+read on a real Spike Prime (or Robot Inventor — same hardware).
 
-- **5x5 light matrix** — the Spike Prime's LED grid, showing a rotating line
-- **Motor gauge** — angle readout sweeping -180° to +180°
-- **Distance gauge** — simulated ultrasonic sensor, 10–190 cm
-- **Colour gauge** — cycling through Lego colour IDs (0–10)
+- **5x5 LED matrix** — mirrors `displayImage` / `setPixel` (heart, smiley, X, bar)
+- **Motor A position** — mirrors `getPosition A` (degrees, -180..180)
+- **Distance D** — mirrors `getDistance D` (cm, 0..200)
+- **Color C** — mirrors `getColor C` (Lego color ID 0..10)
+
+The variable names match the extension's block opcodes: `spike_display`,
+`spike_position_A`, `spike_distance_D`, `spike_color_C`. A program
+written with the spikeprime blocks maps onto the face 1:1.
 
 ## Try this
 
 1. Click the green flag — all four faces start animating.
-2. Watch the matrix: the line rotates through four positions.
-3. Watch the motor gauge: it sweeps smoothly back and forth.
-4. The distance and colour gauges follow the same cycle.
+2. Watch the matrix cycle through four Spike Prime display patterns.
+3. Watch the motor gauge sweep back and forth like a running motor.
+4. The distance and color gauges follow the same cycle.
 
 ## What is going on
 
-The program writes four variables each tick: `hub_matrix` (a 25-bit
-bitmask), `motor_angle`, `dist_cm`, and `colour_id`. The matrix and
-gauge widgets read those variables and render them live.
-
-On real hardware the output side would route through the Lego runtime
-drivers (remote or on-device via brickwright-bridges) rather than a
-circuit board. The widget faces are the same either way — they show
-whatever the variables hold, regardless of how those variables are set.
+The program writes four variables each tick. The matrix widget reads
+`spike_display` (a 25-bit row-major bitmask, bit `row*5+col` = LED on).
+The three gauge widgets read the sensor/motor variables. On a real hub
+the runtime drivers (Scratch Link / Web Bluetooth / brickwright-bridges)
+would populate these same variables from the hardware.
 
 ## Other Lego hubs
 
-The other Lego hubs are genuinely different devices — each needs its
-own faceplate with different display and I/O widgets:
+Each Lego hub is a genuinely different device with its own display
+hardware — each needs its own faceplate, not a variant of this one:
 
-| Hub | Display | I/O | Faceplate needs |
-|-----|---------|-----|-----------------|
-| **Spike Prime** | 5x5 LED matrix | 6 ports, center button, IMU, speaker | this example (matrix widget) |
-| **EV3** | 178x128 mono LCD | 4 in + 4 out, 6 buttons, speaker | LCD display widget (future) |
-| **NXT** | 100x64 mono LCD | 4 sensor + 3 motor, 4 buttons | LCD display widget (future) |
-| **WeDo 2.0 / Boost** | RGB status light only | 2 ports | RGB light widget (future) |
+| Hub | Display | Extension | Faceplate widget needed |
+|-----|---------|-----------|------------------------|
+| **Spike Prime** | 5x5 LED matrix | `spikeprime` | matrix (this example) |
+| **EV3** | 178x128 mono LCD | `ev3comprehensive` | mono LCD widget (future) |
+| **NXT** | 100x64 mono LCD | `legonxt` | mono LCD widget (future) |
+| **WeDo 2.0** | RGB status light | `wedo2unified` | RGB light widget (future) |
+| **Boost** | RGB status light | `legoboostunified` | RGB light widget (future) |
 
-A matrix face and an LCD face are different widgets — one cannot cover
-all of them. What IS shared is the faceplate framework: the
-display-widget / input-widget binding model, the variable pump, and
-the controller.json format. Each hub gets its own example built on
-that framework with the right widget set for its hardware.
+What IS shared is the faceplate framework (variable binding, widget pump,
+controller.json format). Each hub gets its own example built on that
+framework with the right widget set matching its extension's device model.
