@@ -398,6 +398,21 @@ function PositionedWidget({ widget, mode, selected, snap, onSelect, onLayout, ch
     const ref = React.useRef(null);
     const gesture = React.useRef(null);
 
+    // Content scaling: a face renders at its own natural size, so resizing the
+    // box did nothing to the content. Measure the natural (unscaled) size —
+    // inline-block content sizes to itself, not the parent, and CSS transforms
+    // don't affect offsetWidth — then scale the face to fill layout.w/h.
+    const contentRef = React.useRef(null);
+    const [natural, setNatural] = React.useState(null);
+    React.useLayoutEffect(() => {
+        const el = contentRef.current;
+        if (!el) return;
+        const w = el.offsetWidth, h = el.offsetHeight;
+        setNatural(prev => (prev && prev.w === w && prev.h === h) ? prev : { w, h });
+    }, [widget.type, widget.config]);
+    const sx = (L.w && natural && natural.w) ? L.w / natural.w : 1;
+    const sy = (L.h && natural && natural.h) ? L.h / natural.h : 1;
+
     const beginDrag = e => {
         if (mode !== 'edit') return;
         onSelect();
@@ -460,7 +475,16 @@ function PositionedWidget({ widget, mode, selected, snap, onSelect, onLayout, ch
                 userSelect: 'none',
             }}
         >
-            {children}
+            <div
+                ref={contentRef}
+                style={{
+                    display: 'inline-block',
+                    transformOrigin: 'top left',
+                    transform: (sx !== 1 || sy !== 1) ? ('scale(' + sx + ', ' + sy + ')') : undefined,
+                }}
+            >
+                {children}
+            </div>
             {mode === 'edit' && selected && (
                 <React.Fragment>
                     <div
@@ -676,10 +700,14 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
             : t('bindProgram'))
         : '—';
 
+    // layout.color tints the whole card — a 2px coloured border and a faint
+    // wash (the 6-digit hex from the colour input + '22' alpha ≈ 13%) — not
+    // just the type badge, so "colour" reads as the widget's colour.
+    const cardColor = widget.layout && widget.layout.color;
     return (
         <div style={{
-            background: '#fff',
-            border: '1px solid #e2e8f0',
+            background: cardColor ? (cardColor + '22') : '#fff',
+            border: '2px solid ' + (cardColor || '#e2e8f0'),
             borderRadius: 8,
             padding: 12,
             display: 'inline-flex',
