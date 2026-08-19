@@ -40,10 +40,11 @@ const FILES = [
 ];
 
 // Our own additions (NOT synced from upstream) — the line-level debugger's
-// firmware + loader. build-debug/firmware.wasm is a settrace-enabled build
-// (see build-debug/README.md); simulator-debug.html loads the shared glue and
-// points the wasm fetch at it. Verified present, never overwritten by sync.
-const OURS = ['build-debug/firmware.wasm', 'simulator-debug.html'];
+// firmware + loader. build-debug/ holds a settrace-enabled build (see its
+// README.md): its OWN emsdk-3.1.25 glue AND wasm — the glue is version-locked
+// to the wasm (the stock glue LinkErrors on it). simulator-debug.html loads
+// that glue and points the wasm fetch at it. Never overwritten by sync.
+const OURS = ['build-debug/firmware.js', 'build-debug/firmware.wasm', 'simulator-debug.html'];
 
 // simulator.js is vendored from upstream, but the debug loader needs its wasm
 // fetch to honour window.BW_WASM_URL. Re-apply that one-line patch after any

@@ -71,11 +71,14 @@
         </svg>
       </button>
     </div>
-    <!-- Debug simulator: the Emscripten glue (build/firmware.js) is byte-identical
-         to stock, so it is shared; only the wasm differs. This override points
-         simulator.js's fetchWasm at the settrace-enabled firmware. -->
+    <!-- Debug simulator: loads the settrace firmware. The Emscripten glue is
+         emsdk-version-locked to its wasm — the settrace wasm under the stock
+         vendored glue dies with `LinkError: emscripten_memcpy_big`, so the
+         debug glue (build-debug/firmware.js, built with the same emsdk 3.1.25
+         as the debug wasm) MUST load here, not the stock build/firmware.js.
+         BW_WASM_URL points simulator.js's fetchWasm at the debug wasm. -->
     <script>window.BW_WASM_URL = "build-debug/firmware.wasm";</script>
-    <script src="build/firmware.js"></script>
+    <script src="build-debug/firmware.js"></script>
     <script src="build/simulator.js"></script>
   </body>
 </html>
