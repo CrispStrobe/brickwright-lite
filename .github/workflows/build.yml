@@ -13,6 +13,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -158,7 +159,18 @@ jobs:
         # The verify scripts import the playwright package from the repo
         # root; it is a gate-only tool, not an app dependency — install
         # it ephemerally (--no-save) plus its chromium.
-        run: npm install --no-save playwright && npx playwright install --with-deps chromium
+        run: |
+          # Playwright's chromium download can hang on a flaky mirror; with no
+          # timeout a stalled download froze the whole deploy for ~90 min. Bound
+          # each attempt and retry so it fails fast and recovers.
+          npm install --no-save playwright
+          ok=0
+          for i in 1 2 3; do
+            if timeout 300 npx playwright install --with-deps chromium; then ok=1; break; fi
+            echo "playwright chromium install attempt $i failed/timed out; retrying"
+            sleep 5
+          done
+          [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed after 3 attempts"; exit 1; }
       - name: Serve the built app
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
