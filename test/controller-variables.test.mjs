@@ -90,3 +90,17 @@ test('matrix display SHOWS a variable live (bitmask pump)', () => {
     assert.equal(panel.getValue('scr'), 0b10001, 'bitmask pumped into the face');
     b.dispose();
 });
+
+test('sevenseg display SHOWS a variable live (numeric pump)', () => {
+    const vm = mockVM({ shown: 0 });
+    const panel = new ControllerPanel();
+    panel.addWidget('num', 'sevenseg');
+    panel.bindToVariable('num', 'shown');
+    const b = bindPanelToVariables(panel, vm, { autoPump: false });
+    b.pump();
+    assert.equal(panel.getValue('num'), 0);
+    vm._stage.variables.id_shown.value = 168;
+    b.pump();
+    assert.equal(panel.getValue('num'), 168, 'number pumped into the face');
+    b.dispose();
+});

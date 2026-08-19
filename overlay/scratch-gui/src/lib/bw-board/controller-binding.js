@@ -34,8 +34,8 @@ export function bindPanelToBoard(panel, board) {
     const w = panel.getWidget(detail.name);
     if (!w || !w.binding) return;
 
-    // Gauges are read-only — they don't push values out
-    if (w.type === 'gauge') return;
+    // Display widgets are read-only — they don't push values out
+    if (w.type === 'gauge' || w.type === 'lcd') return;
 
     if (w.binding.target === 'part') {
       const { partId, param } = w.binding;
@@ -59,7 +59,7 @@ export function bindPanelToBoard(panel, board) {
     sync() {
       for (const w of panel.getWidgets()) {
         if (!w.binding) continue;
-        if (w.type === 'gauge') continue; // read-only
+        if (w.type === 'gauge' || w.type === 'lcd') continue; // read-only
         if (w.binding.target === 'part') {
           const mapped = mapWidgetToControl(w, w.binding.param);
           if (mapped !== null) {
@@ -97,6 +97,10 @@ export function bindPanelToBoard(panel, board) {
  * @param {{autoPump?: boolean}} [opts]
  * @returns {{ pump: () => void, dispose: () => void }}
  */
+// Decoration kinds (mirrors controller.js DECORATION_TYPES — this file is
+// deliberately import-free): presentation only, never bound.
+const DECORATIONS = new Set(['text', 'image']);
+
 export function bindPanelToVariables(panel, vm, opts = {}) {
   const autoPump = opts.autoPump !== false;
 
@@ -119,13 +123,14 @@ export function bindPanelToVariables(panel, vm, opts = {}) {
   };
 
   // Which widget types READ from the variable (displays), vs WRITE to it (inputs).
-  const isDisplay = (w) => w.type === 'gauge' || w.type === 'matrix';   // + display/sevenseg as they land
+  const isDisplay = (w) => w.type === 'gauge' || w.type === 'matrix' || w.type === 'lcd' || w.type === 'sevenseg';
 
   // widget -> variable (inputs)
   function onPanelEvent(event, detail) {
     if (event !== 'input') return;
     const w = panel.getWidget(detail.name);
     if (!w || !w.binding || w.binding.target !== 'variable') return;
+    if (DECORATIONS.has(w.type)) return;              // presentation only
     if (isDisplay(w)) return;                     // read-only, handled by pump()
     const v = findVar(w.binding.variableName);
     if (v) v.value = panel.getValue(detail.name);
@@ -136,16 +141,27 @@ export function bindPanelToVariables(panel, vm, opts = {}) {
   const shown = new Map();
   function pump() {
     for (const w of panel.getWidgets()) {
+      if (DECORATIONS.has(w.type)) continue;          // presentation only
       if (!w.binding || w.binding.target !== 'variable' || !isDisplay(w)) continue;
       const v = findVar(w.binding.variableName);
       if (!v) continue;
-      const nv = Number(v.value);
-      if (shown.get(w.name) !== nv) {
-        shown.set(w.name, nv);
-        if (typeof panel.setGaugeValue === 'function' && w.type === 'gauge') {
-          panel.setGaugeValue(w.name, nv);
-        } else if (typeof panel.setMatrixValue === 'function' && w.type === 'matrix') {
-          panel.setMatrixValue(w.name, nv);
+      if (w.type === 'lcd') {
+        const sv = String(v.value);
+        if (shown.get(w.name) !== sv) {
+          shown.set(w.name, sv);
+          if (typeof panel.setLcdText === 'function') panel.setLcdText(w.name, sv);
+        }
+      } else {
+        const nv = Number(v.value);
+        if (shown.get(w.name) !== nv) {
+          shown.set(w.name, nv);
+          if (typeof panel.setGaugeValue === 'function' && w.type === 'gauge') {
+            panel.setGaugeValue(w.name, nv);
+          } else if (typeof panel.setMatrixValue === 'function' && w.type === 'matrix') {
+            panel.setMatrixValue(w.name, nv);
+          } else if (typeof panel.setSevenSegValue === 'function' && w.type === 'sevenseg') {
+            panel.setSevenSegValue(w.name, nv);
+          }
         }
       }
     }
@@ -176,6 +192,7 @@ export function bindPanelToVariables(panel, vm, opts = {}) {
  * @returns {number | null}
  */
 function mapWidgetToControl(w, param) {
+  if (DECORATIONS.has(w.type)) return null;         // presentation only
   switch (w.type) {
     case 'slider':
     case 'dial': {
@@ -197,8 +214,13 @@ function mapWidgetToControl(w, param) {
       if (param === 'y') return ((w.state.up ? 1 : 0) - (w.state.down ? 1 : 0) + 1) / 2;
       return (w.state.up || w.state.down || w.state.left || w.state.right) ? 1 : 0;
     }
+    case 'keypad':
+      // Keypad value is a string (key label or index) — returned as-is
+      // for variable bindings; for part/pin bindings, parse as number.
+      return typeof w.state.value === 'string' ? (parseFloat(w.state.value) || 0) : 0;
     case 'gauge':
-      // Gauge is read-only — mapping returns null (no output)
+    case 'lcd':
+      // Display widgets are read-only — mapping returns null (no output)
       return null;
     default:
       return null;

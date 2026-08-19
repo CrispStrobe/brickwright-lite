@@ -105,6 +105,11 @@ const L10N = {
         // micro:bit bar
         micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
         runOnSimulator: '▶ Run on Simulator',
+        debugOnSimulator: '🐞 Debug',
+        debugLevelBlock: 'Block',
+        debugLevelLine: 'Line',
+        debugBlockHint: 'Block-level: steps block-by-block on the standard firmware — no extra download.',
+        debugLineHint: 'Line-level: steps by source line with real variables & call stack (loads the settrace debug firmware, +6KB).',
         // device selector / maximize
         devicePlaceholder: 'Device…', deviceTitle: 'Target device — sets pin names, compile target and emulator',
         maximizeTitle: 'Maximize editor', restoreTitle: 'Restore panels',
@@ -180,6 +185,11 @@ const L10N = {
         // micro:bit bar
         micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
         runOnSimulator: '▶ Im Simulator ausführen',
+        debugOnSimulator: '🐞 Debuggen',
+        debugLevelBlock: 'Block',
+        debugLevelLine: 'Zeile',
+        debugBlockHint: 'Block-Ebene: Schritt für Block auf der Standard-Firmware — kein Extra-Download.',
+        debugLineHint: 'Zeilen-Ebene: Schritt für Quellzeile mit echten Variablen & Aufrufstapel (lädt die settrace-Debug-Firmware, +6KB).',
         // device selector / maximize
         devicePlaceholder: 'Gerät…', deviceTitle: 'Zielgerät — bestimmt Pinbenennung, Compile-Ziel und Emulator',
         maximizeTitle: 'Editor maximieren', restoreTitle: 'Panels wiederherstellen',
@@ -428,6 +438,9 @@ class PseudocodeImporter extends React.Component {
             driverMode: 'shim', asyncMode: false, eventsMode: false,
             // Editor maximize: collapses reference/art panels and hides the right stage pane
             maximized: false,
+            // micro:bit debug granularity: 'block' (marker debugger on stock firmware,
+            // the lightweight default) or 'line' (settrace line-level on the debug firmware).
+            debugLevel: (() => { try { return localStorage.getItem('bw-microbit-debug-level') === 'line' ? 'line' : 'block'; } catch { return 'block'; } })(),
             // ASM tab mode: 'source' = editable author buffer, 'listing' = read-only disassembly
             asmMode: 'source',
             // ASM listing line map from the compile service (addr/file/line triples).
@@ -450,6 +463,7 @@ class PseudocodeImporter extends React.Component {
         this.run = this.run.bind(this);
         this.switchTab = this.switchTab.bind(this);
         this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
+        this.flashMicrobitSimDebug = this.flashMicrobitSimDebug.bind(this);
         this.deployToPico = this.deployToPico.bind(this);
     }
 
@@ -1118,7 +1132,75 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
         });
         // Send the code to the simulator pane
-        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail: {code}}));
+        {
+            // Park on a module latch too: opening the dock mounts the sim pane
+            // in the same tick, so its window listener may not exist yet — the
+            // pane reads this latch on mount (first-click fix).
+            const detail = {code};
+            try { window.__bwMicrobitPendingFlash = detail; } catch { /* noop */ }
+            window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail}));
+        }
+    }
+
+    // Debug on the simulator: regenerate the MicroPython as a LINE-LEVEL trace
+    // build — `generateMicroPython(project, {trace:true, breakpoints})` installs
+    // a sys.settrace hook that prints RS(0x1e)L line markers over serial and
+    // HALTS at breakpoint lines, dumping real locals (\x1eV) and the call stack
+    // (\x1eK). The sim pane loads the settrace-enabled debug firmware and gets
+    // the `lineMap` (python line -> block id) to highlight the live block and
+    // drive step/continue (microbit-sim-pane.jsx, microbit-debug.js).
+    // Breakpoints are the block ids the user right-clicked (bw-debug/breakpoints.js,
+    // reused unchanged); the codegen bakes them to a line set.
+    _setDebugLevel (lv) {
+        const level = lv === 'line' ? 'line' : 'block';
+        this.setState({debugLevel: level});
+        try { localStorage.setItem('bw-microbit-debug-level', level); } catch { /* noop */ }
+    }
+
+    async flashMicrobitSimDebug () {
+        const line = this.state.debugLevel === 'line';
+        let breakpoints = [];
+        try {
+            const bp = await import(/* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/breakpoints.js');
+            breakpoints = bp.listBreakpoints ? bp.listBreakpoints() : [];
+        } catch { /* no breakpoints module — debug with none, still useful for stepping */ }
+        let code;
+        let lineMap;
+        let positions;
+        let procNames;
+        try {
+            const SB3Creator = (await this.lib()).default;
+            const proj = JSON.parse(this.props.vm.toJSON());
+            const r = new SB3Creator().generateMicroPython(proj,
+                line ? {trace: true, breakpoints} : {debug: true, breakpoints});
+            if (!r.ok) {
+                this.setState({status: this.L.stError((r.reasons || []).join(' · '))});
+                return;
+            }
+            code = r.py;
+            if (line) { lineMap = r.lineMap || {}; }
+            else { positions = r.positions || []; procNames = r.procNames || []; }
+        } catch (e) {
+            this.setState({status: this.L.stError(e.message)});
+            return;
+        }
+        // Activate the micro:bit sim pane, same as the plain run.
+        const values = {
+            'bw-hide-stage': '1',
+            'bw-right-pane-hidden': '0',
+            'bw-debug-dock': 'microbit',
+            'bw-stage-circuit': '1'
+        };
+        try { Object.entries(values).forEach(([k, v]) => localStorage.setItem(k, v)); } catch { /* noop */ }
+        Object.entries(values).forEach(([k, v]) => {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
+        });
+        const detail = line
+            ? {code, trace: true, lineMap}
+            : {code, debug: true, positions, procNames};
+        // Park on a module latch (first-click mount-race fix — see plain run).
+        try { window.__bwMicrobitPendingFlash = detail; } catch { /* noop */ }
+        window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail}));
     }
 
     // Run BASIC on the real emulated machine.
@@ -1280,6 +1362,29 @@ class PseudocodeImporter extends React.Component {
                 Promise.resolve(this.compile()).catch(e => this.setState(
                     {status: `Loaded, but building the project failed: ${e.message}`}));
             });
+            // A FACEPLATE example ships a controller layout beside its
+            // program (files.controller): restore it into the live panel so
+            // the widgets + variable bindings arrive ready-made. Same shape
+            // gui.jsx restores from runtime.stc.controller on PROJECT_LOADED.
+            if (ex.files && ex.files.controller) {
+                try {
+                    const cres = await fetch(`examples/${ex.files.controller}`);
+                    if (cres.ok) {
+                        const layout = await cres.json();
+                        const rt = this.props.vm && this.props.vm.runtime;
+                        const panel = rt && rt.controllerPanel;
+                        if (panel && layout && Array.isArray(layout.widgets)) {
+                            for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+                            for (const w of layout.widgets) {
+                                const added = panel.addWidget(w.name, w.type, w.config || {}, w.layout || {});
+                                if (w.binding) added.binding = { ...w.binding };
+                            }
+                            if (layout.mode) panel.setMode(layout.mode);
+                            if (rt.stc) rt.stc.controller = layout;
+                        }
+                    }
+                } catch { /* a faceplate without its layout still loads the program */ }
+            }
             // The PROGRAM retargeted; the BENCH must follow or the runner
             // falls back to an inferred, unseated board. But the AUTHORED
             // circuit outranks any generated bench for the example's own
@@ -1862,6 +1967,31 @@ class PseudocodeImporter extends React.Component {
                         data-testid="bw-micropython-bar">
                         <span style={{color: '#166534'}}>{this.L.micropythonReadonly}</span>
                         <span style={{flex: 1}} />
+                        {/* Debug granularity: block-level (marker, stock firmware) or
+                            line-level (settrace, debug firmware). User's choice, persisted. */}
+                        <div style={{display: 'inline-flex', border: '1px solid #a855f7', borderRadius: 6, overflow: 'hidden'}}
+                            data-testid="bw-microbit-debug-level">
+                            {['block', 'line'].map(lv => (
+                                <button key={lv} type="button"
+                                    onClick={() => this._setDebugLevel(lv)}
+                                    title={lv === 'line' ? this.L.debugLineHint : this.L.debugBlockHint}
+                                    style={{padding: '3px 10px', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                                        background: this.state.debugLevel === lv ? '#7c3aed' : '#faf5ff',
+                                        color: this.state.debugLevel === lv ? '#fff' : '#7c3aed'}}
+                                    data-testid={`bw-microbit-debug-level-${lv}`}>
+                                    {lv === 'line' ? this.L.debugLevelLine : this.L.debugLevelBlock}
+                                </button>
+                            ))}
+                        </div>
+                        <button type="button"
+                            onClick={() => this.flashMicrobitSimDebug()}
+                            disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
+                            style={{padding: '4px 12px', borderRadius: 6, border: '1px solid #a855f7',
+                                cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                background: '#faf5ff', color: '#7c3aed'}}
+                            data-testid="bw-microbit-debug">
+                            {this.L.debugOnSimulator}
+                        </button>
                         <button type="button"
                             onClick={() => this.flashMicrobitSim()}
                             disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}

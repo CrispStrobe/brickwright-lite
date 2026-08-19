@@ -28,7 +28,18 @@ export const WIDGET_TYPES = /** @type {const} */ ({
   DIAL:     'dial',
   GAUGE:    'gauge',
   MATRIX:   'matrix',
+  KEYPAD:   'keypad',
+  LCD:      'lcd',
+  SEVENSEG: 'sevenseg',
+  TEXT:     'text',
+  IMAGE:    'image',
 });
+
+/**
+ * Decoration kinds: presentation only - neither input nor display. The
+ * binding layers skip them entirely (no variable writes, no pump).
+ */
+export const DECORATION_TYPES = new Set(['text', 'image']);
 
 /** Default configs per widget type. */
 const DEFAULTS = {
@@ -44,6 +55,15 @@ const DEFAULTS = {
   // uses. 5x5 covers the micro:bit; rows*cols must stay <= 32 for the
   // bitmask to survive int coercion everywhere.
   matrix:   { rows: 5, cols: 5, value: 0 },
+  keypad:   { cols: 4, rows: 4, labels: null, value: '' },
+  lcd:      { cols: 4, rows: 2, text: '' },
+  // A 7-segment numeric DISPLAY: read-only face showing the bound variable's
+  // value right-aligned across `digits` tubes (the display contract is one
+  // NUMERIC variable per display widget). Overflow renders as dashes.
+  sevenseg: { digits: 4, value: 0 },
+  // Decorations (presentation only, never bound):
+  text:     { text: 'Label', fontSize: 16, color: '#334155' },
+  image:    { src: '', alt: '' },
 };
 
 // ─── ControllerPanel ────────────────────────────────────────────────────────
@@ -72,6 +92,7 @@ export class ControllerPanel {
       for (const w of this._widgets.values()) {
         if (w.type === 'button' && !w.config.toggle) w.state.pressed = false;
         if (w.type === 'dpad') { w.state.up = false; w.state.down = false; w.state.left = false; w.state.right = false; }
+        if (w.type === 'keypad') w.state.value = '';
       }
     }
     this._emit('mode', { mode });
@@ -95,7 +116,10 @@ export class ControllerPanel {
       type,
       config: { ...DEFAULTS[type], ...config },
       state: { ...DEFAULTS[type] },
-      layout: { x: layout.x ?? 0, y: layout.y ?? 0 },
+      // Placement + presentation: x/y and any editor fields (w/h/rotation/
+      // color/label) survive verbatim. NOT state: state.{x,y} is a
+      // joystick's INPUT value; layout is where the widget SITS.
+      layout: { x: 0, y: 0, ...layout },
       binding: null,
     };
     // state is mutable; config is the template.
@@ -104,6 +128,9 @@ export class ControllerPanel {
     if (type === 'dial') w.state = { value: config.value ?? w.config.min };
     if (type === 'gauge') w.state = { value: config.value ?? w.config.min };
     if (type === 'matrix') w.state = { value: config.value ?? 0 };
+    if (type === 'keypad') w.state = { value: '' };
+    if (type === 'lcd') w.state = { text: '' };
+    if (type === 'sevenseg') w.state = { value: config.value ?? 0 };
     this._widgets.set(name, w);
     this._emit('add', { name, type });
     return w;
@@ -114,17 +141,56 @@ export class ControllerPanel {
     this._emit('remove', { name });
   }
 
-  renameWidget(oldName, newName) {
-    if (!this._widgets.has(oldName)) throw new Error(`Widget '${oldName}' not found`);
-    if (this._widgets.has(newName)) throw new Error(`Widget '${newName}' already exists`);
-    const w = this._widgets.get(oldName);
-    this._widgets.delete(oldName);
-    w.name = newName;
-    this._widgets.set(newName, w);
-    this._emit('rename', { oldName, newName });
+  getWidget(name) { return this._widgets.get(name) ?? null; }
+
+  /**
+   * Merge layout fields (placement/size/rotation/color/label). Emits
+   * 'layout' so views re-render and hosts persist.
+   * @param {string} name
+   * @param {object} patch
+   */
+  setWidgetLayout(name, patch) {
+    const w = this._requireWidget(name);
+    w.layout = { ...w.layout, ...patch };
+    this._emit('layout', { name });
+    return w;
   }
 
-  getWidget(name) { return this._widgets.get(name) ?? null; }
+  /**
+   * Merge config fields (a text decoration's text/fontSize/color, an
+   * image's src…). Emits 'config' so views re-render and hosts persist.
+   * @param {string} name
+   * @param {object} patch
+   */
+  setWidgetConfig(name, patch) {
+    const w = this._requireWidget(name);
+    w.config = { ...w.config, ...patch };
+    this._emit('config', { name });
+    return w;
+  }
+
+  /**
+   * Rename a widget. The widget OBJECT moves (binding, layout, state all
+   * travel with it), so nothing is orphaned; refuses collisions and empty
+   * names. Emits 'rename' with both names so hosts can re-key anything
+   * external.
+   * @param {string} oldName
+   * @param {string} newName
+   */
+  renameWidget(oldName, newName) {
+    const w = this._requireWidget(oldName);
+    newName = String(newName || '').trim();
+    if (!newName) throw new Error('Widget name cannot be empty');
+    if (newName === oldName) return w;
+    if (this._widgets.has(newName)) throw new Error(`Widget '${newName}' already exists`);
+    // rebuild the map so iteration order (== paint order) is preserved
+    const entries = [...this._widgets.entries()].map(([k, v]) =>
+      k === oldName ? [newName, v] : [k, v]);
+    this._widgets = new Map(entries);
+    w.name = newName;
+    this._emit('rename', { oldName, newName });
+    return w;
+  }
   getWidgetNames() { return [...this._widgets.keys()]; }
   getWidgets() { return [...this._widgets.values()]; }
 
@@ -224,6 +290,47 @@ export class ControllerPanel {
     this._emit('input', { name, value: w.state.value });
   }
 
+  /**
+   * Press a key on a keypad widget.  Writes the key label (or index) to
+   * the widget's value, which the binding pump pushes to the bound variable.
+   * @param {string} name
+   * @param {number} index - Key index (0-based, row-major).
+   */
+  setKeypadInput(name, index) {
+    const w = this._requireWidget(name, 'keypad');
+    const total = (w.config.cols ?? 4) * (w.config.rows ?? 4);
+    if (index < 0 || index >= total) return;
+    const labels = w.config.labels;
+    w.state.value = labels ? (labels[index] ?? '') : String(index);
+    this._emit('input', { name, value: w.state.value, index });
+  }
+
+  /**
+   * Set the text on an LCD display widget.  The LCD is a DISPLAY widget —
+   * this is called by the binding pump when a variable changes, not by
+   * the user directly.
+   * @param {string} name
+   * @param {string} text
+   */
+  setLcdText(name, text) {
+    const w = this._requireWidget(name, 'lcd');
+    w.state.text = String(text);
+    this._emit('input', { name, text: w.state.text });
+  }
+
+  /**
+   * Set 7-segment display value. Read-only indicator like the gauge: driven
+   * by the program (variable binding), never by touch. Stores the raw
+   * number; the face truncates to integer and handles overflow.
+   * @param {string} name
+   * @param {number} value
+   */
+  setSevenSegValue(name, value) {
+    const w = this._requireWidget(name, 'sevenseg');
+    w.state.value = Number(value) || 0;
+    this._emit('input', { name, value: w.state.value });
+  }
+
   // ── State query (program-facing API for extension blocks) ─────────────
 
   /** Scalar value for any widget (slider/dial/gauge value, button 0/1, joystick magnitude, dpad bitmask). */
@@ -235,6 +342,7 @@ export class ControllerPanel {
       case 'dial':
       case 'gauge':
       case 'matrix':
+      case 'sevenseg':
         return w.state.value;
       case 'button':
         return w.state.pressed ? 1 : 0;
@@ -244,6 +352,10 @@ export class ControllerPanel {
         // Bitmask: up=1, down=2, left=4, right=8
         return (w.state.up ? 1 : 0) | (w.state.down ? 2 : 0)
              | (w.state.left ? 4 : 0) | (w.state.right ? 8 : 0);
+      case 'keypad':
+        return w.state.value;
+      case 'lcd':
+        return w.state.text;
       default:
         return 0;
     }

@@ -276,7 +276,7 @@
   "thumbnail": "07-buzzer-siren/thumb.svg",
   "files": {
    "program": "07-buzzer-siren/program.bw",
-   "circuit": "07-buzzer-siren/circuit.json",
+   "circuit": "07-buzzer-siren/circuit.stc12c5a60s2.json",
    "expected": "07-buzzer-siren/EXPECTED.md",
    "intro": "07-buzzer-siren/intro.md",
    "introDE": "07-buzzer-siren/intro.de.md"
@@ -290,7 +290,14 @@
    "arduino-nano": "tone is not ported to this core yet",
    "pico": "tone is not ported to this core yet"
   },
-  "tier": "arch"
+  "tier": "arch",
+  "devices": [
+   "stc12c5a60s2"
+  ],
+  "benches": {
+   "stc12c5a60s2": "07-buzzer-siren/circuit.stc12c5a60s2.json"
+  },
+  "authored": "stc12c5a60s2"
  },
  {
   "id": "08-led-chaser-595",
@@ -303,7 +310,7 @@
   "thumbnail": "08-led-chaser-595/thumb.svg",
   "files": {
    "program": "08-led-chaser-595/program.bw",
-   "circuit": "08-led-chaser-595/circuit.json",
+   "circuit": "08-led-chaser-595/circuit.stc12c5a60s2.json",
    "expected": "08-led-chaser-595/EXPECTED.md",
    "intro": "08-led-chaser-595/intro.md",
    "introDE": "08-led-chaser-595/intro.de.md"
@@ -330,7 +337,8 @@
    "attiny88": "08-led-chaser-595/circuit.attiny88.json",
    "pico": "08-led-chaser-595/circuit.pico.json",
    "stc15f2k60s2": "08-led-chaser-595/circuit.stc15f2k60s2.json",
-   "stc89c52rc": "08-led-chaser-595/circuit.stc89c52rc.json"
+   "stc89c52rc": "08-led-chaser-595/circuit.stc89c52rc.json",
+   "stc12c5a60s2": "08-led-chaser-595/circuit.stc12c5a60s2.json"
   },
   "authored": "stc12c5a60s2"
  },
@@ -1215,12 +1223,19 @@
   "thumbnail": "33-inductive-no-flyback/thumb.svg",
   "files": {
    "program": "33-inductive-no-flyback/program.bw",
-   "circuit": "33-inductive-no-flyback/circuit.json",
+   "circuit": "33-inductive-no-flyback/circuit.stc12c5a60s2.json",
    "expected": "33-inductive-no-flyback/EXPECTED.md",
    "intro": "33-inductive-no-flyback/intro.md",
    "introDE": "33-inductive-no-flyback/intro.de.md"
   },
-  "kind": "circuit"
+  "kind": "circuit",
+  "tier": "arch",
+  "devices": [
+   "stc12c5a60s2"
+  ],
+  "benches": {
+   "stc12c5a60s2": "33-inductive-no-flyback/circuit.stc12c5a60s2.json"
+  }
  },
  {
   "id": "34-ohms-law",
@@ -1642,10 +1657,17 @@
   "difficulty": 3,
   "files": {
    "program": "51-tft-pixels/program.bw",
-   "circuit": "51-tft-pixels/circuit.json",
+   "circuit": "51-tft-pixels/circuit.stc12c5a60s2.json",
    "expected": "51-tft-pixels/EXPECTED.md",
    "intro": "51-tft-pixels/intro.md",
    "introDE": "51-tft-pixels/intro.de.md"
+  },
+  "tier": "arch",
+  "devices": [
+   "stc12c5a60s2"
+  ],
+  "benches": {
+   "stc12c5a60s2": "51-tft-pixels/circuit.stc12c5a60s2.json"
   }
  },
  {
@@ -6366,6 +6388,183 @@
    "expected": "76-multimeter/EXPECTED.md",
    "intro": "76-multimeter/intro.md",
    "introDE": "76-multimeter/intro.de.md"
+  }
+ },
+ {
+  "id": "77-keypad-keyshow",
+  "title": {
+   "en": "Keypad keyshow (4×4 → 7-seg)",
+   "de": "Tastenfeld-Keyshow (4×4 → 7-Segment)"
+  },
+  "category": "digital",
+  "difficulty": 2,
+  "kind": "full",
+  "devices": [
+   "stc89c52rc"
+  ],
+  "authored": "stc89c52rc",
+  "files": {
+   "program": "77-keypad-keyshow/program.bw",
+   "circuit": "77-keypad-keyshow/circuit.json",
+   "expected": "77-keypad-keyshow/EXPECTED.md",
+   "intro": "77-keypad-keyshow/intro.md",
+   "introDE": "77-keypad-keyshow/intro.de.md"
+  }
+ },
+ {
+  "id": "78-a2-calculator",
+  "title": {
+   "en": "The A2 calculator (8 digits, 4×4 keypad)",
+   "de": "Der A2-Taschenrechner (8 Ziffern, 4×4-Tastenfeld)"
+  },
+  "category": "digital",
+  "difficulty": 4,
+  "kind": "full",
+  "devices": [
+   "stc89c52rc"
+  ],
+  "authored": "stc89c52rc",
+  "files": {
+   "program": "78-a2-calculator/program.bw",
+   "circuit": "78-a2-calculator/circuit.json",
+   "expected": "78-a2-calculator/EXPECTED.md",
+   "intro": "78-a2-calculator/intro.md",
+   "introDE": "78-a2-calculator/intro.de.md"
+  }
+ },
+ {
+  "id": "mb01-display",
+  "title": {
+   "en": "micro:bit Display Demo",
+   "de": "micro:bit Display-Demo"
+  },
+  "category": "microbit",
+  "difficulty": 1,
+  "files": {
+   "program": "mb01-display/program.bw",
+   "expected": "mb01-display/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ],
+  "authored": "microbit"
+ },
+ {
+  "id": "mb02-sensors",
+  "title": {
+   "en": "micro:bit Sensor Readout",
+   "de": "micro:bit Sensor-Abfrage"
+  },
+  "category": "microbit",
+  "difficulty": 1,
+  "files": {
+   "program": "mb02-sensors/program.bw",
+   "expected": "mb02-sensors/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ],
+  "authored": "microbit"
+ },
+ {
+  "id": "mb03-pins",
+  "title": {
+   "en": "micro:bit Pin I/O",
+   "de": "micro:bit Pin-E/A"
+  },
+  "category": "microbit",
+  "difficulty": 2,
+  "files": {
+   "program": "mb03-pins/program.bw",
+   "expected": "mb03-pins/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ],
+  "authored": "microbit"
+ },
+ {
+  "id": "mb04-radio",
+  "title": {
+   "en": "micro:bit Radio Send",
+   "de": "micro:bit Funk-Senden"
+  },
+  "category": "microbit",
+  "difficulty": 2,
+  "files": {
+   "program": "mb04-radio/program.bw",
+   "expected": "mb04-radio/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ],
+  "authored": "microbit"
+ },
+ {
+  "id": "79-a2-sampler",
+  "title": {
+   "en": "The A2 sampler (keypad + display + LEDs)",
+   "de": "Der A2-Sampler (Tastenfeld + Anzeige + LEDs)"
+  },
+  "category": "digital",
+  "difficulty": 3,
+  "kind": "program",
+  "devices": [
+   "stc89c52rc"
+  ],
+  "authored": "stc89c52rc",
+  "deviceOnly": true,
+  "expectedWarnings": [
+   "shares a port with"
+  ],
+  "files": {
+   "program": "79-a2-sampler/program.bw",
+   "expected": "79-a2-sampler/EXPECTED.md",
+   "intro": "79-a2-sampler/intro.md",
+   "introDE": "79-a2-sampler/intro.de.md"
+  }
+ },
+ {
+  "id": "mb05-lesson",
+  "title": {
+   "en": "micro:bit First Lesson",
+   "de": "micro:bit Erste Lektion"
+  },
+  "category": "microbit",
+  "difficulty": 1,
+  "files": {
+   "program": "mb05-lesson/program.bw",
+   "expected": "mb05-lesson/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ],
+  "authored": "microbit"
+ },
+ {
+  "id": "mb05-faceplate-matrix",
+  "title": {
+   "en": "Matrix faceplate (controller panel)",
+   "de": "Matrix-Faceplate (Controller-Panel)"
+  },
+  "category": "microbit",
+  "difficulty": 2,
+  "kind": "program",
+  "devices": [
+   "microbit"
+  ],
+  "authored": "microbit",
+  "files": {
+   "program": "mb05-faceplate-matrix/program.bw",
+   "controller": "mb05-faceplate-matrix/controller.json",
+   "expected": "mb05-faceplate-matrix/EXPECTED.md",
+   "intro": "mb05-faceplate-matrix/intro.md",
+   "introDE": "mb05-faceplate-matrix/intro.de.md"
   }
  }
 ]
