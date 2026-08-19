@@ -119,7 +119,7 @@ export function bindPanelToVariables(panel, vm, opts = {}) {
   };
 
   // Which widget types READ from the variable (displays), vs WRITE to it (inputs).
-  const isDisplay = (w) => w.type === 'gauge' || w.type === 'matrix';   // + display/sevenseg as they land
+  const isDisplay = (w) => w.type === 'gauge' || w.type === 'matrix' || w.type === 'sevenseg';
 
   // widget -> variable (inputs)
   function onPanelEvent(event, detail) {
@@ -146,6 +146,8 @@ export function bindPanelToVariables(panel, vm, opts = {}) {
           panel.setGaugeValue(w.name, nv);
         } else if (typeof panel.setMatrixValue === 'function' && w.type === 'matrix') {
           panel.setMatrixValue(w.name, nv);
+        } else if (typeof panel.setSevenSegValue === 'function' && w.type === 'sevenseg') {
+          panel.setSevenSegValue(w.name, nv);
         }
       }
     }

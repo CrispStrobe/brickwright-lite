@@ -247,12 +247,67 @@ function MatrixWidget({ widget }) {
     );
 }
 
+// ─── Seven-segment display face ───────────────────────────────────────────
+// Read-only numeric face: the bound variable's value, truncated to integer,
+// right-aligned across config.digits tubes; dashes when it does not fit.
+// Classic segment layout per tube (a top, g middle, dp omitted).
+
+const SEVENSEG_FONT = {
+    '0': 0x3F, '1': 0x06, '2': 0x5B, '3': 0x4F, '4': 0x66,
+    '5': 0x6D, '6': 0x7D, '7': 0x07, '8': 0x7F, '9': 0x6F,
+    '-': 0x40, ' ': 0x00
+};
+
+function SevenSegDigit({ bits }) {
+    // segment geometry inside a 22x36 tube: a,b,c,d,e,f,g (bit 0..6)
+    const on = (i) => (bits >> i) & 1;
+    const seg = (lit, style) => (
+        <div style={{
+            position: 'absolute', background: lit ? '#f87171' : '#374151',
+            boxShadow: lit ? '0 0 4px rgba(248,113,113,0.8)' : 'none',
+            borderRadius: 2, ...style
+        }} />
+    );
+    return (
+        <div style={{ position: 'relative', width: 22, height: 36 }}>
+            {seg(on(0), { left: 4, top: 0, width: 14, height: 4 })}
+            {seg(on(1), { right: 0, top: 3, width: 4, height: 13 })}
+            {seg(on(2), { right: 0, bottom: 3, width: 4, height: 13 })}
+            {seg(on(3), { left: 4, bottom: 0, width: 14, height: 4 })}
+            {seg(on(4), { left: 0, bottom: 3, width: 4, height: 13 })}
+            {seg(on(5), { left: 0, top: 3, width: 4, height: 13 })}
+            {seg(on(6), { left: 4, top: 16, width: 14, height: 4 })}
+        </div>
+    );
+}
+
+function SevenSegWidget({ widget }) {
+    const digits = (widget.config.digits | 0) || 4;
+    const raw = Math.trunc(Number(widget.state.value) || 0);
+    const neg = raw < 0;
+    let text = String(Math.abs(raw));
+    let shown;
+    if (text.length + (neg ? 1 : 0) > digits) shown = '-'.repeat(digits);
+    else shown = ((neg ? '-' : '') + text).padStart(digits, ' ');
+    return (
+        <div data-testid={`bw-ctl-sevenseg-${widget.name}`} data-shown={shown}
+            style={{
+                display: 'flex', gap: 4, padding: '8px 10px',
+                background: '#111827', borderRadius: 8
+            }}>
+            {shown.split('').map((ch, i) => (
+                <SevenSegDigit key={i} bits={SEVENSEG_FONT[ch] ?? 0x40} />
+            ))}
+        </div>
+    );
+}
+
 // ─── Widget card (edit mode wrapper) ──────────────────────────────────────
 
 function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
-        dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix'
+        dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg'
     };
     const bindingLabel = widget.binding
         ? (widget.binding.target === 'part'
@@ -364,6 +419,10 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
 
             {widget.type === 'matrix' && (
                 <MatrixWidget widget={widget} />
+            )}
+
+            {widget.type === 'sevenseg' && (
+                <SevenSegWidget widget={widget} />
             )}
 
             {mode === 'edit' && (

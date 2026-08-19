@@ -179,6 +179,45 @@ await buttons.nth(1).dispatchEvent('pointerup');
     }
 }
 
+// ---- sevenseg display: the numeric face follows a variable live -------------
+{
+    await page.evaluate(() => {
+        const p = window.__vm.runtime.controllerPanel;
+        try { p.removeWidget('num'); } catch { /* absent */ }
+        p.addWidget('num', 'sevenseg');
+        p.bindToVariable('num', 'screen');   // reuse the live program variable
+        p.setMode('play');
+    });
+    // the catalog scene replaced the project — restart the program so the
+    // idle loop drives `screen` again
+    await page.evaluate(() => window.__vm.greenFlag());
+    // re-open the controller view to see the face
+    await page.locator('[title="Controller"]').first().click().catch(() => {});
+    await page.waitForTimeout(800);
+    const seg = page.locator('[data-testid="bw-ctl-sevenseg-num"]');
+    await seg.waitFor({ timeout: 10000 }).catch(() => fail('sevenseg face did not render'));
+    // the program is still running: idle keeps screen=1 -> face shows "   1"
+    await page.waitForFunction(() => {
+        const el = document.querySelector('[data-testid="bw-ctl-sevenseg-num"]');
+        return el && el.getAttribute('data-shown') === '   1';
+    }, { timeout: 15000 })
+        .then(() => pass('sevenseg shows the live variable (right-aligned "   1")'))
+        .catch(async () => fail('sevenseg never showed 1: data-shown='
+            + JSON.stringify(await seg.getAttribute('data-shown'))));
+    // drive the variable to the X pattern value via button A: 18157905 does
+    // not fit 4 digits -> dashes (the overflow contract)
+    const btnA = page.locator('button').filter({ hasText: '●' }).first();
+    await btnA.dispatchEvent('pointerdown');
+    await page.waitForFunction(() => {
+        const el = document.querySelector('[data-testid="bw-ctl-sevenseg-num"]');
+        return el && el.getAttribute('data-shown') === '----';
+    }, { timeout: 10000 })
+        .then(() => pass('overflow renders dashes (8-digit value on a 4-digit face)'))
+        .catch(async () => fail('overflow contract broken: data-shown='
+            + JSON.stringify(await seg.getAttribute('data-shown'))));
+    await btnA.dispatchEvent('pointerup');
+}
+
 await browser.close();
 console.log(process.exitCode ? 'FACEPLATE GATE: FAIL' : 'FACEPLATE GATE: PASS');
 process.exit(process.exitCode || 0);
