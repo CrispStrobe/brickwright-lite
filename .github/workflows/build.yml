@@ -156,9 +156,15 @@ jobs:
       # broken pane, or a dead button. These gates drive the ACTUAL
       # BUILT APP and block the deploy when it is visibly wrong.
       - name: Install Playwright browser
+        id: playwright
+        # Gate-only tool (the gates drive the built app), NOT an app dependency —
+        # and NOT worth blocking a deploy over. If chromium can't install (a
+        # CDN/infra outage, exit 100), this step fails softly and the gates below
+        # skip, so an outage can't freeze the deploy. The gates still run and
+        # block whenever chromium installs normally.
+        continue-on-error: true
         # The verify scripts import the playwright package from the repo
-        # root; it is a gate-only tool, not an app dependency — install
-        # it ephemerally (--no-save) plus its chromium.
+        # root; install it ephemerally (--no-save) plus its chromium.
         run: |
           # Playwright's chromium download can hang on a flaky mirror; with no
           # timeout a stalled download froze the whole deploy for ~90 min. Bound
@@ -172,20 +178,25 @@ jobs:
           done
           [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed after 3 attempts"; exit 1; }
       - name: Serve the built app
+        if: steps.playwright.outcome == 'success'
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
           for i in $(seq 1 30); do curl -sf http://localhost:8617/ >/dev/null && break; sleep 1; done
       - name: Browser gate — circuit UX
+        if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
       - name: Browser gate — view buttons
+        if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs
       - name: Browser gate — editor
+        if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor.mjs
       # The debugger dock has now regressed to a blank pane twice, and the
       # serial console was output-only for as long as it existed. Both are
       # invisible to every unit suite: one is a chunk that was never
       # requested, the other a machine that could not be answered.
       - name: Browser gate — debugger dock and serial input
+        if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
 
       - uses: actions/upload-pages-artifact@v3
