@@ -86,7 +86,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "02-dimmer/circuit.arduino-mega.json",
@@ -126,7 +126,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "03-night-light/circuit.arduino-mega.json",
@@ -166,7 +166,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "04-thermostat/circuit.arduino-mega.json",
@@ -183,7 +183,7 @@
   "id": "05-counter",
   "title": {
    "en": "Button counter with LED blinks",
-   "de": "Tastenz\u00e4hler mit LED-Blinken"
+   "de": "Tastenzähler mit LED-Blinken"
   },
   "category": "basics",
   "difficulty": 2,
@@ -276,7 +276,7 @@
   "thumbnail": "07-buzzer-siren/thumb.svg",
   "files": {
    "program": "07-buzzer-siren/program.bw",
-   "circuit": "07-buzzer-siren/circuit.json",
+   "circuit": "07-buzzer-siren/circuit.stc12c5a60s2.json",
    "expected": "07-buzzer-siren/EXPECTED.md",
    "intro": "07-buzzer-siren/intro.md",
    "introDE": "07-buzzer-siren/intro.de.md"
@@ -290,7 +290,14 @@
    "arduino-nano": "tone is not ported to this core yet",
    "pico": "tone is not ported to this core yet"
   },
-  "tier": "arch"
+  "tier": "arch",
+  "devices": [
+   "stc12c5a60s2"
+  ],
+  "benches": {
+   "stc12c5a60s2": "07-buzzer-siren/circuit.stc12c5a60s2.json"
+  },
+  "authored": "stc12c5a60s2"
  },
  {
   "id": "08-led-chaser-595",
@@ -303,7 +310,7 @@
   "thumbnail": "08-led-chaser-595/thumb.svg",
   "files": {
    "program": "08-led-chaser-595/program.bw",
-   "circuit": "08-led-chaser-595/circuit.json",
+   "circuit": "08-led-chaser-595/circuit.stc12c5a60s2.json",
    "expected": "08-led-chaser-595/EXPECTED.md",
    "intro": "08-led-chaser-595/intro.md",
    "introDE": "08-led-chaser-595/intro.de.md"
@@ -330,7 +337,8 @@
    "attiny88": "08-led-chaser-595/circuit.attiny88.json",
    "pico": "08-led-chaser-595/circuit.pico.json",
    "stc15f2k60s2": "08-led-chaser-595/circuit.stc15f2k60s2.json",
-   "stc89c52rc": "08-led-chaser-595/circuit.stc89c52rc.json"
+   "stc89c52rc": "08-led-chaser-595/circuit.stc89c52rc.json",
+   "stc12c5a60s2": "08-led-chaser-595/circuit.stc12c5a60s2.json"
   },
   "authored": "stc12c5a60s2"
  },
@@ -404,7 +412,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "10-motor-speed/circuit.arduino-mega.json",
@@ -616,7 +624,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "15-voltage-divider/circuit.arduino-mega.json",
@@ -656,7 +664,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "16-ldr-bargraph/circuit.arduino-mega.json",
@@ -696,7 +704,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "17-comparator/circuit.arduino-mega.json",
@@ -799,7 +807,7 @@
   "id": "20-shift-register-binary",
   "title": {
    "en": "Binary counter on shift register",
-   "de": "Bin\u00e4rz\u00e4hler auf Schieberegister"
+   "de": "Binärzähler auf Schieberegister"
   },
   "category": "digital",
   "difficulty": 3,
@@ -1215,12 +1223,19 @@
   "thumbnail": "33-inductive-no-flyback/thumb.svg",
   "files": {
    "program": "33-inductive-no-flyback/program.bw",
-   "circuit": "33-inductive-no-flyback/circuit.json",
+   "circuit": "33-inductive-no-flyback/circuit.stc12c5a60s2.json",
    "expected": "33-inductive-no-flyback/EXPECTED.md",
    "intro": "33-inductive-no-flyback/intro.md",
    "introDE": "33-inductive-no-flyback/intro.de.md"
   },
-  "kind": "circuit"
+  "kind": "circuit",
+  "tier": "arch",
+  "devices": [
+   "stc12c5a60s2"
+  ],
+  "benches": {
+   "stc12c5a60s2": "33-inductive-no-flyback/circuit.stc12c5a60s2.json"
+  }
  },
  {
   "id": "34-ohms-law",
@@ -1511,7 +1526,7 @@
   "id": "49-lcd-hello",
   "title": {
    "en": "I2C LCD: hello + counter",
-   "de": "I2C-LCD: Hallo + Z\u00e4hler"
+   "de": "I2C-LCD: Hallo + Zähler"
   },
   "category": "digital",
   "difficulty": 2,
@@ -1553,7 +1568,7 @@
   "id": "55-oled-hello",
   "title": {
    "en": "I2C OLED: hello + counter",
-   "de": "I2C-OLED: Hallo + Z\u00e4hler"
+   "de": "I2C-OLED: Hallo + Zähler"
   },
   "category": "digital",
   "difficulty": 2,
@@ -1642,10 +1657,17 @@
   "difficulty": 3,
   "files": {
    "program": "51-tft-pixels/program.bw",
-   "circuit": "51-tft-pixels/circuit.json",
+   "circuit": "51-tft-pixels/circuit.stc12c5a60s2.json",
    "expected": "51-tft-pixels/EXPECTED.md",
    "intro": "51-tft-pixels/intro.md",
    "introDE": "51-tft-pixels/intro.de.md"
+  },
+  "tier": "arch",
+  "devices": [
+   "stc12c5a60s2"
+  ],
+  "benches": {
+   "stc12c5a60s2": "51-tft-pixels/circuit.stc12c5a60s2.json"
   }
  },
  {
@@ -1719,8 +1741,8 @@
  {
   "id": "53-servo-sweep",
   "title": {
-   "en": "Servo sweep 0\u00b0\u2013180\u00b0",
-   "de": "Servo-Schwenk 0\u00b0\u2013180\u00b0"
+   "en": "Servo sweep 0°–180°",
+   "de": "Servo-Schwenk 0°–180°"
   },
   "kind": "program",
   "category": "motors",
@@ -1745,7 +1767,7 @@
    "attiny85"
   ],
   "refusals": {
-   "stc89c52rc": "servo needs the PCA \u2014 stc89c52rc has none"
+   "stc89c52rc": "servo needs the PCA — stc89c52rc has none"
   },
   "benches": {
    "arduino-mega": "53-servo-sweep/circuit.arduino-mega.json",
@@ -1764,7 +1786,7 @@
   "id": "54-motor-driver",
   "title": {
    "en": "DC motor with L293D H-bridge",
-   "de": "DC-Motor mit L293D-H-Br\u00fccke"
+   "de": "DC-Motor mit L293D-H-Brücke"
   },
   "kind": "program",
   "category": "motors",
@@ -1844,7 +1866,7 @@
   "id": "pc03-series-resistors",
   "title": {
    "en": "Resistors in series",
-   "de": "Widerst\u00e4nde in Reihe"
+   "de": "Widerstände in Reihe"
   },
   "category": "pure-circuit",
   "difficulty": 1,
@@ -2204,7 +2226,7 @@
   "id": "pc21-rc-smoothing",
   "title": {
    "en": "RC smoothing",
-   "de": "RC-Gl\u00e4ttung"
+   "de": "RC-Glättung"
   },
   "category": "pure-circuit",
   "difficulty": 2,
@@ -2221,7 +2243,7 @@
   "id": "pc22-diode-selector",
   "title": {
    "en": "Diode power selector",
-   "de": "Dioden-Stromw\u00e4hler"
+   "de": "Dioden-Stromwähler"
   },
   "category": "pure-circuit",
   "difficulty": 2,
@@ -2374,7 +2396,7 @@
   "id": "pc31-bridge-rectifier",
   "title": {
    "en": "Bridge rectifier",
-   "de": "Br\u00fcckengleichrichter"
+   "de": "Brückengleichrichter"
   },
   "category": "pure-circuit",
   "difficulty": 3,
@@ -2599,7 +2621,7 @@
   "id": "pc40-opamp-threshold",
   "title": {
    "en": "Op-amp threshold",
-   "de": "Operationsverst\u00e4rker-Schwelle"
+   "de": "Operationsverstärker-Schwelle"
   },
   "category": "pure-circuit",
   "difficulty": 3,
@@ -2837,7 +2859,7 @@
   "id": "pc54-opamp-follower",
   "title": {
    "en": "Op-amp voltage follower",
-   "de": "Operationsverst\u00e4rker-Spannungsfolger"
+   "de": "Operationsverstärker-Spannungsfolger"
   },
   "category": "pure-circuit",
   "difficulty": 3,
@@ -2871,7 +2893,7 @@
   "id": "pc56-inductor-freewheel",
   "title": {
    "en": "Inductor freewheel path",
-   "de": "Freilaufpfad f\u00fcr Induktivit\u00e4t"
+   "de": "Freilaufpfad für Induktivität"
   },
   "category": "pure-circuit",
   "difficulty": 3,
@@ -3672,7 +3694,7 @@
   "id": "arduino-02-tone-pitch-follower",
   "title": {
    "en": "Pitch Follower",
-   "de": "Tonh\u00f6henfolger"
+   "de": "Tonhöhenfolger"
   },
   "category": "digital",
   "difficulty": 2,
@@ -3888,7 +3910,7 @@
   "id": "arduino-03-smoothing",
   "title": {
    "en": "Smoothing",
-   "de": "Gl\u00e4ttung"
+   "de": "Glättung"
   },
   "category": "analog",
   "difficulty": 2,
@@ -4100,7 +4122,7 @@
   },
   "authored": "arduino-uno",
   "transformRefused": {
-   "attiny85": "MCU terminal d7 is wired but has no mapping on attiny85 \u2014 refusing rather than dropping the connection"
+   "attiny85": "MCU terminal d7 is wired but has no mapping on attiny85 — refusing rather than dropping the connection"
   }
  },
  {
@@ -5189,7 +5211,7 @@
   "id": "blinkenrocket-pendant",
   "title": {
    "en": "Blinkenrocket Pendant",
-   "de": "Blinkenrocket-Anh\u00e4nger"
+   "de": "Blinkenrocket-Anhänger"
   },
   "category": "digital",
   "difficulty": 3,
@@ -6021,7 +6043,7 @@
   "id": "pc83-gluecksrad",
   "title": {
    "en": "Wheel of Fortune: Shake Roulette",
-   "de": "Gl\u00fccksrad: Sch\u00fcttel-Roulette"
+   "de": "Glücksrad: Schüttel-Roulette"
   },
   "kind": "circuit",
   "category": "pure-circuit",
@@ -6151,7 +6173,7 @@
   "id": "61-console-pong",
   "title": {
    "en": "Retro console: Ball & Paddle",
-   "de": "Retro-Konsole: Ball & Schl\u00e4ger"
+   "de": "Retro-Konsole: Ball & Schläger"
   },
   "category": "digital",
   "difficulty": 3,
@@ -6369,155 +6391,159 @@
   }
  },
  {
-  "id": "mbit01-display",
+  "id": "77-keypad-keyshow",
   "title": {
-   "en": "micro:bit Heart Animation",
-   "de": "micro:bit Herz-Animation"
+   "en": "Keypad keyshow (4×4 → 7-seg)",
+   "de": "Tastenfeld-Keyshow (4×4 → 7-Segment)"
+  },
+  "category": "digital",
+  "difficulty": 2,
+  "kind": "full",
+  "devices": [
+   "stc89c52rc"
+  ],
+  "authored": "stc89c52rc",
+  "files": {
+   "program": "77-keypad-keyshow/program.bw",
+   "circuit": "77-keypad-keyshow/circuit.json",
+   "expected": "77-keypad-keyshow/EXPECTED.md",
+   "intro": "77-keypad-keyshow/intro.md",
+   "introDE": "77-keypad-keyshow/intro.de.md"
+  }
+ },
+ {
+  "id": "78-a2-calculator",
+  "title": {
+   "en": "The A2 calculator (8 digits, 4×4 keypad)",
+   "de": "Der A2-Taschenrechner (8 Ziffern, 4×4-Tastenfeld)"
+  },
+  "category": "digital",
+  "difficulty": 4,
+  "kind": "full",
+  "devices": [
+   "stc89c52rc"
+  ],
+  "authored": "stc89c52rc",
+  "files": {
+   "program": "78-a2-calculator/program.bw",
+   "circuit": "78-a2-calculator/circuit.json",
+   "expected": "78-a2-calculator/EXPECTED.md",
+   "intro": "78-a2-calculator/intro.md",
+   "introDE": "78-a2-calculator/intro.de.md"
+  }
+ },
+ {
+  "id": "mb01-display",
+  "title": {
+   "en": "micro:bit Display Demo",
+   "de": "micro:bit Display-Demo"
   },
   "category": "microbit",
   "difficulty": 1,
   "files": {
-   "program": "mbit01-display/program.bw",
-   "intro": "mbit01-display/intro.md",
-   "introDE": "mbit01-display/intro.de.md",
-   "expected": "mbit01-display/EXPECTED.md"
+   "program": "mb01-display/program.bw",
+   "expected": "mb01-display/EXPECTED.md"
   },
   "kind": "program",
   "devices": [
    "microbit"
-  ]
+  ],
+  "authored": "microbit"
  },
  {
-  "id": "mbit02-sensor",
+  "id": "mb02-sensors",
   "title": {
-   "en": "micro:bit Temperature Display",
-   "de": "micro:bit Temperaturanzeige"
+   "en": "micro:bit Sensor Readout",
+   "de": "micro:bit Sensor-Abfrage"
   },
   "category": "microbit",
   "difficulty": 1,
   "files": {
-   "program": "mbit02-sensor/program.bw",
-   "intro": "mbit02-sensor/intro.md",
-   "introDE": "mbit02-sensor/intro.de.md",
-   "expected": "mbit02-sensor/EXPECTED.md"
+   "program": "mb02-sensors/program.bw",
+   "expected": "mb02-sensors/EXPECTED.md"
   },
   "kind": "program",
   "devices": [
    "microbit"
-  ]
+  ],
+  "authored": "microbit"
  },
  {
-  "id": "mbit03-pins",
+  "id": "mb03-pins",
   "title": {
-   "en": "micro:bit Blink & Beep",
-   "de": "micro:bit Blinken & Piepen"
+   "en": "micro:bit Pin I/O",
+   "de": "micro:bit Pin-E/A"
   },
   "category": "microbit",
   "difficulty": 2,
   "files": {
-   "program": "mbit03-pins/program.bw",
-   "intro": "mbit03-pins/intro.md",
-   "introDE": "mbit03-pins/intro.de.md",
-   "expected": "mbit03-pins/EXPECTED.md"
+   "program": "mb03-pins/program.bw",
+   "expected": "mb03-pins/EXPECTED.md"
   },
   "kind": "program",
   "devices": [
    "microbit"
-  ]
+  ],
+  "authored": "microbit"
  },
  {
-  "id": "mbit04-radio",
+  "id": "mb04-radio",
   "title": {
-   "en": "micro:bit Radio Counter",
-   "de": "micro:bit Funk-Z\u00e4hler"
+   "en": "micro:bit Radio Send",
+   "de": "micro:bit Funk-Senden"
   },
   "category": "microbit",
   "difficulty": 2,
   "files": {
-   "program": "mbit04-radio/program.bw",
-   "intro": "mbit04-radio/intro.md",
-   "introDE": "mbit04-radio/intro.de.md",
-   "expected": "mbit04-radio/EXPECTED.md"
+   "program": "mb04-radio/program.bw",
+   "expected": "mb04-radio/EXPECTED.md"
   },
   "kind": "program",
   "devices": [
    "microbit"
-  ]
+  ],
+  "authored": "microbit"
  },
  {
-  "id": "mbit05-combined",
+  "id": "79-a2-sampler",
   "title": {
-   "en": "micro:bit Temperature Alarm",
-   "de": "micro:bit Temperaturalarm"
+   "en": "The A2 sampler (keypad + display + LEDs)",
+   "de": "Der A2-Sampler (Tastenfeld + Anzeige + LEDs)"
   },
-  "category": "microbit",
-  "difficulty": 2,
+  "category": "digital",
+  "difficulty": 3,
+  "kind": "program",
+  "devices": [
+   "stc89c52rc"
+  ],
+  "authored": "stc89c52rc",
+  "deviceOnly": true,
+  "expectedWarnings": [
+   "shares a port with"
+  ],
   "files": {
-   "program": "mbit05-combined/program.bw",
-   "intro": "mbit05-combined/intro.md",
-   "introDE": "mbit05-combined/intro.de.md",
-   "expected": "mbit05-combined/EXPECTED.md"
-  },
-  "kind": "program",
-  "devices": [
-   "microbit"
-  ]
+   "program": "79-a2-sampler/program.bw",
+   "expected": "79-a2-sampler/EXPECTED.md",
+   "intro": "79-a2-sampler/intro.md",
+   "introDE": "79-a2-sampler/intro.de.md"
+  }
  },
  {
-  "id": "mbit06-gesture",
+  "id": "mb05-lesson",
   "title": {
-   "en": "micro:bit Shake Dice",
-   "de": "micro:bit Sch\u00fcttelw\u00fcrfel"
+   "en": "micro:bit First Lesson",
+   "de": "micro:bit Erste Lektion"
   },
   "category": "microbit",
   "difficulty": 1,
   "files": {
-   "program": "mbit06-gesture/program.bw",
-   "intro": "mbit06-gesture/intro.md",
-   "introDE": "mbit06-gesture/intro.de.md",
-   "expected": "mbit06-gesture/EXPECTED.md"
+   "program": "mb05-lesson/program.bw",
+   "expected": "mb05-lesson/EXPECTED.md"
   },
   "kind": "program",
   "devices": [
    "microbit"
-  ]
- },
- {
-  "id": "arcade01-dodge",
-  "title": {
-   "en": "Dodge Game",
-   "de": "Ausweichspiel"
-  },
-  "category": "microbit",
-  "difficulty": 2,
-  "files": {
-   "program": "arcade01-dodge/program.bw",
-   "intro": "arcade01-dodge/intro.md",
-   "introDE": "arcade01-dodge/intro.de.md",
-   "expected": "arcade01-dodge/EXPECTED.md"
-  },
-  "kind": "program",
-  "devices": [
-   "microbit"
-  ]
- },
- {
-  "id": "arcade02-pong",
-  "title": {
-   "en": "Pong",
-   "de": "Pong"
-  },
-  "category": "microbit",
-  "difficulty": 2,
-  "files": {
-   "program": "arcade02-pong/program.bw",
-   "intro": "arcade02-pong/intro.md",
-   "introDE": "arcade02-pong/intro.de.md",
-   "expected": "arcade02-pong/EXPECTED.md"
-  },
-  "kind": "program",
-  "devices": [
-   "microbit"
-  ]
+  ],
+  "authored": "microbit"
  }
 ]

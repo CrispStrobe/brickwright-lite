@@ -1,9 +1,0 @@
-DEVICE MICROBIT
-
-# micro:bit display demo — heart animation
-WHEN flag clicked:
-  FOREVER:
-    show pattern 01010:11111:11111:01110:00100
-    wait 0.5 seconds
-    show pattern 00000:01010:01110:00100:00000
-    wait 0.5 seconds

@@ -1,8 +1,0 @@
-DEVICE MICROBIT
-
-# micro:bit sensor demo — show temperature on display
-WHEN flag clicked:
-  FOREVER:
-    set variable t to read temperature
-    show text t
-    wait 2 seconds
