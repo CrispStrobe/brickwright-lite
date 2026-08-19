@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="372" viewBox="0 0 600 372" role="img" aria-label="Controller">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#5B21B6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.4" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="knob" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f3ff"/>
+      <stop offset="1" stop-color="#c4b5fd"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="372" fill="url(#bg)"/>
+  <rect width="600" height="372" fill="url(#glow)"/>
+
+  <!-- joystick: recessed well + knob + a nudge to the upper-right -->
+  <g transform="translate(150,150)">
+    <circle r="88" fill="#4c1d95" opacity="0.55"/>
+    <circle r="88" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="3"/>
+    <line x1="0" y1="0" x2="34" y2="-34" stroke="#ede9fe" stroke-width="10" stroke-linecap="round" opacity="0.7"/>
+    <circle cx="34" cy="-34" r="44" fill="url(#knob)"/>
+    <circle cx="34" cy="-34" r="44" fill="none" stroke="#6d28d9" stroke-width="3"/>
+  </g>
+
+  <!-- two round buttons -->
+  <g transform="translate(360,96)">
+    <circle r="34" fill="#a78bfa"/>
+    <circle r="34" fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-width="3"/>
+  </g>
+  <g transform="translate(360,196)">
+    <circle r="34" fill="#4c1d95"/>
+    <circle r="34" fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-width="3"/>
+  </g>
+
+  <!-- slider track + thumb -->
+  <g transform="translate(430,110)">
+    <rect x="0" y="0" width="16" height="140" rx="8" fill="#4c1d95" opacity="0.7"/>
+    <rect x="-12" y="46" width="40" height="22" rx="6" fill="url(#knob)"/>
+  </g>
+
+  <!-- gauge arc -->
+  <g transform="translate(508,196)">
+    <path d="M -46 0 A 46 46 0 0 1 46 0" fill="none" stroke="#4c1d95" stroke-width="12" stroke-linecap="round" opacity="0.7"/>
+    <path d="M -46 0 A 46 46 0 0 1 20 -41" fill="none" stroke="#ede9fe" stroke-width="12" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="18" y2="-30" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+    <circle r="6" fill="#ffffff"/>
+  </g>
+
+  <text x="300" y="330" font-family="Helvetica, Arial, sans-serif" font-size="52" font-weight="700" text-anchor="middle" fill="#ffffff">Controller</text>
+</svg>

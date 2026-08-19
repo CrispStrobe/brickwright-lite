@@ -32,6 +32,7 @@ const builtinExtensions = {
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     circuit: () => require('../extensions/crispstrobe/circuit'),
+    controller: () => require('../extensions/crispstrobe/controller'),
     // Device convenience blocks: servo, motor, relay, sensors, LCD, NeoPixel.
     // 7 stubs (showdigit, setrgb, setpixel, clearmatrix, devicestate, ircode,
     // whenirreceived) are hidden from the palette; methods remain so saved

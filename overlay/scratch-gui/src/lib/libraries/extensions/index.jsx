@@ -144,6 +144,14 @@ export default [
         featured: true
     },
     {
+        name: 'Controller',
+        extensionId: 'controller',
+        iconURL: 'static/extension-posters/controller.svg',
+        insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzdDM0FFRCIvPjxjaXJjbGUgY3g9IjI0IiBjeT0iMjYiIHI9IjE0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMi41IiBvcGFjaXR5PSIwLjYiLz48bGluZSB4MT0iMjQiIHkxPSIyNiIgeDI9IjMxIiB5Mj0iMTUiIHN0cm9rZT0iI2VkZTlmZSIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48Y2lyY2xlIGN4PSIzMSIgY3k9IjE1IiByPSI3IiBmaWxsPSIjZWRlOWZlIi8+PC9zdmc+',
+        description: 'Read and drive the Controller panel widgets — joysticks, buttons, sliders, gauges — from your blocks.',
+        featured: true
+    },
+    {
         name: 'Text to Speech',
         extensionId: 'brickwrightTTS',
         iconURL: 'static/extension-posters/tts.png',
