@@ -2793,7 +2793,7 @@
     return Object.entries(fileSystem).every(([k, v]) => typeof k === "string" && v instanceof Uint8Array);
   }
   var fetchWasm = async () => {
-    const response = await fetch("./build/firmware.wasm");
+    const response = await fetch(self.BW_WASM_URL || "./build/firmware.wasm");
     if (!response.ok) {
       throw new Error(response.statusText);
     }

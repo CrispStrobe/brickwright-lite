@@ -39,6 +39,27 @@ const FILES = [
     ['build/simulator.js', 'build/simulator.js']
 ];
 
+// Our own additions (NOT synced from upstream) — the line-level debugger's
+// firmware + loader. build-debug/firmware.wasm is a settrace-enabled build
+// (see build-debug/README.md); simulator-debug.html loads the shared glue and
+// points the wasm fetch at it. Verified present, never overwritten by sync.
+const OURS = ['build-debug/firmware.wasm', 'simulator-debug.html'];
+
+// simulator.js is vendored from upstream, but the debug loader needs its wasm
+// fetch to honour window.BW_WASM_URL. Re-apply that one-line patch after any
+// sync so a stock refresh never silently breaks the debug firmware path.
+async function patchSimulatorJs() {
+    const p = path.join(dest, 'build', 'simulator.js');
+    let js = await readFile(p, 'utf8');
+    if (js.includes('self.BW_WASM_URL || "./build/firmware.wasm"')) return false;
+    const before = 'await fetch("./build/firmware.wasm")';
+    const after = 'await fetch(self.BW_WASM_URL || "./build/firmware.wasm")';
+    if (!js.includes(before)) throw new Error('simulator.js: fetchWasm shape changed; update the debug-loader patch');
+    js = js.replace(before, after);
+    await writeFile(p, js);
+    return true;
+}
+
 if (srcDir) {
     await mkdir(path.join(dest, 'build'), {recursive: true});
     let changed = 0;
@@ -63,11 +84,16 @@ if (srcDir) {
         console.error(`\n${changed} stale — run: npm run sync:microbitsim -- --dir <build-dir>`);
         process.exit(1);
     }
+    if (!check) {
+        const patched = await patchSimulatorJs();
+        console.log(patched ? '  patched build/simulator.js (BW_WASM_URL debug-loader hook)'
+            : '  ok    build/simulator.js debug-loader hook present');
+    }
     console.log(check ? '\nmicro:bit sim assets up to date.' : '\nsynced micro:bit simulator assets.');
 } else {
-    // Just verify the vendored files exist
+    // Just verify the vendored files exist (stock + our debug additions)
     let missing = 0;
-    for (const [, rel] of FILES) {
+    for (const [, rel] of [...FILES, ...OURS.map((o) => [o, o])]) {
         const p = path.join(dest, rel);
         if (existsSync(p)) {
             const buf = await readFile(p);
