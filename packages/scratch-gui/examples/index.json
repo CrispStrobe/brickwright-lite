@@ -6566,5 +6566,45 @@
    "intro": "mb05-faceplate-matrix/intro.md",
    "introDE": "mb05-faceplate-matrix/intro.de.md"
   }
+ },
+ {
+  "id": "a2-faceplate-calculator",
+  "title": {
+   "en": "A2 calculator faceplate (controller panel)",
+   "de": "A2-Rechner-Faceplate (Controller-Panel)"
+  },
+  "category": "digital",
+  "difficulty": 3,
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ],
+  "authored": "stc12c5a60s2",
+  "files": {
+   "program": "a2-faceplate-calculator/program.bw",
+   "controller": "a2-faceplate-calculator/controller.json",
+   "intro": "a2-faceplate-calculator/intro.md",
+   "introDE": "a2-faceplate-calculator/intro.de.md"
+  }
+ },
+ {
+  "id": "mb05-faceplate-calc",
+  "title": {
+   "en": "Calculator + OLED faceplate (controller panel)",
+   "de": "Rechner + OLED-Faceplate (Controller-Panel)"
+  },
+  "category": "digital",
+  "difficulty": 3,
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ],
+  "authored": "stc12c5a60s2",
+  "files": {
+   "program": "mb05-faceplate-calc/program.bw",
+   "controller": "mb05-faceplate-calc/controller.json",
+   "intro": "mb05-faceplate-calc/intro.md",
+   "introDE": "mb05-faceplate-calc/intro.de.md"
+  }
  }
 ]

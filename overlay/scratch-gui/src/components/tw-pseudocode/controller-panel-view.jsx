@@ -306,6 +306,88 @@ function SevenSegWidget({ widget }) {
     );
 }
 
+// ─── Keypad face ──────────────────────────────────────────────────────────
+// Input: a rows×cols grid of labelled keys. Pressing key i calls
+// panel.setKeypadInput(name, i), which writes config.labels[i] (or the index)
+// to the widget value; the binding pushes that to the bound variable.
+
+function KeypadWidget({ widget, mode, panel }) {
+    const playable = mode === 'play';
+    const cols = (widget.config.cols | 0) || 4;
+    const rows = (widget.config.rows | 0) || 4;
+    const labels = widget.config.labels;
+    const keys = [];
+    for (let i = 0; i < rows * cols; i++) {
+        keys.push(
+            <button key={i}
+                data-testid={`bw-ctl-keypad-${widget.name}-${i}`}
+                disabled={!playable}
+                onPointerDown={() => panel.setKeypadInput(widget.name, i)}
+                style={{
+                    width: 36, height: 36, border: '1px solid #cbd5e1', borderRadius: 6,
+                    background: '#f8fafc', color: '#1e293b', fontWeight: 700, fontSize: 15,
+                    cursor: playable ? 'pointer' : 'default',
+                }}
+            >{labels ? (labels[i] ?? '') : String(i)}</button>
+        );
+    }
+    return (
+        <div data-testid={`bw-ctl-keypad-${widget.name}`}
+            style={{
+                display: 'grid', gridTemplateColumns: `repeat(${cols}, 36px)`,
+                gap: 4, padding: 8, background: '#1e293b', borderRadius: 8,
+            }}>
+            {keys}
+        </div>
+    );
+}
+
+// ─── Character-matrix text faces (LCD, OLED) ──────────────────────────────
+// Both are read-only text DISPLAYS: the program writes a bound variable, the
+// pump calls setLcdText/setOledText, this face renders state.text as `rows`
+// lines each clipped/padded to `cols`. LCD = classic teal-on-dark; OLED =
+// white-on-black, denser. `data-shown` (rows joined by |) is the gate hook.
+
+function makeTextRows(text, rows, cols) {
+    const lines = String(text || '').split('\n');
+    const out = [];
+    for (let r = 0; r < rows; r++) out.push((lines[r] || '').slice(0, cols).padEnd(cols, ' '));
+    return out;
+}
+
+function LcdWidget({ widget }) {
+    const cols = (widget.config.cols | 0) || 8;
+    const rows = (widget.config.rows | 0) || 2;
+    const shown = makeTextRows(widget.state.text, rows, cols);
+    return (
+        <div data-testid={`bw-ctl-lcd-${widget.name}`} data-shown={shown.join('|')}
+            style={{
+                padding: '8px 10px', background: '#052e2b', borderRadius: 6,
+                fontFamily: 'monospace', fontSize: 16, lineHeight: '20px',
+                color: '#5eead4', letterSpacing: 2, whiteSpace: 'pre',
+                textShadow: '0 0 4px rgba(94,234,212,0.6)',
+            }}>
+            {shown.join('\n')}
+        </div>
+    );
+}
+
+function OledWidget({ widget }) {
+    const cols = (widget.config.cols | 0) || 21;
+    const rows = (widget.config.rows | 0) || 4;
+    const shown = makeTextRows(widget.state.text, rows, cols);
+    return (
+        <div data-testid={`bw-ctl-oled-${widget.name}`} data-shown={shown.join('|')}
+            style={{
+                padding: 8, background: '#000', borderRadius: 6,
+                fontFamily: 'monospace', fontSize: 12, lineHeight: '15px',
+                color: '#e0f2fe', whiteSpace: 'pre', letterSpacing: 1,
+            }}>
+            {shown.join('\n')}
+        </div>
+    );
+}
+
 // ─── Positioned widget (the layout editor's canvas item) ──────────────────
 // Applies layout.{x,y,w,h,rotation}; in EDIT mode adds drag-to-move (grid
 // snapped by the host), a corner resize handle and a rotate handle (15deg
@@ -586,7 +668,7 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
         dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg',
-        text: 'Text', image: 'Image'
+        keypad: 'Keypad', lcd: 'LCD', oled: 'OLED', text: 'Text', image: 'Image'
     };
     const bindingLabel = widget.binding
         ? (widget.binding.target === 'part'
@@ -678,7 +760,7 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
                         cursor: mode === 'play' ? 'pointer' : 'default',
                     }}
                 >
-                    {widget.config.toggle ? (widget.state.pressed ? 'ON' : 'OFF') : '●'}
+                    {widget.config.label || (widget.config.toggle ? (widget.state.pressed ? 'ON' : 'OFF') : '●')}
                 </button>
             )}
 
@@ -705,6 +787,18 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
 
             {widget.type === 'sevenseg' && (
                 <SevenSegWidget widget={widget} />
+            )}
+
+            {widget.type === 'keypad' && (
+                <KeypadWidget widget={widget} mode={mode} panel={panel} />
+            )}
+
+            {widget.type === 'lcd' && (
+                <LcdWidget widget={widget} />
+            )}
+
+            {widget.type === 'oled' && (
+                <OledWidget widget={widget} />
             )}
 
             {widget.type === 'text' && (
