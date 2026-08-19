@@ -35,7 +35,7 @@ export function bindPanelToBoard(panel, board) {
     if (!w || !w.binding) return;
 
     // Display widgets are read-only — they don't push values out
-    if (w.type === 'gauge' || w.type === 'lcd' || w.type === 'oled') return;
+    if (w.type === 'gauge' || w.type === 'lcd' || w.type === 'oled' || w.type === 'terminal') return;
 
     if (w.binding.target === 'part') {
       const { partId, param } = w.binding;
@@ -59,7 +59,7 @@ export function bindPanelToBoard(panel, board) {
     sync() {
       for (const w of panel.getWidgets()) {
         if (!w.binding) continue;
-        if (w.type === 'gauge' || w.type === 'lcd' || w.type === 'oled') continue; // read-only
+        if (w.type === 'gauge' || w.type === 'lcd' || w.type === 'oled' || w.type === 'terminal') continue; // read-only
         if (w.binding.target === 'part') {
           const mapped = mapWidgetToControl(w, w.binding.param);
           if (mapped !== null) {
@@ -123,7 +123,7 @@ export function bindPanelToVariables(panel, vm, opts = {}) {
   };
 
   // Which widget types READ from the variable (displays), vs WRITE to it (inputs).
-  const isDisplay = (w) => w.type === 'gauge' || w.type === 'matrix' || w.type === 'lcd' || w.type === 'oled' || w.type === 'sevenseg';
+  const isDisplay = (w) => w.type === 'gauge' || w.type === 'matrix' || w.type === 'lcd' || w.type === 'oled' || w.type === 'sevenseg' || w.type === 'terminal';
 
   // widget -> variable (inputs)
   function onPanelEvent(event, detail) {
@@ -145,12 +145,13 @@ export function bindPanelToVariables(panel, vm, opts = {}) {
       if (!w.binding || w.binding.target !== 'variable' || !isDisplay(w)) continue;
       const v = findVar(w.binding.variableName);
       if (!v) continue;
-      if (w.type === 'lcd' || w.type === 'oled') {
+      if (w.type === 'lcd' || w.type === 'oled' || w.type === 'terminal') {
         const sv = String(v.value);
         if (shown.get(w.name) !== sv) {
           shown.set(w.name, sv);
           if (w.type === 'lcd' && typeof panel.setLcdText === 'function') panel.setLcdText(w.name, sv);
           else if (w.type === 'oled' && typeof panel.setOledText === 'function') panel.setOledText(w.name, sv);
+          else if (w.type === 'terminal' && typeof panel.setTerminalText === 'function') panel.setTerminalText(w.name, sv);
         }
       } else {
         const nv = Number(v.value);
@@ -219,8 +220,12 @@ function mapWidgetToControl(w, param) {
       // Keypad value is a string (key label or index) — returned as-is
       // for variable bindings; for part/pin bindings, parse as number.
       return typeof w.state.value === 'string' ? (parseFloat(w.state.value) || 0) : 0;
+    case 'keyboard':
+      // Keyboard value is a string — for part/pin bindings, parse as char code.
+      return typeof w.state.value === 'string' ? (w.state.value.charCodeAt(0) || 0) : 0;
     case 'gauge':
     case 'lcd':
+    case 'terminal':
       // Display widgets are read-only — mapping returns null (no output)
       return null;
     default:

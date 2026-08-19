@@ -32,6 +32,8 @@ export const WIDGET_TYPES = /** @type {const} */ ({
   LCD:      'lcd',
   OLED:     'oled',
   SEVENSEG: 'sevenseg',
+  TERMINAL: 'terminal',
+  KEYBOARD: 'keyboard',
   TEXT:     'text',
   IMAGE:    'image',
 });
@@ -65,6 +67,14 @@ const DEFAULTS = {
   // value right-aligned across `digits` tubes (the display contract is one
   // NUMERIC variable per display widget). Overflow renders as dashes.
   sevenseg: { digits: 4, value: 0 },
+  // A scrolling serial-output DISPLAY: read-only text face driven by a
+  // program variable. Appends new text and scrolls within `rows` visible
+  // lines of `cols` columns (monospace, dark background).
+  terminal: { rows: 8, cols: 40, text: '' },
+  // A KEYBOARD INPUT: typed characters → a variable. On keypress the
+  // char (or accumulated line) is written to the bound variable + emitted
+  // via 'input' so bindPanelToVariables writes the Scratch var.
+  keyboard: { value: '' },
   // Decorations (presentation only, never bound):
   text:     { text: 'Label', fontSize: 16, color: '#334155' },
   image:    { src: '', alt: '' },
@@ -97,6 +107,7 @@ export class ControllerPanel {
         if (w.type === 'button' && !w.config.toggle) w.state.pressed = false;
         if (w.type === 'dpad') { w.state.up = false; w.state.down = false; w.state.left = false; w.state.right = false; }
         if (w.type === 'keypad') w.state.value = '';
+        if (w.type === 'keyboard') w.state.value = '';
       }
     }
     this._emit('mode', { mode });
@@ -136,6 +147,8 @@ export class ControllerPanel {
     if (type === 'lcd') w.state = { text: '' };
     if (type === 'oled') w.state = { text: config.text ?? '' };
     if (type === 'sevenseg') w.state = { value: config.value ?? 0 };
+    if (type === 'terminal') w.state = { text: config.text ?? '' };
+    if (type === 'keyboard') w.state = { value: '' };
     this._widgets.set(name, w);
     this._emit('add', { name, type });
     return w;
@@ -365,6 +378,35 @@ export class ControllerPanel {
     this._emit('input', { name, value: w.state.value });
   }
 
+  /**
+   * Set terminal text. Display-only scrolling text output driven by the
+   * program or a variable binding. Appends new content and trims to the
+   * configured number of visible rows.
+   * @param {string} name
+   * @param {string} text - Full terminal content (newlines separate lines).
+   */
+  setTerminalText(name, text) {
+    const w = this._requireWidget(name, 'terminal');
+    const str = String(text);
+    const { rows } = w.config;
+    // Keep only the last `rows` lines (scrolling)
+    const lines = str.split('\n');
+    w.state.text = lines.slice(-rows).join('\n');
+    this._emit('input', { name, text: w.state.text });
+  }
+
+  /**
+   * Set keyboard input. The keyboard is an INPUT widget: typed characters
+   * are written to the bound variable via the binding pump.
+   * @param {string} name
+   * @param {string} value - The typed character or accumulated line.
+   */
+  setKeyboardInput(name, value) {
+    const w = this._requireWidget(name, 'keyboard');
+    w.state.value = String(value);
+    this._emit('input', { name, value: w.state.value });
+  }
+
   // ── State query (program-facing API for extension blocks) ─────────────
 
   /** Scalar value for any widget (slider/dial/gauge value, button 0/1, joystick magnitude, dpad bitmask). */
@@ -391,7 +433,10 @@ export class ControllerPanel {
       case 'lcd':
         return w.state.text;
       case 'oled':
+      case 'terminal':
         return w.state.text || '';
+      case 'keyboard':
+        return w.state.value;
       default:
         return 0;
     }

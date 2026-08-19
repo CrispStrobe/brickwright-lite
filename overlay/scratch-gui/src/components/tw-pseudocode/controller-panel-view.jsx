@@ -388,6 +388,71 @@ function OledWidget({ widget }) {
     );
 }
 
+function TerminalWidget({ widget }) {
+    const cols = (widget.config.cols | 0) || 40;
+    const rows = (widget.config.rows | 0) || 8;
+    const text = String(widget.state.text || '');
+    const lines = text.split('\n').slice(-rows);
+    while (lines.length < rows) lines.push('');
+    const shown = lines.map(l => l.slice(0, cols));
+    return (
+        <div data-testid={`bw-ctl-terminal-${widget.name}`} data-shown={shown.join('|')}
+            style={{
+                padding: '6px 8px', background: '#0c0c0c', borderRadius: 6,
+                border: '1px solid #333', fontFamily: 'monospace', fontSize: 11,
+                lineHeight: '14px', color: '#22c55e', whiteSpace: 'pre',
+                letterSpacing: 0.5, minHeight: rows * 14 + 12,
+                textShadow: '0 0 3px rgba(34,197,94,0.4)',
+                overflow: 'hidden',
+            }}>
+            {shown.join('\n')}
+        </div>
+    );
+}
+
+function KeyboardWidget({ widget, mode, panel }) {
+    const playable = mode === 'play';
+    const inputRef = React.useRef(null);
+    return (
+        <div data-testid={`bw-ctl-keyboard-${widget.name}`}
+            style={{ padding: '4px 0', width: '100%' }}>
+            <input
+                ref={inputRef}
+                type="text"
+                disabled={!playable}
+                placeholder={playable ? 'type here…' : ''}
+                style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '6px 8px', background: '#1e1e2e',
+                    border: '1px solid #444', borderRadius: 4,
+                    fontFamily: 'monospace', fontSize: 13, color: '#e0e0e0',
+                    outline: 'none',
+                }}
+                onKeyDown={playable ? (e) => {
+                    if (e.key === 'Enter') {
+                        const val = e.target.value;
+                        if (val && panel) {
+                            panel.setKeyboardInput(widget.name, val);
+                            e.target.value = '';
+                        }
+                        e.preventDefault();
+                    }
+                } : undefined}
+                onInput={playable ? (e) => {
+                    const val = e.target.value;
+                    if (val && panel) {
+                        const ch = val.slice(-1);
+                        panel.setKeyboardInput(widget.name, ch);
+                    }
+                } : undefined}
+            />
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 2, textAlign: 'center' }}>
+                {widget.state.value ? `last: "${widget.state.value}"` : ''}
+            </div>
+        </div>
+    );
+}
+
 // ─── Positioned widget (the layout editor's canvas item) ──────────────────
 // Applies layout.{x,y,w,h,rotation}; in EDIT mode adds drag-to-move (grid
 // snapped by the host), a corner resize handle and a rotate handle (15deg
@@ -692,7 +757,8 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
         dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg',
-        keypad: 'Keypad', lcd: 'LCD', oled: 'OLED', text: 'Text', image: 'Image'
+        keypad: 'Keypad', lcd: 'LCD', oled: 'OLED', terminal: 'Terminal', keyboard: 'Keyboard',
+        text: 'Text', image: 'Image'
     };
     const bindingLabel = widget.binding
         ? (widget.binding.target === 'part'
@@ -827,6 +893,14 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
 
             {widget.type === 'oled' && (
                 <OledWidget widget={widget} />
+            )}
+
+            {widget.type === 'terminal' && (
+                <TerminalWidget widget={widget} />
+            )}
+
+            {widget.type === 'keyboard' && (
+                <KeyboardWidget widget={widget} mode={mode} panel={panel} />
             )}
 
             {widget.type === 'text' && (
