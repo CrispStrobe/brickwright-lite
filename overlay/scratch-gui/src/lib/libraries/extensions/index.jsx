@@ -66,7 +66,7 @@ export default [
     {
         name: 'micro:bit+',
         extensionId: 'microbitplus',
-        iconURL: 'static/extension-posters/microbit.png',
+        iconURL: 'static/extension-posters/microbit.svg',
         insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzAwQTNBMyIvPjx0ZXh0IHg9IjI0IiB5PSIxNiIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPm1pY3JvOmJpdDwvdGV4dD48dGV4dCB4PSIyNCIgeT0iMzgiIGZvbnQtc2l6ZT0iMjQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIj4rPC90ZXh0Pjwvc3ZnPg==',
         description: 'Display, sensors, pins, radio — for the MicroPython simulator.',
         featured: true
@@ -82,56 +82,64 @@ export default [
     {
         name: 'STC12 / 8051 Pins',
         extensionId: 'stc12',
-        iconURL: 'static/extension-posters/csp-badge.png',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
         description: 'Pin blocks for 8051 cores (P1.0, P3.7) — ports, tone, PWM. One extension, adapts to the project device.',
         featured: true
     },
     {
         name: 'Arduino Pins',
         extensionId: 'stc12',
-        iconURL: 'static/extension-posters/csp-badge.png',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
         description: 'Pin blocks for Arduino Uno/Nano/ATmega168P (D0–D13, A0–A5) — digital, analog, PWM. Adapts to the project device.',
         featured: true
     },
     {
         name: 'Arduino Mega Pins',
         extensionId: 'stc12',
-        iconURL: 'static/extension-posters/csp-badge.png',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
         description: 'Pin blocks for Arduino Mega (D0–D53, A0–A15) — PWM on D9–D12, servo on D11/D12. Adapts to the project device.',
         featured: true
     },
     {
         name: 'Pico Pins',
         extensionId: 'stc12',
-        iconURL: 'static/extension-posters/csp-badge.png',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
         description: 'Pin blocks for Raspberry Pi Pico (GP0, GP25) — digital, analog, PWM. Same extension, adapts to the project device.',
         featured: true
     },
     {
         name: '6502 Pins',
         extensionId: 'stc12',
-        iconURL: 'static/extension-posters/csp-badge.png',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
         description: 'Pin blocks for the Eater 6502 breadboard machine (PA0–PA7, PB0–PB6 via W65C22 VIA). Digital I/O only — no analog, no PWM.',
         featured: true
     },
     {
         name: 'STC12 Live (Web Serial)',
         extensionId: 'stc12live',
-        iconURL: 'static/extension-posters/csp-badge.png',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
         description: 'Connect to a real STC12 chip over USB — bundled, works offline.',
         featured: true
     },
     {
         name: 'Circuit',
         extensionId: 'circuit',
-        iconURL: 'static/extension-posters/csp-badge.png',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
         description: 'Meter blocks: voltage, current, resistance, brightness, tone — bundled built-in.',
         featured: true
     },
     {
         name: 'Devices',
         extensionId: 'devices',
-        iconURL: 'static/extension-posters/csp-badge.png',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'static/extension-posters/csp-badge.png',
         description: 'Servo, motor, relay, sensor, display and NeoPixel blocks for circuit projects — bundled built-in.',
         featured: true
     },
