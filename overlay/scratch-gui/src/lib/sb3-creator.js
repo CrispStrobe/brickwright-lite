@@ -16,7 +16,38 @@ import { CUBE_DIRECTIONS, cubeDirectionIndex } from './cubeDirections.js';
 // the json module — measured 2026-08-19). Shared by the marker debugger's
 // halt dump and the settrace harness.
 const BW_JSON_PY = [
-
+    "def _bw_json(o):",
+    "    # The sim firmware ships no `json` module (measured 2026-08-19),",
+    "    # so the dumps serialize themselves. Output is strict JSON for the",
+    "    # plain shapes state actually takes; anything exotic goes through",
+    "    # repr as a string.",
+    "    if o is None:",
+    "        return 'null'",
+    "    if o is True:",
+    "        return 'true'",
+    "    if o is False:",
+    "        return 'false'",
+    "    if isinstance(o, int) or isinstance(o, float):",
+    "        return str(o)",
+    "    if isinstance(o, str):",
+    "        r = '\"'",
+    "        for ch in o:",
+    "            if ch == '\"' or ch == '\\\\':",
+    "                r += '\\\\' + ch",
+    "            elif ch == '\\n':",
+    "                r += '\\\\n'",
+    "            elif ch == '\\r':",
+    "                r += '\\\\r'",
+    "            elif ch == '\\t':",
+    "                r += '\\\\t'",
+    "            else:",
+    "                r += ch",
+    "        return r + '\"'",
+    "    if isinstance(o, list) or isinstance(o, tuple):",
+    "        return '[' + ','.join([_bw_json(x) for x in o]) + ']'",
+    "    if isinstance(o, dict):",
+    "        return '{' + ','.join([_bw_json(str(k)) + ':' + _bw_json(o[k]) for k in o]) + '}'",
+    "    return _bw_json(repr(o))"
 ];
 
 
@@ -460,6 +491,9 @@ class SB3Creator {
                 '    def setControl(self, control, value):',
                 '        b = _circuit_board()',
                 '        if b: b.setControl(control, float(value))',
+                '    def getControl(self, control):',
+                '        b = _circuit_board()',
+                '        return b.getControl(control) if b else 0',
                 '    def setPower(self, state):',
                 '        b = _circuit_board()',
                 '        if b: b.setPower(state == "on")',
@@ -479,6 +513,7 @@ class SB3Creator {
             '    buzzerTone: (part) => { const b = _circuit_board(); if (!b) return NaN;',
             '        const r = b.buzzerTone(part); return r && r.on ? r.hz : 0; },',
             '    setControl: (control, v) => { const b = _circuit_board(); if (b) b.setControl(control, Number(v)); },',
+            '    getControl: (control) => { const b = _circuit_board(); return b ? b.getControl(control) : 0; },',
             '    setPower: (state) => { const b = _circuit_board(); if (b) b.setPower(state === "on"); }',
             '};'
         ];
@@ -1170,6 +1205,13 @@ class SB3Creator {
         }
         if ((m = s.match(/^tone of\s+(.+)$/i))) {
             return B('circuit_buzzertone', { PART: this.parseValue(m[1], context) });
+        }
+        // Controller-panel READ: the live value a panel widget drives into a
+        // named control — the read mirror of `set control X to V`. Works across
+        // every runtime surface (board.getControl); compiled targets read the
+        // bound pin instead (a widget is world-facing bound to a part).
+        if ((m = s.match(/^control of\s+(.+)$/i))) {
+            return B('circuit_getcontrol', { CONTROL: this.parseValue(m[1], context) });
         }
         // LED cube voxel read: voxel <x> <y> <z>
         if ((m = s.match(/^voxel\s+(.+?)\s+(.+?)\s+(.+)$/i)) && this.project && this.project.stc && this.project.stc.ledcube) {
@@ -5153,6 +5195,7 @@ class SB3Creator {
             case 'circuit_resistance': return `resistance between ${v('A')} and ${v('B')}`;
             case 'circuit_ledbrightness': return `brightness of ${v('PART')}`;
             case 'circuit_buzzertone': return `tone of ${v('PART')}`;
+            case 'circuit_getcontrol': return `control of ${v('CONTROL')}`;
             default: return b.opcode;
         }
     }
@@ -8476,48 +8519,6 @@ class SB3Creator {
                 '        f = f.f_back',
                 '    return k',
                 ...BW_JSON_PY,
-                'def _bw_stack(frame):',
-                '    k = []',
-                '    f = frame',
-                '    while f:',
-                '        try:',
-                '            k.append(f.f_code.co_name)',
-                '        except Exception:',
-                "            k.append('?')",
-                '        f = f.f_back',
-                '    return k',
-                'def _bw_json(o):',
-                "    # The settrace firmware ships no `json` module (measured",
-                '    # 2026-08-19), so the dumps serialize themselves. Output is',
-                '    # strict JSON for the plain shapes state actually takes;',
-                '    # anything exotic goes through repr as a string.',
-                '    if o is None:',
-                "        return 'null'",
-                '    if o is True:',
-                "        return 'true'",
-                '    if o is False:',
-                "        return 'false'",
-                '    if isinstance(o, int) or isinstance(o, float):',
-                '        return str(o)',
-                '    if isinstance(o, str):',
-                '        r = \'"\'',
-                '        for ch in o:',
-                '            if ch == \'"\' or ch == \'\\\\\':',
-                "                r += '\\\\' + ch",
-                "            elif ch == '\\n':",
-                "                r += '\\\\n'",
-                "            elif ch == '\\r':",
-                "                r += '\\\\r'",
-                "            elif ch == '\\t':",
-                "                r += '\\\\t'",
-                '            else:',
-                '                r += ch',
-                '        return r + \'"\'',
-                '    if isinstance(o, list) or isinstance(o, tuple):',
-                "        return '[' + ','.join([_bw_json(x) for x in o]) + ']'",
-                '    if isinstance(o, dict):',
-                "        return '{' + ','.join([_bw_json(str(k)) + ':' + _bw_json(o[k]) for k in o]) + '}'",
-                '    return _bw_json(repr(o))',
                 'def _bw_halt(frame):',
                 '    global _bw_step',
                 '    _bw_step = 0',
@@ -13182,6 +13183,7 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             ledbrightness: { kind: 'reporter', method: 'ledBrightness', args: ['PART'], neutral: 'NaN' },
             buzzertone: { kind: 'reporter', method: 'buzzerTone', args: ['PART'], neutral: 'NaN' },
             setcontrol: { kind: 'command', method: 'setControl', args: ['CONTROL', 'VALUE'] },
+            getcontrol: { kind: 'reporter', method: 'getControl', args: ['CONTROL'], neutral: '0' },
             setpower: { kind: 'command', method: 'setPower', args: ['STATE'] }
         }
     }
