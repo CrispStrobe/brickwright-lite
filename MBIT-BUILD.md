@@ -43,6 +43,13 @@ The settrace variant enables `MICROPY_PY_SYS_SETTRACE`,
 `MICROPY_PERSISTENT_CODE_SAVE`, and disables `MICROPY_COMP_CONST` (required
 for settrace to work).
 
+## Docker image store
+
+The Docker data-root is configured at `/mnt/volume1/docker`
+(`/etc/docker/daemon.json`) so the ~2 GB `emscripten/emsdk:3.1.25` image lives
+on the data volume, not the system disk. The build script starts the Docker
+daemon before building and stops it after to free ~400 MB RSS.
+
 ## Memory safety
 
 All `emcc` builds use `-j1` to cap peak memory at ~1.5 GB. The script checks

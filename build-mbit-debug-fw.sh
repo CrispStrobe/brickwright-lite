@@ -5,6 +5,8 @@
 #
 # Requirements:
 #   - Docker with image emscripten/emsdk:3.1.25 pulled
+#   - Docker image store on /mnt/volume1 (data-root: /mnt/volume1/docker)
+#     to keep the system disk free — see /etc/docker/daemon.json
 #   - Source tree at SRC_DIR (default: sibling mbit-fw-src)
 #
 # Produces:
