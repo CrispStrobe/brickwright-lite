@@ -335,12 +335,14 @@ module.exports = makeExt(`// Name: STC12 Live
     // toggle, D-pad) drives a real port pin. LIVE_CMD_WRITE(space, addr_hi,
     // addr_lo, data...) — the firmware writes the addressed SFR/bit. Analog
     // inputs (a pot behind an ADC) CANNOT be tethered: they are a physical
-    // voltage, not a host-writable register. Guarded by the HELLO `writable`
+    // voltage, not a host-writable register. Guarded by the HELLO writable
     // capability bitmap so a refused space fails loudly, not silently.
+    // (No template literals or backtick strings here: the whole extension is a
+    // makeExt template string, so any backtick would terminate it early.)
     async writeMem(space, addr, data) {
       if (!this._connected) throw new Error("stc12live: not connected");
       if (this._capabilities && !((this._capabilities.writable >> space) & 1)) {
-        throw new Error(`stc12live: space ${space} is not writable on this target`);
+        throw new Error("stc12live: space " + space + " is not writable on this target");
       }
       const bytes = Array.isArray(data) ? data : [data & 0xff];
       await this._exchange(CMD_WRITE, [
