@@ -50,6 +50,7 @@ import {resolveStageSize} from '../../lib/screen-utils';
 import {themeMap} from '../../lib/themes';
 
 import { ControllerPanel } from '../../lib/bw-board/controller.js';
+import { bindPanelToVariables } from '../../lib/bw-board/controller-binding.js';
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
 import codeIcon from './icon--code.svg';
@@ -114,11 +115,14 @@ const GUIComponent = props => {
     const controllerPanelRef = React.useRef(null);
     if (!controllerPanelRef.current) controllerPanelRef.current = new ControllerPanel();
     const controllerPanel = controllerPanelRef.current;
-    // Expose on vm.runtime so ControllerExtension can find it
+    // Expose on vm.runtime so ControllerExtension can find it, and wire the
+    // LIVE variable binding: input widgets write program variables, display
+    // widgets show them (bindPanelToVariables polls via requestAnimationFrame).
     React.useEffect(() => {
-        if (props.vm && props.vm.runtime) {
-            props.vm.runtime.controllerPanel = controllerPanel;
-        }
+        if (!props.vm || !props.vm.runtime) return undefined;
+        props.vm.runtime.controllerPanel = controllerPanel;
+        const varBinding = bindPanelToVariables(controllerPanel, props.vm);
+        return () => varBinding.dispose();
     }, [props.vm, controllerPanel]);
     // Restore panel from project data when project loads
     React.useEffect(() => {

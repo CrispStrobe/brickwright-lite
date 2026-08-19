@@ -157,6 +157,43 @@ export const STIMULUS_CATALOGUE = {
     { param: 'pressure', label: 'Pressure', min: 0, max: 4095, step: 1, unit: '', mechanism: 'param' },
   ],
 
+  bmp280: [
+    { param: 'temperature', label: 'Temperature', min: -40, max: 85, step: 0.1, unit: '°C', mechanism: 'param' },
+    { param: 'pressure', label: 'Pressure', min: 30000, max: 110000, step: 100, unit: 'Pa', mechanism: 'param' },
+  ],
+  tcs34725: [
+    { param: 'red', label: 'Red', min: 0, max: 65535, step: 1, unit: '', mechanism: 'param' },
+    { param: 'green', label: 'Green', min: 0, max: 65535, step: 1, unit: '', mechanism: 'param' },
+    { param: 'blue', label: 'Blue', min: 0, max: 65535, step: 1, unit: '', mechanism: 'param' },
+    { param: 'clear', label: 'Clear', min: 0, max: 65535, step: 1, unit: '', mechanism: 'param' },
+  ],
+  bh1750: [
+    { param: 'lux', label: 'Illuminance', min: 0, max: 65535, step: 1, unit: 'lx', mechanism: 'param' },
+  ],
+  ina219: [
+    { param: 'busVoltage', label: 'Bus voltage', min: 0, max: 26, step: 0.01, unit: 'V', mechanism: 'param' },
+    { param: 'current_mA', label: 'Current', min: -3200, max: 3200, step: 1, unit: 'mA', mechanism: 'param' },
+    { param: 'shuntOhms', label: 'Shunt resistance', min: 0.001, max: 1, step: 0.001, unit: 'Ω', mechanism: 'param' },
+  ],
+
+  vl53l0x: [
+    { param: 'distance_mm', label: 'Distance', min: 0, max: 2000, step: 1, unit: 'mm', mechanism: 'param' },
+  ],
+
+  sgp30: [
+    { param: 'eCO2', label: 'eCO₂', min: 400, max: 60000, step: 1, unit: 'ppm', mechanism: 'param' },
+    { param: 'TVOC', label: 'TVOC', min: 0, max: 60000, step: 1, unit: 'ppb', mechanism: 'param' },
+  ],
+  veml7700: [
+    { param: 'lux', label: 'Illuminance', min: 0, max: 120000, step: 1, unit: 'lx', mechanism: 'param' },
+    { param: 'white', label: 'White channel', min: 0, max: 120000, step: 1, unit: 'lx', mechanism: 'param' },
+  ],
+
+  as5600: [
+    { param: 'angle', label: 'Angle', min: 0, max: 360, step: 0.1, unit: '°', mechanism: 'param' },
+    { param: 'magnitude', label: 'Magnet strength', min: 0, max: 4095, step: 1, unit: '', mechanism: 'param' },
+  ],
+
   // ── Rotary encoder ───────────────────────────────────────────────────
 
   ky040: [

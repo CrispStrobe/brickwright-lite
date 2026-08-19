@@ -173,28 +173,42 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
         return false;
     };
 
-    // Hook generateContextMenu, NOT customContextMenu.
+    // Why NOT customContextMenu (the obvious choice): defining it on the
+    // prototype breaks Blockly — Block.mixin() refuses a mixin whose members
+    // already exist, and the check `this[key] !== undefined` is satisfied by an
+    // inherited prototype property. So a prototype-level customContextMenu makes
+    // every block type that legitimately defines one (procedure calls do) throw
+    // "Mixin will overwrite block members" at load.
     //
-    // Defining customContextMenu on the prototype looks equivalent and breaks
-    // Blockly: its Block.mixin() refuses a mixin whose members already exist,
-    // and the check is `this[key] !== undefined`, which inherited prototype
-    // properties satisfy. So a prototype-level customContextMenu makes every
-    // block type that legitimately defines one — procedure calls do — throw
-    // "Mixin will overwrite block members" at load. That error was live on the
-    // deployed editor; one of the two menus was being clobbered and which one
-    // depended on load order.
-    //
-    // generateContextMenu is the supported override point: Blockly calls it to
-    // build the option list and then calls customContextMenu on top, so
-    // appending here lands in the same place and collides with nothing.
-    const previous = ScratchBlocks.BlockSvg.prototype.generateContextMenu;
-    ScratchBlocks.BlockSvg.prototype.generateContextMenu = function () {
-        const options = previous ? previous.call(this) : [];
-        this.bwAddDebugMenu(options);
-        return options;
+    // Why NOT generateContextMenu (what this used to hook): this scratch-blocks
+    // fork never calls it for block context menus — verified in-browser, the
+    // override fired zero times. The menu is built inline in showContextMenu_.
+    // So we wrap showContextMenu_ instead (below).
+    // This scratch-blocks fork does NOT route block context menus through
+    // generateContextMenu (verified: the override there never fires). Its
+    // BlockSvg.prototype.showContextMenu_ builds the option list INLINE
+    // (Duplicate/Comment/Delete) and calls Blockly.ContextMenu.show directly.
+    // So we wrap showContextMenu_ and, for the duration of that one call, patch
+    // ContextMenu.show to append our debug items to the list it built. (A
+    // prototype-level customContextMenu is out — Block.mixin() rejects it; see
+    // the note above.) The append is idempotent, so the shadow-block recursion
+    // (parentBlock_.showContextMenu_) cannot double-add.
+    const CM = ScratchBlocks.ContextMenu;
+    const previousShow = ScratchBlocks.BlockSvg.prototype.showContextMenu_;
+    ScratchBlocks.BlockSvg.prototype.showContextMenu_ = function (e) {
+        const block = this;
+        const origCMShow = CM.show;
+        CM.show = function (ev, options, rtl) {
+            try { block.bwAddDebugMenu(options); } catch { /* never block the menu */ }
+            return origCMShow.call(this, ev, options, rtl);
+        };
+        try { return previousShow.call(this, e); }
+        finally { CM.show = origCMShow; }
     };
     ScratchBlocks.BlockSvg.prototype.bwAddDebugMenu = function (options) {
         if (!isHardwareProject()) return;
+        if (options.__bwDebugAdded) return;   // idempotent across the shadow recursion
+        options.__bwDebugAdded = true;
         const words = TEXT[getLocale()] || TEXT.en;
         const marked = isBreakpoint(this.id);
         options.push({
@@ -358,7 +372,7 @@ export function installBreakpointMenu(ScratchBlocks, vm, getLocale = () => 'en',
         uninstall() {
             hideTip();
             unsubscribe();
-            ScratchBlocks.BlockSvg.prototype.generateContextMenu = previous;
+            ScratchBlocks.BlockSvg.prototype.showContextMenu_ = previousShow;
             delete ScratchBlocks.BlockSvg.prototype.bwAddDebugMenu;
             if (styleEl && styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
             styleEl = null;

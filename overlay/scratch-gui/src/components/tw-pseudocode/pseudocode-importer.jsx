@@ -1362,6 +1362,29 @@ class PseudocodeImporter extends React.Component {
                 Promise.resolve(this.compile()).catch(e => this.setState(
                     {status: `Loaded, but building the project failed: ${e.message}`}));
             });
+            // A FACEPLATE example ships a controller layout beside its
+            // program (files.controller): restore it into the live panel so
+            // the widgets + variable bindings arrive ready-made. Same shape
+            // gui.jsx restores from runtime.stc.controller on PROJECT_LOADED.
+            if (ex.files && ex.files.controller) {
+                try {
+                    const cres = await fetch(`examples/${ex.files.controller}`);
+                    if (cres.ok) {
+                        const layout = await cres.json();
+                        const rt = this.props.vm && this.props.vm.runtime;
+                        const panel = rt && rt.controllerPanel;
+                        if (panel && layout && Array.isArray(layout.widgets)) {
+                            for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+                            for (const w of layout.widgets) {
+                                const added = panel.addWidget(w.name, w.type, w.config || {}, w.layout || {});
+                                if (w.binding) added.binding = { ...w.binding };
+                            }
+                            if (layout.mode) panel.setMode(layout.mode);
+                            if (rt.stc) rt.stc.controller = layout;
+                        }
+                    }
+                } catch { /* a faceplate without its layout still loads the program */ }
+            }
             // The PROGRAM retargeted; the BENCH must follow or the runner
             // falls back to an inferred, unseated board. But the AUTHORED
             // circuit outranks any generated bench for the example's own

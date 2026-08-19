@@ -208,12 +208,51 @@ function DpadWidget({ widget, name, mode, panel }) {
     );
 }
 
+// ─── Matrix display face ──────────────────────────────────────────────────
+// Read-only: a rows×cols grid of dots lit from the widget's bitmask state
+// (bit r*cols+c). The program writes a bound variable; bindPanelToVariables
+// pumps it into panel.setMatrixValue; the panel event re-renders this face.
+
+function MatrixWidget({ widget }) {
+    const rows = widget.config.rows | 0 || 5;
+    const cols = widget.config.cols | 0 || 5;
+    const bits = Number(widget.state.value) || 0;
+    const dots = [];
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const lit = (bits >>> (r * cols + c)) & 1;
+            dots.push(
+                <div key={`${r}-${c}`}
+                    data-lit={lit ? '1' : '0'}
+                    style={{
+                        width: 12, height: 12, borderRadius: 3,
+                        background: lit ? '#ef4444' : '#e2e8f0',
+                        boxShadow: lit ? '0 0 6px rgba(239,68,68,0.7)' : 'none',
+                        transition: 'background 80ms'
+                    }}
+                />
+            );
+        }
+    }
+    return (
+        <div data-testid={`bw-ctl-matrix-${widget.name}`}
+            style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${cols}, 12px)`,
+                gap: 3, padding: 8,
+                background: '#1e293b', borderRadius: 8
+            }}>
+            {dots}
+        </div>
+    );
+}
+
 // ─── Widget card (edit mode wrapper) ──────────────────────────────────────
 
 function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
-        dpad: t('dpad'), dial: t('dial')
+        dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix'
     };
     const bindingLabel = widget.binding
         ? (widget.binding.target === 'part'
@@ -321,6 +360,10 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
                         {widget.state.value}°
                     </div>
                 </div>
+            )}
+
+            {widget.type === 'matrix' && (
+                <MatrixWidget widget={widget} />
             )}
 
             {mode === 'edit' && (

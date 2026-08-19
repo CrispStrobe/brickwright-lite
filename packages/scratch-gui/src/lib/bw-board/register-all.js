@@ -55,6 +55,8 @@ import { registerSAP1Chips } from './devices/sap1-chips.js';
 import { registerMCP4725 } from './devices/mcp4725.js';
 import { registerUM245R } from './devices/um245r.js';
 import { registerPS2Device } from './devices/ps2-device.js';
+import { registerSevenseg8, registerLedbank8 } from './devices/a2-displays.js';
+import { registerI2CSensors } from './devices/i2c-sensors.js';
 
 export function registerAllDevices() {
   registerLogicGates();
@@ -102,4 +104,7 @@ export function registerAllDevices() {
   registerMCP4725();
   registerUM245R();
   registerPS2Device();
+  registerSevenseg8();
+  registerLedbank8();
+  registerI2CSensors();
 }

@@ -12,6 +12,44 @@ import { cHostRuntime, cShimName, C_HOST_INCLUDES } from './sb3-creator-chostrun
 // drift — they already did once, and the round trip lost the block.
 import { CUBE_DIRECTIONS, cubeDirectionIndex } from './cubeDirections.js';
 
+// The emitted no-import JSON serializer (the sim firmware ships without
+// the json module — measured 2026-08-19). Shared by the marker debugger's
+// halt dump and the settrace harness.
+const BW_JSON_PY = [
+    "def _bw_json(o):",
+    "    # The sim firmware ships no `json` module (measured 2026-08-19),",
+    "    # so the dumps serialize themselves. Output is strict JSON for the",
+    "    # plain shapes state actually takes; anything exotic goes through",
+    "    # repr as a string.",
+    "    if o is None:",
+    "        return 'null'",
+    "    if o is True:",
+    "        return 'true'",
+    "    if o is False:",
+    "        return 'false'",
+    "    if isinstance(o, int) or isinstance(o, float):",
+    "        return str(o)",
+    "    if isinstance(o, str):",
+    "        r = '\"'",
+    "        for ch in o:",
+    "            if ch == '\"' or ch == '\\\\':",
+    "                r += '\\\\' + ch",
+    "            elif ch == '\\n':",
+    "                r += '\\\\n'",
+    "            elif ch == '\\r':",
+    "                r += '\\\\r'",
+    "            elif ch == '\\t':",
+    "                r += '\\\\t'",
+    "            else:",
+    "                r += ch",
+    "        return r + '\"'",
+    "    if isinstance(o, list) or isinstance(o, tuple):",
+    "        return '[' + ','.join([_bw_json(x) for x in o]) + ']'",
+    "    if isinstance(o, dict):",
+    "        return '{' + ','.join([_bw_json(str(k)) + ':' + _bw_json(o[k]) for k in o]) + '}'",
+    "    return _bw_json(repr(o))"
+];
+
 
 // Structured error classes
 class SB3Error extends Error {
@@ -238,10 +276,6 @@ class SB3Creator {
         if (mode === 'simulator' && extId === 'ledcube') {
             return this.ledcubeSimulatorDriver(lang);
         }
-        // Controller panel: reads from the live panel via vm.runtime.controllerPanel.
-        if (mode === 'simulator' && extId === 'controller') {
-            return this.controllerSimulatorDriver(lang);
-        }
         const banner = {
             shim: 'neutral stub — drives nothing; implement to drive real hardware',
             simulator: 'simulated board — no board attached for this runtime, so neutral',
@@ -457,6 +491,9 @@ class SB3Creator {
                 '    def setControl(self, control, value):',
                 '        b = _circuit_board()',
                 '        if b: b.setControl(control, float(value))',
+                '    def getControl(self, control):',
+                '        b = _circuit_board()',
+                '        return b.getControl(control) if b else 0',
                 '    def setPower(self, state):',
                 '        b = _circuit_board()',
                 '        if b: b.setPower(state == "on")',
@@ -476,6 +513,7 @@ class SB3Creator {
             '    buzzerTone: (part) => { const b = _circuit_board(); if (!b) return NaN;',
             '        const r = b.buzzerTone(part); return r && r.on ? r.hz : 0; },',
             '    setControl: (control, v) => { const b = _circuit_board(); if (b) b.setControl(control, Number(v)); },',
+            '    getControl: (control) => { const b = _circuit_board(); return b ? b.getControl(control) : 0; },',
             '    setPower: (state) => { const b = _circuit_board(); if (b) b.setPower(state === "on"); }',
             '};'
         ];
@@ -706,31 +744,6 @@ class SB3Creator {
             '    hold: (ms) => { scratch.wait(ms / 1000); },',
             '    readVoxel: (x, y, z) => { const [s, b] = _ledcube._addr(x, y, z);',
             `        return (s >= 0 && s < ${S} && b >= 0 && b < 8) ? (_ledcube_frame[s] >> b) & 1 : 0; },`,
-            '};',
-        ];
-    }
-
-    controllerSimulatorDriver(lang) {
-        if (lang === 'py') {
-            return [
-                '# _controller driver — reads from the live controller panel.',
-                'class _ControllerDriver:',
-                '    def controllerValue(self, name): return scratch.call("controller_value", name)',
-                '    def controllerX(self, name): return scratch.call("controller_x", name)',
-                '    def controllerY(self, name): return scratch.call("controller_y", name)',
-                '    def controllerPressed(self, name): return scratch.call("controller_pressed", name)',
-                '    def setWidget(self, name, value): scratch.call("controller_set", name, value)',
-                '_controller = _ControllerDriver()',
-            ];
-        }
-        return [
-            '// _controller driver — reads from the live controller panel.',
-            'const _controller = {',
-            '    controllerValue: (name) => scratch.call("controller_value", name),',
-            '    controllerX: (name) => scratch.call("controller_x", name),',
-            '    controllerY: (name) => scratch.call("controller_y", name),',
-            '    controllerPressed: (name) => scratch.call("controller_pressed", name),',
-            '    setWidget: (name, value) => scratch.call("controller_set", name, value),',
             '};',
         ];
     }
@@ -988,8 +1001,8 @@ class SB3Creator {
             const ch = s[i];
             if (ch === '"') { inStr = !inStr; continue; }
             if (inStr) continue;
-            if (ch === '(') { depth++; continue; }
-            if (ch === ')') { depth--; continue; }
+            if (ch === '(' || ch === '[') { depth++; continue; }
+            if (ch === ')' || ch === ']') { depth--; continue; }
             if (depth !== 0) continue;
             for (const op of ops) {
                 const seg = s.substr(i, op.length);
@@ -1116,6 +1129,39 @@ class SB3Creator {
             return B(op, {}, { VALUE: [s, null] });
         }
 
+        // ---- micro:bit+ SENSORS/MOTION reporters (DUAL-LOWERING-ORACLE M1–E3).
+        // BEFORE pin reads: `read accel x` must not fall through to stcPin. ----
+        if ((m = s.match(/^read\s+accel\s+(x|y|z|strength)$/i))) {
+            return B('microbitplus_accel', {}, { AXIS: [m[1].toLowerCase(), null] });
+        }
+        if (/^read\s+pitch$/i.test(s)) return B('microbitplus_pitch');
+        if (/^read\s+roll$/i.test(s)) return B('microbitplus_roll');
+        if (/^read\s+compass$/i.test(s)) return B('microbitplus_compass');
+        if ((m = s.match(/^read\s+magforce\s+(x|y|z|absolute)$/i))) {
+            return B('microbitplus_magforce', {}, { AXIS: [m[1].toLowerCase(), null] });
+        }
+        if (/^read\s+light$/i.test(s)) return B('microbitplus_light');
+        if (/^read\s+temperature$/i.test(s)) return B('microbitplus_temp');
+        if (/^read\s+sound$/i.test(s)) return B('microbitplus_sound');
+        // micro:bit+ pin/button reporters
+        if ((m = s.match(/^pin\s+(P\d+)\s+digital(?:\s+value)?$/i))) {
+            return B('microbitplus_digitalread', {}, { PIN: [m[1].toUpperCase(), null] });
+        }
+        if ((m = s.match(/^analog\s+(?:value\s+of\s+)?pin\s+(P\d+)$/i))) {
+            return B('microbitplus_analogread', {}, { PIN: [m[1].toUpperCase(), null] });
+        }
+        if ((m = s.match(/^button\s+([ABab])\s+pressed\??$/i))) {
+            return B('microbitplus_isbutton', {}, { BTN: [m[1].toLowerCase(), null] });
+        }
+        if ((m = s.match(/^read\s+button_([ABab])$/i))) {
+            return B('microbitplus_isbutton', {}, { BTN: [m[1].toLowerCase(), null] });
+        }
+        if ((m = s.match(/^read\s+last\s+radio\s+number$/i))) {
+            return B('microbitplus_radiolastnum');
+        }
+        if ((m = s.match(/^read\s+last\s+radio\s+text$/i))) {
+            return B('microbitplus_radiolaststr');
+        }
         // STC12 pin read: digital level, or the 10-bit ADC value for an ANALOG pin.
         if ((m = s.match(/^read\s+([A-Za-z_]\w*)$/i)) && this.stcPin(m[1])) {
             return B('stc12_read', {}, { PIN: [this.stcPin(m[1]).name, null] });
@@ -1159,6 +1205,13 @@ class SB3Creator {
         }
         if ((m = s.match(/^tone of\s+(.+)$/i))) {
             return B('circuit_buzzertone', { PART: this.parseValue(m[1], context) });
+        }
+        // Controller-panel READ: the live value a panel widget drives into a
+        // named control — the read mirror of `set control X to V`. Works across
+        // every runtime surface (board.getControl); compiled targets read the
+        // bound pin instead (a widget is world-facing bound to a part).
+        if ((m = s.match(/^control of\s+(.+)$/i))) {
+            return B('circuit_getcontrol', { CONTROL: this.parseValue(m[1], context) });
         }
         // LED cube voxel read: voxel <x> <y> <z>
         if ((m = s.match(/^voxel\s+(.+?)\s+(.+?)\s+(.+)$/i)) && this.project && this.project.stc && this.project.stc.ledcube) {
@@ -1402,6 +1455,16 @@ class SB3Creator {
         return cfg.parts.find((p) => p.name.toLowerCase() === lower) || null;
     }
 
+    // The one KEYPAD4X4, for the phrases that do not name it (`a key is
+    // pressed`, `key N is pressed`, `WHEN key N pressed`). Mirrors the
+    // oracle's sole_keypad (stc-compiler dec1f17): every A2-class board has
+    // exactly one keypad, so naming it would be noise.
+    stcSoleKeypad() {
+        const cfg = this.project && this.project.stc;
+        const pads = ((cfg && cfg.parts) || []).filter((p) => p.type === 'keypad4x4');
+        return pads.length === 1 ? pads[0] : null;
+    }
+
     // Whether the program declares any MATRIX8X8 PART. A matrix refreshes
     // itself in the Timer-0 ISR, so its mere presence forces the cooperative
     // scheduler path (gotcha #1 of the parity mirror — see generateC).
@@ -1426,6 +1489,188 @@ class SB3Creator {
         if (!cfg || !cfg.parts) return null;
         const screens = cfg.parts.filter((p) => p.type === 'matrix8x8');
         return screens.length === 1 ? screens[0] : null;
+    }
+
+    // The declared SEVENSEG8 / LEDBANK8 parts, for the C emitter (mirror of
+    // stc-compiler 05744c9). 8051 family only, like the matrix.
+    _cSevenSegParts() {
+        if (this._core !== '8051') return [];
+        const cfg = this.project && this.project.stc;
+        return ((cfg && cfg.parts) || []).filter((p) => p.type === 'sevenseg8');
+    }
+
+    _cLedBankParts() {
+        if (this._core !== '8051') return [];
+        const cfg = this.project && this.project.stc;
+        return ((cfg && cfg.parts) || []).filter((p) => p.type === 'ledbank8');
+    }
+
+    _stcHasSevenSeg() {
+        const cfg = this.project && this.project.stc;
+        return !!(cfg && cfg.parts && cfg.parts.some((p) => p.type === 'sevenseg8'));
+    }
+
+    _stcHasLedBank() {
+        const cfg = this.project && this.project.stc;
+        return !!(cfg && cfg.parts && cfg.parts.some((p) => p.type === 'ledbank8'));
+    }
+
+    _stcSevenSeg(name) {
+        const p = this.stcPart(name);
+        return p && p.type === 'sevenseg8' ? p : null;
+    }
+
+    _stcLedBank(name) {
+        const p = this.stcPart(name);
+        return p && p.type === 'ledbank8' ? p : null;
+    }
+
+    // SEVENSEG8 state: the shared 0-F font (once), then per display the
+    // 8-byte frame buffer + scan cursor. Verbatim mirror of
+    // Stc8051Target.runtime() in stc_pseudocode.py (05744c9).
+    _cSevenSegState() {
+        const parts = this._cSevenSegParts();
+        if (!parts.length) return [];
+        const out = [
+            '/* 7-segment font: 0-9, A-F. Common-cathode segment encoding:',
+            ' *   bit 0 = a (top), 1 = b (upper-right), 2 = c (lower-right),',
+            ' *   3 = d (bottom), 4 = e (lower-left), 5 = f (upper-left),',
+            ' *   6 = g (middle), 7 = dp (decimal point). */',
+            'static const __code unsigned char bw_7seg_font[16] = {',
+            '    0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07,',
+            '    0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71',
+            '};',
+            ''
+        ];
+        for (const p of parts) {
+            out.push(
+                `/* ${p.name}: 8-digit frame buffer and scan cursor. */`,
+                `static unsigned char bw_${p.name}_fb[8];`,
+                `static unsigned char bw_${p.name}_cur;`,
+                '');
+        }
+        return out;
+    }
+
+    _cLedBankState() {
+        const parts = this._cLedBankParts();
+        const out = [];
+        for (const p of parts) {
+            out.push(
+                `/* ${p.name}: LED shadow byte — the ISR is the sole port writer. */`,
+                `static unsigned char bw_${p.name}_shadow;`,
+                '');
+        }
+        return out;
+    }
+
+    // The per-tick digit advance: blank during switch, set the 138 address,
+    // then the new digit's segments (inverted for common anode).
+    _cSevenSegScan() {
+        const out = [];
+        for (const ss of this._cSevenSegParts()) {
+            const [a, b, c] = ss.selPins;
+            const seg = `P${ss.segPort}`;
+            out.push(
+                `    /* ${ss.name}: advance one digit */`,
+                `    ${seg} = 0x00;           /* blank during switch */`,
+                `    P${a.port}_${a.bit} = bw_${ss.name}_cur & 0x01 ? 1 : 0;`,
+                `    P${b.port}_${b.bit} = bw_${ss.name}_cur & 0x02 ? 1 : 0;`,
+                `    P${c.port}_${c.bit} = bw_${ss.name}_cur & 0x04 ? 1 : 0;`,
+                ss.commonAnode
+                    ? `    ${seg} = (unsigned char)~bw_${ss.name}_fb[bw_${ss.name}_cur];`
+                    : `    ${seg} = bw_${ss.name}_fb[bw_${ss.name}_cur];`,
+                `    bw_${ss.name}_cur = (bw_${ss.name}_cur + 1) & 0x07;`);
+        }
+        return out;
+    }
+
+    _cLedBankScan() {
+        const out = [];
+        for (const lb of this._cLedBankParts()) {
+            out.push(lb.activeLow
+                ? `    P${lb.ledPort} = (unsigned char)~bw_${lb.name}_shadow;  /* LEDs active low */`
+                : `    P${lb.ledPort} = bw_${lb.name}_shadow;`);
+        }
+        return out;
+    }
+
+    _cSevenSegHelpers() {
+        const out = [];
+        for (const p of this._cSevenSegParts()) {
+            const n = p.name;
+            out.push(
+                `/* ${n}: show a decimal number right-aligned across 8 digits. */`,
+                `static void bw_${n}_show_number(int n)`,
+                '{',
+                '    unsigned char i, neg = 0;',
+                '    unsigned int u;',
+                `    for (i = 0; i < 8; i++) bw_${n}_fb[i] = 0x00;`,
+                '    if (n < 0) { neg = 1; u = (unsigned int)(-n); }',
+                '    else       { u = (unsigned int)n; }',
+                '    i = 7;',
+                '    do {',
+                `        bw_${n}_fb[i] = bw_7seg_font[u % 10];`,
+                '        u /= 10;',
+                '        if (i == 0) break;',
+                '        i--;',
+                '    } while (u);',
+                '    if (neg && i > 0)',
+                `        bw_${n}_fb[i - 1] = 0x40;  /* minus = segment g */`,
+                '}',
+                '',
+                `static void bw_${n}_show_digit(unsigned char d, unsigned char v)`,
+                '{',
+                '    if (d > 7) return;',
+                `    bw_${n}_fb[d] = bw_7seg_font[v & 0x0F];`,
+                '}',
+                '',
+                `static void bw_${n}_set_segments(unsigned char d, unsigned char segs)`,
+                '{',
+                '    if (d > 7) return;',
+                `    bw_${n}_fb[d] = segs;`,
+                '}',
+                '',
+                `static void bw_${n}_clear(void)`,
+                '{',
+                '    unsigned char i;',
+                `    for (i = 0; i < 8; i++) bw_${n}_fb[i] = 0x00;`,
+                '}',
+                '');
+        }
+        return out;
+    }
+
+    _cLedBankHelpers() {
+        const out = [];
+        for (const p of this._cLedBankParts()) {
+            const n = p.name;
+            out.push(
+                `/* ${n}: LED helpers — writes go through the shadow byte. */`,
+                `static void bw_${n}_on(unsigned char n)`,
+                '{',
+                '    if (n > 7) return;',
+                `    bw_${n}_shadow |= (unsigned char)(1 << n);`,
+                '}',
+                '',
+                `static void bw_${n}_off(unsigned char n)`,
+                '{',
+                '    if (n > 7) return;',
+                `    bw_${n}_shadow &= (unsigned char)~(1 << n);`,
+                '}',
+                '',
+                `static void bw_${n}_set(unsigned char pattern)`,
+                '{',
+                `    bw_${n}_shadow = pattern;`,
+                '}',
+                '',
+                `static void bw_${n}_only(unsigned char n)`,
+                '{',
+                `    bw_${n}_shadow = (n > 7) ? 0 : (unsigned char)(1 << n);`,
+                '}',
+                '');
+        }
+        return out;
     }
 
     // The declared MATRIX8X8 parts, for the C emitter. 8051 family only.
@@ -1501,6 +1746,7 @@ class SB3Creator {
                 ' * port; mainline only ever writes this RAM. */',
                 `static unsigned char bw_scr_${n}[8 * MATRIX_PLANES];`,
                 `static unsigned char bw_scr_${n}_scan;                 /* row cursor 0..7 */`,
+                `static unsigned char bw_scr_${n}_phase;                /* BCM phase 0..MATRIX_LEVELS-2 */`,
                 `static unsigned char bw_scr_${n}_dim = MATRIX_LEVELS - 1;  /* global brightness */`,
                 '/* Row select, active-high, Q7 = top: row y is 595 output Q(7-y)',
                 ' * == bit (0x80 >> y). A table so the ISR shifts no variable. */',
@@ -1539,16 +1785,38 @@ class SB3Creator {
                 `            ${clockSfr} = 1; ${clockSfr} = 0;`,
                 '        }',
                 `        ${latchSfr} = 1; ${latchSfr} = 0;              /* transfer to the 595 outputs */`,
-                '        /* Threshold render: lit iff level != 0 == OR of the bit-planes.',
-                '         * BCM SEAM -- a later ISR-only change swaps this OR for a',
-                `         * bw_scr_${n}_phase-selected plane with weighted dwell; the 2-bit`,
-                '         * levels are already in the buffer, so no drawing verb changes. */',
-                `        if (bw_scr_${n}_dim == 0) bw_lit = 0;`,
-                `        else bw_lit = (unsigned char)(bw_scr_${n}[bw_scr_${n}_scan]`,
-                `                                    | bw_scr_${n}[bw_scr_${n}_scan + 8]);`,
+                '        /* Grayscale by bit-plane phase render (BCM). Over a cycle of',
+                '         * MATRIX_LEVELS-1 phases a pixel of level L is lit in L of them,',
+                '         * so its duty is L/(MATRIX_LEVELS-1): 0, 1/3, 2/3, 1 for the 4',
+                "         * levels. The phase mask says 'level > phase', read straight off",
+                '         * the two bit-planes p0 (LSB) and p1 (MSB):',
+                '         *   phase 0: level>=1 = p0 | p1',
+                '         *   phase 1: level>=2 = p1',
+                '         *   phase 2: level>=3 = p0 & p1',
+                `         * The global dim caps every pixel at min(level, bw_scr_${n}_dim):`,
+                '         * a phase renders only while dim > phase. Table-free, no mul/div;',
+                '         * still one row per tick. (The masks are 2-plane specific -- a',
+                '         * widen to 4 planes/16 levels generalizes them to a level compare.) */',
+                `        if (bw_scr_${n}_dim > bw_scr_${n}_phase) {`,
+                `            unsigned char bw_p0 = bw_scr_${n}[bw_scr_${n}_scan];`,
+                `            unsigned char bw_p1 = bw_scr_${n}[bw_scr_${n}_scan + 8];`,
+                `            if (bw_scr_${n}_phase == 0) bw_lit = (unsigned char)(bw_p0 | bw_p1);`,
+                `            else if (bw_scr_${n}_phase == 1) bw_lit = bw_p1;`,
+                '            else bw_lit = (unsigned char)(bw_p0 & bw_p1);',
+                '        } else {',
+                '            bw_lit = 0;',
+                '        }',
                 `        ${colSfr} = (unsigned char)~bw_lit;        /* active-low columns: lit -> 0 */`,
+                '        /* Advance the row; a completed frame steps the BCM phase. The',
+                '         * phase cycle is MATRIX_LEVELS-1 frames long (3 frames = 24 ms',
+                '         * = ~42 Hz grayscale cycle at 8 ms/frame; the anti-flicker timer',
+                '         * choice is a bench decision, this is the duty-correct reference). */',
                 `        bw_scr_${n}_scan++;`,
-                `        if (bw_scr_${n}_scan >= 8) bw_scr_${n}_scan = 0;`,
+                `        if (bw_scr_${n}_scan >= 8) {`,
+                `            bw_scr_${n}_scan = 0;`,
+                `            bw_scr_${n}_phase++;`,
+                `            if (bw_scr_${n}_phase >= MATRIX_LEVELS - 1) bw_scr_${n}_phase = 0;`,
+                '        }',
                 '    }'
             );
         }
@@ -1821,6 +2089,13 @@ class SB3Creator {
                 this.warn(lineIndex, `${where.toUpperCase()} is a button and can only be an INPUT`);
                 return true;
             }
+            // PART-claims conflict: a keypad or other part that owns this pin.
+            const partClash = cfg.parts.find((prev) =>
+                (prev.claims || []).some((c) => typeof c === 'string' && c.toUpperCase() === where.toUpperCase()));
+            if (partClash) {
+                this.warn(lineIndex, `${where.toUpperCase()} is already claimed by "${partClash.name}"; a PART owns that pin`);
+                return true;
+            }
             cfg.pins.push({
                 name,
                 where: where.toUpperCase(),
@@ -2048,6 +2323,66 @@ class SB3Creator {
             });
             return true;
         }
+        // PART <name> = KEYPAD4X4 ROWS <pin> x4 COLS <pin> x4 — generic pin form
+        // for non-8051 cores (micro:bit P0-P20, Pico GP0-GP28). The scanner
+        // tri-states rows between scans (Pico: Pin.IN; micro:bit: read_digital
+        // + set_pull). Debounced two-agreeing-reads, scheduled first at 5 ms.
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*KEYPAD4X4\s+ROWS\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+COLS\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$/i))
+            && !trimmed.match(/^PART\s+\S+\s*=\s*KEYPAD4X4\s+ROWS\s+P[0-4]\.[0-7]/i)) {
+            const name = m[1];
+            const cfg = this.stcConfig();
+            const part = SB3Creator.STC_PARTS[cfg.device];
+            const core = part && part.core;
+            if (!core || (core !== 'micropython' && core !== 'rp2040')) {
+                this.warn(lineIndex, `KEYPAD4X4 with this pin syntax is for micro:bit (P0-P20) or Pico (GP0-GP28); ${cfg.device || 'this device'} uses P<port>.<bit>`);
+                return true;
+            }
+            if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
+                this.warn(lineIndex, `"${name}" declared twice`);
+                return true;
+            }
+            // Validate each pin token against the device's vocabulary
+            const SPOKEN = {
+                microbit: [/^P\d+$/i, 'P0-P20'],
+                pico: [/^GP\d+$/i, 'GP0-GP28']
+            };
+            const spoken = SPOKEN[cfg.device];
+            const tokens = m.slice(2, 10);
+            const claims = [];
+            for (const tok of tokens) {
+                if (spoken && !spoken[0].test(tok)) {
+                    this.warn(lineIndex, `"${tok}" is not a valid pin for ${cfg.device}; it uses ${spoken[1]}`);
+                    return true;
+                }
+                claims.push(tok.toUpperCase());
+            }
+            if (new Set(claims).size !== 8) {
+                this.warn(lineIndex, `"${name}" names the same pin twice; a 4x4 keypad claims eight different pins`);
+                return true;
+            }
+            // Conflict: a PIN declaration on a claimed pin
+            for (const w of claims) {
+                const pinConflict = cfg.pins.find((pin) => (pin.where || '').toUpperCase() === w);
+                if (pinConflict) {
+                    this.warn(lineIndex, `${w} is already declared as "${pinConflict.name}"; a PART claims its pins`);
+                    return true;
+                }
+                for (const prev of cfg.parts) {
+                    if ((prev.claims || []).some((c) => typeof c === 'string' && c.toUpperCase() === w)) {
+                        this.warn(lineIndex, `${w} is already claimed by "${prev.name}"`);
+                        return true;
+                    }
+                }
+            }
+            cfg.parts.push({
+                name,
+                type: 'keypad4x4',
+                claims,
+                rows: claims.slice(0, 4).map((w) => ({ where: w })),
+                cols: claims.slice(4).map((w) => ({ where: w }))
+            });
+            return true;
+        }
         // PART <name> = MATRIX8X8 ROWS 74HC595 DATA P<..> CLOCK P<..> LATCH P<..>
         // COLUMNS P<n> — an 8x8 LED dot matrix that refreshes itself in the
         // Timer-0 ISR (one row per tick -> 125 Hz), so the drawing verbs are
@@ -2105,6 +2440,79 @@ class SB3Creator {
                 }
             }
             cfg.parts.push({ name, type: 'matrix8x8', claims, data, clock, latch, colPort, columns });
+            return true;
+        }
+        // PART <name> = SEVENSEG8 SEGMENTS P<n> SELECT Pa.x Pb.y Pc.z [COMMON CATHODE|ANODE]
+        // — 8-digit 7-seg via 74HC245 (segments on a whole port) + 74HC138
+        // (3 select pins). ISR-scanned, one digit per tick. Mirror of the
+        // reference (stc-compiler 05744c9); 8051 family only, like MATRIX8X8.
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*SEVENSEG8\s+SEGMENTS\s+P([0-4])\s+SELECT\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])\s+P([0-4])\.([0-7])(?:\s+COMMON\s+(CATHODE|ANODE))?$/i))) {
+            const name = m[1];
+            const cfg = this.stcConfig();
+            const part = SB3Creator.STC_PARTS[cfg.device];
+            if (!part || (part.core && part.core !== '8051')) {
+                this.warn(lineIndex, `SEVENSEG8 is not available on ${cfg.device}: the digit scan lives in the 8051 Timer-0 ISR (8051 family). Devices that have it: the STC parts.`);
+                return true;
+            }
+            if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
+                this.warn(lineIndex, `"${name}" declared twice`);
+                return true;
+            }
+            const segPort = Number(m[2]);
+            const selPins = [{ port: Number(m[3]), bit: Number(m[4]) },
+                { port: Number(m[5]), bit: Number(m[6]) },
+                { port: Number(m[7]), bit: Number(m[8]) }];
+            if (new Set(selPins.map((p) => `${p.port}.${p.bit}`)).size !== 3) {
+                this.warn(lineIndex, `"${name}" names the same select pin twice`);
+                return true;
+            }
+            const claims = selPins.map((p) => [p.port, p.bit]);
+            for (const [pp, b] of claims) {
+                const pinConflict = cfg.pins.find((pin) => pin.port === pp && pin.bit === b);
+                if (pinConflict) {
+                    this.warn(lineIndex, `P${pp}.${b} is already declared as "${pinConflict.name}"; a PART claims its pins`);
+                    return true;
+                }
+                for (const prev of cfg.parts) {
+                    if ((prev.claims || []).some((c) => Array.isArray(c) && c[0] === pp && c[1] === b)) {
+                        this.warn(lineIndex, `P${pp}.${b} is already claimed by "${prev.name}"`);
+                        return true;
+                    }
+                }
+            }
+            const portConflict = cfg.ports.find((w) => w.port === segPort);
+            if (portConflict) {
+                this.warn(lineIndex, `P${segPort} is already declared as port "${portConflict.name}"`);
+                return true;
+            }
+            cfg.parts.push({ name, type: 'sevenseg8', segPort, selPins, claims,
+                commonAnode: /anode/i.test(m[9] || '') });
+            return true;
+        }
+        // PART <name> = LEDBANK8 ON P<n> [ACTIVE LOW] — 8 LEDs on a port,
+        // written ONLY through an ISR-owned shadow byte (the ISR is the sole
+        // port writer; on the A2, P2 carries both the 138 select and the LEDs).
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*LEDBANK8\s+ON\s+P([0-4])(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
+            const name = m[1];
+            const cfg = this.stcConfig();
+            const part = SB3Creator.STC_PARTS[cfg.device];
+            if (!part || (part.core && part.core !== '8051')) {
+                this.warn(lineIndex, `LEDBANK8 is not available on ${cfg.device}: the shadow-byte push lives in the 8051 Timer-0 ISR (8051 family). Devices that have it: the STC parts.`);
+                return true;
+            }
+            if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
+                this.warn(lineIndex, `"${name}" declared twice`);
+                return true;
+            }
+            const ledPort = Number(m[2]);
+            for (const ss of cfg.parts) {
+                if (ss.type === 'sevenseg8' && (ss.selPins || []).some((p) => p.port === ledPort)) {
+                    this.warn(lineIndex, `${name} on P${ledPort} shares a port with ${ss.name}'s select pins; the ISR scan will flicker the LEDs during digit multiplexing. LED writes go through the shadow byte.`);
+                    break;
+                }
+            }
+            cfg.parts.push({ name, type: 'ledbank8', ledPort, claims: [],
+                activeLow: !/high/i.test(m[3] || '') && /low/i.test(m[3] || '') });
             return true;
         }
         // TABLE <name> = <value>, <value>, ... — constant lookup table in code space.
@@ -2170,6 +2578,25 @@ class SB3Creator {
     parseCondition(conditionStr, context) {
         let s = this.stripOuterParens((conditionStr || '').trim());
         const push = (op, inputs = {}, fields = {}) => this.pushBlock(context, op, inputs, fields);
+
+        // Keypad phrase sugar (oracle parity, stc-compiler dec1f17): rewrite
+        // to the canonical compare BEFORE any other parsing, so the blocks
+        // are identical to hand-written `keys >= 0` / `keys = N` and the
+        // printed fixed point is the desugared form on both sides. Guarded
+        // by the full phrase, so Scratch's own `key X pressed?` (no `is`)
+        // and a VARIABLE named `key` are untouched.
+        {
+            let km;
+            if (/^a key is pressed$/i.test(s) && this.stcSoleKeypad()) {
+                s = `${this.stcSoleKeypad().name} >= 0`;
+            } else if ((km = s.match(/^key\s+(\d+)\s+is\s+(pressed|released)$/i))
+                    && this.stcSoleKeypad()) {
+                if (+km[1] > 15) this.warn(null, `key ${km[1]} does not exist; a KEYPAD4X4 has keys 0..15`);
+                s = km[2].toLowerCase() === 'released'
+                    ? `not ${this.stcSoleKeypad().name} = ${km[1]}`
+                    : `${this.stcSoleKeypad().name} = ${km[1]}`;
+            }
+        }
 
         // Boolean precedence, loosest first — Python's, which is the
         // reference dialect's (stc-compiler c34ad1b): or < and < not <
@@ -2534,6 +2961,23 @@ class SB3Creator {
             block[id].inputs.SENSOR = [1, [10, match[1]]];
             return { block, extraBlocks: {} };
         }
+        // KEYPAD4X4 event hat: `when key N pressed` / `released` on the sole
+        // keypad (oracle parity, stc-compiler dec1f17). Checked before the
+        // pin hat: the digit makes it unambiguous even if a pin is named `key`.
+        if ((match = line.match(/^when\s+key\s+(\d+)\s+(pressed|released)$/i))) {
+            const pad = this.stcSoleKeypad();
+            if (!pad) {
+                throw new ParseError(`"when key ${match[1]} ${match[2].toLowerCase()}" needs a KEYPAD4X4; `
+                    + `declare one with PART <name> = KEYPAD4X4 ROWS ... COLS ...`);
+            }
+            if (+match[1] > 15) {
+                throw new ParseError(`key ${match[1]} does not exist; a KEYPAD4X4 has keys 0..15`);
+            }
+            const { id, block } = this.createBlock('stc12_whenkey', { topLevel: true });
+            block[id].fields.KEY = [String(+match[1]), null];
+            block[id].fields.EDGE = [match[2].toLowerCase(), null];
+            return { block, extraBlocks: {} };
+        }
         // STC12 event hat: `when <pin> pressed` / `when <pin> released` for INPUT pins.
         if ((match = line.match(/^when\s+([A-Za-z_]\w*)\s+(pressed|released)$/i)) && this.stcPin(match[1])) {
             const pin = this.stcPin(match[1]);
@@ -2708,6 +3152,57 @@ class SB3Creator {
                 return ret(block);
             }
         }
+        // ---- SEVENSEG8 verbs (mirror of the reference; all write the RAM
+        // frame buffer only — the Timer-0 ISR scans it). Named-part forms,
+        // placed AHEAD of the generic pin/variable catch-alls.
+        if (this._stcHasSevenSeg()) {
+            if ((match = line.match(/^show\s+number\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcSevenSeg(match[2])) {
+                const { id, block } = cmd('stc12_seg_shownum');
+                block[id].fields.PART = [this._stcSevenSeg(match[2]).name, null];
+                block[id].inputs.NUM = val(match[1]);
+                return ret(block);
+            }
+            if ((match = line.match(/^show\s+digit\s+(.+?)\s*=\s*value\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcSevenSeg(match[3])) {
+                const { id, block } = cmd('stc12_seg_showdigit');
+                block[id].fields.PART = [this._stcSevenSeg(match[3]).name, null];
+                block[id].inputs.DIGIT = val(match[1]);
+                block[id].inputs.VALUE = val(match[2]);
+                return ret(block);
+            }
+            if ((match = line.match(/^set\s+digit\s+(.+?)\s+to\s+segments\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcSevenSeg(match[3])) {
+                const { id, block } = cmd('stc12_seg_setsegs');
+                block[id].fields.PART = [this._stcSevenSeg(match[3]).name, null];
+                block[id].inputs.DIGIT = val(match[1]);
+                block[id].inputs.SEGS = val(match[2]);
+                return ret(block);
+            }
+            if ((match = line.match(/^clear\s+(\w+)$/i)) && this._stcSevenSeg(match[1])) {
+                const { id, block } = cmd('stc12_seg_clear');
+                block[id].fields.PART = [this._stcSevenSeg(match[1]).name, null];
+                return ret(block);
+            }
+        }
+        // ---- LEDBANK8 verbs — all write the shadow byte; the ISR pushes it.
+        if (this._stcHasLedBank()) {
+            if ((match = line.match(/^turn\s+(on|off)\s+led\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcLedBank(match[3])) {
+                const { id, block } = cmd(match[1].toLowerCase() === 'on' ? 'stc12_led_on' : 'stc12_led_off');
+                block[id].fields.PART = [this._stcLedBank(match[3]).name, null];
+                block[id].inputs.N = val(match[2]);
+                return ret(block);
+            }
+            if ((match = line.match(/^set\s+leds\s+to\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcLedBank(match[2])) {
+                const { id, block } = cmd('stc12_led_set');
+                block[id].fields.PART = [this._stcLedBank(match[2]).name, null];
+                block[id].inputs.VALUE = val(match[1]);
+                return ret(block);
+            }
+            if ((match = line.match(/^light\s+only\s+led\s+(.+?)\s+on\s+(\w+)$/i)) && this._stcLedBank(match[2])) {
+                const { id, block } = cmd('stc12_led_only');
+                block[id].fields.PART = [this._stcLedBank(match[2]).name, null];
+                block[id].inputs.N = val(match[1]);
+                return ret(block);
+            }
+        }
         // `set <part> to <n>` — shifts a byte out to a 74HC595.
         if ((match = line.match(/^set\s+([A-Za-z_]\w*)\s+to\s+(.+)$/i)) && this.stcPart(match[1])) {
             const part = this.stcPart(match[1]);
@@ -2717,6 +3212,14 @@ class SB3Creator {
             }
             if (part.type === 'matrix8x8') {
                 this.warn(null, `"${part.name}" is an 8x8 screen; use a drawing verb (light pixel / draw row / show image / clear ${part.name}), not "set ... to"`);
+                return ret(null);
+            }
+            if (part.type === 'sevenseg8') {
+                this.warn(null, `"${part.name}" is an 8-digit display; use a display verb (show number / show digit / set digit / clear ${part.name}), not "set ... to"`);
+                return ret(null);
+            }
+            if (part.type === 'ledbank8') {
+                this.warn(null, `"${part.name}" is an LED bank; use an LED verb (turn on led / set leds to <byte> on ${part.name} / light only led), not "set ... to"`);
                 return ret(null);
             }
             const { id, block } = cmd('stc12_setpart');
@@ -2735,6 +3238,100 @@ class SB3Creator {
             const { id, block } = cmd('stc12_print');
             block[id].inputs.VALUE = val(match[1]);
             block[id].fields.MODE = ['number', null];
+            return ret(block);
+        }
+        // ---- micro:bit+ display group (docs/microbitplus/DUAL-LOWERING-ORACLE.md D1–D5).
+        // BEFORE the stock display/scroll parse: `scroll text "..."` must not be
+        // grabbed by the generic `scroll <expr>` rule below. ----
+        if ((match = line.match(/^show\s+pattern\s+([0-9:]+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_showmatrix');
+            block[id].fields.MATRIX = [match[1].replace(/[^0-9]/g, ''), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^show\s+text\s+"([^"]*)"\s*$/i))) {
+            const { id, block } = cmd('microbitplus_showtext');
+            block[id].inputs.TEXT = [1, [10, match[1]]];
+            return ret(block);
+        }
+        if ((match = line.match(/^scroll\s+text\s+"([^"]*)"\s+delay\s+(\d+)\s*ms\s*$/i))) {
+            const { id, block } = cmd('microbitplus_scrolltext');
+            block[id].inputs.TEXT = [1, [10, match[1]]];
+            block[id].inputs.MS = [1, [4, match[2]]];
+            return ret(block);
+        }
+        if (/^clear\s+display\s*$/i.test(line)) {
+            const { id, block } = cmd('microbitplus_cleardisplay');
+            return ret(block);
+        }
+        if ((match = line.match(/^plot\s+x\s+(\d+)\s+y\s+(\d+)\s+(on|off)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_plot');
+            block[id].inputs.X = [1, [4, match[1]]];
+            block[id].inputs.Y = [1, [4, match[2]]];
+            block[id].fields.STATE = [match[3].toLowerCase(), null];
+            return ret(block);
+        }
+        // ---- micro:bit+ PINS group (DUAL-LOWERING-ORACLE P1–P7) ----
+        if ((match = line.match(/^set\s+pin\s+(P\d+)\s+(?:to\s+|digital\s+)([01])\s*$/i))) {
+            const { id, block } = cmd('microbitplus_digitalwrite');
+            block[id].fields.PIN = [match[1].toUpperCase(), null];
+            block[id].fields.LEVEL = [match[2], null];
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+pin\s+(P\d+)\s+analog\s+(\S+)\s*%?\s*$/i))) {
+            const { id, block } = cmd('microbitplus_analogwrite');
+            block[id].fields.PIN = [match[1].toUpperCase(), null];
+            block[id].inputs.PCT = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+pin\s+(P\d+)\s+pull\s+(none|up|down)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_setpull');
+            block[id].fields.PIN = [match[1].toUpperCase(), null];
+            block[id].fields.MODE = [match[2].toLowerCase(), null];
+            return ret(block);
+        }
+        // ---- micro:bit+ ACTUATORS group (DUAL-LOWERING-ORACLE A1–A4) ----
+        if ((match = line.match(/^(?:set\s+buzzer\s+to|play\s+tone)\s+(\S+)\s*hz(?:\s+for\s+(\S+)\s*ms)?\s*$/i))) {
+            const { id, block } = cmd('microbitplus_playtone');
+            block[id].inputs.FREQ = val(match[1]);
+            block[id].inputs.MS = [1, [4, match[2] || '-1']];
+            return ret(block);
+        }
+        if ((match = line.match(/^play\s+note\s+([A-G]#?\d)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_playnote');
+            block[id].fields.NOTE = [match[1].toUpperCase(), null];
+            return ret(block);
+        }
+        if (/^stop\s+(?:buzzer|tone)\s*$/i.test(line)) {
+            const { id, block } = cmd('microbitplus_stoptone');
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+(?:pin\s+)?(P\d+)\s+servo(?:\s+angle)?\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_servo');
+            block[id].fields.PIN = [match[1].toUpperCase(), null];
+            block[id].inputs.DEG = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+servo\s+to\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_servo');
+            block[id].fields.PIN = ['P1', null];
+            block[id].inputs.DEG = val(match[1]);
+            return ret(block);
+        }
+        // ---- micro:bit+ RADIO group (DUAL-LOWERING-ORACLE R1–R5) ----
+        if ((match = line.match(/^radio\s+on\s+group\s+(\S+)\s+power\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_radioon');
+            block[id].inputs.GROUP = val(match[1]);
+            block[id].inputs.POWER = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^radio\s+send\s+number\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_radiosendnum');
+            block[id].inputs.NUM = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^radio\s+send\s+text\s+"([^"]*)"\s*$/i))) {
+            const { id, block } = cmd('microbitplus_radiosendstr');
+            block[id].inputs.TEXT = [1, [10, match[1]]];
             return ret(block);
         }
         // ---- micro:bit display (explicit device verb: say is STAGE, this is LEDs) ----
@@ -4371,6 +4968,14 @@ class SB3Creator {
                     out.push(`PART ${p.name} = MATRIX8X8 ROWS 74HC595 DATA ${pinStr(p.data)} CLOCK ${pinStr(p.clock)} LATCH ${pinStr(p.latch)} COLUMNS P${p.colPort}`);
                     continue;
                 }
+                if (p.type === 'sevenseg8') {
+                    out.push(`PART ${p.name} = SEVENSEG8 SEGMENTS P${p.segPort} SELECT ${p.selPins.map(pinStr).join(' ')}${p.commonAnode ? ' COMMON ANODE' : ''}`);
+                    continue;
+                }
+                if (p.type === 'ledbank8') {
+                    out.push(`PART ${p.name} = LEDBANK8 ON P${p.ledPort}${p.activeLow ? ' ACTIVE LOW' : ''}`);
+                    continue;
+                }
                 out.push(`PART ${p.name} = 74HC595 data ${pinStr(p.data)} clock ${pinStr(p.clock)} latch ${pinStr(p.latch)}${p.activeLow ? ' ACTIVE LOW' : ''}`);
             }
             for (const t of cfg.tables || []) {
@@ -4548,6 +5153,24 @@ class SB3Creator {
             case 'arrays_map': return `map ${this.dval(b.inputs.FUNC, blocks)} over array ${v('NAME')}`;
             case 'arrays_filter': return `filter array ${v('NAME')} by ${this.dval(b.inputs.FUNC, blocks)}`;
             case 'arrays_reduce': return `reduce array ${v('NAME')} with ${this.dval(b.inputs.FUNC, blocks)} from ${v('INIT')}`;
+            // micro:bit+ sensor/motion reporters (decompile to dialect).
+            case 'microbitplus_accel': return `read accel ${f('AXIS')}`;
+            case 'microbitplus_pitch': return 'read pitch';
+            case 'microbitplus_roll': return 'read roll';
+            case 'microbitplus_compass': return 'read compass';
+            case 'microbitplus_magforce': return `read magforce ${f('AXIS')}`;
+            case 'microbitplus_light': return 'read light';
+            case 'microbitplus_temp': return 'read temperature';
+            case 'microbitplus_sound': return 'read sound';
+            // micro:bit+ pin/button/radio reporters (decompile to dialect).
+            case 'microbitplus_digitalread': return `pin ${f('PIN')} digital`;
+            case 'microbitplus_analogread': return `analog value of pin ${f('PIN')}`;
+            case 'microbitplus_isbutton': return `read button_${f('BTN')}`;
+            case 'microbitplus_ispinhigh': return `pin ${f('PIN')} is high`;
+            case 'microbitplus_isgesture': return `${f('GESTURE')} happening`;
+            case 'microbitplus_istouch': return `pin ${f('PIN')} touched`;
+            case 'microbitplus_radiolastnum': return 'read last radio number';
+            case 'microbitplus_radiolaststr': return 'read last radio text';
             // STC12 / 8051 pin read (digital level or ADC value).
             case 'stc12_read': return `read ${f('PIN')}`;
             case 'stc12_readport': return `read ${f('PORT')}`;
@@ -4572,6 +5195,7 @@ class SB3Creator {
             case 'circuit_resistance': return `resistance between ${v('A')} and ${v('B')}`;
             case 'circuit_ledbrightness': return `brightness of ${v('PART')}`;
             case 'circuit_buzzertone': return `tone of ${v('PART')}`;
+            case 'circuit_getcontrol': return `control of ${v('CONTROL')}`;
             default: return b.opcode;
         }
     }
@@ -4640,6 +5264,7 @@ class SB3Creator {
             case 'event_whenbroadcastreceived': return `WHEN I receive "${f('BROADCAST_OPTION')}":`;
             case 'control_start_as_clone': return 'WHEN I start as a clone:';
             case 'stc12_whenpin': return `WHEN ${f('PIN')} ${f('EDGE')}:`;
+            case 'stc12_whenkey': return `WHEN key ${f('KEY')} ${f('EDGE')}:`;
             case 'devices_whenabove': return `WHEN ${v('SENSOR')} above ${v('THRESHOLD')}:`;
             case 'devices_whencloser': return `WHEN ${v('SENSOR')} closer than ${v('DISTANCE')}:`;
             case 'devices_whenmotion': return `WHEN motion on ${v('SENSOR')}:`;
@@ -4784,6 +5409,22 @@ class SB3Creator {
                 if (mode === 'text') return line(`display "${this.dval(b.inputs.VALUE, blocks).replace(/^"|"$/g, '')}"`);
                 return line(`display ${v('VALUE')}`);
             }
+            // micro:bit+ command blocks (decompile to dialect)
+            case 'microbitplus_showmatrix': return line(`show pattern ${f('MATRIX')}`);
+            case 'microbitplus_showtext': return line(`show text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            case 'microbitplus_scrolltext': return line(`scroll text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}" delay ${v('MS')} ms`);
+            case 'microbitplus_cleardisplay': return line('clear display');
+            case 'microbitplus_plot': return line(`plot x ${v('X')} y ${v('Y')} ${f('STATE')}`);
+            case 'microbitplus_digitalwrite': return line(`set pin ${f('PIN')} to ${f('LEVEL')}`);
+            case 'microbitplus_analogwrite': return line(`set pin ${f('PIN')} analog ${v('PCT')} %`);
+            case 'microbitplus_setpull': return line(`set pin ${f('PIN')} pull ${f('MODE')}`);
+            case 'microbitplus_playtone': return line(`play tone ${v('FREQ')} hz for ${v('MS')} ms`);
+            case 'microbitplus_playnote': return line(`play note ${f('NOTE')}`);
+            case 'microbitplus_stoptone': return line('stop buzzer');
+            case 'microbitplus_servo': return line(`set pin ${f('PIN')} servo ${v('DEG')}`);
+            case 'microbitplus_radioon': return line(`radio on group ${v('GROUP')} power ${v('POWER')}`);
+            case 'microbitplus_radiosendnum': return line(`radio send number ${v('NUM')}`);
+            case 'microbitplus_radiosendstr': return line(`radio send text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
             // circuit extension commands
             case 'circuit_setcontrol': return line(`set control ${v('CONTROL')} to ${v('VALUE')}`);
             case 'circuit_setpower': return line(`turn power ${f('STATE')}`);
@@ -4803,6 +5444,14 @@ class SB3Creator {
             case 'devices_clearmatrix': return line(`clear matrix ${v('MATRIX')}`);
             // MATRIX8X8 drawing verbs (the PART-based 8x8 screen).
             case 'stc12_matrix_clear': return line(`clear ${f('PART')}`);
+            case 'stc12_seg_shownum': return line(`show number ${v('NUM')} on ${f('PART')}`);
+            case 'stc12_seg_showdigit': return line(`show digit ${v('DIGIT')} = value ${v('VALUE')} on ${f('PART')}`);
+            case 'stc12_seg_setsegs': return line(`set digit ${v('DIGIT')} to segments ${v('SEGS')} on ${f('PART')}`);
+            case 'stc12_seg_clear': return line(`clear ${f('PART')}`);
+            case 'stc12_led_on': return line(`turn on led ${v('N')} on ${f('PART')}`);
+            case 'stc12_led_off': return line(`turn off led ${v('N')} on ${f('PART')}`);
+            case 'stc12_led_set': return line(`set leds to ${v('VALUE')} on ${f('PART')}`);
+            case 'stc12_led_only': return line(`light only led ${v('N')} on ${f('PART')}`);
             case 'stc12_matrix_setpx': {
                 const st = f('STYLE');
                 if (st === 'light') return line(`light pixel ${v('X')} ${v('Y')}`);
@@ -4875,7 +5524,7 @@ class SB3Creator {
     isHat(op) {
         return ['event_whenflagclicked', 'event_whenkeypressed', 'event_whenthisspriteclicked',
             'event_whenbroadcastreceived', 'control_start_as_clone', 'procedures_definition',
-            'stc12_whenpin',
+            'stc12_whenpin', 'stc12_whenkey',
             'devices_whenabove', 'devices_whencloser', 'devices_whenmotion',
             'devices_whentilted', 'devices_whenirreceived'].includes(op);
     }
@@ -4971,6 +5620,32 @@ class SB3Creator {
             case 'planetemaths_length': return `len(str(${v('STRING')}))`;
             case 'planetemaths_sommechiffres': this._pyUses.sumdigits = true; return `_sumdigits(${v('NUM1')})`;
             // Arrays & Vectors reporters (0-based; `_arrays` registry).
+            // micro:bit+ reporters — in pyRep so they are reachable from pyCond's
+            // operator_gt/lt paths, not only from generateMicroPython's val().
+            case 'microbitplus_accel': {
+                const ax = (b.fields.AXIS ? b.fields.AXIS[0] : 'x').toLowerCase();
+                if (ax === 'strength') { this._pyUses.math = true; return 'math.sqrt(accelerometer.get_x()**2 + accelerometer.get_y()**2 + accelerometer.get_z()**2)'; }
+                return `accelerometer.get_${ax}()`;
+            }
+            case 'microbitplus_pitch': this._pyUses.math = true; return '_pitch()';
+            case 'microbitplus_roll': this._pyUses.math = true; return '_roll()';
+            case 'microbitplus_compass': return 'compass.heading()';
+            case 'microbitplus_magforce': {
+                const ax = (b.fields.AXIS ? b.fields.AXIS[0] : 'x').toLowerCase();
+                if (ax === 'absolute') { this._pyUses.math = true; return 'math.sqrt(compass.get_x()**2 + compass.get_y()**2 + compass.get_z()**2)'; }
+                return `compass.get_${ax}()`;
+            }
+            case 'microbitplus_light': return 'display.read_light_level()';
+            case 'microbitplus_temp': return 'temperature()';
+            case 'microbitplus_sound': return 'microphone.sound_level()';
+            case 'microbitplus_digitalread': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_digital()`;
+            case 'microbitplus_analogread': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_analog()`;
+            case 'microbitplus_isbutton': return `button_${(b.fields.BTN ? b.fields.BTN[0] : 'a').toLowerCase()}.is_pressed()`;
+            case 'microbitplus_ispinhigh': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_digital()`;
+            case 'microbitplus_isgesture': return `accelerometer.is_gesture('${(b.fields.GESTURE ? b.fields.GESTURE[0] : 'shake').toLowerCase()}')`;
+            case 'microbitplus_istouch': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.is_touched()`;
+            case 'microbitplus_radiolastnum': return '_radio_last_num';
+            case 'microbitplus_radiolaststr': return '_radio_last_str';
             // Scratch-runtime reporters (x position, mouse x, timer, …) -> scratch.<method>().
             default: {
                 const ac = this.arraysCall(b, blocks, this.pyVal);
@@ -6514,6 +7189,14 @@ class SB3Creator {
             // Timer-0 ISR scans the buffer onto the panel. Mirrors matrix_stmt_c
             // in stc_pseudocode.py (a91981a).
             case 'stc12_matrix_clear': { this._cUses.matrix = true; return line(`bw_scr_${f('PART')}_clear();`); }
+            case 'stc12_seg_shownum': { this._cUses.sevenseg = true; return line(`bw_${f('PART')}_show_number(${v('NUM')});`); }
+            case 'stc12_seg_showdigit': { this._cUses.sevenseg = true; return line(`bw_${f('PART')}_show_digit((unsigned char)(${v('DIGIT')}), (unsigned char)(${v('VALUE')}));`); }
+            case 'stc12_seg_setsegs': { this._cUses.sevenseg = true; return line(`bw_${f('PART')}_set_segments((unsigned char)(${v('DIGIT')}), (unsigned char)(${v('SEGS')}));`); }
+            case 'stc12_seg_clear': { this._cUses.sevenseg = true; return line(`bw_${f('PART')}_clear();`); }
+            case 'stc12_led_on': { this._cUses.ledbank = true; return line(`bw_${f('PART')}_on((unsigned char)(${v('N')}));`); }
+            case 'stc12_led_off': { this._cUses.ledbank = true; return line(`bw_${f('PART')}_off((unsigned char)(${v('N')}));`); }
+            case 'stc12_led_set': { this._cUses.ledbank = true; return line(`bw_${f('PART')}_set((unsigned char)(${v('VALUE')}));`); }
+            case 'stc12_led_only': { this._cUses.ledbank = true; return line(`bw_${f('PART')}_only((unsigned char)(${v('N')}));`); }
             case 'stc12_matrix_setpx': {
                 this._cUses.matrix = true;
                 const st = f('STYLE');
@@ -7156,7 +7839,22 @@ class SB3Creator {
      *
      * @returns {{ok: boolean, py?: string, reasons: string[], warnings: string[]}}
      */
-    generateMicroPython(project = this.project) {
+    generateMicroPython(project = this.project, opts = {}) {
+        // Debug build: instrument each block with a position marker over serial
+        // — the micro:bit analogue of the 8051's <task>_state lever (read
+        // position, do not VM-step; DEBUG-CONTROL-MODEL.md §2, MICROBIT-NATIVE.md
+        // Stage 3). `positions[n] = {block}` lets the debug host map a marker back
+        // to the source block; `breakpoints` (block ids) pause the program at
+        // those blocks until the host resumes over serial.
+        // settrace build ({trace:true}): NO injected markers — the firmware's
+        // sys.settrace reports real line numbers, and `lineMap` (returned)
+        // maps them back to blocks. Mutually exclusive with the marker
+        // debugger; trace wins if both are asked for.
+        const trc = !!(opts && opts.trace);
+        const dbg = !!(opts && opts.debug) && !trc;
+        const dbgPos = [];                     // n -> { block: <scratch block id> }
+        const dbgProcs = [];                   // k -> proc display name (call stack)
+        const dbgBreaks = new Set((opts && opts.breakpoints) || []);
         // The shared pure-Python expression layer (pyVal/pyCond/varRef)
         // reads the same context generatePython sets up.
         this._pyNames = new Map();
@@ -7168,6 +7866,9 @@ class SB3Creator {
         this._curPrefix = '';
         this._curLocals = new Set();
         const warnings = [];
+        if (opts && opts.trace && opts.debug) {
+            warnings.push('debug and trace are separate debuggers; trace wins — the marker instrumentation is not emitted');
+        }
         const reasons = [];
         const targets = project.targets || [];
         const stage = targets.find((t) => t.isStage);
@@ -7245,6 +7946,67 @@ class SB3Creator {
                 if (isPico) { degrade(`analog read of ${p.expr} needs machine.ADC — not emitted yet`); return '0'; }
                 return `${p.expr}.read_analog()`;
             }
+            // ---- micro:bit+ SENSORS/MOTION reporters (DUAL-LOWERING-ORACLE M1–E3) ----
+            const rf = (k) => (rb.fields[k] ? rb.fields[k][0] : '');
+            if (rb.opcode === 'microbitplus_accel') {
+                const ax = String(rf('AXIS')).toLowerCase();
+                if (ax === 'strength') {
+                    uses.math = true;
+                    return 'math.sqrt(accelerometer.get_x()**2 + accelerometer.get_y()**2 + accelerometer.get_z()**2)';
+                }
+                return `accelerometer.get_${ax}()`;
+            }
+            if (rb.opcode === 'microbitplus_pitch') { uses.math = true; uses._pitch = true; return '_pitch()'; }
+            if (rb.opcode === 'microbitplus_roll')  { uses.math = true; uses._roll = true; return '_roll()'; }
+            if (rb.opcode === 'microbitplus_compass') return 'compass.heading()';
+            if (rb.opcode === 'microbitplus_magforce') {
+                const ax = String(rf('AXIS')).toLowerCase();
+                if (ax === 'absolute') {
+                    uses.math = true;
+                    return 'math.sqrt(compass.get_x()**2 + compass.get_y()**2 + compass.get_z()**2)';
+                }
+                return `compass.get_${ax}()`;
+            }
+            if (rb.opcode === 'microbitplus_light') return 'display.read_light_level()';
+            if (rb.opcode === 'microbitplus_temp') return 'temperature()';
+            if (rb.opcode === 'microbitplus_sound') return 'microphone.sound_level()';
+            // ---- micro:bit+ PIN reporters (DUAL-LOWERING-ORACLE P4) ----
+            if (rb.opcode === 'microbitplus_digitalread') {
+                const pin = String(rf('PIN')).toLowerCase();
+                const n = pin.replace(/^p/, '');
+                return `pin${n}.read_digital()`;
+            }
+            if (rb.opcode === 'microbitplus_analogread') {
+                const pin = String(rf('PIN')).toLowerCase();
+                const n = pin.replace(/^p/, '');
+                return `pin${n}.read_analog()`;
+            }
+            if (rb.opcode === 'microbitplus_isbutton') {
+                const btn = String(rf('BTN')).toLowerCase();
+                uses.buttons = true;
+                return `button_${btn}.is_pressed()`;
+            }
+            if (rb.opcode === 'microbitplus_ispinhigh') {
+                const pin = String(rf('PIN')).toLowerCase();
+                const n = pin.replace(/^p/, '');
+                return `pin${n}.read_digital()`;
+            }
+            if (rb.opcode === 'microbitplus_isgesture') {
+                return `accelerometer.is_gesture('${String(rf('GESTURE')).toLowerCase()}')`;
+            }
+            if (rb.opcode === 'microbitplus_istouch') {
+                const pin = String(rf('PIN')).toLowerCase();
+                const n = pin.replace(/^p/, '');
+                return `pin${n}.is_touched()`;
+            }
+            if (rb.opcode === 'microbitplus_radiolastnum') { uses.radio = true; return '_radio_last_num'; }
+            if (rb.opcode === 'microbitplus_radiolaststr') { uses.radio = true; return '_radio_last_str'; }
+            // KEYPAD4X4 reporter — the scan function is emitted in the header.
+            if (rb.opcode === 'stc12_keypad') {
+                const partName = rb.fields.PART ? rb.fields.PART[0] : '';
+                uses.keypad = partName;
+                return `_scan_keypad_${partName}()`;
+            }
             return null;
         };
         const val = (b, k, blocks) => pinReporter(b.inputs[k], blocks)
@@ -7273,6 +8035,16 @@ class SB3Creator {
             const vs = (k) => `str(${val(b, k, blocks)})`;
             const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
             const sub = (k) => (b.inputs[k] ? walk(b.inputs[k][1], blocks, pad + '    ') : [`${pad}    pass`]);
+            // A Python string literal from a text input: single-quoted for a
+            // literal text shadow ([.., [10, "..."]]) so it matches the micro:bit
+            // idiom; str(expr) for anything computed.
+            const pyText = (k) => {
+                const inp = b.inputs[k];
+                if (Array.isArray(inp) && Array.isArray(inp[1]) && inp[1][0] === 10) {
+                    return `'${String(inp[1][1]).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+                }
+                return `str(${val(b, k, blocks)})`;
+            };
             switch (b.opcode) {
                 case 'data_setvariableto': {
                     const n = declVar(f('VARIABLE'), '0');
@@ -7296,6 +8068,73 @@ class SB3Creator {
                     return [`${pad}yield int((${v('SECS')}) * 1000)  # say (stage)`];
                 case 'microbit_display':
                     return [`${pad}display.scroll(${vs('VALUE')}, wait=False, loop=False)`];
+                // micro:bit+ DISPLAY group — the REFERENCE lowering the other
+                // microbitPlus groups mirror (docs/microbitplus/DUAL-LOWERING-
+                // ORACLE.md, table D1–D3). MicroPython display API: show(Image),
+                // scroll(text), clear(), set_pixel(x,y,level).
+                case 'microbitplus_showmatrix': {
+                    // MATRIX is a 25-char '0'..'9' grid; Image() wants five
+                    // colon-separated 5-char rows.
+                    const raw = String(f('MATRIX') || val(b, 'MATRIX', blocks) || '').replace(/[^0-9]/g, '');
+                    const s = (raw + '0'.repeat(25)).slice(0, 25);
+                    const img = s.match(/.{5}/g).join(':');
+                    return [`${pad}display.show(Image('${img}'))`];
+                }
+                case 'microbitplus_showtext':
+                    return [`${pad}display.scroll(${pyText('TEXT')})`];
+                case 'microbitplus_scrolltext':
+                    return [`${pad}display.scroll(${pyText('TEXT')}, delay=int(${v('MS')}))`];
+                case 'microbitplus_cleardisplay':
+                    return [`${pad}display.clear()`];
+                case 'microbitplus_plot':
+                    return [`${pad}display.set_pixel(int(${v('X')}), int(${v('Y')}), ${f('STATE') === 'off' ? 0 : 9})`];
+                // micro:bit+ PINS group (DUAL-LOWERING-ORACLE P1–P7)
+                case 'microbitplus_digitalwrite': {
+                    const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
+                    return [`${pad}pin${pin}.write_digital(${f('LEVEL')})`];
+                }
+                case 'microbitplus_analogwrite': {
+                    const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
+                    return [`${pad}pin${pin}.write_analog(int(${v('PCT')} / 100 * 1023))`];
+                }
+                case 'microbitplus_setpull': {
+                    const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
+                    const mode = String(f('MODE')).toLowerCase();
+                    const pull = mode === 'up' ? `pin${pin}.PULL_UP`
+                        : mode === 'down' ? `pin${pin}.PULL_DOWN` : `pin${pin}.NO_PULL`;
+                    return [`${pad}pin${pin}.set_pull(${pull})`];
+                }
+                // micro:bit+ ACTUATORS group (DUAL-LOWERING-ORACLE A1–A4)
+                case 'microbitplus_playtone': {
+                    uses.music = true;
+                    const ms = v('MS');
+                    if (ms === '-1' || ms === -1) return [`${pad}music.pitch(int(${v('FREQ')}), pin=pin0)`];
+                    return [`${pad}music.pitch(int(${v('FREQ')}), int(${ms}), pin=pin0)`];
+                }
+                case 'microbitplus_playnote': {
+                    uses.music = true;
+                    const NOTE_FREQ = { C4:262, D4:294, E4:330, F4:349, G4:392, A4:440, B4:494,
+                        C5:523, D5:587, E5:659, F5:698, G5:784, A5:880, B5:988 };
+                    const freq = NOTE_FREQ[f('NOTE')] || 440;
+                    return [`${pad}music.pitch(${freq}, 500, pin=pin0)`];
+                }
+                case 'microbitplus_stoptone':
+                    uses.music = true;
+                    return [`${pad}music.stop()`];
+                case 'microbitplus_servo': {
+                    const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
+                    return [`${pad}pin${pin}.write_analog(int(${v('DEG')} / 180 * 1023))`];
+                }
+                // micro:bit+ RADIO group (DUAL-LOWERING-ORACLE R1–R5)
+                case 'microbitplus_radioon':
+                    uses.radio = true;
+                    return [`${pad}radio.config(group=int(${v('GROUP')}), power=int(${v('POWER')}))`, `${pad}radio.on()`];
+                case 'microbitplus_radiosendnum':
+                    uses.radio = true;
+                    return [`${pad}radio.send(str(${v('NUM')}))`];
+                case 'microbitplus_radiosendstr':
+                    uses.radio = true;
+                    return [`${pad}radio.send(${pyText('TEXT')})`];
                 case 'stc12_print':
                     return [`${pad}print(${vs('VALUE')})`];
                 case 'stc12_setpin': {
@@ -7404,10 +8243,32 @@ class SB3Creator {
 
         const walk = (id, blocks, pad) => {
             const out = [];
-            let b = blocks[id];
+            let cur = id;
+            let b = blocks[cur];
             while (b) {
+                if (dbg) {
+                    const n = dbgPos.length;
+                    dbgPos.push({ block: cur });
+                    // Emit the marker BEFORE the statement runs; `bp=1` flags a
+                    // block the host asked to break on, so the helper can pause.
+                    out.push(`${pad}_bw_pos(${n}${dbgBreaks.has(cur) ? ', 1' : ''})`);
+                }
+                if (trc) {
+                    // Sentinel comment on the block's FIRST emitted line. The
+                    // final line numbers are unknowable here (the header grows
+                    // as walking discovers uses), so the sentinel rides the
+                    // text and is harvested into lineMap — then stripped —
+                    // after assembly. Encoded so an exotic block id survives.
+                    const lines = stmt(b, blocks, pad);
+                    if (lines.length) lines[0] += `  # @bw:${encodeURIComponent(cur)}`;
+                    out.push(...lines);
+                    cur = b.next;
+                    b = blocks[cur];
+                    continue;
+                }
                 out.push(...stmt(b, blocks, pad));
-                b = blocks[b.next];
+                cur = b.next;
+                b = blocks[cur];
             }
             return out.length ? out : [`${pad}pass`];
         };
@@ -7464,21 +8325,50 @@ class SB3Creator {
                     const fn = this.pyName('_proc_' + this.pyProcRaw(m.proccode));
                     const argNames = JSON.parse(m.argumentnames || '[]').map((a) => this.pyName(a));
                     const body = walk(b.next, blocks, '    ');
-                    procDefs.push({ fn, argNames, body });
+                    // Human-readable proc name for the call-stack pane (%s/%b stripped).
+                    const procName = m.proccode.replace(/%[sb]/g, '').replace(/\s+/g, ' ').trim();
+                    procDefs.push({ fn, argNames, body, procName });
                 } else if (this.isHat(b.opcode)) {
                     degrade(`hat ${b.opcode} has no ${isPico ? 'Pico' : 'micro:bit'} form yet; script skipped`);
                 }
             }
         }
-        for (const { fn, argNames, body } of procDefs) {
+        for (const { fn, argNames, body, procName } of procDefs) {
             const globals = globalsFor(this, body)
                 .map((l) => argNames.length
                     ? l.replace(new RegExp(`\\b(${argNames.join('|')})\\b,? ?`, 'g'), '')
                         .replace(/, *$/, '').replace(/global *$/, '')
                     : l)
                 .filter((l) => /global \w/.test(l));
-            taskDefs.unshift([`def ${fn}(${argNames.join(', ')}):`,
-                ...globals, ...body, '    if False:', '        yield 0'].join('\n'));
+            if (dbg) {
+                // Call-stack instrumentation: the proc is a generator, so the
+                // enter marker prints when it is first driven and the finally
+                // (exit marker) runs when it completes OR is closed — correct
+                // across cooperative yields. Body re-indented under try:.
+                const k = dbgProcs.length;
+                dbgProcs.push(procName || fn);
+                taskDefs.unshift([`def ${fn}(${argNames.join(', ')}):`,
+                    ...globals,
+                    `    _bw_enter(${k})`,
+                    '    try:',
+                    ...body.map((l) => '    ' + l),
+                    '        if False:',
+                    '            yield 0',
+                    '    finally:',
+                    '        _bw_exit()'].join('\n'));
+            } else {
+                // The dead-yield generator trick, with one settrace caveat:
+                // on the settrace firmware, an `if False: yield` "generator"
+                // whose call follows a Python call made FROM the trace hook
+                // comes back None ('NoneType' isn't iterable at the yield
+                // from) — measured against the real firmware, 2026-08-19.
+                // A non-foldable guard (module flag) keeps generator-ness
+                // robust; stock builds keep the literal so they stay
+                // byte-identical.
+                const guard = trc ? '    if _bw_false:' : '    if False:';
+                taskDefs.unshift([`def ${fn}(${argNames.join(', ')}):`,
+                    ...globals, ...body, guard, '        yield 0'].join('\n'));
+            }
         }
         if (!taskDefs.length) reasons.push('no runnable scripts (a when-flag-clicked hat is required)');
         if (reasons.length) return { ok: false, reasons, warnings };
@@ -7507,6 +8397,232 @@ class SB3Creator {
             : ['# generated for micro:bit (MicroPython)',
                 'from microbit import *'];
         if (uses.music && !isPico) header.push('import music');
+        if (uses.math) header.push('import math');
+        if (uses.radio) header.push('import radio');
+        if (uses._pitch) header.push('', 'def _pitch():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(-y, -z) * 180 / math.pi');
+        if (uses._roll) header.push('', 'def _roll():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(x, -z) * 180 / math.pi');
+        // BrickWright debug instrumentation. _bw_pos(n) prints a position marker
+        // over serial before each block runs; the debug host (debug-panel) reads
+        // the stream, splits the RS(0x1e)-prefixed markers from real print()
+        // output, and highlights positions[n].block. When a block is a breakpoint
+        // (bp=1) or a single-step is pending, the program HALTS — prints the
+        // halted marker and spins on `input()` until the host resumes over
+        // serial-in with '\x1es\r' (step to next block) or '\x1ec\r' (continue).
+        // The host sends the RS prefix so the command can never be confused with a
+        // program's own input() (which never runs while halted anyway), and a CR
+        // terminator because the WASM sim's input() completes on CR, not LF
+        // (verified driving the real sim, 2026-08-19). The sim STRIPS the RS byte
+        // before input() returns, so we compare the last char (c[-1:] == 's'/'c'),
+        // which is robust whether or not the prefix survives.
+        if (dbg) {
+            // The user's variables/lists (module-level globals) — read back on
+            // halt so the host can show them like the 8051 memory/register pane.
+            // Serialized via the emitted _bw_json, NOT the json module: the
+            // sim firmware ships without json (measured 2026-08-19 — the
+            // marker \\x1eV dump silently vanished on the rebuilt stock sim,
+            // caught by the debug-toggle browser gate's variables assertion).
+            const dbgVnames = JSON.stringify([...seen]);
+            header.push('',
+                '# --- BrickWright debug: state inspection over serial ---',
+                '_bw_step = 0',
+                `_bw_vnames = ${dbgVnames}`,
+                ...BW_JSON_PY,
+                'def _bw_dump():',
+                '    # Serialize live state on halt: \\x1eV=variables, \\x1eB=board.',
+                '    try:',
+                '        g = globals()',
+                '        v = {}',
+                '        for k in _bw_vnames:',
+                '            v[k] = g.get(k)',
+                "        print('\\x1eV' + _bw_json(v))",
+                '    except Exception:',
+                '        pass');
+            if (!isPico) {
+                // micro:bit board snapshot — the "pin status" equivalent: what
+                // the LEDs/buttons/sensors read at the moment execution halted.
+                header.push(
+                    '    try:',
+                    '        d = {}',
+                    '        try:',
+                    '            d[\'display\'] = [[display.get_pixel(x, y) for x in range(5)] for y in range(5)]',
+                    '        except Exception:',
+                    '            pass',
+                    '        try:',
+                    "            d['buttonA'] = 1 if button_a.is_pressed() else 0",
+                    "            d['buttonB'] = 1 if button_b.is_pressed() else 0",
+                    '        except Exception:',
+                    '            pass',
+                    '        try:',
+                    "            d['accel'] = list(accelerometer.get_values())",
+                    '        except Exception:',
+                    '            pass',
+                    '        try:',
+                    "            d['temp'] = temperature()",
+                    '        except Exception:',
+                    '            pass',
+                    "        print('\\x1eB' + _bw_json(d))",
+                    '    except Exception:',
+                    '        pass');
+            }
+            header.push(
+                'def _bw_enter(k):',
+                "    print('\\x1e>' + str(k))",
+                'def _bw_exit():',
+                "    print('\\x1e<')",
+                'def _bw_pos(n, bp=0):',
+                '    global _bw_step',
+                "    print('\\x1e' + str(n))",
+                '    if bp or _bw_step:',
+                '        _bw_step = 0',
+                "        print('\\x1e!' + str(n))",
+                '        _bw_dump()',
+                '        while True:',
+                '            try:',
+                '                c = input()',
+                '            except Exception:',
+                '                return',
+                '            c = c[-1:]',
+                "            if c == 's':",
+                '                _bw_step = 1',
+                '                return',
+                "            if c == 'c':",
+                '                return');
+        }
+        // BrickWright settrace debug ({trace:true}). No injected markers: the
+        // settrace-enabled MicroPython firmware reports REAL line numbers.
+        // On every 'line' event in a program line, `\x1eL<lineno>` goes out
+        // over serial; at a breakpoint line or while single-stepping the
+        // program halts and dumps REAL state — frame.f_locals as \x1eV+json
+        // and the f_back call chain as \x1eK+json — then spins on input()
+        // for '\x1es' (step) / '\x1ec' (continue), the same resume protocol
+        // as the marker debugger. `_bw_lines` / `_bw_bl` are placeholders
+        // here: their literals are substituted AFTER assembly, when the
+        // final line numbers exist (the '@bw-lines' / '@bw-breaks' tags).
+        if (trc) {
+            const trcVnames = JSON.stringify([...seen]);
+            header.push('',
+                '# --- BrickWright settrace debug: line-level tracing over serial ---',
+                'import sys',
+                '_bw_step = 0',
+                '_bw_false = False   # non-foldable generator guard (see procDefs)',
+                `_bw_vnames = ${trcVnames}`,
+                '_bw_lines = None  # @bw-lines',
+                '_bw_bl = set()  # @bw-breaks',
+                'def _bw_stack(frame):',
+                '    k = []',
+                '    f = frame',
+                '    while f:',
+                '        try:',
+                '            k.append(f.f_code.co_name)',
+                '        except Exception:',
+                "            k.append('?')",
+                '        f = f.f_back',
+                '    return k',
+                ...BW_JSON_PY,
+                'def _bw_halt(frame):',
+                '    global _bw_step',
+                '    _bw_step = 0',
+                "    # The user's variables are module globals (the tasks declare",
+                '    # them `global`) — read via globals(), NOT frame.f_globals:',
+                '    # the settrace firmware does not expose f_globals (measured',
+                '    # 2026-08-19; one big try around the dump swallowed both',
+                '    # prints). True frame locals overlay when available.',
+                '    v = {}',
+                '    g = globals()',
+                '    for k in _bw_vnames:',
+                '        v[k] = g.get(k)',
+                '    try:',
+                '        v.update(frame.f_locals)',
+                '    except Exception:',
+                '        pass',
+                '    try:',
+                "        print('\\x1eV' + _bw_json(v))",
+                '    except Exception:',
+                '        pass',
+                '    try:',
+                "        print('\\x1eK' + _bw_json(_bw_stack(frame)))",
+                '    except Exception:',
+                '        pass',
+                '    while True:',
+                '        try:',
+                '            c = input()',
+                '        except Exception:',
+                '            return',
+                '        c = c[-1:]',
+                "        if c == 's':",
+                '            _bw_step = 1',
+                '            return',
+                "        if c == 'c':",
+                '            return',
+                'def _bw_tr(frame, event, arg):',
+                "    if event == 'line':",
+                '        n = frame.f_lineno',
+                '        if _bw_lines is None or n in _bw_lines:',
+                "            print('\\x1eL' + str(n))",
+                '            if _bw_step or n in _bw_bl:',
+                '                _bw_halt(frame)',
+                '    return _bw_tr',
+                'try:',
+                '    sys.settrace(_bw_tr)',
+                'except AttributeError:',
+                "    pass  # firmware without settrace: program runs untraced");
+        }
+        // KEYPAD4X4 scanner — per-core tri-state + pull-up, debounced.
+        if (uses.keypad) {
+            const parts = ((project.stc && project.stc.parts) || []).filter((p) => p.type === 'keypad4x4');
+            for (const kp of parts) {
+                const nm = kp.name;
+                if (isPico) {
+                    // Pico: rows Pin(n, Pin.OUT, value=0) to scan, Pin(n, Pin.IN) to tri-state
+                    // cols Pin(n, Pin.IN, Pin.PULL_UP), read value()
+                    const rowGpios = kp.rows.map((r) => r.where.replace(/^GP/i, ''));
+                    const colGpios = kp.cols.map((c) => c.where.replace(/^GP/i, ''));
+                    header.push('',
+                        `# ${nm}: 4x4 matrix keypad scanner (Pico)`,
+                        `# Rows: ${kp.rows.map((r) => r.where).join(', ')} — tri-state between scans`,
+                        `# Cols: ${kp.cols.map((c) => c.where).join(', ')} — pull-up, read 0 when pressed`,
+                        ...colGpios.map((g) => `_kp_c${g} = Pin(${g}, Pin.IN, Pin.PULL_UP)`),
+                        `_kp_${nm}_prev = -1`,
+                        '',
+                        `def _scan_keypad_${nm}():`,
+                        '    """Scan the 4x4 matrix: drive one row low, read cols."""');
+                    for (let ri = 0; ri < 4; ri++) {
+                        const rg = rowGpios[ri];
+                        header.push(`    _r = Pin(${rg}, Pin.OUT, value=0)`);
+                        for (let ci = 0; ci < 4; ci++) {
+                            const cg = colGpios[ci];
+                            header.push(`    if _kp_c${cg}.value() == 0: Pin(${rg}, Pin.IN); return ${ri * 4 + ci}`);
+                        }
+                        header.push(`    Pin(${rg}, Pin.IN)`);
+                    }
+                    header.push('    return -1');
+                } else {
+                    // micro:bit: rows write_digital(0) to scan, read_digital() to tri-state
+                    // cols set_pull(PULL_UP), read_digital() == 0 when pressed
+                    const rowPins = kp.rows.map((r) => `pin${r.where.replace(/^P/i, '')}`);
+                    const colPins = kp.cols.map((c) => `pin${c.where.replace(/^P/i, '')}`);
+                    header.push('',
+                        `# ${nm}: 4x4 matrix keypad scanner (micro:bit)`,
+                        `# Rows: ${kp.rows.map((r) => r.where).join(', ')} — tri-state between scans`,
+                        `# Cols: ${kp.cols.map((c) => c.where).join(', ')} — pull-up, read 0 when pressed`,
+                        ...colPins.map((p) => `${p}.set_pull(${p}.PULL_UP)`),
+                        `_kp_${nm}_prev = -1`,
+                        '',
+                        `def _scan_keypad_${nm}():`,
+                        '    """Scan the 4x4 matrix: drive one row low, read cols."""');
+                    for (let ri = 0; ri < 4; ri++) {
+                        const rp = rowPins[ri];
+                        header.push(`    ${rp}.write_digital(0)`);
+                        for (let ci = 0; ci < 4; ci++) {
+                            const cp = colPins[ci];
+                            header.push(`    if ${cp}.read_digital() == 0: ${rp}.read_digital(); return ${ri * 4 + ci}`);
+                        }
+                        header.push(`    ${rp}.read_digital()`);
+                    }
+                    header.push('    return -1');
+                }
+            }
+        }
         if (isPico) {
             // Pin objects. sda/scl by NAME feed the hardware I2C when the
             // program drives an OLED — they must not be constructed as
@@ -7618,8 +8734,36 @@ class SB3Creator {
                 '        return str(a).lower() == str(b).lower()',
                 '');
         }
-        const py = [...header, '', ...helpers, ...stateDecls, '', ...taskDefs, ...driver].join('\n') + '\n';
-        return { ok: true, py, reasons: [], warnings };
+        let py = [...header, '', ...helpers, ...stateDecls, '', ...taskDefs, ...driver].join('\n') + '\n';
+        let lineMap = null;
+        if (trc) {
+            // Harvest the sentinels into {finalLineNumber: blockId} and strip
+            // them — stripping changes no line COUNT, so the numbers hold.
+            lineMap = {};
+            const lines = py.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                const m = lines[i].match(/  # @bw:(\S+)$/);
+                if (m) {
+                    lineMap[i + 1] = decodeURIComponent(m[1]);
+                    lines[i] = lines[i].slice(0, -m[0].length);
+                }
+            }
+            // The device-side filters get their literals now that the final
+            // numbers exist. Same-line substitution: the count is unchanged.
+            const mapped = Object.keys(lineMap);
+            const linesSet = mapped.length ? `set((${mapped.join(', ')},))` : 'None';
+            const breakIds = new Set((opts && opts.breakpoints) || []);
+            const breakLines = mapped.filter((n) => breakIds.has(lineMap[n]));
+            const breaksSet = breakLines.length ? `set((${breakLines.join(', ')},))` : 'set()';
+            for (let i = 0; i < lines.length; i++) {
+                if (/# @bw-lines$/.test(lines[i])) lines[i] = `_bw_lines = ${linesSet}`;
+                else if (/# @bw-breaks$/.test(lines[i])) lines[i] = `_bw_bl = ${breaksSet}`;
+            }
+            py = lines.join('\n');
+        }
+        return { ok: true, py, reasons: [], warnings,
+            ...(dbg ? { positions: dbgPos, procNames: dbgProcs } : {}),
+            ...(trc ? { lineMap } : {}) };
     }
 
     generateBASIC(project = this.project, opts = {}) {
@@ -8482,6 +9626,9 @@ class SB3Creator {
                     const pc = this._cPins && this._cPins.get(pn.toLowerCase());
                     if (pc && pc.direction === 'input') { scriptCount++; hasEventHat = true; }
                 }
+                if (b.opcode === 'stc12_whenkey' && this.stcSoleKeypad()) {
+                    scriptCount++; hasEventHat = true;
+                }
                 if (['devices_whenabove', 'devices_whencloser', 'devices_whenmotion', 'devices_whentilted'].includes(b.opcode)) {
                     scriptCount++; hasEventHat = true;
                 }
@@ -8499,7 +9646,7 @@ class SB3Creator {
         // cooperative-scheduler path emits — so its presence forces tasks even
         // for a lone WHEN that would otherwise run straight-line (gotcha #1;
         // reference: Program.has_matrix feeding the tasks decision in emit_c).
-        this._cTasks = scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || this._stcHasMatrix();
+        this._cTasks = scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || this._stcHasMatrix() || this._stcHasSevenSeg() || this._stcHasLedBank();
         const taskNames = Array.from({ length: scriptCount }, (_, n) => `bw_task${n}`);
         const yieldMap = [];   // only emitted for a debug build — see the marker header below
 
@@ -8526,6 +9673,7 @@ class SB3Creator {
         let mainBody = [];
         let mainNote = [];   // a comment on the single script's hat
         let taskIndex = 0;
+        this._cKeyHatPads = [];
         sections.forEach((t, idx) => {
             const pfx = spritePrefix(idx);
             this._curPrefix = pfx;
@@ -8591,8 +9739,13 @@ class SB3Creator {
                         const task = taskNames[n];
                         const where = t.isStage ? '' : `, ${this.cComment(t.name)}`;
                         const hatNote = this.codeCommentLines(topId, '', '//');
+                        // `hat pin <name> <edge>` rides on the script marker so the C
+                        // reader can rebuild the WHEN header instead of degrading the
+                        // script to `WHEN flag clicked:` (which it silently did until
+                        // 2026-08-18 — the hat round trip was a fiction).
                         markScripts.push(`script ${task} ${n}`
-                            + (t.isStage ? ' stage' : ` sprite ${this.pyStr(t.name)}`));
+                            + (t.isStage ? ' stage' : ` sprite ${this.pyStr(t.name)}`)
+                            + ` hat pin ${pinName} ${edge}`);
                         const ctx = { task, state: 0, statics, tasks: taskNames, yields: debug ? yieldMap : [] };
                         if (debug) yieldMap.push({ task, state: 0, block: topId, kind: 'hat' });
                         // Body starts at case 1 — case 0 is the edge test.
@@ -8618,6 +9771,57 @@ class SB3Creator {
                             ` * is low. */`,
                             `static void ${task}(void)`, '{',
                             `    unsigned char now   = (${level}) ? 1 : 0;`,
+                            `    unsigned char fired = (${test}) ? 1 : 0;`,
+                            `    ${task}_prev = now;`,
+                            '',
+                            `    switch (${task}_state) {`,
+                            '    case 0:',
+                            '        if (!fired)',
+                            '            return;',
+                            `        ${task}_state = 1;`,
+                            '    case 1:',
+                            ...body,
+                            '    }',
+                            `    ${task}_state = 0;   /* ready for the next edge */`,
+                            '}', '');
+                    }
+                } else if (b.opcode === 'stc12_whenkey') {
+                    const keyN = b.fields.KEY ? +b.fields.KEY[0] : 0;
+                    const edge = b.fields.EDGE ? b.fields.EDGE[0] : 'pressed';
+                    const pad = this.stcSoleKeypad();
+                    if (!pad) {
+                        this.cWarn(`"when key ${keyN} ${edge}" — no KEYPAD4X4 declared; script skipped`);
+                    } else {
+                        const n = taskIndex++;
+                        const task = taskNames[n];
+                        const where = t.isStage ? '' : `, ${this.cComment(t.name)}`;
+                        const hatNote = this.codeCommentLines(topId, '', '//');
+                        markScripts.push(`script ${task} ${n}`
+                            + (t.isStage ? ' stage' : ` sprite ${this.pyStr(t.name)}`)
+                            + ` hat key ${keyN} ${edge}`);
+                        if (!this._cKeyHatPads.includes(pad.name)) this._cKeyHatPads.push(pad.name);
+                        this._cUses.now = true;   // the shared poll reads bw_now()
+                        const ctx = { task, state: 0, statics, tasks: taskNames, yields: debug ? yieldMap : [] };
+                        if (debug) yieldMap.push({ task, state: 0, block: topId, kind: 'hat' });
+                        // Body starts at case 1 — case 0 is the edge test.
+                        ctx.state = 1;
+                        const body = this.cTaskFrom(b.next, blocks, 1, ctx);
+                        const test = edge === 'pressed'
+                            ? `now && !${task}_prev`
+                            : `!now && ${task}_prev`;
+                        taskDefs.push(`static unsigned int ${task}_state;`);
+                        if (this.cHasWait(b.next, blocks)) taskDefs.push(`static unsigned int ${task}_until;`);
+                        taskDefs.push(`static unsigned char ${task}_prev;`);
+                        // Byte-shaped like the reference (stc-compiler dec1f17,
+                        // test_keypad.py TestKeypadHats pins that side's C).
+                        taskDefs.push(...hatNote,
+                            `/* WHEN key ${keyN} ${edge}: (script ${n + 1}${where})`,
+                            ' *',
+                            ' * Edge-triggered on the DEBOUNCED key from the shared poll task: a',
+                            ' * held key runs the body once, and a bouncing contact cannot fire',
+                            ' * twice, because the poll only updates after two agreeing scans. */',
+                            `static void ${task}(void)`, '{',
+                            `    unsigned char now = (bw_kp_${pad.name}_key == ${keyN}) ? 1 : 0;`,
                             `    unsigned char fired = (${test}) ? 1 : 0;`,
                             `    ${task}_prev = now;`,
                             '',
@@ -8935,6 +10139,12 @@ class SB3Creator {
                     if (pt.type === 'keypad4x4') {
                         return `part ${pt.name} keypad4x4 rows ${pt.rows.map(w).join(' ')} cols ${pt.cols.map(w).join(' ')}`;
                     }
+                    if (pt.type === 'sevenseg8') {
+                        return `part ${pt.name} sevenseg8 P${pt.segPort} ${pt.selPins.map(w).join(' ')}${pt.commonAnode ? ' anode' : ''}`;
+                    }
+                    if (pt.type === 'ledbank8') {
+                        return `part ${pt.name} ledbank8 P${pt.ledPort}${pt.activeLow ? ' active-low' : ''}`;
+                    }
                     return `part ${pt.name} ${pt.type} ${w(pt.data)} ${w(pt.clock)} ${w(pt.latch)}${pt.activeLow ? ' active-low' : ''}`;
                 })),
                 // The declared machine survives into the header for the same
@@ -9128,6 +10338,10 @@ class SB3Creator {
             '#define T0_RELOAD (65536UL - (FOSC_HZ / 12UL / 1000UL))', '');
         // MATRIX8X8 frame buffer(s) + level clamp, before the tick that scans them.
         out.push(...this._cMatrixState());
+        // SEVENSEG8 font + frame buffers, LEDBANK8 shadow bytes — before the
+        // tick that scans/pushes them (verbatim mirror of the reference).
+        out.push(...this._cSevenSegState());
+        out.push(...this._cLedBankState());
         }
 
         if (this._core === '6502'
@@ -9220,6 +10434,10 @@ class SB3Creator {
                     // MATRIX8X8 self-scan: one row per tick, AFTER bw_ms++ so the
                     // millisecond math is never skewed. Table-driven, no mul/div.
                     ...this._cMatrixScan(),
+                    // SEVENSEG8 digit advance + LEDBANK8 shadow push — after
+                    // bw_ms++ and the matrix scan (reference order).
+                    ...this._cSevenSegScan(),
+                    ...this._cLedBankScan(),
                     '}', ''
                 ]));
             if (this._cUses.now || this._cUses.blockDelay) {
@@ -9476,6 +10694,8 @@ class SB3Creator {
         // MATRIX8X8 drawing helpers — after bw_now, before the tables (reference
         // order). Emitted for any declared screen, verb-used or not, like the ref.
         out.push(...this._cMatrixHelpers());
+        out.push(...this._cSevenSegHelpers());
+        out.push(...this._cLedBankHelpers());
         if (this._cUses.keypad && this._core === '8051') {
             const parts = ((this.project && this.project.stc && this.project.stc.parts) || []).filter((p) => p.type === 'keypad4x4');
             for (const kp of parts) {
@@ -11164,6 +12384,36 @@ class SB3Creator {
                 'static void bw_print_num(long n);', '');
         }
 
+        // `WHEN key N` hats share one debounced scan per keypad: a poll task
+        // (dispatched before the hats) reads the matrix at most every 5 ms and
+        // a key only becomes current after two agreeing reads, so a scan
+        // mid-bounce — which reads -1 or a neighbour for one pass — cannot
+        // fire a hat. Mirrors the reference emitter line for line.
+        this._cPollTasks = [];
+        if (this._cKeyHatPads && this._cKeyHatPads.length) {
+            const pollDefs = [];
+            for (const padName of this._cKeyHatPads) {
+                pollDefs.push(
+                    `/* ${padName}: debounced key state shared by the \`WHEN key N\` hats. */`,
+                    `static signed char bw_kp_${padName}_raw = -1;`,
+                    `static signed char bw_kp_${padName}_key = -1;`,
+                    `static unsigned int bw_kp_${padName}_t;`,
+                    `static void bw_kp_${padName}_poll(void)`,
+                    '{',
+                    '    signed char r;',
+                    `    if ((unsigned int)(bw_now() - bw_kp_${padName}_t) < 5)`,
+                    '        return;                     /* scan every 5 ms */',
+                    `    bw_kp_${padName}_t = bw_now();`,
+                    `    r = bw_part_${padName}_read();`,
+                    `    if (r == bw_kp_${padName}_raw)`,
+                    `        bw_kp_${padName}_key = r;`,
+                    `    bw_kp_${padName}_raw = r;`,
+                    '}', '');
+                this._cPollTasks.push(`bw_kp_${padName}_poll`);
+            }
+            taskDefs.unshift(...pollDefs);
+        }
+
         if (taskDefs.length) {
             // A label must precede a STATEMENT in C. An empty script (a hat
             // with nothing under it — the default project's shape) emits
@@ -11640,13 +12890,13 @@ class SB3Creator {
         if (this._cTasks && (this._core === 'arm' || this._core === '6502')) {
             out.push('',
                 '    for (;;) {                     /* no tick to start: time is read */',
-                ...taskNames.map((n) => `        ${n}();`),
+                ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
                 '    }');
         } else if (this._cTasks && this._core === 'avr') {
             out.push('    sei();                         /* tick on */',
                 '',
                 '    for (;;) {',
-                ...taskNames.map((n) => `        ${n}();`),
+                ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
                 '    }');
         } else if (this._cTasks) {
             out.push('    TL0 = (unsigned char)(T0_RELOAD & 0xFF);',
@@ -11656,7 +12906,7 @@ class SB3Creator {
                 '    TR0 = 1;',
                 '',
                 '    for (;;) {',
-                ...taskNames.map((n) => `        ${n}();`),
+                ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
                 '    }');
         } else if (this._core === 'avr') {
             out.push('    sei();', '');
@@ -11839,6 +13089,7 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             keypad: { kind: 'reporter', method: 'readKeypad', args: ['PART'], neutral: '-1' },
             print: { kind: 'command', method: 'print', args: ['VALUE', 'MODE'] },
             whenpin: { kind: 'hat', method: 'whenpin', args: ['PIN', 'EDGE'] },
+            whenkey: { kind: 'hat', method: 'whenkey', args: ['KEY', 'EDGE'] },
             tableindex: { kind: 'reporter', method: 'tableIndex', args: ['TABLE', 'INDEX'], neutral: '0' }
         }
     },
@@ -11932,6 +13183,7 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             ledbrightness: { kind: 'reporter', method: 'ledBrightness', args: ['PART'], neutral: 'NaN' },
             buzzertone: { kind: 'reporter', method: 'buzzerTone', args: ['PART'], neutral: 'NaN' },
             setcontrol: { kind: 'command', method: 'setControl', args: ['CONTROL', 'VALUE'] },
+            getcontrol: { kind: 'reporter', method: 'getControl', args: ['CONTROL'], neutral: '0' },
             setpower: { kind: 'command', method: 'setPower', args: ['STATE'] }
         }
     }
@@ -12275,6 +13527,16 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     const newParts = [];
     for (const p of (stc.parts || [])) {
         const newPart = { ...p };
+        if (!p.data && !p.clock && !p.latch) {
+            // KEYPAD4X4 / SEVENSEG8 / LEDBANK8 carry no 595-shaped roles —
+            // they keep their 8051 coordinates, and the honest refusal on a
+            // non-8051 target happens at re-parse (each is 8051-gated).
+            // Allocating data/clock/latch for them consumed pool pins and
+            // crashed on LEDBANK8, which has no pin fields at all (found
+            // authoring 79-a2-sampler, 2026-08-18).
+            newParts.push(newPart);
+            continue;
+        }
         for (const role of ['data', 'clock', 'latch']) {
             const where = take(pools.digital);
             if (!where) {

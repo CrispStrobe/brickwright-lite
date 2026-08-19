@@ -5036,36 +5036,6 @@ export const RUNTIME_EXTENSIONS = {
                 "args": []
             }
         }
-    },
-    "controller": {
-        "runtime": "controller",
-        "ops": {
-            "controllerValue": {
-                "kind": "reporter",
-                "method": "controllerValue",
-                "args": ["NAME"]
-            },
-            "controllerX": {
-                "kind": "reporter",
-                "method": "controllerX",
-                "args": ["NAME"]
-            },
-            "controllerY": {
-                "kind": "reporter",
-                "method": "controllerY",
-                "args": ["NAME"]
-            },
-            "controllerPressed": {
-                "kind": "boolean",
-                "method": "controllerPressed",
-                "args": ["NAME"]
-            },
-            "setWidget": {
-                "kind": "command",
-                "method": "setWidget",
-                "args": ["NAME", "VALUE"]
-            }
-        }
     }
 };
 
