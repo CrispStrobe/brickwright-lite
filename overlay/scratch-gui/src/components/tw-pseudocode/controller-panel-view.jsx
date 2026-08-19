@@ -91,6 +91,7 @@ class JoystickWidget extends React.Component {
         const knobY = -y / 100 * maxR; // screen Y is inverted
         const playable = mode === 'play';
         return (
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4}}>
             <div
                 ref={this._padRef}
                 style={{
@@ -130,9 +131,11 @@ class JoystickWidget extends React.Component {
                     transition: this.state.dragging ? 'none' : 'left 0.15s, top 0.15s',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                 }} />
-                {/* Value readout */}
+            </div>
+                {/* Value readout — in normal flow (not absolute) so the widget card
+                    reserves height for it and it never overlaps the binding label
+                    ("Program only") at the bottom of the card. */}
                 <div style={{
-                    position: 'absolute', bottom: -22, left: 0, right: 0,
                     textAlign: 'center', fontSize: 11, color: '#64748b', fontFamily: 'monospace'
                 }}>
                     {t('x')}:{x} {t('y')}:{y}
@@ -158,6 +161,7 @@ function DpadWidget({ widget, name, mode, panel }) {
     ];
     const pressed = { up, down, left, right };
     return (
+        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4}}>
         <div style={{
             width: DPAD_SIZE, height: DPAD_SIZE,
             position: 'relative', userSelect: 'none',
@@ -197,9 +201,9 @@ function DpadWidget({ widget, name, mode, panel }) {
                     {d.label}
                 </button>
             ))}
-            {/* Readout */}
+        </div>
+            {/* Readout — in normal flow so it never overlaps the binding label below. */}
             <div style={{
-                position: 'absolute', bottom: -20, left: 0, right: 0,
                 textAlign: 'center', fontSize: 11, color: '#64748b', fontFamily: 'monospace'
             }}>
                 {up ? '↑' : ''}{down ? '↓' : ''}{left ? '←' : ''}{right ? '→' : ''}{(!up && !down && !left && !right) ? '·' : ''}

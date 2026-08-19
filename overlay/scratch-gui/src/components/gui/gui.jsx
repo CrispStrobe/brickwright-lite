@@ -514,6 +514,12 @@ const GUIComponent = props => {
                                     setStagePaneVisible(next);
                                     try { localStorage.setItem('bw-right-pane-hidden', next ? '0' : '1'); } catch { /* private mode */ }
                                     window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: next ? '0' : '1'}}));
+                                    // Blockly caches its SVG dimensions and only re-fits on a resize
+                                    // event. The pane-divider drag fires continuous resizes (so the
+                                    // slider frees the space), but an instant hide/show does not —
+                                    // the workspace stays at its old width and the freed room reads
+                                    // as empty gap. Nudge it once the DOM has reflowed.
+                                    requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
                                 }}
                                 style={{position: 'absolute', zIndex: 20, right: 0, top: 11, width: 32, minWidth: 32, height: 34, padding: 0, border: '1px solid #94a3b8', borderRadius: 5, background: stagePaneVisible ? '#2563eb' : '#475569', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 22, lineHeight: 1}}
                             >{stagePaneVisible ? '›' : '‹'}</button>
@@ -547,7 +553,7 @@ const GUIComponent = props => {
                                 toggle buttons) stays reachable in every mode.
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
-                            <div style={dockMode === 'controller' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0} : undefined}>
+                            <div style={dockMode === 'controller' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '2px solid #94a3b8', background: '#e2e8f0', boxSizing: 'border-box'} : undefined}>
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
@@ -566,7 +572,7 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>Loading controller…</div>
                                 }>
-                                    <div style={{position: 'relative', flex: 1, minHeight: 0}}>
+                                    <div style={{position: 'relative', flex: 1, minHeight: 0, borderTop: '1px solid #ffffff', background: '#f8fafc'}}>
                                         <ControllerPanelView
                                             panel={controllerPanel}
                                             board={board}
