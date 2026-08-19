@@ -36,18 +36,18 @@ whatever the variables hold, regardless of how those variables are set.
 
 ## Other Lego hubs
 
-This faceplate is built for the Spike Prime, but the same pattern
-extends to every Lego hub — they differ in matrix size and sensor set,
-not in the model:
+The other Lego hubs are genuinely different devices — each needs its
+own faceplate with different display and I/O widgets:
 
-| Hub | Matrix | Typical sensors |
-|-----|--------|-----------------|
-| **Spike Prime / Robot Inventor** | 5x5 | distance, colour, force, gyro |
-| **EV3** | none (LCD status) | ultrasonic, colour, gyro, touch |
-| **Boost / Powered Up** | none (status LED) | colour+distance combo, tilt |
-| **WeDo 2.0** | none (status LED) | tilt, distance |
-| **NXT** | none (LCD status) | ultrasonic, light, sound, touch |
+| Hub | Display | I/O | Faceplate needs |
+|-----|---------|-----|-----------------|
+| **Spike Prime** | 5x5 LED matrix | 6 ports, center button, IMU, speaker | this example (matrix widget) |
+| **EV3** | 178x128 mono LCD | 4 in + 4 out, 6 buttons, speaker | LCD display widget (future) |
+| **NXT** | 100x64 mono LCD | 4 sensor + 3 motor, 4 buttons | LCD display widget (future) |
+| **WeDo 2.0 / Boost** | RGB status light only | 2 ports | RGB light widget (future) |
 
-To make a faceplate for another hub, clone this example and adjust the
-matrix size (or remove it for hubs without a grid) and swap the gauge
-set to match that hub's sensors. The variable-binding pattern is identical.
+A matrix face and an LCD face are different widgets — one cannot cover
+all of them. What IS shared is the faceplate framework: the
+display-widget / input-widget binding model, the variable pump, and
+the controller.json format. Each hub gets its own example built on
+that framework with the right widget set for its hardware.

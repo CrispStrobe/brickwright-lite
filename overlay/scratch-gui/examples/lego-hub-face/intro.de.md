@@ -35,9 +35,15 @@ sind identisch — sie zeigen, was die Variablen enthalten.
 
 ## Andere Lego-Hubs
 
-Dieses Bedienfeld ist fuer den Spike Prime gebaut, aber dasselbe Muster
-gilt fuer jeden Lego-Hub — sie unterscheiden sich in Matrixgroesse und
-Sensorausstattung, nicht im Modell. Um ein Bedienfeld fuer einen anderen
-Hub zu erstellen: dieses Beispiel klonen, Matrixgroesse anpassen (oder
-entfernen fuer Hubs ohne Gitter) und die Anzeigen an die Sensoren des
-jeweiligen Hubs anpassen.
+Die anderen Lego-Hubs sind eigenstaendige Geraete — jeder braucht sein
+eigenes Bedienfeld mit passenden Anzeige- und Eingabe-Widgets:
+
+- **EV3**: 178x128 Mono-LCD, 4 Ein- + 4 Ausgangsports — braucht ein LCD-Widget (kuenftig)
+- **NXT**: 100x64 Mono-LCD, 4 Sensor- + 3 Motorports — braucht ein LCD-Widget (kuenftig)
+- **WeDo 2.0 / Boost**: nur RGB-Statuslicht, 2 Ports — braucht ein RGB-Licht-Widget (kuenftig)
+
+Ein Matrix-Widget und ein LCD-Widget sind verschiedene Dinge — eines
+kann nicht alle abdecken. Was geteilt wird, ist das Bedienfeld-Framework:
+das Anzeige-/Eingabe-Widget-Bindungsmodell, die Variablen-Pumpe und das
+controller.json-Format. Jeder Hub bekommt sein eigenes Beispiel auf
+diesem Framework mit den richtigen Widgets fuer seine Hardware.
