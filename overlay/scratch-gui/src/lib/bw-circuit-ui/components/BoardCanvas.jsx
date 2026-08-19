@@ -46,7 +46,7 @@ const DIP_CHIP_LABELS = {
   attiny88: 'ATtiny88', attiny85: 'ATtiny85',
   attiny2313: 'ATtiny2313', attiny13: 'ATtiny13', at89c2051: 'AT89C2051',
   // Discrete DIP ICs that were ghost-faced in bus-computer benches
-  '555': 'NE555', tms9918: 'TMS9918', bargraph: 'LED BAR',
+  '555': 'NE555', tms9918: 'TMS9918',
   ns16c550: 'NS16C550', mc6845: 'MC6845',
   // Part-matrix burn-down: DIP ICs with sidecars but no face
   '556': 'NE556', '74hc02': '74HC02', '74hc86': '74HC86',
@@ -158,6 +158,13 @@ function terminalOffsetsForPart(part) {
     }
     case 'max7219': return { vcc: r(-25, 30), gnd: r(-15, 30), din: r(-5, 30), clk: r(5, 30), cs: r(15, 30), dout: r(25, 30) };
     case 'seven_segment': return { a: r(-30, 30), b: r(30, 30) }; // pins at bottom
+    case 'bargraph': {
+      // 10 anodes (top) + 10 cathodes (bottom), spaced at 6px
+      const offsets = {};
+      for (let i = 0; i < 10; i++) offsets[`a${i}`] = r(-27 + i * 6, -12);
+      for (let i = 0; i < 10; i++) offsets[`k${i}`] = r(-27 + i * 6, 12);
+      return offsets;
+    }
     case 'char_lcd':
     case 'hd44780':
       return { rs: r(-50, 25), e: r(-30, 25), d4: r(-10, 25), d5: r(10, 25), d6: r(30, 25), d7: r(50, 25) };
@@ -167,6 +174,21 @@ function terminalOffsetsForPart(part) {
     case 'temp_sensor': return { dq: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
     case 'eeprom': return { sda: r(-10, 15), scl: r(10, 15) };
     case 'ssd1306': return { vcc: r(-12, 24), gnd: r(-4, 24), sda: r(4, 24), scl: r(12, 24) };
+    case 'sevenseg8': return {
+      vcc: r(-52, 35), gnd: r(-44, 35),
+      seg_a: r(-36, 35), seg_b: r(-28, 35), seg_c: r(-20, 35), seg_d: r(-12, 35),
+      seg_e: r(-4, 35), seg_f: r(4, 35), seg_g: r(12, 35), seg_dp: r(20, 35),
+      sel_a: r(28, 35), sel_b: r(36, 35), sel_c: r(44, 35),
+    };
+    case 'ledbank8': {
+      const offsets = { vcc: r(-35, 15), gnd: r(-27, 15) };
+      for (let i = 0; i < 8; i++) offsets[`d${i}`] = r(-19 + i * 8, 15);
+      return offsets;
+    }
+    case 'keypad': return {
+      r1: r(-21, 35), r2: r(-15, 35), r3: r(-9, 35), r4: r(-3, 35),
+      c1: r(3, 35), c2: r(9, 35), c3: r(15, 35), c4: r(21, 35),
+    };
     case 'mcu': {
       // Sidecar geometry (datasheet DIP-40) scaled to the canvas: every
       // physical pin sits where the package puts it. Fallback: the old
@@ -208,6 +230,14 @@ function terminalOffsetsForPart(part) {
     case 'ili9341':
       return { vcc: r(-30, -50), gnd: r(-30, -40), cs: r(-30, -30), rst: r(-30, -20),
         dc: r(-30, -10), mosi: r(-30, 0), sck: r(-30, 10), miso: r(-30, 20), led: r(-30, 30) };
+    case 'ili9341_par':
+    case 'ili9341_parallel': {
+      // 16-pin 8080 parallel: VCC GND CS RST RS WR RD D0-D7 LED
+      const offsets = {};
+      const pins = ['vcc','gnd','cs','rst','rs','wr','rd','d0','d1','d2','d3','d4','d5','d6','d7','led'];
+      for (let i = 0; i < pins.length; i++) offsets[pins[i]] = r(-30, -50 + i * 7);
+      return offsets;
+    }
     case 'matrix8x8': case 'matrix16x8': case 'matrix9x9': {
       const offsets = {};
       const cols = part.kind === 'matrix16x8' ? 16 : part.kind === 'matrix9x9' ? 9 : 8;
@@ -259,7 +289,10 @@ function fmtV(v) {
 
 // ── SVG part rendering ───────────────────────────────────────────
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates }) {
+// Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
+const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
+
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -524,10 +557,11 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
-      // ── NxM LED matrix display ─────────────────────────────────
+      // ── NxM LED matrix display (with per-pixel brightness levels) ─
       case 'matrix8x8': case 'matrix16x8': case 'matrix9x9': {
         const ds = deviceStates?.get(id);
         const br = ds?.brightness;
+        const levels = ds?.levels;  // Uint8Array, 0..MATRIX_LEVELS (quantized)
         const mCols = ds?.cols ?? (kind === 'matrix16x8' ? 16 : kind === 'matrix9x9' ? 9 : 8);
         const mRows = ds?.rows ?? (kind === 'matrix9x9' ? 9 : 8);
         const n = mRows * mCols;
@@ -542,10 +576,20 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#111" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
             {Array.from({ length: n }, (_, i) => {
               const row = Math.floor(i / mCols), col = i % mCols;
-              // Perceptual, not linear: a 1/16-duty scan row averages ~0.06
-              // and painted near-black while the emulator scanned the
-              // console matrix perfectly (owner report, 2026-08-17).
-              const v = ledDisplayLevel(br ? br[i] : 0);
+              // Two brightness paths:
+              //  A. Quantized levels (0..MATRIX_LEVELS) from bw-board matrix
+              //     model — 4-level graded brightness (off/dim/mid/full).
+              //  B. Continuous brightness (Float64Array 0..1) with perceptual
+              //     gamma lift via ledDisplayLevel (legacy / non-level models).
+              let v;
+              if (levels) {
+                // Path A: quantized level → normalised 0..1
+                // MATRIX_LEVELS = 3 in bw-board (4 values: off/dim/mid/full).
+                v = levels[i] / 3;
+              } else {
+                // Path B: perceptual gamma lift on raw duty-cycle average
+                v = ledDisplayLevel(br ? br[i] : 0);
+              }
               const color = v > 0.05 ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})` : '#1a0000';
               return <circle key={i}
                 cx={-Wc/2 + col * G + G/2} cy={-Wr/2 + row * G + G/2} r={S/2}
@@ -560,12 +604,19 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       // ── MAX7219 8×8 LED matrix driver ────────────────────────────
       case 'max7219': {
         const ds = deviceStates?.get(id);
-        // digits[0..7]: each byte is one row, MSB = column 7.
+        // Two brightness paths:
+        //  A. Per-pixel: ds.brightness (Float64Array, 0.0–1.0) — used when
+        //     the device model provides graded intensity per LED (e.g. a
+        //     PWM-driven matrix or a future MAX7219 model with duty-cycle
+        //     measurement). Passed through ledDisplayLevel for perception.
+        //  B. On/off + global intensity: ds.digits[0..7] bit patterns with
+        //     ds.intensity 0..15. The current bw-board MAX7219 model uses
+        //     this path.
         // shutdown = true means display off; displayTest = all on.
-        // intensity 0..15 maps to brightness.
         const off = !ds || ds.shutdown;
         const testMode = ds && ds.displayTest;
-        const intensity = ds ? (ds.intensity ?? 0) / 15 : 0;
+        const perPixel = ds?.brightness; // path A
+        const globalIntensity = ds ? (ds.intensity ?? 0) / 15 : 0;
         const G = 6, S = 4;
         const Wc = 8 * G, Wr = 8 * G;
         const seatK = part.seat ? 7 * BB_PITCH / Wc : 1;
@@ -576,14 +627,19 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#2a0a0a" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
             {Array.from({ length: 64 }, (_, i) => {
               const row = Math.floor(i / 8), col = i % 8;
-              let lit = false;
+              let v = 0;
               if (testMode) {
-                lit = true;
-              } else if (!off && ds?.digits) {
-                // Each digit byte: bit 0 = col 0 (segment DP/A), bit 7 = col 7
-                lit = (ds.digits[row] >> col) & 1;
+                v = 1;
+              } else if (!off) {
+                if (perPixel) {
+                  // Path A: per-pixel brightness from device model
+                  v = ledDisplayLevel(perPixel[i] ?? 0);
+                } else if (ds?.digits) {
+                  // Path B: on/off bits + global intensity
+                  const lit = (ds.digits[row] >> col) & 1;
+                  v = lit ? Math.max(0.15, 0.3 + 0.7 * globalIntensity) : 0;
+                }
               }
-              const v = lit ? Math.max(0.15, 0.3 + 0.7 * intensity) : 0;
               const color = v > 0.05
                 ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})`
                 : '#1a0000';
@@ -597,8 +653,10 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         );
       }
 
-      // ── ILI9341 TFT display ──────────────────────────────────────
-      case 'ili9341': {
+      // ── ILI9341 TFT display (SPI + 8080 parallel variants) ───────
+      case 'ili9341':
+      case 'ili9341_par':
+      case 'ili9341_parallel': {
         const ds = deviceStates?.get(id);
         const dark = ds && (ds.sleeping || !ds.displayOn);
         return (
@@ -641,6 +699,34 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fontFamily="monospace">OFF</text>
             )}
             <text x={14} y={66} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── 10-LED bargraph display ────────────────────────────────
+      case 'bargraph': {
+        const ds = deviceStates?.get(id);
+        const br = ds?.brightness;
+        const N = 10;
+        const G = 6;                   // gap between LED centres
+        const W = N * G, H = 12;       // body dimensions
+        const seatK = part.seat ? (9 * BB_PITCH) / W : 1;
+        return (
+          <g key={id} transform={xform + (seatK !== 1 ? ` scale(${seatK.toFixed(3)})` : '')} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <rect x={-W / 2 - 3} y={-H / 2 - 3} width={W + 6} height={H + 6} rx={2}
+              fill="#111" stroke={selStroke || '#27ae60'} strokeWidth={isSelected ? 3 : 1.5} />
+            {Array.from({ length: N }, (_, i) => {
+              const v = ledDisplayLevel(br ? br[i] : 0);
+              const color = v > 0.05
+                ? `rgba(${i < 8 ? '50,220,50' : '220,50,50'},${Math.min(1, 0.3 + 0.7 * v)})`
+                : '#0a1a0a';
+              return <rect key={i}
+                x={-W / 2 + i * G + 1} y={-H / 2 + 1}
+                width={G - 2} height={H - 2} rx={1}
+                fill={color} />;
+            })}
+            <text x={0} y={H / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -699,6 +785,184 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fontFamily="monospace">OFF</text>
             )}
             <text x={0} y={H/2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── 4×4 matrix keypad ──────────────────────────────────────────
+      case 'keypad': {
+        const ds = deviceStates?.get(id);
+        const pressed = ds?._pressed ?? part.params?.pressed ?? -1;
+        // Grid layout: 4 cols × 4 rows, each key 12×12 with 1px gaps
+        const KS = 12, KG = 1;
+        const gridW = 4 * KS + 3 * KG; // 51
+        const gridH = 4 * KS + 3 * KG; // 51
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Body */}
+            <rect x={-30} y={-35} width={60} height={62} rx={3}
+              fill="#e8e0d8" stroke={selStroke || '#999'} strokeWidth={isSelected ? 3 : 1.2} />
+            {/* Connector strip */}
+            <rect x={-22} y={24} width={44} height={5} rx={1} fill="#666" stroke="#444" strokeWidth={0.3} />
+            {/* Key grid */}
+            {Array.from({ length: 16 }, (_, i) => {
+              const row = Math.floor(i / 4), col = i % 4;
+              const kx = -gridW / 2 + col * (KS + KG);
+              const ky = -30 + row * (KS + KG);
+              const isPressed = pressed === i;
+              return (
+                <g key={i}>
+                  <rect
+                    x={kx} y={ky} width={KS} height={KS} rx={2}
+                    fill={isPressed ? '#f39c12' : '#ddd'}
+                    stroke={isPressed ? '#e67e22' : '#bbb'}
+                    strokeWidth={isPressed ? 1.5 : 0.5}
+                    style={simulate ? { cursor: 'pointer', pointerEvents: 'all' } : undefined}
+                    onMouseDown={simulate && onKeypadKey ? (e) => { e.stopPropagation(); onKeypadKey(id, i); } : undefined}
+                    onMouseUp={simulate && onKeypadKey ? (e) => { e.stopPropagation(); onKeypadKey(id, -1); } : undefined}
+                    onMouseLeave={simulate && onKeypadKey ? () => onKeypadKey(id, -1) : undefined}
+                  />
+                  <text x={kx + KS / 2} y={ky + KS / 2 + 3} textAnchor="middle"
+                    fill={isPressed ? '#fff' : '#555'} fontSize={7}
+                    fontFamily="monospace" fontWeight={isPressed ? 'bold' : 'normal'}
+                    style={{ pointerEvents: 'none' }}>
+                    {KEYPAD_LABELS[i]}
+                  </text>
+                </g>
+              );
+            })}
+            {/* Label */}
+            <text x={0} y={40} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── SEVENSEG8: 8-digit 2×4 common-cathode 7-segment display ───
+      case 'sevenseg8': {
+        const ds = deviceStates?.get(id);
+        // Two brightness paths:
+        //  A. Per-segment brightness: ds.segBrightness (Float64Array,
+        //     8 digits × 8 segments = 64 entries, 0.0–1.0) — used when
+        //     the device model provides duty-cycle-averaged brightness
+        //     per segment (ISR-scanned multiplexed display).
+        //  B. On/off bits: ds.digits[0..7] (Uint8Array, bit 0=a..6=g, 7=dp).
+        //     Current bw-board SEVENSEG8 model uses this path.
+        const segBr = ds?.segBrightness; // path A
+        // Layout: 2 rows × 4 columns (digits 0-3 top, 4-7 bottom)
+        const DW = 18, DH = 26;  // per-digit cell
+        const DG = 3;            // gap between digits
+        const cols = 4, rows = 2;
+        const totalW = cols * DW + (cols - 1) * DG; // 81
+        const totalH = rows * DH + (rows - 1) * DG; // 55
+        // 7-segment geometry within a digit cell (relative to digit top-left)
+        const segW = 10, segH = 3; // horizontal segment size
+        const segVW = 3, segVH = 8; // vertical segment size
+        const ox = (DW - segW) / 2; // x offset to centre horizontals
+        const oy = 2;               // top margin
+        // Segment path definitions (relative to digit origin):
+        //  a = top horizontal, b = top-right vertical, c = bottom-right vertical,
+        //  d = bottom horizontal, e = bottom-left vertical, f = top-left vertical,
+        //  g = middle horizontal, dp = decimal point
+        const segDefs = [
+          /* a */ { x: ox, y: oy, w: segW, h: segH },
+          /* b */ { x: ox + segW - segVW, y: oy + segH, w: segVW, h: segVH },
+          /* c */ { x: ox + segW - segVW, y: oy + segH + segVH + segH, w: segVW, h: segVH },
+          /* d */ { x: ox, y: oy + segH + segVH + segH + segVH, w: segW, h: segH },
+          /* e */ { x: ox, y: oy + segH + segVH + segH, w: segVW, h: segVH },
+          /* f */ { x: ox, y: oy + segH, w: segVW, h: segVH },
+          /* g */ { x: ox, y: oy + segH + segVH, w: segW, h: segH },
+        ];
+        const dpR = 1.5; // decimal point radius
+        // Segment color from brightness value (0..1)
+        const segColor = (v) => v > 0.05
+          ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})`
+          : '#1a0000';
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Dark PCB body */}
+            <rect x={-totalW / 2 - 4} y={-totalH / 2 - 4} width={totalW + 8} height={totalH + 8}
+              rx={3} fill="#0a0a0a" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
+            {Array.from({ length: 8 }, (_, di) => {
+              const col = di % cols, row = Math.floor(di / cols);
+              const dx = -totalW / 2 + col * (DW + DG);
+              const dy = -totalH / 2 + row * (DH + DG);
+              const seg = ds ? ds.digits[di] : 0;
+              return (
+                <g key={di}>
+                  {/* Digit background */}
+                  <rect x={dx} y={dy} width={DW} height={DH} rx={1}
+                    fill="#111" stroke="#222" strokeWidth={0.3} />
+                  {/* 7 segments — graded brightness or on/off */}
+                  {segDefs.map((s, si) => {
+                    let v;
+                    if (segBr) {
+                      // Path A: per-segment brightness (8 segments per digit)
+                      v = ledDisplayLevel(segBr[di * 8 + si] ?? 0);
+                    } else {
+                      // Path B: on/off from digit bit pattern
+                      v = (seg >> si) & 1 ? 1 : 0;
+                    }
+                    return <rect key={si}
+                      x={dx + s.x} y={dy + s.y} width={s.w} height={s.h} rx={0.5}
+                      fill={segColor(v)} />;
+                  })}
+                  {/* Decimal point — graded or on/off */}
+                  {(() => {
+                    let dpV;
+                    if (segBr) {
+                      dpV = ledDisplayLevel(segBr[di * 8 + 7] ?? 0);
+                    } else {
+                      dpV = (seg >> 7) & 1 ? 1 : 0;
+                    }
+                    return <circle cx={dx + DW - 2} cy={dy + DH - 3} r={dpR}
+                      fill={segColor(dpV)} />;
+                  })()}
+                </g>
+              );
+            })}
+            <text x={0} y={totalH / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── LEDBANK8: 8 discrete LEDs with graded brightness ──────────
+      case 'ledbank8': {
+        const ds = deviceStates?.get(id);
+        // Two brightness paths:
+        //  A. Per-LED brightness: ds.brightness (Float64Array(8), 0.0–1.0)
+        //     — used when the device model provides duty-cycle-averaged
+        //     brightness (e.g. ISR-scanned shared port with SEVENSEG8).
+        //  B. On/off: ds.leds (Uint8Array(8), 0/1) — current bw-board
+        //     LEDBANK8 model uses this path.
+        const br = ds?.brightness; // path A
+        const leds = ds?.leds;     // path B
+        const N = 8;
+        const G = 7;               // gap between LED centres
+        const W = N * G, H = 10;   // body dimensions
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <rect x={-W / 2 - 3} y={-H / 2 - 3} width={W + 6} height={H + 6} rx={2}
+              fill="#1a1a1a" stroke={selStroke || '#27ae60'} strokeWidth={isSelected ? 3 : 1.5} />
+            {Array.from({ length: N }, (_, i) => {
+              let v;
+              if (br) {
+                // Path A: per-LED continuous brightness
+                v = ledDisplayLevel(br[i] ?? 0);
+              } else {
+                // Path B: on/off from leds array
+                v = leds ? leds[i] : 0;
+              }
+              const color = v > 0.05
+                ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})`
+                : '#1a0000';
+              return <circle key={i}
+                cx={-W / 2 + i * G + G / 2} cy={0} r={3}
+                fill={color} />;
+            })}
+            <text x={0} y={H / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -1309,7 +1573,7 @@ function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments, sevenSeg3, controlValues }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onKeypadKey, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments, sevenSeg3, controlValues }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -1386,6 +1650,54 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             }}>
               {isOn ? `${(b * 100).toFixed(0)}%` : ''}
             </div>
+          </div>
+        );
+      }
+      case 'keypad_4x4': {
+        // Interactive 4x4 keypad: each key is a real press — mouse-down sets
+        // the device's `pressed` param (the engine stamps a 0.1 ohm
+        // row-to-column bridge, the same physics the A2 bench measured),
+        // mouse-up releases it. Outside simulate mode the pad drags.
+        // HTML overlay layer: this renderer's cases are absolutely
+        // positioned divs, not SVG (an SVG <g> here renders nothing — found
+        // by the Playwright acceptance, 2026-08-18).
+        const KP_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
+        const kpPressed = part.params?.pressed ?? -1;
+        const KS = 15, KG = 3;
+        const KW = 4 * KS + 3 * KG;
+        return (
+          <div key={id}
+            data-keypad={id}
+            style={{ ...baseStyle, left: x - KW / 2 - 5, top: y - KW / 2 - 5,
+              width: KW + 10, padding: 5, background: '#1b2733',
+              border: '1.5px solid #345', borderRadius: 4,
+              cursor: simulate ? 'default' : 'move',
+              pointerEvents: 'auto',
+              display: 'grid', gridTemplateColumns: `repeat(4, ${KS}px)`, gap: KG }}
+            onClick={simulate ? (e) => e.stopPropagation() : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
+            onMouseDown={simulate ? undefined : (e) => { e.stopPropagation(); onDragStart(id); }}>
+            {KP_LABELS.map((lbl, k) => {
+              const down = kpPressed === k;
+              return (
+                <div key={k}
+                  // Pointer capture: the press survives the re-render the
+                  // engine bump triggers (a mouseleave-based release fired on
+                  // React's redraw and released the key instantly — found by
+                  // the Playwright acceptance, 2026-08-18).
+                  onPointerDown={(e) => { e.stopPropagation(); if (simulate && onKeypadKey) { e.currentTarget.setPointerCapture(e.pointerId); onKeypadKey(id, k); } }}
+                  onPointerUp={(e) => { e.stopPropagation(); if (simulate && onKeypadKey) onKeypadKey(id, -1); }}
+                  onPointerCancel={() => { if (simulate && onKeypadKey) onKeypadKey(id, -1); }}
+                  style={{ width: KS, height: KS, borderRadius: 2, userSelect: 'none',
+                    background: down ? '#e74c3c' : '#37475a',
+                    border: '1px solid #0d1520',
+                    color: down ? '#fff' : '#ccdddd',
+                    font: '9px monospace', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    cursor: simulate ? 'pointer' : 'grab' }}>
+                  {lbl}
+                </div>
+              );
+            })}
           </div>
         );
       }
@@ -1564,10 +1876,11 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           </div>
         );
       }
-      case 'seven_seg_3': {
-        // 3-digit multiplexed display (056SMG-3). Uses the engine's
-        // sevenSeg3Brightness(id) → [{a..dp}, {a..dp}, {a..dp}].
-        const seg3ElW = 12.55 * 3 * 3.78;
+      case 'seven_seg_3': case 'seven_seg_4': {
+        // Multiplexed display, 3 digits (056SMG-3) or 4 (the A2's tube).
+        // Uses the engine's sevenSeg3Brightness(id, n) → n×{a..dp}.
+        const segN = kind === 'seven_seg_4' ? 4 : 3;
+        const seg3ElW = 12.55 * segN * 3.78;
         const seg3ElH = 22 * 3.78;
         const seg3Seated = part.seat && part._seatTerminals;
         let seg3Left = x - seg3ElW / 2, seg3Top = y - 35, seg3Scale;
@@ -1589,12 +1902,12 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               ...(seg3Scale ? { transform: `scale(${seg3Scale})`, transformOrigin: 'top left' } : {}) }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
-            <WokwiSevenSegment digits={3} values={(() => {
+            <WokwiSevenSegment digits={segN} values={(() => {
               const segKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
-              const vals = new Array(24).fill(0);
-              const digits = sevenSeg3?.(id);
+              const vals = new Array(8 * segN).fill(0);
+              const digits = sevenSeg3?.(id, segN);
               if (digits && Array.isArray(digits)) {
-                for (let d = 0; d < 3; d++) {
+                for (let d = 0; d < segN; d++) {
                   const seg = digits[d];
                   if (!seg) continue;
                   for (let k = 0; k < segKeys.length; k++) {
@@ -1943,7 +2256,7 @@ export function BoardCanvas({
   onAddWire, onRemoveWire, onRemovePart, onMovePart,
   onSelectPart, selectedPart, selectedParts,
   onSelectWire, selectedWire,
-  onControlChange, onButtonDown, onButtonUp,
+  onControlChange, onButtonDown, onButtonUp, onKeypadKey,
   mode, onModeChange, powered, onPowerToggle,
   statusText,
   placingProbe, onTerminalClickForProbe,
@@ -3383,13 +3696,15 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
               }
               return m.size > 0 ? m : null;
-            })()} />
+            })()}
+            simulate={!!simulate}
+            onKeypadKey={onKeypadKey} />
 
           {/* ── WIRE LAYERS ── INSIDE the svg, painted after the substrate and
               the SvgParts chip bodies:
@@ -3642,6 +3957,7 @@ export function BoardCanvas({
             selectedParts={selectedParts}
             simulate={!!simulate}
             onControlChange={onControlChange}
+            onKeypadKey={onKeypadKey}
             onButtonDown={onButtonDown}
             onButtonUp={onButtonUp}
             onDragStart={(partId) => setDragging(partId)}

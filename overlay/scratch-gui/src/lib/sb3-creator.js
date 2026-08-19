@@ -238,10 +238,6 @@ class SB3Creator {
         if (mode === 'simulator' && extId === 'ledcube') {
             return this.ledcubeSimulatorDriver(lang);
         }
-        // Controller panel: reads from the live panel via vm.runtime.controllerPanel.
-        if (mode === 'simulator' && extId === 'controller') {
-            return this.controllerSimulatorDriver(lang);
-        }
         const banner = {
             shim: 'neutral stub — drives nothing; implement to drive real hardware',
             simulator: 'simulated board — no board attached for this runtime, so neutral',
@@ -706,31 +702,6 @@ class SB3Creator {
             '    hold: (ms) => { scratch.wait(ms / 1000); },',
             '    readVoxel: (x, y, z) => { const [s, b] = _ledcube._addr(x, y, z);',
             `        return (s >= 0 && s < ${S} && b >= 0 && b < 8) ? (_ledcube_frame[s] >> b) & 1 : 0; },`,
-            '};',
-        ];
-    }
-
-    controllerSimulatorDriver(lang) {
-        if (lang === 'py') {
-            return [
-                '# _controller driver — reads from the live controller panel.',
-                'class _ControllerDriver:',
-                '    def controllerValue(self, name): return scratch.call("controller_value", name)',
-                '    def controllerX(self, name): return scratch.call("controller_x", name)',
-                '    def controllerY(self, name): return scratch.call("controller_y", name)',
-                '    def controllerPressed(self, name): return scratch.call("controller_pressed", name)',
-                '    def setWidget(self, name, value): scratch.call("controller_set", name, value)',
-                '_controller = _ControllerDriver()',
-            ];
-        }
-        return [
-            '// _controller driver — reads from the live controller panel.',
-            'const _controller = {',
-            '    controllerValue: (name) => scratch.call("controller_value", name),',
-            '    controllerX: (name) => scratch.call("controller_x", name),',
-            '    controllerY: (name) => scratch.call("controller_y", name),',
-            '    controllerPressed: (name) => scratch.call("controller_pressed", name),',
-            '    setWidget: (name, value) => scratch.call("controller_set", name, value),',
             '};',
         ];
     }
@@ -5599,6 +5570,32 @@ class SB3Creator {
             case 'planetemaths_length': return `len(str(${v('STRING')}))`;
             case 'planetemaths_sommechiffres': this._pyUses.sumdigits = true; return `_sumdigits(${v('NUM1')})`;
             // Arrays & Vectors reporters (0-based; `_arrays` registry).
+            // micro:bit+ reporters — in pyRep so they are reachable from pyCond's
+            // operator_gt/lt paths, not only from generateMicroPython's val().
+            case 'microbitplus_accel': {
+                const ax = (b.fields.AXIS ? b.fields.AXIS[0] : 'x').toLowerCase();
+                if (ax === 'strength') { this._pyUses.math = true; return 'math.sqrt(accelerometer.get_x()**2 + accelerometer.get_y()**2 + accelerometer.get_z()**2)'; }
+                return `accelerometer.get_${ax}()`;
+            }
+            case 'microbitplus_pitch': this._pyUses.math = true; return '_pitch()';
+            case 'microbitplus_roll': this._pyUses.math = true; return '_roll()';
+            case 'microbitplus_compass': return 'compass.heading()';
+            case 'microbitplus_magforce': {
+                const ax = (b.fields.AXIS ? b.fields.AXIS[0] : 'x').toLowerCase();
+                if (ax === 'absolute') { this._pyUses.math = true; return 'math.sqrt(compass.get_x()**2 + compass.get_y()**2 + compass.get_z()**2)'; }
+                return `compass.get_${ax}()`;
+            }
+            case 'microbitplus_light': return 'display.read_light_level()';
+            case 'microbitplus_temp': return 'temperature()';
+            case 'microbitplus_sound': return 'microphone.sound_level()';
+            case 'microbitplus_digitalread': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_digital()`;
+            case 'microbitplus_analogread': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_analog()`;
+            case 'microbitplus_isbutton': return `button_${(b.fields.BTN ? b.fields.BTN[0] : 'a').toLowerCase()}.is_pressed()`;
+            case 'microbitplus_ispinhigh': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_digital()`;
+            case 'microbitplus_isgesture': return `accelerometer.is_gesture('${(b.fields.GESTURE ? b.fields.GESTURE[0] : 'shake').toLowerCase()}')`;
+            case 'microbitplus_istouch': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.is_touched()`;
+            case 'microbitplus_radiolastnum': return '_radio_last_num';
+            case 'microbitplus_radiolaststr': return '_radio_last_str';
             // Scratch-runtime reporters (x position, mouse x, timer, …) -> scratch.<method>().
             default: {
                 const ac = this.arraysCall(b, blocks, this.pyVal);
