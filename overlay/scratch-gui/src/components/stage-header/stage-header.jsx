@@ -248,10 +248,15 @@ const StageHeaderComponent = function (props) {
             </div>
         );
         header = (
-            <Box className={styles.stageHeaderWrapperOverlay}>
+            <Box className={styles.stageHeaderWrapperOverlay} style={{height: 0, overflow: 'visible', position: 'relative', zIndex: 5100}}>
+                {/* Full-screen controls as a compact TOP-RIGHT overlay (z above any
+                    dock overlay), not a horizontal band — so the run/exit controls
+                    stay out of the way and the stage below fills the whole height.
+                    The un-full-screen button here is the single, intuitive exit for
+                    every mode. */}
                 <Box
                     className={styles.stageMenuWrapper}
-                    style={{width: stageDimensions.width}}
+                    style={{position: 'fixed', top: 8, right: 8, left: 'auto', width: 'auto', display: 'flex', gap: 8, alignItems: 'center', zIndex: 5100, background: 'rgba(226,232,240,0.94)', borderRadius: 10, padding: '3px 8px', boxShadow: '0 1px 6px rgba(0,0,0,0.28)'}}
                 >
                     <Controls vm={vm} />
                     {stageButton}
