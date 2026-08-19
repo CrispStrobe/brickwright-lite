@@ -7772,6 +7772,7 @@ class SB3Creator {
         // those blocks until the host resumes over serial.
         const dbg = !!(opts && opts.debug);
         const dbgPos = [];                     // n -> { block: <scratch block id> }
+        const dbgProcs = [];                   // k -> proc display name (call stack)
         const dbgBreaks = new Set((opts && opts.breakpoints) || []);
         // The shared pure-Python expression layer (pyVal/pyCond/varRef)
         // reads the same context generatePython sets up.
@@ -8227,21 +8228,41 @@ class SB3Creator {
                     const fn = this.pyName('_proc_' + this.pyProcRaw(m.proccode));
                     const argNames = JSON.parse(m.argumentnames || '[]').map((a) => this.pyName(a));
                     const body = walk(b.next, blocks, '    ');
-                    procDefs.push({ fn, argNames, body });
+                    // Human-readable proc name for the call-stack pane (%s/%b stripped).
+                    const procName = m.proccode.replace(/%[sb]/g, '').replace(/\s+/g, ' ').trim();
+                    procDefs.push({ fn, argNames, body, procName });
                 } else if (this.isHat(b.opcode)) {
                     degrade(`hat ${b.opcode} has no ${isPico ? 'Pico' : 'micro:bit'} form yet; script skipped`);
                 }
             }
         }
-        for (const { fn, argNames, body } of procDefs) {
+        for (const { fn, argNames, body, procName } of procDefs) {
             const globals = globalsFor(this, body)
                 .map((l) => argNames.length
                     ? l.replace(new RegExp(`\\b(${argNames.join('|')})\\b,? ?`, 'g'), '')
                         .replace(/, *$/, '').replace(/global *$/, '')
                     : l)
                 .filter((l) => /global \w/.test(l));
-            taskDefs.unshift([`def ${fn}(${argNames.join(', ')}):`,
-                ...globals, ...body, '    if False:', '        yield 0'].join('\n'));
+            if (dbg) {
+                // Call-stack instrumentation: the proc is a generator, so the
+                // enter marker prints when it is first driven and the finally
+                // (exit marker) runs when it completes OR is closed — correct
+                // across cooperative yields. Body re-indented under try:.
+                const k = dbgProcs.length;
+                dbgProcs.push(procName || fn);
+                taskDefs.unshift([`def ${fn}(${argNames.join(', ')}):`,
+                    ...globals,
+                    `    _bw_enter(${k})`,
+                    '    try:',
+                    ...body.map((l) => '    ' + l),
+                    '        if False:',
+                    '            yield 0',
+                    '    finally:',
+                    '        _bw_exit()'].join('\n'));
+            } else {
+                taskDefs.unshift([`def ${fn}(${argNames.join(', ')}):`,
+                    ...globals, ...body, '    if False:', '        yield 0'].join('\n'));
+            }
         }
         if (!taskDefs.length) reasons.push('no runnable scripts (a when-flag-clicked hat is required)');
         if (reasons.length) return { ok: false, reasons, warnings };
@@ -8288,15 +8309,68 @@ class SB3Creator {
         // before input() returns, so we compare the last char (c[-1:] == 's'/'c'),
         // which is robust whether or not the prefix survives.
         if (dbg) {
+            // The user's variables/lists (module-level globals) — read back on
+            // halt so the host can show them like the 8051 memory/register pane.
+            const dbgVnames = JSON.stringify([...seen]);
             header.push('',
-                '# --- BrickWright debug: position markers + breakpoints over serial ---',
+                '# --- BrickWright debug: state inspection over serial ---',
                 '_bw_step = 0',
+                `_bw_vnames = ${dbgVnames}`,
+                'def _bw_dump():',
+                '    # Serialize live state on halt: \\x1eV=variables, \\x1eB=board.',
+                '    try:',
+                '        import json',
+                '        g = globals()',
+                '        v = {}',
+                '        for k in _bw_vnames:',
+                '            try:',
+                '                json.dumps(g.get(k))',
+                '                v[k] = g.get(k)',
+                '            except Exception:',
+                '                v[k] = repr(g.get(k))',
+                "        print('\\x1eV' + json.dumps(v))",
+                '    except Exception:',
+                '        pass');
+            if (!isPico) {
+                // micro:bit board snapshot — the "pin status" equivalent: what
+                // the LEDs/buttons/sensors read at the moment execution halted.
+                header.push(
+                    '    try:',
+                    '        import json',
+                    '        d = {}',
+                    '        try:',
+                    '            d[\'display\'] = [[display.get_pixel(x, y) for x in range(5)] for y in range(5)]',
+                    '        except Exception:',
+                    '            pass',
+                    '        try:',
+                    "            d['buttonA'] = 1 if button_a.is_pressed() else 0",
+                    "            d['buttonB'] = 1 if button_b.is_pressed() else 0",
+                    '        except Exception:',
+                    '            pass',
+                    '        try:',
+                    "            d['accel'] = list(accelerometer.get_values())",
+                    '        except Exception:',
+                    '            pass',
+                    '        try:',
+                    "            d['temp'] = temperature()",
+                    '        except Exception:',
+                    '            pass',
+                    "        print('\\x1eB' + json.dumps(d))",
+                    '    except Exception:',
+                    '        pass');
+            }
+            header.push(
+                'def _bw_enter(k):',
+                "    print('\\x1e>' + str(k))",
+                'def _bw_exit():',
+                "    print('\\x1e<')",
                 'def _bw_pos(n, bp=0):',
                 '    global _bw_step',
                 "    print('\\x1e' + str(n))",
                 '    if bp or _bw_step:',
                 '        _bw_step = 0',
                 "        print('\\x1e!' + str(n))",
+                '        _bw_dump()',
                 '        while True:',
                 '            try:',
                 '                c = input()',
@@ -8477,7 +8551,7 @@ class SB3Creator {
                 '');
         }
         const py = [...header, '', ...helpers, ...stateDecls, '', ...taskDefs, ...driver].join('\n') + '\n';
-        return { ok: true, py, reasons: [], warnings, ...(dbg ? { positions: dbgPos } : {}) };
+        return { ok: true, py, reasons: [], warnings, ...(dbg ? { positions: dbgPos, procNames: dbgProcs } : {}) };
     }
 
     generateBASIC(project = this.project, opts = {}) {
