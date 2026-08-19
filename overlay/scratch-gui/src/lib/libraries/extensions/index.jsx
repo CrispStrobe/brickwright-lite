@@ -72,6 +72,14 @@ export default [
         featured: true
     },
     {
+        name: 'Arcade',
+        extensionId: 'arcade',
+        iconURL: 'static/extension-posters/gamepad.png',
+        insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iI0U2NDk4MCIvPjx0ZXh0IHg9IjI0IiB5PSIzNCIgZm9udC1zaXplPSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPvCfjq48L3RleHQ+PC9zdmc+',
+        description: 'Sprite-based game blocks for the micro:bit 5×5 LED matrix.',
+        featured: true
+    },
+    {
         name: 'STC12 / 8051 Pins',
         extensionId: 'stc12',
         iconURL: 'static/extension-posters/csp-badge.png',
