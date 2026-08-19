@@ -32,19 +32,29 @@ const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 
+// From upstream: only the sim UI (page + simulator.js). NOT the firmware —
+// upstream's `make dist` firmware is built with an ancient/mismatched toolchain
+// whose wasm OOBs on `for`-over-generator (the exact shape of our task
+// scheduler), so NOTHING task-shaped ever ran on it. See OURS below.
 const FILES = [
     ['simulator.html', 'simulator.html'],
-    ['build/firmware.js', 'build/firmware.js'],
-    ['build/firmware.wasm', 'build/firmware.wasm'],
     ['build/simulator.js', 'build/simulator.js']
 ];
 
-// Our own additions (NOT synced from upstream) — the line-level debugger's
-// firmware + loader. build-debug/ holds a settrace-enabled build (see its
-// README.md): its OWN emsdk-3.1.25 glue AND wasm — the glue is version-locked
-// to the wasm (the stock glue LinkErrors on it). simulator-debug.html loads
-// that glue and points the wasm fetch at it. Never overwritten by sync.
-const OURS = ['build-debug/firmware.js', 'build-debug/firmware.wasm', 'simulator-debug.html'];
+// Our own firmware + loader, built in the pinned emsdk-3.1.25 container (see
+// build-debug/README.md) — NOT synced from upstream:
+//   build/firmware.{js,wasm}        the STOCK (OFF) build — plain Run + block
+//                                   debug. Replaces upstream's broken wasm.
+//   build-debug/firmware.{js,wasm}  the settrace (ON) build — line-level debug.
+// The glue (firmware.js) is byte-identical between the two builds (one emsdk),
+// but each dir keeps its own so the pair stays self-contained. simulator.html
+// fetches build/firmware.wasm; simulator-debug.html fetches build-debug/ via
+// BW_WASM_URL. Never overwritten by sync.
+const OURS = [
+    'build/firmware.js', 'build/firmware.wasm',
+    'build-debug/firmware.js', 'build-debug/firmware.wasm',
+    'simulator-debug.html'
+];
 
 // simulator.js is vendored from upstream, but the debug loader needs its wasm
 // fetch to honour window.BW_WASM_URL. Re-apply that one-line patch after any
