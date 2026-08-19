@@ -161,21 +161,24 @@ let bpSet = false;
             await page.waitForTimeout(attempt === 0 ? 1500 : 800);
             // an open menu intercepts pointer events — dismiss before retrying
             await page.keyboard.press('Escape');
-            await page.evaluate(() => {
-                for (const el of document.querySelectorAll('.blocklyWidgetDiv')) el.style.display = 'none';
-            });
+            await page.waitForTimeout(200);
             await blocks.nth(Math.min(2, n - 1)).click({ button: 'right', force: true });
-            await page.evaluate(() => {
-                for (const el of document.querySelectorAll('.blocklyWidgetDiv')) el.style.display = '';
-            });
             await page.waitForTimeout(500);
             menuTexts = await page.evaluate(() =>
                 [...document.querySelectorAll('.blocklyContextMenu .goog-menuitem, .blocklyContextMenu div, .blocklyWidgetDiv .goog-menuitem')]
                     .map((e) => e.textContent.trim()).filter(Boolean).slice(0, 15));
-            const item = page.locator('.blocklyWidgetDiv .goog-menuitem, .blocklyContextMenu .goog-menuitem')
-                .filter({ hasText: /Pause here/ }).first();
-            if (await item.count()) {
-                await item.click();
+            // goog menus act on mousedown/mouseup — dispatch directly, which
+            // also sidesteps visibility quirks of the widget div
+            const clicked = await page.evaluate(() => {
+                const items = [...document.querySelectorAll('.goog-menuitem')];
+                const it = items.find((el) => /Pause here/.test(el.textContent));
+                if (!it) return false;
+                for (const type of ['mousedown', 'mouseup']) {
+                    it.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+                }
+                return true;
+            });
+            if (clicked) {
                 bpSet = true;
                 pass(`breakpoint set via the block context menu (attempt ${attempt + 1})`);
             } else {
@@ -276,9 +279,10 @@ const expectHalt = async (label, timeout) => {
         stack && /\S/.test(stack)
             ? pass(`LINE: \\x1eK call stack rendered (${stack.trim().slice(0, 60)})`)
             : fail('LINE: stack pane empty at halt');
-        await page.locator('[data-testid="bw-microbit-debug-continue"]').click().catch(() => {});
-        await page.waitForTimeout(1200);
+        // clear BEFORE continuing: the loop re-halts at the same breakpoint
+        // within ~0.3s, so the post-resume line events land immediately
         await page.evaluate(() => { window.__glows = []; });
+        await page.locator('[data-testid="bw-microbit-debug-continue"]').click().catch(() => {});
         await page.waitForFunction(() => (window.__glows || []).length > 0, { timeout: 15000 })
             .then(() => pass('LINE: resumed after continue — line events keep flowing'))
             .catch(() => fail('LINE: no line events after continue'));
