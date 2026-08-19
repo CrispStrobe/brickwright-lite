@@ -198,3 +198,56 @@ test('controller: begin/stop clear vars, board and trace', () => {
     assert.equal(st.board, null);
     assert.deepEqual(st.trace, []);
 });
+
+// ---- conditional breakpoints: host-side, evaluated against the vars frame ----
+
+test('controller: a breakpoint whose condition is UNMET auto-continues (no pause)', () => {
+    const sent = [];
+    // condition: score >= 5, on block 'b'
+    const c = createMicrobitDebugController({
+        sendSerialIn: t => sent.push(t),
+        condition: id => (id === 'b' ? {test: v => Number(v.score) >= 5} : null)
+    });
+    c.begin([{block: 'a'}, {block: 'b'}]);
+    // halt at b, then the vars frame says score=3 -> condition unmet -> continue
+    c.feedSerial(`${RS}!1\n${RS}V{"score": 3}\n`);
+    const st = c.state();
+    assert.equal(st.halted, false, 'unmet condition does not pause');
+    assert.equal(st.running, true);
+    assert.ok(sent.some(s => s.includes('c')), 'a continue byte was sent automatically');
+});
+
+test('controller: a breakpoint whose condition is MET stays halted', () => {
+    const sent = [];
+    const c = createMicrobitDebugController({
+        sendSerialIn: t => sent.push(t),
+        condition: id => (id === 'b' ? {test: v => Number(v.score) >= 5} : null)
+    });
+    c.begin([{block: 'a'}, {block: 'b'}]);
+    c.feedSerial(`${RS}!1\n${RS}V{"score": 9}\n`);
+    const st = c.state();
+    assert.equal(st.halted, true, 'met condition pauses');
+    assert.deepEqual(st.vars, {score: 9});
+    assert.ok(!sent.some(s => s.includes('c')), 'no auto-continue when the condition holds');
+});
+
+test('controller: an unconditional breakpoint always halts (condFn returns null)', () => {
+    const sent = [];
+    const c = createMicrobitDebugController({
+        sendSerialIn: t => sent.push(t),
+        condition: () => null
+    });
+    c.begin([{block: 'a'}]);
+    c.feedSerial(`${RS}!0\n${RS}V{"x": 1}\n`);
+    assert.equal(c.state().halted, true);
+    assert.ok(!sent.some(s => s.includes('c')));
+});
+
+test('controller: setConditionFn injects the lookup after construction', () => {
+    const sent = [];
+    const c = createMicrobitDebugController({sendSerialIn: t => sent.push(t)});
+    c.setConditionFn(id => (id === 'a' ? {test: () => false} : null));
+    c.begin([{block: 'a'}]);
+    c.feedSerial(`${RS}!0\n${RS}V{}\n`);
+    assert.equal(c.state().halted, false, 'injected condition (always false) auto-continues');
+});

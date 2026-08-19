@@ -161,11 +161,40 @@ class MicrobitSimPane extends React.Component {
         if (!iframe || !iframe.contentWindow) return;
         // A new flash ends any prior debug run (clears the old highlight).
         this._dbg.stop();
-        if (debug) this._dbg.begin(debug.positions);
+        if (debug) { this._dbg.begin(debug.positions); this._wireConditions(); }
         const encoder = new TextEncoder();
         const filesystem = {'main.py': encoder.encode(code)};
         iframe.contentWindow.postMessage({kind: 'flash', filesystem}, '*');
         this.setState({running: true, serial: ''});
+    }
+
+    /**
+     * Wire conditional breakpoints for this run: the controller auto-continues
+     * past a breakpoint whose condition is unmet. Reuses the SAME right-click
+     * condition store (breakpoints.js) and parser (condition.js) as the 8051
+     * debugger — lazy-loaded so a non-debug session never pulls the chunk.
+     */
+    _wireConditions () {
+        Promise.all([
+            import(/* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/breakpoints.js'),
+            import(/* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/condition.js')
+        ]).then(([bp, cond]) => {
+            const conditionOf = bp.conditionOf || (() => null);
+            const parse = cond.parseCondition;
+            const cache = new Map();
+            this._dbg.setConditionFn(blockId => {
+                const src = conditionOf(blockId);
+                if (!src) return null;
+                if (cache.has(src)) return cache.get(src);
+                let parsed = null;
+                try { parsed = parse(src); } catch { parsed = null; }
+                // parseCondition returns {error} on bad input — no test(); treat
+                // as unconditional (halt), never as a silent skip.
+                const usable = parsed && typeof parsed.test === 'function' ? parsed : null;
+                cache.set(src, usable);
+                return usable;
+            });
+        }).catch(() => { /* no bw-debug chunk -> plain breakpoints only */ });
     }
 
     /** Write a string to the program's serial-IN (the debug resume bytes). */

@@ -137,6 +137,12 @@ export function createMarkerSplitter() {
 export function createMicrobitDebugController(opts = {}) {
     let glowFn = opts.glow || null;
     let sendFn = opts.sendSerialIn || null;
+    // condFn(blockId) -> a parsed condition ({test(vars)}) or null. Injected so
+    // the controller reuses the shared 8051 condition parser/store without
+    // importing it (stays DOM/VM-free). A conditional breakpoint is an ordinary
+    // breakpoint (the codegen halts on it) that the host auto-continues past
+    // when the condition is unmet — evaluated against the \x1eV variables frame.
+    let condFn = opts.condition || null;
     const onChange = opts.onChange || (() => {});
 
     const splitter = createMarkerSplitter();
@@ -169,11 +175,33 @@ export function createMicrobitDebugController(opts = {}) {
         litBlock = block;
     }
 
+    // Send a resume byte and mark the program running again. Shared by the
+    // Step/Continue buttons and the conditional-breakpoint auto-continue.
+    function doResume(byte) {
+        if (sendFn) sendFn(`${RS}${byte}\r`);
+        state.halted = false;
+        state.running = true;
+        emit();
+    }
+
+    // A halt at `block` should stick only if there is no condition, or the
+    // condition (evaluated against the just-arrived variables) is met. Returns
+    // true when the host should silently continue instead of pausing.
+    function conditionUnmet(block, vars) {
+        if (!condFn) return false;
+        let cond = null;
+        try { cond = condFn(block); } catch { cond = null; }
+        if (!cond) return false;
+        try { return !cond.test(vars || {}); } catch { return false; } // eval error -> pause (safe)
+    }
+
     return {
         /** Inject the highlight sink (needs the VM, owned by the panel/pane). */
         setGlowFn(fn) { glowFn = fn; },
         /** Inject the serial-IN sink (needs the iframe, owned by the pane). */
         setSerialInFn(fn) { sendFn = fn; },
+        /** Inject the condition lookup (blockId -> {test(vars)} | null). */
+        setConditionFn(fn) { condFn = fn; },
 
         /**
          * Begin a debug run: adopt the positions map from generateMicroPython
@@ -198,12 +226,16 @@ export function createMicrobitDebugController(opts = {}) {
             if (!state.active) return String(chunk);
             const {text, events} = splitter.feed(chunk);
             let changed = false;
+            let autoContinue = false;
             for (const ev of events) {
                 if (ev.type === 'vars') {
                     // State frame — attaches to the halt we are already paused at,
-                    // no position change. The last frame of a name wins.
+                    // no position change. The last frame of a name wins. This is
+                    // also when a conditional breakpoint is decided: the variables
+                    // it tests have just arrived.
                     state.vars = ev.data;
                     changed = true;
+                    if (state.halted && conditionUnmet(state.block, state.vars)) autoContinue = true;
                     continue;
                 }
                 if (ev.type === 'board') {
@@ -230,7 +262,13 @@ export function createMicrobitDebugController(opts = {}) {
                 setGlow(block);
                 changed = true;
             }
-            if (changed) emit();
+            if (autoContinue) {
+                // Conditional breakpoint not met: resume silently. doResume()
+                // flips halted->false and emits, so the pause never surfaces.
+                doResume('c');
+            } else if (changed) {
+                emit();
+            }
             return text;
         },
 
@@ -245,19 +283,13 @@ export function createMicrobitDebugController(opts = {}) {
          */
         step() {
             if (!state.active) return;
-            if (sendFn) sendFn(`${RS}s\r`);
-            state.halted = false;
-            state.running = true;
-            emit();
+            doResume('s');
         },
 
         /** ▶ — continue to the next breakpoint (or program end). Clears paused. */
         cont() {
             if (!state.active) return;
-            if (sendFn) sendFn(`${RS}c\r`);
-            state.halted = false;
-            state.running = true;
-            emit();
+            doResume('c');
         },
 
         /** ⏹ — end the debug run and clear the highlight. */
