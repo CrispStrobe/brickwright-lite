@@ -7,13 +7,19 @@
  *   tcs34725    AMS TCS34725 RGBC colour sensor (0x29)
  *   bh1750      ROHM BH1750FVI ambient light / lux (0x23/0x5C)
  *   ina219      TI INA219 high-side current/voltage/power (0x40–0x4F)
+ *   vl53l0x     ST VL53L0X time-of-flight laser distance (0x29, changeable)
+ *   ads1115     TI ADS1115 16-bit 4-channel I2C ADC (0x48–0x4B)
+ *   pcf8591     NXP PCF8591 8-bit 4-channel ADC + 1-channel DAC (0x48–0x4F)
+ *   apds9960    Broadcom APDS-9960 gesture/proximity/ALS/colour (0x39)
  *
  * All stimuli are part.params (world-facing): temperature, pressure, lux,
  * colour channels, bus voltage, shunt voltage. getDeviceState returns the
  * latest reading in human units so faces can render without decoding.
  *
  * Sources: Bosch BMP280 datasheet (BST-BMP280-DS001-26), AMS TCS34725
- * datasheet (DN40), ROHM BH1750FVI datasheet, TI INA219 datasheet (SBOS448).
+ * datasheet (DN40), ROHM BH1750FVI datasheet, TI INA219 datasheet (SBOS448),
+ * ST VL53L0X API user manual (UM2039), TI ADS1115 datasheet (SBAS444B),
+ * NXP PCF8591 datasheet, Broadcom APDS-9960 datasheet (AV02-4191EN).
  * All clean-room from publicly available register maps.
  *
  * @module
@@ -551,6 +557,459 @@ function writeInaReg(state, reg, v) {
     }
 }
 
+// ─── VL53L0X ─────────────────────────────────────────────────────────
+//
+// ST VL53L0X: time-of-flight laser ranging sensor.
+// Default I2C address 0x29 (changeable via register 0x8A + software).
+// Register map (from UM2039 and community reverse-engineering):
+//   0xC0  MODEL_ID                = 0xEE
+//   0xC1  MODEL_ID (rev)          = 0xAA
+//   0xC2  MODULE_TYPE             = 0x10 (VL53L0X)
+//   0x00  SYSRANGE_START          write 0x01 = single shot, 0x02 = continuous
+//   0x13  RESULT_INTERRUPT_STATUS bit 2:0 = range status (4 = new data ready)
+//   0x14  RESULT_RANGE_STATUS     bits for signal fail, etc.
+//   0x1E  RESULT_RANGE_VAL_H      distance MSB (mm)
+//   0x1F  RESULT_RANGE_VAL_L      distance LSB (mm)
+//   0x51  SYSTEM_SEQUENCE_CONFIG
+//   0x8A  I2C_SLAVE_DEVICE_ADDRESS  (changeable address)
+//
+// Behavioral model: params.distance_mm drives the range reading.
+// The real sensor's init sequence is ~100 bytes of magic register writes
+// that we accept and store silently.
+
+function registerVL53L0X() {
+    registerDevice('vl53l0x', {
+        terminals: ['vcc', 'gnd', 'sda', 'scl', 'xshut', 'gpio1'],
+
+        init(part) {
+            const regs = new Uint8Array(256);
+            // Identification
+            regs[0xc0] = 0xee;              // MODEL_ID
+            regs[0xc1] = 0xaa;              // MODEL_ID rev
+            regs[0xc2] = 0x10;              // MODULE_TYPE (VL53L0X)
+            // Default address
+            regs[0x8a] = part.params?.addr ?? 0x29;
+
+            const state = {
+                drives: { sda: { vTh: 0, rTh: R_OFF } },
+                regs,
+                ptr: 0,
+                _first: true,
+                _ranging: false,
+                // Readable state for faces
+                distance_mm: part.params?.distance_mm ?? 200,
+            };
+
+            state._i2c = createI2CSlave({
+                onAddress: (a7, rw) => {
+                    const addr = state.regs[0x8a];
+                    const mine = a7 === addr;
+                    if (mine && rw === 0) state._first = true;
+                    return mine;
+                },
+                onWriteByte: (b) => {
+                    if (state._first) {
+                        state.ptr = b;
+                        state._first = false;
+                        return true;
+                    }
+                    writeVl53Reg(state, state.ptr, b);
+                    state.ptr = (state.ptr + 1) & 0xff;
+                    return true;
+                },
+                onReadByte: () => {
+                    const v = readVl53Reg(part, state, state.ptr);
+                    state.ptr = (state.ptr + 1) & 0xff;
+                    return v;
+                },
+            });
+            return state;
+        },
+
+        stamp(ctx) {
+            ctx.conductance('scl', null, 1 / R_INPUT);
+            ctx.conductance('xshut', null, 1 / R_INPUT);
+            ctx.conductance('gpio1', null, 1 / R_INPUT);
+        },
+
+        update(part, state, read) {
+            state.distance_mm = part.params?.distance_mm ?? 200;
+            return i2cUpdate(state, read, read('vcc'));
+        },
+    });
+}
+
+function readVl53Reg(part, state, reg) {
+    const dist = Math.max(0, Math.min(8190, Math.round(part.params?.distance_mm ?? 200)));
+
+    switch (reg) {
+        case 0xc0: return 0xee;                     // MODEL_ID
+        case 0xc1: return 0xaa;                     // MODEL_ID rev
+        case 0xc2: return 0x10;                     // MODULE_TYPE
+        case 0x13:                                   // RESULT_INTERRUPT_STATUS
+            return state._ranging ? 0x07 : 0x00;    // new data ready when ranging
+        case 0x14:                                   // RESULT_RANGE_STATUS
+            return state._ranging ? 0x0b : 0x00;    // valid range
+        case 0x1e:                                   // range MSB (mm)
+            return (dist >> 8) & 0xff;
+        case 0x1f:                                   // range LSB (mm)
+            return dist & 0xff;
+        default: return state.regs[reg] ?? 0;
+    }
+}
+
+function writeVl53Reg(state, reg, v) {
+    switch (reg) {
+        case 0x00:                                   // SYSRANGE_START
+            if (v & 0x01) state._ranging = true;     // single-shot or continuous
+            if (v === 0x00) state._ranging = false;   // stop
+            state.regs[reg] = v;
+            break;
+        case 0xc0: case 0xc1: case 0xc2:            // read-only IDs
+            break;
+        default:
+            state.regs[reg] = v;
+    }
+}
+
+// ─── SGP30 ───────────────────────────────────────────────────────────
+//
+// Sensirion SGP30: multi-pixel gas sensor for indoor air quality.
+// I2C address fixed at 0x58. Command-based protocol (no register pointer):
+// each command is a 2-byte word, followed by optional data words with CRC.
+//
+// Key commands (datasheet Table 10):
+//   0x2032  Init_air_quality    — must be called first, starts measurement
+//   0x2008  Measure_air_quality — returns eCO2 (ppm) + TVOC (ppb), each
+//                                 16-bit with CRC8 byte after each word
+//   0x2050  Measure_raw_signals — returns H2 + Ethanol raw signals
+//   0x201E  Get_feature_set     — 2 bytes + CRC (product type + version)
+//   0x3682  Get_serial_id       — 6 bytes + 3 CRCs
+//   0x0020  Measure_test        — self-test, returns 0xD400 if pass
+//
+// CRC-8 poly 0x31, init 0xFF (Sensirion standard).
+
+function sgp30Crc(d0, d1) {
+    let crc = 0xff;
+    for (const b of [d0, d1]) {
+        crc ^= b;
+        for (let i = 0; i < 8; i++) crc = (crc & 0x80) ? ((crc << 1) ^ 0x31) & 0xff : (crc << 1) & 0xff;
+    }
+    return crc;
+}
+
+function registerSGP30() {
+    registerDevice('sgp30', {
+        terminals: ['vcc', 'gnd', 'sda', 'scl'],
+
+        init(part) {
+            const state = {
+                drives: { sda: { vTh: 0, rTh: R_OFF } },
+                _cmdBuf: [],
+                _response: [],
+                _respIdx: 0,
+                _initialized: false,
+                // Readable state for faces
+                eCO2: part.params?.eCO2 ?? 400,
+                TVOC: part.params?.TVOC ?? 0,
+            };
+
+            state._i2c = createI2CSlave({
+                onAddress: (a7, rw) => {
+                    const mine = a7 === 0x58;
+                    if (mine && rw === 0) state._cmdBuf = [];
+                    if (mine && rw === 1) state._respIdx = 0;
+                    return mine;
+                },
+                onWriteByte: (b) => {
+                    state._cmdBuf.push(b);
+                    if (state._cmdBuf.length === 2) {
+                        const cmd = (state._cmdBuf[0] << 8) | state._cmdBuf[1];
+                        state._response = sgp30Execute(part, state, cmd);
+                    }
+                    return true;
+                },
+                onReadByte: () => {
+                    if (state._respIdx < state._response.length) {
+                        return state._response[state._respIdx++];
+                    }
+                    return 0;
+                },
+            });
+            return state;
+        },
+
+        stamp(ctx) {
+            ctx.conductance('scl', null, 1 / R_INPUT);
+        },
+
+        update(part, state, read) {
+            state.eCO2 = part.params?.eCO2 ?? 400;
+            state.TVOC = part.params?.TVOC ?? 0;
+            return i2cUpdate(state, read, read('vcc'));
+        },
+    });
+}
+
+function sgp30Execute(part, state, cmd) {
+    switch (cmd) {
+        case 0x2032:                                 // Init_air_quality
+            state._initialized = true;
+            return [];
+        case 0x2008: {                               // Measure_air_quality
+            if (!state._initialized) return [0, 0, 0, 0, 0, 0];
+            const co2 = Math.max(400, Math.min(60000, Math.round(part.params?.eCO2 ?? 400)));
+            const tvoc = Math.max(0, Math.min(60000, Math.round(part.params?.TVOC ?? 0)));
+            const co2h = (co2 >> 8) & 0xff, co2l = co2 & 0xff;
+            const tvoch = (tvoc >> 8) & 0xff, tvocl = tvoc & 0xff;
+            return [co2h, co2l, sgp30Crc(co2h, co2l), tvoch, tvocl, sgp30Crc(tvoch, tvocl)];
+        }
+        case 0x201e: {                               // Get_feature_set
+            return [0x00, 0x22, sgp30Crc(0x00, 0x22)];
+        }
+        case 0x3682: {                               // Get_serial_id
+            return [0x00, 0x00, sgp30Crc(0x00, 0x00),
+                    0x00, 0x48, sgp30Crc(0x00, 0x48),
+                    0x44, 0x30, sgp30Crc(0x44, 0x30)];
+        }
+        case 0x0020:                                 // Measure_test
+            return [0xd4, 0x00, sgp30Crc(0xd4, 0x00)];
+        case 0x2050: {                               // Measure_raw_signals
+            return [0x26, 0x00, sgp30Crc(0x26, 0x00),
+                    0x1a, 0x00, sgp30Crc(0x1a, 0x00)];
+        }
+        default: return [];
+    }
+}
+
+// ─── VEML7700 ────────────────────────────────────────────────────────
+//
+// Vishay VEML7700: high-accuracy ambient light sensor.
+// I2C address fixed at 0x10. 16-bit register protocol:
+// write = [cmd_code, data_low, data_high], read after cmd = [low, high].
+//
+// Register map (datasheet Table 1):
+//   0x00  ALS_CONF    configuration (gain, integration time, power)
+//   0x01  ALS_WH      high threshold window
+//   0x02  ALS_WL      low threshold window
+//   0x03  PSM         power saving mode
+//   0x04  ALS         ambient light output (16-bit, raw counts)
+//   0x05  WHITE       white channel output (16-bit)
+//
+// Resolution depends on gain + integration time. Default (gain 1, 100ms):
+// resolution = 0.0576 lx/count → count = lux / 0.0576.
+
+function registerVEML7700() {
+    registerDevice('veml7700', {
+        terminals: ['vcc', 'gnd', 'sda', 'scl'],
+
+        init(part) {
+            const regs = new Uint16Array(6);
+            // ALS_CONF default: gain=1, IT=100ms, ALS_SD=0 (on)
+            regs[0] = 0x0000;
+
+            const state = {
+                drives: { sda: { vTh: 0, rTh: R_OFF } },
+                regs,
+                ptr: 0,
+                _phase: 'cmd',       // 'cmd' | 'dlo' | 'dhi'
+                _writeLow: 0,
+                _readLow: true,
+                // Readable state for faces
+                lux: part.params?.lux ?? 0,
+                white: part.params?.white ?? 0,
+            };
+
+            state._i2c = createI2CSlave({
+                onAddress: (a7, rw) => {
+                    const mine = a7 === 0x10;
+                    if (mine && rw === 0) state._phase = 'cmd';
+                    if (mine && rw === 1) state._readLow = true;
+                    return mine;
+                },
+                onWriteByte: (b) => {
+                    if (state._phase === 'cmd') {
+                        state.ptr = b & 0x07;
+                        state._phase = 'dlo';
+                        return true;
+                    }
+                    if (state._phase === 'dlo') {
+                        state._writeLow = b;
+                        state._phase = 'dhi';
+                        return true;
+                    }
+                    // dhi — complete the 16-bit write
+                    const val = state._writeLow | (b << 8);
+                    if (state.ptr <= 3) state.regs[state.ptr] = val;
+                    state._phase = 'cmd';
+                    return true;
+                },
+                onReadByte: () => {
+                    const v = readVeml7700Reg(part, state, state.ptr);
+                    let byte;
+                    if (state._readLow) {
+                        byte = v & 0xff;
+                        state._readLow = false;
+                    } else {
+                        byte = (v >> 8) & 0xff;
+                        state._readLow = true;
+                    }
+                    return byte;
+                },
+            });
+            return state;
+        },
+
+        stamp(ctx) {
+            ctx.conductance('scl', null, 1 / R_INPUT);
+        },
+
+        update(part, state, read) {
+            state.lux = part.params?.lux ?? 0;
+            state.white = part.params?.white ?? 0;
+            return i2cUpdate(state, read, read('vcc'));
+        },
+    });
+}
+
+function readVeml7700Reg(part, state, reg) {
+    const shutDown = !!(state.regs[0] & 0x01);      // ALS_SD bit
+
+    // Gain lookup: bits 12:11
+    const gainBits = (state.regs[0] >> 11) & 0x03;
+    const gains = [1, 2, 0.125, 0.25];
+    const gain = gains[gainBits];
+
+    // Integration time lookup: bits 9:6
+    const itBits = (state.regs[0] >> 6) & 0x0f;
+    const itMap = { 0: 100, 1: 200, 2: 400, 3: 800, 8: 50, 12: 25 };
+    const itMs = itMap[itBits] ?? 100;
+
+    // Resolution = 0.0576 at gain=1, IT=100ms; scales inversely with both
+    const resolution = 0.0576 * (100 / itMs) * (1 / gain);
+
+    switch (reg) {
+        case 0x00: case 0x01: case 0x02: case 0x03:
+            return state.regs[reg];
+        case 0x04: {                                 // ALS
+            if (shutDown) return 0;
+            const lux = part.params?.lux ?? 0;
+            return Math.max(0, Math.min(65535, Math.round(lux / resolution)));
+        }
+        case 0x05: {                                 // WHITE
+            if (shutDown) return 0;
+            const w = part.params?.white ?? (part.params?.lux ?? 0);
+            return Math.max(0, Math.min(65535, Math.round(w / resolution)));
+        }
+        default: return 0;
+    }
+}
+
+// ─── AS5600 ──────────────────────────────────────────────────────────
+//
+// AMS AS5600: 12-bit contactless magnetic rotary position sensor.
+// I2C address fixed at 0x36. Register-pointer protocol (8-bit pointer,
+// 8-bit register reads, some registers are 12-bit across two bytes).
+//
+// Register map (datasheet Table 15):
+//   0x00       ZMCO         burn count (read-only, 0..3)
+//   0x01-0x02  ZPOS         zero position (12-bit, H:L)
+//   0x03-0x04  MPOS         max position (12-bit)
+//   0x05-0x06  MANG         max angle (12-bit)
+//   0x07-0x08  CONF         configuration (16-bit, H:L)
+//   0x0B       STATUS       magnet status: MD(5) ML(4) MH(3)
+//   0x0C-0x0D  RAWANGLE     raw angle (12-bit, 0..4095)
+//   0x0E-0x0F  ANGLE        filtered angle (12-bit)
+//   0x1A       AGC          automatic gain control (0..255)
+//   0x1B-0x1C  MAGNITUDE    CORDIC magnitude (12-bit)
+
+function registerAS5600() {
+    registerDevice('as5600', {
+        terminals: ['vcc', 'gnd', 'sda', 'scl', 'dir', 'out'],
+
+        init(part) {
+            const regs = new Uint8Array(0x20);
+            regs[0x0b] = 0x20;              // STATUS: magnet detected (MD=1)
+            regs[0x1a] = 0x80;              // AGC: mid-range default
+
+            const state = {
+                drives: { sda: { vTh: 0, rTh: R_OFF } },
+                regs,
+                ptr: 0,
+                _first: true,
+                // Readable state for faces
+                angle: part.params?.angle ?? 0,
+                magnitude: part.params?.magnitude ?? 2048,
+            };
+
+            state._i2c = createI2CSlave({
+                onAddress: (a7, rw) => {
+                    const mine = a7 === 0x36;
+                    if (mine && rw === 0) state._first = true;
+                    return mine;
+                },
+                onWriteByte: (b) => {
+                    if (state._first) {
+                        state.ptr = b & 0x1f;
+                        state._first = false;
+                        return true;
+                    }
+                    writeAs5600Reg(state, state.ptr, b);
+                    state.ptr = (state.ptr + 1) & 0x1f;
+                    return true;
+                },
+                onReadByte: () => {
+                    const v = readAs5600Reg(part, state, state.ptr);
+                    state.ptr = (state.ptr + 1) & 0x1f;
+                    return v;
+                },
+            });
+            return state;
+        },
+
+        stamp(ctx) {
+            ctx.conductance('scl', null, 1 / R_INPUT);
+            ctx.conductance('dir', null, 1 / R_INPUT);
+            ctx.conductance('out', null, 1 / R_INPUT);
+        },
+
+        update(part, state, read) {
+            state.angle = part.params?.angle ?? 0;
+            state.magnitude = part.params?.magnitude ?? 2048;
+            return i2cUpdate(state, read, read('vcc'));
+        },
+    });
+}
+
+function readAs5600Reg(part, state, reg) {
+    // Convert angle (0..360 degrees) to 12-bit (0..4095)
+    const angleDeg = part.params?.angle ?? 0;
+    const norm = ((angleDeg % 360) + 360) % 360;    // handle negatives
+    const raw12 = Math.min(4095, Math.round(norm / 360 * 4096));
+    const mag = Math.max(0, Math.min(4095, Math.round(part.params?.magnitude ?? 2048)));
+
+    switch (reg) {
+        case 0x00: return 0;                         // ZMCO: 0 burns
+        case 0x0b: return 0x20;                      // STATUS: magnet detected
+        case 0x0c: return (raw12 >> 8) & 0x0f;       // RAWANGLE high (4 bits)
+        case 0x0d: return raw12 & 0xff;               // RAWANGLE low
+        case 0x0e: return (raw12 >> 8) & 0x0f;       // ANGLE high (= raw here)
+        case 0x0f: return raw12 & 0xff;               // ANGLE low
+        case 0x1a: return state.regs[0x1a];           // AGC
+        case 0x1b: return (mag >> 8) & 0x0f;          // MAGNITUDE high
+        case 0x1c: return mag & 0xff;                  // MAGNITUDE low
+        default: return state.regs[reg] ?? 0;
+    }
+}
+
+function writeAs5600Reg(state, reg, v) {
+    // Writable config registers: ZPOS, MPOS, MANG, CONF
+    if (reg >= 0x01 && reg <= 0x08) {
+        state.regs[reg] = v;
+    }
+    // Everything else is read-only
+}
+
 // ─── Registration ────────────────────────────────────────────────────
 
 export function registerI2CSensors() {
@@ -558,4 +1017,8 @@ export function registerI2CSensors() {
     registerTCS34725();
     registerBH1750();
     registerINA219();
+    registerVL53L0X();
+    registerSGP30();
+    registerVEML7700();
+    registerAS5600();
 }

@@ -176,6 +176,24 @@ export const STIMULUS_CATALOGUE = {
     { param: 'shuntOhms', label: 'Shunt resistance', min: 0.001, max: 1, step: 0.001, unit: 'Ω', mechanism: 'param' },
   ],
 
+  vl53l0x: [
+    { param: 'distance_mm', label: 'Distance', min: 0, max: 2000, step: 1, unit: 'mm', mechanism: 'param' },
+  ],
+
+  sgp30: [
+    { param: 'eCO2', label: 'eCO₂', min: 400, max: 60000, step: 1, unit: 'ppm', mechanism: 'param' },
+    { param: 'TVOC', label: 'TVOC', min: 0, max: 60000, step: 1, unit: 'ppb', mechanism: 'param' },
+  ],
+  veml7700: [
+    { param: 'lux', label: 'Illuminance', min: 0, max: 120000, step: 1, unit: 'lx', mechanism: 'param' },
+    { param: 'white', label: 'White channel', min: 0, max: 120000, step: 1, unit: 'lx', mechanism: 'param' },
+  ],
+
+  as5600: [
+    { param: 'angle', label: 'Angle', min: 0, max: 360, step: 0.1, unit: '°', mechanism: 'param' },
+    { param: 'magnitude', label: 'Magnet strength', min: 0, max: 4095, step: 1, unit: '', mechanism: 'param' },
+  ],
+
   // ── Rotary encoder ───────────────────────────────────────────────────
 
   ky040: [
