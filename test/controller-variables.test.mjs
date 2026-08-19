@@ -72,3 +72,21 @@ test('dispose stops the live sync (no zombie writes)', () => {
     panel.setSliderInput('s', 99);
     assert.equal(vm._stage.variables.id_x.value, 0, 'no writes after dispose');
 });
+
+// ── Matrix display through the live variable binding — the faceplate
+// triplet's read half: the program writes `screen`, the pump renders it.
+
+test('matrix display SHOWS a variable live (bitmask pump)', () => {
+    const vm = mockVM({ screen: 0 });
+    const panel = new ControllerPanel();
+    panel.addWidget('scr', 'matrix');
+    panel.bindToVariable('scr', 'screen');
+    const b = bindPanelToVariables(panel, vm, { autoPump: false });
+
+    b.pump();
+    assert.equal(panel.getValue('scr'), 0);
+    vm._stage.variables.id_screen.value = 0b10001;
+    b.pump();
+    assert.equal(panel.getValue('scr'), 0b10001, 'bitmask pumped into the face');
+    b.dispose();
+});
