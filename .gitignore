@@ -16,6 +16,9 @@ dist/
 *.tgz
 .vercel
 
+# micro:bit firmware build outputs
+out/
+
 # Agent context (local only)
 CLAUDE.md
 .claude/
