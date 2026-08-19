@@ -30,8 +30,12 @@
  * Over serial-OUT, the debug build prints, BEFORE each block runs:
  *   `\x1e<n>\n`     — position marker: block index n is about to run
  *   `\x1e!<n>\n`    — HALT marker: paused at block n (breakpoint or pending step)
- * `\x1e` is RS (0x1e, 0o036). Markers interleave with real `print()` output and
- * MUST be split out. The host resumes a halted program over serial-IN with:
+ * and, immediately after a HALT, one state frame each (the 8051-parity panes):
+ *   `\x1eV<json>\n` — VARIABLES: {name: value} of the user's variables/lists
+ *   `\x1eB<json>\n` — BOARD: micro:bit snapshot {display, buttonA/B, accel, temp}
+ * The `V`/`B` payloads are single-line JSON (no `\n`, no RS), so the newline
+ * delimiter is unambiguous. `\x1e` is RS (0x1e, 0o036). Markers interleave with
+ * real `print()` output and MUST be split out. The host resumes over serial-IN:
  *   `\x1es\r`       — step: run to the next block, then halt again
  *   `\x1ec\r`       — continue: run until the next breakpoint (or end)
  * `positions[n] = {block: <scratch block id>}` maps a marker back to the block
@@ -98,8 +102,16 @@ export function createMarkerSplitter() {
                     break;
                 }
                 const token = buf.slice(rs + 1, nl); // between RS and the newline
-                if (token.charCodeAt(0) === 0x21 /* ! */) {
+                const kind = token.charCodeAt(0);
+                if (kind === 0x21 /* ! */) {
                     events.push({type: 'halt', n: parseInt(token.slice(1), 10)});
+                } else if (kind === 0x56 /* V */ || kind === 0x42 /* B */) {
+                    // State frame: the rest of the token is single-line JSON.
+                    let data = null;
+                    try { data = JSON.parse(token.slice(1)); } catch { data = null; }
+                    if (data !== null) {
+                        events.push({type: kind === 0x56 ? 'vars' : 'board', data});
+                    }
                 } else {
                     events.push({type: 'pos', n: parseInt(token, 10)});
                 }
@@ -133,12 +145,18 @@ export function createMicrobitDebugController(opts = {}) {
     /** The block currently lit, so a re-glow is a no-op and stop clears exactly one. */
     let litBlock = null;
 
+    /** Cap the retained trace so a long run cannot grow the panel unbounded. */
+    const TRACE_CAP = 500;
+
     let state = {
         active: false,   // a debug run is in progress
         running: false,  // program is advancing
         halted: false,   // paused at a breakpoint / after a step
         block: null,     // scratch block id of the current position
-        index: null      // position marker index n
+        index: null,     // position marker index n
+        vars: null,      // {name: value} snapshot from the last halt (the memory pane)
+        board: null,     // micro:bit board snapshot from the last halt (pin/sensor pane)
+        trace: []        // execution history: [{n, block}, …] (most recent last, capped)
     };
 
     function snapshot() { return {...state}; }
@@ -165,7 +183,8 @@ export function createMicrobitDebugController(opts = {}) {
             positions = Array.isArray(pos) ? pos : [];
             splitter.reset();
             setGlow(null);
-            state = {active: true, running: true, halted: false, block: null, index: null};
+            state = {active: true, running: true, halted: false, block: null,
+                index: null, vars: null, board: null, trace: []};
             emit();
         },
 
@@ -180,6 +199,18 @@ export function createMicrobitDebugController(opts = {}) {
             const {text, events} = splitter.feed(chunk);
             let changed = false;
             for (const ev of events) {
+                if (ev.type === 'vars') {
+                    // State frame — attaches to the halt we are already paused at,
+                    // no position change. The last frame of a name wins.
+                    state.vars = ev.data;
+                    changed = true;
+                    continue;
+                }
+                if (ev.type === 'board') {
+                    state.board = ev.data;
+                    changed = true;
+                    continue;
+                }
                 const entry = positions[ev.n];
                 const block = (entry && entry.block) || null;
                 state.index = ev.n;
@@ -192,6 +223,9 @@ export function createMicrobitDebugController(opts = {}) {
                     // resumed and moved on (step landed / continue ran).
                     state.halted = false;
                     state.running = true;
+                    // Record the step into the execution trace (position pane).
+                    state.trace.push({n: ev.n, block});
+                    if (state.trace.length > TRACE_CAP) state.trace.shift();
                 }
                 setGlow(block);
                 changed = true;
@@ -230,7 +264,8 @@ export function createMicrobitDebugController(opts = {}) {
         stop() {
             splitter.reset();
             setGlow(null);
-            state = {active: false, running: false, halted: false, block: null, index: null};
+            state = {active: false, running: false, halted: false, block: null,
+                index: null, vars: null, board: null, trace: []};
             emit();
         },
 

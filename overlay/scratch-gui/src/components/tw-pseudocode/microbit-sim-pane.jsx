@@ -11,7 +11,9 @@ const L10N = {
         running: 'Running', ready: 'Ready', loading: 'Loading…',
         serialPlaceholder: '(serial output appears here)',
         step: '⏭ Step', continue: '▶ Continue',
-        paused: 'Paused', debugging: 'Debugging', pausedAt: 'Paused at block'
+        paused: 'Paused', debugging: 'Debugging', pausedAt: 'Paused at block',
+        vars: 'Variables', board: 'Board', trace: 'Trace',
+        noVars: '(no variables)', pauseToInspect: 'Pause to inspect state'
     },
     de: {
         simTitle: 'micro:bit-Simulator',
@@ -19,7 +21,9 @@ const L10N = {
         running: 'Läuft', ready: 'Bereit', loading: 'Wird geladen…',
         serialPlaceholder: '(serielle Ausgabe erscheint hier)',
         step: '⏭ Schritt', continue: '▶ Weiter',
-        paused: 'Angehalten', debugging: 'Debugging', pausedAt: 'Angehalten bei Block'
+        paused: 'Angehalten', debugging: 'Debugging', pausedAt: 'Angehalten bei Block',
+        vars: 'Variablen', board: 'Board', trace: 'Verlauf',
+        noVars: '(keine Variablen)', pauseToInspect: 'Zum Inspizieren anhalten'
     }
 };
 const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' : 'en'; } catch { return 'en'; } };
@@ -194,6 +198,17 @@ class MicrobitSimPane extends React.Component {
             padding: '4px 12px', borderRadius: 6, border: 'none',
             cursor: 'pointer', fontWeight: 600, fontSize: 12, color: '#fff'
         };
+        // Inspector pane styles (the 8051-parity state view).
+        const inspHead = {fontWeight: 700, color: '#475569', marginBottom: 4,
+            textTransform: 'uppercase', letterSpacing: '0.03em', fontSize: 10};
+        const inspKey = {color: '#7c3aed', fontFamily: 'ui-monospace,Menlo,monospace',
+            padding: '1px 6px 1px 0', verticalAlign: 'top', whiteSpace: 'nowrap'};
+        const inspVal = {color: '#0f172a', fontFamily: 'ui-monospace,Menlo,monospace',
+            padding: '1px 0', wordBreak: 'break-all'};
+        const inspHint = {color: '#94a3b8', fontStyle: 'italic'};
+        const inspBoardRow = {display: 'flex', flexWrap: 'wrap', gap: 3};
+        const inspChip = {background: '#e2e8f0', color: '#334155', borderRadius: 4,
+            padding: '1px 5px', fontFamily: 'ui-monospace,Menlo,monospace', fontSize: 10};
         return (
             <div style={{display: 'flex', flexDirection: 'column', height: '100%', background: '#f8fafc'}}
                 data-testid="bw-microbit-sim-pane">
@@ -239,6 +254,78 @@ class MicrobitSimPane extends React.Component {
                                 ? `${t.pausedAt} #${dbg.index}`
                                 : t.debugging}
                         </span>
+                    </div>
+                ) : null}
+                {/* Inspector — the 8051-parity panes. Populated on halt from the
+                    \x1eV/\x1eB state frames; the trace fills as the program steps.
+                    Shown only during a debug run. */}
+                {dbg.active ? (
+                    <div style={{display: 'flex', gap: 0, flexShrink: 0, maxHeight: 150,
+                        borderTop: '1px solid #e5e7eb', background: '#f8fafc', fontSize: 11}}
+                    data-testid="bw-microbit-debug-inspector">
+                        {/* Variables — the memory/register-equivalent pane. */}
+                        <div style={{flex: '1 1 40%', overflow: 'auto', padding: '6px 8px',
+                            borderRight: '1px solid #e5e7eb'}}
+                        data-testid="bw-microbit-debug-vars">
+                            <div style={inspHead}>{t.vars}</div>
+                            {dbg.vars && Object.keys(dbg.vars).length ? (
+                                <table style={{borderCollapse: 'collapse', width: '100%'}}>
+                                    <tbody>
+                                        {Object.keys(dbg.vars).map(k => (
+                                            <tr key={k}>
+                                                <td style={inspKey}>{k}</td>
+                                                <td style={inspVal}>{JSON.stringify(dbg.vars[k])}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div style={inspHint}>{dbg.halted ? t.noVars : t.pauseToInspect}</div>
+                            )}
+                        </div>
+                        {/* Board — the pin/sensor-status pane (micro:bit only). */}
+                        <div style={{flex: '1 1 32%', overflow: 'auto', padding: '6px 8px',
+                            borderRight: '1px solid #e5e7eb'}}
+                        data-testid="bw-microbit-debug-board">
+                            <div style={inspHead}>{t.board}</div>
+                            {dbg.board ? (
+                                <div>
+                                    {Array.isArray(dbg.board.display) ? (
+                                        <div style={{display: 'inline-grid',
+                                            gridTemplateColumns: 'repeat(5, 9px)', gap: 2, marginBottom: 4}}>
+                                            {dbg.board.display.map((row, y) => row.map((b, x) => (
+                                                <div key={`${x}-${y}`} style={{width: 9, height: 9, borderRadius: 2,
+                                                    background: `rgba(220,38,38,${Math.max(0, Math.min(9, b)) / 9})`,
+                                                    outline: '1px solid #fecaca'}} />
+                                            )))}
+                                        </div>
+                                    ) : null}
+                                    <div style={inspBoardRow}>
+                                        {'buttonA' in dbg.board ? <span style={inspChip}>A:{dbg.board.buttonA}</span> : null}
+                                        {'buttonB' in dbg.board ? <span style={inspChip}>B:{dbg.board.buttonB}</span> : null}
+                                        {'temp' in dbg.board ? <span style={inspChip}>{dbg.board.temp}°C</span> : null}
+                                        {Array.isArray(dbg.board.accel)
+                                            ? <span style={inspChip}>xyz:{dbg.board.accel.join(',')}</span> : null}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={inspHint}>{dbg.halted ? '—' : t.pauseToInspect}</div>
+                            )}
+                        </div>
+                        {/* Trace — the execution history (position markers, in order). */}
+                        <div style={{flex: '1 1 28%', overflow: 'auto', padding: '6px 8px'}}
+                        data-testid="bw-microbit-debug-trace">
+                            <div style={inspHead}>{t.trace}</div>
+                            <div style={{display: 'flex', flexWrap: 'wrap', gap: 3}}>
+                                {dbg.trace.slice(-24).map((tr, i, a) => (
+                                    <span key={i} style={{...inspChip,
+                                        background: i === a.length - 1 ? '#7c3aed' : '#e2e8f0',
+                                        color: i === a.length - 1 ? '#fff' : '#334155'}}>
+                                        #{tr.n}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 ) : null}
                 {/* Controls */}

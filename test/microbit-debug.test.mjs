@@ -134,3 +134,67 @@ test('controller: stop clears the highlight and deactivates', () => {
     // passthrough once inactive
     assert.equal(c.feedSerial('plain'), 'plain');
 });
+
+// ---- state-inspection frames: \x1eV variables, \x1eB board, + trace ----
+
+test('splitter: a \\x1eV frame decodes to a vars event with parsed JSON', () => {
+    const s = createMarkerSplitter();
+    const r = s.feed(`${RS}V{"score": 7, "name": "hi"}\n`);
+    assert.equal(r.text, '');
+    assert.deepEqual(r.events, [{type: 'vars', data: {score: 7, name: 'hi'}}]);
+});
+
+test('splitter: a \\x1eB frame decodes to a board event with parsed JSON', () => {
+    const s = createMarkerSplitter();
+    const r = s.feed(`${RS}B{"buttonA": 1, "temp": 21}\n`);
+    assert.deepEqual(r.events, [{type: 'board', data: {buttonA: 1, temp: 21}}]);
+});
+
+test('splitter: a malformed state frame is dropped, not thrown', () => {
+    const s = createMarkerSplitter();
+    const r = s.feed(`ok\n${RS}V{bad json\n${RS}1\n`);
+    assert.equal(r.text, 'ok\n');
+    // the bad V frame produces no event; the pos marker still lands
+    assert.deepEqual(r.events, [{type: 'pos', n: 1}]);
+});
+
+test('splitter: a JSON frame split across chunks buffers until its newline', () => {
+    const s = createMarkerSplitter();
+    const a = s.feed(`${RS}V{"score":`);
+    assert.deepEqual(a.events, [], 'partial JSON frame yields nothing yet');
+    const b = s.feed(` 42}\n`);
+    assert.deepEqual(b.events, [{type: 'vars', data: {score: 42}}]);
+});
+
+test('controller: a halt frame populates the variables + board panes', () => {
+    const c = createMicrobitDebugController();
+    c.begin([{block: 'a'}, {block: 'b'}]);
+    c.feedSerial(`${RS}!1\n`);
+    c.feedSerial(`${RS}V{"score": 3}\n`);
+    c.feedSerial(`${RS}B{"buttonA": 0, "temp": 20}\n`);
+    const st = c.state();
+    assert.equal(st.halted, true);
+    assert.deepEqual(st.vars, {score: 3});
+    assert.deepEqual(st.board, {buttonA: 0, temp: 20});
+});
+
+test('controller: position markers accumulate into the trace, capped', () => {
+    const c = createMicrobitDebugController();
+    c.begin([{block: 'a'}, {block: 'b'}]);
+    c.feedSerial(`${RS}0\n${RS}1\n${RS}0\n`);
+    const st = c.state();
+    assert.deepEqual(st.trace.map(t => t.n), [0, 1, 0], 'trace records each step in order');
+    assert.deepEqual(st.trace.map(t => t.block), ['a', 'b', 'a']);
+});
+
+test('controller: begin/stop clear vars, board and trace', () => {
+    const c = createMicrobitDebugController();
+    c.begin([{block: 'a'}]);
+    c.feedSerial(`${RS}!0\n${RS}V{"x": 1}\n${RS}B{"temp": 9}\n`);
+    assert.ok(c.state().vars && c.state().board);
+    c.stop();
+    const st = c.state();
+    assert.equal(st.vars, null);
+    assert.equal(st.board, null);
+    assert.deepEqual(st.trace, []);
+});
