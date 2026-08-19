@@ -279,13 +279,32 @@ const expectHalt = async (label, timeout) => {
         stack && /\S/.test(stack)
             ? pass(`LINE: \\x1eK call stack rendered (${stack.trim().slice(0, 60)})`)
             : fail('LINE: stack pane empty at halt');
+        // record the wire position and every postMessage into the sim, so a
+        // dead continue distinguishes pane-never-sent / sim-ignored / events-
+        // arrived-but-no-glow.
+        await page.evaluate(() => {
+            const f = document.querySelector('[data-testid="bw-microbit-iframe"]');
+            window.__posts = [];
+            window.__serialMark = (window.__rawSerial || '').length;
+            const orig = f.contentWindow.postMessage.bind(f.contentWindow);
+            f.contentWindow.postMessage = (msg, t) => {
+                try { window.__posts.push(JSON.stringify(msg).slice(0, 60)); } catch { window.__posts.push('(unserializable)'); }
+                return orig(msg, t);
+            };
+        });
         // clear BEFORE continuing: the loop re-halts at the same breakpoint
         // within ~0.3s, so the post-resume line events land immediately
         await page.evaluate(() => { window.__glows = []; });
         await page.locator('[data-testid="bw-microbit-debug-continue"]').click().catch(() => {});
         await page.waitForFunction(() => (window.__glows || []).length > 0, { timeout: 15000 })
             .then(() => pass('LINE: resumed after continue — line events keep flowing'))
-            .catch(() => fail('LINE: no line events after continue'));
+            .catch(async () => {
+                const posts = await page.evaluate(() => (window.__posts || []).slice(0, 5));
+                const wire = await page.evaluate(() =>
+                    JSON.stringify((window.__rawSerial || '').slice(window.__serialMark || 0).slice(0, 200)));
+                fail('LINE: no line events after continue; pane posts: '
+                    + JSON.stringify(posts) + '; wire delta: ' + wire);
+            });
     }
 }
 
