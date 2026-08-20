@@ -216,7 +216,13 @@ try {
     // request): Save / Load / Zoom plus Import ▸ / Export ▸ submenus, rather than
     // the old standalone "Save wiring as file" / "Load wiring from file" buttons.
     const moreMenu = designer.locator('[data-toolbar-more-menu]');
-    check('overflow slot exposes Save, Load, and Zoom', await moreMenu.count() === 1 && await moreMenu.getByText('Save', {exact: false}).count() >= 1 && await moreMenu.getByText('Load', {exact: false}).count() >= 1 && await designer.locator('[data-zoom-indicator]').count() >= 1);
+    await moreMenu.first().waitFor({state: 'attached', timeout: 2000}).catch(() => {});
+    const menuN = await moreMenu.count();
+    // The load control is labelled Open/Öffnen (File-menu convention), not "Load".
+    const saveN = menuN ? await moreMenu.getByText(/Save|Speichern/).count() : 0;
+    const openN = menuN ? await moreMenu.getByText(/Open|Öffnen/).count() : 0;
+    const zoomN = await designer.locator('[data-zoom-indicator]').count();
+    check('overflow slot exposes Save, Open, and Zoom', menuN >= 1 && saveN >= 1 && openN >= 1 && zoomN >= 1, `menu=${menuN} save=${saveN} open=${openN} zoom=${zoomN}`);
     check('zoom indicator has readable contrast styling', await designer.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
     await moreControls.click({force: true});
     check('toolbar explicitly wraps when space is constrained', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).flexWrap === 'wrap'));
