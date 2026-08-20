@@ -212,7 +212,11 @@ try {
     const moreControls = designer.getByRole('button', {name: 'More circuit controls'});
     check('save/load/zoom controls have a single overflow slot', await moreControls.count() === 1 && await designer.locator('[data-toolbar-more]').count() === 1);
     await moreControls.click({force: true});
-    check('overflow slot exposes Save, Load, and Zoom', await designer.getByRole('button', {name: 'Save wiring as file'}).count() === 1 && await designer.getByRole('button', {name: 'Load wiring from file'}).count() === 1 && await designer.locator('[data-zoom-indicator]').count() === 1);
+    // The file controls were consolidated into the "..." overflow menu (owner
+    // request): Save / Load / Zoom plus Import ▸ / Export ▸ submenus, rather than
+    // the old standalone "Save wiring as file" / "Load wiring from file" buttons.
+    const moreMenu = designer.locator('[data-toolbar-more-menu]');
+    check('overflow slot exposes Save, Load, and Zoom', await moreMenu.count() === 1 && await moreMenu.getByText('Save', {exact: false}).count() >= 1 && await moreMenu.getByText('Load', {exact: false}).count() >= 1 && await designer.locator('[data-zoom-indicator]').count() >= 1);
     check('zoom indicator has readable contrast styling', await designer.locator('[data-zoom-indicator]').evaluate(el => getComputedStyle(el).color !== getComputedStyle(el.parentElement).backgroundColor));
     await moreControls.click({force: true});
     check('toolbar explicitly wraps when space is constrained', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).flexWrap === 'wrap'));
@@ -445,14 +449,10 @@ try {
     const designerBox = await embedded.boundingBox();
     check('run/step controls stay in the designer instrument area', !!pauseBox && !!designerBox && pauseBox.x >= designerBox.x);
 
-    const summaries = page.locator('summary');
-    check('top circuit notices are collapsed disclosure triangles', await summaries.count() >= 1);
-    if (await summaries.count()) {
-        const before = await page.getByText(/Build a circuit on its own/, {exact: false}).count();
-        await summaries.first().click({force: true});
-        const after = await page.getByText(/Build a circuit on its own/, {exact: false}).count();
-    check('notice triangle expands its text', after >= before);
-    }
+    // The two orange disclosure-triangle notices ("Build a circuit on its own" /
+    // "Run and step controls appear here") were removed at the owner's request —
+    // the top-bar Warnings selector (with its count) is the single home for flags
+    // now. The gate that asserted their presence is gone with them.
 
     // A program imported from the pseudocode/examples flow must leave a sprite
     // selected. The Stage has no Motion toolbox, so selecting it here would
