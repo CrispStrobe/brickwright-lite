@@ -546,6 +546,39 @@ class MenuBar extends React.Component {
                                             </MenuItem>
                                         )}
                                     </MenuSection>
+                                    {/* Circuit file operations in the main File menu — the owner's
+                                        "maybe use File/ for load/save/import/export" note. Exactly
+                                        four top-level actions and nothing more; format variants are
+                                        picked in the Circuit tab's own dialogs, so no second-level
+                                        menu is needed here. Each emits a bw-circuit-file event that
+                                        the Circuit tab handles with the same handlers as the
+                                        designer's "..." menu (the receiver lives in bw-circuit-ui). */}
+                                    <MenuSection>
+                                        <MenuItem onClick={() => {
+                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'load'}}));
+                                            this.props.onRequestCloseFile();
+                                        }}>
+                                            {'Open circuit…'}
+                                        </MenuItem>
+                                        <MenuItem onClick={() => {
+                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'save'}}));
+                                            this.props.onRequestCloseFile();
+                                        }}>
+                                            {'Save circuit'}
+                                        </MenuItem>
+                                        <MenuItem onClick={() => {
+                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'import'}}));
+                                            this.props.onRequestCloseFile();
+                                        }}>
+                                            {'Import circuit…'}
+                                        </MenuItem>
+                                        <MenuItem onClick={() => {
+                                            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-circuit-file', {detail: {action: 'export'}}));
+                                            this.props.onRequestCloseFile();
+                                        }}>
+                                            {'Export circuit…'}
+                                        </MenuItem>
+                                    </MenuSection>
                                 </MenuBarMenu>
                             </div>
                         )}
