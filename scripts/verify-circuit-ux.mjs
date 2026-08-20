@@ -97,7 +97,9 @@ try {
     check('right pane remains mounted for optional Circuit Designer selection', await page.locator('[data-right-pane]').count() === 1);
 
     const stageButton = page.getByRole('button', {name: 'Scratch Stage'});
-    const circuitButton = page.getByRole('button', {name: 'Circuit Designer (only)'});
+    // The "(only)" was dropped from this button's label (it was misleading — the
+    // Selectors and Instruments panels can still blend into the Circuit view).
+    const circuitButton = page.getByRole('button', {name: 'Circuit Designer'});
     const debuggerButton = page.getByRole('button', {name: 'Debugger', exact: true});
     check('stage-view buttons are present', await stageButton.count() === 1 && await circuitButton.count() === 1 && await debuggerButton.count() === 1);
     check('Scratch Stage is selected on a fresh editor', await stageButton.getAttribute('aria-pressed') === 'true');
