@@ -1149,80 +1149,11 @@ class CircuitTab extends React.Component {
         const dock = this.state.debugDock === 'solo' ? 'top' : this.state.debugDock;
         const content = (
             <div ref={this._boxRef} style={box}>
-                {/* A circuit does not need a microcontroller.
-                    This used to read "declares no pins, so the board starts empty", which
-                    framed a battery-LED-resistor circuit — the first circuit anyone builds —
-                    as a misconfigured MCU project. The board, the solver, the instruments and
-                    the design-rule check all work with no MCU in the netlist at all. So this
-                    is an invitation, shown once and dismissible, not a warning. */}
-                {stcDrives(stc) || this.state.machineBooted || this.state.hintDismissed ? null : (
-                    <details style={{marginBottom: 6, flex: '0 0 auto', color: '#075985'}}>
-                    <summary style={{cursor: 'pointer', color: '#d97706', fontSize: 18, lineHeight: 1, padding: '2px 4px', listStyle: 'none'}} title="Show circuit hint">▲</summary>
-                    <div style={{padding: '5px 8px', borderRadius: 5,
-                        background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: 12,
-                        color: '#075985', display: 'flex', alignItems: 'center', gap: 8,
-                        }}>
-                        <span style={{flex: 1}}>
-                            {'Build a circuit on its own — battery, LED, resistor, a 555. ' +
-                             'To drive parts from blocks, declare pins in the Code tab ' +
-                             '(PIN led1 IS P1.0 OUTPUT ACTIVE LOW).'}
-                        </span>
-                        <button
-                            title={'Dismiss'}
-                            onClick={() => {
-                                this.setState({hintDismissed: true});
-                                try {
-                                    localStorage.setItem('bw-circuit-hint', '1');
-                                } catch { /* private mode: dismissed for this session only */ }
-                            }}
-                            style={{border: 'none', background: 'transparent', cursor: 'pointer',
-                                color: '#0369a1', fontSize: 15, lineHeight: 1, padding: '0 2px'}}
-                        >{'×'}</button>
-                    </div>
-                    </details>
-                )}
-                {/* The debugger's controls, above the board they act on. The design note
-                    puts them in the stage header; they are here because that header is
-                    shown for every project including pure Scratch ones — see the panel's
-                    own comment. The block glow lands in the Blocks tab regardless. */}
-                {stcDrives(stc) || this.state.machineBooted ? null : (
-                    // The panel is correctly absent — there is no program to run
-                    // control over — but absent and broken look identical, and a
-                    // reader who came here for the debugger finds nothing and no
-                    // reason. Every other panel in this strip explains why it is
-                    // empty; this one used to be the exception.
-                    this.state.debugHintDismissed ? null : (
-                        <details style={{marginBottom: 8, flex: '0 0 auto', color: '#64748b'}}>
-                        <summary style={{cursor: 'pointer', color: '#ca8a04', fontSize: 18, lineHeight: 1, padding: '2px 4px', listStyle: 'none'}} title="Show debugger hint">▲</summary>
-                        <div style={{padding: '4px 8px', borderRadius: 4,
-                            background: '#f8fafc', border: '1px solid #e2e8f0', flex: '0 0 auto',
-                            fontSize: 11.5, color: '#64748b',
-                            display: 'flex', alignItems: 'center', gap: 8}}>
-                            <span style={{flex: 1}}>
-                                {'Run and step controls appear here once the project declares ' +
-                                 'pins — the debugger needs a program and a chip to drive. Add ' +
-                                 'one in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW.'}
-                            </span>
-                            {/* Dismissible for the same reason the standalone-circuit hint is:
-                                someone building a circuit with no MCU has read it once and does
-                                not need it on every visit. Its own key, not the circuit hint's —
-                                they answer different questions and dismissing one should not
-                                silence the other. */}
-                            <button
-                                title={'Dismiss'}
-                                onClick={() => {
-                                    this.setState({debugHintDismissed: true});
-                                    try {
-                                        localStorage.setItem('bw-debug-hint', '1');
-                                    } catch { /* private mode: dismissed for this session */ }
-                                }}
-                                style={{border: 'none', background: 'transparent', cursor: 'pointer',
-                                    color: '#64748b', fontSize: 15, lineHeight: 1, padding: '0 2px'}}
-                            >{'×'}</button>
-                        </div>
-                        </details>
-                    )
-                )}
+                {/* The standalone-circuit invitation and the debugger hint used to render here
+                    as two dismissible orange ▲ banners. Removed at the owner's request: they
+                    pushed the board down and duplicated the top-bar Warnings selector, which
+                    (with its count) is now the single home for anything the user needs flagged.
+                    The guidance they carried lives in the Examples/docs, not a persistent banner. */}
                 {this.state.panel === 'designer' ? null : this.renderPanelStrip()}
                 <div style={{display: 'flex', flex: '1 1 auto', minHeight: 0, gap: 8}}>
                 <div style={{flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column'}}>
