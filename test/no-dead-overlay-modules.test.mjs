@@ -60,6 +60,13 @@ const ALLOWED = new Map([
  * name; removing one means editing this list in the same commit.
  */
 const KNOWN_DEAD = new Map([
+    ['lib/bw-circuit-ui/model/schematic-svg.js',
+        'The headless SVG renderer for the bwc CLI (info/convert/render/roundtrip). ' +
+        'One description, two renderers: the lite app draws schematics via ' +
+        'SchematicPanel.jsx (React), and this is its headless twin — both consume ' +
+        'schematic-symbols.js. Vendored with the importer set for version ' +
+        'lockstep, but the CLI is not in the app bundle, so it is intentionally ' +
+        'unused in-app.'],
     ['lib/trace-oracle.js',
         'The referee (reference trace interpreter + comparator) - consumed by ' +
         'scripts/oracle-differential.mjs, the layer-4 C-vs-referee differential, ' +
