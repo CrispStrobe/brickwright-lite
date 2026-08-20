@@ -1323,18 +1323,25 @@ class CircuitTab extends React.Component {
                     <button
                         key={id}
                         onClick={() => {
+                            // The Designer button is a no-op when the designer is already the
+                            // current panel — this strip only exists inside the Circuit tab, so
+                            // "select Designer" from here is redundant. Grey it and swallow the
+                            // click so it reads as the current view, not a live selector.
+                            if (panel === id && id === 'designer') return;
                             this.setState({panel: id});
                             if (id === 'examples') this.loadExamples();
                         }}
                         title={tabTitles[id]}
                         aria-label={tabTitles[id]}
                         aria-pressed={panel === id}
+                        aria-disabled={panel === id && id === 'designer'}
                         style={{
-                            width: 34, minWidth: 34, height: 34, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4,
+                            width: 34, minWidth: 34, height: 34, padding: 0, border: 'none', borderRadius: 4,
+                            cursor: panel === id && id === 'designer' ? 'default' : 'pointer',
                             fontSize: 17, lineHeight: 1, position: 'relative', fontWeight: 600,
-                            background: panel === id ? '#1d4ed8' : 'transparent',
-                            boxShadow: panel === id ? '0 1px 2px rgba(15,23,42,.25)' : 'none',
-                            color: panel === id ? '#fff' : '#64748b'
+                            background: panel === id ? (id === 'designer' ? '#e2e8f0' : '#1d4ed8') : 'transparent',
+                            boxShadow: panel === id && id !== 'designer' ? '0 1px 2px rgba(15,23,42,.25)' : 'none',
+                            color: panel === id ? (id === 'designer' ? '#94a3b8' : '#fff') : '#64748b'
                         }}
                     >
                         <span aria-hidden="true">{tabIcons[id]}</span>
