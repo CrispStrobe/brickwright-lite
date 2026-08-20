@@ -86,7 +86,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "02-dimmer/circuit.arduino-mega.json",
@@ -126,7 +126,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "03-night-light/circuit.arduino-mega.json",
@@ -166,7 +166,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "04-thermostat/circuit.arduino-mega.json",
@@ -183,7 +183,7 @@
   "id": "05-counter",
   "title": {
    "en": "Button counter with LED blinks",
-   "de": "Tastenzähler mit LED-Blinken"
+   "de": "Tastenz\u00e4hler mit LED-Blinken"
   },
   "category": "basics",
   "difficulty": 2,
@@ -412,7 +412,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "10-motor-speed/circuit.arduino-mega.json",
@@ -624,7 +624,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "15-voltage-divider/circuit.arduino-mega.json",
@@ -664,7 +664,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "16-ldr-bargraph/circuit.arduino-mega.json",
@@ -704,7 +704,7 @@
    "pico"
   ],
   "refusals": {
-   "stc89c52rc": "stc89c52rc has no ADC — the analog pins cannot map"
+   "stc89c52rc": "stc89c52rc has no ADC \u2014 the analog pins cannot map"
   },
   "benches": {
    "arduino-mega": "17-comparator/circuit.arduino-mega.json",
@@ -807,7 +807,7 @@
   "id": "20-shift-register-binary",
   "title": {
    "en": "Binary counter on shift register",
-   "de": "Binärzähler auf Schieberegister"
+   "de": "Bin\u00e4rz\u00e4hler auf Schieberegister"
   },
   "category": "digital",
   "difficulty": 3,
@@ -1526,7 +1526,7 @@
   "id": "49-lcd-hello",
   "title": {
    "en": "I2C LCD: hello + counter",
-   "de": "I2C-LCD: Hallo + Zähler"
+   "de": "I2C-LCD: Hallo + Z\u00e4hler"
   },
   "category": "digital",
   "difficulty": 2,
@@ -1568,7 +1568,7 @@
   "id": "55-oled-hello",
   "title": {
    "en": "I2C OLED: hello + counter",
-   "de": "I2C-OLED: Hallo + Zähler"
+   "de": "I2C-OLED: Hallo + Z\u00e4hler"
   },
   "category": "digital",
   "difficulty": 2,
@@ -1741,8 +1741,8 @@
  {
   "id": "53-servo-sweep",
   "title": {
-   "en": "Servo sweep 0°–180°",
-   "de": "Servo-Schwenk 0°–180°"
+   "en": "Servo sweep 0\u00b0\u2013180\u00b0",
+   "de": "Servo-Schwenk 0\u00b0\u2013180\u00b0"
   },
   "kind": "program",
   "category": "motors",
@@ -1767,7 +1767,7 @@
    "attiny85"
   ],
   "refusals": {
-   "stc89c52rc": "servo needs the PCA — stc89c52rc has none"
+   "stc89c52rc": "servo needs the PCA \u2014 stc89c52rc has none"
   },
   "benches": {
    "arduino-mega": "53-servo-sweep/circuit.arduino-mega.json",
@@ -1786,7 +1786,7 @@
   "id": "54-motor-driver",
   "title": {
    "en": "DC motor with L293D H-bridge",
-   "de": "DC-Motor mit L293D-H-Brücke"
+   "de": "DC-Motor mit L293D-H-Br\u00fccke"
   },
   "kind": "program",
   "category": "motors",
@@ -1866,7 +1866,7 @@
   "id": "pc03-series-resistors",
   "title": {
    "en": "Resistors in series",
-   "de": "Widerstände in Reihe"
+   "de": "Widerst\u00e4nde in Reihe"
   },
   "category": "pure-circuit",
   "difficulty": 1,
@@ -2226,7 +2226,7 @@
   "id": "pc21-rc-smoothing",
   "title": {
    "en": "RC smoothing",
-   "de": "RC-Glättung"
+   "de": "RC-Gl\u00e4ttung"
   },
   "category": "pure-circuit",
   "difficulty": 2,
@@ -2243,7 +2243,7 @@
   "id": "pc22-diode-selector",
   "title": {
    "en": "Diode power selector",
-   "de": "Dioden-Stromwähler"
+   "de": "Dioden-Stromw\u00e4hler"
   },
   "category": "pure-circuit",
   "difficulty": 2,
@@ -2396,7 +2396,7 @@
   "id": "pc31-bridge-rectifier",
   "title": {
    "en": "Bridge rectifier",
-   "de": "Brückengleichrichter"
+   "de": "Br\u00fcckengleichrichter"
   },
   "category": "pure-circuit",
   "difficulty": 3,
@@ -2621,7 +2621,7 @@
   "id": "pc40-opamp-threshold",
   "title": {
    "en": "Op-amp threshold",
-   "de": "Operationsverstärker-Schwelle"
+   "de": "Operationsverst\u00e4rker-Schwelle"
   },
   "category": "pure-circuit",
   "difficulty": 3,
@@ -2859,7 +2859,7 @@
   "id": "pc54-opamp-follower",
   "title": {
    "en": "Op-amp voltage follower",
-   "de": "Operationsverstärker-Spannungsfolger"
+   "de": "Operationsverst\u00e4rker-Spannungsfolger"
   },
   "category": "pure-circuit",
   "difficulty": 3,
@@ -2893,7 +2893,7 @@
   "id": "pc56-inductor-freewheel",
   "title": {
    "en": "Inductor freewheel path",
-   "de": "Freilaufpfad für Induktivität"
+   "de": "Freilaufpfad f\u00fcr Induktivit\u00e4t"
   },
   "category": "pure-circuit",
   "difficulty": 3,
@@ -3694,7 +3694,7 @@
   "id": "arduino-02-tone-pitch-follower",
   "title": {
    "en": "Pitch Follower",
-   "de": "Tonhöhenfolger"
+   "de": "Tonh\u00f6henfolger"
   },
   "category": "digital",
   "difficulty": 2,
@@ -3910,7 +3910,7 @@
   "id": "arduino-03-smoothing",
   "title": {
    "en": "Smoothing",
-   "de": "Glättung"
+   "de": "Gl\u00e4ttung"
   },
   "category": "analog",
   "difficulty": 2,
@@ -4122,7 +4122,7 @@
   },
   "authored": "arduino-uno",
   "transformRefused": {
-   "attiny85": "MCU terminal d7 is wired but has no mapping on attiny85 — refusing rather than dropping the connection"
+   "attiny85": "MCU terminal d7 is wired but has no mapping on attiny85 \u2014 refusing rather than dropping the connection"
   }
  },
  {
@@ -5211,7 +5211,7 @@
   "id": "blinkenrocket-pendant",
   "title": {
    "en": "Blinkenrocket Pendant",
-   "de": "Blinkenrocket-Anhänger"
+   "de": "Blinkenrocket-Anh\u00e4nger"
   },
   "category": "digital",
   "difficulty": 3,
@@ -6043,7 +6043,7 @@
   "id": "pc83-gluecksrad",
   "title": {
    "en": "Wheel of Fortune: Shake Roulette",
-   "de": "Glücksrad: Schüttel-Roulette"
+   "de": "Gl\u00fccksrad: Sch\u00fcttel-Roulette"
   },
   "kind": "circuit",
   "category": "pure-circuit",
@@ -6173,7 +6173,7 @@
   "id": "61-console-pong",
   "title": {
    "en": "Retro console: Ball & Paddle",
-   "de": "Retro-Konsole: Ball & Schläger"
+   "de": "Retro-Konsole: Ball & Schl\u00e4ger"
   },
   "category": "digital",
   "difficulty": 3,
@@ -6426,8 +6426,8 @@
  {
   "id": "77-keypad-keyshow",
   "title": {
-   "en": "Keypad keyshow (4×4 → 7-seg)",
-   "de": "Tastenfeld-Keyshow (4×4 → 7-Segment)"
+   "en": "Keypad keyshow (4\u00d74 \u2192 7-seg)",
+   "de": "Tastenfeld-Keyshow (4\u00d74 \u2192 7-Segment)"
   },
   "category": "digital",
   "difficulty": 2,
@@ -6447,8 +6447,8 @@
  {
   "id": "78-a2-calculator",
   "title": {
-   "en": "The A2 calculator (8 digits, 4×4 keypad)",
-   "de": "Der A2-Taschenrechner (8 Ziffern, 4×4-Tastenfeld)"
+   "en": "The A2 calculator (8 digits, 4\u00d74 keypad)",
+   "de": "Der A2-Taschenrechner (8 Ziffern, 4\u00d74-Tastenfeld)"
   },
   "category": "digital",
   "difficulty": 4,
@@ -6761,5 +6761,154 @@
    "introDE": "boost-faceplate/intro.de.md",
    "expected": "boost-faceplate/EXPECTED.md"
   }
+ },
+ {
+  "id": "disp-oled",
+  "title": {
+   "en": "OLED Display Demo",
+   "de": "OLED-Display-Demo"
+  },
+  "category": "display",
+  "difficulty": 1,
+  "files": {
+   "program": "disp-oled/program.bw",
+   "intro": "disp-oled/intro.md",
+   "introDE": "disp-oled/intro.de.md",
+   "expected": "disp-oled/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ]
+ },
+ {
+  "id": "disp-lcd",
+  "title": {
+   "en": "Character LCD Demo",
+   "de": "Zeichen-LCD-Demo"
+  },
+  "category": "display",
+  "difficulty": 1,
+  "files": {
+   "program": "disp-lcd/program.bw",
+   "intro": "disp-lcd/intro.md",
+   "introDE": "disp-lcd/intro.de.md",
+   "expected": "disp-lcd/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ]
+ },
+ {
+  "id": "disp-led-matrix",
+  "title": {
+   "en": "LED Matrix Demo",
+   "de": "LED-Matrix-Demo"
+  },
+  "category": "display",
+  "difficulty": 1,
+  "files": {
+   "program": "disp-led-matrix/program.bw",
+   "intro": "disp-led-matrix/intro.md",
+   "introDE": "disp-led-matrix/intro.de.md",
+   "expected": "disp-led-matrix/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ]
+ },
+ {
+  "id": "disp-sevenseg",
+  "title": {
+   "en": "7-Segment Counter",
+   "de": "7-Segment-Z\u00e4hler"
+  },
+  "category": "display",
+  "difficulty": 1,
+  "files": {
+   "program": "disp-sevenseg/program.bw",
+   "intro": "disp-sevenseg/intro.md",
+   "introDE": "disp-sevenseg/intro.de.md",
+   "expected": "disp-sevenseg/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ]
+ },
+ {
+  "id": "disp-bargraph",
+  "title": {
+   "en": "LED Bargraph Level Meter",
+   "de": "LED-Balkendiagramm-Pegelmesser"
+  },
+  "category": "display",
+  "difficulty": 1,
+  "files": {
+   "program": "disp-bargraph/program.bw",
+   "intro": "disp-bargraph/intro.md",
+   "introDE": "disp-bargraph/intro.de.md",
+   "expected": "disp-bargraph/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ]
+ },
+ {
+  "id": "disp-simplevga",
+  "title": {
+   "en": "VDP Video Display",
+   "de": "VDP-Videoausgang"
+  },
+  "category": "display",
+  "difficulty": 3,
+  "files": {
+   "program": "disp-simplevga/program.bw",
+   "intro": "disp-simplevga/intro.md",
+   "introDE": "disp-simplevga/intro.de.md",
+   "expected": "disp-simplevga/EXPECTED.md"
+  },
+  "kind": "program"
+ },
+ {
+  "id": "disp-mono-lcd",
+  "title": {
+   "en": "Mono Graphic LCD",
+   "de": "Mono-Grafik-LCD"
+  },
+  "category": "display",
+  "difficulty": 1,
+  "files": {
+   "program": "disp-mono-lcd/program.bw",
+   "intro": "disp-mono-lcd/intro.md",
+   "introDE": "disp-mono-lcd/intro.de.md",
+   "expected": "disp-mono-lcd/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ]
+ },
+ {
+  "id": "disp-rgb-light",
+  "title": {
+   "en": "NeoPixel Rainbow",
+   "de": "NeoPixel-Regenbogen"
+  },
+  "category": "display",
+  "difficulty": 1,
+  "files": {
+   "program": "disp-rgb-light/program.bw",
+   "intro": "disp-rgb-light/intro.md",
+   "introDE": "disp-rgb-light/intro.de.md",
+   "expected": "disp-rgb-light/EXPECTED.md"
+  },
+  "kind": "program",
+  "devices": [
+   "stc12c5a60s2"
+  ]
  }
 ]
