@@ -760,7 +760,7 @@ export class Circuit {
     let engineNets = wireNets;
     for (const [boardId, bb] of this.breadboards) {
       try {
-        const derived = bb.deriveNets();
+        const derived = bb.deriveNets(boardId);
         // Retained for the canvas: hole -> net resolution at render time
         // (voltage labels on breadboard jumpers need the strip's net id).
         if (!this.boardStripNets) this.boardStripNets = new Map();
@@ -1025,7 +1025,22 @@ export class Circuit {
  */
 /** @internal Exported for the contract test only. */
 export function terminalsForKind(kind, params) {
-  // Fallback to local definitions (for kinds without sidecars or dynamic kinds)
+  // Sidecar-first: a parts-data JSON with measured terminal positions is the
+  // authority — the hardcoded switch below is the FALLBACK for kinds that have
+  // no sidecar (simple passives, power symbols, dynamic-terminal kinds like
+  // mcu). Without this order the switch SHADOWS a correct sidecar: slide_switch
+  // once returned ['a','common','b'] here while the sidecar and engine both
+  // agreed on 'com', silently rejecting every wire to the switch (0/0 board).
+  // Dynamic-terminal kinds (mcu, led_cube, breadboard) still need the switch.
+  const DYNAMIC_SWITCH_KINDS = new Set([
+    'vcc', 'gnd', 'mcu', 'led_cube', 'breadboard',
+    'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico',
+    'stc_mcu', 'stc15_mcu', 'microbit', 'microbit_breakout',
+  ]);
+  if (!DYNAMIC_SWITCH_KINDS.has(kind)) {
+    const sc = sidecarTerminals(kind);
+    if (sc && sc.length > 0) return sc;
+  }
   switch (kind) {
     case 'vcc': return ['vcc'];
     case 'gnd': return ['gnd'];
@@ -1108,6 +1123,7 @@ export function terminalsForKind(kind, params) {
     case 'ir_receiver': return ['vcc', 'gnd', 'out'];
     case 'temp_sensor': return ['vcc', 'gnd', 'dq'];
     case 'eeprom': return ['sda', 'scl', 'vcc', 'gnd'];
+    case 'ssd1306': case 'sh1106': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'bmp280': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'tcs34725': return ['vcc', 'gnd', 'sda', 'scl', 'int', 'led'];
     case 'ina219': return ['vcc', 'gnd', 'sda', 'scl', 'vin_p', 'vin_n'];
@@ -1115,6 +1131,8 @@ export function terminalsForKind(kind, params) {
     case 'sgp30': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'veml7700': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'as5600': return ['vcc', 'gnd', 'sda', 'scl', 'dir', 'out'];
+    case 'mono_lcd': return ['vcc', 'gnd'];
+    case 'rgb_light': return ['vcc', 'gnd'];
     case 'matrix9x9': return [
       'col0','col1','col2','col3','col4','col5','col6','col7','col8',
       'row0','row1','row2','row3','row4','row5','row6','row7','row8',
