@@ -595,6 +595,7 @@ class SB3Creator {
                 '    def oledCursor(self, r, c, d): pass',
                 '    def oledClear(self, d): pass',
                 '    def oledPixel(self, x, y, v, d): pass',
+                '    def oledHline(self, x, y, w, d): pass',
                 '    def setPixel(self, m, x, y, b): pass',
                 '    def clearMatrix(self, m): pass',
                 '    def setNeopixel(self, s, i, r, g, b): pass',
@@ -678,6 +679,13 @@ class SB3Creator {
             '    oledPixel: (x, y, v, d) => { const i = _devices._i2c(); if (!i) return; _devices._oledInit(i);',
             '        _devices._oledPageCol(i, (Number(y) >> 3) & 0x07, Number(x) & 0x7F);',
             '        _devices._oledData(i, [Number(v) ? (1 << (Number(y) & 7)) : 0x00]); },',
+            '    oledHline: (x, y, w, d) => { const i = _devices._i2c(); if (!i) return; _devices._oledInit(i);',
+            '        const page = (Number(y) >> 3) & 0x07; const bit = 1 << (Number(y) & 7);',
+            '        const x0 = Number(x) & 0x7F; const len = Math.max(0, Number(w));',
+            '        for (let c = 0; c < len; c++) { _devices._oledPageCol(i, page, (x0 + c) & 0x7F); _devices._oledData(i, [bit]); } },',
+            '    // oledShow: Pico MicroPython flushes an in-RAM framebuffer; the I2C simulator',
+            '    // driver writes pixels directly to the wire so no flush step is needed.',
+            '    oledShow: (d) => {},',
             '    // ── HD44780 via PCF8574 backpack (0x27): D7 D6 D5 D4 BL EN RW RS ──',
             '    _lcdSend: (i, val) => { _devices._start(i); _devices._byte(i, 0x4E); _devices._byte(i, val); _devices._stopB(i); },',
             '    _lcdNib: (i, nib, rs) => { const v = (nib & 0xF0) | 0x08 | rs;',
@@ -1173,6 +1181,40 @@ class SB3Creator {
         if ((m = s.match(/^read\s+last\s+radio\s+text$/i))) {
             return B('microbitplus_radiolaststr');
         }
+        // ---- Spike Prime sensor reporters ----
+        if ((m = s.match(/^spike\s+distance\s+([A-F])\s*$/i)))
+            return B('spikeprime_getDistance', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+color\s+([A-F])\s*$/i)))
+            return B('spikeprime_getColor', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+force\s+([A-F])\s*$/i)))
+            return B('spikeprime_getForce', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+reflection\s+([A-F])\s*$/i)))
+            return B('spikeprime_getReflection', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+angle\s+(yaw|pitch|roll)\s*$/i)))
+            return B('spikeprime_getAngle', {}, { AXIS: [m[1].toLowerCase(), null] });
+        if ((m = s.match(/^spike\s+acceleration\s+(x|y|z)\s*$/i)))
+            return B('spikeprime_getAcceleration', {}, { AXIS: [m[1].toLowerCase(), null] });
+        if ((m = s.match(/^spike\s+motor\s+position\s+([A-F])\s*$/i)))
+            return B('spikeprime_getPosition', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+motor\s+speed\s+([A-F])\s*$/i)))
+            return B('spikeprime_getSpeed', {}, { PORT: [m[1].toUpperCase(), null] });
+        if (/^spike\s+orientation$/i.test(s))
+            return B('spikeprime_getOrientation');
+        if (/^spike\s+battery$/i.test(s))
+            return B('spikeprime_getBatteryLevel');
+        if (/^spike\s+timer$/i.test(s))
+            return B('spikeprime_getTimer');
+        if (/^spike\s+hub\s+temperature$/i.test(s))
+            return B('spikeprime_getHubTemperature');
+        // Spike booleans
+        if ((m = s.match(/^spike\s+force\s+sensor\s+([A-F])\s+pressed\s*$/i)))
+            return B('spikeprime_isForceSensorPressed', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+button\s+(left|right)\s+pressed\s*$/i)))
+            return B('spikeprime_isButtonPressed', {}, { BUTTON: [m[1].toLowerCase(), null] });
+        if ((m = s.match(/^spike\s+gesture\s+(\w+)\s*$/i)))
+            return B('spikeprime_isGesture', {}, { GESTURE: [m[1].toLowerCase(), null] });
+        if ((m = s.match(/^spike\s+color\s+([A-F])\s+is\s+(\w+)\s*$/i)))
+            return B('spikeprime_isColor', {}, { PORT: [m[1].toUpperCase(), null], COLOR: [m[2].toLowerCase(), null] });
         // STC12 pin read: digital level, or the 10-bit ADC value for an ANALOG pin.
         if ((m = s.match(/^read\s+([A-Za-z_]\w*)$/i)) && this.stcPin(m[1])) {
             return B('stc12_read', {}, { PIN: [this.stcPin(m[1]).name, null] });
@@ -3345,6 +3387,18 @@ class SB3Creator {
             block[id].inputs.TEXT = [1, [10, match[1]]];
             return ret(block);
         }
+        // ---- Spike Prime display commands (must precede generic display handler) ----
+        if (this.project && this.project.stc && this.project.stc.device === 'spike') {
+            if ((match = line.match(/^display\s+text\s+"([^"]*)"\s*$/i))) {
+                const { id, block } = cmd('spikeprime_displayText');
+                block[id].inputs.TEXT = [1, [10, match[1]]];
+                return ret(block);
+            }
+            if (/^display\s+clear\s*$/i.test(line)) {
+                const { id, block } = cmd('spikeprime_displayClear');
+                return ret(block);
+            }
+        }
         // ---- micro:bit display (explicit device verb: say is STAGE, this is LEDs) ----
         if ((match = line.match(/^(?:display|scroll)\s+"([^"]*)"\s*$/i))) {
             const { id, block } = cmd('microbit_display');
@@ -3356,6 +3410,77 @@ class SB3Creator {
             const { id, block } = cmd('microbit_display');
             block[id].inputs.VALUE = val(match[1]);
             block[id].fields.MODE = ['number', null];
+            return ret(block);
+        }
+        // ---- Spike Prime motor commands ----
+        if ((match = line.match(/^start\s+motor\s+([A-F])\s+(forward|backward|clockwise|counterclockwise)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_motorStart');
+            block[id].fields.PORT = [match[1].toUpperCase(), null];
+            block[id].fields.DIRECTION = [match[2].toLowerCase(), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^stop\s+motor\s+([A-F])\s*$/i))) {
+            const { id, block } = cmd('spikeprime_motorStop');
+            block[id].fields.PORT = [match[1].toUpperCase(), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^run\s+motor\s+([A-F])\s+(forward|backward|clockwise|counterclockwise)\s+(\S+)\s+(rotations?|degrees|seconds?)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_motorRunFor');
+            block[id].fields.PORT = [match[1].toUpperCase(), null];
+            block[id].fields.DIRECTION = [match[2].toLowerCase(), null];
+            block[id].inputs.VALUE = val(match[3]);
+            block[id].fields.UNIT = [match[4].toLowerCase().replace(/s$/, ''), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+motor\s+speed\s+([A-F])\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_motorSetSpeed');
+            block[id].fields.PORT = [match[1].toUpperCase(), null];
+            block[id].inputs.SPEED = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^move\s+(forward|backward)\s+(\S+)\s+(cm|inches|rotations?|degrees|seconds?)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_moveForward');
+            block[id].fields.DIRECTION = [match[1].toLowerCase(), null];
+            block[id].inputs.VALUE = val(match[2]);
+            block[id].fields.UNIT = [match[3].toLowerCase().replace(/s$/, ''), null];
+            return ret(block);
+        }
+        if (/^stop\s+movement\s*$/i.test(line)) {
+            const { id, block } = cmd('spikeprime_stopMovement');
+            return ret(block);
+        }
+        // ---- Spike Prime pixel/sound/IMU commands ----
+        if ((match = line.match(/^set\s+pixel\s+(\S+)\s+(\S+)\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_setPixel');
+            block[id].inputs.X = val(match[1]);
+            block[id].inputs.Y = val(match[2]);
+            block[id].inputs.BRIGHTNESS = val(match[3]);
+            return ret(block);
+        }
+        // ---- Spike Prime sound commands ----
+        if ((match = line.match(/^play\s+beep\s+(\S+)\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_playBeep');
+            block[id].inputs.FREQUENCY = val(match[1]);
+            block[id].inputs.DURATION = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^play\s+spike\s+note\s+(\S+)\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_playNote');
+            block[id].inputs.NOTE = val(match[1]);
+            block[id].inputs.SECS = val(match[2]);
+            return ret(block);
+        }
+        if (/^stop\s+sound\s*$/i.test(line)) {
+            const { id, block } = cmd('spikeprime_stopSound');
+            return ret(block);
+        }
+        // ---- Spike Prime IMU commands ----
+        if (/^reset\s+yaw\s*$/i.test(line)) {
+            const { id, block } = cmd('spikeprime_resetYaw');
+            return ret(block);
+        }
+        if (/^reset\s+spike\s+timer\s*$/i.test(line)) {
+            const { id, block } = cmd('spikeprime_resetTimer');
             return ret(block);
         }
         // ---- Circuit extension commands (boundary B) --------------------------------
@@ -5231,6 +5356,24 @@ class SB3Creator {
             case 'circuit_ledbrightness': return `brightness of ${v('PART')}`;
             case 'circuit_buzzertone': return `tone of ${v('PART')}`;
             case 'circuit_getcontrol': return `control of ${v('CONTROL')}`;
+            // Spike Prime reporters
+            case 'spikeprime_getDistance': return `spike distance ${f('PORT')}`;
+            case 'spikeprime_getColor': return `spike color ${f('PORT')}`;
+            case 'spikeprime_getForce': return `spike force ${f('PORT')}`;
+            case 'spikeprime_getReflection': return `spike reflection ${f('PORT')}`;
+            case 'spikeprime_getAngle': return `spike angle ${f('AXIS')}`;
+            case 'spikeprime_getAcceleration': return `spike acceleration ${f('AXIS')}`;
+            case 'spikeprime_getPosition': return `spike motor position ${f('PORT')}`;
+            case 'spikeprime_getSpeed': return `spike motor speed ${f('PORT')}`;
+            case 'spikeprime_getOrientation': return 'spike orientation';
+            case 'spikeprime_getBatteryLevel': return 'spike battery';
+            case 'spikeprime_getTimer': return 'spike timer';
+            case 'spikeprime_getHubTemperature': return 'spike hub temperature';
+            // Spike Prime boolean reporters
+            case 'spikeprime_isForceSensorPressed': return `spike force sensor ${f('PORT')} pressed`;
+            case 'spikeprime_isButtonPressed': return `spike button ${f('BUTTON')} pressed`;
+            case 'spikeprime_isGesture': return `spike gesture ${f('GESTURE')}`;
+            case 'spikeprime_isColor': return `spike color ${f('PORT')} is ${f('COLOR')}`;
             default: return b.opcode;
         }
     }
@@ -5460,6 +5603,21 @@ class SB3Creator {
             case 'microbitplus_radioon': return line(`radio on group ${v('GROUP')} power ${v('POWER')}`);
             case 'microbitplus_radiosendnum': return line(`radio send number ${v('NUM')}`);
             case 'microbitplus_radiosendstr': return line(`radio send text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            // ---- Spike Prime commands ----
+            case 'spikeprime_motorStart': return line(`start motor ${f('PORT')} ${f('DIRECTION')}`);
+            case 'spikeprime_motorStop': return line(`stop motor ${f('PORT')}`);
+            case 'spikeprime_motorRunFor': return line(`run motor ${f('PORT')} ${f('DIRECTION')} ${v('VALUE')} ${f('UNIT')}`);
+            case 'spikeprime_motorSetSpeed': return line(`set motor speed ${f('PORT')} ${v('SPEED')}`);
+            case 'spikeprime_moveForward': return line(`move ${f('DIRECTION')} ${v('VALUE')} ${f('UNIT')}`);
+            case 'spikeprime_stopMovement': return line('stop movement');
+            case 'spikeprime_displayText': return line(`display text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            case 'spikeprime_displayClear': return line('display clear');
+            case 'spikeprime_setPixel': return line(`set pixel ${v('X')} ${v('Y')} ${v('BRIGHTNESS')}`);
+            case 'spikeprime_playBeep': return line(`play beep ${v('FREQUENCY')} ${v('DURATION')}`);
+            case 'spikeprime_playNote': return line(`play spike note ${v('NOTE')} ${v('SECS')}`);
+            case 'spikeprime_stopSound': return line('stop sound');
+            case 'spikeprime_resetYaw': return line('reset yaw');
+            case 'spikeprime_resetTimer': return line('reset spike timer');
             // circuit extension commands
             case 'circuit_setcontrol': return line(`set control ${v('CONTROL')} to ${v('VALUE')}`);
             case 'circuit_setpower': return line(`turn power ${f('STATE')}`);
@@ -13755,6 +13913,7 @@ SB3Creator.STC_PARTS = {
     // end for these by definition, not merely not yet. Pins are P0-P20 and the
     // two buttons on a micro:bit.
     microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
+    spike: { core: 'spikepython', header: null, portModes: false, aux1T: false, adc: false },
     // core: 'rp2040' -- GP0-GP28, and generateC() emits freestanding Cortex-M0
     // bare metal (SIO GPIO, the 1 MHz TIMER as an ISR-free timebase, UART0,
     // ADC over APB). Decided 2026-08-12 (stc docs/ROADMAP.md): bare-metal C
