@@ -579,6 +579,33 @@ function WidgetInspector({ widget, onRename, onLayout, onConfig, onOpenLibrary }
                 {num('rotation', L.rotation, { step: 15 })}
                 <span style={{ color: '#94a3b8' }}>deg</span>
             </div>
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 6, marginTop: 2 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
+                    Style
+                </div>
+                <div style={row}>
+                    <span style={lbl}>bg</span>
+                    <input type="color" value={L.backgroundColor || '#ffffff'}
+                        data-testid="bw-ctl-insp-bgcolor"
+                        onChange={e => onLayout({ backgroundColor: e.target.value === '#ffffff' ? undefined : e.target.value })}
+                        style={{ width: 40, height: 24, padding: 0, border: '1px solid #cbd5e1', borderRadius: 4 }} />
+                </div>
+                {[
+                    ['borderless', 'No border'],
+                    ['hideLabel', 'Hide label'],
+                    ['hideValue', 'Hide value'],
+                    ['hideText', 'Hide text'],
+                    ['hideMaxOut', 'Hide range'],
+                ].map(([key, label]) => (
+                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6,
+                        fontSize: 12, cursor: 'pointer', padding: '1px 0' }}>
+                        <input type="checkbox" checked={!!L[key]}
+                            data-testid={'bw-ctl-insp-' + key}
+                            onChange={e => onLayout({ [key]: e.target.checked || undefined })} />
+                        {label}
+                    </label>
+                ))}
+            </div>
             {widget.type === 'text' && (
                 <React.Fragment>
                     <div style={row}>
@@ -692,7 +719,9 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
         dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg',
-        keypad: 'Keypad', lcd: 'LCD', oled: 'OLED', text: 'Text', image: 'Image'
+        keypad: 'Keypad', lcd: 'LCD', oled: 'OLED', text: 'Text', image: 'Image',
+        keyboard: 'Keyboard', bargraph: 'Bar Graph', simplevga: 'VGA',
+        mono_lcd: 'Mono LCD', rgb_light: 'RGB Light',
     };
     const bindingLabel = widget.binding
         ? (widget.binding.target === 'part'
@@ -704,11 +733,12 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
     // wash (the 6-digit hex from the colour input + '22' alpha ≈ 13%) — not
     // just the type badge, so "colour" reads as the widget's colour.
     const cardColor = widget.layout && widget.layout.color;
+    const L = widget.layout || {};
     return (
         <div style={{
-            background: cardColor ? (cardColor + '22') : '#fff',
-            border: '2px solid ' + (cardColor || '#e2e8f0'),
-            borderRadius: 8,
+            background: L.backgroundColor || (cardColor ? (cardColor + '22') : '#fff'),
+            border: L.borderless ? 'none' : ('2px solid ' + (cardColor || '#e2e8f0')),
+            borderRadius: L.borderless ? 0 : 8,
             padding: 12,
             display: 'inline-flex',
             flexDirection: 'column',
@@ -717,21 +747,23 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
             position: 'relative',
             minWidth: 130,
         }}>
-            <div style={{
-                fontWeight: 600, fontSize: 13, color: '#334155',
-                display: 'flex', alignItems: 'center', gap: 6
-            }}>
-                <span style={{
-                    background: (widget.layout && widget.layout.color) || '#7C3AED',
-                    color: '#fff', borderRadius: 4,
-                    padding: '1px 6px', fontSize: 10, textTransform: 'uppercase'
+            {!L.hideLabel && (
+                <div style={{
+                    fontWeight: 600, fontSize: 13, color: '#334155',
+                    display: 'flex', alignItems: 'center', gap: 6
                 }}>
-                    {typeLabels[widget.type] || widget.type}
-                </span>
-                <span data-testid={'bw-ctl-title-' + widget.name}>
-                    {(widget.layout && widget.layout.label) || widget.name}
-                </span>
-            </div>
+                    <span style={{
+                        background: cardColor || '#7C3AED',
+                        color: '#fff', borderRadius: 4,
+                        padding: '1px 6px', fontSize: 10, textTransform: 'uppercase'
+                    }}>
+                        {typeLabels[widget.type] || widget.type}
+                    </span>
+                    <span data-testid={'bw-ctl-title-' + widget.name}>
+                        {L.label || widget.name}
+                    </span>
+                </div>
+            )}
 
             {widget.type === 'joystick' && (
                 <JoystickWidget
@@ -835,6 +867,102 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
 
             {widget.type === 'image' && (
                 <ImageWidget widget={widget} />
+            )}
+
+            {widget.type === 'gauge' && (
+                <div data-testid={'bw-ctl-gauge-' + widget.name}
+                    style={{ width: '100%', textAlign: 'center' }}>
+                    <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'monospace', color: '#334155' }}>
+                        {!L.hideValue && (widget.state.value ?? 0)}
+                    </div>
+                    {!L.hideMaxOut && (
+                        <div style={{ fontSize: 10, color: '#94a3b8' }}>
+                            {widget.config.min}..{widget.config.max} {widget.config.label}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {widget.type === 'keyboard' && (
+                <input type="text" data-testid={'bw-ctl-keyboard-' + widget.name}
+                    disabled={mode !== 'play'}
+                    placeholder={mode === 'play' ? 'Type here...' : 'Keyboard'}
+                    onKeyDown={e => {
+                        e.preventDefault();
+                        if (e.key.length === 1) panel.pushKeyboardKey(widget.name, e.key.charCodeAt(0));
+                        else if (e.key === 'Enter') panel.pushKeyboardKey(widget.name, 13);
+                        else if (e.key === 'Backspace') panel.pushKeyboardKey(widget.name, 8);
+                        else if (e.key === 'Escape') panel.pushKeyboardKey(widget.name, 27);
+                        else if (e.key === 'Tab') panel.pushKeyboardKey(widget.name, 9);
+                    }}
+                    style={{ width: '100%', fontSize: 14, fontFamily: 'monospace',
+                        padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 4,
+                        background: mode === 'play' ? '#f0fdf4' : '#f8fafc' }}
+                />
+            )}
+
+            {widget.type === 'bargraph' && (
+                <div data-testid={'bw-ctl-bargraph-' + widget.name}
+                    style={{ width: '100%' }}>
+                    <div style={{ width: '100%', height: 20, background: '#1e293b',
+                        borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{
+                            width: Math.max(0, Math.min(100,
+                                ((widget.state.value - widget.config.min) /
+                                 (widget.config.max - widget.config.min)) * 100)) + '%',
+                            height: '100%',
+                            background: cardColor || '#4ade80',
+                            transition: 'width 0.15s',
+                        }} />
+                    </div>
+                    {!L.hideValue && (
+                        <div style={{ textAlign: 'center', fontSize: 11, color: '#64748b',
+                            fontFamily: 'monospace', marginTop: 2 }}>
+                            {widget.state.value} {widget.config.label}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {widget.type === 'simplevga' && (
+                <div data-testid={'bw-ctl-simplevga-' + widget.name}
+                    style={{ width: Math.min(widget.config.width, 200),
+                        height: Math.min(widget.config.height, 150),
+                        background: '#000', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', borderRadius: 2 }}>
+                    <span style={{ color: '#0f0', fontSize: 10, fontFamily: 'monospace' }}>
+                        VGA {widget.config.width}x{widget.config.height}
+                    </span>
+                </div>
+            )}
+
+            {widget.type === 'mono_lcd' && (
+                <div data-testid={'bw-ctl-mono_lcd-' + widget.name}
+                    style={{ width: '100%', minHeight: 36, background: '#c5cba3',
+                        color: '#222', fontFamily: 'monospace', fontSize: 11,
+                        padding: 4, borderRadius: 2, whiteSpace: 'pre-wrap',
+                        border: '1px solid #aab07a' }}>
+                    {widget.state.text || ('LCD ' + widget.config.width + '\u00d7' + widget.config.height)}
+                </div>
+            )}
+
+            {widget.type === 'rgb_light' && (
+                <div data-testid={'bw-ctl-rgb_light-' + widget.name}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div style={{
+                        width: 44, height: 44, borderRadius: '50%',
+                        background: '#' + ((widget.state.value || 0) & 0xFFFFFF).toString(16).padStart(6, '0'),
+                        border: '2px solid #555',
+                        boxShadow: widget.state.value
+                            ? ('0 0 12px #' + ((widget.state.value || 0) & 0xFFFFFF).toString(16).padStart(6, '0'))
+                            : 'none',
+                    }} />
+                    {!L.hideValue && (
+                        <span style={{ fontSize: 10, color: '#64748b', fontFamily: 'monospace' }}>
+                            #{((widget.state.value || 0) & 0xFFFFFF).toString(16).padStart(6, '0')}
+                        </span>
+                    )}
+                </div>
             )}
 
             {mode === 'edit' && (

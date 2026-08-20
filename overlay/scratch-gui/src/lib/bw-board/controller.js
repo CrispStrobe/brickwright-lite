@@ -176,8 +176,24 @@ export class ControllerPanel {
   getWidget(name) { return this._widgets.get(name) ?? null; }
 
   /**
-   * Merge layout fields (placement/size/rotation/color/label). Emits
+   * Merge layout fields (placement/size/rotation + visual styling). Emits
    * 'layout' so views re-render and hosts persist.
+   *
+   * Standard layout keys:
+   *   x, y          — position on the panel canvas
+   *   w, h          — explicit size (host uses minSize from WIDGET_RENDER_INFO as default)
+   *   rotation      — degrees
+   *
+   * Visual styling keys (all optional, host interprets):
+   *   color         — tint colour (CSS value, tints the whole widget)
+   *   backgroundColor — fill colour behind the widget content
+   *   borderless    — boolean: if true, suppress the default white border/frame
+   *   hideLabel     — boolean: if true, hide the widget name/title label
+   *   hideValue     — boolean: if true, hide the numeric readout / value text
+   *   hideText      — boolean: if true, hide any text overlay
+   *   hideMaxOut    — boolean: if true, hide the max/out readout display
+   *   label         — custom label text (overrides the widget name)
+   *
    * @param {string} name
    * @param {object} patch
    */
@@ -513,6 +529,16 @@ export class ControllerPanel {
     const w = this._requireWidget(name, 'keyboard');
     if (!w.state._fifo || w.state._fifo.length === 0) return 0;
     return w.state._fifo.shift();
+  }
+
+  /**
+   * Check if the keyboard FIFO has pending input.
+   * @param {string} name
+   * @returns {boolean}
+   */
+  hasKeyboardInput(name) {
+    const w = this._requireWidget(name, 'keyboard');
+    return !!(w.state._fifo && w.state._fifo.length > 0);
   }
 
   // ── State query (program-facing API for extension blocks) ─────────────

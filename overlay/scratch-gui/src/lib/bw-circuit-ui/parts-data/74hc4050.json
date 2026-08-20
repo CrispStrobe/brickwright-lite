@@ -1,46 +1,46 @@
 {
-  "kind": "74hc283",
+  "kind": "74hc4050",
   "w": 70,
   "h": 51,
   "terminals": [
     {
-      "name": "s1",
+      "name": "vcc",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "b1",
+      "name": "1y",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "a1",
+      "name": "1a",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "s0",
+      "name": "2y",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "a0",
+      "name": "2a",
       "x": 0,
       "y": 28,
       "functions": []
     },
     {
-      "name": "b0",
+      "name": "3y",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "cin",
+      "name": "3a",
       "x": 0,
       "y": 38,
       "functions": []
@@ -52,83 +52,84 @@
       "functions": []
     },
     {
-      "name": "cout",
+      "name": "4a",
       "x": 70,
       "y": 43,
       "functions": []
     },
     {
-      "name": "s3",
+      "name": "4y",
       "x": 70,
       "y": 38,
       "functions": []
     },
     {
-      "name": "b3",
+      "name": "5a",
       "x": 70,
       "y": 33,
       "functions": []
     },
     {
-      "name": "a3",
+      "name": "5y",
       "x": 70,
       "y": 28,
       "functions": []
     },
     {
-      "name": "s2",
+      "name": "nc1",
       "x": 70,
       "y": 23,
       "functions": []
     },
     {
-      "name": "a2",
+      "name": "nc2",
       "x": 70,
       "y": 18,
       "functions": []
     },
     {
-      "name": "b2",
+      "name": "6a",
       "x": 70,
       "y": 13,
       "functions": []
     },
     {
-      "name": "vcc",
+      "name": "6y",
       "x": 70,
       "y": 8,
       "functions": []
     }
   ],
   "variants": null,
+  "_note": "Clean-room from the TI/Nexperia datasheet pinout, cross-checked against bw-board src/devices/tier3-parts.js, whose terminal array is the DIP package order and whose header comment spells the same pinout out. 74HC4050 hex non-inverting buffer / level shifter, DIP-16: VCC 1Y 1A 2Y 2A 3Y 3A GND | 4A 4Y 5A 5Y NC NC 6A 6Y. Pins 13 and 14 are the two no-connects; the engine models them as terminals nc1/nc2 so the package is complete.",
   "footprint": {
-    "refTerminal": "s1",
+    "refTerminal": "vcc",
     "leads": {
-      "s1": {
+      "vcc": {
         "dRow": 0,
         "dCol": 0
       },
-      "b1": {
+      "1y": {
         "dRow": 0,
         "dCol": 1
       },
-      "a1": {
+      "1a": {
         "dRow": 0,
         "dCol": 2
       },
-      "s0": {
+      "2y": {
         "dRow": 0,
         "dCol": 3
       },
-      "a0": {
+      "2a": {
         "dRow": 0,
         "dCol": 4
       },
-      "b0": {
+      "3y": {
         "dRow": 0,
         "dCol": 5
       },
-      "cin": {
+      "3a": {
         "dRow": 0,
         "dCol": 6
       },
@@ -136,35 +137,35 @@
         "dRow": 0,
         "dCol": 7
       },
-      "cout": {
+      "4a": {
         "dRow": 5,
         "dCol": 7
       },
-      "s3": {
+      "4y": {
         "dRow": 5,
         "dCol": 6
       },
-      "b3": {
+      "5a": {
         "dRow": 5,
         "dCol": 5
       },
-      "a3": {
+      "5y": {
         "dRow": 5,
         "dCol": 4
       },
-      "s2": {
+      "nc1": {
         "dRow": 5,
         "dCol": 3
       },
-      "a2": {
+      "nc2": {
         "dRow": 5,
         "dCol": 2
       },
-      "b2": {
+      "6a": {
         "dRow": 5,
         "dCol": 1
       },
-      "vcc": {
+      "6y": {
         "dRow": 5,
         "dCol": 0
       }
