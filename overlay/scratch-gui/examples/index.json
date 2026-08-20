@@ -6689,5 +6689,77 @@
    "introDE": "lego-hub-face/intro.de.md",
    "expected": "lego-hub-face/EXPECTED.md"
   }
+ },
+ {
+  "id": "ev3-faceplate",
+  "title": {
+   "en": "EV3 faceplate (mono LCD + buttons)",
+   "de": "EV3-Faceplate (Mono-LCD + Tasten)"
+  },
+  "category": "digital",
+  "difficulty": 3,
+  "kind": "program",
+  "deviceOnly": true,
+  "files": {
+   "program": "ev3-faceplate/program.bw",
+   "controller": "ev3-faceplate/controller.json",
+   "intro": "ev3-faceplate/intro.md",
+   "introDE": "ev3-faceplate/intro.de.md",
+   "expected": "ev3-faceplate/EXPECTED.md"
+  }
+ },
+ {
+  "id": "nxt-faceplate",
+  "title": {
+   "en": "NXT faceplate (mono LCD + buttons)",
+   "de": "NXT-Faceplate (Mono-LCD + Tasten)"
+  },
+  "category": "digital",
+  "difficulty": 3,
+  "kind": "program",
+  "deviceOnly": true,
+  "files": {
+   "program": "nxt-faceplate/program.bw",
+   "controller": "nxt-faceplate/controller.json",
+   "intro": "nxt-faceplate/intro.md",
+   "introDE": "nxt-faceplate/intro.de.md",
+   "expected": "nxt-faceplate/EXPECTED.md"
+  }
+ },
+ {
+  "id": "wedo2-faceplate",
+  "title": {
+   "en": "WeDo 2.0 faceplate (RGB light + tilt)",
+   "de": "WeDo 2.0-Faceplate (RGB-Licht + Neigung)"
+  },
+  "category": "digital",
+  "difficulty": 2,
+  "kind": "program",
+  "deviceOnly": true,
+  "files": {
+   "program": "wedo2-faceplate/program.bw",
+   "controller": "wedo2-faceplate/controller.json",
+   "intro": "wedo2-faceplate/intro.md",
+   "introDE": "wedo2-faceplate/intro.de.md",
+   "expected": "wedo2-faceplate/EXPECTED.md"
+  }
+ },
+ {
+  "id": "boost-faceplate",
+  "title": {
+   "en": "Boost faceplate (RGB light + motor)",
+   "de": "Boost-Faceplate (RGB-Licht + Motor)"
+  },
+  "category": "digital",
+  "difficulty": 2,
+  "kind": "program",
+  "deviceOnly": true,
+  "files": {
+   "program": "boost-faceplate/program.bw",
+   "controller": "boost-faceplate/controller.json",
+   "intro": "boost-faceplate/intro.md",
+   "introDE": "boost-faceplate/intro.de.md",
+   "expected": "boost-faceplate/EXPECTED.md"
+  }
  }
 ]
