@@ -19,10 +19,12 @@ const readLessons = async () => {
         '../overlay/scratch-gui/src/components/gui/lesson-waves/interactive-4.json');
     const debugging = await readJson(
         '../overlay/scratch-gui/src/components/gui/lesson-waves/debugging-5.json');
+    const signals = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/signals-6.json');
     return {
         schemaVersion: core.schemaVersion,
         lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons, ...languages.lessons,
-            ...interactive.lessons, ...debugging.lessons]
+            ...interactive.lessons, ...debugging.lessons, ...signals.lessons]
     };
 };
 
@@ -206,4 +208,25 @@ test('debugging wave asks ten questions answerable with evidence', async () => {
         assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
             `${lesson.id} collects live evidence`);
     }
+});
+
+test('signals wave tests ten models with measurement and uncertainty', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'signals-6');
+    const expected = ['rc-response', 'rl-response', 'complex-impedance', 'cutoff-phase',
+        'bode-sweeps', 'resonance', 'loading', 'noise', 'aliasing-fft-limits',
+        'uncertainty-model-comparison'];
+
+    assert.equal(wave.length, 10);
+    assert.deepEqual(wave.map(lesson => lesson.topic).sort(), expected.sort());
+    for (const lesson of wave) {
+        assert.equal(lesson.checkpoints[0].id, 'predict', `${lesson.id} predicts before measuring`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} gathers live evidence`);
+        const text = JSON.stringify(lesson.copy.en).toLowerCase() +
+            JSON.stringify(lesson.checkpoints.map(checkpoint => checkpoint.copy.en)).toLowerCase();
+        assert.ok(/uncertainty|assumption|residual|error|limit/.test(text),
+            `${lesson.id} qualifies its result`);
+    }
+    assert.equal(wave.filter(lesson => lesson.depth === 'research').length, 2);
 });

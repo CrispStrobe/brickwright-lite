@@ -199,6 +199,12 @@ not translations or language variants counted as extra lessons.
 6. **Signals and systems (10 lessons):** RC/RL response, impedance, complex models,
    cutoff and phase, Bode sweeps, resonance, loading, noise, aliasing, FFT limits,
    uncertainty, and model-versus-measurement analysis.
+   **Implementation status:** all ten bilingual engineering drafts are in the catalog.
+   They progress from time-domain RC/RL measurements through complex response, Bode
+   sweeps, resonance, loading and noise to sampling/FFT limitations and a reproducible
+   competing-model study. Every lesson predicts first and qualifies measurements with
+   uncertainty, assumptions, residuals, error, or explicit limits. Technical,
+   translation, numerical-method, and learner field review remains.
 7. **Computers from wires upward (10 lessons):** logic levels, gates/registers,
    clocks, buses, memory maps, address decoding, 6502/Z80 execution, ASM/source
    correspondence, contention, interrupts, and performance/timing tradeoffs.
@@ -426,3 +432,8 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   simulation-versus-hardware diagnosis.
 - [ ] Complete Wave 5 target-capability verification, translation review, and learner
   field testing, then revise content versions from the evidence gathered.
+- [x] Implemented the Wave 6 engineering/content draft with ten bilingual signals-and-
+  systems investigations from first-order response through research-level model
+  comparison and sampling limitations.
+- [ ] Complete Wave 6 numerical/instrument verification, translation review, and
+  learner field testing, then revise content versions from the evidence gathered.
