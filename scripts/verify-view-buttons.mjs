@@ -68,9 +68,11 @@ async function verify () {
             'Debugger',           // Full debugger → dock='right' (right pane, owner spec 2026-08-17)
             'Scratch Stage'       // → scratch
         ];
+        const visibleViewButton = title =>
+            page.locator(`button[title*="${title}" i]:visible`).first();
 
         for (const titleSubstr of buttonTitles) {
-            const btn = page.locator(`button[title*="${titleSubstr}" i]`).first();
+            const btn = visibleViewButton(titleSubstr);
             if (await btn.count() === 0) {
                 fail(`View button "${titleSubstr}" not found`);
                 continue;
@@ -79,7 +81,7 @@ async function verify () {
             await page.waitForTimeout(1000);
 
             // After click, verify the button row is still visible
-            const btnsAfter = page.locator(`button[title*="${titleSubstr}" i]`).first();
+            const btnsAfter = visibleViewButton(titleSubstr);
             if (await btnsAfter.count() > 0 && await btnsAfter.isVisible()) {
                 pass(`View buttons visible after clicking "${titleSubstr}"`);
             } else {
@@ -96,7 +98,7 @@ async function verify () {
         }
 
         // ── 3. Return to Scratch Stage ──
-        const scratchBtn = page.locator('button[title*="Scratch Stage" i]').first();
+        const scratchBtn = visibleViewButton('Scratch Stage');
         if (await scratchBtn.count() > 0) {
             await scratchBtn.click();
             await page.waitForTimeout(500);
@@ -104,7 +106,7 @@ async function verify () {
         }
 
         // ── 4. Verify the debugger button specifically does NOT show micro:bit pane ──
-        const debuggerBtn = page.locator('button[title*="Debugger" i]').first();
+        const debuggerBtn = visibleViewButton('Debugger');
         if (await debuggerBtn.count() > 0) {
             await debuggerBtn.click();
             await page.waitForTimeout(1000);
