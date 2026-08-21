@@ -145,11 +145,11 @@ try {
     await debuggerButton.click({force: true});
     await page.waitForTimeout(500);
     const dedicatedDesigner = page.locator('.bw-circuit-designer:visible').last();
-    // On the dedicated Circuit tab, 'solo' folds back to the Instruments dock
-    // so Blocks, Circuit and Debugger can remain visible at the same time.
-    check('dedicated Circuit tab keeps Instruments available for its debugger dock',
-        await dedicatedDesigner.locator('[data-instruments-column]').count() === 1 &&
-        await dedicatedDesigner.getByRole('button', {name: 'Collapse instruments panel'}).count() === 1,
+    // Debugger uses the external pane selected above. The dedicated Circuit
+    // designer therefore retains the owner's minimized Instruments default.
+    check('dedicated Circuit tab keeps Instruments minimized while Debugger uses the external pane',
+        await dedicatedDesigner.locator('[data-instruments-column]').count() === 0 &&
+        await dedicatedDesigner.getByRole('button', {name: 'Expand instruments panel'}).count() === 1,
         `designers=${await page.locator('.bw-circuit-designer:visible').count()}`);
     const loaded = await page.evaluate(async () => {
         const root = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
