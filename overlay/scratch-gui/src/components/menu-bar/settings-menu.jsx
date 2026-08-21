@@ -33,6 +33,10 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
         emit('bw-settings-change', {key, value});
         onRequestClose();
     };
+    const openGettingStarted = () => {
+        emit('bw-open-getting-started');
+        onRequestClose();
+    };
     const presentation = (() => {
         const layout = workspaceValue('bw-hide-stage', '0') === '1' ? 'full' : 'stage';
         const theme = workspaceValue('bw-circuit-theme', 'light');
@@ -97,6 +101,13 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                     </MenuItem>
                 </MenuSection>
                 <MenuSection>
+                    <MenuItem onClick={openGettingStarted}>
+                        <FormattedMessage
+                            defaultMessage="Getting started…"
+                            description="Open the Brickwright starter journey chooser"
+                            id="gui.menuBar.gettingStarted"
+                        />
+                    </MenuItem>
                     <MenuItem onClick={() => { onRequestClose(); hardReload(); }}>
                         <FormattedMessage
                             defaultMessage="Reload BrickWright"

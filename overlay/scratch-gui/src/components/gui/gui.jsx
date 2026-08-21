@@ -27,6 +27,7 @@ import Loader from '../loader/loader.jsx';
 import Box from '../box/box.jsx';
 import MenuBar from '../menu-bar/menu-bar.jsx';
 import ChromeToggle from './chrome-toggle.jsx';
+import StarterJourneys from './starter-journeys.jsx';
 import chromeStyles from './compact-chrome.css';
 import PaneDivider from './pane-divider.jsx';
 import PaneStrip from './pane-strip.jsx';
@@ -69,7 +70,75 @@ const messages = defineMessages({
 // Assume that it doesn't change for a session.
 let isRendererSupported = null;
 
+const STARTER_COMPLETE_KEY = 'bw-starter-v1-complete';
+const STARTER_EVENTS_KEY = 'bw-starter-v1-events';
+
+// Keep first-run product signals local. They are useful for diagnosing whether a
+// journey was opened or dismissed, but do not belong in network telemetry unless
+// the app's explicit telemetry consent path grows support for them later.
+const recordStarterEvent = (type, journeyId) => {
+    try {
+        const previous = JSON.parse(localStorage.getItem(STARTER_EVENTS_KEY) || '[]');
+        const events = Array.isArray(previous) ? previous.slice(-19) : [];
+        events.push({type, journeyId: journeyId || null, at: new Date().toISOString()});
+        localStorage.setItem(STARTER_EVENTS_KEY, JSON.stringify(events));
+    } catch { /* private mode, unavailable storage, or an old malformed value */ }
+};
+
 const GUIComponent = props => {
+    const [starterOpen, setStarterOpen] = React.useState(false);
+    const [starterBusy, setStarterBusy] = React.useState(false);
+    const [starterError, setStarterError] = React.useState('');
+    const closeStarter = React.useCallback(() => {
+        try {
+            localStorage.setItem(STARTER_COMPLETE_KEY, '1');
+        } catch { /* private mode */ }
+        recordStarterEvent('dismissed');
+        setStarterOpen(false);
+        setStarterBusy(false);
+        setStarterError('');
+    }, []);
+    React.useEffect(() => {
+        try {
+            if (localStorage.getItem(STARTER_COMPLETE_KEY) !== '1') setStarterOpen(true);
+        } catch {
+            setStarterOpen(true);
+        }
+        const open = () => {
+            recordStarterEvent('reopened');
+            setStarterBusy(false);
+            setStarterError('');
+            setStarterOpen(true);
+        };
+        const result = event => {
+            const detail = event.detail || {};
+            setStarterBusy(false);
+            if (detail.ok) {
+                try {
+                    localStorage.setItem(STARTER_COMPLETE_KEY, '1');
+                } catch { /* private mode */ }
+                recordStarterEvent('opened', detail.journeyId);
+                setStarterOpen(false);
+                setStarterError('');
+            } else {
+                recordStarterEvent(detail.cancelled ? 'cancelled' : 'failed', detail.journeyId);
+                setStarterError(detail.cancelled ? 'cancelled' :
+                    (detail.error || 'The starter project could not be opened.'));
+            }
+        };
+        window.addEventListener('bw-open-getting-started', open);
+        window.addEventListener('bw-starter-result', result);
+        return () => {
+            window.removeEventListener('bw-open-getting-started', open);
+            window.removeEventListener('bw-starter-result', result);
+        };
+    }, []);
+    const chooseStarter = React.useCallback(journey => {
+        setStarterBusy(true);
+        setStarterError('');
+        props.onActivateTab(journey.editorTab);
+        window.dispatchEvent(new CustomEvent('bw-start-journey', {detail: journey}));
+    }, [props.onActivateTab]);
     const [stagePaneVisible, setStagePaneVisible] = React.useState(() => {
         try { return localStorage.getItem('bw-right-pane-hidden') !== '1'; } catch { return true; }
     });
@@ -328,6 +397,15 @@ const GUIComponent = props => {
                 {isRendererSupported ? null : (
                     <WebGlModal isRtl={isRtl} />
                 )}
+                {starterOpen ? (
+                    <StarterJourneys
+                        busy={starterBusy}
+                        error={starterError}
+                        locale={intl.locale}
+                        onChoose={chooseStarter}
+                        onClose={closeStarter}
+                    />
+                ) : null}
                 {tipsLibraryVisible ? (
                     <TipsLibrary />
                 ) : null}

@@ -187,6 +187,11 @@ class CircuitTab extends React.Component {
             }
         };
         window.addEventListener('bw-settings-change', this._settingsHandler);
+        // The first-run chooser is global, but this tab owns the canonical
+        // examples loader. forceRenderTabPanel keeps this listener alive even
+        // when a starter ultimately opens the Code tab (the LEGO journey).
+        this._starterJourneyHandler = event => this.loadStarterJourney(event);
+        window.addEventListener('bw-start-journey', this._starterJourneyHandler);
         // Machine bench: Build Machine dispatches this when the bus extractor
         // succeeds. The DebugPanel needs to render even without declared pins
         // so the user can load a program and run the machine. The detail is
@@ -321,6 +326,7 @@ class CircuitTab extends React.Component {
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
         window.removeEventListener('bw-settings-change', this._settingsHandler);
+        window.removeEventListener('bw-start-journey', this._starterJourneyHandler);
         window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
         window.removeEventListener('bw-machine-media-load', this._mediaStashHandler);
         window.removeEventListener('bw-asm-rom-ready', this._asmStashHandler);
@@ -667,21 +673,83 @@ class CircuitTab extends React.Component {
      * lie about work bw-cfront has done.
      */
     async loadExamples () {
-        if (this.state.examples || this.examplesLoading) return;
-        this.examplesLoading = true;
+        if (this.state.examples) return this.state.examples;
+        if (this.examplesLoadingPromise) return this.examplesLoadingPromise;
+        this.examplesLoadingPromise = (async () => {
+            try {
+                const res = await fetch('examples/index.json');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const list = Array.isArray(data) ? data : (data.examples || []);
+                this.setState({examples: list});
+                return list;
+            } catch (e) {
+                const message = 'The example gallery is not part of this build yet ' +
+                    `(examples/index.json: ${e.message}). The examples exist — they ` +
+                    'are published by bw-cfront and need vendoring into the app.';
+                this.examplesLoadError = message;
+                this.setState({examplesError: message});
+                // Existing visibility-triggered callers do not await this method.
+                // Resolve with null so a missing optional gallery cannot become an
+                // unhandled rejection; the starter path turns it into a visible error.
+                return null;
+            } finally {
+                this.examplesLoadingPromise = null;
+            }
+        })();
+        return this.examplesLoadingPromise;
+    }
+
+    /** Open one of the three first-run journeys through the normal loaders. */
+    async loadStarterJourney (event) {
+        const journey = event && event.detail || {};
+        const finish = detail => window.dispatchEvent(new CustomEvent('bw-starter-result', {
+            detail: {journeyId: journey.id, ...detail}
+        }));
         try {
-            const res = await fetch('examples/index.json');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            const list = Array.isArray(data) ? data : (data.examples || []);
-            this.setState({examples: list});
-        } catch (e) {
-            this.setState({examplesError:
-                'The example gallery is not part of this build yet ' +
-                `(examples/index.json: ${e.message}). The examples exist — they ` +
-                'are published by bw-cfront and need vendoring into the app.'});
+            const list = await this.loadExamples();
+            if (!Array.isArray(list)) throw new Error(this.examplesLoadError ||
+                'The starter project index could not be loaded.');
+            const example = list.find(item => item.id === journey.exampleId);
+            if (!example) throw new Error(
+                `Starter example "${journey.exampleId}" is missing from examples/index.json.`);
+            if (journey.mode !== 'program-only') this.load();
+            const result = journey.mode === 'program-only' ?
+                await this.loadProgramOnlyStarter(example) :
+                await this.loadExample(example, {circuitOnly: journey.mode === 'circuit-only'});
+            finish(result && result.ok ? {ok: true} : {
+                ok: false,
+                cancelled: !!(result && result.cancelled),
+                error: result && result.error
+            });
+        } catch (error) {
+            finish({ok: false, error: error.message});
         }
-        this.examplesLoading = false;
+    }
+
+    /** Program-only starters (currently LEGO) have no fictional circuit to load. */
+    async loadProgramOnlyStarter (example) {
+        if (typeof confirm === 'function') {
+            const message = /^de/i.test(navigator.language) ?
+                `„${example.id}" öffnen?\n\nDas ersetzt das aktuelle Projekt. Nicht Gespeichertes geht verloren.` :
+                `Open "${example.id}"?\n\nThis replaces the current project. Anything unsaved is lost.`;
+            if (!confirm(message)) return {ok: false, cancelled: true};
+        }
+        this.setState({loadingExample: example.id, examplesError: null});
+        try {
+            await this.loadExampleProgram(example, null);
+            this.setState({loadingExample: null, stc: this.readStc()});
+            // A LEGO project has no simulated breadboard. Show its Scratch/extension
+            // stage while coding instead of an empty circuit pane.
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-stage-circuit', value: '0'}
+            }));
+            return {ok: true};
+        } catch (error) {
+            this.setState({loadingExample: null, examplesError:
+                `Could not fully open "${example.id}": ${error.message}.`});
+            return {ok: false, error: error.message};
+        }
     }
 
     /**
@@ -829,10 +897,10 @@ class CircuitTab extends React.Component {
         const benchOverride = (opts && opts.bench) || null;
         const path = ex && ex.files && ex.files.circuit;
         if (!path) {
-            this.setState({examplesError:
-                `"${(ex && ex.id) || 'that example'}" lists no circuit file, so there is ` +
-                'nothing to place on the board.'});
-            return;
+            const error = `"${(ex && ex.id) || 'that example'}" lists no circuit file, so there is ` +
+                'nothing to place on the board.';
+            this.setState({examplesError: error});
+            return {ok: false, error};
         }
         // An example with a program replaces the project, which undo cannot
         // recover — so ask, once, and say what is at stake. A circuit-only
@@ -841,13 +909,13 @@ class CircuitTab extends React.Component {
         // categorisation tag, not a file-presence gate: an example can be
         // kind:'circuit' (it is ABOUT a circuit) and still declare pins
         // that need loading. The gate must be the file, not the tag.
-        const hasProgram = !!(ex.files && ex.files.program);
+        const hasProgram = !(opts && opts.circuitOnly) && !!(ex.files && ex.files.program);
         if (hasProgram && typeof confirm === 'function') {
             const msg = /^de/i.test(navigator.language)
                 ? `„${ex.id}" öffnen?\n\nDas ersetzt das aktuelle Projekt — seine Blöcke, Pins und sein Board. Nicht Gespeichertes geht verloren.`
                 : `Open "${ex.id}"?\n\nThis replaces the current project — its blocks, its pins and its board. Anything unsaved is lost.`;
             const ok = confirm(msg);
-            if (!ok) return;
+            if (!ok) return {ok: false, cancelled: true};
         }
         this.setState({loadingExample: ex.id, examplesError: null});
         try {
@@ -913,9 +981,11 @@ class CircuitTab extends React.Component {
                     `"${ex.id}" loaded, but its program declares no pins, so the ` +
                     'debugger stays hidden.'});
             }
+            return programError ? {ok: false, error: programError} : {ok: true};
         } catch (e) {
             this.setState({loadingExample: null, examplesError:
                 `Could not open "${ex.id}": ${e.message}. The board is unchanged.`});
+            return {ok: false, error: e.message};
         }
     }
 
