@@ -452,3 +452,6 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
 - [x] Started Milestone 4 with an always-visible bilingual capability contract for
   every Code tab: supported-subset editable conversion, generated read-only
   micro:bit/ASM views, and one-way editable ASM are labeled before conversion.
+- [x] Added a persistent bilingual conversion report after Code ↔ Blocks operations,
+  separating preserved project loading, reported semantic changes, unsupported
+  constructs, and complete conversion failure.

@@ -20,3 +20,12 @@ test('the info panel no longer calls every editable language unqualified two-way
     assert.doesNotMatch(source, /und <strong>BASIC<\/strong> sind wechselseitig/);
     assert.match(source, /warnings identify constructs that cannot be represented/);
 });
+
+test('conversion results separate preserved, changed, and unsupported outcomes', () => {
+    assert.match(source, /data-testid="bw-conversion-report"/);
+    assert.match(source, /data-testid="bw-conversion-preserved"/);
+    assert.match(source, /data-testid="bw-conversion-changed"/);
+    assert.match(source, /data-testid="bw-conversion-unsupported"/);
+    assert.match(source, /classifyConversionWarnings/);
+    assert.match(source, /conversion failed/);
+});
