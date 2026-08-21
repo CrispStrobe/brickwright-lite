@@ -4,13 +4,14 @@ import React from 'react';
 
 import coreCatalog from './lessons.json';
 import electricityWave from './lesson-waves/electricity-1.json';
+import interactiveWave from './lesson-waves/interactive-4.json';
 import languagesWave from './lesson-waves/languages-3.json';
 import measurementWave from './lesson-waves/measurement-2.json';
 import styles from './guided-lessons.css';
 
 const catalog = {
     lessons: [...coreCatalog.lessons, ...electricityWave.lessons, ...measurementWave.lessons,
-        ...languagesWave.lessons]
+        ...languagesWave.lessons, ...interactiveWave.lessons]
 };
 
 const UI = {

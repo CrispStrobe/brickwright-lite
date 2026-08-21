@@ -15,9 +15,12 @@ const readLessons = async () => {
         '../overlay/scratch-gui/src/components/gui/lesson-waves/measurement-2.json');
     const languages = await readJson(
         '../overlay/scratch-gui/src/components/gui/lesson-waves/languages-3.json');
+    const interactive = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/interactive-4.json');
     return {
         schemaVersion: core.schemaVersion,
-        lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons, ...languages.lessons]
+        lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons, ...languages.lessons,
+            ...interactive.lessons]
     };
 };
 
@@ -161,4 +164,25 @@ test('language wave has twelve distinct cross-representation semantic tasks', as
     for (const language of ['blocks', 'pseudocode', 'python', 'javascript', 'c', 'asm']) {
         assert.ok(languages.has(language), `language wave covers ${language}`);
     }
+});
+
+test('interactive wave covers eight capability and control workflows', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'interactive-4');
+    const expected = ['extension-discovery', 'sensor-capability', 'lego-connect-deploy-recover',
+        'buttons-sliders-joysticks', 'displays-gauges', 'two-way-binding', 'dashboards',
+        'calibration-sampling-safety'];
+
+    assert.equal(wave.length, 8);
+    assert.deepEqual(wave.map(lesson => lesson.topic).sort(), expected.sort());
+    for (const lesson of wave) {
+        assert.deepEqual(Object.keys(lesson.variants), lesson.languages,
+            `${lesson.id} explains every declared representation`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.id === 'predict'),
+            `${lesson.id} starts from an explicit prediction or design`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} includes live evidence or connection state`);
+    }
+    assert.equal(wave.find(lesson => lesson.id === 'interactive-lego-recovery').environment,
+        'optional-hardware');
 });

@@ -182,6 +182,11 @@ not translations or language variants counted as extra lessons.
 4. **Interactive systems (8 lessons):** extension discovery, sensor capability,
    LEGO connection/deployment/recovery, buttons/sliders/joysticks, displays/gauges,
    two-way binding, dashboards, calibration, sampling, and control-loop safety.
+   **Implementation status:** all eight bilingual engineering drafts are in the
+   catalog. They cover capability and failure-state contracts, optional LEGO hardware,
+   discrete and continuous controls, honest displays, directed bindings, operational
+   dashboard design, calibration, sampling delay, clamping, and fail-safe behavior.
+   Hardware, accessibility, translation, and learner field review remains.
 5. **Debug with evidence (10 lessons):** reproduce/minimize, pause/step, watches,
    conditional breakpoints, call stack, task scheduling, pins/signals, serial trace,
    timing bugs, and comparing simulation with hardware. Every lesson starts with a
@@ -406,3 +411,8 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   pins/peripherals, protocols, and targeted ASM-level timing.
 - [ ] Complete Wave 3 runtime/round-trip verification, translation review, and learner
   field testing, then revise content versions from the evidence gathered.
+- [x] Implemented the Wave 4 engineering/content draft with eight bilingual lessons
+  for extensions, sensors, LEGO recovery, controls, displays, bindings, dashboards,
+  calibration, sampling, and control-loop safety.
+- [ ] Complete Wave 4 hardware/recovery verification, accessibility and translation
+  review, and learner field testing, then revise content versions from the evidence.
