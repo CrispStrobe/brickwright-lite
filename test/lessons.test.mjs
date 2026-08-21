@@ -101,6 +101,10 @@ test('catalog covers the promised domains, depths, and code representations', as
 
 test('electricity wave has twelve distinct, progressive learning experiences', async () => {
     const {lessons} = await readLessons();
+    const bridgeCircuit = await readJson(
+        '../overlay/scratch-gui/examples/pc31-bridge-rectifier/circuit.json');
+    const bridgeIntro = await readFile(new URL(
+        '../overlay/scratch-gui/examples/pc31-bridge-rectifier/intro.md', import.meta.url), 'utf8');
     const wave = lessons.filter(lesson => lesson.wave === 'electricity-1');
     const topics = new Set(wave.map(lesson => lesson.topic));
     const expected = ['closed-paths', 'polarity', 'resistance', 'ohms-law', 'series-parallel',
@@ -123,6 +127,17 @@ test('electricity wave has twelve distinct, progressive learning experiences', a
             `${lesson.id} includes a live observation`);
         assert.ok(lesson.checkpoints.length >= 2, `${lesson.id} is a learning sequence`);
     }
+
+    const diodeLesson = wave.find(lesson => lesson.id === 'electricity-diode');
+    assert.equal(diodeLesson.exampleId, 'pc31-bridge-rectifier',
+        'the rectification lesson opens the reversible bridge experiment');
+    assert.ok(diodeLesson.version >= 2, 'the corrected diode lesson invalidates stale progress');
+    assert.equal(bridgeCircuit.parts.filter(part => part.kind === 'diode').length, 4,
+        'the bridge experiment supplies four diode paths to trace');
+    assert.ok(bridgeCircuit.parts.some(part => part.kind === 'vsource' && part.params.volts === 9),
+        'the bridge experiment supplies the source whose polarity the lesson reverses');
+    assert.doesNotMatch(bridgeIntro, /source that really alternates/i,
+        'the bridge follow-up does not advertise a waveform absent from the linked example');
 });
 
 test('measurement wave teaches ten honest instrument workflows', async () => {

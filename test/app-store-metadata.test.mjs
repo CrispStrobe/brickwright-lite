@@ -20,8 +20,8 @@ test('canonical store descriptions are bilingual, accurate, and within Apple lim
         'TestFlight app description — de-DE',
         'App Store description — en-US',
         'App Store description — de-DE',
-        'What to Test — 0.1.5 en-US',
-        'What to Test — 0.1.5 de-DE'
+        'What to Test — 0.1.6 en-US',
+        'What to Test — 0.1.6 de-DE'
     ];
 
     for (const name of names) {
@@ -45,5 +45,5 @@ test('native package versions stay aligned for the TestFlight train', async () =
     const cargoVersion = cargo.match(/^version = "([^"]+)"/m)?.[1];
 
     assert.equal(cargoVersion, config.version);
-    assert.equal(config.version, '0.1.5');
+    assert.equal(config.version, '0.1.6');
 });

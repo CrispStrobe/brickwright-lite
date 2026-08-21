@@ -410,6 +410,12 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   prerequisites, hardware safety boundaries, and searchable level-filtered discovery.
 - [ ] Complete Wave 1 technical, translation, and learner field review, then revise
   lesson versions from the evidence gathered.
+- [x] Applied the first Wave 1 technical-review revision: the diode lesson had
+  requested alternating input/output traces from a static polarity example. It now
+  opens the reversible four-diode bridge experiment, teaches the two conducting
+  paths and two-forward-drop cost, advances to content version 2, and has a
+  curriculum/example contract test. Corrected the linked example copy that made the
+  same nonexistent-waveform claim. Translation and learner field review remain.
 - [x] Implemented the Wave 2 engineering/content draft and the previously missing
   oscilloscope controls: V/div, vertical center, rising/falling trigger, trigger
   level/status, dual time cursors, and measured Δt.
