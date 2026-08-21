@@ -46,8 +46,8 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
     assert.match(source, /data-simulation-controls/);
     assert.match(source, /data-scope-module/);
     assert.match(source, /data-no-code-indicator/);
-    assert.match(source, /useState\(!embedded \|\| debuggerOn\)/,
-        'dedicated Circuit tab starts with instruments open; only the compact embed may collapse them');
+    assert.match(source, /useState\(!!debuggerOn \|\| !!benchOpen\)/,
+        'a fresh designer starts collapsed; debugger and bench contexts may open instruments');
 });
 
 test('oscilloscope exposes real scale, edge trigger, and time-cursor controls', () => {
@@ -127,6 +127,8 @@ test('main tab row retains the right-pane toggle', () => {
     assert.match(gui, /data-right-pane-toggle/);
     assert.match(gui, /Show right panel|Hide right panel/);
     assert.match(gui, /stagePaneVisible \? '›' : '‹'/);
+    assert.match(gui, /localStorage\.getItem\('bw-right-pane-hidden'\) === '0'/,
+        'a fresh workspace keeps the optional right pane minimized');
 });
 
 test('Settings exposes an app-internal hard reload without clearing project storage', () => {

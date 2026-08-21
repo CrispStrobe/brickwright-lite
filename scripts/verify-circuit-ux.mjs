@@ -60,6 +60,7 @@ try {
     const paneToggle = page.locator('[data-right-pane-toggle]');
     const rightPane = page.locator('[data-right-pane]');
     check('right-pane toggle is present beside the editor and right pane', await paneToggle.count() === 1 && await paneToggle.evaluate(el => !el.closest('[role="tablist"]')));
+    check('fresh workspace starts with the optional right pane minimized', await paneToggle.getAttribute('aria-pressed') === 'false');
     if (await paneToggle.count()) {
         const editorBox = await page.locator('[data-editor-pane]').boundingBox();
         const toggleBox = await paneToggle.boundingBox();
@@ -70,7 +71,6 @@ try {
             JSON.stringify({circuitTab: circuitTabBox, toggle: toggleBox}));
     }
     if (await paneToggle.count()) {
-        const beforePane = await paneToggle.getAttribute('aria-pressed');
         const beforeEditorWidth = await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width);
         const beforeRightWidth = await rightPane.evaluate(el => el.getBoundingClientRect().width);
         // Await the STATE, not the clock: a fixed 120ms sampled stale
@@ -83,16 +83,17 @@ try {
                 ['[data-right-pane-toggle]', want], {timeout: 5000}).catch(() => {});
             return paneToggle.getAttribute('aria-pressed');
         };
-        const wantAfter = beforePane === 'true' ? 'false' : 'true';
         await paneToggle.click({force: true});
-        check('right-pane toggle visibly changes state', await settled(wantAfter) !== beforePane);
-        const hiddenEditorWidth = await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width);
-        const hiddenRightWidth = await rightPane.evaluate(el => el.getBoundingClientRect().width);
-        check('hiding right pane gives its width to the editor', hiddenEditorWidth > beforeEditorWidth && hiddenRightWidth === 0,
-            JSON.stringify({beforeEditorWidth, hiddenEditorWidth, beforeRightWidth, hiddenRightWidth}));
+        check('right-pane toggle visibly changes state', await settled('true') === 'true');
+        const shownEditorWidth = await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width);
+        const shownRightWidth = await rightPane.evaluate(el => el.getBoundingClientRect().width);
+        check('showing right pane gives it layout width', shownEditorWidth < beforeEditorWidth && shownRightWidth > 0,
+            JSON.stringify({beforeEditorWidth, shownEditorWidth, beforeRightWidth, shownRightWidth}));
         await paneToggle.click({force: true});
-        await settled(beforePane);
-        check('showing right pane restores its layout width', await rightPane.evaluate(el => el.getBoundingClientRect().width) > 0);
+        await settled('false');
+        check('hiding right pane restores editor width',
+            await rightPane.evaluate(el => el.getBoundingClientRect().width) === 0 &&
+            await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width) >= beforeEditorWidth);
     }
     const editorPane = page.locator('[data-editor-pane]');
     check('right pane remains mounted for optional Circuit Designer selection', await page.locator('[data-right-pane]').count() === 1);
@@ -143,19 +144,10 @@ try {
     // the STANDALONE pane, not the circuit tab's instruments column. The
     // circuit tab must keep its instruments column mounted; the debugger
     // panel/no-code notice are asserted in the solo pane (above).
-    check('dedicated Circuit tab keeps its instruments column', await dedicatedDesigner.locator('[data-instruments-column]').count() === 1,
+    check('dedicated Circuit tab keeps Instruments minimized while Debugger uses the external pane',
+        await dedicatedDesigner.locator('[data-instruments-column]').count() === 0 &&
+        await dedicatedDesigner.getByRole('button', {name: 'Expand instruments panel'}).count() === 1,
         `designers=${await page.locator('.bw-circuit-designer:visible').count()}`);
-    const debuggerColumnMetrics = await dedicatedDesigner.locator('[data-instruments-column]').evaluate(el => {
-        const scroll = el.querySelector('[data-instruments-scroll]');
-        return {
-            clientHeight: scroll?.clientHeight, scrollHeight: scroll?.scrollHeight,
-            overflowY: scroll ? getComputedStyle(scroll).overflowY : '',
-            top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom,
-            viewport: window.innerHeight,
-        };
-    });
-    check('Debugger in Instruments stays viewport-bounded and has a scroll viewport', debuggerColumnMetrics.bottom <= debuggerColumnMetrics.viewport + 1 && debuggerColumnMetrics.overflowY === 'auto' && debuggerColumnMetrics.scrollHeight >= debuggerColumnMetrics.clientHeight,
-        JSON.stringify(debuggerColumnMetrics));
     // (Solo-pane debugger content is asserted in the debugger view above;
     // on the Circuit tab the solo pane is rightly unmounted.)
     const loaded = await page.evaluate(async () => {

@@ -186,6 +186,9 @@ jobs:
       - name: Browser gate — circuit UX
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
+      - name: Browser gate — circuit rendering and placement
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs
       - name: Browser gate — view buttons
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs

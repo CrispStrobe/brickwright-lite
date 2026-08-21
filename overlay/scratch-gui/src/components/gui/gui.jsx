@@ -192,7 +192,10 @@ const GUIComponent = props => {
         };
     }, [props.vm]);
     const [stagePaneVisible, setStagePaneVisible] = React.useState(() => {
-        try { return localStorage.getItem('bw-right-pane-hidden') !== '1'; } catch { return true; }
+        // A fresh Circuit workspace should devote its width to the editor.
+        // Only an explicit saved preference (or a view such as Debugger,
+        // which publishes bw-right-pane-hidden=0) opens the optional pane.
+        try { return localStorage.getItem('bw-right-pane-hidden') === '0'; } catch { return false; }
     });
     // dockMode drives which pane the right column shows. 'microbit' replaces the
     // sprite list with the sim; every other value keeps the normal stage+targets.

@@ -26,6 +26,7 @@
     "smoke:debugger": "node scripts/smoke-debugger.mjs",
     "verify:interaction": "node scripts/verify-interaction.mjs",
     "verify:circuit-ux": "node scripts/verify-circuit-ux.mjs",
+    "verify:circuit-rendering": "node scripts/verify-circuit-rendering.mjs",
     "verify:instruments": "node scripts/verify-instruments-scroll.mjs",
     "verify:microbit": "node scripts/verify-microbit.mjs",
     "verify:starters": "node scripts/verify-starter-journeys.mjs",

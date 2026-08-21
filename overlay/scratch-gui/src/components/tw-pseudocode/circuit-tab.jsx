@@ -104,10 +104,10 @@ class CircuitTab extends React.Component {
         // default changed (2026-08-17). 'top' stays selectable in settings.
         let debugDock = 'right';
         let showInStage = true; // owner default: while coding, the circuit replaces the stage
-        let rightPaneHidden = false;
+        let rightPaneHidden = true;
         try {
             showInStage = localStorage.getItem('bw-stage-circuit') !== '0';
-            rightPaneHidden = localStorage.getItem('bw-right-pane-hidden') === '1';
+            rightPaneHidden = localStorage.getItem('bw-right-pane-hidden') !== '0';
         } catch { /* private mode */ }
         this._stageHost = null;
         try {
