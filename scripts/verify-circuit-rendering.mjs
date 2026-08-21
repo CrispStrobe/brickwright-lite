@@ -94,7 +94,13 @@ try {
         await ghost.waitFor({timeout: 3000});
         check(`${label} placement preview keeps its physical size`, Number(await ghost.getAttribute('width')) === width,
             await ghost.getAttribute('width'));
-        await page.keyboard.press('Escape');
+        // Commit the synthetic placement so the interaction machine returns
+        // to idle before arming the next palette item. Sending Escape to the
+        // page did not reach BoardCanvas unless its focusable wrapper happened
+        // to own focus, leaving the half-board ghost armed in CI.
+        await page.mouse.click(canvas.x + canvas.width * 0.55, canvas.y + canvas.height * 0.55);
+        await ghost.waitFor({state: 'hidden', timeout: 3000});
+        await load([]);
     }
 
     await load([
