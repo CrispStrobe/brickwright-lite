@@ -157,8 +157,11 @@ try {
         const queue = key ? [root[key]] : [];
         for (let i = 0; i < 10000 && queue.length; i++) {
             const f = queue.shift();
-            if (f?.stateNode?.loadExample && Array.isArray(f.stateNode.state?.examples) && f.stateNode.state.examples.length) {
-                await f.stateNode.loadExample(f.stateNode.state.examples[0]);
+            if (f?.stateNode?.loadExample && Object.hasOwn(f.stateNode.state || {}, 'circuitData')) {
+                const response = await fetch('examples/01-blink/circuit.pico.json');
+                if (!response.ok) return false;
+                const circuitData = await response.json();
+                await new Promise(resolve => f.stateNode.setState({circuitData}, resolve));
                 return true;
             }
             if (f?.child) queue.push(f.child);
@@ -166,7 +169,7 @@ try {
         }
         return false;
     });
-    check('Circuit Designer circuit content loaded', loaded || await page.locator('.bw-circuit-designer').count() >= 1);
+    check('Circuit Designer MCU fixture loaded', loaded);
     await page.waitForTimeout(2200);
 
     // The debugger starts in the full-size right pane. Its << control lives in
