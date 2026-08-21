@@ -455,3 +455,23 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
 - [x] Added a persistent bilingual conversion report after Code ↔ Blocks operations,
   separating preserved project loading, reported semantic changes, unsupported
   constructs, and complete conversion failure.
+- [x] Began the 2026-08-21 regression repair pass: moved guided lessons away from
+  the right-pane run controls, restored debugger dock affordances for declared MCU
+  programs, made Circuit SIM start authored MCU code, separated the embedded circuit
+  toolbar from the green-flag row, repaired light-theme status contrast, and taught
+  the voltage-on-wires control in the voltage lesson.
+- [x] Added `npm run render:schematic -- --example ID [--format svg|png|both]`
+  so the gallery's actual schematic projection can be inspected without manually
+  navigating the app; it also writes a machine-readable render report.
+- [x] Finished the regression pass with browser proof that the debugger keeps running
+  while hidden and across view/dock changes, Blocks + Circuit + Debugger coexist,
+  green flag and SIM both start MCU code, schematic fit/pan/zoom work at contrasting
+  pane aspect ratios, example titles replace the generic project title, and no
+  ResizeObserver error reaches the user.
+- [x] Rendered all 246 circuit examples through the new CLI, fixed its omitted-wire
+  and false VCC/GND-short defects, bounded pathological single-column layouts
+  (worst height reduced from 3,356 to under 1,000 units), and reviewed simple,
+  analog, 8-bit-bank, and retro-machine output.
+- [ ] Replace the remaining generic schematic boxes in corpus priority order
+  (Arduino/MCU families, 555, common logic/memory/peripheral ICs), then add visual
+  baselines for representative simple, dense, analog, and retro-machine examples.

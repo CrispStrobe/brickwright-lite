@@ -101,6 +101,25 @@ test('Green Flag and Red Flag reach Circuit Designer even without MCU code', () 
     assert.match(controls, /setTimeout\(\(\) => window\.dispatchEvent\(new CustomEvent\('bw-stop-all'\)\), 0\)/);
 });
 
+test('SIM starts the same MCU program path as Green Flag', () => {
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
+    const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
+    assert.match(tab, /onSimulationStart=\{this\.handleProjectStart\}/);
+    assert.match(designer, /if \(onSimulationStart\) onSimulationStart\(\)/);
+});
+
+test('example loading publishes its localized name as the project title', () => {
+    const source = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
+    assert.match(source, /setProjectTitle/);
+    assert.match(source, /onSetProjectTitle\(title\)/);
+});
+
+test('lesson drawer leaves right-pane controls unobstructed', () => {
+    const source = read('overlay/scratch-gui/src/components/gui/guided-lessons.css');
+    assert.match(source, /\.drawer \{[^}]*left: 10px/);
+    assert.doesNotMatch(source, /\.drawer \{[^}]*right: 10px/);
+});
+
 test('main tab row retains the right-pane toggle', () => {
     const gui = read('overlay/scratch-gui/src/components/gui/gui.jsx');
     assert.match(gui, /data-right-pane-toggle/);

@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
 import {projectSchematic} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/schematic-projection.js';
+import {netsFromWires} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/schematic-svg.js';
 
 test('schematic shows the implicit ground reference when no GND part is placed', () => {
     const parts = [
@@ -50,4 +51,30 @@ test('schematic connects board sidecar pins to canonical engine nets', () => {
         uno.pins.map(pin => pin.netId).sort(),
         ['ground_net', 'led_net', 'power_net'].sort()
     );
+});
+
+test('dense parallel ranks wrap into readable column bands', () => {
+    const parts = [{id: 'VCC', kind: 'vcc', terminals: ['vcc']}];
+    const nets = [];
+    for (let i = 0; i < 32; i++) {
+        parts.push({id: `led${i}`, kind: 'led', terminals: ['anode', 'cathode']});
+        nets.push({id: `n${i}`, terminals: [
+            {part: 'VCC', terminal: 'vcc'}, {part: `led${i}`, terminal: 'anode'}
+        ]});
+    }
+    const projected = projectSchematic(parts, nets);
+    assert.ok(projected.height < 1200, `dense projection is ${projected.height} units tall`);
+    assert.ok(projected.width > 500, 'parallel parts use more than one visual column');
+});
+
+test('headless net inference never shorts distinct rails through object-valued board holes', () => {
+    const nets = netsFromWires([
+        {from: 'VCC', fromTerminal: 'vcc', to: {board: 'bb1', hole: 't+2'}},
+        {from: 'GND', fromTerminal: 'gnd', to: {board: 'bb1', hole: 'b-2'}},
+        {from: 'R1', fromTerminal: 'b', to: 'D1', toTerminal: 'anode'}
+    ]);
+    assert.equal(nets.length, 1);
+    assert.deepEqual(nets[0].terminals, [
+        {part: 'R1', terminal: 'b'}, {part: 'D1', terminal: 'anode'}
+    ]);
 });

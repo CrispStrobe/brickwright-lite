@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
+import {setProjectTitle} from '../../reducers/project-title';
+import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 
 // Inject the retro-bench bus extractors into the DRC so contention and
 // open-vector errors surface as warnings. This lives here (not in the
@@ -117,7 +119,7 @@ class CircuitTab extends React.Component {
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, circuitData: null, loadingExample: null,
-            machineBooted: false};
+            machineBooted: false, pendingExampleTitle: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
         this.loadExample = this.loadExample.bind(this);
@@ -265,6 +267,14 @@ class CircuitTab extends React.Component {
     }
 
     componentDidUpdate (prevProps) {
+        // TitledHOC resets the title to “BrickWright Project” when the
+        // load/create state settles. Publish an example's name after that
+        // transition, rather than racing it immediately after vm.loadProject.
+        if (this.state.pendingExampleTitle && prevProps.isProjectCreating &&
+            !this.props.isProjectCreating) {
+            this.props.onSetProjectTitle(this.state.pendingExampleTitle);
+            this.setState({pendingExampleTitle: null});
+        }
         this._measureBox();
         if (this.props.isVisible && !prevProps.isVisible) {
             this.load();
@@ -324,6 +334,7 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        cancelAnimationFrame(this._hostResizeFrame);
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
         window.removeEventListener('bw-settings-change', this._settingsHandler);
@@ -359,6 +370,15 @@ class CircuitTab extends React.Component {
         this.setState({[key]: value});
         const storageKey = key === 'showInStage' ? 'bw-stage-circuit' : 'bw-hide-stage';
         try { localStorage.setItem(storageKey, value ? '1' : '0'); } catch { /* private mode */ }
+    }
+
+    publishExampleTitle (example) {
+        const titles = example && example.title;
+        const locale = String(this.props.locale || 'en').slice(0, 2);
+        const title = typeof titles === 'string' ? titles :
+            (titles && (titles[locale] || titles.en || titles.de)) || example.id;
+        if (this.props.isProjectCreating) this.setState({pendingExampleTitle: title});
+        else if (this.props.onSetProjectTitle) this.props.onSetProjectTitle(title);
     }
 
     handleProjectStart () {
@@ -412,7 +432,10 @@ class CircuitTab extends React.Component {
         // the new one grew to 1992px unobserved.
         if (typeof ResizeObserver !== 'undefined') {
             if (this._hostRO) this._hostRO.disconnect();
-            this._hostRO = new ResizeObserver(() => this._sizeStageHost());
+            this._hostRO = new ResizeObserver(() => {
+                cancelAnimationFrame(this._hostResizeFrame);
+                this._hostResizeFrame = requestAnimationFrame(() => this._sizeStageHost());
+            });
             this._hostRO.observe(wrap);
         }
         return host;
@@ -752,6 +775,7 @@ class CircuitTab extends React.Component {
         try {
             await this.loadExampleProgram(example, null);
             this.setState({loadingExample: null, stc: this.readStc()});
+            this.publishExampleTitle(example);
             if (example.files && example.files.controller) {
                 const response = await fetch(`examples/${example.files.controller}`);
                 if (!response.ok) throw new Error(`controller: HTTP ${response.status}`);
@@ -1005,6 +1029,10 @@ class CircuitTab extends React.Component {
                     `Opened the circuit for "${ex.id}", but its program did not load ` +
                     `(${programError}), so there are no pins and no debugger.` : null
             });
+            // A loaded example is a named project, not the generic project
+            // created by the SB3 converter. Keep the normal title reducer as
+            // the single source used by the menu bar, save dialog and window.
+            this.publishExampleTitle(ex);
             // Machine-class devices (the 6502/Z80 benches) have no pin
             // concept — their debugger comes from the bus extract, not
             // from PIN lines. PART bindings drive pins without PIN lines.
@@ -1342,6 +1370,7 @@ class CircuitTab extends React.Component {
                     benchOpen={this.state.machineBooted}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
+                        onSimulationStart={this.handleProjectStart}
                     />
                 </div>
                 </div>
@@ -1572,12 +1601,17 @@ class CircuitTab extends React.Component {
 }
 
 CircuitTab.propTypes = {
+    isProjectCreating: PropTypes.bool,
     isVisible: PropTypes.bool,
+    onSetProjectTitle: PropTypes.func,
     vm: PropTypes.shape({toJSON: PropTypes.func}).isRequired
 };
 
 export default connect(state => ({
     vm: state.scratchGui.vm,
     locale: state.locales.locale,
+    isProjectCreating: getIsAnyCreatingNewState(state.scratchGui.projectState.loadingState),
     isVisible: state.scratchGui.editorTab.activeTabIndex === 4
+}), dispatch => ({
+    onSetProjectTitle: title => dispatch(setProjectTitle(title))
 }))(CircuitTab);
