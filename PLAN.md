@@ -208,6 +208,12 @@ not translations or language variants counted as extra lessons.
 7. **Computers from wires upward (10 lessons):** logic levels, gates/registers,
    clocks, buses, memory maps, address decoding, 6502/Z80 execution, ASM/source
    correspondence, contention, interrupts, and performance/timing tradeoffs.
+   **Implementation status:** all ten bilingual engineering drafts are in the catalog.
+   They connect logical meaning to measured voltages, clocked storage and transactions,
+   derive memory/decode behavior, cross-check instruction and bus traces, label lossy
+   source/ASM boundaries honestly, and finish with safe contention diagnosis and
+   measured interrupt tradeoffs. Architecture, electrical, translation, and learner
+   field review remains.
 
 Lesson quality rubric:
 
@@ -436,4 +442,9 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   systems investigations from first-order response through research-level model
   comparison and sampling limitations.
 - [ ] Complete Wave 6 numerical/instrument verification, translation review, and
+  learner field testing, then revise content versions from the evidence gathered.
+- [x] Implemented the Wave 7 engineering/content draft with ten bilingual lessons
+  connecting logic levels, buses, memory, execution, ASM, contention, interrupts,
+  and timing to live electrical and debugger evidence.
+- [ ] Complete Wave 7 architecture/electrical verification, translation review, and
   learner field testing, then revise content versions from the evidence gathered.

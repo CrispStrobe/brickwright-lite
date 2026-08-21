@@ -7,6 +7,7 @@ import debuggingWave from './lesson-waves/debugging-5.json';
 import electricityWave from './lesson-waves/electricity-1.json';
 import interactiveWave from './lesson-waves/interactive-4.json';
 import languagesWave from './lesson-waves/languages-3.json';
+import machinesWave from './lesson-waves/machines-7.json';
 import measurementWave from './lesson-waves/measurement-2.json';
 import signalsWave from './lesson-waves/signals-6.json';
 import styles from './guided-lessons.css';
@@ -14,7 +15,7 @@ import styles from './guided-lessons.css';
 const catalog = {
     lessons: [...coreCatalog.lessons, ...electricityWave.lessons, ...measurementWave.lessons,
         ...languagesWave.lessons, ...interactiveWave.lessons, ...debuggingWave.lessons,
-        ...signalsWave.lessons]
+        ...signalsWave.lessons, ...machinesWave.lessons]
 };
 
 const UI = {

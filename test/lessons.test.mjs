@@ -21,10 +21,12 @@ const readLessons = async () => {
         '../overlay/scratch-gui/src/components/gui/lesson-waves/debugging-5.json');
     const signals = await readJson(
         '../overlay/scratch-gui/src/components/gui/lesson-waves/signals-6.json');
+    const machines = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/machines-7.json');
     return {
         schemaVersion: core.schemaVersion,
         lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons, ...languages.lessons,
-            ...interactive.lessons, ...debugging.lessons, ...signals.lessons]
+            ...interactive.lessons, ...debugging.lessons, ...signals.lessons, ...machines.lessons]
     };
 };
 
@@ -229,4 +231,24 @@ test('signals wave tests ten models with measurement and uncertainty', async () 
             `${lesson.id} qualifies its result`);
     }
     assert.equal(wave.filter(lesson => lesson.depth === 'research').length, 2);
+});
+
+test('machine wave connects ten architectural layers to electrical evidence', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'machines-7');
+    const expected = ['logic-levels', 'gates-registers', 'clocks', 'buses', 'memory-maps',
+        'address-decoding', '6502-z80-execution', 'source-asm-correspondence',
+        'bus-contention', 'interrupts-performance-timing'];
+
+    assert.equal(wave.length, 10);
+    assert.deepEqual(wave.map(lesson => lesson.topic).sort(), expected.sort());
+    for (const lesson of wave) {
+        assert.equal(lesson.checkpoints[0].id, 'predict', `${lesson.id} predicts machine state first`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} inspects live machine or electrical evidence`);
+    }
+    for (const language of ['pseudocode', 'c', 'basic', 'asm']) {
+        assert.ok(wave.some(lesson => lesson.languages.includes(language)),
+            `machine wave includes ${language} where useful`);
+    }
 });
