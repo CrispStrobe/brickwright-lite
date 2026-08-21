@@ -503,3 +503,10 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   crossings and zero symbol overlaps. Pin-labelled rectangles for
   MCUs, memories, logic ICs, and modules remain conventional schematic symbols;
   only replace a box where standardized non-box artwork communicates more truth.
+- [x] Closed the regression tranche at deployed checkpoint `5e044cf03`: all unit,
+  circuit UX, 1,034-variant rendering/placement, view-button, editor, debugger
+  dock/serial, Pages deployment, and deployed-GUI gates are green. Right-docking
+  now opens the optional pane without remounting or stopping the running target.
+- [ ] Ship 0.1.6 to the existing external TestFlight group with bilingual testing
+  notes covering schematic legibility, V⚡, three-pane lessons, dock-preserved
+  execution, green-flag/SIM start, and the retro-machine serial workflow.
