@@ -224,6 +224,14 @@ const GUIComponent = props => {
                 setStagePaneVisible(detail.value !== '1');
             } else if (detail.key === 'bw-debug-dock') {
                 setDockMode(detail.value || 'top');
+                // A right-docked debugger is a request to use the optional
+                // pane, not merely to mount it in hidden DOM. Fresh projects
+                // remain collapsed; this opens only on explicit debugger
+                // demand from Settings or the stage controls.
+                if (detail.value === 'right') {
+                    setStagePaneVisible(true);
+                    try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+                }
             } else if (detail.key === 'bw-stage-circuit') {
                 // If the circuit pane is being deactivated while in microbit mode, reset
                 if (detail.value !== '1') {

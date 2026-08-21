@@ -135,6 +135,8 @@ test('main tab row retains the right-pane toggle', () => {
     assert.match(gui, /stagePaneVisible \? '›' : '‹'/);
     assert.match(gui, /localStorage\.getItem\('bw-right-pane-hidden'\) === '0'/,
         'a fresh workspace keeps the optional right pane minimized');
+    assert.match(gui, /detail\.value === 'right'[\s\S]*setStagePaneVisible\(true\)/,
+        'an explicitly right-docked debugger opens the pane that contains it');
 });
 
 test('Settings exposes an app-internal hard reload without clearing project storage', () => {
