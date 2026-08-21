@@ -94,6 +94,11 @@ try {
         check('hiding right pane restores editor width',
             await rightPane.evaluate(el => el.getBoundingClientRect().width) === 0 &&
             await page.locator('[data-editor-pane]').evaluate(el => el.getBoundingClientRect().width) >= beforeEditorWidth);
+        // The remainder of this gate drives controls hosted in the optional
+        // pane. Open it deliberately after proving the fresh/default hidden
+        // state; otherwise the test waits for inaccessible hidden buttons.
+        await paneToggle.click({force: true});
+        await settled('true');
     }
     const editorPane = page.locator('[data-editor-pane]');
     check('right pane remains mounted for optional Circuit Designer selection', await page.locator('[data-right-pane]').count() === 1);
