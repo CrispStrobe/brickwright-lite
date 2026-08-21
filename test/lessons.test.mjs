@@ -13,9 +13,11 @@ const readLessons = async () => {
         '../overlay/scratch-gui/src/components/gui/lesson-waves/electricity-1.json');
     const measurement = await readJson(
         '../overlay/scratch-gui/src/components/gui/lesson-waves/measurement-2.json');
+    const languages = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/languages-3.json');
     return {
         schemaVersion: core.schemaVersion,
-        lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons]
+        lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons, ...languages.lessons]
     };
 };
 
@@ -134,5 +136,21 @@ test('measurement wave teaches ten honest instrument workflows', async () => {
         .flatMap(checkpoint => Object.values(checkpoint.copy.en)).join(' ').toLowerCase();
     for (const concern of ['power off', 'burden', 'ground clip', 'uncertainty']) {
         assert.ok(safetyText.includes(concern), `measurement wave covers ${concern}`);
+    }
+});
+
+test('language wave begins with distinct cross-representation semantic tasks', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'languages-3');
+    const topics = new Set(wave.map(lesson => lesson.topic));
+
+    assert.deepEqual([...topics].sort(), ['conditions', 'events', 'sequence', 'state-machines']);
+    for (const lesson of wave) {
+        assert.deepEqual(Object.keys(lesson.variants), lesson.languages,
+            `${lesson.id} explains every declared representation`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.id === 'predict'),
+            `${lesson.id} starts from a prediction or model`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} compares against running behavior`);
     }
 });

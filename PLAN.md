@@ -174,6 +174,11 @@ not translations or language variants counted as extra lessons.
    messages, pins/peripherals, and protocols. Blocks and Brickwright Code lead;
    Python/JavaScript/C variants explain runtime and conversion differences. BASIC
    and ASM enter where their machine model makes the concept clearer.
+   **Implementation status:** the first bilingual slice is in the catalog: sequence,
+   events, boundary conditions, and state machines each compare Blocks, Brickwright
+   Code, Python, JavaScript, and C by semantic/runtime contract rather than syntax.
+   Loops, variables, procedures, concurrency, arrays/data, messages,
+   pins/peripherals, and protocols remain in this wave.
 4. **Interactive systems (8 lessons):** extension discovery, sensor capability,
    LEGO connection/deployment/recovery, buttons/sliders/joysticks, displays/gauges,
    two-way binding, dashboards, calibration, sampling, and control-loop safety.
@@ -394,3 +399,5 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   group with bilingual testing notes. App Store Connect build
   `6ab579dc-f98b-4a7c-9927-f3fd21b1e239` is valid and its Beta App Review
   submission is `WAITING_FOR_REVIEW` (2026-08-21).
+- [x] Started Wave 3 with four bilingual, cross-representation lessons covering
+  sequence, events, boundary conditions, and state machines against shipped projects.
