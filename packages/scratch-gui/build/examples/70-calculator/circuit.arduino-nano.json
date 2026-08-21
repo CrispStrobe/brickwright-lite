@@ -20,6 +20,15 @@
    "rotation": 0
   },
   {
+   "id": "bb3",
+   "kind": "breadboard",
+   "params": {},
+   "terminals": [],
+   "x": 470,
+   "y": 1050,
+   "rotation": 0
+  },
+  {
    "id": "VCC",
    "kind": "vcc",
    "params": {},
@@ -36,7 +45,7 @@
    "terminals": [
     "gnd"
    ],
-   "x": 220,
+   "x": 156,
    "y": 60
   },
   {
@@ -44,37 +53,93 @@
    "kind": "arduino_nano",
    "params": {},
    "terminals": [
-    "d13",
-    "d12",
-    "d8",
-    "d7",
-    "d4",
+    "a4",
+    "a5",
     "d2",
     "d3",
+    "d4",
     "d5",
     "d6",
-    "d9"
+    "d7",
+    "d8",
+    "d12"
    ],
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "D0": "a3",
-     "D1": "a4",
-     "D2": "a5",
-     "D3": "a6",
-     "D4": "a7",
-     "D5": "a8",
-     "D6": "a9",
-     "D7": "a10",
-     "D8": "a11",
-     "D9": "a12",
-     "D10": "a13",
-     "D11": "a14",
-     "D12": "a15",
-     "D13": "a16"
+     "d1": "b3",
+     "d0": "b4",
+     "reset": "b5",
+     "gnd": "b6",
+     "d2": "b7",
+     "d3": "b8",
+     "d4": "b9",
+     "d5": "b10",
+     "d6": "b11",
+     "d7": "b12",
+     "d8": "b13",
+     "d9": "b14",
+     "d10": "b15",
+     "d11": "b16",
+     "d12": "b17",
+     "vin": "f3",
+     "gnd2": "f4",
+     "reset2": "f5",
+     "5v": "f6",
+     "a7": "f7",
+     "a6": "f8",
+     "a5": "f9",
+     "a4": "f10",
+     "a3": "f11",
+     "a2": "f12",
+     "a1": "f13",
+     "a0": "f14",
+     "aref": "f15",
+     "3v3": "f16",
+     "d13": "f17"
     }
    },
    "x": 64,
+   "y": 269
+  },
+  {
+   "id": "R_PU_sda",
+   "kind": "resistor",
+   "params": {
+    "ohms": 4700
+   },
+   "terminals": [
+    "a",
+    "b"
+   ],
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "a21",
+     "b": "a25"
+    }
+   },
+   "x": 316,
+   "y": 255
+  },
+  {
+   "id": "R_PU_scl",
+   "kind": "resistor",
+   "params": {
+    "ohms": 4700
+   },
+   "terminals": [
+    "a",
+    "b"
+   ],
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "a": "a27",
+     "b": "a31"
+    }
+   },
+   "x": 400,
    "y": 255
   },
   {
@@ -90,11 +155,11 @@
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "a": "a20",
-     "b": "a24"
+     "a": "a33",
+     "b": "a37"
     }
    },
-   "x": 302,
+   "x": 484,
    "y": 255
   },
   {
@@ -110,11 +175,11 @@
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "a": "a26",
-     "b": "a30"
+     "a": "a39",
+     "b": "a43"
     }
    },
-   "x": 386,
+   "x": 568,
    "y": 255
   },
   {
@@ -130,11 +195,11 @@
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "a": "a32",
-     "b": "a36"
+     "a": "a45",
+     "b": "a49"
     }
    },
-   "x": 470,
+   "x": 652,
    "y": 255
   },
   {
@@ -150,87 +215,15 @@
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "a": "a38",
-     "b": "a42"
+     "a": "a51",
+     "b": "a55"
     }
    },
-   "x": 554,
+   "x": 736,
    "y": 255
   },
   {
    "id": "BTN_row0_col0",
-   "kind": "button",
-   "params": {},
-   "terminals": [
-    "a",
-    "b"
-   ],
-   "seat": {
-    "boardId": "bb1",
-    "leadMap": {
-     "a": "e49",
-     "b": "f49"
-    }
-   },
-   "x": 708,
-   "y": 311
-  },
-  {
-   "id": "BTN_row0_col1",
-   "kind": "button",
-   "params": {},
-   "terminals": [
-    "a",
-    "b"
-   ],
-   "seat": {
-    "boardId": "bb1",
-    "leadMap": {
-     "a": "e53",
-     "b": "f53"
-    }
-   },
-   "x": 764,
-   "y": 311
-  },
-  {
-   "id": "BTN_row0_col2",
-   "kind": "button",
-   "params": {},
-   "terminals": [
-    "a",
-    "b"
-   ],
-   "seat": {
-    "boardId": "bb1",
-    "leadMap": {
-     "a": "e57",
-     "b": "f57"
-    }
-   },
-   "x": 820,
-   "y": 311
-  },
-  {
-   "id": "BTN_row0_col3",
-   "kind": "button",
-   "params": {},
-   "terminals": [
-    "a",
-    "b"
-   ],
-   "seat": {
-    "boardId": "bb1",
-    "leadMap": {
-     "a": "e61",
-     "b": "f61"
-    }
-   },
-   "x": 876,
-   "y": 311
-  },
-  {
-   "id": "BTN_row1_col0",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -248,7 +241,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row1_col1",
+   "id": "BTN_row0_col1",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -266,7 +259,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row1_col2",
+   "id": "BTN_row0_col2",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -284,7 +277,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row1_col3",
+   "id": "BTN_row0_col3",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -302,7 +295,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row2_col0",
+   "id": "BTN_row1_col0",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -320,7 +313,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row2_col1",
+   "id": "BTN_row1_col1",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -338,7 +331,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row2_col2",
+   "id": "BTN_row1_col2",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -356,7 +349,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row2_col3",
+   "id": "BTN_row1_col3",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -374,7 +367,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row3_col0",
+   "id": "BTN_row2_col0",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -392,7 +385,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row3_col1",
+   "id": "BTN_row2_col1",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -410,7 +403,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row3_col2",
+   "id": "BTN_row2_col2",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -428,7 +421,7 @@
    "y": 671
   },
   {
-   "id": "BTN_row3_col3",
+   "id": "BTN_row2_col3",
    "kind": "button",
    "params": {},
    "terminals": [
@@ -446,6 +439,78 @@
    "y": 671
   },
   {
+   "id": "BTN_row3_col0",
+   "kind": "button",
+   "params": {},
+   "terminals": [
+    "a",
+    "b"
+   ],
+   "seat": {
+    "boardId": "bb2",
+    "leadMap": {
+     "a": "e51",
+     "b": "f51"
+    }
+   },
+   "x": 736,
+   "y": 671
+  },
+  {
+   "id": "BTN_row3_col1",
+   "kind": "button",
+   "params": {},
+   "terminals": [
+    "a",
+    "b"
+   ],
+   "seat": {
+    "boardId": "bb2",
+    "leadMap": {
+     "a": "e55",
+     "b": "f55"
+    }
+   },
+   "x": 792,
+   "y": 671
+  },
+  {
+   "id": "BTN_row3_col2",
+   "kind": "button",
+   "params": {},
+   "terminals": [
+    "a",
+    "b"
+   ],
+   "seat": {
+    "boardId": "bb2",
+    "leadMap": {
+     "a": "e59",
+     "b": "f59"
+    }
+   },
+   "x": 848,
+   "y": 671
+  },
+  {
+   "id": "BTN_row3_col3",
+   "kind": "button",
+   "params": {},
+   "terminals": [
+    "a",
+    "b"
+   ],
+   "seat": {
+    "boardId": "bb3",
+    "leadMap": {
+     "a": "e3",
+     "b": "f3"
+    }
+   },
+   "x": 64,
+   "y": 1031
+  },
+  {
    "id": "OLED",
    "kind": "ssd1306",
    "params": {},
@@ -458,74 +523,86 @@
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "vcc": "a44",
-     "gnd": "a45",
-     "sda": "a46",
-     "scl": "a47"
+     "vcc": "a57",
+     "gnd": "a58",
+     "sda": "a59",
+     "scl": "a60"
     }
    },
-   "x": 638,
+   "x": 820,
    "y": 255
   }
  ],
  "wires": [
   {
    "from": "MCU",
-   "fromTerminal": "d13",
+   "fromTerminal": "a4",
+   "to": "R_PU_sda",
+   "toTerminal": "b"
+  },
+  {
+   "from": "MCU",
+   "fromTerminal": "a4",
    "to": "OLED",
    "toTerminal": "sda"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d12",
+   "fromTerminal": "a5",
+   "to": "R_PU_scl",
+   "toTerminal": "b"
+  },
+  {
+   "from": "MCU",
+   "fromTerminal": "a5",
    "to": "OLED",
    "toTerminal": "scl"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d8",
+   "fromTerminal": "d2",
    "to": "BTN_row0_col0",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d8",
+   "fromTerminal": "d2",
    "to": "BTN_row0_col1",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d8",
+   "fromTerminal": "d2",
    "to": "BTN_row0_col2",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d8",
+   "fromTerminal": "d2",
    "to": "BTN_row0_col3",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d7",
+   "fromTerminal": "d3",
    "to": "BTN_row1_col0",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d7",
+   "fromTerminal": "d3",
    "to": "BTN_row1_col1",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d7",
+   "fromTerminal": "d3",
    "to": "BTN_row1_col2",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d7",
+   "fromTerminal": "d3",
    "to": "BTN_row1_col3",
    "toTerminal": "a"
   },
@@ -555,147 +632,159 @@
   },
   {
    "from": "MCU",
-   "fromTerminal": "d2",
+   "fromTerminal": "d5",
    "to": "BTN_row3_col0",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d2",
+   "fromTerminal": "d5",
    "to": "BTN_row3_col1",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d2",
+   "fromTerminal": "d5",
    "to": "BTN_row3_col2",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d2",
+   "fromTerminal": "d5",
    "to": "BTN_row3_col3",
    "toTerminal": "a"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d3",
+   "fromTerminal": "d6",
    "to": "R_PU_col0",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d3",
+   "fromTerminal": "d6",
    "to": "BTN_row0_col0",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d3",
+   "fromTerminal": "d6",
    "to": "BTN_row1_col0",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d3",
+   "fromTerminal": "d6",
    "to": "BTN_row2_col0",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d3",
+   "fromTerminal": "d6",
    "to": "BTN_row3_col0",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d5",
+   "fromTerminal": "d7",
    "to": "R_PU_col1",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d5",
+   "fromTerminal": "d7",
    "to": "BTN_row0_col1",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d5",
+   "fromTerminal": "d7",
    "to": "BTN_row1_col1",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d5",
+   "fromTerminal": "d7",
    "to": "BTN_row2_col1",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d5",
+   "fromTerminal": "d7",
    "to": "BTN_row3_col1",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d6",
+   "fromTerminal": "d8",
    "to": "R_PU_col2",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d6",
+   "fromTerminal": "d8",
    "to": "BTN_row0_col2",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d6",
+   "fromTerminal": "d8",
    "to": "BTN_row1_col2",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d6",
+   "fromTerminal": "d8",
    "to": "BTN_row2_col2",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d6",
+   "fromTerminal": "d8",
    "to": "BTN_row3_col2",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d9",
+   "fromTerminal": "d12",
    "to": "R_PU_col3",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d9",
+   "fromTerminal": "d12",
    "to": "BTN_row0_col3",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d9",
+   "fromTerminal": "d12",
    "to": "BTN_row1_col3",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d9",
+   "fromTerminal": "d12",
    "to": "BTN_row2_col3",
    "toTerminal": "b"
   },
   {
    "from": "MCU",
-   "fromTerminal": "d9",
+   "fromTerminal": "d12",
    "to": "BTN_row3_col3",
    "toTerminal": "b"
+  },
+  {
+   "from": "VCC",
+   "fromTerminal": "vcc",
+   "to": "R_PU_sda",
+   "toTerminal": "a"
+  },
+  {
+   "from": "VCC",
+   "fromTerminal": "vcc",
+   "to": "R_PU_scl",
+   "toTerminal": "a"
   },
   {
    "from": "VCC",
@@ -758,57 +847,155 @@
   {
    "ref": "bbw:bb1:gen_0",
    "boardId": "bb1",
-   "a": "b20",
-   "b": "t+20",
-   "color": "red"
+   "a": "g10",
+   "b": "b25",
+   "color": "green"
   },
   {
    "ref": "bbw:bb1:gen_1",
    "boardId": "bb1",
-   "a": "b26",
-   "b": "t+26",
-   "color": "red"
+   "a": "h10",
+   "b": "b59",
+   "color": "blue"
   },
   {
    "ref": "bbw:bb1:gen_2",
    "boardId": "bb1",
-   "a": "b32",
-   "b": "t+32",
-   "color": "red"
+   "a": "g9",
+   "b": "b31",
+   "color": "yellow"
   },
   {
    "ref": "bbw:bb1:gen_3",
    "boardId": "bb1",
-   "a": "b38",
-   "b": "t+38",
-   "color": "red"
+   "a": "h9",
+   "b": "b60",
+   "color": "orange"
   },
   {
    "ref": "bbw:bb1:gen_4",
    "boardId": "bb1",
-   "a": "b44",
-   "b": "t+44",
-   "color": "red"
+   "a": "a11",
+   "b": "b37",
+   "color": "purple"
   },
   {
    "ref": "bbw:bb1:gen_5",
    "boardId": "bb1",
-   "a": "b45",
-   "b": "b-45",
-   "color": "black"
+   "a": "a12",
+   "b": "b43",
+   "color": "green"
   },
   {
    "ref": "bbw:bb1:gen_6",
    "boardId": "bb1",
-   "a": "c44",
-   "b": "t+44",
-   "color": "red"
+   "a": "a13",
+   "b": "b49",
+   "color": "blue"
   },
   {
    "ref": "bbw:bb1:gen_7",
    "boardId": "bb1",
-   "a": "c45",
-   "b": "b-45",
+   "a": "a17",
+   "b": "b55",
+   "color": "yellow"
+  },
+  {
+   "ref": "bbw:bb1:gen_8",
+   "boardId": "bb1",
+   "a": "b21",
+   "b": "t+21",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_9",
+   "boardId": "bb1",
+   "a": "b27",
+   "b": "t+27",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_10",
+   "boardId": "bb1",
+   "a": "b33",
+   "b": "t+33",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_11",
+   "boardId": "bb1",
+   "a": "b39",
+   "b": "t+39",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_12",
+   "boardId": "bb1",
+   "a": "b45",
+   "b": "t+45",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_13",
+   "boardId": "bb1",
+   "a": "b51",
+   "b": "t+51",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_14",
+   "boardId": "bb1",
+   "a": "b57",
+   "b": "t+57",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_15",
+   "boardId": "bb1",
+   "a": "b58",
+   "b": "b-58",
+   "color": "black"
+  },
+  {
+   "ref": "bbw:bb1:gen_16",
+   "boardId": "bb1",
+   "a": "a6",
+   "b": "b-6",
+   "color": "black"
+  },
+  {
+   "ref": "bbw:bb1:gen_17",
+   "boardId": "bb1",
+   "a": "g4",
+   "b": "b-4",
+   "color": "black"
+  },
+  {
+   "ref": "bbw:bb1:gen_18",
+   "boardId": "bb1",
+   "a": "g6",
+   "b": "t+6",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_19",
+   "boardId": "bb1",
+   "a": "g16",
+   "b": "t+16",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_20",
+   "boardId": "bb1",
+   "a": "c57",
+   "b": "t+57",
+   "color": "red"
+  },
+  {
+   "ref": "bbw:bb1:gen_21",
+   "boardId": "bb1",
+   "a": "c58",
+   "b": "b-58",
    "color": "black"
   }
  ],

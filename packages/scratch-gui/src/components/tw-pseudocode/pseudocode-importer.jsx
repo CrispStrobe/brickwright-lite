@@ -326,6 +326,36 @@ const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'Jav
 // DEVICE_CHIP_LABELS imported from ../../lib/device-labels.js
 const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic']);
 
+const representationNotice = (lang, asmMode, locale) => {
+    const de = /^de/i.test(locale || '');
+    if (lang === 'micropython') return de ?
+        'Generierte schreibgeschützte Vorschau • Blöcke → micro:bit Python • kein Rückweg' :
+        'Generated read-only preview • Blocks → micro:bit Python • no reverse conversion';
+    if (lang === 'asm') {
+        if (asmMode === 'listing') return de ?
+            'Generiertes schreibgeschütztes Listing • Compiler → ASM • kein Rückweg zu Blöcken' :
+            'Generated read-only listing • compiler → ASM • no reverse conversion to Blocks';
+        return de ?
+            'Editierbarer ASM-Quelltext • assemblieren und ausführen • kein Rückweg zu Blöcken' :
+            'Editable ASM source • assemble and run • no reverse conversion to Blocks';
+    }
+    const name = LANG_LABEL[lang] || lang;
+    return de ?
+        `Editierbarer ${name}-Quelltext • Umwandlung zu/von Blöcken nur für die unterstützte Teilmenge • Warnungen prüfen` :
+        `Editable ${name} source • converts to/from Blocks only for the supported subset • review warnings`;
+};
+
+const classifyConversionWarnings = warnings => {
+    const unsupported = [];
+    const changed = [];
+    for (const warning of warnings || []) {
+        const text = String(warning);
+        if (/unsupported|not represent|cannot|could not|no sprite named/i.test(text)) unsupported.push(text);
+        else changed.push(text);
+    }
+    return {unsupported, changed};
+};
+
 // What the Python / JavaScript front-ends actually support (shown as the reference
 // when those tabs are active, so you know what round-trips to blocks).
 // Section header keys map to L10N.h — code snippets stay English (they ARE code).
@@ -470,7 +500,8 @@ class PseudocodeImporter extends React.Component {
         // end up with (say) pseudocode sitting in the Python tab.
         this.state = {lang: 'pseudocode', buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
-            uploads: [], status: '', busy: false, showRef: false, showInfo: false, showArt: false, output: null, running: false,
+            uploads: [], status: '', conversionReport: null, busy: false, showRef: false, showInfo: false,
+            showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
             driverMode: 'shim', asyncMode: false, eventsMode: false,
@@ -782,7 +813,7 @@ class PseudocodeImporter extends React.Component {
             return;
         }
 
-        this.setState({busy: true, status: this.L.stCompiling});
+        this.setState({busy: true, status: this.L.stCompiling, conversionReport: null});
         try {
             const stc = this.currentStc();
             const deviceId = (stc && stc.device || 'stc12c5a60s2').toLowerCase();
@@ -1763,17 +1794,24 @@ class PseudocodeImporter extends React.Component {
             }
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
-            this.setState({buffers: nb, status: warns.length ?
-                this.L.stWarn(warns.slice(0, 4).join(' · ')) :
-                this.L.stLoaded});
+            const classified = classifyConversionWarnings(warns);
+            this.setState({
+                buffers: nb,
+                status: warns.length ? this.L.stWarn(warns.slice(0, 4).join(' · ')) : this.L.stLoaded,
+                conversionReport: {direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: true,
+                    changed: classified.changed, unsupported: classified.unsupported}
+            });
         } catch (e) {
-            this.setState({status: this.L.stError(e.message)});
+            this.setState({status: this.L.stError(e.message), conversionReport: {
+                direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: false,
+                changed: [], unsupported: [e.message]
+            }});
         }
         this.setState({busy: false});
     }
     // Read the running project into all languages at once.
     async fromBlocks () {
-        this.setState({busy: true, status: this.L.stReading});
+        this.setState({busy: true, status: this.L.stReading, conversionReport: null});
         try {
             const SB3Creator = (await this.lib()).default;
             const project = JSON.parse(this.props.vm.toJSON());
@@ -1789,11 +1827,19 @@ class PseudocodeImporter extends React.Component {
                 micropython: mpResult.ok ? mpResult.py : `# === Cannot generate MicroPython ===\n${mpResult.reasons.map(s => '# ' + s).join('\n')}`
             };
             const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
-            this.setState({buffers, output: null, status: unsupported ?
-                `Read into all languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
-                'Read the current project into all languages. Edit any of them, then “To blocks”.'});
+            this.setState({
+                buffers,
+                output: null,
+                status: unsupported ?
+                    `Read into all languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
+                    'Read the current project into all languages. Edit any of them, then “To blocks”.',
+                conversionReport: {direction: 'Blocks → Code', preserved: true, changed: [],
+                    unsupported: unsupported ? [`${unsupported} block(s) left as unsupported comments`] : []}
+            });
         } catch (e) {
-            this.setState({status: this.L.stError(e.message)});
+            this.setState({status: this.L.stError(e.message), conversionReport: {
+                direction: 'Blocks → Code', preserved: false, changed: [], unsupported: [e.message]
+            }});
         }
         this.setState({busy: false});
     }
@@ -2060,13 +2106,21 @@ class PseudocodeImporter extends React.Component {
                     </button>
                 </div>
 
+                <div data-testid="bw-representation-status" role="status"
+                    style={{padding: '5px 10px', background: '#fff8e1', border: '1px solid #f0c36d',
+                        borderRadius: '0 0 6px 6px', color: '#5d4300', fontSize: 11, lineHeight: 1.35,
+                        flexShrink: 0}}>
+                    {representationNotice(this.state.lang, this.state.asmMode, this.props.locale)}
+                </div>
+
                 {this.state.showInfo && !max && (
                     <div style={{padding: '6px 10px', background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: '0 0 8px 8px', fontSize: 12, color: '#334155', flexShrink: 0}}>
                         {pickLocale(this.props.locale) === 'de' ? (
                             <React.Fragment>
                                 Schreibe dein Projekt als Code in jedem Tab. <strong>Pseudocode</strong>, <strong>Python</strong>,{' '}
-                                <strong>JavaScript</strong>, <strong>C</strong> und <strong>BASIC</strong> sind wechselseitig:{' '}
+                                <strong>JavaScript</strong>, <strong>C</strong> und <strong>BASIC</strong> wandeln nur die{' '}
+                                unterstützte Teilmenge in beide Richtungen um; Warnungen benennen nicht darstellbare Konstrukte:{' '}
                                 <strong>⇦ Zu Blöcken</strong> kompiliert den aktiven Tab, <strong>Von Blöcken ⇨</strong>{' '}
                                 liest das aktuelle Projekt in jede Sprache ein, Tab-Wechsel wandelt um.{' '}
                                 <strong>ASM</strong> ist bewusst einbahnig — schreiben, assemblieren, ausführen; kein Rückweg zu Blöcken.{' '}
@@ -2076,7 +2130,8 @@ class PseudocodeImporter extends React.Component {
                         ) : (
                             <React.Fragment>
                                 Write your project as code in any tab. <strong>Pseudocode</strong>, <strong>Python</strong>,{' '}
-                                <strong>JavaScript</strong>, <strong>C</strong> and <strong>BASIC</strong> are two-way:{' '}
+                                <strong>JavaScript</strong>, <strong>C</strong> and <strong>BASIC</strong> convert only the{' '}
+                                supported subset in both directions; warnings identify constructs that cannot be represented:{' '}
                                 <strong>⇦ To blocks</strong> compiles the active tab, <strong>From blocks ⇨</strong>{' '}
                                 reads the current project into every language, switching tabs converts.{' '}
                                 <strong>ASM</strong> is deliberately one-way — write, assemble and run.{' '}
@@ -2394,6 +2449,32 @@ class PseudocodeImporter extends React.Component {
                     ) : null}
                     {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
                 </div>
+                {this.state.conversionReport ? (() => {
+                    const report = this.state.conversionReport;
+                    const de = pickLocale(this.props.locale) === 'de';
+                    return (
+                        <div data-testid="bw-conversion-report" role="status"
+                            style={{marginTop: 4, padding: '7px 10px', border: '1px solid #cbd5e1',
+                                borderRadius: 6, background: '#f8fafc', fontSize: 12, color: '#334155',
+                                flexShrink: 0}}>
+                            <strong>{de ? 'Umwandlungsbericht' : 'Conversion report'}: {report.direction}</strong>
+                            <div data-testid="bw-conversion-preserved" style={{color: report.preserved ? '#166534' : '#991b1b'}}>
+                                {de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
+                                    (de ? 'Projektstruktur erzeugt und geladen' : 'project structure generated and loaded') :
+                                    (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}
+                            </div>
+                            <div data-testid="bw-conversion-changed">
+                                {de ? 'Geändert' : 'Changed'}: {report.changed.length ? report.changed.join(' · ') :
+                                    (de ? 'keine gemeldeten Änderungen' : 'no reported changes')}
+                            </div>
+                            <div data-testid="bw-conversion-unsupported"
+                                style={{color: report.unsupported.length ? '#92400e' : '#334155'}}>
+                                {de ? 'Nicht unterstützt' : 'Unsupported'}: {report.unsupported.length ?
+                                    report.unsupported.join(' · ') : (de ? 'nichts gemeldet' : 'nothing reported')}
+                            </div>
+                        </div>
+                    );
+                })() : null}
                 {this.state.lang === 'basic' && this.state.showBasicInfo && (
                     <div style={{padding: '6px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: 8, fontSize: 13, color: '#334155', marginTop: 4, flexShrink: 0}}

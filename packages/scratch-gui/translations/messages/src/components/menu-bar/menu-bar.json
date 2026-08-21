@@ -50,8 +50,13 @@
     "defaultMessage": "File"
   },
   {
+    "id": "gui.menuBar.brickwrightLessons",
+    "description": "Open the interactive Brickwright lessons library",
+    "defaultMessage": "Brickwright lessons…"
+  },
+  {
     "id": "gui.menuBar.tutorialsFile",
-    "defaultMessage": "Tutorials"
+    "defaultMessage": "Scratch tutorials"
   },
   {
     "id": "gui.menuBar.downloadToComputer",

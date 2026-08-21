@@ -26,8 +26,8 @@
   },
   {
     "id": "gui.stageHeader.circuitOnly",
-    "description": "Button to show the Circuit Designer without panels — clean view for inspection",
-    "defaultMessage": "Circuit Designer (only)"
+    "description": "Button for the clean Circuit Designer view; the Selectors and Instruments panels can still blend in optionally, so \"(only)\" was dropped as misleading",
+    "defaultMessage": "Circuit Designer"
   },
   {
     "id": "gui.stageHeader.debuggerFull",

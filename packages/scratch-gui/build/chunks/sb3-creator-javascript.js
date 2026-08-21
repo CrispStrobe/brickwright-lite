@@ -1,1 +1,936 @@
-"use strict";(self.webpackChunkGUI=self.webpackChunkGUI||[]).push([[724],{54018:(t,e,s)=>{s.r(e),s.d(e,{default:()=>o});var i=s(36687);const r=new Set(["function","if","else","while","for","return","let","const","var","true","false","null","undefined","new","typeof","break","continue"]),a=["===","!==","=>","**","==","!=","<=",">=","&&","||","++","--","+=","-=","*=","/=","%=","(",")","{","}","[","]",";",",",".","+","-","*","/","%","<",">","=","!","?",":"];class n{constructor(t){this.s=t.replace(/\r\n?/g,"\n"),this.i=0,this.line=1,this.toks=[],this._pendingComment=""}error(t){const e=new Error("JavaScript parse error (line ".concat(this.line,"): ").concat(t));throw e.isJsParseError=!0,e}push(t,e){const s={type:t,value:e,line:this.line};this._pendingComment&&"EOF"!==t&&(s.comment=this._pendingComment,this._pendingComment=""),this.toks.push(s)}tokenize(){const t=this.s;for(;this.i<t.length;){const e=t[this.i];if("\n"!==e)if(" "!==e&&"\t"!==e)if("/"!==e||"/"!==t[this.i+1])if("/"!==e||"*"!==t[this.i+1])'"'!==e&&"'"!==e&&"`"!==e?/[0-9]/.test(e)||"."===e&&/[0-9]/.test(t[this.i+1]||"")?this.readNumber():/[A-Za-z_$]/.test(e)?this.readName():this.readOp():this.readString(e);else{for(this.i+=2;this.i<t.length&&("*"!==t[this.i]||"/"!==t[this.i+1]);)"\n"===t[this.i]&&this.line++,this.i++;this.i+=2}else{this.i+=2," "===t[this.i]&&this.i++;let e="";for(;this.i<t.length&&"\n"!==t[this.i];)e+=t[this.i],this.i++;this._pendingComment=this._pendingComment?"".concat(this._pendingComment,"\n").concat(e):e}else this.i++;else this.line++,this.i++}return this.push("EOF"),this.toks}readString(t){const e=this.s;this.i++;let s="";for(;this.i<e.length;){const i=e[this.i];if("\\"!==i){if(i===t)return this.i++,void this.push("STRING",s);"\n"===i&&this.line++,s+=i,this.i++}else{const t=e[this.i+1],i={n:"\n",t:"\t",r:"\r","\\":"\\","'":"'",'"':'"',"`":"`",0:"\0"};s+=void 0!==i[t]?i[t]:t,this.i+=2}}this.error("unterminated string")}readNumber(){const t=this.s;let e="";for(;this.i<t.length&&/[0-9._eExXaAbBcCdDfF]/.test(t[this.i]);)e+=t[this.i],this.i++;this.push("NUMBER",e)}readName(){const t=this.s;let e="";for(;this.i<t.length&&/[A-Za-z0-9_$]/.test(t[this.i]);)e+=t[this.i],this.i++;this.push(r.has(e)?e:"NAME",e)}readOp(){const t=this.s;for(const e of a)if(t.slice(this.i,this.i+e.length)===e)return this.push("OP",e),void(this.i+=e.length);this.error('unexpected character "'.concat(t[this.i],'"'))}}class h{constructor(t){this.toks=t,this.p=0}peek(){let t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:0;return this.toks[this.p+t]||{type:"EOF"}}next(){return this.toks[this.p++]}at(t,e){const s=this.peek();return s.type===t&&(void 0===e||s.value===e)}eat(t,e){return this.at(t,e)||this.err("expected ".concat(e||t,", got ").concat(this.peek().type," ").concat(this.peek().value||"")),this.next()}err(t){const e=new Error("JavaScript parse error (line ".concat(this.peek().line||"?","): ").concat(t));throw e.isJsParseError=!0,e}semi(){for(;this.at("OP",";");)this.next()}parseProgram(){const t=[];for(;!this.at("EOF");){if(this.at("OP",";")){this.next();continue}const e=this.parseStatement();e&&t.push(e)}return{type:"Program",body:t}}parseBlockOrStmt(){if(this.at("OP","{"))return this.parseBlock();const t=this.parseStatement();return t?[t]:[]}parseBlock(){this.eat("OP","{");const t=[];for(;!this.at("OP","}")&&!this.at("EOF");){if(this.at("OP",";")){this.next();continue}const e=this.parseStatement();e&&t.push(e)}return this.eat("OP","}"),t}parseStatement(){const t=this.peek(),e=t.comment,s=this.parseStatementInner(t);return s&&e&&!s.comment&&(s.comment=e),s}parseStatementInner(t){if("function"===t.type)return this.parseFunction();if("if"===t.type)return this.parseIf();if("while"===t.type)return this.parseWhile();if("for"===t.type)return this.parseFor();if("return"===t.type){this.next();let t=null;return this.at("OP",";")||this.at("OP","}")||this.at("EOF")||(t=this.parseExpr()),this.semi(),{type:"Return",value:t}}return"break"===t.type?(this.next(),this.semi(),{type:"Break"}):"continue"===t.type?(this.next(),this.semi(),{type:"Continue"}):"let"===t.type||"const"===t.type||"var"===t.type?this.parseDeclaration():this.at("OP","{")?{type:"BlockStmt",body:this.parseBlock()}:this.parseExprStatement()}parseDeclaration(){if(this.next(),this.at("NAME")&&["scratch","_arrays"].includes(this.peek().value))return this.skipToStatementEnd(),null;const t=[];for(;;){const e=this.eat("NAME").value;let s={type:"Const",value:null};if(this.at("OP","=")&&(this.next(),s=this.parseExpr()),t.push({type:"Assign",target:{type:"Name",id:e},value:s}),!this.at("OP",","))break;this.next()}return this.semi(),1===t.length?t[0]:{type:"BlockStmt",body:t}}skipToStatementEnd(){let t=0;for(;!this.at("EOF");){const e=this.peek();if("OP"===e.type&&"([{".includes(e.value))t++;else if("OP"===e.type&&")]}".includes(e.value))t--;else if("OP"===e.type&&";"===e.value&&t<=0)return void this.next();this.next()}}parseFunction(){this.eat("function");const t=this.eat("NAME").value;this.eat("OP","(");const e=[];for(;!this.at("OP",")");)e.push(this.eat("NAME").value),this.at("OP",",")&&this.next();return this.eat("OP",")"),t.startsWith("_")?(this.skipBraces(),null):{type:"Def",name:t,args:e,body:this.parseBlock()}}skipBraces(){this.eat("OP","{");let t=1;for(;t>0&&!this.at("EOF");)this.at("OP","{")?t++:this.at("OP","}")&&t--,this.next()}parseIf(){this.eat("if"),this.eat("OP","(");const t=this.parseExpr();this.eat("OP",")");const e=this.parseBlockOrStmt();let s=[];return this.at("else")&&(this.eat("else"),s=this.at("if")?[this.parseIf()]:this.parseBlockOrStmt()),{type:"If",test:t,body:e,orelse:s}}parseWhile(){this.eat("while"),this.eat("OP","(");const t=this.parseExpr();return this.eat("OP",")"),{type:"While",test:t,body:this.parseBlockOrStmt()}}parseFor(){this.eat("for"),this.eat("OP","("),(this.at("let")||this.at("const")||this.at("var"))&&this.next();let t="i";this.at("NAME")&&(t=this.next().value,this.at("OP","=")&&(this.next(),this.parseExpr())),this.eat("OP",";");const e=this.at("OP",";")?null:this.parseExpr();this.eat("OP",";");let s=0;for(;!this.at("EOF");){if(this.at("OP","("))s++;else if(this.at("OP",")")){if(0===s)break;s--}this.next()}this.eat("OP",")");const i=this.parseBlockOrStmt();let r={type:"Num",value:"0"};return!e||"Compare"!==e.type||"<"!==e.op&&"<="!==e.op||(r="<"===e.op?e.right:{type:"BinOp",op:"+",left:e.right,right:{type:"Num",value:"1"}}),{type:"For",target:t,iter:{type:"Call",func:{type:"Name",id:"range"},args:[r]},body:i}}parseExprStatement(){const t=this.parseExpr();if(this.at("OP","=")){this.next();const e=this.parseExpr();return this.semi(),{type:"Assign",target:t,value:e}}for(const e of["+=","-=","*=","/=","%="])if(this.at("OP",e)){this.next();const s=this.parseExpr();return this.semi(),{type:"AugAssign",op:e[0],target:t,value:s}}if(this.at("OP","++")||this.at("OP","--")){const e=this.next().value;return this.semi(),{type:"AugAssign",op:e[0],target:t,value:{type:"Num",value:"1"}}}return this.semi(),{type:"Expr",value:t}}parseExpr(){return this.parseTernary()}parseTernary(){const t=this.parseOr();if(this.at("OP","?")){this.next();const e=this.parseExpr();return this.eat("OP",":"),{type:"Ternary",test:t,then:e,other:this.parseExpr()}}return t}parseOr(){let t=this.parseAnd();for(;this.at("OP","||");)this.next(),t={type:"Bool",op:"or",left:t,right:this.parseAnd()};return t}parseAnd(){let t=this.parseEquality();for(;this.at("OP","&&");)this.next(),t={type:"Bool",op:"and",left:t,right:this.parseEquality()};return t}parseEquality(){let t=this.parseRel();for(;;)if(this.at("OP","===")||this.at("OP","=="))this.next(),t={type:"Compare",op:"==",left:t,right:this.parseRel()};else{if(!this.at("OP","!==")&&!this.at("OP","!="))break;this.next(),t={type:"Compare",op:"!=",left:t,right:this.parseRel()}}return t}parseRel(){let t=this.parseAdd();for(;;){let e=null;if(this.at("OP","<=")?e="<=":this.at("OP",">=")?e=">=":this.at("OP","<")?e="<":this.at("OP",">")&&(e=">"),!e)break;this.next(),t={type:"Compare",op:e,left:t,right:this.parseAdd()}}return t}parseAdd(){let t=this.parseMul();for(;this.at("OP","+")||this.at("OP","-");)t={type:"BinOp",op:this.next().value,left:t,right:this.parseMul()};return t}parseMul(){let t=this.parseUnary();for(;this.at("OP","*")||this.at("OP","/")||this.at("OP","%");)t={type:"BinOp",op:this.next().value,left:t,right:this.parseUnary()};return t}parseUnary(){return this.at("OP","!")?(this.next(),{type:"Not",operand:this.parseUnary()}):this.at("OP","-")||this.at("OP","+")?{type:"Unary",op:this.next().value,operand:this.parseUnary()}:this.at("typeof")?(this.next(),this.parseUnary(),{type:"Str",value:"number"}):this.parsePower()}parsePower(){let t=this.parseAtom();return this.at("OP","**")&&(this.next(),t={type:"BinOp",op:"**",left:t,right:this.parseUnary()}),t}parseAtom(){let t=this.parsePrimary();for(;;)if(this.at("OP","(")){this.next();const e=[];for(;!this.at("OP",")");)e.push(this.parseExpr()),this.at("OP",",")&&this.next();this.eat("OP",")"),t=this.normalizeCall(t,e)}else if(this.at("OP","[")){this.next();const e=this.parseExpr();this.eat("OP","]"),t={type:"Subscript",value:t,index:e}}else{if(!this.at("OP","."))break;this.next(),t={type:"Attribute",value:t,attr:this.eat("NAME").value}}return t}normalizeCall(t,e){if("Attribute"===t.type){const s=t.value,i=t.attr;if("Name"!==s.type||"_arrays"!==s.id&&"scratch"!==s.id){if("includes"===i)return{type:"Compare",op:"in",left:e[0],right:s};if("push"===i)return{type:"Call",func:{type:"Attribute",value:s,attr:"append"},args:e}}return"Name"===s.type&&"console"===s.id&&"log"===i?{type:"Call",func:{type:"Name",id:"print"},args:e}:"Name"===s.type&&"Math"===s.id?this.mathCall(i,e):{type:"Call",func:t,args:e}}if("Name"===t.type){const s=t.id;if("String"===s)return{type:"Call",func:{type:"Name",id:"str"},args:e};if("Number"===s||"parseFloat"===s)return{type:"Call",func:{type:"Name",id:"float"},args:e};if("parseInt"===s)return{type:"Call",func:{type:"Name",id:"int"},args:e};if("prompt"===s)return{type:"Call",func:{type:"Name",id:"input"},args:e}}return{type:"Call",func:t,args:e}}mathCall(t,e){return"abs"===t?{type:"Call",func:{type:"Name",id:"abs"},args:e}:"round"===t?{type:"Call",func:{type:"Name",id:"round"},args:e}:{type:"Call",func:{type:"Attribute",value:{type:"Name",id:"math"},attr:t},args:e}}parsePrimary(){const t=this.peek();if("NUMBER"===t.type)return this.next(),{type:"Num",value:t.value};if("STRING"===t.type)return this.next(),{type:"Str",value:t.value};if("true"===t.type)return this.next(),{type:"Const",value:!0};if("false"===t.type)return this.next(),{type:"Const",value:!1};if("null"===t.type||"undefined"===t.type)return this.next(),{type:"Const",value:null};if("NAME"===t.type)return this.next(),{type:"Name",id:t.value};if(this.at("OP","(")){let t=this.p,e=0;for(;t<this.toks.length;t++){const s=this.toks[t];if("OP"===s.type&&"("===s.value)e++;else if("OP"===s.type&&")"===s.value&&(e--,0===e))break}const s=this.toks[t+1];if(s&&"OP"===s.type&&"=>"===s.value)return this.p=t+2,this.at("OP","{")?this.skipBraces():this.parseExpr(),{type:"Const",value:null};this.next();const i=this.parseExpr();return this.eat("OP",")"),i}if(this.at("OP","[")){this.next();const t=[];for(;!this.at("OP","]");)t.push(this.parseExpr()),this.at("OP",",")&&this.next();return this.eat("OP","]"),{type:"List",elts:t}}if(this.at("OP","{"))return this.skipBraces(),{type:"Const",value:null};if("function"===t.type){if(this.next(),this.at("NAME")&&this.next(),this.at("OP","(")){let t=0;do{this.at("OP","(")?t++:this.at("OP",")")&&t--,this.next()}while(t>0&&!this.at("EOF"))}return this.at("OP","{")&&this.skipBraces(),{type:"Const",value:null}}return this.err("unexpected ".concat(t.type," ").concat(t.value||"")),null}}function p(t){const e=[];for(const s of t)if(s)if("BlockStmt"!==s.type){for(const t of["body","orelse"])Array.isArray(s[t])&&(s[t]=p(s[t]));e.push(s)}else e.push(...p(s.body));return e}function o(t){if(!t||!t.trim())throw new Error("JavaScript source is empty");const e=new n(t).tokenize(),s=new h(e).parseProgram();s.body=p(s.body);const r=new i.Translator;return{pseudocode:r.program(s),warnings:r.warnings}}}}]);
+"use strict";
+(self["webpackChunkGUI"] = self["webpackChunkGUI"] || []).push([["sb3-creator-javascript"],{
+
+/***/ "./src/lib/sb3-creator-javascript.js":
+/*!*******************************************!*\
+  !*** ./src/lib/sb3-creator-javascript.js ***!
+  \*******************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ javascriptToPseudocode)
+/* harmony export */ });
+/* harmony import */ var _sb3_creator_python_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./sb3-creator-python.js */ "./src/lib/sb3-creator-python.js");
+// JavaScript (restricted subset) -> Brickwright pseudocode.
+//
+// The mirror of javascript generation (generateJavaScript). It parses the same
+// algorithmic subset the emitter produces — `let` state, `function` defs, `if/else`,
+// `while`, C-style `for` counters, `console.log`/`prompt`, arithmetic, `===`/`&&`/`!`,
+// `_eq`/`_rand`, and array ops (`push`/`splice`/`length`) — into the SAME AST the Python
+// front-end builds, then hands it to the shared Translator. JS idioms are normalised to
+// the translator's Python-flavoured nodes (`console.log`→`print`, `.push`→`append`,
+// `String(x)`→`str(x)`, `Math.floor`→`math.floor`, …) as the tree is built.
+
+
+
+// ---- Tokenizer -------------------------------------------------------------------
+
+const JS_KEYWORDS = new Set(['function', 'if', 'else', 'while', 'for', 'return', 'let', 'const', 'var', 'true', 'false', 'null', 'undefined', 'new', 'typeof', 'break', 'continue']);
+const JS_OPS = ['===', '!==', '=>', '**', '==', '!=', '<=', '>=', '&&', '||', '++', '--', '+=', '-=', '*=', '/=', '%=', '(', ')', '{', '}', '[', ']', ';', ',', '.', '+', '-', '*', '/', '%', '<', '>', '=', '!', '?', ':'];
+class JsTokenizer {
+  constructor(src) {
+    this.s = src.replace(/\r\n?/g, '\n');
+    this.i = 0;
+    this.line = 1;
+    this.toks = [];
+    this._pendingComment = '';
+  }
+  error(m) {
+    const e = new Error("JavaScript parse error (line ".concat(this.line, "): ").concat(m));
+    e.isJsParseError = true;
+    throw e;
+  }
+  push(type, value) {
+    const tok = {
+      type,
+      value,
+      line: this.line
+    };
+    if (this._pendingComment && type !== 'EOF') {
+      tok.comment = this._pendingComment;
+      this._pendingComment = '';
+    }
+    this.toks.push(tok);
+  }
+  tokenize() {
+    const s = this.s;
+    while (this.i < s.length) {
+      const c = s[this.i];
+      if (c === '\n') {
+        this.line++;
+        this.i++;
+        continue;
+      }
+      if (c === ' ' || c === '\t') {
+        this.i++;
+        continue;
+      }
+      if (c === '/' && s[this.i + 1] === '/') {
+        // Leading `// comment` -> capture and attach to the next content token.
+        this.i += 2;
+        if (s[this.i] === ' ') this.i++;
+        let text = '';
+        while (this.i < s.length && s[this.i] !== '\n') {
+          text += s[this.i];
+          this.i++;
+        }
+        this._pendingComment = this._pendingComment ? "".concat(this._pendingComment, "\n").concat(text) : text;
+        continue;
+      }
+      if (c === '/' && s[this.i + 1] === '*') {
+        this.i += 2;
+        while (this.i < s.length && !(s[this.i] === '*' && s[this.i + 1] === '/')) {
+          if (s[this.i] === '\n') this.line++;
+          this.i++;
+        }
+        this.i += 2;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') {
+        this.readString(c);
+        continue;
+      }
+      if (/[0-9]/.test(c) || c === '.' && /[0-9]/.test(s[this.i + 1] || '')) {
+        this.readNumber();
+        continue;
+      }
+      if (/[A-Za-z_$]/.test(c)) {
+        this.readName();
+        continue;
+      }
+      this.readOp();
+    }
+    this.push('EOF');
+    return this.toks;
+  }
+  readString(q) {
+    const s = this.s;
+    this.i++;
+    let out = '';
+    while (this.i < s.length) {
+      const c = s[this.i];
+      if (c === '\\') {
+        const n = s[this.i + 1];
+        const map = {
+          n: '\n',
+          t: '\t',
+          r: '\r',
+          '\\': '\\',
+          "'": "'",
+          '"': '"',
+          '`': '`',
+          '0': '\0'
+        };
+        out += map[n] !== undefined ? map[n] : n;
+        this.i += 2;
+        continue;
+      }
+      if (c === q) {
+        this.i++;
+        this.push('STRING', out);
+        return;
+      }
+      if (c === '\n') this.line++;
+      out += c;
+      this.i++;
+    }
+    this.error('unterminated string');
+  }
+  readNumber() {
+    const s = this.s;
+    let out = '';
+    while (this.i < s.length && /[0-9._eExXaAbBcCdDfF]/.test(s[this.i])) {
+      out += s[this.i];
+      this.i++;
+    }
+    this.push('NUMBER', out);
+  }
+  readName() {
+    const s = this.s;
+    let out = '';
+    while (this.i < s.length && /[A-Za-z0-9_$]/.test(s[this.i])) {
+      out += s[this.i];
+      this.i++;
+    }
+    this.push(JS_KEYWORDS.has(out) ? out : 'NAME', out);
+  }
+  readOp() {
+    const s = this.s;
+    for (const op of JS_OPS) {
+      if (s.slice(this.i, this.i + op.length) === op) {
+        this.push('OP', op);
+        this.i += op.length;
+        return;
+      }
+    }
+    this.error("unexpected character \"".concat(s[this.i], "\""));
+  }
+}
+
+// ---- Parser ----------------------------------------------------------------------
+
+class JsParser {
+  constructor(toks) {
+    this.toks = toks;
+    this.p = 0;
+  }
+  peek() {
+    let k = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
+    return this.toks[this.p + k] || {
+      type: 'EOF'
+    };
+  }
+  next() {
+    return this.toks[this.p++];
+  }
+  at(type, value) {
+    const t = this.peek();
+    return t.type === type && (value === undefined || t.value === value);
+  }
+  eat(type, value) {
+    if (!this.at(type, value)) this.err("expected ".concat(value || type, ", got ").concat(this.peek().type, " ").concat(this.peek().value || ''));
+    return this.next();
+  }
+  err(m) {
+    const e = new Error("JavaScript parse error (line ".concat(this.peek().line || '?', "): ").concat(m));
+    e.isJsParseError = true;
+    throw e;
+  }
+  semi() {
+    while (this.at('OP', ';')) this.next();
+  }
+  parseProgram() {
+    const body = [];
+    while (!this.at('EOF')) {
+      if (this.at('OP', ';')) {
+        this.next();
+        continue;
+      }
+      const st = this.parseStatement();
+      if (st) body.push(st);
+    }
+    return {
+      type: 'Program',
+      body
+    };
+  }
+  parseBlockOrStmt() {
+    if (this.at('OP', '{')) return this.parseBlock();
+    const st = this.parseStatement();
+    return st ? [st] : [];
+  }
+  parseBlock() {
+    this.eat('OP', '{');
+    const body = [];
+    while (!this.at('OP', '}') && !this.at('EOF')) {
+      if (this.at('OP', ';')) {
+        this.next();
+        continue;
+      }
+      const st = this.parseStatement();
+      if (st) body.push(st);
+    }
+    this.eat('OP', '}');
+    return body;
+  }
+  parseStatement() {
+    const t = this.peek();
+    const lead = t.comment; // captured leading `// comment`
+    const st = this.parseStatementInner(t);
+    if (st && lead && !st.comment) st.comment = lead;
+    return st;
+  }
+  parseStatementInner(t) {
+    if (t.type === 'function') return this.parseFunction();
+    if (t.type === 'if') return this.parseIf();
+    if (t.type === 'while') return this.parseWhile();
+    if (t.type === 'for') return this.parseFor();
+    if (t.type === 'return') {
+      this.next();
+      let v = null;
+      if (!this.at('OP', ';') && !this.at('OP', '}') && !this.at('EOF')) v = this.parseExpr();
+      this.semi();
+      return {
+        type: 'Return',
+        value: v
+      };
+    }
+    if (t.type === 'break') {
+      this.next();
+      this.semi();
+      return {
+        type: 'Break'
+      };
+    }
+    if (t.type === 'continue') {
+      this.next();
+      this.semi();
+      return {
+        type: 'Continue'
+      };
+    }
+    if (t.type === 'let' || t.type === 'const' || t.type === 'var') return this.parseDeclaration();
+    if (this.at('OP', '{')) return {
+      type: 'BlockStmt',
+      body: this.parseBlock()
+    };
+    return this.parseExprStatement();
+  }
+  parseDeclaration() {
+    this.next(); // let/const/var
+    // The `const scratch = new Proxy(...)` / `const _arrays = (() => {…})()` runtime shims
+    // are out of the subset (arrow fns, Proxy, IIFE) and re-emitted anyway — skip raw.
+    if (this.at('NAME') && ['scratch', '_arrays'].includes(this.peek().value)) {
+      this.skipToStatementEnd();
+      return null;
+    }
+    // support `let a = 0, b = 0;`
+    const decls = [];
+    for (;;) {
+      const name = this.eat('NAME').value;
+      let value = {
+        type: 'Const',
+        value: null
+      };
+      if (this.at('OP', '=')) {
+        this.next();
+        value = this.parseExpr();
+      }
+      decls.push({
+        type: 'Assign',
+        target: {
+          type: 'Name',
+          id: name
+        },
+        value
+      });
+      if (this.at('OP', ',')) {
+        this.next();
+        continue;
+      }
+      break;
+    }
+    this.semi();
+    return decls.length === 1 ? decls[0] : {
+      type: 'BlockStmt',
+      body: decls
+    };
+  }
+
+  // Consume tokens up to and including the next depth-0 `;` (or EOF).
+  skipToStatementEnd() {
+    let depth = 0;
+    while (!this.at('EOF')) {
+      const t = this.peek();
+      if (t.type === 'OP' && '([{'.includes(t.value)) depth++;else if (t.type === 'OP' && ')]}'.includes(t.value)) depth--;else if (t.type === 'OP' && t.value === ';' && depth <= 0) {
+        this.next();
+        return;
+      }
+      this.next();
+    }
+  }
+  parseFunction() {
+    this.eat('function');
+    const name = this.eat('NAME').value;
+    this.eat('OP', '(');
+    const args = [];
+    while (!this.at('OP', ')')) {
+      args.push(this.eat('NAME').value);
+      if (this.at('OP', ',')) this.next();
+    }
+    this.eat('OP', ')');
+    // Emitter helpers (`_eq`, `_rand`, `_fact`, `_sumdigits`) may use arrow functions
+    // etc. outside the subset — skip their body raw (they're re-emitted anyway).
+    if (name.startsWith('_')) {
+      this.skipBraces();
+      return null;
+    }
+    const body = this.parseBlock();
+    return {
+      type: 'Def',
+      name,
+      args,
+      body
+    };
+  }
+
+  // Consume a balanced `{ ... }` without parsing (string tokens keep braces out of OPs).
+  skipBraces() {
+    this.eat('OP', '{');
+    let depth = 1;
+    while (depth > 0 && !this.at('EOF')) {
+      if (this.at('OP', '{')) depth++;else if (this.at('OP', '}')) depth--;
+      this.next();
+    }
+  }
+  parseIf() {
+    this.eat('if');
+    this.eat('OP', '(');
+    const test = this.parseExpr();
+    this.eat('OP', ')');
+    const body = this.parseBlockOrStmt();
+    let orelse = [];
+    if (this.at('else')) {
+      this.eat('else');
+      orelse = this.at('if') ? [this.parseIf()] : this.parseBlockOrStmt();
+    }
+    return {
+      type: 'If',
+      test,
+      body,
+      orelse
+    };
+  }
+  parseWhile() {
+    this.eat('while');
+    this.eat('OP', '(');
+    const test = this.parseExpr();
+    this.eat('OP', ')');
+    return {
+      type: 'While',
+      test,
+      body: this.parseBlockOrStmt()
+    };
+  }
+
+  // C-style `for (let i = 0; i < n; i++)` -> range(n); anything fancier is dropped to a warn.
+  parseFor() {
+    this.eat('for');
+    this.eat('OP', '(');
+    if (this.at('let') || this.at('const') || this.at('var')) this.next();
+    let target = 'i';
+    if (this.at('NAME')) {
+      target = this.next().value;
+      if (this.at('OP', '=')) {
+        this.next();
+        this.parseExpr();
+      }
+    }
+    this.eat('OP', ';');
+    const test = this.at('OP', ';') ? null : this.parseExpr();
+    this.eat('OP', ';');
+    // update (e.g. `i++`) is ignored — skip tokens to the matching ')'
+    let depth = 0;
+    while (!this.at('EOF')) {
+      if (this.at('OP', '(')) depth++;else if (this.at('OP', ')')) {
+        if (depth === 0) break;
+        depth--;
+      }
+      this.next();
+    }
+    this.eat('OP', ')');
+    const body = this.parseBlockOrStmt();
+    let n = {
+      type: 'Num',
+      value: '0'
+    };
+    if (test && test.type === 'Compare' && (test.op === '<' || test.op === '<=')) n = test.op === '<' ? test.right : {
+      type: 'BinOp',
+      op: '+',
+      left: test.right,
+      right: {
+        type: 'Num',
+        value: '1'
+      }
+    };
+    return {
+      type: 'For',
+      target,
+      iter: {
+        type: 'Call',
+        func: {
+          type: 'Name',
+          id: 'range'
+        },
+        args: [n]
+      },
+      body
+    };
+  }
+  parseExprStatement() {
+    const expr = this.parseExpr();
+    if (this.at('OP', '=')) {
+      this.next();
+      const value = this.parseExpr();
+      this.semi();
+      return {
+        type: 'Assign',
+        target: expr,
+        value
+      };
+    }
+    for (const aug of ['+=', '-=', '*=', '/=', '%=']) if (this.at('OP', aug)) {
+      this.next();
+      const value = this.parseExpr();
+      this.semi();
+      return {
+        type: 'AugAssign',
+        op: aug[0],
+        target: expr,
+        value
+      };
+    }
+    if (this.at('OP', '++') || this.at('OP', '--')) {
+      const op = this.next().value;
+      this.semi();
+      return {
+        type: 'AugAssign',
+        op: op[0],
+        target: expr,
+        value: {
+          type: 'Num',
+          value: '1'
+        }
+      };
+    }
+    this.semi();
+    // splice statements become Del / insert at build time (see normalizeCall)
+    return {
+      type: 'Expr',
+      value: expr
+    };
+  }
+
+  // ---- expressions (Pratt) ----
+  parseExpr() {
+    return this.parseTernary();
+  }
+  parseTernary() {
+    const c = this.parseOr();
+    if (this.at('OP', '?')) {
+      this.next();
+      const a = this.parseExpr();
+      this.eat('OP', ':');
+      const b = this.parseExpr();
+      return {
+        type: 'Ternary',
+        test: c,
+        then: a,
+        other: b
+      };
+    }
+    return c;
+  }
+  parseOr() {
+    let l = this.parseAnd();
+    while (this.at('OP', '||')) {
+      this.next();
+      l = {
+        type: 'Bool',
+        op: 'or',
+        left: l,
+        right: this.parseAnd()
+      };
+    }
+    return l;
+  }
+  parseAnd() {
+    let l = this.parseEquality();
+    while (this.at('OP', '&&')) {
+      this.next();
+      l = {
+        type: 'Bool',
+        op: 'and',
+        left: l,
+        right: this.parseEquality()
+      };
+    }
+    return l;
+  }
+  parseEquality() {
+    let l = this.parseRel();
+    for (;;) {
+      if (this.at('OP', '===') || this.at('OP', '==')) {
+        this.next();
+        l = {
+          type: 'Compare',
+          op: '==',
+          left: l,
+          right: this.parseRel()
+        };
+      } else if (this.at('OP', '!==') || this.at('OP', '!=')) {
+        this.next();
+        l = {
+          type: 'Compare',
+          op: '!=',
+          left: l,
+          right: this.parseRel()
+        };
+      } else break;
+    }
+    return l;
+  }
+  parseRel() {
+    let l = this.parseAdd();
+    for (;;) {
+      let op = null;
+      if (this.at('OP', '<=')) op = '<=';else if (this.at('OP', '>=')) op = '>=';else if (this.at('OP', '<')) op = '<';else if (this.at('OP', '>')) op = '>';
+      if (!op) break;
+      this.next();
+      l = {
+        type: 'Compare',
+        op,
+        left: l,
+        right: this.parseAdd()
+      };
+    }
+    return l;
+  }
+  parseAdd() {
+    let l = this.parseMul();
+    while (this.at('OP', '+') || this.at('OP', '-')) {
+      const op = this.next().value;
+      l = {
+        type: 'BinOp',
+        op,
+        left: l,
+        right: this.parseMul()
+      };
+    }
+    return l;
+  }
+  parseMul() {
+    let l = this.parseUnary();
+    while (this.at('OP', '*') || this.at('OP', '/') || this.at('OP', '%')) {
+      const op = this.next().value;
+      l = {
+        type: 'BinOp',
+        op,
+        left: l,
+        right: this.parseUnary()
+      };
+    }
+    return l;
+  }
+  parseUnary() {
+    if (this.at('OP', '!')) {
+      this.next();
+      return {
+        type: 'Not',
+        operand: this.parseUnary()
+      };
+    }
+    if (this.at('OP', '-') || this.at('OP', '+')) {
+      const op = this.next().value;
+      return {
+        type: 'Unary',
+        op,
+        operand: this.parseUnary()
+      };
+    }
+    if (this.at('typeof')) {
+      this.next();
+      this.parseUnary();
+      return {
+        type: 'Str',
+        value: 'number'
+      };
+    }
+    return this.parsePower();
+  }
+  parsePower() {
+    let l = this.parseAtom();
+    if (this.at('OP', '**')) {
+      this.next();
+      l = {
+        type: 'BinOp',
+        op: '**',
+        left: l,
+        right: this.parseUnary()
+      };
+    }
+    return l;
+  }
+  parseAtom() {
+    let node = this.parsePrimary();
+    for (;;) {
+      if (this.at('OP', '(')) {
+        this.next();
+        const args = [];
+        while (!this.at('OP', ')')) {
+          args.push(this.parseExpr());
+          if (this.at('OP', ',')) this.next();
+        }
+        this.eat('OP', ')');
+        node = this.normalizeCall(node, args);
+      } else if (this.at('OP', '[')) {
+        this.next();
+        const index = this.parseExpr();
+        this.eat('OP', ']');
+        node = {
+          type: 'Subscript',
+          value: node,
+          index
+        };
+      } else if (this.at('OP', '.')) {
+        this.next();
+        const attr = this.eat('NAME').value;
+        node = {
+          type: 'Attribute',
+          value: node,
+          attr
+        };
+      } else break;
+    }
+    return node;
+  }
+
+  // Map JS callables to the translator's Python-flavoured nodes.
+  normalizeCall(callee, args) {
+    if (callee.type === 'Attribute') {
+      const obj = callee.value,
+        attr = callee.attr;
+      // Runtime objects (`_arrays`, `scratch`) carry their own method surface — don't
+      // rewrite their calls into JS-list idioms (e.g. `_arrays.push` is NOT list.append).
+      const isRuntimeObj = obj.type === 'Name' && (obj.id === '_arrays' || obj.id === 'scratch');
+      if (!isRuntimeObj) {
+        if (attr === 'includes') return {
+          type: 'Compare',
+          op: 'in',
+          left: args[0],
+          right: obj
+        }; // contains
+        if (attr === 'push') return {
+          type: 'Call',
+          func: {
+            type: 'Attribute',
+            value: obj,
+            attr: 'append'
+          },
+          args
+        };
+      }
+      if (obj.type === 'Name' && obj.id === 'console' && attr === 'log') return {
+        type: 'Call',
+        func: {
+          type: 'Name',
+          id: 'print'
+        },
+        args
+      };
+      if (obj.type === 'Name' && obj.id === 'Math') return this.mathCall(attr, args);
+      // .splice / .toLowerCase etc stay as Attribute calls; splice handled in the translator
+      return {
+        type: 'Call',
+        func: callee,
+        args
+      };
+    }
+    if (callee.type === 'Name') {
+      const id = callee.id;
+      if (id === 'String') return {
+        type: 'Call',
+        func: {
+          type: 'Name',
+          id: 'str'
+        },
+        args
+      };
+      if (id === 'Number' || id === 'parseFloat') return {
+        type: 'Call',
+        func: {
+          type: 'Name',
+          id: 'float'
+        },
+        args
+      };
+      if (id === 'parseInt') return {
+        type: 'Call',
+        func: {
+          type: 'Name',
+          id: 'int'
+        },
+        args
+      };
+      if (id === 'prompt') return {
+        type: 'Call',
+        func: {
+          type: 'Name',
+          id: 'input'
+        },
+        args
+      };
+    }
+    return {
+      type: 'Call',
+      func: callee,
+      args
+    };
+  }
+  mathCall(attr, args) {
+    if (attr === 'abs') return {
+      type: 'Call',
+      func: {
+        type: 'Name',
+        id: 'abs'
+      },
+      args
+    };
+    if (attr === 'round') return {
+      type: 'Call',
+      func: {
+        type: 'Name',
+        id: 'round'
+      },
+      args
+    };
+    // floor/ceil/sqrt/sin/cos/tan/log/log10/exp -> math.<attr> Attribute node
+    return {
+      type: 'Call',
+      func: {
+        type: 'Attribute',
+        value: {
+          type: 'Name',
+          id: 'math'
+        },
+        attr
+      },
+      args
+    };
+  }
+  parsePrimary() {
+    const t = this.peek();
+    if (t.type === 'NUMBER') {
+      this.next();
+      return {
+        type: 'Num',
+        value: t.value
+      };
+    }
+    if (t.type === 'STRING') {
+      this.next();
+      return {
+        type: 'Str',
+        value: t.value
+      };
+    }
+    if (t.type === 'true') {
+      this.next();
+      return {
+        type: 'Const',
+        value: true
+      };
+    }
+    if (t.type === 'false') {
+      this.next();
+      return {
+        type: 'Const',
+        value: false
+      };
+    }
+    if (t.type === 'null' || t.type === 'undefined') {
+      this.next();
+      return {
+        type: 'Const',
+        value: null
+      };
+    }
+    if (t.type === 'NAME') {
+      this.next();
+      return {
+        type: 'Name',
+        id: t.value
+      };
+    }
+    if (this.at('OP', '(')) {
+      // Distinguish a grouped expression from arrow-function params `(a, b) => …`.
+      let j = this.p,
+        depth = 0;
+      for (; j < this.toks.length; j++) {
+        const tk = this.toks[j];
+        if (tk.type === 'OP' && tk.value === '(') depth++;else if (tk.type === 'OP' && tk.value === ')') {
+          depth--;
+          if (depth === 0) break;
+        }
+      }
+      const after = this.toks[j + 1];
+      if (after && after.type === 'OP' && after.value === '=>') {
+        this.p = j + 2; // consume `(...)  =>`
+        if (this.at('OP', '{')) this.skipBraces();else this.parseExpr(); // arrow body (discarded)
+        return {
+          type: 'Const',
+          value: null
+        };
+      }
+      this.next();
+      const e = this.parseExpr();
+      this.eat('OP', ')');
+      return e;
+    }
+    if (this.at('OP', '[')) {
+      this.next();
+      const elts = [];
+      while (!this.at('OP', ']')) {
+        elts.push(this.parseExpr());
+        if (this.at('OP', ',')) this.next();
+      }
+      this.eat('OP', ']');
+      return {
+        type: 'List',
+        elts
+      };
+    }
+    // object literal (e.g. the generated `_arrays = {}` registry / driver shims) — not in
+    // the subset; consume the balanced braces and return a placeholder so parsing survives.
+    if (this.at('OP', '{')) {
+      this.skipBraces();
+      return {
+        type: 'Const',
+        value: null
+      };
+    }
+    // inline function expression (e.g. `.reduce(function(s,x){...})`) — out of subset;
+    // consume it raw so parsing survives (the enclosing op won't reverse-map anyway).
+    if (t.type === 'function') {
+      this.next();
+      if (this.at('NAME')) this.next();
+      if (this.at('OP', '(')) {
+        let d = 0;
+        do {
+          if (this.at('OP', '(')) d++;else if (this.at('OP', ')')) d--;
+          this.next();
+        } while (d > 0 && !this.at('EOF'));
+      }
+      if (this.at('OP', '{')) this.skipBraces();
+      return {
+        type: 'Const',
+        value: null
+      };
+    }
+    this.err("unexpected ".concat(t.type, " ").concat(t.value || ''));
+    return null;
+  }
+}
+
+// Flatten BlockStmt (from `let a=0,b=0;` and bare `{}`) into their parent statement list
+// so the shared Translator, which doesn't know BlockStmt, sees a flat body.
+function flatten(stmts) {
+  const out = [];
+  for (const s of stmts) {
+    if (!s) continue;
+    if (s.type === 'BlockStmt') {
+      out.push(...flatten(s.body));
+      continue;
+    }
+    for (const k of ['body', 'orelse']) if (Array.isArray(s[k])) s[k] = flatten(s[k]);
+    out.push(s);
+  }
+  return out;
+}
+function javascriptToPseudocode(source) {
+  if (!source || !source.trim()) throw new Error('JavaScript source is empty');
+  const tokens = new JsTokenizer(source).tokenize();
+  const ast = new JsParser(tokens).parseProgram();
+  ast.body = flatten(ast.body);
+  const t = new _sb3_creator_python_js__WEBPACK_IMPORTED_MODULE_0__.Translator();
+  const pseudocode = t.program(ast);
+  return {
+    pseudocode,
+    warnings: t.warnings
+  };
+}
+
+/***/ })
+
+}]);
