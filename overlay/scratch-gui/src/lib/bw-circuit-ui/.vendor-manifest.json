@@ -21,7 +21,7 @@
  "components/MidiMonitor.jsx": "57efd661e3bd3bd8af9908b8e7830a9f7b7342ef",
  "components/Multimeter.jsx": "997d4d784c000973d84825000996f0222469736e",
  "components/OrientationInput.jsx": "88b0ecc96e94ed511261db54abaebdb9f781ddd3",
- "components/PartPalette.jsx": "5ec4b6eaadd66269a0cd17e5c16bdbb5f27da480",
+ "components/PartPalette.jsx": "6480cc5b1d6b48e1fc06268962d6501e143d5877",
  "components/PartThumbnail.jsx": "efb057bf71bee5de4c9536a67b5746f648e1e988",
  "components/PartTooltip.jsx": "6bb0f022b49d8028c04a33c1ff4040a558036d0a",
  "components/SchematicPanel.jsx": "989f257890f859c45c9eb39552657764ea060c15",

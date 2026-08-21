@@ -114,8 +114,8 @@ try {
         await designer.locator('[data-selection-actions]').count() === 1);
 
     await load([{id: 'bb', kind: 'breadboard', params: {}, x: 520, y: 330, rotation: 0}]);
-    for (const kind of ['Arduino Nano', 'Raspberry Pi Pico']) {
-        await designer.locator(`[role="button"][aria-label="${kind}"][tabindex="0"]`).click();
+    for (const [kind, paletteKind] of [['Arduino Nano', 'arduino_nano'], ['Raspberry Pi Pico', 'pi_pico']]) {
+        await designer.locator(`[data-palette-kind="${paletteKind}"]`).click();
         await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
         const ghost = designer.locator('[data-placement-ghost]');
         await ghost.waitFor({timeout: 3000});
