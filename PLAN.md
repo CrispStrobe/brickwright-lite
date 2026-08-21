@@ -211,7 +211,7 @@ Acceptance criteria:
 
 ## Milestone 3 — Clear product identity and language
 
-Status: planned
+Status: **in progress — product copy and bilingual store metadata complete**
 
 Apply one accurate product story everywhere: in-app welcome and About surfaces,
 README, App Store/TestFlight metadata, website copy, screenshots, empty states, and
@@ -387,3 +387,6 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   level/status, dual time cursors, and measured Δt.
 - [ ] Complete Wave 2 instrument verification, translation review, and learner field
   testing, then revise controls and lesson versions from observed use.
+- [x] Rewrote the canonical English and German App Store/TestFlight descriptions
+  for 0.1.5 around circuits, honest representation boundaries, guided lessons,
+  evidence-based debugging, native/offline use, and supported LEGO hardware.
