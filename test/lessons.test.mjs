@@ -139,12 +139,16 @@ test('measurement wave teaches ten honest instrument workflows', async () => {
     }
 });
 
-test('language wave begins with distinct cross-representation semantic tasks', async () => {
+test('language wave has twelve distinct cross-representation semantic tasks', async () => {
     const {lessons} = await readLessons();
     const wave = lessons.filter(lesson => lesson.wave === 'languages-3');
     const topics = new Set(wave.map(lesson => lesson.topic));
 
-    assert.deepEqual([...topics].sort(), ['conditions', 'events', 'sequence', 'state-machines']);
+    const expected = ['sequence', 'events', 'loops', 'conditions', 'variables', 'procedures',
+        'concurrency', 'state-machines', 'arrays-data', 'messages', 'pins-peripherals', 'protocols'];
+
+    assert.equal(wave.length, 12);
+    assert.deepEqual([...topics].sort(), expected.sort());
     for (const lesson of wave) {
         assert.deepEqual(Object.keys(lesson.variants), lesson.languages,
             `${lesson.id} explains every declared representation`);
@@ -152,5 +156,9 @@ test('language wave begins with distinct cross-representation semantic tasks', a
             `${lesson.id} starts from a prediction or model`);
         assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
             `${lesson.id} compares against running behavior`);
+    }
+    const languages = new Set(wave.flatMap(lesson => lesson.languages));
+    for (const language of ['blocks', 'pseudocode', 'python', 'javascript', 'c', 'asm']) {
+        assert.ok(languages.has(language), `language wave covers ${language}`);
     }
 });

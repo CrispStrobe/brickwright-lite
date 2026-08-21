@@ -174,11 +174,11 @@ not translations or language variants counted as extra lessons.
    messages, pins/peripherals, and protocols. Blocks and Brickwright Code lead;
    Python/JavaScript/C variants explain runtime and conversion differences. BASIC
    and ASM enter where their machine model makes the concept clearer.
-   **Implementation status:** the first bilingual slice is in the catalog: sequence,
-   events, boundary conditions, and state machines each compare Blocks, Brickwright
-   Code, Python, JavaScript, and C by semantic/runtime contract rather than syntax.
-   Loops, variables, procedures, concurrency, arrays/data, messages,
-   pins/peripherals, and protocols remain in this wave.
+   **Implementation status:** all twelve bilingual engineering drafts are in the
+   catalog. They compare semantic and runtime contracts rather than surface syntax,
+   cover Blocks, Brickwright Code, Python, JavaScript, C, and targeted ASM, and use
+   shipped projects to test boundaries, timing, state, data, hardware mapping, and
+   interface waveforms. Technical, translation, and learner field review remains.
 4. **Interactive systems (8 lessons):** extension discovery, sensor capability,
    LEGO connection/deployment/recovery, buttons/sliders/joysticks, displays/gauges,
    two-way binding, dashboards, calibration, sampling, and control-loop safety.
@@ -401,3 +401,8 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   submission is `WAITING_FOR_REVIEW` (2026-08-21).
 - [x] Started Wave 3 with four bilingual, cross-representation lessons covering
   sequence, events, boundary conditions, and state machines against shipped projects.
+- [x] Completed the Wave 3 engineering/content draft with twelve distinct semantic
+  tasks, including loops, variables, procedures, concurrency, arrays/data, messages,
+  pins/peripherals, protocols, and targeted ASM-level timing.
+- [ ] Complete Wave 3 runtime/round-trip verification, translation review, and learner
+  field testing, then revise content versions from the evidence gathered.
