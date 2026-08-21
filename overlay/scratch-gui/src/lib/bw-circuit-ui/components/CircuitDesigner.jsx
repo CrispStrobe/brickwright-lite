@@ -201,9 +201,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [examplesOpen, setExamplesOpen] = useState(true);
   const [selectorSplit, setSelectorSplit] = useState(0.68);
   const [codexMode, setCodexMode] = useState(false);
-  // Fresh designers prioritize bench space. Debugger and lesson/bench
-  // contexts may explicitly demand Instruments, and simulation opens the
-  // column at the moment it is used.
+  // Owner requirement: every fresh designer prioritizes bench space. A
+  // debugger or lesson/bench context may explicitly demand Instruments;
+  // simulation opens the column at the moment it is used.
   const [rightOpen, setRightOpen] = useState(!!debuggerOn || !!benchOpen);
   useEffect(() => {
     if (debuggerOn || benchOpen) setRightOpen(true);
