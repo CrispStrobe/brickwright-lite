@@ -390,3 +390,7 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
 - [x] Rewrote the canonical English and German App Store/TestFlight descriptions
   for 0.1.5 around circuits, honest representation boundaries, guided lessons,
   evidence-based debugging, native/offline use, and supported LEGO hardware.
+- [x] Shipped the signed native macOS 0.1.5 build to the public external TestFlight
+  group with bilingual testing notes. App Store Connect build
+  `6ab579dc-f98b-4a7c-9927-f3fd21b1e239` is valid and its Beta App Review
+  submission is `WAITING_FOR_REVIEW` (2026-08-21).
