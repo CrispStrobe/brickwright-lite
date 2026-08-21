@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
+import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 
 // Inject the retro-bench bus extractors into the DRC so contention and
 // open-vector errors surface as warnings. This lives here (not in the
@@ -929,8 +930,7 @@ class CircuitTab extends React.Component {
         // authored device anyway (owner report, 2026-08-17). The authored
         // circuit still outranks a generated bench for the example's own
         // device — the bench is a generic approximation.
-        const pick = (opts && opts.device ? String(opts.device) : '')
-            .toLowerCase().replace(/_/g, '-') || null;
+        const pick = normalizeDeviceId(opts && opts.device) || null;
         const benchOverride = (opts && opts.bench) || null;
         const path = ex && ex.files && ex.files.circuit;
         if (!path) {
@@ -960,16 +960,13 @@ class CircuitTab extends React.Component {
             // generated bench for a genuinely different picked device.
             let circuitPath = path;
             if (pick && hasProgram) {
-                try {
-                    const pres = await fetch(`examples/${ex.files.program}`);
-                    const psrc = pres.ok ? await pres.text() : '';
-                    const exDev = ((psrc.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '')
-                        .toLowerCase().replace(/_/g, '-');
-                    if (exDev && pick !== exDev) {
-                        const bench = benchOverride || (ex.benches && ex.benches[pick]) || null;
-                        if (bench && bench !== path) circuitPath = bench;
-                    }
-                } catch { /* authored circuit stays */ }
+                const pres = await fetch(`examples/${ex.files.program}`);
+                if (!pres.ok) throw new Error(`program: HTTP ${pres.status}`);
+                const psrc = await pres.text();
+                const exDev = (psrc.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '';
+                const resolved = resolveExampleBench(ex, pick, exDev, benchOverride);
+                if (resolved.error) throw new Error(resolved.error);
+                circuitPath = resolved.path || path;
             }
             const res = await fetch(`examples/${circuitPath}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -24,6 +24,7 @@ async function verify () {
     const page = await browser.newPage();
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     page.on('dialog', d => d.accept());
+    await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
 
     let ok = true;
     const fail = msg => { ok = false; console.error(`  FAIL: ${msg}`); };

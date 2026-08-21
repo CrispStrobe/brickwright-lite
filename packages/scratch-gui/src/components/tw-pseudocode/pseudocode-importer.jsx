@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import examples from '../../lib/sb3-creator-examples.js';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
+import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
 
 // Device groups for the device selector. Mirrors STC_PARTS in sb3-creator.js; the parser
@@ -1461,7 +1462,7 @@ class PseudocodeImporter extends React.Component {
     // ('arduino-uno', 'stc12c5a60s2', 'attiny88', 'pico', 'eater6502'); the
     // normalization keeps a case or underscore drift from silently emptying the list.
     _normDevice (id) {
-        return String(id || '').toLowerCase().replace(/_/g, '-');
+        return normalizeDeviceId(id);
     }
 
     /** All catalog entries, with compatibility flag for the given device. */
@@ -1499,7 +1500,7 @@ class PseudocodeImporter extends React.Component {
             const res = await fetch(`examples/${ex.files.program}`);
             if (!res.ok) throw new Error(`program: HTTP ${res.status}`);
             let src = await res.text();
-            const exDevice = ((src.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '').toLowerCase();
+            const exDevice = this._normDevice((src.match(/^DEVICE\s+([\w-]+)/im) || [])[1]);
             let warnings = [];
             if (device && exDevice && exDevice !== device) {
                 const SB3Creator = (await this.lib()).default;
@@ -1513,6 +1514,11 @@ class PseudocodeImporter extends React.Component {
                     src = result.pseudocode;
                     warnings = result.warnings || [];
                 }
+            }
+            const resolvedBench = resolveExampleBench(ex, device, exDevice);
+            if (resolvedBench.error) {
+                this.setState({busy: false, status: resolvedBench.error});
+                return;
             }
             // Loading an example must produce a RUNNABLE project, not just
             // editor text: without the compile the VM kept the previous
@@ -1557,9 +1563,7 @@ class PseudocodeImporter extends React.Component {
             // matrix and the OLED, while the generated bench is a generic
             // LED-per-pin approximation (owner screenshots, 2026-08-17).
             // Only a genuinely retargeted device gets its generated bench.
-            const authored = (ex.files && ex.files.circuit) || null;
-            const retargeted = device && exDevice && device !== exDevice;
-            const benchPath = (retargeted && ex.benches && ex.benches[device]) || authored;
+            const benchPath = resolvedBench.path;
             if (benchPath && typeof window !== 'undefined') {
                 const detail = {benchPath, exampleId: ex.id, device: device || exDevice};
                 // Stash before dispatch: the Circuit tab consumes the event,

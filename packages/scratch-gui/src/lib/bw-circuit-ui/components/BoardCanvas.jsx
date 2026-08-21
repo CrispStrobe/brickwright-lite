@@ -25,8 +25,10 @@ import { BreadboardView } from './BreadboardView.jsx';
 import { ledDisplayLevel } from './led-perception.js';
 import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
-import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
+import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver, WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
+import ExportNetlistMenu from './ExportNetlistMenu.jsx';
+import ImportCircuitMenu from './ImportCircuitMenu.jsx';
 
 // DIP chip kinds that get a generic IC body renderer (not a custom SVG).
 // These are discrete retro/logic ICs placed on breadboards — without a
@@ -38,6 +40,11 @@ const DIP_CHIP_LABELS = {
   '74hc00': '74HC00', '74hc04': '74HC04', '74hc08': '74HC08',
   '74hc32': '74HC32', '74hc74': '74HC74', '74hc138': '74HC138',
   '74hc245': '74HC245', '74hc374': '74HC374', '74hc595': '74HC595',
+  // These three gained sidecars in the reconcile but not a DIP label, so they
+  // fell back to {a,b} and rendered their pins stacked at the origin. Labels
+  // only; the pin geometry comes from the sidecar terminals (74hc4050 is the
+  // odd one — 16 pins with VCC on pin 1 and two real NCs).
+  '74hc125': '74HC125', '74hc34': '74HC34', '74hc4050': '74HC4050',
   '74c922': '74C922', r6507: 'R6507', mos6532: 'MOS6532',
   at24c64: '24C64', shift_register: '74HC595', cd4093: 'CD4093',
   // Device-true MCU DIPs: without these the blinkenrocket pendant's
@@ -72,7 +79,7 @@ import { getMeterReading } from '../model/meter-reading.js';
 import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 import { getPinFunctionsForPart } from '../model/pin-functions.js';
 import { isBoardEndpoint } from '../model/wire-endpoints.js';
-import { boardGeometry } from '../model/board-geometry.js';
+import { boardTerminalOffsets, boardVisualGeometry } from '../model/board-geometry.js';
 import { dipTerminalPositions, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
@@ -188,6 +195,8 @@ function terminalOffsetsForPart(part) {
     case 'joystick': return { vcc: r(-20, 30), gnd: r(-10, 30), vrx: r(0, 30), vry: r(10, 30), sw: r(20, 30) };
     case 'slider': return { a: r(-20, 15), wiper: r(0, 15), b: r(20, 15) };
     case 'gauge': return { signal: r(0, 25), vcc: r(-15, 25), gnd: r(15, 25) };
+    case 'mono_lcd': return { vcc: r(-15, 40), gnd: r(15, 40) };
+    case 'rgb_light': return { vcc: r(-10, 15), gnd: r(10, 15) };
     case 'keypad': return {
       r1: r(-21, 35), r2: r(-15, 35), r3: r(-9, 35), r4: r(-3, 35),
       c1: r(3, 35), c2: r(9, 35), c3: r(15, 35), c4: r(21, 35),
@@ -218,15 +227,12 @@ function terminalOffsetsForPart(part) {
     }
     case 'arduino_uno':
     case 'arduino_nano':
+    case 'arduino_mega':
     case 'pi_pico': {
       const sc = getSidecar(part.kind);
-      if (sc?.terminals?.length) {
-        const S = boardGeometry(sc)?.scale || 1;
-        const offsets = {};
-        for (const t of sc.terminals) {
-          offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
-        }
-        return offsets;
+      const offsets = boardTerminalOffsets(part.kind, sc);
+      if (Object.keys(offsets).length) {
+        return Object.fromEntries(Object.entries(offsets).map(([name, p]) => [name, r(p.dx, p.dy)]));
       }
       return { a: r(-15, 0), b: r(15, 0) };
     }
@@ -295,7 +301,7 @@ function fmtV(v) {
 // Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam }) {
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -446,73 +452,69 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       }
       case 'arduino_uno':
       case 'arduino_nano':
+      case 'arduino_mega':
       case 'pi_pico': {
-        // Board sidecars provide the audited dimensions and pin coordinates.
-        // Render HORIZONTALLY (long edge = width). Sidecars that are
-        // taller than wide (Nano, Pico) get coordinates transposed x↔y;
-        // sidecars that are already landscape (Uno) render as-is.
         const sc = getSidecar(kind);
-        const geometry = boardGeometry(sc);
-        const needsTranspose = geometry && geometry.h > geometry.w;
-        const W = needsTranspose ? (geometry?.h ?? 400) : (geometry?.w ?? 450);
-        const H = needsTranspose ? (geometry?.w ?? 150) : (geometry?.h ?? 300);
+        const geometry = boardVisualGeometry(kind, sc);
+        const W = geometry?.w ?? 400;
+        const H = geometry?.h ?? 150;
         const boardColor = kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
-        const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : 'RASPBERRY PI PICO';
+        const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : kind === 'arduino_mega' ? 'ARDUINO MEGA' : 'RASPBERRY PI PICO';
         const subtitle = kind === 'pi_pico' ? 'RP2040 · 3V3' : kind === 'arduino_mega' ? 'ATmega2560 · 5V' : 'ATmega328P · 5V';
-        const S = geometry?.scale || 1;
-        const pin = needsTranspose
-          ? (t) => ({ x: t.y * S - W / 2, y: t.x * S - H / 2 })
-          : (t) => ({ x: t.x * S - W / 2, y: t.y * S - H / 2 });
-        // When seated on a breadboard, scale the body down to match the
-        // hole span. Footprint leads span (maxCol) gaps × BB_PITCH wide.
-        let seatK = 1;
-        if (part.seat && part._seatTerminals) {
-          const terms = Object.values(part._seatTerminals);
-          if (terms.length >= 2) {
-            const xs = terms.map(t => t.x);
-            const worldSpan = Math.max(...xs) - Math.min(...xs);
-            if (worldSpan > 0 && W > 0) seatK = worldSpan / W;
-          }
-        }
-        const seatXform = seatK !== 1 ? ` scale(${seatK.toFixed(4)})` : '';
+        const offsets = boardTerminalOffsets(kind, sc);
+        const WokwiFace = kind === 'arduino_uno' ? WokwiArduinoUno
+          : kind === 'arduino_nano' ? WokwiArduinoNano
+          : kind === 'arduino_mega' ? WokwiArduinoMega : null;
         return (
-          <g key={id} transform={xform + seatXform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+            data-board-face={kind} data-board-face-license={WokwiFace ? 'MIT' : 'code'}>
+            {WokwiFace && geometry ? (
+              <foreignObject x={-W / 2} y={-H / 2} width={W} height={H}
+                style={{pointerEvents: 'none', overflow: 'hidden'}}>
+                <div xmlns="http://www.w3.org/1999/xhtml" style={{
+                  width: geometry.nativeW, height: geometry.nativeH,
+                  transform: `scale(${geometry.wokwiScale})`, transformOrigin: '0 0',
+                }}>
+                  <WokwiFace style={{display: 'block'}} />
+                </div>
+              </foreignObject>
+            ) : null}
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
-              fill={boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
-            <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
-              rx={3} fill="#0b6b8a" opacity={0.35} />
-            <text x={0} y={-4} textAnchor="middle"
+              fill={WokwiFace ? 'transparent' : boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
+            {!WokwiFace && <>
+              <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
+                rx={3} fill="#0b6b8a" opacity={0.35} />
+              <text x={0} y={-4} textAnchor="middle"
               fill="#dff6ff" fontSize={kind === 'pi_pico' ? 5.5 : 7} fontFamily="monospace" fontWeight="bold">
-              {title}
-            </text>
-            <text x={0} y={8} textAnchor="middle"
-              fill="#a9dbea" fontSize={5} fontFamily="monospace">
-              {subtitle}
-            </text>
-            {sc?.terminals?.map(t => {
-              const p = pin(t);
-              if (needsTranspose) {
-                const topSide = p.y < 0;
+                {title}
+              </text>
+              <text x={0} y={8} textAnchor="middle" fill="#a9dbea" fontSize={5} fontFamily="monospace">
+                {subtitle}
+              </text>
+            </>}
+            {!WokwiFace && Object.entries(offsets).map(([name, p]) => {
+              if (geometry?.transpose) {
+                const topSide = p.dy < 0;
                 return (
-                  <g key={t.name}>
-                    <rect x={p.x - 3} y={p.y - 1.5} width={6} height={3}
+                  <g key={name}>
+                    <rect x={p.dx - 3} y={p.dy - 1.5} width={6} height={3}
                       fill="#d8dee4" stroke="#637381" strokeWidth={0.3} />
-                    <text x={p.x} y={p.y + (topSide ? -5 : 8)}
+                    <text x={p.dx} y={p.dy + (topSide ? -5 : 8)}
                       textAnchor="middle"
                       fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.2 : 3.8}
-                      fontFamily="monospace">{t.name.toUpperCase()}</text>
+                      fontFamily="monospace">{name.toUpperCase()}</text>
                   </g>
                 );
               }
-              const leftSide = p.x < 0;
+              const leftSide = p.dx < 0;
               return (
-                <g key={t.name}>
-                  <rect x={p.x - 1.5} y={p.y - 3} width={3} height={6}
+                <g key={name}>
+                  <rect x={p.dx - 1.5} y={p.dy - 3} width={3} height={6}
                     fill="#d8dee4" stroke="#637381" strokeWidth={0.3} />
-                  <text x={p.x + (leftSide ? 5 : -5)} y={p.y + 1.5}
+                  <text x={p.dx + (leftSide ? 5 : -5)} y={p.dy + 1.5}
                     textAnchor={leftSide ? 'start' : 'end'}
                     fill="#d6eef5" fontSize={4}
-                    fontFamily="monospace">{t.name.toUpperCase()}</text>
+                    fontFamily="monospace">{name.toUpperCase()}</text>
                 </g>
               );
             })}
@@ -1100,6 +1102,98 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         );
       }
 
+      // ── Graphical mono LCD (EV3 178×128, NXT 100×64) ─────────────
+      // Parametric W×H monochrome pixel buffer. The fb is a 1bpp packed
+      // row-major buffer (byte 0 bit 7 = pixel (0,0)). Reads from
+      // part.params.fb (set via setPartParam from the pump) or
+      // deviceStates for engine-driven displays.
+      case 'mono_lcd': {
+        const ds = deviceStates?.get(id);
+        const FW = part.params?.width ?? ds?.width ?? 178;
+        const FH = part.params?.height ?? ds?.height ?? 128;
+        const fb = ds?.fb ?? part.params?.fb;
+        const displayOn = ds?.displayOn !== false && part.params?.displayOn !== false;
+        // Scale the native resolution into a compact SVG footprint.
+        // The rendered box is fixed at 60×40; the canvas stretches.
+        const boxW = 60, boxH = 40;
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Case body */}
+            <rect x={-boxW/2 - 3} y={-boxH/2 - 3} width={boxW + 6} height={boxH + 16} rx={3}
+              fill="#2c3e50" stroke={selStroke || '#95a5a6'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Screen bezel */}
+            <rect x={-boxW/2} y={-boxH/2} width={boxW} height={boxH} rx={1}
+              fill={displayOn ? '#a8b8a0' : '#666'} stroke="#555" strokeWidth={0.5} />
+            {displayOn && fb && fb.length >= Math.ceil(FW * FH / 8) && (
+              <foreignObject x={-boxW/2} y={-boxH/2} width={boxW} height={boxH}>
+                <canvas
+                  ref={el => {
+                    if (!el) return;
+                    const rgba = new Uint8ClampedArray(FW * FH * 4);
+                    const stride = Math.ceil(FW / 8);
+                    for (let y = 0; y < FH; y++) {
+                      for (let x = 0; x < FW; x++) {
+                        const byteIdx = y * stride + (x >> 3);
+                        const bit = 7 - (x & 7); // MSB first
+                        const on = (fb[byteIdx] >> bit) & 1;
+                        const idx = (y * FW + x) * 4;
+                        // Mono LCD: dark green on light green-gray
+                        rgba[idx]     = on ? 0x20 : 0xa0;
+                        rgba[idx + 1] = on ? 0x30 : 0xb0;
+                        rgba[idx + 2] = on ? 0x10 : 0x90;
+                        rgba[idx + 3] = 255;
+                      }
+                    }
+                    if (el.width !== FW) el.width = FW;
+                    if (el.height !== FH) el.height = FH;
+                    el.style.width = `${boxW}px`;
+                    el.style.height = `${boxH}px`;
+                    el.style.imageRendering = 'pixelated';
+                    el.getContext('2d').putImageData(new ImageData(rgba, FW, FH), 0, 0);
+                  }}
+                  style={{ width: boxW, height: boxH, imageRendering: 'pixelated' }}
+                />
+              </foreignObject>
+            )}
+            {!displayOn && (
+              <text x={0} y={2} textAnchor="middle" fill="#444" fontSize={6}
+                fontFamily="monospace">OFF</text>
+            )}
+            {/* Resolution label */}
+            <text x={0} y={boxH/2 + 4} textAnchor="middle" fill="#7f8c8d" fontSize={5}
+              fontFamily="monospace">{FW}×{FH}</text>
+            <text x={0} y={boxH/2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── RGB status light (WeDo 2 / Boost single-colour indicator) ──
+      case 'rgb_light': {
+        const ds = deviceStates?.get(id);
+        const r0 = ds?.r ?? part.params?.r ?? 0;
+        const g0 = ds?.g ?? part.params?.g ?? 0;
+        const b0 = ds?.b ?? part.params?.b ?? 0;
+        const on = r0 > 0 || g0 > 0 || b0 > 0;
+        const fill = on ? `rgb(${r0},${g0},${b0})` : '#222';
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Diffuser body */}
+            <circle cx={0} cy={0} r={12}
+              fill="#1a1a2e" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Lit area */}
+            <circle cx={0} cy={0} r={9} fill={fill} />
+            {on && (
+              <circle cx={0} cy={0} r={9} fill="white" opacity={0.15} />
+            )}
+            {/* Highlight */}
+            <circle cx={-2} cy={-2} r={3} fill="white" opacity={on ? 0.25 : 0.05} />
+            <text x={0} y={20} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
       // ── LEDBANK8: 8 discrete LEDs with graded brightness ──────────
       case 'ledbank8': {
         const ds = deviceStates?.get(id);
@@ -1135,6 +1229,53 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fill={color} />;
             })}
             <text x={0} y={H / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── SimpleVGA / TMS9918 video thumbnail ───────────────────────
+      // Machine-class video peripherals expose a videoFn callback (via
+      // debugState.video). If available, render a compact live thumbnail
+      // on the chip body so the display content is visible on the board.
+      case 'simplevga_card':
+      case 'tms9918': {
+        // Fall through to default DIP body when no video available
+        if (typeof videoFn !== 'function') break;
+        const chipLabel = kind === 'tms9918' ? 'TMS9918' : 'SimpleVGA';
+        const vW = 48, vH = 36;
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* DIP body */}
+            <rect x={-30} y={-25} width={60} height={50} rx={3}
+              fill="#1a1a2e" stroke={selStroke || '#6a5acd'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Notch */}
+            <circle cx={-30} cy={-15} r={3} fill="#1a1a2e" stroke="#555" strokeWidth={0.5} />
+            {/* Video thumbnail */}
+            <foreignObject x={-vW / 2} y={-vH / 2 + 2} width={vW} height={vH}>
+              <canvas
+                ref={el => {
+                  if (!el) return;
+                  try {
+                    const f = videoFn();
+                    if (!f || !f.rgba) return;
+                    const W = f.width || 256, H = f.height || 192;
+                    if (el.width !== W) el.width = W;
+                    if (el.height !== H) el.height = H;
+                    el.style.width = `${vW}px`;
+                    el.style.height = `${vH}px`;
+                    el.style.imageRendering = 'pixelated';
+                    const ctx = el.getContext('2d');
+                    ctx.putImageData(new ImageData(new Uint8ClampedArray(f.rgba.buffer, f.rgba.byteOffset, f.rgba.byteLength), W, H), 0, 0);
+                  } catch { /* video not ready */ }
+                }}
+                style={{ width: vW, height: vH, imageRendering: 'pixelated' }}
+              />
+            </foreignObject>
+            {/* Chip label */}
+            <text x={0} y={-20} textAnchor="middle" fill="#888" fontSize={5}
+              fontFamily="monospace">{chipLabel}</text>
+            <text x={0} y={32} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -2421,6 +2562,163 @@ function BreadboardSubstrate({ part }) {
   );
 }
 
+// ── File menu (inside the ⋯ overflow) ─────────────────────────────
+// Four top-level actions: Load, Save, Import ▸, Export ▸.
+// Format variants live on 2nd-level submenus, never top level.
+// Clear is a destructive op, kept separate at the bottom.
+
+function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fileAction, onFileActionDone }) {
+  const [sub, setSub] = useState(null); // 'import' | 'export' | null
+
+  // Respond to main-menu File/ events: open the right submenu
+  React.useEffect(() => {
+    if (fileAction === 'import' || fileAction === 'export') {
+      setSub(fileAction);
+      if (onFileActionDone) onFileActionDone();
+    }
+  }, [fileAction, onFileActionDone]);
+  const de = /^de/i.test(lang);
+  const itemStyle = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 10px', background: 'none', border: 'none', color: '#e2e8f0', fontSize: 12, fontFamily: 'system-ui, sans-serif', cursor: 'pointer', borderRadius: 3, textAlign: 'left' };
+  const itemHover = (e) => { e.currentTarget.style.background = '#1e293b'; };
+  const itemLeave = (e) => { e.currentTarget.style.background = 'none'; };
+  const subStyle = { ...itemStyle, paddingLeft: 24, fontSize: 11, color: '#94a3b8' };
+
+  // Import needs a file picker — driven by a hidden <input>.
+  const fileRef = useRef(null);
+  const pendingFormat = useRef(null);
+
+  const handleImportFile = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImport) return;
+    let text;
+    try { text = await file.text(); } catch { return; }
+    // Auto-detect or use the forced format
+    const { detectFormat } = await import('../importers/detect.js');
+    const { importCircuit } = await import('../importers/index.js');
+    const format = pendingFormat.current || detectFormat(text, file.name);
+    if (!format) return;
+    const r = importCircuit(format, text);
+    if (r.parts.length) onImport({ parts: r.parts, wires: r.wires });
+    if (onDone) onDone();
+    e.target.value = '';
+  }, [onImport, onDone]);
+
+  const pickImport = (formatId) => {
+    pendingFormat.current = formatId || null;
+    if (fileRef.current) {
+      fileRef.current.accept = formatId
+        ? { eagle: '.sch', kicad: '.net,.xml', json: '.json' }[formatId] || '*'
+        : '.sch,.net,.xml,.json';
+      fileRef.current.click();
+    }
+  };
+
+  // Export uses the existing logic from ExportNetlistMenu.
+  const handleExport = useCallback(async (formatId) => {
+    if (!circuit) return;
+    const { extractNetlist } = await import('../model/netlist.js');
+    const { downloadText } = await import('../model/exporters/download.js');
+    const netlist = extractNetlist(circuit);
+    switch (formatId) {
+      case 'spice': {
+        const { toSpice } = await import('../model/exporters/spice.js');
+        const { text } = toSpice(netlist);
+        downloadText(text, 'circuit.cir');
+        break;
+      }
+      case 'kicad': {
+        const { toKicadNet } = await import('../model/exporters/kicad.js');
+        downloadText(toKicadNet(netlist), 'circuit.net');
+        break;
+      }
+      case 'easyeda': {
+        const { toEasyEDA } = await import('../model/exporters/easyeda.js');
+        const { text } = toEasyEDA(netlist);
+        downloadText(text, 'circuit-for-easyeda.net');
+        break;
+      }
+    }
+    if (onDone) onDone();
+  }, [circuit, onDone]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={handleImportFile} />
+      {/* Load / Open */}
+      {onLoad && (
+        <button onClick={() => { onLoad(); if (onDone) onDone(); }} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={itemStyle}>
+          <span style={{ width: 16, textAlign: 'center' }}>📂</span> {de ? 'Öffnen' : 'Open'}
+        </button>
+      )}
+      {/* Save */}
+      {onSave && (
+        <button onClick={() => { onSave(); if (onDone) onDone(); }} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={itemStyle}>
+          <span style={{ width: 16, textAlign: 'center' }}>💾</span> {de ? 'Speichern' : 'Save'}
+        </button>
+      )}
+      {/* Import ▸ (submenu) */}
+      {onImport && (
+        <>
+          <button onClick={() => setSub(sub === 'import' ? null : 'import')} onMouseEnter={itemHover} onMouseLeave={itemLeave}
+            style={{ ...itemStyle, justifyContent: 'space-between' }}>
+            <span><span style={{ width: 16, display: 'inline-block', textAlign: 'center' }}>📥</span> Import</span>
+            <span style={{ fontSize: 10, color: '#64748b' }}>{sub === 'import' ? '▾' : '▸'}</span>
+          </button>
+          {sub === 'import' && (
+            <div>
+              <button onClick={() => pickImport(null)} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                {de ? 'Datei (automatisch)' : 'File (auto-detect)'}
+              </button>
+              <button onClick={() => pickImport('eagle')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                EAGLE schematic (.sch)
+              </button>
+              <button onClick={() => pickImport('kicad')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                KiCad netlist (.net/.xml)
+              </button>
+              <button onClick={() => pickImport('json')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                Diagram (.json)
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      {/* Export ▸ (submenu) */}
+      {circuit && (
+        <>
+          <button onClick={() => setSub(sub === 'export' ? null : 'export')} onMouseEnter={itemHover} onMouseLeave={itemLeave}
+            style={{ ...itemStyle, justifyContent: 'space-between' }}>
+            <span><span style={{ width: 16, display: 'inline-block', textAlign: 'center' }}>📤</span> Export</span>
+            <span style={{ fontSize: 10, color: '#64748b' }}>{sub === 'export' ? '▾' : '▸'}</span>
+          </button>
+          {sub === 'export' && (
+            <div>
+              <button onClick={() => handleExport('spice')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                SPICE (.cir)
+              </button>
+              <button onClick={() => handleExport('kicad')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                KiCad Netlist (.net)
+              </button>
+              <button onClick={() => handleExport('easyeda')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                EasyEDA (via KiCad)
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      {/* Separator + Clear */}
+      {onClear && (
+        <>
+          <span style={{ display: 'block', height: 1, background: '#334155', margin: '4px 0' }} />
+          <button onClick={() => { onClear(); if (onDone) onDone(); }} onMouseEnter={(e) => { e.currentTarget.style.background = '#2a1010'; }} onMouseLeave={itemLeave}
+            style={{ ...itemStyle, color: '#f87171' }}>
+            <span style={{ width: 16, textAlign: 'center' }}>🗑</span> {de ? 'Alles löschen' : 'Clear all'}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main BoardCanvas ─────────────────────────────────────────────
 
 export function BoardCanvas({
@@ -2433,9 +2731,10 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit, engineBoard, fitToken, sevenSegments, sevenSeg3,
+  circuit, engineBoard, videoFn, fitToken, sevenSegments, sevenSeg3,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
-  onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire,
+  onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire, onImport,
+  fileAction, onFileActionDone,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
@@ -2460,6 +2759,10 @@ export function BoardCanvas({
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
+  // Auto-open the ⋯ menu when a File/ action arrives from the main menu
+  React.useEffect(() => {
+    if (fileAction) setToolbarMoreOpen(true);
+  }, [fileAction]);
   // Responsive toolbar: below a width threshold the secondary nav groups
   // (Designer/Warnings/Parts/Examples + the Realistic/Schematic view toggles)
   // collapse INTO the ⋯ menu rather than wrapping the toolbar onto a second row
@@ -3522,15 +3825,22 @@ export function BoardCanvas({
         <div data-toolbar-more style={{position: 'relative', flex: '0 0 auto'}}>
           <button onClick={() => setToolbarMoreOpen(v => !v)} title="More circuit controls: Save, Load, Zoom" aria-label="More circuit controls" aria-expanded={toolbarMoreOpen}
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: toolbarMoreOpen ? '#1e3a5f' : '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#e2e8f0', fontSize: '17px', cursor: 'pointer'}}>⋯</button>
-          {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, display: 'flex', flexWrap: 'wrap', maxWidth: '92vw', justifyContent: 'flex-end', gap: 4, alignItems: 'center', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
+          {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, minWidth: 180, maxWidth: '92vw', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
             {/* When the toolbar is cramped, the secondary nav groups live here instead of on a 2nd row. */}
-            {toolbarCramped && panelNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
-            {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
-            {toolbarCramped && (panelNav || viewNav) ? <span style={{width: 1, height: 24, background: '#334155', margin: '0 2px'}} /> : null}
-            {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
-            {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
-            {onClearCircuit && <button onClick={() => { onClearCircuit(); setToolbarMoreOpen(false); }} title={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} aria-label={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: 3, color: '#e74c3c', fontSize: 14, cursor: 'pointer'}}>🗑</button>}
-            <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
+            {toolbarCramped && panelNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center', padding: '2px 0'}}>{panelNav}</div> : null}
+            {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center', padding: '2px 0'}}>{viewNav}</div> : null}
+            {toolbarCramped && (panelNav || viewNav) ? <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} /> : null}
+            <FileMenu
+              circuit={circuit} lang={lang}
+              onLoad={onLoadCircuit} onSave={onSaveCircuit}
+              onImport={onImport} onClear={onClearCircuit}
+              fileAction={fileAction} onFileActionDone={onFileActionDone}
+              onDone={() => setToolbarMoreOpen(false)}
+            />
+            <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} />
+            <div style={{display: 'flex', justifyContent: 'flex-end', padding: '2px 0'}}>
+              <span data-zoom-indicator title="Canvas zoom" style={{height: 28, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
+            </div>
           </div>}
         </div>
       </div>
@@ -3814,7 +4124,7 @@ export function BoardCanvas({
             </g>
           )}
 
-          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(q.kind)).map(q => {
+          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(q.kind)).map(q => {
             // Small checkmark badge at the MCU body's top-right corner.
             // The old 84×16 pill covered pins on crowded benches; this is
             // 14px and stays inside the body outline.
@@ -3894,8 +4204,20 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge') {
-                  const ds = eb.getDeviceState(p.id);
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge' || p.kind === 'mono_lcd' || p.kind === 'rgb_light') {
+                  let ds = eb.getDeviceState(p.id);
+                  // Bargraph: passive device exports no brightness — compute
+                  // from branch current across each anode/cathode pair.
+                  if (p.kind === 'bargraph' && eb.branchCurrent) {
+                    const brightness = new Float64Array(10);
+                    for (let i = 0; i < 10; i++) {
+                      try {
+                        const mA = Math.abs(eb.branchCurrent(p.id, `a${i}`)) * 1000;
+                        brightness[i] = Math.min(1, mA / 15); // 15 mA ≈ full brightness
+                      } catch { /* net missing */ }
+                    }
+                    ds = { ...(ds || {}), brightness };
+                  }
                   if (ds) m.set(p.id, ds);
                 }
               }
@@ -3903,7 +4225,8 @@ export function BoardCanvas({
             })()}
             simulate={!!simulate}
             onKeypadKey={onKeypadKey}
-            onSetPartParam={onSetPartParam} />
+            onSetPartParam={onSetPartParam}
+            videoFn={videoFn} />
 
           {/* ── WIRE LAYERS ── INSIDE the svg, painted after the substrate and
               the SvgParts chip bodies:

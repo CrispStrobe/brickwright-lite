@@ -51,8 +51,8 @@ const messages = defineMessages({
         id: 'gui.stageHeader.fullscreenControl'
     },
     circuitOnly: {
-        defaultMessage: 'Circuit Designer (only)',
-        description: 'Button to show the Circuit Designer without panels — clean view for inspection',
+        defaultMessage: 'Circuit Designer',
+        description: 'Button for the clean Circuit Designer view; the Selectors and Instruments panels can still blend in optionally, so "(only)" was dropped as misleading',
         id: 'gui.stageHeader.circuitOnly'
     },
     debuggerFull: {

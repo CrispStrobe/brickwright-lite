@@ -8,7 +8,7 @@
  * This module is the testable core — no React, no DOM, no browser APIs.
  */
 
-import { getEngine } from '../engine.js';
+import { getEngine, engineTerminals } from '../engine.js';
 import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
@@ -760,7 +760,7 @@ export class Circuit {
     let engineNets = wireNets;
     for (const [boardId, bb] of this.breadboards) {
       try {
-        const derived = bb.deriveNets();
+        const derived = bb.deriveNets(boardId);
         // Retained for the canvas: hole -> net resolution at render time
         // (voltage labels on breadboard jumpers need the strip's net id).
         if (!this.boardStripNets) this.boardStripNets = new Map();
@@ -1017,15 +1017,63 @@ export class Circuit {
 }
 
 /**
+ * Kinds that keep the local catalog even when the engine has a model.
+ *
+ * `header` is the ONLY genuinely params-dependent kind: its terminals come
+ * from `params.pins`, so a fixed engine list (p1..p8) would silently turn
+ * every 6- or 10-way header into an 8-way one. Every other registered kind
+ * was probed with two different params objects and returned the same list,
+ * so "it's dynamic" is not an excuse available to anything else here.
+ *
+ * @type {Set<string>}
+ */
+const ENGINE_AUTHORITY_EXEMPT = new Set(['header']);
+
+/**
  * Return the terminal names for a given part kind.
  *
- * Sidecar-first: checks bw-parts sidecar data before the local switch.
- * Special kinds (mcu, breadboard, led_cube) need params-dependent or
- * dynamic terminals and bypass the sidecar.
+ * ENGINE-FIRST. bw-board's registered device model is the authority for
+ * terminal NAMES; a divergence is a bug in the catalog, never in the
+ * engine. Before this, the catalog resolved sidecar -> switch -> ['a','b'],
+ * consulting the engine nowhere: `addPart('vreg')` minted terminals a/b
+ * against an engine that has in/out/gnd, `checkWiring` rejected the whole
+ * netlist, and the board went EMPTY with one part on it and no wires.
+ *
+ * The engine is only consulted when the host injected `getDevice` into
+ * setEngine(). A host that injects the three original keys gets exactly the
+ * old resolution order, which is why this is a safe additive change.
+ *
+ * Below the engine, the old order still applies for kinds the engine has no
+ * model for (built-ins, unregistered kinds): sidecar -> switch -> ['a','b'].
+ *
+ * POSITIONS: the canvas looks terminal positions up BY NAME out of the
+ * sidecar, so an engine name the sidecar does not carry renders at the part
+ * origin. The fix for that is in the sidecar, not here — `src/parts-data/`
+ * was renamed to the engine's names wherever the two describe the same
+ * physical pin (see test/hd44780-terminal-parity.test.js's ledger).
  */
 /** @internal Exported for the contract test only. */
 export function terminalsForKind(kind, params) {
-  // Fallback to local definitions (for kinds without sidecars or dynamic kinds)
+  if (!ENGINE_AUTHORITY_EXEMPT.has(kind)) {
+    const fromEngine = engineTerminals(kind);
+    if (fromEngine) return fromEngine;
+  }
+  // Sidecar-first: a parts-data JSON with measured terminal positions is the
+  // authority — the hardcoded switch below is the FALLBACK for kinds that have
+  // no sidecar (simple passives, power symbols, dynamic-terminal kinds like
+  // mcu). Without this order the switch SHADOWS a correct sidecar: slide_switch
+  // once returned ['a','common','b'] here while the sidecar and engine both
+  // agreed on 'com', silently rejecting every wire to the switch (0/0 board).
+  // Dynamic-terminal kinds (mcu, led_cube, breadboard) still need the switch.
+  const DYNAMIC_SWITCH_KINDS = new Set([
+    'vcc', 'gnd', 'mcu', 'led_cube', 'breadboard',
+    'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico',
+    'stc_mcu', 'stc15_mcu', 'microbit', 'microbit_breakout',
+  ]);
+  if (!DYNAMIC_SWITCH_KINDS.has(kind)) {
+    const sc = sidecarTerminals(kind);
+    if (sc && sc.length > 0) return sc;
+  }
   switch (kind) {
     case 'vcc': return ['vcc'];
     case 'gnd': return ['gnd'];
@@ -1036,7 +1084,10 @@ export function terminalsForKind(kind, params) {
     case 'zener': return ['anode', 'cathode'];
     case 'led': return ['anode', 'cathode'];
     case 'rgb_led': return ['r_anode', 'g_anode', 'b_anode', 'cathode'];
-    case 'potentiometer': return ['a', 'b', 'wiper'];
+    // Physical pin order (end, wiper, end) — matches the sidecar, which is
+    // the authority. A fallback that disagrees only shows up on kinds whose
+    // sidecar is missing, so keep the two in step.
+    case 'potentiometer': return ['a', 'wiper', 'b'];
     case 'button': return ['a', 'b'];
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
@@ -1108,6 +1159,7 @@ export function terminalsForKind(kind, params) {
     case 'ir_receiver': return ['vcc', 'gnd', 'out'];
     case 'temp_sensor': return ['vcc', 'gnd', 'dq'];
     case 'eeprom': return ['sda', 'scl', 'vcc', 'gnd'];
+    case 'ssd1306': case 'sh1106': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'bmp280': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'tcs34725': return ['vcc', 'gnd', 'sda', 'scl', 'int', 'led'];
     case 'ina219': return ['vcc', 'gnd', 'sda', 'scl', 'vin_p', 'vin_n'];
@@ -1115,6 +1167,8 @@ export function terminalsForKind(kind, params) {
     case 'sgp30': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'veml7700': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'as5600': return ['vcc', 'gnd', 'sda', 'scl', 'dir', 'out'];
+    case 'mono_lcd': return ['vcc', 'gnd'];
+    case 'rgb_light': return ['vcc', 'gnd'];
     case 'matrix9x9': return [
       'col0','col1','col2','col3','col4','col5','col6','col7','col8',
       'row0','row1','row2','row3','row4','row5','row6','row7','row8',

@@ -234,6 +234,17 @@ class SB3Creator {
     runtimeCall(b, blocks, valFn) {
         const op = this.runtimeOp(b.opcode);
         if (!op) return null;
+        // A MicroPython target has no `_stc12` runtime object — its pins are
+        // machine.Pin objects in the header. generateMicroPython installs
+        // this hook so a pin read NESTED in an expression resolves natively
+        // too. The walker only intercepts reads it sees directly, and
+        // `IF read b0 THEN` parses as `read b0 > 0`, hiding the read one
+        // level down; those emitted a call to an object that does not exist
+        // on the device.
+        if (this._nativePinExpr) {
+            const native = this._nativePinExpr(b);
+            if (native) return { kind: op.kind, call: native };
+        }
         if (!this._runtimesUsed) this._runtimesUsed = new Set();
         this._runtimesUsed.add(b.opcode.slice(0, b.opcode.indexOf('_')));
         const args = (op.args || []).map(k => this.runtimeArg(b, k, blocks, valFn));
@@ -493,7 +504,7 @@ class SB3Creator {
                 '        if b: b.setControl(control, float(value))',
                 '    def getControl(self, control):',
                 '        b = _circuit_board()',
-                '        return b.getControl(control) if b else 0',
+                '        return b.getControl(control) if b else float("nan")',
                 '    def setPower(self, state):',
                 '        b = _circuit_board()',
                 '        if b: b.setPower(state == "on")',
@@ -513,7 +524,7 @@ class SB3Creator {
             '    buzzerTone: (part) => { const b = _circuit_board(); if (!b) return NaN;',
             '        const r = b.buzzerTone(part); return r && r.on ? r.hz : 0; },',
             '    setControl: (control, v) => { const b = _circuit_board(); if (b) b.setControl(control, Number(v)); },',
-            '    getControl: (control) => { const b = _circuit_board(); return b ? b.getControl(control) : 0; },',
+            '    getControl: (control) => { const b = _circuit_board(); return b ? b.getControl(control) : NaN; },',
             '    setPower: (state) => { const b = _circuit_board(); if (b) b.setPower(state === "on"); }',
             '};'
         ];
@@ -584,6 +595,7 @@ class SB3Creator {
                 '    def oledCursor(self, r, c, d): pass',
                 '    def oledClear(self, d): pass',
                 '    def oledPixel(self, x, y, v, d): pass',
+                '    def oledHline(self, x, y, w, d): pass',
                 '    def setPixel(self, m, x, y, b): pass',
                 '    def clearMatrix(self, m): pass',
                 '    def setNeopixel(self, s, i, r, g, b): pass',
@@ -667,6 +679,13 @@ class SB3Creator {
             '    oledPixel: (x, y, v, d) => { const i = _devices._i2c(); if (!i) return; _devices._oledInit(i);',
             '        _devices._oledPageCol(i, (Number(y) >> 3) & 0x07, Number(x) & 0x7F);',
             '        _devices._oledData(i, [Number(v) ? (1 << (Number(y) & 7)) : 0x00]); },',
+            '    oledHline: (x, y, w, d) => { const i = _devices._i2c(); if (!i) return; _devices._oledInit(i);',
+            '        const page = (Number(y) >> 3) & 0x07; const bit = 1 << (Number(y) & 7);',
+            '        const x0 = Number(x) & 0x7F; const len = Math.max(0, Number(w));',
+            '        for (let c = 0; c < len; c++) { _devices._oledPageCol(i, page, (x0 + c) & 0x7F); _devices._oledData(i, [bit]); } },',
+            '    // oledShow: Pico MicroPython flushes an in-RAM framebuffer; the I2C simulator',
+            '    // driver writes pixels directly to the wire so no flush step is needed.',
+            '    oledShow: (d) => {},',
             '    // ── HD44780 via PCF8574 backpack (0x27): D7 D6 D5 D4 BL EN RW RS ──',
             '    _lcdSend: (i, val) => { _devices._start(i); _devices._byte(i, 0x4E); _devices._byte(i, val); _devices._stopB(i); },',
             '    _lcdNib: (i, nib, rs) => { const v = (nib & 0xF0) | 0x08 | rs;',
@@ -1162,6 +1181,40 @@ class SB3Creator {
         if ((m = s.match(/^read\s+last\s+radio\s+text$/i))) {
             return B('microbitplus_radiolaststr');
         }
+        // ---- Spike Prime sensor reporters ----
+        if ((m = s.match(/^spike\s+distance\s+([A-F])\s*$/i)))
+            return B('spikeprime_getDistance', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+color\s+([A-F])\s*$/i)))
+            return B('spikeprime_getColor', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+force\s+([A-F])\s*$/i)))
+            return B('spikeprime_getForce', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+reflection\s+([A-F])\s*$/i)))
+            return B('spikeprime_getReflection', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+angle\s+(yaw|pitch|roll)\s*$/i)))
+            return B('spikeprime_getAngle', {}, { AXIS: [m[1].toLowerCase(), null] });
+        if ((m = s.match(/^spike\s+acceleration\s+(x|y|z)\s*$/i)))
+            return B('spikeprime_getAcceleration', {}, { AXIS: [m[1].toLowerCase(), null] });
+        if ((m = s.match(/^spike\s+motor\s+position\s+([A-F])\s*$/i)))
+            return B('spikeprime_getPosition', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+motor\s+speed\s+([A-F])\s*$/i)))
+            return B('spikeprime_getSpeed', {}, { PORT: [m[1].toUpperCase(), null] });
+        if (/^spike\s+orientation$/i.test(s))
+            return B('spikeprime_getOrientation');
+        if (/^spike\s+battery$/i.test(s))
+            return B('spikeprime_getBatteryLevel');
+        if (/^spike\s+timer$/i.test(s))
+            return B('spikeprime_getTimer');
+        if (/^spike\s+hub\s+temperature$/i.test(s))
+            return B('spikeprime_getHubTemperature');
+        // Spike booleans
+        if ((m = s.match(/^spike\s+force\s+sensor\s+([A-F])\s+pressed\s*$/i)))
+            return B('spikeprime_isForceSensorPressed', {}, { PORT: [m[1].toUpperCase(), null] });
+        if ((m = s.match(/^spike\s+button\s+(left|right)\s+pressed\s*$/i)))
+            return B('spikeprime_isButtonPressed', {}, { BUTTON: [m[1].toLowerCase(), null] });
+        if ((m = s.match(/^spike\s+gesture\s+(\w+)\s*$/i)))
+            return B('spikeprime_isGesture', {}, { GESTURE: [m[1].toLowerCase(), null] });
+        if ((m = s.match(/^spike\s+color\s+([A-F])\s+is\s+(\w+)\s*$/i)))
+            return B('spikeprime_isColor', {}, { PORT: [m[1].toUpperCase(), null], COLOR: [m[2].toLowerCase(), null] });
         // STC12 pin read: digital level, or the 10-bit ADC value for an ANALOG pin.
         if ((m = s.match(/^read\s+([A-Za-z_]\w*)$/i)) && this.stcPin(m[1])) {
             return B('stc12_read', {}, { PIN: [this.stcPin(m[1]).name, null] });
@@ -3260,7 +3313,7 @@ class SB3Creator {
             return ret(block);
         }
         if (/^clear\s+display\s*$/i.test(line)) {
-            const { id, block } = cmd('microbitplus_cleardisplay');
+            const { block } = cmd('microbitplus_cleardisplay');
             return ret(block);
         }
         if ((match = line.match(/^plot\s+x\s+(\d+)\s+y\s+(\d+)\s+(on|off)\s*$/i))) {
@@ -3302,7 +3355,7 @@ class SB3Creator {
             return ret(block);
         }
         if (/^stop\s+(?:buzzer|tone)\s*$/i.test(line)) {
-            const { id, block } = cmd('microbitplus_stoptone');
+            const { block } = cmd('microbitplus_stoptone');
             return ret(block);
         }
         if ((match = line.match(/^set\s+(?:pin\s+)?(P\d+)\s+servo(?:\s+angle)?\s+(\S+)\s*$/i))) {
@@ -3334,6 +3387,18 @@ class SB3Creator {
             block[id].inputs.TEXT = [1, [10, match[1]]];
             return ret(block);
         }
+        // ---- Spike Prime display commands (must precede generic display handler) ----
+        if (this.project && this.project.stc && this.project.stc.device === 'spike') {
+            if ((match = line.match(/^display\s+text\s+"([^"]*)"\s*$/i))) {
+                const { id, block } = cmd('spikeprime_displayText');
+                block[id].inputs.TEXT = [1, [10, match[1]]];
+                return ret(block);
+            }
+            if (/^display\s+clear\s*$/i.test(line)) {
+                const { block } = cmd('spikeprime_displayClear');
+                return ret(block);
+            }
+        }
         // ---- micro:bit display (explicit device verb: say is STAGE, this is LEDs) ----
         if ((match = line.match(/^(?:display|scroll)\s+"([^"]*)"\s*$/i))) {
             const { id, block } = cmd('microbit_display');
@@ -3345,6 +3410,77 @@ class SB3Creator {
             const { id, block } = cmd('microbit_display');
             block[id].inputs.VALUE = val(match[1]);
             block[id].fields.MODE = ['number', null];
+            return ret(block);
+        }
+        // ---- Spike Prime motor commands ----
+        if ((match = line.match(/^start\s+motor\s+([A-F])\s+(forward|backward|clockwise|counterclockwise)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_motorStart');
+            block[id].fields.PORT = [match[1].toUpperCase(), null];
+            block[id].fields.DIRECTION = [match[2].toLowerCase(), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^stop\s+motor\s+([A-F])\s*$/i))) {
+            const { id, block } = cmd('spikeprime_motorStop');
+            block[id].fields.PORT = [match[1].toUpperCase(), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^run\s+motor\s+([A-F])\s+(forward|backward|clockwise|counterclockwise)\s+(\S+)\s+(rotations?|degrees|seconds?)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_motorRunFor');
+            block[id].fields.PORT = [match[1].toUpperCase(), null];
+            block[id].fields.DIRECTION = [match[2].toLowerCase(), null];
+            block[id].inputs.VALUE = val(match[3]);
+            block[id].fields.UNIT = [match[4].toLowerCase().replace(/s$/, ''), null];
+            return ret(block);
+        }
+        if ((match = line.match(/^set\s+motor\s+speed\s+([A-F])\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_motorSetSpeed');
+            block[id].fields.PORT = [match[1].toUpperCase(), null];
+            block[id].inputs.SPEED = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^move\s+(forward|backward)\s+(\S+)\s+(cm|inches|rotations?|degrees|seconds?)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_moveForward');
+            block[id].fields.DIRECTION = [match[1].toLowerCase(), null];
+            block[id].inputs.VALUE = val(match[2]);
+            block[id].fields.UNIT = [match[3].toLowerCase().replace(/s$/, ''), null];
+            return ret(block);
+        }
+        if (/^stop\s+movement\s*$/i.test(line)) {
+            const { block } = cmd('spikeprime_stopMovement');
+            return ret(block);
+        }
+        // ---- Spike Prime pixel/sound/IMU commands ----
+        if ((match = line.match(/^set\s+pixel\s+(\S+)\s+(\S+)\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_setPixel');
+            block[id].inputs.X = val(match[1]);
+            block[id].inputs.Y = val(match[2]);
+            block[id].inputs.BRIGHTNESS = val(match[3]);
+            return ret(block);
+        }
+        // ---- Spike Prime sound commands ----
+        if ((match = line.match(/^play\s+beep\s+(\S+)\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_playBeep');
+            block[id].inputs.FREQUENCY = val(match[1]);
+            block[id].inputs.DURATION = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^play\s+spike\s+note\s+(\S+)\s+(\S+)\s*$/i))) {
+            const { id, block } = cmd('spikeprime_playNote');
+            block[id].inputs.NOTE = val(match[1]);
+            block[id].inputs.SECS = val(match[2]);
+            return ret(block);
+        }
+        if (/^stop\s+sound\s*$/i.test(line)) {
+            const { block } = cmd('spikeprime_stopSound');
+            return ret(block);
+        }
+        // ---- Spike Prime IMU commands ----
+        if (/^reset\s+yaw\s*$/i.test(line)) {
+            const { block } = cmd('spikeprime_resetYaw');
+            return ret(block);
+        }
+        if (/^reset\s+spike\s+timer\s*$/i.test(line)) {
+            const { block } = cmd('spikeprime_resetTimer');
             return ret(block);
         }
         // ---- Circuit extension commands (boundary B) --------------------------------
@@ -3559,6 +3695,30 @@ class SB3Creator {
             block[id].inputs.X = val(match[1]);
             block[id].inputs.Y = val(match[2]);
             block[id].inputs.VALUE = val(match[3]);
+            block[id].inputs.DISPLAY = val(match[4]);
+            return ret(block);
+        }
+        // `oled show` is the flush. A buffered target (MicroPython framebuf)
+        // draws into RAM and blits ONCE here instead of after every verb —
+        // a full 128x64 frame is a 1 KB I2C transfer, so a screen built from
+        // six verbs cost six of them and visibly flickered. A program that
+        // never says `oled show` keeps the old draw-and-flush behaviour, so
+        // this is additive.
+        if ((match = line.match(/^oled show\s+(.+)$/i))) {
+            const displayArg = match[1].trim();
+            if (/\s/.test(displayArg)) {
+                this.warn(null, `oled show takes a single display name, but got "${displayArg}" (contains whitespace) — did you mean "oled show <display>"?`);
+                return null;
+            }
+            const { id, block } = cmd('devices_oledshow');
+            block[id].inputs.DISPLAY = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^oled hline\s+(.+?)\s+(.+?)\s+(.+?)\s+on\s+(.+)$/i))) {
+            const { id, block } = cmd('devices_oledhline');
+            block[id].inputs.X = val(match[1]);
+            block[id].inputs.Y = val(match[2]);
+            block[id].inputs.W = val(match[3]);
             block[id].inputs.DISPLAY = val(match[4]);
             return ret(block);
         }
@@ -5196,6 +5356,24 @@ class SB3Creator {
             case 'circuit_ledbrightness': return `brightness of ${v('PART')}`;
             case 'circuit_buzzertone': return `tone of ${v('PART')}`;
             case 'circuit_getcontrol': return `control of ${v('CONTROL')}`;
+            // Spike Prime reporters
+            case 'spikeprime_getDistance': return `spike distance ${f('PORT')}`;
+            case 'spikeprime_getColor': return `spike color ${f('PORT')}`;
+            case 'spikeprime_getForce': return `spike force ${f('PORT')}`;
+            case 'spikeprime_getReflection': return `spike reflection ${f('PORT')}`;
+            case 'spikeprime_getAngle': return `spike angle ${f('AXIS')}`;
+            case 'spikeprime_getAcceleration': return `spike acceleration ${f('AXIS')}`;
+            case 'spikeprime_getPosition': return `spike motor position ${f('PORT')}`;
+            case 'spikeprime_getSpeed': return `spike motor speed ${f('PORT')}`;
+            case 'spikeprime_getOrientation': return 'spike orientation';
+            case 'spikeprime_getBatteryLevel': return 'spike battery';
+            case 'spikeprime_getTimer': return 'spike timer';
+            case 'spikeprime_getHubTemperature': return 'spike hub temperature';
+            // Spike Prime boolean reporters
+            case 'spikeprime_isForceSensorPressed': return `spike force sensor ${f('PORT')} pressed`;
+            case 'spikeprime_isButtonPressed': return `spike button ${f('BUTTON')} pressed`;
+            case 'spikeprime_isGesture': return `spike gesture ${f('GESTURE')}`;
+            case 'spikeprime_isColor': return `spike color ${f('PORT')} is ${f('COLOR')}`;
             default: return b.opcode;
         }
     }
@@ -5425,6 +5603,21 @@ class SB3Creator {
             case 'microbitplus_radioon': return line(`radio on group ${v('GROUP')} power ${v('POWER')}`);
             case 'microbitplus_radiosendnum': return line(`radio send number ${v('NUM')}`);
             case 'microbitplus_radiosendstr': return line(`radio send text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            // ---- Spike Prime commands ----
+            case 'spikeprime_motorStart': return line(`start motor ${f('PORT')} ${f('DIRECTION')}`);
+            case 'spikeprime_motorStop': return line(`stop motor ${f('PORT')}`);
+            case 'spikeprime_motorRunFor': return line(`run motor ${f('PORT')} ${f('DIRECTION')} ${v('VALUE')} ${f('UNIT')}`);
+            case 'spikeprime_motorSetSpeed': return line(`set motor speed ${f('PORT')} ${v('SPEED')}`);
+            case 'spikeprime_moveForward': return line(`move ${f('DIRECTION')} ${v('VALUE')} ${f('UNIT')}`);
+            case 'spikeprime_stopMovement': return line('stop movement');
+            case 'spikeprime_displayText': return line(`display text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            case 'spikeprime_displayClear': return line('display clear');
+            case 'spikeprime_setPixel': return line(`set pixel ${v('X')} ${v('Y')} ${v('BRIGHTNESS')}`);
+            case 'spikeprime_playBeep': return line(`play beep ${v('FREQUENCY')} ${v('DURATION')}`);
+            case 'spikeprime_playNote': return line(`play spike note ${v('NOTE')} ${v('SECS')}`);
+            case 'spikeprime_stopSound': return line('stop sound');
+            case 'spikeprime_resetYaw': return line('reset yaw');
+            case 'spikeprime_resetTimer': return line('reset spike timer');
             // circuit extension commands
             case 'circuit_setcontrol': return line(`set control ${v('CONTROL')} to ${v('VALUE')}`);
             case 'circuit_setpower': return line(`turn power ${f('STATE')}`);
@@ -5477,6 +5670,8 @@ class SB3Creator {
                 return line(`raw "${t.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`);
             }
             case 'devices_oledclear': return line(`oled clear ${v('DISPLAY')}`);
+            case 'devices_oledshow': return line(`oled show ${v('DISPLAY')}`);
+            case 'devices_oledhline': return line(`oled hline ${v('X')} ${v('Y')} ${v('W')} on ${v('DISPLAY')}`);
             case 'devices_oledprint': return line(`oled print ${v('TEXT')} on ${v('DISPLAY')}`);
             case 'devices_oledcursor': return line(`oled set cursor ${v('ROW')} ${v('COL')} on ${v('DISPLAY')}`);
             // LED cube commands
@@ -5933,6 +6128,7 @@ class SB3Creator {
 
     generatePython(project = this.project, opts = {}) {
         this._driverPins = (project.stc && project.stc.pins) || null;
+        this._nativePinExpr = null;   // MicroPython-only; must not leak in here
         this._pyNames = new Map();
         this._pyUses = { random: false, math: false, time: false, eq: false, answer: false, arrays: false, json: false, sumdigits: false };
         this._runtimesUsed = new Set();
@@ -6269,6 +6465,7 @@ class SB3Creator {
 
     generateJavaScript(project = this.project, opts = {}) {
         this._driverPins = (project.stc && project.stc.pins) || null;
+        this._nativePinExpr = null;   // MicroPython-only; must not leak in here
         this._pyNames = new Map();
         this._jsUses = { rand: false, eq: false, answer: false, fact: false, arrays: false, sumdigits: false, multiple: false };
         this._runtimesUsed = new Set();
@@ -6774,6 +6971,18 @@ class SB3Creator {
             case 'bitops_shr': return `(${v('NUM1')} >> ${v('NUM2')})`;
             case 'bitops_not': return `(~${v('NUM')})`;
             case 'operator_round': return v('NUM');       // integer arithmetic already
+            case 'operator_mathop': {
+                // Same reasoning as round: every scalar here is a long, so
+                // floor/ceiling/round are the identity on a value that is
+                // already integral, and abs is a conditional. The
+                // transcendental ones have no integer meaning on this
+                // backend and stay a named degradation.
+                const mop = String(f('OPERATOR') || '').toLowerCase();
+                if (mop === 'floor' || mop === 'ceiling' || mop === 'round') return v('NUM');
+                if (mop === 'abs') { const x = v('NUM'); return `((${x}) < 0 ? -(${x}) : (${x}))`; }
+                this.cWarn(`no C equivalent for "${mop} of" — emitted as 0`);
+                return `0 /* ${this.cComment(mop + ' of')} */`;
+            }
             case 'planetemaths_oppose': return `(0 - ${v('NUM1')})`;
             case 'planetemaths_pourcent': return `(${v('NUM1')} / 100)`;
             case 'stc12_read': return this.cPinRead(f('PIN'));
@@ -7254,6 +7463,8 @@ class SB3Creator {
             case 'devices_tftcursor': { this._cUses.devices = true; this._cUses.tft = true; return line(`bw_tft_cursor(${v('DISPLAY')}, ${v('ROW')}, ${v('COL')});`); }
             case 'devices_oledpixel': { this._cUses.devices = true; this._cUses.oled = true; return line(`bw_oled_pixel(${v('DISPLAY')}, ${v('X')}, ${v('Y')}, ${v('VALUE')});`); }
             case 'devices_oledclear': { this._cUses.devices = true; this._cUses.oled = true; return line(`bw_oled_clear(${v('DISPLAY')});`); }
+            case 'devices_oledshow': { this._cUses.devices = true; this._cUses.oled = true; return line(`bw_oled_show(${v('DISPLAY')});`); }
+            case 'devices_oledhline': { this._cUses.devices = true; this._cUses.oled = true; return line(`bw_oled_hline(${v('DISPLAY')}, ${v('X')}, ${v('Y')}, ${v('W')});`); }
             case 'devices_oledprint': {
                 this._cUses.devices = true; this._cUses.oled = true;
                 const t = this.cTextArg(b.inputs.TEXT, blocks);
@@ -7886,6 +8097,14 @@ class SB3Creator {
 
         const KEYMAP = { a: 'button_a', b: 'button_b' };
         const uses = { music: false, buttons: false, oled: false };
+        // Decided BEFORE the walk, not during it: `oled clear` is emitted the
+        // moment it is reached, which is generally before the `oled show`
+        // that ends the frame, so the walker cannot know yet. A program that
+        // flushes for itself gets a buffered driver — draw into RAM, one
+        // 1 KB I2C blit at `oled show`. One that never says `oled show`
+        // keeps flush-on-every-verb, so existing programs are untouched.
+        const manualFlush = targets.some((t) => Object.values(t.blocks || {})
+            .some((bl) => bl && bl.opcode === 'devices_oledshow'));
         const degrade = (msg) => { if (!warnings.includes(msg)) warnings.push(msg); };
 
         // TWO boards run MicroPython here. The micro:bit's pins are ambient
@@ -7910,7 +8129,8 @@ class SB3Creator {
             }
             const m = /^P(\d{1,2})$/i.exec(p.where || '');
             if (m && Number(m[1]) <= 20) {
-                pinMap.set(p.name, { expr: `pin${Number(m[1])}`, activeLow: !!p.activeLow });
+                pinMap.set(p.name, { expr: `pin${Number(m[1])}`, activeLow: !!p.activeLow,
+                    direction: p.direction });
             } else {
                 degrade(`pin ${p.name} at "${p.where}" is not a micro:bit pin (P0-P20); its operations are stubs`);
             }
@@ -7919,6 +8139,22 @@ class SB3Creator {
         const readExpr = (pin) => isPico
             ? (pin.activeLow ? `(1 - ${pin.expr}.value())` : `${pin.expr}.value()`)
             : (pin.activeLow ? `(1 - ${pin.expr}.read_digital())` : `${pin.expr}.read_digital()`);
+        // `read <pin>` is the DIGITAL level, or the ADC value for a pin
+        // declared ANALOG — the dialect's own definition, and what
+        // generateC emits. This path called read_analog() for every read,
+        // digital buttons included.
+        const readAny = (pin) => {
+            if (pin.direction === 'analog') {
+                if (isPico) { degrade(`analog read of ${pin.expr} needs machine.ADC — not emitted yet`); return '0'; }
+                return `${pin.expr}.read_analog()`;
+            }
+            return readExpr(pin);
+        };
+        this._nativePinExpr = (b) => {
+            if (b.opcode !== 'stc12_read' && b.opcode !== 'stc12_readpin') return null;
+            const pin = pinOf(b.fields && b.fields.PIN ? b.fields.PIN[0] : '');
+            return pin ? readAny(pin) : null;
+        };
 
         // Expression via the shared pure-Python layer; anything that came
         // out needing the host shim is a named degradation, not a lie.
@@ -7943,8 +8179,7 @@ class SB3Creator {
             if (rb.opcode === 'stc12_read') {
                 const p = pinOf(rb.fields.PIN ? rb.fields.PIN[0] : '');
                 if (!p) return '0';
-                if (isPico) { degrade(`analog read of ${p.expr} needs machine.ADC — not emitted yet`); return '0'; }
-                return `${p.expr}.read_analog()`;
+                return readAny(p);
             }
             // ---- micro:bit+ SENSORS/MOTION reporters (DUAL-LOWERING-ORACLE M1–E3) ----
             const rf = (k) => (rb.fields[k] ? rb.fields[k][0] : '');
@@ -8222,13 +8457,32 @@ class SB3Creator {
                 // ignores the SSD1306 window commands; page mode works on
                 // BOTH controllers). Cursor is text cells, 8x8 font.
                 case 'devices_oledclear':
-                    if (isPico) { uses.oled = true; return [`${pad}_oled.fill(0)`, `${pad}_oled.show()`]; }
+                    if (isPico) {
+                        uses.oled = true;
+                        return manualFlush ? [`${pad}_oled.fill(0)`]
+                            : [`${pad}_oled.fill(0)`, `${pad}_oled.show()`];
+                    }
+                    break;
+                case 'devices_oledshow':
+                    if (isPico) { uses.oled = true; return [`${pad}_oled.show()`]; }
+                    break;
+                case 'devices_oledhline':
+                    if (isPico) {
+                        uses.oled = true;
+                        return [`${pad}_oled.hline(int(${v('X')}), int(${v('Y')}), int(${v('W')}), 1)`];
+                    }
+                    break;
+                case 'devices_oledpixel':
+                    if (isPico) {
+                        uses.oled = true;
+                        return [`${pad}_oled.pixel(int(${v('X')}), int(${v('Y')}), int(${v('VALUE')}))`];
+                    }
                     break;
                 case 'devices_oledcursor':
                     if (isPico) { uses.oled = true; return [`${pad}_oled.crow = int(${v('ROW')})`, `${pad}_oled.ccol = int(${v('COL')})`]; }
                     break;
                 case 'devices_oledprint':
-                    if (isPico) { uses.oled = true; return [`${pad}_oled_print(${v('VALUE')})`]; }
+                    if (isPico) { uses.oled = true; return [`${pad}_oled_print(${v('TEXT')})`]; }
                     break;
                 default: {
                     const desc = this.decompileBlock ? this.decompileBlock(b, blocks) : b.opcode;
@@ -8352,20 +8606,25 @@ class SB3Creator {
                     `    _bw_enter(${k})`,
                     '    try:',
                     ...body.map((l) => '    ' + l),
-                    '        if False:',
+                    '        if _bw_false:',
                     '            yield 0',
                     '    finally:',
                     '        _bw_exit()'].join('\n'));
             } else {
-                // The dead-yield generator trick, with one settrace caveat:
-                // on the settrace firmware, an `if False: yield` "generator"
-                // whose call follows a Python call made FROM the trace hook
-                // comes back None ('NoneType' isn't iterable at the yield
-                // from) — measured against the real firmware, 2026-08-19.
-                // A non-foldable guard (module flag) keeps generator-ness
-                // robust; stock builds keep the literal so they stay
-                // byte-identical.
-                const guard = trc ? '    if _bw_false:' : '    if False:';
+                // The dead-yield generator trick needs a guard the compiler
+                // cannot fold. `if False:` is NOT one: MicroPython drops the
+                // branch outright, the body keeps no yield, the function
+                // compiles as an ordinary one returning None, and the
+                // `yield from` on it dies with "'NoneType' object isn't
+                // iterable" before the first frame is drawn.
+                //
+                // This is not settrace-specific — measured 2026-08-19 on a
+                // STOCK RPI_PICO build, MicroPython v1.28.0, sys.settrace
+                // absent: `if False: yield 0` -> None, `if _bw_false: yield 0`
+                // -> generator. The whole 70-calculator died on it. So the
+                // non-foldable guard is unconditional now; `trc` only decides
+                // which flag name is in scope.
+                const guard = '    if _bw_false:';
                 taskDefs.unshift([`def ${fn}(${argNames.join(', ')}):`,
                     ...globals, ...body, guard, '        yield 0'].join('\n'));
             }
@@ -8397,7 +8656,16 @@ class SB3Creator {
             : ['# generated for micro:bit (MicroPython)',
                 'from microbit import *'];
         if (uses.music && !isPico) header.push('import music');
-        if (uses.math) header.push('import math');
+        // `uses.math` covers the microbitplus helpers below; the SHARED
+        // expression layer records math/random in _pyUses instead (`floor
+        // of`, `sqrt of`, `pi`, `factorial`, `pick random`). Consult both,
+        // or those reach the device and raise NameError at first use.
+        if (uses.math || this._pyUses.math) header.push('import math');
+        if (this._pyUses.random) header.push('import random');
+        // Non-foldable generator guard for yield-less procedures (procDefs).
+        // Unconditional: the folding is the stock compiler's, not the
+        // debugger's.
+        header.push('_bw_false = False')
         if (uses.radio) header.push('import radio');
         if (uses._pitch) header.push('', 'def _pitch():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(-y, -z) * 180 / math.pi');
         if (uses._roll) header.push('', 'def _roll():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(x, -z) * 180 / math.pi');
@@ -8504,7 +8772,6 @@ class SB3Creator {
                 '# --- BrickWright settrace debug: line-level tracing over serial ---',
                 'import sys',
                 '_bw_step = 0',
-                '_bw_false = False   # non-foldable generator guard (see procDefs)',
                 `_bw_vnames = ${trcVnames}`,
                 '_bw_lines = None  # @bw-lines',
                 '_bw_bl = set()  # @bw-breaks',
@@ -8687,7 +8954,7 @@ class SB3Creator {
                     '    s = _fmt(v)',
                     '    _oled.text(s, _oled.ccol * 8, _oled.crow * 8)',
                     '    _oled.ccol += len(s)',
-                    '    _oled.show()');
+                    ...(manualFlush ? [] : ['    _oled.show()']));
             }
         }
 
@@ -8742,7 +9009,7 @@ class SB3Creator {
             lineMap = {};
             const lines = py.split('\n');
             for (let i = 0; i < lines.length; i++) {
-                const m = lines[i].match(/  # @bw:(\S+)$/);
+                const m = lines[i].match(/ {2}# @bw:(\S+)$/);
                 if (m) {
                     lineMap[i + 1] = decodeURIComponent(m[1]);
                     lines[i] = lines[i].slice(0, -m[0].length);
@@ -10222,7 +10489,7 @@ class SB3Creator {
             // Z80 breadboard machine: OUT latch + IN buffer on I/O port 0.
             // Shadow byte for the OUT latch avoids reading back the latch
             // (which would return the IN buffer on the shared port address).
-            const machine = stored.machine || null;
+            const _machine = stored.machine || null;
             const outPort = 0;  // port 0 for both OUT and IN
             out.push('#include <stdint.h>', '');
             out.push(`#define F_CPU ${clock}UL`, '');
@@ -12261,10 +12528,36 @@ class SB3Creator {
                     '    (void)disp;',
                     '    oled_set_page_col((unsigned char)(row & 0x07), (unsigned char)(col * 6));',
                     '}',
+                    '',
+                    'static void bw_oled_hline(int disp, int x, int y, int w)',
+                    '{',
+                    '    unsigned char bit = (unsigned char)(1 << (y & 7));',
+                    '    int i;',
+                    '    (void)disp;',
+                    '    /* One page row, so the whole line is one column run. Like',
+                    '       bw_oled_pixel, this writes the byte rather than merging',
+                    '       into it: the other seven rows of the page are cleared. */',
+                    '    oled_set_page_col((unsigned char)(y >> 3), (unsigned char)x);',
+                    '    oled_data_start();',
+                    '    for (i = 0; i < w; i++) i2c_write(bit);',
+                    '    i2c_stop();',
+                    '}',
+                    '',
+                    'static void bw_oled_show(int disp)',
+                    '{',
+                    '    /* Nothing to do: this driver writes straight to the panel,',
+                    '       so the frame is already on the glass. `oled show` exists',
+                    '       for BUFFERED targets (MicroPython framebuf), where it is',
+                    '       the single blit. Keeping it a no-op here means one',
+                    '       program draws correctly on both. */',
+                    '    (void)disp;',
+                    '}',
                     '');
             } else {
                 out.push(
                     stub('static void bw_oled_pixel(int d, int x, int y, int v)', 'devices_oledpixel'),
+                    stub('static void bw_oled_hline(int d, int x, int y, int w)', 'devices_oledhline'),
+                    stub('static void bw_oled_show(int d)', 'devices_oledshow'),
                     stub('static void bw_oled_clear(int d)', 'devices_oledclear'),
                     stub('static void bw_oled_print_s(int d, const char *s)', 'devices_oledprint'),
                     stub('static void bw_oled_print_n(int d, long n)', 'devices_oledprint'),
@@ -12283,11 +12576,11 @@ class SB3Creator {
                     const rowBits = mx.rows.map(r => Number(r.match(/\d+/)[0]));
                     const colBits = mx.cols.map(c => Number(c.match(/\d+/)[0]));
                     const rowMask = rowBits.reduce((m, b) => m | (1 << b), 0);
-                    const colMask = colBits.reduce((m, b) => m | (1 << b), 0);
+                    const _colMask = colBits.reduce((m, b) => m | (1 << b), 0);
                     const useI2cShadow = this._cUses.lcd || this._cUses.oled;
                     const oraWrite = useI2cShadow
-                        ? (expr) => `_i2c_sh = (unsigned char)((unsigned char)(_i2c_sh | 0x${rowMask.toString(16).padStart(2, '0')}) & (unsigned char)~(1u << _mk_rows[r])); BW_VIA_ORA = _i2c_sh`
-                        : (expr) => `BW_VIA_ORA = (unsigned char)((unsigned char)(BW_VIA_ORA | 0x${rowMask.toString(16).padStart(2, '0')}) & (unsigned char)~(1u << _mk_rows[r]))`;
+                        ? (_expr) => `_i2c_sh = (unsigned char)((unsigned char)(_i2c_sh | 0x${rowMask.toString(16).padStart(2, '0')}) & (unsigned char)~(1u << _mk_rows[r])); BW_VIA_ORA = _i2c_sh`
+                        : (_expr) => `BW_VIA_ORA = (unsigned char)((unsigned char)(BW_VIA_ORA | 0x${rowMask.toString(16).padStart(2, '0')}) & (unsigned char)~(1u << _mk_rows[r]))`;
                     out.push(
                         `/* Matrix keypad: ${nRows} rows × ${nCols} cols = ${nRows * nCols} keys. */`,
                         `static const unsigned char _mk_rows[${nRows}] = { ${rowBits.join(', ')} };`,
@@ -13140,6 +13433,15 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             oledcursor: { kind: 'command', method: 'oledCursor', args: ['ROW', 'COL', 'DISPLAY'] },
             oledclear: { kind: 'command', method: 'oledClear', args: ['DISPLAY'] },
             oledpixel: { kind: 'command', method: 'oledPixel', args: ['X', 'Y', 'VALUE', 'DISPLAY'] },
+            // `oled show` is the frame flush and `oled hline` a rule. Both were
+            // added with native MicroPython and C lowerings but no registry
+            // entry, so the SIMULATOR driver had nothing to call and emitted
+            // them as comments — the in-app OLED simply lost its rules and its
+            // blit. Registering them here is the whole fix: the walkers keep
+            // their native forms, and JS/Python reach the board through the
+            // same swap point as every other device verb.
+            oledshow: { kind: 'command', method: 'oledShow', args: ['DISPLAY'] },
+            oledhline: { kind: 'command', method: 'oledHline', args: ['X', 'Y', 'W', 'DISPLAY'] },
             // led_matrix
             setpixel: { kind: 'command', method: 'setPixel', args: ['X', 'Y', 'BRIGHTNESS', 'MATRIX'] },
             clearmatrix: { kind: 'command', method: 'clearMatrix', args: ['MATRIX'] },
@@ -13183,7 +13485,7 @@ SB3Creator.RUNTIME_EXTENSIONS = {
             ledbrightness: { kind: 'reporter', method: 'ledBrightness', args: ['PART'], neutral: 'NaN' },
             buzzertone: { kind: 'reporter', method: 'buzzerTone', args: ['PART'], neutral: 'NaN' },
             setcontrol: { kind: 'command', method: 'setControl', args: ['CONTROL', 'VALUE'] },
-            getcontrol: { kind: 'reporter', method: 'getControl', args: ['CONTROL'], neutral: '0' },
+            getcontrol: { kind: 'reporter', method: 'getControl', args: ['CONTROL'], neutral: 'NaN' },
             setpower: { kind: 'command', method: 'setPower', args: ['STATE'] }
         }
     }
@@ -13611,6 +13913,7 @@ SB3Creator.STC_PARTS = {
     // end for these by definition, not merely not yet. Pins are P0-P20 and the
     // two buttons on a micro:bit.
     microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
+    spike: { core: 'spikepython', header: null, portModes: false, aux1T: false, adc: false },
     // core: 'rp2040' -- GP0-GP28, and generateC() emits freestanding Cortex-M0
     // bare metal (SIO GPIO, the 1 MHz TIMER as an ISR-free timebase, UART0,
     // ADC over APB). Decided 2026-08-12 (stc docs/ROADMAP.md): bare-metal C

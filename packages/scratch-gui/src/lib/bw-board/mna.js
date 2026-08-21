@@ -345,13 +345,25 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   let vsCount = 0;
   /** @type {Map<string, number>} part id → voltage source index in the extra rows */
   const vsIndex = new Map();
+  const railOwner = new Map();   // vcc netId -> the part that owns its row
+  /** Rails driven to two different voltages — a short, worth reporting. */
+  const railConflicts = [];
   const capPairSeen = new Set();
 
   if (!powerOff) {
     for (const part of parts) {
       if (part.kind === 'vcc') {
         const vccNet = findNet(nets, part.id, 'vcc');
-        if (vccNet && nodeIndex.has(vccNet)) {
+        // ONE constraint row per rail. A schematic draws one power symbol per
+        // connection point, so a rail routinely carries several vcc parts;
+        // giving each its own row makes two rows enforce V(net) = 5, the
+        // current split between them indeterminate, and the matrix singular.
+        // The solve then failed with EVERY node — the rail included — at 0 V
+        // and converged:false, naming nothing. Deduped HERE rather than at
+        // stamping time because an allocated row that never gets filled is
+        // exactly as singular as a duplicated one.
+        if (vccNet && nodeIndex.has(vccNet) && !railOwner.has(vccNet)) {
+          railOwner.set(vccNet, part.id);
           vsIndex.set(part.id, vsCount++);
         }
       }
@@ -446,6 +458,19 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
     A.data.fill(0);
     b.fill(0);
 
+    // A schematic conventionally draws ONE power symbol per connection point,
+    // so a single rail routinely carries several `vcc` parts. Each used to get
+    // its own voltage-source row, and two rows enforcing V(net) = 5 make the
+    // matrix singular: the split of current between the two identical sources
+    // is indeterminate. The solve then failed and EVERY node — the rail
+    // included — read 0 V, with converged:false and nothing naming the cause.
+    // Found by running 26 imported boards past lcapy: 25 failed, and the
+    // minimal reproduction is two vcc symbols on one net.
+    //
+    // One constraint per rail. Parts on the same net asking for DIFFERENT
+    // voltages are a real conflict (a 5 V symbol shorted to a 3.3 V one) and
+    // are reported rather than silently resolved to whichever came first.
+    const railStamped = new Map();          // netId -> volts already stamped
     for (const part of parts) {
       switch (part.kind) {
         case 'resistor':
@@ -472,8 +497,18 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
             // rail beside the 5V one); the board default stays the
             // fallback. board.js's seed path already honored this —
             // the solver must agree or the seed lies.
-            stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex,
-              Number.isFinite(part.params?.volts) ? part.params.volts : vcc);
+            const railVolts = Number.isFinite(part.params?.volts) ? part.params.volts : vcc;
+            const railNet = findNet(nets, part.id, 'vcc');
+            if (vsIndex.has(part.id)) {
+              railStamped.set(railNet, railVolts);
+              stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, railVolts);
+            } else if (railNet && railStamped.has(railNet)
+                       && railStamped.get(railNet) !== railVolts) {
+              // Two symbols on one net asking for different voltages is a real
+              // short between rails, not a duplicate. Say so instead of
+              // silently keeping whichever was stamped first.
+              railConflicts.push(`${railNet}: ${railStamped.get(railNet)} V and ${railVolts} V`);
+            }
           }
           break;
 
@@ -1140,10 +1175,12 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
         inductorCurrentsNext.set(part.id, c ? (c.get('b') ?? 0) : 0);
       }
     }
-    return { nodeVoltages, branchCurrents, capVoltagesNext, inductorCurrentsNext, converged };
+    return { nodeVoltages, branchCurrents, capVoltagesNext, inductorCurrentsNext, converged,
+      railConflicts: railConflicts.length ? [...new Set(railConflicts)] : undefined };
   }
 
-  return { nodeVoltages, branchCurrents, converged };
+  return { nodeVoltages, branchCurrents, converged,
+    railConflicts: railConflicts.length ? [...new Set(railConflicts)] : undefined };
 }
 
 // ─── Stamp functions ─────────────────────────────────────────────────────────
@@ -1178,11 +1215,16 @@ function findNet(nets, partId, terminal) {
 function stampResistor(A, b, part, nets, nodeIndex, groundNetId) {
   const netA = findNet(nets, part.id, 'a');
   const netB = findNet(nets, part.id, 'b');
+  // A leg on NO net carries no current. Ground has no matrix row, so
+  // nodeIndex.get(gnd) is undefined exactly like a terminal on no net — the
+  // two were indistinguishable and this element was stamped as if the loose
+  // leg were GROUNDED. Net IDs are non-empty strings, so real ground passes.
+  if (!netA || !netB) return;
   const ohms = /** @type {number} */ (part.params.ohms ?? 1000);
   const g = 1 / ohms;
 
-  const idxA = netA ? nodeIndex.get(netA) : undefined;
-  const idxB = netB ? nodeIndex.get(netB) : undefined;
+  const idxA = nodeIndex.get(netA);
+  const idxB = nodeIndex.get(netB);
 
   if (idxA !== undefined) A.add(idxA, idxA, g);
   if (idxB !== undefined) A.add(idxB, idxB, g);
@@ -1408,8 +1450,24 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
  * @param {Map<string, number>} nodeIndex
  */
 function stampTwoTerminal(A, netA, netB, g, nodeIndex) {
-  const idxA = netA ? nodeIndex.get(netA) : undefined;
-  const idxB = netB ? nodeIndex.get(netB) : undefined;
+  // A leg on NO net carries no current, so the element contributes nothing.
+  //
+  // This has to be said explicitly because the ground net has no matrix row —
+  // it is the reference — so `nodeIndex.get(gnd)` is undefined, exactly like a
+  // terminal that is on no net at all. The two states were indistinguishable,
+  // and the code below adds the self-conductance in both cases, which is right
+  // for ground and wrong for air: a resistor with one leg unconnected was
+  // stamped as a resistor TO GROUND, silently loading whatever it touched.
+  //
+  // Found by an independent solver: a MAX4466 board read 2.5 V on its bias
+  // node where lcapy said 5 V, because a 1k with one leg in the air was acting
+  // as the lower half of a divider. Imported schematics have unconnected pins
+  // constantly — no-fit parts, spare gates, test points — and every one of
+  // them was a phantom load. Net IDs are non-empty strings, so a real ground
+  // net still passes this guard.
+  if (!netA || !netB) return;
+  const idxA = nodeIndex.get(netA);
+  const idxB = nodeIndex.get(netB);
 
   if (idxA !== undefined) A.add(idxA, idxA, g);
   if (idxB !== undefined) A.add(idxB, idxB, g);

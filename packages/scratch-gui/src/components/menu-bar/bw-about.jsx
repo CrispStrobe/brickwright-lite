@@ -30,8 +30,8 @@ const L10N = {
         commit: 'View this commit',
         close: 'Close',
         unknownVersion: 'This build was made without a commit stamp.',
-        blurb: 'Build circuits on breadboards, program them in blocks or pseudocode, ' +
-            'run them on emulated chips — 8051, AVR, RP2040, 6502, Z80 — and debug them live, in the browser.',
+        blurb: 'Build and measure circuits, program machines with blocks or code, debug them live, ' +
+            'and learn beside the project — in the browser or native app.',
         copied: 'Copied',
         copy: 'Copy version details',
         provider: 'Provider (Impressum)',
@@ -47,11 +47,11 @@ const L10N = {
             'polarity, voltage and current limits before wiring real hardware, and treat ' +
             'anything not verified on a real chip as unverified.',
         components: 'Components and licences',
-        licenseNote: 'BSD-3-Clause / Apache-2.0 / MIT throughout. A permissive fork of the ' +
-            'pre-relicense Scratch stack, so it can be bundled and shipped anywhere.',
+        licenseNote: 'Open-source under BSD-3-Clause, Apache-2.0, MIT, and MPL-2.0. Brickwright ' +
+            'uses the last BSD Scratch stack plus its own editors and engines; it is not a TurboWarp fork.',
         notices: 'Full third-party notices',
         affil: 'Affiliation',
-        affilText: 'Not affiliated with or endorsed by Scratch / MIT, STC, Arduino, or ' +
+        affilText: 'Not affiliated with or endorsed by Scratch / MIT, LEGO, STC, Arduino, or ' +
             'Raspberry Pi. Trademarks belong to their owners.',
         toolchain: 'Compile service',
         toolchainLoading: 'asking the service...',
@@ -65,8 +65,8 @@ const L10N = {
         commit: 'Diesen Commit ansehen',
         close: 'Schliessen',
         unknownVersion: 'Dieser Build wurde ohne Commit-Stempel erzeugt.',
-        blurb: 'Schaltungen auf Steckplatinen bauen, in Bloecken oder Pseudocode programmieren, ' +
-            'auf emulierten Chips ausfuehren — 8051, AVR, RP2040, 6502, Z80 — und live im Browser debuggen.',
+        blurb: 'Schaltungen bauen und messen, Maschinen mit Bloecken oder Code programmieren, ' +
+            'live debuggen und direkt am Projekt lernen — im Browser oder in der nativen App.',
         copied: 'Kopiert',
         copy: 'Versionsdetails kopieren',
         provider: 'Anbieter (Impressum)',
@@ -83,11 +83,11 @@ const L10N = {
             'echter Hardware Polung, Spannungen und Stromgrenzen prufen; alles ohne Nachweis ' +
             'auf echtem Chip gilt als unverifiziert.',
         components: 'Komponenten und Lizenzen',
-        licenseNote: 'Durchgaengig BSD-3-Clause / Apache-2.0 / MIT. Ein permissiver Fork des ' +
-            'Scratch-Stacks vor der Lizenzaenderung, also ueberall buendelbar und auslieferbar.',
+        licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT und MPL-2.0. Brickwright nutzt ' +
+            'den letzten BSD-Scratch-Stack sowie eigene Editoren und Engines; es ist kein TurboWarp-Fork.',
         notices: 'Vollstandige Third-Party-Hinweise',
         affil: 'Zugehorigkeit',
-        affilText: 'Nicht verbunden mit oder unterstutzt von Scratch / MIT, STC, Arduino oder ' +
+        affilText: 'Nicht verbunden mit oder unterstutzt von Scratch / MIT, LEGO, STC, Arduino oder ' +
             'Raspberry Pi. Marken gehoren ihren Eigentumern.',
         toolchain: 'Compile-Dienst',
         toolchainLoading: 'frage den Dienst...',
