@@ -47,7 +47,9 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
     assert.match(source, /data-scope-module/);
     assert.match(source, /data-no-code-indicator/);
     assert.match(source, /useState\(!!debuggerOn \|\| !!benchOpen\)/,
-        'a fresh designer starts collapsed; debugger and bench contexts may open instruments');
+        'fresh workspaces preserve bench space; debugger and lesson demand open instruments');
+    assert.match(source, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/,
+        'debugger and lesson demand must reveal instruments automatically');
 });
 
 test('oscilloscope exposes real scale, edge trigger, and time-cursor controls', () => {

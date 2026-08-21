@@ -145,6 +145,7 @@ try {
             genericKinds: rendered.genericKinds,
             wires: rendered.wires, netLabels: rendered.netLabels,
             collisionRoutedNets: rendered.collisionRoutedNets,
+            detouredRoutingNets: rendered.detouredRoutingNets,
             wireSymbolCrossings: rendered.wireSymbolCrossings,
             symbolOverlaps: rendered.symbolOverlaps});
         console.log(`${example.id}: ${rendered.width}x${rendered.height}, ${rendered.symbols} symbols -> ${base}`);

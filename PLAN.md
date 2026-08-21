@@ -494,7 +494,12 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   that would cross any symbol body now use conventional repeated net labels. The
   1,034-variant gate reports zero remaining wire/symbol crossings and zero symbol
   overlaps, including `10-motor-speed/circuit.pico.json` from the reported defect.
-- [ ] Add reviewed visual baselines for representative simple, dense, analog, and
-  retro-machine examples. Pin-labelled rectangles for MCUs, memories, logic ICs,
-  and modules are conventional schematic symbols, not missing pictorial artwork;
-  only replace a box where a standardized non-box symbol communicates more truth.
+- [x] Added reviewed, byte-stable SVG baselines for representative simple, dense,
+  analog, and retro-machine examples, with a test that requires explicit visual
+  review before accepting layout drift. Added obstacle-avoiding Manhattan detours
+  for two-pin teaching nets: after the corpus repair, 2,126 nets are drawn through
+  explicit detours and only 1,379 require collision-label fallback; corpus labels
+  fell from 14,842 to 10,269 while all 1,034 variants retain zero wire/symbol
+  crossings and zero symbol overlaps. Pin-labelled rectangles for
+  MCUs, memories, logic ICs, and modules remain conventional schematic symbols;
+  only replace a box where standardized non-box artwork communicates more truth.

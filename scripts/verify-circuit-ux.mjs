@@ -145,16 +145,12 @@ try {
     await debuggerButton.click({force: true});
     await page.waitForTimeout(500);
     const dedicatedDesigner = page.locator('.bw-circuit-designer:visible').last();
-    // Owner spec 2026-08-14: with dock 'solo' the debugger content lives in
-    // the STANDALONE pane, not the circuit tab's instruments column. The
-    // circuit tab must keep its instruments column mounted; the debugger
-    // panel/no-code notice are asserted in the solo pane (above).
-    check('dedicated Circuit tab keeps Instruments minimized while Debugger uses the external pane',
-        await dedicatedDesigner.locator('[data-instruments-column]').count() === 0 &&
-        await dedicatedDesigner.getByRole('button', {name: 'Expand instruments panel'}).count() === 1,
+    // On the dedicated Circuit tab, 'solo' folds back to the Instruments dock
+    // so Blocks, Circuit and Debugger can remain visible at the same time.
+    check('dedicated Circuit tab keeps Instruments available for its debugger dock',
+        await dedicatedDesigner.locator('[data-instruments-column]').count() === 1 &&
+        await dedicatedDesigner.getByRole('button', {name: 'Collapse instruments panel'}).count() === 1,
         `designers=${await page.locator('.bw-circuit-designer:visible').count()}`);
-    // (Solo-pane debugger content is asserted in the debugger view above;
-    // on the Circuit tab the solo pane is rightly unmounted.)
     const loaded = await page.evaluate(async () => {
         const root = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
         const key = Object.keys(root || {}).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));

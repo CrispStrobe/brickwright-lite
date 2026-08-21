@@ -201,13 +201,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [examplesOpen, setExamplesOpen] = useState(true);
   const [selectorSplit, setSelectorSplit] = useState(0.68);
   const [codexMode, setCodexMode] = useState(false);
-  // The dedicated Circuit tab owns enough width for its instruments column;
-  // only the compact embedded right-pane view starts collapsed. A debugger-
-  // dependent lesson/run opens it in either host through debuggerOn below.
-  const [rightOpen, setRightOpen] = useState(!embedded || debuggerOn);
+  // Owner requirement: every fresh designer prioritizes bench space. A
+  // debugger or lesson/bench context may explicitly demand Instruments;
+  // simulation opens the column at the moment it is used.
+  const [rightOpen, setRightOpen] = useState(!!debuggerOn || !!benchOpen);
   useEffect(() => {
-    if (debuggerOn) setRightOpen(true);
-  }, [debuggerOn]);
+    if (debuggerOn || benchOpen) setRightOpen(true);
+  }, [debuggerOn, benchOpen]);
   const [showScope, setShowScope] = useState(() => {
     try { return localStorage.getItem('bw-instr-scope') === '1'; } catch { return false; }
   });
