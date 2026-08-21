@@ -31,6 +31,7 @@
     "verify:starters": "node scripts/verify-starter-journeys.mjs",
     "verify:dock": "node scripts/verify-debug-dock.mjs",
     "render:schematic": "node scripts/render-schematic.mjs",
+    "verify:schematic-corpus": "node scripts/render-schematic.mjs --all-variants --check --out artifacts/schematic-corpus",
     "test": "node --test test/*.test.mjs",
     "test:all": "npm run test && npm run smoke:debugger",
     "probe:layout": "node scripts/probe-layout.mjs"

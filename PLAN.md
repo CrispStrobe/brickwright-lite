@@ -481,6 +481,19 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   legacy-wire normalization and breadboard strip/jumper resolution as the live
   Circuit Designer. Its PNG/SVG output is now an electrical audit, not merely a
   renderer test that can silently omit board-hole connections.
+- [x] Corrected the scope of that audit after a Pico motor example exposed the
+  missing dimension: the earlier 246-file pass covered only each example's default
+  circuit and checked size/overlap, not whether a wire crossed a foreign symbol or
+  whether a terminal met the artwork it named.
+- [x] Extended the CLI with `--circuit FILE`, `--all-variants`, and `--check` and
+  audited all 1,034 `circuit*.json` files. The report now records direct wires,
+  labelled collision fallbacks, wire/symbol crossings, and symbol overlaps; the
+  corpus gate fails if either mechanical legibility invariant is non-zero.
+- [x] Added terminal-aware anchors for NPN/PNP base, collector, and emitter;
+  NMOS/PMOS gate, drain, and source; and potentiometer ends and top wiper. Routes
+  that would cross any symbol body now use conventional repeated net labels. The
+  1,034-variant gate reports zero remaining wire/symbol crossings and zero symbol
+  overlaps, including `10-motor-speed/circuit.pico.json` from the reported defect.
 - [ ] Add reviewed visual baselines for representative simple, dense, analog, and
   retro-machine examples. Pin-labelled rectangles for MCUs, memories, logic ICs,
   and modules are conventional schematic symbols, not missing pictorial artwork;

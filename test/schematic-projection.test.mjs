@@ -23,7 +23,9 @@ test('schematic shows the implicit ground reference when no GND part is placed',
     assert.ok(gnd, 'implicit GND symbol should be projected');
     assert.equal(gnd.kind, 'gnd');
     assert.equal(gnd.pins[0].netId, 'net_gnd');
-    assert.ok(projection.wires.some(wire => wire.netId === 'net_gnd'));
+    assert.ok(projection.wires.some(wire => wire.netId === 'net_gnd') ||
+        projection.netLabels.some(label => label.netId === 'net_gnd'),
+    'ground net is drawn directly or as repeated labels when a direct route would cross a symbol');
 });
 
 test('schematic connects board sidecar pins to canonical engine nets', () => {
