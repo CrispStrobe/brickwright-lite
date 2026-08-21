@@ -4,9 +4,12 @@ import React from 'react';
 
 import coreCatalog from './lessons.json';
 import electricityWave from './lesson-waves/electricity-1.json';
+import measurementWave from './lesson-waves/measurement-2.json';
 import styles from './guided-lessons.css';
 
-const catalog = {lessons: [...coreCatalog.lessons, ...electricityWave.lessons]};
+const catalog = {
+    lessons: [...coreCatalog.lessons, ...electricityWave.lessons, ...measurementWave.lessons]
+};
 
 const UI = {
     en: {library: 'Lessons',

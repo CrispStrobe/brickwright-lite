@@ -90,7 +90,10 @@ if (!check) await writeFile(manifestPath, JSON.stringify(written, null, 1));
 // nothing says which is real. The LICENSE file placed in this directory
 // for MPL-2.0 compliance is not a vendored source file and must survive.
 if (!check) {
-    const KEEP = new Set(['LICENSE']);
+    // The manifest is generated into the destination and therefore has no
+    // upstream counterpart. Keep it so the next sync can detect Lite-local
+    // edits instead of silently losing its baseline after every successful run.
+    const KEEP = new Set(['LICENSE', '.vendor-manifest.json']);
     async function walkDest (rel = '') {
         const out = [];
         for (const e of await readdir(path.join(dest, rel), {withFileTypes: true})) {

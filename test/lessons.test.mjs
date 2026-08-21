@@ -11,7 +11,12 @@ const readLessons = async () => {
     const core = await readJson('../overlay/scratch-gui/src/components/gui/lessons.json');
     const electricity = await readJson(
         '../overlay/scratch-gui/src/components/gui/lesson-waves/electricity-1.json');
-    return {schemaVersion: core.schemaVersion, lessons: [...core.lessons, ...electricity.lessons]};
+    const measurement = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/measurement-2.json');
+    return {
+        schemaVersion: core.schemaVersion,
+        lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons]
+    };
 };
 
 test('guided lesson catalog is localized, connected, and declarative', async () => {
@@ -106,5 +111,28 @@ test('electricity wave has twelve distinct, progressive learning experiences', a
         assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
             `${lesson.id} includes a live observation`);
         assert.ok(lesson.checkpoints.length >= 2, `${lesson.id} is a learning sequence`);
+    }
+});
+
+test('measurement wave teaches ten honest instrument workflows', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'measurement-2');
+    const topics = new Set(wave.map(lesson => lesson.topic));
+    const expected = ['continuity', 'voltage', 'current-and-burden', 'resistance-measurement',
+        'range-and-error', 'function-generator', 'scope-probes-and-scale', 'scope-timebase',
+        'scope-triggering', 'cursors-and-rc'];
+
+    assert.equal(wave.length, 10);
+    assert.deepEqual([...topics].sort(), expected.sort());
+    for (const lesson of wave) {
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.id === 'predict'),
+            `${lesson.id} starts from a prediction`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} includes live observation`);
+    }
+    const safetyText = wave.flatMap(lesson => lesson.checkpoints)
+        .flatMap(checkpoint => Object.values(checkpoint.copy.en)).join(' ').toLowerCase();
+    for (const concern of ['power off', 'burden', 'ground clip', 'uncertainty']) {
+        assert.ok(safetyText.includes(concern), `measurement wave covers ${concern}`);
     }
 });

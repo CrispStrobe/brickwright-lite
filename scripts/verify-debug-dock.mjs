@@ -120,7 +120,7 @@ try {
     page.on('dialog', d => d.accept());
     await page.addInitScript(() => {
         localStorage.clear();
-        localStorage.setItem('bw-starter-complete', '1');
+        localStorage.setItem('bw-starter-v1-complete', '1');
         sessionStorage.clear();
     });
     await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
@@ -180,7 +180,7 @@ try {
     bench.on('dialog', d => d.accept());
     await bench.addInitScript(() => {
         localStorage.clear();
-        localStorage.setItem('bw-starter-complete', '1');
+        localStorage.setItem('bw-starter-v1-complete', '1');
         sessionStorage.clear();
     });
     await bench.goto(url, {waitUntil: 'networkidle', timeout: 90000});

@@ -165,6 +165,10 @@ not translations or language variants counted as extra lessons.
 2. **Measure rather than guess (10 lessons):** continuity, voltage, current and
    burden voltage, resistance, multimeter range/error, function generator, scope
    probes, vertical scale, sweep/timebase, triggering, cursors, and RC measurement.
+   **Implementation status:** all ten bilingual sequences are in the catalog. The
+   scope now supplies the controls they teach—manual vertical scale and position,
+   edge/level trigger with explicit wait state, and sample-derived time cursors.
+   Technical and learner field review remains before editorial finalization.
 3. **One idea, several languages (12 semantic tasks):** sequence, events, loops,
    conditions, variables, procedures, concurrency, state machines, arrays/data,
    messages, pins/peripherals, and protocols. Blocks and Brickwright Code lead;
@@ -378,3 +382,8 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   prerequisites, hardware safety boundaries, and searchable level-filtered discovery.
 - [ ] Complete Wave 1 technical, translation, and learner field review, then revise
   lesson versions from the evidence gathered.
+- [x] Implemented the Wave 2 engineering/content draft and the previously missing
+  oscilloscope controls: V/div, vertical center, rising/falling trigger, trigger
+  level/status, dual time cursors, and measured Δt.
+- [ ] Complete Wave 2 instrument verification, translation review, and learner field
+  testing, then revise controls and lesson versions from observed use.

@@ -40,6 +40,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
   const [cursorA, setCursorA] = useState(0.25);
   const [cursorB, setCursorB] = useState(0.75);
   const [triggered, setTriggered] = useState(false);
+  const triggeredRef = useRef(false);
 
   // (Re)attach channels whenever the board instance changes — an edit
   // rebuilds the engine and the old handles die with it.
@@ -121,7 +122,11 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       g.fillText(`${vLo.toFixed(1)}V`, 3, H - 3);
 
       const triggerIndex = chData[0] ? findTriggerIndex(chData[0], triggerMode, triggerLevel) : null;
-      setTriggered(triggerMode !== 'off' && triggerIndex !== null);
+      const nextTriggered = triggerMode !== 'off' && triggerIndex !== null;
+      if (nextTriggered !== triggeredRef.current) {
+        triggeredRef.current = nextTriggered;
+        setTriggered(nextTriggered);
+      }
       channels.forEach((c, ci) => {
         const data = chData[ci];
         if (!data) return;

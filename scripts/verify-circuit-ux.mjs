@@ -38,7 +38,7 @@ const check = (name, ok, detail = '') => {
 try {
     await page.addInitScript(() => {
         localStorage.clear();
-        localStorage.setItem('bw-starter-complete', '1');
+        localStorage.setItem('bw-starter-v1-complete', '1');
         sessionStorage.clear();
     });
     await page.goto(`http://localhost:${port}/`, {waitUntil: 'networkidle', timeout: 60000});
