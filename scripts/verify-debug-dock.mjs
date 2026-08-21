@@ -235,7 +235,7 @@ try {
     // banner captured before the move.
     const beforeTyping = await waitFor(() => serialText(bench),
         t => /BBC BASIC/.test(t) && t.includes('>'), 45000);
-    const input = bench.locator('[data-testid="bw-serial-input"]').first();
+    const input = bench.locator('[data-testid="bw-serial-input"]:visible').first();
     await input.click();
     await input.fill('PRINT 2+2');
     await input.press('Enter');
