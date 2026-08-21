@@ -64,7 +64,7 @@ hardware pairing.
 
 ## Milestone 2 — Examples become guided lessons
 
-Status: **exemplary vertical slice complete; curriculum expansion active**
+Status: **79-lesson engineering draft complete; reviewed curriculum active**
 
 Extend selected examples with a small, versioned lesson schema: objective,
 prerequisites, ordered checkpoints, hints, success conditions, and optional hardware
@@ -403,7 +403,8 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
 - [x] Verified the lesson slice with schema/breadth tests, full repository tests,
   production webpack build, component lint, and browser workflows for the library,
   automatic completion, manual persistence, and all starter-to-lesson transitions.
-- [ ] Produce the full curriculum in the seven reviewed content waves above.
+- [x] Produce the full 79-lesson bilingual engineering draft across all seven content
+  waves above; editorial finalization remains gated by each wave's explicit reviews.
 - [x] Implemented the Wave 1 engineering/content draft: twelve distinct electricity
   lessons, real example mappings, explicit prediction and observation, progressive
   prerequisites, hardware safety boundaries, and searchable level-filtered discovery.
