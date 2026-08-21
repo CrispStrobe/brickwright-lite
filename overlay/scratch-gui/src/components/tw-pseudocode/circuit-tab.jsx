@@ -591,6 +591,13 @@ class CircuitTab extends React.Component {
             }
         } catch { /* never block circuit publication */ }
         this.setState({circuit});
+        if (typeof window !== 'undefined') {
+            const parts = circuit && circuit.parts ?
+                (circuit.parts.size ?? circuit.parts.length ?? 0) : 0;
+            const wires = circuit && circuit.wires ?
+                (circuit.wires.size ?? circuit.wires.length ?? 0) : 0;
+            window.dispatchEvent(new CustomEvent('bw-circuit-ready', {detail: {parts, wires}}));
+        }
         // Detect CPU parts on the board and publish the core so the debug
         // panel creates the right target kind (z80, eater6502, avr8js).
         if (circuit && circuit.parts) {
@@ -616,6 +623,11 @@ class CircuitTab extends React.Component {
      */
     handleDeclarationChange (decls) {
         this.setState(s => ({circuitRev: (s.circuitRev || 0) + 1}));
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('bw-circuit-changed', {
+                detail: {device: decls && decls.device, pins: decls && decls.pins ? decls.pins.length : 0}
+            }));
+        }
         if (!decls || !decls.device || !Array.isArray(decls.pins)) return;
         const vm = this.props.vm;
         if (!vm) return;
@@ -739,11 +751,36 @@ class CircuitTab extends React.Component {
         try {
             await this.loadExampleProgram(example, null);
             this.setState({loadingExample: null, stc: this.readStc()});
-            // A LEGO project has no simulated breadboard. Show its Scratch/extension
-            // stage while coding instead of an empty circuit pane.
-            window.dispatchEvent(new CustomEvent('bw-settings-change', {
-                detail: {key: 'bw-stage-circuit', value: '0'}
-            }));
+            if (example.files && example.files.controller) {
+                const response = await fetch(`examples/${example.files.controller}`);
+                if (!response.ok) throw new Error(`controller: HTTP ${response.status}`);
+                const layout = await response.json();
+                const runtime = this.props.vm && this.props.vm.runtime;
+                const panel = runtime && runtime.controllerPanel;
+                if (!panel || !layout || !Array.isArray(layout.widgets)) {
+                    throw new Error('controller layout is not available');
+                }
+                for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+                for (const widget of layout.widgets) {
+                    const added = panel.addWidget(widget.name, widget.type,
+                        widget.config || {}, widget.layout || {});
+                    if (widget.binding) added.binding = {...widget.binding};
+                }
+                if (layout.mode) panel.setMode(layout.mode);
+                if (runtime.stc) runtime.stc.controller = layout;
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                    detail: {key: 'bw-stage-circuit', value: '1'}
+                }));
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                    detail: {key: 'bw-debug-dock', value: 'controller'}
+                }));
+            } else {
+                // A hardware extension project has no fictional breadboard. Show
+                // its Scratch/extension stage while coding instead of an empty circuit.
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                    detail: {key: 'bw-stage-circuit', value: '0'}
+                }));
+            }
             return {ok: true};
         } catch (error) {
             this.setState({loadingExample: null, examplesError:
@@ -1024,6 +1061,9 @@ class CircuitTab extends React.Component {
         // null, and passing the last debugState through kept the designer's
         // status panel glowing green RUNNING forever. No session — no panel.
         const phase = ui && ui.phase;
+        if (typeof window !== 'undefined' && phase) {
+            window.dispatchEvent(new CustomEvent('bw-debug-phase', {detail: {phase}}));
+        }
         if (phase === 'idle' || phase === 'error') {
             if (this.state.debugState !== null) this.setState({debugState: null});
             return;

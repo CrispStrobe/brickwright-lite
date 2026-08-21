@@ -28,6 +28,8 @@ import Box from '../box/box.jsx';
 import MenuBar from '../menu-bar/menu-bar.jsx';
 import ChromeToggle from './chrome-toggle.jsx';
 import StarterJourneys from './starter-journeys.jsx';
+import GuidedLessons from './guided-lessons.jsx';
+import lessonCatalog from './lessons.json';
 import chromeStyles from './compact-chrome.css';
 import PaneDivider from './pane-divider.jsx';
 import PaneStrip from './pane-strip.jsx';
@@ -89,6 +91,9 @@ const GUIComponent = props => {
     const [starterOpen, setStarterOpen] = React.useState(false);
     const [starterBusy, setStarterBusy] = React.useState(false);
     const [starterError, setStarterError] = React.useState('');
+    const [lessonsOpen, setLessonsOpen] = React.useState(false);
+    const [activeLessonId, setActiveLessonId] = React.useState(null);
+    const [lessonInitialEvent, setLessonInitialEvent] = React.useState('');
     const closeStarter = React.useCallback(() => {
         try {
             localStorage.setItem(STARTER_COMPLETE_KEY, '1');
@@ -113,6 +118,10 @@ const GUIComponent = props => {
         const result = event => {
             const detail = event.detail || {};
             setStarterBusy(false);
+            if (String(detail.journeyId || '').startsWith('lesson:')) {
+                window.dispatchEvent(new CustomEvent('bw-lesson-project-result', {detail}));
+                return;
+            }
             if (detail.ok) {
                 try {
                     localStorage.setItem(STARTER_COMPLETE_KEY, '1');
@@ -120,17 +129,30 @@ const GUIComponent = props => {
                 recordStarterEvent('opened', detail.journeyId);
                 setStarterOpen(false);
                 setStarterError('');
+                const lesson = lessonCatalog.lessons.find(item => item.journeyId === detail.journeyId);
+                if (lesson) {
+                    setActiveLessonId(lesson.id);
+                    setLessonInitialEvent('starter-loaded');
+                    setLessonsOpen(true);
+                }
             } else {
                 recordStarterEvent(detail.cancelled ? 'cancelled' : 'failed', detail.journeyId);
                 setStarterError(detail.cancelled ? 'cancelled' :
                     (detail.error || 'The starter project could not be opened.'));
             }
         };
+        const openLessons = () => {
+            setActiveLessonId(null);
+            setLessonInitialEvent('');
+            setLessonsOpen(true);
+        };
         window.addEventListener('bw-open-getting-started', open);
         window.addEventListener('bw-starter-result', result);
+        window.addEventListener('bw-open-lessons', openLessons);
         return () => {
             window.removeEventListener('bw-open-getting-started', open);
             window.removeEventListener('bw-starter-result', result);
+            window.removeEventListener('bw-open-lessons', openLessons);
         };
     }, []);
     const chooseStarter = React.useCallback(journey => {
@@ -139,6 +161,36 @@ const GUIComponent = props => {
         props.onActivateTab(journey.editorTab);
         window.dispatchEvent(new CustomEvent('bw-start-journey', {detail: journey}));
     }, [props.onActivateTab]);
+    React.useEffect(() => {
+        const openLessonProject = event => {
+            const lesson = event.detail || {};
+            const editorTab = lesson.loadMode === 'program-only' ? 3 : 4;
+            props.onActivateTab(editorTab);
+            window.dispatchEvent(new CustomEvent('bw-start-journey', {detail: {
+                id: `lesson:${lesson.id}`,
+                exampleId: lesson.exampleId,
+                mode: lesson.loadMode
+            }}));
+        };
+        window.addEventListener('bw-open-lesson-project', openLessonProject);
+        return () => window.removeEventListener('bw-open-lesson-project', openLessonProject);
+    }, [props.onActivateTab]);
+    React.useEffect(() => {
+        const vm = props.vm;
+        if (!vm || !vm.on) return undefined;
+        const connected = peripheral => window.dispatchEvent(new CustomEvent('bw-hardware-state', {
+            detail: {state: 'connected', peripheral: peripheral || null}
+        }));
+        const disconnected = peripheral => window.dispatchEvent(new CustomEvent('bw-hardware-state', {
+            detail: {state: 'disconnected', peripheral: peripheral || null}
+        }));
+        vm.on('PERIPHERAL_CONNECTED', connected);
+        vm.on('PERIPHERAL_DISCONNECTED', disconnected);
+        return () => {
+            vm.removeListener('PERIPHERAL_CONNECTED', connected);
+            vm.removeListener('PERIPHERAL_DISCONNECTED', disconnected);
+        };
+    }, [props.vm]);
     const [stagePaneVisible, setStagePaneVisible] = React.useState(() => {
         try { return localStorage.getItem('bw-right-pane-hidden') !== '1'; } catch { return true; }
     });
@@ -404,6 +456,18 @@ const GUIComponent = props => {
                         locale={intl.locale}
                         onChoose={chooseStarter}
                         onClose={closeStarter}
+                    />
+                ) : null}
+                {lessonsOpen ? (
+                    <GuidedLessons
+                        initialEvent={lessonInitialEvent}
+                        lessonId={activeLessonId}
+                        locale={intl.locale}
+                        onClose={() => setLessonsOpen(false)}
+                        onSelectLesson={id => {
+                            setLessonInitialEvent('');
+                            setActiveLessonId(id);
+                        }}
                     />
                 ) : null}
                 {tipsLibraryVisible ? (

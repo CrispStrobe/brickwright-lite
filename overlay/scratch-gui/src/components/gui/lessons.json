@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "lessons": [
+    {
+      "id": "starter-circuit-path",
+      "version": 1,
+      "journeyId": "circuit",
+      "exampleId": "47-battery-led",
+      "loadMode": "circuit-only",
+      "domains": ["circuits", "components"],
+      "depth": "discover",
+      "ageGuidance": "9+",
+      "minutes": 8,
+      "environment": "simulation",
+      "languages": [],
+      "prerequisites": [],
+      "copy": {
+        "en": {"title": "Make light: a complete circuit", "objective": "Explain why current needs a closed path and why an LED needs a resistor."},
+        "de": {"title": "Licht machen: ein geschlossener Stromkreis", "objective": "Erkläre, warum Strom einen geschlossenen Weg und eine LED einen Widerstand braucht."}
+      },
+      "checkpoints": [
+        {"id": "open", "observe": {"event": "starter-loaded"}, "copy": {"en": {"action": "Look at the whole path from the battery back to the battery.", "explain": "Current flows only around a closed loop.", "hint": "Trace battery + → resistor → LED → battery −.", "manual": "I found the closed path"}, "de": {"action": "Verfolge den ganzen Weg von der Batterie zurück zur Batterie.", "explain": "Strom fließt nur in einem geschlossenen Kreis.", "hint": "Folge Batterie + → Widerstand → LED → Batterie −.", "manual": "Ich habe den geschlossenen Weg gefunden"}}},
+        {"id": "inspect", "observe": {"event": "circuit-ready", "match": {"minimumParts": 3}}, "copy": {"en": {"action": "Identify the resistor and the LED polarity.", "explain": "The resistor limits current; the LED conducts mainly in one direction.", "hint": "Find the LED anode and cathode, then the resistor value.", "manual": "I identified both parts"}, "de": {"action": "Bestimme Widerstand und Polung der LED.", "explain": "Der Widerstand begrenzt den Strom; die LED leitet hauptsächlich in eine Richtung.", "hint": "Suche Anode und Kathode der LED und dann den Widerstandswert.", "manual": "Ich habe beide Bauteile bestimmt"}}},
+        {"id": "change", "observe": {"event": "circuit-changed"}, "copy": {"en": {"action": "Change one thing. Predict first, then observe.", "explain": "A useful experiment changes one variable at a time.", "hint": "Try a different resistance or briefly break and restore one wire.", "manual": "I predicted and tested a change"}, "de": {"action": "Ändere eine Sache. Sage zuerst voraus, was passiert, und beobachte dann.", "explain": "Ein gutes Experiment verändert jeweils nur eine Variable.", "hint": "Probiere einen anderen Widerstand oder unterbrich kurz eine Leitung.", "manual": "Ich habe eine Änderung vorhergesagt und geprüft"}}}
+      ]
+    },
+    {
+      "id": "starter-blink-representations",
+      "version": 1,
+      "journeyId": "board",
+      "exampleId": "01-blink",
+      "loadMode": "program-and-circuit",
+      "domains": ["code", "representations", "debugging"],
+      "depth": "foundation",
+      "ageGuidance": "11+",
+      "minutes": 15,
+      "environment": "simulation",
+      "languages": ["blocks", "pseudocode", "python", "javascript", "c"],
+      "prerequisites": ["starter-circuit-path"],
+      "copy": {
+        "en": {"title": "One Blink, five representations", "objective": "Recognize the same event, loop, output, and delay across Blocks, Code, Python, JavaScript, and C."},
+        "de": {"title": "Ein Blink-Programm, fünf Darstellungen", "objective": "Erkenne Ereignis, Schleife, Ausgang und Wartezeit in Blöcken, Code, Python, JavaScript und C wieder."}
+      },
+      "variants": {
+        "blocks": {"en": "Follow the stack from the green-flag event into the forever loop. Pin output and wait blocks make time and effects visible.", "de": "Folge dem Stapel vom Grüne-Flagge-Ereignis in die Endlosschleife. Pin-Ausgabe und Warteblöcke machen Zeit und Wirkung sichtbar."},
+        "pseudocode": {"en": "Read the same structure as event, forever, digital write, and wait. Brickwright Code keeps block meaning while reducing visual scaffolding.", "de": "Lies dieselbe Struktur als Ereignis, Endlosschleife, digitale Ausgabe und Warten. Brickwright Code behält die Blockbedeutung mit weniger visueller Hilfe."},
+        "python": {"en": "Look for a loop and explicit sleep calls. Ask which board/runtime provides pin access: Python syntax alone does not define the hardware API.", "de": "Suche Schleife und explizite sleep-Aufrufe. Frage, welches Board oder Laufzeitsystem den Pin-Zugriff liefert: Python-Syntax definiert keine Hardware-API."},
+        "javascript": {"en": "Compare the repeated async timing with the loop. Check whether waits yield to other tasks rather than blocking the whole runtime.", "de": "Vergleiche asynchrone Zeitsteuerung und Schleife. Prüfe, ob Wartezeiten andere Aufgaben zulassen, statt die ganze Laufzeit zu blockieren."},
+        "c": {"en": "Separate setup from the repeating loop, then find pin mode, digital writes, and delays. Generated C is a target view until round-trip editing is guaranteed.", "de": "Trenne Initialisierung und wiederholte Schleife; finde Pin-Modus, digitale Ausgaben und Verzögerungen. Generiertes C ist eine Zieldarstellung, bis verlustfreies Zurückwandeln garantiert ist."}
+      },
+      "checkpoints": [
+        {"id": "open", "observe": {"event": "starter-loaded"}, "copy": {"en": {"action": "Find the event, repeated loop, pin output, and delay.", "explain": "Those four ideas are the program; syntax is only their representation.", "hint": "Start at ‘when flag clicked’ and follow the blocks downward.", "manual": "I found all four ideas"}, "de": {"action": "Finde Ereignis, Schleife, Pin-Ausgabe und Wartezeit.", "explain": "Diese vier Ideen sind das Programm; Syntax ist nur ihre Darstellung.", "hint": "Beginne bei „Wenn grüne Flagge angeklickt“ und folge den Blöcken.", "manual": "Ich habe alle vier Ideen gefunden"}}},
+        {"id": "run", "observe": {"event": "project-run"}, "copy": {"en": {"action": "Run the program and connect each visible LED change to the executing step.", "explain": "The program and circuit share one simulated time line.", "hint": "Watch the LED while the debugger is visible.", "manual": "I ran it and matched cause to effect"}, "de": {"action": "Starte das Programm und ordne jede LED-Änderung dem ausgeführten Schritt zu.", "explain": "Programm und Schaltung teilen eine simulierte Zeitlinie.", "hint": "Beobachte die LED bei sichtbarem Debugger.", "manual": "Ich habe Ursache und Wirkung zugeordnet"}}},
+        {"id": "compare", "copy": {"en": {"action": "Open Code and compare at least two language tabs.", "explain": "Generated Python, JavaScript, and C may expose runtime details that Blocks hide. Check conversion warnings before treating a view as editable source.", "hint": "Write down which line corresponds to the delay block.", "manual": "I compared two representations"}, "de": {"action": "Öffne Code und vergleiche mindestens zwei Sprach-Tabs.", "explain": "Generiertes Python, JavaScript und C kann Laufzeitdetails zeigen, die Blöcke verbergen. Beachte Konvertierungswarnungen.", "hint": "Notiere, welche Zeile dem Warteblock entspricht.", "manual": "Ich habe zwei Darstellungen verglichen"}}}
+      ]
+    },
+    {
+      "id": "starter-lego-extension",
+      "version": 1,
+      "journeyId": "lego",
+      "exampleId": "spike01-obstacle-avoid",
+      "loadMode": "program-only",
+      "domains": ["extensions", "hardware", "code"],
+      "depth": "foundation",
+      "ageGuidance": "10+",
+      "minutes": 15,
+      "environment": "optional-hardware",
+      "languages": ["blocks", "pseudocode", "python", "javascript"],
+      "prerequisites": [],
+      "copy": {"en": {"title": "Sense, decide, move with SPIKE", "objective": "Explain the sensor–decision–motor loop and connect a hub only when ready."}, "de": {"title": "Messen, entscheiden, bewegen mit SPIKE", "objective": "Erkläre die Sensor–Entscheidung–Motor-Schleife und verbinde einen Hub erst, wenn du bereit bist."}},
+      "checkpoints": [
+        {"id": "open", "observe": {"event": "starter-loaded"}, "copy": {"en": {"action": "Find where distance is sensed, compared, and turned into motor commands.", "explain": "Robots repeatedly sense, decide, and act.", "hint": "Follow the FOREVER loop from the distance reading.", "manual": "I found the three stages"}, "de": {"action": "Finde, wo Abstand gemessen, verglichen und in Motorbefehle umgesetzt wird.", "explain": "Roboter messen, entscheiden und handeln wiederholt.", "hint": "Folge der ENDLOSSCHLEIFE ab der Abstandsmessung.", "manual": "Ich habe die drei Stufen gefunden"}}},
+        {"id": "predict", "copy": {"en": {"action": "Predict what happens at 20 cm and at 10 cm.", "explain": "Boundary values are where control programs often fail.", "hint": "The condition uses ‘less than 15’, not ‘less than or equal’.", "manual": "I made both predictions"}, "de": {"action": "Sage voraus, was bei 20 cm und bei 10 cm passiert.", "explain": "An Grenzwerten scheitern Steuerprogramme besonders oft.", "hint": "Die Bedingung lautet „kleiner als 15“.", "manual": "Ich habe beide Vorhersagen gemacht"}}},
+        {"id": "connect", "observe": {"event": "hardware-state", "match": {"state": "connected"}}, "copy": {"en": {"action": "Optionally connect a SPIKE hub—or inspect the blocks without hardware.", "explain": "Connection is a capability, not a prerequisite for understanding the algorithm.", "hint": "Use the extension connection control; if no hub is available, use the manual button.", "manual": "I explored with or without a hub"}, "de": {"action": "Verbinde optional einen SPIKE Hub – oder untersuche die Blöcke ohne Hardware.", "explain": "Die Verbindung ist eine Fähigkeit, keine Voraussetzung zum Verstehen des Algorithmus.", "hint": "Nutze die Verbindungsfunktion der Erweiterung; ohne Hub bestätige manuell.", "manual": "Ich habe mit oder ohne Hub erkundet"}}}
+      ]
+    },
+    {
+      "id": "instrument-voltage-divider", "version": 1, "exampleId": "52-battery-voltage-divider", "loadMode": "circuit-only", "domains": ["circuits", "instruments"], "depth": "foundation", "ageGuidance": "12+", "minutes": 20, "environment": "simulation", "languages": [], "prerequisites": ["starter-circuit-path"],
+      "copy": {"en": {"title": "Measure voltage without changing the circuit", "objective": "Use a voltmeter in parallel and explain a voltage divider."}, "de": {"title": "Spannung messen, ohne die Schaltung zu verändern", "objective": "Nutze ein Voltmeter parallel und erkläre einen Spannungsteiler."}},
+      "checkpoints": [{"id": "predict", "copy": {"en": {"action": "Predict the midpoint voltage before measuring.", "explain": "Equal series resistors share the supply voltage equally.", "hint": "Use Vout = Vin × R2/(R1+R2).", "manual": "I recorded a prediction"}, "de": {"action": "Sage die Mittelspannung vor der Messung voraus.", "explain": "Gleiche Serienwiderstände teilen die Versorgungsspannung gleich.", "hint": "Nutze Vout = Vin × R2/(R1+R2).", "manual": "Ich habe eine Vorhersage notiert"}}}, {"id": "measure", "observe": {"event": "circuit-ready"}, "copy": {"en": {"action": "Place the voltmeter across the output and compare.", "explain": "An ideal voltmeter has very high impedance and draws almost no current.", "hint": "Voltage is measured between two nodes, so connect in parallel.", "manual": "I measured and compared"}, "de": {"action": "Schließe das Voltmeter am Ausgang an und vergleiche.", "explain": "Ein ideales Voltmeter hat eine sehr hohe Impedanz und zieht fast keinen Strom.", "hint": "Spannung wird zwischen zwei Knoten parallel gemessen.", "manual": "Ich habe gemessen und verglichen"}}}]
+    },
+    {
+      "id": "instrument-rc-scope", "version": 1, "exampleId": "50-rc-scope", "loadMode": "circuit-only", "domains": ["circuits", "instruments"], "depth": "practitioner", "ageGuidance": "14+", "minutes": 30, "environment": "simulation", "languages": [], "prerequisites": ["instrument-voltage-divider"],
+      "copy": {"en": {"title": "See time with an oscilloscope", "objective": "Use sweep and trigger controls to measure an RC response."}, "de": {"title": "Zeit mit dem Oszilloskop sichtbar machen", "objective": "Nutze Ablenkzeit und Triggerung, um eine RC-Antwort zu messen."}},
+      "checkpoints": [{"id": "scope", "observe": {"event": "circuit-ready"}, "copy": {"en": {"action": "Connect the scope to input and output with a shared reference.", "explain": "A scope plots voltage against time; its ground is part of the measurement.", "hint": "Start with one channel and a slow sweep.", "manual": "I have a stable trace"}, "de": {"action": "Verbinde Eingang und Ausgang des Oszilloskops mit gemeinsamer Referenz.", "explain": "Ein Oszilloskop zeigt Spannung über der Zeit; Masse gehört zur Messung.", "hint": "Beginne mit einem Kanal und langsamer Ablenkung.", "manual": "Ich habe eine stabile Kurve"}}}, {"id": "tau", "copy": {"en": {"action": "Measure the time to about 63% after a step.", "explain": "That time is τ = R×C for a first-order RC circuit.", "hint": "Use cursors or count horizontal divisions after setting the sweep.", "manual": "I estimated the time constant"}, "de": {"action": "Miss nach einem Sprung die Zeit bis etwa 63 %.", "explain": "Diese Zeit ist bei einem RC-Glied erster Ordnung τ = R×C.", "hint": "Nutze Cursor oder Kästchen nach Einstellung der Ablenkzeit.", "manual": "Ich habe die Zeitkonstante geschätzt"}}}]
+    },
+    {
+      "id": "widgets-two-way-control", "version": 1, "exampleId": "mb05-faceplate-matrix", "loadMode": "program-only", "domains": ["widgets", "control", "extensions"], "depth": "practitioner", "ageGuidance": "12+", "minutes": 25, "environment": "simulation", "languages": ["blocks", "pseudocode"], "prerequisites": [],
+      "copy": {"en": {"title": "Build a live control panel", "objective": "Bind input and display widgets without confusing user input with program output."}, "de": {"title": "Ein interaktives Bedienfeld bauen", "objective": "Binde Eingabe- und Anzeige-Widgets, ohne Benutzereingabe und Programmausgabe zu verwechseln."}},
+      "checkpoints": [{"id": "bind", "copy": {"en": {"action": "Bind one input widget to a variable and one display to another.", "explain": "Inputs write state; displays observe state. Naming the direction prevents feedback loops.", "hint": "Try a slider input and a gauge display.", "manual": "Both bindings work"}, "de": {"action": "Binde ein Eingabe-Widget und eine Anzeige an je eine Variable.", "explain": "Eingaben schreiben Zustand; Anzeigen beobachten ihn.", "hint": "Probiere Schieberegler und Messanzeige.", "manual": "Beide Bindungen funktionieren"}}}]
+    },
+    {
+      "id": "debugger-breakpoint-watch", "version": 1, "exampleId": "01-blink", "loadMode": "program-and-circuit", "domains": ["debugging", "code"], "depth": "practitioner", "ageGuidance": "13+", "minutes": 25, "environment": "simulation", "languages": ["blocks", "pseudocode", "c"], "prerequisites": ["starter-blink-representations"],
+      "copy": {"en": {"title": "Debug by asking a precise question", "objective": "Use pause, step, breakpoint, and watch values to test a hypothesis."}, "de": {"title": "Debuggen mit einer präzisen Frage", "objective": "Nutze Pause, Schritt, Haltepunkt und Wertebeobachtung, um eine Hypothese zu prüfen."}},
+      "checkpoints": [{"id": "question", "copy": {"en": {"action": "Write a question: ‘What value changes immediately before the LED changes?’", "explain": "A debugger is most effective when it tests a concrete hypothesis.", "hint": "Choose one pin or variable to watch.", "manual": "I wrote a testable question"}, "de": {"action": "Formuliere eine Frage: „Welcher Wert ändert sich direkt vor der LED?“", "explain": "Ein Debugger ist am wirksamsten für eine konkrete Hypothese.", "hint": "Wähle einen Pin oder eine Variable.", "manual": "Ich habe eine prüfbare Frage"}}}, {"id": "halt", "observe": {"event": "debug-phase", "match": {"phase": "paused"}}, "copy": {"en": {"action": "Pause or hit a breakpoint, then step once and inspect the watch.", "explain": "Stepping changes one boundary at a time so cause and effect stay attributable.", "hint": "If this target cannot step at the chosen level, use block stepping.", "manual": "I halted, stepped, and inspected state"}, "de": {"action": "Pausiere oder erreiche einen Haltepunkt, gehe einen Schritt und prüfe den Wert.", "explain": "Einzelschritte halten Ursache und Wirkung zuordenbar.", "hint": "Falls die Zielebene nicht unterstützt wird, nutze Blockschritte.", "manual": "Ich habe angehalten, geschritten und geprüft"}}}]
+    },
+    {
+      "id": "advanced-impedance-filter", "version": 1, "exampleId": "50-rc-scope", "loadMode": "circuit-only", "domains": ["circuits", "instruments", "analysis"], "depth": "advanced", "ageGuidance": "university+", "minutes": 60, "environment": "simulation", "languages": ["python", "javascript"], "prerequisites": ["instrument-rc-scope"],
+      "copy": {"en": {"title": "From resistance to impedance", "objective": "Measure magnitude and phase versus frequency, account for probe loading, and compare with a complex-impedance model."}, "de": {"title": "Vom Widerstand zur Impedanz", "objective": "Miss Betrag und Phase über der Frequenz, berücksichtige Tastkopfbelastung und vergleiche mit einem komplexen Impedanzmodell."}},
+      "checkpoints": [{"id": "model", "copy": {"en": {"action": "Derive H(jω) and predict the −3 dB frequency.", "explain": "For a first-order low-pass, capacitor impedance changes with frequency.", "hint": "Zc = 1/(jωC); fc = 1/(2πRC).", "manual": "I derived and recorded the prediction"}, "de": {"action": "Leite H(jω) her und sage die −3-dB-Frequenz voraus.", "explain": "Beim Tiefpass erster Ordnung ändert sich die Kondensatorimpedanz mit der Frequenz.", "hint": "Zc = 1/(jωC); fc = 1/(2πRC).", "manual": "Ich habe Herleitung und Vorhersage notiert"}}}, {"id": "sweep", "copy": {"en": {"action": "Sweep frequency, record magnitude and phase, then explain deviations.", "explain": "A model becomes scientific when measurement, uncertainty, and loading can disagree with it.", "hint": "Use logarithmic frequency spacing and include source/probe impedance.", "manual": "I completed and interpreted the sweep"}, "de": {"action": "Durchlaufe Frequenzen, erfasse Betrag und Phase und erkläre Abweichungen.", "explain": "Ein Modell wird wissenschaftlich, wenn Messung, Unsicherheit und Belastung widersprechen können.", "hint": "Nutze logarithmische Frequenzschritte und berücksichtige Quellen- und Tastkopfimpedanz.", "manual": "Ich habe den Sweep ausgewertet"}}}]
+    },
+    {
+      "id": "machine-6502-contention", "version": 1, "exampleId": "eater6502-contention-bug", "loadMode": "circuit-only", "domains": ["debugging", "computer-architecture", "circuits"], "depth": "advanced", "ageGuidance": "advanced+", "minutes": 45, "environment": "simulation", "languages": ["asm"], "prerequisites": ["debugger-breakpoint-watch"],
+      "copy": {"en": {"title": "Diagnose 6502 bus contention", "objective": "Combine DRC, bus state, memory decode, and instruction trace to locate two devices driving one bus."}, "de": {"title": "Bus-Contention beim 6502 diagnostizieren", "objective": "Kombiniere DRC, Buszustand, Adressdekodierung und Instruktionstrace, um zwei Bustreiber zu finden."}},
+      "variants": {"asm": {"en": "Use the current instruction and effective address to predict the bus cycle, then verify that prediction against chip-select and data-bus signals.", "de": "Nutze aktuelle Instruktion und effektive Adresse zur Vorhersage des Buszyklus und prüfe sie an Chip-Select- und Datenbus-Signalen."}},
+      "checkpoints": [{"id": "fault", "observe": {"event": "circuit-ready"}, "copy": {"en": {"action": "Use the warning and schematic to identify both simultaneous drivers.", "explain": "Contention is an electrical fault caused by a logical decode error.", "hint": "Trace chip-select signals as well as data lines.", "manual": "I identified both drivers"}, "de": {"action": "Bestimme mit Warnung und Schaltbild beide gleichzeitigen Treiber.", "explain": "Contention ist ein elektrischer Fehler durch fehlerhafte Dekodierlogik.", "hint": "Verfolge Chip-Select-Signale und Datenleitungen.", "manual": "Ich habe beide Treiber bestimmt"}}}, {"id": "trace", "copy": {"en": {"action": "Relate the failing bus cycle to the current ASM instruction and address.", "explain": "Instruction trace explains why the CPU requested the cycle; the circuit explains why it became unsafe.", "hint": "Step to the failing address and compare the memory map.", "manual": "I connected instruction, address, and electrical fault"}, "de": {"action": "Ordne den fehlerhaften Buszyklus der ASM-Instruktion und Adresse zu.", "explain": "Der Instruktionstrace erklärt die Anforderung; die Schaltung erklärt den elektrischen Fehler.", "hint": "Gehe bis zur fehlerhaften Adresse und vergleiche den Speicherplan.", "manual": "Ich habe Instruktion, Adresse und Fehler verbunden"}}}]
+    }
+  ]
+}

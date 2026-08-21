@@ -64,12 +64,135 @@ hardware pairing.
 
 ## Milestone 2 — Examples become guided lessons
 
-Status: **in progress**
+Status: **exemplary vertical slice complete; curriculum expansion active**
 
 Extend selected examples with a small, versioned lesson schema: objective,
 prerequisites, ordered checkpoints, hints, success conditions, and optional hardware
 steps. Render one instruction at a time alongside the live editor; never replace the
 editor with documentation.
+
+### Legacy Scratch tutorial decision
+
+Retain the useful interaction idea from Scratch's legacy Cards—small guidance beside
+the live workspace, previous/next navigation, and a Tutorials library—but do not use
+its deck schema as Brickwright's curriculum format. Legacy decks are JSX containing
+static image or hosted-video steps. They have no stable content format, prerequisites,
+learner model, language variants, live success checks, progress versioning, circuit or
+instrument state, hardware state, or offline guarantee. Brickwright lessons use
+versioned JSON and can be adapted into a legacy Card renderer later; Scratch decks can
+likewise be imported as `presentation`-only lessons through an adapter.
+
+### Curriculum model
+
+Lessons are organized on independent axes rather than equating age with difficulty:
+
+- **Domain:** computing concepts, circuits, electronic components, instruments,
+  control/widgets, extensions and hardware, representation/languages, debugging,
+  embedded systems, and computer architecture.
+- **Depth:** discover, foundation, practitioner, advanced, research. “Discover” uses
+  concrete language and pictures suitable for roughly age 9+, while “research” may
+  expect calculus, signal theory, data sheets, and experimental uncertainty.
+- **Representation:** Blocks, Brickwright Code, Python, JavaScript, C, BASIC, and ASM.
+  A lesson names a canonical semantic task and supplies only the variants it can teach
+  honestly. Generated previews are not described as independently editable source.
+- **Environment:** simulation, optional hardware, or hardware required. A simulation
+  fallback and manual checkpoint are explicit where physical observation cannot be
+  detected reliably.
+- **Pedagogy:** predict, build, run, observe, explain, change, diagnose, and extend.
+  Lessons should ask learners to make and test a claim rather than merely click Next.
+
+The initial curriculum map is:
+
+| Strand | Discover / foundation | Practitioner | Advanced / research |
+| --- | --- | --- | --- |
+| Circuits | closed paths, polarity, LED + resistor, series/parallel | dividers, RC time constant, transistor/motor drive | impedance, filters, loading, stability, uncertainty |
+| Instruments | continuity and voltage | current, sweep, oscilloscope triggering | Bode plots, phase, FFT/noise, probe loading |
+| Code | events, sequence, loops, variables | functions, state machines, concurrency, protocols | memory, timing, interrupts, optimization |
+| Representations | Blocks ↔ Code correspondence | Python/JS/C variants and conversion limits | ABI, generated C, BASIC and ASM correspondence |
+| Debugging | pause, step, watch one value | breakpoints, conditions, call stack, pin trace | instruction trace, buses, races, timing faults |
+| Control | buttons, sliders, gauges | two-way widget binding and dashboards | HMI design, sampling, calibration, safety |
+| Hardware/extensions | simulated sensors, extension blocks | connect/deploy/reconnect and capabilities | transport protocols, latency, firmware boundaries |
+| Machines | MCU pins and peripherals | 6502/Z80 buses and memory maps | contention, decode logic, timing and architecture |
+
+### Lesson schema and runtime
+
+Each lesson has a stable id, schema version, content version, localized title and
+objective, domains, depth, age guidance (advisory only), prerequisites, estimated
+time, required/optional hardware, an example id, supported language variants, and
+ordered checkpoints. A checkpoint includes an action, explanation, hint, observable
+condition, and an always-available manual completion label. Conditions use a small
+declarative vocabulary (`starter-loaded`, `project-run`, `project-stop`,
+`circuit-ready`, `circuit-changed`, `debug-phase`, `hardware-state`)—never arbitrary
+code from lesson data.
+
+Progress is stored locally under lesson id plus content version. Updating content can
+migrate deliberately or starts a clean attempt; it never mislabels obsolete progress
+as complete. The runner shows one checkpoint beside the editor, records automatic or
+manual completion distinctly, allows previous/next, reveals hints on demand, can be
+closed and resumed, and can reset progress. Automatic observation is assistance, not
+assessment: every step remains manually confirmable.
+
+### Exemplary vertical slice
+
+The first implementation proves the architecture with curated lessons spanning:
+
+- a battery–resistor–LED closed-path lesson for discover/foundation learners;
+- Blink represented in Blocks, Brickwright Code, Python, JavaScript, and C;
+- voltage-divider and RC oscilloscope instrument lessons;
+- a controller-widget binding lesson;
+- a breakpoint/step/watch debugger lesson;
+- an impedance/filter investigation for advanced learners; and
+- a 6502 bus-contention diagnosis that can extend toward ASM instruction tracing.
+
+Only the three onboarding lessons are initially launched automatically. The remaining
+catalog entries establish validated curriculum breadth and are selectable from the
+Lessons library in File or Settings. Content depth then grows strand by
+strand; breadth must not be faked with duplicate prose under different level labels.
+
+### Content production waves
+
+Each wave ends with learner testing, technical review, English/German review, and an
+example/lesson validation gate. Target counts describe distinct learning experiences,
+not translations or language variants counted as extra lessons.
+
+1. **Electricity you can see (12 lessons):** closed paths, polarity, resistance,
+   Ohm's law, series/parallel, voltage dividers, buttons, capacitors, inductors,
+   diodes, transistor switching, and safe motor/flyback circuits. Provide discover
+   and foundation tracks with concrete prediction and observation.
+2. **Measure rather than guess (10 lessons):** continuity, voltage, current and
+   burden voltage, resistance, multimeter range/error, function generator, scope
+   probes, vertical scale, sweep/timebase, triggering, cursors, and RC measurement.
+3. **One idea, several languages (12 semantic tasks):** sequence, events, loops,
+   conditions, variables, procedures, concurrency, state machines, arrays/data,
+   messages, pins/peripherals, and protocols. Blocks and Brickwright Code lead;
+   Python/JavaScript/C variants explain runtime and conversion differences. BASIC
+   and ASM enter where their machine model makes the concept clearer.
+4. **Interactive systems (8 lessons):** extension discovery, sensor capability,
+   LEGO connection/deployment/recovery, buttons/sliders/joysticks, displays/gauges,
+   two-way binding, dashboards, calibration, sampling, and control-loop safety.
+5. **Debug with evidence (10 lessons):** reproduce/minimize, pause/step, watches,
+   conditional breakpoints, call stack, task scheduling, pins/signals, serial trace,
+   timing bugs, and comparing simulation with hardware. Every lesson starts with a
+   question the debugger can answer.
+6. **Signals and systems (10 lessons):** RC/RL response, impedance, complex models,
+   cutoff and phase, Bode sweeps, resonance, loading, noise, aliasing, FFT limits,
+   uncertainty, and model-versus-measurement analysis.
+7. **Computers from wires upward (10 lessons):** logic levels, gates/registers,
+   clocks, buses, memory maps, address decoding, 6502/Z80 execution, ASM/source
+   correspondence, contention, interrupts, and performance/timing tradeoffs.
+
+Lesson quality rubric:
+
+- The objective names an observable capability, not “understand” or “learn about.”
+- Every lesson contains prediction, action, observation, and explanation; advanced
+  lessons also require uncertainty, assumptions, or competing models.
+- Safety-relevant physical steps state limits and a simulation alternative.
+- Every code variant is executed or round-trip tested where supported, and labels
+  generated/read-only representations honestly.
+- Automatic checks cannot reward an unrelated state; uncertain checks remain manual.
+- Hints reveal strategy progressively without giving away the conclusion immediately.
+- A nine-year-old track avoids unexplained notation; a research track does not dilute
+  rigor merely to share the same example asset.
 
 Acceptance criteria:
 
@@ -233,4 +356,12 @@ stop a release. Cosmetic work does not displace a broken starter journey.
   accessible keyboard behavior, responsive layout, and visible transactional errors.
 - [x] Verified Milestone 1 with the production webpack build, the complete repository
   test suite, starter-data validation, and Playwright at desktop and compact sizes.
-- [ ] Implement and verify Milestone 2.
+- [x] Implemented the Milestone 2 vertical slice: versioned bilingual JSON schema,
+  nine-lesson cross-domain catalog, prerequisite graph, selectable language concept
+  lenses, language/depth/environment metadata, live sidecar runner, local resume/reset,
+  hints, observable checkpoints,
+  and manual fallbacks.
+- [x] Verified the lesson slice with schema/breadth tests, full repository tests,
+  production webpack build, component lint, and browser workflows for the library,
+  automatic completion, manual persistence, and all starter-to-lesson transitions.
+- [ ] Produce the full curriculum in the seven reviewed content waves above.

@@ -26,6 +26,17 @@ try {
     await page.getByText('Getting started…', {exact: true}).click();
     await dialog.waitFor();
     check(true, 'Settings reopens the chooser');
+    await page.getByRole('button', {name: 'Not now'}).click();
+    await page.getByText('Settings', {exact: true}).click();
+    await page.getByText('Lessons…', {exact: true}).click();
+    await page.getByTestId('bw-lessons-library').waitFor();
+    check(await page.locator('[data-testid="bw-lessons-library"] button').count() >= 8,
+        'Settings opens the broad lessons catalog');
+    page.on('dialog', prompt => prompt.accept());
+    await page.locator('[data-lesson-id="instrument-voltage-divider"]').click();
+    await page.getByRole('button', {name: 'Open lesson project'}).click();
+    await page.getByText('Project opened', {exact: true}).waitFor({timeout: 45000});
+    check(true, 'a catalog lesson opens its matching live example');
     await context.close();
 
     for (const id of ['circuit', 'board', 'lego']) {
@@ -41,6 +52,22 @@ try {
             state: 'detached',
             timeout: 45000
         });
+        await page.getByTestId('bw-guided-lesson').waitFor({timeout: 10000});
+        check(true, `${id} continues into a guided lesson`);
+        if (id === 'circuit') {
+            check((await page.getByTestId('bw-lesson-complete').innerText()).includes('Observed'),
+                'starter-loaded checkpoint completes automatically');
+            await page.getByTestId('bw-lesson-next').click();
+            await page.getByTestId('bw-lesson-complete').click();
+            const saved = await page.evaluate(() => JSON.parse(
+                localStorage.getItem('bw-lesson-progress:starter-circuit-path:v1')));
+            check(saved.completed.inspect.method === 'manual', 'manual fallback persists by lesson version');
+        }
+        if (id === 'board') {
+            await page.getByRole('button', {name: 'python', exact: true}).click();
+            check(await page.getByText(/Python syntax alone/).isVisible(),
+                'a learner can switch to language-specific guidance');
+        }
         const selected = (await page.locator('[role="tab"][aria-selected="true"]')
             .allTextContents()).join(' ').toLowerCase();
         const expected = id === 'lego' ? 'code' : 'circuit';

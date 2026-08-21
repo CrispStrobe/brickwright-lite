@@ -485,10 +485,20 @@ class MenuBar extends React.Component {
                                 >
                                     <MenuSection>
                                         <MenuItem onClick={() => {
+                                            window.dispatchEvent(new CustomEvent('bw-open-lessons'));
+                                            this.props.onRequestCloseFile();
+                                        }}>
+                                            <FormattedMessage
+                                                defaultMessage="Brickwright lessons…"
+                                                description="Open the interactive Brickwright lessons library"
+                                                id="gui.menuBar.brickwrightLessons"
+                                            />
+                                        </MenuItem>
+                                        <MenuItem onClick={() => {
                                             this.props.onOpenTipLibrary();
                                             this.props.onRequestCloseFile();
                                         }}>
-                                            <FormattedMessage defaultMessage="Tutorials" id="gui.menuBar.tutorialsFile" />
+                                            <FormattedMessage defaultMessage="Scratch tutorials" id="gui.menuBar.tutorialsFile" />
                                         </MenuItem>
                                     </MenuSection>
                                     <MenuSection>

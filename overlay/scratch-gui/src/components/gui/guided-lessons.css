@@ -1,0 +1,40 @@
+.drawer { position: fixed; z-index: 7000; top: 52px; right: 10px; bottom: 10px; width: min(360px, calc(100vw - 20px)); overflow: auto; border: 1px solid #cbd8ea; border-radius: 16px; background: #f8fbff; box-shadow: 0 18px 50px rgba(15, 23, 42, .26); color: #172033; }
+.header { position: sticky; z-index: 1; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #dbe5f2; background: rgba(248, 251, 255, .96); }
+.header h2 { margin: 0; font-size: 18px; }
+.header button { padding: 6px 9px; border: 0; border-radius: 7px; background: transparent; color: #43516a; font: inherit; font-weight: 700; cursor: pointer; }
+.catalog { display: grid; gap: 10px; padding: 12px; }
+.lesson-card { display: flex; flex-direction: column; align-items: flex-start; padding: 14px; border: 1px solid #d7e2f2; border-radius: 12px; background: white; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.lesson-card:hover, .lesson-card:focus-visible { border-color: #4c97ff; outline: 3px solid rgba(76, 151, 255, .2); }
+.lesson-title { font-weight: 800; }
+.lesson-meta, .lesson-progress { margin-top: 5px; color: #3155a5; font-size: 11px; font-weight: 700; text-transform: capitalize; }
+.lesson-objective { margin-top: 7px; color: #526079; font-size: 12.5px; line-height: 1.4; }
+.lesson-body { padding: 15px; }
+.lesson-body h2 { margin: 8px 0; font-size: 22px; line-height: 1.16; }
+.badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.badges span { padding: 3px 7px; border-radius: 999px; background: #e8f1ff; color: #3155a5; font-size: 10.5px; font-weight: 700; text-transform: capitalize; }
+.objective { color: #526079; font-size: 13px; line-height: 1.4; }
+.open-project { margin-top: 10px; padding: 7px 10px; border: 0; border-radius: 8px; background: #3155a5; color: white; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.project-status { display: inline-block; margin-left: 8px; color: #526079; font-size: 11px; }
+.variant-picker { margin-top: 10px; color: #526079; font-size: 11px; }
+.variant, .variant-selected { margin: 3px 3px 0 0; padding: 3px 7px; border: 1px solid #cbd8ea; border-radius: 999px; background: white; color: #3155a5; font: inherit; font-weight: 700; text-transform: capitalize; cursor: pointer; }
+.variant-selected { border-color: #3155a5; background: #e8f1ff; }
+.variant-picker p { margin: 7px 0 0; padding: 8px; border-radius: 7px; background: #eef5ff; font-size: 12px; line-height: 1.4; }
+.progress-bar { height: 7px; margin-top: 15px; overflow: hidden; border-radius: 5px; background: #dbe5f2; }
+.progress-bar span { display: block; height: 100%; background: #2f9e44; transition: width 160ms ease; }
+.step-count { margin-top: 8px; color: #64748b; font-size: 11px; font-weight: 700; }
+.checkpoint { margin-top: 7px; padding: 14px; border: 1px solid #d7e2f2; border-radius: 12px; background: white; }
+.checkpoint h3 { margin: 0; font-size: 16px; line-height: 1.35; }
+.checkpoint p { margin: 9px 0; color: #526079; font-size: 13px; line-height: 1.45; }
+.checkpoint small { display: block; margin-top: 9px; color: #718096; line-height: 1.3; }
+.hint { margin: 8px 0; padding: 8px; border-radius: 7px; background: #fff8db; color: #6f5200; font-size: 12px; }
+.hint-button, .complete-button, .completed-button { margin: 5px 7px 0 0; padding: 7px 10px; border: 0; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.hint-button { background: #e8eef7; color: #43516a; }
+.complete-button { background: #4c97ff; color: white; }
+.completed-button { background: #d9f3df; color: #216e32; }
+.navigation { display: flex; justify-content: space-between; margin-top: 12px; }
+.navigation button { padding: 7px 11px; border: 1px solid #cbd8ea; border-radius: 8px; background: white; font: inherit; cursor: pointer; }
+.navigation button:disabled { cursor: default; opacity: .4; }
+.done { margin-top: 12px; padding: 10px; border-radius: 8px; background: #d9f3df; color: #216e32; font-weight: 800; text-align: center; }
+.reset { margin-top: 13px; padding: 5px; border: 0; background: transparent; color: #64748b; font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
+@media (max-width: 700px) { .drawer { top: 48px; right: 4px; bottom: 4px; width: calc(100vw - 8px); } }
+@media (prefers-reduced-motion: reduce) { .progress-bar span { transition: none; } }
