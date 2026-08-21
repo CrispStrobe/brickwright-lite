@@ -2,12 +2,16 @@
 .header { position: sticky; z-index: 1; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #dbe5f2; background: rgba(248, 251, 255, .96); }
 .header h2 { margin: 0; font-size: 18px; }
 .header button { padding: 6px 9px; border: 0; border-radius: 7px; background: transparent; color: #43516a; font: inherit; font-weight: 700; cursor: pointer; }
+.filters { position: sticky; z-index: 1; top: 48px; display: grid; grid-template-columns: 1fr 120px; gap: 7px; padding: 10px 12px 0; background: rgba(248, 251, 255, .96); }
+.filters input, .filters select { min-width: 0; padding: 7px 8px; border: 1px solid #cbd8ea; border-radius: 8px; background: white; color: #172033; font: inherit; font-size: 12px; }
 .catalog { display: grid; gap: 10px; padding: 12px; }
 .lesson-card { display: flex; flex-direction: column; align-items: flex-start; padding: 14px; border: 1px solid #d7e2f2; border-radius: 12px; background: white; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .lesson-card:hover, .lesson-card:focus-visible { border-color: #4c97ff; outline: 3px solid rgba(76, 151, 255, .2); }
 .lesson-title { font-weight: 800; }
 .lesson-meta, .lesson-progress { margin-top: 5px; color: #3155a5; font-size: 11px; font-weight: 700; text-transform: capitalize; }
+.lesson-topic { margin-top: 4px; color: #64748b; font-size: 10.5px; text-transform: capitalize; }
 .lesson-objective { margin-top: 7px; color: #526079; font-size: 12.5px; line-height: 1.4; }
+.no-results { margin: 20px 4px; color: #64748b; font-size: 13px; text-align: center; }
 .lesson-body { padding: 15px; }
 .lesson-body h2 { margin: 8px 0; font-size: 22px; line-height: 1.16; }
 .badges { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -36,5 +40,5 @@
 .navigation button:disabled { cursor: default; opacity: .4; }
 .done { margin-top: 12px; padding: 10px; border-radius: 8px; background: #d9f3df; color: #216e32; font-weight: 800; text-align: center; }
 .reset { margin-top: 13px; padding: 5px; border: 0; background: transparent; color: #64748b; font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
-@media (max-width: 700px) { .drawer { top: 48px; right: 4px; bottom: 4px; width: calc(100vw - 8px); } }
+@media (max-width: 700px) { .drawer { top: 48px; right: 4px; bottom: 4px; width: calc(100vw - 8px); } .filters { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .progress-bar span { transition: none; } }

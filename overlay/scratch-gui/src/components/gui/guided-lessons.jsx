@@ -2,14 +2,20 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 
-import catalog from './lessons.json';
+import coreCatalog from './lessons.json';
+import electricityWave from './lesson-waves/electricity-1.json';
 import styles from './guided-lessons.css';
+
+const catalog = {lessons: [...coreCatalog.lessons, ...electricityWave.lessons]};
 
 const UI = {
     en: {library: 'Lessons',
         close: 'Close lessons',
         back: 'All lessons',
         objective: 'Goal',
+        search: 'Search lessons',
+        allLevels: 'All levels',
+        noResults: 'No lessons match these filters.',
         viewAs: 'Concept lens',
         openProject: 'Open lesson project',
         opening: 'Opening project…',
@@ -30,6 +36,9 @@ const UI = {
         close: 'Lektionen schließen',
         back: 'Alle Lektionen',
         objective: 'Ziel',
+        search: 'Lektionen suchen',
+        allLevels: 'Alle Stufen',
+        noResults: 'Keine Lektion passt zu diesen Filtern.',
         viewAs: 'Sprachperspektive',
         openProject: 'Lektionsprojekt öffnen',
         opening: 'Projekt wird geöffnet…',
@@ -87,6 +96,8 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
     const [hint, setHint] = React.useState(false);
     const [projectStatus, setProjectStatus] = React.useState('');
     const [selectedVariant, setSelectedVariant] = React.useState('');
+    const [query, setQuery] = React.useState('');
+    const [depthFilter, setDepthFilter] = React.useState('');
 
     React.useEffect(() => {
         setCompleted(lesson ? loadProgress(lesson) : {});
@@ -150,6 +161,16 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
     }, [complete, initialEvent, lesson]);
 
     if (!lesson) {
+        const normalizedQuery = query.trim().toLowerCase();
+        const visibleLessons = catalog.lessons.filter(item => {
+            if (depthFilter && item.depth !== depthFilter) return false;
+            if (!normalizedQuery) return true;
+            const copy = localized(item.copy, lang);
+            return [copy.title, copy.objective, item.topic || '', ...item.domains, ...item.languages]
+                .join(' ')
+                .toLowerCase()
+                .includes(normalizedQuery);
+        });
         return (
             <aside
                 className={styles.drawer}
@@ -164,8 +185,30 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
                         onClick={onClose}
                     >{'×'}</button>
                 </header>
+                <div className={styles.filters}>
+                    <input
+                        aria-label={text.search}
+                        placeholder={text.search}
+                        type="search"
+                        value={query}
+                        onChange={event => setQuery(event.target.value)}
+                    />
+                    <select
+                        aria-label={text.allLevels}
+                        value={depthFilter}
+                        onChange={event => setDepthFilter(event.target.value)}
+                    >
+                        <option value="">{text.allLevels}</option>
+                        {['discover', 'foundation', 'practitioner', 'advanced', 'research'].map(depth => (
+                            <option
+                                key={depth}
+                                value={depth}
+                            >{depth}</option>
+                        ))}
+                    </select>
+                </div>
                 <div className={styles.catalog}>
-                    {catalog.lessons.map(item => {
+                    {visibleLessons.map(item => {
                         const copy = localized(item.copy, lang);
                         const saved = loadProgress(item);
                         const count = Object.keys(saved).length;
@@ -178,7 +221,12 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
                                 onClick={() => onSelectLesson(item.id)}
                             >
                                 <span className={styles.lessonTitle}>{copy.title}</span>
-                                <span className={styles.lessonMeta}>{`${item.depth} · ${item.ageGuidance} · ${item.minutes} min`}</span>
+                                <span className={styles.lessonMeta}>
+                                    {`${item.depth} · ${item.ageGuidance} · ${item.minutes} min`}
+                                </span>
+                                {item.topic ? (
+                                    <span className={styles.lessonTopic}>{item.topic.replace(/-/g, ' ')}</span>
+                                ) : null}
                                 <span className={styles.lessonObjective}>{copy.objective}</span>
                                 <span className={styles.lessonProgress}>
                                     {count ? `${text.resume} · ${count}/${item.checkpoints.length}` : text.start}
@@ -186,6 +234,7 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
                             </button>
                         );
                     })}
+                    {visibleLessons.length === 0 ? <p className={styles.noResults}>{text.noResults}</p> : null}
                 </div>
             </aside>
         );

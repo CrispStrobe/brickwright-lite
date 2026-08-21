@@ -6,7 +6,9 @@
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
     "postvendor": "echo 'Vendored. Next: npm run integrate && cd packages/scratch-gui && npm install --ignore-scripts && npm run build'",
-    "build:gui": "cd packages/scratch-gui && npm run build",
+    "check:load": "node scripts/check-system-load.mjs",
+    "build:gui": "npm run check:load && cd packages/scratch-gui && npm run build",
+    "build:gui:force": "cd packages/scratch-gui && npm run build",
     "integrate": "node scripts/integrate.mjs",
     "gen:notices": "node scripts/gen-rust-notices.mjs",
     "sync:sb3creator": "node scripts/sync-sb3creator.mjs",

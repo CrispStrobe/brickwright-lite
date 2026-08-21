@@ -159,6 +159,9 @@ not translations or language variants counted as extra lessons.
    Ohm's law, series/parallel, voltage dividers, buttons, capacitors, inductors,
    diodes, transistor switching, and safe motor/flyback circuits. Provide discover
    and foundation tracks with concrete prediction and observation.
+   **Implementation status:** all twelve bilingual lesson sequences are shipped in
+   the catalog and validated against real examples; technical and learner field
+   review remains before the wave is considered editorially final.
 2. **Measure rather than guess (10 lessons):** continuity, voltage, current and
    burden voltage, resistance, multimeter range/error, function generator, scope
    probes, vertical scale, sweep/timebase, triggering, cursors, and RC measurement.
@@ -346,6 +349,11 @@ Version numbers are targets, not promises; readiness gates control shipping. Cri
 data-loss, conversion, hardware-safety, accessibility-blocking, or signing defects
 stop a release. Cosmetic work does not displace a broken starter journey.
 
+Large local builds also have an operational readiness gate: `npm run build:gui`
+checks one-minute load normalized by logical CPU count and exits before webpack when
+the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
+`build:gui:force` is reserved for an intentional operator override.
+
 ## Current execution log
 
 - [x] Corrected TestFlight/App Store descriptions and release notes for 0.1.4.
@@ -365,3 +373,8 @@ stop a release. Cosmetic work does not displace a broken starter journey.
   production webpack build, component lint, and browser workflows for the library,
   automatic completion, manual persistence, and all starter-to-lesson transitions.
 - [ ] Produce the full curriculum in the seven reviewed content waves above.
+- [x] Implemented the Wave 1 engineering/content draft: twelve distinct electricity
+  lessons, real example mappings, explicit prediction and observation, progressive
+  prerequisites, hardware safety boundaries, and searchable level-filtered discovery.
+- [ ] Complete Wave 1 technical, translation, and learner field review, then revise
+  lesson versions from the evidence gathered.

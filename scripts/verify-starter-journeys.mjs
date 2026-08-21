@@ -30,8 +30,19 @@ try {
     await page.getByText('Settings', {exact: true}).click();
     await page.getByText('Lessons…', {exact: true}).click();
     await page.getByTestId('bw-lessons-library').waitFor();
-    check(await page.locator('[data-testid="bw-lessons-library"] button').count() >= 8,
+    check(await page.locator('[data-lesson-id]').count() >= 19,
         'Settings opens the broad lessons catalog');
+    const lessonSearch = page.getByRole('searchbox', {name: 'Search lessons'});
+    await lessonSearch.fill('motor flyback');
+    check(await page.locator('[data-lesson-id="electricity-motor-flyback"]').isVisible(),
+        'lesson search finds a Wave 1 topic');
+    check(await page.locator('[data-lesson-id]').count() === 1,
+        'lesson search filters the larger catalog');
+    await lessonSearch.fill('');
+    await page.getByRole('combobox', {name: 'All levels'}).selectOption('discover');
+    check(await page.locator('[data-lesson-id="electricity-polarity"]').isVisible(),
+        'level filtering keeps discover lessons visible');
+    await page.getByRole('combobox', {name: 'All levels'}).selectOption('');
     page.on('dialog', prompt => prompt.accept());
     await page.locator('[data-lesson-id="instrument-voltage-divider"]').click();
     await page.getByRole('button', {name: 'Open lesson project'}).click();
