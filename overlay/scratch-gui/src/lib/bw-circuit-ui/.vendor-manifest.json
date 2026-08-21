@@ -5,7 +5,7 @@
  "components/BoardCanvas.jsx": "fb7e8615de51014bd0d9f481af31064de59cbe06",
  "components/BomPanel.jsx": "107613c28fc993356180d2c8b56ab1a29f17d45b",
  "components/BreadboardView.jsx": "0790f0747607bd93eef1619bc52068ae71f3810d",
- "components/CircuitDesigner.jsx": "032af3e7ebe885cf8715e96661f9e985115d1459",
+ "components/CircuitDesigner.jsx": "c5bddfe68a9c8bb5b4bb2b672e3a2f134f3107d7",
  "components/CodexBrowser.jsx": "8bd7bfbcc1585bea99d0752388eb52041ca145e6",
  "components/ContextMenu.jsx": "bcfd132918741b8fd6fbb6414f339072e8023a76",
  "components/DebugStatus.jsx": "50599b29acb3fe64eea8afbabe0abd8310715986",

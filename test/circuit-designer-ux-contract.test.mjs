@@ -46,6 +46,8 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
     assert.match(source, /data-simulation-controls/);
     assert.match(source, /data-scope-module/);
     assert.match(source, /data-no-code-indicator/);
+    assert.match(source, /useState\(!embedded \|\| debuggerOn\)/,
+        'dedicated Circuit tab starts with instruments open; only the compact embed may collapse them');
 });
 
 test('oscilloscope exposes real scale, edge trigger, and time-cursor controls', () => {
