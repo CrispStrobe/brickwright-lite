@@ -472,6 +472,16 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   and false VCC/GND-short defects, bounded pathological single-column layouts
   (worst height reduced from 3,356 to under 1,000 units), and reviewed simple,
   analog, 8-bit-bank, and retro-machine output.
-- [ ] Replace the remaining generic schematic boxes in corpus priority order
-  (Arduino/MCU families, 555, common logic/memory/peripheral ICs), then add visual
-  baselines for representative simple, dense, analog, and retro-machine examples.
+- [x] Re-audited every schematic as a PNG contact-sheet corpus instead of relying
+  on spot checks. Dense MCU/retro examples now use conventional repeated net labels
+  rather than overlapping full-height trunks; tall packages are placed using their
+  connected-pin height and wrapped into columns capped near one viewport. Across
+  all 246 examples the largest projection is now 1,290 × 910 units.
+- [x] Made the schematic CLI load sidecars and pass each example through the same
+  legacy-wire normalization and breadboard strip/jumper resolution as the live
+  Circuit Designer. Its PNG/SVG output is now an electrical audit, not merely a
+  renderer test that can silently omit board-hole connections.
+- [ ] Add reviewed visual baselines for representative simple, dense, analog, and
+  retro-machine examples. Pin-labelled rectangles for MCUs, memories, logic ICs,
+  and modules are conventional schematic symbols, not missing pictorial artwork;
+  only replace a box where a standardized non-box symbol communicates more truth.

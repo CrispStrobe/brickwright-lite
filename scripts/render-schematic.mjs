@@ -12,6 +12,18 @@ import process from 'node:process';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {renderSchematicSvg} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/schematic-svg.js';
+import {Circuit} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/circuit.js';
+import {setEngine} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/engine.js';
+import {registerSidecar} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/parts-registry.js';
+
+// Load circuits through the same normalization and breadboard-net resolution
+// as the interactive designer. A renderer that silently drops board-hole
+// endpoints can produce attractive PNGs of the wrong circuit.
+class AuditBoard {
+    setNetlist () {}
+    snapshot () { return null; }
+}
+setEngine({BoardImpl: AuditBoard, inferNetlist: () => ({}), checkWiring: () => []});
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -30,6 +42,11 @@ if ((!all && !exampleId) || !['svg', 'png', 'both'].includes(format)) {
 }
 
 const examplesRoot = path.join(root, 'overlay', 'scratch-gui', 'examples');
+const partsDataRoot = path.join(root, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-circuit-ui', 'parts-data');
+for (const filename of await fs.readdir(partsDataRoot)) {
+    if (!filename.endsWith('.json')) continue;
+    registerSidecar(JSON.parse(await fs.readFile(path.join(partsDataRoot, filename), 'utf8')));
+}
 const index = JSON.parse(await fs.readFile(path.join(examplesRoot, 'index.json'), 'utf8'));
 const selected = all ? index.filter(ex => ex.files && ex.files.circuit) :
     index.filter(ex => ex.id === exampleId && ex.files && ex.files.circuit);
@@ -84,7 +101,8 @@ try {
     for (const example of selected) {
         const source = path.join(examplesRoot, example.files.circuit);
         const circuit = JSON.parse(await fs.readFile(source, 'utf8'));
-        const rendered = renderSchematicSvg(circuit, {dark: false});
+        const loaded = Circuit.fromJSON(circuit);
+        const rendered = renderSchematicSvg({parts: loaded.parts, nets: loaded.resolvedNets}, {dark: false});
         const base = path.join(outDir, example.id.replace(/[^a-z0-9._-]+/gi, '-'));
         const svgPath = `${base}.svg`;
         await fs.writeFile(svgPath, rendered.svg);
