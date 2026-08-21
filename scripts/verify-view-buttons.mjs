@@ -20,6 +20,7 @@ async function verify () {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     page.on('dialog', d => d.accept());
+    await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
 
     let ok = true;
     const fail = msg => { ok = false; console.error(`  FAIL: ${msg}`); };
