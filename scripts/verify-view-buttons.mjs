@@ -60,6 +60,16 @@ async function verify () {
             fail('micro:bit view button visible on mint project (no DEVICE MICROBIT)');
         }
 
+        // The owner default keeps the optional stage/debugger pane minimized.
+        // Expand it deliberately before exercising controls that live inside
+        // that pane; finding hidden duplicate buttons is not a usable UI test.
+        const paneToggle = page.locator('[data-right-pane-toggle]');
+        if (await paneToggle.getAttribute('aria-pressed') === 'false') {
+            pass('optional stage/debugger pane starts minimized');
+            await paneToggle.click();
+            await page.waitForTimeout(500);
+        }
+
         // ── 2. Click through each non-micro:bit view button ──
         // The view buttons should be: Circuit, Debugger, Debugger-only, Scratch Stage
         // (4 buttons, no micro:bit on a mint project)
