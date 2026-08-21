@@ -103,6 +103,8 @@ test('electricity wave has twelve distinct, progressive learning experiences', a
     const {lessons} = await readLessons();
     const bridgeCircuit = await readJson(
         '../overlay/scratch-gui/examples/pc31-bridge-rectifier/circuit.json');
+    const dischargeCircuit = await readJson(
+        '../overlay/scratch-gui/examples/pc29-capacitor-discharge/circuit.json');
     const bridgeIntro = await readFile(new URL(
         '../overlay/scratch-gui/examples/pc31-bridge-rectifier/intro.md', import.meta.url), 'utf8');
     const wave = lessons.filter(lesson => lesson.wave === 'electricity-1');
@@ -138,6 +140,16 @@ test('electricity wave has twelve distinct, progressive learning experiences', a
         'the bridge experiment supplies the source whose polarity the lesson reverses');
     assert.doesNotMatch(bridgeIntro, /source that really alternates/i,
         'the bridge follow-up does not advertise a waveform absent from the linked example');
+
+    const capacitorLesson = wave.find(lesson => lesson.id === 'electricity-capacitor');
+    assert.equal(capacitorLesson.exampleId, 'pc29-capacitor-discharge',
+        'the charge/discharge lesson opens a bench with both controllable paths');
+    assert.ok(capacitorLesson.version >= 2, 'the corrected capacitor lesson invalidates stale progress');
+    assert.equal(dischargeCircuit.parts.filter(part => part.kind === 'switch').length, 2,
+        'the capacitor bench supplies independent charge and discharge switches');
+    assert.ok(dischargeCircuit.parts.some(part => part.kind === 'capacitor') &&
+        dischargeCircuit.parts.some(part => part.kind === 'led'),
+    'the capacitor bench supplies stored energy and the threshold load taught by the lesson');
 });
 
 test('measurement wave teaches ten honest instrument workflows', async () => {
