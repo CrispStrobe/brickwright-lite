@@ -118,7 +118,11 @@ try {
     // condition that used to leave the pane blank. ────────────────────────
     const page = await browser.newPage({viewport: {width: 1600, height: 1000}});
     page.on('dialog', d => d.accept());
-    await page.addInitScript(() => { localStorage.clear(); sessionStorage.clear(); });
+    await page.addInitScript(() => {
+        localStorage.clear();
+        localStorage.setItem('bw-starter-complete', '1');
+        sessionStorage.clear();
+    });
     await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
     await page.waitForTimeout(4000);
@@ -174,7 +178,11 @@ try {
     // to the machine through the console's input line. ────────────────────
     const bench = await browser.newPage({viewport: {width: 1600, height: 1000}});
     bench.on('dialog', d => d.accept());
-    await bench.addInitScript(() => { localStorage.clear(); sessionStorage.clear(); });
+    await bench.addInitScript(() => {
+        localStorage.clear();
+        localStorage.setItem('bw-starter-complete', '1');
+        sessionStorage.clear();
+    });
     await bench.goto(url, {waitUntil: 'networkidle', timeout: 90000});
     await bench.waitForSelector('[role="tab"]', {timeout: 60000});
     await bench.locator('[role="tab"]', {hasText: 'Circuit'}).first().click();

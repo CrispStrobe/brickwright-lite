@@ -22,6 +22,7 @@ const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-
 async function verify () {
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
+    await page.addInitScript(() => localStorage.setItem('bw-starter-complete', '1'));
     page.on('dialog', d => d.accept());
 
     let ok = true;
