@@ -255,7 +255,7 @@ Acceptance criteria:
 
 ## Milestone 4 — Trustworthy representation switching
 
-Status: planned
+Status: **in progress — representation capability contract visible**
 
 Make the relationship among Blocks, Brickwright Code, Python, and JavaScript visible
 and honest. Show the corresponding construct when switching, distinguish editable
@@ -449,3 +449,6 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   and timing to live electrical and debugger evidence.
 - [ ] Complete Wave 7 architecture/electrical verification, translation review, and
   learner field testing, then revise content versions from the evidence gathered.
+- [x] Started Milestone 4 with an always-visible bilingual capability contract for
+  every Code tab: supported-subset editable conversion, generated read-only
+  micro:bit/ASM views, and one-way editable ASM are labeled before conversion.
