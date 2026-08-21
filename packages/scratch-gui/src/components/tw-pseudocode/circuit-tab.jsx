@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
+import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 
 // Inject the retro-bench bus extractors into the DRC so contention and
 // open-vector errors surface as warnings. This lives here (not in the
@@ -187,6 +188,11 @@ class CircuitTab extends React.Component {
             }
         };
         window.addEventListener('bw-settings-change', this._settingsHandler);
+        // The first-run chooser is global, but this tab owns the canonical
+        // examples loader. forceRenderTabPanel keeps this listener alive even
+        // when a starter ultimately opens the Code tab (the LEGO journey).
+        this._starterJourneyHandler = event => this.loadStarterJourney(event);
+        window.addEventListener('bw-start-journey', this._starterJourneyHandler);
         // Machine bench: Build Machine dispatches this when the bus extractor
         // succeeds. The DebugPanel needs to render even without declared pins
         // so the user can load a program and run the machine. The detail is
@@ -321,6 +327,7 @@ class CircuitTab extends React.Component {
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
         window.removeEventListener('bw-settings-change', this._settingsHandler);
+        window.removeEventListener('bw-start-journey', this._starterJourneyHandler);
         window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);
         window.removeEventListener('bw-machine-media-load', this._mediaStashHandler);
         window.removeEventListener('bw-asm-rom-ready', this._asmStashHandler);
@@ -585,6 +592,13 @@ class CircuitTab extends React.Component {
             }
         } catch { /* never block circuit publication */ }
         this.setState({circuit});
+        if (typeof window !== 'undefined') {
+            const parts = circuit && circuit.parts ?
+                (circuit.parts.size ?? circuit.parts.length ?? 0) : 0;
+            const wires = circuit && circuit.wires ?
+                (circuit.wires.size ?? circuit.wires.length ?? 0) : 0;
+            window.dispatchEvent(new CustomEvent('bw-circuit-ready', {detail: {parts, wires}}));
+        }
         // Detect CPU parts on the board and publish the core so the debug
         // panel creates the right target kind (z80, eater6502, avr8js).
         if (circuit && circuit.parts) {
@@ -610,6 +624,11 @@ class CircuitTab extends React.Component {
      */
     handleDeclarationChange (decls) {
         this.setState(s => ({circuitRev: (s.circuitRev || 0) + 1}));
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('bw-circuit-changed', {
+                detail: {device: decls && decls.device, pins: decls && decls.pins ? decls.pins.length : 0}
+            }));
+        }
         if (!decls || !decls.device || !Array.isArray(decls.pins)) return;
         const vm = this.props.vm;
         if (!vm) return;
@@ -667,21 +686,108 @@ class CircuitTab extends React.Component {
      * lie about work bw-cfront has done.
      */
     async loadExamples () {
-        if (this.state.examples || this.examplesLoading) return;
-        this.examplesLoading = true;
+        if (this.state.examples) return this.state.examples;
+        if (this.examplesLoadingPromise) return this.examplesLoadingPromise;
+        this.examplesLoadingPromise = (async () => {
+            try {
+                const res = await fetch('examples/index.json');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const list = Array.isArray(data) ? data : (data.examples || []);
+                this.setState({examples: list});
+                return list;
+            } catch (e) {
+                const message = 'The example gallery is not part of this build yet ' +
+                    `(examples/index.json: ${e.message}). The examples exist — they ` +
+                    'are published by bw-cfront and need vendoring into the app.';
+                this.examplesLoadError = message;
+                this.setState({examplesError: message});
+                // Existing visibility-triggered callers do not await this method.
+                // Resolve with null so a missing optional gallery cannot become an
+                // unhandled rejection; the starter path turns it into a visible error.
+                return null;
+            } finally {
+                this.examplesLoadingPromise = null;
+            }
+        })();
+        return this.examplesLoadingPromise;
+    }
+
+    /** Open one of the three first-run journeys through the normal loaders. */
+    async loadStarterJourney (event) {
+        const journey = event && event.detail || {};
+        const finish = detail => window.dispatchEvent(new CustomEvent('bw-starter-result', {
+            detail: {journeyId: journey.id, ...detail}
+        }));
         try {
-            const res = await fetch('examples/index.json');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            const list = Array.isArray(data) ? data : (data.examples || []);
-            this.setState({examples: list});
-        } catch (e) {
-            this.setState({examplesError:
-                'The example gallery is not part of this build yet ' +
-                `(examples/index.json: ${e.message}). The examples exist — they ` +
-                'are published by bw-cfront and need vendoring into the app.'});
+            const list = await this.loadExamples();
+            if (!Array.isArray(list)) throw new Error(this.examplesLoadError ||
+                'The starter project index could not be loaded.');
+            const example = list.find(item => item.id === journey.exampleId);
+            if (!example) throw new Error(
+                `Starter example "${journey.exampleId}" is missing from examples/index.json.`);
+            if (journey.mode !== 'program-only') this.load();
+            const result = journey.mode === 'program-only' ?
+                await this.loadProgramOnlyStarter(example) :
+                await this.loadExample(example, {circuitOnly: journey.mode === 'circuit-only'});
+            finish(result && result.ok ? {ok: true} : {
+                ok: false,
+                cancelled: !!(result && result.cancelled),
+                error: result && result.error
+            });
+        } catch (error) {
+            finish({ok: false, error: error.message});
         }
-        this.examplesLoading = false;
+    }
+
+    /** Program-only starters (currently LEGO) have no fictional circuit to load. */
+    async loadProgramOnlyStarter (example) {
+        if (typeof confirm === 'function') {
+            const message = /^de/i.test(navigator.language) ?
+                `„${example.id}" öffnen?\n\nDas ersetzt das aktuelle Projekt. Nicht Gespeichertes geht verloren.` :
+                `Open "${example.id}"?\n\nThis replaces the current project. Anything unsaved is lost.`;
+            if (!confirm(message)) return {ok: false, cancelled: true};
+        }
+        this.setState({loadingExample: example.id, examplesError: null});
+        try {
+            await this.loadExampleProgram(example, null);
+            this.setState({loadingExample: null, stc: this.readStc()});
+            if (example.files && example.files.controller) {
+                const response = await fetch(`examples/${example.files.controller}`);
+                if (!response.ok) throw new Error(`controller: HTTP ${response.status}`);
+                const layout = await response.json();
+                const runtime = this.props.vm && this.props.vm.runtime;
+                const panel = runtime && runtime.controllerPanel;
+                if (!panel || !layout || !Array.isArray(layout.widgets)) {
+                    throw new Error('controller layout is not available');
+                }
+                for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+                for (const widget of layout.widgets) {
+                    const added = panel.addWidget(widget.name, widget.type,
+                        widget.config || {}, widget.layout || {});
+                    if (widget.binding) added.binding = {...widget.binding};
+                }
+                if (layout.mode) panel.setMode(layout.mode);
+                if (runtime.stc) runtime.stc.controller = layout;
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                    detail: {key: 'bw-stage-circuit', value: '1'}
+                }));
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                    detail: {key: 'bw-debug-dock', value: 'controller'}
+                }));
+            } else {
+                // A hardware extension project has no fictional breadboard. Show
+                // its Scratch/extension stage while coding instead of an empty circuit.
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                    detail: {key: 'bw-stage-circuit', value: '0'}
+                }));
+            }
+            return {ok: true};
+        } catch (error) {
+            this.setState({loadingExample: null, examplesError:
+                `Could not fully open "${example.id}": ${error.message}.`});
+            return {ok: false, error: error.message};
+        }
     }
 
     /**
@@ -824,15 +930,14 @@ class CircuitTab extends React.Component {
         // authored device anyway (owner report, 2026-08-17). The authored
         // circuit still outranks a generated bench for the example's own
         // device — the bench is a generic approximation.
-        const pick = (opts && opts.device ? String(opts.device) : '')
-            .toLowerCase().replace(/_/g, '-') || null;
+        const pick = normalizeDeviceId(opts && opts.device) || null;
         const benchOverride = (opts && opts.bench) || null;
         const path = ex && ex.files && ex.files.circuit;
         if (!path) {
-            this.setState({examplesError:
-                `"${(ex && ex.id) || 'that example'}" lists no circuit file, so there is ` +
-                'nothing to place on the board.'});
-            return;
+            const error = `"${(ex && ex.id) || 'that example'}" lists no circuit file, so there is ` +
+                'nothing to place on the board.';
+            this.setState({examplesError: error});
+            return {ok: false, error};
         }
         // An example with a program replaces the project, which undo cannot
         // recover — so ask, once, and say what is at stake. A circuit-only
@@ -841,13 +946,13 @@ class CircuitTab extends React.Component {
         // categorisation tag, not a file-presence gate: an example can be
         // kind:'circuit' (it is ABOUT a circuit) and still declare pins
         // that need loading. The gate must be the file, not the tag.
-        const hasProgram = !!(ex.files && ex.files.program);
+        const hasProgram = !(opts && opts.circuitOnly) && !!(ex.files && ex.files.program);
         if (hasProgram && typeof confirm === 'function') {
             const msg = /^de/i.test(navigator.language)
                 ? `„${ex.id}" öffnen?\n\nDas ersetzt das aktuelle Projekt — seine Blöcke, Pins und sein Board. Nicht Gespeichertes geht verloren.`
                 : `Open "${ex.id}"?\n\nThis replaces the current project — its blocks, its pins and its board. Anything unsaved is lost.`;
             const ok = confirm(msg);
-            if (!ok) return;
+            if (!ok) return {ok: false, cancelled: true};
         }
         this.setState({loadingExample: ex.id, examplesError: null});
         try {
@@ -855,16 +960,13 @@ class CircuitTab extends React.Component {
             // generated bench for a genuinely different picked device.
             let circuitPath = path;
             if (pick && hasProgram) {
-                try {
-                    const pres = await fetch(`examples/${ex.files.program}`);
-                    const psrc = pres.ok ? await pres.text() : '';
-                    const exDev = ((psrc.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '')
-                        .toLowerCase().replace(/_/g, '-');
-                    if (exDev && pick !== exDev) {
-                        const bench = benchOverride || (ex.benches && ex.benches[pick]) || null;
-                        if (bench && bench !== path) circuitPath = bench;
-                    }
-                } catch { /* authored circuit stays */ }
+                const pres = await fetch(`examples/${ex.files.program}`);
+                if (!pres.ok) throw new Error(`program: HTTP ${pres.status}`);
+                const psrc = await pres.text();
+                const exDev = (psrc.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '';
+                const resolved = resolveExampleBench(ex, pick, exDev, benchOverride);
+                if (resolved.error) throw new Error(resolved.error);
+                circuitPath = resolved.path || path;
             }
             const res = await fetch(`examples/${circuitPath}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -913,9 +1015,11 @@ class CircuitTab extends React.Component {
                     `"${ex.id}" loaded, but its program declares no pins, so the ` +
                     'debugger stays hidden.'});
             }
+            return programError ? {ok: false, error: programError} : {ok: true};
         } catch (e) {
             this.setState({loadingExample: null, examplesError:
                 `Could not open "${ex.id}": ${e.message}. The board is unchanged.`});
+            return {ok: false, error: e.message};
         }
     }
 
@@ -954,6 +1058,9 @@ class CircuitTab extends React.Component {
         // null, and passing the last debugState through kept the designer's
         // status panel glowing green RUNNING forever. No session — no panel.
         const phase = ui && ui.phase;
+        if (typeof window !== 'undefined' && phase) {
+            window.dispatchEvent(new CustomEvent('bw-debug-phase', {detail: {phase}}));
+        }
         if (phase === 'idle' || phase === 'error') {
             if (this.state.debugState !== null) this.setState({debugState: null});
             return;
@@ -1149,80 +1256,11 @@ class CircuitTab extends React.Component {
         const dock = this.state.debugDock === 'solo' ? 'top' : this.state.debugDock;
         const content = (
             <div ref={this._boxRef} style={box}>
-                {/* A circuit does not need a microcontroller.
-                    This used to read "declares no pins, so the board starts empty", which
-                    framed a battery-LED-resistor circuit — the first circuit anyone builds —
-                    as a misconfigured MCU project. The board, the solver, the instruments and
-                    the design-rule check all work with no MCU in the netlist at all. So this
-                    is an invitation, shown once and dismissible, not a warning. */}
-                {stcDrives(stc) || this.state.machineBooted || this.state.hintDismissed ? null : (
-                    <details style={{marginBottom: 6, flex: '0 0 auto', color: '#075985'}}>
-                    <summary style={{cursor: 'pointer', color: '#d97706', fontSize: 18, lineHeight: 1, padding: '2px 4px', listStyle: 'none'}} title="Show circuit hint">▲</summary>
-                    <div style={{padding: '5px 8px', borderRadius: 5,
-                        background: '#f0f9ff', border: '1px solid #bae6fd', fontSize: 12,
-                        color: '#075985', display: 'flex', alignItems: 'center', gap: 8,
-                        }}>
-                        <span style={{flex: 1}}>
-                            {'Build a circuit on its own — battery, LED, resistor, a 555. ' +
-                             'To drive parts from blocks, declare pins in the Code tab ' +
-                             '(PIN led1 IS P1.0 OUTPUT ACTIVE LOW).'}
-                        </span>
-                        <button
-                            title={'Dismiss'}
-                            onClick={() => {
-                                this.setState({hintDismissed: true});
-                                try {
-                                    localStorage.setItem('bw-circuit-hint', '1');
-                                } catch { /* private mode: dismissed for this session only */ }
-                            }}
-                            style={{border: 'none', background: 'transparent', cursor: 'pointer',
-                                color: '#0369a1', fontSize: 15, lineHeight: 1, padding: '0 2px'}}
-                        >{'×'}</button>
-                    </div>
-                    </details>
-                )}
-                {/* The debugger's controls, above the board they act on. The design note
-                    puts them in the stage header; they are here because that header is
-                    shown for every project including pure Scratch ones — see the panel's
-                    own comment. The block glow lands in the Blocks tab regardless. */}
-                {stcDrives(stc) || this.state.machineBooted ? null : (
-                    // The panel is correctly absent — there is no program to run
-                    // control over — but absent and broken look identical, and a
-                    // reader who came here for the debugger finds nothing and no
-                    // reason. Every other panel in this strip explains why it is
-                    // empty; this one used to be the exception.
-                    this.state.debugHintDismissed ? null : (
-                        <details style={{marginBottom: 8, flex: '0 0 auto', color: '#64748b'}}>
-                        <summary style={{cursor: 'pointer', color: '#ca8a04', fontSize: 18, lineHeight: 1, padding: '2px 4px', listStyle: 'none'}} title="Show debugger hint">▲</summary>
-                        <div style={{padding: '4px 8px', borderRadius: 4,
-                            background: '#f8fafc', border: '1px solid #e2e8f0', flex: '0 0 auto',
-                            fontSize: 11.5, color: '#64748b',
-                            display: 'flex', alignItems: 'center', gap: 8}}>
-                            <span style={{flex: 1}}>
-                                {'Run and step controls appear here once the project declares ' +
-                                 'pins — the debugger needs a program and a chip to drive. Add ' +
-                                 'one in the Code tab, e.g. PIN led1 IS P1.0 OUTPUT ACTIVE LOW.'}
-                            </span>
-                            {/* Dismissible for the same reason the standalone-circuit hint is:
-                                someone building a circuit with no MCU has read it once and does
-                                not need it on every visit. Its own key, not the circuit hint's —
-                                they answer different questions and dismissing one should not
-                                silence the other. */}
-                            <button
-                                title={'Dismiss'}
-                                onClick={() => {
-                                    this.setState({debugHintDismissed: true});
-                                    try {
-                                        localStorage.setItem('bw-debug-hint', '1');
-                                    } catch { /* private mode: dismissed for this session */ }
-                                }}
-                                style={{border: 'none', background: 'transparent', cursor: 'pointer',
-                                    color: '#64748b', fontSize: 15, lineHeight: 1, padding: '0 2px'}}
-                            >{'×'}</button>
-                        </div>
-                        </details>
-                    )
-                )}
+                {/* The standalone-circuit invitation and the debugger hint used to render here
+                    as two dismissible orange ▲ banners. Removed at the owner's request: they
+                    pushed the board down and duplicated the top-bar Warnings selector, which
+                    (with its count) is now the single home for anything the user needs flagged.
+                    The guidance they carried lives in the Examples/docs, not a persistent banner. */}
                 {this.state.panel === 'designer' ? null : this.renderPanelStrip()}
                 <div style={{display: 'flex', flex: '1 1 auto', minHeight: 0, gap: 8}}>
                 <div style={{flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column'}}>
@@ -1392,18 +1430,25 @@ class CircuitTab extends React.Component {
                     <button
                         key={id}
                         onClick={() => {
+                            // The Designer button is a no-op when the designer is already the
+                            // current panel — this strip only exists inside the Circuit tab, so
+                            // "select Designer" from here is redundant. Grey it and swallow the
+                            // click so it reads as the current view, not a live selector.
+                            if (panel === id && id === 'designer') return;
                             this.setState({panel: id});
                             if (id === 'examples') this.loadExamples();
                         }}
                         title={tabTitles[id]}
                         aria-label={tabTitles[id]}
                         aria-pressed={panel === id}
+                        aria-disabled={panel === id && id === 'designer'}
                         style={{
-                            width: 34, minWidth: 34, height: 34, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4,
+                            width: 34, minWidth: 34, height: 34, padding: 0, border: 'none', borderRadius: 4,
+                            cursor: panel === id && id === 'designer' ? 'default' : 'pointer',
                             fontSize: 17, lineHeight: 1, position: 'relative', fontWeight: 600,
-                            background: panel === id ? '#1d4ed8' : 'transparent',
-                            boxShadow: panel === id ? '0 1px 2px rgba(15,23,42,.25)' : 'none',
-                            color: panel === id ? '#fff' : '#64748b'
+                            background: panel === id ? (id === 'designer' ? '#e2e8f0' : '#1d4ed8') : 'transparent',
+                            boxShadow: panel === id && id !== 'designer' ? '0 1px 2px rgba(15,23,42,.25)' : 'none',
+                            color: panel === id ? (id === 'designer' ? '#94a3b8' : '#fff') : '#64748b'
                         }}
                     >
                         <span aria-hidden="true">{tabIcons[id]}</span>

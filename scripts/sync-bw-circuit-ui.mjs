@@ -90,7 +90,7 @@ if (!check) await writeFile(manifestPath, JSON.stringify(written, null, 1));
 // nothing says which is real. The LICENSE file placed in this directory
 // for MPL-2.0 compliance is not a vendored source file and must survive.
 if (!check) {
-    const KEEP = new Set(['LICENSE']);
+    const KEEP = new Set(['LICENSE', '.vendor-manifest.json']);
     async function walkDest (rel = '') {
         const out = [];
         for (const e of await readdir(path.join(dest, rel), {withFileTypes: true})) {
