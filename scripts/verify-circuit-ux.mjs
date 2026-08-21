@@ -169,6 +169,28 @@ try {
     check('Circuit Designer circuit content loaded', loaded || await page.locator('.bw-circuit-designer').count() >= 1);
     await page.waitForTimeout(2200);
 
+    // The debugger starts in the full-size right pane. Its << control lives in
+    // Instruments, which may be collapsed in a fresh workspace: expand it,
+    // then exercise both directions. This proves the owner-required
+    // Blocks + Circuit + Debugger layout is actually reachable and that the
+    // formerly missing << / >> controls persist the dock state.
+    const expandDedicatedInstruments = dedicatedDesigner.getByRole('button', {name: 'Expand instruments panel'});
+    if (await expandDedicatedInstruments.count()) await expandDedicatedInstruments.click({force: true});
+    const moveDebuggerBack = dedicatedDesigner.getByRole('button', {name: 'Move debugger back to instruments'});
+    check('debugger exposes << to move back into Instruments', await moveDebuggerBack.count() === 1);
+    if (await moveDebuggerBack.count()) await moveDebuggerBack.click({force: true});
+    await page.waitForFunction(() => localStorage.getItem('bw-debug-dock') === 'top', null, {timeout: 3000}).catch(() => {});
+    check('Blocks + Circuit + Debugger layout docks the debugger in Instruments',
+        await dedicatedDesigner.locator('[data-instruments-column] [data-debugger-panel]').count() === 1 &&
+        await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'top');
+    const moveDebuggerRight = dedicatedDesigner.getByRole('button', {name: 'Move debugger to full-size right pane'});
+    check('debugger exposes >> to move to the right pane', await moveDebuggerRight.count() === 1);
+    if (await moveDebuggerRight.count()) await moveDebuggerRight.click({force: true});
+    await page.waitForFunction(() => localStorage.getItem('bw-debug-dock') === 'right', null, {timeout: 3000}).catch(() => {});
+    check('>> restores the full-size right-pane debugger',
+        await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'right' &&
+        await page.locator('[data-debugger-solo-pane]').count() === 1);
+
     const designer = page.locator('.bw-circuit-designer').first();
     check('Circuit Designer rendered', await designer.count() >= 1);
     const modeToggle = designer.locator('[data-build-sim-toggle]');

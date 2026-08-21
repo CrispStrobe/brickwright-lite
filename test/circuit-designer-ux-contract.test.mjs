@@ -46,6 +46,10 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
     assert.match(source, /data-simulation-controls/);
     assert.match(source, /data-scope-module/);
     assert.match(source, /data-no-code-indicator/);
+    assert.match(source, /title="Move debugger back to instruments"/);
+    assert.match(source, /onDebugDockChange\('top'\)/);
+    assert.match(source, /title="Move debugger to full-size right pane"/);
+    assert.match(source, /onDebugDockChange\('right'\)/);
     assert.match(source, /useState\(!!debuggerOn \|\| !!benchOpen\)/,
         'fresh workspaces preserve bench space; debugger and lesson demand open instruments');
     assert.match(source, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/,
