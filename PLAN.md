@@ -191,6 +191,11 @@ not translations or language variants counted as extra lessons.
    conditional breakpoints, call stack, task scheduling, pins/signals, serial trace,
    timing bugs, and comparing simulation with hardware. Every lesson starts with a
    question the debugger can answer.
+   **Implementation status:** all ten bilingual engineering drafts are in the catalog.
+   Each starts with an explicit question and collects evidence from the smallest useful
+   combination of debugger state, watches, task/call state, pin and serial traces,
+   circuit instruments, timestamps, or optional hardware. Target-specific capability,
+   translation, and learner field review remains.
 6. **Signals and systems (10 lessons):** RC/RL response, impedance, complex models,
    cutoff and phase, Bode sweeps, resonance, loading, noise, aliasing, FFT limits,
    uncertainty, and model-versus-measurement analysis.
@@ -416,3 +421,8 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   calibration, sampling, and control-loop safety.
 - [ ] Complete Wave 4 hardware/recovery verification, accessibility and translation
   review, and learner field testing, then revise content versions from the evidence.
+- [x] Implemented the Wave 5 engineering/content draft with ten bilingual,
+  question-led debugging lessons spanning reproduction through aligned
+  simulation-versus-hardware diagnosis.
+- [ ] Complete Wave 5 target-capability verification, translation review, and learner
+  field testing, then revise content versions from the evidence gathered.

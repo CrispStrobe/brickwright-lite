@@ -17,10 +17,12 @@ const readLessons = async () => {
         '../overlay/scratch-gui/src/components/gui/lesson-waves/languages-3.json');
     const interactive = await readJson(
         '../overlay/scratch-gui/src/components/gui/lesson-waves/interactive-4.json');
+    const debugging = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/debugging-5.json');
     return {
         schemaVersion: core.schemaVersion,
         lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons, ...languages.lessons,
-            ...interactive.lessons]
+            ...interactive.lessons, ...debugging.lessons]
     };
 };
 
@@ -185,4 +187,23 @@ test('interactive wave covers eight capability and control workflows', async () 
     }
     assert.equal(wave.find(lesson => lesson.id === 'interactive-lego-recovery').environment,
         'optional-hardware');
+});
+
+test('debugging wave asks ten questions answerable with evidence', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'debugging-5');
+    const expected = ['reproduce-minimize', 'pause-step', 'watches', 'conditional-breakpoints',
+        'call-stack', 'task-scheduling', 'pins-signals', 'serial-trace', 'timing-bugs',
+        'simulation-vs-hardware'];
+
+    assert.equal(wave.length, 10);
+    assert.deepEqual(wave.map(lesson => lesson.topic).sort(), expected.sort());
+    for (const lesson of wave) {
+        assert.ok(lesson.copy.en.title.endsWith('?') && lesson.copy.de.title.endsWith('?'),
+            `${lesson.id} begins with a question`);
+        assert.equal(lesson.checkpoints[0].id, 'question',
+            `${lesson.id} asks before operating the debugger`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} collects live evidence`);
+    }
 });
