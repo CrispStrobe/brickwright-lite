@@ -159,14 +159,26 @@ not translations or language variants counted as extra lessons.
    Ohm's law, series/parallel, voltage dividers, buttons, capacitors, inductors,
    diodes, transistor switching, and safe motor/flyback circuits. Provide discover
    and foundation tracks with concrete prediction and observation.
+   **Implementation status:** all twelve bilingual lesson sequences are shipped in
+   the catalog and validated against real examples; technical and learner field
+   review remains before the wave is considered editorially final.
 2. **Measure rather than guess (10 lessons):** continuity, voltage, current and
    burden voltage, resistance, multimeter range/error, function generator, scope
    probes, vertical scale, sweep/timebase, triggering, cursors, and RC measurement.
+   **Implementation status:** all ten bilingual sequences are in the catalog. The
+   scope now supplies the controls they teach—manual vertical scale and position,
+   edge/level trigger with explicit wait state, and sample-derived time cursors.
+   Technical and learner field review remains before editorial finalization.
 3. **One idea, several languages (12 semantic tasks):** sequence, events, loops,
    conditions, variables, procedures, concurrency, state machines, arrays/data,
    messages, pins/peripherals, and protocols. Blocks and Brickwright Code lead;
    Python/JavaScript/C variants explain runtime and conversion differences. BASIC
    and ASM enter where their machine model makes the concept clearer.
+   **Implementation status:** all twelve bilingual engineering drafts are in the
+   catalog. They compare semantic and runtime contracts rather than surface syntax,
+   cover Blocks, Brickwright Code, Python, JavaScript, C, and targeted ASM, and use
+   shipped projects to test boundaries, timing, state, data, hardware mapping, and
+   interface waveforms. Technical, translation, and learner field review remains.
 4. **Interactive systems (8 lessons):** extension discovery, sensor capability,
    LEGO connection/deployment/recovery, buttons/sliders/joysticks, displays/gauges,
    two-way binding, dashboards, calibration, sampling, and control-loop safety.
@@ -204,7 +216,7 @@ Acceptance criteria:
 
 ## Milestone 3 — Clear product identity and language
 
-Status: planned
+Status: **in progress — product copy and bilingual store metadata complete**
 
 Apply one accurate product story everywhere: in-app welcome and About surfaces,
 README, App Store/TestFlight metadata, website copy, screenshots, empty states, and
@@ -346,6 +358,11 @@ Version numbers are targets, not promises; readiness gates control shipping. Cri
 data-loss, conversion, hardware-safety, accessibility-blocking, or signing defects
 stop a release. Cosmetic work does not displace a broken starter journey.
 
+Large local builds also have an operational readiness gate: `npm run build:gui`
+checks one-minute load normalized by logical CPU count and exits before webpack when
+the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
+`build:gui:force` is reserved for an intentional operator override.
+
 ## Current execution log
 
 - [x] Corrected TestFlight/App Store descriptions and release notes for 0.1.4.
@@ -365,3 +382,27 @@ stop a release. Cosmetic work does not displace a broken starter journey.
   production webpack build, component lint, and browser workflows for the library,
   automatic completion, manual persistence, and all starter-to-lesson transitions.
 - [ ] Produce the full curriculum in the seven reviewed content waves above.
+- [x] Implemented the Wave 1 engineering/content draft: twelve distinct electricity
+  lessons, real example mappings, explicit prediction and observation, progressive
+  prerequisites, hardware safety boundaries, and searchable level-filtered discovery.
+- [ ] Complete Wave 1 technical, translation, and learner field review, then revise
+  lesson versions from the evidence gathered.
+- [x] Implemented the Wave 2 engineering/content draft and the previously missing
+  oscilloscope controls: V/div, vertical center, rising/falling trigger, trigger
+  level/status, dual time cursors, and measured Δt.
+- [ ] Complete Wave 2 instrument verification, translation review, and learner field
+  testing, then revise controls and lesson versions from observed use.
+- [x] Rewrote the canonical English and German App Store/TestFlight descriptions
+  for 0.1.5 around circuits, honest representation boundaries, guided lessons,
+  evidence-based debugging, native/offline use, and supported LEGO hardware.
+- [x] Shipped the signed native macOS 0.1.5 build to the public external TestFlight
+  group with bilingual testing notes. App Store Connect build
+  `6ab579dc-f98b-4a7c-9927-f3fd21b1e239` is valid and its Beta App Review
+  submission is `WAITING_FOR_REVIEW` (2026-08-21).
+- [x] Started Wave 3 with four bilingual, cross-representation lessons covering
+  sequence, events, boundary conditions, and state machines against shipped projects.
+- [x] Completed the Wave 3 engineering/content draft with twelve distinct semantic
+  tasks, including loops, variables, procedures, concurrency, arrays/data, messages,
+  pins/peripherals, protocols, and targeted ASM-level timing.
+- [ ] Complete Wave 3 runtime/round-trip verification, translation review, and learner
+  field testing, then revise content versions from the evidence gathered.

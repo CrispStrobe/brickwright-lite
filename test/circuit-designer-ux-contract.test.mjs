@@ -48,6 +48,18 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
     assert.match(source, /data-no-code-indicator/);
 });
 
+test('oscilloscope exposes real scale, edge trigger, and time-cursor controls', () => {
+    const scope = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/ScopePanel.jsx');
+    const tools = read('overlay/scratch-gui/src/lib/bw-circuit-ui/model/scope-tools.js');
+    assert.match(scope, /voltsPerDiv/);
+    assert.match(scope, /triggerMode/);
+    assert.match(scope, /triggerLevel/);
+    assert.match(scope, /Cursor A/);
+    assert.match(scope, /cursorDeltaSeconds/);
+    assert.match(tools, /findTriggerIndex/);
+    assert.match(tools, /triggeredWindowStart/);
+});
+
 test('debugger selection is not disabled merely because the Circuit tab is active', () => {
     const source = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
     // `dock` is debugDock with 'solo' folded back to 'top' on the dedicated

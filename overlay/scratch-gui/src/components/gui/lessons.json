@@ -7,6 +7,8 @@
       "journeyId": "circuit",
       "exampleId": "47-battery-led",
       "loadMode": "circuit-only",
+      "wave": "electricity-1",
+      "topic": "closed-paths",
       "domains": ["circuits", "components"],
       "depth": "discover",
       "ageGuidance": "9+",
@@ -75,7 +77,7 @@
       ]
     },
     {
-      "id": "instrument-voltage-divider", "version": 1, "exampleId": "52-battery-voltage-divider", "loadMode": "circuit-only", "domains": ["circuits", "instruments"], "depth": "foundation", "ageGuidance": "12+", "minutes": 20, "environment": "simulation", "languages": [], "prerequisites": ["starter-circuit-path"],
+      "id": "instrument-voltage-divider", "version": 1, "exampleId": "52-battery-voltage-divider", "loadMode": "circuit-only", "wave": "electricity-1", "topic": "voltage-dividers", "domains": ["circuits", "instruments"], "depth": "foundation", "ageGuidance": "12+", "minutes": 20, "environment": "simulation", "languages": [], "prerequisites": ["starter-circuit-path"],
       "copy": {"en": {"title": "Measure voltage without changing the circuit", "objective": "Use a voltmeter in parallel and explain a voltage divider."}, "de": {"title": "Spannung messen, ohne die Schaltung zu verändern", "objective": "Nutze ein Voltmeter parallel und erkläre einen Spannungsteiler."}},
       "checkpoints": [{"id": "predict", "copy": {"en": {"action": "Predict the midpoint voltage before measuring.", "explain": "Equal series resistors share the supply voltage equally.", "hint": "Use Vout = Vin × R2/(R1+R2).", "manual": "I recorded a prediction"}, "de": {"action": "Sage die Mittelspannung vor der Messung voraus.", "explain": "Gleiche Serienwiderstände teilen die Versorgungsspannung gleich.", "hint": "Nutze Vout = Vin × R2/(R1+R2).", "manual": "Ich habe eine Vorhersage notiert"}}}, {"id": "measure", "observe": {"event": "circuit-ready"}, "copy": {"en": {"action": "Place the voltmeter across the output and compare.", "explain": "An ideal voltmeter has very high impedance and draws almost no current.", "hint": "Voltage is measured between two nodes, so connect in parallel.", "manual": "I measured and compared"}, "de": {"action": "Schließe das Voltmeter am Ausgang an und vergleiche.", "explain": "Ein ideales Voltmeter hat eine sehr hohe Impedanz und zieht fast keinen Strom.", "hint": "Spannung wird zwischen zwei Knoten parallel gemessen.", "manual": "Ich habe gemessen und verglichen"}}}]
     },

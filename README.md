@@ -1,8 +1,10 @@
 # Brickwright
 
-Build circuits on breadboards, program them in blocks or pseudocode, run them
-on emulated chips, and debug them live — all in the browser (or a native app
-on any platform).
+**Build circuits. Program machines. See how they work.**
+
+Brickwright is an open-source visual computing workbench. Build and measure
+circuits, program with blocks or code, run emulated machines, debug them live,
+and follow guided lessons — in a browser or the native app.
 
 **For learners** discovering electronics and microcontrollers.
 **For teachers** who need a zero-install lab that runs on school Chromebooks.
@@ -32,12 +34,21 @@ breadboards before soldering the real thing.
 
 ### Block and code editor
 
-- **Scratch-based block editor** with a "Code" tab: blocks, pseudocode,
-  Python and JavaScript side by side.
+- **Scratch-based block editor** with a "Code" tab for Brickwright Code,
+  Python and JavaScript representations. Conversion and generated-view limits
+  are kept explicit instead of promising that every construct round-trips.
 - 23 built-in extensions (LEGO family, gamepad, arrays, CSP, TTS, circuit
   surface) plus 150 gallery extensions loadable at runtime.
 - SoundFX creator, costume editor, German i18n.
 - The green flag starts Scratch scripts and the circuit simulation together.
+
+### Guided lessons
+
+- Three first-run journeys lead to a useful circuit, board, or LEGO project.
+- A searchable English/German catalog teaches circuits, safe measurement,
+  programming representations, debugging, controls, and machine architecture.
+- Lessons stay beside the live project and use prediction, observation, hints,
+  resumable progress, and manual fallbacks rather than a click-through slideshow.
 
 ### Native app (Tauri 2)
 
@@ -88,7 +99,7 @@ CI does this for all platforms: `.github/workflows/release.yml` (desktop) and
 - [ ] Complete Arduino Uno/Nano peripheral fidelity and source-level debugger.
 - [ ] RP2040/MicroPython compilation path for Pico.
 - [ ] Schematic symbol coverage beyond the generated projection.
-- [ ] Apple code-signing for a distributable iOS build.
+- [x] Signed macOS and iOS builds uploaded to App Store Connect/TestFlight.
 
 ## How it's built: vendor + overlay
 
@@ -123,7 +134,10 @@ GPL/AGPL oracle code stays outside the product and dependency graph.
 
 ## Licensing
 
-**BSD-3-Clause / Apache-2.0 / MIT.** The entire shipped build is permissive.
+Brickwright's application code is BSD-3-Clause. The shipped dependency set is
+open source under BSD-3-Clause, Apache-2.0, MIT, and MPL-2.0; no GPL or AGPL code
+is bundled. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the exact
+file and package inventory.
 
 ### Why this base
 
@@ -167,10 +181,12 @@ that is vendored here.
 
 ### Tradeoff vs mainline Brickwright
 
-You own a frozen fork (no free upstream fixes) and lose TurboWarp's compiler
-speed + addon system — in exchange for a permissive app you can bundle and
-ship on Apple / Google / Microsoft directly, with native LEGO Bluetooth on
-every platform.
+Brickwright owns a frozen integration of the last BSD Scratch stack (so upstream
+security and compatibility fixes must be ported deliberately) and does not use
+TurboWarp's compiler or addon system. In exchange, the product can ship its own
+electronics, debugger, lesson, and native-device layers—including direct LEGO
+Bluetooth—without depending on TurboWarp. Brickwright Lite is not a TurboWarp
+fork.
 
 ### Affiliation
 

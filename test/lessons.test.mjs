@@ -7,8 +7,22 @@ const LANGUAGES = new Set(['blocks', 'pseudocode', 'python', 'javascript', 'c', 
 const EVENTS = new Set(['starter-loaded', 'project-run', 'project-stop', 'circuit-ready',
     'circuit-changed', 'debug-phase', 'hardware-state']);
 
+const readLessons = async () => {
+    const core = await readJson('../overlay/scratch-gui/src/components/gui/lessons.json');
+    const electricity = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/electricity-1.json');
+    const measurement = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/measurement-2.json');
+    const languages = await readJson(
+        '../overlay/scratch-gui/src/components/gui/lesson-waves/languages-3.json');
+    return {
+        schemaVersion: core.schemaVersion,
+        lessons: [...core.lessons, ...electricity.lessons, ...measurement.lessons, ...languages.lessons]
+    };
+};
+
 test('guided lesson catalog is localized, connected, and declarative', async () => {
-    const catalog = await readJson('../overlay/scratch-gui/src/components/gui/lessons.json');
+    const catalog = await readLessons();
     const exampleIndex = await readJson('../overlay/scratch-gui/examples/index.json');
     const examples = new Set((Array.isArray(exampleIndex) ? exampleIndex : exampleIndex.examples)
         .map(example => example.id));
@@ -58,7 +72,7 @@ test('guided lesson catalog is localized, connected, and declarative', async () 
 });
 
 test('catalog covers the promised domains, depths, and code representations', async () => {
-    const {lessons} = await readJson('../overlay/scratch-gui/src/components/gui/lessons.json');
+    const {lessons} = await readLessons();
     const domains = new Set(lessons.flatMap(lesson => lesson.domains));
     const depths = new Set(lessons.map(lesson => lesson.depth));
     const languages = new Set(lessons.flatMap(lesson => lesson.languages));
@@ -74,4 +88,77 @@ test('catalog covers the promised domains, depths, and code representations', as
     const adaptable = lessons.find(lesson => lesson.id === 'starter-blink-representations');
     assert.deepEqual(Object.keys(adaptable.variants), adaptable.languages,
         'the exemplary representation lesson has content for every declared language');
+});
+
+test('electricity wave has twelve distinct, progressive learning experiences', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'electricity-1');
+    const topics = new Set(wave.map(lesson => lesson.topic));
+    const expected = ['closed-paths', 'polarity', 'resistance', 'ohms-law', 'series-parallel',
+        'voltage-dividers', 'buttons', 'capacitors', 'inductors', 'diodes',
+        'transistor-switching', 'motor-flyback'];
+
+    assert.equal(wave.length, 12);
+    assert.deepEqual([...topics].sort(), expected.sort());
+    assert.ok(wave.some(lesson => lesson.depth === 'discover'));
+    assert.ok(wave.some(lesson => lesson.depth === 'foundation'));
+    for (const lesson of wave) {
+        const text = lesson.checkpoints.flatMap(checkpoint => [
+            checkpoint.copy.en.action,
+            checkpoint.copy.en.explain
+        ]).join(' ').toLowerCase();
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.id === 'predict') ||
+            /predict|trace|calculate/.test(text),
+        `${lesson.id} asks the learner to predict or reason before accepting a result`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} includes a live observation`);
+        assert.ok(lesson.checkpoints.length >= 2, `${lesson.id} is a learning sequence`);
+    }
+});
+
+test('measurement wave teaches ten honest instrument workflows', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'measurement-2');
+    const topics = new Set(wave.map(lesson => lesson.topic));
+    const expected = ['continuity', 'voltage', 'current-and-burden', 'resistance-measurement',
+        'range-and-error', 'function-generator', 'scope-probes-and-scale', 'scope-timebase',
+        'scope-triggering', 'cursors-and-rc'];
+
+    assert.equal(wave.length, 10);
+    assert.deepEqual([...topics].sort(), expected.sort());
+    for (const lesson of wave) {
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.id === 'predict'),
+            `${lesson.id} starts from a prediction`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} includes live observation`);
+    }
+    const safetyText = wave.flatMap(lesson => lesson.checkpoints)
+        .flatMap(checkpoint => Object.values(checkpoint.copy.en)).join(' ').toLowerCase();
+    for (const concern of ['power off', 'burden', 'ground clip', 'uncertainty']) {
+        assert.ok(safetyText.includes(concern), `measurement wave covers ${concern}`);
+    }
+});
+
+test('language wave has twelve distinct cross-representation semantic tasks', async () => {
+    const {lessons} = await readLessons();
+    const wave = lessons.filter(lesson => lesson.wave === 'languages-3');
+    const topics = new Set(wave.map(lesson => lesson.topic));
+
+    const expected = ['sequence', 'events', 'loops', 'conditions', 'variables', 'procedures',
+        'concurrency', 'state-machines', 'arrays-data', 'messages', 'pins-peripherals', 'protocols'];
+
+    assert.equal(wave.length, 12);
+    assert.deepEqual([...topics].sort(), expected.sort());
+    for (const lesson of wave) {
+        assert.deepEqual(Object.keys(lesson.variants), lesson.languages,
+            `${lesson.id} explains every declared representation`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.id === 'predict'),
+            `${lesson.id} starts from a prediction or model`);
+        assert.ok(lesson.checkpoints.some(checkpoint => checkpoint.observe),
+            `${lesson.id} compares against running behavior`);
+    }
+    const languages = new Set(wave.flatMap(lesson => lesson.languages));
+    for (const language of ['blocks', 'pseudocode', 'python', 'javascript', 'c', 'asm']) {
+        assert.ok(languages.has(language), `language wave covers ${language}`);
+    }
 });
