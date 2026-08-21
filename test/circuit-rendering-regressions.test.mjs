@@ -9,6 +9,7 @@ const ui = 'overlay/scratch-gui/src/lib/bw-circuit-ui';
 const canvas = readFileSync(`${ui}/components/BoardCanvas.jsx`, 'utf8');
 const breadboard = readFileSync(`${ui}/components/BreadboardView.jsx`, 'utf8');
 const designer = readFileSync(`${ui}/components/CircuitDesigner.jsx`, 'utf8');
+const palette = readFileSync(`${ui}/components/PartPalette.jsx`, 'utf8');
 
 test('breadboard preview, dropped part, and rendered hole grid share physical geometry', () => {
     const width = size => {
@@ -28,6 +29,12 @@ test('Arduino face, placement outline, and hit bounds use one coordinate system'
         const b = partBounds({kind, x: 300, y: 200});
         assert.ok(b.minX < 300 && b.maxX > 300 && b.minY < 200 && b.maxY > 200, kind);
     }
+});
+
+test('part palette placement controls expose button and keyboard semantics', () => {
+    assert.match(palette, /role="button"/);
+    assert.match(palette, /aria-label=\{label\}/);
+    assert.match(palette, /event\.key !== 'Enter' && event\.key !== ' '/);
 });
 
 test('Nano and Pico retain their real two-row breadboard footprints', () => {
