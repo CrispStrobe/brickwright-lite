@@ -126,7 +126,13 @@ try {
         const width = Number(await ghost.locator('rect').first().getAttribute('width'));
         check(`${kind} placement stays above the breadboard at physical scale`, zOrder && width > 100,
             `z=${zOrder} width=${width}`);
-        await page.keyboard.press('Escape');
+        // Finish the placement through the same canvas interaction a user
+        // performs. Escape is canvas-scoped, so sending it while the palette
+        // card owns focus leaves the old placement armed and races the next
+        // palette selection.
+        await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+        await ghost.waitFor({state: 'hidden', timeout: 3000});
+        await load([{id: 'bb', kind: 'breadboard', params: {}, x: 520, y: 330, rotation: 0}]);
     }
 
     // Exercise the exact owner-reported regression as shipped, not merely a
