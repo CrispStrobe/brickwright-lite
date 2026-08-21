@@ -507,6 +507,9 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   circuit UX, 1,034-variant rendering/placement, view-button, editor, debugger
   dock/serial, Pages deployment, and deployed-GUI gates are green. Right-docking
   now opens the optional pane without remounting or stopping the running target.
-- [ ] Ship 0.1.6 to the existing external TestFlight group with bilingual testing
-  notes covering schematic legibility, V⚡, three-pane lessons, dock-preserved
-  execution, green-flag/SIM start, and the retro-machine serial workflow.
+- [x] Shipped 0.1.6 to the existing external TestFlight group on 2026-08-21.
+  Signed macOS build `38909d58-f93a-4446-abda-06b8ed74454f` is `VALID`, has
+  export compliance declared, carries bilingual testing notes covering schematic
+  legibility, the voltage overlay, three-pane lessons, dock-preserved execution,
+  green-flag/SIM start, and the retro-machine serial workflow, and is
+  `WAITING_FOR_REVIEW` in the public group.

@@ -207,8 +207,8 @@ expanded examples and guided lessons.
 Please test:
 - Load several circuit examples and switch between Realistic and Schematic views;
   pan, zoom, and fit the schematic, especially dense MCU and motor circuits.
-- Use V⚡ to show voltages on wires and compare the labels with Meter, Scope, and
-  Sweep readings.
+- Use the V voltage overlay to show voltages on wires and compare the labels with
+  Meter, Scope, and Sweep readings.
 - Keep Blocks, Circuit, and Debugger visible together. Move the Debugger between
   Instruments and the full right pane with << and >> while a program is running.
 - Start MCU programs with both the green flag and SIM, change tabs or views, and
@@ -229,8 +229,8 @@ Bitte testen:
 - Mehrere Schaltungsbeispiele laden und zwischen realistischer Ansicht und
   Schaltplan wechseln; besonders dichte MCU- und Motorschaltungen verschieben,
   zoomen und einpassen.
-- Mit V⚡ Spannungen an Leitungen anzeigen und die Werte mit Multimeter,
-  Oszilloskop und Sweep vergleichen.
+- Mit der V-Spannungsanzeige Spannungen an Leitungen anzeigen und die Werte mit
+  Multimeter, Oszilloskop und Sweep vergleichen.
 - Blöcke, Schaltung und Debugger gleichzeitig sichtbar halten. Den Debugger mit
   << und >> während eines laufenden Programms zwischen Instrumenten und dem
   großen rechten Panel verschieben.
