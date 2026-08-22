@@ -28,6 +28,74 @@ The primary success measure is time to a meaningful result, not feature count:
 - Simulation and connected hardware explain their current state and failures.
 - A project can be saved, reopened, shared, and recovered with no missing pieces.
 
+## Milestone 0 — What we already ship is correct
+
+Status: **open — takes precedence over new breadth (added 2026-08-22)**
+
+This milestone did not exist, and its absence is the plan's main structural fault. Milestones 1–10
+all describe things to *add*. Nothing in the plan owns the question *is what we already ship
+right*, so that work — which has consumed most of the last week — appears only as scattered
+acceptance criteria and as entries in the execution log after the fact.
+
+The evidence that it needs to be first, not folded into the others:
+
+- **Five gates were found that could not fail** (sb3-creator/bw-circuit-ui/bw-board audit,
+  `test/GATE-AUDIT-REPORT.md`): assertions reading removed properties, a path typo that made two
+  tests report "skipped" forever, a glob that never matched the primary `circuit.json`, and
+  `assert.ok(true)` on both branches of an if/else. Every one had been green for weeks.
+- **Five gallery examples were green and inert** — `set variable X to Y` assigns a variable *named*
+  "variable X" while reads say `X`. `bw check` passed on all of them. Syntax-valid, semantically
+  dead.
+- **A shipped extension is missing 8 opcodes the emitter emits**, affecting three shipped examples,
+  and the gate that would catch it skips in CI by construction. See `ROADMAP.md` §5.1.
+- **Two of the first lessons put to technical review were teaching observations their example
+  cannot produce** (the diode lesson asked for alternating traces from a static polarity bench; the
+  capacitor lesson asked for discharge from a charge-only bench). Both are now content version 2.
+  Two found in the first review pass, out of 79 lessons drafted.
+
+The common shape: **breadth shipped ahead of verification, and the verification that existed could
+not fail.** Adding more content on that base multiplies the debt rather than the value.
+
+Scope:
+
+- Every shipped example is proven to *run*, not merely to parse: executed in the real VM, and
+  — where it targets a device — its blocks resolved against the extension that device loads.
+- Every shipped lesson's checkpoints are proven achievable against the example it names.
+- Every gate is mutation-proven: re-introduce the defect it guards, confirm red, restore. A gate
+  that cannot be shown to fail is treated as absent.
+- Cross-repo gates either run in CI or fail loudly where they cannot. A skip is not a pass.
+- No new content wave starts while its predecessor's review debt is open (see the ledger below).
+
+Acceptance criteria:
+
+- The example corpus gate executes every shipped program and every shipped circuit variant, and a
+  deliberately broken example makes it red.
+- Extension conformance runs in CI for every device family the gallery targets, with no
+  environment in which it silently skips.
+- The verification-debt ledger below has no open wave older than the newest shipped wave.
+- Every entry in the dead-module exclusion list is either tracked as a roadmap item or removed
+  (`ROADMAP.md` §4).
+
+### Verification-debt ledger
+
+Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**, and all
+seven carry an open review item. Stated plainly, so it cannot read as finished work:
+
+| Wave | Lessons | Draft | Technical review | Translation review | Learner field test |
+| --- | --- | --- | --- | --- | --- |
+| 1 Electricity you can see | 12 | done | **partial** (2 revisions found) | open | open |
+| 2 Measure rather than guess | 10 | done | open | open | open |
+| 3 One idea, several languages | 12 | done | open | open | open |
+| 4 Interactive systems | 8 | done | open | open | open |
+| 5 Debug with evidence | 10 | done | open | open | open |
+| 6 Signals and systems | 10 | done | open | open | open |
+| 7 Computers from wires upward | 10 | done | open | open | open |
+
+**72 of 79 lessons have had no technical review at all.** The two defects found in the seven that
+did are the estimate of what the other 72 hold. Treat this table as the plan's real critical path:
+a lesson that teaches an observation its bench cannot produce is worse than a missing lesson,
+because a learner blames themselves.
+
 ## Milestone 1 — First useful result
 
 Status: **complete (2026-08-21)**
@@ -371,6 +439,9 @@ Acceptance criteria:
 
 ## Release sequence
 
+- **Continuous — Milestone 0.** Not a release band. It gates every other band: a release does not
+  ship while a Milestone 0 acceptance criterion is failing, and no content wave starts while its
+  predecessor's review debt is open.
 - **0.1.x — Find the product:** Milestones 1–3.
 - **0.2.x — Trust the model:** Milestones 4–5.
 - **0.3.x — Build fluently:** Milestones 6–8.

@@ -9,10 +9,16 @@ obtain. Two rules for this file:
 - **Cross-reference, do not copy.** `BLOCKED.md` is bw-bundle's own log and stays authoritative
   for its items; the long-horizon hardware tracks live in `CLAUDE.md`. This file points at both.
 
-Ownership: **owner** is the human; **bw-bundle** is the agent that owns CI guards, bundle budget,
-vendoring (bw-board, sb3-creator, WASM pinning), extension conformance and deploy verification.
-bw-bundle is on a quota pause until **2026-08-15**, so items marked with it are unowned in
-practice until then.
+Ownership: **owner** is the human. Named agents (**bw-bundle**, **bw-board**, **bw-cui2** …) were
+long-lived VPS sessions that owned CI guards, bundle budget, vendoring, extension conformance and
+deploy verification.
+
+**Fleet status, measured 2026-08-22: nine of twelve of those sessions are gone** — `Killed` by the
+VPS OOM killer, their `exec bash` guard leaving a shell where the agent was. Only `mbit-fw`
+(holding), `ucsim-stc` (idle) and `embed-lang` survive. **Treat every agent name in this file as
+an unowned label, not a live owner.** A revived session is a fresh context that knows only what is
+written down — which is the whole reason this file and `PLAN.md` must stay true. Do not assume any
+item marked with an agent name is being worked on.
 
 ---
 
@@ -107,10 +113,16 @@ the root `package.json` does not declare. Run `git checkout package-lock.json` a
 
 ## 3. Hardware / debugger surfaces
 
-### 3.1 Code-tab debugger strip — OPEN, **bw-bundle**
-Run/Sim live in the Circuit tab; Pause/Step appear once a program starts; the Code tab has no
-debugger controls at all. Placement is approved — a strip under the Circuit tab bar, shared runner
-via `vm.runtime.bwDebugRunner`. Not started. See `BLOCKED.md`.
+### 3.1 Debugger surface — LARGELY RESOLVED (2026-08-21 tranche), verify before reopening
+`debug-panel.jsx` exists and the 2026-08-21 regression pass landed dock controls, right-dock
+opening the optional pane without remounting, and browser proof that the debugger keeps running
+while hidden and across view/dock changes (`5e044cf03`, `062f57290`, `c15b75cf1`).
+
+What this entry claimed — "the Code tab has no debugger controls at all", "not started" — is no
+longer the measured state. Anyone reopening it must re-measure first and say what is missing, in
+the file's own evidence style. The remaining question is coverage, not existence: which surfaces
+still lack run control, and does Milestone 5's "one run and debug model" (see `PLAN.md`) subsume
+this entry entirely? If it does, delete this section rather than maintaining it twice.
 
 ### 3.2 Pane-slots full routing — DEFERRED
 The reducer models `upper`/`lower` content slots per column; `gui.jsx` reads only `.size`. The
@@ -144,16 +156,94 @@ All specified in `CLAUDE.md`; not repeated here.
 
 ## 4. Standing debt
 
-**Dead-module ratchet** (`test/no-dead-overlay-modules.test.mjs`) — **five** entries, and the list
-may only go down. One is ours: `lib/flyout-resize.js`, which bridges the pane size vocabulary to
+**Dead-module ratchet** (`test/no-dead-overlay-modules.test.mjs`) — this entry said **five**
+entries and "the list may only go down". Measured 2026-08-22: **sixteen**. The ratchet did not
+fail; the claim about it did, and nobody noticed because a growing exclusion list still shows
+green.
+
+Worse than the count is the shape. **Eleven of the sixteen are of the form "vendored; wired when
+X lands"** — `avr-peripherals.js` (AVR debug), `face-live.js` (tethered hardware),
+`m6507-machine.js` (Atari 2600 / SBC6507), `m74c922.js` (keypad part), `blinkenrocket-modem.js`
+(firmware upload), `zx-tzx.js` (ZX tape loading), plus the bw-circuit-ui demo modules and the
+`sdcc-wasm` dist bundles.
+
+**That is a roadmap hiding in a test's exclusion list.** Six future device/hardware features are
+recorded nowhere else in this repo: not in this file, not in `PLAN.md`. A reader of the planning
+docs cannot see them, and a reader of the test file sees them as noise to scroll past. Either
+promote each to a tracked item here (with the evidence rule applied — what would it take, what is
+it blocked on) or delete the vendored file until its feature is real. An exclusion that says
+"later" with no owner and no date is a to-do with a green checkmark on it.
+
+The one genuinely ours remains `lib/flyout-resize.js`: it bridges the pane size vocabulary to
 Blockly's flyout for the LEFT column and has no caller because only the right column is sized
-today. Four are vendored bw-circuit-ui modules used only by its standalone demo.
-`components/gui/pane-column.jsx` came off the list in §1.1.
+today. `components/gui/pane-column.jsx` came off the list in §1.1.
 
 **Attribution wart** — the `project-data.js` rotation-centre fix was swept into `333fae8`
 ("vendor bw-circuit-ui") by a concurrent `git add -A`. Content is correct and verified; only the
 attribution is wrong. Not worth rewriting under another active session. Recorded so the commit
 log's oddity has an explanation.
+
+---
+
+## 5. Cross-repo gates that cannot fire in CI — OPEN, highest priority
+
+A gate that needs two checkouts side by side runs on a developer machine and **skips in CI**, where
+only its own repo is cloned. It then reports as a pass forever. This is the `SKIP`-reads-as-success
+failure from §"Working rules", promoted here because it is currently hiding a shipped defect.
+
+### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — LIVE DEFECT
+
+Measured 2026-08-22 on a machine with both checkouts:
+
+```
+sb3-creator emits            28 stc12_* opcodes  (derived from sb3Creator.js, not hand-listed)
+lite's bundled extension     20 blocks           overlay/scratch-vm/src/extensions/crispstrobe/stc12/index.js
+sb3-creator reference copy   30 blocks           reference/extensions/stc12.js  — has all 28
+```
+
+Missing from the copy lite ships, present in the reference:
+
+`stc12_whenkey` · `stc12_seg_shownum` · `stc12_seg_showdigit` · `stc12_seg_setsegs` ·
+`stc12_seg_clear` · `stc12_led_set` · `stc12_led_only` · `stc12_keypad`
+
+Three shipped gallery examples author those verbs — **`77-keypad-keyshow`, `78-a2-calculator`,
+`79-a2-sampler`** (all `DEVICE STC89C52RC`, which uses the same `stc12` extension id). They ship in
+lite's `overlay/scratch-gui/examples/`.
+
+Two independent methods agree, which is why this is stated as fact and not suspicion: executing the
+bundled extension's `getInfo()` yields 20 blocks, and grepping the file finds those opcode strings
+absent entirely. The device-gating trap was checked and excluded — gating in that file uses
+`hideFromPalette`, which keeps a block defined; these are not defined at all.
+
+**Not yet executed in the app.** What is proven is the extension contract; what remains is to open
+one of the three examples in lite and record what the Blocks tab actually does with an undefined
+opcode. Do that first — it decides whether this is "blocks silently vanish" or "project fails to
+load", and those need different fixes.
+
+**Why CI never saw it.** `test/stc12-conformance.test.mjs` finds copies at
+`../../lego/brickwright-lite/…` (bundled), `../../extensions/…` (gallery) and in-repo (reference),
+and carries `skip: availableCopies < 2`. sb3-creator's CI clones only sb3-creator, so exactly one
+copy exists and the test skips with "need two copies to compare" — indistinguishable, in a green
+run, from a comparison that passed.
+
+**The general fix, which matters more than this one bug:** a cross-repo gate must either (a) check
+out its sibling in CI, or (b) vendor a pinned snapshot of what it compares against so the
+comparison is always possible, or (c) fail — not skip — when its inputs are absent, on the grounds
+that a gate nobody can run is a gate nobody should trust. Pick per gate and write down which.
+Audit the other cross-repo gates for the same shape before assuming this is the only one.
+
+## 6. Schematic corpus gates — LANDED 2026-08-21, know what they do and do not cover
+
+`scripts/render-schematic.mjs` + `test/schematic-*.test.mjs` now render every
+`circuit*.json` — **1,034 variants** — and fail the build on non-zero wire/symbol crossings or
+symbol overlaps. Reviewed byte-stable SVG baselines live in `docs/schematic-baselines/`.
+
+Know the boundary, because the campaign that built these already tripped over it once: an earlier
+246-file pass covered only each example's *default* circuit and checked size/overlap, and a Pico
+motor example exposed that it never asked whether a wire crossed a foreign symbol or whether a
+terminal met the artwork it named. The current gate covers **mechanical legibility** across all
+variants. It does not assert that a schematic is *electrically* the same circuit the simulator
+solves. That is the next gate, not a solved problem.
 
 ---
 
@@ -168,3 +258,17 @@ log's oddity has an explanation.
 - **`$grid-unit` is scratch-paint only**; scratch-gui's `units.css` has `$space`.
 - **Node cannot reproduce the extension-block deserialization bug** — that class needs a headless
   browser test.
+- **A skip is not a pass, and neither is a green cross-repo gate.** §5 is the standing example.
+  When a test can only run in some environments, make it say so loudly in the environment where it
+  cannot — a silent skip is the most expensive kind of green.
+- **Verify the instrument before believing the measurement.** Three false readings in one day
+  (2026-08-20) came from trusting an unverified rig: a mutation applied through a sibling symlink
+  never reached the module the import resolved to and made a good test look vacuous; an A/B run
+  imported its "before" side from a second worktree whose device registry was never populated, so
+  the measured diff was the missing registry and a whole blast-radius report (44 circuits, a
+  battery tester reading 0 mV) was pure artifact. When a result is dramatic, check the rig first.
+  A second checkout is a second registry, a second everything.
+- **Disk fills silently and looks like a git bug.** 2026-08-22: `git worktree add` failed with
+  "No space left on device" at 219 MB free; two abandoned lite worktrees held 2.2 GB. Full lite
+  checkouts are ~1.1 GB each. Use `git worktree add --no-checkout` + `git sparse-checkout set docs`
+  for doc-only work, and prune worktrees whose HEAD is merged and whose tree is clean.
