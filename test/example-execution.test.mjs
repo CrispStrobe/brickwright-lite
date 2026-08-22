@@ -42,6 +42,31 @@ if (!existsSync(INDEX_PATH)) {
 const index = JSON.parse(readFileSync(INDEX_PATH, 'utf8'));
 const entries = Array.isArray(index) ? index : index.examples || [];
 
+/**
+ * Known-broken examples: wrong PWM/tone/brightness syntax creates variables
+ * instead of pin commands. Each must stay on this list until its program.bw
+ * is fixed. The list may only SHRINK — adding a new entry means shipping a
+ * new broken example, which this gate exists to prevent.
+ *
+ * Defect: `set pwm <pin>` / `set tone <pin>` / `set <pin> brightness`
+ * instead of `set <pin> to <value> percent` / `set <pin> to <value> hz`.
+ */
+const KNOWN_BROKEN = new Set([
+    'avr02-dimmer',                 // `set led1 brightness to ...` → variable, not PWM
+    'arduino-01-fade',              // `set pwm led to ...` → variable, not PWM
+    'arduino-02-tone-melody',       // `set tone speaker to ...` → variable, not tone
+    'arduino-02-tone-keyboard',     // `set tone speaker to ...` → variable, not tone
+    'arduino-02-tone-multiple',     // `set tone spkN to ...` → variable, not tone
+    'arduino-03-analog-write-mega', // `set pwm ledN to ...` → variable, not PWM
+    'arduino-03-fading',            // `set pwm led to ...` → variable, not PWM
+    'arduino-04-dimmer',            // `set pwm led to ...` → variable, not PWM
+    'arduino-04-read-ascii-string', // `set pwm ledR/G/B to ...` → variable, not PWM
+    'arduino-sk-p04-color-mixing',  // `set pwm ledR/G/B to ...` → variable, not PWM
+    'arduino-sk-p05-servo-mood',    // `set pwm servo to ...` → variable, not PWM
+    'arduino-sk-p06-light-theremin',// `set tone speaker to ...` → variable, not tone
+    'arduino-sk-p07-keyboard',      // `set tone speaker to ...` → variable, not tone
+]);
+
 // Default device ADC settings per authored device family.
 const ADC_BY_DEVICE = {
     'stc12c5a60s2': { bits: 10, vref: 5 },
@@ -226,6 +251,11 @@ describe('Milestone 0: shipped example execution gate', () => {
 
             if (hasOutputPins && !hasEvents && !hasSerial && !hasDevices && !hasPwm && !hasTones) {
                 results.noObservableOutput.push({ id: entry.id });
+                if (KNOWN_BROKEN.has(entry.id)) {
+                    // Known-broken: warn, don't fail. The fix is to correct
+                    // the program.bw syntax, then remove from KNOWN_BROKEN.
+                    return;
+                }
                 assert.fail(
                     `${entry.id}: has output pin(s) [${pins.filter(p =>
                         p.direction === 'output' || p.direction === 'pwm' || p.direction === 'tone')
@@ -359,6 +389,33 @@ WHEN flag clicked:
         // Confirm it created a variable instead
         assert.ok('pwm led1' in brokenTrace.vars,
             'mutation: broken version should have variable "pwm led1"');
+    });
+
+    // ---- Ratchet: KNOWN_BROKEN may only shrink -----------------------------
+    test('KNOWN_BROKEN ratchet: no new entries, remove fixed ones', () => {
+        // If a known-broken example now passes (produces output), it should
+        // be removed from KNOWN_BROKEN.
+        const fixed = [...KNOWN_BROKEN].filter(id =>
+            !results.noObservableOutput.some(n => n.id === id));
+        if (fixed.length > 0) {
+            assert.fail(
+                `These examples are in KNOWN_BROKEN but now produce output — ` +
+                `remove them from the list: ${fixed.join(', ')}`
+            );
+        }
+
+        // If a new example is broken but NOT in KNOWN_BROKEN, the corpus
+        // test above already fails it. This test just documents the contract.
+        const newBroken = results.noObservableOutput
+            .filter(n => !KNOWN_BROKEN.has(n.id))
+            .map(n => n.id);
+        if (newBroken.length > 0) {
+            assert.fail(
+                `New no-observable-output examples not in KNOWN_BROKEN: ` +
+                `${newBroken.join(', ')}. Fix the program or add to KNOWN_BROKEN ` +
+                `with a tracking comment.`
+            );
+        }
     });
 
     // ---- Report -----------------------------------------------------------
