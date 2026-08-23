@@ -23,12 +23,10 @@
  * what ships and `src` is what this measures.
  */
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {REPO, INTEGRATED} from './bw-integrated.mjs';
 import {bundledExtensionIds, loadExtensionClass, probeExtension, stubRuntime} from './bw-extensions.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-export const REPO = path.join(here, '..', '..');
-const INTEGRATED = path.join(REPO, 'packages', 'scratch-gui');
+export {REPO, INTEGRATED};
 
 export const SB3Creator = (await import(path.join(INTEGRATED, 'src', 'lib', 'sb3-creator.js'))).default;
 export const VM = (await import(path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'index.js'))).default;

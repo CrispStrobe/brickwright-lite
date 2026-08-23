@@ -24,22 +24,32 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const root = join(here, '..');
+const { REPO: root, INTEGRATED } = await import('./helpers/bw-integrated.mjs');
 
-// Import from packages/ (the integrated tree that tests run against).
-const SB3Creator = (await import(join(root, 'packages', 'scratch-gui', 'src', 'lib', 'sb3-creator.js'))).default;
-const { interpretTrace } = await import(join(root, 'packages', 'scratch-gui', 'src', 'lib', 'trace-oracle.js'));
+// The compiler and the referee come from the integrated tree, the only place
+// their dependencies resolve; BW_INTEGRATED_ROOT relocates it for worktrees.
+const SB3Creator = (await import(join(INTEGRATED, 'src', 'lib', 'sb3-creator.js'))).default;
+const { interpretTrace } = await import(join(INTEGRATED, 'src', 'lib', 'trace-oracle.js'));
 
-const EXAMPLES_DIR = join(root, 'packages', 'scratch-gui', 'examples');
+// The corpus is read from overlay/, the source of truth in git, not from the
+// integrated copy under packages/. packages/ is vendored and gitignored, so a
+// developer who has not run `npm run integrate` since editing an example was
+// measuring the previous copy of it.
+const EXAMPLES_DIR = join(root, 'overlay', 'scratch-gui', 'examples');
 const INDEX_PATH = join(EXAMPLES_DIR, 'index.json');
 
+// The previous version of this file called `process.exit(0)` here. That does not
+// skip the gate — it reports the whole FILE as passing, with zero assertions
+// run, which is precisely the "a skip is not a pass" failure ROADMAP §5 is about.
+// A missing corpus now fails.
 if (!existsSync(INDEX_PATH)) {
-    console.log('SKIP: packages/scratch-gui/examples/index.json not found (run npm run integrate first)');
-    process.exit(0);
+    test('referee execution gate: the shipped corpus is present', () => {
+        assert.fail(`${INDEX_PATH} is missing. This gate FAILS rather than skipping: a gate ` +
+            `nobody can run is a gate nobody should trust.`);
+    });
 }
 
-const index = JSON.parse(readFileSync(INDEX_PATH, 'utf8'));
+const index = existsSync(INDEX_PATH) ? JSON.parse(readFileSync(INDEX_PATH, 'utf8')) : [];
 const entries = Array.isArray(index) ? index : index.examples || [];
 
 /**

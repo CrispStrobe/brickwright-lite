@@ -54,11 +54,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, existsSync, readFileSync as read} from 'node:fs';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
-
-const here = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.join(here, '..');
-const INTEGRATED = path.join(REPO, 'packages', 'scratch-gui');
+import {REPO, INTEGRATED} from './helpers/bw-integrated.mjs';
 
 // ── Instrument check 0: the tree this gate needs is present. ────────────────
 //

@@ -22,12 +22,11 @@
 import {readFileSync, readdirSync, existsSync, statSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {REPO, INTEGRATED} from './bw-integrated.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-export const REPO = path.join(here, '..', '..');
+export {REPO};
 export const OVERLAY_EXT = path.join(REPO, 'overlay', 'scratch-vm', 'src', 'extensions', 'crispstrobe');
-export const VM_SRC = path.join(REPO, 'packages', 'scratch-gui', 'node_modules', 'scratch-vm', 'src');
+export const VM_SRC = path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src');
 
 const nodeRequire = createRequire(import.meta.url);
 const SUPPORT = {

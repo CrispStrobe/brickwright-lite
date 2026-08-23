@@ -118,7 +118,61 @@ jobs:
           done
           echo "vendor staleness: $stale stale"
 
-      # --- tests (sub-second, fail fast) ---
+      # --- tests ---
+
+      # Milestone 0: the shipped example corpus must be proven to EXECUTE, and
+      # the gate that proves it must be present and must still be able to fail.
+      # `npm test` below runs both gates through its glob; this step exists so a
+      # deleted gate, or a ratchet quietly padded until nothing is red any more,
+      # is a build failure and not an absence nobody notices. Both failure modes
+      # have happened in this repo: five gates were found that could not fail,
+      # and a dead-module exclusion list grew from five entries to sixteen while
+      # staying green.
+      #
+      # Mutation-proven 2026-08-23 (docs/EXAMPLE-CORPUS-FINDINGS.md, seven
+      # mutations): breaking a shipped example, deleting an opcode from a
+      # bundled extension, padding a ratchet, and removing the corpus each make
+      # the gate red.
+      - name: Guard — the example execution gates exist and their ratchets have not grown
+        run: |
+          set -e
+          for gate in test/example-vm-execution.test.mjs test/example-execution.test.mjs; do
+            if [ ! -f "$gate" ]; then
+              echo "::error::$gate is missing — the shipped example corpus would be unproven"
+              exit 1
+            fi
+          done
+          # A waiver list may only shrink. These ceilings are the counts measured
+          # on 2026-08-23; lower them as examples are fixed, never raise them.
+          node -e "
+            const fs = require('fs');
+            const gate = fs.readFileSync('test/example-vm-execution.test.mjs', 'utf8');
+            const count = (name, open, close) => {
+              const at = gate.indexOf(name);
+              if (at < 0) { console.error('::error::' + name + ' is gone from the gate'); process.exit(1); }
+              const body = gate.slice(gate.indexOf(open, at), gate.indexOf(close, at));
+              return (body.match(/'[^']+'/g) || []).length;
+            };
+            const ceilings = {KNOWN_INERT: 9, KNOWN_SHADOWED_WRITES: 19, KNOWN_NO_BLOCKS: 2};
+            let bad = 0;
+            for (const [name, ceiling] of Object.entries(ceilings)) {
+              const n = count(name, '[', ']');
+              console.log(name + ': ' + n + ' waived (ceiling ' + ceiling + ')');
+              if (n > ceiling) {
+                console.error('::error::' + name + ' grew to ' + n + ' entries (ceiling ' + ceiling +
+                  '). A waiver list may only shrink.');
+                bad++;
+              }
+            }
+            const undefinedOpcodes = (gate.slice(gate.indexOf('KNOWN_MISSING_OPCODES'),
+              gate.indexOf('KNOWN_INERT')).match(/'[a-z0-9]+_[a-z0-9_]+'/g) || []).length;
+            console.log('KNOWN_MISSING_OPCODES: ' + undefinedOpcodes + ' opcodes waived (ceiling 28)');
+            if (undefinedOpcodes > 28) {
+              console.error('::error::KNOWN_MISSING_OPCODES grew to ' + undefinedOpcodes + ' opcodes.');
+              bad++;
+            }
+            process.exit(bad ? 1 : 0);
+          "
 
       - name: Run unit tests
         run: |
