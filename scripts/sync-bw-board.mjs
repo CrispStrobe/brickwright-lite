@@ -16,7 +16,12 @@ import { guardSource } from './lib-source-guard.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
-const REF = process.env.BWBOARD_REF || 'main';
+// bw-board's only branch is `master` — with 'main' every raw fetch 404s,
+// each file "SKIP"s keeping whatever is vendored, and the run still prints
+// "synced": a sync that cannot sync and a --check that cannot fail
+// (found 2026-08-23 when sparse.js failed to arrive). Prefer --dir with the
+// local sibling checkout; the GitHub path is the fallback.
+const REF = process.env.BWBOARD_REF || 'master';
 const RAW = `https://raw.githubusercontent.com/CrispStrobe/bw-board/${REF}`;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
@@ -31,6 +36,7 @@ if (dirIdx !== -1 && srcDir) guardSource(srcDir);
 const FALLBACK = [
     ...["analog-ics","chip-composer","dc-motor","digital-ics","display","h-bridge","logic-gates","misc-parts","motor-drivers","named-parts","power","relay","sensors","servo","timer-555"].map(f => `src/devices/${f}.js`),
     'src/index.js', 'src/board.js', 'src/types.js', 'src/pin-model.js', 'src/mna.js',
+    'src/sparse.js',
     'src/infer-netlist.js', 'src/scripted-mcu.js', 'src/conformance.js',
     'src/emu8051-adapter.js', 'src/validate.js'
 ];

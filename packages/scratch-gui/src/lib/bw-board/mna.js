@@ -1,9 +1,13 @@
 /**
  * Modified Nodal Analysis (MNA) solver.
  *
- * Linear MNA with Newton–Raphson for nonlinear elements (diodes/LEDs).
- * Used only for branchCurrent and resistance — the closed-form path
- * in board.js handles everything else.
+ * Linear MNA with Newton–Raphson for nonlinear elements (diodes, LEDs,
+ * BJTs, MOSFETs, op-amp rails, CC-limited sources), backward-Euler
+ * transient companions for C/L, and an instantaneous mode where charged
+ * capacitors pin their nets. board.js routes to this whenever the bench
+ * contains anything beyond the closed-form walker's vocabulary
+ * (`_needsMNA`), and the instruments (branchCurrent, resistance) always
+ * come here.
  *
  * Matrix form:  [G  B] [v]   [I]
  *               [C  D] [j] = [E]
@@ -23,6 +27,7 @@
  * Dense matrix backed by a flat Float64Array.
  */
 import { getDevice } from './devices.js';
+import { CooMatrix, SparseLU, toCSC } from './sparse.js';
 
 class Matrix {
   /**
@@ -114,6 +119,52 @@ function solve(A, b) {
   }
 
   return x;
+}
+
+/**
+ * Solve the assembled CooMatrix system — sparse LU with a three-level
+ * reuse ladder (spec-updates/sparse-lu-factor-reuse.md):
+ *
+ *   1. identical pattern AND identical values → substitution only
+ *      (the idle-transient / repeated-instrument-read case);
+ *   2. identical pattern, new values → numeric refactor along the stored
+ *      pivot order and reach lists, no DFS (the NR-iteration case);
+ *   3. otherwise → full factorization with partial pivoting.
+ *
+ * The cache is module-level: two boards alternating solves miss it and
+ * refactor — never corrupt (pattern equality gates every reuse), and a
+ * failed refactor drops the cache before falling back to a full factor.
+ *
+ * @param {CooMatrix} A
+ * @param {Float64Array} b - consumed
+ * @returns {Float64Array}
+ */
+let _luCache = null; // { lu: SparseLU, values: Float64Array }
+
+function solveAssembled(A, b) {
+  const csc = toCSC(A);
+  const c = _luCache;
+  if (c && c.lu.samePattern(csc)) {
+    const vals = csc.values;
+    const prev = c.values;
+    let same = vals.length === prev.length;
+    if (same) {
+      for (let i = 0; i < vals.length; i++) {
+        if (vals[i] !== prev[i]) { same = false; break; }
+      }
+    }
+    if (same) return c.lu.solve(b);
+    if (c.lu.refactor(csc)) {
+      c.values = vals.slice();
+      return c.lu.solve(b);
+    }
+    // Refactor bailed: its partial writes invalidated the stored factors.
+    _luCache = null;
+  }
+  const lu = new SparseLU();
+  lu.factor(csc); // throws "Singular matrix at column N" — same contract as dense
+  _luCache = { lu, values: csc.values.slice() };
+  return lu.solve(b);
 }
 
 // ─── LED / diode model for Newton–Raphson ────────────────────────────────────
@@ -253,12 +304,18 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   // part is on a disconnected net.
   let groundNetId = null;
 
+  // One part lookup for the whole solve. The election / merge / node-index
+  // passes below each ran `parts.find` per terminal — O(parts × terminals)
+  // scans repeated up to 50× by the NR loop on imported boards.
+  /** @type {Map<string, Part>} */
+  const partMap = new Map(parts.map(p => [p.id, p]));
+
   if (powerOff && testNodeB) {
     groundNetId = testNodeB;
   } else {
     for (const net of nets) {
       for (const t of net.terminals) {
-        const part = parts.find(p => p.id === t.part);
+        const part = partMap.get(t.part);
         if (part && part.kind === 'gnd') {
           groundNetId = net.id;
           break;
@@ -277,7 +334,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       for (const net of nets) {
         for (const t of net.terminals) {
           if (t.terminal !== 'neg') continue;
-          const part = parts.find(p => p.id === t.part);
+          const part = partMap.get(t.part);
           if (part && part.kind === 'vsource') {
             groundNetId = net.id;
             break outer;
@@ -305,19 +362,47 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   // the oscillator sat dead. Hand-wired boards never showed it because
   // their grounds share rails. Merge all gnd-bearing nets into the
   // elected one — physically they are the same node.
+  // The merge is a SOLVER-LOCAL VIEW. It used to splice the caller's `nets`
+  // array and push into the elected net's own terminals — the board's
+  // netlist was permanently rewritten by the first solve, and any caller
+  // holding the array saw its topology change under it. The caller's arrays
+  // and net objects are never touched now; merged-away gnd net ids still
+  // answer nodeVoltage as 0 via `mergedGndIds` at extraction.
+  /** @type {Set<string>} */
+  const mergedGndIds = new Set();
   if (groundNetId && !(powerOff && testNodeB)) {
     const isGndNet = (net) => net.id !== groundNetId && net.terminals.some((t) => {
-      const p = parts.find((pp) => pp.id === t.part);
+      const p = partMap.get(t.part);
       return p && p.kind === 'gnd';
     });
-    const main = nets.find((n) => n.id === groundNetId);
-    for (let i = nets.length - 1; i >= 0; i--) {
-      if (isGndNet(nets[i])) {
-        main.terminals.push(...nets[i].terminals);
-        nets.splice(i, 1);
+    for (const net of nets) if (isGndNet(net)) mergedGndIds.add(net.id);
+  }
+  if (mergedGndIds.size) {
+    const view = [];
+    let mergedMain = null;
+    for (const net of nets) {
+      if (net.id === groundNetId) {
+        mergedMain = { id: net.id, terminals: net.terminals.slice() };
+        view.push(mergedMain);
+      } else if (!mergedGndIds.has(net.id)) {
+        view.push(net);
       }
     }
+    for (const net of nets) {
+      if (mergedGndIds.has(net.id)) mergedMain.terminals.push(...net.terminals);
+    }
+    nets = view;
+  } else {
+    // Fresh wrapper either way, so the terminal map below attaches to an
+    // array only this solve can see — never to the caller's.
+    nets = nets.slice();
   }
+
+  // terminal → net id, built once per solve. `findNet` was a linear scan of
+  // all nets × all terminals, called several times per element per stamp per
+  // NR iteration — the dominant cost on imported boards before the O(n³)
+  // solve even starts (ROADMAP E1.1; spec-updates/sparse-lu-factor-reuse.md).
+  nets[NETS_TERM_MAP] = buildTermMap(nets);
 
   /** @type {Map<string, number>} net id → node index */
   const nodeIndex = new Map();
@@ -328,7 +413,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
     if (powerOff) {
       // Only include nets that have at least one passive element terminal
       const hasPassive = net.terminals.some(t => {
-        const p = parts.find(pp => pp.id === t.part);
+        const p = partMap.get(t.part);
         return p && passiveKinds.has(p.kind);
       });
       if (!hasPassive) continue;
@@ -410,12 +495,10 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   }
 
   const dim = nodeCount + vsCount;
-  const A = new Matrix(dim, dim);
+  // Sparse-by-default assembly: the stamps write into a coordinate map with
+  // dense semantics; reset() keeps the slot pattern across NR iterations.
+  const A = new CooMatrix(dim);
   const b = new Float64Array(dim);
-
-  // Part index for looking up nets
-  /** @type {Map<string, Part>} */
-  const partMap = new Map(parts.map(p => [p.id, p]));
 
   // ─── Stamp elements ─────────────────────────────────────────────────────
 
@@ -454,8 +537,8 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   let converged = false;
 
   for (let iter = 0; iter < MAX_NR_ITER; iter++) {
-    // Clear matrix
-    A.data.fill(0);
+    // Clear values; the assembled pattern survives for factor reuse.
+    A.reset();
     b.fill(0);
 
     // A schematic conventionally draws ONE power symbol per connection point,
@@ -729,10 +812,9 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
     for (let i = 0; i < nodeCount; i++) A.add(i, i, GMIN);
 
     // Solve
-    const Acopy = A.clone();
     const bcopy = new Float64Array(b);
     try {
-      solution = solve(Acopy, bcopy);
+      solution = solveAssembled(A, bcopy);
     } catch {
       // Singular matrix — bail
       break;
@@ -941,6 +1023,10 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   /** @type {Map<string, number>} */
   const nodeVoltages = new Map();
   if (groundNetId) nodeVoltages.set(groundNetId, 0);
+  // Merged-away gnd island nets are physically the reference too. The caller
+  // still holds them (the merge no longer rewrites its netlist), so they must
+  // answer here — absent entries would read as "unknown net", not 0 V.
+  for (const id of mergedGndIds) nodeVoltages.set(id, 0);
   for (const [netId, idx] of nodeIndex) {
     nodeVoltages.set(netId, solution[idx]);
   }
@@ -1186,6 +1272,28 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
 // ─── Stamp functions ─────────────────────────────────────────────────────────
 
 /**
+ * Per-solve terminal→net map. solveMNA attaches one (under a Symbol, on its
+ * own private copy of the nets array — never on the caller's) so the tens of
+ * findNet calls per stamp per NR iteration are O(1) lookups. Arrays without
+ * the map — external callers of the exported findNet — keep the linear scan.
+ */
+const NETS_TERM_MAP = Symbol('bw-term-map');
+const termKey = (partId, terminal) => partId + String.fromCharCode(0) + terminal;
+
+/** @param {Net[]} nets @returns {Map<string, string>} */
+function buildTermMap(nets) {
+  const m = new Map();
+  for (const net of nets) {
+    for (const t of net.terminals) {
+      const k = termKey(t.part, t.terminal);
+      // First net in array order wins — the linear scan's exact semantics.
+      if (!m.has(k)) m.set(k, net.id);
+    }
+  }
+  return m;
+}
+
+/**
  * Find the net connected to a specific terminal of a part.
  * @param {Net[]} nets
  * @param {string} partId
@@ -1193,6 +1301,8 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
  * @returns {string | undefined}
  */
 function findNet(nets, partId, terminal) {
+  const m = /** @type {Map<string, string> | undefined} */ (nets[NETS_TERM_MAP]);
+  if (m) return m.get(termKey(partId, terminal));
   for (const net of nets) {
     for (const t of net.terminals) {
       if (t.part === partId && t.terminal === terminal) {
@@ -1402,15 +1512,32 @@ function stampBuzzerResistance(A, b, part, nets, nodeIndex, groundNetId) {
  * model's own `stamp(ctx)` for input impedance / analog loading.
  */
 function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, dtSec) {
-  // Drives: terminal → {vTh, rTh} | null
+  // Drives: terminal → {vTh, rTh, ref?} | null
+  //
+  // Without `ref` the Norton is stamped against the reference node — right
+  // for a logic output whose return is the shared ground, wrong for a
+  // floating source. With `ref: '<terminal>'` the source drives `terminal`
+  // relative to the device's OWN pin: the standard floating-Thévenin
+  // companion (spec-updates/referenced-device-drives.md).
   for (const [terminal, drive] of Object.entries(state.drives ?? {})) {
     if (!drive) continue;
     const net = findNet(nets, part.id, terminal);
-    const idx = net ? nodeIndex.get(net) : undefined;
-    if (idx === undefined) continue;
+    if (!net) continue;
     const g = 1 / Math.max(drive.rTh, 1e-3);
-    A.add(idx, idx, g);
-    b[idx] += drive.vTh * g;
+    if (drive.ref) {
+      const refNet = findNet(nets, part.id, drive.ref);
+      if (!refNet) continue; // return pin in the air: no current path at all
+      stampTwoTerminal(A, net, refNet, g, nodeIndex);
+      const idx = nodeIndex.get(net);
+      const refIdx = nodeIndex.get(refNet);
+      if (idx !== undefined) b[idx] += drive.vTh * g;
+      if (refIdx !== undefined) b[refIdx] -= drive.vTh * g;
+    } else {
+      const idx = nodeIndex.get(net);
+      if (idx === undefined) continue;
+      A.add(idx, idx, g);
+      b[idx] += drive.vTh * g;
+    }
   }
   if (!model.stamp) return;
   const ctx = {
@@ -1427,6 +1554,22 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       const g = 1 / Math.max(rTh, 1e-3);
       A.add(idx, idx, g);
       b[idx] += vTh * g;
+    },
+    // Source between two of the device's own pins: vTh raises termPlus
+    // above termMinus through rTh. Reduces exactly to `thevenin` when the
+    // return pin sits on the reference net; representable nowhere else
+    // before this existed — a battery whose neg is off-ground stamped its
+    // EMF against ground instead (spec-updates/referenced-device-drives.md).
+    theveninBetween: (termPlus, termMinus, vTh, rTh) => {
+      const netP = findNet(nets, part.id, termPlus);
+      const netN = findNet(nets, part.id, termMinus);
+      if (!netP || !netN) return; // a leg in the air carries no current
+      const g = 1 / Math.max(rTh, 1e-3);
+      stampTwoTerminal(A, netP, netN, g, nodeIndex);
+      const idxP = nodeIndex.get(netP);
+      const idxN = nodeIndex.get(netN);
+      if (idxP !== undefined) b[idxP] += vTh * g;
+      if (idxN !== undefined) b[idxN] -= vTh * g;
     },
     current: (terminal, amps) => {
       const net = findNet(nets, part.id, terminal);

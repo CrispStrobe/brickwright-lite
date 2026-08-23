@@ -2650,10 +2650,15 @@ function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == typeof i ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != typeof i) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 /**
- * Board implementation — closed-form solver for the starter-kit component set.
+ * Board implementation — boundary B, and the router between two solvers.
  *
- * No MNA solver yet. Handles: resistor, LED, potentiometer, button, buzzer,
- * capacitor, VCC, GND, and MCU pins via Thévenin equivalents.
+ * A closed-form Thévenin walker covers the bare starter-kit vocabulary
+ * (resistor, LED, pot, button, buzzer, RC via graph walk); everything
+ * beyond it — transistors, sources, op-amps, any registered device, LED
+ * fan-out, and ALWAYS the instruments — routes to the MNA solver in
+ * mna.js (`_needsMNA`). A digital fast path defers analog solves for
+ * pure-logic nets. Time integration: fixed-step backward-Euler transient
+ * sub-stepping, device updates to a bounded fixpoint per sub-step.
  *
  * @module
  */
@@ -4128,6 +4133,74 @@ class BoardImpl {
   }
 
   /**
+   * Boundary B: high-level device intent — the write counterpart of
+   * getDeviceState() (spec-updates/set-device-control.md). Routes to the
+   * device model's optional `control(part, state, verb, value)` hook;
+   * `verb === 'state'` falls back to the plain control channel. Refusals
+   * return false AND surface in getWarnings() — the devices extension
+   * called this method for months while no board defined it, so every
+   * actuator block was a silent no-op; silence is not an option twice.
+   *
+   * @param {string} partId
+   * @param {string} verb
+   * @param {*} value
+   * @returns {boolean} true if a device accepted the verb
+   */
+  setDeviceControl(partId, verb, value) {
+    const part = this.parts.find(p => p.id === partId);
+    if (!part) {
+      this._recordRefusedControl(partId, verb, 'no such part');
+      return false;
+    }
+    const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(part.kind);
+    const state = this._deviceStates.get(partId);
+    if (model && model.control && state) {
+      let handled = false;
+      try {
+        handled = model.control(part, state, verb, value) === true;
+      } catch (err) {
+        var _err$message;
+        this._recordRefusedControl(partId, verb, String((_err$message = err === null || err === void 0 ? void 0 : err.message) !== null && _err$message !== void 0 ? _err$message : err));
+        return false;
+      }
+      if (handled) {
+        this._solve();
+        this._notifyChange('deviceControl', {
+          partId,
+          verb
+        });
+        return true;
+      }
+    }
+    // Plain on/off intent maps to the existing control channel — the same
+    // semantics setControl has always had (buzzer enable, switch state).
+    if (verb === 'state' && typeof value === 'number') {
+      this.setControl(partId, value);
+      return true;
+    }
+    this._recordRefusedControl(partId, verb, "\"".concat(part.kind, "\" has no simulator action for this"));
+    return false;
+  }
+
+  /** @param {string} partId @param {string} verb @param {string} why */
+  _recordRefusedControl(partId, verb, why) {
+    if (!this._refusedControls) this._refusedControls = new Map();
+    const key = "".concat(partId, "\0").concat(verb);
+    const cur = this._refusedControls.get(key);
+    if (cur) {
+      cur.count++;
+      return;
+    }
+    if (this._refusedControls.size >= 20) return; // bounded; first 20 shapes
+    this._refusedControls.set(key, {
+      partId,
+      verb,
+      why,
+      count: 1
+    });
+  }
+
+  /**
    * Set a named parameter on a part's params object.
    * Used by the environment-stimulus extension to inject world conditions
    * (temperature, humidity, magnetic field, etc.) into device models.
@@ -4541,6 +4614,24 @@ class BoardImpl {
     /** @type {Array<{severity: 'warning'|'danger', message: string, partId?: string,
      *           partIds?: string[], unratedIds?: string[], type?: string}>} */
     const warnings = [];
+
+    // Refused device-control verbs are user-intent feedback and show
+    // regardless of power state (spec-updates/set-device-control.md).
+    if (this._refusedControls) {
+      for (const {
+        partId,
+        verb,
+        why,
+        count
+      } of this._refusedControls.values()) {
+        warnings.push({
+          severity: 'warning',
+          type: 'device-control-refused',
+          partId,
+          message: "\"".concat(verb, "\" on ").concat(partId, " was ignored \u2014 ").concat(why) + (count > 1 ? " (".concat(count, "\xD7)") : '')
+        });
+      }
+    }
     if (!this.powered) return warnings;
 
     // Device sub-step overflow: advanceTo hit the cap on device sub-steps.
@@ -10046,6 +10137,14 @@ __webpack_require__.r(__webpack_exports__);
  * @property {(part: import('./types.js').Part, state: object,
  *             read: (terminal: string) => number) => Map<string, number>} [branchCurrents]
  *   Optional terminal currents for the instruments.
+ * @property {(part: import('./types.js').Part, state: object,
+ *             verb: string, value: *) => boolean} [control]
+ *   High-level user/program intent — the write counterpart of
+ *   getDeviceState (boundary B setDeviceControl,
+ *   spec-updates/set-device-control.md). Return true if the verb was
+ *   handled (the board re-solves and notifies); anything else means "not
+ *   a verb this device understands" and the board records a visible
+ *   refusal warning rather than dropping it silently.
  */
 
 /**
@@ -14337,19 +14436,18 @@ function registerDCMotor() {
       const kV = (_part$params$kV = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.kV) !== null && _part$params$kV !== void 0 ? _part$params$kV : 0.01;
       const L = (_part$params$windingH = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.windingH) !== null && _part$params$windingH !== void 0 ? _part$params$windingH : 0.005;
 
-      // Motor as Thévenin: back-EMF voltage source (kV * omega) in series
-      // with winding resistance. Between terminals a and b.
-      // The stamp is: conductance between a and b of 1/R, plus a current
-      // source representing the back-EMF.
-      ctx.conductance('a', 'b', 1 / R);
-      // Back-EMF: acts as a voltage source kV*omega opposing current flow.
-      // As Norton equivalent: I_norton = (kV * omega) / R
-      // Current flows from b to a (opposing the applied voltage direction).
-      const backEMF = kV * state.omega;
-      if (Math.abs(backEMF) > 1e-12) {
-        ctx.current('a', -backEMF / R);
-        ctx.current('b', backEMF / R);
-      }
+      // Motor as Thévenin between its own pins: back-EMF (kV·omega, + at a)
+      // in series with the winding resistance, so I(a→b) = (Va−Vb−e)/R —
+      // the same equation update() integrates the mechanics from.
+      //
+      // The previous hand-built Norton pair had the EMF sign INVERTED
+      // (injected −e/R into a where the Thévenin→Norton transform gives
+      // +e/R): electrically the motor drew MORE current the faster it
+      // spun, I = (V+e)/R. Nothing caught it because the mechanical loop
+      // uses its own correct formula and stiff supplies hid the node
+      // shift; a series resistor exposes it — see the free-running oracle
+      // in test/referenced-drives.test.mjs.
+      ctx.theveninBetween('a', 'b', kV * state.omega, R);
 
       // Series inductance: backward-Euler companion model adds a
       // conductance dt/L and a Norton current source of the previous
@@ -14740,6 +14838,23 @@ function registerDisplayDevices() {
     stamp(ctx) {
       ctx.conductance('din', null, 1 / R_INPUT);
     },
+    // Boundary B setDeviceControl (spec-updates/set-device-control.md).
+    // Writes the same pixels[] the WS2812B bit decoder writes; an
+    // out-of-range index is refused (visibly, via the board's warning).
+    control(part, state, verb, value) {
+      if (verb === 'neopixel') {
+        const a = Array.isArray(value) ? value : [];
+        const i = a[0] | 0;
+        if (i < 0 || i >= state.pixels.length) return false;
+        state.pixels[i] = ((a[1] | 0) & 0xff) << 16 | ((a[2] | 0) & 0xff) << 8 | (a[3] | 0) & 0xff;
+        return true;
+      }
+      if (verb === 'clearNeopixels') {
+        state.pixels.fill(0);
+        return true;
+      }
+      return false;
+    },
     update(part, state, read, tNs) {
       const vcc = read('vcc') || 5.0;
       const threshold = vcc * 0.5;
@@ -15101,6 +15216,39 @@ function registerHD44780() {
       // Backlight LED: simplified ~20mA at Vf≈3.2V
       ctx.conductance('a', 'k', 1 / 100);
     },
+    // High-level verbs (boundary B setDeviceControl,
+    // spec-updates/set-device-control.md): write the same DDRAM/AC the
+    // bus path writes; the register machinery stays authoritative for
+    // MCU-driven benches. Printing implies the learner wants to see it.
+    control(part, state, verb, value) {
+      switch (verb) {
+        case 'clear':
+          state.ddram.fill(0x20);
+          state.ac = 0;
+          state.displayOn = true;
+          return true;
+        case 'cursor':
+          {
+            const a = Array.isArray(value) ? value : [0, 0];
+            // Line bases per the common controller mapping (2- and 4-line).
+            const bases = [0x00, 0x40, 0x14, 0x54];
+            const row = Math.max(0, Math.min(3, a[0] | 0));
+            const col = Math.max(0, Math.min(39, a[1] | 0));
+            state.ac = bases[row] + col & 0x7f;
+            return true;
+          }
+        case 'print':
+          {
+            for (const ch of String(value)) {
+              state.ddram[_ddramAddr(state.ac)] = ch.charCodeAt(0) & 0xff;
+              state.ac = state.ac + 1 & 0x7f;
+            }
+            state.displayOn = true;
+            return true;
+          }
+      }
+      return false;
+    },
     update(part, state, read, tNs) {
       const vdd = read('vdd') || 5.0;
       const vss = read('vss') || 0;
@@ -15269,7 +15417,8 @@ function registerHD44780() {
     update: (part, state, read, tNs) => model.update(part, state, t => {
       var _LCD_ALIAS$t;
       return read((_LCD_ALIAS$t = LCD_ALIAS[t]) !== null && _LCD_ALIAS$t !== void 0 ? _LCD_ALIAS$t : t);
-    }, tNs)
+    }, tNs),
+    control: (part, state, verb, value) => model.control(part, state, verb, value)
   });
 }
 
@@ -17174,6 +17323,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   registerILI9341: () => (/* binding */ registerILI9341)
 /* harmony export */ });
 /* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../devices.js */ "./src/lib/bw-board/devices.js");
+/* harmony import */ var _funscii_font_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../funscii-font.js */ "./src/lib/bw-board/funscii-font.js");
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -17197,11 +17347,113 @@ function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = 
  * differs.
  */
 
+
 const R_INPUT = 1e6;
 const R_OUT = 50;
 const R_OFF = 1e9;
 const ILI9341_W = 240;
 const ILI9341_H = 320;
+
+// ─── High-level verbs (boundary B setDeviceControl) ───────────────
+// spec-updates/set-device-control.md. Writes the same GRAM the SPI /
+// parallel bus paths write; the register machinery stays authoritative
+// for MCU-driven benches. Drawing wakes the panel (a learner who prints
+// wants to see it).
+
+/** @param {number} r @param {number} g @param {number} b */
+function rgb565(r, g, b) {
+  return ((r & 0xf8) << 8 | (g & 0xfc) << 3 | (b & 0xf8) >> 3) & 0xffff;
+}
+function iliWake(state) {
+  state.sleeping = false;
+  state.displayOn = true;
+}
+function iliSetPx(state, x, y, px) {
+  if (x < 0 || x >= ILI9341_W || y < 0 || y >= ILI9341_H) return;
+  state.gram[y * ILI9341_W + x] = px;
+}
+function ili9341Control(part, state, verb, value) {
+  switch (verb) {
+    case 'clear':
+      {
+        const a = Array.isArray(value) ? value : [0, 0, 0];
+        state.gram.fill(rgb565(a[0] | 0, a[1] | 0, a[2] | 0));
+        state._tRow = 0;
+        state._tCol = 0;
+        iliWake(state);
+        return true;
+      }
+    case 'cursor':
+      {
+        const a = Array.isArray(value) ? value : [0, 0];
+        state._tRow = Math.max(0, Math.min(ILI9341_H / 8 - 1, a[0] | 0));
+        state._tCol = Math.max(0, Math.min(ILI9341_W / 8 - 1, a[1] | 0));
+        return true;
+      }
+    case 'print':
+      {
+        iliDrawText(state, String(value));
+        iliWake(state);
+        return true;
+      }
+    case 'pixel':
+      {
+        var _a$, _a$2, _a$3;
+        const a = Array.isArray(value) ? value : [0, 0, 255, 255, 255];
+        iliSetPx(state, a[0] | 0, a[1] | 0, rgb565((_a$ = a[2]) !== null && _a$ !== void 0 ? _a$ : 255, (_a$2 = a[3]) !== null && _a$2 !== void 0 ? _a$2 : 255, (_a$3 = a[4]) !== null && _a$3 !== void 0 ? _a$3 : 255));
+        iliWake(state);
+        return true;
+      }
+    case 'fill':
+      {
+        var _a$4, _a$5, _a$6;
+        const a = Array.isArray(value) ? value : [];
+        const [x0, y0, x1, y1] = [a[0] | 0, a[1] | 0, a[2] | 0, a[3] | 0];
+        const px = rgb565((_a$4 = a[4]) !== null && _a$4 !== void 0 ? _a$4 : 255, (_a$5 = a[5]) !== null && _a$5 !== void 0 ? _a$5 : 255, (_a$6 = a[6]) !== null && _a$6 !== void 0 ? _a$6 : 255);
+        const xa = Math.min(x0, x1),
+          xb = Math.max(x0, x1);
+        const ya = Math.min(y0, y1),
+          yb = Math.max(y0, y1);
+        for (let y = ya; y <= yb; y++) {
+          for (let x = xa; x <= xb; x++) iliSetPx(state, x, y, px);
+        }
+        iliWake(state);
+        return true;
+      }
+  }
+  return false;
+}
+
+/** 8×8 funscii glyphs, white on untouched background, wrapping cells. */
+function iliDrawText(state, text) {
+  var _state$_tRow, _state$_tCol;
+  const cols = ILI9341_W / 8,
+    rows = ILI9341_H / 8;
+  const white = rgb565(255, 255, 255);
+  let row = (_state$_tRow = state._tRow) !== null && _state$_tRow !== void 0 ? _state$_tRow : 0;
+  let col = (_state$_tCol = state._tCol) !== null && _state$_tCol !== void 0 ? _state$_tCol : 0;
+  for (const ch of text) {
+    if (ch === '\n') {
+      row = (row + 1) % rows;
+      col = 0;
+      continue;
+    }
+    const code = ch.charCodeAt(0) & 0xff;
+    for (let gy = 0; gy < 8; gy++) {
+      const bits = _funscii_font_js__WEBPACK_IMPORTED_MODULE_1__.FUNSCII[code * 8 + gy]; // bit 0 = leftmost
+      for (let gx = 0; gx < 8; gx++) {
+        if (bits >> gx & 1) iliSetPx(state, col * 8 + gx, row * 8 + gy, white);
+      }
+    }
+    col++;
+    if (col >= cols) {
+      col = 0;
+      row = (row + 1) % rows;
+    }
+  }
+  state._tRow = row;
+  state._tCol = col;
+}
 
 // ─── Shared state factory ─────────────────────────────────────────
 
@@ -17452,6 +17704,7 @@ function putPixel(state, rgb565) {
 function registerILI9341() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('ili9341', {
     digitalFastPath: true,
+    control: ili9341Control,
     terminals: ['vcc', 'gnd', 'cs', 'rst', 'dc', 'mosi', 'sck', 'miso', 'led'],
     init() {
       return _objectSpread(_objectSpread({
@@ -17556,6 +17809,7 @@ function registerILI9341() {
   // RST. Same command set, same GRAM.
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('ili9341_par', {
     digitalFastPath: true,
+    control: ili9341Control,
     terminals: ['vcc', 'gnd', 'cs', 'rst', 'rs', 'wr', 'rd', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'led'],
     init() {
       return _objectSpread(_objectSpread({
@@ -18183,10 +18437,14 @@ function makeGateModel(kind, evalFn) {
       for (let i = 0; i < n; i++) {
         ctx.conductance("in".concat(i), null, 1 / R_INPUT);
       }
+      // update() has no ctx; the rail is captured here (stamp runs before
+      // every update pass) so thresholds and the output high level track
+      // the board's actual supply instead of a hard-coded 5 V.
+      state._vcc = ctx.vcc;
     },
     update(part, state, read) {
-      var _part$params$rOut2, _part$params5;
-      const vcc = 5.0; // TODO: read from ctx when available
+      var _state$_vcc, _part$params$rOut2, _part$params5;
+      const vcc = (_state$_vcc = state._vcc) !== null && _state$_vcc !== void 0 ? _state$_vcc : 5.0;
       const inputs = readInputs(part, state, read, vcc);
       const outLevel = evalFn(inputs);
       if (outLevel === state._outLevel && inputs.every((v, i) => v === state._lastInputs[i])) {
@@ -20076,25 +20334,22 @@ function registerPowerDevices() {
   // Terminals: pos, neg (like a real battery)
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('battery', {
     terminals: ['pos', 'neg'],
-    init(part) {
-      var _part$params$volts, _part$params, _part$params$rInterna, _part$params2;
-      const volts = (_part$params$volts = (_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.volts) !== null && _part$params$volts !== void 0 ? _part$params$volts : 9;
+    init() {
       return {
-        drives: {
-          pos: {
-            vTh: volts,
-            rTh: (_part$params$rInterna = (_part$params2 = part.params) === null || _part$params2 === void 0 ? void 0 : _part$params2.rInternal) !== null && _part$params$rInterna !== void 0 ? _part$params$rInterna : 0.5
-          }
-        }
+        drives: {}
       };
     },
-    stamp(ctx, part, state) {
-      var _part$params$rInterna2, _part$params3, _part$params$volts2, _part$params4;
-      // The battery drives 'pos' relative to 'neg' via state.drives (generic).
-      // Also stamp the internal resistance as a conductance path so current flows.
-      const rInt = (_part$params$rInterna2 = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.rInternal) !== null && _part$params$rInterna2 !== void 0 ? _part$params$rInterna2 : 0.5;
-      const volts = (_part$params$volts2 = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.volts) !== null && _part$params$volts2 !== void 0 ? _part$params$volts2 : 9;
-      ctx.thevenin('pos', volts, rInt);
+    stamp(ctx, part) {
+      var _part$params$rInterna, _part$params, _part$params$volts, _part$params2;
+      // ONE stamp, between the battery's own pins. This used to be stamped
+      // twice — once via state.drives (ground-referenced) and once via
+      // ctx.thevenin — two identical Nortons in parallel, halving the
+      // effective internal resistance; and both were referenced to node 0,
+      // so a battery whose neg terminal was off-ground was simply wrong
+      // (spec-updates/referenced-device-drives.md).
+      const rInt = (_part$params$rInterna = (_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.rInternal) !== null && _part$params$rInterna !== void 0 ? _part$params$rInterna : 0.5;
+      const volts = (_part$params$volts = (_part$params2 = part.params) === null || _part$params2 === void 0 ? void 0 : _part$params2.volts) !== null && _part$params$volts !== void 0 ? _part$params$volts : 9;
+      ctx.theveninBetween('pos', 'neg', volts, rInt);
     },
     update() {
       return false;
@@ -20107,13 +20362,13 @@ function registerPowerDevices() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('vreg', {
     terminals: ['in', 'out', 'gnd'],
     init(part) {
-      var _part$params$vOut, _part$params5, _part$params$rOut, _part$params6;
-      const vOut = (_part$params$vOut = (_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.vOut) !== null && _part$params$vOut !== void 0 ? _part$params$vOut : 5.0;
+      var _part$params$vOut, _part$params3, _part$params$rOut, _part$params4;
+      const vOut = (_part$params$vOut = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.vOut) !== null && _part$params$vOut !== void 0 ? _part$params$vOut : 5.0;
       return {
         drives: {
           out: {
             vTh: vOut,
-            rTh: (_part$params$rOut = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.rOut) !== null && _part$params$rOut !== void 0 ? _part$params$rOut : 1.0
+            rTh: (_part$params$rOut = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.rOut) !== null && _part$params$rOut !== void 0 ? _part$params$rOut : 1.0
           }
         },
         _vOut: vOut
@@ -20127,12 +20382,12 @@ function registerPowerDevices() {
       ctx.conductance('in', 'gnd', 1 / 1e6); // quiescent current path
     },
     update(part, state, read) {
-      var _part$params$vOut2, _part$params7, _part$params$dropout, _part$params8, _part$params$rOut2, _part$params9;
+      var _part$params$vOut2, _part$params5, _part$params$dropout, _part$params6, _part$params$rOut2, _part$params7;
       const vIn = read('in');
       const vGnd = read('gnd');
-      const targetVout = (_part$params$vOut2 = (_part$params7 = part.params) === null || _part$params7 === void 0 ? void 0 : _part$params7.vOut) !== null && _part$params$vOut2 !== void 0 ? _part$params$vOut2 : 5.0;
-      const dropout = (_part$params$dropout = (_part$params8 = part.params) === null || _part$params8 === void 0 ? void 0 : _part$params8.dropout) !== null && _part$params$dropout !== void 0 ? _part$params$dropout : 1.5;
-      const rOut = (_part$params$rOut2 = (_part$params9 = part.params) === null || _part$params9 === void 0 ? void 0 : _part$params9.rOut) !== null && _part$params$rOut2 !== void 0 ? _part$params$rOut2 : 1.0;
+      const targetVout = (_part$params$vOut2 = (_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.vOut) !== null && _part$params$vOut2 !== void 0 ? _part$params$vOut2 : 5.0;
+      const dropout = (_part$params$dropout = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.dropout) !== null && _part$params$dropout !== void 0 ? _part$params$dropout : 1.5;
+      const rOut = (_part$params$rOut2 = (_part$params7 = part.params) === null || _part$params7 === void 0 ? void 0 : _part$params7.rOut) !== null && _part$params$rOut2 !== void 0 ? _part$params$rOut2 : 1.0;
 
       // Regulated output: min(targetVout, Vin - dropout)
       const maxOut = vIn - vGnd - dropout;
@@ -20166,20 +20421,20 @@ function registerPowerDevices() {
       // Blown: open circuit (no conductance)
     },
     update(part, state, read) {
-      var _part$params10;
+      var _part$params8;
       // Reset via control
-      const ctrl = (_part$params10 = part.params) === null || _part$params10 === void 0 ? void 0 : _part$params10._control;
+      const ctrl = (_part$params8 = part.params) === null || _part$params8 === void 0 ? void 0 : _part$params8._control;
       if (ctrl === 1 && state.blown) {
         state.blown = false;
         return true;
       }
       // Check current (approximate from voltage difference and fuse R)
       if (!state.blown) {
-        var _part$params$amps, _part$params11;
+        var _part$params$amps, _part$params9;
         const vA = read('a');
         const vB = read('b');
         const current = Math.abs(vA - vB) / 0.01;
-        const rating = (_part$params$amps = (_part$params11 = part.params) === null || _part$params11 === void 0 ? void 0 : _part$params11.amps) !== null && _part$params$amps !== void 0 ? _part$params$amps : 1.0;
+        const rating = (_part$params$amps = (_part$params9 = part.params) === null || _part$params9 === void 0 ? void 0 : _part$params9.amps) !== null && _part$params$amps !== void 0 ? _part$params$amps : 1.0;
         if (current > rating * 1.5) {
           // 150% of rating = blow
           state.blown = true;
@@ -20299,6 +20554,17 @@ function registerRelay() {
         // Switching delay state
         _pendingState: null // null | { target: boolean, deadlineNs: bigint }
       };
+    },
+    // Boundary B setDeviceControl (spec-updates/set-device-control.md):
+    // 'state' is user intent and overrides the coil, clearing any pending
+    // switch timer — like pressing the armature with a finger.
+    control(part, state, verb, value) {
+      if (verb === 'state') {
+        state.energized = !!value;
+        state._pendingState = null;
+        return true;
+      }
+      return false;
     },
     stamp(ctx, part, state) {
       var _part$params$coilR, _part$params;
@@ -21638,6 +21904,16 @@ function registerServo() {
       ctx.conductance('signal', null, 1 / R_INPUT);
       // VCC/GND: power draw not modeled (would need current spec)
     },
+    // Boundary B setDeviceControl (spec-updates/set-device-control.md):
+    // 'angle' sets the TARGET; the slew limit stays the model's honesty —
+    // a real servo does not teleport.
+    control(part, state, verb, value) {
+      if (verb === 'angle') {
+        state.targetAngle = Math.max(0, Math.min(180, Number(value) || 0));
+        return true;
+      }
+      return false;
+    },
     update(part, state, read, tNs) {
       var _part$params$minPulse, _part$params, _part$params$maxPulse, _part$params2, _part$params$maxAngle, _part$params3, _part$params$slewRate, _part$params4;
       const minPulseUs = (_part$params$minPulse = (_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.minPulseUs) !== null && _part$params$minPulse !== void 0 ? _part$params$minPulse : 1000;
@@ -21704,6 +21980,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../devices.js */ "./src/lib/bw-board/devices.js");
 /* harmony import */ var _i2c_slave_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./i2c-slave.js */ "./src/lib/bw-board/devices/i2c-slave.js");
+/* harmony import */ var _funscii_font_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../funscii-font.js */ "./src/lib/bw-board/funscii-font.js");
 /**
  * SSD1306 — Solomon Systech 128×64 monochrome OLED controller, clean-room
  * from the SSD1306 datasheet (rev 1.1, April 2008).
@@ -21744,6 +22021,7 @@ __webpack_require__.r(__webpack_exports__);
  *
  * @module
  */
+
 
 
 
@@ -21859,8 +22137,99 @@ function registerSSD1306() {
         return true;
       }
       return false;
+    },
+    // High-level verbs (boundary B setDeviceControl,
+    // spec-updates/set-device-control.md). These write the same GDDRAM
+    // the register path writes; the I2C machinery is untouched and
+    // stays authoritative for MCU-driven benches. Drawing implies the
+    // learner wants to see it, so drawing verbs switch the display on.
+    control(part, state, verb, value) {
+      switch (verb) {
+        case 'clear':
+          state.fb.fill(0);
+          state._tRow = 0;
+          state._tCol = 0;
+          state.displayOn = true;
+          return true;
+        case 'cursor':
+          {
+            const [r, c] = asPair(value);
+            state._tRow = clampInt(r, 0, PAGES - 1);
+            state._tCol = clampInt(c, 0, WIDTH / 8 - 1);
+            return true;
+          }
+        case 'print':
+          drawText(state, String(value));
+          state.displayOn = true;
+          return true;
+        case 'pixel':
+          {
+            const a = Array.isArray(value) ? value : [];
+            setPx(state, a[0] | 0, a[1] | 0, a.length < 3 || !!a[2]);
+            state.displayOn = true;
+            return true;
+          }
+        case 'hline':
+          {
+            const [x0, x1, y] = asTriple(value);
+            const lo = Math.min(x0, x1),
+              hi = Math.max(x0, x1);
+            for (let x = lo; x <= hi; x++) setPx(state, x, y, true);
+            state.displayOn = true;
+            return true;
+          }
+        case 'show':
+          state.displayOn = true;
+          return true;
+      }
+      return false;
     }
   });
+}
+
+// ─── High-level drawing helpers ────────────────────────────────────
+function clampInt(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v | 0));
+}
+function asPair(v) {
+  return Array.isArray(v) ? [v[0] | 0, v[1] | 0] : [0, 0];
+}
+function asTriple(v) {
+  return Array.isArray(v) ? [v[0] | 0, v[1] | 0, v[2] | 0] : [0, 0, 0];
+}
+function setPx(s, x, y, on) {
+  if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return;
+  const i = (y >> 3) * WIDTH + x;
+  const bit = 1 << (y & 7);
+  s.fb[i] = on ? s.fb[i] | bit : s.fb[i] & ~bit;
+}
+
+/** 8×8 funscii glyphs on a 16×8 text-cell grid; wraps, scroll-free. */
+function drawText(s, text) {
+  var _s$_tRow, _s$_tCol;
+  let row = (_s$_tRow = s._tRow) !== null && _s$_tRow !== void 0 ? _s$_tRow : 0;
+  let col = (_s$_tCol = s._tCol) !== null && _s$_tCol !== void 0 ? _s$_tCol : 0;
+  for (const ch of text) {
+    if (ch === '\n') {
+      row = (row + 1) % PAGES;
+      col = 0;
+      continue;
+    }
+    const code = ch.charCodeAt(0) & 0xff;
+    for (let gy = 0; gy < 8; gy++) {
+      const bits = _funscii_font_js__WEBPACK_IMPORTED_MODULE_2__.FUNSCII[code * 8 + gy]; // bit 0 = leftmost
+      for (let gx = 0; gx < 8; gx++) {
+        setPx(s, col * 8 + gx, row * 8 + gy, bits >> gx & 1);
+      }
+    }
+    col++;
+    if (col >= WIDTH / 8) {
+      col = 0;
+      row = (row + 1) % PAGES;
+    }
+  }
+  s._tRow = row;
+  s._tCol = col;
 }
 
 // ─── Data write into GDDRAM ────────────────────────────────────────
@@ -26673,6 +27042,7 @@ function inferNetlist(stc, opts) {
             const rId = "R_".concat(safeName);
             const qId = "Q_".concat(safeName);
             const mId = "MOTOR_".concat(safeName);
+            const dId = "D_".concat(safeName);
             parts.push({
               id: rId,
               kind: 'resistor',
@@ -26692,6 +27062,14 @@ function inferNetlist(stc, opts) {
               kind: 'dc_motor',
               params: {},
               terminals: ['a', 'b']
+            });
+            parts.push({
+              id: dId,
+              kind: 'diode',
+              params: {
+                vf: 0.7
+              },
+              terminals: ['anode', 'cathode']
             });
             nets.push({
               id: "net_".concat(safeName, "_pin"),
@@ -26721,11 +27099,20 @@ function inferNetlist(stc, opts) {
               }, {
                 part: qId,
                 terminal: 'collector'
+              }, {
+                part: dId,
+                terminal: 'anode'
               }]
             });
             vccNet.terminals.push({
               part: mId,
               terminal: 'a'
+            });
+            // Reverse-biased during normal operation; conducts the motor's
+            // inductive current when the transistor switches off.
+            vccNet.terminals.push({
+              part: dId,
+              terminal: 'cathode'
             });
             gndNet.terminals.push({
               part: qId,
@@ -26742,6 +27129,7 @@ function inferNetlist(stc, opts) {
             const rId = "R_".concat(safeName);
             const qId = "Q_".concat(safeName);
             const kId = "RELAY_".concat(safeName);
+            const dId = "D_".concat(safeName);
             parts.push({
               id: rId,
               kind: 'resistor',
@@ -26761,6 +27149,14 @@ function inferNetlist(stc, opts) {
               kind: 'relay',
               params: {},
               terminals: ['coil_a', 'coil_b', 'com', 'nc', 'no']
+            });
+            parts.push({
+              id: dId,
+              kind: 'diode',
+              params: {
+                vf: 0.7
+              },
+              terminals: ['anode', 'cathode']
             });
             nets.push({
               id: "net_".concat(safeName, "_pin"),
@@ -26790,11 +27186,18 @@ function inferNetlist(stc, opts) {
               }, {
                 part: qId,
                 terminal: 'collector'
+              }, {
+                part: dId,
+                terminal: 'anode'
               }]
             });
             vccNet.terminals.push({
               part: kId,
               terminal: 'coil_a'
+            });
+            vccNet.terminals.push({
+              part: dId,
+              terminal: 'cathode'
             });
             gndNet.terminals.push({
               part: qId,
@@ -28681,6 +29084,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   sourceVoltage: () => (/* binding */ sourceVoltage)
 /* harmony export */ });
 /* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./devices.js */ "./src/lib/bw-board/devices.js");
+/* harmony import */ var _sparse_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./sparse.js */ "./src/lib/bw-board/sparse.js");
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -28689,9 +29093,13 @@ function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = 
 /**
  * Modified Nodal Analysis (MNA) solver.
  *
- * Linear MNA with Newton–Raphson for nonlinear elements (diodes/LEDs).
- * Used only for branchCurrent and resistance — the closed-form path
- * in board.js handles everything else.
+ * Linear MNA with Newton–Raphson for nonlinear elements (diodes, LEDs,
+ * BJTs, MOSFETs, op-amp rails, CC-limited sources), backward-Euler
+ * transient companions for C/L, and an instantaneous mode where charged
+ * capacitors pin their nets. board.js routes to this whenever the bench
+ * contains anything beyond the closed-form walker's vocabulary
+ * (`_needsMNA`), and the instruments (branchCurrent, resistance) always
+ * come here.
  *
  * Matrix form:  [G  B] [v]   [I]
  *               [C  D] [j] = [E]
@@ -28710,6 +29118,7 @@ function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = 
 /**
  * Dense matrix backed by a flat Float64Array.
  */
+
 
 class Matrix {
   /**
@@ -28808,6 +29217,58 @@ function solve(A, b) {
     x[row] = sum / A.get(row, row);
   }
   return x;
+}
+
+/**
+ * Solve the assembled CooMatrix system — sparse LU with a three-level
+ * reuse ladder (spec-updates/sparse-lu-factor-reuse.md):
+ *
+ *   1. identical pattern AND identical values → substitution only
+ *      (the idle-transient / repeated-instrument-read case);
+ *   2. identical pattern, new values → numeric refactor along the stored
+ *      pivot order and reach lists, no DFS (the NR-iteration case);
+ *   3. otherwise → full factorization with partial pivoting.
+ *
+ * The cache is module-level: two boards alternating solves miss it and
+ * refactor — never corrupt (pattern equality gates every reuse), and a
+ * failed refactor drops the cache before falling back to a full factor.
+ *
+ * @param {CooMatrix} A
+ * @param {Float64Array} b - consumed
+ * @returns {Float64Array}
+ */
+let _luCache = null; // { lu: SparseLU, values: Float64Array }
+
+function solveAssembled(A, b) {
+  const csc = (0,_sparse_js__WEBPACK_IMPORTED_MODULE_1__.toCSC)(A);
+  const c = _luCache;
+  if (c && c.lu.samePattern(csc)) {
+    const vals = csc.values;
+    const prev = c.values;
+    let same = vals.length === prev.length;
+    if (same) {
+      for (let i = 0; i < vals.length; i++) {
+        if (vals[i] !== prev[i]) {
+          same = false;
+          break;
+        }
+      }
+    }
+    if (same) return c.lu.solve(b);
+    if (c.lu.refactor(csc)) {
+      c.values = vals.slice();
+      return c.lu.solve(b);
+    }
+    // Refactor bailed: its partial writes invalidated the stored factors.
+    _luCache = null;
+  }
+  const lu = new _sparse_js__WEBPACK_IMPORTED_MODULE_1__.SparseLU();
+  lu.factor(csc); // throws "Singular matrix at column N" — same contract as dense
+  _luCache = {
+    lu,
+    values: csc.values.slice()
+  };
+  return lu.solve(b);
 }
 
 // ─── LED / diode model for Newton–Raphson ────────────────────────────────────
@@ -28957,12 +29418,18 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
   // the test nodes are always relative to each other, even if the GND
   // part is on a disconnected net.
   let groundNetId = null;
+
+  // One part lookup for the whole solve. The election / merge / node-index
+  // passes below each ran `parts.find` per terminal — O(parts × terminals)
+  // scans repeated up to 50× by the NR loop on imported boards.
+  /** @type {Map<string, Part>} */
+  const partMap = new Map(parts.map(p => [p.id, p]));
   if (powerOff && testNodeB) {
     groundNetId = testNodeB;
   } else {
     for (const net of nets) {
       for (const t of net.terminals) {
-        const part = parts.find(p => p.id === t.part);
+        const part = partMap.get(t.part);
         if (part && part.kind === 'gnd') {
           groundNetId = net.id;
           break;
@@ -28980,7 +29447,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       outer: for (const net of nets) {
         for (const t of net.terminals) {
           if (t.terminal !== 'neg') continue;
-          const part = parts.find(p => p.id === t.part);
+          const part = partMap.get(t.part);
           if (part && part.kind === 'vsource') {
             groundNetId = net.id;
             break outer;
@@ -29005,19 +29472,50 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
   // the oscillator sat dead. Hand-wired boards never showed it because
   // their grounds share rails. Merge all gnd-bearing nets into the
   // elected one — physically they are the same node.
+  // The merge is a SOLVER-LOCAL VIEW. It used to splice the caller's `nets`
+  // array and push into the elected net's own terminals — the board's
+  // netlist was permanently rewritten by the first solve, and any caller
+  // holding the array saw its topology change under it. The caller's arrays
+  // and net objects are never touched now; merged-away gnd net ids still
+  // answer nodeVoltage as 0 via `mergedGndIds` at extraction.
+  /** @type {Set<string>} */
+  const mergedGndIds = new Set();
   if (groundNetId && !(powerOff && testNodeB)) {
     const isGndNet = net => net.id !== groundNetId && net.terminals.some(t => {
-      const p = parts.find(pp => pp.id === t.part);
+      const p = partMap.get(t.part);
       return p && p.kind === 'gnd';
     });
-    const main = nets.find(n => n.id === groundNetId);
-    for (let i = nets.length - 1; i >= 0; i--) {
-      if (isGndNet(nets[i])) {
-        main.terminals.push(...nets[i].terminals);
-        nets.splice(i, 1);
+    for (const net of nets) if (isGndNet(net)) mergedGndIds.add(net.id);
+  }
+  if (mergedGndIds.size) {
+    const view = [];
+    let mergedMain = null;
+    for (const net of nets) {
+      if (net.id === groundNetId) {
+        mergedMain = {
+          id: net.id,
+          terminals: net.terminals.slice()
+        };
+        view.push(mergedMain);
+      } else if (!mergedGndIds.has(net.id)) {
+        view.push(net);
       }
     }
+    for (const net of nets) {
+      if (mergedGndIds.has(net.id)) mergedMain.terminals.push(...net.terminals);
+    }
+    nets = view;
+  } else {
+    // Fresh wrapper either way, so the terminal map below attaches to an
+    // array only this solve can see — never to the caller's.
+    nets = nets.slice();
   }
+
+  // terminal → net id, built once per solve. `findNet` was a linear scan of
+  // all nets × all terminals, called several times per element per stamp per
+  // NR iteration — the dominant cost on imported boards before the O(n³)
+  // solve even starts (ROADMAP E1.1; spec-updates/sparse-lu-factor-reuse.md).
+  nets[NETS_TERM_MAP] = buildTermMap(nets);
 
   /** @type {Map<string, number>} net id → node index */
   const nodeIndex = new Map();
@@ -29027,7 +29525,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     if (powerOff) {
       // Only include nets that have at least one passive element terminal
       const hasPassive = net.terminals.some(t => {
-        const p = parts.find(pp => pp.id === t.part);
+        const p = partMap.get(t.part);
         return p && passiveKinds.has(p.kind);
       });
       if (!hasPassive) continue;
@@ -29107,12 +29605,10 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     }
   }
   const dim = nodeCount + vsCount;
-  const A = new Matrix(dim, dim);
+  // Sparse-by-default assembly: the stamps write into a coordinate map with
+  // dense semantics; reset() keeps the slot pattern across NR iterations.
+  const A = new _sparse_js__WEBPACK_IMPORTED_MODULE_1__.CooMatrix(dim);
   const b = new Float64Array(dim);
-
-  // Part index for looking up nets
-  /** @type {Map<string, Part>} */
-  const partMap = new Map(parts.map(p => [p.id, p]));
 
   // ─── Stamp elements ─────────────────────────────────────────────────────
 
@@ -29147,8 +29643,8 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
   let solution = new Float64Array(dim);
   let converged = false;
   for (let iter = 0; iter < MAX_NR_ITER; iter++) {
-    // Clear matrix
-    A.data.fill(0);
+    // Clear values; the assembled pattern survives for factor reuse.
+    A.reset();
     b.fill(0);
 
     // A schematic conventionally draws ONE power symbol per connection point,
@@ -29413,10 +29909,9 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     for (let i = 0; i < nodeCount; i++) A.add(i, i, GMIN);
 
     // Solve
-    const Acopy = A.clone();
     const bcopy = new Float64Array(b);
     try {
-      solution = solve(Acopy, bcopy);
+      solution = solveAssembled(A, bcopy);
     } catch (_unused) {
       // Singular matrix — bail
       break;
@@ -29625,6 +30120,10 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
   /** @type {Map<string, number>} */
   const nodeVoltages = new Map();
   if (groundNetId) nodeVoltages.set(groundNetId, 0);
+  // Merged-away gnd island nets are physically the reference too. The caller
+  // still holds them (the merge no longer rewrites its netlist), so they must
+  // answer here — absent entries would read as "unknown net", not 0 V.
+  for (const id of mergedGndIds) nodeVoltages.set(id, 0);
   for (const [netId, idx] of nodeIndex) {
     nodeVoltages.set(netId, solution[idx]);
   }
@@ -29881,6 +30380,28 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
 // ─── Stamp functions ─────────────────────────────────────────────────────────
 
 /**
+ * Per-solve terminal→net map. solveMNA attaches one (under a Symbol, on its
+ * own private copy of the nets array — never on the caller's) so the tens of
+ * findNet calls per stamp per NR iteration are O(1) lookups. Arrays without
+ * the map — external callers of the exported findNet — keep the linear scan.
+ */
+const NETS_TERM_MAP = Symbol('bw-term-map');
+const termKey = (partId, terminal) => partId + String.fromCharCode(0) + terminal;
+
+/** @param {Net[]} nets @returns {Map<string, string>} */
+function buildTermMap(nets) {
+  const m = new Map();
+  for (const net of nets) {
+    for (const t of net.terminals) {
+      const k = termKey(t.part, t.terminal);
+      // First net in array order wins — the linear scan's exact semantics.
+      if (!m.has(k)) m.set(k, net.id);
+    }
+  }
+  return m;
+}
+
+/**
  * Find the net connected to a specific terminal of a part.
  * @param {Net[]} nets
  * @param {string} partId
@@ -29888,6 +30409,8 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
  * @returns {string | undefined}
  */
 function findNet(nets, partId, terminal) {
+  const m = /** @type {Map<string, string> | undefined} */nets[NETS_TERM_MAP];
+  if (m) return m.get(termKey(partId, terminal));
   for (const net of nets) {
     for (const t of net.terminals) {
       if (t.part === partId && t.terminal === terminal) {
@@ -30097,16 +30620,33 @@ function stampBuzzerResistance(A, b, part, nets, nodeIndex, groundNetId) {
  * model's own `stamp(ctx)` for input impedance / analog loading.
  */
 function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, dtSec) {
-  // Drives: terminal → {vTh, rTh} | null
+  // Drives: terminal → {vTh, rTh, ref?} | null
+  //
+  // Without `ref` the Norton is stamped against the reference node — right
+  // for a logic output whose return is the shared ground, wrong for a
+  // floating source. With `ref: '<terminal>'` the source drives `terminal`
+  // relative to the device's OWN pin: the standard floating-Thévenin
+  // companion (spec-updates/referenced-device-drives.md).
   for (const [terminal, drive] of Object.entries((_state$drives = state.drives) !== null && _state$drives !== void 0 ? _state$drives : {})) {
     var _state$drives;
     if (!drive) continue;
     const net = findNet(nets, part.id, terminal);
-    const idx = net ? nodeIndex.get(net) : undefined;
-    if (idx === undefined) continue;
+    if (!net) continue;
     const g = 1 / Math.max(drive.rTh, 1e-3);
-    A.add(idx, idx, g);
-    b[idx] += drive.vTh * g;
+    if (drive.ref) {
+      const refNet = findNet(nets, part.id, drive.ref);
+      if (!refNet) continue; // return pin in the air: no current path at all
+      stampTwoTerminal(A, net, refNet, g, nodeIndex);
+      const idx = nodeIndex.get(net);
+      const refIdx = nodeIndex.get(refNet);
+      if (idx !== undefined) b[idx] += drive.vTh * g;
+      if (refIdx !== undefined) b[refIdx] -= drive.vTh * g;
+    } else {
+      const idx = nodeIndex.get(net);
+      if (idx === undefined) continue;
+      A.add(idx, idx, g);
+      b[idx] += drive.vTh * g;
+    }
   }
   if (!model.stamp) return;
   const ctx = {
@@ -30123,6 +30663,22 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       const g = 1 / Math.max(rTh, 1e-3);
       A.add(idx, idx, g);
       b[idx] += vTh * g;
+    },
+    // Source between two of the device's own pins: vTh raises termPlus
+    // above termMinus through rTh. Reduces exactly to `thevenin` when the
+    // return pin sits on the reference net; representable nowhere else
+    // before this existed — a battery whose neg is off-ground stamped its
+    // EMF against ground instead (spec-updates/referenced-device-drives.md).
+    theveninBetween: (termPlus, termMinus, vTh, rTh) => {
+      const netP = findNet(nets, part.id, termPlus);
+      const netN = findNet(nets, part.id, termMinus);
+      if (!netP || !netN) return; // a leg in the air carries no current
+      const g = 1 / Math.max(rTh, 1e-3);
+      stampTwoTerminal(A, netP, netN, g, nodeIndex);
+      const idxP = nodeIndex.get(netP);
+      const idxN = nodeIndex.get(netN);
+      if (idxP !== undefined) b[idxP] += vTh * g;
+      if (idxN !== undefined) b[idxN] -= vTh * g;
     },
     current: (terminal, amps) => {
       const net = findNet(nets, part.id, terminal);
@@ -32550,6 +33106,498 @@ class SimpleVGA {
   }
 }
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (SimpleVGA);
+
+/***/ }),
+
+/***/ "./src/lib/bw-board/sparse.js":
+/*!************************************!*\
+  !*** ./src/lib/bw-board/sparse.js ***!
+  \************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   CooMatrix: () => (/* binding */ CooMatrix),
+/* harmony export */   SparseLU: () => (/* binding */ SparseLU),
+/* harmony export */   toCSC: () => (/* binding */ toCSC)
+/* harmony export */ });
+/**
+ * Sparse assembly and solve for the MNA system.
+ *
+ * `CooMatrix` is the assembler the stamps write into: a coordinate map with
+ * dense-Matrix semantics (`add` accumulates, `set` overwrites whatever the
+ * cell holds — the op-amp follower stamps set-then-add on one cell, so order
+ * matters and is preserved per cell). `reset()` zeroes values but KEEPS the
+ * slot map: across Newton–Raphson iterations the pattern only ever grows
+ * (region flips stamp different cells; the old ones stay as structural
+ * zeros), which is exactly what lets a later factorization reuse its
+ * symbolic work against a superset pattern.
+ *
+ * spec-updates/sparse-lu-factor-reuse.md. Licence note (binding): KLU, BTF,
+ * CSparse/CXSparse and mathjs's sparse module are LGPL — not used, ported,
+ * or read for this implementation. This file is a from-scratch
+ * Gilbert-Peierls-style left-looking LU (the algorithm is from the
+ * published literature) over the CooMatrix's CSC form.
+ *
+ * @module
+ */
+
+/**
+ * Coordinate-format matrix with first-touch slot allocation.
+ * API-compatible with the dense Matrix used by the MNA stamps.
+ */
+class CooMatrix {
+  /** @param {number} n */
+  constructor(n) {
+    this.n = n;
+    this.rows = n;
+    this.cols = n;
+    /** @type {Map<number, number>} cell key (r*n+c) → slot in v */
+    this.idx = new Map();
+    /** @type {number[]} */
+    this.ri = [];
+    /** @type {number[]} */
+    this.ci = [];
+    /** @type {number[]} */
+    this.v = [];
+  }
+
+  /** @param {number} r @param {number} c @returns {number} slot */
+  _slot(r, c) {
+    const k = r * this.n + c;
+    let s = this.idx.get(k);
+    if (s === undefined) {
+      s = this.v.length;
+      this.idx.set(k, s);
+      this.ri.push(r);
+      this.ci.push(c);
+      this.v.push(0);
+    }
+    return s;
+  }
+
+  /** @param {number} r @param {number} c @param {number} val */
+  add(r, c, val) {
+    this.v[this._slot(r, c)] += val;
+  }
+
+  /** @param {number} r @param {number} c @param {number} val */
+  set(r, c, val) {
+    this.v[this._slot(r, c)] = val;
+  }
+
+  /** @param {number} r @param {number} c @returns {number} */
+  get(r, c) {
+    const s = this.idx.get(r * this.n + c);
+    return s === undefined ? 0 : this.v[s];
+  }
+
+  /** Zero the values, keep the pattern (slots survive for the next fill). */
+  reset() {
+    const v = this.v;
+    for (let i = 0; i < v.length; i++) v[i] = 0;
+  }
+
+  /** Number of structurally nonzero cells (incl. explicit zeros). */
+  get nnz() {
+    return this.v.length;
+  }
+}
+
+/**
+ * Sparse LU with partial pivoting — left-looking, one column at a time.
+ *
+ * factor(csc):   full factorization. Per column: DFS reachability over L's
+ *                pattern gives the triangular-solve order, numeric update,
+ *                pivot = the largest remaining |entry| in the column.
+ *                Stores the per-column reach lists and the pivot order.
+ * refactor(csc): numeric-only refill assuming the SAME input pattern and
+ *                the SAME pivot order — skips every DFS. Returns false
+ *                (caller must full-factor) if a fixed pivot has collapsed.
+ * solve(b):      permuted forward/back substitution. b is not modified.
+ *
+ * Everything is indexed in pivot-position space after factor completes.
+ * Singularity throws the same "Singular matrix at column N" contract the
+ * dense elimination throws, so the NR loop's bail path is unchanged.
+ */
+class SparseLU {
+  constructor() {
+    this.n = 0;
+    /** @type {Int32Array} pivot position → original row */
+    this.perm = null;
+    /** @type {Int32Array} original row → pivot position */
+    this.pinv = null;
+    // L: unit lower triangular, entries strictly below the diagonal.
+    this.Lp = null;
+    this.Li = null;
+    this.Lx = null;
+    // U: entries strictly above the diagonal, plus the diagonal itself.
+    this.Up = null;
+    this.Ui = null;
+    this.Ux = null;
+    this.Udiag = null;
+    /** @type {Int32Array[]} per-column topological reach (pivot positions) */
+    this.reach = null;
+    // The input pattern the factorization was built for.
+    this.inColPtr = null;
+    this.inRowIdx = null;
+  }
+
+  /**
+   * @param {{n: number, colPtr: Int32Array, rowIdx: Int32Array, values: Float64Array}} csc
+   */
+  factor(csc) {
+    const {
+      n,
+      colPtr,
+      rowIdx,
+      values
+    } = csc;
+    this.n = n;
+    const perm = new Int32Array(n).fill(-1);
+    const pinv = new Int32Array(n).fill(-1);
+
+    // Growable L/U column stores (plain arrays during factor, typed after).
+    /** @type {number[][]} */
+    const LiCols = [];
+    /** @type {number[][]} */
+    const LxCols = [];
+    /** @type {number[][]} */
+    const UiCols = [];
+    /** @type {number[][]} */
+    const UxCols = [];
+    const Udiag = new Float64Array(n);
+    /** @type {Int32Array[]} */
+    const reachCols = [];
+    const w = new Float64Array(n); // dense accumulator, by ORIGINAL row
+    const touched = new Int32Array(n); // rows to clear after each column
+    const mark = new Uint8Array(n); // row is in the current column's set
+    const stack = new Int32Array(n); // DFS stack of pivot positions
+    const stackPos = new Int32Array(n); // per-frame progress into L(:,p)
+    const visited = new Uint8Array(n); // pivot position seen this column
+    const topo = new Int32Array(n); // reach in reverse-topological fill
+
+    for (let j = 0; j < n; j++) {
+      // Scatter A(:,j) and collect the DFS roots among pivoted rows.
+      let nTouched = 0;
+      let nTopo = 0;
+      for (let p = colPtr[j]; p < colPtr[j + 1]; p++) {
+        const r = rowIdx[p];
+        if (!mark[r]) {
+          mark[r] = 1;
+          touched[nTouched++] = r;
+          w[r] = 0;
+        }
+        w[r] += values[p];
+        const pv = pinv[r];
+        if (pv >= 0 && !visited[pv]) {
+          // Iterative DFS from pivot position pv over L's pattern.
+          let top = 0;
+          stack[top] = pv;
+          stackPos[top] = 0;
+          visited[pv] = 1;
+          while (top >= 0) {
+            const pcol = stack[top];
+            const Lrows = LiCols[pcol];
+            let k = stackPos[top];
+            let descended = false;
+            for (; k < Lrows.length; k++) {
+              const rr = Lrows[k]; // original row index
+              const ppv = pinv[rr];
+              if (ppv >= 0 && !visited[ppv]) {
+                stackPos[top] = k + 1;
+                top++;
+                stack[top] = ppv;
+                stackPos[top] = 0;
+                visited[ppv] = 1;
+                descended = true;
+                break;
+              }
+            }
+            if (!descended) {
+              topo[nTopo++] = pcol; // post-order = reverse topo
+              top--;
+            }
+          }
+        }
+      }
+
+      // Numeric triangular solve in topological order (reverse post-order).
+      const reachJ = new Int32Array(nTopo);
+      for (let t = nTopo - 1, o = 0; t >= 0; t--, o++) {
+        const pcol = topo[t];
+        reachJ[o] = pcol;
+        const prow = perm[pcol];
+        if (!mark[prow]) {
+          mark[prow] = 1;
+          touched[nTouched++] = prow;
+          w[prow] = 0;
+        }
+        const xj = w[prow];
+        if (xj !== 0) {
+          const Lrows = LiCols[pcol];
+          const Lvals = LxCols[pcol];
+          for (let k = 0; k < Lrows.length; k++) {
+            const rr = Lrows[k];
+            if (!mark[rr]) {
+              mark[rr] = 1;
+              touched[nTouched++] = rr;
+              w[rr] = 0;
+            }
+            w[rr] -= Lvals[k] * xj;
+          }
+        }
+      }
+
+      // Pivot: largest |w| over unpivoted touched rows.
+      let pivotRow = -1;
+      let pivotAbs = 0;
+      for (let t = 0; t < nTouched; t++) {
+        const r = touched[t];
+        if (pinv[r] >= 0) continue;
+        const a = Math.abs(w[r]);
+        if (a > pivotAbs) {
+          pivotAbs = a;
+          pivotRow = r;
+        }
+      }
+      if (pivotRow < 0 || pivotAbs < 1e-15) {
+        // Restore workspace before throwing so the instance is reusable.
+        for (let t = 0; t < nTouched; t++) {
+          mark[touched[t]] = 0;
+        }
+        for (let t = 0; t < nTopo; t++) visited[topo[t]] = 0;
+        throw new Error("Singular matrix at column ".concat(j));
+      }
+      const pivotVal = w[pivotRow];
+      perm[j] = pivotRow;
+      pinv[pivotRow] = j;
+      Udiag[j] = pivotVal;
+
+      // U(:,j): pivoted rows (position < j), stored by pivot position.
+      const Ui = [];
+      const Ux = [];
+      // L(:,j): remaining unpivoted rows, stored by ORIGINAL row for now.
+      const Li = [];
+      const Lx = [];
+      for (let t = 0; t < nTouched; t++) {
+        const r = touched[t];
+        const val = w[r];
+        mark[r] = 0;
+        if (r === pivotRow) continue;
+        // Numeric zeros are KEPT: the pattern is structural. Dropping a
+        // cell that happens to be 0.0 at factor time would let refactor()
+        // produce a value outside the stored pattern and silently corrupt
+        // the columns after it.
+        const pv = pinv[r];
+        if (pv >= 0 && pv < j) {
+          Ui.push(pv);
+          Ux.push(val);
+        } else if (pv < 0) {
+          Li.push(r);
+          Lx.push(val / pivotVal);
+        }
+      }
+      for (let t = 0; t < nTopo; t++) visited[topo[t]] = 0;
+      LiCols.push(Li);
+      LxCols.push(Lx);
+      UiCols.push(Ui);
+      UxCols.push(Ux);
+      reachCols.push(reachJ);
+    }
+
+    // Freeze into CSC-style typed arrays; remap L's rows to pivot positions.
+    const finLp = new Int32Array(n + 1);
+    const finUp = new Int32Array(n + 1);
+    for (let j = 0; j < n; j++) {
+      finLp[j + 1] = finLp[j] + LiCols[j].length;
+      finUp[j + 1] = finUp[j] + UiCols[j].length;
+    }
+    const finLi = new Int32Array(finLp[n]);
+    const finLx = new Float64Array(finLp[n]);
+    const finUi = new Int32Array(finUp[n]);
+    const finUx = new Float64Array(finUp[n]);
+    for (let j = 0; j < n; j++) {
+      let o = finLp[j];
+      const Li = LiCols[j];
+      const Lx = LxCols[j];
+      for (let k = 0; k < Li.length; k++, o++) {
+        finLi[o] = pinv[Li[k]]; // by factor's end every row is pivoted
+        finLx[o] = Lx[k];
+      }
+      o = finUp[j];
+      const Ui = UiCols[j];
+      const Ux = UxCols[j];
+      for (let k = 0; k < Ui.length; k++, o++) {
+        finUi[o] = Ui[k];
+        finUx[o] = Ux[k];
+      }
+    }
+    this.perm = perm;
+    this.pinv = pinv;
+    this.Lp = finLp;
+    this.Li = finLi;
+    this.Lx = finLx;
+    this.Up = finUp;
+    this.Ui = finUi;
+    this.Ux = finUx;
+    this.Udiag = Udiag;
+    this.reach = reachCols;
+    this.inColPtr = colPtr.slice();
+    this.inRowIdx = rowIdx.slice();
+  }
+
+  /**
+   * Same-pattern check against the pattern factor() was built from.
+   * @param {{n: number, colPtr: Int32Array, rowIdx: Int32Array}} csc
+   */
+  samePattern(csc) {
+    if (csc.n !== this.n || !this.inColPtr) return false;
+    const {
+      colPtr,
+      rowIdx
+    } = csc;
+    if (colPtr.length !== this.inColPtr.length || rowIdx.length !== this.inRowIdx.length) return false;
+    for (let i = 0; i < colPtr.length; i++) if (colPtr[i] !== this.inColPtr[i]) return false;
+    for (let i = 0; i < rowIdx.length; i++) if (rowIdx[i] !== this.inRowIdx[i]) return false;
+    return true;
+  }
+
+  /**
+   * Numeric-only refactorization: same pattern, same pivot ORDER, no DFS.
+   * Returns false when a fixed pivot has collapsed (values moved enough
+   * that the stored pivot choice is no longer safe) — the caller then runs
+   * a full factor().
+   *
+   * @param {{n: number, colPtr: Int32Array, rowIdx: Int32Array, values: Float64Array}} csc
+   * @returns {boolean}
+   */
+  refactor(csc) {
+    const n = this.n;
+    const {
+      colPtr,
+      rowIdx,
+      values
+    } = csc;
+    const {
+      perm,
+      pinv,
+      Lp,
+      Li,
+      Lx,
+      Up,
+      Ui,
+      Ux,
+      Udiag,
+      reach
+    } = this;
+    const w = new Float64Array(n); // by pivot position this time
+
+    for (let j = 0; j < n; j++) {
+      // Scatter A(:,j) into pivot-position space. Only positions in the
+      // stored patterns are read back, and those are exactly the positions
+      // the stored elimination can produce — same pattern in, same out.
+      for (let p = colPtr[j]; p < colPtr[j + 1]; p++) {
+        w[pinv[rowIdx[p]]] += values[p];
+      }
+      const reachJ = reach[j];
+      for (let t = 0; t < reachJ.length; t++) {
+        const pcol = reachJ[t];
+        const xj = w[pcol];
+        if (xj !== 0) {
+          for (let k = Lp[pcol]; k < Lp[pcol + 1]; k++) {
+            w[Li[k]] -= Lx[k] * xj;
+          }
+        }
+      }
+      const pivotVal = w[j];
+      if (!(Math.abs(pivotVal) >= 1e-13)) {
+        // Clear workspace before handing back.
+        w.fill(0);
+        return false;
+      }
+      Udiag[j] = pivotVal;
+      for (let k = Up[j]; k < Up[j + 1]; k++) {
+        Ux[k] = w[Ui[k]];
+        w[Ui[k]] = 0;
+      }
+      for (let k = Lp[j]; k < Lp[j + 1]; k++) {
+        Lx[k] = w[Li[k]] / pivotVal;
+        w[Li[k]] = 0;
+      }
+      w[j] = 0;
+      // Anything the fixed elimination produced OUTSIDE the stored pattern
+      // cannot exist when the input pattern is identical; positions not in
+      // U/L for this column were never written except via scatter, and the
+      // scatter positions are all consumed above or belong to later columns.
+    }
+    return true;
+  }
+
+  /**
+   * @param {Float64Array} b - untouched
+   * @returns {Float64Array}
+   */
+  solve(b) {
+    const n = this.n;
+    const {
+      perm,
+      Lp,
+      Li,
+      Lx,
+      Up,
+      Ui,
+      Ux,
+      Udiag
+    } = this;
+    const y = new Float64Array(n);
+    for (let j = 0; j < n; j++) y[j] = b[perm[j]];
+    // Forward: L is unit lower, entries strictly below the diagonal.
+    for (let j = 0; j < n; j++) {
+      const yj = y[j];
+      if (yj !== 0) {
+        for (let k = Lp[j]; k < Lp[j + 1]; k++) y[Li[k]] -= Lx[k] * yj;
+      }
+    }
+    // Back: U entries are strictly above the diagonal, diag in Udiag.
+    for (let j = n - 1; j >= 0; j--) {
+      const yj = y[j] /= Udiag[j];
+      if (yj !== 0) {
+        for (let k = Up[j]; k < Up[j + 1]; k++) y[Ui[k]] -= Ux[k] * yj;
+      }
+    }
+    return y;
+  }
+}
+
+/**
+ * Compressed-sparse-column view of a CooMatrix. Duplicates cannot occur
+ * (the slot map guarantees one entry per cell).
+ *
+ * @param {CooMatrix} A
+ * @returns {{n: number, colPtr: Int32Array, rowIdx: Int32Array, values: Float64Array}}
+ */
+function toCSC(A) {
+  const n = A.n;
+  const nnz = A.v.length;
+  const colPtr = new Int32Array(n + 1);
+  for (let i = 0; i < nnz; i++) colPtr[A.ci[i] + 1]++;
+  for (let c = 0; c < n; c++) colPtr[c + 1] += colPtr[c];
+  const rowIdx = new Int32Array(nnz);
+  const values = new Float64Array(nnz);
+  const fill = Int32Array.from(colPtr.subarray(0, n));
+  for (let i = 0; i < nnz; i++) {
+    const p = fill[A.ci[i]]++;
+    rowIdx[p] = A.ri[i];
+    values[p] = A.v[i];
+  }
+  return {
+    n,
+    colPtr,
+    rowIdx,
+    values
+  };
+}
 
 /***/ }),
 
