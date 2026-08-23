@@ -112,7 +112,7 @@ finished work:
 | 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
 | 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | open | open |
 | 6 Signals and systems | 10 | done | scanned; **full review open** | open | open |
-| 7 Computers from wires upward | 10 | done | scanned; **full review open** | open | open |
+| 7 Computers from wires upward | 10 | done | **full, done 2026-08-23** — 8 of 10 defective; 8 revised (one to v3), 8 open example/instrument defects | open | open |
 
 "Scanned" and "reviewed" are different claims and the table keeps them apart.
 **Scanned** means all 79 lessons and all 180 checkpoints went through the Tier-3
@@ -227,6 +227,61 @@ code produces and renders rather than against what the feature is called.
 so far. Its hint names `counter = 5` and `bw-debug/condition.js` parses exactly that grammar and
 refuses arithmetic with a reason; its instruction to "deliberately test a misspelled variable"
 lands exactly, because `countr = 5` parses and then evaluates false for ever.
+
+### Wave 7, where the benches are whole computers
+
+Reviewed 2026-08-23 — `docs/LESSON-REVIEW-WAVE-7.md`. **10 lessons, 20 checkpoints, 8 defective,
+8 revised (one to content version 3, seven to 2), 8 defects open — five in an example, three in an
+instrument, none in a lesson.** The Tier-3 detector found one blocking (`machines-contention`
+observes `circuit-changed`, the third wave to meet that same dead observable after Wave 1's
+`starter-circuit-path` and Wave 6's `signals-resonance`).
+
+Much of this wave is in good shape and the good parts are load-bearing. The bus extract behind the
+designer's **Build Machine** button produces exactly the map two lessons ask the learner to derive —
+`MAP RAM $0000-$3FFF`, `MAP ROM $8000-$FFFF`, `CHIP via = W65C22 AT $6000`, plus notes for both
+mirrors and for the 4096 open-bus addresses — and refuses the contention bench with
+`bus contention at $2000: ram and via are both selected`. The machine benches also need **no
+network**: `debug-runner.js` skips the image build for machine-class targets, so Wave 5's defect 0
+does not reach them.
+
+**A near-miss worth keeping.** Reading `DebugStatus.jsx` alone says the machine debugger shows a
+halt flag, a step button and a millisecond counter, which would make three lessons impossible. They
+are not: `ArchitectureFace.jsx` renders A/X/Y/SP/PC, the P flags, both buses, IR, the live
+disassembly at PC and the cycle count, and `debug-drawer.jsx` renders paged memory and the stack.
+Second time in this campaign that stopping at the first component would have produced a dramatic
+wrong finding (Wave 1's flyback spike was the first).
+
+Open, in the order they cost a learner most:
+
+- **Three machine benches boot with an EMPTY ROM.** No example ships a ROM image (`28c256`
+  parts carry `params: {}`), `sb3-creator` has no assembler, and the runner skips the build — so
+  the runner says "extracted machine booted with an empty ROM — load a program (presets, file, or
+  ASM tab)" and the CPU sits on `BRK` at `$0000`. The bundled presets (Tali Forth 2, MS BASIC,
+  LCD Hello; Switch Mirror, BBC BASIC) fix it in one click, and no lesson mentioned them.
+  **Where it belongs:** either the examples ship a ROM, or the machine lessons name a preset —
+  they now name a preset.
+- **`20-shift-register-binary` shifts a constant zero.** Measured over 3 s: clock 208 edges,
+  latch 26, **data 0**. Isolated to the comparison, not to precedence: with `val = 128`,
+  `bitand val 128 > 0` is false, `(bitand val 128) > 0` is also false, and `bitand val 128` alone
+  is true. Whether the fault is the emitted comparison or the referee's evaluation was not
+  isolated. **Blocked on:** deciding which, upstream in `sb3-creator`.
+- **`ttl-clock-module`'s step button is wired to nothing.** Topology, not timing: the net carrying
+  `btn1.b` carries only `r3.a`, and `r3` goes to ground; the 555's reset pin is strapped to the
+  rail. `EXPECTED.md` still says "The manual step button injects a single pulse when pressed".
+  The board also has no downstream state at all — no flip-flop, no counter — while its lesson asks
+  the learner to "verify exactly one downstream transition". **Where it belongs:** upstream, and
+  the fix is a wire plus a flip-flop, i.e. a real example revision rather than a typo.
+- **No cycle-level step, and the scope is ten times too slow for a bus.** The 6502 target steps by
+  instruction, step-over and step-out; the circuit-side button advances 50 ms (fifty thousand
+  cycles at 1 MHz); the scope samples every 10 µs against a 1 µs bus cycle. `machines-buses` said
+  "single-step the clock" and `machines-interrupts-performance` said "use pin edges for external
+  timing".
+- **The 8051 port mode changes the level a lesson quotes.** `06-active-low-high` measures
+  P1.1 high = 4.93 V in push-pull and 2.12 V in the family's default quasi-bidirectional mode,
+  where the active-high LED falls to 4 % brightness while the active-low one is unchanged. Now
+  taught as the contrast rather than stated as one number.
+- **`circuit-changed` still cannot fire on a bench with no pin declarations** — now pinned by three
+  waves' gates.
 
 ### The Tier-3 detector, and what it changes about the estimate
 
