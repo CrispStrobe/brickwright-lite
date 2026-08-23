@@ -22,7 +22,6 @@ import path from 'node:path';
 // (found 2026-08-23 when sparse.js failed to arrive). Prefer --dir with the
 // local sibling checkout; the GitHub path is the fallback.
 const REF = process.env.BWBOARD_REF || 'master';
-const RAW = `https://raw.githubusercontent.com/CrispStrobe/bw-board/${REF}`;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
 const check = process.argv.includes('--check');
@@ -66,6 +65,21 @@ const listSrc = async () => {
 };
 
 const FILES = srcDir ? await listSrc() : FALLBACK;
+
+// Remote mode fetches BY RESOLVED SHA, never by branch name: the raw
+// CDN caches branch URLs for minutes, and a sync run right after a push
+// silently vendored the PREVIOUS commit while claiming master (bitten
+// 2026-08-23 — the E5.2 marker never arrived, the pin never moved). The
+// commits API is not the raw CDN and answers with the current head; the
+// sha-addressed raw URLs are immutable, so the cache cannot lie about them.
+let remoteSha = null;
+if (!srcDir) {
+    const r = await fetch(`https://api.github.com/repos/CrispStrobe/bw-board/commits/${REF}`,
+        { headers: { accept: 'application/vnd.github+json' } });
+    if (!r.ok) throw new Error(`resolve ${REF} via the commits API: HTTP ${r.status}`);
+    remoteSha = (await r.json()).sha;
+}
+const RAW = `https://raw.githubusercontent.com/CrispStrobe/bw-board/${remoteSha ?? REF}`;
 
 async function readSource (rel) {
     if (srcDir) return readFile(path.join(srcDir, rel), 'utf8');
@@ -158,10 +172,14 @@ console.log(check ? '\nvendored engine up to date.' : `\nsynced from bw-board@${
 
 // Record the upstream commit this sync captured, so vendor-freshness CI
 // compares against the PIN, not a moving HEAD (bump = re-run this sync).
-if (!check && srcDir) {
+// Remote mode records too — it resolved a real sha above; leaving the
+// pin untouched made a remote sync lie about what it vendored.
+if (!check && (srcDir || remoteSha)) {
     try {
         const { execSync } = await import('node:child_process');
-        const pinSha = execSync(`git -C ${JSON.stringify(srcDir)} rev-parse HEAD`).toString().trim();
+        const pinSha = srcDir
+            ? execSync(`git -C ${JSON.stringify(srcDir)} rev-parse HEAD`).toString().trim()
+            : remoteSha;
         const pinsFile = path.join(here, '..', 'vendor-pins.json');
         const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
         pins['bw-board'] = pinSha;
