@@ -108,7 +108,14 @@ const KNOWN_MISSING_OPCODES = new Map([
     ['70-calculator-simple', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
     ['72-pico-oled-hello', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
     ['73-voltmeter', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
-    ['75-battery-tester', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']]
+    ['75-battery-tester', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
+    // Same gap, reached from the other direction: bw-cui2 authored correct
+    // circuits for these two, and the verbs underneath them still do not
+    // exist. Enrolled because the gallery gate requires every program.bw dir
+    // to be indexed; recorded here so the debt is visible, not silent. These
+    // leave with the other seven, not before.
+    ['disp-oled', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
+    ['disp-mono-lcd', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']]
 ]);
 
 /**
@@ -121,7 +128,9 @@ const KNOWN_INERT = new Set([
     'arduino-01-fade', 'arduino-02-blink-without-delay', 'arduino-02-tone-melody',
     'arduino-03-analog-write-mega', 'arduino-03-fading', 'arduino-sk-p08-hourglass',
     // downstream of the undefined-opcode gap above:
-    '55-oled-hello', '51-tft-pixels', '72-pico-oled-hello'
+    '55-oled-hello', '51-tft-pixels', '72-pico-oled-hello',
+    // same cause, added 2026-08-23 with their circuits:
+    'disp-oled', 'disp-mono-lcd'
 ]);
 
 /** `kind: "full"` entries whose program.bw is a board declaration with no code. */
