@@ -80,6 +80,8 @@ Acceptance criteria:
   - **Circuit variants: still open.** `test/schematic-*.test.mjs` renders all 1,034 and checks
     mechanical legibility; nothing asserts a variant is electrically what the simulator solves
     (§6).
+- Every declared field in the corpus is one something reads, and every declared classification
+  agrees with the files it classifies. **Done 2026-08-23** — see "The corpus-defect sweep" below.
 - Extension conformance runs in CI for every device family the gallery targets, with no
   environment in which it silently skips.
 - The verification-debt ledger below has no open wave older than the newest shipped wave.
@@ -98,6 +100,110 @@ repeated-key bug survived a careful read and a clean `bw check` and died the
 moment the program was executed. Build detectors, batch-fix what they flag,
 read only the residue.
 
+### The corpus-defect sweep (2026-08-23)
+
+All 274 enrolled examples and all 2,098 circuit files were swept for the four defect
+classes the recent finds belong to, plus a fifth the sweep turned up. Every fix is
+UPSTREAM in `sb3-creator`, on `fix/milestone0-corpus`; lite picks them up on the next
+vendor-forward. Per-class counts, **including the zeros**, because a zero that is not
+reported reads as a class nobody looked at:
+
+| Class | Swept | Found | Gate | Mutation-proved |
+| --- | --- | --- | --- | --- |
+| A. A declared field nothing reads | 2,098 circuit files, 53 (kind, key) pairs | **9 keys over 5 part kinds, in 12 examples** | `test/circuit-params-are-read.test.mjs` (two tiers) | yes, both tiers |
+| B. A pin mode contradicted by its verbs | 272 programs, 120 declaring PINs | **0 mode/verb contradictions** — but 2 programs whose named purpose the pin could not serve | the compiler already warns, and `gallery.test.mjs` fails on an undeclared warning | (existing gate) |
+| C. A `kind:` contradicting the files present | 274 index entries | **1** | `test/example-kind-matches-content.test.mjs` | yes, both directions |
+| D. An assignment that parses to something other than what reads it back | 272 programs | **2** (3 phantom variable names, 2 dangling reads) | `test/program-reads-what-it-writes.test.mjs` | yes, all three shapes |
+| E. Arithmetic that means one thing in the VM and another on the device | 272 programs, 122 emitting device C | **5** | `test/vm-and-c-agree-on-arithmetic.test.mjs` | yes, both shapes |
+
+Class E was not in the brief. It was found while sweeping for the others and it is the
+same shape: Brickwright `/` is real division and the C emitter's `/` truncates, so five
+examples were **correct under VM execution and dead on hardware** — which is precisely
+the gap the VM-execution gate cannot see, because in the VM they work.
+
+What the sweep repaired, with the evidence:
+
+- **Class A.** `ldr.minOhms/maxOhms` -> `rLight/rDark` (pc48, pc60, pc72, pc73, pc74):
+  five benches simulated a 100R-1M LDR while their own documents did the arithmetic for
+  the 1k-100k part they declared. This MOVED behaviour — pc60 and pc72 switch their lamp
+  a quarter-turn earlier now, pc73 later. `ntc.minOhms/maxOhms` -> `rHot/rCold` (pc55) and
+  `opamp.voutLow/voutHigh` -> `railLow/railHigh` (pc40, pc48, pc54) were right by accident:
+  the declared values happen to equal the engine defaults, and all four benches solve
+  identically before and after. `ntc.ohms` (76-multimeter), `74hc595.outputs`
+  (08-led-chaser-595) and `matrix8x8.polarity` (blinkenrocket-pendant) were dropped.
+- **Class B.** No program applies a verb its pin mode forbids — the 19 Arduino fade
+  programs stayed fixed. But `02-dimmer` and `10-motor-speed` drove an OUTPUT pin with
+  `set <pin> to <reading> bitand 1`, bit 0 of the ADC. For a static pot that bit is a
+  CONSTANT, so the duty cycle could only ever be 0% or 100%: measured 0 at ADC
+  0/102/256/512 and 100 at 513/767/1023, nothing between. Their intros promise "fully off
+  to fully bright" and "speeds up and slows down smoothly". Rewritten as software PWM in
+  24-pwm-fade's shape; both still retarget to all seven declared devices.
+- **Class C.** `33-inductive-no-flyback` declared `kind:"circuit"` while shipping a program
+  that parses to the same six blocks as `01-blink`, and was the only kind:"circuit" entry
+  carrying `devices`, `benches`, `tier` and `authored`.
+- **Class D.** `20-shift-register-binary` wrote the bit operators in PREFIX form, so the
+  parser read three VARIABLE NAMES ("bitand val 128", "bitand", "val 1 255") and the
+  emitted C was `if ((bitand_val_128 > 0))`. The 595 latched 0x00 for every counter value
+  and all eight LEDs stayed dark for the whole 64-second cycle; driven under gcc, as
+  shipped it matched its own EXPECTED.md table for 1 of 10 probe values, fixed for 10 of
+  10. `arduino-07-row-column-scanning` wrote `set x to ...`, which is Scratch's
+  `motion_setx`: it moved the sprite while `print x` read a variable nothing wrote.
+- **Class E.** `arduino-01-read-analog-voltage` and `arduino-sk-p03-love-o-meter` emitted
+  `* (5 / 1023)` = `* 0`; `avr02-dimmer` emitted `(adc / 1023) * 100` = 0% duty below full
+  scale; `arduino-02-tone-pitch-follower` computed `1380 / 600` as 2, not 2.3.
+  `arduino-05-switch-case` was the worst — broken in BOTH targets: 0 in C, and in the VM a
+  fraction (0.2988 at reading 102) matching none of its four `range = N` branches, so it
+  printed nothing at all.
+
+Two documents were describing a program that no longer exists, found by the same sweeps:
+
+- `blinkenrocket-pendant` says a "smiley face" scrolls under two buttons. The program was
+  rewritten on 2026-08-16 to beat two HEART frames, with the buttons slowing the beat, and
+  the documents were never updated. Both intros and EXPECTED.md now show the frames read
+  back out of the program itself, in both languages.
+- `blinkenrocket-pendant`'s polarity checkpoint told the learner to edit the matrix's part
+  number from 788AS to 788BS. Nothing reads that field (class A); `colActiveHigh` and
+  `rowActiveHigh` are the controls, and the text now names them.
+
+Found and NOT fixed, because the fix is not in this repo:
+
+- **`battery_aa` ignores `params.volts` and `params.rInternal`.** bw-board registers it as
+  a fixed 1.5 V / 0.3 ohm Thevenin (`src/devices/named-parts.js`). `75-battery-tester`
+  declares 1.45 V and measures **1.4778 V for every value from 1.45 down to 0.5**, so its
+  EXPECTED.md instruction "edit the volts parameter to 1.3 -> GOOD, 1.1 -> WEAK, 0.9 ->
+  DEAD" cannot be carried out: the verdict is permanently FULL. Recorded as the single
+  ENGINE entry in that gate's KNOWN_INERT. Swapping the part to kind `battery`, which does
+  read both, was measured to restore the lesson exactly (1.45 / 1.30 / 1.10 / 0.90 V read
+  back) — but that changes the drawn part and the loading behaviour, so it is a design call
+  for the owner, not a repair.
+- **The `cNum` truncation is silent.** The C emitter puts every numeric literal through
+  `Math.trunc` and lowers `/` to C's integer `/`, with no warning either way. Class E
+  exists because of that silence. The corpus is now clean and gated, but the next program
+  someone writes will hit it: the emitter should warn when it truncates a fractional
+  literal, and when it emits a quotient that is then scaled.
+
+What the sweep did NOT establish, said plainly:
+
+- The tier-2 probe answers "does perturbing this key move a bench", and 22 (kind, key)
+  pairs have no bench in the corpus that responds — an op-amp that never saturates says
+  nothing about `railHigh`, and no bench spins the `dc_motor` or drives I2C at the
+  `ssd1306`'s address. Each is listed with its reason in the gate's KNOWN_INERT. They are
+  coverage holes in the CORPUS, not defects, and closing one means building a bench that
+  exercises it.
+- The blinkenrocket polarity claim ("every LED glows dimly") is still unverified. Proving
+  it needs the ATtiny88 program running against the matrix model, which the circuit-only
+  harness does not do.
+
+**A stale sibling pin, which is why `main` was red.** `test/fixtures/siblings.json` pinned
+bw-board at `50c3bf7`, and `40db90f` ("a loaded pot wiper routes to MNA") landed after it.
+Without that commit `41-pot-as-dimmer`'s wiper reads the UNLOADED 2.5000 V and its node
+violates KCL by 2.17 mA — the two failures the suite had on a clean `origin/main`
+(6406 tests, 6312 pass, 2 fail, 92 skipped, Node 22, siblings at the pinned revisions).
+The example's own EXPECTED.md already said the engine had been fixed "until 2026-08-23";
+the document was updated and the pin was not. Advanced to `caeac2b`, at which the bench
+measures 2.0301 V at the wiper and 1.9887 V at the anode — exactly the hand-derived
+numbers the document carries.
+
 ### Verification-debt ledger
 
 Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**. Wave 1's
@@ -112,7 +218,28 @@ finished work:
 | 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
 | 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | open | open |
 | 6 Signals and systems | 10 | done | scanned; **full review open** | open | open |
-| 7 Computers from wires upward | 10 | done | scanned; **full review open** | open | open |
+| 7 Computers from wires upward | 10 | done | scanned; **full review open** — 1 defect already confirmed by the corpus sweep (see below) | open | open |
+
+**What the corpus sweep contributed to this table (2026-08-23).** The sweep above reviewed
+the EXAMPLES, not the lessons, but four lesson waves name examples it changed, and one of
+those changes is a defect in an open wave:
+
+- **Wave 7 (`machines-gates-registers`) taught shift registers against a bench that could
+  not shift.** Its example is `20-shift-register-binary`, which latched 0x00 into the 595
+  for every counter value; every LED was dark for the whole 64-second count. The lesson's
+  own checkpoint asks the learner to predict the data line on each clock edge and then
+  compare it against the pin traces — a comparison that could only ever show a flat line.
+  The example is fixed; the lesson still needs its full technical review, and this is the
+  first confirmed defect found inside Wave 7 rather than scanned for.
+- **Wave 3 (`languages-pins-peripherals`) asks for a "reported voltage"** from
+  `arduino-01-read-analog-voltage`, which printed 0 on the device target for every input
+  and the right answer in the VM. The example now reports MILLIVOLTS, because the device
+  target has no floating point; the checkpoint's wording still holds but its unit changed,
+  and Wave 3's review is recorded closed, so this is a re-check it did not get.
+- **Wave 3 (`languages-protocols`) / Wave 2 (`measurement-2`) / Wave 6 (`signals-6`)** name
+  `08-led-chaser-595`, `76-multimeter` and `pc54-opamp-follower`. Only inert declarations
+  were removed from those three and all three were MEASURED to solve identically before and
+  after, so no checkpoint of theirs is affected.
 
 "Scanned" and "reviewed" are different claims and the table keeps them apart.
 **Scanned** means all 79 lessons and all 180 checkpoints went through the Tier-3
