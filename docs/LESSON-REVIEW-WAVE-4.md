@@ -1,9 +1,11 @@
 # Wave 4 technical review — "Interactive systems"
 
-Reviewed 2026-08-23 against `2e294ceaf`. Eight lessons, sixteen checkpoints.
+Reviewed 2026-08-23 against `2e294ceaf`, re-measured against `d7325a272`. Eight lessons,
+sixteen checkpoints.
 
-**7 defective of 8 · 7 revised (one to content version 3, six to 2) · 6 defects
-open in the app, the engine, or an example rather than in a lesson.**
+**7 defective of 8 · 7 revised (one to content version 3, six to 2) · 5 defects
+open in the app or an example rather than in a lesson, and 1 fixed upstream by
+another lane mid-review.**
 
 Wave 4 is the third wave whose subject is not a circuit, and it needs a third
 instrument. Wave 1–2 asked whether a **bench** can produce a reading and
@@ -35,7 +37,7 @@ to this wave's question. Seven defects sat behind it.
 | interactive-displays | lego-hub-face | 1→**2** | **defect, fixed** — two of the values its checkpoint asks for cannot be produced by running the project |
 | interactive-two-way-binding | mb05-faceplate-matrix | 1→**2** | **defect, fixed** — "rebind" has no UI at all and "rename" is a no-op by design |
 | interactive-dashboard | lego-hub-face | 1 | achievable |
-| interactive-calibration-control | arduino-03-calibration | 1→**2** | **defect, fixed** — no filter exists to time, and the actuator it points at is never driven (example bug, open) |
+| interactive-calibration-control | arduino-03-calibration | 1→**2** | **defect, fixed** — no filter exists to time; the dead actuator it also pointed at was repaired upstream mid-review |
 
 Seven of eight. That is a higher rate than Waves 1, 3 or 5, and the reason is
 structural rather than a sudden collapse in quality: six of the eight lessons
@@ -79,14 +81,15 @@ And `arduino-03-calibration`'s bench sweeps cleanly — `pot1.wiper` 0.0005 V,
 map lands exactly where the lesson tells the learner to predict:
 
 ```
-sensor held at    0 (calibrated minimum)  -> sensorValue    0   outputValue    0
-sensor held at  511 (midpoint)            -> sensorValue  511   outputValue  127
-sensor held at 1023 (calibrated maximum)  -> sensorValue 1022   outputValue  255
+sensor held at    0 (calibrated minimum)  -> sensorValue    0   outputValue    0 %   led duty   0
+sensor held at  511 (midpoint)            -> sensorValue  511   outputValue   50 %   led duty  50
+sensor held at 1023 (calibrated maximum)  -> sensorValue 1022   outputValue  100 %   led duty 100
 ```
 
 with the clamp visible at both ends (a reading above the band is pinned to
-`sensorMax` = 1022, one below it to `sensorMin` = 0), and the D13 status LED
-going on and then off exactly once.
+`sensorMax` = 1022, one below it to `sensorMin` = 0), the D13 status LED going
+on and then off exactly once, and 201 PWM writes reaching the green LED. That
+last column is new: see defect 7 for what it read before.
 
 ## The defects
 
@@ -296,9 +299,13 @@ remove-and-re-add, pressing the button leaves `screen` at 1.
 and the hint states both facts — renaming keeps the binding, a re-added widget
 is program-bound — so the learner's own test tells them who owns the arrow.
 
-### 7. interactive-calibration-control — no filter to time, and a dead actuator
+### 7. interactive-calibration-control — no filter to time, and (until mid-review) a dead actuator
 
-Two separate faults, one lesson.
+Two separate faults, one lesson. The second of them was repaired upstream by
+another lane while this review was being written, which is worth recording in
+full rather than quietly deleting: it is the second time in this campaign
+(Wave 2 was the first) that a measured defect was fixed at the source before the
+review shipped.
 
 **The `predict` checkpoint asked the learner to "estimate filter delay in
 samples and seconds", and there is no filter.** `arduino-03-calibration`'s
@@ -308,46 +315,51 @@ t = 8000 ms:
 
 ```
 horizon 7990 ms -> sensorValue    0   outputValue   0
-horizon 8000 ms -> sensorValue 1022   outputValue 255
+horizon 8000 ms -> sensorValue 1022   outputValue 100
 ```
 
 The mapped output arrives complete at the first sample after the step: zero
-filter delay, one 20 ms loop pass. The learner's estimate has nothing to check
-it against.
+filter delay, one pass of its 20-millisecond loop. The learner's estimate has
+nothing to check it against. **This still stands**, and is what version 2 of the
+lesson addresses: `predict` now asks the learner to *choose* a moving-average
+length and say what delay it would cost, stating that this program has none.
 
-**The `test` checkpoint pointed at an actuator the program never drives.** Its
-`set pwm led to outputValue` line is not a pin form — the parser wants
-`PIN led = D9 PWM` and `set led to <n> percent` — so it falls through to the
-generic variable assignment and creates a variable literally named `pwm led`.
-Measured, across every stimulus tried:
+**The `test` checkpoint pointed at an actuator the program did not drive — and
+now does.** As measured on `2e294ceaf`, the program's `set pwm led to
+outputValue` line was not a pin form — the parser wants `PIN led = D9 PWM` and
+`set led to <n> percent` — so it fell through to the generic variable assignment
+and created a variable literally named `pwm led`:
 
 ```
 pwm writes: 0        vars: { …, outputValue: 255, "pwm led": 255 }
 pin events: statusled only  (on at t=0, off after the 5 s calibration window)
 ```
 
-This is the known write/read-split class — `test/example-execution.test.mjs`
-carries a `KNOWN_BROKEN` list of thirteen examples with exactly this defect and
-names `set pwm led to …` in its own comment. `arduino-03-calibration` is **not**
-on that list, and passes the gate, because it also drives D13: "programs with
-output pins produce at least one pin event" is satisfied by the status LED while
-the real actuator is inert.
+This was the known write/read-split class, and `arduino-03-calibration` was
+**not** on `test/example-execution.test.mjs`'s `KNOWN_BROKEN` list of thirteen
+examples with the same defect. It passed that gate because it also drives D13,
+and "programs with output pins produce at least one pin event" is satisfied by
+the status LED while the real actuator is inert. That is the gate hole the
+finding actually exposed.
 
-The lesson is still teachable, because the two things it most wants to show —
-the calibrated map and the clamp — are visible in `sensorValue` and
-`outputValue`, which the learner can watch as stage variables. The third,
-"verify … safe output", is not: the program has no plausibility check and no
-defined safe state.
+`d7325a272` ("vendor sb3-creator@1a83dfa, and take four waiver lists to zero")
+repaired it at the source along with nineteen sibling programs, and took
+`KNOWN_BROKEN` from thirteen to zero. Re-measured on that tree:
 
-**Fixed** in copy, EN and DE, version 2: `predict` now asks the learner to
-*choose* a moving-average length and say what delay it would cost, stating that
-this program has none and the measured step response is one pass; `test` now
-watches `sensorValue` and `outputValue` rather than the LED, says why the LED
-never moves, and asks the learner to name the fail-safe the program is missing.
-The example bug is open — the fix belongs in `sb3-creator` and changes the
-mapping's units (`percent` is 0..100, the Arduino original is 0..255), so it
-ripples into `EXPECTED.md`, both intros and the lesson's own predicted numbers.
-Recorded in `PLAN.md` and pinned.
+```
+pwm writes: 201      outputValue 0 / 50 / 100 at the minimum, midpoint, maximum
+last write: {pin: "led", percent: 100}
+```
+
+Note the unit change that came with the repair: `percent` is 0..100 where the
+Arduino original's `analogWrite` is 0..255, so the mapped values a learner
+predicts are now 0 / 50 / 100 rather than 0 / 127 / 255. The lesson's `test`
+checkpoint accordingly watches `sensorValue`, `outputValue` **and** the green
+LED, and its hint states the duty relationship.
+
+What did not change: the program still has no plausibility check and no defined
+safe state, so "verify … safe output" remains something the learner must
+specify rather than observe. Version 2 asks for exactly that.
 
 ### 8. `6502-terminal` declares a widget type the panel does not have — OPEN, incidental
 
@@ -402,7 +414,7 @@ Every checkpoint in the wave, and how it was settled.
 | interactive-dashboard/predict | off-bench (rank indicators by urgency) |
 | interactive-dashboard/evaluate | achievable — all four scenarios reachable, see above |
 | interactive-calibration-control/predict | **defect 7a**, step response measured by the referee |
-| interactive-calibration-control/test | **defect 7b**, clamp measured; 0 PWM writes measured |
+| interactive-calibration-control/test | **defect 7b**, clamp measured; 0 PWM writes measured, then 201 after the upstream repair |
 
 Nothing is left unverified. The four `predict` checkpoints that are marked
 off-bench are genuinely off-bench — each asks the learner to write a prediction
@@ -423,7 +435,7 @@ interactive-input-controls        retro-console            blocks 104b  pseudo 9
 interactive-displays              lego-hub-face            blocks 43b   pseudo 68L
 interactive-two-way-binding       mb05-faceplate-matrix    blocks 11b   pseudo 18L
 interactive-dashboard             lego-hub-face            blocks 43b   pseudo 68L
-interactive-calibration-control   arduino-03-calibration   blocks 31b   pseudo 32L   c 119L
+interactive-calibration-control   arduino-03-calibration   blocks 31b   pseudo 32L   c 158L
 ```
 
 No Wave 3-style gap here: nothing is empty and nothing throws.
@@ -459,9 +471,11 @@ No Wave 3-style gap here: nothing is empty and nothing throws.
 node --test test/lesson-panel-claims-wave4.test.mjs
 ```
 
-Six of its tests are named `OPEN DEFECT` and assert that a defect **still
+Five of its tests are named `OPEN DEFECT` and assert that a defect **still
 reproduces**: the missing toggle config editor, the absent re-bind UI, the
-micro:bit no-ops, the frozen simulator sensors, the two mode-less faceplates,
-and the calibration example's dead PWM line. They are supposed to fail the day
-someone fixes the app or the example; each message names the lesson hint to
-soften and this document to update.
+micro:bit no-ops, the frozen simulator sensors, and the mode-less faceplates.
+They are supposed to fail the day someone fixes the app or the example; each
+message names the lesson hint to soften and this document to update. A sixth was
+written for the calibration example's dead PWM line and has already been
+replaced by a positive assertion — the repair landed before this branch did,
+which is the mechanism working as intended.

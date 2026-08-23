@@ -109,7 +109,7 @@ plainly, so it cannot read as finished work:
 | 1 Electricity you can see | 12 | done | **full, done 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | open | open |
 | 2 Measure rather than guess | 10 | done | **full, done 2026-08-23** — 5 of 10 defective; 6 revised to v2, 4 open engine defects, 1 fixed upstream mid-review | open | open |
 | 3 One idea, several languages | 12 | done | **full, done 2026-08-23** — 1 of 12 defective; 1 revised to v2 | open | open |
-| 4 Interactive systems | 8 | done | **full, done 2026-08-23** — 7 of 8 defective; 7 revised (one to v3), 6 open app/example defects | open | open |
+| 4 Interactive systems | 8 | done | **full, done 2026-08-23** — 7 of 8 defective; 7 revised (one to v3), 5 open app/example defects, 1 fixed upstream mid-review | open | open |
 | 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | open | open |
 | 6 Signals and systems | 10 | done | scanned; **full review open** | open | open |
 | 7 Computers from wires upward | 10 | done | scanned; **full review open** | open | open |
@@ -231,7 +231,8 @@ lands exactly, because `countr = 5` parses and then evaluates false for ever.
 ### Wave 4, where the subject under test is the interactive surface
 
 Reviewed 2026-08-23 — `docs/LESSON-REVIEW-WAVE-4.md`. **8 lessons, 16 checkpoints, 7 defective,
-7 revised (one to content version 3, six to 2), 6 defects open — none of them in a lesson.** The
+7 revised (one to content version 3, six to 2), 5 defects open and 1 fixed upstream mid-review —
+none of them in a lesson.** The
 Tier-3 detector reported 0 blocking and 0 to review on all eight, which is the right answer to the
 question it asks and no answer at all to this wave's, so all seven were found by measuring.
 
@@ -243,7 +244,7 @@ scratch-vm by the real `bindPanelToVariables`. The faceplate loop itself is soun
 buttons and trail all drive the program — which is what makes the seven defects specific rather
 than a verdict on the surface as a whole.
 
-Six things are open, in the order they cost a learner most:
+Five things are open, in the order they cost a learner most:
 
 - **No simulated micro:bit sensor can be varied from the app.** The bundled simulator models each
   one with its range, default and unit (`RangeSensor("temperature", -5, 50, 21, "°C")`,
@@ -265,18 +266,20 @@ Six things are open, in the order they cost a learner most:
   called from nowhere in the GUI; the only binding call is `bindToProgram` inside `_addWidget`.
   `WidgetCard` even takes an unused `onBindPart` prop. So removing and re-adding a widget silently
   converts a variable binding into a program binding and only reloading the example restores it.
-- **`arduino-03-calibration` never drives its output LED.** `set pwm led to outputValue` is not a
-  pin form — the parser wants `PIN led = D9 PWM` and `set led to <n> percent` — so it creates a
-  variable named `pwm led`; measured, zero PWM writes under every stimulus. It escapes
-  `test/example-execution.test.mjs`'s `KNOWN_BROKEN` list because it also drives a D13 status LED,
-  and "at least one pin event" is satisfied by that. **Blocked on:** the fix belongs upstream in
-  `sb3-creator`, and `percent` is 0..100 where the Arduino original is 0..255, so it ripples into
-  `EXPECTED.md`, both intros, and `interactive-calibration-control`'s predicted numbers (0/127/255
-  today). The same class affects the thirteen examples already on that list.
 - **Four faceplate examples ship no `"mode": "play"`**, including `retro-console` and
   `lego-hub-face`, the benches for four Wave 4 lessons. The importer only calls `setMode` when the
   file says so and `ControllerPanel` defaults to `edit`, where every input control is disabled.
   **Blocked on:** one line per example, upstream in `sb3-creator`. Displays are unaffected.
+
+**Closed mid-review, and worth keeping as evidence the ratchets work:** `arduino-03-calibration`
+drove no LED — `set pwm led to outputValue` created a variable named `pwm led`, zero PWM writes
+under every stimulus. It escaped `test/example-execution.test.mjs`'s `KNOWN_BROKEN` list because it
+also drives a D13 status LED and "at least one pin event" was satisfied by that; **that gate hole
+is the durable finding here**. The repair landed upstream as `d7325a272` while this review was
+being written, taking `KNOWN_BROKEN` from thirteen to zero. Re-measured on that tree: 201 PWM
+writes, 0/50/100 percent at the minimum, midpoint and maximum. The unit changed with the fix
+(`percent` is 0..100 where the Arduino original is 0..255), so the lesson's predicted values moved
+from 0/127/255 to 0/50/100.
 
 Recorded while auditing the same eleven layouts, and outside every Wave 4 lesson:
 `6502-terminal/controller.json` declares widget type `terminal`, which is not in

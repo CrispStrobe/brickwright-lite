@@ -330,11 +330,21 @@ test('interactive-displays: what the shipped run actually puts on each face', as
     assert.equal(lesson('interactive-dashboard').exampleId, 'lego-hub-face');
     const f = await faceplate('lego-hub-face');
     try {
+        // The program paces itself with `wait 200 ms`, which scratch-vm times
+        // against the wall clock, so a fixed step count buys an amount of
+        // PROGRAM time that depends on how loaded the machine is. Run until the
+        // motor has completed one full sweep instead — that is the condition the
+        // claims below are about — with a hard cap so a stalled run fails
+        // loudly rather than hanging.
         const seen = {};
         const frames = new Set();
         const track = ['motor_angle', 'dist_cm', 'colour_id'];
-        for (let i = 0; i < 4000; i++) {
+        let steps = 0;
+        const sweptFully = () => seen.motor_angle &&
+            seen.motor_angle.min === -180 && seen.motor_angle.max === 180 && frames.size === 4;
+        while (steps < 200_000 && !sweptFully()) {
             f.step(1);
+            steps++;
             for (const name of track) {
                 const x = Number(f.val(name));
                 if (!seen[name]) seen[name] = {min: x, max: x};
@@ -343,6 +353,9 @@ test('interactive-displays: what the shipped run actually puts on each face', as
             }
             frames.add(Number(f.val('hub_matrix')));
         }
+        assert.ok(sweptFully(),
+            `the motor sweep did not complete in ${steps} steps — measured ` +
+            `${JSON.stringify(seen.motor_angle)} and ${frames.size} matrix frames`);
         // The matrix cycles through exactly the four patterns EXPECTED.md names.
         assert.deepEqual([...frames].sort((a, b) => a - b),
             [31744, 1118480, 4329604, 17043521].sort((a, b) => a - b));
@@ -496,9 +509,14 @@ test('interactive-calibration-control: the bench sweeps, and the map lands where
     const mid = run(511);
     const high = run(1023);
     assert.deepEqual([low.vars.sensorMin, low.vars.sensorMax], [0, 1022], 'the calibrated band');
-    assert.equal(low.vars.outputValue, 0, 'at the calibrated minimum the map gives 0');
-    assert.equal(mid.vars.outputValue, 127, 'at the midpoint it gives 127');
-    assert.equal(high.vars.outputValue, 255, 'at the calibrated maximum it gives 255');
+    assert.equal(low.vars.outputValue, 0, 'at the calibrated minimum the map gives 0 %');
+    assert.equal(mid.vars.outputValue, 50, 'at the midpoint it gives 50 %');
+    assert.equal(high.vars.outputValue, 100, 'at the calibrated maximum it gives 100 %');
+    // And the duty reaches the pin: the example was repaired upstream on
+    // 2026-08-23 (sb3-creator@1a83dfa, vendored as d7325a272) mid-review.
+    assert.equal(high.pwm.at(-1).pin, 'led');
+    assert.equal(high.pwm.at(-1).percent, 100, 'the green LED is driven to full duty at the top of the band');
+    assert.equal(low.pwm.at(-1).percent, 0, 'and to zero at the bottom');
     // The clamp the test checkpoint asks the learner to verify.
     assert.equal(high.vars.sensorValue, 1022,
         'a reading above the band is clamped to the calibrated maximum');
@@ -512,46 +530,30 @@ test('interactive-calibration-control: the bench sweeps, and the map lands where
     assert.equal(statusEdges[1].level, 0);
 });
 
-test('OPEN DEFECT: the calibration example never drives its output LED, and has no filter to time', () => {
+test('interactive-calibration-control has no filter, so there is no delay to time', () => {
+    // The lesson's `predict` checkpoint asks for a moving-average length and
+    // the delay it would cost. This program carries no filter at all, and its
+    // step response says so: the mapped output arrives complete at the first
+    // sample after the step.
     const source = readFileSync(path.join(EX, 'arduino-03-calibration/program.bw'), 'utf8');
-    // `set pwm led to X` is not a pin form — the parser needs `PIN led = D9 PWM`
-    // and `set led to X percent` — so it falls through to the generic variable
-    // assignment and creates a variable literally named "pwm led".
-    assert.match(source, /^\s*set pwm led to /m,
-        'arduino-03-calibration/program.bw changed — re-measure Wave 4 and update its lesson');
-    assert.match(source, /^PIN led = D9 OUTPUT$/m,
-        'the led pin is no longer declared OUTPUT — if it is PWM now, the actuator may be live');
+    assert.ok(!/average|filter|smooth/i.test(source),
+        'the example grew a filter — restore the filter-delay prediction to the lesson');
+    assert.match(source, /^PIN led = D9 PWM$/m,
+        'the led pin is no longer PWM — if the actuator went inert again, re-measure Wave 4');
+    assert.match(source, /^\s*set led to outputValue percent$/m,
+        'the PWM write changed — re-measure Wave 4 and the numbers in its review');
 
     const creator = new SB3Creator();
     creator.parse(source);
     const rows = [];
     for (let ms = 0; ms <= 12000; ms += 10) {
-        const counts = ms < 5200 ? Math.round(511 + (511 * Math.sin(ms / 300))) : 1023;
+        const counts = ms < 5200 ? Math.round(511 + (511 * Math.sin(ms / 300))) : (ms < 8000 ? 0 : 1023);
         rows.push({tMs: ms, pin: 'sensor', volts: (counts / 1023) * 5});
     }
-    const trace = interpretTrace(creator.project,
-        {horizonMs: 9000, stimulus: rows, adc: {bits: 10, vref: 5}, maxSteps: 4_000_000});
-    assert.equal(trace.pwm.length, 0,
-        'the example now emits PWM — its green LED is live. Restore the LED observation to ' +
-        'interactive-calibration-control and delete this test.');
-    assert.ok(Object.prototype.hasOwnProperty.call(trace.vars, 'pwm led'),
-        'the "pwm led" variable is gone — the example was fixed; re-measure the lesson');
-    assert.equal(trace.vars['pwm led'], 255,
-        'the mapped value lands in a variable instead of on the pin');
-
-    // No filter: the mapped output follows a step within one 20 ms loop pass,
-    // so "estimate filter delay in samples and seconds" has no answer here.
-    const stepRows = [];
-    for (let ms = 0; ms <= 12000; ms += 10) {
-        const counts = ms < 5200 ? Math.round(511 + (511 * Math.sin(ms / 300))) : (ms < 8000 ? 0 : 1023);
-        stepRows.push({tMs: ms, pin: 'sensor', volts: (counts / 1023) * 5});
-    }
     const at = horizonMs => interpretTrace(creator.project,
-        {horizonMs, stimulus: stepRows, adc: {bits: 10, vref: 5}, maxSteps: 4_000_000}).vars.outputValue;
+        {horizonMs, stimulus: rows, adc: {bits: 10, vref: 5}, maxSteps: 4_000_000}).vars.outputValue;
     assert.equal(at(7990), 0, 'before the step');
-    assert.equal(at(8000), 255, 'and fully arrived at the first sample after it — zero filter delay');
-    assert.ok(!/average|filter|smooth/i.test(source),
-        'the example grew a filter — restore the filter-delay prediction to the lesson');
+    assert.equal(at(8000), 100, 'and fully arrived at the first sample after it — zero filter delay');
 });
 
 // ── The lesson copy this review wrote, in both languages ───────────────────
@@ -581,7 +583,8 @@ test('the Wave 4 revisions are present, EN and DE, at the content version this r
     says('interactive-displays', 'observe', 'action', /beyond|outside/i, /au(ß|ss)erhalb/i);
     says('interactive-two-way-binding', 'test', 'action', /remove/i, /entfern/i);
     says('interactive-calibration-control', 'predict', 'hint', /no filter|has none/i, /kein(en)? Filter/i);
-    says('interactive-calibration-control', 'test', 'action', /sensorValue|outputValue/, /sensorValue|outputValue/);
+    says('interactive-calibration-control', 'test', 'action', /sensorValue.*outputValue/, /sensorValue.*outputValue/);
+    says('interactive-calibration-control', 'test', 'hint', /no plausibility check/i, /Plausibilit(ä|ae)tspr(ü|ue)fung fehlt/i);
 });
 
 // ── Coverage: every checkpoint in the wave is accounted for ────────────────
