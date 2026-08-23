@@ -367,6 +367,14 @@ solves. That is the next gate, not a solved problem.
   file gained the NUL in the SAME commit that added the symbol (`6f8d11c5c`), so any grep-based
   absence check on it went from true-negative to permanent false-negative in one step — a gate that
   cannot fail, arriving without anyone touching the gate.
+- **Pin a belief as a test, or it decays silently.** A test that asserts an absence has to
+  re-establish it on every run; a grep establishes it once, at the moment you form the belief, and
+  never again. That difference is why an absence pinned as a test went red the day
+  `setDeviceControl` appeared, with an actionable message, while the same absence held as a
+  remembered grep result survived the change and was still being repeated to other sessions hours
+  later. The actionable half is the corollary: when you find yourself believing something about
+  the code — this method does not exist, nothing calls that, only these kinds are addressable —
+  that belief is cheap to pin and expensive to leave unpinned.
 - **When a result reverses, ask whether the SUBJECT moved before blaming the instrument.**
   2026-08-23: a finding that twelve extension actuators guarded on a board method defined nowhere
   was correct at `3e87340f5` (0 mentions, no NUL). Re-measured after `6f8d11c5c` it read the same
