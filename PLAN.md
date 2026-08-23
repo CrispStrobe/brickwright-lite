@@ -258,15 +258,25 @@ the document was updated and the pin was not. sb3-creator's pins are now the ful
 `caeac2b…` / `b5761ad…`, at which the bench measures 2.0301 V at the wiper and 1.9887 V at
 the anode — exactly the hand-derived numbers the document carries.
 
-**Verdict, from CI rather than from this box.** sb3-creator CI on
-`fix/milestone0-corpus` (run 32661292667, workflow_dispatch): **6473 tests, 6378 pass,
-0 fail, 0 cancelled, 95 skipped**, 443 s. The same tree run locally in twelve chunks gives
-6430 / 6337 / 0 fail / 92 skipped with ONE cancellation — `gallery-e2e` timing out at 900 s
-against eight files sharing four cores at load average 18-26. CI, on a quieter runner,
-cancels nothing. Where the two disagree, the disagreement is the box, and CI is the number
-to quote; nine of the local failures on an earlier pass were literally
-`[Errno 28] No space left on device` from `python3 -m py_compile`, and passed 697/0 on
-retry once the disk drained.
+**Verdict.** sb3-creator CI on `fix/milestone0-corpus`, run
+[32668122092](https://github.com/CrispStrobe/sb3-creator/actions/runs/32668122092), success
+in 3m35s: **6469 tests, 6374 pass, 0 fail, 0 cancelled, 95 skipped**. Local, all 97 test
+files run one at a time against the pinned siblings: **6469 tests, 6377 pass, 0 fail, 0
+cancelled, 92 skipped**. Same test count, same zero failures; the three-skip difference is
+the local box having tools CI does not (and vice versa).
+
+Where CI and this box have differed, the difference has been the box every time, and it is
+worth writing down because each one briefly looked like a finding: nine failures that were
+`[Errno 28] No space left on device` out of `python3 -m py_compile` and passed 697/0 on
+retry; a `gallery-e2e` timeout at 900 s with eight files sharing four cores at load average
+18-26, which CI does not reproduce; and a four-minute file mistaken for a hang, bisected to
+an innocent commit. A contended, full-disk box does not produce failures that mean anything
+about the code, and it takes a second run to tell which kind you are looking at.
+
+The one time CI reported something local did not, they had not disagreed: the enrolment
+gate had been run BEFORE the edit that broke it and never re-run, so the local result was
+stale rather than wrong. CI ran the tree as pushed. That is the value of CI actually
+rendering a verdict again.
 
 **Two of this lane's own conclusions were wrong, and are corrected here rather than
 quietly dropped**, because both are instrument failures worth knowing about:
