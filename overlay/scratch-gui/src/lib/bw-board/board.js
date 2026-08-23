@@ -46,7 +46,7 @@ const LED_I_RATED = 0.020; // 20 mA rated current (for brightness normalization)
  * voltages as if these parts were absent.
  */
 const MNA_ONLY_KINDS = new Set([
-  'npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource',
+  'npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource', 'vcvs', 'vccs',
 ]);
 
 /**
@@ -272,6 +272,158 @@ export class BoardImpl {
     return { parts: outParts, nets: outNets };
   }
 
+  /**
+   * Merge nets that share any (part, terminal) — electrically they are
+   * one node, whatever the wire-derivation upstream produced. Union-find
+   * keyed on terminal membership; the surviving net keeps the FIRST
+   * net's id in input order (deterministic), and every merge is reported
+   * so the drawing tooling can flag the duplication at its source.
+   * @param {import('./types.js').Net[]} nets
+   * @returns {{nets: import('./types.js').Net[], merges: Array<{terminal: string, into: string, from: string}>}}
+   */
+  static _coalesceSharedTerminals(nets) {
+    const owner = new Map(); // "part terminal" → index of first net seen
+    const parent = nets.map((_, i) => i);
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const merges = [];
+    nets.forEach((net, i) => {
+      for (const t of net.terminals) {
+        const key = `${t.part} ${t.terminal}`;
+        const first = owner.get(key);
+        if (first === undefined) { owner.set(key, i); continue; }
+        const a = find(first);
+        const b = find(i);
+        if (a !== b) {
+          const into = Math.min(a, b);
+          const from = Math.max(a, b);
+          parent[from] = into;
+          merges.push({
+            terminal: `${t.part}.${t.terminal}`,
+            into: nets[into].id,
+            from: nets[from].id,
+          });
+        }
+      }
+    });
+    if (merges.length === 0) return { nets, merges };
+    const grouped = new Map();
+    nets.forEach((net, i) => {
+      const root = find(i);
+      if (!grouped.has(root)) grouped.set(root, { id: nets[root].id, terminals: [] });
+      grouped.get(root).terminals.push(...net.terminals);
+    });
+    // Dedupe terminals inside each merged net.
+    const out = [...grouped.values()].map(n => {
+      const seen = new Set();
+      return {
+        ...n,
+        terminals: n.terminals.filter(t => {
+          const k = `${t.part} ${t.terminal}`;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        }),
+      };
+    });
+    return { nets: out, merges };
+  }
+
+  /**
+   * Expand each opt-in macromodel op-amp (`params.model: 'macro'`) into
+   * the standard single-pole macromodel on hidden nets — SOLVER VIEW
+   * only, like the motor windings (spec-updates/opamp-macromodel.md):
+   *
+   *   G1 (vccs, gm = 2π·GBW·Cint, iMax = SR·Cint) : (inp,inn) → X
+   *   C1 (capacitor, Cint) and Rp (A0/gm)         : X → gnd
+   *   E1 (vcvs ×1, rails)                          : X → OUTI
+   *   Rout                                         : OUTI → out
+   *
+   * The pole (GBW/A0), the slew (iMax/Cint = SR exactly), and the rails
+   * all come from first-class solver parts — C1 gets adaptive-transient
+   * and AC treatment for free, with no device-cadence companion anywhere
+   * (the motor-winding lesson). Ground-referenced like every textbook
+   * macromodel; a bench with no gnd part keeps the ideal row and says so
+   * via getWarnings.
+   */
+  static _expandOpampMacros(parts, nets, vcc) {
+    const notes = [];
+    if (!parts.some(p => p.kind === 'opamp' && p.params?.model === 'macro')) {
+      return { parts, nets, notes };
+    }
+    const gndNetId = nets.find(n => n.terminals.some(t => {
+      const p = parts.find(pp => pp.id === t.part);
+      return p && p.kind === 'gnd';
+    }))?.id;
+    const outNets = nets.map(n => ({ ...n, terminals: [...n.terminals] }));
+    const netHolding = (partId, terminal) => outNets.find(n =>
+      n.terminals.some(t => t.part === partId && t.terminal === terminal));
+    const outParts = [];
+    for (const p of parts) {
+      if (!(p.kind === 'opamp' && p.params?.model === 'macro')) {
+        outParts.push(p);
+        continue;
+      }
+      if (gndNetId === undefined) {
+        notes.push(p.id);
+        outParts.push(p); // ideal row stays; the warning says why
+        continue;
+      }
+      const P = p.params ?? {};
+      const a0 = P.a0 ?? 1e5;
+      const gbw = P.gbw ?? 1e6;
+      const slew = P.slew ?? 0.5e6; // V/s
+      const cint = P.cint ?? 30e-12;
+      const rout = P.rout ?? 100;
+      const gm = 2 * Math.PI * gbw * cint;
+      const ids = {
+        g1: `${p.id}_g1`, c1: `${p.id}_c1`, rp: `${p.id}_rp`,
+        e1: `${p.id}_e1`, ro: `${p.id}_ro`,
+      };
+      outParts.push(
+        { id: ids.g1, kind: 'vccs', params: { gm, iMax: slew * cint },
+          terminals: ['outp', 'outn', 'inp', 'inn'] },
+        { id: ids.c1, kind: 'capacitor', params: { farads: cint }, terminals: ['a', 'b'] },
+        { id: ids.rp, kind: 'resistor', params: { ohms: a0 / gm }, terminals: ['a', 'b'] },
+        { id: ids.e1, kind: 'vcvs',
+          params: { gain: 1, railLow: P.railLow ?? 0, railHigh: P.railHigh ?? vcc },
+          terminals: ['outp', 'outn', 'inp', 'inn'] },
+        { id: ids.ro, kind: 'resistor', params: { ohms: rout }, terminals: ['a', 'b'] },
+      );
+      const X = `n_${p.id}_x`;
+      const OUTI = `n_${p.id}_outi`;
+      netHolding(p.id, 'inp')?.terminals.push({ part: ids.g1, terminal: 'inp' });
+      netHolding(p.id, 'inn')?.terminals.push({ part: ids.g1, terminal: 'inn' });
+      netHolding(p.id, 'out')?.terminals.push({ part: ids.ro, terminal: 'b' });
+      const gndView = outNets.find(n => n.id === gndNetId);
+      gndView.terminals.push(
+        { part: ids.g1, terminal: 'outn' },
+        { part: ids.c1, terminal: 'b' },
+        { part: ids.rp, terminal: 'b' },
+        { part: ids.e1, terminal: 'inn' },
+        { part: ids.e1, terminal: 'outn' },
+      );
+      outNets.push({
+        id: X,
+        terminals: [
+          { part: ids.g1, terminal: 'outp' },
+          { part: ids.c1, terminal: 'a' },
+          { part: ids.rp, terminal: 'a' },
+          { part: ids.e1, terminal: 'inp' },
+        ],
+      });
+      outNets.push({
+        id: OUTI,
+        terminals: [{ part: ids.e1, terminal: 'outp' }, { part: ids.ro, terminal: 'a' }],
+      });
+      // The op-amp itself leaves the solver view: no ideal row, no
+      // phantom pins (its terminal entries go too).
+      for (const n of outNets) {
+        n.terminals = n.terminals.filter(t => t.part !== p.id);
+      }
+    }
+    return { parts: outParts, nets: outNets, notes };
+  }
+
   static _expandComposites(parts, nets) {
     const extraParts = [];
     const netCopies = nets.map((n) => ({ ...n, terminals: [...n.terminals] }));
@@ -378,6 +530,19 @@ export class BoardImpl {
     // an LED) silently produces brightness 0 — a plausible wrong answer.
     const errors = validateNetlist(parts, nets);
     ({ parts, nets } = BoardImpl._expandComposites(parts, nets));
+    // ONE TERMINAL IS ONE NODE. Input netlists exist in the wild where a
+    // terminal appears in two nets (five shipped circuits: a gnd pin
+    // reached by two independently-derived wire groups). The old solver
+    // MUTATED the caller's nets during its gnd-island merge, which
+    // accidentally repaired those inputs; the non-mutation fix preserved
+    // the drawn input — duplication included — and every getNets()
+    // consumer then saw a terminal on two nets, resolver-order deciding
+    // which one answered (found by the schematic completeness gate,
+    // adjudicated 2026-08-23). Coalesce deterministically HERE, and say
+    // so via getWarnings rather than repairing in silence.
+    const coalesced = BoardImpl._coalesceSharedTerminals(nets);
+    nets = coalesced.nets;
+    this._netMergeNotes = coalesced.merges;
     const fatal = errors.filter(e => e.severity === 'error');
     if (fatal.length > 0) {
       throw new Error(
@@ -396,11 +561,19 @@ export class BoardImpl {
     // must keep seeing the diode on the net the motor pin is wired to,
     // not one hop into the motor's insides.
     const solveView = BoardImpl._expandMotorWindings(parts, nets);
-    this._solveParts = solveView.parts;
-    this._solveNets = solveView.nets;
+    const macroView = BoardImpl._expandOpampMacros(solveView.parts, solveView.nets, this.vcc);
+    this._solveParts = macroView.parts;
+    this._solveNets = macroView.nets;
+    this._macroFallbacks = macroView.notes;
     for (const p of this._solveParts) {
       if (p.kind === 'inductor' && !this.inductorCurrents.has(p.id)) {
         this.inductorCurrents.set(p.id, 0);
+      }
+      // Hidden reactive parts (motor windings, macromodel poles) need
+      // their history seeded like any drawn part — an unseeded macro cap
+      // let the DC solve teleport the output past the slew limit.
+      if (p.kind === 'capacitor' && !this.capVoltages.has(p.id)) {
+        this.capVoltages.set(p.id, 0);
       }
     }
     this.ledHistory.clear();
@@ -1921,6 +2094,38 @@ export class BoardImpl {
      *           partIds?: string[], unratedIds?: string[], type?: string}>} */
     const warnings = [];
 
+    // A terminal that appeared in two nets was coalesced at setNetlist —
+    // the merge is correct physics, but the drawing that produced it is
+    // worth fixing at the source, so it stays visible.
+    if (this._netMergeNotes?.length) {
+      for (const { terminal, into, from } of this._netMergeNotes) {
+        warnings.push({
+          severity: 'warning',
+          type: 'net-coalesced',
+          message: `${terminal} appeared in both ${into} and ${from} — merged: ` +
+            'one pin is one node. The drawing (or its wire derivation) lists ' +
+            'the terminal twice.',
+        });
+      }
+    }
+
+    // A macromodel op-amp on a bench with no ground keeps the ideal row —
+    // said out loud, because a flat AC response from a part configured
+    // for GBW would otherwise be a silent downgrade.
+    if (this._macroFallbacks?.length) {
+      for (const id of this._macroFallbacks) {
+        warnings.push({
+          severity: 'warning',
+          type: 'opamp-macro-no-ground',
+          partId: id,
+          message: `${id} is configured as a macromodel op-amp, but the bench ` +
+            'has no ground net to reference the internal pole against — it is ' +
+            'running as an IDEAL op-amp (no bandwidth, no slew) until a gnd ' +
+            'part exists.',
+        });
+      }
+    }
+
     // Refused device-control verbs are user-intent feedback and show
     // regardless of power state (spec-updates/set-device-control.md).
     if (this._refusedControls) {
@@ -2417,7 +2622,12 @@ export class BoardImpl {
 
   /** Any capacitor or inductor present? */
   _hasReactive() {
-    for (const p of this.parts) {
+    // SOLVER view, not the drawing: hidden reactive parts (motor
+    // windings, macromodel poles) must pull advanceTo into transient
+    // integration too — a macro op-amp's internal capacitor never
+    // charged because this scanned only the public parts, and the
+    // follower sat at 0 V forever.
+    for (const p of (this._solveParts ?? this.parts)) {
       if (p.kind === 'capacitor' || p.kind === 'inductor') return true;
     }
     return false;
@@ -2500,6 +2710,16 @@ export class BoardImpl {
           earliest = state._nextEdgeNs;
         }
       }
+      // CANONICAL wake (spec-updates/scheduled-device-events.md): any
+      // model may set state._wakeNs and be stepped TO it exactly — the
+      // gate tpd machinery rides this; the legacy fields above keep
+      // working for the devices that predate it.
+      if (state._wakeNs && state._wakeNs > afterNs &&
+          state._wakeNs <= beforeNs) {
+        if (earliest === null || state._wakeNs < earliest) {
+          earliest = state._wakeNs;
+        }
+      }
     }
 
     // For continuous devices (motor, encoder, servo): impose a max sub-step
@@ -2578,8 +2798,16 @@ export class BoardImpl {
     return changed;
   }
 
-  /** One update pass over all registered devices. True if any changed. */
-  _updateDevices() {
+  /**
+   * One update pass over all registered devices. True if any changed.
+   * `atNs` is the time the devices are told: inside a transient chunk it
+   * is the SUB-STEP time, not `this.timeNs` — the board sets timeNs to
+   * the chunk end before integrating, so every timed device inside a
+   * long advanceTo used to see the far future (a tpd gate scheduled its
+   * flip relative to the chunk end and never fired mid-chunk).
+   * @param {bigint} [atNs]
+   */
+  _updateDevices(atNs = this.timeNs) {
     let changed = false;
     // Built-in shift registers
     if (this._shiftRegisters.size > 0) {
@@ -2600,7 +2828,7 @@ export class BoardImpl {
         const ov = this._digitalOverlay.get(n);
         return ov !== undefined ? ov : (this.nodeVoltages.get(n) ?? 0);
       };
-      if (model.update(part, state, read, this.timeNs)) changed = true;
+      if (model.update(part, state, read, atNs)) changed = true;
     }
     return changed;
   }
@@ -2636,9 +2864,13 @@ export class BoardImpl {
     const H_MIN = 1e-8;
     // A BE seed step is UNCONTROLLED (no error estimate), so it must be
     // tiny: a 100 µs BE step on a 5 kHz tank (ωh ≈ 3) eats the stored
-    // energy before the trapezoidal controller ever runs. 1 µs keeps the
-    // seed's damping negligible for anything the bench can build.
-    const H_SEED = 1e-6;
+    // energy before the trapezoidal controller ever runs. 1 ns keeps the
+    // damping negligible AND makes the first observation after a source
+    // edge or device wake effectively instant — a solve point lands just
+    // past the discontinuity, so a tpd gate schedules from the edge, not
+    // from wherever the next chunk boundary happened to fall (measured:
+    // an 80 ns-late observation shifted a scheduled flip by 80 ns).
+    const H_SEED = 1e-9;
     // Trace-fidelity floor (see doc above).
     const H_SAMPLE = 1e-4;
     const sampleCapped = this._scopeChannels.size > 0 || this._hasTimeVaryingSource();
@@ -2690,12 +2922,16 @@ export class BoardImpl {
       lv = r.inductorVoltagesNext ?? lv;
       res = r;
       publish(r, atSec);
-      // One device pass per accepted step: a comparator/gate that flips is
-      // seen by the network on the NEXT step. A flip is a discontinuity —
-      // trapezoidal history restarts and the step shrinks to look closely.
-      if (this._deviceStates.size > 0 && this._updateDevices()) {
-        trapReady = false;
-        h = Math.max(H_MIN, h / 4);
+      // One device pass per accepted step, told the SUB-STEP time — the
+      // chunk-end time made every scheduled event inside a long advance
+      // fire never or late. A flip is a discontinuity — trapezoidal
+      // history restarts and the step shrinks to look closely.
+      if (this._deviceStates.size > 0) {
+        const remNs = BigInt(Math.max(0, Math.round((tEnd - atSec) * 1e9)));
+        if (this._updateDevices(this.timeNs - remNs)) {
+          trapReady = false;
+          h = Math.max(H_MIN, h / 4);
+        }
       }
     };
 
@@ -2710,8 +2946,24 @@ export class BoardImpl {
         hEff = edge - t;
         atEdge = true;
       }
+      // Scheduled device wakes are step barriers too: a pending gate flip
+      // scheduled MID-CHUNK (spec-updates/scheduled-device-events.md) must
+      // land on a solve point — the outer deadline loop only sees wakes
+      // that existed before the chunk began.
+      const wake = this._nextDeviceWakeSec(t);
+      if (wake !== null && wake > t + 1e-15 && wake < t + hEff - 1e-15) {
+        hEff = wake - t;
+        atEdge = true; // a wake is a discontinuity: BE restart past it
+      }
 
-      if (!trapReady || hEff <= 2 * H_MIN) {
+      // Only a genuine discontinuity takes the uncontrolled BE seed. A
+      // floor-sized step goes through the trapezoidal controller like any
+      // other — the old `hEff <= 2*H_MIN` shortcut was a self-trap: the
+      // seed branch never grows h, so once the reject path drove h to
+      // H_MIN every later step re-entered the seed at H_SEED and the
+      // integrator marched 1 ns forever (measured: 5000 solves per 5 µs
+      // on the charge-pump bench, 95 min for that one test file).
+      if (!trapReady) {
         // Seed / floor step: single BE solve, no error control — kept tiny
         // (see H_SEED). BE's damping is what a fresh discontinuity needs.
         const hSeed = Math.min(hEff, H_SEED);
@@ -2741,9 +2993,12 @@ export class BoardImpl {
         err = Math.max(err, Math.abs(iF - iH) / sc);
       }
 
-      if (err <= 1 || !Number.isFinite(err)) {
+      if (err <= 1 || !Number.isFinite(err) || hEff <= H_MIN * 1.000001) {
         // Non-finite means a solve bailed (singular mid-step) — accept the
-        // half-step result and let the convergence warning say so.
+        // half-step result and let the convergence warning say so. An
+        // at-floor step is accepted regardless of err: it cannot be
+        // refined below H_MIN, and rejecting it would loop the controller
+        // in place until MAX_ATTEMPTS.
         publish(h1, t + hEff / 2);
         t += hEff;
         accept(h2, t);
@@ -2781,6 +3036,23 @@ export class BoardImpl {
       }
       this._mnaCache = res;
     }
+  }
+
+  /**
+   * Earliest scheduled device wake strictly after `tSec`, in seconds —
+   * or null. Scans `state._wakeNs` (the canonical field); cheap, a few
+   * devices at most.
+   * @param {number} tSec
+   * @returns {number | null}
+   */
+  _nextDeviceWakeSec(tSec) {
+    let next = null;
+    for (const [, state] of this._deviceStates) {
+      if (!state._wakeNs) continue;
+      const wSec = Number(state._wakeNs) / 1e9;
+      if (wSec > tSec + 1e-15 && (next === null || wSec < next)) next = wSec;
+    }
+    return next;
   }
 
   /**
@@ -2989,6 +3261,21 @@ export class BoardImpl {
     for (const net of this.nets) {
       if (this.nodeVoltages.has(net.id)) continue;
       this._resolveNet(net);
+    }
+
+    // Coverage: a net the walker could not resolve would read UNDEFINED
+    // from nodeVoltage — absent-without-a-reason, a shape every consumer
+    // has to guess about (a UI probe reads blank; a corpus instrument
+    // mis-read the gaps as "not conducting" — 116 nets across the three
+    // quasi-pin benches, while the same circuits under MNA assign every
+    // node). The walker's own doctrine applies: beyond its vocabulary,
+    // one full MNA solve answers everything coherently — a net behind an
+    // off diode gets its gmin-defined floating level instead of a hole.
+    for (const net of this.nets) {
+      if (!this.nodeVoltages.has(net.id)) {
+        this._solveViaMNA();
+        return;
+      }
     }
 
     // Override net voltages for capacitor nodes with their actual charge state.
