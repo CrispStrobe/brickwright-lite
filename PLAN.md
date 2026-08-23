@@ -111,7 +111,7 @@ finished work:
 | 3 One idea, several languages | 12 | done | **full, done 2026-08-23** — 1 of 12 defective; 1 revised to v2 | open | open |
 | 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
 | 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | open | open |
-| 6 Signals and systems | 10 | done | scanned; **full review open** | open | open |
+| 6 Signals and systems | 10 | done | **full, done 2026-08-23** — 9 of 10 defective; 10 revised (one to v3), 11 open instrument/engine defects | open | open |
 | 7 Computers from wires upward | 10 | done | scanned; **full review open** | open | open |
 
 "Scanned" and "reviewed" are different claims and the table keeps them apart.
@@ -227,6 +227,58 @@ code produces and renders rather than against what the feature is called.
 so far. Its hint names `counter = 5` and `bw-debug/condition.js` parses exactly that grammar and
 refuses arithmetic with a reason; its instruction to "deliberately test a misspelled variable"
 lands exactly, because `countr = 5` parses and then evaluates false for ever.
+
+### Wave 6, where the instrument suite is the finding
+
+Reviewed 2026-08-23 — `docs/LESSON-REVIEW-WAVE-6.md`. **10 lessons, 20 checkpoints, 9 defective,
+10 revised (one to content version 3, nine to 2), 11 defects open — every one in an instrument or
+an engine, none in a lesson.** The Tier-3 detector found one blocking (`signals-resonance` observes
+`circuit-changed` on a bench with no pin declarations — the same app defect Wave 1 recorded for
+`starter-circuit-path`); the other eight were found by measuring.
+
+Nine of ten is the highest rate of any wave and it has one cause, not nine. The wave was written
+against a signals toolkit that has three of its five pieces. It **has** a genuinely good AC sweep —
+log-spaced, magnitude and phase, run on an offline copy of the board — and a scope with a trigger
+and time cursors, both wired into the app, and the underlying solver is excellent (43-rc-timing
+matches 5(1−e^(−t/τ)) to four decimals; the follower-versus-divider contrast is exact to four
+figures). What is missing:
+
+- **The Bode sweep reports no numbers.** `drawBode` writes four strings onto a 260×140 canvas: the
+  two dB extremes rounded to whole decibels, and ±180°. No frequency axis, no per-point value, no
+  table, no export. `signals-model-measurement` asks for "residuals with propagated uncertainty"
+  and `signals-bode-sweep` for "dB/decade in three regions" from that.
+- **There is no FFT anywhere in the circuit UI**, and the scope's ring buffer stores an interleaved
+  (min, max) envelope rather than a sample series, so a transform bolted on later would still need
+  a second tap. `signals-aliasing-fft` asks for "FFT with rectangular and tapered windows".
+- **The scope timebase is fixed at 100 kHz × 8192 = 81.92 ms.** Both numbers are hard-coded in
+  `addScopeChannel` and `ScopePanel` passes neither, so the record cannot hold `43-rc-timing`'s 1 s
+  step or one cycle a decade below `50-rc-scope`'s cutoff (628 ms).
+- **A Bode point costs 10/f seconds of simulated time** (`settleCycles` 6 + `measureCycles` 4), and
+  the panel runs it synchronously. `pc50-two-stage-rc` corners at 0.159 Hz, so the decade below the
+  corner its own lesson asks for is 629 s of simulation per point — measured 7.2 s wall for one
+  point at 10 Hz, 57 s at 1 Hz, 84 s at 0.5 Hz. The panel's default range starts at 10 Hz, where
+  that network is already at −71.5 dB.
+- **The op-amp has no output limit and the meter has no input impedance.** Measured: the follower
+  holds 2.5 V into 1 Ω (2.5 A) without drooping; `model/circuit.js` filters `p.kind !== 'meter'`
+  out of the netlist before the solve. `signals-loading` asks the learner to find the regime where
+  follower limits replace divider error, and to include probe loading.
+- **The simulated potentiometer is bit-exact.** Twelve reads of a still knob give ADC count 380
+  every time, standard deviation exactly 0. `signals-noise` asks for the standard deviation of raw
+  and filtered series at three window sizes.
+- **The first solve of a fresh board is a DC operating point**, in which a capacitor is an open
+  circuit — so the meter reads 5.0000 V on `43-rc-timing`'s capacitor while the engine's own
+  `getCapVoltage` says 0. One nanosecond of simulation fixes it. `signals-rc-response` asks for a
+  reading at t = 0.
+
+Two are bench-choice rather than instrument gaps, and both belong upstream in `sb3-creator`:
+`pc50-two-stage-rc` would sweep in milliseconds if rescaled from 10 kΩ/100 µF to 10 kΩ/100 nF
+(corner 159 Hz), and `pc52-inductor-filter` is used as an *RL* bench by `signals-rl-response` while
+being an RLC — the L/R law holds beautifully for its first 300 µs (measured within 1.3 % of
+50 mA × (1 − e^(−t/100 µs))) and then the 100 µF takes over, the current turns around at ~500 µs
+and settles at 4.5455 mA against the RL asymptote of 50 mA.
+
+Every lesson was revised to work within what exists, and each gap is pinned by an OPEN DEFECT test
+that fails when it is closed.
 
 ### The Tier-3 detector, and what it changes about the estimate
 
