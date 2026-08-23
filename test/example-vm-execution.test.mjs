@@ -77,7 +77,8 @@ if (missingInputs.length) {
 const {runProgram, conformance, projectOpcodes, quitStrandedVMs, ownerOf, CORE_PREFIX} =
     await import('./helpers/bw-vm.mjs');
 const {bundledExtensionIds, loadExtensionClass, probeExtension, stubRuntime,
-    guardedBoardMembers, boardMemberNames} = await import('./helpers/bw-extensions.mjs');
+    guardedBoardMembers, boardMemberNames, stripComments} =
+    await import('./helpers/bw-extensions.mjs');
 
 const EXAMPLES = path.join(REPO, 'overlay', 'scratch-gui', 'examples');
 const index = JSON.parse(readFileSync(path.join(EXAMPLES, 'index.json'), 'utf8'));
@@ -366,8 +367,10 @@ test('every device kind the devices extension can drive accepts a control verb',
     (await import(path.join(bwb, 'register-all.js'))).registerAllDevices();
     const {getDevice, hasDevice, registeredKinds} = await import(path.join(bwb, 'devices.js'));
 
-    const extension = readFileSync(path.join(REPO, 'overlay', 'scratch-vm', 'src', 'extensions',
-        'crispstrobe', 'devices', 'index.js'), 'utf8');
+    // stripComments: a source-scanning gate must not read the prose describing
+    // it, or documenting the kind tables breaks the check that pins them.
+    const extension = stripComments(readFileSync(path.join(REPO, 'overlay', 'scratch-vm', 'src',
+        'extensions', 'crispstrobe', 'devices', 'index.js'), 'utf8'));
     const addressable = new Set();
     for (const match of extension.matchAll(/_KINDS\s*=\s*\/\^\(([^)]+)\)\$\/i/g)) {
         for (const kind of match[1].split('|')) addressable.add(kind.trim());
