@@ -54,22 +54,27 @@ test('measurement-voltage: the probe spans the full ADC range', async () => {
     assert.equal(Math.round(at(1) / 5 * 1023), 1023, 'full scale reaches the top count');
 });
 
-test('OPEN DEFECT: 73-voltmeter\'s OLED cannot render — the verbs are undefined', () => {
-    // The program says `oled clear` / `oled set cursor` / `oled print`. The
-    // bundled `devices` extension declares no oled opcode at all, so in the SIM
-    // path scratch-vm never executes those blocks: an undefined opcode is
-    // silent. The lesson's three-way comparison is therefore two-way today.
+test('RESOLVED UPSTREAM: 73-voltmeter\'s OLED renders — the verbs and the dispatcher both exist now', async () => {
+    // This was an OPEN DEFECT when Wave 2 was reviewed at 3e87340f5, and it was
+    // true of that tree: the devices extension declared 37 opcodes and not one
+    // oled verb, and board.js had no setDeviceControl. Both landed while the
+    // review was in flight — 6f8d11c5c vendored the dispatcher, 802fc1050 added
+    // eleven OLED/TFT opcodes — so the assertion is inverted rather than deleted,
+    // and now guards the fix instead of the defect.
     const ext = readFileSync(path.join(ROOT,
         'overlay/scratch-vm/src/extensions/crispstrobe/devices/index.js'), 'utf8');
     const declared = [...ext.matchAll(/opcode: *'([a-z0-9_]+)'/g)].map(m => m[1]);
     for (const verb of ['oledclear', 'oledcursor', 'oledprint']) {
-        assert.ok(!declared.includes(verb),
-            `devices now declares ${verb} — the OLED may render. Re-measure ` +
-            `73-voltmeter, update docs/LESSON-REVIEW-WAVE-2.md and the ` +
-            `measurement-voltage hint, then delete this test.`);
+        assert.ok(declared.includes(verb), `the devices extension has lost ${verb} again`);
     }
-    const program = readFileSync(path.join(EXAMPLES, '73-voltmeter/program.bw'), 'utf8');
-    assert.match(program, /oled print/, 'the program still depends on those verbs');
+    // Proven by executing the dispatcher, not by looking the symbols up.
+    const {board} = await load('73-voltmeter');
+    board.advanceTo(50n * MS);
+    assert.equal(typeof board.setDeviceControl, 'function');
+    for (const [verb, value] of [['clear', 1], ['cursor', [0, 0]], ['print', 'VOLTMETER']]) {
+        assert.equal(board.setDeviceControl('oled1', verb, value), true,
+            `the ssd1306 model refused ${verb} — 73-voltmeter's screen is dark again`);
+    }
 });
 
 // ── measurement-current-burden → 74-ammeter ─────────────────────────────────
@@ -89,25 +94,31 @@ test('measurement-current-burden: Vshunt/I recovers the shunt at every load', as
     near(-milliamps(board, 'shunt1', 'a'), 5000 / 510, 0.01, 'I = 5 V / (500 + 10)');
 });
 
-test('OPEN DEFECT: every devices actuator verb is a no-op — setDeviceControl does not exist', () => {
-    // Different shape from the OLED defect above, and harder to see: these verbs
-    // ARE declared and implemented, so an opcode-resolution check passes them.
-    // Each body is `if (b && b.setDeviceControl) b.setDeviceControl(...)`, and
-    // setDeviceControl is defined nowhere — the board exposes setControl and
-    // setPartParam. The guard is always false. Independently confirmed by
-    // bw-bundle; re-derived here rather than taken on trust.
-    const ext = readFileSync(path.join(ROOT,
-        'overlay/scratch-vm/src/extensions/crispstrobe/devices/index.js'), 'utf8');
-    const calls = [...ext.matchAll(/b\.setDeviceControl\(/g)].length;
-    assert.ok(calls >= 7, `expected the actuator verbs to call it, found ${calls}`);
+test('OPEN DEFECT: 74-ammeter\'s LCD stays blank — char_lcd_i2c has no control handler', async () => {
+    // Narrower than first reported, and the narrowing matters. The original
+    // finding was "setDeviceControl is defined nowhere", true at 3e87340f5 and
+    // fixed by 6f8d11c5c. What is left is one device model: of the four display
+    // kinds this corpus uses, char_lcd_i2c is the ONLY one without a control()
+    // handler — and it is the kind 74-ammeter seats.
+    const {getDevice} = await import(path.join(ROOT,
+        'overlay/scratch-gui/src/lib/bw-board/devices.js'));
+    const {board} = await load('74-ammeter');
+    board.advanceTo(50n * MS);
+    assert.equal(board.parts.find(p => p.id === 'lcd1').kind, 'char_lcd_i2c');
 
-    for (const file of ['overlay/scratch-gui/src/lib/bw-board/board.js',
-        'overlay/scratch-gui/src/lib/bw-circuit-ui/model/circuit.js']) {
-        const source = readFileSync(path.join(ROOT, file), 'utf8');
-        assert.ok(!/^\s+setDeviceControl\s*\(/m.test(source),
-            `${file} now defines setDeviceControl — the LCD may render. Re-measure ` +
-            `74-ammeter, update docs/LESSON-REVIEW-WAVE-2.md and the ` +
-            `measurement-current-burden hint, then delete this test.`);
+    for (const kind of ['char_lcd', 'hd44780', 'ssd1306']) {
+        assert.equal(typeof getDevice(kind)?.control, 'function',
+            `${kind} has lost its control handler`);
+    }
+    assert.notEqual(typeof getDevice('char_lcd_i2c')?.control, 'function',
+        'char_lcd_i2c now has a control handler — re-measure 74-ammeter, update ' +
+        'docs/LESSON-REVIEW-WAVE-2.md and the measurement-current-burden hint, ' +
+        'then delete this test.');
+
+    // and the consequence, executed rather than inferred
+    for (const [verb, value] of [['clear', 1], ['cursor', [0, 0]], ['print', 'I = 9.8 mA']]) {
+        assert.equal(board.setDeviceControl('lcd1', verb, value), false,
+            `the I2C LCD now accepts ${verb} — the lesson can read its display again`);
     }
 });
 
@@ -292,12 +303,13 @@ test('OPEN DEFECT: the RC step is one-shot and nothing on the bench repeats it',
 });
 
 test('OPEN DEFECT: the ohmmeter answers differently depending on which probe is which', async () => {
-    // board.resistance(a, b) makes `b` the solver reference, and mna.js then
-    // SKIPS the gnd-symbol merge for that solve. Probe with ground as B and the
-    // circuit is whole; probe with ground as A and it fragments, so a real path
-    // reads as open. Found while re-checking the continuity verdict, which is
-    // why it is pinned: it changes what a learner sees on the exact measurement
-    // measurement-resistance asks for.
+    // DIRECTIONAL BY DESIGN, not a bug — the distinction was bw-bundle's and it
+    // is the right one. board.resistance(a, b) makes `b` the solver reference,
+    // and mna.js then switches ground symbols out of that solve deliberately:
+    // "a dangling gnd must not become a shunt path" (mna.js ~354). The
+    // consequence is still learner-visible, which is why it stays pinned — a
+    // real 2.2 kohm path reads as open if the probes go on the other way round,
+    // on the exact measurement measurement-resistance asks for.
     const {board} = await load('22-series-parallel');
     board.advanceTo(50n * MS);
     board.setPower(false);
@@ -308,4 +320,9 @@ test('OPEN DEFECT: the ohmmeter answers differently depending on which probe is 
     assert.ok(board.resistance(gnd, hot) > 1e6,
         'the ohmmeter has become symmetric. Re-measure, update ' +
         'docs/LESSON-REVIEW-WAVE-2.md and the measurement-resistance hint, then delete this test.');
+    // A pair with no ground symbol on either side is symmetric, which is what
+    // makes this the gnd-merge rule rather than a general solver asymmetry.
+    const a = netId(board, 'r1', 'b');
+    const b = netId(board, 'r2', 'a');
+    near(board.resistance(a, b), board.resistance(b, a), 1, 'a non-ground pair reads the same both ways');
 });
