@@ -100,16 +100,16 @@ read only the residue.
 
 ### Verification-debt ledger
 
-Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**. Wave 1's
-technical review is now closed; the other six are still open. Stated plainly, so it cannot read as
-finished work:
+Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**. The
+technical reviews of waves 1, 2, 3, 4 and 5 are now closed; waves 6 and 7 are still open. Stated
+plainly, so it cannot read as finished work:
 
 | Wave | Lessons | Draft | Technical review | Translation review | Learner field test |
 | --- | --- | --- | --- | --- | --- |
 | 1 Electricity you can see | 12 | done | **full, done 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | open | open |
 | 2 Measure rather than guess | 10 | done | **full, done 2026-08-23** — 5 of 10 defective; 6 revised to v2, 4 open engine defects, 1 fixed upstream mid-review | open | open |
 | 3 One idea, several languages | 12 | done | **full, done 2026-08-23** — 1 of 12 defective; 1 revised to v2 | open | open |
-| 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
+| 4 Interactive systems | 8 | done | **full, done 2026-08-23** — 7 of 8 defective; 7 revised (one to v3), 5 open app/example defects, 1 fixed upstream mid-review | open | open |
 | 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | open | open |
 | 6 Signals and systems | 10 | done | scanned; **full review open** | open | open |
 | 7 Computers from wires upward | 10 | done | scanned; **full review open** | open | open |
@@ -122,7 +122,7 @@ names? **Reviewed** means a human worked through every checkpoint against a
 solved bench, which is what Wave 1 got and what found the other four classes of
 defect the detector cannot see.
 
-**35 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
+**27 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
 the one defect class that detector understands. Treat this table as the plan's real critical path:
 a lesson that teaches an observation its bench cannot produce is worse than a missing lesson,
 because a learner blames themselves.
@@ -227,6 +227,65 @@ code produces and renders rather than against what the feature is called.
 so far. Its hint names `counter = 5` and `bw-debug/condition.js` parses exactly that grammar and
 refuses arithmetic with a reason; its instruction to "deliberately test a misspelled variable"
 lands exactly, because `countr = 5` parses and then evaluates false for ever.
+
+### Wave 4, where the subject under test is the interactive surface
+
+Reviewed 2026-08-23 — `docs/LESSON-REVIEW-WAVE-4.md`. **8 lessons, 16 checkpoints, 7 defective,
+7 revised (one to content version 3, six to 2), 5 defects open and 1 fixed upstream mid-review —
+none of them in a lesson.** The
+Tier-3 detector reported 0 blocking and 0 to review on all eight, which is the right answer to the
+question it asks and no answer at all to this wave's, so all seven were found by measuring.
+
+Wave 4's checkpoints ask whether a learner can operate a control and see a display, so the gate
+(`test/lesson-panel-claims-wave4.test.mjs`) drives the real `ControllerPanel` restored from each
+example's own `controller.json` the way `pseudocode-importer.jsx` restores it, wired to the real
+scratch-vm by the real `bindPanelToVariables`. The faceplate loop itself is sound and measured —
+`mb05-faceplate-matrix` reproduces its EXPECTED.md to the digit, and `retro-console`'s D-pad,
+buttons and trail all drive the program — which is what makes the seven defects specific rather
+than a verdict on the surface as a whole.
+
+Five things are open, in the order they cost a learner most:
+
+- **No simulated micro:bit sensor can be varied from the app.** The bundled simulator models each
+  one with its range, default and unit (`RangeSensor("temperature", -5, 50, 21, "°C")`,
+  `RangeSensor("lightLevel", 0, 255, 127)`) and accepts `{kind:'set_value', id, value}`. The string
+  `set_value` appears nowhere in lite: `MicrobitSimPane` posts only `flash`, `serial_input`, `stop`
+  and `reset` and renders no sensor control. **Fix:** a slider row in that pane, which is lite-owned.
+  It would make `interactive-sensor-capability` deliver the contract the simulator already declares.
+- **`microbitplus` blocks are no-ops in the Scratch VM and it declares no `showStatusButton`.** The
+  no-ops are deliberate and documented (the blocks lower to MicroPython for the simulator); the
+  missing status button is why `interactive-extension-discovery` could not point at a connection
+  indicator. **Fix:** either declare one, or keep the lesson's revised wording.
+- **The widget inspector edits no functional config.** Its only `onConfig` calls are `color`,
+  `fontSize`, `src` and `text` — the two decoration widgets. A button's `toggle`, a slider's
+  `min`/`max`/`step`, a gauge's `min`/`max`/`label` and a matrix's `rows`/`cols` are reachable only
+  by hand-editing `controller.json`. The toggle behaviour is implemented and correct, just
+  unreachable, which is what broke `interactive-input-controls`. **Fix:** a per-type config section
+  in `WidgetInspector` (`controller-panel-view.jsx`, lite-owned).
+- **A widget cannot be re-bound from the app.** `bindToVariable`, `bindToPart` and `bindToPin` are
+  called from nowhere in the GUI; the only binding call is `bindToProgram` inside `_addWidget`.
+  `WidgetCard` even takes an unused `onBindPart` prop. So removing and re-adding a widget silently
+  converts a variable binding into a program binding and only reloading the example restores it.
+- **Four faceplate examples ship no `"mode": "play"`**, including `retro-console` and
+  `lego-hub-face`, the benches for four Wave 4 lessons. The importer only calls `setMode` when the
+  file says so and `ControllerPanel` defaults to `edit`, where every input control is disabled.
+  **Blocked on:** one line per example, upstream in `sb3-creator`. Displays are unaffected.
+
+**Closed mid-review, and worth keeping as evidence the ratchets work:** `arduino-03-calibration`
+drove no LED — `set pwm led to outputValue` created a variable named `pwm led`, zero PWM writes
+under every stimulus. It escaped `test/example-execution.test.mjs`'s `KNOWN_BROKEN` list because it
+also drives a D13 status LED and "at least one pin event" was satisfied by that; **that gate hole
+is the durable finding here**. The repair landed upstream as `d7325a272` while this review was
+being written, taking `KNOWN_BROKEN` from thirteen to zero. Re-measured on that tree: 201 PWM
+writes, 0/50/100 percent at the minimum, midpoint and maximum. The unit changed with the fix
+(`percent` is 0..100 where the Arduino original is 0..255), so the lesson's predicted values moved
+from 0/127/255 to 0/50/100.
+
+Recorded while auditing the same eleven layouts, and outside every Wave 4 lesson:
+`6502-terminal/controller.json` declares widget type `terminal`, which is not in
+`ControllerPanel`'s `DEFAULTS`, so `addWidget` throws and the importer's bare `catch` leaves the
+panel **empty** — it removes the old widgets before adding the new ones. Waves 6 and 7 should check
+whether any of their lessons name it.
 
 ### The Tier-3 detector, and what it changes about the estimate
 
