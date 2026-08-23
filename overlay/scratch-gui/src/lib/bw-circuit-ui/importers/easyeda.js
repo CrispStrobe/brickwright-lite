@@ -189,9 +189,12 @@ export const EASYEDA_RULES = [
 
   // -- logic. The number must be captured WHOLE and only numbers the engine
   //    actually models are emitted; see LOGIC_KINDS.
-  [/^(SN|MC|CD|DM|MM|HD|TC)?74[A-Z]{0,4}(\d{2,4})[A-Z]{0,3}\d?$/i, (v, d) => {
-    const n = /74[A-Z]{0,4}(\d{2,4})/i.exec(d)[1];
-    const kind = logicKind(n);
+  // The tail admits one separator-joined package suffix ("_ASP", "-16"):
+  // the 8085 devkit writes its latch as 74LS373_ASP, and the number set
+  // below still gates what is actually emitted.
+  [/^(SN|MC|CD|DM|MM|HD|TC)?74[A-Z]{0,4}(\d{2,4})[A-Z]{0,3}\d?([-_ ][A-Z0-9]+)?$/i, (v, d) => {
+    const m = /74([A-Z]{0,4})(\d{2,4})/i.exec(d);
+    const kind = logicKind(m[2], m[1]);
     if (!kind) return null;
     return kind === '74hc138'
       ? { kind, pins: PINS_74HC138 }
@@ -207,6 +210,15 @@ export const EASYEDA_RULES = [
   [/^(LM|MC)?339/i, () => ({ kind: 'lm339', byName: true })],
   [/^(LM|MC)?393/i, () => ({ kind: 'lm393', byName: true })],
   [/^MAX7219/i, () => ({ kind: 'max7219', byName: true })],
+  // MAX232: EasyEDA writes datasheet pin names (C1+, T1IN, V+); the engine
+  // spells them c1p/t1in/vp — an explicit map, same reason as the '138.
+  [/^MAX232/i, () => ({ kind: 'max232', pins: {
+    'C1+': 'c1p', 'C1-': 'c1m', 'C2+': 'c2p', 'C2-': 'c2m',
+    'V+': 'vp', 'V-': 'vm',
+    T1IN: 't1in', T1OUT: 't1out', T2IN: 't2in', T2OUT: 't2out',
+    R1IN: 'r1in', R1OUT: 'r1out', R2IN: 'r2in', R2OUT: 'r2out',
+    VCC: 'vcc', GND: 'gnd',
+  } })],
   [/^PCF8574/i, () => ({ kind: 'pcf8574', byName: true })],
   [/^(AT)?24[CL]C?\d/i, () => ({ kind: 'at24c02', byName: true,
     terminals: ['vcc', 'gnd', 'sda', 'scl'],
@@ -225,24 +237,28 @@ export const EASYEDA_RULES = [
 
 /** 74-series numbers with a real engine device, from bw-board's registry. */
 const LOGIC_74HC = new Set(['00', '02', '04', '08', '10', '11', '125', '132', '138', '14',
-  '165', '20', '21', '244', '245', '27', '283', '32', '34', '374', '4050', '595', '688',
+  '165', '20', '21', '244', '245', '27', '283', '32', '34', '373', '374', '4050', '595', '688',
   '73', '74', '75', '86', '93', '95']);
-const LOGIC_74LS = new Set(['04', '107', '157', '161', '173', '189', '32']);
+const LOGIC_74LS = new Set(['04', '107', '157', '161', '173', '189', '32', '373']);
 
 /**
  * A 74-series number to an engine kind, or null.
  *
- * Deliberately NOT `74hc${n}` for every n, which is what eagle.js does. The
- * engine has no `74hc373`, and emitting one produces a part that draws, takes
- * its wires with it into a board that cannot build it, and never simulates.
- * Losing the 74LS373 on the reference board and SAYING so is the smaller
- * error -- and mapping it to the `74hc374` the engine does have would be the
- * 4050/4051 collapse again: a transparent latch is not a D flip-flop.
+ * Deliberately NOT `74hc${n}` for every n, which is what eagle.js does: a
+ * number without a registered device produces a part that draws, takes its
+ * wires with it into a board that cannot build it, and never simulates.
+ * (The '373 lived on this list's refusal side until the engine grew a real
+ * transparent latch — mapping it to the '374 was never an option: a latch
+ * is not a D flip-flop, the 4050/4051 collapse again.)
  */
-export function logicKind(n) {
+export function logicKind(n, letters = '') {
   const s = String(n);
   const pad = s.length === 1 ? `0${s}` : s;      // "4" and "04" are one part
-  for (const [set, family] of [[LOGIC_74HC, '74hc'], [LOGIC_74LS, '74ls']]) {
+  // A number in BOTH sets ('373) goes to the family the descriptor names:
+  // a 74LS373 must come in as the TTL part, not the HC one.
+  const fams = [[LOGIC_74HC, '74hc'], [LOGIC_74LS, '74ls']];
+  if (/ls/i.test(letters)) fams.reverse();
+  for (const [set, family] of fams) {
     if (set.has(s)) return family + s;
     if (set.has(pad)) return family + pad;
   }
