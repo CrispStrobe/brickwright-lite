@@ -143,9 +143,12 @@ jobs:
             fi
           done
           # A waiver list may only shrink. Lower these as examples are fixed,
-          # never raise them. KNOWN_INERT went 9 -> 4: three cleared with the
-          # OLED/TFT opcodes (802fc105) and two turned out never to have been
-          # broken (see TIME_GATED in the gate). TIME_GATED is not a waiver list
+          # never raise them. All four example waivers are now ZERO, so these
+          # ceilings are zero: any reappearance is a regression, not a budget to
+          # spend. KNOWN_INERT 4 -> 0 and KNOWN_MISSING_OPCODES -> 0 when the
+          # eleven devices_oled*/devices_tft* opcodes were defined (37 -> 48
+          # blocks); KNOWN_SHADOWED_WRITES 19 -> 0 and KNOWN_NO_BLOCKS 2 -> 0 with
+          # the sb3-creator pin bump to 1a83dfa. TIME_GATED is NOT a waiver list
           # -- its entries still carry a static assertion -- but it is capped too,
           # so it cannot quietly become one.
           node -e "
@@ -165,7 +168,7 @@ jobs:
               const body = gate.slice(gate.indexOf('[', at), gate.indexOf(isMap ? '])' : ']', at));
               return (body.match(isMap ? /\['[^']+'/g : /'[^']+'/g) || []).length;
             };
-            const ceilings = {KNOWN_INERT: 4, KNOWN_SHADOWED_WRITES: 19, KNOWN_NO_BLOCKS: 2, TIME_GATED: 2};
+            const ceilings = {KNOWN_INERT: 0, KNOWN_SHADOWED_WRITES: 0, KNOWN_NO_BLOCKS: 0, TIME_GATED: 2};
             let bad = 0;
             for (const [name, ceiling] of Object.entries(ceilings)) {
               const n = count(name);

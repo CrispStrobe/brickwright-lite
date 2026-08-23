@@ -62,19 +62,10 @@ const entries = Array.isArray(index) ? index : index.examples || [];
  * instead of `set <pin> to <value> percent` / `set <pin> to <value> hz`.
  */
 const KNOWN_BROKEN = new Set([
-    'avr02-dimmer',                 // `set led1 brightness to ...` → variable, not PWM
-    'arduino-01-fade',              // `set pwm led to ...` → variable, not PWM
-    'arduino-02-tone-melody',       // `set tone speaker to ...` → variable, not tone
-    'arduino-02-tone-keyboard',     // `set tone speaker to ...` → variable, not tone
-    'arduino-02-tone-multiple',     // `set tone spkN to ...` → variable, not tone
-    'arduino-03-analog-write-mega', // `set pwm ledN to ...` → variable, not PWM
-    'arduino-03-fading',            // `set pwm led to ...` → variable, not PWM
-    'arduino-04-dimmer',            // `set pwm led to ...` → variable, not PWM
-    'arduino-04-read-ascii-string', // `set pwm ledR/G/B to ...` → variable, not PWM
-    'arduino-sk-p04-color-mixing',  // `set pwm ledR/G/B to ...` → variable, not PWM
-    'arduino-sk-p05-servo-mood',    // `set pwm servo to ...` → variable, not PWM
-    'arduino-sk-p06-light-theremin',// `set tone speaker to ...` → variable, not tone
-    'arduino-sk-p07-keyboard',      // `set tone speaker to ...` → variable, not tone
+    // Thirteen entries came off on 2026-08-23 with the pin bump
+    // db2966f -> 2fb5fbd: the `set pwm|tone <pin> to N` slips, which made a
+    // variable instead of a pin write. Fixed at the source, and the ratchet
+    // reported itself healed rather than waiting to be remembered.
 ]);
 
 // Default device ADC settings per authored device family.

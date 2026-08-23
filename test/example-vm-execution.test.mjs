@@ -115,11 +115,11 @@ const KNOWN_MISSING_OPCODES = new Map([
  * shape as `set variable X to Y`. The rest inherit it from KNOWN_MISSING_OPCODES.
  */
 const KNOWN_INERT = new Set([
-    // FIXED UPSTREAM, AWAITING A PIN BUMP. All four are repaired in sb3-creator
-    // main (250dfdb) — see the note on KNOWN_SHADOWED_WRITES for why they cannot
-    // leave this list until vendor-pins.json moves past db2966f.
-    'arduino-01-fade', 'arduino-02-tone-melody',
-    'arduino-03-analog-write-mega', 'arduino-03-fading'
+    // The pin bump arrived (db2966f -> 2fb5fbd) and all four left on
+    // 2026-08-23: arduino-01-fade, arduino-02-tone-melody,
+    // arduino-03-analog-write-mega, arduino-03-fading. They were the
+    // `set pwm <pin> to N` slip, fixed at the source, and the gate told us they
+    // were healed rather than us having to remember to check.
     // `arduino-02-blink-without-delay` and `arduino-sk-p08-hourglass` came off
     // this list on 2026-08-23 because they were never broken — see TIME_GATED.
     //
@@ -156,7 +156,13 @@ const TIME_GATED = new Map([
 ]);
 
 /** `kind: "full"` entries whose program.bw is a board declaration with no code. */
-const KNOWN_NO_BLOCKS = new Set(['eater6502-bench', 'eater6502-vdp-hello']);
+// EMPTY since 2026-08-23. eater6502-bench and eater6502-vdp-hello were here
+// because they declared kind:"full" and compiled to zero blocks. They are
+// declaration-only machine benches - DEVICE/MAP/CHIP that the 6502 bus
+// extractor reads, with no dialect verb that reaches a memory-mapped chip - so
+// upstream reclassified them as kind:"circuit", matching z80-bench which
+// always was. Nothing claims to be a program that is not one.
+const KNOWN_NO_BLOCKS = new Set([]);
 
 /**
  * Programs where a hardware verb became a variable — the defect this milestone
@@ -185,12 +191,11 @@ const KNOWN_NO_BLOCKS = new Set(['eater6502-bench', 'eater6502-vdp-hello']);
 // Leaving them costs nothing: the "still reproduces" ratchet goes RED the moment
 // the pin bumps and forces them out in that commit.
 const KNOWN_SHADOWED_WRITES = new Set([
-    'avr02-dimmer', 'arduino-01-fade', 'arduino-02-tone-melody', 'arduino-02-tone-keyboard',
-    'arduino-02-tone-multiple', 'arduino-02-tone-pitch-follower', 'arduino-03-analog-in-out-serial',
-    'arduino-03-analog-write-mega', 'arduino-03-calibration', 'arduino-03-fading',
-    'arduino-04-dimmer', 'arduino-04-read-ascii-string', 'arduino-05-while-statement',
-    'arduino-sk-p04-color-mixing', 'arduino-sk-p05-servo-mood', 'arduino-sk-p06-light-theremin',
-    'arduino-sk-p07-keyboard', 'arduino-sk-p10-zoetrope', 'arduino-sk-p12-knock-lock'
+    // 19 entries came off on 2026-08-23 when vendor-pins moved db2966f ->
+    // 2fb5fbd. They were the `set pwm <pin> to N` / `set tone <pin> to N`
+    // slips: not verbs, so the compiler made a VARIABLE named "pwm led" and
+    // the pin stayed dark. Fixed at the source, so the ratchet emptied itself
+    // the moment the fix arrived - which is the property, not a chore.
 ]);
 
 /**

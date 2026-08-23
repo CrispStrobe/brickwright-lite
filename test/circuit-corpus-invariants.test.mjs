@@ -148,7 +148,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
         }
     }
 
-    assert.equal(files.length, 1034, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1092, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 

@@ -1,0 +1,202 @@
+{
+  "vcc": 9,
+  "parts": [
+    {
+      "id": "src",
+      "kind": "vsource",
+      "params": {
+        "volts": 9
+      },
+      "terminals": [
+        "pos",
+        "neg"
+      ],
+      "x": 64,
+      "y": 107
+    },
+    {
+      "id": "sw",
+      "kind": "switch",
+      "params": {},
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 232,
+      "y": 255
+    },
+    {
+      "id": "motor",
+      "kind": "dc_motor",
+      "params": {
+        "windingR": 10,
+        "kV": 0.01
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 64,
+      "y": 255
+    },
+    {
+      "id": "r",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 148,
+      "y": 255
+    },
+    {
+      "id": "led",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "orange"
+      },
+      "terminals": [
+        "anode",
+        "cathode"
+      ],
+      "x": 302,
+      "y": 255
+    },
+    {
+      "id": "gnd",
+      "kind": "gnd",
+      "params": {},
+      "terminals": [
+        "gnd"
+      ],
+      "x": 146,
+      "y": 115
+    },
+    {
+      "id": "flyback",
+      "kind": "diode",
+      "params": {},
+      "terminals": [
+        "anode",
+        "cathode"
+      ],
+      "x": 78,
+      "y": 405
+    }
+  ],
+  "wires": [
+    {
+      "id": "w_flat_0",
+      "netId": "bb1:n-col-b3",
+      "from": {
+        "part": "flyback",
+        "terminal": "cathode"
+      },
+      "to": {
+        "part": "motor",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_1",
+      "netId": "bb1:n-col-b3",
+      "from": {
+        "part": "flyback",
+        "terminal": "cathode"
+      },
+      "to": {
+        "part": "r",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_2",
+      "netId": "bb1:n-col-b3",
+      "from": {
+        "part": "flyback",
+        "terminal": "cathode"
+      },
+      "to": {
+        "part": "sw",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_3",
+      "netId": "bb1:n-col-b5",
+      "from": {
+        "part": "flyback",
+        "terminal": "anode"
+      },
+      "to": {
+        "part": "gnd",
+        "terminal": "gnd"
+      }
+    },
+    {
+      "id": "w_flat_4",
+      "netId": "bb1:n-col-b5",
+      "from": {
+        "part": "flyback",
+        "terminal": "anode"
+      },
+      "to": {
+        "part": "led",
+        "terminal": "cathode"
+      }
+    },
+    {
+      "id": "w_flat_5",
+      "netId": "bb1:n-col-b5",
+      "from": {
+        "part": "flyback",
+        "terminal": "anode"
+      },
+      "to": {
+        "part": "motor",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_6",
+      "netId": "bb1:n-col-b5",
+      "from": {
+        "part": "flyback",
+        "terminal": "anode"
+      },
+      "to": {
+        "part": "src",
+        "terminal": "neg"
+      }
+    },
+    {
+      "id": "w_flat_7",
+      "netId": "bb1:n-col-t13",
+      "from": {
+        "part": "led",
+        "terminal": "anode"
+      },
+      "to": {
+        "part": "r",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_8",
+      "netId": "bb1:n-col-t15",
+      "from": {
+        "part": "src",
+        "terminal": "pos"
+      },
+      "to": {
+        "part": "sw",
+        "terminal": "a"
+      }
+    }
+  ],
+  "holeWires": []
+}
