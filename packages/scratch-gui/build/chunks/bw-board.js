@@ -1,6 +1,445 @@
 "use strict";
 (self["webpackChunkGUI"] = self["webpackChunkGUI"] || []).push([["bw-board"],{
 
+/***/ "./src/lib/bw-board/ac.js":
+/*!********************************!*\
+  !*** ./src/lib/bw-board/ac.js ***!
+  \********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   acSweep: () => (/* binding */ acSweep)
+/* harmony export */ });
+/* harmony import */ var _mna_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./mna.js */ "./src/lib/bw-board/mna.js");
+/* harmony import */ var _sparse_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./sparse.js */ "./src/lib/bw-board/sparse.js");
+/* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./devices.js */ "./src/lib/bw-board/devices.js");
+/**
+ * True small-signal AC analysis (spec-updates/ac-small-signal.md).
+ *
+ * Every nonlinear device is linearized at the DC operating point; C and L
+ * stamp complex admittances (jωC, 1/jωL); every independent source, MCU
+ * pin drive, and device drive is KILLED (its Thévenin collapses to its
+ * output conductance) except the one swept source, which drives a unit
+ * phasor. The complex system G + jB is solved as the real-equivalent
+ * bordered form
+ *
+ *     [ G  −B ] [xr]   [br]
+ *     [ B   G ] [xi] = [bi]
+ *
+ * so the EXISTING sparse LU does the complex solve — and since only the
+ * VALUES change with ω (never the pattern), every frequency point after
+ * the first is a numeric refactor.
+ *
+ * The linearizations evaluate the same model functions the DC stamps use
+ * (imported from mna.js) — an AC answer computed from a different model
+ * than the operating point is a plausible wrong Bode plot.
+ *
+ * @module
+ */
+
+
+
+
+const VT = 0.02585;
+
+/**
+ * Small-signal junction conductance at the operating voltage — the exact
+ * derivative of the model the DC stamp used (C1 knee or Shockley).
+ */
+function junctionG(part, vAcross, vf, rd) {
+  const opts = (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.junctionOpts)(part);
+  if (!opts) {
+    // C1 PWL knee: derivative of pwlKneeCurrent.
+    const EPS = 0.025;
+    if (vAcross < vf - EPS) return 1e-9;
+    if (vAcross > vf + EPS) return 1 / rd;
+    return (vAcross - vf + EPS) / (2 * EPS * rd);
+  }
+  const nVt = opts.n * VT;
+  let is = opts.is;
+  if (is === undefined) {
+    const expVf = Math.exp(Math.min(vf / nVt, 80));
+    is = 0.020 / Math.max(expVf - 1, 1e-30);
+  }
+  const vClamped = Math.min(vAcross, nVt * 80);
+  if (vClamped < -5 * nVt) return 1e-12;
+  return Math.min(Math.max(is * Math.exp(vClamped / nVt) / nVt, 1e-12), 1e6);
+}
+
+/**
+ * Run a small-signal sweep.
+ *
+ * @param {object} args
+ * @param {import('./types.js').Part[]} args.parts - SOLVER-view parts
+ * @param {import('./types.js').Net[]} args.nets - SOLVER-view nets
+ * @param {Map<string, any>} args.pinSources
+ * @param {Map<string, number>} args.controls
+ * @param {number} args.vcc
+ * @param {Map<string, number>} args.opVoltages - converged DC node voltages
+ * @param {Map<string, object>} [args.deviceStates]
+ * @param {string} args.sourceId - the swept vsource part id (unit phasor)
+ * @param {number[]} args.freqs - Hz, each > 0
+ * @param {string[]} [args.probes] - net ids to report (default: all)
+ * @returns {Array<{hz: number, results: Map<string, {mag: number, phaseDeg: number}>}>}
+ */
+function acSweep(args) {
+  const {
+    parts,
+    nets,
+    pinSources,
+    controls,
+    vcc,
+    opVoltages,
+    deviceStates,
+    sourceId,
+    freqs,
+    probes
+  } = args;
+  const partById = new Map(parts.map(p => [p.id, p]));
+  const source = partById.get(sourceId);
+  if (!source || source.kind !== 'vsource') {
+    throw new Error("acSweep: \"".concat(sourceId, "\" is not a vsource on this bench"));
+  }
+
+  // ── Node indexing ───────────────────────────────────────────────────
+  // AC ground = every net that is DC-pinned by a rail or a NON-swept
+  // voltage source: gnd symbols, vcc rails, other vsources' terminals.
+  // (An ideal DC-pinned node cannot move at any frequency.)
+  const grounded = new Set();
+  for (const net of nets) {
+    for (const t of net.terminals) {
+      const p = partById.get(t.part);
+      if (!p) continue;
+      if (p.kind === 'gnd') grounded.add(net.id);
+      if (p.kind === 'vcc' && t.terminal === 'vcc') grounded.add(net.id);
+      if (p.kind === 'vsource' && p.id !== sourceId) grounded.add(net.id);
+    }
+  }
+  // The swept source's neg terminal is its reference.
+  const srcNeg = (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.findNet)(nets, sourceId, 'neg');
+  if (srcNeg) grounded.add(srcNeg);
+
+  /** @type {Map<string, number>} */
+  const nodeIndex = new Map();
+  let nodeCount = 0;
+  for (const net of nets) {
+    if (!grounded.has(net.id)) nodeIndex.set(net.id, nodeCount++);
+  }
+  const idxOf = netId => netId && !grounded.has(netId) ? nodeIndex.get(netId) : undefined;
+  const vOp = netId => {
+    var _opVoltages$get;
+    return netId ? (_opVoltages$get = opVoltages.get(netId)) !== null && _opVoltages$get !== void 0 ? _opVoltages$get : 0 : 0;
+  };
+  const netOf = (partId, terminal) => (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.findNet)(nets, partId, terminal);
+
+  // Extra rows: the swept source and each op-amp output.
+  let acRows = 0;
+  const rowIndex = new Map();
+  const srcPos = netOf(sourceId, 'pos');
+  if (idxOf(srcPos) === undefined) {
+    throw new Error('acSweep: the swept source drives a DC-pinned or missing net');
+  }
+  rowIndex.set(sourceId, acRows++);
+  for (const p of parts) {
+    if (p.kind === 'opamp' && idxOf(netOf(p.id, 'out')) !== undefined) {
+      rowIndex.set(p.id, acRows++);
+    }
+  }
+  const N = nodeCount + acRows;
+  const dim = 2 * N; // real-equivalent bordered system
+  if (nodeCount === 0) return freqs.map(hz => ({
+    hz,
+    results: new Map()
+  }));
+  const A = new _sparse_js__WEBPACK_IMPORTED_MODULE_1__.CooMatrix(dim);
+  const b = new Float64Array(dim);
+
+  // Complex entry: value g + j·susceptance at (i, j).
+  const addC = (i, j, g, susc) => {
+    if (g !== 0) {
+      A.add(i, j, g);
+      A.add(i + N, j + N, g);
+    }
+    if (susc !== 0) {
+      A.add(i, j + N, -susc);
+      A.add(i + N, j, susc);
+    }
+  };
+  const addG2 = function addG2(na, nb, g) {
+    let susc = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 0;
+    const ia = idxOf(na);
+    const ib = idxOf(nb);
+    if (ia !== undefined) addC(ia, ia, g, susc);
+    if (ib !== undefined) addC(ib, ib, g, susc);
+    if (ia !== undefined && ib !== undefined) {
+      addC(ia, ib, -g, -susc);
+      addC(ib, ia, -g, -susc);
+    }
+  };
+
+  // ── Frequency-independent stamps, collected as closures ─────────────
+  // The susceptance parts get scaled by ω each point; conductances are
+  // stamped once per fill. We simply re-fill per point (reset keeps the
+  // pattern, so the LU refactors).
+  const fill = omega => {
+    var _P$ohms, _P$farads, _ref, _P$henrys;
+    A.reset();
+    b.fill(0);
+    for (const part of parts) {
+      var _part$params;
+      const P = (_part$params = part.params) !== null && _part$params !== void 0 ? _part$params : {};
+      switch (part.kind) {
+        case 'resistor':
+          addG2(netOf(part.id, 'a'), netOf(part.id, 'b'), 1 / ((_P$ohms = P.ohms) !== null && _P$ohms !== void 0 ? _P$ohms : 1000));
+          break;
+        case 'buzzer':
+          addG2(netOf(part.id, 'a'), netOf(part.id, 'b'), 1 / 100);
+          break;
+        case 'button':
+        case 'switch':
+          {
+            var _controls$get;
+            const closed = ((_controls$get = controls.get(part.id)) !== null && _controls$get !== void 0 ? _controls$get : 0) === 1;
+            addG2(netOf(part.id, 'a'), netOf(part.id, 'b'), closed ? 1 / 0.001 : 1e-12);
+            break;
+          }
+        case 'potentiometer':
+          {
+            var _controls$get2, _P$ohms2;
+            const pos = (_controls$get2 = controls.get(part.id)) !== null && _controls$get2 !== void 0 ? _controls$get2 : Number.isFinite(P.position) ? P.position : 0.5;
+            const total = (_P$ohms2 = P.ohms) !== null && _P$ohms2 !== void 0 ? _P$ohms2 : 10000;
+            addG2(netOf(part.id, 'a'), netOf(part.id, 'wiper'), 1 / Math.max(1, total * (1 - pos)));
+            addG2(netOf(part.id, 'wiper'), netOf(part.id, 'b'), 1 / Math.max(1, total * pos));
+            break;
+          }
+        case 'ldr':
+        case 'ntc':
+          {
+            var _P$rDark, _P$rCold, _P$rLight, _P$rHot, _controls$get3;
+            const hi = part.kind === 'ldr' ? (_P$rDark = P.rDark) !== null && _P$rDark !== void 0 ? _P$rDark : 1e6 : (_P$rCold = P.rCold) !== null && _P$rCold !== void 0 ? _P$rCold : 1e5;
+            const lo = part.kind === 'ldr' ? (_P$rLight = P.rLight) !== null && _P$rLight !== void 0 ? _P$rLight : 100 : (_P$rHot = P.rHot) !== null && _P$rHot !== void 0 ? _P$rHot : 1000;
+            const x = (_controls$get3 = controls.get(part.id)) !== null && _controls$get3 !== void 0 ? _controls$get3 : 0;
+            addG2(netOf(part.id, 'a'), netOf(part.id, 'b'), 1 / Math.max(0.001, hi * Math.pow(lo / hi, x)));
+            break;
+          }
+        case 'capacitor':
+          addG2(netOf(part.id, 'a'), netOf(part.id, 'b'), 0, omega * ((_P$farads = P.farads) !== null && _P$farads !== void 0 ? _P$farads : 1e-4));
+          break;
+        case 'inductor':
+          // Y = 1/(jωL) = −j/(ωL)
+          addG2(netOf(part.id, 'a'), netOf(part.id, 'b'), 0, -1 / (omega * Math.max((_ref = (_P$henrys = P.henrys) !== null && _P$henrys !== void 0 ? _P$henrys : P.henries) !== null && _ref !== void 0 ? _ref : 1e-3, 1e-12)));
+          break;
+        case 'led':
+        case 'diode':
+          {
+            var _P$vf;
+            const na = netOf(part.id, 'anode');
+            const nc = netOf(part.id, 'cathode');
+            const vf = (_P$vf = P.vf) !== null && _P$vf !== void 0 ? _P$vf : part.kind === 'diode' ? 0.7 : 2.0;
+            addG2(na, nc, junctionG(part, vOp(na) - vOp(nc), vf, 10));
+            break;
+          }
+        case 'zener':
+          {
+            var _P$vf2, _P$vz, _P$rz;
+            const na = netOf(part.id, 'anode');
+            const nc = netOf(part.id, 'cathode');
+            const v = vOp(na) - vOp(nc);
+            const vf = (_P$vf2 = P.vf) !== null && _P$vf2 !== void 0 ? _P$vf2 : 0.7;
+            const vz = (_P$vz = P.vz) !== null && _P$vz !== void 0 ? _P$vz : 5.1;
+            let g = 1e-9;
+            if (v >= vf) g = 1 / 10;else if (v <= -vz) g = 1 / ((_P$rz = P.rz) !== null && _P$rz !== void 0 ? _P$rz : 5);
+            addG2(na, nc, g);
+            break;
+          }
+        case 'npn':
+        case 'pnp':
+          {
+            var _P$vbe, _P$vbe2, _P$vceSat, _P$beta;
+            const nB = netOf(part.id, 'base');
+            const nC = netOf(part.id, 'collector');
+            const nE = netOf(part.id, 'emitter');
+            const vJ = part.kind === 'npn' ? vOp(nB) - vOp(nE) : vOp(nE) - vOp(nB);
+            const gpi = junctionG(part, vJ, (_P$vbe = P.vbe) !== null && _P$vbe !== void 0 ? _P$vbe : 0.7, 10);
+            // Junction between B and E regardless of polarity.
+            addG2(nB, nE, gpi);
+            // Saturated at the OP? Then the output is a stiff clamp, not a
+            // VCCS — same region logic as the DC stamp, read off the OP.
+            const vOut = part.kind === 'npn' ? vOp(nC) - vOp(nE) : vOp(nE) - vOp(nC);
+            const conducting = (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.pwlKneeCurrent)(vJ, (_P$vbe2 = P.vbe) !== null && _P$vbe2 !== void 0 ? _P$vbe2 : 0.7, 10) > 1e-9;
+            if (conducting && vOut < ((_P$vceSat = P.vceSat) !== null && _P$vceSat !== void 0 ? _P$vceSat : 0.2) * 1.5) {
+              addG2(nC, nE, 10);
+              break;
+            }
+            const gm = ((_P$beta = P.beta) !== null && _P$beta !== void 0 ? _P$beta : 100) * gpi;
+            const iC = idxOf(nC);
+            const iB = idxOf(nB);
+            const iE = idxOf(nE);
+            // VCCS: i(C→E) = gm·(vB − vE) for BOTH polarities — the pnp's
+            // reversed junction sense and reversed current direction cancel.
+            if (iC !== undefined && iB !== undefined) addC(iC, iB, gm, 0);
+            if (iC !== undefined && iE !== undefined) addC(iC, iE, -gm, 0);
+            if (iE !== undefined && iB !== undefined) addC(iE, iB, -gm, 0);
+            if (iE !== undefined) addC(iE, iE, gm, 0);
+            break;
+          }
+        case 'nmos':
+        case 'pmos':
+          {
+            var _P$vth, _P$k;
+            const nG = netOf(part.id, 'gate');
+            const nD = netOf(part.id, 'drain');
+            const nS = netOf(part.id, 'source');
+            const vth = (_P$vth = P.vth) !== null && _P$vth !== void 0 ? _P$vth : part.kind === 'nmos' ? 2.0 : -2.0;
+            const k = (_P$k = P.k) !== null && _P$k !== void 0 ? _P$k : 0.5;
+            const vgs = part.kind === 'nmos' ? vOp(nG) - vOp(nS) : vOp(nS) - vOp(nG);
+            const [vovS, dVovS] = (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.smoothVov)(vgs - Math.abs(vth));
+            const gm = 2 * k * vovS * dVovS;
+            const taper = vovS / (vovS + _mna_js__WEBPACK_IMPORTED_MODULE_0__.MOS_SMOOTH_DELTA);
+            const gds = 0.001 * taper * taper + 1e-9;
+            addG2(nD, nS, gds);
+            const iD = idxOf(nD);
+            const iG = idxOf(nG);
+            const iS = idxOf(nS);
+            // i(D→S) = gm·(vG − vS) for both channel types (senses cancel).
+            if (iD !== undefined && iG !== undefined) addC(iD, iG, gm, 0);
+            if (iD !== undefined && iS !== undefined) addC(iD, iS, -gm, 0);
+            if (iS !== undefined && iG !== undefined) addC(iS, iG, -gm, 0);
+            if (iS !== undefined) addC(iS, iS, gm, 0);
+            break;
+          }
+        case 'opamp':
+          {
+            var _P$gain;
+            if (!rowIndex.has(part.id)) break;
+            const row = nodeCount + rowIndex.get(part.id);
+            const iO = idxOf(netOf(part.id, 'out'));
+            if (iO === undefined) break;
+            const iP = idxOf(netOf(part.id, 'inp'));
+            const iN = idxOf(netOf(part.id, 'inn'));
+            const gain = (_P$gain = P.gain) !== null && _P$gain !== void 0 ? _P$gain : 1e6;
+            addC(iO, row, 1, 0);
+            addC(row, iO, 1, 0);
+            if (iP !== undefined) addC(row, iP, -gain, 0);
+            if (iN !== undefined) addC(row, iN, gain, 0);
+            break;
+          }
+        case 'mcu':
+          {
+            for (const terminal of part.terminals) {
+              const src = pinSources.get(terminal);
+              if (!src || src === 'high-z') continue;
+              const i = idxOf(netOf(part.id, terminal));
+              if (i !== undefined) addC(i, i, 1 / src.rTh, 0);
+            }
+            break;
+          }
+        case 'vsource':
+          {
+            if (part.id !== sourceId) break; // others are AC ground
+            const row = nodeCount + rowIndex.get(part.id);
+            const iP = idxOf(srcPos);
+            addC(iP, row, 1, 0);
+            addC(row, iP, 1, 0);
+            b[row] = 1; // unit phasor, 0°
+            break;
+          }
+        case 'vcc':
+        case 'gnd':
+        case 'isource':
+          break;
+        // AC ground / open
+        default:
+          {
+            var _deviceStates$get;
+            // Registered devices: their PASSIVE loading only. Drives collapse
+            // to their output conductance (a killed Thévenin); stamp() runs
+            // against a g-only ctx so behavioral models contribute their
+            // input impedance without injecting bias.
+            const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_2__.getDevice)(part.kind);
+            if (!model) break;
+            const state = (_deviceStates$get = deviceStates === null || deviceStates === void 0 ? void 0 : deviceStates.get(part.id)) !== null && _deviceStates$get !== void 0 ? _deviceStates$get : {
+              drives: {}
+            };
+            for (const [terminal, drive] of Object.entries((_state$drives = state.drives) !== null && _state$drives !== void 0 ? _state$drives : {})) {
+              var _state$drives;
+              if (!drive) continue;
+              const g = 1 / Math.max(drive.rTh, 1e-3);
+              if (drive.ref) {
+                addG2(netOf(part.id, terminal), netOf(part.id, drive.ref), g);
+              } else {
+                const i = idxOf(netOf(part.id, terminal));
+                if (i !== undefined) addC(i, i, g, 0);
+              }
+            }
+            if (model.stamp) {
+              const ctx = {
+                netFor: t => netOf(part.id, t),
+                conductance: (tA, tB, g) => addG2(netOf(part.id, tA), tB ? netOf(part.id, tB) : undefined, g),
+                thevenin: (t, _v, rTh) => {
+                  const i = idxOf(netOf(part.id, t));
+                  if (i !== undefined) addC(i, i, 1 / Math.max(rTh, 1e-3), 0);
+                },
+                theveninBetween: (tP, tN, _v, rTh) => addG2(netOf(part.id, tP), netOf(part.id, tN), 1 / Math.max(rTh, 1e-3)),
+                current: () => {},
+                vcc,
+                tSeconds: 0,
+                control: controls.get(part.id)
+              };
+              model.stamp(ctx, part, state);
+            }
+            break;
+          }
+      }
+    }
+    // gmin on every node diagonal, both blocks.
+    for (let i = 0; i < nodeCount; i++) addC(i, i, 1e-12, 0);
+  };
+
+  // ── Sweep: factor once, refactor per point ──────────────────────────
+  const out = [];
+  let lu = null;
+  for (const hz of freqs) {
+    const omega = 2 * Math.PI * hz;
+    fill(omega);
+    const csc = (0,_sparse_js__WEBPACK_IMPORTED_MODULE_1__.toCSC)(A);
+    if (lu && lu.samePattern(csc) && lu.refactor(csc)) {
+      // reused
+    } else {
+      lu = new _sparse_js__WEBPACK_IMPORTED_MODULE_1__.SparseLU();
+      lu.factor(csc); // throws the singular contract
+    }
+    const x = lu.solve(b);
+    const results = new Map();
+    const report = probes !== null && probes !== void 0 ? probes : [...nodeIndex.keys()];
+    for (const netId of report) {
+      if (grounded.has(netId)) {
+        results.set(netId, {
+          mag: 0,
+          phaseDeg: 0
+        });
+        continue;
+      }
+      const i = nodeIndex.get(netId);
+      if (i === undefined) continue;
+      const re = x[i];
+      const im = x[i + N];
+      results.set(netId, {
+        mag: Math.hypot(re, im),
+        phaseDeg: Math.atan2(im, re) * 180 / Math.PI
+      });
+    }
+    out.push({
+      hz,
+      results
+    });
+  }
+  return out;
+}
+
+/***/ }),
+
 /***/ "./src/lib/bw-board/air.js":
 /*!*********************************!*\
   !*** ./src/lib/bw-board/air.js ***!
@@ -2640,10 +3079,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _pin_model_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./pin-model.js */ "./src/lib/bw-board/pin-model.js");
 /* harmony import */ var _mna_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./mna.js */ "./src/lib/bw-board/mna.js");
-/* harmony import */ var _validate_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./validate.js */ "./src/lib/bw-board/validate.js");
-/* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./devices.js */ "./src/lib/bw-board/devices.js");
-/* harmony import */ var _devices_i2c_slave_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./devices/i2c-slave.js */ "./src/lib/bw-board/devices/i2c-slave.js");
-/* harmony import */ var _current_ratings_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./current-ratings.js */ "./src/lib/bw-board/current-ratings.js");
+/* harmony import */ var _ac_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./ac.js */ "./src/lib/bw-board/ac.js");
+/* harmony import */ var _validate_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./validate.js */ "./src/lib/bw-board/validate.js");
+/* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./devices.js */ "./src/lib/bw-board/devices.js");
+/* harmony import */ var _devices_i2c_slave_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./devices/i2c-slave.js */ "./src/lib/bw-board/devices/i2c-slave.js");
+/* harmony import */ var _current_ratings_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./current-ratings.js */ "./src/lib/bw-board/current-ratings.js");
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -2668,6 +3108,7 @@ function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = 
 /** @typedef {import('./types.js').PinId} PinId */
 /** @typedef {import('./types.js').PinMode} PinMode */
 /** @typedef {import('./types.js').TheveninSource} TheveninSource */
+
 
 
 
@@ -3084,13 +3525,14 @@ class BoardImpl {
   }
   setNetlist(parts, nets) {
     this._ledFanout = undefined; // netlist changed: recompute the fan-out memo
+    this._wiperLoaded = undefined; // ditto for the loaded-wiper routing memo
     this._qualCache = new Map(); // qualified-pin resolutions are per-netlist
     this._mcuSurface = undefined;
     this._hasQualifiedPin = false;
     // Validate the netlist and reject malformed input. Without this,
     // a wrong terminal name (e.g. {a,b} instead of {anode,cathode} for
     // an LED) silently produces brightness 0 — a plausible wrong answer.
-    const errors = (0,_validate_js__WEBPACK_IMPORTED_MODULE_2__.validateNetlist)(parts, nets);
+    const errors = (0,_validate_js__WEBPACK_IMPORTED_MODULE_3__.validateNetlist)(parts, nets);
     ({
       parts,
       nets
@@ -3177,7 +3619,7 @@ class BoardImpl {
     this._qualCache = null;
     this._deviceStates = new Map();
     for (const p of parts) {
-      const st = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.initDeviceState)(p);
+      const st = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.initDeviceState)(p);
       if (st) {
         var _st$drives;
         // Remember which drives the model itself owns (power rails) —
@@ -3293,7 +3735,7 @@ class BoardImpl {
       let homePart = null;
       let homeTerminal = null;
       for (const part of this.parts) {
-        const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(part.kind);
+        const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(part.kind);
         const isSurface = part.kind === 'mcu' || model && model.gpioFollowsPinStates;
         if (!isSurface) continue;
         for (const t of part.terminals) {
@@ -3325,7 +3767,7 @@ class BoardImpl {
         // as one MNA solve would conclude — but without the matrix.
         // Devices that have analog concerns (probes, muxes, level
         // shifters) do NOT qualify even though they have update().
-        const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(part.kind);
+        const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(part.kind);
         const st = this._deviceStates.get(part.id);
         const isDigitalDecoder = st && st._i2c || model && model.digitalFastPath || part.kind === 'shift_register';
         if (isDigitalDecoder) {
@@ -3347,7 +3789,7 @@ class BoardImpl {
         break resolve; // analog consumer — edges are its signal
       }
       if (!feeders.length) break resolve;
-      const homeModel = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(homePart.kind);
+      const homeModel = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(homePart.kind);
       const vLogic = (_ref = homeModel && homeModel.vcc) !== null && _ref !== void 0 ? _ref : this.vcc;
       info = {
         netId,
@@ -3422,7 +3864,7 @@ class BoardImpl {
             this._settleShiftRegister(f.part.id, f.terminalNets);
             continue;
           }
-          const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(f.part.kind);
+          const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(f.part.kind);
           if (!model || !model.update) continue;
           const state = this._deviceStates.get(f.part.id);
           if (!state) continue;
@@ -4236,7 +4678,7 @@ class BoardImpl {
       this._recordRefusedControl(partId, verb, 'no such part');
       return false;
     }
-    const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(part.kind);
+    const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(part.kind);
     const state = this._deviceStates.get(partId);
     if (model && model.control && state) {
       let handled = false;
@@ -4326,6 +4768,67 @@ class BoardImpl {
     this._recordLedSamples();
     this._notifyChange('power', {
       on
+    });
+  }
+
+  /**
+   * Boundary B: true small-signal AC sweep
+   * (spec-updates/ac-small-signal.md; the engine answer that replaces the
+   * time-domain sine correlation — which stays available in sweep.js as
+   * the cross-check the two must agree with on linear circuits).
+   *
+   * Linearizes at the DC operating point and solves the complex system per
+   * frequency; the swept source drives a unit phasor, every other source
+   * is killed. Runs against the SOLVER view (motor windings included).
+   * Refuses — throws — when the operating point did not converge: an AC
+   * answer about a nonexistent bias point is a plausible wrong Bode plot.
+   *
+   * @param {object} opts
+   * @param {string} opts.sourceId - vsource part to sweep
+   * @param {number} opts.from - start frequency, Hz
+   * @param {number} opts.to - end frequency, Hz
+   * @param {number} [opts.pointsPerDecade]
+   * @param {string[]} [opts.probes] - net ids to report (default: all)
+   * @returns {Array<{hz: number, results: Map<string, {mag: number, phaseDeg: number}>}>}
+   */
+  runAc(_ref2) {
+    let {
+      sourceId,
+      from,
+      to,
+      pointsPerDecade = 20,
+      probes
+    } = _ref2;
+    if (!(from > 0) || !(to > from)) {
+      throw new Error('runAc: need 0 < from < to');
+    }
+    // DC operating point: caps open, inductors shorted — the bias the
+    // small-signal model is valid around.
+    const op = (0,_mna_js__WEBPACK_IMPORTED_MODULE_1__.solveMNA)(this._solveParts, this._solveNets, this._pinSources(), this.controls, this.vcc, {
+      tSeconds: Number(this.timeNs) / 1e9,
+      deviceStates: this._deviceStates,
+      qualifiedSources: this._qualifiedSources(),
+      powerOff: !this.powered
+    });
+    if (op.converged === false) {
+      throw new Error('runAc: the DC operating point did not converge — ' + 'there is no bias point to linearize around');
+    }
+    const decades = Math.log10(to / from);
+    const nPts = Math.max(2, Math.round(decades * pointsPerDecade) + 1);
+    const freqs = Array.from({
+      length: nPts
+    }, (_, i) => from * Math.pow(10, i * decades / (nPts - 1)));
+    return (0,_ac_js__WEBPACK_IMPORTED_MODULE_2__.acSweep)({
+      parts: this._solveParts,
+      nets: this._solveNets,
+      pinSources: this._pinSources(),
+      controls: this.controls,
+      vcc: this.vcc,
+      opVoltages: op.nodeVoltages,
+      deviceStates: this._deviceStates,
+      sourceId,
+      freqs,
+      probes
     });
   }
 
@@ -4567,7 +5070,7 @@ class BoardImpl {
     for (const [, st] of this._deviceStates) {
       if (!st || !st._i2c || !st._i2c.handlers) continue;
       const s = st._i2c;
-      const edge = (scl, sda) => (0,_devices_i2c_slave_js__WEBPACK_IMPORTED_MODULE_4__.feedI2CSlave)(s, scl, sda);
+      const edge = (scl, sda) => (0,_devices_i2c_slave_js__WEBPACK_IMPORTED_MODULE_5__.feedI2CSlave)(s, scl, sda);
       edge(true, true); // bus idle
       edge(true, false);
       edge(false, false); // START
@@ -4625,9 +5128,9 @@ class BoardImpl {
    * @returns {Array<{pin: string, mode: string, driveHigh: boolean}>}
    */
   getPinStates() {
-    return [...this.pinStates.entries()].map(_ref2 => {
+    return [...this.pinStates.entries()].map(_ref3 => {
       var _s$as;
-      let [pin, s] = _ref2;
+      let [pin, s] = _ref3;
       return {
         pin: (_s$as = s.as) !== null && _s$as !== void 0 ? _s$as : pin,
         mode: s.mode,
@@ -4850,7 +5353,7 @@ class BoardImpl {
         if (i !== undefined && i > 0) solvedCurrents.set(part.id, i);
       }
     }
-    const budgetWarnings = (0,_current_ratings_js__WEBPACK_IMPORTED_MODULE_5__.checkCurrentBudget)(this.parts, solvedCurrents.size > 0 ? solvedCurrents : undefined);
+    const budgetWarnings = (0,_current_ratings_js__WEBPACK_IMPORTED_MODULE_6__.checkCurrentBudget)(this.parts, solvedCurrents.size > 0 ? solvedCurrents : undefined);
     for (const w of budgetWarnings) warnings.push(w);
     return warnings;
   }
@@ -5011,7 +5514,7 @@ class BoardImpl {
     if (this._deviceStates.size === 0) return;
     for (const part of this.parts) {
       var _model$vcc;
-      const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(part.kind);
+      const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(part.kind);
       if (!model || !model.gpioFollowsPinStates) continue;
       const st = this._deviceStates.get(part.id);
       if (!st) continue;
@@ -5044,7 +5547,7 @@ class BoardImpl {
     if (this._mcuSurface) return this._mcuSurface;
     const set = new Set();
     for (const part of this.parts) {
-      const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(part.kind);
+      const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(part.kind);
       if (part.kind !== 'mcu' && !(model && model.gpioFollowsPinStates)) continue;
       for (const t of part.terminals) set.add(String(t).toLowerCase());
     }
@@ -5131,13 +5634,42 @@ class BoardImpl {
   _needsMNA() {
     for (const p of this.parts) {
       var _p$params3;
-      if (MNA_ONLY_KINDS.has(p.kind) || (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(p.kind)) return true;
+      if (MNA_ONLY_KINDS.has(p.kind) || (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(p.kind)) return true;
       // An opted-in Shockley junction is beyond the walker's knee
       // vocabulary: letting the walker answer nodeVoltage while the
       // instruments answer from the exponential model is two truths on
       // one bench (spec-updates/shockley-junction-limiting.md).
       if ((p.kind === 'led' || p.kind === 'diode') && ((_p$params3 = p.params) === null || _p$params3 === void 0 ? void 0 : _p$params3.model) === 'shockley') return true;
     }
+    // A potentiometer with a LOADED wiper is beyond the walker:
+    // _solvePot answers the unloaded midpoint while _solveLedChain treats
+    // that midpoint as an ideal source — a stitched answer that violates
+    // KCL at the wiper by exactly what the load draws (measured: a 10 kΩ
+    // pot at 50 % feeding 220 Ω + LED read 2.5000 V while sourcing
+    // 2.174 mA from nowhere; found by the examples owner's KCL residual
+    // check, 2026-08-23). An MCU input is high-Z and does not load;
+    // anything else on the wiper net does.
+    if (this._wiperLoaded === undefined) {
+      this._wiperLoaded = false;
+      for (const p of this.parts) {
+        var _this$_solveNets;
+        if (p.kind !== 'potentiometer') continue;
+        const wnetId = this._netForTerminal(p.id, 'wiper');
+        if (!wnetId) continue;
+        const wnet = ((_this$_solveNets = this._solveNets) !== null && _this$_solveNets !== void 0 ? _this$_solveNets : this.nets).find(n => n.id === wnetId);
+        if (!wnet) continue;
+        for (const t of wnet.terminals) {
+          if (t.part === p.id) continue;
+          const other = this.partMap.get(t.part);
+          if (other && other.kind !== 'mcu') {
+            this._wiperLoaded = true;
+            break;
+          }
+        }
+        if (this._wiperLoaded) break;
+      }
+    }
+    if (this._wiperLoaded) return true;
     // Shared-LED fan-out is beyond the walker's vocabulary: _solveLedChain
     // traces each LED's series path INDEPENDENTLY, so two LEDs sharing a
     // net (a multiplexed display's segment bus, a charlieplexed pair)
@@ -5339,7 +5871,7 @@ class BoardImpl {
     // Registry devices
     if (this._deviceStates.size === 0) return changed;
     for (const part of this.parts) {
-      const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(part.kind);
+      const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(part.kind);
       if (!model || !model.update) continue;
       const state = this._deviceStates.get(part.id);
       const read = terminal => {
@@ -6229,7 +6761,7 @@ class BoardImpl {
         const part = this.partMap.get(t.part);
         if (!part || String(t.terminal).toLowerCase() !== key) continue;
         if (part.kind === 'mcu') return at(net.id);
-        const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(part.kind);
+        const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(part.kind);
         if (model && model.gpioFollowsPinStates) {
           return at(net.id);
         }
@@ -6255,8 +6787,8 @@ class BoardImpl {
     // The SOLVER view: identical to the drawn netlist except that an
     // expanded motor's 'a' resolves to its hidden winding net, so device
     // reads and instrument taps see the node its model actually sits on.
-    for (const net of (_this$_solveNets = this._solveNets) !== null && _this$_solveNets !== void 0 ? _this$_solveNets : this.nets) {
-      var _this$_solveNets;
+    for (const net of (_this$_solveNets2 = this._solveNets) !== null && _this$_solveNets2 !== void 0 ? _this$_solveNets2 : this.nets) {
+      var _this$_solveNets2;
       for (const t of net.terminals) {
         if (t.part === partId && t.terminal === terminal) {
           return net.id;
@@ -26691,137 +27223,139 @@ const FUNSCII = Uint8Array.from({
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   BoardImpl: () => (/* reexport safe */ _board_js__WEBPACK_IMPORTED_MODULE_0__.BoardImpl),
-/* harmony export */   CURRENT_RATINGS: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_38__.CURRENT_RATINGS),
-/* harmony export */   ControllerExtension: () => (/* reexport safe */ _controller_extension_js__WEBPACK_IMPORTED_MODULE_41__.ControllerExtension),
-/* harmony export */   ControllerPanel: () => (/* reexport safe */ _controller_js__WEBPACK_IMPORTED_MODULE_39__.ControllerPanel),
-/* harmony export */   DataLogger: () => (/* reexport safe */ _datalogger_js__WEBPACK_IMPORTED_MODULE_43__.DataLogger),
-/* harmony export */   DataLoggerExtension: () => (/* reexport safe */ _datalogger_extension_js__WEBPACK_IMPORTED_MODULE_44__.DataLoggerExtension),
-/* harmony export */   NetlistBuilder: () => (/* reexport safe */ _builder_js__WEBPACK_IMPORTED_MODULE_11__.NetlistBuilder),
-/* harmony export */   PORT_LIMITS: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_38__.PORT_LIMITS),
+/* harmony export */   CURRENT_RATINGS: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_39__.CURRENT_RATINGS),
+/* harmony export */   ControllerExtension: () => (/* reexport safe */ _controller_extension_js__WEBPACK_IMPORTED_MODULE_42__.ControllerExtension),
+/* harmony export */   ControllerPanel: () => (/* reexport safe */ _controller_js__WEBPACK_IMPORTED_MODULE_40__.ControllerPanel),
+/* harmony export */   DataLogger: () => (/* reexport safe */ _datalogger_js__WEBPACK_IMPORTED_MODULE_44__.DataLogger),
+/* harmony export */   DataLoggerExtension: () => (/* reexport safe */ _datalogger_extension_js__WEBPACK_IMPORTED_MODULE_45__.DataLoggerExtension),
+/* harmony export */   NetlistBuilder: () => (/* reexport safe */ _builder_js__WEBPACK_IMPORTED_MODULE_12__.NetlistBuilder),
+/* harmony export */   PORT_LIMITS: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_39__.PORT_LIMITS),
 /* harmony export */   R_INPUT_PULLUP: () => (/* reexport safe */ _pin_model_js__WEBPACK_IMPORTED_MODULE_1__.R_INPUT_PULLUP),
 /* harmony export */   R_QUASI_PULLUP: () => (/* reexport safe */ _pin_model_js__WEBPACK_IMPORTED_MODULE_1__.R_QUASI_PULLUP),
 /* harmony export */   R_STRONG: () => (/* reexport safe */ _pin_model_js__WEBPACK_IMPORTED_MODULE_1__.R_STRONG),
-/* harmony export */   STIMULUS_CATALOGUE: () => (/* reexport safe */ _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_45__.STIMULUS_CATALOGUE),
-/* harmony export */   StimulusExtension: () => (/* reexport safe */ _stimulus_extension_js__WEBPACK_IMPORTED_MODULE_46__.StimulusExtension),
-/* harmony export */   WIDGET_RENDER_INFO: () => (/* reexport safe */ _controller_stage_view_js__WEBPACK_IMPORTED_MODULE_42__.WIDGET_RENDER_INFO),
-/* harmony export */   WIDGET_TYPES: () => (/* reexport safe */ _controller_js__WEBPACK_IMPORTED_MODULE_39__.WIDGET_TYPES),
-/* harmony export */   aggregateCurrent: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_38__.aggregateCurrent),
-/* harmony export */   applyMedia: () => (/* reexport safe */ _machine_media_js__WEBPACK_IMPORTED_MODULE_48__.applyMedia),
-/* harmony export */   assertValidNetlist: () => (/* reexport safe */ _validate_js__WEBPACK_IMPORTED_MODULE_10__.assertValidNetlist),
-/* harmony export */   bindPanelToBoard: () => (/* reexport safe */ _controller_binding_js__WEBPACK_IMPORTED_MODULE_40__.bindPanelToBoard),
-/* harmony export */   checkCurrentBudget: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_38__.checkCurrentBudget),
-/* harmony export */   checkWiring: () => (/* reexport safe */ _infer_netlist_js__WEBPACK_IMPORTED_MODULE_3__.checkWiring),
-/* harmony export */   correlateAt: () => (/* reexport safe */ _sweep_js__WEBPACK_IMPORTED_MODULE_47__.correlateAt),
-/* harmony export */   createControllerDriver: () => (/* reexport safe */ _controller_binding_js__WEBPACK_IMPORTED_MODULE_40__.createControllerDriver),
-/* harmony export */   createControllerStageView: () => (/* reexport safe */ _controller_stage_view_js__WEBPACK_IMPORTED_MODULE_42__.createControllerStageView),
-/* harmony export */   createDebugSession: () => (/* reexport safe */ _debug_session_js__WEBPACK_IMPORTED_MODULE_9__.createDebugSession),
-/* harmony export */   createDebugTarget: () => (/* reexport safe */ _debug_target_factory_js__WEBPACK_IMPORTED_MODULE_13__.createDebugTarget),
-/* harmony export */   createEmu8051Adapter: () => (/* reexport safe */ _emu8051_adapter_js__WEBPACK_IMPORTED_MODULE_7__.createEmu8051Adapter),
-/* harmony export */   createEmu8051DebugTarget: () => (/* reexport safe */ _emu8051_debug_js__WEBPACK_IMPORTED_MODULE_8__.createEmu8051DebugTarget),
-/* harmony export */   createHD44780: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_33__.createHD44780),
-/* harmony export */   createSerialDebugTarget: () => (/* reexport safe */ _serial_debug_js__WEBPACK_IMPORTED_MODULE_12__.createSerialDebugTarget),
-/* harmony export */   describeMedia: () => (/* reexport safe */ _machine_media_js__WEBPACK_IMPORTED_MODULE_48__.describeMedia),
-/* harmony export */   formatPollingLossReport: () => (/* reexport safe */ _emu8051_adapter_js__WEBPACK_IMPORTED_MODULE_7__.formatPollingLossReport),
-/* harmony export */   formatReport: () => (/* reexport safe */ _conformance_js__WEBPACK_IMPORTED_MODULE_5__.formatReport),
-/* harmony export */   getDevice: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_14__.getDevice),
-/* harmony export */   getMaxCurrent: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_38__.getMaxCurrent),
-/* harmony export */   getStimulusKinds: () => (/* reexport safe */ _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_45__.getStimulusKinds),
-/* harmony export */   getStimulusParams: () => (/* reexport safe */ _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_45__.getStimulusParams),
-/* harmony export */   getStimulusParts: () => (/* reexport safe */ _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_45__.getStimulusParts),
-/* harmony export */   getTargetKinds: () => (/* reexport safe */ _debug_target_factory_js__WEBPACK_IMPORTED_MODULE_13__.getTargetKinds),
-/* harmony export */   hasDevice: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_14__.hasDevice),
-/* harmony export */   hd44780ReadBF: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_33__.hd44780ReadBF),
-/* harmony export */   hd44780Write4: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_33__.hd44780Write4),
-/* harmony export */   hd44780Write8: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_33__.hd44780Write8),
-/* harmony export */   inferNetlist: () => (/* reexport safe */ _infer_netlist_js__WEBPACK_IMPORTED_MODULE_3__.inferNetlist),
-/* harmony export */   initDeviceState: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_14__.initDeviceState),
-/* harmony export */   logSpace: () => (/* reexport safe */ _sweep_js__WEBPACK_IMPORTED_MODULE_47__.logSpace),
-/* harmony export */   parseIhex: () => (/* reexport safe */ _machine_media_js__WEBPACK_IMPORTED_MODULE_48__.parseIhex),
-/* harmony export */   parseIntelHex: () => (/* reexport safe */ _intel_hex_js__WEBPACK_IMPORTED_MODULE_6__.parseIntelHex),
+/* harmony export */   STIMULUS_CATALOGUE: () => (/* reexport safe */ _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_46__.STIMULUS_CATALOGUE),
+/* harmony export */   StimulusExtension: () => (/* reexport safe */ _stimulus_extension_js__WEBPACK_IMPORTED_MODULE_47__.StimulusExtension),
+/* harmony export */   WIDGET_RENDER_INFO: () => (/* reexport safe */ _controller_stage_view_js__WEBPACK_IMPORTED_MODULE_43__.WIDGET_RENDER_INFO),
+/* harmony export */   WIDGET_TYPES: () => (/* reexport safe */ _controller_js__WEBPACK_IMPORTED_MODULE_40__.WIDGET_TYPES),
+/* harmony export */   acSweep: () => (/* reexport safe */ _ac_js__WEBPACK_IMPORTED_MODULE_3__.acSweep),
+/* harmony export */   aggregateCurrent: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_39__.aggregateCurrent),
+/* harmony export */   applyMedia: () => (/* reexport safe */ _machine_media_js__WEBPACK_IMPORTED_MODULE_49__.applyMedia),
+/* harmony export */   assertValidNetlist: () => (/* reexport safe */ _validate_js__WEBPACK_IMPORTED_MODULE_11__.assertValidNetlist),
+/* harmony export */   bindPanelToBoard: () => (/* reexport safe */ _controller_binding_js__WEBPACK_IMPORTED_MODULE_41__.bindPanelToBoard),
+/* harmony export */   checkCurrentBudget: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_39__.checkCurrentBudget),
+/* harmony export */   checkWiring: () => (/* reexport safe */ _infer_netlist_js__WEBPACK_IMPORTED_MODULE_4__.checkWiring),
+/* harmony export */   correlateAt: () => (/* reexport safe */ _sweep_js__WEBPACK_IMPORTED_MODULE_48__.correlateAt),
+/* harmony export */   createControllerDriver: () => (/* reexport safe */ _controller_binding_js__WEBPACK_IMPORTED_MODULE_41__.createControllerDriver),
+/* harmony export */   createControllerStageView: () => (/* reexport safe */ _controller_stage_view_js__WEBPACK_IMPORTED_MODULE_43__.createControllerStageView),
+/* harmony export */   createDebugSession: () => (/* reexport safe */ _debug_session_js__WEBPACK_IMPORTED_MODULE_10__.createDebugSession),
+/* harmony export */   createDebugTarget: () => (/* reexport safe */ _debug_target_factory_js__WEBPACK_IMPORTED_MODULE_14__.createDebugTarget),
+/* harmony export */   createEmu8051Adapter: () => (/* reexport safe */ _emu8051_adapter_js__WEBPACK_IMPORTED_MODULE_8__.createEmu8051Adapter),
+/* harmony export */   createEmu8051DebugTarget: () => (/* reexport safe */ _emu8051_debug_js__WEBPACK_IMPORTED_MODULE_9__.createEmu8051DebugTarget),
+/* harmony export */   createHD44780: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_34__.createHD44780),
+/* harmony export */   createSerialDebugTarget: () => (/* reexport safe */ _serial_debug_js__WEBPACK_IMPORTED_MODULE_13__.createSerialDebugTarget),
+/* harmony export */   describeMedia: () => (/* reexport safe */ _machine_media_js__WEBPACK_IMPORTED_MODULE_49__.describeMedia),
+/* harmony export */   formatPollingLossReport: () => (/* reexport safe */ _emu8051_adapter_js__WEBPACK_IMPORTED_MODULE_8__.formatPollingLossReport),
+/* harmony export */   formatReport: () => (/* reexport safe */ _conformance_js__WEBPACK_IMPORTED_MODULE_6__.formatReport),
+/* harmony export */   getDevice: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_15__.getDevice),
+/* harmony export */   getMaxCurrent: () => (/* reexport safe */ _current_ratings_js__WEBPACK_IMPORTED_MODULE_39__.getMaxCurrent),
+/* harmony export */   getStimulusKinds: () => (/* reexport safe */ _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_46__.getStimulusKinds),
+/* harmony export */   getStimulusParams: () => (/* reexport safe */ _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_46__.getStimulusParams),
+/* harmony export */   getStimulusParts: () => (/* reexport safe */ _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_46__.getStimulusParts),
+/* harmony export */   getTargetKinds: () => (/* reexport safe */ _debug_target_factory_js__WEBPACK_IMPORTED_MODULE_14__.getTargetKinds),
+/* harmony export */   hasDevice: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_15__.hasDevice),
+/* harmony export */   hd44780ReadBF: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_34__.hd44780ReadBF),
+/* harmony export */   hd44780Write4: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_34__.hd44780Write4),
+/* harmony export */   hd44780Write8: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_34__.hd44780Write8),
+/* harmony export */   inferNetlist: () => (/* reexport safe */ _infer_netlist_js__WEBPACK_IMPORTED_MODULE_4__.inferNetlist),
+/* harmony export */   initDeviceState: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_15__.initDeviceState),
+/* harmony export */   logSpace: () => (/* reexport safe */ _sweep_js__WEBPACK_IMPORTED_MODULE_48__.logSpace),
+/* harmony export */   parseIhex: () => (/* reexport safe */ _machine_media_js__WEBPACK_IMPORTED_MODULE_49__.parseIhex),
+/* harmony export */   parseIntelHex: () => (/* reexport safe */ _intel_hex_js__WEBPACK_IMPORTED_MODULE_7__.parseIntelHex),
 /* harmony export */   pinThevenin: () => (/* reexport safe */ _pin_model_js__WEBPACK_IMPORTED_MODULE_1__.pinThevenin),
-/* harmony export */   registerAllDevices: () => (/* reexport safe */ _register_all_js__WEBPACK_IMPORTED_MODULE_34__.registerAllDevices),
-/* harmony export */   registerAnalogICs: () => (/* reexport safe */ _devices_analog_ics_js__WEBPACK_IMPORTED_MODULE_27__.registerAnalogICs),
-/* harmony export */   registerAudioParts: () => (/* reexport safe */ _devices_audio_parts_js__WEBPACK_IMPORTED_MODULE_35__.registerAudioParts),
-/* harmony export */   registerBoardKinds: () => (/* reexport safe */ _devices_board_kinds_js__WEBPACK_IMPORTED_MODULE_32__.registerBoardKinds),
-/* harmony export */   registerDCMotor: () => (/* reexport safe */ _devices_dc_motor_js__WEBPACK_IMPORTED_MODULE_17__.registerDCMotor),
-/* harmony export */   registerDevice: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_14__.registerDevice),
-/* harmony export */   registerDigitalICs: () => (/* reexport safe */ _devices_digital_ics_js__WEBPACK_IMPORTED_MODULE_25__.registerDigitalICs),
-/* harmony export */   registerDisplayDevices: () => (/* reexport safe */ _devices_display_js__WEBPACK_IMPORTED_MODULE_24__.registerDisplayDevices),
-/* harmony export */   registerHBridge: () => (/* reexport safe */ _devices_h_bridge_js__WEBPACK_IMPORTED_MODULE_22__.registerHBridge),
-/* harmony export */   registerHD44780: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_33__.registerHD44780),
-/* harmony export */   registerI2CParts: () => (/* reexport safe */ _devices_i2c_parts_js__WEBPACK_IMPORTED_MODULE_31__.registerI2CParts),
-/* harmony export */   registerLogicChips: () => (/* reexport safe */ _devices_chip_composer_js__WEBPACK_IMPORTED_MODULE_26__.registerLogicChips),
-/* harmony export */   registerLogicGates: () => (/* reexport safe */ _devices_logic_gates_js__WEBPACK_IMPORTED_MODULE_15__.registerLogicGates),
-/* harmony export */   registerMPU6050: () => (/* reexport safe */ _devices_mpu6050_js__WEBPACK_IMPORTED_MODULE_36__.registerMPU6050),
-/* harmony export */   registerMiscParts: () => (/* reexport safe */ _devices_misc_parts_js__WEBPACK_IMPORTED_MODULE_28__.registerMiscParts),
-/* harmony export */   registerMotorDrivers: () => (/* reexport safe */ _devices_motor_drivers_js__WEBPACK_IMPORTED_MODULE_23__.registerMotorDrivers),
-/* harmony export */   registerNamedParts: () => (/* reexport safe */ _devices_named_parts_js__WEBPACK_IMPORTED_MODULE_29__.registerNamedParts),
-/* harmony export */   registerPowerDevices: () => (/* reexport safe */ _devices_power_js__WEBPACK_IMPORTED_MODULE_20__.registerPowerDevices),
-/* harmony export */   registerRelay: () => (/* reexport safe */ _devices_relay_js__WEBPACK_IMPORTED_MODULE_16__.registerRelay),
-/* harmony export */   registerSSD1306: () => (/* reexport safe */ _devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_37__.registerSSD1306),
-/* harmony export */   registerSensors: () => (/* reexport safe */ _devices_sensors_js__WEBPACK_IMPORTED_MODULE_21__.registerSensors),
-/* harmony export */   registerServo: () => (/* reexport safe */ _devices_servo_js__WEBPACK_IMPORTED_MODULE_18__.registerServo),
-/* harmony export */   registerTier1Parts: () => (/* reexport safe */ _devices_tier1_parts_js__WEBPACK_IMPORTED_MODULE_30__.registerTier1Parts),
-/* harmony export */   registerTimer555: () => (/* reexport safe */ _devices_timer_555_js__WEBPACK_IMPORTED_MODULE_19__.registerTimer555),
-/* harmony export */   registeredKinds: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_14__.registeredKinds),
-/* harmony export */   runAcSweep: () => (/* reexport safe */ _sweep_js__WEBPACK_IMPORTED_MODULE_47__.runAcSweep),
-/* harmony export */   runConformance: () => (/* reexport safe */ _conformance_js__WEBPACK_IMPORTED_MODULE_5__.runConformance),
-/* harmony export */   runDcSweep: () => (/* reexport safe */ _sweep_js__WEBPACK_IMPORTED_MODULE_47__.runDcSweep),
-/* harmony export */   runTrace: () => (/* reexport safe */ _scripted_mcu_js__WEBPACK_IMPORTED_MODULE_4__.runTrace),
+/* harmony export */   registerAllDevices: () => (/* reexport safe */ _register_all_js__WEBPACK_IMPORTED_MODULE_35__.registerAllDevices),
+/* harmony export */   registerAnalogICs: () => (/* reexport safe */ _devices_analog_ics_js__WEBPACK_IMPORTED_MODULE_28__.registerAnalogICs),
+/* harmony export */   registerAudioParts: () => (/* reexport safe */ _devices_audio_parts_js__WEBPACK_IMPORTED_MODULE_36__.registerAudioParts),
+/* harmony export */   registerBoardKinds: () => (/* reexport safe */ _devices_board_kinds_js__WEBPACK_IMPORTED_MODULE_33__.registerBoardKinds),
+/* harmony export */   registerDCMotor: () => (/* reexport safe */ _devices_dc_motor_js__WEBPACK_IMPORTED_MODULE_18__.registerDCMotor),
+/* harmony export */   registerDevice: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_15__.registerDevice),
+/* harmony export */   registerDigitalICs: () => (/* reexport safe */ _devices_digital_ics_js__WEBPACK_IMPORTED_MODULE_26__.registerDigitalICs),
+/* harmony export */   registerDisplayDevices: () => (/* reexport safe */ _devices_display_js__WEBPACK_IMPORTED_MODULE_25__.registerDisplayDevices),
+/* harmony export */   registerHBridge: () => (/* reexport safe */ _devices_h_bridge_js__WEBPACK_IMPORTED_MODULE_23__.registerHBridge),
+/* harmony export */   registerHD44780: () => (/* reexport safe */ _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_34__.registerHD44780),
+/* harmony export */   registerI2CParts: () => (/* reexport safe */ _devices_i2c_parts_js__WEBPACK_IMPORTED_MODULE_32__.registerI2CParts),
+/* harmony export */   registerLogicChips: () => (/* reexport safe */ _devices_chip_composer_js__WEBPACK_IMPORTED_MODULE_27__.registerLogicChips),
+/* harmony export */   registerLogicGates: () => (/* reexport safe */ _devices_logic_gates_js__WEBPACK_IMPORTED_MODULE_16__.registerLogicGates),
+/* harmony export */   registerMPU6050: () => (/* reexport safe */ _devices_mpu6050_js__WEBPACK_IMPORTED_MODULE_37__.registerMPU6050),
+/* harmony export */   registerMiscParts: () => (/* reexport safe */ _devices_misc_parts_js__WEBPACK_IMPORTED_MODULE_29__.registerMiscParts),
+/* harmony export */   registerMotorDrivers: () => (/* reexport safe */ _devices_motor_drivers_js__WEBPACK_IMPORTED_MODULE_24__.registerMotorDrivers),
+/* harmony export */   registerNamedParts: () => (/* reexport safe */ _devices_named_parts_js__WEBPACK_IMPORTED_MODULE_30__.registerNamedParts),
+/* harmony export */   registerPowerDevices: () => (/* reexport safe */ _devices_power_js__WEBPACK_IMPORTED_MODULE_21__.registerPowerDevices),
+/* harmony export */   registerRelay: () => (/* reexport safe */ _devices_relay_js__WEBPACK_IMPORTED_MODULE_17__.registerRelay),
+/* harmony export */   registerSSD1306: () => (/* reexport safe */ _devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_38__.registerSSD1306),
+/* harmony export */   registerSensors: () => (/* reexport safe */ _devices_sensors_js__WEBPACK_IMPORTED_MODULE_22__.registerSensors),
+/* harmony export */   registerServo: () => (/* reexport safe */ _devices_servo_js__WEBPACK_IMPORTED_MODULE_19__.registerServo),
+/* harmony export */   registerTier1Parts: () => (/* reexport safe */ _devices_tier1_parts_js__WEBPACK_IMPORTED_MODULE_31__.registerTier1Parts),
+/* harmony export */   registerTimer555: () => (/* reexport safe */ _devices_timer_555_js__WEBPACK_IMPORTED_MODULE_20__.registerTimer555),
+/* harmony export */   registeredKinds: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_15__.registeredKinds),
+/* harmony export */   runAcSweep: () => (/* reexport safe */ _sweep_js__WEBPACK_IMPORTED_MODULE_48__.runAcSweep),
+/* harmony export */   runConformance: () => (/* reexport safe */ _conformance_js__WEBPACK_IMPORTED_MODULE_6__.runConformance),
+/* harmony export */   runDcSweep: () => (/* reexport safe */ _sweep_js__WEBPACK_IMPORTED_MODULE_48__.runDcSweep),
+/* harmony export */   runTrace: () => (/* reexport safe */ _scripted_mcu_js__WEBPACK_IMPORTED_MODULE_5__.runTrace),
 /* harmony export */   solveMNA: () => (/* reexport safe */ _mna_js__WEBPACK_IMPORTED_MODULE_2__.solveMNA),
-/* harmony export */   ssd1306Pixel: () => (/* reexport safe */ _devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_37__.ssd1306Pixel),
-/* harmony export */   unregisterDevice: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_14__.unregisterDevice),
-/* harmony export */   validateNetlist: () => (/* reexport safe */ _validate_js__WEBPACK_IMPORTED_MODULE_10__.validateNetlist)
+/* harmony export */   ssd1306Pixel: () => (/* reexport safe */ _devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_38__.ssd1306Pixel),
+/* harmony export */   unregisterDevice: () => (/* reexport safe */ _devices_js__WEBPACK_IMPORTED_MODULE_15__.unregisterDevice),
+/* harmony export */   validateNetlist: () => (/* reexport safe */ _validate_js__WEBPACK_IMPORTED_MODULE_11__.validateNetlist)
 /* harmony export */ });
 /* harmony import */ var _board_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./board.js */ "./src/lib/bw-board/board.js");
 /* harmony import */ var _pin_model_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./pin-model.js */ "./src/lib/bw-board/pin-model.js");
 /* harmony import */ var _mna_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./mna.js */ "./src/lib/bw-board/mna.js");
-/* harmony import */ var _infer_netlist_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./infer-netlist.js */ "./src/lib/bw-board/infer-netlist.js");
-/* harmony import */ var _scripted_mcu_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./scripted-mcu.js */ "./src/lib/bw-board/scripted-mcu.js");
-/* harmony import */ var _conformance_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./conformance.js */ "./src/lib/bw-board/conformance.js");
-/* harmony import */ var _intel_hex_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./intel-hex.js */ "./src/lib/bw-board/intel-hex.js");
-/* harmony import */ var _emu8051_adapter_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./emu8051-adapter.js */ "./src/lib/bw-board/emu8051-adapter.js");
-/* harmony import */ var _emu8051_debug_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./emu8051-debug.js */ "./src/lib/bw-board/emu8051-debug.js");
-/* harmony import */ var _debug_session_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./debug-session.js */ "./src/lib/bw-board/debug-session.js");
-/* harmony import */ var _validate_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./validate.js */ "./src/lib/bw-board/validate.js");
-/* harmony import */ var _builder_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./builder.js */ "./src/lib/bw-board/builder.js");
-/* harmony import */ var _serial_debug_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./serial-debug.js */ "./src/lib/bw-board/serial-debug.js");
-/* harmony import */ var _debug_target_factory_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./debug-target-factory.js */ "./src/lib/bw-board/debug-target-factory.js");
-/* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./devices.js */ "./src/lib/bw-board/devices.js");
-/* harmony import */ var _devices_logic_gates_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./devices/logic-gates.js */ "./src/lib/bw-board/devices/logic-gates.js");
-/* harmony import */ var _devices_relay_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ./devices/relay.js */ "./src/lib/bw-board/devices/relay.js");
-/* harmony import */ var _devices_dc_motor_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ./devices/dc-motor.js */ "./src/lib/bw-board/devices/dc-motor.js");
-/* harmony import */ var _devices_servo_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ./devices/servo.js */ "./src/lib/bw-board/devices/servo.js");
-/* harmony import */ var _devices_timer_555_js__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! ./devices/timer-555.js */ "./src/lib/bw-board/devices/timer-555.js");
-/* harmony import */ var _devices_power_js__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(/*! ./devices/power.js */ "./src/lib/bw-board/devices/power.js");
-/* harmony import */ var _devices_sensors_js__WEBPACK_IMPORTED_MODULE_21__ = __webpack_require__(/*! ./devices/sensors.js */ "./src/lib/bw-board/devices/sensors.js");
-/* harmony import */ var _devices_h_bridge_js__WEBPACK_IMPORTED_MODULE_22__ = __webpack_require__(/*! ./devices/h-bridge.js */ "./src/lib/bw-board/devices/h-bridge.js");
-/* harmony import */ var _devices_motor_drivers_js__WEBPACK_IMPORTED_MODULE_23__ = __webpack_require__(/*! ./devices/motor-drivers.js */ "./src/lib/bw-board/devices/motor-drivers.js");
-/* harmony import */ var _devices_display_js__WEBPACK_IMPORTED_MODULE_24__ = __webpack_require__(/*! ./devices/display.js */ "./src/lib/bw-board/devices/display.js");
-/* harmony import */ var _devices_digital_ics_js__WEBPACK_IMPORTED_MODULE_25__ = __webpack_require__(/*! ./devices/digital-ics.js */ "./src/lib/bw-board/devices/digital-ics.js");
-/* harmony import */ var _devices_chip_composer_js__WEBPACK_IMPORTED_MODULE_26__ = __webpack_require__(/*! ./devices/chip-composer.js */ "./src/lib/bw-board/devices/chip-composer.js");
-/* harmony import */ var _devices_analog_ics_js__WEBPACK_IMPORTED_MODULE_27__ = __webpack_require__(/*! ./devices/analog-ics.js */ "./src/lib/bw-board/devices/analog-ics.js");
-/* harmony import */ var _devices_misc_parts_js__WEBPACK_IMPORTED_MODULE_28__ = __webpack_require__(/*! ./devices/misc-parts.js */ "./src/lib/bw-board/devices/misc-parts.js");
-/* harmony import */ var _devices_named_parts_js__WEBPACK_IMPORTED_MODULE_29__ = __webpack_require__(/*! ./devices/named-parts.js */ "./src/lib/bw-board/devices/named-parts.js");
-/* harmony import */ var _devices_tier1_parts_js__WEBPACK_IMPORTED_MODULE_30__ = __webpack_require__(/*! ./devices/tier1-parts.js */ "./src/lib/bw-board/devices/tier1-parts.js");
-/* harmony import */ var _devices_i2c_parts_js__WEBPACK_IMPORTED_MODULE_31__ = __webpack_require__(/*! ./devices/i2c-parts.js */ "./src/lib/bw-board/devices/i2c-parts.js");
-/* harmony import */ var _devices_board_kinds_js__WEBPACK_IMPORTED_MODULE_32__ = __webpack_require__(/*! ./devices/board-kinds.js */ "./src/lib/bw-board/devices/board-kinds.js");
-/* harmony import */ var _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ./devices/hd44780.js */ "./src/lib/bw-board/devices/hd44780.js");
-/* harmony import */ var _register_all_js__WEBPACK_IMPORTED_MODULE_34__ = __webpack_require__(/*! ./register-all.js */ "./src/lib/bw-board/register-all.js");
-/* harmony import */ var _devices_audio_parts_js__WEBPACK_IMPORTED_MODULE_35__ = __webpack_require__(/*! ./devices/audio-parts.js */ "./src/lib/bw-board/devices/audio-parts.js");
-/* harmony import */ var _devices_mpu6050_js__WEBPACK_IMPORTED_MODULE_36__ = __webpack_require__(/*! ./devices/mpu6050.js */ "./src/lib/bw-board/devices/mpu6050.js");
-/* harmony import */ var _devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_37__ = __webpack_require__(/*! ./devices/ssd1306.js */ "./src/lib/bw-board/devices/ssd1306.js");
-/* harmony import */ var _current_ratings_js__WEBPACK_IMPORTED_MODULE_38__ = __webpack_require__(/*! ./current-ratings.js */ "./src/lib/bw-board/current-ratings.js");
-/* harmony import */ var _controller_js__WEBPACK_IMPORTED_MODULE_39__ = __webpack_require__(/*! ./controller.js */ "./src/lib/bw-board/controller.js");
-/* harmony import */ var _controller_binding_js__WEBPACK_IMPORTED_MODULE_40__ = __webpack_require__(/*! ./controller-binding.js */ "./src/lib/bw-board/controller-binding.js");
-/* harmony import */ var _controller_extension_js__WEBPACK_IMPORTED_MODULE_41__ = __webpack_require__(/*! ./controller-extension.js */ "./src/lib/bw-board/controller-extension.js");
-/* harmony import */ var _controller_stage_view_js__WEBPACK_IMPORTED_MODULE_42__ = __webpack_require__(/*! ./controller-stage-view.js */ "./src/lib/bw-board/controller-stage-view.js");
-/* harmony import */ var _datalogger_js__WEBPACK_IMPORTED_MODULE_43__ = __webpack_require__(/*! ./datalogger.js */ "./src/lib/bw-board/datalogger.js");
-/* harmony import */ var _datalogger_extension_js__WEBPACK_IMPORTED_MODULE_44__ = __webpack_require__(/*! ./datalogger-extension.js */ "./src/lib/bw-board/datalogger-extension.js");
-/* harmony import */ var _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_45__ = __webpack_require__(/*! ./stimulus-catalogue.js */ "./src/lib/bw-board/stimulus-catalogue.js");
-/* harmony import */ var _stimulus_extension_js__WEBPACK_IMPORTED_MODULE_46__ = __webpack_require__(/*! ./stimulus-extension.js */ "./src/lib/bw-board/stimulus-extension.js");
-/* harmony import */ var _sweep_js__WEBPACK_IMPORTED_MODULE_47__ = __webpack_require__(/*! ./sweep.js */ "./src/lib/bw-board/sweep.js");
-/* harmony import */ var _machine_media_js__WEBPACK_IMPORTED_MODULE_48__ = __webpack_require__(/*! ./machine-media.js */ "./src/lib/bw-board/machine-media.js");
+/* harmony import */ var _ac_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./ac.js */ "./src/lib/bw-board/ac.js");
+/* harmony import */ var _infer_netlist_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./infer-netlist.js */ "./src/lib/bw-board/infer-netlist.js");
+/* harmony import */ var _scripted_mcu_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./scripted-mcu.js */ "./src/lib/bw-board/scripted-mcu.js");
+/* harmony import */ var _conformance_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./conformance.js */ "./src/lib/bw-board/conformance.js");
+/* harmony import */ var _intel_hex_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./intel-hex.js */ "./src/lib/bw-board/intel-hex.js");
+/* harmony import */ var _emu8051_adapter_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./emu8051-adapter.js */ "./src/lib/bw-board/emu8051-adapter.js");
+/* harmony import */ var _emu8051_debug_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./emu8051-debug.js */ "./src/lib/bw-board/emu8051-debug.js");
+/* harmony import */ var _debug_session_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./debug-session.js */ "./src/lib/bw-board/debug-session.js");
+/* harmony import */ var _validate_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./validate.js */ "./src/lib/bw-board/validate.js");
+/* harmony import */ var _builder_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./builder.js */ "./src/lib/bw-board/builder.js");
+/* harmony import */ var _serial_debug_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./serial-debug.js */ "./src/lib/bw-board/serial-debug.js");
+/* harmony import */ var _debug_target_factory_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./debug-target-factory.js */ "./src/lib/bw-board/debug-target-factory.js");
+/* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ./devices.js */ "./src/lib/bw-board/devices.js");
+/* harmony import */ var _devices_logic_gates_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ./devices/logic-gates.js */ "./src/lib/bw-board/devices/logic-gates.js");
+/* harmony import */ var _devices_relay_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ./devices/relay.js */ "./src/lib/bw-board/devices/relay.js");
+/* harmony import */ var _devices_dc_motor_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ./devices/dc-motor.js */ "./src/lib/bw-board/devices/dc-motor.js");
+/* harmony import */ var _devices_servo_js__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! ./devices/servo.js */ "./src/lib/bw-board/devices/servo.js");
+/* harmony import */ var _devices_timer_555_js__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(/*! ./devices/timer-555.js */ "./src/lib/bw-board/devices/timer-555.js");
+/* harmony import */ var _devices_power_js__WEBPACK_IMPORTED_MODULE_21__ = __webpack_require__(/*! ./devices/power.js */ "./src/lib/bw-board/devices/power.js");
+/* harmony import */ var _devices_sensors_js__WEBPACK_IMPORTED_MODULE_22__ = __webpack_require__(/*! ./devices/sensors.js */ "./src/lib/bw-board/devices/sensors.js");
+/* harmony import */ var _devices_h_bridge_js__WEBPACK_IMPORTED_MODULE_23__ = __webpack_require__(/*! ./devices/h-bridge.js */ "./src/lib/bw-board/devices/h-bridge.js");
+/* harmony import */ var _devices_motor_drivers_js__WEBPACK_IMPORTED_MODULE_24__ = __webpack_require__(/*! ./devices/motor-drivers.js */ "./src/lib/bw-board/devices/motor-drivers.js");
+/* harmony import */ var _devices_display_js__WEBPACK_IMPORTED_MODULE_25__ = __webpack_require__(/*! ./devices/display.js */ "./src/lib/bw-board/devices/display.js");
+/* harmony import */ var _devices_digital_ics_js__WEBPACK_IMPORTED_MODULE_26__ = __webpack_require__(/*! ./devices/digital-ics.js */ "./src/lib/bw-board/devices/digital-ics.js");
+/* harmony import */ var _devices_chip_composer_js__WEBPACK_IMPORTED_MODULE_27__ = __webpack_require__(/*! ./devices/chip-composer.js */ "./src/lib/bw-board/devices/chip-composer.js");
+/* harmony import */ var _devices_analog_ics_js__WEBPACK_IMPORTED_MODULE_28__ = __webpack_require__(/*! ./devices/analog-ics.js */ "./src/lib/bw-board/devices/analog-ics.js");
+/* harmony import */ var _devices_misc_parts_js__WEBPACK_IMPORTED_MODULE_29__ = __webpack_require__(/*! ./devices/misc-parts.js */ "./src/lib/bw-board/devices/misc-parts.js");
+/* harmony import */ var _devices_named_parts_js__WEBPACK_IMPORTED_MODULE_30__ = __webpack_require__(/*! ./devices/named-parts.js */ "./src/lib/bw-board/devices/named-parts.js");
+/* harmony import */ var _devices_tier1_parts_js__WEBPACK_IMPORTED_MODULE_31__ = __webpack_require__(/*! ./devices/tier1-parts.js */ "./src/lib/bw-board/devices/tier1-parts.js");
+/* harmony import */ var _devices_i2c_parts_js__WEBPACK_IMPORTED_MODULE_32__ = __webpack_require__(/*! ./devices/i2c-parts.js */ "./src/lib/bw-board/devices/i2c-parts.js");
+/* harmony import */ var _devices_board_kinds_js__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ./devices/board-kinds.js */ "./src/lib/bw-board/devices/board-kinds.js");
+/* harmony import */ var _devices_hd44780_js__WEBPACK_IMPORTED_MODULE_34__ = __webpack_require__(/*! ./devices/hd44780.js */ "./src/lib/bw-board/devices/hd44780.js");
+/* harmony import */ var _register_all_js__WEBPACK_IMPORTED_MODULE_35__ = __webpack_require__(/*! ./register-all.js */ "./src/lib/bw-board/register-all.js");
+/* harmony import */ var _devices_audio_parts_js__WEBPACK_IMPORTED_MODULE_36__ = __webpack_require__(/*! ./devices/audio-parts.js */ "./src/lib/bw-board/devices/audio-parts.js");
+/* harmony import */ var _devices_mpu6050_js__WEBPACK_IMPORTED_MODULE_37__ = __webpack_require__(/*! ./devices/mpu6050.js */ "./src/lib/bw-board/devices/mpu6050.js");
+/* harmony import */ var _devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_38__ = __webpack_require__(/*! ./devices/ssd1306.js */ "./src/lib/bw-board/devices/ssd1306.js");
+/* harmony import */ var _current_ratings_js__WEBPACK_IMPORTED_MODULE_39__ = __webpack_require__(/*! ./current-ratings.js */ "./src/lib/bw-board/current-ratings.js");
+/* harmony import */ var _controller_js__WEBPACK_IMPORTED_MODULE_40__ = __webpack_require__(/*! ./controller.js */ "./src/lib/bw-board/controller.js");
+/* harmony import */ var _controller_binding_js__WEBPACK_IMPORTED_MODULE_41__ = __webpack_require__(/*! ./controller-binding.js */ "./src/lib/bw-board/controller-binding.js");
+/* harmony import */ var _controller_extension_js__WEBPACK_IMPORTED_MODULE_42__ = __webpack_require__(/*! ./controller-extension.js */ "./src/lib/bw-board/controller-extension.js");
+/* harmony import */ var _controller_stage_view_js__WEBPACK_IMPORTED_MODULE_43__ = __webpack_require__(/*! ./controller-stage-view.js */ "./src/lib/bw-board/controller-stage-view.js");
+/* harmony import */ var _datalogger_js__WEBPACK_IMPORTED_MODULE_44__ = __webpack_require__(/*! ./datalogger.js */ "./src/lib/bw-board/datalogger.js");
+/* harmony import */ var _datalogger_extension_js__WEBPACK_IMPORTED_MODULE_45__ = __webpack_require__(/*! ./datalogger-extension.js */ "./src/lib/bw-board/datalogger-extension.js");
+/* harmony import */ var _stimulus_catalogue_js__WEBPACK_IMPORTED_MODULE_46__ = __webpack_require__(/*! ./stimulus-catalogue.js */ "./src/lib/bw-board/stimulus-catalogue.js");
+/* harmony import */ var _stimulus_extension_js__WEBPACK_IMPORTED_MODULE_47__ = __webpack_require__(/*! ./stimulus-extension.js */ "./src/lib/bw-board/stimulus-extension.js");
+/* harmony import */ var _sweep_js__WEBPACK_IMPORTED_MODULE_48__ = __webpack_require__(/*! ./sweep.js */ "./src/lib/bw-board/sweep.js");
+/* harmony import */ var _machine_media_js__WEBPACK_IMPORTED_MODULE_49__ = __webpack_require__(/*! ./machine-media.js */ "./src/lib/bw-board/machine-media.js");
 /**
  * bw-board — the board layer between an emulated MCU and a circuit designer.
  *
@@ -26830,6 +27364,7 @@ __webpack_require__.r(__webpack_exports__);
  *
  * @module bw-board
  */
+
 
 
 
@@ -29317,9 +29852,13 @@ function _runMediaBundle() {
 
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   MOS_SMOOTH_DELTA: () => (/* binding */ MOS_SMOOTH_DELTA),
 /* harmony export */   Matrix: () => (/* binding */ Matrix),
 /* harmony export */   diodeCompanion: () => (/* binding */ diodeCompanion),
 /* harmony export */   findNet: () => (/* binding */ findNet),
+/* harmony export */   junctionOpts: () => (/* binding */ junctionOpts),
+/* harmony export */   pwlKneeCurrent: () => (/* binding */ pwlKneeCurrent),
+/* harmony export */   smoothVov: () => (/* binding */ smoothVov),
 /* harmony export */   solve: () => (/* binding */ solve),
 /* harmony export */   solveMNA: () => (/* binding */ solveMNA),
 /* harmony export */   sourceVoltage: () => (/* binding */ sourceVoltage)
@@ -31784,6 +32323,10 @@ function stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId) {
   if (idxPos !== undefined) b[idxPos] += amps;
   if (idxNeg !== undefined) b[idxNeg] -= amps;
 }
+
+// Small-signal linearization helpers for the AC analysis (src/ac.js):
+// the AC stamps MUST evaluate the same models as the DC stamps, so the
+// model functions are shared rather than re-derived there.
 
 
 /***/ }),

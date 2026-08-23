@@ -20,6 +20,7 @@
 
 import { pinThevenin } from './pin-model.js';
 import { solveMNA } from './mna.js';
+import { acSweep } from './ac.js';
 import { validateNetlist } from './validate.js';
 import { getDevice, initDeviceState } from './devices.js';
 import { feedI2CSlave } from './devices/i2c-slave.js';
@@ -368,6 +369,7 @@ export class BoardImpl {
 
   setNetlist(parts, nets) {
     this._ledFanout = undefined; // netlist changed: recompute the fan-out memo
+    this._wiperLoaded = undefined; // ditto for the loaded-wiper routing memo
     this._qualCache = new Map(); // qualified-pin resolutions are per-netlist
     this._mcuSurface = undefined;
     this._hasQualifiedPin = false;
@@ -1521,6 +1523,61 @@ export class BoardImpl {
     this._notifyChange('power', { on });
   }
 
+  /**
+   * Boundary B: true small-signal AC sweep
+   * (spec-updates/ac-small-signal.md; the engine answer that replaces the
+   * time-domain sine correlation — which stays available in sweep.js as
+   * the cross-check the two must agree with on linear circuits).
+   *
+   * Linearizes at the DC operating point and solves the complex system per
+   * frequency; the swept source drives a unit phasor, every other source
+   * is killed. Runs against the SOLVER view (motor windings included).
+   * Refuses — throws — when the operating point did not converge: an AC
+   * answer about a nonexistent bias point is a plausible wrong Bode plot.
+   *
+   * @param {object} opts
+   * @param {string} opts.sourceId - vsource part to sweep
+   * @param {number} opts.from - start frequency, Hz
+   * @param {number} opts.to - end frequency, Hz
+   * @param {number} [opts.pointsPerDecade]
+   * @param {string[]} [opts.probes] - net ids to report (default: all)
+   * @returns {Array<{hz: number, results: Map<string, {mag: number, phaseDeg: number}>}>}
+   */
+  runAc({ sourceId, from, to, pointsPerDecade = 20, probes }) {
+    if (!(from > 0) || !(to > from)) {
+      throw new Error('runAc: need 0 < from < to');
+    }
+    // DC operating point: caps open, inductors shorted — the bias the
+    // small-signal model is valid around.
+    const op = solveMNA(this._solveParts, this._solveNets, this._pinSources(),
+      this.controls, this.vcc, {
+        tSeconds: Number(this.timeNs) / 1e9,
+        deviceStates: this._deviceStates,
+        qualifiedSources: this._qualifiedSources(),
+        powerOff: !this.powered,
+      });
+    if (op.converged === false) {
+      throw new Error('runAc: the DC operating point did not converge — ' +
+        'there is no bias point to linearize around');
+    }
+    const decades = Math.log10(to / from);
+    const nPts = Math.max(2, Math.round(decades * pointsPerDecade) + 1);
+    const freqs = Array.from({ length: nPts },
+      (_, i) => from * Math.pow(10, (i * decades) / (nPts - 1)));
+    return acSweep({
+      parts: this._solveParts,
+      nets: this._solveNets,
+      pinSources: this._pinSources(),
+      controls: this.controls,
+      vcc: this.vcc,
+      opVoltages: op.nodeVoltages,
+      deviceStates: this._deviceStates,
+      sourceId,
+      freqs,
+      probes,
+    });
+  }
+
   // ─── Internal: inductor integration ───────────────────────────────────────
 
   /**
@@ -2303,6 +2360,31 @@ export class BoardImpl {
       // one bench (spec-updates/shockley-junction-limiting.md).
       if ((p.kind === 'led' || p.kind === 'diode') && p.params?.model === 'shockley') return true;
     }
+    // A potentiometer with a LOADED wiper is beyond the walker:
+    // _solvePot answers the unloaded midpoint while _solveLedChain treats
+    // that midpoint as an ideal source — a stitched answer that violates
+    // KCL at the wiper by exactly what the load draws (measured: a 10 kΩ
+    // pot at 50 % feeding 220 Ω + LED read 2.5000 V while sourcing
+    // 2.174 mA from nowhere; found by the examples owner's KCL residual
+    // check, 2026-08-23). An MCU input is high-Z and does not load;
+    // anything else on the wiper net does.
+    if (this._wiperLoaded === undefined) {
+      this._wiperLoaded = false;
+      for (const p of this.parts) {
+        if (p.kind !== 'potentiometer') continue;
+        const wnetId = this._netForTerminal(p.id, 'wiper');
+        if (!wnetId) continue;
+        const wnet = (this._solveNets ?? this.nets).find(n => n.id === wnetId);
+        if (!wnet) continue;
+        for (const t of wnet.terminals) {
+          if (t.part === p.id) continue;
+          const other = this.partMap.get(t.part);
+          if (other && other.kind !== 'mcu') { this._wiperLoaded = true; break; }
+        }
+        if (this._wiperLoaded) break;
+      }
+    }
+    if (this._wiperLoaded) return true;
     // Shared-LED fan-out is beyond the walker's vocabulary: _solveLedChain
     // traces each LED's series path INDEPENDENTLY, so two LEDs sharing a
     // net (a multiplexed display's segment bus, a charlieplexed pair)
