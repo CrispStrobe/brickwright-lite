@@ -65,9 +65,11 @@ decimal place, not a flat percentage.
 `test/lesson-defect-detector.test.mjs` and `test/lesson-numeric-contract.test.mjs`
 run on every `npm test`.
 
-The fixtures are not synthetic. They are the **actual version-1 lesson objects**,
-read out of git history at the commit before each was repaired, so what is proven
-is that the detector catches the two defects a human found by reading:
+The fixtures are not synthetic. They are the **actual version-1 lesson objects**
+from the commit before each was repaired, vendored under
+`test/fixtures/lesson-v1/` with their provenance sha and the command to
+re-derive them. So what is proven is that the detector catches the two defects a
+human found by reading:
 
 ```
 electricity-diode v1     -> 42-diode-rectifier
@@ -235,6 +237,26 @@ node scripts/detect-lesson-defects.mjs <lesson-id>… # one or a few
 node --test test/lesson-defect-detector.test.mjs    # mutation proofs + corpus ratchet
 node --test test/lesson-numeric-contract.test.mjs   # Check C, with its coverage assertion
 ```
+
+### Why the fixtures are vendored rather than read from git
+
+The first version of the gate ran `git show <rev>^:…` to fetch them. That passes
+on a developer checkout and **failed on every CI run**: `actions/checkout@v4`
+clones at depth 1, `.github/workflows/build.yml` sets no `fetch-depth`, so the
+parent commit is not in the runner's object store and git exits with
+`fatal: invalid object name`. It was the only failing file on lite main, and it
+was mine — reported by bw-bundle, who diffed the failing-test locations on their
+branch against main's.
+
+Vendoring fixes more than the clone depth: a gate that reads git history also
+breaks on the next squash, rebase or force-push, and these two objects are the
+evidence the whole detector rests on.
+
+The fix is proven both ways, by putting a `git` on PATH that exits 128 on every
+call: the old version goes red with exactly the CI error, the new one passes
+13/13. No other gate in this campaign shells out to a subprocess.
+
+### Running the ratchet
 
 The ratchet in `test/lesson-defect-detector.test.mjs` holds the three open
 findings and fails in **both** directions: a new unachievable checkpoint fails
