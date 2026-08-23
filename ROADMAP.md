@@ -206,19 +206,26 @@ Missing from the copy lite ships, present in the reference:
 `stc12_whenkey` · `stc12_seg_shownum` · `stc12_seg_showdigit` · `stc12_seg_setsegs` ·
 `stc12_seg_clear` · `stc12_led_set` · `stc12_led_only` · `stc12_keypad`
 
-Three shipped gallery examples author those verbs — **`77-keypad-keyshow`, `78-a2-calculator`,
-`79-a2-sampler`** (all `DEVICE STC89C52RC`, which uses the same `stc12` extension id). They ship in
-lite's `overlay/scratch-gui/examples/`.
+**One** shipped gallery example emits them: **`79-a2-sampler`** (`DEVICE STC89C52RC`, which uses
+the same `stc12` extension id). This entry first said three, naming `77-keypad-keyshow` and
+`78-a2-calculator` too. That was wrong, and wrong in an instructive way: it came from grepping the
+`.bw` sources for verb *text*, which finds the words without establishing that they lower to those
+opcodes. Transpiling each example to `.sb3` and reading the emitted opcodes shows only
+`79-a2-sampler` producing `stc12_keypad`, `stc12_led_only`, `stc12_seg_clear`, `stc12_seg_shownum`
+and `stc12_whenkey`. Check what is emitted, never what is mentioned.
 
 Two independent methods agree, which is why this is stated as fact and not suspicion: executing the
 bundled extension's `getInfo()` yields 20 blocks, and grepping the file finds those opcode strings
 absent entirely. The device-gating trap was checked and excluded — gating in that file uses
 `hideFromPalette`, which keeps a block defined; these are not defined at all.
 
-**Not yet executed in the app.** What is proven is the extension contract; what remains is to open
-one of the three examples in lite and record what the Blocks tab actually does with an undefined
-opcode. Do that first — it decides whether this is "blocks silently vanish" or "project fails to
-load", and those need different fixes.
+**What the app does with an undefined opcode — measured, and the answer is nothing.** The project
+loads clean. The VM pushes the block as an operation and the GUI does not assert on the unknown
+type in the path that matters; every layer fails quietly. There is no downstream layer that will
+complain on a learner's behalf, which is exactly why the fix had to put the opcodes into the
+shipped extension rather than rely on an error surfacing.
+
+**FIXED** — the bundled extension now defines all 28 emitted opcodes (20 blocks -> 30).
 
 **Why CI never saw it.** `test/stc12-conformance.test.mjs` finds copies at
 `../../lego/brickwright-lite/…` (bundled), `../../extensions/…` (gallery) and in-repo (reference),
