@@ -85,6 +85,18 @@ Acceptance criteria:
 - Every entry in the dead-module exclusion list is either tracked as a roadmap item or removed
   (`ROADMAP.md` §4).
 
+**How this milestone gets executed:** see `docs/VERIFICATION-AUTOMATION.md`.
+The short version, measured rather than assumed: 244 of 275 examples already
+carry machine-readable `assert` blocks, `test/assert-physics.test.mjs` already
+parses them, and it checks 242 assertions while **skipping 115** as "unknown
+kind". Those 115 are claims already written down and never verified. Extending
+that parser, plus a declared-pins-equal-wired-pins invariant, verifies far more
+of the corpus than reading it example by example — and the reading pass is
+demonstrably unreliable where it matters, since the 6502 terminal's
+repeated-key bug survived a careful read and a clean `bw check` and died the
+moment the program was executed. Build detectors, batch-fix what they flag,
+read only the residue.
+
 ### Verification-debt ledger
 
 Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**, and all
