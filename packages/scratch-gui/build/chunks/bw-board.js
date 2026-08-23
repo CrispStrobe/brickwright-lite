@@ -56,15 +56,14 @@ function junctionG(part, vAcross, vf, rd) {
     if (vAcross > vf + EPS) return 1 / rd;
     return (vAcross - vf + EPS) / (2 * EPS * rd);
   }
-  const nVt = opts.n * VT;
-  let is = opts.is;
-  if (is === undefined) {
-    const expVf = Math.exp(Math.min(vf / nVt, 80));
-    is = 0.020 / Math.max(expVf - 1, 1e-30);
-  }
-  const vClamped = Math.min(vAcross, nVt * 80);
-  if (vClamped < -5 * nVt) return 1e-12;
-  return Math.min(Math.max(is * Math.exp(vClamped / nVt) / nVt, 1e-12), 1e6);
+  // Composite small-signal conductance: junction gj behind rs, evaluated
+  // at the operating TOTAL voltage — the same composite the DC stamp uses.
+  const p = (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.shockleyParams)(opts, vf);
+  const vJ = (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.shockleyJunctionFromTotal)(vAcross, Math.min(vAcross, vf), p);
+  const {
+    gj
+  } = (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.shockleyEval)(vJ, p);
+  return gj / (1 + gj * p.rs);
 }
 
 /**
@@ -143,6 +142,9 @@ function acSweep(args) {
   rowIndex.set(sourceId, acRows++);
   for (const p of parts) {
     if (p.kind === 'opamp' && idxOf(netOf(p.id, 'out')) !== undefined) {
+      rowIndex.set(p.id, acRows++);
+    }
+    if (p.kind === 'vcvs' && idxOf(netOf(p.id, 'outp')) !== undefined) {
       rowIndex.set(p.id, acRows++);
     }
   }
@@ -323,6 +325,54 @@ function acSweep(args) {
             addC(row, iO, 1, 0);
             if (iP !== undefined) addC(row, iP, -gain, 0);
             if (iN !== undefined) addC(row, iN, gain, 0);
+            break;
+          }
+        case 'vcvs':
+          {
+            var _P$gain2;
+            if (!rowIndex.has(part.id)) break;
+            const row = nodeCount + rowIndex.get(part.id);
+            const iOp = idxOf(netOf(part.id, 'outp'));
+            if (iOp === undefined) break;
+            const iOn = idxOf(netOf(part.id, 'outn'));
+            addC(iOp, row, 1, 0);
+            addC(row, iOp, 1, 0);
+            if (iOn !== undefined) {
+              addC(iOn, row, -1, 0);
+              addC(row, iOn, -1, 0);
+            }
+            // Region at the OP: a railed buffer is small-signal dead — its
+            // output cannot move, so the row pins the AC output to 0.
+            const gain = (_P$gain2 = P.gain) !== null && _P$gain2 !== void 0 ? _P$gain2 : 1;
+            const vinOp = vOp(netOf(part.id, 'inp')) - vOp(netOf(part.id, 'inn'));
+            const railLow = P.railLow;
+            const railHigh = P.railHigh;
+            const railed = railHigh !== undefined && gain * vinOp > railHigh || railLow !== undefined && gain * vinOp < railLow;
+            if (!railed) {
+              const iIp = idxOf(netOf(part.id, 'inp'));
+              const iIn = idxOf(netOf(part.id, 'inn'));
+              if (iIp !== undefined) addC(row, iIp, -gain, 0);
+              if (iIn !== undefined) addC(row, iIn, gain, 0);
+            }
+            break;
+          }
+        case 'vccs':
+          {
+            var _P$gm;
+            const gm = (_P$gm = P.gm) !== null && _P$gm !== void 0 ? _P$gm : 1e-3;
+            // Clamped at the OP → the output is a fixed current: small-signal 0.
+            if (P.iMax > 0) {
+              const vinOp = vOp(netOf(part.id, 'inp')) - vOp(netOf(part.id, 'inn'));
+              if (Math.abs(gm * vinOp) >= P.iMax) break;
+            }
+            const iOp = idxOf(netOf(part.id, 'outp'));
+            const iOn = idxOf(netOf(part.id, 'outn'));
+            const iIp = idxOf(netOf(part.id, 'inp'));
+            const iIn = idxOf(netOf(part.id, 'inn'));
+            if (iOp !== undefined && iIp !== undefined) addC(iOp, iIp, -gm, 0);
+            if (iOp !== undefined && iIn !== undefined) addC(iOp, iIn, gm, 0);
+            if (iOn !== undefined && iIp !== undefined) addC(iOn, iIp, gm, 0);
+            if (iOn !== undefined && iIn !== undefined) addC(iOn, iIn, -gm, 0);
             break;
           }
         case 'mcu':
@@ -3136,7 +3186,7 @@ const LED_I_RATED = 0.020; // 20 mA rated current (for brightness normalization)
  * _solve() through the full MNA path — the walker would otherwise report
  * voltages as if these parts were absent.
  */
-const MNA_ONLY_KINDS = new Set(['npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource']);
+const MNA_ONLY_KINDS = new Set(['npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource', 'vcvs', 'vccs']);
 
 /**
  * Brightness integrator window.
@@ -3380,6 +3430,252 @@ class BoardImpl {
       nets: outNets
     };
   }
+
+  /**
+   * Merge nets that share any (part, terminal) — electrically they are
+   * one node, whatever the wire-derivation upstream produced. Union-find
+   * keyed on terminal membership; the surviving net keeps the FIRST
+   * net's id in input order (deterministic), and every merge is reported
+   * so the drawing tooling can flag the duplication at its source.
+   * @param {import('./types.js').Net[]} nets
+   * @returns {{nets: import('./types.js').Net[], merges: Array<{terminal: string, into: string, from: string}>}}
+   */
+  static _coalesceSharedTerminals(nets) {
+    const owner = new Map(); // "part terminal" → index of first net seen
+    const parent = nets.map((_, i) => i);
+    const find = i => {
+      while (parent[i] !== i) {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
+      }
+      return i;
+    };
+    const merges = [];
+    nets.forEach((net, i) => {
+      for (const t of net.terminals) {
+        const key = "".concat(t.part, "\0").concat(t.terminal);
+        const first = owner.get(key);
+        if (first === undefined) {
+          owner.set(key, i);
+          continue;
+        }
+        const a = find(first);
+        const b = find(i);
+        if (a !== b) {
+          const into = Math.min(a, b);
+          const from = Math.max(a, b);
+          parent[from] = into;
+          merges.push({
+            terminal: "".concat(t.part, ".").concat(t.terminal),
+            into: nets[into].id,
+            from: nets[from].id
+          });
+        }
+      }
+    });
+    if (merges.length === 0) return {
+      nets,
+      merges
+    };
+    const grouped = new Map();
+    nets.forEach((net, i) => {
+      const root = find(i);
+      if (!grouped.has(root)) grouped.set(root, {
+        id: nets[root].id,
+        terminals: []
+      });
+      grouped.get(root).terminals.push(...net.terminals);
+    });
+    // Dedupe terminals inside each merged net.
+    const out = [...grouped.values()].map(n => {
+      const seen = new Set();
+      return _objectSpread(_objectSpread({}, n), {}, {
+        terminals: n.terminals.filter(t => {
+          const k = "".concat(t.part, "\0").concat(t.terminal);
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        })
+      });
+    });
+    return {
+      nets: out,
+      merges
+    };
+  }
+
+  /**
+   * Expand each opt-in macromodel op-amp (`params.model: 'macro'`) into
+   * the standard single-pole macromodel on hidden nets — SOLVER VIEW
+   * only, like the motor windings (spec-updates/opamp-macromodel.md):
+   *
+   *   G1 (vccs, gm = 2π·GBW·Cint, iMax = SR·Cint) : (inp,inn) → X
+   *   C1 (capacitor, Cint) and Rp (A0/gm)         : X → gnd
+   *   E1 (vcvs ×1, rails)                          : X → OUTI
+   *   Rout                                         : OUTI → out
+   *
+   * The pole (GBW/A0), the slew (iMax/Cint = SR exactly), and the rails
+   * all come from first-class solver parts — C1 gets adaptive-transient
+   * and AC treatment for free, with no device-cadence companion anywhere
+   * (the motor-winding lesson). Ground-referenced like every textbook
+   * macromodel; a bench with no gnd part keeps the ideal row and says so
+   * via getWarnings.
+   */
+  static _expandOpampMacros(parts, nets, vcc) {
+    var _nets$find;
+    const notes = [];
+    if (!parts.some(p => {
+      var _p$params2;
+      return p.kind === 'opamp' && ((_p$params2 = p.params) === null || _p$params2 === void 0 ? void 0 : _p$params2.model) === 'macro';
+    })) {
+      return {
+        parts,
+        nets,
+        notes
+      };
+    }
+    const gndNetId = (_nets$find = nets.find(n => n.terminals.some(t => {
+      const p = parts.find(pp => pp.id === t.part);
+      return p && p.kind === 'gnd';
+    }))) === null || _nets$find === void 0 ? void 0 : _nets$find.id;
+    const outNets = nets.map(n => _objectSpread(_objectSpread({}, n), {}, {
+      terminals: [...n.terminals]
+    }));
+    const netHolding = (partId, terminal) => outNets.find(n => n.terminals.some(t => t.part === partId && t.terminal === terminal));
+    const outParts = [];
+    for (const p of parts) {
+      var _p$params3, _p$params4, _P$a, _P$gbw, _P$slew, _P$cint, _P$rout, _P$railLow, _P$railHigh, _netHolding, _netHolding2, _netHolding3;
+      if (!(p.kind === 'opamp' && ((_p$params3 = p.params) === null || _p$params3 === void 0 ? void 0 : _p$params3.model) === 'macro')) {
+        outParts.push(p);
+        continue;
+      }
+      if (gndNetId === undefined) {
+        notes.push(p.id);
+        outParts.push(p); // ideal row stays; the warning says why
+        continue;
+      }
+      const P = (_p$params4 = p.params) !== null && _p$params4 !== void 0 ? _p$params4 : {};
+      const a0 = (_P$a = P.a0) !== null && _P$a !== void 0 ? _P$a : 1e5;
+      const gbw = (_P$gbw = P.gbw) !== null && _P$gbw !== void 0 ? _P$gbw : 1e6;
+      const slew = (_P$slew = P.slew) !== null && _P$slew !== void 0 ? _P$slew : 0.5e6; // V/s
+      const cint = (_P$cint = P.cint) !== null && _P$cint !== void 0 ? _P$cint : 30e-12;
+      const rout = (_P$rout = P.rout) !== null && _P$rout !== void 0 ? _P$rout : 100;
+      const gm = 2 * Math.PI * gbw * cint;
+      const ids = {
+        g1: "".concat(p.id, "_g1"),
+        c1: "".concat(p.id, "_c1"),
+        rp: "".concat(p.id, "_rp"),
+        e1: "".concat(p.id, "_e1"),
+        ro: "".concat(p.id, "_ro")
+      };
+      outParts.push({
+        id: ids.g1,
+        kind: 'vccs',
+        params: {
+          gm,
+          iMax: slew * cint
+        },
+        terminals: ['outp', 'outn', 'inp', 'inn']
+      }, {
+        id: ids.c1,
+        kind: 'capacitor',
+        params: {
+          farads: cint
+        },
+        terminals: ['a', 'b']
+      }, {
+        id: ids.rp,
+        kind: 'resistor',
+        params: {
+          ohms: a0 / gm
+        },
+        terminals: ['a', 'b']
+      }, {
+        id: ids.e1,
+        kind: 'vcvs',
+        params: {
+          gain: 1,
+          railLow: (_P$railLow = P.railLow) !== null && _P$railLow !== void 0 ? _P$railLow : 0,
+          railHigh: (_P$railHigh = P.railHigh) !== null && _P$railHigh !== void 0 ? _P$railHigh : vcc
+        },
+        terminals: ['outp', 'outn', 'inp', 'inn']
+      }, {
+        id: ids.ro,
+        kind: 'resistor',
+        params: {
+          ohms: rout
+        },
+        terminals: ['a', 'b']
+      });
+      const X = "n_".concat(p.id, "_x");
+      const OUTI = "n_".concat(p.id, "_outi");
+      (_netHolding = netHolding(p.id, 'inp')) === null || _netHolding === void 0 || _netHolding.terminals.push({
+        part: ids.g1,
+        terminal: 'inp'
+      });
+      (_netHolding2 = netHolding(p.id, 'inn')) === null || _netHolding2 === void 0 || _netHolding2.terminals.push({
+        part: ids.g1,
+        terminal: 'inn'
+      });
+      (_netHolding3 = netHolding(p.id, 'out')) === null || _netHolding3 === void 0 || _netHolding3.terminals.push({
+        part: ids.ro,
+        terminal: 'b'
+      });
+      const gndView = outNets.find(n => n.id === gndNetId);
+      gndView.terminals.push({
+        part: ids.g1,
+        terminal: 'outn'
+      }, {
+        part: ids.c1,
+        terminal: 'b'
+      }, {
+        part: ids.rp,
+        terminal: 'b'
+      }, {
+        part: ids.e1,
+        terminal: 'inn'
+      }, {
+        part: ids.e1,
+        terminal: 'outn'
+      });
+      outNets.push({
+        id: X,
+        terminals: [{
+          part: ids.g1,
+          terminal: 'outp'
+        }, {
+          part: ids.c1,
+          terminal: 'a'
+        }, {
+          part: ids.rp,
+          terminal: 'a'
+        }, {
+          part: ids.e1,
+          terminal: 'inp'
+        }]
+      });
+      outNets.push({
+        id: OUTI,
+        terminals: [{
+          part: ids.e1,
+          terminal: 'outp'
+        }, {
+          part: ids.ro,
+          terminal: 'a'
+        }]
+      });
+      // The op-amp itself leaves the solver view: no ideal row, no
+      // phantom pins (its terminal entries go too).
+      for (const n of outNets) {
+        n.terminals = n.terminals.filter(t => t.part !== p.id);
+      }
+    }
+    return {
+      parts: outParts,
+      nets: outNets,
+      notes
+    };
+  }
   static _expandComposites(parts, nets) {
     const extraParts = [];
     const netCopies = nets.map(n => _objectSpread(_objectSpread({}, n), {}, {
@@ -3537,6 +3833,19 @@ class BoardImpl {
       parts,
       nets
     } = BoardImpl._expandComposites(parts, nets));
+    // ONE TERMINAL IS ONE NODE. Input netlists exist in the wild where a
+    // terminal appears in two nets (five shipped circuits: a gnd pin
+    // reached by two independently-derived wire groups). The old solver
+    // MUTATED the caller's nets during its gnd-island merge, which
+    // accidentally repaired those inputs; the non-mutation fix preserved
+    // the drawn input — duplication included — and every getNets()
+    // consumer then saw a terminal on two nets, resolver-order deciding
+    // which one answered (found by the schematic completeness gate,
+    // adjudicated 2026-08-23). Coalesce deterministically HERE, and say
+    // so via getWarnings rather than repairing in silence.
+    const coalesced = BoardImpl._coalesceSharedTerminals(nets);
+    nets = coalesced.nets;
+    this._netMergeNotes = coalesced.merges;
     const fatal = errors.filter(e => e.severity === 'error');
     if (fatal.length > 0) {
       throw new Error('Invalid netlist:\n' + fatal.map(e => "  - ".concat(e.message)).join('\n'));
@@ -3552,11 +3861,19 @@ class BoardImpl {
     // must keep seeing the diode on the net the motor pin is wired to,
     // not one hop into the motor's insides.
     const solveView = BoardImpl._expandMotorWindings(parts, nets);
-    this._solveParts = solveView.parts;
-    this._solveNets = solveView.nets;
+    const macroView = BoardImpl._expandOpampMacros(solveView.parts, solveView.nets, this.vcc);
+    this._solveParts = macroView.parts;
+    this._solveNets = macroView.nets;
+    this._macroFallbacks = macroView.notes;
     for (const p of this._solveParts) {
       if (p.kind === 'inductor' && !this.inductorCurrents.has(p.id)) {
         this.inductorCurrents.set(p.id, 0);
+      }
+      // Hidden reactive parts (motor windings, macromodel poles) need
+      // their history seeded like any drawn part — an unseeded macro cap
+      // let the DC solve teleport the output past the slew limit.
+      if (p.kind === 'capacitor' && !this.capVoltages.has(p.id)) {
+        this.capVoltages.set(p.id, 0);
       }
     }
     this.ledHistory.clear();
@@ -5029,11 +5346,11 @@ class BoardImpl {
   getControls() {
     const controllable = ['potentiometer', 'button', 'switch', 'ldr', 'ntc', 'vsource'];
     return this.parts.filter(p => controllable.includes(p.kind)).map(p => {
-      var _this$controls$get, _p$params$volts, _p$params2;
+      var _this$controls$get, _p$params$volts, _p$params5;
       return {
         id: p.id,
         kind: p.kind,
-        value: (_this$controls$get = this.controls.get(p.id)) !== null && _this$controls$get !== void 0 ? _this$controls$get : p.kind === 'vsource' ? (_p$params$volts = (_p$params2 = p.params) === null || _p$params2 === void 0 ? void 0 : _p$params2.volts) !== null && _p$params$volts !== void 0 ? _p$params$volts : 5 : 0
+        value: (_this$controls$get = this.controls.get(p.id)) !== null && _this$controls$get !== void 0 ? _this$controls$get : p.kind === 'vsource' ? (_p$params$volts = (_p$params5 = p.params) === null || _p$params5 === void 0 ? void 0 : _p$params5.volts) !== null && _p$params$volts !== void 0 ? _p$params$volts : 5 : 0
       };
     });
   }
@@ -5198,9 +5515,41 @@ class BoardImpl {
    *           partIds?: string[], unratedIds?: string[], type?: string}>}
    */
   getWarnings() {
+    var _this$_netMergeNotes, _this$_macroFallbacks;
     /** @type {Array<{severity: 'warning'|'danger', message: string, partId?: string,
      *           partIds?: string[], unratedIds?: string[], type?: string}>} */
     const warnings = [];
+
+    // A terminal that appeared in two nets was coalesced at setNetlist —
+    // the merge is correct physics, but the drawing that produced it is
+    // worth fixing at the source, so it stays visible.
+    if ((_this$_netMergeNotes = this._netMergeNotes) !== null && _this$_netMergeNotes !== void 0 && _this$_netMergeNotes.length) {
+      for (const {
+        terminal,
+        into,
+        from
+      } of this._netMergeNotes) {
+        warnings.push({
+          severity: 'warning',
+          type: 'net-coalesced',
+          message: "".concat(terminal, " appeared in both ").concat(into, " and ").concat(from, " \u2014 merged: ") + 'one pin is one node. The drawing (or its wire derivation) lists ' + 'the terminal twice.'
+        });
+      }
+    }
+
+    // A macromodel op-amp on a bench with no ground keeps the ideal row —
+    // said out loud, because a flat AC response from a part configured
+    // for GBW would otherwise be a silent downgrade.
+    if ((_this$_macroFallbacks = this._macroFallbacks) !== null && _this$_macroFallbacks !== void 0 && _this$_macroFallbacks.length) {
+      for (const id of this._macroFallbacks) {
+        warnings.push({
+          severity: 'warning',
+          type: 'opamp-macro-no-ground',
+          partId: id,
+          message: "".concat(id, " is configured as a macromodel op-amp, but the bench ") + 'has no ground net to reference the internal pole against — it is ' + 'running as an IDEAL op-amp (no bandwidth, no slew) until a gnd ' + 'part exists.'
+        });
+      }
+    }
 
     // Refused device-control verbs are user-intent feedback and show
     // regardless of power state (spec-updates/set-device-control.md).
@@ -5633,13 +5982,13 @@ class BoardImpl {
    */
   _needsMNA() {
     for (const p of this.parts) {
-      var _p$params3;
+      var _p$params6;
       if (MNA_ONLY_KINDS.has(p.kind) || (0,_devices_js__WEBPACK_IMPORTED_MODULE_4__.getDevice)(p.kind)) return true;
       // An opted-in Shockley junction is beyond the walker's knee
       // vocabulary: letting the walker answer nodeVoltage while the
       // instruments answer from the exponential model is two truths on
       // one bench (spec-updates/shockley-junction-limiting.md).
-      if ((p.kind === 'led' || p.kind === 'diode') && ((_p$params3 = p.params) === null || _p$params3 === void 0 ? void 0 : _p$params3.model) === 'shockley') return true;
+      if ((p.kind === 'led' || p.kind === 'diode') && ((_p$params6 = p.params) === null || _p$params6 === void 0 ? void 0 : _p$params6.model) === 'shockley') return true;
     }
     // A potentiometer with a LOADED wiper is beyond the walker:
     // _solvePot answers the unloaded midpoint while _solveLedChain treats
@@ -5705,7 +6054,13 @@ class BoardImpl {
 
   /** Any capacitor or inductor present? */
   _hasReactive() {
-    for (const p of this.parts) {
+    // SOLVER view, not the drawing: hidden reactive parts (motor
+    // windings, macromodel poles) must pull advanceTo into transient
+    // integration too — a macro op-amp's internal capacitor never
+    // charged because this scanned only the public parts, and the
+    // follower sat at 0 V forever.
+    for (const p of (_this$_solveParts = this._solveParts) !== null && _this$_solveParts !== void 0 ? _this$_solveParts : this.parts) {
+      var _this$_solveParts;
       if (p.kind === 'capacitor' || p.kind === 'inductor') return true;
     }
     return false;
@@ -5786,6 +6141,15 @@ class BoardImpl {
           earliest = state._nextEdgeNs;
         }
       }
+      // CANONICAL wake (spec-updates/scheduled-device-events.md): any
+      // model may set state._wakeNs and be stepped TO it exactly — the
+      // gate tpd machinery rides this; the legacy fields above keep
+      // working for the devices that predate it.
+      if (state._wakeNs && state._wakeNs > afterNs && state._wakeNs <= beforeNs) {
+        if (earliest === null || state._wakeNs < earliest) {
+          earliest = state._wakeNs;
+        }
+      }
     }
 
     // For continuous devices (motor, encoder, servo): impose a max sub-step
@@ -5861,8 +6225,17 @@ class BoardImpl {
     return changed;
   }
 
-  /** One update pass over all registered devices. True if any changed. */
+  /**
+   * One update pass over all registered devices. True if any changed.
+   * `atNs` is the time the devices are told: inside a transient chunk it
+   * is the SUB-STEP time, not `this.timeNs` — the board sets timeNs to
+   * the chunk end before integrating, so every timed device inside a
+   * long advanceTo used to see the far future (a tpd gate scheduled its
+   * flip relative to the chunk end and never fired mid-chunk).
+   * @param {bigint} [atNs]
+   */
   _updateDevices() {
+    let atNs = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.timeNs;
     let changed = false;
     // Built-in shift registers
     if (this._shiftRegisters.size > 0) {
@@ -5884,7 +6257,7 @@ class BoardImpl {
         const ov = this._digitalOverlay.get(n);
         return ov !== undefined ? ov : (_this$nodeVoltages$ge15 = this.nodeVoltages.get(n)) !== null && _this$nodeVoltages$ge15 !== void 0 ? _this$nodeVoltages$ge15 : 0;
       };
-      if (model.update(part, state, read, this.timeNs)) changed = true;
+      if (model.update(part, state, read, atNs)) changed = true;
     }
     return changed;
   }
@@ -5920,9 +6293,13 @@ class BoardImpl {
     const H_MIN = 1e-8;
     // A BE seed step is UNCONTROLLED (no error estimate), so it must be
     // tiny: a 100 µs BE step on a 5 kHz tank (ωh ≈ 3) eats the stored
-    // energy before the trapezoidal controller ever runs. 1 µs keeps the
-    // seed's damping negligible for anything the bench can build.
-    const H_SEED = 1e-6;
+    // energy before the trapezoidal controller ever runs. 1 ns keeps the
+    // damping negligible AND makes the first observation after a source
+    // edge or device wake effectively instant — a solve point lands just
+    // past the discontinuity, so a tpd gate schedules from the edge, not
+    // from wherever the next chunk boundary happened to fall (measured:
+    // an 80 ns-late observation shifted a scheduled flip by 80 ns).
+    const H_SEED = 1e-9;
     // Trace-fidelity floor (see doc above).
     const H_SAMPLE = 1e-4;
     const sampleCapped = this._scopeChannels.size > 0 || this._hasTimeVaryingSource();
@@ -5977,12 +6354,16 @@ class BoardImpl {
       lv = (_r$inductorVoltagesNe = r.inductorVoltagesNext) !== null && _r$inductorVoltagesNe !== void 0 ? _r$inductorVoltagesNe : lv;
       res = r;
       publish(r, atSec);
-      // One device pass per accepted step: a comparator/gate that flips is
-      // seen by the network on the NEXT step. A flip is a discontinuity —
-      // trapezoidal history restarts and the step shrinks to look closely.
-      if (this._deviceStates.size > 0 && this._updateDevices()) {
-        trapReady = false;
-        h = Math.max(H_MIN, h / 4);
+      // One device pass per accepted step, told the SUB-STEP time — the
+      // chunk-end time made every scheduled event inside a long advance
+      // fire never or late. A flip is a discontinuity — trapezoidal
+      // history restarts and the step shrinks to look closely.
+      if (this._deviceStates.size > 0) {
+        const remNs = BigInt(Math.max(0, Math.round((tEnd - atSec) * 1e9)));
+        if (this._updateDevices(this.timeNs - remNs)) {
+          trapReady = false;
+          h = Math.max(H_MIN, h / 4);
+        }
       }
     };
     while (t < tEnd - 1e-15 && attempts < MAX_ATTEMPTS) {
@@ -5997,7 +6378,24 @@ class BoardImpl {
         hEff = edge - t;
         atEdge = true;
       }
-      if (!trapReady || hEff <= 2 * H_MIN) {
+      // Scheduled device wakes are step barriers too: a pending gate flip
+      // scheduled MID-CHUNK (spec-updates/scheduled-device-events.md) must
+      // land on a solve point — the outer deadline loop only sees wakes
+      // that existed before the chunk began.
+      const wake = this._nextDeviceWakeSec(t);
+      if (wake !== null && wake > t + 1e-15 && wake < t + hEff - 1e-15) {
+        hEff = wake - t;
+        atEdge = true; // a wake is a discontinuity: BE restart past it
+      }
+
+      // Only a genuine discontinuity takes the uncontrolled BE seed. A
+      // floor-sized step goes through the trapezoidal controller like any
+      // other — the old `hEff <= 2*H_MIN` shortcut was a self-trap: the
+      // seed branch never grows h, so once the reject path drove h to
+      // H_MIN every later step re-entered the seed at H_SEED and the
+      // integrator marched 1 ns forever (measured: 5000 solves per 5 µs
+      // on the charge-pump bench, 95 min for that one test file).
+      if (!trapReady) {
         // Seed / floor step: single BE solve, no error control — kept tiny
         // (see H_SEED). BE's damping is what a fresh discontinuity needs.
         const hSeed = Math.min(hEff, H_SEED);
@@ -6024,9 +6422,12 @@ class BoardImpl {
         const sc = ABSTOL_I + RELTOL * Math.max(Math.abs(iH), Math.abs(iF));
         err = Math.max(err, Math.abs(iF - iH) / sc);
       }
-      if (err <= 1 || !Number.isFinite(err)) {
+      if (err <= 1 || !Number.isFinite(err) || hEff <= H_MIN * 1.000001) {
         // Non-finite means a solve bailed (singular mid-step) — accept the
-        // half-step result and let the convergence warning say so.
+        // half-step result and let the convergence warning say so. An
+        // at-floor step is accepted regardless of err: it cannot be
+        // refined below H_MIN, and rejecting it would loop the controller
+        // in place until MAX_ATTEMPTS.
         publish(h1, t + hEff / 2);
         t += hEff;
         accept(h2, t);
@@ -6063,6 +6464,23 @@ class BoardImpl {
       }
       this._mnaCache = res;
     }
+  }
+
+  /**
+   * Earliest scheduled device wake strictly after `tSec`, in seconds —
+   * or null. Scans `state._wakeNs` (the canonical field); cheap, a few
+   * devices at most.
+   * @param {number} tSec
+   * @returns {number | null}
+   */
+  _nextDeviceWakeSec(tSec) {
+    let next = null;
+    for (const [, state] of this._deviceStates) {
+      if (!state._wakeNs) continue;
+      const wSec = Number(state._wakeNs) / 1e9;
+      if (wSec > tSec + 1e-15 && (next === null || wSec < next)) next = wSec;
+    }
+    return next;
   }
 
   /**
@@ -6137,8 +6555,8 @@ class BoardImpl {
       for (const t of net.terminals) {
         const p = this.partMap.get(t.part);
         if (p && p.kind === 'vcc') {
-          var _p$params$volts2, _p$params4;
-          this.nodeVoltages.set(net.id, (_p$params$volts2 = (_p$params4 = p.params) === null || _p$params4 === void 0 ? void 0 : _p$params4.volts) !== null && _p$params$volts2 !== void 0 ? _p$params$volts2 : this.vcc);
+          var _p$params$volts2, _p$params7;
+          this.nodeVoltages.set(net.id, (_p$params$volts2 = (_p$params7 = p.params) === null || _p$params7 === void 0 ? void 0 : _p$params7.volts) !== null && _p$params$volts2 !== void 0 ? _p$params$volts2 : this.vcc);
         } else if (p && p.kind === 'gnd') {
           this.nodeVoltages.set(net.id, 0);
         }
@@ -6268,6 +6686,21 @@ class BoardImpl {
     for (const net of this.nets) {
       if (this.nodeVoltages.has(net.id)) continue;
       this._resolveNet(net);
+    }
+
+    // Coverage: a net the walker could not resolve would read UNDEFINED
+    // from nodeVoltage — absent-without-a-reason, a shape every consumer
+    // has to guess about (a UI probe reads blank; a corpus instrument
+    // mis-read the gaps as "not conducting" — 116 nets across the three
+    // quasi-pin benches, while the same circuits under MNA assign every
+    // node). The walker's own doctrine applies: beyond its vocabulary,
+    // one full MNA solve answers everything coherently — a net behind an
+    // off diode gets its gmin-defined floating level instead of a hole.
+    for (const net of this.nets) {
+      if (!this.nodeVoltages.has(net.id)) {
+        this._solveViaMNA();
+        return;
+      }
     }
 
     // Override net voltages for capacitor nodes with their actual charge state.
@@ -10916,6 +11349,11 @@ __webpack_require__.r(__webpack_exports__);
  * @property {(part: import('./types.js').Part, state: object,
  *             read: (terminal: string) => number) => Map<string, number>} [branchCurrents]
  *   Optional terminal currents for the instruments.
+ * Scheduled events: `update()` may set `state._wakeNs` (BigInt, absolute
+ * sim time) and the board sub-steps advanceTo TO that instant exactly —
+ * the canonical deadline field (spec-updates/scheduled-device-events.md);
+ * clear it (null) when consumed. Legacy per-device deadline fields keep
+ * working.
  * @property {(part: import('./types.js').Part, state: object,
  *             verb: string, value: *) => boolean} [control]
  *   High-level user/program intent — the write counterpart of
@@ -19215,22 +19653,57 @@ function makeGateModel(kind, evalFn) {
       // the board's actual supply instead of a hard-coded 5 V.
       state._vcc = ctx.vcc;
     },
-    update(part, state, read) {
-      var _state$_vcc, _part$params$rOut2, _part$params5;
+    update(part, state, read, tNs) {
+      var _state$_vcc, _part$params$rOut2, _part$params5, _part$params6;
       const vcc = (_state$_vcc = state._vcc) !== null && _state$_vcc !== void 0 ? _state$_vcc : 5.0;
       const inputs = readInputs(part, state, read, vcc);
       const outLevel = evalFn(inputs);
-      if (outLevel === state._outLevel && inputs.every((v, i) => v === state._lastInputs[i])) {
-        return false;
-      }
-      state._lastInputs = inputs;
-      state._outLevel = outLevel;
       const rOut = (_part$params$rOut2 = (_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.rOut) !== null && _part$params$rOut2 !== void 0 ? _part$params$rOut2 : R_OUT_DEFAULT;
-      state.drives.out = {
-        vTh: outLevel ? vcc : 0,
-        rTh: rOut
-      };
-      return true;
+      const tpdNs = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.tpdNs;
+      if (!tpdNs) {
+        // Immediate switching — today's fixpoint behaviour, bit-identical
+        // (spec-updates/scheduled-device-events.md rule 3).
+        if (outLevel === state._outLevel && inputs.every((v, i) => v === state._lastInputs[i])) {
+          return false;
+        }
+        state._lastInputs = inputs;
+        state._outLevel = outLevel;
+        state.drives.out = {
+          vTh: outLevel ? vcc : 0,
+          rTh: rOut
+        };
+        return true;
+      }
+
+      // Scheduled switching with INERTIAL semantics: a computed change is
+      // pended tpd into the future; inputs reverting first cancel it — a
+      // pulse shorter than tpd does not propagate, which is the physics
+      // and the teaching point. `_wakeNs` is the canonical deadline the
+      // board sub-steps to exactly.
+      state._lastInputs = inputs;
+      if (outLevel === state._outLevel) {
+        if (state._pendingOut) {
+          state._pendingOut = null;
+          state._wakeNs = null;
+        }
+      } else if (!state._pendingOut || state._pendingOut.level !== outLevel) {
+        state._pendingOut = {
+          level: outLevel,
+          atNs: tNs + BigInt(tpdNs)
+        };
+        state._wakeNs = state._pendingOut.atNs;
+      }
+      if (state._pendingOut && tNs >= state._pendingOut.atNs) {
+        state._outLevel = state._pendingOut.level;
+        state.drives.out = {
+          vTh: state._outLevel ? vcc : 0,
+          rTh: rOut
+        };
+        state._pendingOut = null;
+        state._wakeNs = null;
+        return true;
+      }
+      return false;
     }
   };
 }
@@ -29858,6 +30331,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   findNet: () => (/* binding */ findNet),
 /* harmony export */   junctionOpts: () => (/* binding */ junctionOpts),
 /* harmony export */   pwlKneeCurrent: () => (/* binding */ pwlKneeCurrent),
+/* harmony export */   shockleyEval: () => (/* binding */ shockleyEval),
+/* harmony export */   shockleyJunctionFromTotal: () => (/* binding */ shockleyJunctionFromTotal),
+/* harmony export */   shockleyParams: () => (/* binding */ shockleyParams),
 /* harmony export */   smoothVov: () => (/* binding */ smoothVov),
 /* harmony export */   solve: () => (/* binding */ solve),
 /* harmony export */   solveMNA: () => (/* binding */ solveMNA),
@@ -30074,7 +30550,25 @@ function solveAssembled(A, b) {
  */
 function diodeCompanion(vAcross, vf, rd, opts) {
   if (opts && opts.shockley) {
-    return shockleyCompanion(vAcross, vf, rd, opts.is, opts.n);
+    var _opts$rs;
+    // COMPOSITE linearization: junction + series rs as one branch,
+    // i(v_total) with v_total = vJ + i·rs. `vAcross` here is the stored
+    // JUNCTION voltage state (the NR variable); the returned Norton is in
+    // terms of the TOTAL branch voltage the network sees. rs = 0 (the
+    // direct-call/test path) reduces exactly to the bare exponential.
+    const p = shockleyParams(_objectSpread(_objectSpread({}, opts), {}, {
+      rs: (_opts$rs = opts.rs) !== null && _opts$rs !== void 0 ? _opts$rs : 0
+    }), vf);
+    const {
+      i,
+      gj
+    } = shockleyEval(vAcross, p);
+    const gEq = gj / (1 + gj * p.rs);
+    const vTotalOp = vAcross + i * p.rs;
+    return {
+      gEq,
+      iEq: i - gEq * vTotalOp
+    };
   }
 
   // Piecewise-linear knee with a C1 parabolic blend over ±PWL_KNEE_EPS.
@@ -30152,14 +30646,83 @@ function pwlKneeCurrent(v, vf, rd) {
  * behind the param. Ideality: LEDs 1.8, silicon 1.0, via params.n.
  */
 function junctionOpts(part) {
-  var _part$params, _part$params2, _part$params$n, _part$params3;
+  var _part$params, _part$params2, _part$params$n, _part$params3, _part$params$rs, _part$params4;
   if (((_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.model) !== 'shockley') return undefined;
   return {
     shockley: true,
     is: (_part$params2 = part.params) === null || _part$params2 === void 0 ? void 0 : _part$params2.is,
-    n: (_part$params$n = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.n) !== null && _part$params$n !== void 0 ? _part$params$n : part.kind === 'led' ? 1.8 : 1.0
+    n: (_part$params$n = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.n) !== null && _part$params$n !== void 0 ? _part$params$n : part.kind === 'led' ? 1.8 : 1.0,
+    // Series bulk resistance (SPICE's RS). Without it the exponential
+    // undershoots the declared Vf everywhere below rated current — the
+    // E1.3b corpus delta showed PWL consistently a little above each
+    // LED's Vf and bare Shockley consistently below: the knee's rd was
+    // crudely modelling this term, and dropping it moved AWAY from the
+    // devices. 2 Ω is a typical LED/small-diode bulk value.
+    rs: (_part$params$rs = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.rs) !== null && _part$params$rs !== void 0 ? _part$params$rs : 2
   };
 }
+
+/**
+ * Shockley parameters with the TOTAL-drop calibration: Is is chosen so
+ * that junction + rs together drop exactly vf at the rated 20 mA — the
+ * teaching anchor "this LED drops vf at its rated current" stays true
+ * with bulk resistance in the model.
+ */
+function shockleyParams(opts, vf) {
+  var _opts$rs2;
+  const nVt = opts.n * VT_25C;
+  const rs = (_opts$rs2 = opts.rs) !== null && _opts$rs2 !== void 0 ? _opts$rs2 : 0;
+  let is = opts.is;
+  if (is === undefined) {
+    const vJrated = vf - 0.020 * rs;
+    const expVf = Math.exp(Math.min(vJrated / nVt, 80));
+    is = 0.020 / Math.max(expVf - 1, 1e-30);
+  }
+  return {
+    nVt,
+    is,
+    rs
+  };
+}
+
+/** Junction current and conductance at a JUNCTION voltage. */
+function shockleyEval(vJ, p) {
+  const vClamped = Math.min(vJ, p.nVt * 80);
+  if (vClamped < -5 * p.nVt) return {
+    i: -p.is,
+    gj: 1e-12
+  };
+  const expV = Math.exp(vClamped / p.nVt);
+  return {
+    i: p.is * (expV - 1),
+    gj: Math.min(Math.max(p.is * expV / p.nVt, 1e-12), 1e6)
+  };
+}
+
+/**
+ * Recover the junction voltage from a TOTAL (node-difference) voltage:
+ * solve vJ + f(vJ)·rs = vTotal by scalar Newton from the last state.
+ */
+function shockleyJunctionFromTotal(vTotal, vJ0, p) {
+  if (!(p.rs > 0)) return vTotal;
+  let vJ = vJ0;
+  for (let k = 0; k < 40; k++) {
+    const {
+      i,
+      gj
+    } = shockleyEval(vJ, p);
+    const resid = vJ + i * p.rs - vTotal;
+    if (Math.abs(resid) < 1e-12) break;
+    let step = resid / (1 + gj * p.rs);
+    // The scalar Newton needs its own junction limiting.
+    if (step > p.nVt * 4) step = p.nVt * 4;
+    if (step < -p.nVt * 4) step = -p.nVt * 4;
+    vJ -= step;
+    if (Math.abs(step) < 1e-12) break;
+  }
+  return vJ;
+}
+const VT_25C = 0.02585;
 
 /** Junction current at a solved voltage — must match what was stamped. */
 function junctionCurrent(part, vAcross, vf, rd) {
@@ -30168,15 +30731,11 @@ function junctionCurrent(part, vAcross, vf, rd) {
     return pwlKneeCurrent(vAcross, vf, rd);
   }
   const VT = 0.02585;
-  const nVt = opts.n * VT;
-  let is = opts.is;
-  if (is === undefined) {
-    const expVf = Math.exp(Math.min(vf / nVt, 80));
-    is = 0.020 / Math.max(expVf - 1, 1e-30);
-  }
-  const vClamped = Math.min(vAcross, nVt * 80);
-  if (vClamped < -5 * nVt) return -is;
-  return is * (Math.exp(vClamped / nVt) - 1);
+  // Total-voltage evaluation of the composite: recover the junction
+  // voltage behind rs, then the current — must match the stamp.
+  const p = shockleyParams(opts, vf);
+  const vJ = shockleyJunctionFromTotal(vAcross, Math.min(vAcross, vf), p);
+  return shockleyEval(vJ, p).i;
 }
 
 /**
@@ -30201,17 +30760,12 @@ function pnjlim(vnew, vold, nVt, vcrit) {
 function junctionLimitParams(part, vf) {
   const opts = junctionOpts(part);
   if (!opts) return null;
-  const VT = 0.02585;
-  const nVt = opts.n * VT;
-  let is = opts.is;
-  if (is === undefined) {
-    const expVf = Math.exp(Math.min(vf / nVt, 80));
-    is = 0.020 / Math.max(expVf - 1, 1e-30);
-  }
-  const vcrit = nVt * Math.log(nVt / (Math.SQRT2 * is));
+  const p = shockleyParams(opts, vf);
+  const vcrit = p.nVt * Math.log(p.nVt / (Math.SQRT2 * p.is));
   return {
-    nVt,
-    vcrit
+    nVt: p.nVt,
+    vcrit,
+    p
   };
 }
 
@@ -30475,7 +31029,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
   const capPairSeen = new Set();
   if (!powerOff) {
     for (const part of parts) {
-      var _part$params4;
+      var _part$params5;
       if (part.kind === 'vcc') {
         const vccNet = findNet(nets, part.id, 'vcc');
         // ONE constraint row per rail. A schematic draws one power symbol per
@@ -30498,6 +31052,13 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
           vsIndex.set(part.id, vsCount++);
         }
       }
+      // Controlled voltage source (spec-updates/controlled-sources.md)
+      if (part.kind === 'vcvs') {
+        const outNet = findNet(nets, part.id, 'outp');
+        if (outNet && nodeIndex.has(outNet)) {
+          vsIndex.set(part.id, vsCount++);
+        }
+      }
       // Independent voltage source (may have current limit for CC mode)
       if (part.kind === 'vsource') {
         const posNet = findNet(nets, part.id, 'pos');
@@ -30506,7 +31067,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         }
       }
       // Named power supply kinds that act as voltage sources
-      if ((part.kind === 'battery_9v' || part.kind === 'battery_aa' || part.kind === 'battery_coin' || part.kind === 'solar_cell') && (_part$params4 = part.params) !== null && _part$params4 !== void 0 && _part$params4.iLimit) {
+      if ((part.kind === 'battery_9v' || part.kind === 'battery_aa' || part.kind === 'battery_coin' || part.kind === 'solar_cell') && (_part$params5 = part.params) !== null && _part$params5 !== void 0 && _part$params5.iLimit) {
         // These can have current limits too, but they are registered devices
         // and don't participate in the vsource MNA row. Skip here.
       }
@@ -30550,11 +31111,20 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
   // -420V on pc24 — because beta*Ib exceeded anything the load allows.
   const bjtRegions = new Map();
   const mosRegions = new Map();
+  /** vccs iMax clamp state: 'linear' | 'clamp+' | 'clamp-' */
+  const vccsClamps = new Map();
   for (const part of parts) {
+    var _part$params6, _part$params7, _part$params8;
     if (part.kind === 'led' || part.kind === 'diode' || part.kind === 'npn' || part.kind === 'pnp' || part.kind === 'zener' || part.kind === 'nmos' || part.kind === 'pmos') {
       diodeVoltages.set(part.id, 0); // initial guess
     }
     if (part.kind === 'opamp') opampRegions.set(part.id, 'linear');
+    if (part.kind === 'vcvs' && (((_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.railLow) !== undefined || ((_part$params7 = part.params) === null || _part$params7 === void 0 ? void 0 : _part$params7.railHigh) !== undefined)) {
+      opampRegions.set(part.id, 'linear'); // shares the op-amp rail FSM
+    }
+    if (part.kind === 'vccs' && ((_part$params8 = part.params) === null || _part$params8 === void 0 ? void 0 : _part$params8.iMax) > 0) {
+      vccsClamps.set(part.id, 'linear');
+    }
     if (part.kind === 'npn' || part.kind === 'pnp') bjtRegions.set(part.id, 'active');
     if (part.kind === 'nmos' || part.kind === 'pmos') mosRegions.set(part.id, 'saturation');
   }
@@ -30613,12 +31183,12 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
             break;
           case 'vcc':
             if (!powerOff) {
-              var _part$params5;
+              var _part$params9;
               // params.volts makes the rail per-part adjustable (a 3.3V
               // rail beside the 5V one); the board default stays the
               // fallback. board.js's seed path already honored this —
               // the solver must agree or the seed lies.
-              const railVolts = (Number.isFinite((_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.volts) ? part.params.volts : vcc) * srcScale;
+              const railVolts = (Number.isFinite((_part$params9 = part.params) === null || _part$params9 === void 0 ? void 0 : _part$params9.volts) ? part.params.volts : vcc) * srcScale;
               const railNet = findNet(nets, part.id, 'vcc');
               if (vsIndex.has(part.id)) {
                 railStamped.set(railNet, railVolts);
@@ -30724,6 +31294,15 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
             break;
           case 'opamp':
             stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegions, vcc, srcScale);
+            break;
+          case 'vcvs':
+            stampVCVS(A, b, part, nets, nodeIndex, vsIndex, opampRegions, srcScale);
+            break;
+          case 'vccs':
+            // The iMax clamp is a DYNAMIC limit (slew): at DC it has no
+            // meaning and makes the macromodel's operating point a clamp±
+            // ping-pong through the rails — so it engages only in transient.
+            stampVCCS(A, b, part, nets, nodeIndex, transient ? vccsClamps : null);
             break;
           case 'vsource':
             stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc, tSeconds, controls, srcScale);
@@ -30909,11 +31488,17 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         // oscillates on two junctions in series-opposition). Everything else
         // keeps the flat NR_MAX_STEP clamp. The RAW delta still drives the
         // convergence check, so a limited step cannot fake convergence.
-        const rawDelta = vNew - vOld;
+        let rawDelta = vNew - vOld;
         let vLimited;
         const lim = part.kind === 'led' || part.kind === 'diode' ? junctionLimitParams(part, /** @type {number} */(_part$params$vf = part.params.vf) !== null && _part$params$vf !== void 0 ? _part$params$vf : part.kind === 'diode' ? 0.7 : 2.0) : null;
         if (lim) {
-          vLimited = pnjlim(vNew, vOld, lim.nVt, lim.vcrit);
+          // The solve gives TOTAL branch volts; the NR state is the
+          // JUNCTION voltage behind rs — recover it, limit it, and drive
+          // convergence from the junction-space delta (total-minus-junction
+          // would carry the i·rs drop as phantom non-convergence).
+          const vJnew = shockleyJunctionFromTotal(vNew, vOld, lim.p);
+          rawDelta = vJnew - vOld;
+          vLimited = pnjlim(vJnew, vOld, lim.nVt, lim.vcrit);
         } else if (part.kind === 'nmos' || part.kind === 'pmos') {
           var _part$params$vth;
           // The stored variable is vGS (nmos) / vSG (pmos), so the effective
@@ -30927,12 +31512,14 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         diodeVoltages.set(part.id, vLimited);
       }
 
-      // Op-amp region transitions: linear ↔ saturated at a supply rail.
+      // Op-amp / railed-vcvs region transitions: linear ↔ saturated at a
+      // supply rail. The vcvs shares the FSM (controlled-sources.md); one
+      // that declared no rails never enters opampRegions and skips here.
       let regionChanged = false;
       for (const part of parts) {
         var _part$params$gain, _part$params$railLow, _part$params$railHigh;
-        if (part.kind !== 'opamp' || !vsIndex.has(part.id)) continue;
-        const gain = /** @type {number} */(_part$params$gain = part.params.gain) !== null && _part$params$gain !== void 0 ? _part$params$gain : 1e6;
+        if (part.kind !== 'opamp' && part.kind !== 'vcvs' || !vsIndex.has(part.id) || !opampRegions.has(part.id)) continue;
+        const gain = /** @type {number} */(_part$params$gain = part.params.gain) !== null && _part$params$gain !== void 0 ? _part$params$gain : part.kind === 'vcvs' ? 1 : 1e6;
         const railLow = /** @type {number} */(_part$params$railLow = part.params.railLow) !== null && _part$params$railLow !== void 0 ? _part$params$railLow : 0;
         const railHigh = /** @type {number} */(_part$params$railHigh = part.params.railHigh) !== null && _part$params$railHigh !== void 0 ? _part$params$railHigh : vcc;
         const netP = findNet(nets, part.id, 'inp');
@@ -31046,14 +31633,42 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         }
       }
 
+      // vccs iMax clamp transitions (the op-amp macromodel's slew limit) —
+      // transient only; see the stamp-site note.
+      for (const part of parts) {
+        var _part$params$gm;
+        if (!transient || !vccsClamps.has(part.id)) continue;
+        const gm = /** @type {number} */(_part$params$gm = part.params.gm) !== null && _part$params$gm !== void 0 ? _part$params$gm : 1e-3;
+        const iMax = /** @type {number} */part.params.iMax;
+        const netP = findNet(nets, part.id, 'inp');
+        const netN = findNet(nets, part.id, 'inn');
+        const iP = netP ? nodeIndex.get(netP) : undefined;
+        const iN = netN ? nodeIndex.get(netN) : undefined;
+        const vin = (iP !== undefined ? solution[iP] : 0) - (iN !== undefined ? solution[iN] : 0);
+        const iLin = gm * vin;
+        const region = vccsClamps.get(part.id);
+        let next = region;
+        if (region === 'linear') {
+          if (iLin > iMax) next = 'clamp+';else if (iLin < -iMax) next = 'clamp-';
+        } else if (region === 'clamp+') {
+          if (iLin < iMax * 0.99) next = 'linear';
+        } else if (iLin > -iMax * 0.99) {
+          next = 'linear';
+        }
+        if (next !== region) {
+          vccsClamps.set(part.id, next);
+          regionChanged = true;
+        }
+      }
+
       // Check vsource current limits (CC mode transition).
       // If a source with iLimit has |I| > iLimit, reduce its voltage to
       // clamp the current. This iterates alongside NR until both settle.
       let ccChanged = false;
       for (const part of parts) {
-        var _part$params6;
+        var _part$params10;
         if (part.kind !== 'vsource') continue;
-        const iLimit = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.iLimit;
+        const iLimit = (_part$params10 = part.params) === null || _part$params10 === void 0 ? void 0 : _part$params10.iLimit;
         if (iLimit == null || iLimit <= 0) continue;
         const vsIdx = vsIndex.get(part.id);
         if (vsIdx === undefined) continue;
@@ -31327,6 +31942,29 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('inp', 0);
       currents.set('inn', 0);
     }
+    if (part.kind === 'vcvs' && vsIndex.has(part.id)) {
+      const iOut = solution[nodeCount + (/** @type {number} */vsIndex.get(part.id))];
+      currents.set('outp', iOut);
+      currents.set('outn', -iOut);
+      currents.set('inp', 0);
+      currents.set('inn', 0);
+    }
+    if (part.kind === 'vccs') {
+      var _vccsClamps$get;
+      const region = (_vccsClamps$get = vccsClamps.get(part.id)) !== null && _vccsClamps$get !== void 0 ? _vccsClamps$get : 'linear';
+      let i;
+      if (region === 'clamp+') i = /** @type {number} */part.params.iMax;else if (region === 'clamp-') i = -(/** @type {number} */part.params.iMax);else {
+        var _nodeVoltages$get19, _nodeVoltages$get20, _part$params$gm2;
+        const nP = findNet(nets, part.id, 'inp');
+        const nN = findNet(nets, part.id, 'inn');
+        const vin = (nP ? (_nodeVoltages$get19 = nodeVoltages.get(nP)) !== null && _nodeVoltages$get19 !== void 0 ? _nodeVoltages$get19 : 0 : 0) - (nN ? (_nodeVoltages$get20 = nodeVoltages.get(nN)) !== null && _nodeVoltages$get20 !== void 0 ? _nodeVoltages$get20 : 0 : 0);
+        i = (/** @type {number} */(_part$params$gm2 = part.params.gm) !== null && _part$params$gm2 !== void 0 ? _part$params$gm2 : 1e-3) * vin;
+      }
+      currents.set('outp', i);
+      currents.set('outn', -i);
+      currents.set('inp', 0);
+      currents.set('inn', 0);
+    }
     if (part.kind === 'vsource' && vsIndex.has(part.id)) {
       const iSrc = solution[nodeCount + (/** @type {number} */vsIndex.get(part.id))];
       currents.set('pos', iSrc);
@@ -31335,11 +31973,11 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
 
     // Drawable parts: supply current from VCC to GND
     if (part.kind === 'char_lcd' || part.kind === 'ir_receiver' || part.kind === 'temp_sensor' || part.kind === 'eeprom') {
-      var _nodeVoltages$get19, _nodeVoltages$get20;
+      var _nodeVoltages$get21, _nodeVoltages$get22;
       const vNet = findNet(nets, part.id, 'vcc');
       const gNet = findNet(nets, part.id, 'gnd');
-      const vV = vNet ? (_nodeVoltages$get19 = nodeVoltages.get(vNet)) !== null && _nodeVoltages$get19 !== void 0 ? _nodeVoltages$get19 : 0 : 0;
-      const vG = gNet ? (_nodeVoltages$get20 = nodeVoltages.get(gNet)) !== null && _nodeVoltages$get20 !== void 0 ? _nodeVoltages$get20 : 0 : 0;
+      const vV = vNet ? (_nodeVoltages$get21 = nodeVoltages.get(vNet)) !== null && _nodeVoltages$get21 !== void 0 ? _nodeVoltages$get21 : 0 : 0;
+      const vG = gNet ? (_nodeVoltages$get22 = nodeVoltages.get(gNet)) !== null && _nodeVoltages$get22 !== void 0 ? _nodeVoltages$get22 : 0 : 0;
       const rSupply = part.kind === 'ir_receiver' ? 1000 : 5000;
       const iSupply = (vV - vG) / rSupply;
       currents.set('vcc', -iSupply);
@@ -31359,9 +31997,9 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
           drives: {}
         };
         const read = terminal => {
-          var _nodeVoltages$get21;
+          var _nodeVoltages$get23;
           const n = findNet(nets, part.id, terminal);
-          return n ? (_nodeVoltages$get21 = nodeVoltages.get(n)) !== null && _nodeVoltages$get21 !== void 0 ? _nodeVoltages$get21 : 0 : 0;
+          return n ? (_nodeVoltages$get23 = nodeVoltages.get(n)) !== null && _nodeVoltages$get23 !== void 0 ? _nodeVoltages$get23 : 0 : 0;
         };
         for (const [t, i] of model.branchCurrents(part, state, read)) currents.set(t, i);
       }
@@ -31378,23 +32016,23 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     const inductorVoltagesNext = new Map();
     for (const part of parts) {
       if (part.kind === 'capacitor') {
-        var _nodeVoltages$get22, _nodeVoltages$get23, _c$get;
+        var _nodeVoltages$get24, _nodeVoltages$get25, _c$get;
         const netA = findNet(nets, part.id, 'a');
         const netB = findNet(nets, part.id, 'b');
-        const vA = netA ? (_nodeVoltages$get22 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get22 !== void 0 ? _nodeVoltages$get22 : 0 : 0;
-        const vB = netB ? (_nodeVoltages$get23 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get23 !== void 0 ? _nodeVoltages$get23 : 0 : 0;
+        const vA = netA ? (_nodeVoltages$get24 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get24 !== void 0 ? _nodeVoltages$get24 : 0 : 0;
+        const vB = netB ? (_nodeVoltages$get25 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get25 !== void 0 ? _nodeVoltages$get25 : 0 : 0;
         capVoltagesNext.set(part.id, vA - vB);
         const c = branchCurrents.get(part.id);
         capCurrentsNext.set(part.id, c ? (_c$get = c.get('b')) !== null && _c$get !== void 0 ? _c$get : 0 : 0);
       }
       if (part.kind === 'inductor') {
-        var _c$get2, _nodeVoltages$get24, _nodeVoltages$get25;
+        var _c$get2, _nodeVoltages$get26, _nodeVoltages$get27;
         const c = branchCurrents.get(part.id);
         inductorCurrentsNext.set(part.id, c ? (_c$get2 = c.get('b')) !== null && _c$get2 !== void 0 ? _c$get2 : 0 : 0);
         const netA = findNet(nets, part.id, 'a');
         const netB = findNet(nets, part.id, 'b');
-        const vA = netA ? (_nodeVoltages$get24 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get24 !== void 0 ? _nodeVoltages$get24 : 0 : 0;
-        const vB = netB ? (_nodeVoltages$get25 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get25 !== void 0 ? _nodeVoltages$get25 : 0 : 0;
+        const vA = netA ? (_nodeVoltages$get26 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get26 !== void 0 ? _nodeVoltages$get26 : 0 : 0;
+        const vB = netB ? (_nodeVoltages$get27 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get27 !== void 0 ? _nodeVoltages$get27 : 0 : 0;
         inductorVoltagesNext.set(part.id, vA - vB);
       }
     }
@@ -31539,12 +32177,12 @@ function stampDiode(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
  * @param {Map<string, number>} controls
  */
 function stampPotentiometer(A, b, part, nets, nodeIndex, groundNetId, controls) {
-  var _part$params7, _controls$get3, _part$params$ohms3;
+  var _part$params11, _controls$get3, _part$params$ohms3;
   // params.position is the AUTHORED default — where the example's trimmer
   // was left. The user's control always wins once touched; mid-travel
   // remains the fallback. (The LCD contrast pot defaulted to a washed-out
   // 0.25 contrast because every pot woke at 0.5 regardless of wiring.)
-  const authored = Number.isFinite((_part$params7 = part.params) === null || _part$params7 === void 0 ? void 0 : _part$params7.position) ? part.params.position : 0.5;
+  const authored = Number.isFinite((_part$params11 = part.params) === null || _part$params11 === void 0 ? void 0 : _part$params11.position) ? part.params.position : 0.5;
   const position = (_controls$get3 = controls.get(part.id)) !== null && _controls$get3 !== void 0 ? _controls$get3 : authored;
   const totalOhms = /** @type {number} */(_part$params$ohms3 = part.params.ohms) !== null && _part$params$ohms3 !== void 0 ? _part$params$ohms3 : 10000;
 
@@ -32161,6 +32799,80 @@ function stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegi
 }
 
 /**
+ * Controlled voltage source (spec-updates/controlled-sources.md):
+ * V(outp) − V(outn) = gain·(V(inp) − V(inn)), branch current in the row.
+ * Control pins are ideal (no loading). With rails declared, the shared
+ * op-amp region FSM clamps the output at railLow/railHigh (× srcScale,
+ * consistent with source stepping).
+ */
+function stampVCVS(A, b, part, nets, nodeIndex, vsIndex, opampRegions) {
+  var _part$params$gain3, _opampRegions$get2;
+  let srcScale = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 1;
+  const vsIdx = vsIndex.get(part.id);
+  if (vsIdx === undefined) return;
+  const row = nodeIndex.size + vsIdx;
+  const gain = /** @type {number} */(_part$params$gain3 = part.params.gain) !== null && _part$params$gain3 !== void 0 ? _part$params$gain3 : 1;
+  const idx = t => {
+    const n = findNet(nets, part.id, t);
+    return n ? nodeIndex.get(n) : undefined;
+  };
+  const iOp = idx('outp');
+  const iOn = idx('outn');
+  if (iOp !== undefined) {
+    A.add(iOp, row, 1);
+    A.add(row, iOp, 1);
+  }
+  if (iOn !== undefined) {
+    A.add(iOn, row, -1);
+    A.add(row, iOn, -1);
+  }
+  const region = (_opampRegions$get2 = opampRegions.get(part.id)) !== null && _opampRegions$get2 !== void 0 ? _opampRegions$get2 : 'linear';
+  if (region === 'linear') {
+    const iIp = idx('inp');
+    const iIn = idx('inn');
+    if (iIp !== undefined) A.add(row, iIp, -gain);
+    if (iIn !== undefined) A.add(row, iIn, gain);
+    b[row] = 0;
+  } else {
+    var _part$params$railLow3, _part$params$railHigh3;
+    const railLow = /** @type {number} */((_part$params$railLow3 = part.params.railLow) !== null && _part$params$railLow3 !== void 0 ? _part$params$railLow3 : 0) * srcScale;
+    const railHigh = /** @type {number} */((_part$params$railHigh3 = part.params.railHigh) !== null && _part$params$railHigh3 !== void 0 ? _part$params$railHigh3 : 5) * srcScale;
+    b[row] = region === 'high' ? railHigh : railLow;
+  }
+}
+
+/**
+ * Controlled current source: gm·(V(inp) − V(inn)) injected INTO outp,
+ * out of outn. With iMax declared, the clamp FSM pins the output current
+ * at ±iMax (the macromodel's slew limit).
+ */
+function stampVCCS(A, b, part, nets, nodeIndex, vccsClamps) {
+  var _part$params$gm3, _vccsClamps$get2;
+  const gm = /** @type {number} */(_part$params$gm3 = part.params.gm) !== null && _part$params$gm3 !== void 0 ? _part$params$gm3 : 1e-3;
+  const idx = t => {
+    const n = findNet(nets, part.id, t);
+    return n ? nodeIndex.get(n) : undefined;
+  };
+  const iOp = idx('outp');
+  const iOn = idx('outn');
+  const region = (_vccsClamps$get2 = vccsClamps === null || vccsClamps === void 0 ? void 0 : vccsClamps.get(part.id)) !== null && _vccsClamps$get2 !== void 0 ? _vccsClamps$get2 : 'linear';
+  if (region !== 'linear') {
+    const iMax = /** @type {number} */part.params.iMax;
+    const iClamp = region === 'clamp+' ? iMax : -iMax;
+    if (iOp !== undefined) b[iOp] += iClamp;
+    if (iOn !== undefined) b[iOn] -= iClamp;
+    return;
+  }
+  const iIp = idx('inp');
+  const iIn = idx('inn');
+  // Injection into outp = +gm·vin → LHS: A[outp][inp] −= gm, etc.
+  if (iOp !== undefined && iIp !== undefined) A.add(iOp, iIp, -gm);
+  if (iOp !== undefined && iIn !== undefined) A.add(iOp, iIn, gm);
+  if (iOn !== undefined && iIp !== undefined) A.add(iOn, iIp, gm);
+  if (iOn !== undefined && iIn !== undefined) A.add(iOn, iIn, -gm);
+}
+
+/**
  * Stamp a capacitor holding its stored voltage as a source row:
  * V(a) − V(b) = vStored. Used for instantaneous solves (no dt), where a
  * capacitor genuinely is a voltage source.
@@ -32209,8 +32921,8 @@ function stampCapAsSource(A, b, part, nets, nodeIndex, vsIndex, vStored) {
  * @returns {number}
  */
 function sourceVoltage(part, tSeconds, vcc) {
-  var _part$params8, _p$wave, _p$volts, _p$freq, _p$amplitude, _p$offset2, _p$phase, _p$duty;
-  const p = (_part$params8 = part.params) !== null && _part$params8 !== void 0 ? _part$params8 : {};
+  var _part$params12, _p$wave, _p$volts, _p$freq, _p$amplitude, _p$offset2, _p$phase, _p$duty;
+  const p = (_part$params12 = part.params) !== null && _part$params12 !== void 0 ? _part$params12 : {};
   const wave = /** @type {string} */(_p$wave = p.wave) !== null && _p$wave !== void 0 ? _p$wave : 'dc';
   const volts = /** @type {number} */(_p$volts = p.volts) !== null && _p$volts !== void 0 ? _p$volts : vcc;
   if (wave === 'dc') return volts;
@@ -32327,6 +33039,7 @@ function stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId) {
 // Small-signal linearization helpers for the AC analysis (src/ac.js):
 // the AC stamps MUST evaluate the same models as the DC stamps, so the
 // model functions are shared rather than re-derived there.
+
 
 
 /***/ }),
@@ -36901,6 +37614,8 @@ const KNOWN_TERMINALS = {
   opamp: ['inp', 'inn', 'out'],
   vsource: ['pos', 'neg'],
   isource: ['pos', 'neg'],
+  vcvs: ['outp', 'outn', 'inp', 'inn'],
+  vccs: ['outp', 'outn', 'inp', 'inn'],
   shift_register: ['data', 'clock', 'latch', 'oe', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'],
   char_lcd: ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'],
   led_matrix: null,
