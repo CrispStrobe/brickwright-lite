@@ -107,7 +107,7 @@ finished work:
 | Wave | Lessons | Draft | Technical review | Translation review | Learner field test |
 | --- | --- | --- | --- | --- | --- |
 | 1 Electricity you can see | 12 | done | **full, done 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | open | open |
-| 2 Measure rather than guess | 10 | done | **full, done 2026-08-23** — 5 of 10 defective; 6 revised to v2, 5 open engine defects | open | open |
+| 2 Measure rather than guess | 10 | done | **full, done 2026-08-23** — 5 of 10 defective; 6 revised to v2, 4 open engine defects, 1 fixed upstream mid-review | open | open |
 | 3 One idea, several languages | 12 | done | scanned; **full review open** | open | open |
 | 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
 | 5 Debug with evidence | 10 | done | scanned; **full review open** | open | open |
@@ -134,28 +134,39 @@ Reviewed 2026-08-23 — `docs/LESSON-REVIEW-WAVE-2.md`. **10 lessons, 30 checkpo
 reported nothing on this wave, which is the expected result: none of the five is a demand for a
 missing capability, so all five were found by measuring.
 
-Three of the four open defects are the same discovery from different angles — **the simulator
-cannot show a reading to a learner**:
+Two of the open defects are the same discovery from different angles — **the simulator cannot show
+a reading to a learner** — and a third of that family was fixed upstream while the review ran:
 
-- `73-voltmeter`'s OLED never renders: the program's `oled clear/set cursor/print` map to opcodes
-  the bundled `devices` extension does not declare at all, and an undefined opcode is silent.
-- `74-ammeter`'s LCD never renders for a harder-to-see reason: `lcdprint`/`lcdcursor`/`lcdclear`
-  ARE declared and implemented, but each body is `if (b && b.setDeviceControl) b.setDeviceControl(…)`
-  and `setDeviceControl` is defined nowhere in the repository. Twelve actuator verbs share the
-  shape — servo, motor, relay, neopixel, matrix — so the whole actuator surface of that extension
-  is an unconditional no-op that passes every opcode-resolution check. First reported by bw-bundle,
-  re-derived here rather than taken on trust.
+- `73-voltmeter`'s OLED did not render at `3e87340f5`: the `devices` extension declared 37 opcodes
+  and not one oled verb, and an undefined opcode is silent. **Resolved** by `802fc1050` (eleven
+  OLED/TFT opcodes) plus `6f8d11c5c` (the `setDeviceControl` dispatcher). Re-measured by executing
+  the dispatcher on the lesson's own bench — all three verbs accepted, device state changed — and
+  the lesson copy is restored to its three-way comparison.
+- `74-ammeter`'s LCD still does not render, for a reason far narrower than first reported. Of the
+  four display models this corpus uses, `char_lcd_i2c` is the ONLY one with no `control()` handler
+  — `char_lcd`, `hd44780` and `ssd1306` all have one — and `char_lcd_i2c` is exactly the kind that
+  bench seats. All three verbs return false with the display unchanged.
 - `76-multimeter`'s current amplifier delivers a gain of 31–39 against a documented ×46.45, and
   the realised figure depends on the input. bw-board's LM358 is a damped integrator that halts once
   its per-round output step drops below 1 mV, leaving up to 0.667 mV of input error unamplified — a
   third of a 2 mV shunt signal. The example's own EXPECTED.md is self-inconsistent as a result: it
   documents ×46.5 and records a display of `067` for a current measuring 99.96 mA.
 
-A fifth, found while re-checking my own continuity verdict: `board.resistance(a, b)` is **not
-symmetric**. The solver makes `testNodeB` the reference and then skips the gnd-symbol merge, so on
-22-series-parallel the whole network reads 2191.6 Ω probed one way and 333 MΩ — an open circuit —
-probed the other. It corrected a verdict I had already written down, and the measurement-resistance
-hint now tells the learner which way round to hold the probes.
+A fourth, found while re-checking my own continuity verdict: `board.resistance(a, b)` is
+**directional by design**. The solver makes `testNodeB` the reference and then switches ground
+symbols out of that solve deliberately, so a dangling ground cannot fake a shunt path — so on
+22-series-parallel the whole network reads 2191.6 Ω probed one way and 333 MΩ, an open circuit,
+probed the other. It corrected a verdict I had already written down. My first draft called it a
+simulator fault in learner-facing copy; that was wrong, and the hint now explains the reference
+rule instead.
+
+**One process finding, which cost three sessions an hour and belongs in the working rules.** The
+`setDeviceControl` defect was true when reported and resolved by `6f8d11c5c` — not false. Two of us
+re-measured on a tree that had moved, got a different answer, and reached for "my instrument was
+broken" before checking whether the subject had changed. The instrument story was even plausible:
+that same commit introduced a literal NUL byte into `board.js`, which makes GNU grep silently treat
+it as binary and search nothing. But the timestamps had the answer all along. A measurement without
+a sha attached is a rumour by the time it reaches a second person.
 
 The fourth is a bench, not an engine: `43-rc-timing` has no controls at all, so the charging step
 its cursor lesson measures happens once and cannot be repeated — power-off freezes the capacitor

@@ -1,9 +1,18 @@
 # Wave 2 technical review — "Measure rather than guess"
 
-Reviewed 2026-08-23 against `3e87340f5`, ten lessons, thirty checkpoints.
+Reviewed 2026-08-23 against `3e87340f5`; re-measured the same day against
+`a3f30be6b` after lite main moved under the review. Ten lessons, thirty
+checkpoints.
 
-**5 defective of 10 · 6 lessons revised to content version 2 · 5 defects open,
-none of them in a lesson.**
+**5 defective of 10 · 6 lessons revised to content version 2 · 4 defects open,
+1 resolved upstream mid-review, none of them in a lesson.**
+
+> **Every finding here is dated to a sha, and one of them expired in the hours it
+> took to write this.** `6f8d11c5c` (bw-board bump: sparse solver and
+> `setDeviceControl`) and `802fc1050` (eleven OLED/TFT opcodes) landed while the
+> review was in flight and fixed one of the instrument defects outright. A
+> measurement without a sha is a rumour by the time it reaches a second person —
+> this document learned that the expensive way, and so did two other sessions.
 
 Wave 2 is the instrument wave, so the question sharpens. For Wave 1 it was *can
 the bench do the thing the checkpoint waits for*. Here it is also **is the
@@ -22,8 +31,8 @@ every run, and is mutation-proven: changing the ammeter's shunt from 10 Ω to
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
 | measurement-continuity | 76-multimeter | 1 | achievable |
-| measurement-voltage | 73-voltmeter | 1→**2** | **defect** — the OLED it tells the learner to read cannot render |
-| measurement-current-burden | 74-ammeter | 1→**2** | **defect** — "displayed current" comes from an LCD that is a no-op |
+| measurement-voltage | 73-voltmeter | 1→**2** | defect at `3e87340f5`, **resolved upstream** by `802fc1050`; copy restored |
+| measurement-current-burden | 74-ammeter | 1→**2** | **defect, still open** — narrower than first reported: one display model lacks a handler |
 | measurement-resistance | 22-series-parallel | 1→**2** | **defect** — the parallel-resistor formula has nothing to apply to |
 | measurement-range-error | 76-multimeter | 1→**2** | **defect** — the amps gain is 31–39, not the documented 46.45 |
 | measurement-function-generator | 49-function-generator-sine | 1 | achievable (was not, before the `freq` fix) |
@@ -39,45 +48,62 @@ found by measuring.
 
 ## The defects
 
-### 1. Two lessons tell the learner to read a display that cannot render
+### 1. Two lessons told the learner to read a display that could not render
 
-Different causes, same learner experience: a blank screen and no way to tell
-whether they did something wrong.
+At `3e87340f5` both were dead, for different reasons and with the same learner
+experience: a blank screen and no way to tell whether they had done something
+wrong. One is now fixed; the other is not, and is narrower than I first said.
 
-**`73-voltmeter` — the opcode is undefined.** The program says `oled clear`,
-`oled set cursor`, `oled print`. The bundled `devices` extension declares 37
-opcodes and **not one oled verb**:
+**`73-voltmeter` — was undefined, now works.** At the review tree the program's
+`oled clear` / `oled set cursor` / `oled print` mapped to opcodes the `devices`
+extension did not declare: 37 opcodes, not one oled verb. An undefined opcode is
+silent in scratch-vm, so the block simply never ran.
+
+`802fc1050` added eleven OLED/TFT opcodes (37 → 48) and `6f8d11c5c` vendored the
+`setDeviceControl` dispatcher they call. Re-measured on `a3f30be6b` by executing
+the dispatcher against the lesson's own bench, not by looking symbols up:
 
 ```
-declared: above activate clearmatrix clearneopixels closer deactivate devicestate
-distance energised flex force ircode lcdclear lcdcursor lcdprint light motion
-motordirection motorspeed pressed servoangle setdirection setmotor setneopixel
-setpixel setrelay setrgb setservo showdigit showimage temperature tilted
-whenabove whencloser whenirreceived whenmotion whentilted
+73-voltmeter, part oled1, kind ssd1306
+  board.setDeviceControl exists?              true
+  setDeviceControl(oled1, 'clear',  1)     -> true
+  setDeviceControl(oled1, 'cursor', [0,0]) -> true
+  setDeviceControl(oled1, 'print',  '…')   -> true
+  device state changed?                       true
 ```
 
-An undefined opcode is silent in scratch-vm — the block simply never executes.
-So in the SIM path the lesson names, the OLED is blank for ever.
+`true` from that dispatcher means a device model accepted the verb. The copy
+change is therefore **reverted**: the lesson asks for its three-way comparison
+again, with the 200 ms refresh caveat it always had.
 
-**`74-ammeter` — the opcode is defined and does nothing.** This one is harder to
-see and passes every check that would catch the first. `lcdclear`, `lcdcursor`
-and `lcdprint` are all declared *and* implemented. Each body is:
+**`74-ammeter` — still blank, and the reason is one device model.** My original
+report said the whole actuator surface was inert because `setDeviceControl` was
+defined nowhere. That was true of `3e87340f5` and is false now. What survives is
+much narrower, and I would not have found it without re-measuring:
 
-```js
-lcdprint(a) { const b = this._board(); if (b && b.setDeviceControl) b.setDeviceControl(a.DISPLAY, 'print', String(a.TEXT)); }
+```
+kind            registered   has control()
+  ssd1306          yes           yes
+  hd44780          yes           yes
+  char_lcd         yes           yes
+  char_lcd_i2c     yes           NO
 ```
 
-`setDeviceControl` appears in exactly one file in the repository — this one —
-and every occurrence is a call. There is no definition anywhere; the board
-exposes `setControl` and `setPartParam`. The guard is therefore always false and
-the verb is an unconditional no-op. Twelve verbs share the shape: `setservo`,
-`setmotor`, `setdirection`, `setrelay`, `activate`, `deactivate`, `lcdprint`,
-`lcdcursor`, `lcdclear`, `setneopixel`, `clearneopixels`, `showimage`.
+`char_lcd_i2c` is the only one of the four display models in this corpus with no
+`control()` handler — and it is exactly the kind `74-ammeter` seats. Calling each
+model's handler directly confirms the gap is the *kind*, not the verb:
 
-This was first reported to me by bw-bundle; it is re-derived here rather than
-taken on trust, and both halves are pinned by the gate.
+```
+char_lcd      clear=true  cursor=true  print=true
+char_lcd_i2c  no control() handler at all
+hd44780       clear=true  cursor=true  print=true
+ssd1306       clear=true  cursor=true  print=true
+```
 
-What the benches themselves do is fine, and that is the frustrating part:
+and through the board, on the lesson's own bench, all three verbs return `false`
+with the display state unchanged.
+
+The benches themselves were always fine, and that remains the frustrating part:
 
 ```
 73-voltmeter  wiper   0% -> 0.0005 V (0 counts)    the lesson predicts 0
@@ -91,17 +117,39 @@ What the benches themselves do is fine, and that is the frustrating part:
               and I = 5 V / (500 + 10) = 9.804 mA, exactly the lesson's formula
 ```
 
-**Fixed** in copy, EN and DE, both to version 2. `measurement-voltage` now asks
-for the two-way comparison that works (wire label against the circuit
-multimeter) and says plainly that the OLED is blank because the simulator has no
-oled verbs yet — "that is the tool, not your wiring". `measurement-current-burden`
-now has the learner measure the shunt voltage and work the current back out of
-it, which is the better exercise anyway.
+**Fixed** in copy, EN and DE. `measurement-voltage` is back to the three-way
+comparison. `measurement-current-burden` has the learner measure the shunt
+voltage and work the current back out of it — the better exercise anyway — and
+now names the real reason its screen is blank rather than the one since fixed.
 
-Not fixed on the engine side: the owner has told bw-bundle explicitly not to
-touch the oled opcodes, and `setDeviceControl` is a cross-repo contract question
-rather than a typo. Both are pinned by OPEN DEFECT tests that fail the day
-someone fixes them.
+**How this nearly went wrong**, because the shape is worth more than the finding.
+The original defect was reported to me by bw-bundle and I confirmed it
+independently. Both of us then re-measured on a tree that had *moved*, got a
+different answer, and bw-bundle initially retracted the whole finding as an error
+of instrument — GNU grep silently treats `board.js` as binary, because
+`6f8d11c5c` introduced a literal NUL byte at line 1412 as a composite-key
+separator in the same commit that added the method. bw-cui2 caught the
+over-correction. The truth, measured by byte counts at four tips rather than by
+grep at one:
+
+```
+3e87340f5   118242 bytes   setDeviceControl: absent   NUL bytes: 0   oled opcodes: 0
+6f8d11c5c   121346 bytes   defined, line 1376         NUL bytes: 1   oled opcodes: 0
+802fc1050   121346 bytes   defined, line 1376         NUL bytes: 1   oled opcodes: 6
+a3f30be6b   121346 bytes   defined, line 1376         NUL bytes: 1   oled opcodes: 6
+```
+
+So the finding was **true when reported and resolved by `6f8d11c5c`** — not
+false, and not a shared instrument fault. There was no NUL in the file I read, so
+my grep searched it correctly and correctly found nothing. Three sessions spent
+an hour deciding whether an instrument or a subject had changed, when the answer
+was in the timestamps the whole time.
+
+The pinned test earned its place: it reads bytes rather than shelling out to
+grep, so when `setDeviceControl` appeared it went **red** with a message naming
+this document and the lesson hint to update. A grep-based version of the same
+assertion would have gone from true-negative to permanently-false-negative in one
+commit and never failed again.
 
 ### 2. measurement-resistance applies a formula to a pair that is not there
 
@@ -212,10 +260,11 @@ one-shot and that reloading the example is the way to see it again. Pinned by an
 OPEN DEFECT test that fails if a control ever appears on that bench — the real
 fix is a charge switch, which is a bench change rather than a lesson change.
 
-### 5. The ohmmeter gives a different answer depending on which probe is which
+### 5. The ohmmeter is directional, by design
 
-Found while checking my own continuity verdict, and it corrected it. `board.resistance(a, b)`
-is **not symmetric**:
+Found while checking my own continuity verdict, and it corrected it.
+`board.resistance(a, b)` gives a different answer depending on which probe is
+which:
 
 ```
 22-series-parallel, whole network, power off
@@ -227,17 +276,23 @@ is **not symmetric**:
   resistance(btn.b, btn.a)    102.4 kΩ
 ```
 
-The mechanism is in `mna.js`, and it is deliberate machinery with an
-unintended consequence. For a power-off resistance measurement the solver makes
-`testNodeB` the reference node, and line 308 then **skips the gnd-symbol merge**
-(`if (groundNetId && !(powerOff && testNodeB))`) — the step that unifies every
-net bearing a ground symbol into one node. Probe with ground as B and the
-circuit is whole; probe with ground as A and it fragments, so a real path can
-read as open.
+The mechanism is in `mna.js` and it is **deliberate** — bw-bundle's correction to
+my first write-up, and the right one. For a power-off resistance measurement the
+solver makes `testNodeB` the reference node and then skips the gnd-symbol merge
+on purpose; the comment at `mna.js:354` gives the reason: "gnd symbols are
+deliberately inactive (the T-network test's contract: a dangling gnd must not
+become a shunt path)". Probe with ground as B and the circuit is whole; probe
+with ground as A and it fragments, so a real path can read as open.
+
+So the rule to write down is *"resistance() is directional; B is the reference;
+put the black probe on ground"*, not *"resistance() is broken"*. My first draft
+called it "a known simulator fault" **in learner-facing copy**, which was wrong;
+the lesson hint now explains the reference rule instead.
 
 Three of the five pairs I checked agree in both orders (220 Ω segment resistor,
-2.3 kΩ divider, 49.7 Ω rail-to-rail). The disagreements are the ground-referenced
-ones.
+2.3 kΩ divider, 49.7 Ω rail-to-rail), and a pair with no ground symbol on either
+side is symmetric to the digit — which is what makes this the ground rule rather
+than a general solver asymmetry. The disagreements are all ground-referenced.
 
 **What it changes, proportionately.** For `measurement-continuity` the task is to
 *classify* pairs as connected or open, and both readings of every ambiguous pair
@@ -322,8 +377,12 @@ sine.
 node --test test/lesson-bench-claims-wave2.test.mjs
 ```
 
-Five of its thirteen tests are named `OPEN DEFECT` and assert that a defect **still
-reproduces**. They are meant to fail the day the OLED verbs are defined,
-`setDeviceControl` gains an implementation, the op-amp reaches its gain, or
-`43-rc-timing` grows a switch, or the ohmmeter becomes symmetric — and each
-failure message names the document and the lesson hint to update.
+Four of its thirteen tests are named `OPEN DEFECT` and assert that a defect
+**still reproduces**; one is named `RESOLVED UPSTREAM` and guards a fix instead.
+The open four are meant to fail the day `char_lcd_i2c` gains a control handler,
+the op-amp reaches its gain, `43-rc-timing` grows a switch, or the ohmmeter stops
+being directional — and each failure message names the document and the lesson
+hint to update.
+
+Two of them already have. The OLED pair fired within hours of being written,
+which is the only reason this document is right.
