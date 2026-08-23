@@ -1,0 +1,480 @@
+/**
+ * Milestone 0 — the shipped example corpus is proven to EXECUTE.
+ *
+ * Every gate this repo had over `overlay/scratch-gui/examples/` before this file
+ * checked metadata or geometry: that a lesson names an example that exists, that
+ * a starter journey ships the files it claims, that a schematic renders without
+ * crossings. Not one of them opened a `program.bw`. `test/example-execution.test.mjs`
+ * (added alongside this one) runs the corpus through lite's own trace referee.
+ * This file runs it through the REAL Scratch VM — the same scratch-vm `src` tree
+ * the browser bundle is built from — with lite's REAL bundled extensions
+ * registered, and asserts three things a parse gate cannot see:
+ *
+ *   1. CONFORMANCE — every non-core opcode a program authors is both DEFINED
+ *      (getInfo) and IMPLEMENTED (a same-named method) by the extension lite
+ *      bundles for that id. This is the ROADMAP §5.1 defect class, and running
+ *      it here means it can never again depend on a second checkout being
+ *      present: the comparison is between this repo's emitter and this repo's
+ *      extensions, so CI always has both inputs.
+ *
+ *   2. IT STARTS — the green flag starts at least one thread, and the project
+ *      keeps its blocks through the package/deserialize round trip.
+ *
+ *   3. IT COMPUTES — after stepping, either a bundled extension method was
+ *      actually invoked or a variable actually changed. A program that declares
+ *      an output pin must reach its extension: variables changing is not enough,
+ *      because the defect this milestone exists for (`set variable X to Y`
+ *      assigning a variable NAMED "variable X", `set pwm led to N` assigning one
+ *      named "pwm led") changes variables enthusiastically and drives nothing.
+ *
+ * COVERAGE, stated rather than implied — see the report test at the bottom,
+ * which prints the same numbers on every run:
+ *
+ *   - 257 of the 259 index entries ship a program; the other 2 are circuit-only
+ *     and are asserted to be exactly that, not skipped.
+ *   - 115 of those 257 are `kind: "circuit"`: their program.bw is a placeholder
+ *     ("# Pure circuit — no MCU"). They are asserted to BE placeholders. That is
+ *     a real assertion — a circuit example that grew a hat block would fail it —
+ *     but it is not an execution proof, and it is reported separately so the
+ *     headline number cannot flatter itself.
+ *   - 142 are `kind: "program"` or `"full"` and carry the full execution burden.
+ *
+ * WHAT THIS GATE CANNOT SEE, and why it is written down instead of glossed:
+ *   - No renderer and no storage in node, so costumes, sounds, and every
+ *     motion/looks block are inert. A graphics-only defect passes here.
+ *   - node's `sb3.js` KEEPS blocks whose extension prefix is unknown; the browser
+ *     drops them (recorded in CLAUDE.md, and re-confirmed here: 79-a2-sampler
+ *     loads all 51 blocks in node despite 5 undefined opcodes). So assertion 2
+ *     proves round-trip survival in node only. Assertion 1 is what actually
+ *     covers the undefined-opcode class, and it does not depend on the VM.
+ *   - Extensions are registered in-process rather than in a sandbox Worker
+ *     (node has no Worker). Same extension object, different delivery.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync, existsSync, readFileSync as read} from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.join(here, '..');
+const INTEGRATED = path.join(REPO, 'packages', 'scratch-gui');
+
+// ── Instrument check 0: the tree this gate needs is present. ────────────────
+//
+// A missing `packages/` is the one condition that could make this whole file
+// vacuous, so it FAILS rather than skips. ROADMAP §5's standing rule: "a skip is
+// not a pass". The previous draft of this gate called `process.exit(0)` here,
+// which reported the file as passing with zero assertions run.
+const missingInputs = [
+    [path.join(INTEGRATED, 'src', 'lib', 'sb3-creator.js'), 'run `node scripts/integrate.mjs`'],
+    [path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'index.js'),
+        'run `cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps`']
+].filter(([file]) => !existsSync(file));
+if (missingInputs.length) {
+    test('example execution gate: inputs are present', () => {
+        assert.fail(`This gate cannot run and therefore FAILS rather than skipping.\n` +
+            missingInputs.map(([file, fix]) => `  missing ${path.relative(REPO, file)} — ${fix}`).join('\n'));
+    });
+} else {
+
+const {runProgram, conformance, projectOpcodes, quitStrandedVMs} =
+    await import('./helpers/bw-vm.mjs');
+const {bundledExtensionIds, loadExtensionClass, probeExtension, stubRuntime} =
+    await import('./helpers/bw-extensions.mjs');
+
+const EXAMPLES = path.join(REPO, 'overlay', 'scratch-gui', 'examples');
+const index = JSON.parse(readFileSync(path.join(EXAMPLES, 'index.json'), 'utf8'));
+const entries = Array.isArray(index) ? index : index.examples;
+const withProgram = entries.filter(entry => entry.files && entry.files.program);
+const PLACEHOLDER_KIND = 'circuit';
+
+// ── Ratchets ───────────────────────────────────────────────────────────────
+//
+// Each list is a defect that ships TODAY, measured 2026-08-23. Entries may only
+// be REMOVED. An example that appears in the corpus but not on its list fails
+// the run; an entry on a list that no longer reproduces also fails the run, so a
+// fix cannot quietly leave its excuse behind. Details, per example, in
+// docs/EXAMPLE-CORPUS-FINDINGS.md.
+
+/** Opcodes the emitter emits that NO bundled extension defines. ROADMAP §5.1 + the devices half. */
+const KNOWN_MISSING_OPCODES = new Map([
+    // stc12: lite's bundled copy is 8 opcodes behind sb3-creator's reference copy.
+    ['79-a2-sampler', ['stc12_seg_shownum', 'stc12_keypad', 'stc12_led_only',
+        'stc12_whenkey', 'stc12_seg_clear']],
+    // devices: the OLED/TFT verbs exist in the emitter and in NO extension copy —
+    // not lite's, not sb3-creator's reference. A gap, not a vendoring lag.
+    ['55-oled-hello', ['devices_oledclear', 'devices_oledprint', 'devices_oledcursor']],
+    ['51-tft-pixels', ['devices_tftclear', 'devices_tftfill', 'devices_tftpixel']],
+    ['70-calculator', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint',
+        'devices_oledhline', 'devices_oledshow']],
+    ['70-calculator-simple', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
+    ['72-pico-oled-hello', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
+    ['73-voltmeter', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
+    ['75-battery-tester', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']]
+]);
+
+/**
+ * Programs that declare an output/pwm/tone pin and never reach a hardware verb.
+ * Six are the `set pwm <pin> to N` / `set tone <pin> to N` syntax slip, which
+ * makes a VARIABLE named "pwm led" instead of a pin write — the same defect
+ * shape as `set variable X to Y`. The rest inherit it from KNOWN_MISSING_OPCODES.
+ */
+const KNOWN_INERT = new Set([
+    'arduino-01-fade', 'arduino-02-blink-without-delay', 'arduino-02-tone-melody',
+    'arduino-03-analog-write-mega', 'arduino-03-fading', 'arduino-sk-p08-hourglass',
+    // downstream of the undefined-opcode gap above:
+    '55-oled-hello', '51-tft-pixels', '72-pico-oled-hello'
+]);
+
+/** `kind: "full"` entries whose program.bw is a board declaration with no code. */
+const KNOWN_NO_BLOCKS = new Set(['eater6502-bench', 'eater6502-vdp-hello']);
+
+/**
+ * Programs where a hardware verb became a variable — the defect this milestone
+ * exists for, in both of its shipped spellings:
+ *
+ *   `set variable X to Y`      -> assigns a variable NAMED "variable X" while
+ *                                 every read says "X"
+ *   `set pwm <pin> to N`       -> assigns a variable NAMED "pwm led" instead of
+ *   `set <pin> brightness to N`   writing the pin
+ *
+ * Both leave a variable that is written, never read, and whose name CONTAINS the
+ * thing it was meant to drive. That containment is the signature `shadowedWrites`
+ * looks for, and it is why this list is longer than the inert list: six of these
+ * programs still call other hardware verbs, so they look alive while the verb
+ * that matters is gone. Execution alone cannot see them.
+ */
+const KNOWN_SHADOWED_WRITES = new Set([
+    'avr02-dimmer', 'arduino-01-fade', 'arduino-02-tone-melody', 'arduino-02-tone-keyboard',
+    'arduino-02-tone-multiple', 'arduino-02-tone-pitch-follower', 'arduino-03-analog-in-out-serial',
+    'arduino-03-analog-write-mega', 'arduino-03-calibration', 'arduino-03-fading',
+    'arduino-04-dimmer', 'arduino-04-read-ascii-string', 'arduino-05-while-statement',
+    'arduino-sk-p04-color-mixing', 'arduino-sk-p05-servo-mood', 'arduino-sk-p06-light-theremin',
+    'arduino-sk-p07-keyboard', 'arduino-sk-p10-zoetrope', 'arduino-sk-p12-knock-lock'
+]);
+
+/**
+ * Variables that are written and never read, whose name contains — as a
+ * whitespace/underscore-separated token — a declared pin, a declared part, or a
+ * variable the program DOES read.
+ *
+ * The containment condition is what keeps this free of false accusations. A
+ * write-only variable is perfectly normal: `screen`, `oled_text`, `hub_matrix`,
+ * `lux` are all written for a faceplate or a stage monitor to display and are
+ * never read by a block. Measured over the whole corpus, 30 examples have
+ * write-only variables and this rule fires on 19 — every one of them a real
+ * `pwm <pin>` / `tone <pin>` / `<pin> brightness` slip, and none of the eleven
+ * display variables.
+ */
+function shadowedWrites (project) {
+    const written = new Set();
+    const read = new Set();
+    for (const target of project.targets || []) {
+        for (const block of Object.values(target.blocks || {})) {
+            if (!block || !block.opcode) continue;
+            if ((block.opcode === 'data_setvariableto' || block.opcode === 'data_changevariableby') &&
+                block.fields && block.fields.VARIABLE) written.add(block.fields.VARIABLE[0]);
+            if (block.opcode === 'data_variable' && block.fields && block.fields.VARIABLE) {
+                read.add(block.fields.VARIABLE[0]);
+            }
+            for (const input of Object.values(block.inputs || {})) {
+                // shape [shadowState, [type, name, ...]] — 12 = variable, 13 = list
+                if (Array.isArray(input) && Array.isArray(input[1]) &&
+                    (input[1][0] === 12 || input[1][0] === 13)) read.add(input[1][1]);
+            }
+        }
+    }
+    const stc = project.stc || {};
+    const declared = new Set([
+        ...(stc.pins || []).map(pin => pin.name),
+        ...(stc.parts || []).map(part => part.name),
+        ...(stc.ports || []).map(port => port.name)
+    ]);
+    const found = [];
+    for (const name of written) {
+        if (read.has(name)) continue;
+        const tokens = name.split(/[\s_]+/).filter(Boolean);
+        if (tokens.length < 2) continue;
+        const shadowed = tokens.find(token => declared.has(token) || read.has(token));
+        if (shadowed) found.push({name, shadowed, kind: declared.has(shadowed) ? 'declaration' : 'variable'});
+    }
+    return found;
+}
+
+// ── Instrument checks 1-3: prove the rig before believing it. ───────────────
+//
+// Three false readings in one day (2026-08-20) came from an unverified rig — an
+// empty device registry read as a 44-circuit regression. Everything below is a
+// check that this gate's own inputs are loaded, not a check on the corpus.
+
+test('instrument: the integrated sb3-creator matches the overlay it is built from', () => {
+    // The gate imports the lib from packages/ because that is where jszip
+    // resolves, but overlay/ is the source of truth. If integrate.mjs has not
+    // run since the last overlay edit, this gate measures yesterday's compiler.
+    const libs = ['sb3-creator.js', 'sb3-creator-runtime.js', 'sb3-creator-c.js',
+        'sb3-creator-scratchruntime.js', 'sb3-creator-chostruntime.js'];
+    const stale = libs.filter(name => {
+        const overlay = path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', name);
+        const built = path.join(INTEGRATED, 'src', 'lib', name);
+        return existsSync(overlay) && existsSync(built) && !read(overlay).equals(read(built));
+    });
+    assert.deepEqual(stale, [],
+        `packages/ holds a different compiler than overlay/. Run \`node scripts/integrate.mjs\`.`);
+});
+
+test('instrument: the bundled extension registry is populated', () => {
+    // An empty or half-loaded registry would make CONFORMANCE vacuously green:
+    // every opcode would resolve to "no owner", which this gate treats as a
+    // failure, but a registry that loads only SOME extensions would silently
+    // pass the ones it happened to load. Assert the shape before trusting it.
+    const ids = bundledExtensionIds();
+    assert.ok(ids.size >= 20, `expected 20+ bundled extensions, registry has ${ids.size}`);
+    for (const id of ['stc12', 'devices', 'microbitplus', 'bitops', 'spikeprime']) {
+        assert.ok(ids.has(id), `registry is missing ${id}, which the corpus uses`);
+    }
+});
+
+test('instrument: probing an extension reports its FULL opcode set', () => {
+    // An under-reporting probe is the dangerous failure here: it would accuse a
+    // correct extension of missing blocks and make this gate cry wolf on the
+    // whole corpus. That is not hypothetical. Probing the INSTALLED copy at
+    // packages/scratch-gui/node_modules/scratch-vm on 2026-08-23 reported 12
+    // stc12 opcodes; the overlay — the file that actually ships — has 20. The
+    // installed copy was simply stale, which is why bw-extensions.mjs reads the
+    // overlay. This floor catches any regression back to a partial reading.
+    const Cls = loadExtensionClass(bundledExtensionIds().get('stc12'));
+    const probe = probeExtension(Cls, stubRuntime({
+        device: 'stc89c52rc', pins: [{name: 'led1'}], ports: [{name: 'P1'}],
+        parts: [{name: 'm1', kind: 'matrix8x8'}], tables: [{name: 't'}]
+    }));
+    assert.equal(probe.error, null, `stc12 failed to construct: ${probe.error}`);
+    assert.ok(probe.opcodes.size >= 20,
+        `stc12 probe reports only ${probe.opcodes.size} opcodes; the shipped extension has 20. ` +
+        `A stale or half-loaded copy is being read.`);
+    for (const opcode of ['setpin', 'setport', 'matrix_setpx', 'print']) {
+        assert.ok(probe.opcodes.has(opcode), `stc12 probe lost ${opcode}`);
+        assert.ok(probe.methods.has(opcode), `stc12 probe sees ${opcode} defined but not implemented`);
+    }
+});
+
+test('instrument: the shipped corpus is the size this gate was written against', () => {
+    // A corpus that silently shrank would make every per-example test vanish and
+    // the file still report green. The floor moves up when examples are added.
+    assert.ok(entries.length >= 259, `index.json has ${entries.length} entries, expected 259+`);
+    assert.ok(withProgram.length >= 257, `${withProgram.length} entries ship a program, expected 257+`);
+});
+
+// ── The corpus ─────────────────────────────────────────────────────────────
+
+const report = {
+    executed: [], placeholders: [], conformanceFailures: [], inert: [],
+    noBlocks: [], crashed: [], shadowed: []
+};
+
+test.after(() => quitStrandedVMs());
+
+for (const entry of withProgram) {
+    const isPlaceholder = entry.kind === PLACEHOLDER_KIND;
+    test(`${entry.id}: ${isPlaceholder ? 'is a circuit-only placeholder' : 'runs in the real VM'}`,
+        async () => {
+            const file = path.join(EXAMPLES, entry.files.program);
+            assert.ok(existsSync(file), `${entry.id}: ${entry.files.program} is missing`);
+            const source = readFileSync(file, 'utf8');
+
+            let run;
+            try {
+                run = await runProgram(source, {frames: 24});
+            } catch (error) {
+                report.crashed.push({id: entry.id, error: (error && error.message) || String(error)});
+                assert.fail(`${entry.id}: parse/package/load threw — ${error && error.stack || error}`);
+            }
+
+            // A `kind: "circuit"` example ships a placeholder program. Assert it
+            // IS one rather than skipping it: a circuit example that grew a hat
+            // block has changed kind and its metadata is now wrong.
+            if (isPlaceholder && run.threadsStarted === 0) {
+                report.placeholders.push(entry.id);
+                assert.equal(run.blockCount, 0,
+                    `${entry.id}: kind "circuit" but its program.bw compiles to ` +
+                    `${run.blockCount} blocks. Either give it a runnable kind or empty the program.`);
+                return;
+            }
+
+            // 1. CONFORMANCE.
+            const missing = conformance(run.creator.project).missing.map(m => m.opcode).sort();
+            const allowed = (KNOWN_MISSING_OPCODES.get(entry.id) || []).slice().sort();
+            if (missing.length) report.conformanceFailures.push({id: entry.id, missing});
+            const conformanceFailure = missing.join('\u0000') !== allowed.join('\u0000')
+                ? `${entry.id}: authors opcodes no bundled extension defines.\n` +
+                  `  authored-but-undefined: ${missing.join(', ') || '(none)'}\n` +
+                  `  allowed by the ratchet:  ${allowed.join(', ') || '(none)'}\n` +
+                  `  Fix the extension (or the program), then update KNOWN_MISSING_OPCODES.`
+                : null;
+            if (conformanceFailure) assert.fail(conformanceFailure);
+
+            // 1b. NO HARDWARE VERB TURNED INTO A VARIABLE.
+            // Checked on the parsed project, not on the run, because execution
+            // cannot see it: a program that lost one verb to a variable still
+            // calls its other verbs and looks perfectly alive.
+            //
+            // Deferred, not asserted here. Every layer below still MEASURES a
+            // waived example — its findings belong in the ratchets and in the
+            // report — so this must not return early. An earlier draft did, and
+            // the KNOWN_INERT ratchet promptly went red because nine examples on
+            // both lists stopped being measured for the second one.
+            const shadowed = shadowedWrites(run.creator.project);
+            if (shadowed.length) report.shadowed.push({id: entry.id, shadowed});
+            const shadowFailure = shadowed.length && !KNOWN_SHADOWED_WRITES.has(entry.id)
+                ? `${entry.id}: a hardware verb became a variable. ` +
+                  shadowed.map(v => `"${v.name}" is written, never read, and shadows the ` +
+                      `${v.kind} "${v.shadowed}"`).join('; ') +
+                  `. The program parses and runs; that assignment drives nothing.`
+                : null;
+            const staleShadowEntry = !shadowed.length && KNOWN_SHADOWED_WRITES.has(entry.id)
+                ? `${entry.id} is on KNOWN_SHADOWED_WRITES but its writes now all reach ` +
+                  `something — remove it from the list.`
+                : null;
+
+            // 2. IT STARTS.
+            if (run.blockCount === 0) {
+                report.noBlocks.push(entry.id);
+                assert.ok(KNOWN_NO_BLOCKS.has(entry.id),
+                    `${entry.id}: kind "${entry.kind}" but program.bw compiles to zero blocks — ` +
+                    `the Code tab would open empty.`);
+                return;
+            }
+            assert.ok(!KNOWN_NO_BLOCKS.has(entry.id),
+                `${entry.id} is on KNOWN_NO_BLOCKS but now compiles ${run.blockCount} blocks — ` +
+                `remove it from the list.`);
+            assert.ok(run.threadsStarted > 0,
+                `${entry.id}: the green flag started no thread. ${run.blockCount} blocks loaded ` +
+                `but nothing hats them, so pressing Run does nothing.`);
+            assert.deepEqual(run.errors, [], `${entry.id}: the VM reported block errors`);
+
+            // 3. IT COMPUTES.
+            const pins = (run.creator.project.stc && run.creator.project.stc.pins) || [];
+            const driven = pins.filter(pin =>
+                pin.direction === 'output' || pin.direction === 'pwm' || pin.direction === 'tone');
+            const live = run.extensionCalls > 0 || run.variablesChanged > 0;
+            const reachedHardware = run.extensionCalls > 0;
+            const inert = !live || (driven.length > 0 && !reachedHardware);
+            if (inert) report.inert.push({id: entry.id,
+                pins: driven.map(p => `${p.name}:${p.direction}`), calls: run.extensionCalls,
+                vars: run.variablesChanged});
+
+            // Everything is measured; now decide. Waivers suppress the failure
+            // for a defect already on a ratchet, never the measurement.
+            if (staleShadowEntry) assert.fail(staleShadowEntry);
+            if (shadowFailure) assert.fail(shadowFailure);
+            if (!inert && KNOWN_INERT.has(entry.id)) {
+                assert.fail(`${entry.id} is on KNOWN_INERT but now drives its hardware ` +
+                    `(${run.extensionCalls} extension calls) — remove it from the list.`);
+            }
+            if (inert && !KNOWN_INERT.has(entry.id)) {
+                assert.ok(live,
+                    `${entry.id}: ran for 24 frames and computed nothing — no extension block ` +
+                    `was invoked and no variable changed. The program is syntactically valid ` +
+                    `and semantically dead.`);
+                assert.fail(`${entry.id}: declares output pin(s) ` +
+                    `[${driven.map(p => `${p.name}:${p.direction}`).join(', ')}] but no bundled ` +
+                    `extension method was ever invoked in ${run.blockCount} blocks over 24 ` +
+                    `frames. Variables changed (${run.variablesChanged}) — which is exactly ` +
+                    `what the \`set pwm <pin> to N\` slip looks like: the pin write became a ` +
+                    `variable.`);
+            }
+            if (!inert && !shadowed.length) report.executed.push(entry.id);
+        });
+}
+
+// ── Ratchets close ─────────────────────────────────────────────────────────
+
+test('ratchet: every KNOWN_MISSING_OPCODES entry still reproduces', () => {
+    const stale = [...KNOWN_MISSING_OPCODES.keys()]
+        .filter(id => !report.conformanceFailures.some(f => f.id === id));
+    assert.deepEqual(stale, [],
+        `these examples no longer author undefined opcodes — remove them from ` +
+        `KNOWN_MISSING_OPCODES so the list keeps shrinking`);
+});
+
+test('ratchet: every KNOWN_INERT entry still reproduces', () => {
+    const stale = [...KNOWN_INERT].filter(id => !report.inert.some(f => f.id === id));
+    assert.deepEqual(stale, [], `these examples now compute — remove them from KNOWN_INERT`);
+});
+
+test('ratchet: every KNOWN_SHADOWED_WRITES entry still reproduces', () => {
+    const stale = [...KNOWN_SHADOWED_WRITES].filter(id => !report.shadowed.some(f => f.id === id));
+    assert.deepEqual(stale, [],
+        `these examples no longer turn a hardware verb into a variable — remove them ` +
+        `from KNOWN_SHADOWED_WRITES`);
+});
+
+test('ratchet: every KNOWN_NO_BLOCKS entry still reproduces', () => {
+    const stale = [...KNOWN_NO_BLOCKS].filter(id => !report.noBlocks.includes(id));
+    assert.deepEqual(stale, [], `these examples now compile blocks — remove them from KNOWN_NO_BLOCKS`);
+});
+
+test('coverage: the gate states what it did and did not execute', () => {
+    const runnable = withProgram.length - report.placeholders.length;
+    const lines = [
+        '',
+        '═══ Milestone 0 — real-VM execution gate ═══',
+        `index entries                       ${entries.length}`,
+        `  ship a program.bw                 ${withProgram.length}`,
+        `  circuit-only (no program at all)  ${entries.length - withProgram.length}`,
+        '',
+        `asserted to be a placeholder        ${report.placeholders.length}  (kind: "circuit")`,
+        `carried the execution burden        ${runnable}`,
+        `  executed AND computed             ${report.executed.length}`,
+        '  (the categories below overlap — one example can be in two)',
+        `  authored undefined opcodes        ${report.conformanceFailures.length}`,
+        `  ran but computed nothing          ${report.inert.length}`,
+        `  a hardware verb became a variable ${report.shadowed.length}`,
+        `  compiled to zero blocks           ${report.noBlocks.length}`,
+        `  failed to parse/package/load      ${report.crashed.length}`,
+        ''
+    ];
+    if (report.conformanceFailures.length) {
+        lines.push('── authored opcodes no bundled extension defines ──');
+        for (const f of report.conformanceFailures) lines.push(`  ${f.id}: ${f.missing.join(', ')}`);
+        lines.push('');
+    }
+    if (report.shadowed.length) {
+        lines.push('── a hardware verb became a variable ──');
+        for (const f of report.shadowed) {
+            lines.push(`  ${f.id}: ${f.shadowed.map(v => `"${v.name}" -> ${v.shadowed}`).join(', ')}`);
+        }
+        lines.push('');
+    }
+    if (report.inert.length) {
+        lines.push('── ran but computed nothing ──');
+        for (const f of report.inert) {
+            lines.push(`  ${f.id}: pins [${f.pins.join(', ') || 'none'}] ` +
+                `${f.calls} extension calls, ${f.vars} variables changed`);
+        }
+        lines.push('');
+    }
+    lines.push('NOT covered by this gate: rendering, sound, and every motion/looks block ' +
+        '(no renderer in node);');
+    lines.push('browser-only extension-block deserialization (node keeps unknown-prefix blocks, ' +
+        'the browser drops them);');
+    lines.push(`the ${report.placeholders.length} placeholder programs, which are asserted empty, ` +
+        'not executed.');
+    lines.push('');
+    console.log(lines.join('\n'));
+
+    // The report is evidence, not decoration. Two floors, because the interesting
+    // failure is not "a test went red" but "the corpus quietly stopped being run":
+    // if the harness broke, every per-example test would still pass its waivers
+    // and only these numbers would move.
+    const measured = report.placeholders.length + runnable;
+    assert.equal(measured, withProgram.length,
+        `${measured} of ${withProgram.length} program-bearing examples were measured — ` +
+        `the rest were never reached.`);
+    assert.ok(report.executed.length >= 117,
+        `only ${report.executed.length} examples executed, computed, and carried no known ` +
+        `defect; expected 117+ (the measurement of 2026-08-23). Either the corpus shrank or ` +
+        `the harness stopped running it.`);
+});
+
+}
