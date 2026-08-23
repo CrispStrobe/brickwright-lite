@@ -126,13 +126,28 @@ above depend on it: bw-bundle's upstream change alters pin modes, and this gate
 keys on pads.
 
 **What it does not check.** Whether a driven pad does anything at the far end.
-bw-bundle reports `b.setDeviceControl(...)` is called in the devices extension
+An example can pass this gate and still drive nothing, so a Tier 2.2 that
+executes the actuator surface is the natural next gate.
+
+bw-bundle reported `b.setDeviceControl(...)` as called in the devices extension
 and defined nowhere across bw-board, bw-circuit-ui, sb3-creator and lite's
-overlay, which would make the whole actuator surface (`lcdprint`, `lcdcursor`,
-`lcdclear`, `setneopixel`, `setservo`, `setmotor`, `setdirection`) a
-truthiness-guarded no-op in the simulator path. An example can pass this gate and
-still drive nothing. **That is the Tier 2.2 this points at** — I have not
-verified the claim myself.
+overlay — which would have made `lcdprint`, `lcdcursor`, `lcdclear`,
+`setneopixel`, `setservo`, `setmotor` and `setdirection` truthiness-guarded
+no-ops behind `if (b && b.setDeviceControl)`. **That was true when reported and
+is now resolved.** Verified at lite `89c20d4d7`, whose
+`6f8d11c5c vendor: advance bw-board to 0f1f29ec` landed it:
+`overlay/scratch-gui/src/lib/bw-board/board.js:1376` defines
+`setDeviceControl(partId, verb, value)`, and the call sites in
+`overlay/scratch-vm/src/extensions/crispstrobe/devices/index.js:228-230` now
+find it. So Tier 2.2 would be measuring a live surface rather than a stub.
+
+A warning about how that was checked, because it nearly went the other way:
+`grep -rn setDeviceControl` over the vendored tree returned only comment matches
+and **missed the definition twice**, while `readFileSync().includes()` found it
+immediately at line 1376. Had the grep been believed, this document would have
+recorded "defined nowhere, independently confirmed" — a false negative dressed
+as corroboration. Confirm an absence with more than one tool before reporting
+it; an absence is the one result a broken search returns by default.
 
 ## Ratchets may only shrink
 
