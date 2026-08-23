@@ -147,6 +147,35 @@ export function probeExtension (Cls, runtime) {
 }
 
 
+
+/**
+ * Blank out comments before a source scan.
+ *
+ * A gate that derives facts by scanning source must not read the prose that
+ * DESCRIBES it, or documenting the thing it checks breaks it. bw-cui2 hit this
+ * exactly: their debug-status contract gate failed on its own explanation,
+ * because the comment they wrote naming `task.name` and `task.label` was picked
+ * up as live bindings.
+ *
+ * Measured here on 2026-08-23: 24 matches across the devices extension, 0 of
+ * them in comments — so this is latent rather than live, and it goes live the
+ * moment someone explains the guard shape in a comment, which is what people do
+ * when they touch it.
+ *
+ * Block comments and whole-line `//` only. A trailing comment on a code line is
+ * left alone deliberately: blanking it means finding the `//` that starts a
+ * comment rather than one inside a string or a regex literal, and getting that
+ * wrong would corrupt the code being scanned — a worse failure than the one
+ * being prevented. The risk it leaves is a trailing comment containing an
+ * entire `if (b && b.X) b.X(` or a whole `_KINDS = /^(...)$/i`, which is not a
+ * shape trailing comments take.
+ */
+export function stripComments (source) {
+    return source
+        .replace(/\/\*[\s\S]*?\*\//g, match => match.replace(/[^\n]/g, ' '))
+        .split('\n').map(line => (/^\s*\/\//.test(line) ? '' : line)).join('\n');
+}
+
 /**
  * Board members a bundled extension guards on, as `member -> [extension ids]`.
  *
@@ -168,7 +197,7 @@ export function guardedBoardMembers () {
     for (const [id, dir] of bundledExtensionIds()) {
         const file = path.join(OVERLAY_EXT, dir, 'index.js');
         if (!existsSync(file)) continue;
-        const source = readFileSync(file, 'utf8');
+        const source = stripComments(readFileSync(file, 'utf8'));
         for (const match of source.matchAll(/\bif\s*\(\s*(\w+)\s*&&\s*\1\.(\w+)\s*\)\s*\1\.\2\s*\(/g)) {
             const member = match[2];
             if (!found.has(member)) found.set(member, new Set());
@@ -200,7 +229,7 @@ export function boardMemberNames () {
         // wrong "setDeviceControl is defined nowhere" that reached three other
         // sessions before anyone executed the code path. `file board.js` says
         // "data"; `grep -a` works; reading the bytes always works.
-        const source = readFileSync(file, 'utf8');
+        const source = stripComments(readFileSync(file, 'utf8'));
         for (const match of source.matchAll(/^[ \t]{2,4}([a-zA-Z_]\w*)\s*\(/gm)) names.add(match[1]);
         for (const match of source.matchAll(/^[ \t]{2,6}([a-zA-Z_]\w*)\s*[:=]\s*(?:function\b|\()/gm)) {
             names.add(match[1]);
