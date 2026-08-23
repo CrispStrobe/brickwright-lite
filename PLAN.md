@@ -213,6 +213,16 @@ the document was updated and the pin was not. sb3-creator's pins are now the ful
 `caeac2b…` / `b5761ad…`, at which the bench measures 2.0301 V at the wiper and 1.9887 V at
 the anode — exactly the hand-derived numbers the document carries.
 
+**Verdict, from CI rather than from this box.** sb3-creator CI on
+`fix/milestone0-corpus` (run 32661292667, workflow_dispatch): **6473 tests, 6378 pass,
+0 fail, 0 cancelled, 95 skipped**, 443 s. The same tree run locally in twelve chunks gives
+6430 / 6337 / 0 fail / 92 skipped with ONE cancellation — `gallery-e2e` timing out at 900 s
+against eight files sharing four cores at load average 18-26. CI, on a quieter runner,
+cancels nothing. Where the two disagree, the disagreement is the box, and CI is the number
+to quote; nine of the local failures on an earlier pass were literally
+`[Errno 28] No space left on device` from `python3 -m py_compile`, and passed 697/0 on
+retry once the disk drained.
+
 **Two of this lane's own conclusions were wrong, and are corrected here rather than
 quietly dropped**, because both are instrument failures worth knowing about:
 
