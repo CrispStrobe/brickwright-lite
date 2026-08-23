@@ -95,9 +95,10 @@ const PLACEHOLDER_KIND = 'circuit';
 
 /** Opcodes the emitter emits that NO bundled extension defines. ROADMAP §5.1 + the devices half. */
 const KNOWN_MISSING_OPCODES = new Map([
-    // stc12: lite's bundled copy is 8 opcodes behind sb3-creator's reference copy.
-    ['79-a2-sampler', ['stc12_seg_shownum', 'stc12_keypad', 'stc12_led_only',
-        'stc12_whenkey', 'stc12_seg_clear']],
+    // stc12 WAS here: lite's bundled copy was 8 opcodes behind the reference,
+    // which made 79-a2-sampler author five undefined opcodes. Fixed in
+    // 7cfaa2ed5 (20 blocks -> 30), so the entry is gone rather than kept as a
+    // comfortable allowance. This ratchet may only shrink.
     // devices: the OLED/TFT verbs exist in the emitter and in NO extension copy —
     // not lite's, not sb3-creator's reference. A gap, not a vendoring lag.
     ['55-oled-hello', ['devices_oledclear', 'devices_oledprint', 'devices_oledcursor']],
