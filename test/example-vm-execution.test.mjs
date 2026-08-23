@@ -95,20 +95,16 @@ const PLACEHOLDER_KIND = 'circuit';
 
 /** Opcodes the emitter emits that NO bundled extension defines. ROADMAP §5.1 + the devices half. */
 const KNOWN_MISSING_OPCODES = new Map([
-    // stc12 WAS here: lite's bundled copy was 8 opcodes behind the reference,
-    // which made 79-a2-sampler author five undefined opcodes. Fixed in
-    // 7cfaa2ed5 (20 blocks -> 30), so the entry is gone rather than kept as a
-    // comfortable allowance. This ratchet may only shrink.
-    // devices: the OLED/TFT verbs exist in the emitter and in NO extension copy —
-    // not lite's, not sb3-creator's reference. A gap, not a vendoring lag.
-    ['55-oled-hello', ['devices_oledclear', 'devices_oledprint', 'devices_oledcursor']],
-    ['51-tft-pixels', ['devices_tftclear', 'devices_tftfill', 'devices_tftpixel']],
-    ['70-calculator', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint',
-        'devices_oledhline', 'devices_oledshow']],
-    ['70-calculator-simple', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
-    ['72-pico-oled-hello', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
-    ['73-voltmeter', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
-    ['75-battery-tester', ['devices_oledclear', 'devices_oledcursor', 'devices_oledprint']],
+    // EMPTY, and that is the point. This carried nine entries: 79-a2-sampler
+    // for eight stc12 opcodes (healed in 7cfaa2ed5, 20 blocks -> 30), and seven
+    // examples for the eleven devices_oled*/devices_tft* opcodes that no
+    // extension copy defined at all. Those eleven were blocked on
+    // board.setDeviceControl, which was called in two files and defined in
+    // none until bw-board 0f1f29e; the extension now defines them (37 -> 48
+    // blocks) and every entry stopped reproducing, so every entry is gone.
+    //
+    // A ratchet only shrinks. An entry that no longer reproduces is an
+    // allowance, not a record, and this gate fails if one is kept.
 ]);
 
 /**
@@ -120,8 +116,9 @@ const KNOWN_MISSING_OPCODES = new Map([
 const KNOWN_INERT = new Set([
     'arduino-01-fade', 'arduino-02-blink-without-delay', 'arduino-02-tone-melody',
     'arduino-03-analog-write-mega', 'arduino-03-fading', 'arduino-sk-p08-hourglass',
-    // downstream of the undefined-opcode gap above:
-    '55-oled-hello', '51-tft-pixels', '72-pico-oled-hello'
+    // The three that were downstream of the undefined-opcode gap
+    // (55-oled-hello, 51-tft-pixels, 72-pico-oled-hello) are gone with it:
+    // the opcodes exist now, so the programs reach a real extension method.
 ]);
 
 /** `kind: "full"` entries whose program.bw is a board declaration with no code. */
