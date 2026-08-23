@@ -145,7 +145,11 @@ What the sweep repaired, with the evidence:
   24-pwm-fade's shape; both still retarget to all seven declared devices.
 - **Class C.** `33-inductive-no-flyback` declared `kind:"circuit"` while shipping a program
   that parses to the same six blocks as `01-blink`, and was the only kind:"circuit" entry
-  carrying `devices`, `benches`, `tier` and `authored`.
+  carrying `devices`, `benches`, `tier` and `authored`. It is now `kind:"program"` with the
+  ten devices its retarget dry-run offers and the ten benches to match, like its arch-tier
+  neighbours 32-source-vs-sink (10) and 46-port-overcurrent (9, one ledgered refusal).
+  Newly in scope once the kind changed, and run: `retarget-gallery` (devices must equal the
+  dry-run), `gen-device-benches` (batch/seat/index), and the flat-partition manifest.
 - **Class D.** `20-shift-register-binary` wrote the bit operators in PREFIX form, so the
   parser read three VARIABLE NAMES ("bitand val 128", "bitand", "val 1 255") and the
   emitted C was `if ((bitand_val_128 > 0))`. The 595 latched 0x00 for every counter value
@@ -205,9 +209,33 @@ Without that commit `41-pot-as-dimmer`'s wiper reads the UNLOADED 2.5000 V and i
 violates KCL by 2.17 mA — the two failures the suite had on a clean `origin/main`
 (6406 tests, 6312 pass, 2 fail, 92 skipped, Node 22, siblings at the pinned revisions).
 The example's own EXPECTED.md already said the engine had been fixed "until 2026-08-23";
-the document was updated and the pin was not. Advanced to `caeac2b`, at which the bench
-measures 2.0301 V at the wiper and 1.9887 V at the anode — exactly the hand-derived
-numbers the document carries.
+the document was updated and the pin was not. sb3-creator's pins are now the full 40-hex
+`caeac2b…` / `b5761ad…`, at which the bench measures 2.0301 V at the wiper and 1.9887 V at
+the anode — exactly the hand-derived numbers the document carries.
+
+**Two of this lane's own conclusions were wrong, and are corrected here rather than
+quietly dropped**, because both are instrument failures worth knowing about:
+
+- *"Advancing the pin hangs gallery-e2e."* It does not. That file legitimately takes about
+  four minutes against the newer engine (242 s measured by the integrating session), and it
+  was judged a hang from 55–70 s probes on a box running at load average 25–30 with four
+  cores. The bisect that "found" `fea58ed` was really finding the point where the file grew
+  past whatever budget each probe happened to allow. sb3-creator's per-file
+  `--test-timeout` is now 900 s for exactly this reason. A timeout is not a hang, and a
+  contended box cannot tell you which one you have.
+- *"33-inductive-no-flyback should be `kind:"full"`."* It should be `kind:"program"` with
+  the ten benches its arch-tier neighbours carry, which is what landed. The reasoning that
+  reached "full" was driven by a gate going red (retarget-gallery demanded ten devices where
+  the entry declared one) and treated the red as a classification argument instead of as
+  the finding it was — the `devices` list had been wrong all along and unchecked, because
+  a kind:"circuit" entry is outside that gate.
+
+  **The generalisable trap, from the same incident:** `scripts/gen-device-benches.mjs batch`
+  skips any entry with `devices.length < 2` and reads that list from index.json — so the
+  list that was wrong is the same list the generator consults, and it reports "generated 0"
+  as a successful no-op. **Changing an example's `kind` changes which gates apply to it, and
+  metadata that was merely unchecked becomes load-bearing.** Any kind flip must name the
+  gates that newly apply and be run against them.
 
 ### Verification-debt ledger
 
