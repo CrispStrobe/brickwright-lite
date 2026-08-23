@@ -142,21 +142,33 @@ jobs:
               exit 1
             fi
           done
-          # A waiver list may only shrink. These ceilings are the counts measured
-          # on 2026-08-23; lower them as examples are fixed, never raise them.
+          # A waiver list may only shrink. Lower these as examples are fixed,
+          # never raise them. KNOWN_INERT went 9 -> 4: three cleared with the
+          # OLED/TFT opcodes (802fc105) and two turned out never to have been
+          # broken (see TIME_GATED in the gate). TIME_GATED is not a waiver list
+          # -- its entries still carry a static assertion -- but it is capped too,
+          # so it cannot quietly become one.
           node -e "
             const fs = require('fs');
-            const gate = fs.readFileSync('test/example-vm-execution.test.mjs', 'utf8');
-            const count = (name, open, close) => {
+            // Strip line comments before counting. The counter looks for quoted
+            // strings, and a stray apostrophe in prose reads as a quoted span —
+            // it reported an entry in a list with none. A guard that miscounts is
+            // worse than no guard, so it does not get to read prose.
+            const gate = fs.readFileSync('test/example-vm-execution.test.mjs', 'utf8')
+              .split('\n').map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+            // A Set entry is 'id'; a Map entry is ['id', 'reason'] and would
+            // otherwise count double. Count the id, whichever shape it is in.
+            const count = (name) => {
               const at = gate.indexOf(name);
               if (at < 0) { console.error('::error::' + name + ' is gone from the gate'); process.exit(1); }
-              const body = gate.slice(gate.indexOf(open, at), gate.indexOf(close, at));
-              return (body.match(/'[^']+'/g) || []).length;
+              const isMap = /new Map\(/.test(gate.slice(at, at + 40));
+              const body = gate.slice(gate.indexOf('[', at), gate.indexOf(isMap ? '])' : ']', at));
+              return (body.match(isMap ? /\['[^']+'/g : /'[^']+'/g) || []).length;
             };
-            const ceilings = {KNOWN_INERT: 9, KNOWN_SHADOWED_WRITES: 19, KNOWN_NO_BLOCKS: 2};
+            const ceilings = {KNOWN_INERT: 4, KNOWN_SHADOWED_WRITES: 19, KNOWN_NO_BLOCKS: 2, TIME_GATED: 2};
             let bad = 0;
             for (const [name, ceiling] of Object.entries(ceilings)) {
-              const n = count(name, '[', ']');
+              const n = count(name);
               console.log(name + ': ' + n + ' waived (ceiling ' + ceiling + ')');
               if (n > ceiling) {
                 console.error('::error::' + name + ' grew to ' + n + ' entries (ceiling ' + ceiling +
@@ -166,8 +178,8 @@ jobs:
             }
             const undefinedOpcodes = (gate.slice(gate.indexOf('KNOWN_MISSING_OPCODES'),
               gate.indexOf('KNOWN_INERT')).match(/'[a-z0-9]+_[a-z0-9_]+'/g) || []).length;
-            console.log('KNOWN_MISSING_OPCODES: ' + undefinedOpcodes + ' opcodes waived (ceiling 28)');
-            if (undefinedOpcodes > 28) {
+            console.log('KNOWN_MISSING_OPCODES: ' + undefinedOpcodes + ' opcodes waived (ceiling 0)');
+            if (undefinedOpcodes > 0) {
               console.error('::error::KNOWN_MISSING_OPCODES grew to ' + undefinedOpcodes + ' opcodes.');
               bad++;
             }

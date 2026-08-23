@@ -357,6 +357,31 @@ solves. That is the next gate, not a solved problem.
   the measured diff was the missing registry and a whole blast-radius report (44 circuits, a
   battery tester reading 0 mV) was pure artifact. When a result is dramatic, check the rig first.
   A second checkout is a second registry, a second everything.
+- **`grep` silently skips a file containing a NUL byte, and absence-by-grep is the unsound
+  direction.** `bw-board/board.js:1412` builds a composite key as `` `${partId}\0${verb}` ``. GNU
+  grep sees the NUL, classifies the whole file as binary, and searches nothing — no error, and no
+  "Binary file matches" once the output is piped or counted. `grep -rn setDeviceControl overlay/`
+  therefore reports zero definitions of a method defined at line 1376. Detect it with `file <path>`
+  (it says `data`); `grep -a` and `readFileSync` both work. The dangerous direction is asserting a
+  string is ABSENT: presence-by-grep merely misses, absence-by-grep silently succeeds. Worse, this
+  file gained the NUL in the SAME commit that added the symbol (`6f8d11c5c`), so any grep-based
+  absence check on it went from true-negative to permanent false-negative in one step — a gate that
+  cannot fail, arriving without anyone touching the gate.
+- **When a result reverses, ask whether the SUBJECT moved before blaming the instrument.**
+  2026-08-23: a finding that twelve extension actuators guarded on a board method defined nowhere
+  was correct at `3e87340f5` (0 mentions, no NUL). Re-measured after `6f8d11c5c` it read the same
+  way for a different reason, and the retraction — issued to three sessions — destroyed a true
+  result. "Verify the instrument" does not catch this one; the tree changed underneath. Record the
+  sha a measurement was taken at, and diff the subject before revising the conclusion. Corollary:
+  **two agents agreeing is not two instruments agreeing.** Corroboration requires a different
+  METHOD, not a different person — the same day produced a bench count of 1092 offered as
+  confirmation of a circuit count of 1034.
+- **`board.resistance(a, b)` is directional by design.** `b` becomes the solver reference and gnd
+  symbols are deliberately inactive for the solve (`mna.js` ~313 and ~373), so that a dangling gnd
+  cannot become a shunt path in the T-network test. Consequence: probing with ground as `a`
+  fragments the network. Measured on 22-series-parallel, power off: `resistance(+, -)` = 2191.60 Ω,
+  `resistance(-, +)` = 333 MΩ, while a non-ground pair is symmetric (470.0 Ω both ways). Probe
+  ground-as-`b`, or a whole circuit reads as an open one. Found by bw-lessons, reproduced here.
 - **Disk fills silently and looks like a git bug.** 2026-08-22: `git worktree add` failed with
   "No space left on device" at 219 MB free; two abandoned lite worktrees held 2.2 GB. Full lite
   checkouts are ~1.1 GB each. Use `git worktree add --no-checkout` + `git sparse-checkout set docs`

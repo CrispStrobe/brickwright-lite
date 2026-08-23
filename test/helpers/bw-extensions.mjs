@@ -145,3 +145,67 @@ export function probeExtension (Cls, runtime) {
         if (realRaf === undefined) delete globalThis.requestAnimationFrame;
     }
 }
+
+
+/**
+ * Board members a bundled extension guards on, as `member -> [extension ids]`.
+ *
+ * Every actuator in the `devices` extension has the shape
+ *
+ *     verb (args) { const b = this._board(); if (b && b.someMethod) b.someMethod(...); }
+ *
+ * which means a verb whose `someMethod` does not exist on the board is a
+ * TRUTHINESS-GUARDED NO-OP: getInfo() lists the block, a same-named method
+ * exists, scratch-vm registers and calls it, the call returns, and nothing
+ * happens. It passes an opcode-conformance check and it passes an execution
+ * check that counts an invoked extension method as reaching hardware.
+ *
+ * Parsed rather than executed, because the guard is what we want to see: running
+ * the method just takes the false branch silently, which is the whole problem.
+ */
+export function guardedBoardMembers () {
+    const found = new Map();
+    for (const [id, dir] of bundledExtensionIds()) {
+        const file = path.join(OVERLAY_EXT, dir, 'index.js');
+        if (!existsSync(file)) continue;
+        const source = readFileSync(file, 'utf8');
+        for (const match of source.matchAll(/\bif\s*\(\s*(\w+)\s*&&\s*\1\.(\w+)\s*\)\s*\1\.\2\s*\(/g)) {
+            const member = match[2];
+            if (!found.has(member)) found.set(member, new Set());
+            found.get(member).add(id);
+        }
+    }
+    return found;
+}
+
+/**
+ * Method names the board object the app attaches actually defines.
+ *
+ * Two sources, unioned, because the object the extension receives as
+ * `runtime.circuitBoard` is bw-circuit-ui's Circuit, which delegates to
+ * bw-board's board: a member on either is reachable.
+ */
+export function boardMemberNames () {
+    const names = new Set();
+    const roots = [
+        path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-circuit-ui', 'model', 'circuit.js'),
+        path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board', 'board.js')
+    ];
+    for (const file of roots) {
+        if (!existsSync(file)) continue;
+        // readFileSync, not grep. board.js contains a literal NUL byte at line
+        // 1412 (`const key = `${partId}\0${verb}`` — a composite-key separator),
+        // which makes GNU grep classify the whole file as BINARY and silently
+        // search nothing. That is not hypothetical: it produced a confident,
+        // wrong "setDeviceControl is defined nowhere" that reached three other
+        // sessions before anyone executed the code path. `file board.js` says
+        // "data"; `grep -a` works; reading the bytes always works.
+        const source = readFileSync(file, 'utf8');
+        for (const match of source.matchAll(/^[ \t]{2,4}([a-zA-Z_]\w*)\s*\(/gm)) names.add(match[1]);
+        for (const match of source.matchAll(/^[ \t]{2,6}([a-zA-Z_]\w*)\s*[:=]\s*(?:function\b|\()/gm)) {
+            names.add(match[1]);
+        }
+    }
+    for (const keyword of ['if', 'for', 'while', 'switch', 'catch', 'return']) names.delete(keyword);
+    return names;
+}

@@ -74,10 +74,10 @@ if (missingInputs.length) {
     });
 } else {
 
-const {runProgram, conformance, projectOpcodes, quitStrandedVMs} =
+const {runProgram, conformance, projectOpcodes, quitStrandedVMs, ownerOf, CORE_PREFIX} =
     await import('./helpers/bw-vm.mjs');
-const {bundledExtensionIds, loadExtensionClass, probeExtension, stubRuntime} =
-    await import('./helpers/bw-extensions.mjs');
+const {bundledExtensionIds, loadExtensionClass, probeExtension, stubRuntime,
+    guardedBoardMembers, boardMemberNames} = await import('./helpers/bw-extensions.mjs');
 
 const EXAMPLES = path.join(REPO, 'overlay', 'scratch-gui', 'examples');
 const index = JSON.parse(readFileSync(path.join(EXAMPLES, 'index.json'), 'utf8'));
@@ -114,11 +114,44 @@ const KNOWN_MISSING_OPCODES = new Map([
  * shape as `set variable X to Y`. The rest inherit it from KNOWN_MISSING_OPCODES.
  */
 const KNOWN_INERT = new Set([
-    'arduino-01-fade', 'arduino-02-blink-without-delay', 'arduino-02-tone-melody',
-    'arduino-03-analog-write-mega', 'arduino-03-fading', 'arduino-sk-p08-hourglass',
+    // FIXED UPSTREAM, AWAITING A PIN BUMP. All four are repaired in sb3-creator
+    // main (250dfdb) — see the note on KNOWN_SHADOWED_WRITES for why they cannot
+    // leave this list until vendor-pins.json moves past db2966f.
+    'arduino-01-fade', 'arduino-02-tone-melody',
+    'arduino-03-analog-write-mega', 'arduino-03-fading'
+    // `arduino-02-blink-without-delay` and `arduino-sk-p08-hourglass` came off
+    // this list on 2026-08-23 because they were never broken — see TIME_GATED.
+    //
     // The three that were downstream of the undefined-opcode gap
-    // (55-oled-hello, 51-tft-pixels, 72-pico-oled-hello) are gone with it:
+    // (55-oled-hello, 51-tft-pixels, 72-pico-oled-hello) came off with 802fc105:
     // the opcodes exist now, so the programs reach a real extension method.
+    // Reaching one is not the same as driving anything — see
+    // KNOWN_DEAD_BOARD_MEMBERS below, which is why that check now exists.
+]);
+
+/**
+ * Correct programs whose FIRST hardware write is behind a wall-clock gate
+ * longer than this gate's 24-frame horizon. They are NOT defects, and keeping
+ * them on KNOWN_INERT was this gate accusing working examples.
+ *
+ * Measured 2026-08-23 by re-driving each with real elapsed time between steps:
+ * `arduino-02-blink-without-delay` writes led=0 within 2.5 s and
+ * `arduino-sk-p08-hourglass` writes led2=1 within 12 s. Stepping the runtime in
+ * a tight loop cannot reach either, because both gate on time the loop does not
+ * spend — `timer` in one, `wait interval seconds` with interval = 10 in the
+ * other. Sleeping twelve seconds per example in CI would be slower, flakier,
+ * and would still only cover the two we happen to know about.
+ *
+ * So the entry buys a DIFFERENT assertion rather than a pass: the program must
+ * still AUTHOR a hardware verb for its declared output pins. A time-gated
+ * program that loses its verb to a syntax slip fails here exactly like any
+ * other — it just cannot be caught by watching it run.
+ */
+const TIME_GATED = new Map([
+    ['arduino-02-blink-without-delay',
+        'toggles led only once `timer` passes a 1000 ms interval'],
+    ['arduino-sk-p08-hourglass',
+        'first `turn on led2` sits behind `wait interval seconds` with interval = 10']
 ]);
 
 /** `kind: "full"` entries whose program.bw is a board declaration with no code. */
@@ -139,6 +172,17 @@ const KNOWN_NO_BLOCKS = new Set(['eater6502-bench', 'eater6502-vdp-hello']);
  * programs still call other hardware verbs, so they look alive while the verb
  * that matters is gone. Execution alone cannot see them.
  */
+// FIXED UPSTREAM, AWAITING A PIN BUMP. All 19 are repaired in sb3-creator main
+// (250dfdb). They are still listed because `overlay/scratch-gui/examples` is a
+// vendored snapshot pinned at sb3-creator db2966f by vendor-pins.json, and the
+// corpus lite SHIPS is the pinned one — bw-cui2 measured it as byte-identical to
+// that pin, so this is a deliberate snapshot and not drift. Bumping the pin is a
+// separate decision: the diff is 1124 files and re-adds the seven disp-* that
+// 74ec394c deliberately removed.
+//
+// Deleting these before the pin moves would be a lie about what lite ships.
+// Leaving them costs nothing: the "still reproduces" ratchet goes RED the moment
+// the pin bumps and forces them out in that commit.
 const KNOWN_SHADOWED_WRITES = new Set([
     'avr02-dimmer', 'arduino-01-fade', 'arduino-02-tone-melody', 'arduino-02-tone-keyboard',
     'arduino-02-tone-multiple', 'arduino-02-tone-pitch-follower', 'arduino-03-analog-in-out-serial',
@@ -252,6 +296,92 @@ test('instrument: probing an extension reports its FULL opcode set', () => {
     }
 });
 
+test('every board member a bundled extension guards on exists on the board', () => {
+    // Every actuator in the `devices` extension has the shape
+    //
+    //     verb (a) { const b = this._board(); if (b && b.someMethod) b.someMethod(...); }
+    //
+    // so a verb whose `someMethod` is not on the board is a TRUTHINESS-GUARDED
+    // NO-OP: the block is listed, the method exists, scratch-vm calls it, it
+    // returns, nothing happens. It passes opcode conformance AND it passes this
+    // file's liveness check, which counts an invoked extension method as
+    // reaching hardware. That is a real hole and this closes it.
+    //
+    // It also exists because this repo SHIPPED that hole and nothing noticed.
+    // At lite 3e87340f5 twelve `devices` actuators guarded on setDeviceControl
+    // and no board defined it; 6f8d11c5c (vendor bw-board 0f1f29ec) landed the
+    // method. Measured by byte count, not grep: 0 mentions before, 1 after.
+    //
+    // Read the bytes, never grep. That same commit also introduced a literal NUL
+    // at board.js:1412 (`const key = `${partId}\0${verb}``), which makes GNU grep
+    // classify the file as BINARY and search nothing, silently. So a grep-based
+    // absence check on this file went from true-negative to PERMANENT
+    // false-negative in one commit — it would now pass forever whatever the code
+    // said. `file board.js` reports "data"; `grep -a` works; bytes always work.
+    //
+    // The board is bw-board's BoardImpl, not the Circuit wrapper — CircuitDesigner
+    // hands `circuit.board` to onBoardReady — so both files are searched.
+    const guards = guardedBoardMembers();
+    const board = boardMemberNames();
+    // Both sides are DERIVED by parsing, so both can silently derive nothing and
+    // leave this test green while asserting on an empty set. That is the vacuity
+    // shape, and it is the one a hand-written list would also have had from the
+    // other direction: a fixed list of names would have sailed through 802fc105
+    // adding eleven OLED/TFT verbs without ever looking at them. Derive, then
+    // assert the derivation worked.
+    assert.ok(board.size > 50,
+        `only ${board.size} board members parsed — the extractor is broken, not the board`);
+    assert.ok(guards.size > 0,
+        'no guarded board members were parsed out of any bundled extension. The ' +
+        '`if (b && b.X) b.X(...)` shape has changed, so this test is asserting on nothing.');
+    assert.ok(guards.has('setDeviceControl'),
+        'setDeviceControl is no longer parsed as a guarded member. Either the devices ' +
+        'extension stopped using it or the parser stopped seeing it — check which before ' +
+        'relaxing this.');
+    const missing = [...guards].filter(([member]) => !board.has(member))
+        .map(([member, ids]) => `${member} (guarded by ${[...ids].join(', ')})`);
+    assert.deepEqual(missing, [],
+        'these extension verbs guard on a board method that does not exist, so they are silent ' +
+        'no-ops: the block appears, the method runs, nothing is driven');
+});
+
+test('every device kind the devices extension can drive accepts a control verb', async () => {
+    // One layer below the check above. The chain an actuator verb travels is
+    //
+    //   extension verb -> board.setDeviceControl -> deviceModel.control(...)
+    //
+    // and the previous test only proves the middle link. A device model with no
+    // `control` handler makes setDeviceControl return FALSE and change nothing —
+    // the block is defined, the board method exists, the call is made, and the
+    // part does not move. Found by bw-lessons on 74-ammeter, whose char_lcd_i2c
+    // returns false for clear/cursor/print while 73-voltmeter's ssd1306 returns
+    // true; my own probe had generalised from ssd1306 and missed it.
+    const bwb = path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
+    (await import(path.join(bwb, 'register-all.js'))).registerAllDevices();
+    const {getDevice, hasDevice} = await import(path.join(bwb, 'devices.js'));
+
+    // Device kinds the `devices` extension addresses through setDeviceControl.
+    const DRIVEN_KINDS = ['char_lcd', 'char_lcd_i2c', 'hd44780', 'ssd1306', 'ili9341',
+        'servo', 'dc_motor', 'relay'];
+    // Registered but with no control() handler. Measured 2026-08-23. May only
+    // shrink: an entry here is a part the user can wire, drive from a block, and
+    // watch do nothing.
+    const KNOWN_NO_CONTROL = new Set(['char_lcd_i2c', 'dc_motor']);
+
+    const missing = DRIVEN_KINDS.filter(kind => {
+        const model = hasDevice(kind) ? getDevice(kind) : null;
+        return model && typeof model.control !== 'function';
+    });
+    const unregistered = DRIVEN_KINDS.filter(kind => !hasDevice(kind));
+    assert.deepEqual(unregistered, [],
+        'these device kinds are addressed by the devices extension but are not registered at all');
+    assert.deepEqual(missing.filter(kind => !KNOWN_NO_CONTROL.has(kind)), [],
+        'these device models have no control() handler, so every actuator verb aimed at them ' +
+        'returns false and moves nothing');
+    assert.deepEqual([...KNOWN_NO_CONTROL].filter(kind => !missing.includes(kind)), [],
+        'these now have a control() handler — remove them from KNOWN_NO_CONTROL');
+});
+
 test('instrument: the shipped corpus is the size this gate was written against', () => {
     // A corpus that silently shrank would make every per-example test vanish and
     // the file still report green. The floor moves up when examples are added.
@@ -263,7 +393,7 @@ test('instrument: the shipped corpus is the size this gate was written against',
 
 const report = {
     executed: [], placeholders: [], conformanceFailures: [], inert: [],
-    noBlocks: [], crashed: [], shadowed: []
+    noBlocks: [], crashed: [], shadowed: [], timeGated: []
 };
 
 test.after(() => quitStrandedVMs());
@@ -365,6 +495,17 @@ for (const entry of withProgram) {
                 assert.fail(`${entry.id} is on KNOWN_INERT but now drives its hardware ` +
                     `(${run.extensionCalls} extension calls) — remove it from the list.`);
             }
+            if (inert && TIME_GATED.has(entry.id)) {
+                // Not a waiver: the verb must still be in the project.
+                const authored = [...projectOpcodes(run.creator.project)]
+                    .filter(opcode => !CORE_PREFIX.test(opcode) && ownerOf(opcode));
+                report.timeGated.push({id: entry.id, authored: authored.length});
+                assert.ok(authored.length > 0,
+                    `${entry.id} is on TIME_GATED (${TIME_GATED.get(entry.id)}), so this gate ` +
+                    `cannot watch it drive its pins — but it must still AUTHOR a hardware verb, ` +
+                    `and it now authors none. The verb was lost.`);
+                return;
+            }
             if (inert && !KNOWN_INERT.has(entry.id)) {
                 assert.ok(live,
                     `${entry.id}: ran for 24 frames and computed nothing — no extension block ` +
@@ -396,6 +537,13 @@ test('ratchet: every KNOWN_INERT entry still reproduces', () => {
     assert.deepEqual(stale, [], `these examples now compute — remove them from KNOWN_INERT`);
 });
 
+test('ratchet: every TIME_GATED entry is still time-gated, not silently fixed or broken', () => {
+    const unmeasured = [...TIME_GATED.keys()].filter(id => !report.timeGated.some(f => f.id === id));
+    assert.deepEqual(unmeasured, [],
+        `these examples now reach their hardware inside the 24-frame horizon — remove them ` +
+        `from TIME_GATED, they no longer need the static substitute`);
+});
+
 test('ratchet: every KNOWN_SHADOWED_WRITES entry still reproduces', () => {
     const stale = [...KNOWN_SHADOWED_WRITES].filter(id => !report.shadowed.some(f => f.id === id));
     assert.deepEqual(stale, [],
@@ -423,6 +571,7 @@ test('coverage: the gate states what it did and did not execute', () => {
         '  (the categories below overlap — one example can be in two)',
         `  authored undefined opcodes        ${report.conformanceFailures.length}`,
         `  ran but computed nothing          ${report.inert.length}`,
+        `  time-gated, asserted statically   ${report.timeGated.length}`,
         `  a hardware verb became a variable ${report.shadowed.length}`,
         `  compiled to zero blocks           ${report.noBlocks.length}`,
         `  failed to parse/package/load      ${report.crashed.length}`,
