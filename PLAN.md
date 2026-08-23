@@ -106,17 +106,54 @@ finished work:
 
 | Wave | Lessons | Draft | Technical review | Translation review | Learner field test |
 | --- | --- | --- | --- | --- | --- |
-| 1 Electricity you can see | 12 | done | **done 2026-08-23** (5 of 12 defective; 4 fixed, 2 open engine/app defects) | open | open |
-| 2 Measure rather than guess | 10 | done | open | open | open |
-| 3 One idea, several languages | 12 | done | open | open | open |
-| 4 Interactive systems | 8 | done | open | open | open |
-| 5 Debug with evidence | 10 | done | open | open | open |
-| 6 Signals and systems | 10 | done | open | open | open |
-| 7 Computers from wires upward | 10 | done | open | open | open |
+| 1 Electricity you can see | 12 | done | **full, done 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | open | open |
+| 2 Measure rather than guess | 10 | done | scanned; **full review open** | open | open |
+| 3 One idea, several languages | 12 | done | scanned; **full review open** | open | open |
+| 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
+| 5 Debug with evidence | 10 | done | scanned; **full review open** | open | open |
+| 6 Signals and systems | 10 | done | scanned; **full review open** | open | open |
+| 7 Computers from wires upward | 10 | done | scanned; **full review open** | open | open |
 
-**67 of 79 lessons have had no technical review at all.** Treat this table as the plan's real
-critical path: a lesson that teaches an observation its bench cannot produce is worse than a
-missing lesson, because a learner blames themselves.
+"Scanned" and "reviewed" are different claims and the table keeps them apart.
+**Scanned** means all 79 lessons and all 180 checkpoints went through the Tier-3
+detector (`docs/LESSON-ACHIEVABILITY-SWEEP.md`), which decides one question
+mechanically: can this checkpoint's observation ever happen on the example it
+names? **Reviewed** means a human worked through every checkpoint against a
+solved bench, which is what Wave 1 got and what found the other four classes of
+defect the detector cannot see.
+
+**67 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
+the one defect class that detector understands. Treat this table as the plan's real critical path:
+a lesson that teaches an observation its bench cannot produce is worse than a missing lesson,
+because a learner blames themselves.
+
+### The Tier-3 detector, and what it changes about the estimate
+
+Built and run 2026-08-23 — `docs/VERIFICATION-AUTOMATION.md` Tier 3, written up in
+`docs/LESSON-ACHIEVABILITY-SWEEP.md`. **79 lessons, 180 checkpoints, 47 quoted quantities,
+6 defects found, 3 fixed, 3 open.** It is mutation-proven against the two known version-1
+defects — the actual lesson objects read out of git history, not synthetic ones — and asserted
+not to flag either repair.
+
+Three lessons were repaired from its findings and bumped to content version 2:
+`signals-rc-response` asked for a discharge curve on a bench with no discharge path;
+`machines-logic-levels` asked the learner to predict "press and release" on a bench with no
+input of any kind, whose program declares two output pins; `interactive-extension-discovery`
+hung a checkpoint on `starter-loaded`, which only fires for the three first-run journeys and
+its example is not one of them.
+
+Three remain open and share one cause: `bw-circuit-changed` is dispatched only when the derived
+**pin declarations** move, so on an MCU-less bench no circuit edit can raise it — measured, and
+ratcheted in `test/lesson-defect-detector.test.mjs`. It needs a `CircuitDesigner` change in
+bw-circuit-ui. The learner is unaided rather than misled, so the lessons keep their intent.
+
+**The estimate this changes, and the one it does not.** The detector understands exactly one
+class: a checkpoint demanding a capability its bench does not have. Fed the version-1 forms of
+the five defects Wave 1's reading pass found, **it flags none of them** — a wrong component name,
+a false conservation equation, two nodes 0.2 mV apart, a condition to verify "while powered" on an
+unpowered bench, an instrument reading 43.0 mA where its branch carries 5.8 mA. So the sweep
+retires one class across all seven waves and leaves the rest of the debt exactly where it was.
+Waves 2–7 still need reading; they now need it for fewer things.
 
 Wave 1 is now reviewed in full — `docs/LESSON-REVIEW-WAVE-1.md`, every verdict backed by a
 measurement taken from the engine the browser runs and re-derived on every test run by

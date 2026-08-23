@@ -62,6 +62,18 @@ export function circuitPathFor(exampleId) {
     return rel;
 }
 
+/** Same lookup, but `null` instead of a throw when the example ships no circuit.
+ *  Nine lessons are `program-only`, and a scanner over the whole catalog has to
+ *  tell "this example has no circuit" apart from "this example's circuit is
+ *  broken" rather than dying on the first one it meets. */
+export function circuitPathOrNull(exampleId) {
+    try {
+        return circuitPathFor(exampleId);
+    } catch {
+        return null;
+    }
+}
+
 export async function load(exampleId, file) {
     const {Circuit} = await boot();
     const rel = file ? path.join(exampleId, file) : circuitPathFor(exampleId);
