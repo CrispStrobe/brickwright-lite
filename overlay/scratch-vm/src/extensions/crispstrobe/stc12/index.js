@@ -198,7 +198,7 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
           // test/STC12-CONFORMANCE-FINDING.md.
           //
           // Not device-gated: these hang off a PART declaration, and the
-          // `parts` menu is already driven by what the Code tab declared. A
+          // 'parts' menu is already driven by what the Code tab declared. A
           // board with no such PART simply offers no item to choose.
           {
             opcode: "keypad",
