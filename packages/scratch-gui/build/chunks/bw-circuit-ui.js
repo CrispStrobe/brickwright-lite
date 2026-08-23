@@ -1205,6 +1205,9 @@ const DIP_CHIP_LABELS = {
 // The actual rendered size fills the container via CSS.
 const CANVAS_W = 700;
 const CANVAS_H = 500;
+const SEATED_PREVIEW_SCALE = Object.freeze({
+  led: 0.78
+});
 
 /**
  * Rotate a {dx, dy} offset by deg degrees (0, 90, 180, 270).
@@ -1796,11 +1799,13 @@ function SvgParts(_ref2) {
               var _positions$t$name2;
               return ((_positions$t$name2 = positions[t.name]) === null || _positions$t$name2 === void 0 ? void 0 : _positions$t$name2.dy) || 0;
             };
-            const pinsPerSide = Math.ceil(sc.terminals.length / 2);
-            const bodyW = (pinsPerSide - 1) * _model_dip_geometry_js__WEBPACK_IMPORTED_MODULE_27__.DIP_PIN_PITCH + 20,
-              bodyH = 52;
+            const {
+              w: bodyW,
+              h: bodyH
+            } = (0,_model_dip_geometry_js__WEBPACK_IMPORTED_MODULE_27__.dipPackageGeometry)(sc);
             return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
               key: id,
+              "data-part-face": kind,
               transform: xform,
               onClick: handleClick,
               style: {
@@ -1865,10 +1870,10 @@ function SvgParts(_ref2) {
                 strokeWidth: 0.5
               }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("text", {
                 x: px(t),
-                y: py(t) + (py(t) < 0 ? -8 : 14),
+                y: py(t) + (py(t) < 0 ? -7 : 12),
                 textAnchor: "middle",
-                fill: isVCC ? '#e74c3c' : isGND ? '#555' : '#7f8c8d',
-                fontSize: 4.2,
+                fill: isVCC ? '#e74c3c' : isGND ? '#777' : '#94a3b8',
+                fontSize: 3.2,
                 fontFamily: "monospace",
                 fontWeight: isVCC || isGND ? 'bold' : 'normal'
               }, t.name));
@@ -1991,20 +1996,23 @@ function SvgParts(_ref2) {
           const subtitle = kind === 'pi_pico' ? 'RP2040 · 3V3' : kind === 'arduino_mega' ? 'ATmega2560 · 5V' : 'ATmega328P · 5V';
           const offsets = (0,_model_board_geometry_js__WEBPACK_IMPORTED_MODULE_26__.boardTerminalOffsets)(kind, sc);
           const WokwiFace = kind === 'arduino_uno' ? _wokwi_wrappers_index_js__WEBPACK_IMPORTED_MODULE_13__.WokwiArduinoUno : kind === 'arduino_nano' ? _wokwi_wrappers_index_js__WEBPACK_IMPORTED_MODULE_13__.WokwiArduinoNano : kind === 'arduino_mega' ? _wokwi_wrappers_index_js__WEBPACK_IMPORTED_MODULE_13__.WokwiArduinoMega : null;
-          return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
-            key: id,
-            transform: xform,
-            onClick: handleClick,
-            style: {
-              cursor: 'pointer'
-            },
-            "data-board-face": kind,
-            "data-board-face-license": WokwiFace ? 'MIT' : 'code'
-          }, WokwiFace && geometry ? /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("foreignObject", {
-            x: -W / 2,
-            y: -H / 2,
+          const faceTransform = rot || flip ? "translate(".concat(x, " ").concat(y, ") rotate(").concat(rot, ") scale(").concat(flip ? -1 : 1, " 1) translate(").concat(-x, " ").concat(-y, ")") : undefined;
+          return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react__WEBPACK_IMPORTED_MODULE_0__.Fragment, {
+            key: id
+          }, WokwiFace && geometry ?
+          /*#__PURE__*/
+          /* Chromium can drop a parent <g> translation when laying out
+             transformed HTML inside foreignObject. Anchor the licensed
+             face in world coordinates directly; its outline, pins and
+             hit box now share the same (x,y,W,H) contract. */
+          react__WEBPACK_IMPORTED_MODULE_0__.createElement("foreignObject", {
+            x: x - W / 2,
+            y: y - H / 2,
             width: W,
             height: H,
+            transform: faceTransform,
+            "data-board-face": kind,
+            "data-board-face-license": "MIT",
             style: {
               pointerEvents: 'none',
               overflow: 'hidden'
@@ -2021,7 +2029,15 @@ function SvgParts(_ref2) {
             style: {
               display: 'block'
             }
-          }))) : null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("rect", {
+          }))) : null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
+            transform: xform,
+            onClick: handleClick,
+            style: {
+              cursor: 'pointer'
+            },
+            "data-board-face": kind,
+            "data-board-face-license": WokwiFace ? 'MIT' : 'code'
+          }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("rect", {
             x: -W / 2,
             y: -H / 2,
             width: W,
@@ -2102,7 +2118,7 @@ function SvgParts(_ref2) {
             fill: "#7f8c8d",
             fontSize: 7,
             fontFamily: "monospace"
-          }, part.declName || id));
+          }, part.declName || id)));
         }
       case 'servo':
         {
@@ -3534,9 +3550,10 @@ function SvgParts(_ref2) {
             if (sc && sc.terminals && sc.terminals.length > 2) {
               const pinCount = sc.terminals.length;
               const positions = (0,_model_dip_geometry_js__WEBPACK_IMPORTED_MODULE_27__.dipTerminalPositions)(sc);
-              const pinsPerSide = Math.ceil(pinCount / 2);
-              const bodyW = Math.max(80, pinsPerSide * _model_dip_geometry_js__WEBPACK_IMPORTED_MODULE_27__.DIP_PIN_PITCH + 20);
-              const bodyH = _model_dip_geometry_js__WEBPACK_IMPORTED_MODULE_27__.DIP_ROW_OFFSET * 2 + 10;
+              const {
+                w: bodyW,
+                h: bodyH
+              } = (0,_model_dip_geometry_js__WEBPACK_IMPORTED_MODULE_27__.dipPackageGeometry)(sc);
               return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
                 key: id,
                 transform: xform,
@@ -3608,8 +3625,8 @@ function SvgParts(_ref2) {
                   x: pos.dx,
                   y: pos.dy + (pos.dy < 0 ? -6 : 10),
                   textAnchor: "middle",
-                  fill: isVCC ? '#e74c3c' : isGND ? '#555' : '#7f8c8d',
-                  fontSize: 3.5,
+                  fill: isVCC ? '#e74c3c' : isGND ? '#777' : '#94a3b8',
+                  fontSize: 3.0,
                   fontFamily: "monospace",
                   fontWeight: isVCC || isGND ? 'bold' : 'normal'
                 }, t.name));
@@ -3703,6 +3720,15 @@ function pinInfoForPart(part, pin) {
   }
   return '';
 }
+function terminalSupplyRole(part, terminal) {
+  const term = String(terminal || '').toLowerCase();
+  if ((part === null || part === void 0 ? void 0 : part.kind) === 'vcc') return 'positive';
+  if ((part === null || part === void 0 ? void 0 : part.kind) === 'gnd') return 'ground';
+  if ((part === null || part === void 0 ? void 0 : part.kind) === 'vsource') return term === 'pos' ? 'positive' : term === 'neg' ? 'ground' : null;
+  if (/^(gnd\d*|agnd|swd_gnd|vss)$/.test(term)) return 'ground';
+  if (/^(vcc|avcc|vdd|5v|3v3|vin|vbus|vsys)$/.test(term)) return 'positive';
+  return null;
+}
 function TerminalDots(_ref11) {
   let {
     parts,
@@ -3711,7 +3737,9 @@ function TerminalDots(_ref11) {
     onTerminalClick,
     onTerminalDown,
     onTerminalUp,
-    placingProbe
+    placingProbe,
+    selectedParts,
+    hoveredPart
   } = _ref11;
   const connected = new Set();
   for (const w of wires) {
@@ -3721,26 +3749,31 @@ function TerminalDots(_ref11) {
 
   // When wiring, all potential targets should glow
   const isWiring = !!wiringFrom;
+  const sourcePart = wiringFrom ? parts.find(part => part.id === wiringFrom.part) : null;
+  const sourceSupplyRole = sourcePart ? terminalSupplyRole(sourcePart, wiringFrom.terminal) : null;
   const dots = [];
   for (const part of parts) {
+    const isPartActive = (selectedParts === null || selectedParts === void 0 ? void 0 : selectedParts.has(part.id)) || hoveredPart === part.id;
     for (const term of part.terminals) {
       const pos = terminalPos(part, term);
       const isSource = wiringFrom && wiringFrom.part === part.id && wiringFrom.terminal === term;
       const isConnected = connected.has("".concat(part.id, ":").concat(term));
       const isSamePart = wiringFrom && wiringFrom.part === part.id;
       const isValidTarget = isWiring && !isSource && !isSamePart;
+      const targetSupplyRole = terminalSupplyRole(part, term);
+      const isSupplyConflict = isValidTarget && sourceSupplyRole && targetSupplyRole && sourceSupplyRole !== targetSupplyRole;
 
       // A SEATED terminal IS a breadboard hole. The hole is already visible;
       // a permanent ring + name label on every leg is what buried the first
       // example under chrome (owner screenshot, 2026-08-10). Seated legs
       // surface only while they are live wiring/probe targets.
       const isSeated = !!(part._seatTerminals && part._seatTerminals[term]);
-      if (isSeated && !isWiring && !placingProbe && !isSource) continue;
+      if (isSeated && !isWiring && !placingProbe && !isSource && !isPartActive) continue;
       // A DIP chip labels its own pins on the body; forty 8px rings at a
       // ~15px pitch drew as an unreadable red chain down both sides (owner
       // screenshot). Many-pin parts surface terminals only while wiring.
       const manyPins = part.terminals.length > 12;
-      if (manyPins && !isWiring && !placingProbe && !isSource && !isConnected) continue;
+      if (manyPins && !isWiring && !placingProbe && !isSource && !isConnected && !isPartActive) continue;
 
       // Sizes: large enough to tap on a tablet (minimum 10px radius)
       let fill, stroke, r, opacity;
@@ -3748,6 +3781,11 @@ function TerminalDots(_ref11) {
         fill = '#f1c40f';
         stroke = '#f39c12';
         r = 12;
+        opacity = 1;
+      } else if (isSupplyConflict) {
+        fill = '#ef4444';
+        stroke = '#991b1b';
+        r = 11;
         opacity = 1;
       } else if (isValidTarget) {
         // Pulsing green glow — "you can connect here"
@@ -3776,7 +3814,7 @@ function TerminalDots(_ref11) {
       if (manyPins) r = Math.min(r, 5);
       dots.push(/*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
         key: "".concat(part.id, ":").concat(term)
-      }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", {
+      }, isSupplyConflict && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("title", null, "Danger: this directly connects a positive supply to ground"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", {
         cx: pos.x,
         cy: pos.y,
         r: Math.max(r, 16),
@@ -3800,7 +3838,7 @@ function TerminalDots(_ref11) {
         cy: pos.y,
         r: 14,
         fill: "none",
-        stroke: "#2ecc71",
+        stroke: isSupplyConflict ? '#ef4444' : '#2ecc71',
         strokeWidth: 1.5,
         opacity: 0.5,
         strokeDasharray: "3,3",
@@ -3850,6 +3888,74 @@ function wireNetId(circuit, wire) {
     }
   }
   return null;
+}
+function quadraticPoints(a, control, b) {
+  let steps = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 16;
+  return Array.from({
+    length: steps + 1
+  }, (_, i) => {
+    const t = i / steps,
+      u = 1 - t;
+    return {
+      x: u * u * a.x + 2 * u * t * control.x + t * t * b.x,
+      y: u * u * a.y + 2 * u * t * control.y + t * t * b.y
+    };
+  });
+}
+
+/** Shared visible/hit geometry for an ordinary free wire. */
+function freeWireCurve(wire, a, b) {
+  let hash = 0;
+  for (const ch of wire.id) hash = hash * 31 + ch.charCodeAt(0) >>> 0;
+  const dist = Math.hypot(b.x - a.x, b.y - a.y);
+  const lift = Math.min(30, Math.max(10, dist * 0.14)) * (hash % 2 ? 1 : -1) * (1 + hash % 3 * 0.35);
+  const nx = -(b.y - a.y) / (dist || 1),
+    ny = (b.x - a.x) / (dist || 1);
+  const control = {
+    x: (a.x + b.x) / 2 + nx * lift,
+    y: (a.y + b.y) / 2 + ny * lift
+  };
+  return {
+    path: "M ".concat(a.x, " ").concat(a.y, " Q ").concat(control.x, " ").concat(control.y, " ").concat(b.x, " ").concat(b.y),
+    points: quadraticPoints(a, control, b)
+  };
+}
+
+/** Approximate the tap renderer's column-gap staple for pointer hits. */
+function tapWireHitPoints(a, b) {
+  const sx = b.x >= a.x ? 1 : -1;
+  const gapX = a.x + sx * (_interaction_breadboard_snap_js__WEBPACK_IMPORTED_MODULE_5__.BB_PITCH / 2);
+  return [a, {
+    x: gapX,
+    y: a.y
+  }, {
+    x: gapX,
+    y: b.y
+  }, b];
+}
+
+/** Shared centre-line points for a rendered breadboard jumper. */
+function jumperHitPoints(bb, a, b, index) {
+  if (Math.abs(b.x - a.x) <= 4 * _interaction_breadboard_snap_js__WEBPACK_IMPORTED_MODULE_5__.BB_PITCH) {
+    const lift = Math.max(12, Math.hypot(b.x - a.x, b.y - a.y) * 0.2);
+    const control = {
+      x: (a.x + b.x) / 2,
+      y: Math.min(a.y, b.y) - lift
+    };
+    return quadraticPoints(a, control, b);
+  }
+  const o = (0,_interaction_breadboard_snap_js__WEBPACK_IMPORTED_MODULE_5__.bbHoleOrigin)(bb);
+  const topBlock = y => y < (o.topRowsY + o.bottomRowsY) / 2;
+  const offset = index % 4 * 4;
+  let laneY;
+  if (topBlock(a.y) && topBlock(b.y)) laneY = o.topRowsY - 12 - offset;else if (!topBlock(a.y) && !topBlock(b.y)) laneY = o.bottomRowsY + 4 * _interaction_breadboard_snap_js__WEBPACK_IMPORTED_MODULE_5__.BB_PITCH + 12 + offset;else laneY = (o.topRowsY + 4 * _interaction_breadboard_snap_js__WEBPACK_IMPORTED_MODULE_5__.BB_PITCH + o.bottomRowsY) / 2 + (offset - 6);
+  return [a, {
+    x: a.x,
+    y: laneY
+  }, {
+    x: b.x,
+    y: laneY
+  }, b];
 }
 function Wires(_ref12) {
   let {
@@ -3991,13 +4097,7 @@ function Wires(_ref12) {
       }
     } else {
       // Single wires: jumper-style arcs with hash-derived curvature
-      let h = 0;
-      for (const ch of wire.id) h = h * 31 + ch.charCodeAt(0) >>> 0;
-      const dist = Math.hypot(b.x - a.x, b.y - a.y);
-      const lift = Math.min(30, Math.max(10, dist * 0.14)) * (h % 2 ? 1 : -1) * (1 + h % 3 * 0.35);
-      const nx = -(b.y - a.y) / (dist || 1),
-        ny = (b.x - a.x) / (dist || 1);
-      pathD = "M ".concat(a.x, " ").concat(a.y, " Q ").concat((a.x + b.x) / 2 + nx * lift, " ").concat((a.y + b.y) / 2 + ny * lift, " ").concat(b.x, " ").concat(b.y);
+      pathD = freeWireCurve(wire, a, b).path;
     }
     const isSelected = selectedWire === wire.id;
     const isHovered = hoveredNet && hoveredNet === wire.netId;
@@ -6104,6 +6204,7 @@ function BoardCanvas(_ref22) {
   const machineRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
   if (!machineRef.current) {
     const hit = (0,_interaction_hittest_js__WEBPACK_IMPORTED_MODULE_3__.createHitTest)(() => partsRef.current, () => wiresRef.current.map(w => {
+      var _w$waypoints;
       const endPos = e => {
         if (e.board) {
           const bb = partsRef.current.find(pp => pp.id === e.board);
@@ -6118,9 +6219,19 @@ function BoardCanvas(_ref22) {
         id: w.id,
         points: []
       };
+      if ((_w$waypoints = w.waypoints) !== null && _w$waypoints !== void 0 && _w$waypoints.length) return {
+        id: w.id,
+        points: [a, ...w.waypoints, b]
+      };
+      if ((0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_25__.isBoardEndpoint)(w.from) || (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_25__.isBoardEndpoint)(w.to)) {
+        return {
+          id: w.id,
+          points: tapWireHitPoints(a, b)
+        };
+      }
       return {
         id: w.id,
-        points: [a, ...(w.waypoints || []), b]
+        points: freeWireCurve(w, a, b).points
       };
     }), part => part.terminals.map(t => _objectSpread({
       terminal: t
@@ -6130,18 +6241,18 @@ function BoardCanvas(_ref22) {
     hit.wireAt = (wx, wy, radius) => {
       const c = circuitRef.current;
       if (c && c.holeWires) {
-        for (const jw of c.holeWires()) {
+        const jumpers = c.holeWires();
+        for (let jwIdx = jumpers.length - 1; jwIdx >= 0; jwIdx--) {
+          const jw = jumpers[jwIdx];
           const bb = partsRef.current.find(q => q.id === jw.boardId);
           if (!bb) continue;
           const a = (0,_interaction_seat_geometry_js__WEBPACK_IMPORTED_MODULE_6__.holeWorldPos)(bb, jw.a),
             b = (0,_interaction_seat_geometry_js__WEBPACK_IMPORTED_MODULE_6__.holeWorldPos)(bb, jw.b);
           if (!a || !b) continue;
-          // Sample the arc coarsely: chord segments through the raised midpoint.
-          const mid = {
-            x: (a.x + b.x) / 2,
-            y: Math.min(a.y, b.y) - Math.max(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.25)
-          };
-          for (const [p1, p2] of [[a, mid], [mid, b]]) {
+          const points = jumperHitPoints(bb, a, b, jwIdx);
+          for (let i = 0; i + 1 < points.length; i++) {
+            const p1 = points[i],
+              p2 = points[i + 1];
             const d = (0,_interaction_hittest_js__WEBPACK_IMPORTED_MODULE_3__.distToSegment)(wx, wy, p1.x, p1.y, p2.x, p2.y);
             if (d <= radius + 3) return jw.ref;
           }
@@ -7922,56 +8033,6 @@ function BoardCanvas(_ref22) {
       fontFamily: "monospace",
       fontWeight: "bold"
     }, "adjust"));
-  })(), placeGhost && (_FOOTPRINTS$placeGhos => {
-    const fp = (_FOOTPRINTS$placeGhos = _interaction_hittest_js__WEBPACK_IMPORTED_MODULE_3__.FOOTPRINTS[placeGhost.kind]) !== null && _FOOTPRINTS$placeGhos !== void 0 ? _FOOTPRINTS$placeGhos : {
-      w: 48,
-      h: 48
-    };
-    // When snapped to a breadboard, seated parts scale to 0.78 —
-    // the ghost must match so the part does not change size on drop.
-    const scale = placeGhost.snapped ? 0.78 : 1;
-    const gw = fp.w * scale,
-      gh = fp.h * scale;
-    return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
-      style: {
-        pointerEvents: 'none'
-      },
-      opacity: 0.55
-    }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("rect", {
-      x: placeGhost.x - gw / 2,
-      y: placeGhost.y - gh / 2,
-      width: gw,
-      height: gh,
-      rx: 6,
-      fill: "#3498db",
-      fillOpacity: 0.15,
-      stroke: "#3498db",
-      strokeWidth: 1.5,
-      strokeDasharray: "6,3"
-    }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("text", {
-      x: placeGhost.x,
-      y: placeGhost.y + 4,
-      textAnchor: "middle",
-      fill: "#3498db",
-      fontSize: 11,
-      fontFamily: "monospace"
-    }, placeGhost.kind), placeGhost.legs && placeGhost.legs.map((leg, i) => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", {
-      key: i,
-      cx: leg.x,
-      cy: leg.y,
-      r: 4.5,
-      fill: leg.free ? '#2ecc71' : '#e74c3c',
-      fillOpacity: 0.8,
-      stroke: leg.free ? '#27ae60' : '#c0392b',
-      strokeWidth: 1.5
-    })), placeGhost.snapped && !placeGhost.legs && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", {
-      cx: placeGhost.x,
-      cy: placeGhost.y,
-      r: 5,
-      fill: "none",
-      stroke: "#f1c40f",
-      strokeWidth: 2
-    }));
   })(), parts.filter(p => p.kind === 'breadboard').map(bb => {
     var _circuit$breadboards;
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_BreadboardView_jsx__WEBPACK_IMPORTED_MODULE_9__.BreadboardView, {
@@ -8142,7 +8203,55 @@ function BoardCanvas(_ref22) {
     onKeypadKey: onKeypadKey,
     onSetPartParam: onSetPartParam,
     videoFn: videoFn
-  }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(Wires, {
+  }), placeGhost && (_SEATED_PREVIEW_SCALE => {
+    const bounds = (0,_interaction_hittest_js__WEBPACK_IMPORTED_MODULE_3__.partBounds)(placeGhost);
+    // Only faces that really shrink when seated may shrink here.
+    // Nano and Pico keep their physical header pitch on a board.
+    const seatScale = placeGhost.snapped ? (_SEATED_PREVIEW_SCALE = SEATED_PREVIEW_SCALE[placeGhost.kind]) !== null && _SEATED_PREVIEW_SCALE !== void 0 ? _SEATED_PREVIEW_SCALE : 1 : 1;
+    const gw = (bounds.maxX - bounds.minX) * seatScale;
+    const gh = (bounds.maxY - bounds.minY) * seatScale;
+    return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
+      "data-placement-ghost": placeGhost.kind,
+      style: {
+        pointerEvents: 'none'
+      },
+      opacity: 0.72
+    }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("rect", {
+      x: placeGhost.x - gw / 2,
+      y: placeGhost.y - gh / 2,
+      width: gw,
+      height: gh,
+      rx: 6,
+      fill: "#3498db",
+      fillOpacity: 0.18,
+      stroke: "#60a5fa",
+      strokeWidth: 2,
+      strokeDasharray: "6,3"
+    }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("text", {
+      x: placeGhost.x,
+      y: placeGhost.y + 4,
+      textAnchor: "middle",
+      fill: "#93c5fd",
+      fontSize: 11,
+      fontFamily: "monospace"
+    }, placeGhost.kind), placeGhost.legs && placeGhost.legs.map((leg, i) => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", {
+      key: i,
+      cx: leg.x,
+      cy: leg.y,
+      r: 4.5,
+      fill: leg.free ? '#2ecc71' : '#e74c3c',
+      fillOpacity: 0.8,
+      stroke: leg.free ? '#27ae60' : '#c0392b',
+      strokeWidth: 1.5
+    })), placeGhost.snapped && !placeGhost.legs && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", {
+      cx: placeGhost.x,
+      cy: placeGhost.y,
+      r: 5,
+      fill: "none",
+      stroke: "#f1c40f",
+      strokeWidth: 2
+    }));
+  })(), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(Wires, {
     wires: wires,
     parts: parts,
     circuit: circuit,
@@ -8374,7 +8483,9 @@ function BoardCanvas(_ref22) {
     onTerminalClick: handleTerminalClick,
     onTerminalDown: handleTerminalDown,
     onTerminalUp: handleTerminalUp,
-    placingProbe: placingProbe
+    placingProbe: placingProbe,
+    selectedParts: selectedParts,
+    hoveredPart: hoveredPart
   }), drcWarnings && drcWarnings.length > 0 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_DrcOverlay_jsx__WEBPACK_IMPORTED_MODULE_11__.DrcOverlay, {
     warnings: drcWarnings,
     parts: parts
@@ -8950,10 +9061,7 @@ function HoleGrid(_ref2) {
   const rows = (0,_interaction_breadboard_snap_js__WEBPACK_IMPORTED_MODULE_1__.bbRows)(part);
   const holes = [];
   for (const row of rows) {
-    const isRail = row.name.startsWith('t') || row.name.startsWith('b');
     for (let c = 0; c < origin.cols; c++) {
-      // Real boards break rail contacts at column groups of 5–6
-      if (isRail && c % 6 === 5) continue;
       const col = c + 1;
       const holeId = "".concat(row.name).concat(col);
       const x = origin.x + c * _interaction_breadboard_snap_js__WEBPACK_IMPORTED_MODULE_1__.BB_PITCH;
@@ -8992,6 +9100,7 @@ function HoleGrid(_ref2) {
       }
       holes.push(/*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("circle", {
         key: holeId,
+        "data-hole": holeId,
         cx: x,
         cy: y,
         r: HOLE_RADIUS,
@@ -9096,6 +9205,7 @@ function PlacedParts(_ref3) {
  * @param {{ part: object, model?: BreadboardModel, highlightStrip?: string, footprint?: object }} props
  */
 function BreadboardView(_ref6) {
+  var _part$params;
   let {
     part,
     model,
@@ -9125,6 +9235,8 @@ function BreadboardView(_ref6) {
   const hasHighlight = selectedStrips.size > 0 || hoveredStrips.size > 0;
   const effectiveHighlight = hasHighlight ? strip => selectedStrips.has(strip) ? 'selected' : hoveredStrips.has(strip) ? 'hovered' : false : strip => strip === highlightStrip ? 'selected' : false;
   return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
+    "data-breadboard": part.id,
+    "data-breadboard-size": ((_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.size) || 'full',
     style: {
       pointerEvents: 'none'
     }
@@ -9472,10 +9584,13 @@ function CircuitDesigner(_ref) {
   const [examplesOpen, setExamplesOpen] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(true);
   const [selectorSplit, setSelectorSplit] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(0.68);
   const [codexMode, setCodexMode] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false);
-  const [rightOpen, setRightOpen] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(!embedded || debuggerOn);
+  // Owner requirement: every fresh designer prioritizes bench space. A
+  // debugger or lesson/bench context may explicitly demand Instruments;
+  // simulation opens the column at the moment it is used.
+  const [rightOpen, setRightOpen] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(!!debuggerOn || !!benchOpen);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
-    if (debuggerOn) setRightOpen(true);
-  }, [debuggerOn]);
+    if (debuggerOn || benchOpen) setRightOpen(true);
+  }, [debuggerOn, benchOpen]);
   const [showScope, setShowScope] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(() => {
     try {
       return localStorage.getItem('bw-instr-scope') === '1';
@@ -9525,6 +9640,12 @@ function CircuitDesigner(_ref) {
 
   // Detect retro CPU on the board for the Build Machine action
   const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80');
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    // Machine-class examples need Build Machine and their program loader,
+    // both of which live in Instruments. This is a contextual exception to
+    // the owner default; an empty or ordinary Circuit Designer stays closed.
+    if (hasRetroCpu) setRightOpen(true);
+  }, [hasRetroCpu]);
 
   // Build Machine action: run the extractor, show result, boot on success.
   // Extractors come from the engine (injected via setEngine) or via the
@@ -18098,15 +18219,25 @@ function PartButton(_ref2) {
   const effectiveParams = kind === 'led' ? _objectSpread(_objectSpread({}, params), {}, {
     color: ledColor
   }) : params;
+  const startPlacement = () => {
+    // Arm ghost placement: press-drag-release onto the canvas, or click here
+    // and click the canvas — both commit at the cursor.
+    if (onStartPlace) onStartPlace(kind, effectiveParams);else onAddPart(kind, effectiveParams);
+  };
   return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", {
     style: {
       position: 'relative'
     }
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", {
-    onPointerDown: () => {
-      // Arm ghost placement: press-drag-release onto the canvas, or
-      // click here and click the canvas — both commit at the cursor.
-      if (onStartPlace) onStartPlace(kind, effectiveParams);else onAddPart(kind, effectiveParams);
+    role: "button",
+    tabIndex: 0,
+    "aria-label": label,
+    "data-palette-kind": kind,
+    onPointerDown: startPlacement,
+    onKeyDown: event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      startPlacement();
     },
     onMouseEnter: () => setHovered(true),
     onMouseLeave: () => setHovered(false),
@@ -20876,12 +21007,12 @@ function SchematicPanel(_ref2) {
     stroke: "#3d5a75",
     strokeWidth: 1.3,
     fill: "none"
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("line", {
+  }, !w.segments && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("line", {
     x1: w.trunk.x,
     y1: w.trunk.y1,
     x2: w.trunk.x,
     y2: w.trunk.y2
-  }), w.stubs.map((seg, i) => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("line", {
+  }), (w.segments || w.stubs).map((seg, i) => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("line", {
     key: i,
     x1: seg[0].x,
     y1: seg[0].y,
@@ -29732,6 +29863,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _model_parts_registry_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../model/parts-registry.js */ "./src/lib/bw-circuit-ui/model/parts-registry.js");
 /* harmony import */ var _model_board_geometry_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../model/board-geometry.js */ "./src/lib/bw-circuit-ui/model/board-geometry.js");
+/* harmony import */ var _model_dip_geometry_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../model/dip-geometry.js */ "./src/lib/bw-circuit-ui/model/dip-geometry.js");
+
 
 
 
@@ -30184,12 +30317,20 @@ const DEFAULT_FOOTPRINT = {
 
 /** @param {{kind: string}} part */
 function footprintOf(part) {
-  var _FOOTPRINTS$part$kind;
+  var _sidecar$footprint, _FOOTPRINTS$part$kind;
   if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(part.kind)) {
     const geometry = (0,_model_board_geometry_js__WEBPACK_IMPORTED_MODULE_1__.boardVisualGeometry)(part.kind, (0,_model_parts_registry_js__WEBPACK_IMPORTED_MODULE_0__.getSidecar)(part.kind));
     if (geometry) return {
       w: geometry.w,
       h: geometry.h
+    };
+  }
+  const sidecar = (0,_model_parts_registry_js__WEBPACK_IMPORTED_MODULE_0__.getSidecar)(part.kind);
+  if (sidecar !== null && sidecar !== void 0 && (_sidecar$footprint = sidecar.footprint) !== null && _sidecar$footprint !== void 0 && _sidecar$footprint.straddlesGutter) {
+    const dip = (0,_model_dip_geometry_js__WEBPACK_IMPORTED_MODULE_2__.dipPackageGeometry)(sidecar);
+    if (dip) return {
+      w: dip.w,
+      h: dip.h
     };
   }
   return (_FOOTPRINTS$part$kind = FOOTPRINTS[part.kind]) !== null && _FOOTPRINTS$part$kind !== void 0 ? _FOOTPRINTS$part$kind : DEFAULT_FOOTPRINT;
@@ -32944,12 +33085,36 @@ class Circuit {
       part: "@bb:".concat(e.board),
       terminal: e.hole
     } : e;
+
+    // One physical pin must be ONE net key. seat.leadMap spells STC pins
+    // uppercase ("P1.0") while part.terminals and the wires that reference
+    // them are lowercase ("p1.0"), so the union-find below saw two distinct
+    // terminals and split one pin into two nets: the breadboard column got
+    // MCU:P1.0 and the LED's wire got MCU:p1.0. The circuit still solved
+    // (the stray half was a singleton), but findPinNet could resolve the
+    // schematic's pin to the empty half and draw the MCU driving nothing —
+    // 27 STC15 variants rendered exactly that. Canonicalise every terminal
+    // to the part's DECLARED spelling before any net key is built.
+    const canonBy = new Map(); // partId -> Map(lowercase -> declared spelling)
+    for (const p of this.parts) {
+      const m = new Map();
+      for (const t of p.terminals || []) m.set(String(t).toLowerCase(), t);
+      canonBy.set(p.id, m);
+    }
+    const canonEnd = e => {
+      const m = canonBy.get(e.part);
+      if (!m) return e; // pseudo-terminals (@bb:*) and unknown parts pass through
+      const declared = m.get(String(e.terminal).toLowerCase());
+      return declared === undefined || declared === e.terminal ? e : _objectSpread(_objectSpread({}, e), {}, {
+        terminal: declared
+      });
+    };
     const netMap = new Map(); // netId → Map of key → {part, terminal}
     for (const w of this.wires) {
       if (!netMap.has(w.netId)) netMap.set(w.netId, new Map());
       const net = netMap.get(w.netId);
-      const f = holeEnd(w.from);
-      const t = holeEnd(w.to);
+      const f = canonEnd(holeEnd(w.from));
+      const t = canonEnd(holeEnd(w.to));
       const fk = "".concat(f.part, ":").concat(f.terminal);
       const tk = "".concat(t.part, ":").concat(t.terminal);
       if (!net.has(fk)) net.set(fk, f);
@@ -32975,7 +33140,7 @@ class Circuit {
         if (!this.boardStripNets) this.boardStripNets = new Map();
         this.boardStripNets.set(boardId, derived.stripToNet);
         const stripNets = derived.nets.map(n => _objectSpread(_objectSpread({}, n), {}, {
-          terminals: [...n.terminals]
+          terminals: n.terminals.map(canonEnd)
         }));
         // Glue each tap-wire hole into its strip's net (or fabricate the
         // strip's net if nothing else lives there yet). For column strips
@@ -34672,12 +34837,27 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   DIP_PIN_PITCH: () => (/* binding */ DIP_PIN_PITCH),
 /* harmony export */   DIP_ROW_OFFSET: () => (/* binding */ DIP_ROW_OFFSET),
+/* harmony export */   dipPackageGeometry: () => (/* binding */ dipPackageGeometry),
 /* harmony export */   dipTerminalPositions: () => (/* binding */ dipTerminalPositions)
 /* harmony export */ });
 // Standard breadboard geometry: holes are 14 world units apart and the two
 // DIP rows sit on the e/f strips, 38 units apart across the gutter.
 const DIP_PIN_PITCH = 14;
 const DIP_ROW_OFFSET = 19;
+
+/** Physical body envelope used by both the DIP renderer and hit testing. */
+function dipPackageGeometry(sidecar) {
+  var _sidecar$terminals;
+  if (!(sidecar !== null && sidecar !== void 0 && (_sidecar$terminals = sidecar.terminals) !== null && _sidecar$terminals !== void 0 && _sidecar$terminals.length)) return null;
+  const left = sidecar.terminals.filter(t => t.x <= sidecar.w / 2).length;
+  const right = sidecar.terminals.length - left;
+  const pinsPerSide = Math.max(left, right);
+  return {
+    w: Math.max(34, (pinsPerSide - 1) * DIP_PIN_PITCH + 20),
+    h: 52,
+    pinsPerSide
+  };
+}
 
 /**
  * Terminal offsets for a DIP part, keyed by terminal NAME.
@@ -39969,6 +40149,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   projectSchematic: () => (/* binding */ projectSchematic)
 /* harmony export */ });
+/* harmony import */ var _schematic_symbols_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./schematic-symbols.js */ "./src/lib/bw-circuit-ui/model/schematic-symbols.js");
 /**
  * Schematic projection — the circuit, redrawn as a schematic. A PROJECTION:
  * pure function of (parts, nets), no state of its own, no interaction world.
@@ -39985,6 +40166,7 @@ __webpack_require__.r(__webpack_exports__);
  *
  * @module
  */
+
 
 const COL_W = 150;
 const ROW_H = 110;
@@ -40140,7 +40322,7 @@ function projectSchematic(parts, nets) {
   // "the chip is connected to nothing" (owner screenshots, 2026-08-10).
   const symbols = [];
   for (const p of electrical) {
-    var _yOf$get, _p$terminals2, _p$params;
+    var _yOf$get, _p$terminals2, _p$params, _p$params2;
     const col = layoutCol.get(p.id);
     const row = rowOf.get(p.id);
     const x = MARGIN_X + col * COL_W;
@@ -40153,7 +40335,19 @@ function projectSchematic(parts, nets) {
     });
     if (terms.length === 0) terms = allTerms.slice(0, 2); // disconnected part: keep its shape
     const perSide = Math.ceil(terms.length / 2);
+    const art = (0,_schematic_symbols_js__WEBPACK_IMPORTED_MODULE_0__.shapeFor)(p.kind, (_p$params = p.params) !== null && _p$params !== void 0 ? _p$params : {});
     const pins = terms.map((name, i) => {
+      var _art$anchors;
+      const anchor = art === null || art === void 0 || (_art$anchors = art.anchors) === null || _art$anchors === void 0 ? void 0 : _art$anchors[String(name).toLowerCase()];
+      if (anchor) {
+        return {
+          name,
+          netId: findPinNet(nets, p.id, name),
+          side: anchor.side,
+          x: x + anchor.x,
+          y: y + anchor.y
+        };
+      }
       let side, offset;
       if (terms.length <= 2) {
         side = i === 0 ? 'left' : 'right';
@@ -40175,7 +40369,7 @@ function projectSchematic(parts, nets) {
       id: p.id,
       kind: p.kind,
       label: p.declName || p.id,
-      params: (_p$params = p.params) !== null && _p$params !== void 0 ? _p$params : {},
+      params: (_p$params2 = p.params) !== null && _p$params2 !== void 0 ? _p$params2 : {},
       col,
       row,
       x,
@@ -40269,26 +40463,203 @@ function projectSchematic(parts, nets) {
     })) return 'VCC';
     return "N".concat(String(index + 1).padStart(2, '0'));
   };
+  // A label text IS the connection when routing falls back to labels: a
+  // reader has nothing else to go on. So the text must identify the net
+  // uniquely. netName's GND/VCC heuristics are not injective — a board with
+  // a power switch has VBUS and VSYS nets that both look like "VCC", and
+  // drawing both as "VCC" renders the switch shorted. Disambiguate the
+  // second and later claimants; the first keeps the plain name, so circuits
+  // without a collision render byte-identically.
+  const routeName = new Map(); // netId -> label text
+  {
+    const used = new Map(); // text -> how many nets have claimed it
+    for (const [i, r] of routed.entries()) {
+      var _used$get;
+      const base = netName(r, i);
+      const seen = (_used$get = used.get(base)) !== null && _used$get !== void 0 ? _used$get : 0;
+      used.set(base, seen + 1);
+      routeName.set(r.netId, seen === 0 ? base : "".concat(base).concat(seen + 1));
+    }
+  }
+  const labelPin = (r, text, pin) => {
+    const vectors = {
+      left: [-1, 0, 'end'],
+      right: [1, 0, 'start'],
+      top: [0, -1, 'middle'],
+      bottom: [0, 1, 'middle']
+    };
+    const [dx, dy, anchor] = vectors[pin.side] || vectors.right;
+    netLabels.push({
+      netId: r.netId,
+      text,
+      x1: pin.x,
+      y1: pin.y,
+      x2: pin.x + dx * 13,
+      y2: pin.y + dy * 13,
+      x: pin.x + dx * 16,
+      y: pin.y + dy * 16 + (dy === 0 ? 2.5 : dy < 0 ? -2 : 7),
+      anchor
+    });
+  };
+  const bodyBounds = s => {
+    const art = (0,_schematic_symbols_js__WEBPACK_IMPORTED_MODULE_0__.shapeFor)(s.kind, s.params);
+    if (art) return {
+      left: s.x - 25,
+      right: s.x + 25,
+      top: s.y - 22,
+      bottom: s.y + 22
+    };
+    const halfH = Math.max(20, (Math.max(1, s.pinsPerSide) - 1) * PIN_PITCH / 2 + 16);
+    return {
+      left: s.x - 26,
+      right: s.x + 26,
+      top: s.y - halfH,
+      bottom: s.y + halfH
+    };
+  };
+  const segmentCrossesBody = (a, b, box) => {
+    if (a.y === b.y) {
+      return a.y > box.top && a.y < box.bottom && Math.max(a.x, b.x) > box.left && Math.min(a.x, b.x) < box.right;
+    }
+    if (a.x === b.x) {
+      return a.x > box.left && a.x < box.right && Math.max(a.y, b.y) > box.top && Math.min(a.y, b.y) < box.bottom;
+    }
+    return false;
+  };
+  const routeCollisions = route => {
+    const segments = route.segments || [[{
+      x: route.trunk.x,
+      y: route.trunk.y1
+    }, {
+      x: route.trunk.x,
+      y: route.trunk.y2
+    }], ...route.stubs];
+    const hits = [];
+    for (const s of symbols) {
+      const box = bodyBounds(s);
+      if (segments.some(_ref => {
+        let [a, b] = _ref;
+        return segmentCrossesBody(a, b, box);
+      })) hits.push(s.id);
+    }
+    return hits;
+  };
+  const collisionRoutedNets = [];
+  const detouredRoutingNets = [];
+  const obstacleRoute = (start, end) => {
+    // Route geometry owns its points. Reusing pin objects here would shift
+    // endpoints twice when projection bounds translate symbols and wires.
+    start = {
+      x: start.x,
+      y: start.y
+    };
+    end = {
+      x: end.x,
+      y: end.y
+    };
+    const boxes = symbols.map(bodyBounds);
+    const clear = _ref2 => {
+      let [a, b] = _ref2;
+      return (a.x === b.x || a.y === b.y) && !boxes.some(box => segmentCrossesBody(a, b, box));
+    };
+    const xs = new Set([start.x, end.x]);
+    const ys = new Set([start.y, end.y]);
+    for (const box of boxes) {
+      xs.add(box.left - 10);
+      xs.add(box.right + 10);
+      ys.add(box.top - 10);
+      ys.add(box.bottom + 10);
+    }
+    const compact = points => {
+      const out = [];
+      for (const point of points) {
+        const last = out[out.length - 1];
+        if (!last || last.x !== point.x || last.y !== point.y) out.push(point);
+      }
+      for (let i = 1; i < out.length - 1;) {
+        const a = out[i - 1],
+          b = out[i],
+          c = out[i + 1];
+        if (a.x === b.x && b.x === c.x || a.y === b.y && b.y === c.y) out.splice(i, 1);else i++;
+      }
+      return out;
+    };
+    const candidates = [[start, end], [start, {
+      x: end.x,
+      y: start.y
+    }, end], [start, {
+      x: start.x,
+      y: end.y
+    }, end]];
+    for (const x of xs) candidates.push([start, {
+      x,
+      y: start.y
+    }, {
+      x,
+      y: end.y
+    }, end]);
+    for (const y of ys) candidates.push([start, {
+      x: start.x,
+      y
+    }, {
+      x: end.x,
+      y
+    }, end]);
+    for (const x of xs) for (const y of ys) {
+      candidates.push([start, {
+        x: start.x,
+        y
+      }, {
+        x,
+        y
+      }, {
+        x,
+        y: end.y
+      }, end]);
+      candidates.push([start, {
+        x,
+        y: start.y
+      }, {
+        x,
+        y
+      }, {
+        x: end.x,
+        y
+      }, end]);
+    }
+    let best = null,
+      bestCost = Infinity;
+    for (const raw of candidates) {
+      const points = compact(raw);
+      // Each segment owns endpoint objects; shared corner references would be
+      // translated once per adjoining segment during bounds normalization.
+      const segments = points.slice(1).map((point, i) => [{
+        x: points[i].x,
+        y: points[i].y
+      }, {
+        x: point.x,
+        y: point.y
+      }]);
+      if (!segments.every(clear)) continue;
+      const length = segments.reduce((n, _ref3) => {
+        let [a, b] = _ref3;
+        return n + Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+      }, 0);
+      const cost = length + Math.max(0, segments.length - 1) * 12;
+      if (cost < bestCost) {
+        best = segments;
+        bestCost = cost;
+      }
+    }
+    return best;
+  };
 
   // Second pass: spread the nets of each gap across its usable band.
   const BAND = COL_W - 2 * PIN_HALF - 24; // free space between column pin tips
   for (const [routeIndex, r] of routed.entries()) {
     if (labelledRouting) {
-      const text = netName(r, routeIndex);
-      for (const pin of r.pins) {
-        const direction = pin.side === 'left' ? -1 : 1;
-        netLabels.push({
-          netId: r.netId,
-          text,
-          x1: pin.x,
-          y1: pin.y,
-          x2: pin.x + direction * 13,
-          y2: pin.y,
-          x: pin.x + direction * 16,
-          y: pin.y + 2.5,
-          anchor: direction < 0 ? 'end' : 'start'
-        });
-      }
+      const text = routeName.get(r.netId);
+      for (const pin of r.pins) labelPin(r, text, pin);
       continue;
     }
     const mates = gapUse.get(r.gap);
@@ -40307,13 +40678,8 @@ function projectSchematic(parts, nets) {
         x: trunkX,
         y: pin.y
       }]);
-      if (r.pins.length > 2) junctions.push({
-        x: trunkX,
-        y: pin.y,
-        netId: r.netId
-      });
     }
-    wires.push({
+    const route = {
       netId: r.netId,
       trunk: {
         x: trunkX,
@@ -40321,7 +40687,36 @@ function projectSchematic(parts, nets) {
         y2: maxY
       },
       stubs: points
-    });
+    };
+    const collisions = routeCollisions(route);
+    if (collisions.length) {
+      if (r.pins.length === 2) {
+        const segments = obstacleRoute(r.pins[0], r.pins[1]);
+        if (segments) {
+          wires.push({
+            netId: r.netId,
+            segments
+          });
+          detouredRoutingNets.push(r.netId);
+          continue;
+        }
+      }
+      collisionRoutedNets.push({
+        netId: r.netId,
+        symbols: collisions
+      });
+      const text = routeName.get(r.netId);
+      for (const pin of r.pins) labelPin(r, text, pin);
+      continue;
+    }
+    wires.push(route);
+    if (r.pins.length > 2) {
+      for (const pin of r.pins) junctions.push({
+        x: trunkX,
+        y: pin.y,
+        netId: r.netId
+      });
+    }
   }
 
   // Canvas bounds from the GEOMETRY, not the grid: multi-pin symbols and
@@ -40344,8 +40739,10 @@ function projectSchematic(parts, nets) {
     for (const pin of sym.pins) touch(pin.x, pin.y);
   }
   for (const w of wires) {
-    touch(w.trunk.x, w.trunk.y1);
-    touch(w.trunk.x, w.trunk.y2);
+    if (w.segments) for (const seg of w.segments) for (const pt of seg) touch(pt.x, pt.y);else {
+      touch(w.trunk.x, w.trunk.y1);
+      touch(w.trunk.x, w.trunk.y2);
+    }
   }
   for (const l of netLabels) {
     touch(l.x1, l.y1);
@@ -40368,12 +40765,19 @@ function projectSchematic(parts, nets) {
     }
   }
   for (const w of wires) {
-    w.trunk.x += shiftX;
-    w.trunk.y1 += shiftY;
-    w.trunk.y2 += shiftY;
-    for (const seg of w.stubs) for (const pt of seg) {
-      pt.x += shiftX;
-      pt.y += shiftY;
+    if (w.segments) {
+      for (const seg of w.segments) for (const pt of seg) {
+        pt.x += shiftX;
+        pt.y += shiftY;
+      }
+    } else {
+      w.trunk.x += shiftX;
+      w.trunk.y1 += shiftY;
+      w.trunk.y2 += shiftY;
+      for (const seg of w.stubs) for (const pt of seg) {
+        pt.x += shiftX;
+        pt.y += shiftY;
+      }
     }
   }
   for (const j of junctions) {
@@ -40396,6 +40800,8 @@ function projectSchematic(parts, nets) {
     junctions,
     netLabels,
     labelledRouting,
+    collisionRoutedNets,
+    detouredRoutingNets,
     width,
     height
   };
@@ -40478,6 +40884,9 @@ __webpack_require__.r(__webpack_exports__);
  * @property {Array<string|{d:string,w?:number,fill?:string}>} paths
  * @property {Array<{cx:number,cy:number,r:number,fill?:string}>} [circles]
  * @property {Array<{x:number,y:number,s:string,size?:number}>} [texts] static glyphs
+ * @property {Record<string,{x:number,y:number,side:'left'|'right'|'top'|'bottom'}>} [anchors]
+ *   terminal-specific connection points for symbols whose pins are not a
+ *   simple left/right pair
  * @property {'ohms'|'farads'|'volts'} [value] which param renders as a value label
  */
 
@@ -40498,6 +40907,42 @@ const SPDT = {
     r: 2
   }]
 };
+
+/** Connection aliases shared by bipolar and field-effect transistors. */
+function transistorAnchors(control, upper, lower) {
+  return {
+    [control]: {
+      x: -30,
+      y: 0,
+      side: 'left'
+    },
+    [control[0]]: {
+      x: -30,
+      y: 0,
+      side: 'left'
+    },
+    [upper]: {
+      x: 30,
+      y: -12,
+      side: 'right'
+    },
+    [upper[0]]: {
+      x: 30,
+      y: -12,
+      side: 'right'
+    },
+    [lower]: {
+      x: 30,
+      y: 12,
+      side: 'right'
+    },
+    [lower[0]]: {
+      x: 30,
+      y: 12,
+      side: 'right'
+    }
+  };
+}
 
 /**
  * A seven-segment digit outline, drawn as the figure-8 every datasheet uses.
@@ -40581,7 +41026,44 @@ const SYMBOLS = {
     value: 'ohms'
   },
   potentiometer: {
-    paths: [ZIGZAG, 'M 0 -16 L 0 -6 M -4 -10 L 0 -6 L 4 -10']
+    paths: [ZIGZAG, 'M 0 -30 L 0 -6 M -4 -10 L 0 -6 L 4 -10'],
+    anchors: {
+      a: {
+        x: -30,
+        y: 0,
+        side: 'left'
+      },
+      b: {
+        x: 30,
+        y: 0,
+        side: 'right'
+      },
+      wiper: {
+        x: 0,
+        y: -30,
+        side: 'top'
+      },
+      w: {
+        x: 0,
+        y: -30,
+        side: 'top'
+      },
+      '1': {
+        x: -30,
+        y: 0,
+        side: 'left'
+      },
+      '2': {
+        x: 0,
+        y: -30,
+        side: 'top'
+      },
+      '3': {
+        x: 30,
+        y: 0,
+        side: 'right'
+      }
+    }
   },
   capacitor: {
     paths: ['M -30 0 L -4 0 M 4 0 L 30 0', 'M -4 -10 L -4 10 M 4 -10 L 4 10'],
@@ -40754,7 +41236,7 @@ const SYMBOLS = {
     paths: ['M -30 0 L -16 0', 'M -16 -11 L -16 11', {
       d: 'M -9 -12 L -9 -5 M -9 -3 L -9 3 M -9 5 L -9 12',
       w: 1.8
-    }, 'M -9 -9 L 10 -9 L 10 -20', 'M -9 9 L 10 9 L 10 20', 'M -1 0 L 10 0 L 10 9', {
+    }, 'M -9 -9 L 10 -9 L 30 -12', 'M -9 9 L 10 9 L 30 12', 'M -1 0 L 10 0 L 10 9', {
       d: 'M -9 0 L -1 -4 L -1 4 Z',
       fill: 'currentColor'
     }],
@@ -40762,13 +41244,14 @@ const SYMBOLS = {
       cx: 0,
       cy: 0,
       r: 16
-    }]
+    }],
+    anchors: transistorAnchors('gate', 'drain', 'source')
   },
   pmos: {
     paths: ['M -30 0 L -16 0', 'M -16 -11 L -16 11', {
       d: 'M -9 -12 L -9 -5 M -9 -3 L -9 3 M -9 5 L -9 12',
       w: 1.8
-    }, 'M -9 -9 L 10 -9 L 10 -20', 'M -9 9 L 10 9 L 10 20', 'M -1 0 L 10 0 L 10 9', {
+    }, 'M -9 -9 L 10 -9 L 30 -12', 'M -9 9 L 10 9 L 30 12', 'M -1 0 L 10 0 L 10 9', {
       d: 'M -1 0 L -9 -4 L -9 4 Z',
       fill: 'currentColor'
     }],
@@ -40776,14 +41259,15 @@ const SYMBOLS = {
       cx: 0,
       cy: 0,
       r: 16
-    }]
+    }],
+    anchors: transistorAnchors('gate', 'drain', 'source')
   },
   // Bipolars. Base bar, collector up, emitter down -- and an ARROWHEAD on the
   // emitter, which is the only thing distinguishing the two. Both kinds drew
   // the identical shape until it was added, so a schematic could not say
   // whether it held an NPN or a PNP.
   npn: {
-    paths: ['M -30 0 L -6 0 M -6 -9 L -6 9', 'M -6 -3 L 8 -10 L 8 -18 M -6 3 L 8 10 L 8 18', {
+    paths: ['M -30 0 L -6 0 M -6 -9 L -6 9', 'M -6 -3 L 8 -10 L 30 -12 M -6 3 L 8 10 L 30 12', {
       d: 'M 3 5 L 8 10 L 2 11 Z',
       fill: 'currentColor'
     }],
@@ -40791,10 +41275,11 @@ const SYMBOLS = {
       cx: 0,
       cy: 0,
       r: 13
-    }]
+    }],
+    anchors: transistorAnchors('base', 'collector', 'emitter')
   },
   pnp: {
-    paths: ['M -30 0 L -6 0 M -6 -9 L -6 9', 'M -6 -3 L 8 -10 L 8 -18 M -6 3 L 8 10 L 8 18', {
+    paths: ['M -30 0 L -6 0 M -6 -9 L -6 9', 'M -6 -3 L 8 -10 L 30 -12 M -6 3 L 8 10 L 30 12', {
       d: 'M -1 2 L -6 3 L 0 8 Z',
       fill: 'currentColor'
     }],
@@ -40802,7 +41287,8 @@ const SYMBOLS = {
       cx: 0,
       cy: 0,
       r: 13
-    }]
+    }],
+    anchors: transistorAnchors('base', 'collector', 'emitter')
   },
   seven_segment: sevenSeg(1),
   seven_seg_3: sevenSeg(3),
