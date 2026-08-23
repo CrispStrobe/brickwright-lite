@@ -91,8 +91,13 @@ Acceptance criteria:
 **How this milestone gets executed:** see `docs/VERIFICATION-AUTOMATION.md`.
 The short version, measured rather than assumed: 244 of 275 examples already
 carry machine-readable `assert` blocks, `test/assert-physics.test.mjs` already
-parses them, and it checks 242 assertions while **skipping 115** as "unknown
-kind". Those 115 are claims already written down and never verified. Extending
+parses them. Re-measured 2026-08-23 against bw-board caeac2b: **359 tests, 317
+pass, 0 fail, 42 skipped** as "unknown kind" — the 115 figure predates several
+rounds of parser extension, and the two failures it used to carry were the
+stale-sibling-pin ones described above. Those 42 are claims already written down
+and never verified, in 21 distinct kinds, and the remaining ones are the
+expensive kinds: rendered display text (`text_line_0: OLED DEMO`), audio state
+(`audio_context: running`), and terminal I/O transcripts. Extending
 that parser, plus a declared-pins-equal-wired-pins invariant, verifies far more
 of the corpus than reading it example by example — and the reading pass is
 demonstrably unreliable where it matters, since the 6502 terminal's
