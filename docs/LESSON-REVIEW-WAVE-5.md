@@ -29,7 +29,7 @@ bench capability.
 | debug-watches | 05-counter | 1→**2** | **defect** — the watch surface it implies is gated off on this target |
 | debug-conditional-breakpoints | 05-counter | 1 | achievable, and unusually well matched to the tool |
 | debug-call-stack | 13-sos-morse | 1→**2** | **defect** — no frames or locals view exists |
-| debug-task-scheduling | nano03-two-tasks | 1→**2** | **defect** — three of the four fields it asks for are not displayed |
+| debug-task-scheduling | nano03-two-tasks | 1→**2** | defect FIXED 2026-08-23 — panel binds `task.task` and prints `until` (bw-circuit-ui be95ab2, vendored 90161eb5) |
 | debug-pins-signals | avr05-button-led | 1 | achievable |
 | debug-serial-trace | avr04-serial-pot | 1 | achievable |
 | debug-timing-bugs | arduino-02-blink-without-delay | 1 | achievable |
@@ -108,18 +108,12 @@ not waiting for anything — reporting `until` there would invite a front end to
 render a deadline that means nothing". Somebody thought carefully about when the
 deadline is meaningful. The front end then never rendered it at all.
 
-**Fixed** in copy, EN and DE: the checkpoint now asks for the state, has the
-learner derive runnable/waiting from states plus program time, and says plainly
-that the name column is blank and the deadline unprinted — take the names from
-your own program. The two UI faults are open and pinned.
-
-**Where the fix belongs, which neither I nor bw-bundle checked at first:**
-`DebugStatus.jsx` is **vendored** — it is one of the 574 entries in
-`bw-circuit-ui/.vendor-manifest.json`. Repairing it in lite would drift from the
-vendor and be reverted by the next `npm run sync:circuitui`, so it is
-bw-circuit-ui's bug to fix and has been passed there with the producer evidence.
-The pinned test is the holding pattern: it goes red when they fix it, rather than
-this document quietly becoming wrong.
+**RESOLVED 2026-08-23.** bw-circuit-ui fixed the panel upstream (be95ab2:
+binds `{task.task}`, renders `until`, drops the never-emitted `label`), and the
+fix reached lite with the 90161eb5 vendor. The holding-pattern tests went red on
+that vendor exactly as designed and were deleted in the same commit; the
+checkpoint hint (EN and DE) was re-measured and now tells the learner to read
+name, state, and deadline straight from the panel.
 
 ### 2. There is no call stack to inspect
 
@@ -230,7 +224,8 @@ field appears and this lesson needs its hint softened again.
 node --test test/lesson-debugger-surface.test.mjs
 ```
 
-Four of its seven tests are named `OPEN DEFECT`. They fail the day the panel binds
-the task name correctly, renders the deadline, grows a frames view, or the
-debugger stops needing a hosted compiler — each message naming this document and
-the lesson hint to update.
+Two of its tests remain named `OPEN DEFECT` (frames view, hosted compiler).
+They fail the day those change, each message naming this document and the lesson
+hint to update. The two task-panel sentinels did exactly that on 2026-08-23 —
+the 90161eb5 vendor turned them red — and were retired per their own
+instructions.

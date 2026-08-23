@@ -50,34 +50,7 @@ test('conditional breakpoints accept the syntax debug-conditional-breakpoints te
     assert.equal(refused.test, undefined, 'a refused condition must expose no evaluator');
 });
 
-test('OPEN DEFECT: the task list renders task.name, and no target emits `name`', () => {
-    // debug-task-scheduling asks the learner to record "task name, state, wait
-    // deadline, and runnable/waiting status". Every debug target builds its task
-    // record as `{ task: <name>, state, until? }` — the key is `task`, not
-    // `name` — while DebugStatus.jsx prints `{task.name}`. The name column is
-    // undefined for every task on every target.
-    for (const [name, source] of TARGETS) {
-        assert.match(source, /const entry = \{ task: name, state \}/,
-            `${name} no longer emits { task: name, state } — re-check the panel binding`);
-        assert.ok(!/entry\.name\s*=/.test(source), `${name} now sets entry.name`);
-    }
-    assert.match(PANEL, /\{task\.name\}/,
-        'the panel no longer reads task.name — if it was fixed, re-measure ' +
-        'debug-task-scheduling, update docs/LESSON-REVIEW-WAVE-5.md and its hint, ' +
-        'then delete this test.');
-});
 
-test('OPEN DEFECT: the wait deadline is produced and never rendered', () => {
-    for (const [name, source] of TARGETS) {
-        assert.match(source, /entry\.until = until/, `${name} stopped producing a deadline`);
-    }
-    assert.ok(!/task\.until/.test(PANEL),
-        'the panel now renders task.until — re-measure debug-task-scheduling and ' +
-        'update its hint, then delete this test.');
-    // `task.label` is rendered but produced by nobody, so that span never shows.
-    assert.match(PANEL, /task\.label/);
-    for (const [, source] of TARGETS) assert.ok(!/entry\.label\s*=/.test(source));
-});
 
 test('OPEN DEFECT: nothing in the debugger displays a call stack', () => {
     // debug-call-stack's `inspect` checkpoint says "Halt inside the procedure,
