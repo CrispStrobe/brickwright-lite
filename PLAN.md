@@ -458,6 +458,33 @@ Acceptance criteria:
   metadata, screenshots, privacy text, and rollback notes.
 - External TestFlight feedback is triaged against the milestone success measures.
 
+## Milestone 11 — Measurement depth and interchange
+
+Status: scoped (2026-08-23) — the work items live upstream and land here by vendoring.
+
+Deepen the circuit engine to measurement-grade and open the format surface both ways.
+Fully-scoped items: `../../bw-board/ROADMAP.md` (E0–E4: correctness fixes, sparse
+solver with factorization reuse, adaptive transient, exponential junctions, true
+small-signal AC, model depth, scheduled digital events — mna.js items gated on the
+spec-updates filed there) and `../../bw-circuit-ui/ROADMAP.md` (X0–X2: export-path
+defect fixes, document export, SPICE-netlist import, breadboard-format and
+applet-text interchange, LaTeX schematic export, FFT / tolerance / parameter-stepping
+instruments in workers). Lite-side integration items: `ROADMAP.md` §3.5.
+
+Acceptance criteria:
+
+- An exported SPICE deck from any starter circuit runs unmodified in the CI oracle
+  simulator and matches the in-app operating point within stated model tolerance.
+- The frequency-response view is computed by small-signal analysis and agrees with
+  the time-domain measurement on linear fixtures — shown side by side as a lesson.
+- A student can save a schematic as SVG/PNG and a scope trace as CSV for a lab
+  report without leaving the app.
+- A published breadboard-format or applet-text file imports with zero silent drops
+  (every unmapped part is named), and our own exports round-trip through our own
+  importers with identical net partitions.
+- No copyleft code enters the shipped dependency graph; the licence tripwire fails
+  the build if it does. Solver upgrades keep the full oracle suite green.
+
 ## Release sequence
 
 - **Continuous — Milestone 0.** Not a release band. It gates every other band: a release does not
@@ -467,6 +494,8 @@ Acceptance criteria:
 - **0.2.x — Trust the model:** Milestones 4–5.
 - **0.3.x — Build fluently:** Milestones 6–8.
 - **0.4.x — Keep and share work:** Milestones 9–10.
+- **0.5.x — Measure and exchange:** Milestone 11 (upstream engine/format campaign;
+  individual items may ship earlier when their vendored landings are green).
 
 Version numbers are targets, not promises; readiness gates control shipping. Critical
 data-loss, conversion, hardware-safety, accessibility-blocking, or signing defects

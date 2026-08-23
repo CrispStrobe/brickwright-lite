@@ -152,6 +152,58 @@ All specified in `CLAUDE.md`; not repeated here.
   oracle. The MIT `cemeyer/avr-emu` and `Gregwar/avrel` projects are optional
   CPU/reference cross-checks only, not board runtimes.
 
+### 3.5 Circuits engine & interchange campaign — SCOPED 2026-08-23, upstream-first
+
+The full engine/format survey (2026-08-23) produced fully-scoped work items in the
+upstream repos; the engine and format work happens THERE and reaches lite by vendoring:
+- **`../../bw-board/ROADMAP.md`** — items E0–E4 (correctness fixes; sparse LU +
+  factorization reuse; adaptive trapezoidal transient; exponential-junction path;
+  true small-signal AC; model depth; scheduled device events). mna.js items are
+  gated on the `spec-updates/` files already filed there (`referenced-device-drives`,
+  `sparse-lu-factor-reuse`, `adaptive-transient`, `shockley-junction-limiting`,
+  `ac-small-signal`).
+- **`../../bw-circuit-ui/ROADMAP.md`** — items X0–X2 (SPICE-deck export fixes incl.
+  the mega/milli suffix bug; wiring the three dead exporters; SVG/PNG/CSV document
+  export; SPICE-netlist import; breadboard-format and applet-text-format interchange;
+  LaTeX schematic export; FFT/Monte-Carlo/parameter-stepping instruments in workers).
+
+Lite-side items (ours, this repo):
+1. **Re-vendor after each upstream landing** — `npm run sync:bwboard && npm run
+   sync:circuitui`, then the bundle-grep invariant for one distinctive new symbol per
+   landing (a green build does not prove the feature is in the bundle).
+2. **Vendor the format-knowledge attribution** — the vendored
+   `bw-circuit-ui/importers/kicad-common.js` cites "THIRD-PARTY.md", which exists
+   upstream but not here: copy the format-schema attribution rows (incl. the MIT
+   schema-knowledge source for `.kicad_sch` tokens) into `THIRD-PARTY-NOTICES.md`'s
+   bw-circuit-ui section so the vendored pointer resolves.
+3. **Extend the trademark disclaimer** — README §"Not affiliated" names Scratch/MIT,
+   STC, Arduino, Raspberry Pi but none of the EDA format names the import/export UI
+   shows; add them (and mirror in `docs/app-store-metadata.md`). Rule stays: format
+   names in import/export UI are nominative use; competing products are never named
+   in committed content (bw-board `PLAN.md` standing rule).
+4. **Licence tripwire** — extend the dependency check so the LGPL sparse-solver
+   family (KLU/CSparse derivatives, including the sparse module inside mathjs) can
+   never enter the shipped graph; the full ruling table is in
+   `bw-board/ROADMAP.md` §"Backends and licence policy". The oracle policy is
+   unchanged: GPL/LGPL engines are CI/dev-side oracles only.
+5. **Surface the new exports in lite's Circuit tab** once vendored (schematic
+   SVG/PNG save, LaTeX export, trace CSV) — menu wiring only, no logic here.
+6. **Define the eleven `devices_oled*`/`devices_tft*` opcodes** the emitter emits but
+   no extension copy defines (measured in §5.1a — not a vendoring lag; there is
+   nothing upstream to vendor). Fix at the source of truth first
+   (sb3-creator `reference/extensions/devices.js`, wrapping the display device state
+   the engine already models — ssd1306/ili9341 are registered devices), then
+   re-vendor lite's bundled copy. Acceptance: the static emitted-vs-defined gate in
+   `test/example-vm-execution.test.mjs` goes green for the seven affected examples,
+   and the three currently-inert ones (`55-oled-hello`, `72-pico-oled-hello`,
+   `51-tft-pixels`) demonstrably reach extension methods.
+7. **Fix the `pc84-led-herz` VCC/GND short** — `wire_9` puts `vcc_1.vcc` on `net_8`
+   while three scripted `wire_fix_*` wires put `gnd_2.gnd` on the same net (verified
+   by hand, 2026-08-23; the only VCC/GND short a scan of 274 examples found). Fix the
+   wiring in the example, and add the rail-short check to the corpus gate so the
+   class stays caught — the engine's DRC already detects it at runtime; the gate
+   must catch it statically.
+
 ---
 
 ## 4. Standing debt
