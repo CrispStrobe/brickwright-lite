@@ -18,28 +18,44 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {detect, loadCatalog, OBSERVABLES, DEMANDS} from '../scripts/detect-lesson-defects.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const WAVE = 'overlay/scratch-gui/src/components/gui/lesson-waves/electricity-1.json';
 
-const lessonAt = (rev, id) => {
-    const raw = execFileSync('git', ['-C', ROOT, 'show', `${rev}:${WAVE}`],
-        {encoding: 'utf8', maxBuffer: 1 << 24});
-    const lesson = JSON.parse(raw).lessons.find(l => l.id === id);
-    assert.ok(lesson, `${id} not present at ${rev} — the fixture moved, fix this test`);
-    return lesson;
+/**
+ * The pre-repair lesson objects, VENDORED under test/fixtures/lesson-v1/ rather
+ * than read out of git at test time.
+ *
+ * The first version of this file ran `git show <rev>^:…`. That passes on a
+ * developer checkout and fails on every CI run: actions/checkout@v4 clones at
+ * depth 1, so the parent commit is not in the runner's object store and git
+ * exits with "fatal: invalid object name". It was the only failing file on lite
+ * main, and it was mine. Reported by bw-bundle, confirmed against
+ * .github/workflows/build.yml, which has no fetch-depth.
+ *
+ * Vendoring fixes more than the clone depth: a gate that reads git history also
+ * breaks on the next squash, rebase or force-push, and these two objects are the
+ * evidence the whole detector rests on. Each fixture carries its own provenance
+ * — the sha it came from and the command to re-derive it.
+ */
+const lessonFixture = id => {
+    const file = path.join(ROOT, 'test/fixtures/lesson-v1', `${id}.v1.json`);
+    const doc = JSON.parse(readFileSync(file, 'utf8'));
+    assert.ok(doc.lesson, `${file} has no lesson object`);
+    assert.ok(doc._provenance?.extractedFrom, `${file} has lost its provenance record`);
+    return doc.lesson;
 };
 
 // ── Instrument check ────────────────────────────────────────────────────────
 test('instrument: the fixtures really are the pre-repair forms', () => {
-    // 310a31278 repaired the diode lesson, ef8f7717b the capacitor one, so each
-    // parent holds the defect. If these are not version 1 pointing at the old
-    // bench, the "mutation" below is measuring something else entirely.
-    const diode = lessonAt('310a31278^', 'electricity-diode');
-    const cap = lessonAt('ef8f7717b^', 'electricity-capacitor');
+    // If these are not version 1 pointing at the old bench, the "mutation" below
+    // is measuring something else entirely. Checked against the CURRENT catalog
+    // rather than against git, so it holds on a depth-1 clone: the fixture must
+    // be version 1 on the old example AND the live lesson must have moved on.
+    const diode = lessonFixture('electricity-diode');
+    const cap = lessonFixture('electricity-capacitor');
     assert.equal(diode.version, 1);
     assert.equal(diode.exampleId, '42-diode-rectifier');
     assert.equal(cap.version, 1);
@@ -52,7 +68,7 @@ test('instrument: the fixtures really are the pre-repair forms', () => {
 
 // ── Mutation proof ──────────────────────────────────────────────────────────
 test('MUTATION: the version-1 diode lesson is flagged — a static bench cannot show a cycle', async () => {
-    const report = await detect({lessons: [lessonAt('310a31278^', 'electricity-diode')]});
+    const report = await detect({lessons: [lessonFixture('electricity-diode')]});
     const blocking = report.findings.filter(f => f.severity === 'blocking');
     assert.ok(blocking.length >= 1,
         'the detector did not flag the defect it was built for — it is not a detector');
@@ -66,7 +82,7 @@ test('MUTATION: the version-1 diode lesson is flagged — a static bench cannot 
 });
 
 test('MUTATION: the version-1 capacitor lesson is flagged — a charge-only bench cannot discharge', async () => {
-    const report = await detect({lessons: [lessonAt('ef8f7717b^', 'electricity-capacitor')]});
+    const report = await detect({lessons: [lessonFixture('electricity-capacitor')]});
     const blocking = report.findings.filter(f => f.severity === 'blocking');
     assert.ok(blocking.some(f => f.evidence.demand === 'discharge'),
         `expected a discharge finding, got ${JSON.stringify(blocking.map(f => f.evidence.demand))}`);
