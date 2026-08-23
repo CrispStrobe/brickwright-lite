@@ -346,40 +346,69 @@ test('every board member a bundled extension guards on exists on the board', () 
 });
 
 test('every device kind the devices extension can drive accepts a control verb', async () => {
-    // One layer below the check above. The chain an actuator verb travels is
+    // One layer below the guarded-member check. The chain an actuator travels is
     //
     //   extension verb -> board.setDeviceControl -> deviceModel.control(...)
     //
-    // and the previous test only proves the middle link. A device model with no
-    // `control` handler makes setDeviceControl return FALSE and change nothing —
-    // the block is defined, the board method exists, the call is made, and the
-    // part does not move. Found by bw-lessons on 74-ammeter, whose char_lcd_i2c
-    // returns false for clear/cursor/print while 73-voltmeter's ssd1306 returns
-    // true; my own probe had generalised from ssd1306 and missed it.
+    // and that check only proves the middle link. A model with no `control`
+    // handler makes setDeviceControl return FALSE and change nothing: block
+    // defined, board method present, call made, part does not move. Found by
+    // bw-lessons on 74-ammeter, whose char_lcd_i2c returns false for
+    // clear/cursor/print while 73-voltmeter's ssd1306 returns true — my own
+    // probe had generalised from ssd1306 and missed it.
+    //
+    // The addressable set is DERIVED from the extension's own kind tables, not
+    // hand-listed, so it grows when the extension does. Asserting over all
+    // registered kinds instead would be wrong, not merely noisy: 185 of the 193
+    // registered kinds are passive parts (gates, resistors, ICs) that no verb
+    // addresses, and they correctly have no handler.
     const bwb = path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
     (await import(path.join(bwb, 'register-all.js'))).registerAllDevices();
-    const {getDevice, hasDevice} = await import(path.join(bwb, 'devices.js'));
+    const {getDevice, hasDevice, registeredKinds} = await import(path.join(bwb, 'devices.js'));
 
-    // Device kinds the `devices` extension addresses through setDeviceControl.
-    const DRIVEN_KINDS = ['char_lcd', 'char_lcd_i2c', 'hd44780', 'ssd1306', 'ili9341',
-        'servo', 'dc_motor', 'relay'];
-    // Registered but with no control() handler. Measured 2026-08-23. May only
-    // shrink: an entry here is a part the user can wire, drive from a block, and
-    // watch do nothing.
-    const KNOWN_NO_CONTROL = new Set(['char_lcd_i2c', 'dc_motor']);
+    const extension = readFileSync(path.join(REPO, 'overlay', 'scratch-vm', 'src', 'extensions',
+        'crispstrobe', 'devices', 'index.js'), 'utf8');
+    const addressable = new Set();
+    for (const match of extension.matchAll(/_KINDS\s*=\s*\/\^\(([^)]+)\)\$\/i/g)) {
+        for (const kind of match[1].split('|')) addressable.add(kind.trim());
+    }
+    assert.ok(addressable.size >= 10,
+        `only ${addressable.size} kinds parsed out of the extension's *_KINDS tables — the ` +
+        'tables moved and this test is asserting on almost nothing');
 
-    const missing = DRIVEN_KINDS.filter(kind => {
-        const model = hasDevice(kind) ? getDevice(kind) : null;
-        return model && typeof model.control !== 'function';
-    });
-    const unregistered = DRIVEN_KINDS.filter(kind => !hasDevice(kind));
-    assert.deepEqual(unregistered, [],
-        'these device kinds are addressed by the devices extension but are not registered at all');
-    assert.deepEqual(missing.filter(kind => !KNOWN_NO_CONTROL.has(kind)), [],
-        'these device models have no control() handler, so every actuator verb aimed at them ' +
-        'returns false and moves nothing');
+    // Verbs that pass the block's argument straight through with NO kind filter
+    // (setservo, setmotor, setdirection, setrelay, activate, deactivate) address
+    // whatever part the user names, so they cannot be derived from a table.
+    // Listed explicitly, and deliberately NOT extended to every registered kind.
+    const UNFILTERED = ['servo', 'dc_motor', 'gearmotor', 'relay', 'relay_dpdt', 'solenoid'];
+    for (const kind of UNFILTERED) addressable.add(kind);
+
+    // Registered, addressable, and with no control() handler. Measured
+    // 2026-08-23. May only shrink: an entry is a part a user can wire, drive
+    // from a block, and watch do nothing.
+    //
+    // h_bridge is deliberately ABSENT. It also has no handler, but no verb and no
+    // kind table names it, so it is not addressable — adding it would be exactly
+    // the padding the ratchet's own reverse assertion guards against.
+    // Five, not the two found by hand: deriving the set surfaced gearmotor,
+    // relay_dpdt and solenoid as well. Note the board has a `verb === 'state'`
+    // fallback onto setControl, so activate/deactivate may still reach the last
+    // two; what certainly does not reach them is anything a model must interpret
+    // — speed, direction, print, cursor. Not measured per verb, so the entry
+    // claims only what was measured: no control() handler.
+    const KNOWN_NO_CONTROL = new Set(['char_lcd_i2c', 'dc_motor', 'gearmotor',
+        'relay_dpdt', 'solenoid']);
+
+    const registered = new Set(registeredKinds());
+    const missing = [...addressable]
+        .filter(kind => registered.has(kind))
+        .filter(kind => typeof getDevice(kind).control !== 'function');
+    assert.deepEqual(missing.filter(kind => !KNOWN_NO_CONTROL.has(kind)).sort(), [],
+        'these device models are addressable from a block and have no control() handler, so ' +
+        'every actuator verb aimed at them returns false and moves nothing');
     assert.deepEqual([...KNOWN_NO_CONTROL].filter(kind => !missing.includes(kind)), [],
         'these now have a control() handler — remove them from KNOWN_NO_CONTROL');
+    assert.ok(hasDevice('ssd1306'), 'the device registry did not populate');
 });
 
 test('instrument: the shipped corpus is the size this gate was written against', () => {
