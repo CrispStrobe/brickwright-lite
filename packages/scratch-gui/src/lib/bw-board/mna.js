@@ -193,15 +193,42 @@ function diodeCompanion(vAcross, vf, rd, opts) {
     return shockleyCompanion(vAcross, vf, rd, opts.is, opts.n);
   }
 
-  // Piecewise-linear (original model)
-  if (vAcross < vf) {
+  // Piecewise-linear knee with a C1 parabolic blend over ±PWL_KNEE_EPS.
+  // A HARD corner plus an inductor is a Newton oscillator: the flyback
+  // decay tail parks the junction exactly at vf, the on/off branches
+  // alternate per step, and the adaptive integrator tracked the orbit
+  // forever at err ≈ 0.73 (a single 1 ms advance read −4.7 V where fine
+  // stepping settles at +0.7 V) — the diode-corner twin of the MOS
+  // smoothVov fix. Outside the band both branches are BIT-IDENTICAL to
+  // the original lines, so every corpus operating point away from the
+  // knee is untouched.
+  const EPS = PWL_KNEE_EPS;
+  if (vAcross < vf - EPS) {
     const gOff = 1e-9;
     return { gEq: gOff, iEq: 0 };
-  } else {
+  }
+  if (vAcross > vf + EPS) {
     const gEq = 1 / rd;
     const iEq = -vf / rd;
     return { gEq, iEq };
   }
+  // In-band: i(v) = (v − vf + ε)² / (4·ε·rd) — joins i = 0 at vf−ε and the
+  // line (v−vf)/rd at vf+ε with matching slope at both ends.
+  const u = vAcross - vf + EPS;
+  const gEq = u / (2 * EPS * rd);
+  const i = (u * u) / (4 * EPS * rd);
+  return { gEq, iEq: i - gEq * vAcross };
+}
+
+/** Half-width of the PWL knee's C1 blend band (volts). */
+const PWL_KNEE_EPS = 0.025;
+
+/** PWL knee current with the C1 blend — extraction must match the stamp. */
+function pwlKneeCurrent(v, vf, rd) {
+  if (v < vf - PWL_KNEE_EPS) return 0;
+  if (v > vf + PWL_KNEE_EPS) return (v - vf) / rd;
+  const u = v - vf + PWL_KNEE_EPS;
+  return (u * u) / (4 * PWL_KNEE_EPS * rd);
 }
 
 /**
@@ -218,6 +245,119 @@ function diodeCompanion(vAcross, vf, rd, opts) {
  * @param {number} [n] - ideality factor
  * @returns {{ gEq: number, iEq: number }}
  */
+/**
+ * Junction model resolution — OPT-IN Shockley via `params.model:
+ * 'shockley'`; the sharp-knee PWL stays the default.
+ *
+ * Why not Shockley-by-default yet: the closed-form walker answers LED
+ * benches with the knee, so a default flip makes nodeVoltage (walker) and
+ * branchCurrent (MNA) disagree by ~4 % on the same bench — the
+ * two-solvers-two-truths trap — and silently moves every LED/diode value
+ * in the shipped example corpus. The flip is a coordinated change (walker
+ * routing + corpus re-measurement together), tracked as ROADMAP E1.3b;
+ * the machinery (companion, pnjlim, extraction) is complete and tested
+ * behind the param. Ideality: LEDs 1.8, silicon 1.0, via params.n.
+ */
+function junctionOpts(part) {
+  if (part.params?.model !== 'shockley') return undefined;
+  return {
+    shockley: true,
+    is: part.params?.is,
+    n: part.params?.n ?? (part.kind === 'led' ? 1.8 : 1.0),
+  };
+}
+
+/** Junction current at a solved voltage — must match what was stamped. */
+function junctionCurrent(part, vAcross, vf, rd) {
+  const opts = junctionOpts(part);
+  if (!opts) {
+    return pwlKneeCurrent(vAcross, vf, rd);
+  }
+  const VT = 0.02585;
+  const nVt = opts.n * VT;
+  let is = opts.is;
+  if (is === undefined) {
+    const expVf = Math.exp(Math.min(vf / nVt, 80));
+    is = 0.020 / Math.max(expVf - 1, 1e-30);
+  }
+  const vClamped = Math.min(vAcross, nVt * 80);
+  if (vClamped < -5 * nVt) return -is;
+  return is * (Math.exp(vClamped / nVt) - 1);
+}
+
+/**
+ * SPICE-style junction voltage limiting (pnjlim): past the critical
+ * voltage, an exponential junction's NR update is pulled back along a
+ * logarithm instead of clamped flat — the classic cure for the two-
+ * junction oscillation the 0.5 V clamp cannot settle.
+ * @param {number} vnew @param {number} vold @param {number} nVt @param {number} vcrit
+ */
+function pnjlim(vnew, vold, nVt, vcrit) {
+  if (vnew > vcrit && Math.abs(vnew - vold) > 2 * nVt) {
+    if (vold > 0) {
+      const arg = 1 + (vnew - vold) / nVt;
+      return arg > 0 ? vold + nVt * Math.log(arg) : vcrit;
+    }
+    return nVt * Math.log(vnew / nVt);
+  }
+  return vnew;
+}
+
+/** Critical voltage + nVt for a part's junction (Shockley parts only). */
+function junctionLimitParams(part, vf) {
+  const opts = junctionOpts(part);
+  if (!opts) return null;
+  const VT = 0.02585;
+  const nVt = opts.n * VT;
+  let is = opts.is;
+  if (is === undefined) {
+    const expVf = Math.exp(Math.min(vf / nVt, 80));
+    is = 0.020 / Math.max(expVf - 1, 1e-30);
+  }
+  const vcrit = nVt * Math.log(nVt / (Math.SQRT2 * is));
+  return { nVt, vcrit };
+}
+
+/**
+ * SPICE-style FET gate-voltage limiting (fetlim, from the published
+ * SPICE3 algorithm): a square-law device has a hard corner at Vth, and a
+ * flat clamp bounces the NR iterate across it forever — measured on the
+ * cross-coupled latch, which orbited the symmetric operating point at
+ * ±0.5 V per iteration without ever settling. fetlim lands threshold
+ * crossings AT Vth ± 0.5 and shrinks steps near the corner.
+ * @param {number} vnew @param {number} vold @param {number} vto
+ */
+function fetlim(vnew, vold, vto) {
+  const vtsthi = Math.abs(2 * (vold - vto)) + 2;
+  const vtstlo = vtsthi / 2 + 2;
+  const vtox = vto + 3.5;
+  const delv = vnew - vold;
+  if (vold >= vto) {
+    if (vold >= vtox) {
+      if (delv <= 0) {
+        if (vnew >= vtox) {
+          if (-delv > vtstlo) vnew = vold - vtstlo;
+        } else {
+          vnew = Math.max(vnew, vto + 2);
+        }
+      } else if (delv > vtsthi) {
+        vnew = vold + vtsthi;
+      }
+    } else if (delv <= 0) {
+      if (vnew < vto - 0.5) vnew = vto - 0.5;
+    } else if (vnew > vtox) {
+      vnew = vtox;
+    }
+  } else if (delv <= 0) {
+    if (-delv > vtsthi) vnew = vold - vtsthi;
+  } else if (vnew <= vto + 0.5) {
+    if (delv > vtstlo) vnew = vold + vtstlo;
+  } else {
+    vnew = vto + 0.5;
+  }
+  return vnew;
+}
+
 function shockleyCompanion(vAcross, vf, rd, is, n) {
   const VT = 0.02585; // thermal voltage at 25°C (kT/q)
   const nVt = (n ?? 1.8) * VT;
@@ -536,6 +676,13 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   let solution = new Float64Array(dim);
   let converged = false;
 
+  // The Newton loop, callable per ladder rung. Knobs: `gmin` (GMIN
+  // stepping) and `srcScale` (source stepping — every independent source,
+  // pin drive, device drive, and rail scales together, so a 0.1 rung is
+  // the same circuit at a tenth of the excitation). All nonlinear state
+  // (junction voltages, region FSMs, CC clamps) lives in the enclosing
+  // scope, so each rung seeds the next — the point of a continuation.
+  const runNewton = (gmin, srcScale = 1) => {
   for (let iter = 0; iter < MAX_NR_ITER; iter++) {
     // Clear values; the assembled pattern survives for factor reuse.
     A.reset();
@@ -580,7 +727,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
             // rail beside the 5V one); the board default stays the
             // fallback. board.js's seed path already honored this —
             // the solver must agree or the seed lies.
-            const railVolts = Number.isFinite(part.params?.volts) ? part.params.volts : vcc;
+            const railVolts = (Number.isFinite(part.params?.volts) ? part.params.volts : vcc) * srcScale;
             const railNet = findNet(nets, part.id, 'vcc');
             if (vsIndex.has(part.id)) {
               railStamped.set(railNet, railVolts);
@@ -597,7 +744,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
 
         case 'mcu':
           if (!powerOff) {
-            stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources);
+            stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources, srcScale);
           }
           break;
 
@@ -617,18 +764,25 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
 
         case 'inductor': {
           if (transient) {
-            // Backward-Euler companion: i(t+dt) = i(t) + (dt/L)·v(t+dt)
-            // → conductance dt/L in parallel with a Norton source of i(t).
+            // Companion models (spec-updates/adaptive-transient.md):
+            //   BE:   i(t+h) = i(t) + (h/L)·v(t+h)
+            //         → G = h/L, Norton I = i(t)
+            //   trap: i(t+h) = i(t) + (h/2L)·(v(t+h) + v(t))
+            //         → G = h/2L, Norton I = i(t) + G·v(t)
             const L = /** @type {number} */ (part.params.henrys ?? part.params.henries ?? 0.001);
-            const g = transient.dtSec / Math.max(L, 1e-12);
+            const h = Math.max(transient.dtSec, 1e-15);
             const iPrev = transient.inductorCurrents.get(part.id) ?? 0;
+            const trap = transient.method === 'trap';
+            const g = trap ? h / (2 * Math.max(L, 1e-12)) : h / Math.max(L, 1e-12);
+            const vPrev = trap ? (transient.inductorVoltages?.get(part.id) ?? 0) : 0;
+            const iNorton = iPrev + (trap ? g * vPrev : 0);
             const netA = findNet(nets, part.id, 'a');
             const netB = findNet(nets, part.id, 'b');
             stampTwoTerminal(A, netA, netB, g, nodeIndex);
             const idxA = netA ? nodeIndex.get(netA) : undefined;
             const idxB = netB ? nodeIndex.get(netB) : undefined;
-            if (idxA !== undefined) b[idxA] -= iPrev; // i flows a→b
-            if (idxB !== undefined) b[idxB] += iPrev;
+            if (idxA !== undefined) b[idxA] -= iNorton; // i flows a→b
+            if (idxB !== undefined) b[idxB] += iNorton;
           } else {
             // DC steady-state: an inductor is a short (1 mΩ wire).
             stampTwoTerminal(A,
@@ -642,18 +796,25 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
 
         case 'capacitor': {
           if (transient) {
-            // Backward-Euler companion: i = C/dt · (v(t+dt) − v(t))
-            // → conductance C/dt in parallel with a Norton source C/dt·v(t).
+            // Companion models (spec-updates/adaptive-transient.md):
+            //   BE:   i = (C/h)·(v(t+h) − v(t))
+            //         → G = C/h, Norton I = G·v(t)
+            //   trap: i = (2C/h)·(v(t+h) − v(t)) − i(t)
+            //         → G = 2C/h, Norton I = G·v(t) + i(t)
             const C = /** @type {number} */ (part.params.farads ?? 0.0001);
-            const g = C / Math.max(transient.dtSec, 1e-15);
+            const h = Math.max(transient.dtSec, 1e-15);
+            const trap = transient.method === 'trap';
+            const g = (trap ? 2 * C : C) / h;
             const vPrev = transient.capVoltages.get(part.id) ?? 0;
+            const iPrev = trap ? (transient.capCurrents?.get(part.id) ?? 0) : 0;
+            const iNorton = g * vPrev + iPrev;
             const netA = findNet(nets, part.id, 'a');
             const netB = findNet(nets, part.id, 'b');
             stampTwoTerminal(A, netA, netB, g, nodeIndex);
             const idxA = netA ? nodeIndex.get(netA) : undefined;
             const idxB = netB ? nodeIndex.get(netB) : undefined;
-            if (idxA !== undefined) b[idxA] += g * vPrev;
-            if (idxB !== undefined) b[idxB] -= g * vPrev;
+            if (idxA !== undefined) b[idxA] += iNorton;
+            if (idxB !== undefined) b[idxB] -= iNorton;
           } else if (capVoltagesIn && vsIndex.has(part.id)) {
             // Instantaneous solve: hold the stored voltage as a source row.
             // (Only the first cap of each net pair carries the row — see
@@ -682,15 +843,15 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
           break;
 
         case 'opamp':
-          stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegions, vcc);
+          stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegions, vcc, srcScale);
           break;
 
         case 'vsource':
-          stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc, tSeconds, controls);
+          stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc, tSeconds, controls, srcScale);
           break;
 
         case 'isource':
-          stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId);
+          stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId, srcScale);
           break;
 
         case 'zener':
@@ -775,7 +936,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
               if (changed) state = { ...state, drives };
             }
             stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds,
-              transient ? transient.dtSec : undefined);
+              transient ? transient.dtSec : undefined, srcScale);
           }
           break;
         }
@@ -795,7 +956,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
           if (nodeIdx === undefined) continue;
           const g = 1 / source.rTh;
           A.add(nodeIdx, nodeIdx, g);
-          b[nodeIdx] += source.vTh / source.rTh;
+          b[nodeIdx] += (source.vTh * srcScale) / source.rTh;
         }
       }
     }
@@ -809,7 +970,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
     }
 
     // gmin from every node to the reference: keeps floating nets solvable.
-    for (let i = 0; i < nodeCount; i++) A.add(i, i, GMIN);
+    for (let i = 0; i < nodeCount; i++) A.add(i, i, gmin);
 
     // Solve
     const bcopy = new Float64Array(b);
@@ -817,7 +978,7 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       solution = solveAssembled(A, bcopy);
     } catch {
       // Singular matrix — bail
-      break;
+      return false;
     }
 
     // Update diode/transistor operating points and check convergence
@@ -860,13 +1021,30 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
 
       const vOld = diodeVoltages.get(part.id) ?? 0;
 
-      // Damped update: never move a junction voltage more than NR_MAX_STEP
-      // per iteration. The raw delta still drives the convergence check, so
-      // a clamped step cannot be mistaken for convergence.
+      // Limited update. Shockley diodes/LEDs get pnjlim — the logarithmic
+      // pull-back that settles exponential junctions (a flat clamp
+      // oscillates on two junctions in series-opposition). Everything else
+      // keeps the flat NR_MAX_STEP clamp. The RAW delta still drives the
+      // convergence check, so a limited step cannot fake convergence.
       const rawDelta = vNew - vOld;
-      const vDamped = vOld + Math.max(-NR_MAX_STEP, Math.min(NR_MAX_STEP, rawDelta));
+      let vLimited;
+      const lim = (part.kind === 'led' || part.kind === 'diode')
+        ? junctionLimitParams(part,
+            /** @type {number} */ (part.params.vf ?? (part.kind === 'diode' ? 0.7 : 2.0)))
+        : null;
+      if (lim) {
+        vLimited = pnjlim(vNew, vOld, lim.nVt, lim.vcrit);
+      } else if (part.kind === 'nmos' || part.kind === 'pmos') {
+        // The stored variable is vGS (nmos) / vSG (pmos), so the effective
+        // threshold is |vth| in both senses.
+        const vth = Math.abs(/** @type {number} */ (
+          part.params.vth ?? (part.kind === 'nmos' ? 2.0 : -2.0)));
+        vLimited = fetlim(vNew, vOld, vth);
+      } else {
+        vLimited = vOld + Math.max(-NR_MAX_STEP, Math.min(NR_MAX_STEP, rawDelta));
+      }
       maxDelta = Math.max(maxDelta, Math.abs(rawDelta));
-      diodeVoltages.set(part.id, vDamped);
+      diodeVoltages.set(part.id, vLimited);
     }
 
     // Op-amp region transitions: linear ↔ saturated at a supply rail.
@@ -883,15 +1061,19 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       const vP = idxP !== undefined ? solution[idxP] : (netP === groundNetId ? 0 : 0);
       const vN = idxN !== undefined ? solution[idxN] : (netN === groundNetId ? 0 : 0);
       const vIdeal = gain * (vP - vN);
+      // Rails scale with source stepping — a full-height rail against
+      // tenth-height sources would flip regions against the wrong bound.
+      const rHi = railHigh * srcScale;
+      const rLo = railLow * srcScale;
       const region = opampRegions.get(part.id);
       let next = region;
       if (region === 'linear') {
-        if (vIdeal > railHigh) next = 'high';
-        else if (vIdeal < railLow) next = 'low';
+        if (vIdeal > rHi) next = 'high';
+        else if (vIdeal < rLo) next = 'low';
       } else if (region === 'high') {
-        if (vIdeal < railHigh) next = 'linear';
+        if (vIdeal < rHi) next = 'linear';
       } else if (region === 'low') {
-        if (vIdeal > railLow) next = 'linear';
+        if (vIdeal > rLo) next = 'linear';
       }
       if (next !== region) {
         opampRegions.set(part.id, next);
@@ -932,9 +1114,13 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
         // the base junction has fallen out of conduction, or the
         // clamp current exceeds beta*Ib (with margin against
         // flip-flopping; the outer loop re-iterates on change).
+        // iB through the SAME C1 knee the stamp uses — the old hard-knee
+        // read ZERO for an in-band vbe that genuinely carries current, so
+        // the region entered and left every iteration (collector stuck at
+        // 1.8 V on the ngspice NPN-switch golden, expected 0.07 V).
         const vJ = diodeVoltages.get(part.id) ?? 0; // vBE (npn) / vEB (pnp)
         const rd = 10;
-        const iB = vJ > vbe ? (vJ - vbe) / rd : 0;
+        const iB = pwlKneeCurrent(vJ, vbe, rd);
         const gS = 10;
         const iC = Math.max(0, gS * (vOut - vceSat));
         if (vJ < vbe - 0.15 || beta * iB < iC * 0.95) next = 'active';
@@ -1013,9 +1199,41 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
     // If nothing nonlinear, or everything settled, stop.
     if ((diodeVoltages.size === 0 && opampRegions.size === 0 && !ccChanged)
         || (maxDelta < NR_TOL && !regionChanged && !ccChanged)) {
-      converged = true;
-      break;
+      return true;
     }
+  }
+  return false;
+  };
+
+  converged = runNewton(GMIN);
+
+  // E1.4 fallback ladder: GMIN stepping. A heavily inflated gmin makes any
+  // operating point easy; each rung's solution seeds the next as gmin
+  // ratchets back down to the real value. Operating-point/instantaneous
+  // solves only — inflating gmin under a transient step's companion
+  // history would quietly change the physics of that step.
+  // (Source stepping is the spec's rung (b) and is NOT implemented yet —
+  // stated in spec-updates/shockley-junction-limiting.md.)
+  if (!converged && !transient) {
+    let laddered = true;
+    for (let k = 9; k >= 0; k--) {
+      if (!runNewton(GMIN * Math.pow(10, k))) { laddered = false; break; }
+    }
+    converged = laddered;
+  }
+
+  // Rung (b): source stepping. Every source ramps together from a tenth of
+  // its value — at low excitation any operating point is easy, and each
+  // rung's solution seeds the next along a continuous branch. This is what
+  // settles bistables (a cross-coupled latch defeats plain NR AND gmin:
+  // its trouble is the region FSMs flip-flopping at full drive, not a
+  // floating node).
+  if (!converged && !transient) {
+    let laddered = true;
+    for (const s of [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]) {
+      if (!runNewton(GMIN, s)) { laddered = false; break; }
+    }
+    converged = laddered;
   }
 
   // ─── Extract results ────────────────────────────────────────────────────
@@ -1061,7 +1279,9 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       const vf = /** @type {number} */ (part.params.vf ?? (part.kind === 'diode' ? 0.7 : 2.0));
       const rd = 10; // dynamic resistance
       const vAcross = vAnode - vCathode;
-      const i = vAcross >= vf ? (vAcross - vf) / rd : 0;
+      // Same model as the stamp — a PWL current read off a Shockley solve
+      // (or vice versa) is a plausible wrong number.
+      const i = junctionCurrent(part, vAcross, vf, rd);
       currents.set('anode', i);    // into anode
       currents.set('cathode', -i); // out of cathode
     }
@@ -1097,13 +1317,12 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       const rd = 10;
 
       let ib, ic;
+      // Same C1 knee the stamp uses — extraction and stamp must agree.
       if (part.kind === 'npn') {
-        const vbe = vB - vE;
-        ib = vbe >= vbeThresh ? (vbe - vbeThresh) / rd : 0;
+        ib = pwlKneeCurrent(vB - vE, vbeThresh, rd);
         ic = beta * ib;
       } else {
-        const veb = vE - vB;
-        ib = veb >= vbeThresh ? (veb - vbeThresh) / rd : 0;
+        ib = pwlKneeCurrent(vE - vB, vbeThresh, rd);
         ic = beta * ib;
       }
       currents.set('base', ib);
@@ -1121,12 +1340,16 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       const vth = /** @type {number} */ (part.params.vth ?? (part.kind === 'nmos' ? 2.0 : -2.0));
       const k = /** @type {number} */ (part.params.k ?? 0.5);
       let id;
+      // Same smoothed square law as the stamp — a hard-corner current read
+      // off a smoothed solve disagrees with KCL near threshold.
       if (part.kind === 'nmos') {
         const vgs = vG - vS;
-        id = vgs >= vth ? k * (vgs - vth) * (vgs - vth) : 0;
+        const [vovS] = smoothVov(vgs - vth);
+        id = k * vovS * vovS;
       } else {
         const vsg = vS - vG;
-        id = vsg >= Math.abs(vth) ? k * (vsg - Math.abs(vth)) * (vsg - Math.abs(vth)) : 0;
+        const [vovS] = smoothVov(vsg - Math.abs(vth));
+        id = k * vovS * vovS;
       }
       currents.set('drain', id);
       currents.set('source', -id);
@@ -1170,7 +1393,13 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       if (transient) {
         const L = /** @type {number} */ (part.params.henrys ?? part.params.henries ?? 0.001);
         const iPrev = transient.inductorCurrents.get(part.id) ?? 0;
-        i = iPrev + (transient.dtSec / Math.max(L, 1e-12)) * (vA - vB);
+        const h = Math.max(transient.dtSec, 1e-15);
+        if (transient.method === 'trap') {
+          const vPrev = transient.inductorVoltages?.get(part.id) ?? 0;
+          i = iPrev + (h / (2 * Math.max(L, 1e-12))) * ((vA - vB) + vPrev);
+        } else {
+          i = iPrev + (h / Math.max(L, 1e-12)) * (vA - vB);
+        }
       } else {
         // DC: inductor is a wire, current = V_drop / R_wire
         i = (vA - vB) / 0.001;
@@ -1188,7 +1417,13 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       if (transient) {
         const C = /** @type {number} */ (part.params.farads ?? 0.0001);
         const vPrev = transient.capVoltages.get(part.id) ?? 0;
-        i = (C / Math.max(transient.dtSec, 1e-15)) * ((vA - vB) - vPrev);
+        const h = Math.max(transient.dtSec, 1e-15);
+        if (transient.method === 'trap') {
+          const iPrev = transient.capCurrents?.get(part.id) ?? 0;
+          i = (2 * C / h) * ((vA - vB) - vPrev) - iPrev;
+        } else {
+          i = (C / h) * ((vA - vB) - vPrev);
+        }
       } else if (vsIndex.has(part.id)) {
         // Instantaneous: the source row's current variable is the cap current.
         i = solution[nodeCount + /** @type {number} */ (vsIndex.get(part.id))];
@@ -1244,10 +1479,14 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
     }
   }
 
-  // Transient next-state: what the caller stores for the next step.
+  // Transient next-state: what the caller stores for the next step. The
+  // trapezoidal companions need the element's own current (cap) and voltage
+  // (inductor) history too, so both are returned alongside the classic pair.
   if (transient) {
     const capVoltagesNext = new Map();
+    const capCurrentsNext = new Map();
     const inductorCurrentsNext = new Map();
+    const inductorVoltagesNext = new Map();
     for (const part of parts) {
       if (part.kind === 'capacitor') {
         const netA = findNet(nets, part.id, 'a');
@@ -1255,13 +1494,21 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
         const vA = netA ? (nodeVoltages.get(netA) ?? 0) : 0;
         const vB = netB ? (nodeVoltages.get(netB) ?? 0) : 0;
         capVoltagesNext.set(part.id, vA - vB);
+        const c = branchCurrents.get(part.id);
+        capCurrentsNext.set(part.id, c ? (c.get('b') ?? 0) : 0);
       }
       if (part.kind === 'inductor') {
         const c = branchCurrents.get(part.id);
         inductorCurrentsNext.set(part.id, c ? (c.get('b') ?? 0) : 0);
+        const netA = findNet(nets, part.id, 'a');
+        const netB = findNet(nets, part.id, 'b');
+        const vA = netA ? (nodeVoltages.get(netA) ?? 0) : 0;
+        const vB = netB ? (nodeVoltages.get(netB) ?? 0) : 0;
+        inductorVoltagesNext.set(part.id, vA - vB);
       }
     }
-    return { nodeVoltages, branchCurrents, capVoltagesNext, inductorCurrentsNext, converged,
+    return { nodeVoltages, branchCurrents, capVoltagesNext, capCurrentsNext,
+      inductorCurrentsNext, inductorVoltagesNext, converged,
       railConflicts: railConflicts.length ? [...new Set(railConflicts)] : undefined };
   }
 
@@ -1361,7 +1608,7 @@ function stampDiode(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
   const rd = 10;
 
   const vAcross = diodeVoltages.get(part.id) ?? 0;
-  const { gEq, iEq } = diodeCompanion(vAcross, vf, rd);
+  const { gEq, iEq } = diodeCompanion(vAcross, vf, rd, junctionOpts(part));
 
   const idxA = anodeNet ? nodeIndex.get(anodeNet) : undefined;
   const idxC = cathodeNet ? nodeIndex.get(cathodeNet) : undefined;
@@ -1453,10 +1700,11 @@ function stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, v
   const dim = nodeIndex.size;
   const row = dim + vsIdx;
 
-  // Voltage source from ground to vccNet: V(vccNet) - V(gnd) = volts
-  // V(gnd) = 0, so V(vccNet) = volts.  Per-part params.volts overrides
-  // the board default so the designer can expose editable rail voltages.
-  const volts = part.params?.volts ?? vcc;
+  // Voltage source from ground to vccNet: V(vccNet) - V(gnd) = volts.
+  // The CALLER resolves params.volts vs the board default (and applies
+  // any source-stepping scale) — re-resolving params here silently undid
+  // both, which is why the passed value is used as-is.
+  const volts = vcc;
   A.set(row, nodeIdx, 1);
   A.set(nodeIdx, row, 1);
   b[row] = volts;
@@ -1472,7 +1720,7 @@ function stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, v
  * @param {string | null} groundNetId
  * @param {Map<string, TheveninSource>} pinSources
  */
-function stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources) {
+function stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources, srcScale = 1) {
   for (const terminal of part.terminals) {
     const source = pinSources.get(terminal);
     if (!source || source === 'high-z') continue;
@@ -1484,7 +1732,7 @@ function stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources) {
 
     // Norton equivalent: G = 1/Rth, I = Vth/Rth
     const g = 1 / source.rTh;
-    const iNorton = source.vTh / source.rTh;
+    const iNorton = (source.vTh * srcScale) / source.rTh;
 
     A.add(nodeIdx, nodeIdx, g);
     b[nodeIdx] += iNorton;
@@ -1511,7 +1759,7 @@ function stampBuzzerResistance(A, b, part, nets, nodeIndex, groundNetId) {
  * Stamp a registered device: its `state.drives` as Norton sources, then the
  * model's own `stamp(ctx)` for input impedance / analog loading.
  */
-function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, dtSec) {
+function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, dtSec, srcScale = 1) {
   // Drives: terminal → {vTh, rTh, ref?} | null
   //
   // Without `ref` the Norton is stamped against the reference node — right
@@ -1530,13 +1778,13 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       stampTwoTerminal(A, net, refNet, g, nodeIndex);
       const idx = nodeIndex.get(net);
       const refIdx = nodeIndex.get(refNet);
-      if (idx !== undefined) b[idx] += drive.vTh * g;
-      if (refIdx !== undefined) b[refIdx] -= drive.vTh * g;
+      if (idx !== undefined) b[idx] += drive.vTh * srcScale * g;
+      if (refIdx !== undefined) b[refIdx] -= drive.vTh * srcScale * g;
     } else {
       const idx = nodeIndex.get(net);
       if (idx === undefined) continue;
       A.add(idx, idx, g);
-      b[idx] += drive.vTh * g;
+      b[idx] += drive.vTh * srcScale * g;
     }
   }
   if (!model.stamp) return;
@@ -1553,7 +1801,7 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       if (idx === undefined) return;
       const g = 1 / Math.max(rTh, 1e-3);
       A.add(idx, idx, g);
-      b[idx] += vTh * g;
+      b[idx] += vTh * srcScale * g;
     },
     // Source between two of the device's own pins: vTh raises termPlus
     // above termMinus through rTh. Reduces exactly to `thevenin` when the
@@ -1568,13 +1816,13 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       stampTwoTerminal(A, netP, netN, g, nodeIndex);
       const idxP = nodeIndex.get(netP);
       const idxN = nodeIndex.get(netN);
-      if (idxP !== undefined) b[idxP] += vTh * g;
-      if (idxN !== undefined) b[idxN] -= vTh * g;
+      if (idxP !== undefined) b[idxP] += vTh * srcScale * g;
+      if (idxN !== undefined) b[idxN] -= vTh * srcScale * g;
     },
     current: (terminal, amps) => {
       const net = findNet(nets, part.id, terminal);
       const idx = net ? nodeIndex.get(net) : undefined;
-      if (idx !== undefined) b[idx] += amps;
+      if (idx !== undefined) b[idx] += amps * srcScale;
     },
     vcc,
     tSeconds,
@@ -1828,6 +2076,23 @@ function stampZener(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
  * Linear/saturation: Id = K × (Vgs - Vth)² (simplified).
  * Linearized as Norton companion for NR.
  */
+/**
+ * Smoothed overdrive: vov_s = ½·(vov + √(vov² + δ²)) — the square law with
+ * a continuous derivative through the threshold corner. A HARD cutoff
+ * branch (gOff below Vth, square law above) gave Newton a discontinuous
+ * derivative exactly where a near-threshold operating point lives: the
+ * cross-coupled latch orbited 1.84 → cutoff → 5 → fetlim 2.5 → 2.16 →
+ * 1.84 forever, at every transconductance tried. δ = 50 mV of smoothing
+ * is invisible at real operating points (vov = 3 V shifts by 0.2 mV) and
+ * conducts ~µA-scale phantom current near Vth — stated, not hidden.
+ * Returns [vov_s, d(vov_s)/d(vov)].
+ */
+const MOS_SMOOTH_DELTA = 0.05;
+function smoothVov(vov) {
+  const r = Math.sqrt(vov * vov + MOS_SMOOTH_DELTA * MOS_SMOOTH_DELTA);
+  return [0.5 * (vov + r), 0.5 * (1 + vov / r)];
+}
+
 function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, region = 'saturation') {
   const vth = /** @type {number} */ (part.params.vth ?? 2.0);
   const k = /** @type {number} */ (part.params.k ?? 0.5); // A/V² (transconductance parameter)
@@ -1842,22 +2107,13 @@ function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, regi
 
   const vgs = diodeVoltages.get(part.id) ?? 0;
 
-  if (vgs < vth) {
-    // Cutoff: very high resistance drain-source
-    const gOff = 1e-9;
-    if (idxD !== undefined) A.add(idxD, idxD, gOff);
-    if (idxS !== undefined) A.add(idxS, idxS, gOff);
-    if (idxD !== undefined && idxS !== undefined) {
-      A.add(idxD, idxS, -gOff);
-      A.add(idxS, idxD, -gOff);
-    }
-  } else if (region === 'triode') {
+  if (region === 'triode') {
     // Fully-enhanced switch with small vds: the channel is a resistor,
     // Rds(on) ≈ 1/(2K·Vov). Without this region the saturation VCCS
     // demanded K·Vov² amps through any load and the drain ran away to
     // -2247 V (sweep escalation 2026-08-15) — the NPN lesson, again.
-    const vov = vgs - vth;
-    const gOn = 2 * k * Math.max(vov, 0.05);
+    const [vovS] = smoothVov(vgs - vth);
+    const gOn = 2 * k * Math.max(vovS, 0.05);
     if (idxD !== undefined) A.add(idxD, idxD, gOn);
     if (idxS !== undefined) A.add(idxS, idxS, gOn);
     if (idxD !== undefined && idxS !== undefined) {
@@ -1865,12 +2121,12 @@ function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, regi
       A.add(idxS, idxD, -gOn);
     }
   } else {
-    // On: Id = K(Vgs - Vth)². Linearized:
-    // gm = dId/dVgs = 2K(Vgs - Vth)
-    // Id0 = K(Vgs - Vth)² - gm × Vgs (Norton offset)
-    const vov = vgs - vth;
-    const gm = 2 * k * vov;
-    const id0 = k * vov * vov;
+    // On: Id = K·vov_s². Linearized about the smoothed overdrive:
+    // gm = dId/dVgs = 2K·vov_s·(dvov_s/dvov); Norton offset from Id at
+    // the expansion point.
+    const [vovS, dVovS] = smoothVov(vgs - vth);
+    const gm = 2 * k * vovS * dVovS;
+    const id0 = k * vovS * vovS;
     const iEq = id0 - gm * vgs;
 
     // VCCS: drain current controlled by Vgs
@@ -1882,8 +2138,13 @@ function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, regi
     if (idxD !== undefined) b[idxD] -= iEq;
     if (idxS !== undefined) b[idxS] += iEq;
 
-    // Small Rds for stability
-    const gds = 0.001; // 1kΩ output resistance
+    // Stability Rds, TAPERED with conduction. A fixed 1 kΩ made a
+    // sub-threshold drain a 1k/10k divider (0.458 V on the latch bench)
+    // and the deep-cutoff branch that used to switch it to 1 nS was a
+    // second Newton corner — the branch is gone; this expression IS the
+    // cutoff behaviour (gds → the 1 nS leak as vov_s → 0).
+    const taper = vovS / (vovS + MOS_SMOOTH_DELTA);
+    const gds = 0.001 * taper * taper + 1e-9;
     if (idxD !== undefined) A.add(idxD, idxD, gds);
     if (idxS !== undefined) A.add(idxS, idxS, gds);
     if (idxD !== undefined && idxS !== undefined) {
@@ -1909,17 +2170,10 @@ function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, regi
   // For PMOS: Vsg > |Vth| to turn on
   const vsg = diodeVoltages.get(part.id) ?? 0;
 
-  if (vsg < Math.abs(vth)) {
-    const gOff = 1e-9;
-    if (idxD !== undefined) A.add(idxD, idxD, gOff);
-    if (idxS !== undefined) A.add(idxS, idxS, gOff);
-    if (idxD !== undefined && idxS !== undefined) {
-      A.add(idxD, idxS, -gOff);
-      A.add(idxS, idxD, -gOff);
-    }
-  } else if (region === 'triode') {
+  if (region === 'triode') {
     // Enhanced switch, small |vds|: channel = Rds(on) ≈ 1/(2K·Vov).
-    const gOn = 2 * k * Math.max(vsg - Math.abs(vth), 0.05);
+    const [vovSt] = smoothVov(vsg - Math.abs(vth));
+    const gOn = 2 * k * Math.max(vovSt, 0.05);
     if (idxD !== undefined) A.add(idxD, idxD, gOn);
     if (idxS !== undefined) A.add(idxS, idxS, gOn);
     if (idxD !== undefined && idxS !== undefined) {
@@ -1927,9 +2181,9 @@ function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, regi
       A.add(idxS, idxD, -gOn);
     }
   } else {
-    const vov = vsg - Math.abs(vth);
-    const gm = 2 * k * vov;
-    const id0 = k * vov * vov;
+    const [vovS, dVovS] = smoothVov(vsg - Math.abs(vth));
+    const gm = 2 * k * vovS * dVovS;
+    const id0 = k * vovS * vovS;
     const iEq = id0 - gm * vsg;
 
     // PMOS: current flows source → drain (reversed from NMOS)
@@ -1941,7 +2195,9 @@ function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, regi
     if (idxS !== undefined) b[idxS] -= iEq;
     if (idxD !== undefined) b[idxD] += iEq;
 
-    const gds = 0.001;
+    // Tapered stability Rds — see the NMOS note.
+    const taper = vovS / (vovS + MOS_SMOOTH_DELTA);
+    const gds = 0.001 * taper * taper + 1e-9;
     if (idxD !== undefined) A.add(idxD, idxD, gds);
     if (idxS !== undefined) A.add(idxS, idxS, gds);
     if (idxD !== undefined && idxS !== undefined) {
@@ -1969,10 +2225,13 @@ function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, regi
  * stamped — a guaranteed-singular matrix, silently caught, returning all-zero
  * voltages for ANY circuit containing an op-amp.
  */
-function stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegions, vcc) {
+function stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegions, vcc, srcScale = 1) {
   const gain = /** @type {number} */ (part.params.gain ?? 1e6);
-  const railLow = /** @type {number} */ (part.params.railLow ?? 0);
-  const railHigh = /** @type {number} */ (part.params.railHigh ?? vcc);
+  // Rails scale with source stepping, explicit params included — the FSM
+  // in the Newton loop scales the same way, and disagreement between the
+  // two is a region that can never settle.
+  const railLow = /** @type {number} */ (part.params.railLow ?? 0) * srcScale;
+  const railHigh = /** @type {number} */ (part.params.railHigh ?? vcc) * srcScale;
 
   const netP = findNet(nets, part.id, 'inp');
   const netN = findNet(nets, part.id, 'inn');
@@ -2108,7 +2367,7 @@ export function sourceVoltage(part, tSeconds, vcc) {
  * Params: {volts} — DC value; plus the waveform params of `sourceVoltage`
  * for time-varying operation (sine/square/triangle/pulse).
  */
-function stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc, tSeconds = 0, controls = null) {
+function stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc, tSeconds = 0, controls = null, srcScale = 1) {
   // Control value overrides params.volts for interactive adjustment (bench supply knob)
   let volts;
   if (part._ccClampedVolts !== undefined) {
@@ -2118,6 +2377,7 @@ function stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsInd
   } else {
     volts = sourceVoltage(part, tSeconds, vcc);
   }
+  volts *= srcScale;
   const posNet = findNet(nets, part.id, 'pos');
   const negNet = findNet(nets, part.id, 'neg');
 
@@ -2146,8 +2406,8 @@ function stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsInd
  * Current flows from neg to pos (conventional).
  * Params: {amps} — the source current.
  */
-function stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId) {
-  const amps = /** @type {number} */ (part.params.amps ?? 0.001);
+function stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId, srcScale = 1) {
+  const amps = /** @type {number} */ (part.params.amps ?? 0.001) * srcScale;
   const posNet = findNet(nets, part.id, 'pos');
   const negNet = findNet(nets, part.id, 'neg');
 

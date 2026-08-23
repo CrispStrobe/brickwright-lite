@@ -2785,6 +2785,21 @@ class BoardImpl {
     this.inductorCurrents = new Map();
 
     /**
+     * Trapezoidal companion history (spec-updates/adaptive-transient.md):
+     * capacitor currents and inductor voltages at the last accepted step.
+     * Valid only while `_trapValid` — any discrete event (setPin,
+     * setControl, power, netlist, a device flip) is a discontinuity, and
+     * the first step after one runs backward Euler to re-seed.
+     * @type {Map<string, number>}
+     */
+    this.capCurrents = new Map();
+    /** @type {Map<string, number>} */
+    this.inductorVoltages = new Map();
+    this._trapValid = false;
+    /** Last accepted adaptive step size (seconds); seeds the next call. */
+    this._transH = 1e-4;
+
+    /**
      * Cached LED currents from last solve.
      * @type {Map<string, number>}
      */
@@ -2864,6 +2879,66 @@ class BoardImpl {
    * stays in the list for identity; the synthetic LEDs carry the
    * electrical role.
    */
+  /**
+   * Give each dc_motor's winding inductance to the SOLVER as a real
+   * series inductor on a hidden net between the motor's 'a' terminal and
+   * whatever it was wired to. The device model then owns only R + back-EMF.
+   *
+   * Why: a device-side inductor companion cannot be made consistent with
+   * the adaptive integrator — its Norton memory is frozen across the
+   * step-doubling's full/half solves (a permanent phantom error that
+   * pinned the controller at err ≈ 0.73), its update cadence differs from
+   * the solver's history cycle, and in series with a solver inductor the
+   * shared node divides the two histories' disagreement by a vanishing
+   * conductance (measured as a 1e35 V blow-up). As a first-class solver
+   * inductor it gets trapezoidal companions, error control, and history
+   * management like every other L — and the motor's 'a' pin now reads the
+   * true series winding current as (v_a − v_b − e)/R.
+   * DC is unchanged: the hidden inductor is a 1 mΩ wire there.
+   */
+  static _expandMotorWindings(parts, nets) {
+    const outParts = [...parts];
+    const outNets = nets.map(n => _objectSpread(_objectSpread({}, n), {}, {
+      terminals: [...n.terminals]
+    }));
+    for (const p of parts) {
+      var _p$params$windingH, _p$params;
+      if (p.kind !== 'dc_motor') continue;
+      const L = (_p$params$windingH = (_p$params = p.params) === null || _p$params === void 0 ? void 0 : _p$params.windingH) !== null && _p$params$windingH !== void 0 ? _p$params$windingH : 0.005;
+      if (!(L > 0)) continue;
+      const net = outNets.find(n => n.terminals.some(t => t.part === p.id && t.terminal === 'a'));
+      if (!net) continue;
+      const hidId = "".concat(p.id, "_winding");
+      const hidNetId = "n_".concat(p.id, "_winding");
+      net.terminals = net.terminals.filter(t => !(t.part === p.id && t.terminal === 'a'));
+      net.terminals.push({
+        part: hidId,
+        terminal: 'a'
+      });
+      outNets.push({
+        id: hidNetId,
+        terminals: [{
+          part: hidId,
+          terminal: 'b'
+        }, {
+          part: p.id,
+          terminal: 'a'
+        }]
+      });
+      outParts.push({
+        id: hidId,
+        kind: 'inductor',
+        params: {
+          henrys: L
+        },
+        terminals: ['a', 'b']
+      });
+    }
+    return {
+      parts: outParts,
+      nets: outNets
+    };
+  }
   static _expandComposites(parts, nets) {
     const extraParts = [];
     const netCopies = nets.map(n => _objectSpread(_objectSpread({}, n), {}, {
@@ -3028,6 +3103,20 @@ class BoardImpl {
     this.nets = nets;
     this.partMap = new Map(parts.map(p => [p.id, p]));
     this.netMap = new Map(nets.map(n => [n.id, n]));
+    // SOLVER-INTERNAL view: motor winding inductances become first-class
+    // solver inductors on hidden series nets (_expandMotorWindings — the
+    // why lives there). The PUBLIC parts/nets above stay exactly what the
+    // user drew: topology consumers (DRC, corpus invariants, exporters)
+    // must keep seeing the diode on the net the motor pin is wired to,
+    // not one hop into the motor's insides.
+    const solveView = BoardImpl._expandMotorWindings(parts, nets);
+    this._solveParts = solveView.parts;
+    this._solveNets = solveView.nets;
+    for (const p of this._solveParts) {
+      if (p.kind === 'inductor' && !this.inductorCurrents.has(p.id)) {
+        this.inductorCurrents.set(p.id, 0);
+      }
+    }
     this.ledHistory.clear();
     this.buzzerEdges.clear();
     this.capVoltages.clear();
@@ -3043,11 +3132,6 @@ class BoardImpl {
       if (p.kind === 'capacitor') {
         if (!this.capVoltages.has(p.id)) {
           this.capVoltages.set(p.id, 0); // start uncharged
-        }
-      }
-      if (p.kind === 'inductor') {
-        if (!this.inductorCurrents.has(p.id)) {
-          this.inductorCurrents.set(p.id, 0);
         }
       }
       if (p.kind === 'shift_register') {
@@ -4442,11 +4526,11 @@ class BoardImpl {
   getControls() {
     const controllable = ['potentiometer', 'button', 'switch', 'ldr', 'ntc', 'vsource'];
     return this.parts.filter(p => controllable.includes(p.kind)).map(p => {
-      var _this$controls$get, _p$params$volts, _p$params;
+      var _this$controls$get, _p$params$volts, _p$params2;
       return {
         id: p.id,
         kind: p.kind,
-        value: (_this$controls$get = this.controls.get(p.id)) !== null && _this$controls$get !== void 0 ? _this$controls$get : p.kind === 'vsource' ? (_p$params$volts = (_p$params = p.params) === null || _p$params === void 0 ? void 0 : _p$params.volts) !== null && _p$params$volts !== void 0 ? _p$params$volts : 5 : 0
+        value: (_this$controls$get = this.controls.get(p.id)) !== null && _this$controls$get !== void 0 ? _this$controls$get : p.kind === 'vsource' ? (_p$params$volts = (_p$params2 = p.params) === null || _p$params2 === void 0 ? void 0 : _p$params2.volts) !== null && _p$params$volts !== void 0 ? _p$params$volts : 5 : 0
       };
     });
   }
@@ -4633,6 +4717,15 @@ class BoardImpl {
       }
     }
     if (!this.powered) return warnings;
+
+    // Transient attempt overflow: the adaptive integrator hit its runaway
+    // backstop and finished the interval with one coarse BE step.
+    if (this._transientAttemptOverflow) {
+      warnings.push({
+        severity: 'warning',
+        message: 'Transient integration hit its step-attempt backstop — the last ' + 'stretch of this interval was integrated coarsely. Waveforms there are ' + 'approximate.'
+      });
+    }
 
     // Device sub-step overflow: advanceTo hit the cap on device sub-steps.
     if (this._deviceSubstepOverflow) {
@@ -4865,6 +4958,11 @@ class BoardImpl {
     this.controls = new Map(snap.controls);
     this.capVoltages = new Map(snap.capVoltages);
     this.inductorCurrents = new Map((_snap$inductorCurrent = snap.inductorCurrents) !== null && _snap$inductorCurrent !== void 0 ? _snap$inductorCurrent : []);
+    // Trapezoidal history is NOT snapshotted: _solve() below invalidates
+    // it, so the first step after a restore re-seeds with BE — cleared
+    // here only so stale values never look meaningful in a debugger.
+    this.capCurrents = new Map();
+    this.inductorVoltages = new Map();
 
     // Re-initialize LED/buzzer tracking
     this.ledHistory.clear();
@@ -4889,7 +4987,7 @@ class BoardImpl {
    */
   _solveMNA(powerOff, testNodeA, testNodeB, testCurrent) {
     this._syncDeviceGpioDrives();
-    return (0,_mna_js__WEBPACK_IMPORTED_MODULE_1__.solveMNA)(this.parts, this.nets, this._pinSources(), this.controls, this.vcc, {
+    return (0,_mna_js__WEBPACK_IMPORTED_MODULE_1__.solveMNA)(this._solveParts, this._solveNets, this._pinSources(), this.controls, this.vcc, {
       powerOff,
       testNodeA,
       testNodeB,
@@ -5032,7 +5130,13 @@ class BoardImpl {
    */
   _needsMNA() {
     for (const p of this.parts) {
+      var _p$params3;
       if (MNA_ONLY_KINDS.has(p.kind) || (0,_devices_js__WEBPACK_IMPORTED_MODULE_3__.getDevice)(p.kind)) return true;
+      // An opted-in Shockley junction is beyond the walker's knee
+      // vocabulary: letting the walker answer nodeVoltage while the
+      // instruments answer from the exponential model is two truths on
+      // one bench (spec-updates/shockley-junction-limiting.md).
+      if ((p.kind === 'led' || p.kind === 'diode') && ((_p$params3 = p.params) === null || _p$params3 === void 0 ? void 0 : _p$params3.model) === 'shockley') return true;
     }
     // Shared-LED fan-out is beyond the walker's vocabulary: _solveLedChain
     // traces each LED's series path INDEPENDENTLY, so two LEDs sharing a
@@ -5254,66 +5358,169 @@ class BoardImpl {
   }
 
   /**
-   * Transient integration through MNA: sub-step backward Euler across dtSec,
-   * carrying capacitor voltages and inductor currents forward. Used when
-   * MNA-only parts coexist with reactive parts, or a waveform source runs —
-   * the closed-form RC/RL integrators cannot see either.
+   * Transient integration through MNA — adaptive trapezoidal with
+   * backward-Euler restarts (spec-updates/adaptive-transient.md).
+   *
+   * Step control is step-doubling: one trapezoidal step of h against two of
+   * h/2; the element states (capacitor voltages, inductor currents) carry
+   * the error norm, the half-step result is the accepted one, and h scales
+   * by err^(-1/3) (trap is order 2). The first step after any discrete
+   * event (`_trapValid` false — setPin/setControl/power/netlist/device
+   * flip) runs BE to re-seed the trapezoidal history; square/pulse source
+   * edges truncate the step so the edge is a solve point, never straddled,
+   * and restart BE on the far side. With the solver's factor-reuse ladder
+   * the extra half-step solves are numeric refactors, not fresh
+   * factorizations.
+   *
+   * Sampling floor: while scope channels or waveform sources are live, h
+   * is capped at 100 µs so traces keep the fidelity the fixed-step
+   * integrator had. An idle advance with neither runs to h = dtRemaining
+   * in a handful of steps instead of 200.
    *
    * @param {number} dtSec
    */
   _integrateTransientMNA(dtSec) {
     const tEnd = Number(this.timeNs) / 1e9;
     const t0 = tEnd - dtSec;
-    // Sub-step: 100 µs of simulated time, capped at 200 steps per call so a
-    // long idle advance cannot stall the caller. Adaptive control can replace
-    // this; the cap is a stated accuracy limit, not a hidden one.
-    const SUB = 1e-4;
-    let n = Math.max(1, Math.ceil(dtSec / SUB));
-    if (n > 200) n = 200;
-    const h = dtSec / n;
+    const RELTOL = 1e-4;
+    const ABSTOL_V = 1e-6;
+    const ABSTOL_I = 1e-9;
+    const H_MIN = 1e-8;
+    // A BE seed step is UNCONTROLLED (no error estimate), so it must be
+    // tiny: a 100 µs BE step on a 5 kHz tank (ωh ≈ 3) eats the stored
+    // energy before the trapezoidal controller ever runs. 1 µs keeps the
+    // seed's damping negligible for anything the bench can build.
+    const H_SEED = 1e-6;
+    // Trace-fidelity floor (see doc above).
+    const H_SAMPLE = 1e-4;
+    const sampleCapped = this._scopeChannels.size > 0 || this._hasTimeVaryingSource();
+    const hMax = sampleCapped ? H_SAMPLE : dtSec;
+    // A runaway backstop far above any real circuit; hitting it is
+    // reported, never silently absorbed (the old 200-step cap's honesty,
+    // kept at the new scale).
+    const MAX_ATTEMPTS = 20000;
     this._syncDeviceGpioDrives();
     const pinSources = this._pinSources();
+    const qual = this._qualifiedSources();
+    let nSolves = 0;
+    const solveStep = (tStart, hs, method, cvS, ilS, ccS, lvS) => (nSolves++, (0,_mna_js__WEBPACK_IMPORTED_MODULE_1__.solveMNA)(this._solveParts, this._solveNets, pinSources, this.controls, this.vcc, {
+      tSeconds: tStart + hs,
+      transient: {
+        dtSec: hs,
+        method,
+        capVoltages: cvS,
+        inductorCurrents: ilS,
+        capCurrents: ccS,
+        inductorVoltages: lvS
+      },
+      deviceStates: this._deviceStates,
+      qualifiedSources: qual,
+      // Power off strips the sources but NOT the storage: capacitor
+      // and inductor companions keep stamping, so stored energy
+      // discharges through whatever network remains (the audit found
+      // every discharge-on-power-loss demo frozen instead).
+      powerOff: !this.powered
+    }));
     let cv = this.capVoltages;
     let il = this.inductorCurrents;
+    let cc = this.capCurrents;
+    let lv = this.inductorVoltages;
+    let trapReady = this._trapValid;
+    let t = t0;
+    let h = Math.min(Math.max(this._transH, H_MIN), hMax, dtSec);
+    let attempts = 0;
     let res = null;
-    for (let i = 1; i <= n; i++) {
-      var _res$capVoltagesNext, _res$inductorCurrents;
-      res = (0,_mna_js__WEBPACK_IMPORTED_MODULE_1__.solveMNA)(this.parts, this.nets, pinSources, this.controls, this.vcc, {
-        tSeconds: t0 + i * h,
-        transient: {
-          dtSec: h,
-          capVoltages: cv,
-          inductorCurrents: il
-        },
-        deviceStates: this._deviceStates,
-        qualifiedSources: this._qualifiedSources(),
-        // Power off strips the sources but NOT the storage: capacitor
-        // and inductor companions keep stamping, so stored energy
-        // discharges through whatever network remains (the audit found
-        // every discharge-on-power-loss demo frozen instead).
-        powerOff: !this.powered
-      });
-      cv = (_res$capVoltagesNext = res.capVoltagesNext) !== null && _res$capVoltagesNext !== void 0 ? _res$capVoltagesNext : cv;
-      il = (_res$inductorCurrents = res.inductorCurrentsNext) !== null && _res$inductorCurrents !== void 0 ? _res$inductorCurrents : il;
-      // Every sub-step publishes its voltages and feeds the scope at its
-      // intermediate timestamp. Without this, a waveform source sampled only
-      // at advanceTo boundaries aliases to a flat line: a 50 ms tick is an
-      // integer number of 1 kHz periods, so sin() is 0 at every boundary.
-      this.nodeVoltages = new Map(res.nodeVoltages);
+    const publish = (r, atSec) => {
+      this.nodeVoltages = new Map(r.nodeVoltages);
       if (this._scopeChannels.size > 0) {
-        const stepNs = this.timeNs - BigInt(Math.round((n - i) * h * 1e9));
-        this._updateScopeChannels(stepNs);
+        const remNs = BigInt(Math.max(0, Math.round((tEnd - atSec) * 1e9)));
+        this._updateScopeChannels(this.timeNs - remNs);
       }
-      // One device pass per sub-step: a comparator/gate that flips here is
-      // seen by the network on the NEXT sub-step — switching resolution is
-      // one sub-step, which is the stated accuracy of this integrator.
-      if (this._deviceStates.size > 0) {
-        this.nodeVoltages = new Map(res.nodeVoltages);
-        this._updateDevices();
+    };
+    const accept = (r, atSec) => {
+      var _r$capVoltagesNext, _r$inductorCurrentsNe, _r$capCurrentsNext, _r$inductorVoltagesNe;
+      cv = (_r$capVoltagesNext = r.capVoltagesNext) !== null && _r$capVoltagesNext !== void 0 ? _r$capVoltagesNext : cv;
+      il = (_r$inductorCurrentsNe = r.inductorCurrentsNext) !== null && _r$inductorCurrentsNe !== void 0 ? _r$inductorCurrentsNe : il;
+      cc = (_r$capCurrentsNext = r.capCurrentsNext) !== null && _r$capCurrentsNext !== void 0 ? _r$capCurrentsNext : cc;
+      lv = (_r$inductorVoltagesNe = r.inductorVoltagesNext) !== null && _r$inductorVoltagesNe !== void 0 ? _r$inductorVoltagesNe : lv;
+      res = r;
+      publish(r, atSec);
+      // One device pass per accepted step: a comparator/gate that flips is
+      // seen by the network on the NEXT step. A flip is a discontinuity —
+      // trapezoidal history restarts and the step shrinks to look closely.
+      if (this._deviceStates.size > 0 && this._updateDevices()) {
+        trapReady = false;
+        h = Math.max(H_MIN, h / 4);
       }
+    };
+    while (t < tEnd - 1e-15 && attempts < MAX_ATTEMPTS) {
+      var _h1$capVoltagesNext, _h1$inductorCurrentsN, _h1$capCurrentsNext, _h1$inductorVoltagesN;
+      attempts++;
+      let hEff = Math.min(h, tEnd - t, hMax);
+      // Square/pulse edges become exact solve points (oracle: an edge at
+      // t = 1.0000 ms is stepped TO, never straddled).
+      const edge = this._nextSourceEdgeSec(t);
+      let atEdge = false;
+      if (edge !== null && edge > t + 1e-15 && edge < t + hEff - 1e-15) {
+        hEff = edge - t;
+        atEdge = true;
+      }
+      if (!trapReady || hEff <= 2 * H_MIN) {
+        // Seed / floor step: single BE solve, no error control — kept tiny
+        // (see H_SEED). BE's damping is what a fresh discontinuity needs.
+        const hSeed = Math.min(hEff, H_SEED);
+        const r = solveStep(t, hSeed, 'be', cv, il, cc, lv);
+        t += hSeed;
+        accept(r, t);
+        // Only a seed that reached the edge crossed it.
+        trapReady = !(atEdge && hSeed >= hEff - 1e-18);
+        continue;
+      }
+      const full = solveStep(t, hEff, 'trap', cv, il, cc, lv);
+      const h1 = solveStep(t, hEff / 2, 'trap', cv, il, cc, lv);
+      const h2 = solveStep(t + hEff / 2, hEff / 2, 'trap', (_h1$capVoltagesNext = h1.capVoltagesNext) !== null && _h1$capVoltagesNext !== void 0 ? _h1$capVoltagesNext : cv, (_h1$inductorCurrentsN = h1.inductorCurrentsNext) !== null && _h1$inductorCurrentsN !== void 0 ? _h1$inductorCurrentsN : il, (_h1$capCurrentsNext = h1.capCurrentsNext) !== null && _h1$capCurrentsNext !== void 0 ? _h1$capCurrentsNext : cc, (_h1$inductorVoltagesN = h1.inductorVoltagesNext) !== null && _h1$inductorVoltagesN !== void 0 ? _h1$inductorVoltagesN : lv);
+      let err = 0;
+      for (const [id, vH] of (_h2$capVoltagesNext = h2.capVoltagesNext) !== null && _h2$capVoltagesNext !== void 0 ? _h2$capVoltagesNext : []) {
+        var _h2$capVoltagesNext, _full$capVoltagesNext, _full$capVoltagesNext2;
+        const vF = (_full$capVoltagesNext = (_full$capVoltagesNext2 = full.capVoltagesNext) === null || _full$capVoltagesNext2 === void 0 ? void 0 : _full$capVoltagesNext2.get(id)) !== null && _full$capVoltagesNext !== void 0 ? _full$capVoltagesNext : 0;
+        const sc = ABSTOL_V + RELTOL * Math.max(Math.abs(vH), Math.abs(vF));
+        err = Math.max(err, Math.abs(vF - vH) / sc);
+      }
+      for (const [id, iH] of (_h2$inductorCurrentsN = h2.inductorCurrentsNext) !== null && _h2$inductorCurrentsN !== void 0 ? _h2$inductorCurrentsN : []) {
+        var _h2$inductorCurrentsN, _full$inductorCurrent, _full$inductorCurrent2;
+        const iF = (_full$inductorCurrent = (_full$inductorCurrent2 = full.inductorCurrentsNext) === null || _full$inductorCurrent2 === void 0 ? void 0 : _full$inductorCurrent2.get(id)) !== null && _full$inductorCurrent !== void 0 ? _full$inductorCurrent : 0;
+        const sc = ABSTOL_I + RELTOL * Math.max(Math.abs(iH), Math.abs(iF));
+        err = Math.max(err, Math.abs(iF - iH) / sc);
+      }
+      if (err <= 1 || !Number.isFinite(err)) {
+        // Non-finite means a solve bailed (singular mid-step) — accept the
+        // half-step result and let the convergence warning say so.
+        publish(h1, t + hEff / 2);
+        t += hEff;
+        accept(h2, t);
+        if (atEdge) trapReady = false;
+        const grow = err > 0 ? Math.min(2, 0.9 * Math.pow(err, -1 / 3)) : 2;
+        h = Math.min(Math.max(hEff * grow, H_MIN), hMax);
+      } else {
+        h = Math.max(hEff * Math.max(0.2, 0.9 * Math.pow(err, -1 / 3)), H_MIN);
+      }
+    }
+    if (t < tEnd - 1e-15) {
+      // Backstop hit: finish with one BE step so board time and element
+      // state agree (this.timeNs has already advanced), and say so.
+      const r = solveStep(t, tEnd - t, 'be', cv, il, cc, lv);
+      accept(r, tEnd);
+      trapReady = false;
+      this._transientAttemptOverflow = true;
     }
     this.capVoltages = new Map(cv);
     this.inductorCurrents = new Map(il);
+    this.capCurrents = new Map(cc);
+    this.inductorVoltages = new Map(lv);
+    this._trapValid = trapReady;
+    this._transH = h;
+    // Observable for the idle-advance solve-count oracle; costs nothing.
+    this._lastTransientSolves = nSolves;
     if (res) {
       this.nodeVoltages = new Map(res.nodeVoltages);
       for (const part of this.parts) {
@@ -5324,6 +5531,39 @@ class BoardImpl {
       }
       this._mnaCache = res;
     }
+  }
+
+  /**
+   * Next discontinuity of any square/pulse waveform source strictly after
+   * `tSec`, in seconds — or null. Sine/triangle/pcm are continuous and the
+   * LTE controller handles them; only genuine edges need alignment.
+   * @param {number} tSec
+   * @returns {number | null}
+   */
+  _nextSourceEdgeSec(tSec) {
+    let next = null;
+    for (const part of this.parts) {
+      var _part$params3, _p$freq, _p$duty, _p$phase;
+      if (part.kind !== 'vsource') continue;
+      const p = (_part$params3 = part.params) !== null && _part$params3 !== void 0 ? _part$params3 : {};
+      if (p.wave !== 'square' && p.wave !== 'pulse') continue;
+      const freq = (_p$freq = p.freq) !== null && _p$freq !== void 0 ? _p$freq : 1000;
+      if (!(freq > 0)) continue;
+      const period = 1 / freq;
+      const duty = Math.min(1, Math.max(0, (_p$duty = p.duty) !== null && _p$duty !== void 0 ? _p$duty : 0.5));
+      const phase = ((_p$phase = p.phase) !== null && _p$phase !== void 0 ? _p$phase : 0) / 360;
+      // Edges at cycle fractions 0 and duty.
+      const cycles = tSec * freq + phase;
+      const base = Math.floor(cycles);
+      for (const fracEdge of [0, duty, 1, 1 + duty]) {
+        const tEdge = (base + fracEdge - phase) * period;
+        if (tEdge > tSec + 1e-15) {
+          if (next === null || tEdge < next) next = tEdge;
+          break;
+        }
+      }
+    }
+    return next;
   }
 
   // ─── Internal: capacitor RC integration ───────────────────────────────────
@@ -5365,8 +5605,8 @@ class BoardImpl {
       for (const t of net.terminals) {
         const p = this.partMap.get(t.part);
         if (p && p.kind === 'vcc') {
-          var _p$params$volts2, _p$params2;
-          this.nodeVoltages.set(net.id, (_p$params$volts2 = (_p$params2 = p.params) === null || _p$params2 === void 0 ? void 0 : _p$params2.volts) !== null && _p$params$volts2 !== void 0 ? _p$params$volts2 : this.vcc);
+          var _p$params$volts2, _p$params4;
+          this.nodeVoltages.set(net.id, (_p$params$volts2 = (_p$params4 = p.params) === null || _p$params4 === void 0 ? void 0 : _p$params4.volts) !== null && _p$params$volts2 !== void 0 ? _p$params$volts2 : this.vcc);
         } else if (p && p.kind === 'gnd') {
           this.nodeVoltages.set(net.id, 0);
         }
@@ -5449,7 +5689,10 @@ class BoardImpl {
     this.nodeVoltages.clear();
     this.ledCurrents.clear();
     this._mnaCache = null; // invalidate MNA cache
-
+    // Every discrete event routes through here — it is a discontinuity for
+    // the transient integrator: trapezoidal history is stale, the next
+    // step re-seeds with backward Euler.
+    this._trapValid = false;
     if (!this.powered) return;
 
     // Parts beyond the walker's vocabulary? One full MNA solve answers
@@ -5465,8 +5708,8 @@ class BoardImpl {
         const part = this.partMap.get(t.part);
         if (!part) continue;
         if (part.kind === 'vcc') {
-          var _part$params$volts, _part$params3;
-          this.nodeVoltages.set(net.id, (_part$params$volts = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.volts) !== null && _part$params$volts !== void 0 ? _part$params$volts : this.vcc);
+          var _part$params$volts, _part$params4;
+          this.nodeVoltages.set(net.id, (_part$params$volts = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.volts) !== null && _part$params$volts !== void 0 ? _part$params$volts : this.vcc);
         } else if (part.kind === 'gnd') {
           this.nodeVoltages.set(net.id, 0);
         }
@@ -5587,7 +5830,7 @@ class BoardImpl {
    * @param {Array<{vTh: number, rTh: number}>} out
    */
   _gatherSourcesInner(netId, visited, rAccum, out) {
-    var _part$params$volts2, _part$params4;
+    var _part$params$volts2, _part$params5;
     // If this net has a known voltage, it's a terminal source —
     // return it without marking visited, so parallel paths to the
     // same known net (e.g. two resistors both to GND) are all found.
@@ -5609,7 +5852,7 @@ class BoardImpl {
       switch (part.kind) {
         case 'vcc':
           out.push({
-            vTh: (_part$params$volts2 = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.volts) !== null && _part$params$volts2 !== void 0 ? _part$params$volts2 : this.vcc,
+            vTh: (_part$params$volts2 = (_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.volts) !== null && _part$params$volts2 !== void 0 ? _part$params$volts2 : this.vcc,
             rTh: rAccum
           });
           break;
@@ -5639,9 +5882,9 @@ class BoardImpl {
             if (sr && t.terminal.startsWith('q')) {
               const bitIdx = parseInt(t.terminal.slice(1), 10);
               if (!isNaN(bitIdx) && sr.oeActive !== false) {
-                var _part$params$rOut, _part$params5;
+                var _part$params$rOut, _part$params6;
                 const bitVal = sr.latchReg >> bitIdx & 1;
-                const rOut = /** @type {number} */(_part$params$rOut = (_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.rOut) !== null && _part$params$rOut !== void 0 ? _part$params$rOut : 50;
+                const rOut = /** @type {number} */(_part$params$rOut = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.rOut) !== null && _part$params$rOut !== void 0 ? _part$params$rOut : 50;
                 out.push({
                   vTh: bitVal ? this.vcc : 0,
                   rTh: rAccum + rOut
@@ -5829,7 +6072,7 @@ class BoardImpl {
    * @returns {{ vTh: number; rTh: number } | null}
    */
   _traceToSourceInner(netId, excludePart, visited, rAccum) {
-    var _part$params$volts3, _part$params6;
+    var _part$params$volts3, _part$params7;
     if (visited.has(netId)) return null;
     visited.add(netId);
     const net = this.netMap.get(netId);
@@ -5852,7 +6095,7 @@ class BoardImpl {
       switch (part.kind) {
         case 'vcc':
           return {
-            vTh: (_part$params$volts3 = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.volts) !== null && _part$params$volts3 !== void 0 ? _part$params$volts3 : this.vcc,
+            vTh: (_part$params$volts3 = (_part$params7 = part.params) === null || _part$params7 === void 0 ? void 0 : _part$params7.volts) !== null && _part$params$volts3 !== void 0 ? _part$params$volts3 : this.vcc,
             rTh: rAccum
           };
         case 'gnd':
@@ -6009,7 +6252,11 @@ class BoardImpl {
    * @returns {string | undefined} net id
    */
   _netForTerminal(partId, terminal) {
-    for (const net of this.nets) {
+    // The SOLVER view: identical to the drawn netlist except that an
+    // expanded motor's 'a' resolves to its hidden winding net, so device
+    // reads and instrument taps see the node its model actually sits on.
+    for (const net of (_this$_solveNets = this._solveNets) !== null && _this$_solveNets !== void 0 ? _this$_solveNets : this.nets) {
+      var _this$_solveNets;
       for (const t of net.terminals) {
         if (t.part === partId && t.terminal === terminal) {
           return net.id;
@@ -14436,31 +14683,23 @@ function registerDCMotor() {
       const kV = (_part$params$kV = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.kV) !== null && _part$params$kV !== void 0 ? _part$params$kV : 0.01;
       const L = (_part$params$windingH = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.windingH) !== null && _part$params$windingH !== void 0 ? _part$params$windingH : 0.005;
 
-      // Motor as Thévenin between its own pins: back-EMF (kV·omega, + at a)
-      // in series with the winding resistance, so I(a→b) = (Va−Vb−e)/R —
-      // the same equation update() integrates the mechanics from.
+      // Motor as Thévenin between its own pins: back-EMF (kV·omega, + at
+      // a) behind the winding resistance — the EMF sign matters (the
+      // original Norton pair had it INVERTED, so the motor drew MORE
+      // current the faster it spun; the free-running oracle in
+      // test/referenced-drives.test.mjs keeps that dead).
       //
-      // The previous hand-built Norton pair had the EMF sign INVERTED
-      // (injected −e/R into a where the Thévenin→Norton transform gives
-      // +e/R): electrically the motor drew MORE current the faster it
-      // spun, I = (V+e)/R. Nothing caught it because the mechanical loop
-      // uses its own correct formula and stiff supplies hid the node
-      // shift; a series resistor exposes it — see the free-running oracle
-      // in test/referenced-drives.test.mjs.
+      // The winding INDUCTANCE is deliberately NOT stamped here: the
+      // board expands every dc_motor into motor + a first-class solver
+      // inductor on a hidden series net (_expandMotorWindings). A
+      // device-side inductor companion cannot be made consistent with
+      // the adaptive integrator — frozen Norton memory across the
+      // step-doubling's sub-solves, update cadence out of step with the
+      // solver's histories; the failure modes (a permanent err ≈ 0.73
+      // phantom, a period-2h oscillator, a 1e35 V series blow-up) are
+      // written up at the expansion site.
+      void L;
       ctx.theveninBetween('a', 'b', kV * state.omega, R);
-
-      // Series inductance: backward-Euler companion model adds a
-      // conductance dt/L and a Norton current source of the previous
-      // current. Only active during transient sub-steps (dtSec present).
-      if (L > 0 && ctx.dtSec) {
-        const gL = ctx.dtSec / Math.max(L, 1e-12);
-        ctx.conductance('a', 'b', gL);
-        // Norton source from previous inductor current
-        if (Math.abs(state.current) > 1e-12) {
-          ctx.current('a', -state.current);
-          ctx.current('b', state.current);
-        }
-      }
     },
     update(part, state, read, tNs) {
       var _part$params$kV2, _part$params5, _part$params$kT, _part$params6, _part$params$J, _part$params7, _part$params$loadTorq, _part$params8;
@@ -14479,7 +14718,9 @@ function registerDCMotor() {
       state._lastTNs = tNs;
       if (dtSec <= 0) return false;
 
-      // Motor current: I = (V_a - V_b - kV * omega) / R
+      // With the winding L expanded into a solver inductor, the motor's
+      // 'a' pin sits on the hidden net BETWEEN L and R — so this
+      // resistive formula reads the true series winding current.
       const vA = read('a');
       const vB = read('b');
       const current = (vA - vB - kV * state.omega) / R;
@@ -29297,14 +29538,24 @@ function diodeCompanion(vAcross, vf, rd, opts) {
     return shockleyCompanion(vAcross, vf, rd, opts.is, opts.n);
   }
 
-  // Piecewise-linear (original model)
-  if (vAcross < vf) {
+  // Piecewise-linear knee with a C1 parabolic blend over ±PWL_KNEE_EPS.
+  // A HARD corner plus an inductor is a Newton oscillator: the flyback
+  // decay tail parks the junction exactly at vf, the on/off branches
+  // alternate per step, and the adaptive integrator tracked the orbit
+  // forever at err ≈ 0.73 (a single 1 ms advance read −4.7 V where fine
+  // stepping settles at +0.7 V) — the diode-corner twin of the MOS
+  // smoothVov fix. Outside the band both branches are BIT-IDENTICAL to
+  // the original lines, so every corpus operating point away from the
+  // knee is untouched.
+  const EPS = PWL_KNEE_EPS;
+  if (vAcross < vf - EPS) {
     const gOff = 1e-9;
     return {
       gEq: gOff,
       iEq: 0
     };
-  } else {
+  }
+  if (vAcross > vf + EPS) {
     const gEq = 1 / rd;
     const iEq = -vf / rd;
     return {
@@ -29312,6 +29563,26 @@ function diodeCompanion(vAcross, vf, rd, opts) {
       iEq
     };
   }
+  // In-band: i(v) = (v − vf + ε)² / (4·ε·rd) — joins i = 0 at vf−ε and the
+  // line (v−vf)/rd at vf+ε with matching slope at both ends.
+  const u = vAcross - vf + EPS;
+  const gEq = u / (2 * EPS * rd);
+  const i = u * u / (4 * EPS * rd);
+  return {
+    gEq,
+    iEq: i - gEq * vAcross
+  };
+}
+
+/** Half-width of the PWL knee's C1 blend band (volts). */
+const PWL_KNEE_EPS = 0.025;
+
+/** PWL knee current with the C1 blend — extraction must match the stamp. */
+function pwlKneeCurrent(v, vf, rd) {
+  if (v < vf - PWL_KNEE_EPS) return 0;
+  if (v > vf + PWL_KNEE_EPS) return (v - vf) / rd;
+  const u = v - vf + PWL_KNEE_EPS;
+  return u * u / (4 * PWL_KNEE_EPS * rd);
 }
 
 /**
@@ -29328,6 +29599,122 @@ function diodeCompanion(vAcross, vf, rd, opts) {
  * @param {number} [n] - ideality factor
  * @returns {{ gEq: number, iEq: number }}
  */
+/**
+ * Junction model resolution — OPT-IN Shockley via `params.model:
+ * 'shockley'`; the sharp-knee PWL stays the default.
+ *
+ * Why not Shockley-by-default yet: the closed-form walker answers LED
+ * benches with the knee, so a default flip makes nodeVoltage (walker) and
+ * branchCurrent (MNA) disagree by ~4 % on the same bench — the
+ * two-solvers-two-truths trap — and silently moves every LED/diode value
+ * in the shipped example corpus. The flip is a coordinated change (walker
+ * routing + corpus re-measurement together), tracked as ROADMAP E1.3b;
+ * the machinery (companion, pnjlim, extraction) is complete and tested
+ * behind the param. Ideality: LEDs 1.8, silicon 1.0, via params.n.
+ */
+function junctionOpts(part) {
+  var _part$params, _part$params2, _part$params$n, _part$params3;
+  if (((_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.model) !== 'shockley') return undefined;
+  return {
+    shockley: true,
+    is: (_part$params2 = part.params) === null || _part$params2 === void 0 ? void 0 : _part$params2.is,
+    n: (_part$params$n = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.n) !== null && _part$params$n !== void 0 ? _part$params$n : part.kind === 'led' ? 1.8 : 1.0
+  };
+}
+
+/** Junction current at a solved voltage — must match what was stamped. */
+function junctionCurrent(part, vAcross, vf, rd) {
+  const opts = junctionOpts(part);
+  if (!opts) {
+    return pwlKneeCurrent(vAcross, vf, rd);
+  }
+  const VT = 0.02585;
+  const nVt = opts.n * VT;
+  let is = opts.is;
+  if (is === undefined) {
+    const expVf = Math.exp(Math.min(vf / nVt, 80));
+    is = 0.020 / Math.max(expVf - 1, 1e-30);
+  }
+  const vClamped = Math.min(vAcross, nVt * 80);
+  if (vClamped < -5 * nVt) return -is;
+  return is * (Math.exp(vClamped / nVt) - 1);
+}
+
+/**
+ * SPICE-style junction voltage limiting (pnjlim): past the critical
+ * voltage, an exponential junction's NR update is pulled back along a
+ * logarithm instead of clamped flat — the classic cure for the two-
+ * junction oscillation the 0.5 V clamp cannot settle.
+ * @param {number} vnew @param {number} vold @param {number} nVt @param {number} vcrit
+ */
+function pnjlim(vnew, vold, nVt, vcrit) {
+  if (vnew > vcrit && Math.abs(vnew - vold) > 2 * nVt) {
+    if (vold > 0) {
+      const arg = 1 + (vnew - vold) / nVt;
+      return arg > 0 ? vold + nVt * Math.log(arg) : vcrit;
+    }
+    return nVt * Math.log(vnew / nVt);
+  }
+  return vnew;
+}
+
+/** Critical voltage + nVt for a part's junction (Shockley parts only). */
+function junctionLimitParams(part, vf) {
+  const opts = junctionOpts(part);
+  if (!opts) return null;
+  const VT = 0.02585;
+  const nVt = opts.n * VT;
+  let is = opts.is;
+  if (is === undefined) {
+    const expVf = Math.exp(Math.min(vf / nVt, 80));
+    is = 0.020 / Math.max(expVf - 1, 1e-30);
+  }
+  const vcrit = nVt * Math.log(nVt / (Math.SQRT2 * is));
+  return {
+    nVt,
+    vcrit
+  };
+}
+
+/**
+ * SPICE-style FET gate-voltage limiting (fetlim, from the published
+ * SPICE3 algorithm): a square-law device has a hard corner at Vth, and a
+ * flat clamp bounces the NR iterate across it forever — measured on the
+ * cross-coupled latch, which orbited the symmetric operating point at
+ * ±0.5 V per iteration without ever settling. fetlim lands threshold
+ * crossings AT Vth ± 0.5 and shrinks steps near the corner.
+ * @param {number} vnew @param {number} vold @param {number} vto
+ */
+function fetlim(vnew, vold, vto) {
+  const vtsthi = Math.abs(2 * (vold - vto)) + 2;
+  const vtstlo = vtsthi / 2 + 2;
+  const vtox = vto + 3.5;
+  const delv = vnew - vold;
+  if (vold >= vto) {
+    if (vold >= vtox) {
+      if (delv <= 0) {
+        if (vnew >= vtox) {
+          if (-delv > vtstlo) vnew = vold - vtstlo;
+        } else {
+          vnew = Math.max(vnew, vto + 2);
+        }
+      } else if (delv > vtsthi) {
+        vnew = vold + vtsthi;
+      }
+    } else if (delv <= 0) {
+      if (vnew < vto - 0.5) vnew = vto - 0.5;
+    } else if (vnew > vtox) {
+      vnew = vtox;
+    }
+  } else if (delv <= 0) {
+    if (-delv > vtsthi) vnew = vold - vtsthi;
+  } else if (vnew <= vto + 0.5) {
+    if (delv > vtstlo) vnew = vold + vtstlo;
+  } else {
+    vnew = vto + 0.5;
+  }
+  return vnew;
+}
 function shockleyCompanion(vAcross, vf, rd, is, n) {
   const VT = 0.02585; // thermal voltage at 25°C (kT/q)
   const nVt = (n !== null && n !== void 0 ? n : 1.8) * VT;
@@ -29549,7 +29936,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
   const capPairSeen = new Set();
   if (!powerOff) {
     for (const part of parts) {
-      var _part$params;
+      var _part$params4;
       if (part.kind === 'vcc') {
         const vccNet = findNet(nets, part.id, 'vcc');
         // ONE constraint row per rail. A schematic draws one power symbol per
@@ -29580,7 +29967,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         }
       }
       // Named power supply kinds that act as voltage sources
-      if ((part.kind === 'battery_9v' || part.kind === 'battery_aa' || part.kind === 'battery_coin' || part.kind === 'solar_cell') && (_part$params = part.params) !== null && _part$params !== void 0 && _part$params.iLimit) {
+      if ((part.kind === 'battery_9v' || part.kind === 'battery_aa' || part.kind === 'battery_coin' || part.kind === 'solar_cell') && (_part$params4 = part.params) !== null && _part$params4 !== void 0 && _part$params4.iLimit) {
         // These can have current limits too, but they are registered devices
         // and don't participate in the vsource MNA row. Skip here.
       }
@@ -29642,477 +30029,559 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
   const NR_MAX_STEP = 0.5;
   let solution = new Float64Array(dim);
   let converged = false;
-  for (let iter = 0; iter < MAX_NR_ITER; iter++) {
-    // Clear values; the assembled pattern survives for factor reuse.
-    A.reset();
-    b.fill(0);
 
-    // A schematic conventionally draws ONE power symbol per connection point,
-    // so a single rail routinely carries several `vcc` parts. Each used to get
-    // its own voltage-source row, and two rows enforcing V(net) = 5 make the
-    // matrix singular: the split of current between the two identical sources
-    // is indeterminate. The solve then failed and EVERY node — the rail
-    // included — read 0 V, with converged:false and nothing naming the cause.
-    // Found by running 26 imported boards past lcapy: 25 failed, and the
-    // minimal reproduction is two vcc symbols on one net.
-    //
-    // One constraint per rail. Parts on the same net asking for DIFFERENT
-    // voltages are a real conflict (a 5 V symbol shorted to a 3.3 V one) and
-    // are reported rather than silently resolved to whichever came first.
-    const railStamped = new Map(); // netId -> volts already stamped
-    for (const part of parts) {
-      switch (part.kind) {
-        case 'resistor':
-          stampResistor(A, b, part, nets, nodeIndex, groundNetId);
-          break;
-        case 'led':
-        case 'diode':
-          stampDiode(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages);
-          break;
-        case 'potentiometer':
-          stampPotentiometer(A, b, part, nets, nodeIndex, groundNetId, controls);
-          break;
-        case 'button':
-        case 'switch':
-          stampButton(A, b, part, nets, nodeIndex, groundNetId, controls);
-          break;
-        case 'vcc':
-          if (!powerOff) {
-            var _part$params2;
-            // params.volts makes the rail per-part adjustable (a 3.3V
-            // rail beside the 5V one); the board default stays the
-            // fallback. board.js's seed path already honored this —
-            // the solver must agree or the seed lies.
-            const railVolts = Number.isFinite((_part$params2 = part.params) === null || _part$params2 === void 0 ? void 0 : _part$params2.volts) ? part.params.volts : vcc;
-            const railNet = findNet(nets, part.id, 'vcc');
-            if (vsIndex.has(part.id)) {
-              railStamped.set(railNet, railVolts);
-              stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, railVolts);
-            } else if (railNet && railStamped.has(railNet) && railStamped.get(railNet) !== railVolts) {
-              // Two symbols on one net asking for different voltages is a real
-              // short between rails, not a duplicate. Say so instead of
-              // silently keeping whichever was stamped first.
-              railConflicts.push("".concat(railNet, ": ").concat(railStamped.get(railNet), " V and ").concat(railVolts, " V"));
-            }
-          }
-          break;
-        case 'mcu':
-          if (!powerOff) {
-            stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources);
-          }
-          break;
+  // The Newton loop, callable per ladder rung. Knobs: `gmin` (GMIN
+  // stepping) and `srcScale` (source stepping — every independent source,
+  // pin drive, device drive, and rail scales together, so a 0.1 rung is
+  // the same circuit at a tenth of the excitation). All nonlinear state
+  // (junction voltages, region FSMs, CC clamps) lives in the enclosing
+  // scope, so each rung seeds the next — the point of a continuation.
+  const runNewton = function runNewton(gmin) {
+    let srcScale = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 1;
+    for (let iter = 0; iter < MAX_NR_ITER; iter++) {
+      // Clear values; the assembled pattern survives for factor reuse.
+      A.reset();
+      b.fill(0);
 
-        // Chip-qualified drives (opts.qualifiedSources) are stamped after
-        // this loop — they attach to parts of ANY kind, including ones the
-        // solver has no model for (a machine's w65c22).
-
-        case 'buzzer':
-          stampBuzzerResistance(A, b, part, nets, nodeIndex, groundNetId);
-          break;
-        case 'ldr':
-        case 'ntc':
-          stampVariableResistor(A, b, part, nets, nodeIndex, groundNetId, controls);
-          break;
-        case 'inductor':
-          {
-            if (transient) {
-              var _ref, _part$params$henrys, _transient$inductorCu;
-              // Backward-Euler companion: i(t+dt) = i(t) + (dt/L)·v(t+dt)
-              // → conductance dt/L in parallel with a Norton source of i(t).
-              const L = /** @type {number} */(_ref = (_part$params$henrys = part.params.henrys) !== null && _part$params$henrys !== void 0 ? _part$params$henrys : part.params.henries) !== null && _ref !== void 0 ? _ref : 0.001;
-              const g = transient.dtSec / Math.max(L, 1e-12);
-              const iPrev = (_transient$inductorCu = transient.inductorCurrents.get(part.id)) !== null && _transient$inductorCu !== void 0 ? _transient$inductorCu : 0;
-              const netA = findNet(nets, part.id, 'a');
-              const netB = findNet(nets, part.id, 'b');
-              stampTwoTerminal(A, netA, netB, g, nodeIndex);
-              const idxA = netA ? nodeIndex.get(netA) : undefined;
-              const idxB = netB ? nodeIndex.get(netB) : undefined;
-              if (idxA !== undefined) b[idxA] -= iPrev; // i flows a→b
-              if (idxB !== undefined) b[idxB] += iPrev;
-            } else {
-              // DC steady-state: an inductor is a short (1 mΩ wire).
-              stampTwoTerminal(A, findNet(nets, part.id, 'a'), findNet(nets, part.id, 'b'), 1 / 0.001, nodeIndex);
-            }
+      // A schematic conventionally draws ONE power symbol per connection point,
+      // so a single rail routinely carries several `vcc` parts. Each used to get
+      // its own voltage-source row, and two rows enforcing V(net) = 5 make the
+      // matrix singular: the split of current between the two identical sources
+      // is indeterminate. The solve then failed and EVERY node — the rail
+      // included — read 0 V, with converged:false and nothing naming the cause.
+      // Found by running 26 imported boards past lcapy: 25 failed, and the
+      // minimal reproduction is two vcc symbols on one net.
+      //
+      // One constraint per rail. Parts on the same net asking for DIFFERENT
+      // voltages are a real conflict (a 5 V symbol shorted to a 3.3 V one) and
+      // are reported rather than silently resolved to whichever came first.
+      const railStamped = new Map(); // netId -> volts already stamped
+      for (const part of parts) {
+        switch (part.kind) {
+          case 'resistor':
+            stampResistor(A, b, part, nets, nodeIndex, groundNetId);
             break;
-          }
-        case 'capacitor':
-          {
-            if (transient) {
-              var _part$params$farads, _transient$capVoltage;
-              // Backward-Euler companion: i = C/dt · (v(t+dt) − v(t))
-              // → conductance C/dt in parallel with a Norton source C/dt·v(t).
-              const C = /** @type {number} */(_part$params$farads = part.params.farads) !== null && _part$params$farads !== void 0 ? _part$params$farads : 0.0001;
-              const g = C / Math.max(transient.dtSec, 1e-15);
-              const vPrev = (_transient$capVoltage = transient.capVoltages.get(part.id)) !== null && _transient$capVoltage !== void 0 ? _transient$capVoltage : 0;
-              const netA = findNet(nets, part.id, 'a');
-              const netB = findNet(nets, part.id, 'b');
-              stampTwoTerminal(A, netA, netB, g, nodeIndex);
-              const idxA = netA ? nodeIndex.get(netA) : undefined;
-              const idxB = netB ? nodeIndex.get(netB) : undefined;
-              if (idxA !== undefined) b[idxA] += g * vPrev;
-              if (idxB !== undefined) b[idxB] -= g * vPrev;
-            } else if (capVoltagesIn && vsIndex.has(part.id)) {
-              var _capVoltagesIn$get;
-              // Instantaneous solve: hold the stored voltage as a source row.
-              // (Only the first cap of each net pair carries the row — see
-              // the allocation above.)
-              stampCapAsSource(A, b, part, nets, nodeIndex, vsIndex, (_capVoltagesIn$get = capVoltagesIn.get(part.id)) !== null && _capVoltagesIn$get !== void 0 ? _capVoltagesIn$get : 0);
-            }
-            // else: DC operating point — a capacitor is open (gmin covers the net).
+          case 'led':
+          case 'diode':
+            stampDiode(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages);
             break;
-          }
-        case 'npn':
-          stampNPN(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, bjtRegions.get(part.id));
-          break;
-        case 'pnp':
-          stampPNP(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, bjtRegions.get(part.id));
-          break;
-        case 'nmos':
-          stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, mosRegions.get(part.id));
-          break;
-        case 'pmos':
-          stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, mosRegions.get(part.id));
-          break;
-        case 'opamp':
-          stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegions, vcc);
-          break;
-        case 'vsource':
-          stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc, tSeconds, controls);
-          break;
-        case 'isource':
-          stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId);
-          break;
-        case 'zener':
-          stampZener(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages);
-          break;
-
-        // ─── Drawable parts: minimal electrical models ─────────────
-        // These are not full simulations — they provide input impedance
-        // and supply current so the net they sit on is loaded correctly.
-        // Without this, the simulator reports voltages as if the part
-        // were absent, which is worse than not drawing it.
-
-        case 'char_lcd':
-          {
-            // HD44780: ~1mA supply current, data pins are high-Z inputs.
-            // Model: VCC-GND current draw as a resistor (~5kΩ at 5V = 1mA).
-            const vccNet = findNet(nets, part.id, 'vcc');
-            const gndNet = findNet(nets, part.id, 'gnd');
-            stampTwoTerminal(A, vccNet, gndNet, 1 / 5000, nodeIndex); // ~1mA at 5V
+          case 'potentiometer':
+            stampPotentiometer(A, b, part, nets, nodeIndex, groundNetId, controls);
             break;
-          }
-        case 'shift_register':
-          {
-            // 74HC595: ~80µA supply + data/clock/latch are CMOS inputs (~10MΩ).
-            // Outputs are push-pull but modeled separately as LEDs.
-            const dataNet = findNet(nets, part.id, 'data');
-            const clockNet = findNet(nets, part.id, 'clock');
-            const latchNet = findNet(nets, part.id, 'latch');
-            // CMOS input: very high impedance to GND (doesn't load the pin)
-            if (dataNet) stampTwoTerminal(A, dataNet, undefined, 1e-7, nodeIndex);
-            if (clockNet) stampTwoTerminal(A, clockNet, undefined, 1e-7, nodeIndex);
-            if (latchNet) stampTwoTerminal(A, latchNet, undefined, 1e-7, nodeIndex);
+          case 'button':
+          case 'switch':
+            stampButton(A, b, part, nets, nodeIndex, groundNetId, controls);
             break;
-          }
-        case 'ir_receiver':
-          {
-            // IR receiver module: ~5mA supply, output is open-collector with pull-up.
-            const vNet = findNet(nets, part.id, 'vcc');
-            const gNet = findNet(nets, part.id, 'gnd');
-            stampTwoTerminal(A, vNet, gNet, 1 / 1000, nodeIndex); // ~5mA at 5V
-            break;
-          }
-        case 'temp_sensor':
-          {
-            // DS18B20: ~1mA supply, DQ is open-drain (needs external pull-up).
-            const vNet = findNet(nets, part.id, 'vcc');
-            const gNet = findNet(nets, part.id, 'gnd');
-            stampTwoTerminal(A, vNet, gNet, 1 / 5000, nodeIndex); // ~1mA at 5V
-            break;
-          }
-        case 'eeprom':
-          {
-            // I2C EEPROM: ~1mA supply, SDA/SCL are open-drain (high-Z input).
-            const vNet = findNet(nets, part.id, 'vcc');
-            const gNet = findNet(nets, part.id, 'gnd');
-            stampTwoTerminal(A, vNet, gNet, 1 / 5000, nodeIndex);
-            break;
-          }
-
-        // gnd, seven_segment, rgb_led, led_matrix:
-        // handled elsewhere or composite
-
-        default:
-          {
-            // Registered device models (src/devices.js): stamp whatever the
-            // device currently drives as Thévenin sources — exactly like MCU
-            // pins — plus the model's own analog loading.
-            const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.getDevice)(part.kind);
-            if (model) {
-              let state = opts.deviceStates && opts.deviceStates.get(part.id) || {
-                drives: {}
-              };
-              // Ownership: a chip-qualified pin drive (a machine emulating
-              // this chip at bus level) outranks the device model's own
-              // electrical drive on that terminal. Without this, a Z80's
-              // OUT-latch Q pins fought the '374 model (whose clk/d nets
-              // are dead on a machine bench, so it drove its power-on 0)
-              // and every lit LED sat at a divider instead of ON.
-              const qual = opts.qualifiedSources && opts.qualifiedSources.get(part.id);
-              if (qual && state.drives) {
-                const drives = _objectSpread({}, state.drives);
-                let changed = false;
-                for (const term of qual.keys()) {
-                  if (term in drives) {
-                    delete drives[term];
-                    changed = true;
-                  }
-                }
-                if (changed) state = _objectSpread(_objectSpread({}, state), {}, {
-                  drives
-                });
+          case 'vcc':
+            if (!powerOff) {
+              var _part$params5;
+              // params.volts makes the rail per-part adjustable (a 3.3V
+              // rail beside the 5V one); the board default stays the
+              // fallback. board.js's seed path already honored this —
+              // the solver must agree or the seed lies.
+              const railVolts = (Number.isFinite((_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.volts) ? part.params.volts : vcc) * srcScale;
+              const railNet = findNet(nets, part.id, 'vcc');
+              if (vsIndex.has(part.id)) {
+                railStamped.set(railNet, railVolts);
+                stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, railVolts);
+              } else if (railNet && railStamped.has(railNet) && railStamped.get(railNet) !== railVolts) {
+                // Two symbols on one net asking for different voltages is a real
+                // short between rails, not a duplicate. Say so instead of
+                // silently keeping whichever was stamped first.
+                railConflicts.push("".concat(railNet, ": ").concat(railStamped.get(railNet), " V and ").concat(railVolts, " V"));
               }
-              stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, transient ? transient.dtSec : undefined);
             }
             break;
+          case 'mcu':
+            if (!powerOff) {
+              stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources, srcScale);
+            }
+            break;
+
+          // Chip-qualified drives (opts.qualifiedSources) are stamped after
+          // this loop — they attach to parts of ANY kind, including ones the
+          // solver has no model for (a machine's w65c22).
+
+          case 'buzzer':
+            stampBuzzerResistance(A, b, part, nets, nodeIndex, groundNetId);
+            break;
+          case 'ldr':
+          case 'ntc':
+            stampVariableResistor(A, b, part, nets, nodeIndex, groundNetId, controls);
+            break;
+          case 'inductor':
+            {
+              if (transient) {
+                var _ref, _part$params$henrys, _transient$inductorCu, _transient$inductorVo, _transient$inductorVo2;
+                // Companion models (spec-updates/adaptive-transient.md):
+                //   BE:   i(t+h) = i(t) + (h/L)·v(t+h)
+                //         → G = h/L, Norton I = i(t)
+                //   trap: i(t+h) = i(t) + (h/2L)·(v(t+h) + v(t))
+                //         → G = h/2L, Norton I = i(t) + G·v(t)
+                const L = /** @type {number} */(_ref = (_part$params$henrys = part.params.henrys) !== null && _part$params$henrys !== void 0 ? _part$params$henrys : part.params.henries) !== null && _ref !== void 0 ? _ref : 0.001;
+                const h = Math.max(transient.dtSec, 1e-15);
+                const iPrev = (_transient$inductorCu = transient.inductorCurrents.get(part.id)) !== null && _transient$inductorCu !== void 0 ? _transient$inductorCu : 0;
+                const trap = transient.method === 'trap';
+                const g = trap ? h / (2 * Math.max(L, 1e-12)) : h / Math.max(L, 1e-12);
+                const vPrev = trap ? (_transient$inductorVo = (_transient$inductorVo2 = transient.inductorVoltages) === null || _transient$inductorVo2 === void 0 ? void 0 : _transient$inductorVo2.get(part.id)) !== null && _transient$inductorVo !== void 0 ? _transient$inductorVo : 0 : 0;
+                const iNorton = iPrev + (trap ? g * vPrev : 0);
+                const netA = findNet(nets, part.id, 'a');
+                const netB = findNet(nets, part.id, 'b');
+                stampTwoTerminal(A, netA, netB, g, nodeIndex);
+                const idxA = netA ? nodeIndex.get(netA) : undefined;
+                const idxB = netB ? nodeIndex.get(netB) : undefined;
+                if (idxA !== undefined) b[idxA] -= iNorton; // i flows a→b
+                if (idxB !== undefined) b[idxB] += iNorton;
+              } else {
+                // DC steady-state: an inductor is a short (1 mΩ wire).
+                stampTwoTerminal(A, findNet(nets, part.id, 'a'), findNet(nets, part.id, 'b'), 1 / 0.001, nodeIndex);
+              }
+              break;
+            }
+          case 'capacitor':
+            {
+              if (transient) {
+                var _part$params$farads, _transient$capVoltage, _transient$capCurrent, _transient$capCurrent2;
+                // Companion models (spec-updates/adaptive-transient.md):
+                //   BE:   i = (C/h)·(v(t+h) − v(t))
+                //         → G = C/h, Norton I = G·v(t)
+                //   trap: i = (2C/h)·(v(t+h) − v(t)) − i(t)
+                //         → G = 2C/h, Norton I = G·v(t) + i(t)
+                const C = /** @type {number} */(_part$params$farads = part.params.farads) !== null && _part$params$farads !== void 0 ? _part$params$farads : 0.0001;
+                const h = Math.max(transient.dtSec, 1e-15);
+                const trap = transient.method === 'trap';
+                const g = (trap ? 2 * C : C) / h;
+                const vPrev = (_transient$capVoltage = transient.capVoltages.get(part.id)) !== null && _transient$capVoltage !== void 0 ? _transient$capVoltage : 0;
+                const iPrev = trap ? (_transient$capCurrent = (_transient$capCurrent2 = transient.capCurrents) === null || _transient$capCurrent2 === void 0 ? void 0 : _transient$capCurrent2.get(part.id)) !== null && _transient$capCurrent !== void 0 ? _transient$capCurrent : 0 : 0;
+                const iNorton = g * vPrev + iPrev;
+                const netA = findNet(nets, part.id, 'a');
+                const netB = findNet(nets, part.id, 'b');
+                stampTwoTerminal(A, netA, netB, g, nodeIndex);
+                const idxA = netA ? nodeIndex.get(netA) : undefined;
+                const idxB = netB ? nodeIndex.get(netB) : undefined;
+                if (idxA !== undefined) b[idxA] += iNorton;
+                if (idxB !== undefined) b[idxB] -= iNorton;
+              } else if (capVoltagesIn && vsIndex.has(part.id)) {
+                var _capVoltagesIn$get;
+                // Instantaneous solve: hold the stored voltage as a source row.
+                // (Only the first cap of each net pair carries the row — see
+                // the allocation above.)
+                stampCapAsSource(A, b, part, nets, nodeIndex, vsIndex, (_capVoltagesIn$get = capVoltagesIn.get(part.id)) !== null && _capVoltagesIn$get !== void 0 ? _capVoltagesIn$get : 0);
+              }
+              // else: DC operating point — a capacitor is open (gmin covers the net).
+              break;
+            }
+          case 'npn':
+            stampNPN(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, bjtRegions.get(part.id));
+            break;
+          case 'pnp':
+            stampPNP(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, bjtRegions.get(part.id));
+            break;
+          case 'nmos':
+            stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, mosRegions.get(part.id));
+            break;
+          case 'pmos':
+            stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages, mosRegions.get(part.id));
+            break;
+          case 'opamp':
+            stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegions, vcc, srcScale);
+            break;
+          case 'vsource':
+            stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc, tSeconds, controls, srcScale);
+            break;
+          case 'isource':
+            stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId, srcScale);
+            break;
+          case 'zener':
+            stampZener(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages);
+            break;
+
+          // ─── Drawable parts: minimal electrical models ─────────────
+          // These are not full simulations — they provide input impedance
+          // and supply current so the net they sit on is loaded correctly.
+          // Without this, the simulator reports voltages as if the part
+          // were absent, which is worse than not drawing it.
+
+          case 'char_lcd':
+            {
+              // HD44780: ~1mA supply current, data pins are high-Z inputs.
+              // Model: VCC-GND current draw as a resistor (~5kΩ at 5V = 1mA).
+              const vccNet = findNet(nets, part.id, 'vcc');
+              const gndNet = findNet(nets, part.id, 'gnd');
+              stampTwoTerminal(A, vccNet, gndNet, 1 / 5000, nodeIndex); // ~1mA at 5V
+              break;
+            }
+          case 'shift_register':
+            {
+              // 74HC595: ~80µA supply + data/clock/latch are CMOS inputs (~10MΩ).
+              // Outputs are push-pull but modeled separately as LEDs.
+              const dataNet = findNet(nets, part.id, 'data');
+              const clockNet = findNet(nets, part.id, 'clock');
+              const latchNet = findNet(nets, part.id, 'latch');
+              // CMOS input: very high impedance to GND (doesn't load the pin)
+              if (dataNet) stampTwoTerminal(A, dataNet, undefined, 1e-7, nodeIndex);
+              if (clockNet) stampTwoTerminal(A, clockNet, undefined, 1e-7, nodeIndex);
+              if (latchNet) stampTwoTerminal(A, latchNet, undefined, 1e-7, nodeIndex);
+              break;
+            }
+          case 'ir_receiver':
+            {
+              // IR receiver module: ~5mA supply, output is open-collector with pull-up.
+              const vNet = findNet(nets, part.id, 'vcc');
+              const gNet = findNet(nets, part.id, 'gnd');
+              stampTwoTerminal(A, vNet, gNet, 1 / 1000, nodeIndex); // ~5mA at 5V
+              break;
+            }
+          case 'temp_sensor':
+            {
+              // DS18B20: ~1mA supply, DQ is open-drain (needs external pull-up).
+              const vNet = findNet(nets, part.id, 'vcc');
+              const gNet = findNet(nets, part.id, 'gnd');
+              stampTwoTerminal(A, vNet, gNet, 1 / 5000, nodeIndex); // ~1mA at 5V
+              break;
+            }
+          case 'eeprom':
+            {
+              // I2C EEPROM: ~1mA supply, SDA/SCL are open-drain (high-Z input).
+              const vNet = findNet(nets, part.id, 'vcc');
+              const gNet = findNet(nets, part.id, 'gnd');
+              stampTwoTerminal(A, vNet, gNet, 1 / 5000, nodeIndex);
+              break;
+            }
+
+          // gnd, seven_segment, rgb_led, led_matrix:
+          // handled elsewhere or composite
+
+          default:
+            {
+              // Registered device models (src/devices.js): stamp whatever the
+              // device currently drives as Thévenin sources — exactly like MCU
+              // pins — plus the model's own analog loading.
+              const model = (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.getDevice)(part.kind);
+              if (model) {
+                let state = opts.deviceStates && opts.deviceStates.get(part.id) || {
+                  drives: {}
+                };
+                // Ownership: a chip-qualified pin drive (a machine emulating
+                // this chip at bus level) outranks the device model's own
+                // electrical drive on that terminal. Without this, a Z80's
+                // OUT-latch Q pins fought the '374 model (whose clk/d nets
+                // are dead on a machine bench, so it drove its power-on 0)
+                // and every lit LED sat at a divider instead of ON.
+                const qual = opts.qualifiedSources && opts.qualifiedSources.get(part.id);
+                if (qual && state.drives) {
+                  const drives = _objectSpread({}, state.drives);
+                  let changed = false;
+                  for (const term of qual.keys()) {
+                    if (term in drives) {
+                      delete drives[term];
+                      changed = true;
+                    }
+                  }
+                  if (changed) state = _objectSpread(_objectSpread({}, state), {}, {
+                    drives
+                  });
+                }
+                stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, transient ? transient.dtSec : undefined, srcScale);
+              }
+              break;
+            }
+        }
+      }
+
+      // Chip-qualified drives: Norton sources on arbitrary part terminals —
+      // how a machine adapter's `via.pa0` reaches the net a seated (possibly
+      // unmodeled) chip is wired to. Grouped per part so findNet gets the
+      // part id, exactly like stampMcuPins gets it from its part.
+      if (!powerOff && opts.qualifiedSources) {
+        for (const [partId, terms] of opts.qualifiedSources) {
+          for (const [terminal, source] of terms) {
+            const pinNet = findNet(nets, partId, terminal);
+            if (!pinNet) continue;
+            const nodeIdx = nodeIndex.get(pinNet);
+            if (nodeIdx === undefined) continue;
+            const g = 1 / source.rTh;
+            A.add(nodeIdx, nodeIdx, g);
+            b[nodeIdx] += source.vTh * srcScale / source.rTh;
           }
-      }
-    }
-
-    // Chip-qualified drives: Norton sources on arbitrary part terminals —
-    // how a machine adapter's `via.pa0` reaches the net a seated (possibly
-    // unmodeled) chip is wired to. Grouped per part so findNet gets the
-    // part id, exactly like stampMcuPins gets it from its part.
-    if (!powerOff && opts.qualifiedSources) {
-      for (const [partId, terms] of opts.qualifiedSources) {
-        for (const [terminal, source] of terms) {
-          const pinNet = findNet(nets, partId, terminal);
-          if (!pinNet) continue;
-          const nodeIdx = nodeIndex.get(pinNet);
-          if (nodeIdx === undefined) continue;
-          const g = 1 / source.rTh;
-          A.add(nodeIdx, nodeIdx, g);
-          b[nodeIdx] += source.vTh / source.rTh;
         }
       }
-    }
 
-    // Inject test current for resistance measurement
-    if (testNodeA && testNodeB) {
-      const idxA = nodeIndex.get(testNodeA);
-      const idxB = nodeIndex.get(testNodeB);
-      if (idxA !== undefined) b[idxA] += testCurrent;
-      if (idxB !== undefined) b[idxB] -= testCurrent;
-    }
+      // Inject test current for resistance measurement
+      if (testNodeA && testNodeB) {
+        const idxA = nodeIndex.get(testNodeA);
+        const idxB = nodeIndex.get(testNodeB);
+        if (idxA !== undefined) b[idxA] += testCurrent;
+        if (idxB !== undefined) b[idxB] -= testCurrent;
+      }
 
-    // gmin from every node to the reference: keeps floating nets solvable.
-    for (let i = 0; i < nodeCount; i++) A.add(i, i, GMIN);
+      // gmin from every node to the reference: keeps floating nets solvable.
+      for (let i = 0; i < nodeCount; i++) A.add(i, i, gmin);
 
-    // Solve
-    const bcopy = new Float64Array(b);
-    try {
-      solution = solveAssembled(A, bcopy);
-    } catch (_unused) {
-      // Singular matrix — bail
-      break;
-    }
+      // Solve
+      const bcopy = new Float64Array(b);
+      try {
+        solution = solveAssembled(A, bcopy);
+      } catch (_unused) {
+        // Singular matrix — bail
+        return false;
+      }
 
-    // Update diode/transistor operating points and check convergence
-    let maxDelta = 0;
-    for (const part of parts) {
-      var _diodeVoltages$get;
-      if (!diodeVoltages.has(part.id)) continue;
-      let vNew;
-      if (part.kind === 'npn') {
-        // Track Vbe
-        const netB = findNet(nets, part.id, 'base');
+      // Update diode/transistor operating points and check convergence
+      let maxDelta = 0;
+      for (const part of parts) {
+        var _diodeVoltages$get, _part$params$vf;
+        if (!diodeVoltages.has(part.id)) continue;
+        let vNew;
+        if (part.kind === 'npn') {
+          // Track Vbe
+          const netB = findNet(nets, part.id, 'base');
+          const netE = findNet(nets, part.id, 'emitter');
+          const idxB = netB ? nodeIndex.get(netB) : undefined;
+          const idxE = netE ? nodeIndex.get(netE) : undefined;
+          vNew = (idxB !== undefined ? solution[idxB] : 0) - (idxE !== undefined ? solution[idxE] : 0);
+        } else if (part.kind === 'pnp') {
+          const netE = findNet(nets, part.id, 'emitter');
+          const netB = findNet(nets, part.id, 'base');
+          const idxE = netE ? nodeIndex.get(netE) : undefined;
+          const idxB = netB ? nodeIndex.get(netB) : undefined;
+          vNew = (idxE !== undefined ? solution[idxE] : 0) - (idxB !== undefined ? solution[idxB] : 0);
+        } else if (part.kind === 'nmos' || part.kind === 'pmos') {
+          // Track Vgs
+          const netG = findNet(nets, part.id, 'gate');
+          const netS = findNet(nets, part.id, 'source');
+          const idxG = netG ? nodeIndex.get(netG) : undefined;
+          const idxS = netS ? nodeIndex.get(netS) : undefined;
+          const vG = idxG !== undefined ? solution[idxG] : 0;
+          const vS = idxS !== undefined ? solution[idxS] : 0;
+          vNew = part.kind === 'nmos' ? vG - vS : vS - vG;
+        } else {
+          // LED, diode, zener: anode - cathode
+          const anodeNet = findNet(nets, part.id, 'anode');
+          const cathodeNet = findNet(nets, part.id, 'cathode');
+          const anodeIdx = anodeNet ? nodeIndex.get(anodeNet) : undefined;
+          const cathodeIdx = cathodeNet ? nodeIndex.get(cathodeNet) : undefined;
+          vNew = (anodeIdx !== undefined ? solution[anodeIdx] : 0) - (cathodeIdx !== undefined ? solution[cathodeIdx] : 0);
+        }
+        const vOld = (_diodeVoltages$get = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get !== void 0 ? _diodeVoltages$get : 0;
+
+        // Limited update. Shockley diodes/LEDs get pnjlim — the logarithmic
+        // pull-back that settles exponential junctions (a flat clamp
+        // oscillates on two junctions in series-opposition). Everything else
+        // keeps the flat NR_MAX_STEP clamp. The RAW delta still drives the
+        // convergence check, so a limited step cannot fake convergence.
+        const rawDelta = vNew - vOld;
+        let vLimited;
+        const lim = part.kind === 'led' || part.kind === 'diode' ? junctionLimitParams(part, /** @type {number} */(_part$params$vf = part.params.vf) !== null && _part$params$vf !== void 0 ? _part$params$vf : part.kind === 'diode' ? 0.7 : 2.0) : null;
+        if (lim) {
+          vLimited = pnjlim(vNew, vOld, lim.nVt, lim.vcrit);
+        } else if (part.kind === 'nmos' || part.kind === 'pmos') {
+          var _part$params$vth;
+          // The stored variable is vGS (nmos) / vSG (pmos), so the effective
+          // threshold is |vth| in both senses.
+          const vth = Math.abs(/** @type {number} */(_part$params$vth = part.params.vth) !== null && _part$params$vth !== void 0 ? _part$params$vth : part.kind === 'nmos' ? 2.0 : -2.0);
+          vLimited = fetlim(vNew, vOld, vth);
+        } else {
+          vLimited = vOld + Math.max(-NR_MAX_STEP, Math.min(NR_MAX_STEP, rawDelta));
+        }
+        maxDelta = Math.max(maxDelta, Math.abs(rawDelta));
+        diodeVoltages.set(part.id, vLimited);
+      }
+
+      // Op-amp region transitions: linear ↔ saturated at a supply rail.
+      let regionChanged = false;
+      for (const part of parts) {
+        var _part$params$gain, _part$params$railLow, _part$params$railHigh;
+        if (part.kind !== 'opamp' || !vsIndex.has(part.id)) continue;
+        const gain = /** @type {number} */(_part$params$gain = part.params.gain) !== null && _part$params$gain !== void 0 ? _part$params$gain : 1e6;
+        const railLow = /** @type {number} */(_part$params$railLow = part.params.railLow) !== null && _part$params$railLow !== void 0 ? _part$params$railLow : 0;
+        const railHigh = /** @type {number} */(_part$params$railHigh = part.params.railHigh) !== null && _part$params$railHigh !== void 0 ? _part$params$railHigh : vcc;
+        const netP = findNet(nets, part.id, 'inp');
+        const netN = findNet(nets, part.id, 'inn');
+        const idxP = netP ? nodeIndex.get(netP) : undefined;
+        const idxN = netN ? nodeIndex.get(netN) : undefined;
+        const vP = idxP !== undefined ? solution[idxP] : netP === groundNetId ? 0 : 0;
+        const vN = idxN !== undefined ? solution[idxN] : netN === groundNetId ? 0 : 0;
+        const vIdeal = gain * (vP - vN);
+        // Rails scale with source stepping — a full-height rail against
+        // tenth-height sources would flip regions against the wrong bound.
+        const rHi = railHigh * srcScale;
+        const rLo = railLow * srcScale;
+        const region = opampRegions.get(part.id);
+        let next = region;
+        if (region === 'linear') {
+          if (vIdeal > rHi) next = 'high';else if (vIdeal < rLo) next = 'low';
+        } else if (region === 'high') {
+          if (vIdeal < rHi) next = 'linear';
+        } else if (region === 'low') {
+          if (vIdeal > rLo) next = 'linear';
+        }
+        if (next !== region) {
+          opampRegions.set(part.id, next);
+          regionChanged = true;
+        }
+      }
+
+      // BJT region transitions: active ↔ saturated.
+      for (const part of parts) {
+        var _part$params$beta, _part$params$vbe, _part$params$vceSat;
+        if (part.kind !== 'npn' && part.kind !== 'pnp') continue;
+        const beta = /** @type {number} */(_part$params$beta = part.params.beta) !== null && _part$params$beta !== void 0 ? _part$params$beta : 100;
+        const vbe = /** @type {number} */(_part$params$vbe = part.params.vbe) !== null && _part$params$vbe !== void 0 ? _part$params$vbe : 0.7;
+        const vceSat = /** @type {number} */(_part$params$vceSat = part.params.vceSat) !== null && _part$params$vceSat !== void 0 ? _part$params$vceSat : 0.2;
+        const netC = findNet(nets, part.id, 'collector');
         const netE = findNet(nets, part.id, 'emitter');
-        const idxB = netB ? nodeIndex.get(netB) : undefined;
+        const idxC = netC ? nodeIndex.get(netC) : undefined;
         const idxE = netE ? nodeIndex.get(netE) : undefined;
-        vNew = (idxB !== undefined ? solution[idxB] : 0) - (idxE !== undefined ? solution[idxE] : 0);
-      } else if (part.kind === 'pnp') {
-        const netE = findNet(nets, part.id, 'emitter');
-        const netB = findNet(nets, part.id, 'base');
-        const idxE = netE ? nodeIndex.get(netE) : undefined;
-        const idxB = netB ? nodeIndex.get(netB) : undefined;
-        vNew = (idxE !== undefined ? solution[idxE] : 0) - (idxB !== undefined ? solution[idxB] : 0);
-      } else if (part.kind === 'nmos' || part.kind === 'pmos') {
-        // Track Vgs
-        const netG = findNet(nets, part.id, 'gate');
+        const vC = idxC !== undefined ? solution[idxC] : 0;
+        const vE = idxE !== undefined ? solution[idxE] : 0;
+        // Both polarities express "how far the output junction is from
+        // its saturation floor" as a positive number in active mode.
+        const vOut = part.kind === 'npn' ? vC - vE : vE - vC;
+        const region = bjtRegions.get(part.id);
+        let next = region;
+        if (region === 'active') {
+          var _diodeVoltages$get2;
+          // The VCCS demanded more collector current than the load can
+          // pass: the solver answers by driving the junction below its
+          // saturation floor. That is the entry signal — but ONLY for a
+          // CONDUCTING device. An off transistor whose output is pulled
+          // past the rail (a cutoff PNP with a grounded emitter, say)
+          // also shows vOut < vceSat, and clamping THAT invented -0.2 V
+          // collectors and above-rail followers, oscillating against
+          // the leave test forever (sweep escalation 2026-08-15).
+          const vJon = (_diodeVoltages$get2 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get2 !== void 0 ? _diodeVoltages$get2 : 0;
+          if (vJon > vbe - 0.05 && vOut < vceSat) next = 'saturated';
+        } else {
+          var _diodeVoltages$get3;
+          // Leave saturation when base drive no longer sustains it:
+          // the base junction has fallen out of conduction, or the
+          // clamp current exceeds beta*Ib (with margin against
+          // flip-flopping; the outer loop re-iterates on change).
+          // iB through the SAME C1 knee the stamp uses — the old hard-knee
+          // read ZERO for an in-band vbe that genuinely carries current, so
+          // the region entered and left every iteration (collector stuck at
+          // 1.8 V on the ngspice NPN-switch golden, expected 0.07 V).
+          const vJ = (_diodeVoltages$get3 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get3 !== void 0 ? _diodeVoltages$get3 : 0; // vBE (npn) / vEB (pnp)
+          const rd = 10;
+          const iB = pwlKneeCurrent(vJ, vbe, rd);
+          const gS = 10;
+          const iC = Math.max(0, gS * (vOut - vceSat));
+          if (vJ < vbe - 0.15 || beta * iB < iC * 0.95) next = 'active';
+        }
+        if (next !== region) {
+          bjtRegions.set(part.id, next);
+          regionChanged = true;
+        }
+      }
+
+      // MOSFET region transitions: saturation ↔ triode. Same doctrine
+      // as the BJTs: enter triode only while CONDUCTING and the channel
+      // has collapsed below the overdrive; back to saturation when the
+      // drain lifts clear (small hysteresis against flip-flopping).
+      for (const part of parts) {
+        var _part$params$vth2, _diodeVoltages$get4;
+        if (part.kind !== 'nmos' && part.kind !== 'pmos') continue;
+        const vth = /** @type {number} */(_part$params$vth2 = part.params.vth) !== null && _part$params$vth2 !== void 0 ? _part$params$vth2 : part.kind === 'nmos' ? 2.0 : -2.0;
+        const vgs = (_diodeVoltages$get4 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get4 !== void 0 ? _diodeVoltages$get4 : 0; // vGS (nmos) / vSG (pmos)
+        const vov = vgs - Math.abs(vth);
+        const netD = findNet(nets, part.id, 'drain');
         const netS = findNet(nets, part.id, 'source');
-        const idxG = netG ? nodeIndex.get(netG) : undefined;
+        const idxD = netD ? nodeIndex.get(netD) : undefined;
         const idxS = netS ? nodeIndex.get(netS) : undefined;
-        const vG = idxG !== undefined ? solution[idxG] : 0;
+        const vD = idxD !== undefined ? solution[idxD] : 0;
         const vS = idxS !== undefined ? solution[idxS] : 0;
-        vNew = part.kind === 'nmos' ? vG - vS : vS - vG;
-      } else {
-        // LED, diode, zener: anode - cathode
-        const anodeNet = findNet(nets, part.id, 'anode');
-        const cathodeNet = findNet(nets, part.id, 'cathode');
-        const anodeIdx = anodeNet ? nodeIndex.get(anodeNet) : undefined;
-        const cathodeIdx = cathodeNet ? nodeIndex.get(cathodeNet) : undefined;
-        vNew = (anodeIdx !== undefined ? solution[anodeIdx] : 0) - (cathodeIdx !== undefined ? solution[cathodeIdx] : 0);
-      }
-      const vOld = (_diodeVoltages$get = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get !== void 0 ? _diodeVoltages$get : 0;
-
-      // Damped update: never move a junction voltage more than NR_MAX_STEP
-      // per iteration. The raw delta still drives the convergence check, so
-      // a clamped step cannot be mistaken for convergence.
-      const rawDelta = vNew - vOld;
-      const vDamped = vOld + Math.max(-NR_MAX_STEP, Math.min(NR_MAX_STEP, rawDelta));
-      maxDelta = Math.max(maxDelta, Math.abs(rawDelta));
-      diodeVoltages.set(part.id, vDamped);
-    }
-
-    // Op-amp region transitions: linear ↔ saturated at a supply rail.
-    let regionChanged = false;
-    for (const part of parts) {
-      var _part$params$gain, _part$params$railLow, _part$params$railHigh;
-      if (part.kind !== 'opamp' || !vsIndex.has(part.id)) continue;
-      const gain = /** @type {number} */(_part$params$gain = part.params.gain) !== null && _part$params$gain !== void 0 ? _part$params$gain : 1e6;
-      const railLow = /** @type {number} */(_part$params$railLow = part.params.railLow) !== null && _part$params$railLow !== void 0 ? _part$params$railLow : 0;
-      const railHigh = /** @type {number} */(_part$params$railHigh = part.params.railHigh) !== null && _part$params$railHigh !== void 0 ? _part$params$railHigh : vcc;
-      const netP = findNet(nets, part.id, 'inp');
-      const netN = findNet(nets, part.id, 'inn');
-      const idxP = netP ? nodeIndex.get(netP) : undefined;
-      const idxN = netN ? nodeIndex.get(netN) : undefined;
-      const vP = idxP !== undefined ? solution[idxP] : netP === groundNetId ? 0 : 0;
-      const vN = idxN !== undefined ? solution[idxN] : netN === groundNetId ? 0 : 0;
-      const vIdeal = gain * (vP - vN);
-      const region = opampRegions.get(part.id);
-      let next = region;
-      if (region === 'linear') {
-        if (vIdeal > railHigh) next = 'high';else if (vIdeal < railLow) next = 'low';
-      } else if (region === 'high') {
-        if (vIdeal < railHigh) next = 'linear';
-      } else if (region === 'low') {
-        if (vIdeal > railLow) next = 'linear';
-      }
-      if (next !== region) {
-        opampRegions.set(part.id, next);
-        regionChanged = true;
-      }
-    }
-
-    // BJT region transitions: active ↔ saturated.
-    for (const part of parts) {
-      var _part$params$beta, _part$params$vbe, _part$params$vceSat;
-      if (part.kind !== 'npn' && part.kind !== 'pnp') continue;
-      const beta = /** @type {number} */(_part$params$beta = part.params.beta) !== null && _part$params$beta !== void 0 ? _part$params$beta : 100;
-      const vbe = /** @type {number} */(_part$params$vbe = part.params.vbe) !== null && _part$params$vbe !== void 0 ? _part$params$vbe : 0.7;
-      const vceSat = /** @type {number} */(_part$params$vceSat = part.params.vceSat) !== null && _part$params$vceSat !== void 0 ? _part$params$vceSat : 0.2;
-      const netC = findNet(nets, part.id, 'collector');
-      const netE = findNet(nets, part.id, 'emitter');
-      const idxC = netC ? nodeIndex.get(netC) : undefined;
-      const idxE = netE ? nodeIndex.get(netE) : undefined;
-      const vC = idxC !== undefined ? solution[idxC] : 0;
-      const vE = idxE !== undefined ? solution[idxE] : 0;
-      // Both polarities express "how far the output junction is from
-      // its saturation floor" as a positive number in active mode.
-      const vOut = part.kind === 'npn' ? vC - vE : vE - vC;
-      const region = bjtRegions.get(part.id);
-      let next = region;
-      if (region === 'active') {
-        var _diodeVoltages$get2;
-        // The VCCS demanded more collector current than the load can
-        // pass: the solver answers by driving the junction below its
-        // saturation floor. That is the entry signal — but ONLY for a
-        // CONDUCTING device. An off transistor whose output is pulled
-        // past the rail (a cutoff PNP with a grounded emitter, say)
-        // also shows vOut < vceSat, and clamping THAT invented -0.2 V
-        // collectors and above-rail followers, oscillating against
-        // the leave test forever (sweep escalation 2026-08-15).
-        const vJon = (_diodeVoltages$get2 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get2 !== void 0 ? _diodeVoltages$get2 : 0;
-        if (vJon > vbe - 0.05 && vOut < vceSat) next = 'saturated';
-      } else {
-        var _diodeVoltages$get3;
-        // Leave saturation when base drive no longer sustains it:
-        // the base junction has fallen out of conduction, or the
-        // clamp current exceeds beta*Ib (with margin against
-        // flip-flopping; the outer loop re-iterates on change).
-        const vJ = (_diodeVoltages$get3 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get3 !== void 0 ? _diodeVoltages$get3 : 0; // vBE (npn) / vEB (pnp)
-        const rd = 10;
-        const iB = vJ > vbe ? (vJ - vbe) / rd : 0;
-        const gS = 10;
-        const iC = Math.max(0, gS * (vOut - vceSat));
-        if (vJ < vbe - 0.15 || beta * iB < iC * 0.95) next = 'active';
-      }
-      if (next !== region) {
-        bjtRegions.set(part.id, next);
-        regionChanged = true;
-      }
-    }
-
-    // MOSFET region transitions: saturation ↔ triode. Same doctrine
-    // as the BJTs: enter triode only while CONDUCTING and the channel
-    // has collapsed below the overdrive; back to saturation when the
-    // drain lifts clear (small hysteresis against flip-flopping).
-    for (const part of parts) {
-      var _part$params$vth, _diodeVoltages$get4;
-      if (part.kind !== 'nmos' && part.kind !== 'pmos') continue;
-      const vth = /** @type {number} */(_part$params$vth = part.params.vth) !== null && _part$params$vth !== void 0 ? _part$params$vth : part.kind === 'nmos' ? 2.0 : -2.0;
-      const vgs = (_diodeVoltages$get4 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get4 !== void 0 ? _diodeVoltages$get4 : 0; // vGS (nmos) / vSG (pmos)
-      const vov = vgs - Math.abs(vth);
-      const netD = findNet(nets, part.id, 'drain');
-      const netS = findNet(nets, part.id, 'source');
-      const idxD = netD ? nodeIndex.get(netD) : undefined;
-      const idxS = netS ? nodeIndex.get(netS) : undefined;
-      const vD = idxD !== undefined ? solution[idxD] : 0;
-      const vS = idxS !== undefined ? solution[idxS] : 0;
-      const vds = part.kind === 'nmos' ? vD - vS : vS - vD;
-      const region = mosRegions.get(part.id);
-      let next = region;
-      if (vov <= 0) {
-        next = 'saturation'; // cutoff path owns it; reset for clean re-entry
-      } else if (region === 'saturation') {
-        if (vds < vov * 0.95) next = 'triode';
-      } else {
-        if (vds > vov * 1.05) next = 'saturation';
-      }
-      if (next !== region) {
-        mosRegions.set(part.id, next);
-        regionChanged = true;
-      }
-    }
-
-    // Check vsource current limits (CC mode transition).
-    // If a source with iLimit has |I| > iLimit, reduce its voltage to
-    // clamp the current. This iterates alongside NR until both settle.
-    let ccChanged = false;
-    for (const part of parts) {
-      var _part$params3;
-      if (part.kind !== 'vsource') continue;
-      const iLimit = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.iLimit;
-      if (iLimit == null || iLimit <= 0) continue;
-      const vsIdx = vsIndex.get(part.id);
-      if (vsIdx === undefined) continue;
-      const iActual = solution[nodeCount + vsIdx];
-      if (Math.abs(iActual) > iLimit * 1.01) {
-        // Overcurrent: reduce the source voltage. The effective voltage that
-        // would give exactly iLimit depends on the load, but we can estimate
-        // by computing Rload = V/I and setting V_new = iLimit * Rload.
-        const nominalV = controls && controls.has(part.id) ? controls.get(part.id) : sourceVoltage(part, tSeconds, vcc);
-        const rLoad = Math.abs(iActual) > 1e-12 ? Math.abs(nominalV / iActual) : 1e6;
-        const clampedV = iLimit * rLoad * Math.sign(nominalV);
-        // Store the clamped voltage for this iteration
-        if (!part._ccClampedVolts || Math.abs(part._ccClampedVolts - clampedV) > 0.001) {
-          part._ccClampedVolts = clampedV;
-          ccChanged = true;
+        const vds = part.kind === 'nmos' ? vD - vS : vS - vD;
+        const region = mosRegions.get(part.id);
+        let next = region;
+        if (vov <= 0) {
+          next = 'saturation'; // cutoff path owns it; reset for clean re-entry
+        } else if (region === 'saturation') {
+          if (vds < vov * 0.95) next = 'triode';
+        } else {
+          if (vds > vov * 1.05) next = 'saturation';
         }
-      } else if (part._ccClampedVolts !== undefined) {
-        // Current is within limit — revert to CV mode
-        if (Math.abs(iActual) < iLimit * 0.99) {
-          delete part._ccClampedVolts;
-          ccChanged = true;
+        if (next !== region) {
+          mosRegions.set(part.id, next);
+          regionChanged = true;
         }
       }
-    }
 
-    // If nothing nonlinear, or everything settled, stop.
-    if (diodeVoltages.size === 0 && opampRegions.size === 0 && !ccChanged || maxDelta < NR_TOL && !regionChanged && !ccChanged) {
-      converged = true;
-      break;
+      // Check vsource current limits (CC mode transition).
+      // If a source with iLimit has |I| > iLimit, reduce its voltage to
+      // clamp the current. This iterates alongside NR until both settle.
+      let ccChanged = false;
+      for (const part of parts) {
+        var _part$params6;
+        if (part.kind !== 'vsource') continue;
+        const iLimit = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.iLimit;
+        if (iLimit == null || iLimit <= 0) continue;
+        const vsIdx = vsIndex.get(part.id);
+        if (vsIdx === undefined) continue;
+        const iActual = solution[nodeCount + vsIdx];
+        if (Math.abs(iActual) > iLimit * 1.01) {
+          // Overcurrent: reduce the source voltage. The effective voltage that
+          // would give exactly iLimit depends on the load, but we can estimate
+          // by computing Rload = V/I and setting V_new = iLimit * Rload.
+          const nominalV = controls && controls.has(part.id) ? controls.get(part.id) : sourceVoltage(part, tSeconds, vcc);
+          const rLoad = Math.abs(iActual) > 1e-12 ? Math.abs(nominalV / iActual) : 1e6;
+          const clampedV = iLimit * rLoad * Math.sign(nominalV);
+          // Store the clamped voltage for this iteration
+          if (!part._ccClampedVolts || Math.abs(part._ccClampedVolts - clampedV) > 0.001) {
+            part._ccClampedVolts = clampedV;
+            ccChanged = true;
+          }
+        } else if (part._ccClampedVolts !== undefined) {
+          // Current is within limit — revert to CV mode
+          if (Math.abs(iActual) < iLimit * 0.99) {
+            delete part._ccClampedVolts;
+            ccChanged = true;
+          }
+        }
+      }
+
+      // If nothing nonlinear, or everything settled, stop.
+      if (diodeVoltages.size === 0 && opampRegions.size === 0 && !ccChanged || maxDelta < NR_TOL && !regionChanged && !ccChanged) {
+        return true;
+      }
     }
+    return false;
+  };
+  converged = runNewton(GMIN);
+
+  // E1.4 fallback ladder: GMIN stepping. A heavily inflated gmin makes any
+  // operating point easy; each rung's solution seeds the next as gmin
+  // ratchets back down to the real value. Operating-point/instantaneous
+  // solves only — inflating gmin under a transient step's companion
+  // history would quietly change the physics of that step.
+  // (Source stepping is the spec's rung (b) and is NOT implemented yet —
+  // stated in spec-updates/shockley-junction-limiting.md.)
+  if (!converged && !transient) {
+    let laddered = true;
+    for (let k = 9; k >= 0; k--) {
+      if (!runNewton(GMIN * Math.pow(10, k))) {
+        laddered = false;
+        break;
+      }
+    }
+    converged = laddered;
+  }
+
+  // Rung (b): source stepping. Every source ramps together from a tenth of
+  // its value — at low excitation any operating point is easy, and each
+  // rung's solution seeds the next along a continuous branch. This is what
+  // settles bistables (a cross-coupled latch defeats plain NR AND gmin:
+  // its trouble is the region FSMs flip-flopping at full drive, not a
+  // floating node).
+  if (!converged && !transient) {
+    let laddered = true;
+    for (const s of [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]) {
+      if (!runNewton(GMIN, s)) {
+        laddered = false;
+        break;
+      }
+    }
+    converged = laddered;
   }
 
   // ─── Extract results ────────────────────────────────────────────────────
@@ -30146,7 +30615,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('b', i); // into terminal b
     }
     if (part.kind === 'led' || part.kind === 'diode') {
-      var _nodeVoltages$get3, _nodeVoltages$get4, _part$params$vf;
+      var _nodeVoltages$get3, _nodeVoltages$get4, _part$params$vf2;
       const anodeNet = findNet(nets, part.id, 'anode');
       const cathodeNet = findNet(nets, part.id, 'cathode');
       const vAnode = anodeNet ? (_nodeVoltages$get3 = nodeVoltages.get(anodeNet)) !== null && _nodeVoltages$get3 !== void 0 ? _nodeVoltages$get3 : 0 : 0;
@@ -30154,20 +30623,22 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       // A bare LED is a ~2 V junction; a bare diode is silicon, 0.7 V.
       // (Sweep finding 2026-08-15: both defaulted to 2.0, so an
       // unparameterized diode behaved exactly like an LED.)
-      const vf = /** @type {number} */(_part$params$vf = part.params.vf) !== null && _part$params$vf !== void 0 ? _part$params$vf : part.kind === 'diode' ? 0.7 : 2.0;
+      const vf = /** @type {number} */(_part$params$vf2 = part.params.vf) !== null && _part$params$vf2 !== void 0 ? _part$params$vf2 : part.kind === 'diode' ? 0.7 : 2.0;
       const rd = 10; // dynamic resistance
       const vAcross = vAnode - vCathode;
-      const i = vAcross >= vf ? (vAcross - vf) / rd : 0;
+      // Same model as the stamp — a PWL current read off a Shockley solve
+      // (or vice versa) is a plausible wrong number.
+      const i = junctionCurrent(part, vAcross, vf, rd);
       currents.set('anode', i); // into anode
       currents.set('cathode', -i); // out of cathode
     }
     if (part.kind === 'zener') {
-      var _nodeVoltages$get5, _nodeVoltages$get6, _part$params$vf2, _part$params$vz, _part$params$rz;
+      var _nodeVoltages$get5, _nodeVoltages$get6, _part$params$vf3, _part$params$vz, _part$params$rz;
       const anodeNet = findNet(nets, part.id, 'anode');
       const cathodeNet = findNet(nets, part.id, 'cathode');
       const vAnode = anodeNet ? (_nodeVoltages$get5 = nodeVoltages.get(anodeNet)) !== null && _nodeVoltages$get5 !== void 0 ? _nodeVoltages$get5 : 0 : 0;
       const vCathode = cathodeNet ? (_nodeVoltages$get6 = nodeVoltages.get(cathodeNet)) !== null && _nodeVoltages$get6 !== void 0 ? _nodeVoltages$get6 : 0 : 0;
-      const vf = /** @type {number} */(_part$params$vf2 = part.params.vf) !== null && _part$params$vf2 !== void 0 ? _part$params$vf2 : 0.7;
+      const vf = /** @type {number} */(_part$params$vf3 = part.params.vf) !== null && _part$params$vf3 !== void 0 ? _part$params$vf3 : 0.7;
       const vz = /** @type {number} */(_part$params$vz = part.params.vz) !== null && _part$params$vz !== void 0 ? _part$params$vz : 5.1;
       const rd = 10;
       const rzener = /** @type {number} */(_part$params$rz = part.params.rz) !== null && _part$params$rz !== void 0 ? _part$params$rz : 5;
@@ -30190,13 +30661,12 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       const vbeThresh = /** @type {number} */(_part$params$vbe2 = part.params.vbe) !== null && _part$params$vbe2 !== void 0 ? _part$params$vbe2 : 0.7;
       const rd = 10;
       let ib, ic;
+      // Same C1 knee the stamp uses — extraction and stamp must agree.
       if (part.kind === 'npn') {
-        const vbe = vB - vE;
-        ib = vbe >= vbeThresh ? (vbe - vbeThresh) / rd : 0;
+        ib = pwlKneeCurrent(vB - vE, vbeThresh, rd);
         ic = beta * ib;
       } else {
-        const veb = vE - vB;
-        ib = veb >= vbeThresh ? (veb - vbeThresh) / rd : 0;
+        ib = pwlKneeCurrent(vE - vB, vbeThresh, rd);
         ic = beta * ib;
       }
       currents.set('base', ib);
@@ -30204,22 +30674,26 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('emitter', -(ib + ic));
     }
     if (part.kind === 'nmos' || part.kind === 'pmos') {
-      var _nodeVoltages$get10, _nodeVoltages$get11, _nodeVoltages$get12, _part$params$vth2, _part$params$k;
+      var _nodeVoltages$get10, _nodeVoltages$get11, _nodeVoltages$get12, _part$params$vth3, _part$params$k;
       const netG = findNet(nets, part.id, 'gate');
       const netD = findNet(nets, part.id, 'drain');
       const netS = findNet(nets, part.id, 'source');
       const vG = netG ? (_nodeVoltages$get10 = nodeVoltages.get(netG)) !== null && _nodeVoltages$get10 !== void 0 ? _nodeVoltages$get10 : 0 : 0;
       const vD = netD ? (_nodeVoltages$get11 = nodeVoltages.get(netD)) !== null && _nodeVoltages$get11 !== void 0 ? _nodeVoltages$get11 : 0 : 0;
       const vS = netS ? (_nodeVoltages$get12 = nodeVoltages.get(netS)) !== null && _nodeVoltages$get12 !== void 0 ? _nodeVoltages$get12 : 0 : 0;
-      const vth = /** @type {number} */(_part$params$vth2 = part.params.vth) !== null && _part$params$vth2 !== void 0 ? _part$params$vth2 : part.kind === 'nmos' ? 2.0 : -2.0;
+      const vth = /** @type {number} */(_part$params$vth3 = part.params.vth) !== null && _part$params$vth3 !== void 0 ? _part$params$vth3 : part.kind === 'nmos' ? 2.0 : -2.0;
       const k = /** @type {number} */(_part$params$k = part.params.k) !== null && _part$params$k !== void 0 ? _part$params$k : 0.5;
       let id;
+      // Same smoothed square law as the stamp — a hard-corner current read
+      // off a smoothed solve disagrees with KCL near threshold.
       if (part.kind === 'nmos') {
         const vgs = vG - vS;
-        id = vgs >= vth ? k * (vgs - vth) * (vgs - vth) : 0;
+        const [vovS] = smoothVov(vgs - vth);
+        id = k * vovS * vovS;
       } else {
         const vsg = vS - vG;
-        id = vsg >= Math.abs(vth) ? k * (vsg - Math.abs(vth)) * (vsg - Math.abs(vth)) : 0;
+        const [vovS] = smoothVov(vsg - Math.abs(vth));
+        id = k * vovS * vovS;
       }
       currents.set('drain', id);
       currents.set('source', -id);
@@ -30266,7 +30740,14 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         var _ref2, _part$params$henrys2, _transient$inductorCu2;
         const L = /** @type {number} */(_ref2 = (_part$params$henrys2 = part.params.henrys) !== null && _part$params$henrys2 !== void 0 ? _part$params$henrys2 : part.params.henries) !== null && _ref2 !== void 0 ? _ref2 : 0.001;
         const iPrev = (_transient$inductorCu2 = transient.inductorCurrents.get(part.id)) !== null && _transient$inductorCu2 !== void 0 ? _transient$inductorCu2 : 0;
-        i = iPrev + transient.dtSec / Math.max(L, 1e-12) * (vA - vB);
+        const h = Math.max(transient.dtSec, 1e-15);
+        if (transient.method === 'trap') {
+          var _transient$inductorVo3, _transient$inductorVo4;
+          const vPrev = (_transient$inductorVo3 = (_transient$inductorVo4 = transient.inductorVoltages) === null || _transient$inductorVo4 === void 0 ? void 0 : _transient$inductorVo4.get(part.id)) !== null && _transient$inductorVo3 !== void 0 ? _transient$inductorVo3 : 0;
+          i = iPrev + h / (2 * Math.max(L, 1e-12)) * (vA - vB + vPrev);
+        } else {
+          i = iPrev + h / Math.max(L, 1e-12) * (vA - vB);
+        }
       } else {
         // DC: inductor is a wire, current = V_drop / R_wire
         i = (vA - vB) / 0.001;
@@ -30285,7 +30766,14 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         var _part$params$farads2, _transient$capVoltage2;
         const C = /** @type {number} */(_part$params$farads2 = part.params.farads) !== null && _part$params$farads2 !== void 0 ? _part$params$farads2 : 0.0001;
         const vPrev = (_transient$capVoltage2 = transient.capVoltages.get(part.id)) !== null && _transient$capVoltage2 !== void 0 ? _transient$capVoltage2 : 0;
-        i = C / Math.max(transient.dtSec, 1e-15) * (vA - vB - vPrev);
+        const h = Math.max(transient.dtSec, 1e-15);
+        if (transient.method === 'trap') {
+          var _transient$capCurrent3, _transient$capCurrent4;
+          const iPrev = (_transient$capCurrent3 = (_transient$capCurrent4 = transient.capCurrents) === null || _transient$capCurrent4 === void 0 ? void 0 : _transient$capCurrent4.get(part.id)) !== null && _transient$capCurrent3 !== void 0 ? _transient$capCurrent3 : 0;
+          i = 2 * C / h * (vA - vB - vPrev) - iPrev;
+        } else {
+          i = C / h * (vA - vB - vPrev);
+        }
       } else if (vsIndex.has(part.id)) {
         // Instantaneous: the source row's current variable is the cap current.
         i = solution[nodeCount + (/** @type {number} */vsIndex.get(part.id))];
@@ -30341,30 +30829,43 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     }
   }
 
-  // Transient next-state: what the caller stores for the next step.
+  // Transient next-state: what the caller stores for the next step. The
+  // trapezoidal companions need the element's own current (cap) and voltage
+  // (inductor) history too, so both are returned alongside the classic pair.
   if (transient) {
     const capVoltagesNext = new Map();
+    const capCurrentsNext = new Map();
     const inductorCurrentsNext = new Map();
+    const inductorVoltagesNext = new Map();
     for (const part of parts) {
       if (part.kind === 'capacitor') {
-        var _nodeVoltages$get22, _nodeVoltages$get23;
+        var _nodeVoltages$get22, _nodeVoltages$get23, _c$get;
         const netA = findNet(nets, part.id, 'a');
         const netB = findNet(nets, part.id, 'b');
         const vA = netA ? (_nodeVoltages$get22 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get22 !== void 0 ? _nodeVoltages$get22 : 0 : 0;
         const vB = netB ? (_nodeVoltages$get23 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get23 !== void 0 ? _nodeVoltages$get23 : 0 : 0;
         capVoltagesNext.set(part.id, vA - vB);
+        const c = branchCurrents.get(part.id);
+        capCurrentsNext.set(part.id, c ? (_c$get = c.get('b')) !== null && _c$get !== void 0 ? _c$get : 0 : 0);
       }
       if (part.kind === 'inductor') {
-        var _c$get;
+        var _c$get2, _nodeVoltages$get24, _nodeVoltages$get25;
         const c = branchCurrents.get(part.id);
-        inductorCurrentsNext.set(part.id, c ? (_c$get = c.get('b')) !== null && _c$get !== void 0 ? _c$get : 0 : 0);
+        inductorCurrentsNext.set(part.id, c ? (_c$get2 = c.get('b')) !== null && _c$get2 !== void 0 ? _c$get2 : 0 : 0);
+        const netA = findNet(nets, part.id, 'a');
+        const netB = findNet(nets, part.id, 'b');
+        const vA = netA ? (_nodeVoltages$get24 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get24 !== void 0 ? _nodeVoltages$get24 : 0 : 0;
+        const vB = netB ? (_nodeVoltages$get25 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get25 !== void 0 ? _nodeVoltages$get25 : 0 : 0;
+        inductorVoltagesNext.set(part.id, vA - vB);
       }
     }
     return {
       nodeVoltages,
       branchCurrents,
       capVoltagesNext,
+      capCurrentsNext,
       inductorCurrentsNext,
+      inductorVoltagesNext,
       converged,
       railConflicts: railConflicts.length ? [...new Set(railConflicts)] : undefined
     };
@@ -30462,16 +30963,16 @@ function stampResistor(A, b, part, nets, nodeIndex, groundNetId) {
  * @param {Map<string, number>} diodeVoltages
  */
 function stampDiode(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
-  var _part$params$vf3, _diodeVoltages$get5;
+  var _part$params$vf4, _diodeVoltages$get5;
   const anodeNet = findNet(nets, part.id, 'anode');
   const cathodeNet = findNet(nets, part.id, 'cathode');
-  const vf = /** @type {number} */(_part$params$vf3 = part.params.vf) !== null && _part$params$vf3 !== void 0 ? _part$params$vf3 : part.kind === 'diode' ? 0.7 : 2.0;
+  const vf = /** @type {number} */(_part$params$vf4 = part.params.vf) !== null && _part$params$vf4 !== void 0 ? _part$params$vf4 : part.kind === 'diode' ? 0.7 : 2.0;
   const rd = 10;
   const vAcross = (_diodeVoltages$get5 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get5 !== void 0 ? _diodeVoltages$get5 : 0;
   const {
     gEq,
     iEq
-  } = diodeCompanion(vAcross, vf, rd);
+  } = diodeCompanion(vAcross, vf, rd, junctionOpts(part));
   const idxA = anodeNet ? nodeIndex.get(anodeNet) : undefined;
   const idxC = cathodeNet ? nodeIndex.get(cathodeNet) : undefined;
 
@@ -30499,12 +31000,12 @@ function stampDiode(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
  * @param {Map<string, number>} controls
  */
 function stampPotentiometer(A, b, part, nets, nodeIndex, groundNetId, controls) {
-  var _part$params4, _controls$get3, _part$params$ohms3;
+  var _part$params7, _controls$get3, _part$params$ohms3;
   // params.position is the AUTHORED default — where the example's trimmer
   // was left. The user's control always wins once touched; mid-travel
   // remains the fallback. (The LCD contrast pot defaulted to a washed-out
   // 0.25 contrast because every pot woke at 0.5 regardless of wiring.)
-  const authored = Number.isFinite((_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.position) ? part.params.position : 0.5;
+  const authored = Number.isFinite((_part$params7 = part.params) === null || _part$params7 === void 0 ? void 0 : _part$params7.position) ? part.params.position : 0.5;
   const position = (_controls$get3 = controls.get(part.id)) !== null && _controls$get3 !== void 0 ? _controls$get3 : authored;
   const totalOhms = /** @type {number} */(_part$params$ohms3 = part.params.ohms) !== null && _part$params$ohms3 !== void 0 ? _part$params$ohms3 : 10000;
 
@@ -30553,7 +31054,6 @@ function stampButton(A, b, part, nets, nodeIndex, groundNetId, controls) {
  * @param {number} vcc
  */
 function stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc) {
-  var _part$params$volts, _part$params5;
   const vccNet = findNet(nets, part.id, 'vcc');
   if (!vccNet) return;
   const nodeIdx = nodeIndex.get(vccNet);
@@ -30563,10 +31063,11 @@ function stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, v
   const dim = nodeIndex.size;
   const row = dim + vsIdx;
 
-  // Voltage source from ground to vccNet: V(vccNet) - V(gnd) = volts
-  // V(gnd) = 0, so V(vccNet) = volts.  Per-part params.volts overrides
-  // the board default so the designer can expose editable rail voltages.
-  const volts = (_part$params$volts = (_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.volts) !== null && _part$params$volts !== void 0 ? _part$params$volts : vcc;
+  // Voltage source from ground to vccNet: V(vccNet) - V(gnd) = volts.
+  // The CALLER resolves params.volts vs the board default (and applies
+  // any source-stepping scale) — re-resolving params here silently undid
+  // both, which is why the passed value is used as-is.
+  const volts = vcc;
   A.set(row, nodeIdx, 1);
   A.set(nodeIdx, row, 1);
   b[row] = volts;
@@ -30583,6 +31084,7 @@ function stampVoltageSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, v
  * @param {Map<string, TheveninSource>} pinSources
  */
 function stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources) {
+  let srcScale = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 1;
   for (const terminal of part.terminals) {
     const source = pinSources.get(terminal);
     if (!source || source === 'high-z') continue;
@@ -30593,7 +31095,7 @@ function stampMcuPins(A, b, part, nets, nodeIndex, groundNetId, pinSources) {
 
     // Norton equivalent: G = 1/Rth, I = Vth/Rth
     const g = 1 / source.rTh;
-    const iNorton = source.vTh / source.rTh;
+    const iNorton = source.vTh * srcScale / source.rTh;
     A.add(nodeIdx, nodeIdx, g);
     b[nodeIdx] += iNorton;
   }
@@ -30620,6 +31122,7 @@ function stampBuzzerResistance(A, b, part, nets, nodeIndex, groundNetId) {
  * model's own `stamp(ctx)` for input impedance / analog loading.
  */
 function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, dtSec) {
+  let srcScale = arguments.length > 11 && arguments[11] !== undefined ? arguments[11] : 1;
   // Drives: terminal → {vTh, rTh, ref?} | null
   //
   // Without `ref` the Norton is stamped against the reference node — right
@@ -30639,13 +31142,13 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       stampTwoTerminal(A, net, refNet, g, nodeIndex);
       const idx = nodeIndex.get(net);
       const refIdx = nodeIndex.get(refNet);
-      if (idx !== undefined) b[idx] += drive.vTh * g;
-      if (refIdx !== undefined) b[refIdx] -= drive.vTh * g;
+      if (idx !== undefined) b[idx] += drive.vTh * srcScale * g;
+      if (refIdx !== undefined) b[refIdx] -= drive.vTh * srcScale * g;
     } else {
       const idx = nodeIndex.get(net);
       if (idx === undefined) continue;
       A.add(idx, idx, g);
-      b[idx] += drive.vTh * g;
+      b[idx] += drive.vTh * srcScale * g;
     }
   }
   if (!model.stamp) return;
@@ -30662,7 +31165,7 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       if (idx === undefined) return;
       const g = 1 / Math.max(rTh, 1e-3);
       A.add(idx, idx, g);
-      b[idx] += vTh * g;
+      b[idx] += vTh * srcScale * g;
     },
     // Source between two of the device's own pins: vTh raises termPlus
     // above termMinus through rTh. Reduces exactly to `thevenin` when the
@@ -30677,13 +31180,13 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       stampTwoTerminal(A, netP, netN, g, nodeIndex);
       const idxP = nodeIndex.get(netP);
       const idxN = nodeIndex.get(netN);
-      if (idxP !== undefined) b[idxP] += vTh * g;
-      if (idxN !== undefined) b[idxN] -= vTh * g;
+      if (idxP !== undefined) b[idxP] += vTh * srcScale * g;
+      if (idxN !== undefined) b[idxN] -= vTh * srcScale * g;
     },
     current: (terminal, amps) => {
       const net = findNet(nets, part.id, terminal);
       const idx = net ? nodeIndex.get(net) : undefined;
-      if (idx !== undefined) b[idx] += amps;
+      if (idx !== undefined) b[idx] += amps * srcScale;
     },
     vcc,
     tSeconds,
@@ -30895,8 +31398,8 @@ function stampPNP(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
  * Terminals: anode, cathode.
  */
 function stampZener(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
-  var _part$params$vf4, _part$params$vz2, _part$params$rz2, _diodeVoltages$get8;
-  const vf = /** @type {number} */(_part$params$vf4 = part.params.vf) !== null && _part$params$vf4 !== void 0 ? _part$params$vf4 : 0.7;
+  var _part$params$vf5, _part$params$vz2, _part$params$rz2, _diodeVoltages$get8;
+  const vf = /** @type {number} */(_part$params$vf5 = part.params.vf) !== null && _part$params$vf5 !== void 0 ? _part$params$vf5 : 0.7;
   const vz = /** @type {number} */(_part$params$vz2 = part.params.vz) !== null && _part$params$vz2 !== void 0 ? _part$params$vz2 : 5.1;
   const rd = 10;
   const rzener = /** @type {number} */(_part$params$rz2 = part.params.rz) !== null && _part$params$rz2 !== void 0 ? _part$params$rz2 : 5; // zener dynamic R
@@ -30939,10 +31442,26 @@ function stampZener(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
  * Linear/saturation: Id = K × (Vgs - Vth)² (simplified).
  * Linearized as Norton companion for NR.
  */
+/**
+ * Smoothed overdrive: vov_s = ½·(vov + √(vov² + δ²)) — the square law with
+ * a continuous derivative through the threshold corner. A HARD cutoff
+ * branch (gOff below Vth, square law above) gave Newton a discontinuous
+ * derivative exactly where a near-threshold operating point lives: the
+ * cross-coupled latch orbited 1.84 → cutoff → 5 → fetlim 2.5 → 2.16 →
+ * 1.84 forever, at every transconductance tried. δ = 50 mV of smoothing
+ * is invisible at real operating points (vov = 3 V shifts by 0.2 mV) and
+ * conducts ~µA-scale phantom current near Vth — stated, not hidden.
+ * Returns [vov_s, d(vov_s)/d(vov)].
+ */
+const MOS_SMOOTH_DELTA = 0.05;
+function smoothVov(vov) {
+  const r = Math.sqrt(vov * vov + MOS_SMOOTH_DELTA * MOS_SMOOTH_DELTA);
+  return [0.5 * (vov + r), 0.5 * (1 + vov / r)];
+}
 function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
-  var _part$params$vth3, _part$params$k2, _diodeVoltages$get9;
+  var _part$params$vth4, _part$params$k2, _diodeVoltages$get9;
   let region = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 'saturation';
-  const vth = /** @type {number} */(_part$params$vth3 = part.params.vth) !== null && _part$params$vth3 !== void 0 ? _part$params$vth3 : 2.0;
+  const vth = /** @type {number} */(_part$params$vth4 = part.params.vth) !== null && _part$params$vth4 !== void 0 ? _part$params$vth4 : 2.0;
   const k = /** @type {number} */(_part$params$k2 = part.params.k) !== null && _part$params$k2 !== void 0 ? _part$params$k2 : 0.5; // A/V² (transconductance parameter)
 
   const netG = findNet(nets, part.id, 'gate');
@@ -30952,22 +31471,13 @@ function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
   const idxD = netD ? nodeIndex.get(netD) : undefined;
   const idxS = netS ? nodeIndex.get(netS) : undefined;
   const vgs = (_diodeVoltages$get9 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get9 !== void 0 ? _diodeVoltages$get9 : 0;
-  if (vgs < vth) {
-    // Cutoff: very high resistance drain-source
-    const gOff = 1e-9;
-    if (idxD !== undefined) A.add(idxD, idxD, gOff);
-    if (idxS !== undefined) A.add(idxS, idxS, gOff);
-    if (idxD !== undefined && idxS !== undefined) {
-      A.add(idxD, idxS, -gOff);
-      A.add(idxS, idxD, -gOff);
-    }
-  } else if (region === 'triode') {
+  if (region === 'triode') {
     // Fully-enhanced switch with small vds: the channel is a resistor,
     // Rds(on) ≈ 1/(2K·Vov). Without this region the saturation VCCS
     // demanded K·Vov² amps through any load and the drain ran away to
     // -2247 V (sweep escalation 2026-08-15) — the NPN lesson, again.
-    const vov = vgs - vth;
-    const gOn = 2 * k * Math.max(vov, 0.05);
+    const [vovS] = smoothVov(vgs - vth);
+    const gOn = 2 * k * Math.max(vovS, 0.05);
     if (idxD !== undefined) A.add(idxD, idxD, gOn);
     if (idxS !== undefined) A.add(idxS, idxS, gOn);
     if (idxD !== undefined && idxS !== undefined) {
@@ -30975,12 +31485,12 @@ function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
       A.add(idxS, idxD, -gOn);
     }
   } else {
-    // On: Id = K(Vgs - Vth)². Linearized:
-    // gm = dId/dVgs = 2K(Vgs - Vth)
-    // Id0 = K(Vgs - Vth)² - gm × Vgs (Norton offset)
-    const vov = vgs - vth;
-    const gm = 2 * k * vov;
-    const id0 = k * vov * vov;
+    // On: Id = K·vov_s². Linearized about the smoothed overdrive:
+    // gm = dId/dVgs = 2K·vov_s·(dvov_s/dvov); Norton offset from Id at
+    // the expansion point.
+    const [vovS, dVovS] = smoothVov(vgs - vth);
+    const gm = 2 * k * vovS * dVovS;
+    const id0 = k * vovS * vovS;
     const iEq = id0 - gm * vgs;
 
     // VCCS: drain current controlled by Vgs
@@ -30991,8 +31501,13 @@ function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
     if (idxD !== undefined) b[idxD] -= iEq;
     if (idxS !== undefined) b[idxS] += iEq;
 
-    // Small Rds for stability
-    const gds = 0.001; // 1kΩ output resistance
+    // Stability Rds, TAPERED with conduction. A fixed 1 kΩ made a
+    // sub-threshold drain a 1k/10k divider (0.458 V on the latch bench)
+    // and the deep-cutoff branch that used to switch it to 1 nS was a
+    // second Newton corner — the branch is gone; this expression IS the
+    // cutoff behaviour (gds → the 1 nS leak as vov_s → 0).
+    const taper = vovS / (vovS + MOS_SMOOTH_DELTA);
+    const gds = 0.001 * taper * taper + 1e-9;
     if (idxD !== undefined) A.add(idxD, idxD, gds);
     if (idxS !== undefined) A.add(idxS, idxS, gds);
     if (idxD !== undefined && idxS !== undefined) {
@@ -31004,9 +31519,9 @@ function stampNMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
 
 /** P-channel MOSFET: mirror of NMOS with reversed gate sense. */
 function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
-  var _part$params$vth4, _part$params$k3, _diodeVoltages$get10;
+  var _part$params$vth5, _part$params$k3, _diodeVoltages$get10;
   let region = arguments.length > 7 && arguments[7] !== undefined ? arguments[7] : 'saturation';
-  const vth = /** @type {number} */(_part$params$vth4 = part.params.vth) !== null && _part$params$vth4 !== void 0 ? _part$params$vth4 : -2.0;
+  const vth = /** @type {number} */(_part$params$vth5 = part.params.vth) !== null && _part$params$vth5 !== void 0 ? _part$params$vth5 : -2.0;
   const k = /** @type {number} */(_part$params$k3 = part.params.k) !== null && _part$params$k3 !== void 0 ? _part$params$k3 : 0.5;
   const netG = findNet(nets, part.id, 'gate');
   const netD = findNet(nets, part.id, 'drain');
@@ -31017,17 +31532,10 @@ function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
 
   // For PMOS: Vsg > |Vth| to turn on
   const vsg = (_diodeVoltages$get10 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get10 !== void 0 ? _diodeVoltages$get10 : 0;
-  if (vsg < Math.abs(vth)) {
-    const gOff = 1e-9;
-    if (idxD !== undefined) A.add(idxD, idxD, gOff);
-    if (idxS !== undefined) A.add(idxS, idxS, gOff);
-    if (idxD !== undefined && idxS !== undefined) {
-      A.add(idxD, idxS, -gOff);
-      A.add(idxS, idxD, -gOff);
-    }
-  } else if (region === 'triode') {
+  if (region === 'triode') {
     // Enhanced switch, small |vds|: channel = Rds(on) ≈ 1/(2K·Vov).
-    const gOn = 2 * k * Math.max(vsg - Math.abs(vth), 0.05);
+    const [vovSt] = smoothVov(vsg - Math.abs(vth));
+    const gOn = 2 * k * Math.max(vovSt, 0.05);
     if (idxD !== undefined) A.add(idxD, idxD, gOn);
     if (idxS !== undefined) A.add(idxS, idxS, gOn);
     if (idxD !== undefined && idxS !== undefined) {
@@ -31035,9 +31543,9 @@ function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
       A.add(idxS, idxD, -gOn);
     }
   } else {
-    const vov = vsg - Math.abs(vth);
-    const gm = 2 * k * vov;
-    const id0 = k * vov * vov;
+    const [vovS, dVovS] = smoothVov(vsg - Math.abs(vth));
+    const gm = 2 * k * vovS * dVovS;
+    const id0 = k * vovS * vovS;
     const iEq = id0 - gm * vsg;
 
     // PMOS: current flows source → drain (reversed from NMOS)
@@ -31047,7 +31555,10 @@ function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
     if (idxD !== undefined && idxG !== undefined) A.add(idxD, idxG, gm);
     if (idxS !== undefined) b[idxS] -= iEq;
     if (idxD !== undefined) b[idxD] += iEq;
-    const gds = 0.001;
+
+    // Tapered stability Rds — see the NMOS note.
+    const taper = vovS / (vovS + MOS_SMOOTH_DELTA);
+    const gds = 0.001 * taper * taper + 1e-9;
     if (idxD !== undefined) A.add(idxD, idxD, gds);
     if (idxS !== undefined) A.add(idxS, idxS, gds);
     if (idxD !== undefined && idxS !== undefined) {
@@ -31077,9 +31588,13 @@ function stampPMOS(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
  */
 function stampOpamp(A, b, part, nets, nodeIndex, groundNetId, vsIndex, opampRegions, vcc) {
   var _part$params$gain2, _part$params$railLow2, _part$params$railHigh2, _opampRegions$get;
+  let srcScale = arguments.length > 9 && arguments[9] !== undefined ? arguments[9] : 1;
   const gain = /** @type {number} */(_part$params$gain2 = part.params.gain) !== null && _part$params$gain2 !== void 0 ? _part$params$gain2 : 1e6;
-  const railLow = /** @type {number} */(_part$params$railLow2 = part.params.railLow) !== null && _part$params$railLow2 !== void 0 ? _part$params$railLow2 : 0;
-  const railHigh = /** @type {number} */(_part$params$railHigh2 = part.params.railHigh) !== null && _part$params$railHigh2 !== void 0 ? _part$params$railHigh2 : vcc;
+  // Rails scale with source stepping, explicit params included — the FSM
+  // in the Newton loop scales the same way, and disagreement between the
+  // two is a region that can never settle.
+  const railLow = /** @type {number} */((_part$params$railLow2 = part.params.railLow) !== null && _part$params$railLow2 !== void 0 ? _part$params$railLow2 : 0) * srcScale;
+  const railHigh = /** @type {number} */((_part$params$railHigh2 = part.params.railHigh) !== null && _part$params$railHigh2 !== void 0 ? _part$params$railHigh2 : vcc) * srcScale;
   const netP = findNet(nets, part.id, 'inp');
   const netN = findNet(nets, part.id, 'inn');
   const netO = findNet(nets, part.id, 'out');
@@ -31155,8 +31670,8 @@ function stampCapAsSource(A, b, part, nets, nodeIndex, vsIndex, vStored) {
  * @returns {number}
  */
 function sourceVoltage(part, tSeconds, vcc) {
-  var _part$params6, _p$wave, _p$volts, _p$freq, _p$amplitude, _p$offset2, _p$phase, _p$duty;
-  const p = (_part$params6 = part.params) !== null && _part$params6 !== void 0 ? _part$params6 : {};
+  var _part$params8, _p$wave, _p$volts, _p$freq, _p$amplitude, _p$offset2, _p$phase, _p$duty;
+  const p = (_part$params8 = part.params) !== null && _part$params8 !== void 0 ? _part$params8 : {};
   const wave = /** @type {string} */(_p$wave = p.wave) !== null && _p$wave !== void 0 ? _p$wave : 'dc';
   const volts = /** @type {number} */(_p$volts = p.volts) !== null && _p$volts !== void 0 ? _p$volts : vcc;
   if (wave === 'dc') return volts;
@@ -31219,6 +31734,7 @@ function sourceVoltage(part, tSeconds, vcc) {
 function stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsIndex, vcc) {
   let tSeconds = arguments.length > 8 && arguments[8] !== undefined ? arguments[8] : 0;
   let controls = arguments.length > 9 && arguments[9] !== undefined ? arguments[9] : null;
+  let srcScale = arguments.length > 10 && arguments[10] !== undefined ? arguments[10] : 1;
   // Control value overrides params.volts for interactive adjustment (bench supply knob)
   let volts;
   if (part._ccClampedVolts !== undefined) {
@@ -31228,6 +31744,7 @@ function stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsInd
   } else {
     volts = sourceVoltage(part, tSeconds, vcc);
   }
+  volts *= srcScale;
   const posNet = findNet(nets, part.id, 'pos');
   const negNet = findNet(nets, part.id, 'neg');
   const idxPos = posNet ? nodeIndex.get(posNet) : undefined;
@@ -31256,7 +31773,8 @@ function stampIndependentVSource(A, b, part, nets, nodeIndex, groundNetId, vsInd
  */
 function stampCurrentSource(A, b, part, nets, nodeIndex, groundNetId) {
   var _part$params$amps2;
-  const amps = /** @type {number} */(_part$params$amps2 = part.params.amps) !== null && _part$params$amps2 !== void 0 ? _part$params$amps2 : 0.001;
+  let srcScale = arguments.length > 6 && arguments[6] !== undefined ? arguments[6] : 1;
+  const amps = /** @type {number} */((_part$params$amps2 = part.params.amps) !== null && _part$params$amps2 !== void 0 ? _part$params$amps2 : 0.001) * srcScale;
   const posNet = findNet(nets, part.id, 'pos');
   const negNet = findNet(nets, part.id, 'neg');
   const idxPos = posNet ? nodeIndex.get(posNet) : undefined;
