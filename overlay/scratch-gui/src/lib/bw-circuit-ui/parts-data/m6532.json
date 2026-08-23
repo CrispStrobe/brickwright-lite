@@ -1,411 +1,411 @@
 {
-  "kind": "ns16c550",
+  "kind": "m6532",
   "w": 80,
   "h": 111,
   "terminals": [
     {
-      "name": "d0",
+      "name": "vss",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "d1",
+      "name": "a5",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "d2",
+      "name": "a4",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "d3",
+      "name": "a3",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "d4",
+      "name": "a2",
       "x": 0,
       "y": 28,
       "functions": []
     },
     {
-      "name": "d5",
+      "name": "a1",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "d6",
+      "name": "a0",
       "x": 0,
       "y": 38,
       "functions": []
     },
     {
-      "name": "d7",
+      "name": "pa0",
       "x": 0,
       "y": 43,
       "functions": []
     },
     {
-      "name": "rclk",
+      "name": "pa1",
       "x": 0,
       "y": 48,
       "functions": []
     },
     {
-      "name": "sin",
+      "name": "pa2",
       "x": 0,
       "y": 53,
       "functions": []
     },
     {
-      "name": "sout",
+      "name": "pa3",
       "x": 0,
       "y": 58,
       "functions": []
     },
     {
-      "name": "cs0",
+      "name": "pa4",
       "x": 0,
       "y": 63,
       "functions": []
     },
     {
-      "name": "cs1",
+      "name": "pa5",
       "x": 0,
       "y": 68,
       "functions": []
     },
     {
-      "name": "cs2b",
+      "name": "pa6",
       "x": 0,
       "y": 73,
       "functions": []
     },
     {
-      "name": "baudoutb",
+      "name": "pa7",
       "x": 0,
       "y": 78,
       "functions": []
     },
     {
-      "name": "xin",
+      "name": "phi2",
       "x": 0,
       "y": 83,
       "functions": []
     },
     {
-      "name": "xout",
+      "name": "pb7",
       "x": 0,
       "y": 88,
       "functions": []
     },
     {
-      "name": "wrb",
+      "name": "pb6",
       "x": 0,
       "y": 93,
       "functions": []
     },
     {
-      "name": "wr",
+      "name": "pb5",
       "x": 0,
       "y": 98,
       "functions": []
     },
     {
-      "name": "vss",
+      "name": "pb4",
       "x": 0,
       "y": 103,
       "functions": []
     },
     {
-      "name": "rd",
+      "name": "pb3",
       "x": 80,
       "y": 8,
       "functions": []
     },
     {
-      "name": "rdb",
+      "name": "pb2",
       "x": 80,
       "y": 13,
       "functions": []
     },
     {
-      "name": "ddis",
+      "name": "pb1",
       "x": 80,
       "y": 18,
       "functions": []
     },
     {
-      "name": "txrdyb",
+      "name": "pb0",
       "x": 80,
       "y": 23,
       "functions": []
     },
     {
-      "name": "adsb",
+      "name": "irqb",
       "x": 80,
       "y": 28,
       "functions": []
     },
     {
-      "name": "a2",
+      "name": "d7",
       "x": 80,
       "y": 33,
       "functions": []
     },
     {
-      "name": "a1",
+      "name": "d6",
       "x": 80,
       "y": 38,
       "functions": []
     },
     {
-      "name": "a0",
+      "name": "d5",
       "x": 80,
       "y": 43,
       "functions": []
     },
     {
-      "name": "rxrdyb",
+      "name": "d4",
       "x": 80,
       "y": 48,
       "functions": []
     },
     {
-      "name": "intr",
+      "name": "d3",
       "x": 80,
       "y": 53,
       "functions": []
     },
     {
-      "name": "out2b",
+      "name": "d2",
       "x": 80,
       "y": 58,
       "functions": []
     },
     {
-      "name": "rtsb",
+      "name": "d1",
       "x": 80,
       "y": 63,
       "functions": []
     },
     {
-      "name": "dtrb",
+      "name": "d0",
       "x": 80,
       "y": 68,
       "functions": []
     },
     {
-      "name": "out1b",
+      "name": "resb",
       "x": 80,
       "y": 73,
       "functions": []
     },
     {
-      "name": "mr",
+      "name": "rwb",
       "x": 80,
       "y": 78,
       "functions": []
     },
     {
-      "name": "ctsb",
+      "name": "a6",
       "x": 80,
       "y": 83,
       "functions": []
     },
     {
-      "name": "dsrb",
+      "name": "cs2b",
       "x": 80,
       "y": 88,
       "functions": []
     },
     {
-      "name": "dcdb",
+      "name": "cs1",
       "x": 80,
       "y": 93,
       "functions": []
     },
     {
-      "name": "rib",
+      "name": "rs0b",
       "x": 80,
       "y": 98,
       "functions": []
     },
     {
-      "name": "vdd",
+      "name": "vcc",
       "x": 80,
       "y": 103,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "NS16C550/PC16550D UART, DIP-40 (TI/NS datasheet pin table). Pins 1-8 D0-D7, 9 RCLK, 10 SIN, 11 SOUT, 12 CS0, 13 CS1, 14 /CS2, 15 /BAUDOUT, 16 XIN, 17 XOUT, 18 /WR, 19 WR, 20 VSS, 21 RD, 22 /RD, 23 DDIS, 24 /TXRDY, 25 /ADS, 26 A2, 27 A1, 28 A0, 29 /RXRDY, 30 INTR, 31 /OUT2, 32 /RTS, 33 /DTR, 34 /OUT1, 35 MR, 36 /CTS, 37 /DSR, 38 /DCD, 39 /RI, 40 VDD. Same footprint convention as the w65c02 sidecar.",
+  "_note": "MOS 6532 RIOT (RAM-I/O-Timer), DIP-40. 1 VSS, 2-7 A5-A0, 8-15 PA0-PA7, 16 PHI2, 17-24 PB7-PB0, 25 /IRQ, 26-33 D7-D0, 34 /RES, 35 R/W, 36 A6, 37 /CS2, 38 CS1, 39 RS0/, 40 VCC. RS0/ partitions the window: low = 128 bytes RAM, high = ports/timer; the engine's decode convention wires it to A7 (6507SBC shape). Same footprint convention as the w65c02 sidecar.",
   "footprint": {
-    "refTerminal": "rd",
+    "refTerminal": "pb3",
     "leads": {
-      "d0": {
+      "vss": {
         "dRow": 5,
         "dCol": 0
       },
-      "d1": {
+      "a5": {
         "dRow": 5,
         "dCol": 1
       },
-      "d2": {
+      "a4": {
         "dRow": 5,
         "dCol": 2
       },
-      "d3": {
+      "a3": {
         "dRow": 5,
         "dCol": 3
       },
-      "d4": {
+      "a2": {
         "dRow": 5,
         "dCol": 4
       },
-      "d5": {
+      "a1": {
         "dRow": 5,
         "dCol": 5
       },
-      "d6": {
+      "a0": {
         "dRow": 5,
         "dCol": 6
       },
-      "d7": {
+      "pa0": {
         "dRow": 5,
         "dCol": 7
       },
-      "rclk": {
+      "pa1": {
         "dRow": 5,
         "dCol": 8
       },
-      "sin": {
+      "pa2": {
         "dRow": 5,
         "dCol": 9
       },
-      "sout": {
+      "pa3": {
         "dRow": 5,
         "dCol": 10
       },
-      "cs0": {
+      "pa4": {
         "dRow": 5,
         "dCol": 11
       },
-      "cs1": {
+      "pa5": {
         "dRow": 5,
         "dCol": 12
       },
-      "cs2b": {
+      "pa6": {
         "dRow": 5,
         "dCol": 13
       },
-      "baudoutb": {
+      "pa7": {
         "dRow": 5,
         "dCol": 14
       },
-      "xin": {
+      "phi2": {
         "dRow": 5,
         "dCol": 15
       },
-      "xout": {
+      "pb7": {
         "dRow": 5,
         "dCol": 16
       },
-      "wrb": {
+      "pb6": {
         "dRow": 5,
         "dCol": 17
       },
-      "wr": {
+      "pb5": {
         "dRow": 5,
         "dCol": 18
       },
-      "vss": {
+      "pb4": {
         "dRow": 5,
         "dCol": 19
       },
-      "rd": {
+      "pb3": {
         "dRow": 0,
         "dCol": 0
       },
-      "rdb": {
+      "pb2": {
         "dRow": 0,
         "dCol": 1
       },
-      "ddis": {
+      "pb1": {
         "dRow": 0,
         "dCol": 2
       },
-      "txrdyb": {
+      "pb0": {
         "dRow": 0,
         "dCol": 3
       },
-      "adsb": {
+      "irqb": {
         "dRow": 0,
         "dCol": 4
       },
-      "a2": {
+      "d7": {
         "dRow": 0,
         "dCol": 5
       },
-      "a1": {
+      "d6": {
         "dRow": 0,
         "dCol": 6
       },
-      "a0": {
+      "d5": {
         "dRow": 0,
         "dCol": 7
       },
-      "rxrdyb": {
+      "d4": {
         "dRow": 0,
         "dCol": 8
       },
-      "intr": {
+      "d3": {
         "dRow": 0,
         "dCol": 9
       },
-      "out2b": {
+      "d2": {
         "dRow": 0,
         "dCol": 10
       },
-      "rtsb": {
+      "d1": {
         "dRow": 0,
         "dCol": 11
       },
-      "dtrb": {
+      "d0": {
         "dRow": 0,
         "dCol": 12
       },
-      "out1b": {
+      "resb": {
         "dRow": 0,
         "dCol": 13
       },
-      "mr": {
+      "rwb": {
         "dRow": 0,
         "dCol": 14
       },
-      "ctsb": {
+      "a6": {
         "dRow": 0,
         "dCol": 15
       },
-      "dsrb": {
+      "cs2b": {
         "dRow": 0,
         "dCol": 16
       },
-      "dcdb": {
+      "cs1": {
         "dRow": 0,
         "dCol": 17
       },
-      "rib": {
+      "rs0b": {
         "dRow": 0,
         "dCol": 18
       },
-      "vdd": {
+      "vcc": {
         "dRow": 0,
         "dCol": 19
       }
