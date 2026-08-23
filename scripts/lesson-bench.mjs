@@ -20,7 +20,7 @@
  *
  * Used by `test/lesson-bench-claims.test.mjs` and by `docs/LESSON-REVIEW-WAVE-1.md`.
  */
-import {readFileSync, readdirSync} from 'node:fs';
+import {readFileSync, readdirSync, existsSync, realpathSync} from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -28,9 +28,46 @@ const cui = path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
 const bwb = path.join(root, 'overlay/scratch-gui/src/lib/bw-board');
 export const EXAMPLES = path.join(root, 'overlay/scratch-gui/examples');
 
+/**
+ * Instrument check, run before the first solve.
+ *
+ * Everything this harness reads must live inside THIS worktree. `/tmp/lego` and
+ * `/tmp/bw-board` are symlinks to the live checkouts (created 2026-08-22), so a
+ * harness that resolved a sibling by relative path — or ran from a worktree
+ * under /tmp — would silently measure a tree another session is editing. That
+ * has produced two false readings on this project already. Cheaper to assert
+ * the layout than to trust it: `existsSync` + `realpath` every input and refuse
+ * to run if any of them escapes.
+ */
+function assertInputsAreLocal() {
+    const required = [
+        path.join(bwb, 'board.js'),
+        path.join(bwb, 'register-all.js'),
+        path.join(cui, 'engine.js'),
+        path.join(cui, 'model/circuit.js'),
+        path.join(cui, 'parts-data'),
+        path.join(EXAMPLES, 'index.json')
+    ];
+    const problems = [];
+    for (const file of required) {
+        if (!existsSync(file)) { problems.push(`missing: ${file}`); continue; }
+        const real = realpathSync(file);
+        if (!real.startsWith(realpathSync(root) + path.sep)) {
+            problems.push(`escapes the worktree: ${file} -> ${real}`);
+        }
+    }
+    if (problems.length) {
+        throw new Error('lesson-bench refuses to measure: its inputs are not this ' +
+            `worktree's own.\n  ${problems.join('\n  ')}\n` +
+            'Fix the layout rather than the assertion — a measurement taken against ' +
+            'another session\'s tree is not reproducible and its failures look real.');
+    }
+}
+
 let _mod = null;
 export async function boot() {
     if (_mod) return _mod;
+    assertInputsAreLocal();
     const {setEngine} = await import(path.join(cui, 'engine.js'));
     const {BoardImpl} = await import(path.join(bwb, 'board.js'));
     const {inferNetlist, checkWiring} = await import(path.join(bwb, 'infer-netlist.js'));

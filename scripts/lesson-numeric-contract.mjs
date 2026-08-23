@@ -169,6 +169,38 @@ export async function benchQuantities(exampleId, opts = {}) {
         }
     }
 
+    // Ohmmeter readings are bench outputs too, and Wave 2 quotes them. They only
+    // exist with the power OFF (board.resistance refuses otherwise, deliberately),
+    // and they are NOT the declared component values: on 22-series-parallel an
+    // LED reads ~2 kohm under the 1 mA test current and the whole network reads
+    // 2192 ohm, neither of which appears in any params block. Without this the
+    // check flags a correct hint quoting a real measurement. Bounded to the
+    // first 12 nets — each reading is a full MNA solve.
+    if (!overBudget()) {
+        const probe = Circuit.fromJSON(structuredClone(raw));
+        if (!probe.netlistError) {
+            probe.board.advanceTo(50n * MS);
+            probe.board.setPower(false);
+            probe.board.advanceTo(60n * MS);
+            const nets = probe.board.nets.slice(0, 12).map(n => n.id);
+            for (let i = 0; i < nets.length && !overBudget(); i++) {
+                for (let j = i + 1; j < nets.length; j++) {
+                    // BOTH orders. board.resistance(a, b) is not symmetric: it
+                    // makes `b` the solver reference, which disables the
+                    // gnd-symbol merge, so the two directions can differ by
+                    // orders of magnitude. Probing one way only left the whole
+                    // 22-series-parallel network (2191.6 ohm hot-to-gnd) out of
+                    // the pool and flagged a correct lesson hint.
+                    for (const [x, y] of [[nets[i], nets[j]], [nets[j], nets[i]]]) {
+                        let r;
+                        try { r = probe.board.resistance(x, y); } catch { continue; }
+                        if (typeof r === 'number' && Number.isFinite(r) && r > 0) q.R.add(round4(r));
+                    }
+                }
+            }
+        }
+    }
+
     // Voltage DIFFERENCES are what a two-probe meter reads, and what most lesson
     // prose quotes ("2.3 V across the resistor"). Done ONCE, at the end, over a
     // rounded and capped base list: folding differences back into the same set
@@ -225,7 +257,7 @@ const matches = (value, dimension, pool, quantum = 0) => {
  * claims about what this circuit produces, and checking them against the
  * circuit's own quantities produces noise, not findings.
  */
-const INSTRUMENT_CONTEXT = /\b(timebase|window|per div|v\/div|refresh|display|adc|counts?|resolution|sample rate|per count|bit|fit in|fits in)\b/i;
+const INSTRUMENT_CONTEXT = /\b(timebase|window|per div|v\/div|refresh|display|adc|counts?|resolution|sample|per count|bit|fit in|fits in)\b/i;
 
 /**
  * Check one lesson's quoted numbers against its bench.
