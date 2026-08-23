@@ -165,13 +165,33 @@ is now resolved.** Verified at lite `89c20d4d7`, whose
 `overlay/scratch-vm/src/extensions/crispstrobe/devices/index.js:228-230` now
 find it. So Tier 2.2 would be measuring a live surface rather than a stub.
 
-A warning about how that was checked, because it nearly went the other way:
-`grep -rn setDeviceControl` over the vendored tree returned only comment matches
-and **missed the definition twice**, while `readFileSync().includes()` found it
-immediately at line 1376. Had the grep been believed, this document would have
-recorded "defined nowhere, independently confirmed" — a false negative dressed
-as corroboration. Confirm an absence with more than one tool before reporting
-it; an absence is the one result a broken search returns by default.
+### Why grep could not see it, and why the same answer was right then wrong
+
+`grep -rn setDeviceControl` over the vendored tree returns **nothing** — no
+error, no warning. The cause is one byte: `board.js:1412` uses a literal NUL as
+a composite-key separator (`` `${partId}\0${verb}` ``). GNU grep sees a NUL,
+classifies the file as **binary**, and silently searches nothing. `file` on it
+says `data`, not source. `grep -a` finds it; so does
+`readFileSync().indexOf()`.
+
+The trap is sharper than "grep is unreliable", because the *same grep answer*
+was correct before the bump and wrong after it. Measured across both tips:
+
+| lite tip | `setDeviceControl` defined | NUL present | grep says |
+|---|---|---|---|
+| `3e87340f5` (pre-bump) | no | no | absent — **correct** |
+| `89c20d4d7` (post-bump) | yes, line 1376 | yes, line 1412 | absent — **wrong** |
+
+The vendor bump landed the method *and* introduced the NUL that hides it. So an
+absence reported from the pre-bump tree was a true finding, and the identical
+absence reported from the post-bump tree is an artifact — indistinguishable
+without checking the tip and the tool. This is why the note above says the claim
+was true when made rather than that it was mistaken.
+
+Two rules from it. An absence is the one result a broken search returns by
+default, so confirm it with a second method before publishing. And **any file in
+bw-board using a NUL separator is invisible to plain grep** — a whole class of
+false negative for tooling across this project, not one file's quirk.
 
 ## Ratchets may only shrink
 
