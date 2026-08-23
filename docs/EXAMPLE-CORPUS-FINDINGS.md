@@ -5,6 +5,35 @@ Measured 2026-08-23 against `1d8b0d174`, by `test/example-vm-execution.test.mjs`
 (lite's trace referee). Every number here is produced by a gate that runs in CI,
 so this file is a snapshot of a live measurement, not a survey someone did once.
 
+## What the gates asserted BEFORE this work
+
+Taken one file at a time, because the headline finding is structural rather than
+about any single test: **before 2026-08-23 no gate in this repo opened a
+`program.bw`.** Seven test files touch `overlay/scratch-gui/examples/`. All seven
+assert metadata, schema, or geometry.
+
+| file | what it opens | what it asserts | parse? | transpile? | execute? |
+| --- | --- | --- | --- | --- | --- |
+| `test/lessons.test.mjs` | `index.json` + the 8 lesson JSON files | a lesson's `exampleId` is present in the index; ids unique; copy bilingual; checkpoints well-formed; prerequisites resolve | no | no | no |
+| `test/starter-journeys.test.mjs` | `index.json` + `starter-journeys.json` | each journey's example exists and its `files` map has the keys its `mode` implies (`files.program` is a KEY CHECK, not a read) | no | no | no |
+| `test/circuit-corpus-invariants.test.mjs` | every `circuit*.json` | every wire endpoint resolves to a real net; controller placement is physically possible | no | no | no |
+| `test/schematic-visual-baselines.test.mjs` | 4 named `circuit*.json` | the rendered SVG is byte-identical to a reviewed baseline | no | no | no |
+| `test/eater6502-examples.test.mjs` | 2 `circuit.json` + 4 `intro.md` | the 6502 extractor accepts one bench and reports bus contention on the other; intro files carry their `teaches` tags | no | no | no |
+| `test/controller-board-face.test.mjs` | `17-comparator` circuit | the Arduino face uses the declared source; the bench powers real board pins | no | no | no |
+| `test/circuit-designer-ux-contract.test.mjs` | GUI sources (mentions examples) | UI contract — toggles, panes, controls | no | no | no |
+| `test/example-bench.test.mjs` | nothing on disk | `resolveExampleBench` on a hand-written literal | no | no | no |
+| `test/corpus-differential.test.mjs` | the corpus, via a network oracle | 6 rotating sample pairs agree | yes | yes | no — and **`skip` unless `CORPUS_DIFFERENTIAL=1`, which CI does not set** |
+
+`test/retarget.test.mjs` and `test/sb3-creator-motion-target.test.mjs` do exercise
+the compiler, but on inline source strings, not on anything shipped.
+
+So the corpus was covered for: does the index point at files that exist, do the
+circuits resolve electrically, do the schematics render the same as last time.
+It was not covered for: does the program parse, does it produce blocks, do those
+blocks exist, does pressing the green flag do anything. The five inert gallery
+examples PLAN.md opens with passed every one of those nine files, and would
+still pass all nine today.
+
 ## The corpus
 
 | | count |

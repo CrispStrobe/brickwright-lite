@@ -227,6 +227,36 @@ shipped extension rather than rely on an error surfacing.
 
 **FIXED** — the bundled extension now defines all 28 emitted opcodes (20 blocks -> 30).
 
+### 5.1a AMENDED 2026-08-23 — the count above is wrong, and the gap is wider than stc12
+
+Now measured by a gate that runs in lite's own CI on every push
+(`test/example-vm-execution.test.mjs`), so this no longer depends on a second checkout being
+present. Full detail: `docs/EXAMPLE-CORPUS-FINDINGS.md`.
+
+- **One example is affected by the stc12 gap, not three.** `79-a2-sampler` authors
+  `stc12_whenkey`, `stc12_keypad`, `stc12_seg_shownum`, `stc12_seg_clear`, `stc12_led_only`.
+  `77-keypad-keyshow` and `78-a2-calculator` author only `stc12_setport` and `stc12_tableindex`,
+  and the bundled extension defines both. What those two hit is a *referee* limitation — lite's
+  trace oracle does not speak `stc12_setport` — which is a different problem with a different fix.
+  Worth correcting because the §5.1 count is what decides how urgent the re-vendor is.
+- **A second, unrecorded instance of the same shape, affecting seven more examples.** The emitter
+  emits eleven `devices_oled*` / `devices_tft*` opcodes and **neither lite's bundled `devices`
+  extension nor sb3-creator's `reference/extensions/devices.js` defines one of them.** Both copies
+  stop at the LCD verbs. Unlike the stc12 half this is not a vendoring lag — there is nothing
+  upstream to vendor. Affected: `55-oled-hello`, `70-calculator`, `70-calculator-simple`,
+  `72-pico-oled-hello`, `73-voltmeter`, `75-battery-tester`, `51-tft-pixels`. Three of them reach
+  no extension method at all, so the thing the example exists to show does not happen.
+- **The open question is answered for node, not for the browser.** With the bundled extension
+  registered, `vm.loadProject` neither drops the blocks nor fails: 79-a2-sampler loads all 51 of
+  its blocks and the undefined ones are simply never dispatched. But node's `sb3.js` keeps
+  unknown-prefix blocks where the browser drops them, so the browser answer still needs a headless
+  browser run. That is why the gate covers this class STATICALLY — comparing emitted opcodes
+  against the bundled extension's `getInfo()` and methods — rather than by watching the VM.
+- **The general fix §5.1 asks for, applied.** Option (a): the comparison now runs entirely inside
+  lite, between lite's emitter and lite's extensions, so both inputs are always present and the
+  gate cannot skip. sb3-creator's `test/stc12-conformance.test.mjs` still carries
+  `skip: availableCopies < 2` and still reads as a pass in its own CI; that one is unfixed.
+
 **Why CI never saw it.** `test/stc12-conformance.test.mjs` finds copies at
 `../../lego/brickwright-lite/…` (bundled), `../../extensions/…` (gallery) and in-repo (reference),
 and carries `skip: availableCopies < 2`. sb3-creator's CI clones only sb3-creator, so exactly one

@@ -70,6 +70,15 @@ Acceptance criteria:
 
 - The example corpus gate executes every shipped program and every shipped circuit variant, and a
   deliberately broken example makes it red.
+  - **Programs: done 2026-08-23.** `test/example-vm-execution.test.mjs` runs all 257
+    program-bearing examples in the real Scratch VM with lite's bundled extensions; 114 are
+    circuit-only placeholders and are asserted to BE placeholders, 143 carry the execution burden,
+    117 execute clean. Eight mutations proven red and restored, including this milestone's own
+    `set variable X to Y` re-introduced into `05-counter`. Findings and the coverage the gate does
+    NOT have: `docs/EXAMPLE-CORPUS-FINDINGS.md`.
+  - **Circuit variants: still open.** `test/schematic-*.test.mjs` renders all 1,034 and checks
+    mechanical legibility; nothing asserts a variant is electrically what the simulator solves
+    (§6).
 - Extension conformance runs in CI for every device family the gallery targets, with no
   environment in which it silently skips.
 - The verification-debt ledger below has no open wave older than the newest shipped wave.
