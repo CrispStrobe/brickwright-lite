@@ -22371,6 +22371,12 @@ const W65C22 = [
 const W65C51 = [
 // DIP-28
 'vss', 'cs0', 'cs1b', 'resb', 'rwb', 'irqb', 'phi2', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'vdd', 'xtli', 'xtlo', 'dcdb', 'dsrb', 'rxd', 'dtrb', 'ctsb', 'rtsb', 'nc', 'txd', 'rs1', 'rs0', 'd7'];
+const NS16C550 = [
+// DIP-40 (PC16550D pinout, TI/NS datasheet)
+'d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'rclk', 'sin', 'sout', 'cs0', 'cs1', 'cs2b', 'baudoutb', 'xin', 'xout', 'wrb', 'wr', 'vss', 'rd', 'rdb', 'ddis', 'txrdyb', 'adsb', 'a2', 'a1', 'a0', 'rxrdyb', 'intr', 'out2b', 'rtsb', 'dtrb', 'out1b', 'mr', 'ctsb', 'dsrb', 'dcdb', 'rib', 'vdd'];
+const M6532 = [
+// DIP-40 (MOS 6532 RIOT — RAM, I/O, Timer)
+'vss', 'a5', 'a4', 'a3', 'a2', 'a1', 'a0', 'pa0', 'pa1', 'pa2', 'pa3', 'pa4', 'pa5', 'pa6', 'pa7', 'phi2', 'pb7', 'pb6', 'pb5', 'pb4', 'pb3', 'pb2', 'pb1', 'pb0', 'irqb', 'd7', 'd6', 'd5', 'd4', 'd3', 'd2', 'd1', 'd0', 'resb', 'rwb', 'a6', 'cs2b', 'cs1', 'rs0b', 'vcc'];
 const Z80 = [
 // DIP-40
 'a11', 'a12', 'a13', 'a14', 'a15', 'clk', 'd4', 'd3', 'd5', 'd6', 'vcc', 'd2', 'd7', 'd0', 'd1', 'intb', 'nmib', 'haltb', 'mreqb', 'iorqb', 'a10', 'a9', 'a8', 'a7', 'a6', 'a5', 'a4', 'a3', 'a2', 'a1', 'a0', 'gnd', 'rfshb', 'm1b', 'resetb', 'busrqb', 'waitb', 'busakb', 'wrb', 'rdb'];
@@ -22384,6 +22390,8 @@ function registerRetroDips() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('w65c02', dipSurface(W65C02, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('w65c22', dipSurface(W65C22, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('w65c51', dipSurface(W65C51, 5.0));
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('ns16c550', dipSurface(NS16C550, 5.0));
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('m6532', dipSurface(M6532, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('z80', dipSurface(Z80, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('mc6850', dipSurface(MC6850, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('tms9918', dipSurface(TMS9918, 5.0));
@@ -29620,8 +29628,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _simplevga_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./simplevga.js */ "./src/lib/bw-board/simplevga.js");
 /* harmony import */ var _tilevga_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./tilevga.js */ "./src/lib/bw-board/tilevga.js");
 /* harmony import */ var _ns16c550_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./ns16c550.js */ "./src/lib/bw-board/ns16c550.js");
-/* harmony import */ var _latch374_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./latch374.js */ "./src/lib/bw-board/latch374.js");
-/* harmony import */ var _sdcard_spi_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./sdcard-spi.js */ "./src/lib/bw-board/sdcard-spi.js");
+/* harmony import */ var _mc6850_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./mc6850.js */ "./src/lib/bw-board/mc6850.js");
+/* harmony import */ var _m6532_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./m6532.js */ "./src/lib/bw-board/m6532.js");
+/* harmony import */ var _latch374_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./latch374.js */ "./src/lib/bw-board/latch374.js");
+/* harmony import */ var _sdcard_spi_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./sdcard-spi.js */ "./src/lib/bw-board/sdcard-spi.js");
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -29655,11 +29665,13 @@ function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = 
 
 
 
+
+
 /**
  * @typedef {object} MachineConfig
  * @property {number} clockHz phi2 frequency
  * @property {Array<{kind: 'ram'|'rom', start: number, end: number}>} regions inclusive ranges
- * @property {Array<{kind: 'via'|'acia'|'uart16550'|'latch', name: string, at: number,
+ * @property {Array<{kind: 'via'|'acia'|'acia6850'|'riot'|'uart16550'|'latch', name: string, at: number,
  *   xtal?: number, span?: number}>} chips
  *   base addresses; xtal overrides a uart16550's input clock (defaults to
  *   the machine clock — the KiT wiring — since a breadboard that gives the
@@ -29864,7 +29876,7 @@ class M6502Machine {
       }));
     }
     for (const c of config.chips) {
-      const regs = c.kind === 'via' ? 16 : c.kind === 'uart16550' ? 8 : c.kind === 'latch' ? 1 : c.kind === 'vdp' ? 2 : c.kind === 'console' ? 8 : c.kind === 'tilevga' ? 0x4000 : 4;
+      const regs = c.kind === 'via' ? 16 : c.kind === 'uart16550' ? 8 : c.kind === 'latch' ? 1 : c.kind === 'vdp' ? 2 : c.kind === 'acia6850' ? 2 : c.kind === 'riot' ? 256 : c.kind === 'console' ? 8 : c.kind === 'tilevga' ? 0x4000 : 4;
       const span = c.span || regs;
       if (span < regs) throw new Error("machine config: ".concat(c.kind, " span ").concat(span, " smaller than its ").concat(regs, " registers"));
       let chip;
@@ -29894,6 +29906,22 @@ class M6502Machine {
             if (this.hooks.onSerial) this.hooks.onSerial(byte, this.tMs);
           }
         });
+      } else if (c.kind === 'riot') {
+        // MOS 6532: 128 bytes RAM + ports + timer in one 256-byte
+        // window, RS encoded as address bit 7 (the core's own
+        // contract; the extractor pins RS0B to A7 to match).
+        chip = new _m6532_js__WEBPACK_IMPORTED_MODULE_8__.M6532({
+          onPortChange: (port, value, ddr) => this._portChange(c.name, port, value, ddr)
+        });
+      } else if (c.kind === 'acia6850') {
+        // The Motorola-bus ACIA on a 6502 bus — memory-mapped
+        // ctrl/status + data, same chip class the z80 machines
+        // run. Two registers; the extractor names it acia6850.
+        chip = new _mc6850_js__WEBPACK_IMPORTED_MODULE_7__.MC6850({
+          onTx: byte => {
+            if (this.hooks.onSerial) this.hooks.onSerial(byte, this.tMs);
+          }
+        });
       } else if (c.kind === 'uart16550') {
         chip = new _ns16c550_js__WEBPACK_IMPORTED_MODULE_6__.NS16C550({
           onTx: byte => {
@@ -29902,7 +29930,7 @@ class M6502Machine {
           clockHz: c.xtal || config.clockHz
         });
       } else if (c.kind === 'latch') {
-        chip = new _latch374_js__WEBPACK_IMPORTED_MODULE_7__.Latch374({
+        chip = new _latch374_js__WEBPACK_IMPORTED_MODULE_9__.Latch374({
           onChange: (value, prev) => this._latchChange(c.name, value, prev)
         });
       } else if (c.kind === 'console') {
@@ -29965,7 +29993,7 @@ class M6502Machine {
         // storage hookup). Like simplevga: wires only, no bus
         // window, no decode entry. config: {kind:'sdcard',
         // name, via:'via1', pins:{cs,sck,mosi,miso, port?}}.
-        const sd = new _sdcard_spi_js__WEBPACK_IMPORTED_MODULE_8__.SDCardSPI(c.pins);
+        const sd = new _sdcard_spi_js__WEBPACK_IMPORTED_MODULE_10__.SDCardSPI(c.pins);
         if (!this._sdCards) this._sdCards = [];
         this._sdCards.push({
           sd,
@@ -30345,6 +30373,283 @@ class M6502Machine {
 }
 _defineProperty(M6502Machine, "CPU_STATE", ['pc', 'a', 'x', 'y', 's', 'p']);
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (M6502Machine);
+
+/***/ }),
+
+/***/ "./src/lib/bw-board/m6532.js":
+/*!***********************************!*\
+  !*** ./src/lib/bw-board/m6532.js ***!
+  \***********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   M6532: () => (/* binding */ M6532)
+/* harmony export */ });
+/**
+ * MOS 6532 RIOT — RAM + I/O + Timer, clean-room from the datasheet.
+ *
+ * The 6532 integrates 128 bytes of RAM, two 8-bit I/O ports with data
+ * direction registers, and an interval timer with four prescaler modes.
+ *
+ * Address decode (active when chip-selected):
+ *   A6=0 (RS low):  128-byte static RAM (A0–A6)
+ *   A6=1 (RS high): I/O and timer registers
+ *     A4=0: port registers  — A1 selects port (0=A, 1=B), A0 selects DDR
+ *     A4=1: timer
+ *       WRITE: A1:A0 = prescaler (00=/1, 01=/8, 10=/64, 11=/1024)
+ *              A3 = interrupt enable on write (1=enable, 0=disable)
+ *       READ:  A0 = 0 → read timer value (A3 controls interrupt flag peek)
+ *              A0 = 1 → read interrupt flags
+ *
+ * Timer behaviour: writes to the timer registers load the counter and select
+ * the prescaler. The prescaler counts down, and when it reaches zero the main
+ * counter decrements. When the counter underflows from $00 to $FF, the timer
+ * interrupt flag is set and the prescaler switches to /1 for the remaining
+ * countdown (the counter free-runs at /1 until read or re-loaded).
+ *
+ * PA7 edge detect: a negative or positive transition on PA7 (depending on
+ * configuration) sets the PA7 interrupt flag. The edge polarity is set by
+ * writing to the edge-detect register addresses.
+ *
+ * Documented limitation: the underlying CPU core is a W65C02 (CMOS), not the
+ * NMOS 6502/6507. No NMOS undocumented opcodes are modeled.
+ *
+ * @module
+ */
+
+const PRESCALE = [1, 8, 64, 1024];
+class M6532 {
+  /**
+   * @param {{ onPortChange?: (port: 'a'|'b', value: number, ddr: number) => void,
+   *           onIrqChange?: (asserted: boolean) => void }} [hooks]
+   */
+  constructor() {
+    let hooks = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+    this.hooks = hooks;
+    this.reset();
+  }
+  reset() {
+    /** 128 bytes of on-chip RAM. */
+    this.ram = new Uint8Array(128);
+    /** Output registers. */
+    this.ora = 0;
+    this.orb = 0;
+    /** Data direction: 1 = output, 0 = input. */
+    this.ddra = 0;
+    this.ddrb = 0;
+    /** External input pin levels (undriven reads high). */
+    this.inA = 0xff;
+    this.inB = 0xff;
+    /** Timer state. */
+    this.timerValue = 0x00; // 8-bit counter
+    this.prescaler = 1024; // current prescaler divisor
+    this.prescaleCounter = 1024; // countdown within current prescale
+    this.timerIrqEnabled = false;
+    this.timerFlag = false; // set on underflow
+    this.timerUnderflowed = false; // after underflow, prescaler = /1
+    /** PA7 edge detect. */
+    this.pa7Flag = false;
+    this.pa7IrqEnabled = false;
+    this.pa7Positive = false; // false = negative edge, true = positive
+    this.pa7Last = 1; // last PA7 input level (pins default high)
+    this._irq = false;
+  }
+
+  /** The irqAsserted getter matches the VIA/ACIA convention. */
+  get irqAsserted() {
+    return this._irq;
+  }
+  _syncIrq() {
+    const asserted = this.timerFlag && this.timerIrqEnabled || this.pa7Flag && this.pa7IrqEnabled;
+    if (asserted !== this._irq) {
+      this._irq = asserted;
+      if (this.hooks.onIrqChange) this.hooks.onIrqChange(asserted);
+    }
+  }
+
+  /**
+   * Set an external input pin level.
+   * @param {'a'|'b'} port
+   * @param {number} bit 0-7
+   * @param {0|1} level
+   */
+  setInput(port, bit, level) {
+    const mask = 1 << bit;
+    if (port === 'a') {
+      this.inA = level ? this.inA | mask : this.inA & ~mask;
+      // PA7 edge detection
+      if (bit === 7) {
+        const cur = level ? 1 : 0;
+        if (this.pa7Last !== cur) {
+          if (this.pa7Positive && cur === 1 || !this.pa7Positive && cur === 0) {
+            this.pa7Flag = true;
+            this._syncIrq();
+          }
+          this.pa7Last = cur;
+        }
+      }
+    } else {
+      this.inB = level ? this.inB | mask : this.inB & ~mask;
+    }
+  }
+
+  /**
+   * Read a register or RAM byte. The address is the offset within the
+   * chip's address window (A0–A6 + RS encoded in the address).
+   *
+   * In the 6507SBC decode: RS = A7, so:
+   *   addr & 0x80 = 0: RAM (addr & 0x7F)
+   *   addr & 0x80 = 1: registers
+   */
+  read(addr) {
+    // RS = bit 7 of the address in our decode
+    if (!(addr & 0x80)) {
+      // RAM access
+      return this.ram[addr & 0x7f];
+    }
+    // Register space
+    if (!(addr & 0x04)) {
+      // A2=0: I/O port registers
+      // A1 selects port, A0 selects data vs DDR
+      const port = addr & 0x02;
+      const isDdr = addr & 0x01;
+      if (port) {
+        // Port B
+        if (isDdr) return this.ddrb;
+        return this.orb & this.ddrb | this.inB & ~this.ddrb;
+      } else {
+        // Port A
+        if (isDdr) return this.ddra;
+        return this.ora & this.ddra | this.inA & ~this.ddra;
+      }
+    }
+    // A2=1: Timer / interrupt flags
+    if (addr & 0x01) {
+      // Read interrupt flags: bit 7 = timer, bit 6 = PA7
+      const val = (this.timerFlag ? 0x80 : 0) | (this.pa7Flag ? 0x40 : 0);
+      // Reading interrupt flags clears the PA7 flag
+      this.pa7Flag = false;
+      this._syncIrq();
+      return val;
+    }
+    // Read timer value
+    // A3 controls: 1 = enable timer IRQ on read, 0 = disable
+    this.timerIrqEnabled = !!(addr & 0x08);
+    // Reading the timer clears the timer flag
+    this.timerFlag = false;
+    this._syncIrq();
+    return this.timerValue;
+  }
+
+  /**
+   * Write a register or RAM byte.
+   */
+  write(addr, val) {
+    if (!(addr & 0x80)) {
+      // RAM
+      this.ram[addr & 0x7f] = val;
+      return;
+    }
+    // Register space
+    if (!(addr & 0x04)) {
+      // A2=0: I/O port registers or PA7 edge detect
+      if (addr & 0x10) {
+        // A4=1: PA7 edge detect control
+        // A0 selects polarity: 0 = negative, 1 = positive
+        // A1 selects IRQ enable: 0 = disable, 1 = enable (undocumented on some datasheets
+        // but the standard decode is A1 for enable, A0 for polarity)
+        this.pa7Positive = !!(addr & 0x01);
+        this.pa7IrqEnabled = !!(addr & 0x02);
+        this._syncIrq();
+        return;
+      }
+      // A1 selects port, A0 selects data vs DDR
+      const port = addr & 0x02;
+      const isDdr = addr & 0x01;
+      if (port) {
+        if (isDdr) {
+          this.ddrb = val;
+        } else {
+          this.orb = val;
+        }
+        if (this.hooks.onPortChange) {
+          this.hooks.onPortChange('b', this.orb, this.ddrb);
+        }
+      } else {
+        if (isDdr) {
+          this.ddra = val;
+        } else {
+          this.ora = val;
+          // Check PA7 edge when output changes
+          const pa7Out = val & this.ddra & 0x80 ? 1 : 0;
+          if (this.ddra & 0x80) {
+            const cur = pa7Out;
+            if (this.pa7Last !== cur) {
+              if (this.pa7Positive && cur === 1 || !this.pa7Positive && cur === 0) {
+                this.pa7Flag = true;
+              }
+              this.pa7Last = cur;
+            }
+          }
+        }
+        if (this.hooks.onPortChange) {
+          this.hooks.onPortChange('a', this.ora, this.ddra);
+        }
+      }
+      this._syncIrq();
+      return;
+    }
+    // A2=1: Timer registers
+    if (addr & 0x10) {
+      // A4=1: Timer write — load counter and select prescaler
+      // A1:A0 = prescaler select
+      const prescaleIndex = addr & 0x03;
+      this.prescaler = PRESCALE[prescaleIndex];
+      this.prescaleCounter = this.prescaler;
+      this.timerValue = val;
+      this.timerFlag = false;
+      this.timerUnderflowed = false;
+      // A3 = interrupt enable
+      this.timerIrqEnabled = !!(addr & 0x08);
+      this._syncIrq();
+      return;
+    }
+    // A4=0, A2=1: PA7 edge detect (same as when A4=0 actually)
+    // Some datasheets put edge detect at A4=0,A2=1 for writes
+    this.pa7Positive = !!(addr & 0x01);
+    this.pa7IrqEnabled = !!(addr & 0x02);
+    this._syncIrq();
+  }
+
+  /**
+   * Advance by N phi2 cycles. Timer decrements once per prescaler period.
+   * @param {number} cycles
+   */
+  advance(cycles) {
+    for (let i = 0; i < cycles; i++) {
+      this.prescaleCounter--;
+      if (this.prescaleCounter <= 0) {
+        // Prescaler expired — decrement the timer
+        if (this.timerValue === 0) {
+          // Underflow: $00 → $FF
+          this.timerValue = 0xff;
+          if (!this.timerUnderflowed) {
+            this.timerFlag = true;
+            this.timerUnderflowed = true;
+            this._syncIrq();
+          }
+          // After underflow, prescaler switches to /1
+          this.prescaler = 1;
+          this.prescaleCounter = 1;
+        } else {
+          this.timerValue--;
+          this.prescaleCounter = this.timerUnderflowed ? 1 : this.prescaler;
+        }
+      }
+    }
+  }
+}
 
 /***/ }),
 
@@ -30759,6 +31064,118 @@ function _runMediaBundle() {
   });
   return _runMediaBundle.apply(this, arguments);
 }
+
+/***/ }),
+
+/***/ "./src/lib/bw-board/mc6850.js":
+/*!************************************!*\
+  !*** ./src/lib/bw-board/mc6850.js ***!
+  \************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   MC6850: () => (/* binding */ MC6850),
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/**
+ * MC6850 ACIA — the Z80 breadboard scene's serial chip (Grant Searle's
+ * minimal design, RC2014 and their descendants all speak it). Our own
+ * model, from the Motorola datasheet: two registers selected by RS —
+ * control (write) / status (read) at RS=0, TX / RX data at RS=1.
+ *
+ * Status: bit0 RDRF, bit1 TDRE (always set here — the emulated wire is
+ * infinitely fast; the pacing caveats of the 6551 world do not apply to
+ * the 6850's polling idiom), bit7 IRQ. Control: bits 5-6 TX interrupt
+ * modes (unused here), bit7 RX interrupt enable; the divide/format bits
+ * are stored but do not change behavior at instruction resolution.
+ * Master reset (control = 0x03) clears the receiver.
+ *
+ * @module
+ */
+
+class MC6850 {
+  /** @param {{ onTx?: (byte:number)=>void, onIrqChange?: (a:boolean)=>void }} [hooks] */
+  constructor() {
+    let hooks = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+    this.hooks = hooks;
+    this.reset();
+  }
+  reset() {
+    this.rx = [];
+    this.rdrf = false;
+    this.overrun = false;
+    this.control = 0;
+    this._rxByte = 0;
+    this._irq = false;
+  }
+  _syncIrq() {
+    const asserted = !!(this.control & 0x80) && this.rdrf;
+    if (asserted !== this._irq) {
+      this._irq = asserted;
+      if (this.hooks.onIrqChange) this.hooks.onIrqChange(asserted);
+    }
+  }
+
+  /** Machine-side: a byte arrives on RX. */
+  rxPush(byte) {
+    if (this.rdrf) {
+      this.overrun = true;
+      this.rx.push(byte & 0xff);
+    } else {
+      this._rxByte = byte & 0xff;
+      this.rdrf = true;
+    }
+    this._syncIrq();
+  }
+
+  /** @param {0|1} rs */
+  read(rs) {
+    if (rs === 0) {
+      return (this.rdrf ? 0x01 : 0) | 0x02 /* TDRE */ | (this.overrun ? 0x20 : 0) | (this._irq ? 0x80 : 0);
+    }
+    const b = this._rxByte;
+    this.rdrf = this.rx.length > 0;
+    if (this.rdrf) this._rxByte = this.rx.shift();
+    this.overrun = false;
+    this._syncIrq();
+    return b;
+  }
+
+  /** @param {0|1} rs @param {number} v */
+  write(rs, v) {
+    if (rs === 0) {
+      this.control = v & 0xff;
+      if ((v & 0x03) === 0x03) this.reset(); // master reset
+      this._syncIrq();
+      return;
+    }
+    if (this.hooks.onTx) this.hooks.onTx(v & 0xff);
+  }
+  get irqAsserted() {
+    return this._irq;
+  }
+  saveState() {
+    return {
+      rx: this.rx.slice(),
+      rdrf: this.rdrf,
+      overrun: this.overrun,
+      control: this.control,
+      _rxByte: this._rxByte,
+      _irq: this._irq
+    };
+  }
+  loadState(s) {
+    var _s$_irq;
+    this.rx = s.rx.slice();
+    this.rdrf = s.rdrf;
+    this.overrun = s.overrun;
+    this.control = s.control;
+    this._rxByte = s._rxByte;
+    this._irq = (_s$_irq = s._irq) !== null && _s$_irq !== void 0 ? _s$_irq : false;
+  }
+}
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (MC6850);
 
 /***/ }),
 
@@ -31436,11 +31853,16 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     nets = nets.slice();
   }
 
-  // terminal → net id, built once per solve. `findNet` was a linear scan of
-  // all nets × all terminals, called several times per element per stamp per
-  // NR iteration — the dominant cost on imported boards before the O(n³)
+  // terminal → net id. `findNet` was a linear scan of all nets × all
+  // terminals, called several times per element per stamp per NR
+  // iteration — the dominant cost on imported boards before the O(n³)
   // solve even starts (ROADMAP E1.1; spec-updates/sparse-lu-factor-reuse.md).
-  nets[NETS_TERM_MAP] = buildTermMap(nets);
+  // Memoized ON THE ARRAY, not per call: the board hands the same nets
+  // array to every solve until setNetlist builds a new one, so the map
+  // is a pure function of the array's identity. Measured on the
+  // perf-budget LED bench: ~19K → ~22K setPin/sec — the rebuild was
+  // ~8% self time, real but not the bench's dominant cost.
+  if (!nets[NETS_TERM_MAP]) nets[NETS_TERM_MAP] = buildTermMap(nets);
 
   /** @type {Map<string, number>} net id → node index */
   const nodeIndex = new Map();
