@@ -16,7 +16,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -132,4 +132,33 @@ test('every Wave 5 bench ships the parts and program its lesson needs', async ()
         assert.ok(circuit.parts.some(p => p.kind === 'button'),
             `${lessonId} asks for a press but ${exampleId} has no button`);
     }
+});
+
+test('OPEN DEFECT: the debugger needs a hosted compiler, on every device family', () => {
+    // Missed on the first Wave 5 pass, because I checked what the debugger can
+    // SHOW and not whether it can START. `debug-runner.js` lists "build the
+    // image over the network" among the four things only a browser can do, and
+    // the fetch is unconditional: every device Wave 5 uses — stc12c5a60s2,
+    // atmega328p (Uno/Nano), rp2040 (Pico) — routes through the same
+    // POST /compile. A browser cannot run SDCC, and the symbol table the
+    // debugger joins its yield map against comes from the linker, so this is
+    // not incidental.
+    const runner = read('overlay/scratch-gui/src/lib/bw-debug/debug-runner.js');
+    assert.match(runner, /compilerUrl = 'https:\/\/stc-compiler\.vercel\.app'/,
+        'the default compiler URL moved — re-check whether the debugger still ' +
+        'needs the network, then update docs/LESSON-REVIEW-WAVE-5.md');
+    assert.match(runner, /await fetch\(`\$\{compilerUrl\}\/compile`/);
+    // and it is not gated on device: the map translates board names to chip
+    // names for the SAME request rather than choosing a local path for any.
+    for (const chip of ['atmega328p', 'rp2040', 'eater6502']) {
+        assert.ok(runner.includes(`'${chip}'`), `${chip} no longer routes through COMPILE_TARGET`);
+    }
+
+    // The escape hatch is real but undiscoverable from a lesson: an in-bundle
+    // SDCC WASM that INTERCEPTS the same fetch, behind a localStorage flag.
+    assert.match(runner, /localStorage\.getItem\('bw-use-wasm-compiler'\) === '1'/,
+        'the local-compiler opt-in changed — if it became the default, all ten ' +
+        'Wave 5 lessons stop needing the network and this test should go');
+    assert.ok(existsSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/sdcc-wasm/intercept.js')),
+        'the local WASM compiler chunk is gone, so the opt-in leads nowhere');
 });
