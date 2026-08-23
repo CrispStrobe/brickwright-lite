@@ -587,6 +587,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   ATMEGA2560: () => (/* binding */ ATMEGA2560),
 /* harmony export */   ATMEGA328P: () => (/* binding */ ATMEGA328P),
 /* harmony export */   ATMEGA328P_PINS: () => (/* binding */ ATMEGA328P_PINS),
+/* harmony export */   ATMEGA88PA: () => (/* binding */ ATMEGA88PA),
 /* harmony export */   ATTINY13: () => (/* binding */ ATTINY13),
 /* harmony export */   ATTINY2313: () => (/* binding */ ATTINY2313),
 /* harmony export */   ATTINY85: () => (/* binding */ ATTINY85),
@@ -899,6 +900,60 @@ const ATMEGA328P = {
   usart: ATMEGA328P_USART,
   twi: ATMEGA328P_TWI,
   spi: ATMEGA328P_SPI
+};
+
+// ─── ATmega88PA (E5.8) ─────────────────────────────────────────────────────
+//
+// Same die family as the 328P (doc8271 covers 48A..328P together): identical
+// pinout, identical port/peripheral REGISTER addresses — the whole difference
+// that matters here is memory size and the interrupt vector table. With
+// ≤ 8 KB flash the vectors are RJMP-sized, ONE word apart (table 11-6), where
+// the 328P's are JMP-sized and two apart: vector n (1-based) lives at word
+// address n−1, i.e. every 328P interrupt address divided by two. A config
+// that reused the 328P vectors would fire every ISR into the middle of the
+// wrong handler — the reason this is a real chip entry and not an alias.
+const v88 = vector1Based => vector1Based - 1;
+const ATMEGA88PA_TIMERS = [_objectSpread(_objectSpread({}, ATMEGA328P_TIMERS[0]), {}, {
+  captureInterrupt: 0,
+  compAInterrupt: v88(15),
+  compBInterrupt: v88(16),
+  ovfInterrupt: v88(17)
+}), _objectSpread(_objectSpread({}, ATMEGA328P_TIMERS[1]), {}, {
+  captureInterrupt: v88(11),
+  compAInterrupt: v88(12),
+  compBInterrupt: v88(13),
+  ovfInterrupt: v88(14)
+}), _objectSpread(_objectSpread({}, ATMEGA328P_TIMERS[2]), {}, {
+  captureInterrupt: 0,
+  compAInterrupt: v88(8),
+  compBInterrupt: v88(9),
+  ovfInterrupt: v88(10)
+})];
+const ATMEGA88PA = {
+  name: 'ATmega88PA',
+  flashWords: 4096,
+  // 8 KB = 4K words
+  sramBytes: 1024,
+  clockHz: 16000000,
+  vcc: 5.0,
+  pins: ATMEGA328P_PINS,
+  ports: ATMEGA328P_PORTS,
+  timers: ATMEGA88PA_TIMERS,
+  adc: _objectSpread(_objectSpread({}, ATMEGA328P_ADC), {}, {
+    adcInterrupt: v88(22)
+  }),
+  adcChannelToPin: ATMEGA328P_ADC_MAP,
+  usart: _objectSpread(_objectSpread({}, ATMEGA328P_USART), {}, {
+    rxCompleteInterrupt: v88(19),
+    dataRegisterEmptyInterrupt: v88(20),
+    txCompleteInterrupt: v88(21)
+  }),
+  twi: _objectSpread(_objectSpread({}, ATMEGA328P_TWI), {}, {
+    twiInterrupt: v88(25)
+  }),
+  spi: _objectSpread(_objectSpread({}, ATMEGA328P_SPI), {}, {
+    spiInterrupt: v88(18)
+  })
 };
 
 // ─── ATmega2560 (Arduino Mega) ─────────────────────────────────────────────
@@ -2199,6 +2254,7 @@ const ATTINY13 = {
 /** Lookup by name string, case-insensitive. */
 const CHIPS = {
   atmega328p: ATMEGA328P,
+  atmega88pa: ATMEGA88PA,
   atmega2560: ATMEGA2560,
   attiny85: ATTINY85,
   attiny88: ATTINY88,
@@ -2278,6 +2334,11 @@ function createAvr8jsAdapter() {
   const clockHz = (_opts$clockHz = opts.clockHz) !== null && _opts$clockHz !== void 0 ? _opts$clockHz : chip.clockHz;
   const vcc = (_opts$vcc = opts.vcc) !== null && _opts$vcc !== void 0 ? _opts$vcc : chip.vcc;
   const progMem = new Uint16Array(chip.flashWords);
+  if (opts.program && opts.program.length > chip.flashWords) {
+    // Refuse WITH THE SIZE NAMED — a silent truncation boots garbage and a
+    // bare RangeError names neither the image nor the chip.
+    throw new Error("Program is ".concat(opts.program.length, " words ") + "(".concat(opts.program.length * 2, " bytes); ").concat(chip.name, " flash holds ") + "".concat(chip.flashWords, " words (").concat(chip.flashWords * 2, " bytes)"));
+  }
   if (opts.program) progMem.set(opts.program);
   const cpu = new avr8js__WEBPACK_IMPORTED_MODULE_0__.CPU(progMem, chip.sramBytes);
 
@@ -14166,6 +14227,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   registerLogicChips: () => (/* binding */ registerLogicChips)
 /* harmony export */ });
 /* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../devices.js */ "./src/lib/bw-board/devices.js");
+/* harmony import */ var _logic_levels_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./logic-levels.js */ "./src/lib/bw-board/devices/logic-levels.js");
 /**
  * Chip composer — one DIP template, many chips from tables.
  *
@@ -14179,6 +14241,7 @@ __webpack_require__.r(__webpack_exports__);
  *
  * @module
  */
+
 
 
 const R_OUT = 50;
@@ -14610,8 +14673,12 @@ function buildChipModel(def) {
     },
     update(part, state, read) {
       const vcc = read('vcc') || 5.0;
-      const VIH = 0.7 * vcc;
-      const VIL = 0.3 * vcc;
+      // HC: 30 %/70 % of the rail. HCT kinds/params: TTL-fixed 0.8/2.0 V
+      // (E5.7) — the same table entry serves both families.
+      const {
+        vIL: VIL,
+        vIH: VIH
+      } = (0,_logic_levels_js__WEBPACK_IMPORTED_MODULE_1__.inputThresholds)(part, vcc);
       function readLogic(pin) {
         const v = read(pin);
         return v > VIH ? 1 : v < VIL ? 0 : -1; // -1 = undefined
@@ -14993,6 +15060,62 @@ const CHIP_74HC374 = {
   }
 };
 
+/** 74HC373 — Octal TRANSPARENT D latch with 3-state outputs (DIP-20).
+ *  While LE is HIGH the outputs FOLLOW the D inputs (transparent); the
+ *  falling edge of LE latches whatever was present. /OE (active LOW)
+ *  enables the outputs; HIGH → high-Z. Same DIP-20 terminal order as
+ *  the '374 with CLK replaced by LE — but it is NOT a '374: data
+ *  changes during LE-high propagate immediately (the importers refuse
+ *  to alias one to the other for exactly that reason). */
+const CHIP_74HC373 = {
+  terminals: ['oeb', 'q0', 'd0', 'd1', 'q1', 'q2', 'd2', 'd3', 'q3', 'gnd', 'le', 'q4', 'd4', 'd5', 'q5', 'q6', 'd6', 'd7', 'q7', 'vcc'],
+  init() {
+    const drives = {};
+    for (let i = 0; i < 8; i++) drives["q".concat(i)] = {
+      vTh: 0,
+      rTh: R_OUT
+    };
+    return {
+      drives,
+      reg: 0
+    };
+  },
+  stamp(ctx) {
+    ctx.conductance('le', null, 1 / R_INPUT);
+    ctx.conductance('oeb', null, 1 / R_INPUT);
+    for (let i = 0; i < 8; i++) ctx.conductance("d".concat(i), null, 1 / R_INPUT);
+  },
+  update(part, state, read) {
+    const vcc = read('vcc') || 5.0;
+    // Mid-rail for the HC part; TTL center for the '74ls373' alias.
+    const th = part.kind === '74ls373' ? 1.4 : vcc * 0.5;
+
+    // Transparent while LE is high: the register tracks D continuously.
+    // LE low: the register holds — the falling edge needs no special
+    // handling because the last transparent pass already captured it.
+    if (read('le') > th) {
+      let newReg = 0;
+      for (let i = 0; i < 8; i++) if (read("d".concat(i)) > th) newReg |= 1 << i;
+      state.reg = newReg;
+    }
+    const oe = read('oeb') < th;
+    let changed = false;
+    for (let i = 0; i < 8; i++) {
+      var _state$drives$vTh2, _state$drives3, _state$drives$rTh2, _state$drives4;
+      const v = oe ? state.reg >> i & 1 ? vcc : 0 : 0;
+      const r = oe ? R_OUT : 1e9;
+      if (((_state$drives$vTh2 = (_state$drives3 = state.drives["q".concat(i)]) === null || _state$drives3 === void 0 ? void 0 : _state$drives3.vTh) !== null && _state$drives$vTh2 !== void 0 ? _state$drives$vTh2 : -1) !== v || ((_state$drives$rTh2 = (_state$drives4 = state.drives["q".concat(i)]) === null || _state$drives4 === void 0 ? void 0 : _state$drives4.rTh) !== null && _state$drives$rTh2 !== void 0 ? _state$drives$rTh2 : -1) !== r) {
+        state.drives["q".concat(i)] = {
+          vTh: v,
+          rTh: r
+        };
+        changed = true;
+      }
+    }
+    return changed;
+  }
+};
+
 /** 74HC688 — 8-bit identity comparator (DIP-20).
  *  /P=Q output goes LOW when P0-P7 = Q0-Q7 and /G is LOW. */
 const CHIP_74HC688 = {
@@ -15054,12 +15177,20 @@ function registerLogicChips() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74hc95', CHIP_74HC95);
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('cd4511', CHIP_CD4511);
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74hc374', CHIP_74HC374);
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74hc373', CHIP_74HC373);
+  // The LS373 on the classic reference boards: same latch, TTL inputs.
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74ls373', CHIP_74HC373);
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74hc688', CHIP_74HC688);
   // TTL LS-series aliases — same logic, same pinout
   const hc32 = buildChipModel(CHIPS.find(c => c.kind === '74hc32'));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74ls32', hc32);
   const hc04 = buildChipModel(CHIPS.find(c => c.kind === '74hc04'));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74ls04', hc04);
+  // HCT aliases (E5.7) — same logic and pinout; the model reads
+  // part.kind, so the TTL-fixed thresholds engage per part.
+  for (const k of ['74hc00', '74hc04', '74hc08', '74hc14', '74hc32']) {
+    (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)(k.replace('74hc', '74hct'), buildChipModel(CHIPS.find(c => c.kind === k)));
+  }
 }
 
 
@@ -19575,16 +19706,19 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   registerLogicGates: () => (/* binding */ registerLogicGates)
 /* harmony export */ });
 /* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../devices.js */ "./src/lib/bw-board/devices.js");
+/* harmony import */ var _logic_levels_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./logic-levels.js */ "./src/lib/bw-board/devices/logic-levels.js");
 /**
  * Logic gates — 74HC-flavored CMOS: AND, OR, NOT, NAND, NOR, XOR.
  *
- * Inputs: threshold at 30% VCC (V_IL) and 70% VCC (V_IH).
+ * Inputs: threshold at 30% VCC (V_IL) and 70% VCC (V_IH); with
+ * `params.family: 'hct'`, TTL-fixed 0.8 V / 2.0 V instead (E5.7).
  * Outputs: Thévenin driver with configurable R_out (default 50 Ohm).
  * Propagation delay: not yet modelled (would need scheduled events in the
  * board loop — noted in the spec, deferred to a second pass).
  *
  * @module
  */
+
 
 
 const R_OUT_DEFAULT = 50;
@@ -19612,8 +19746,11 @@ function gateTerminals(n) {
 function readInputs(part, state, read, vcc) {
   var _part$params$inputs, _part$params;
   const n = (_part$params$inputs = (_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.inputs) !== null && _part$params$inputs !== void 0 ? _part$params$inputs : 2;
-  const vIL = 0.3 * vcc;
-  const vIH = 0.7 * vcc;
+  // HC: rail-proportional. params.family:'hct': TTL-fixed 0.8/2.0 V (E5.7).
+  const {
+    vIL,
+    vIH
+  } = (0,_logic_levels_js__WEBPACK_IMPORTED_MODULE_1__.inputThresholds)(part, vcc);
   const levels = [];
   for (let i = 0; i < n; i++) {
     var _state$_lastInputs$i, _state$_lastInputs;
@@ -19738,6 +19875,73 @@ function registerLogicGates() {
   }
 }
 
+
+/***/ }),
+
+/***/ "./src/lib/bw-board/devices/logic-levels.js":
+/*!**************************************************!*\
+  !*** ./src/lib/bw-board/devices/logic-levels.js ***!
+  \**************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   inputThreshold: () => (/* binding */ inputThreshold),
+/* harmony export */   inputThresholds: () => (/* binding */ inputThresholds),
+/* harmony export */   isHct: () => (/* binding */ isHct)
+/* harmony export */ });
+/**
+ * Input logic levels per family (E5.7).
+ *
+ * HC inputs are CMOS: V_IL/V_IH scale with the rail (30 %/70 % VCC).
+ * HCT inputs are TTL-FIXED — V_IL 0.8 V, V_IH 2.0 V regardless of rail —
+ * which is the entire reason HCT parts appear on mixed-level 5 V boards:
+ * a 3.3 V-ish MCU high (or a TTL 2.4 V high) clears 2.0 V but not 3.5 V.
+ *
+ * A part is HCT when its kind says so (`74hct*`) or when
+ * `params.family: 'hct'` is set on an HC kind.
+ *
+ * @module
+ */
+
+/**
+ * LS inputs are TTL proper — the same fixed 0.8/2.0 V levels HCT was
+ * built to mimic — so the `74ls*` aliases take the TTL branch too.
+ *
+ * @param {import('../types.js').Part} part
+ * @param {number} vcc
+ * @returns {{ vIL: number, vIH: number }}
+ */
+function inputThresholds(part, vcc) {
+  if (isHct(part)) return {
+    vIL: 0.8,
+    vIH: 2.0
+  };
+  return {
+    vIL: 0.3 * vcc,
+    vIH: 0.7 * vcc
+  };
+}
+
+/**
+ * Single switching threshold for models that read inputs without
+ * hysteresis: mid-supply for HC, the 1.4 V TTL center for HCT (the
+ * midpoint of V_IL/V_IH — an approximation those models already make
+ * for HC by using 0.5·VCC).
+ * @param {import('../types.js').Part} part
+ * @param {number} vcc
+ * @returns {number}
+ */
+function inputThreshold(part, vcc) {
+  return isHct(part) ? 1.4 : 0.5 * vcc;
+}
+
+/** TTL-fixed input levels: HCT kinds, LS kinds, or an explicit param.
+ * @param {import('../types.js').Part} part */
+function isHct(part) {
+  var _part$params;
+  return ((_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.family) === 'hct' || /^74(hct|ls)/.test(part.kind);
+}
 
 /***/ }),
 
@@ -19899,6 +20103,115 @@ function registerMatrix8x8() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('matrix8x8', makeMatrixModel(8, 8));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('matrix16x8', makeMatrixModel(8, 16));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('matrix9x9', makeMatrixModel(9, 9));
+}
+
+/***/ }),
+
+/***/ "./src/lib/bw-board/devices/max232.js":
+/*!********************************************!*\
+  !*** ./src/lib/bw-board/devices/max232.js ***!
+  \********************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   registerMax232: () => (/* binding */ registerMax232)
+/* harmony export */ });
+/* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../devices.js */ "./src/lib/bw-board/devices.js");
+/**
+ * MAX232 — dual RS-232 driver/receiver (DIP-16), E5.10.
+ *
+ * What it claims: the LEVEL story of the canonical wiring. The two
+ * drivers invert TTL to ±8 V behind ~300 Ω (the real pump makes about
+ * ±8.5 V from 5 V); the two receivers invert RS-232 back to TTL with the
+ * datasheet's ~1.3 V threshold and a real 5 kΩ input load. V+ and V−
+ * present the pump rails behind 1 kΩ so a probe reads them, and the four
+ * capacitor pins are honest nodes (a drawn 1 µF to them wires cleanly)
+ * without pretending to simulate the switched pump itself.
+ *
+ * What it does NOT claim: pump ripple, slew, or the serial DATA path —
+ * bytes ride the ACIA/UART hooks, this part makes the drawn level
+ * shifting truthful.
+ *
+ * Terminals in DIP-16 package order (TI MAX232 datasheet, SLLS047):
+ * 1 C1+, 2 V+, 3 C1−, 4 C2+, 5 C2−, 6 V−, 7 T2OUT, 8 R2IN,
+ * 9 R2OUT, 10 T2IN, 11 T1IN, 12 R1OUT, 13 R1IN, 14 T1OUT, 15 GND, 16 VCC.
+ *
+ * @module
+ */
+
+
+const R_DRIVER = 300; // RS-232 driver output impedance
+const R_RAIL = 1000; // V+/V− presented behind this
+const R_RXIN = 5000; // datasheet receiver input resistance
+const R_INPUT = 1e6; // TTL input loading
+const V_PUMP = 8; // the pump's ±rail from a 5 V supply (≈ ±8.5 V real)
+const V_TTL_TH = 1.4; // TTL input center (it is a TTL-input part)
+const V_RS232_TH = 1.3; // receiver threshold, datasheet typical
+
+function registerMax232() {
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('max232', {
+    terminals: ['c1p', 'vp', 'c1m', 'c2p', 'c2m', 'vm', 't2out', 'r2in', 'r2out', 't2in', 't1in', 'r1out', 'r1in', 't1out', 'gnd', 'vcc'],
+    init() {
+      return {
+        drives: {},
+        _sig: ''
+      };
+    },
+    stamp(ctx) {
+      ctx.conductance('t1in', null, 1 / R_INPUT);
+      ctx.conductance('t2in', null, 1 / R_INPUT);
+      // Receiver inputs really do load the line — it is how a
+      // disconnected RS-232 input idles low (mark) through the 5 k.
+      ctx.conductance('r1in', null, 1 / R_RXIN);
+      ctx.conductance('r2in', null, 1 / R_RXIN);
+      // Pump capacitor pins: real nodes, no invented behavior.
+      for (const t of ['c1p', 'c1m', 'c2p', 'c2m']) {
+        ctx.conductance(t, null, 1e-12);
+      }
+    },
+    update(part, state, read) {
+      const vccV = read('vcc');
+      const powered = vccV > 3;
+      const drives = {};
+      if (powered) {
+        // Pump rails, visible to a probe.
+        drives.vp = {
+          vTh: V_PUMP,
+          rTh: R_RAIL
+        };
+        drives.vm = {
+          vTh: -V_PUMP,
+          rTh: R_RAIL
+        };
+        // Drivers: TTL in, INVERTED ±8 V out.
+        drives.t1out = {
+          vTh: read('t1in') > V_TTL_TH ? -V_PUMP : V_PUMP,
+          rTh: R_DRIVER
+        };
+        drives.t2out = {
+          vTh: read('t2in') > V_TTL_TH ? -V_PUMP : V_PUMP,
+          rTh: R_DRIVER
+        };
+        // Receivers: RS-232 in, INVERTED TTL out. An open input reads
+        // 0 V through its own 5 k load — below threshold — so R*OUT
+        // idles HIGH, which is the datasheet's fail-safe.
+        drives.r1out = {
+          vTh: read('r1in') > V_RS232_TH ? 0 : vccV,
+          rTh: R_DRIVER
+        };
+        drives.r2out = {
+          vTh: read('r2in') > V_RS232_TH ? 0 : vccV,
+          rTh: R_DRIVER
+        };
+      }
+      const sig = JSON.stringify(drives);
+      if (sig === state._sig) return false;
+      state._sig = sig;
+      state.drives = drives;
+      return true;
+    }
+  });
 }
 
 /***/ }),
@@ -21883,6 +22196,73 @@ function registerRelay() {
 
 /***/ }),
 
+/***/ "./src/lib/bw-board/devices/resistor-network.js":
+/*!******************************************************!*\
+  !*** ./src/lib/bw-board/devices/resistor-network.js ***!
+  \******************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   registerResistorNetwork: () => (/* binding */ registerResistorNetwork)
+/* harmony export */ });
+/* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../devices.js */ "./src/lib/bw-board/devices.js");
+/**
+ * SIP resistor network — E5.11. One package, two topologies, and the
+ * difference IS the teaching point: a bussed network shares pin 1 across
+ * every element (fine for pull-ups, wrong wherever isolated resistors
+ * are needed — LED-bar current sharing), an isolated network is N
+ * independent pairs.
+ *
+ * Pure stamp device: each element is a conductance between two terminal
+ * nets, exactly what a wired discrete resistor stamps — the solver is
+ * untouched, and there is nothing behavioral to update.
+ *
+ *   params.ohms      element resistance (required)
+ *   params.topology  'bussed' (default) | 'isolated'
+ *   params.pins      how many package pins are populated (default 10,
+ *                    the declared SIP-10 maximum; the BOM's 4609X is 9)
+ *
+ * Bussed:   p1 common, one element to each of p2..p{pins}.
+ * Isolated: pairs (p1,p2), (p3,p4), … — pins/2 elements.
+ *
+ * @module
+ */
+
+
+const MAX_PINS = 10;
+function registerResistorNetwork() {
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('rnet_sip', {
+    terminals: Array.from({
+      length: MAX_PINS
+    }, (_, i) => "p".concat(i + 1)),
+    requiredParams: ['ohms'],
+    init() {
+      return {
+        drives: {}
+      };
+    },
+    stamp(ctx, part) {
+      var _part$params, _part$params2, _part$params3;
+      const ohms = Number((_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.ohms);
+      if (!Number.isFinite(ohms) || ohms <= 0) return;
+      const g = 1 / ohms;
+      const pins = Math.min(Number((_part$params2 = part.params) === null || _part$params2 === void 0 ? void 0 : _part$params2.pins) || MAX_PINS, MAX_PINS);
+      if (((_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.topology) === 'isolated') {
+        for (let i = 1; i + 1 <= pins; i += 2) {
+          ctx.conductance("p".concat(i), "p".concat(i + 1), g);
+        }
+      } else {
+        for (let i = 2; i <= pins; i++) {
+          ctx.conductance('p1', "p".concat(i), g);
+        }
+      }
+    }
+  });
+}
+
+/***/ }),
+
 /***/ "./src/lib/bw-board/devices/retro-dips.js":
 /*!************************************************!*\
   !*** ./src/lib/bw-board/devices/retro-dips.js ***!
@@ -22007,6 +22387,62 @@ function registerRetroDips() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('z80', dipSurface(Z80, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('mc6850', dipSurface(MC6850, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('tms9918', dipSurface(TMS9918, 5.0));
+
+  // DIP oscillator can (E5.9) — a POWERED clock module, which a crystal
+  // is not: OE / GND / OUT / VCC in package order (1, 7, 8, 14), square
+  // wave at params.freq behind ~50 Ω when powered and enabled, high-Z
+  // otherwise. Rides the E4.1 wake machinery: the can schedules a wake
+  // at every half-period boundary, computed from ABSOLUTE time so a
+  // long run cannot drift, and the board lands a solve point on each
+  // edge — that is what lets a '93/'161 divider chain count real edges.
+  // The machine tier's clock stays adapter-driven (see the crystal doc
+  // above); this part serves bench lessons and drawn wiring.
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('osc_can', {
+    terminals: ['oe', 'gnd', 'out', 'vcc'],
+    requiredParams: ['freq'],
+    init() {
+      return {
+        drives: {
+          out: null
+        },
+        _level: -1,
+        _oeWired: false
+      };
+    },
+    stamp(ctx, part, state) {
+      // Real cans pull OE up internally: not-connected means RUN.
+      state._oeWired = ctx.netFor('oe') !== undefined;
+      if (state._oeWired) ctx.thevenin('oe', ctx.vcc, 1e5);
+    },
+    update(part, state, read, tNs) {
+      var _part$params, _part$params$rOut, _part$params2;
+      const freq = Number((_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.freq) || 0;
+      const vccV = read('vcc');
+      const powered = vccV > 2.0 && freq > 0;
+      const enabled = !state._oeWired || read('oe') > 1.4;
+      if (!powered || !enabled) {
+        state._wakeNs = null;
+        if (state._level === -1 && !state.drives.out) return false;
+        state._level = -1;
+        state.drives.out = null; // high-Z
+        return true;
+      }
+      // Half-period grid from absolute time (ns): boundary k lies at
+      // round(k · 1e9/(2f)). tNs is exact on a wake because the board
+      // sub-steps TO _wakeNs (spec-updates/scheduled-device-events.md).
+      const hpNs = 1e9 / (2 * freq);
+      const idx = Math.floor((Number(tNs) + 0.5) / hpNs);
+      const level = idx % 2;
+      state._wakeNs = BigInt(Math.round((idx + 1) * hpNs));
+      if (level === state._level) return false;
+      state._level = level;
+      state.drives.out = {
+        vTh: level ? vccV : 0,
+        rTh: (_part$params$rOut = (_part$params2 = part.params) === null || _part$params2 === void 0 ? void 0 : _part$params2.rOut) !== null && _part$params$rOut !== void 0 ? _part$params$rOut : 50
+      };
+      return true;
+    }
+  });
 
   // Two-terminal quartz resonator. ['a', 'b'] is what bw-circuit-ui's
   // terminalsForKind() falls back to for this kind, so the two agree.
@@ -24705,6 +25141,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   registerTier2Parts: () => (/* binding */ registerTier2Parts)
 /* harmony export */ });
 /* harmony import */ var _devices_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../devices.js */ "./src/lib/bw-board/devices.js");
+/* harmony import */ var _logic_levels_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./logic-levels.js */ "./src/lib/bw-board/devices/logic-levels.js");
 /**
  * Tier-2 parts from the module-armada triage — the digital glue the
  * learning boards actually solder and the missing human-input dial:
@@ -24729,6 +25166,7 @@ __webpack_require__.r(__webpack_exports__);
  *
  * @module
  */
+
 
 
 const R_OUT = 50;
@@ -24758,7 +25196,8 @@ function registerTier2Parts() {
     },
     update(part, state, read) {
       const vcc = read('vcc') || 5.0;
-      const th = vcc * 0.5;
+      // Mid-rail for HC; the 1.4 V TTL center for the HCT alias (E5.7).
+      const th = (0,_logic_levels_js__WEBPACK_IMPORTED_MODULE_1__.inputThreshold)(part, vcc);
       const enabled = read('g1') > th && read('g2ab') < th && read('g2bb') < th;
       const sel = enabled ? (read('c') > th ? 4 : 0) | (read('b') > th ? 2 : 0) | (read('a') > th ? 1 : 0) : -1;
       if (sel === state._sel) return false;
@@ -24840,7 +25279,8 @@ function registerTier2Parts() {
     },
     update(part, state, read) {
       const vcc = read('vcc') || 5.0;
-      const th = vcc * 0.5;
+      // Mid-rail for HC; the 1.4 V TTL center for the HCT alias (E5.7).
+      const th = (0,_logic_levels_js__WEBPACK_IMPORTED_MODULE_1__.inputThreshold)(part, vcc);
       const oe = read('oeb') < th;
       const aToB = read('dir') > th;
       const cfg = "".concat(oe, ":").concat(aToB);
@@ -24871,6 +25311,11 @@ function registerTier2Parts() {
       return changed;
     }
   });
+
+  // HCT aliases (E5.7): same logic and pinout, TTL-fixed input levels.
+  // The models consult part.kind, so sharing the object is safe.
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74hct138', (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.getDevice)('74hc138'));
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74hct245', (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.getDevice)('74hc245'));
 
   // ─── 74HC165 ───────────────────────────────────────────────────────
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('74hc165', {
@@ -33702,28 +34147,30 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _devices_tier3_parts_js__WEBPACK_IMPORTED_MODULE_25__ = __webpack_require__(/*! ./devices/tier3-parts.js */ "./src/lib/bw-board/devices/tier3-parts.js");
 /* harmony import */ var _devices_bus_memory_js__WEBPACK_IMPORTED_MODULE_26__ = __webpack_require__(/*! ./devices/bus-memory.js */ "./src/lib/bw-board/devices/bus-memory.js");
 /* harmony import */ var _devices_retro_dips_js__WEBPACK_IMPORTED_MODULE_27__ = __webpack_require__(/*! ./devices/retro-dips.js */ "./src/lib/bw-board/devices/retro-dips.js");
-/* harmony import */ var _devices_st7920_js__WEBPACK_IMPORTED_MODULE_28__ = __webpack_require__(/*! ./devices/st7920.js */ "./src/lib/bw-board/devices/st7920.js");
-/* harmony import */ var _devices_adc_sensors_js__WEBPACK_IMPORTED_MODULE_29__ = __webpack_require__(/*! ./devices/adc-sensors.js */ "./src/lib/bw-board/devices/adc-sensors.js");
-/* harmony import */ var _devices_level_mux_js__WEBPACK_IMPORTED_MODULE_30__ = __webpack_require__(/*! ./devices/level-mux.js */ "./src/lib/bw-board/devices/level-mux.js");
-/* harmony import */ var _devices_bench_meters_js__WEBPACK_IMPORTED_MODULE_31__ = __webpack_require__(/*! ./devices/bench-meters.js */ "./src/lib/bw-board/devices/bench-meters.js");
-/* harmony import */ var _devices_kit_sensors_js__WEBPACK_IMPORTED_MODULE_32__ = __webpack_require__(/*! ./devices/kit-sensors.js */ "./src/lib/bw-board/devices/kit-sensors.js");
-/* harmony import */ var _devices_rtc_display_js__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ./devices/rtc-display.js */ "./src/lib/bw-board/devices/rtc-display.js");
-/* harmony import */ var _devices_thirtyseven_js__WEBPACK_IMPORTED_MODULE_34__ = __webpack_require__(/*! ./devices/thirtyseven.js */ "./src/lib/bw-board/devices/thirtyseven.js");
-/* harmony import */ var _devices_analog_amps_js__WEBPACK_IMPORTED_MODULE_35__ = __webpack_require__(/*! ./devices/analog-amps.js */ "./src/lib/bw-board/devices/analog-amps.js");
-/* harmony import */ var _devices_msgeq7_js__WEBPACK_IMPORTED_MODULE_36__ = __webpack_require__(/*! ./devices/msgeq7.js */ "./src/lib/bw-board/devices/msgeq7.js");
-/* harmony import */ var _devices_uart_peer_js__WEBPACK_IMPORTED_MODULE_37__ = __webpack_require__(/*! ./devices/uart-peer.js */ "./src/lib/bw-board/devices/uart-peer.js");
-/* harmony import */ var _devices_rf433_js__WEBPACK_IMPORTED_MODULE_38__ = __webpack_require__(/*! ./devices/rf433.js */ "./src/lib/bw-board/devices/rf433.js");
-/* harmony import */ var _devices_nrf24_js__WEBPACK_IMPORTED_MODULE_39__ = __webpack_require__(/*! ./devices/nrf24.js */ "./src/lib/bw-board/devices/nrf24.js");
-/* harmony import */ var _devices_audio_parts_js__WEBPACK_IMPORTED_MODULE_40__ = __webpack_require__(/*! ./devices/audio-parts.js */ "./src/lib/bw-board/devices/audio-parts.js");
-/* harmony import */ var _devices_mpu6050_js__WEBPACK_IMPORTED_MODULE_41__ = __webpack_require__(/*! ./devices/mpu6050.js */ "./src/lib/bw-board/devices/mpu6050.js");
-/* harmony import */ var _devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_42__ = __webpack_require__(/*! ./devices/ssd1306.js */ "./src/lib/bw-board/devices/ssd1306.js");
-/* harmony import */ var _devices_uart_frame_js__WEBPACK_IMPORTED_MODULE_43__ = __webpack_require__(/*! ./devices/uart-frame.js */ "./src/lib/bw-board/devices/uart-frame.js");
-/* harmony import */ var _devices_sap1_chips_js__WEBPACK_IMPORTED_MODULE_44__ = __webpack_require__(/*! ./devices/sap1-chips.js */ "./src/lib/bw-board/devices/sap1-chips.js");
-/* harmony import */ var _devices_mcp4725_js__WEBPACK_IMPORTED_MODULE_45__ = __webpack_require__(/*! ./devices/mcp4725.js */ "./src/lib/bw-board/devices/mcp4725.js");
-/* harmony import */ var _devices_um245r_js__WEBPACK_IMPORTED_MODULE_46__ = __webpack_require__(/*! ./devices/um245r.js */ "./src/lib/bw-board/devices/um245r.js");
-/* harmony import */ var _devices_ps2_device_js__WEBPACK_IMPORTED_MODULE_47__ = __webpack_require__(/*! ./devices/ps2-device.js */ "./src/lib/bw-board/devices/ps2-device.js");
-/* harmony import */ var _devices_a2_displays_js__WEBPACK_IMPORTED_MODULE_48__ = __webpack_require__(/*! ./devices/a2-displays.js */ "./src/lib/bw-board/devices/a2-displays.js");
-/* harmony import */ var _devices_i2c_sensors_js__WEBPACK_IMPORTED_MODULE_49__ = __webpack_require__(/*! ./devices/i2c-sensors.js */ "./src/lib/bw-board/devices/i2c-sensors.js");
+/* harmony import */ var _devices_max232_js__WEBPACK_IMPORTED_MODULE_28__ = __webpack_require__(/*! ./devices/max232.js */ "./src/lib/bw-board/devices/max232.js");
+/* harmony import */ var _devices_resistor_network_js__WEBPACK_IMPORTED_MODULE_29__ = __webpack_require__(/*! ./devices/resistor-network.js */ "./src/lib/bw-board/devices/resistor-network.js");
+/* harmony import */ var _devices_st7920_js__WEBPACK_IMPORTED_MODULE_30__ = __webpack_require__(/*! ./devices/st7920.js */ "./src/lib/bw-board/devices/st7920.js");
+/* harmony import */ var _devices_adc_sensors_js__WEBPACK_IMPORTED_MODULE_31__ = __webpack_require__(/*! ./devices/adc-sensors.js */ "./src/lib/bw-board/devices/adc-sensors.js");
+/* harmony import */ var _devices_level_mux_js__WEBPACK_IMPORTED_MODULE_32__ = __webpack_require__(/*! ./devices/level-mux.js */ "./src/lib/bw-board/devices/level-mux.js");
+/* harmony import */ var _devices_bench_meters_js__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ./devices/bench-meters.js */ "./src/lib/bw-board/devices/bench-meters.js");
+/* harmony import */ var _devices_kit_sensors_js__WEBPACK_IMPORTED_MODULE_34__ = __webpack_require__(/*! ./devices/kit-sensors.js */ "./src/lib/bw-board/devices/kit-sensors.js");
+/* harmony import */ var _devices_rtc_display_js__WEBPACK_IMPORTED_MODULE_35__ = __webpack_require__(/*! ./devices/rtc-display.js */ "./src/lib/bw-board/devices/rtc-display.js");
+/* harmony import */ var _devices_thirtyseven_js__WEBPACK_IMPORTED_MODULE_36__ = __webpack_require__(/*! ./devices/thirtyseven.js */ "./src/lib/bw-board/devices/thirtyseven.js");
+/* harmony import */ var _devices_analog_amps_js__WEBPACK_IMPORTED_MODULE_37__ = __webpack_require__(/*! ./devices/analog-amps.js */ "./src/lib/bw-board/devices/analog-amps.js");
+/* harmony import */ var _devices_msgeq7_js__WEBPACK_IMPORTED_MODULE_38__ = __webpack_require__(/*! ./devices/msgeq7.js */ "./src/lib/bw-board/devices/msgeq7.js");
+/* harmony import */ var _devices_uart_peer_js__WEBPACK_IMPORTED_MODULE_39__ = __webpack_require__(/*! ./devices/uart-peer.js */ "./src/lib/bw-board/devices/uart-peer.js");
+/* harmony import */ var _devices_rf433_js__WEBPACK_IMPORTED_MODULE_40__ = __webpack_require__(/*! ./devices/rf433.js */ "./src/lib/bw-board/devices/rf433.js");
+/* harmony import */ var _devices_nrf24_js__WEBPACK_IMPORTED_MODULE_41__ = __webpack_require__(/*! ./devices/nrf24.js */ "./src/lib/bw-board/devices/nrf24.js");
+/* harmony import */ var _devices_audio_parts_js__WEBPACK_IMPORTED_MODULE_42__ = __webpack_require__(/*! ./devices/audio-parts.js */ "./src/lib/bw-board/devices/audio-parts.js");
+/* harmony import */ var _devices_mpu6050_js__WEBPACK_IMPORTED_MODULE_43__ = __webpack_require__(/*! ./devices/mpu6050.js */ "./src/lib/bw-board/devices/mpu6050.js");
+/* harmony import */ var _devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_44__ = __webpack_require__(/*! ./devices/ssd1306.js */ "./src/lib/bw-board/devices/ssd1306.js");
+/* harmony import */ var _devices_uart_frame_js__WEBPACK_IMPORTED_MODULE_45__ = __webpack_require__(/*! ./devices/uart-frame.js */ "./src/lib/bw-board/devices/uart-frame.js");
+/* harmony import */ var _devices_sap1_chips_js__WEBPACK_IMPORTED_MODULE_46__ = __webpack_require__(/*! ./devices/sap1-chips.js */ "./src/lib/bw-board/devices/sap1-chips.js");
+/* harmony import */ var _devices_mcp4725_js__WEBPACK_IMPORTED_MODULE_47__ = __webpack_require__(/*! ./devices/mcp4725.js */ "./src/lib/bw-board/devices/mcp4725.js");
+/* harmony import */ var _devices_um245r_js__WEBPACK_IMPORTED_MODULE_48__ = __webpack_require__(/*! ./devices/um245r.js */ "./src/lib/bw-board/devices/um245r.js");
+/* harmony import */ var _devices_ps2_device_js__WEBPACK_IMPORTED_MODULE_49__ = __webpack_require__(/*! ./devices/ps2-device.js */ "./src/lib/bw-board/devices/ps2-device.js");
+/* harmony import */ var _devices_a2_displays_js__WEBPACK_IMPORTED_MODULE_50__ = __webpack_require__(/*! ./devices/a2-displays.js */ "./src/lib/bw-board/devices/a2-displays.js");
+/* harmony import */ var _devices_i2c_sensors_js__WEBPACK_IMPORTED_MODULE_51__ = __webpack_require__(/*! ./devices/i2c-sensors.js */ "./src/lib/bw-board/devices/i2c-sensors.js");
 /**
  * Register every built-in device driver in one call.
  *
@@ -33736,6 +34183,8 @@ __webpack_require__.r(__webpack_exports__);
  *
  * Idempotent: registerDevice overwrites by kind, so calling twice is safe.
  */
+
+
 
 
 
@@ -33815,29 +34264,31 @@ function registerAllDevices() {
   (0,_devices_tier3_parts_js__WEBPACK_IMPORTED_MODULE_25__.registerTier3Parts)();
   (0,_devices_bus_memory_js__WEBPACK_IMPORTED_MODULE_26__.registerBusMemory)();
   (0,_devices_retro_dips_js__WEBPACK_IMPORTED_MODULE_27__.registerRetroDips)();
-  (0,_devices_st7920_js__WEBPACK_IMPORTED_MODULE_28__.registerST7920)();
-  (0,_devices_adc_sensors_js__WEBPACK_IMPORTED_MODULE_29__.registerAdcSensors)();
-  (0,_devices_level_mux_js__WEBPACK_IMPORTED_MODULE_30__.registerLevelMux)();
-  (0,_devices_bench_meters_js__WEBPACK_IMPORTED_MODULE_31__.registerBenchMeters)();
-  (0,_devices_kit_sensors_js__WEBPACK_IMPORTED_MODULE_32__.registerKitSensors)();
-  (0,_devices_rtc_display_js__WEBPACK_IMPORTED_MODULE_33__.registerRtcDisplay)();
-  (0,_devices_thirtyseven_js__WEBPACK_IMPORTED_MODULE_34__.registerThirtySeven)();
-  (0,_devices_analog_amps_js__WEBPACK_IMPORTED_MODULE_35__.registerAnalogAmps)();
-  (0,_devices_msgeq7_js__WEBPACK_IMPORTED_MODULE_36__.registerMsgeq7)();
-  (0,_devices_uart_peer_js__WEBPACK_IMPORTED_MODULE_37__.registerUartPeer)();
-  (0,_devices_rf433_js__WEBPACK_IMPORTED_MODULE_38__.registerRf433)();
-  (0,_devices_nrf24_js__WEBPACK_IMPORTED_MODULE_39__.registerNrf24)();
-  (0,_devices_audio_parts_js__WEBPACK_IMPORTED_MODULE_40__.registerAudioParts)();
-  (0,_devices_mpu6050_js__WEBPACK_IMPORTED_MODULE_41__.registerMPU6050)();
-  (0,_devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_42__.registerSSD1306)();
-  (0,_devices_uart_frame_js__WEBPACK_IMPORTED_MODULE_43__.registerUartFrame)();
-  (0,_devices_sap1_chips_js__WEBPACK_IMPORTED_MODULE_44__.registerSAP1Chips)();
-  (0,_devices_mcp4725_js__WEBPACK_IMPORTED_MODULE_45__.registerMCP4725)();
-  (0,_devices_um245r_js__WEBPACK_IMPORTED_MODULE_46__.registerUM245R)();
-  (0,_devices_ps2_device_js__WEBPACK_IMPORTED_MODULE_47__.registerPS2Device)();
-  (0,_devices_a2_displays_js__WEBPACK_IMPORTED_MODULE_48__.registerSevenseg8)();
-  (0,_devices_a2_displays_js__WEBPACK_IMPORTED_MODULE_48__.registerLedbank8)();
-  (0,_devices_i2c_sensors_js__WEBPACK_IMPORTED_MODULE_49__.registerI2CSensors)();
+  (0,_devices_max232_js__WEBPACK_IMPORTED_MODULE_28__.registerMax232)();
+  (0,_devices_resistor_network_js__WEBPACK_IMPORTED_MODULE_29__.registerResistorNetwork)();
+  (0,_devices_st7920_js__WEBPACK_IMPORTED_MODULE_30__.registerST7920)();
+  (0,_devices_adc_sensors_js__WEBPACK_IMPORTED_MODULE_31__.registerAdcSensors)();
+  (0,_devices_level_mux_js__WEBPACK_IMPORTED_MODULE_32__.registerLevelMux)();
+  (0,_devices_bench_meters_js__WEBPACK_IMPORTED_MODULE_33__.registerBenchMeters)();
+  (0,_devices_kit_sensors_js__WEBPACK_IMPORTED_MODULE_34__.registerKitSensors)();
+  (0,_devices_rtc_display_js__WEBPACK_IMPORTED_MODULE_35__.registerRtcDisplay)();
+  (0,_devices_thirtyseven_js__WEBPACK_IMPORTED_MODULE_36__.registerThirtySeven)();
+  (0,_devices_analog_amps_js__WEBPACK_IMPORTED_MODULE_37__.registerAnalogAmps)();
+  (0,_devices_msgeq7_js__WEBPACK_IMPORTED_MODULE_38__.registerMsgeq7)();
+  (0,_devices_uart_peer_js__WEBPACK_IMPORTED_MODULE_39__.registerUartPeer)();
+  (0,_devices_rf433_js__WEBPACK_IMPORTED_MODULE_40__.registerRf433)();
+  (0,_devices_nrf24_js__WEBPACK_IMPORTED_MODULE_41__.registerNrf24)();
+  (0,_devices_audio_parts_js__WEBPACK_IMPORTED_MODULE_42__.registerAudioParts)();
+  (0,_devices_mpu6050_js__WEBPACK_IMPORTED_MODULE_43__.registerMPU6050)();
+  (0,_devices_ssd1306_js__WEBPACK_IMPORTED_MODULE_44__.registerSSD1306)();
+  (0,_devices_uart_frame_js__WEBPACK_IMPORTED_MODULE_45__.registerUartFrame)();
+  (0,_devices_sap1_chips_js__WEBPACK_IMPORTED_MODULE_46__.registerSAP1Chips)();
+  (0,_devices_mcp4725_js__WEBPACK_IMPORTED_MODULE_47__.registerMCP4725)();
+  (0,_devices_um245r_js__WEBPACK_IMPORTED_MODULE_48__.registerUM245R)();
+  (0,_devices_ps2_device_js__WEBPACK_IMPORTED_MODULE_49__.registerPS2Device)();
+  (0,_devices_a2_displays_js__WEBPACK_IMPORTED_MODULE_50__.registerSevenseg8)();
+  (0,_devices_a2_displays_js__WEBPACK_IMPORTED_MODULE_50__.registerLedbank8)();
+  (0,_devices_i2c_sensors_js__WEBPACK_IMPORTED_MODULE_51__.registerI2CSensors)();
 }
 
 /***/ }),
