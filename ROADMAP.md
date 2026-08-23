@@ -203,6 +203,21 @@ Lite-side items (ours, this repo):
    wiring in the example, and add the rail-short check to the corpus gate so the
    class stays caught — the engine's DRC already detects it at runtime; the gate
    must catch it statically.
+8. **74\*/retro example wave — OWNER-REQUESTED 2026-08-23, gated, examples-owner's
+   lane.** The engine's retro tier is barely tapped by the corpus (~14 of 236
+   examples): instruction-level 6502/Z80/6507 cores booting real ROMs, ~34
+   register-level bus-peripheral models (VIA/ACIA/VDP/CRTC/RIOT/PSG/UART/ULA,
+   memories as byte arrays), a bus extractor that derives the machine FROM THE
+   DRAWN WIRING at all 65536 addresses (contention and open vectors refused with
+   addresses named), and the 74HC family as electrical devices. A wave of
+   logic-glue and retro benches is wanted. TWO GATES, in order: (a) `PLAN.md`
+   Milestone 0's own rule — no new content wave while the predecessor's review
+   debt is open (the verification-debt ledger is the critical path); (b) the
+   engine enablers in `bw-board/ROADMAP.md` §E5 + E4.1a (gate propagation delay
+   is the single biggest space-widener: ring oscillators, hazard demos, honest
+   flip-flop timing). Authoring itself belongs to the examples owner and rides
+   the strengthened gates (corpus execution, KCL residual, rail-short,
+   net-coalesce warnings).
 
 ---
 
