@@ -134,7 +134,7 @@ test('measurement-resistance: no bare parallel pair is exposed to the probes', a
     near(board.resistance(netId(board, 'led1', 'anode'), netId(board, 'led1', 'cathode')),
         2010, 60, 'one LED alone, under the 1 mA test current');
     near(board.resistance(netId(board, 'vcc1', 'vcc'), netId(board, 'gnd1', 'gnd')),
-        2191.6, 5, 'the whole network, rail to rail');
+        2181.8, 40, 'the whole network, rail to rail');
     // The v1 hint's 470||470 = 235 ohm is nowhere on this bench.
     assert.ok(Math.abs(board.resistance(netId(board, 'vcc1', 'vcc'), netId(board, 'gnd1', 'gnd')) - 235) > 100,
         'if 235 ohm ever appears here, the v1 hint was right and the review is wrong');
@@ -316,7 +316,15 @@ test('OPEN DEFECT: the ohmmeter answers differently depending on which probe is 
     board.advanceTo(60n * MS);
     const hot = netId(board, 'vcc1', 'vcc');
     const gnd = netId(board, 'gnd1', 'gnd');
-    near(board.resistance(hot, gnd), 2191.6, 5, 'probed hot-to-ground — the real path');
+    // 2181.8 +-40, and the tolerance is wide ON PURPOSE. Solving backwards,
+    // 470 + (470 + Rd)/3 = 2181.8 puts Rd at about 4.67 kohm per LED: this
+    // number is dominated by the LEDs' near-zero-bias resistance, not by the
+    // four 470 ohm resistors. It moved 2181.8 -> 2181.8 (0.45%) when the engine
+    // gained a C1 blend across the diode knee, which is exactly the term it
+    // depends on. A quantity set by an off-state diode model does not deserve
+    // a 0.2% pin; +-40 still fails if the network changes and no longer fires
+    // on a model refinement.
+    near(board.resistance(hot, gnd), 2181.8, 40, 'probed hot-to-ground — the real path');
     assert.ok(board.resistance(gnd, hot) > 1e6,
         'the ohmmeter has become symmetric. Re-measure, update ' +
         'docs/LESSON-REVIEW-WAVE-2.md and the measurement-resistance hint, then delete this test.');

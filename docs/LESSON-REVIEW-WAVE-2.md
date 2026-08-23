@@ -160,7 +160,7 @@ the power off, as the lesson instructs:
 ```
 one 470 Ω resistor alone                          470.0 Ω
 one LED alone (under the ohmmeter's 1 mA test)   ~2.01 kΩ
-the whole network, rail to rail                  2191.6 Ω
+the whole network, rail to rail                  2181.8 Ω
 across the two parallel branch tops                 0.0 Ω  — they are the same node
 ```
 
@@ -268,7 +268,7 @@ which:
 
 ```
 22-series-parallel, whole network, power off
-  resistance(+rail, −rail)   2191.6 Ω      the real path
+  resistance(+rail, −rail)   2181.8 Ω      the real path
   resistance(−rail, +rail)    333 MΩ       reads as an open circuit
 
 76-multimeter, MODE button released
@@ -298,13 +298,13 @@ than a general solver asymmetry. The disagreements are all ground-referenced.
 *classify* pairs as connected or open, and both readings of every ambiguous pair
 sit far above any sane continuity threshold — so the classification survives and
 the verdict stays achievable. For `measurement-resistance` it does not survive:
-2191.6 Ω versus 333 MΩ is the difference between "the three branches in
+2181.8 Ω versus 333 MΩ is the difference between "the three branches in
 parallel" and "nothing is connected", on the exact measurement the lesson asks
 for. The v2 hint now tells the learner to put the black probe on ground and says
 the other direction is a known simulator fault.
 
 This also caught a bug in my own tooling: the numeric-contract prober enumerated
-net pairs one way only, so it never saw 2191.6 Ω and flagged a correct hint. It
+net pairs one way only, so it never saw 2181.8 Ω and flagged a correct hint. It
 now probes both orders.
 
 ### 6. measurement-scope-timebase named windows the scope does not have — minor
