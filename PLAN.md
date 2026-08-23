@@ -110,7 +110,7 @@ finished work:
 | 2 Measure rather than guess | 10 | done | **full, done 2026-08-23** — 5 of 10 defective; 6 revised to v2, 4 open engine defects, 1 fixed upstream mid-review | open | open |
 | 3 One idea, several languages | 12 | done | scanned; **full review open** | open | open |
 | 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
-| 5 Debug with evidence | 10 | done | scanned; **full review open** | open | open |
+| 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 3 open UI defects | open | open |
 | 6 Signals and systems | 10 | done | scanned; **full review open** | open | open |
 | 7 Computers from wires upward | 10 | done | scanned; **full review open** | open | open |
 
@@ -122,7 +122,7 @@ names? **Reviewed** means a human worked through every checkpoint against a
 solved bench, which is what Wave 1 got and what found the other four classes of
 defect the detector cannot see.
 
-**57 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
+**47 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
 the one defect class that detector understands. Treat this table as the plan's real critical path:
 a lesson that teaches an observation its bench cannot produce is worse than a missing lesson,
 because a learner blames themselves.
@@ -177,6 +177,34 @@ The two lessons that needed no engine change were straightforwardly wrong and ar
 resistors that does not exist on its bench (every branch carries an LED; the whole network reads
 2192 Ω rail to rail and the two branch tops are the same node), and `measurement-scope-timebase`
 asked for cycle counts in 1/10/100 ms windows when the scope offers 4.096/20.48/81.92 ms.
+
+### Wave 5, where the subject under test is the debugger
+
+Reviewed 2026-08-23 — `docs/LESSON-REVIEW-WAVE-5.md`. **10 lessons, 20 checkpoints, 3 defective,
+3 revised to v2, 3 defects open — all three in the debugger UI, none in a lesson or a bench.** All
+ten benches exist and carry the parts their lessons need; the Tier-3 detector reported nothing.
+
+This is the first wave whose observable is not a circuit, so the method changed with it: the
+checkpoints ask what the DEBUGGER can show, and the gate checks the debug surface against what the
+code produces and renders rather than against what the feature is called.
+
+- **The task list displays one of the four fields its lesson asks for.** All three debug targets
+  build `{ task: <name>, state, until? }`; `DebugStatus.jsx` renders `{task.name}`, which nothing
+  emits, so the name column is undefined on every target. `until` — the wait deadline — is produced
+  by every target and consumed by the runner's `stillWaiting()`, and never rendered. `task.label`
+  is rendered and emitted by nobody.
+- **There is no call stack.** `Step Out` is a real control; a frames-or-locals view exists nowhere
+  in the debug UI. The lesson hedged in its prediction step ("if those frames exist") but its
+  action step said "inspect frames and locals".
+- **The watch surface is gated off on the target its lesson uses.** Write watchpoints are
+  feature-detected on `_emu_dbg_set_bp_write`, which `emu8051-debug.js` documents the pinned lite
+  build as lacking, and the panel shows the field only when the capability is advertised. The
+  working surface is per-block hover values while paused.
+
+`debug-conditional-breakpoints` deserves the opposite note: it is the best-matched lesson reviewed
+so far. Its hint names `counter = 5` and `bw-debug/condition.js` parses exactly that grammar and
+refuses arithmetic with a reason; its instruction to "deliberately test a misspelled variable"
+lands exactly, because `countr = 5` parses and then evaluates false for ever.
 
 ### The Tier-3 detector, and what it changes about the estimate
 
