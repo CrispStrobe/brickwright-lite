@@ -2557,6 +2557,282 @@ function createAvr8jsAdapter() {
 
 /***/ }),
 
+/***/ "./src/lib/bw-board/ay-3-8912.js":
+/*!***************************************!*\
+  !*** ./src/lib/bw-board/ay-3-8912.js ***!
+  \***************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   AY38912: () => (/* binding */ AY38912),
+/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
+/* harmony export */ });
+/**
+ * AY-3-8912 — General Instrument PSG (Programmable Sound Generator),
+ * the 128K Spectrum's sound chip. Clean-room from the GI AY-3-8910/
+ * 8912/8913 datasheet.
+ *
+ * 16 registers selected via an address/data port pair:
+ *   R0/R1   Tone period channel A (12-bit, R1 upper 4)
+ *   R2/R3   Tone period channel B
+ *   R4/R5   Tone period channel C
+ *   R6      Noise period (5-bit)
+ *   R7      Mixer: bits 0-2 tone disable A/B/C, bits 3-5 noise disable
+ *   R8      Volume A (4-bit + bit 4 = envelope mode)
+ *   R9      Volume B
+ *   R10     Volume C
+ *   R11/R12 Envelope period (16-bit)
+ *   R13     Envelope shape (attack, alternate, hold)
+ *   R14/R15 I/O ports (unused on the 8912 single-port variant)
+ *
+ * Port decode for the 128K Spectrum (from the schematic):
+ *   A15=1, A14=1 → $FFFD: address select (active when A1=0)
+ *   A15=1, A14=0 → $BFFD: data write
+ * The machine.js `out` handler does the decode; the chip sees only
+ * select(reg) and write(val)/read().
+ *
+ * advance(cycles) clocks tone counters at clock/16 (the AY's internal
+ * divider); each counter halves its period into a square wave.
+ *
+ * audioTone() returns per-channel {hz, on, vol} mirroring ULA.audioTone —
+ * the face summary a visualiser or audio renderer consumes.
+ *
+ * @module
+ */
+
+const NUM_REGS = 16;
+class AY38912 {
+  /**
+   * @param {{ clockHz?: number }} [opts] AY clock input — on the 128K
+   *   Spectrum this is the CPU clock (3.5469 MHz), not half.
+   */
+  constructor() {
+    let {
+      clockHz = 3546900
+    } = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
+    this.clockHz = clockHz;
+    /** @type {Uint8Array} the 16 registers */
+    this.regs = new Uint8Array(NUM_REGS);
+    this.regs[7] = 0x3f; // mixer: all disabled at reset
+    this._selected = 0;
+    // Tone counters: 12-bit period down-counters, output flip-flops
+    this._toneCount = [0, 0, 0];
+    this._toneOut = [0, 0, 0];
+    // Noise counter
+    this._noiseCount = 0;
+    this._noiseOut = 0;
+    this._noiseLfsr = 1; // 17-bit LFSR, seed 1
+    // Envelope counter
+    this._envCount = 0;
+    this._envStep = 0;
+    this._envHolding = false;
+    // Clock accumulator (system clock → AY internal clock/16)
+    this._acc = 0;
+  }
+
+  /** Select the register for the next read/write. */
+  select(reg) {
+    this._selected = reg & 0x0f;
+  }
+
+  /** Read the currently selected register. */
+  read() {
+    return this.regs[this._selected];
+  }
+
+  /** Write to the currently selected register. */
+  write(val) {
+    val &= 0xff;
+    const r = this._selected;
+    if (r >= NUM_REGS) return;
+    // Mask writable bits per register
+    switch (r) {
+      case 1:
+      case 3:
+      case 5:
+        val &= 0x0f;
+        break;
+      // tone high: 4 bits
+      case 6:
+        val &= 0x1f;
+        break;
+      // noise: 5 bits
+      case 8:
+      case 9:
+      case 10:
+        val &= 0x1f;
+        break;
+      // volume: 5 bits (4+M)
+      case 13:
+        // envelope shape: trigger reset
+        this._envStep = 0;
+        this._envCount = this._envPeriod();
+        this._envHolding = false;
+        break;
+    }
+    this.regs[r] = val;
+  }
+
+  // ── Period helpers ─────────────────────────────────────────────
+
+  _tonePeriod(ch) {
+    return this.regs[ch * 2] | (this.regs[ch * 2 + 1] & 0x0f) << 8 || 1;
+  }
+  _noisePeriod() {
+    return this.regs[6] & 0x1f || 1;
+  }
+  _envPeriod() {
+    return this.regs[11] | this.regs[12] << 8 || 1;
+  }
+
+  // ── Clock advance ─────────────────────────────────────────────
+
+  /**
+   * Advance by system-clock cycles. The AY internally divides by 16.
+   * @param {number} cycles
+   */
+  advance(cycles) {
+    this._acc += cycles;
+    const div = 16;
+    while (this._acc >= div) {
+      this._acc -= div;
+      this._tick();
+    }
+  }
+
+  /** One AY internal clock tick (clock/16). */
+  _tick() {
+    // Tone counters
+    for (let ch = 0; ch < 3; ch++) {
+      if (--this._toneCount[ch] <= 0) {
+        this._toneCount[ch] = this._tonePeriod(ch);
+        this._toneOut[ch] ^= 1;
+      }
+    }
+    // Noise counter
+    if (--this._noiseCount <= 0) {
+      this._noiseCount = this._noisePeriod();
+      // 17-bit LFSR: tap bits 0 and 3, XOR into bit 16
+      const bit = (this._noiseLfsr ^ this._noiseLfsr >> 3) & 1;
+      this._noiseLfsr = (this._noiseLfsr >> 1 | bit << 16) & 0x1ffff;
+      this._noiseOut = this._noiseLfsr & 1;
+    }
+    // Envelope counter
+    if (!this._envHolding) {
+      if (--this._envCount <= 0) {
+        this._envCount = this._envPeriod();
+        this._envStep++;
+        const shape = this.regs[13] & 0x0f;
+        if (this._envStep >= 16) {
+          // Cycle/hold logic from the datasheet shape table
+          const cont = shape & 0x08;
+          const hold = shape & 0x01;
+          if (!cont) {
+            this._envStep = 0;
+            this._envHolding = true;
+          } else if (hold) {
+            this._envStep = 15;
+            this._envHolding = true;
+          } else {
+            this._envStep = 0;
+          } // cycling
+        }
+      }
+    }
+  }
+
+  // ── Mixer output ──────────────────────────────────────────────
+
+  /**
+   * Is channel ch currently producing output?
+   * Mixer combines tone enable, noise enable, and the flip-flop states.
+   */
+  _channelOn(ch) {
+    const mixer = this.regs[7];
+    const toneDisable = mixer >> ch & 1;
+    const noiseDisable = mixer >> ch + 3 & 1;
+    const toneVal = toneDisable ? 1 : this._toneOut[ch];
+    const noiseVal = noiseDisable ? 1 : this._noiseOut;
+    return (toneVal & noiseVal) !== 0;
+  }
+
+  /** Channel volume (0-15), accounting for envelope mode. */
+  _channelVol(ch) {
+    const v = this.regs[8 + ch];
+    if (v & 0x10) {
+      // Envelope mode: use the envelope step as volume
+      const shape = this.regs[13] & 0x0f;
+      const attack = shape & 0x04;
+      return attack ? this._envStep : 15 - this._envStep;
+    }
+    return v & 0x0f;
+  }
+
+  // ── Face summary ──────────────────────────────────────────────
+
+  /**
+   * Per-channel {hz, on, vol} — the face-consumable audio summary,
+   * mirroring zx-ula.js audioTone(). hz is the tone frequency, on is
+   * true when the channel is audible (tone or noise enabled AND volume
+   * non-zero), vol is 0-15.
+   */
+  audioTone() {
+    const out = [];
+    for (let ch = 0; ch < 3; ch++) {
+      const period = this._tonePeriod(ch);
+      // Frequency = clockHz / (16 * period * 2) — the /2 is the
+      // flip-flop halving the counter output.
+      const hz = Math.round(this.clockHz / (16 * period * 2));
+      const vol = this._channelVol(ch);
+      const mixer = this.regs[7];
+      const toneEnabled = !(mixer >> ch & 1);
+      const noiseEnabled = !(mixer >> ch + 3 & 1);
+      const on = (toneEnabled || noiseEnabled) && vol > 0;
+      out.push({
+        hz,
+        on,
+        vol
+      });
+    }
+    return out;
+  }
+
+  // ── Snapshot ───────────────────────────────────────────────────
+
+  saveState() {
+    return {
+      regs: Array.from(this.regs),
+      _selected: this._selected,
+      _toneCount: [...this._toneCount],
+      _toneOut: [...this._toneOut],
+      _noiseCount: this._noiseCount,
+      _noiseOut: this._noiseOut,
+      _noiseLfsr: this._noiseLfsr,
+      _envCount: this._envCount,
+      _envStep: this._envStep,
+      _envHolding: this._envHolding,
+      _acc: this._acc
+    };
+  }
+  loadState(s) {
+    this.regs.set(s.regs);
+    this._selected = s._selected;
+    this._toneCount = [...s._toneCount];
+    this._toneOut = [...s._toneOut];
+    this._noiseCount = s._noiseCount;
+    this._noiseOut = s._noiseOut;
+    this._noiseLfsr = s._noiseLfsr;
+    this._envCount = s._envCount;
+    this._envStep = s._envStep;
+    this._envHolding = s._envHolding;
+    this._acc = s._acc;
+  }
+}
+/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (AY38912);
+
+/***/ }),
+
 /***/ "./src/lib/bw-board/basic-machine-runner.js":
 /*!**************************************************!*\
   !*** ./src/lib/bw-board/basic-machine-runner.js ***!
@@ -22377,6 +22653,9 @@ const NS16C550 = [
 const M6532 = [
 // DIP-40 (MOS 6532 RIOT — RAM, I/O, Timer)
 'vss', 'a5', 'a4', 'a3', 'a2', 'a1', 'a0', 'pa0', 'pa1', 'pa2', 'pa3', 'pa4', 'pa5', 'pa6', 'pa7', 'phi2', 'pb7', 'pb6', 'pb5', 'pb4', 'pb3', 'pb2', 'pb1', 'pb0', 'irqb', 'd7', 'd6', 'd5', 'd4', 'd3', 'd2', 'd1', 'd0', 'resb', 'rwb', 'a6', 'cs2b', 'cs1', 'rs0b', 'vcc'];
+const AY8912 = [
+// DIP-28 (GI AY-3-8912 PSG)
+'analogc', 'test1', 'vcc', 'analogb', 'analoga', 'vss', 'ioa7', 'ioa6', 'ioa5', 'ioa4', 'ioa3', 'ioa2', 'ioa1', 'ioa0', 'da7', 'da6', 'da5', 'da4', 'da3', 'da2', 'da1', 'da0', 'a8', 'resetb', 'clock', 'bdir', 'bc2', 'bc1'];
 const Z80 = [
 // DIP-40
 'a11', 'a12', 'a13', 'a14', 'a15', 'clk', 'd4', 'd3', 'd5', 'd6', 'vcc', 'd2', 'd7', 'd0', 'd1', 'intb', 'nmib', 'haltb', 'mreqb', 'iorqb', 'a10', 'a9', 'a8', 'a7', 'a6', 'a5', 'a4', 'a3', 'a2', 'a1', 'a0', 'gnd', 'rfshb', 'm1b', 'resetb', 'busrqb', 'waitb', 'busakb', 'wrb', 'rdb'];
@@ -22392,6 +22671,7 @@ function registerRetroDips() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('w65c51', dipSurface(W65C51, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('ns16c550', dipSurface(NS16C550, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('m6532', dipSurface(M6532, 5.0));
+  (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('ay8912', dipSurface(AY8912, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('z80', dipSurface(Z80, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('mc6850', dipSurface(MC6850, 5.0));
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('tms9918', dipSurface(TMS9918, 5.0));
@@ -29630,8 +29910,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _ns16c550_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./ns16c550.js */ "./src/lib/bw-board/ns16c550.js");
 /* harmony import */ var _mc6850_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./mc6850.js */ "./src/lib/bw-board/mc6850.js");
 /* harmony import */ var _m6532_js__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./m6532.js */ "./src/lib/bw-board/m6532.js");
-/* harmony import */ var _latch374_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./latch374.js */ "./src/lib/bw-board/latch374.js");
-/* harmony import */ var _sdcard_spi_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./sdcard-spi.js */ "./src/lib/bw-board/sdcard-spi.js");
+/* harmony import */ var _ay_3_8912_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./ay-3-8912.js */ "./src/lib/bw-board/ay-3-8912.js");
+/* harmony import */ var _latch374_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./latch374.js */ "./src/lib/bw-board/latch374.js");
+/* harmony import */ var _sdcard_spi_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./sdcard-spi.js */ "./src/lib/bw-board/sdcard-spi.js");
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -29667,12 +29948,13 @@ function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = 
 
 
 
+
 /**
  * @typedef {object} MachineConfig
  * @property {number} clockHz phi2 frequency
  * @property {Array<{kind: 'ram'|'rom', start: number, end: number, perm?: number[]}>} regions
  *   inclusive ranges; perm (E5.2) maps chip A-pin i to CPU address bit perm[i]
- * @property {Array<{kind: 'via'|'acia'|'acia6850'|'riot'|'uart16550'|'latch', name: string, at: number,
+ * @property {Array<{kind: 'via'|'acia'|'acia6850'|'riot'|'psg8912'|'um245r'|'uart16550'|'latch', name: string, at: number,
  *   xtal?: number, span?: number}>} chips
  *   base addresses; xtal overrides a uart16550's input clock (defaults to
  *   the machine clock — the KiT wiring — since a breadboard that gives the
@@ -29877,7 +30159,7 @@ class M6502Machine {
       }));
     }
     for (const c of config.chips) {
-      const regs = c.kind === 'via' ? 16 : c.kind === 'uart16550' ? 8 : c.kind === 'latch' ? 1 : c.kind === 'vdp' ? 2 : c.kind === 'acia6850' ? 2 : c.kind === 'riot' ? 256 : c.kind === 'console' ? 8 : c.kind === 'tilevga' ? 0x4000 : 4;
+      const regs = c.kind === 'via' ? 16 : c.kind === 'uart16550' ? 8 : c.kind === 'latch' ? 1 : c.kind === 'vdp' ? 2 : c.kind === 'acia6850' ? 2 : c.kind === 'riot' ? 256 : c.kind === 'psg8912' ? 2 : c.kind === 'um245r' ? 1 : c.kind === 'console' ? 8 : c.kind === 'tilevga' ? 0x4000 : 4;
       const span = c.span || regs;
       if (span < regs) throw new Error("machine config: ".concat(c.kind, " span ").concat(span, " smaller than its ").concat(regs, " registers"));
       let chip;
@@ -29907,6 +30189,43 @@ class M6502Machine {
             if (this.hooks.onSerial) this.hooks.onSerial(byte, this.tMs);
           }
         });
+      } else if (c.kind === 'psg8912') {
+        var _c$readMask;
+        // AY-3-8912 behind the two-address decode the extractor
+        // classifies (spec-updates/ay-two-phase-select.md):
+        // even offset = latch the register number, odd = data.
+        // The adapter speaks the machine's read(reg)/write(reg)
+        // contract over the core's select/write/read protocol.
+        const ay = new _ay_3_8912_js__WEBPACK_IMPORTED_MODULE_9__.AY38912({
+          clockHz: c.xtal || config.clockHz
+        });
+        // readMask (from the extractor) says which offsets the
+        // read decode actually reaches; elsewhere the chip is off
+        // the bus and the CPU sees open bus, like the silicon.
+        const readMask = (_c$readMask = c.readMask) !== null && _c$readMask !== void 0 ? _c$readMask : 2;
+        chip = {
+          ay,
+          read: reg => readMask >> reg & 1 ? ay.read() : 0xff,
+          write: (reg, v) => {
+            if (reg === 0) ay.select(v);else ay.write(v);
+          },
+          advance: n => ay.advance(n)
+        };
+      } else if (c.kind === 'um245r') {
+        // USB FIFO at one address: a read takes the next queued
+        // byte (0xff when empty — the pins float high with no
+        // data, and phase-1 has no memory-mapped status; RXF/TXE
+        // are PINS on this part), a write leaves via onSerial.
+        // Feed it with machine.chips.<name>.rxPush(byte).
+        const rx = [];
+        chip = {
+          rx,
+          rxPush: b => rx.push(b & 0xff),
+          read: () => rx.length ? rx.shift() : 0xff,
+          write: (reg, v) => {
+            if (this.hooks.onSerial) this.hooks.onSerial(v & 0xff, this.tMs);
+          }
+        };
       } else if (c.kind === 'riot') {
         // MOS 6532: 128 bytes RAM + ports + timer in one 256-byte
         // window, RS encoded as address bit 7 (the core's own
@@ -29931,7 +30250,7 @@ class M6502Machine {
           clockHz: c.xtal || config.clockHz
         });
       } else if (c.kind === 'latch') {
-        chip = new _latch374_js__WEBPACK_IMPORTED_MODULE_9__.Latch374({
+        chip = new _latch374_js__WEBPACK_IMPORTED_MODULE_10__.Latch374({
           onChange: (value, prev) => this._latchChange(c.name, value, prev)
         });
       } else if (c.kind === 'console') {
@@ -29994,7 +30313,7 @@ class M6502Machine {
         // storage hookup). Like simplevga: wires only, no bus
         // window, no decode entry. config: {kind:'sdcard',
         // name, via:'via1', pins:{cs,sck,mosi,miso, port?}}.
-        const sd = new _sdcard_spi_js__WEBPACK_IMPORTED_MODULE_10__.SDCardSPI(c.pins);
+        const sd = new _sdcard_spi_js__WEBPACK_IMPORTED_MODULE_11__.SDCardSPI(c.pins);
         if (!this._sdCards) this._sdCards = [];
         this._sdCards.push({
           sd,

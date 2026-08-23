@@ -1115,6 +1115,7 @@ const DIP_CHIP_LABELS = {
   w65c51: 'W65C51',
   ns16c550: 'NS16C550',
   m6532: 'M6532',
+  ay8912: 'AY-3-8912',
   '62256': '62256',
   '28c256': '28C256',
   z80: 'Z80 CPU',
@@ -30110,6 +30111,10 @@ const FOOTPRINTS = {
     w: 300,
     h: 90
   },
+  ay8912: {
+    w: 220,
+    h: 90
+  },
   w65c51: {
     w: 220,
     h: 90
@@ -40662,6 +40667,36 @@ function projectSchematic(parts, nets) {
       bottom: s.y + halfH
     };
   };
+  // A conductor may run through its OWN net's pins — that is what a stub does.
+  // Through ANOTHER net's pin it must not: a line touching a pin reads as
+  // attached to it, and `bodyBounds` above stops 26px from a symbol's centre
+  // while its pins reach 30px, so a trunk placed in that 4px band ran straight
+  // down a whole column of DIP pins. Measured before this check existed: 799 of
+  // 2,107 shipped circuits drew at least one such conductor, 4,213 pin
+  // incidences in all — 46-port-overcurrent drew one trunk through four MCU
+  // port pins on four different nets, which reads as those four pins shorted.
+  // The rendered-netlist gate could not see it: it excludes trunk-side vertices
+  // from connectivity on the stated ground that they "sit in free space", which
+  // is an assumption about geometry rather than a check of it.
+  const PIN_CLEARANCE = 2; // a conductor within 2px of a pin reads as touching it
+  const allPins = [];
+  for (const s of symbols) for (const pin of s.pins) allPins.push(pin);
+  const segmentHitsForeignPin = (a, b, netId) => {
+    const horizontal = Math.abs(a.y - b.y) < 0.5;
+    const vertical = Math.abs(a.x - b.x) < 0.5;
+    if (!horizontal && !vertical) return false;
+    for (const pin of allPins) {
+      if (pin.netId && pin.netId === netId) continue;
+      if (horizontal) {
+        if (Math.abs(pin.y - a.y) >= PIN_CLEARANCE) continue;
+        if (pin.x >= Math.min(a.x, b.x) && pin.x <= Math.max(a.x, b.x)) return true;
+      } else {
+        if (Math.abs(pin.x - a.x) >= PIN_CLEARANCE) continue;
+        if (pin.y >= Math.min(a.y, b.y) && pin.y <= Math.max(a.y, b.y)) return true;
+      }
+    }
+    return false;
+  };
   const segmentCrossesBody = (a, b, box) => {
     if (a.y === b.y) {
       return a.y > box.top && a.y < box.bottom && Math.max(a.x, b.x) > box.left && Math.min(a.x, b.x) < box.right;
@@ -40687,11 +40722,15 @@ function projectSchematic(parts, nets) {
         return segmentCrossesBody(a, b, box);
       })) hits.push(s.id);
     }
+    if (segments.some(_ref2 => {
+      let [a, b] = _ref2;
+      return segmentHitsForeignPin(a, b, route.netId);
+    })) hits.push('__foreign_pin__');
     return hits;
   };
   const collisionRoutedNets = [];
   const detouredRoutingNets = [];
-  const obstacleRoute = (start, end) => {
+  const obstacleRoute = (start, end, netId) => {
     // Route geometry owns its points. Reusing pin objects here would shift
     // endpoints twice when projection bounds translate symbols and wires.
     start = {
@@ -40703,9 +40742,9 @@ function projectSchematic(parts, nets) {
       y: end.y
     };
     const boxes = symbols.map(bodyBounds);
-    const clear = _ref2 => {
-      let [a, b] = _ref2;
-      return (a.x === b.x || a.y === b.y) && !boxes.some(box => segmentCrossesBody(a, b, box));
+    const clear = _ref3 => {
+      let [a, b] = _ref3;
+      return (a.x === b.x || a.y === b.y) && !boxes.some(box => segmentCrossesBody(a, b, box)) && !segmentHitsForeignPin(a, b, netId);
     };
     const xs = new Set([start.x, end.x]);
     const ys = new Set([start.y, end.y]);
@@ -40786,8 +40825,8 @@ function projectSchematic(parts, nets) {
         y: point.y
       }]);
       if (!segments.every(clear)) continue;
-      const length = segments.reduce((n, _ref3) => {
-        let [a, b] = _ref3;
+      const length = segments.reduce((n, _ref4) => {
+        let [a, b] = _ref4;
         return n + Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
       }, 0);
       const cost = length + Math.max(0, segments.length - 1) * 12;
@@ -40836,7 +40875,7 @@ function projectSchematic(parts, nets) {
     const collisions = routeCollisions(route);
     if (collisions.length) {
       if (r.pins.length === 2) {
-        const segments = obstacleRoute(r.pins[0], r.pins[1]);
+        const segments = obstacleRoute(r.pins[0], r.pins[1], r.netId);
         if (segments) {
           wires.push({
             netId: r.netId,
@@ -43050,194 +43089,195 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _attiny2313_json__WEBPACK_IMPORTED_MODULE_54__ = __webpack_require__(/*! ./attiny2313.json */ "./src/lib/bw-circuit-ui/parts-data/attiny2313.json");
 /* harmony import */ var _attiny85_json__WEBPACK_IMPORTED_MODULE_55__ = __webpack_require__(/*! ./attiny85.json */ "./src/lib/bw-circuit-ui/parts-data/attiny85.json");
 /* harmony import */ var _attiny88_json__WEBPACK_IMPORTED_MODULE_56__ = __webpack_require__(/*! ./attiny88.json */ "./src/lib/bw-circuit-ui/parts-data/attiny88.json");
-/* harmony import */ var _bargraph_json__WEBPACK_IMPORTED_MODULE_57__ = __webpack_require__(/*! ./bargraph.json */ "./src/lib/bw-circuit-ui/parts-data/bargraph.json");
-/* harmony import */ var _battery_json__WEBPACK_IMPORTED_MODULE_58__ = __webpack_require__(/*! ./battery.json */ "./src/lib/bw-circuit-ui/parts-data/battery.json");
-/* harmony import */ var _battery_9v_json__WEBPACK_IMPORTED_MODULE_59__ = __webpack_require__(/*! ./battery_9v.json */ "./src/lib/bw-circuit-ui/parts-data/battery_9v.json");
-/* harmony import */ var _battery_aa_json__WEBPACK_IMPORTED_MODULE_60__ = __webpack_require__(/*! ./battery_aa.json */ "./src/lib/bw-circuit-ui/parts-data/battery_aa.json");
-/* harmony import */ var _battery_coin_json__WEBPACK_IMPORTED_MODULE_61__ = __webpack_require__(/*! ./battery_coin.json */ "./src/lib/bw-circuit-ui/parts-data/battery_coin.json");
-/* harmony import */ var _breadboard_full_json__WEBPACK_IMPORTED_MODULE_62__ = __webpack_require__(/*! ./breadboard_full.json */ "./src/lib/bw-circuit-ui/parts-data/breadboard_full.json");
-/* harmony import */ var _breadboard_half_json__WEBPACK_IMPORTED_MODULE_63__ = __webpack_require__(/*! ./breadboard_half.json */ "./src/lib/bw-circuit-ui/parts-data/breadboard_half.json");
-/* harmony import */ var _breadboard_mini_json__WEBPACK_IMPORTED_MODULE_64__ = __webpack_require__(/*! ./breadboard_mini.json */ "./src/lib/bw-circuit-ui/parts-data/breadboard_mini.json");
-/* harmony import */ var _breadboard_psu_json__WEBPACK_IMPORTED_MODULE_65__ = __webpack_require__(/*! ./breadboard_psu.json */ "./src/lib/bw-circuit-ui/parts-data/breadboard_psu.json");
-/* harmony import */ var _button_json__WEBPACK_IMPORTED_MODULE_66__ = __webpack_require__(/*! ./button.json */ "./src/lib/bw-circuit-ui/parts-data/button.json");
-/* harmony import */ var _buzzer_json__WEBPACK_IMPORTED_MODULE_67__ = __webpack_require__(/*! ./buzzer.json */ "./src/lib/bw-circuit-ui/parts-data/buzzer.json");
-/* harmony import */ var _capacitor_json__WEBPACK_IMPORTED_MODULE_68__ = __webpack_require__(/*! ./capacitor.json */ "./src/lib/bw-circuit-ui/parts-data/capacitor.json");
-/* harmony import */ var _cd4017_json__WEBPACK_IMPORTED_MODULE_69__ = __webpack_require__(/*! ./cd4017.json */ "./src/lib/bw-circuit-ui/parts-data/cd4017.json");
-/* harmony import */ var _cd4093_json__WEBPACK_IMPORTED_MODULE_70__ = __webpack_require__(/*! ./cd4093.json */ "./src/lib/bw-circuit-ui/parts-data/cd4093.json");
-/* harmony import */ var _cd4511_json__WEBPACK_IMPORTED_MODULE_71__ = __webpack_require__(/*! ./cd4511.json */ "./src/lib/bw-circuit-ui/parts-data/cd4511.json");
-/* harmony import */ var _cd74hc4067_json__WEBPACK_IMPORTED_MODULE_72__ = __webpack_require__(/*! ./cd74hc4067.json */ "./src/lib/bw-circuit-ui/parts-data/cd74hc4067.json");
-/* harmony import */ var _char_lcd_json__WEBPACK_IMPORTED_MODULE_73__ = __webpack_require__(/*! ./char_lcd.json */ "./src/lib/bw-circuit-ui/parts-data/char_lcd.json");
-/* harmony import */ var _char_lcd_i2c_json__WEBPACK_IMPORTED_MODULE_74__ = __webpack_require__(/*! ./char_lcd_i2c.json */ "./src/lib/bw-circuit-ui/parts-data/char_lcd_i2c.json");
-/* harmony import */ var _clock_display_json__WEBPACK_IMPORTED_MODULE_75__ = __webpack_require__(/*! ./clock_display.json */ "./src/lib/bw-circuit-ui/parts-data/clock_display.json");
-/* harmony import */ var _darlington_driver_json__WEBPACK_IMPORTED_MODULE_76__ = __webpack_require__(/*! ./darlington_driver.json */ "./src/lib/bw-circuit-ui/parts-data/darlington_driver.json");
-/* harmony import */ var _dc_motor_json__WEBPACK_IMPORTED_MODULE_77__ = __webpack_require__(/*! ./dc_motor.json */ "./src/lib/bw-circuit-ui/parts-data/dc_motor.json");
-/* harmony import */ var _dc_motor_encoder_json__WEBPACK_IMPORTED_MODULE_78__ = __webpack_require__(/*! ./dc_motor_encoder.json */ "./src/lib/bw-circuit-ui/parts-data/dc_motor_encoder.json");
-/* harmony import */ var _decade_counter_json__WEBPACK_IMPORTED_MODULE_79__ = __webpack_require__(/*! ./decade_counter.json */ "./src/lib/bw-circuit-ui/parts-data/decade_counter.json");
-/* harmony import */ var _dff_json__WEBPACK_IMPORTED_MODULE_80__ = __webpack_require__(/*! ./dff.json */ "./src/lib/bw-circuit-ui/parts-data/dff.json");
-/* harmony import */ var _dfplayer_mini_json__WEBPACK_IMPORTED_MODULE_81__ = __webpack_require__(/*! ./dfplayer_mini.json */ "./src/lib/bw-circuit-ui/parts-data/dfplayer_mini.json");
-/* harmony import */ var _dht11_json__WEBPACK_IMPORTED_MODULE_82__ = __webpack_require__(/*! ./dht11.json */ "./src/lib/bw-circuit-ui/parts-data/dht11.json");
-/* harmony import */ var _dht22_json__WEBPACK_IMPORTED_MODULE_83__ = __webpack_require__(/*! ./dht22.json */ "./src/lib/bw-circuit-ui/parts-data/dht22.json");
-/* harmony import */ var _diode_json__WEBPACK_IMPORTED_MODULE_84__ = __webpack_require__(/*! ./diode.json */ "./src/lib/bw-circuit-ui/parts-data/diode.json");
-/* harmony import */ var _dip_switch_json__WEBPACK_IMPORTED_MODULE_85__ = __webpack_require__(/*! ./dip_switch.json */ "./src/lib/bw-circuit-ui/parts-data/dip_switch.json");
-/* harmony import */ var _dip_switch_dpst_json__WEBPACK_IMPORTED_MODULE_86__ = __webpack_require__(/*! ./dip_switch_dpst.json */ "./src/lib/bw-circuit-ui/parts-data/dip_switch_dpst.json");
-/* harmony import */ var _dip_switch_spst_json__WEBPACK_IMPORTED_MODULE_87__ = __webpack_require__(/*! ./dip_switch_spst.json */ "./src/lib/bw-circuit-ui/parts-data/dip_switch_spst.json");
-/* harmony import */ var _ds1302_json__WEBPACK_IMPORTED_MODULE_88__ = __webpack_require__(/*! ./ds1302.json */ "./src/lib/bw-circuit-ui/parts-data/ds1302.json");
-/* harmony import */ var _ds18b20_json__WEBPACK_IMPORTED_MODULE_89__ = __webpack_require__(/*! ./ds18b20.json */ "./src/lib/bw-circuit-ui/parts-data/ds18b20.json");
-/* harmony import */ var _ds3231_json__WEBPACK_IMPORTED_MODULE_90__ = __webpack_require__(/*! ./ds3231.json */ "./src/lib/bw-circuit-ui/parts-data/ds3231.json");
-/* harmony import */ var _eater6502_json__WEBPACK_IMPORTED_MODULE_91__ = __webpack_require__(/*! ./eater6502.json */ "./src/lib/bw-circuit-ui/parts-data/eater6502.json");
-/* harmony import */ var _eeprom_json__WEBPACK_IMPORTED_MODULE_92__ = __webpack_require__(/*! ./eeprom.json */ "./src/lib/bw-circuit-ui/parts-data/eeprom.json");
-/* harmony import */ var _flame_sensor_json__WEBPACK_IMPORTED_MODULE_93__ = __webpack_require__(/*! ./flame_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/flame_sensor.json");
-/* harmony import */ var _flex_sensor_json__WEBPACK_IMPORTED_MODULE_94__ = __webpack_require__(/*! ./flex_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/flex_sensor.json");
-/* harmony import */ var _force_sensor_json__WEBPACK_IMPORTED_MODULE_95__ = __webpack_require__(/*! ./force_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/force_sensor.json");
-/* harmony import */ var _function_gen_json__WEBPACK_IMPORTED_MODULE_96__ = __webpack_require__(/*! ./function_gen.json */ "./src/lib/bw-circuit-ui/parts-data/function_gen.json");
-/* harmony import */ var _fuse_json__WEBPACK_IMPORTED_MODULE_97__ = __webpack_require__(/*! ./fuse.json */ "./src/lib/bw-circuit-ui/parts-data/fuse.json");
-/* harmony import */ var _gas_sensor_json__WEBPACK_IMPORTED_MODULE_98__ = __webpack_require__(/*! ./gas_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/gas_sensor.json");
-/* harmony import */ var _gearmotor_json__WEBPACK_IMPORTED_MODULE_99__ = __webpack_require__(/*! ./gearmotor.json */ "./src/lib/bw-circuit-ui/parts-data/gearmotor.json");
-/* harmony import */ var _gnd_json__WEBPACK_IMPORTED_MODULE_100__ = __webpack_require__(/*! ./gnd.json */ "./src/lib/bw-circuit-ui/parts-data/gnd.json");
-/* harmony import */ var _h_bridge_json__WEBPACK_IMPORTED_MODULE_101__ = __webpack_require__(/*! ./h_bridge.json */ "./src/lib/bw-circuit-ui/parts-data/h_bridge.json");
-/* harmony import */ var _hall_analog_json__WEBPACK_IMPORTED_MODULE_102__ = __webpack_require__(/*! ./hall_analog.json */ "./src/lib/bw-circuit-ui/parts-data/hall_analog.json");
-/* harmony import */ var _hall_digital_json__WEBPACK_IMPORTED_MODULE_103__ = __webpack_require__(/*! ./hall_digital.json */ "./src/lib/bw-circuit-ui/parts-data/hall_digital.json");
-/* harmony import */ var _hc05_json__WEBPACK_IMPORTED_MODULE_104__ = __webpack_require__(/*! ./hc05.json */ "./src/lib/bw-circuit-ui/parts-data/hc05.json");
-/* harmony import */ var _hd44780_json__WEBPACK_IMPORTED_MODULE_105__ = __webpack_require__(/*! ./hd44780.json */ "./src/lib/bw-circuit-ui/parts-data/hd44780.json");
-/* harmony import */ var _header_json__WEBPACK_IMPORTED_MODULE_106__ = __webpack_require__(/*! ./header.json */ "./src/lib/bw-circuit-ui/parts-data/header.json");
-/* harmony import */ var _heartbeat_json__WEBPACK_IMPORTED_MODULE_107__ = __webpack_require__(/*! ./heartbeat.json */ "./src/lib/bw-circuit-ui/parts-data/heartbeat.json");
-/* harmony import */ var _hx711_json__WEBPACK_IMPORTED_MODULE_108__ = __webpack_require__(/*! ./hx711.json */ "./src/lib/bw-circuit-ui/parts-data/hx711.json");
-/* harmony import */ var _ili9341_json__WEBPACK_IMPORTED_MODULE_109__ = __webpack_require__(/*! ./ili9341.json */ "./src/lib/bw-circuit-ui/parts-data/ili9341.json");
-/* harmony import */ var _ili9341_par_json__WEBPACK_IMPORTED_MODULE_110__ = __webpack_require__(/*! ./ili9341_par.json */ "./src/lib/bw-circuit-ui/parts-data/ili9341_par.json");
-/* harmony import */ var _ili9341_parallel_json__WEBPACK_IMPORTED_MODULE_111__ = __webpack_require__(/*! ./ili9341_parallel.json */ "./src/lib/bw-circuit-ui/parts-data/ili9341_parallel.json");
-/* harmony import */ var _inductor_json__WEBPACK_IMPORTED_MODULE_112__ = __webpack_require__(/*! ./inductor.json */ "./src/lib/bw-circuit-ui/parts-data/inductor.json");
-/* harmony import */ var _ir_receiver_json__WEBPACK_IMPORTED_MODULE_113__ = __webpack_require__(/*! ./ir_receiver.json */ "./src/lib/bw-circuit-ui/parts-data/ir_receiver.json");
-/* harmony import */ var _ir_reflect_json__WEBPACK_IMPORTED_MODULE_114__ = __webpack_require__(/*! ./ir_reflect.json */ "./src/lib/bw-circuit-ui/parts-data/ir_reflect.json");
-/* harmony import */ var _ir_remote_json__WEBPACK_IMPORTED_MODULE_115__ = __webpack_require__(/*! ./ir_remote.json */ "./src/lib/bw-circuit-ui/parts-data/ir_remote.json");
-/* harmony import */ var _ir_transmitter_json__WEBPACK_IMPORTED_MODULE_116__ = __webpack_require__(/*! ./ir_transmitter.json */ "./src/lib/bw-circuit-ui/parts-data/ir_transmitter.json");
-/* harmony import */ var _isd1820_json__WEBPACK_IMPORTED_MODULE_117__ = __webpack_require__(/*! ./isd1820.json */ "./src/lib/bw-circuit-ui/parts-data/isd1820.json");
-/* harmony import */ var _isource_json__WEBPACK_IMPORTED_MODULE_118__ = __webpack_require__(/*! ./isource.json */ "./src/lib/bw-circuit-ui/parts-data/isource.json");
-/* harmony import */ var _jkff_json__WEBPACK_IMPORTED_MODULE_119__ = __webpack_require__(/*! ./jkff.json */ "./src/lib/bw-circuit-ui/parts-data/jkff.json");
-/* harmony import */ var _joystick_json__WEBPACK_IMPORTED_MODULE_120__ = __webpack_require__(/*! ./joystick.json */ "./src/lib/bw-circuit-ui/parts-data/joystick.json");
-/* harmony import */ var _kd9561_json__WEBPACK_IMPORTED_MODULE_121__ = __webpack_require__(/*! ./kd9561.json */ "./src/lib/bw-circuit-ui/parts-data/kd9561.json");
-/* harmony import */ var _keypad_4x4_json__WEBPACK_IMPORTED_MODULE_122__ = __webpack_require__(/*! ./keypad_4x4.json */ "./src/lib/bw-circuit-ui/parts-data/keypad_4x4.json");
-/* harmony import */ var _ky002_json__WEBPACK_IMPORTED_MODULE_123__ = __webpack_require__(/*! ./ky002.json */ "./src/lib/bw-circuit-ui/parts-data/ky002.json");
-/* harmony import */ var _ky040_json__WEBPACK_IMPORTED_MODULE_124__ = __webpack_require__(/*! ./ky040.json */ "./src/lib/bw-circuit-ui/parts-data/ky040.json");
-/* harmony import */ var _l293d_json__WEBPACK_IMPORTED_MODULE_125__ = __webpack_require__(/*! ./l293d.json */ "./src/lib/bw-circuit-ui/parts-data/l293d.json");
-/* harmony import */ var _ld1117v33_json__WEBPACK_IMPORTED_MODULE_126__ = __webpack_require__(/*! ./ld1117v33.json */ "./src/lib/bw-circuit-ui/parts-data/ld1117v33.json");
-/* harmony import */ var _ldr_json__WEBPACK_IMPORTED_MODULE_127__ = __webpack_require__(/*! ./ldr.json */ "./src/lib/bw-circuit-ui/parts-data/ldr.json");
-/* harmony import */ var _led_json__WEBPACK_IMPORTED_MODULE_128__ = __webpack_require__(/*! ./led.json */ "./src/lib/bw-circuit-ui/parts-data/led.json");
-/* harmony import */ var _led_7color_json__WEBPACK_IMPORTED_MODULE_129__ = __webpack_require__(/*! ./led_7color.json */ "./src/lib/bw-circuit-ui/parts-data/led_7color.json");
-/* harmony import */ var _led_cube_json__WEBPACK_IMPORTED_MODULE_130__ = __webpack_require__(/*! ./led_cube.json */ "./src/lib/bw-circuit-ui/parts-data/led_cube.json");
-/* harmony import */ var _led_matrix_json__WEBPACK_IMPORTED_MODULE_131__ = __webpack_require__(/*! ./led_matrix.json */ "./src/lib/bw-circuit-ui/parts-data/led_matrix.json");
-/* harmony import */ var _lemon_battery_json__WEBPACK_IMPORTED_MODULE_132__ = __webpack_require__(/*! ./lemon_battery.json */ "./src/lib/bw-circuit-ui/parts-data/lemon_battery.json");
-/* harmony import */ var _level_shifter4_json__WEBPACK_IMPORTED_MODULE_133__ = __webpack_require__(/*! ./level_shifter4.json */ "./src/lib/bw-circuit-ui/parts-data/level_shifter4.json");
-/* harmony import */ var _light_bulb_json__WEBPACK_IMPORTED_MODULE_134__ = __webpack_require__(/*! ./light_bulb.json */ "./src/lib/bw-circuit-ui/parts-data/light_bulb.json");
-/* harmony import */ var _light_sensor_json__WEBPACK_IMPORTED_MODULE_135__ = __webpack_require__(/*! ./light_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/light_sensor.json");
-/* harmony import */ var _lm339_json__WEBPACK_IMPORTED_MODULE_136__ = __webpack_require__(/*! ./lm339.json */ "./src/lib/bw-circuit-ui/parts-data/lm339.json");
-/* harmony import */ var _lm358_json__WEBPACK_IMPORTED_MODULE_137__ = __webpack_require__(/*! ./lm358.json */ "./src/lib/bw-circuit-ui/parts-data/lm358.json");
-/* harmony import */ var _lm3915_json__WEBPACK_IMPORTED_MODULE_138__ = __webpack_require__(/*! ./lm3915.json */ "./src/lib/bw-circuit-ui/parts-data/lm3915.json");
-/* harmony import */ var _lm393_json__WEBPACK_IMPORTED_MODULE_139__ = __webpack_require__(/*! ./lm393.json */ "./src/lib/bw-circuit-ui/parts-data/lm393.json");
-/* harmony import */ var _lm7805_json__WEBPACK_IMPORTED_MODULE_140__ = __webpack_require__(/*! ./lm7805.json */ "./src/lib/bw-circuit-ui/parts-data/lm7805.json");
-/* harmony import */ var _logic_probe_json__WEBPACK_IMPORTED_MODULE_141__ = __webpack_require__(/*! ./logic_probe.json */ "./src/lib/bw-circuit-ui/parts-data/logic_probe.json");
-/* harmony import */ var _m6532_json__WEBPACK_IMPORTED_MODULE_142__ = __webpack_require__(/*! ./m6532.json */ "./src/lib/bw-circuit-ui/parts-data/m6532.json");
-/* harmony import */ var _matrix16x8_json__WEBPACK_IMPORTED_MODULE_143__ = __webpack_require__(/*! ./matrix16x8.json */ "./src/lib/bw-circuit-ui/parts-data/matrix16x8.json");
-/* harmony import */ var _matrix8x8_json__WEBPACK_IMPORTED_MODULE_144__ = __webpack_require__(/*! ./matrix8x8.json */ "./src/lib/bw-circuit-ui/parts-data/matrix8x8.json");
-/* harmony import */ var _matrix9x9_json__WEBPACK_IMPORTED_MODULE_145__ = __webpack_require__(/*! ./matrix9x9.json */ "./src/lib/bw-circuit-ui/parts-data/matrix9x9.json");
-/* harmony import */ var _max232_json__WEBPACK_IMPORTED_MODULE_146__ = __webpack_require__(/*! ./max232.json */ "./src/lib/bw-circuit-ui/parts-data/max232.json");
-/* harmony import */ var _max7219_json__WEBPACK_IMPORTED_MODULE_147__ = __webpack_require__(/*! ./max7219.json */ "./src/lib/bw-circuit-ui/parts-data/max7219.json");
-/* harmony import */ var _mc6845_json__WEBPACK_IMPORTED_MODULE_148__ = __webpack_require__(/*! ./mc6845.json */ "./src/lib/bw-circuit-ui/parts-data/mc6845.json");
-/* harmony import */ var _mc6850_json__WEBPACK_IMPORTED_MODULE_149__ = __webpack_require__(/*! ./mc6850.json */ "./src/lib/bw-circuit-ui/parts-data/mc6850.json");
-/* harmony import */ var _mcp3008_json__WEBPACK_IMPORTED_MODULE_150__ = __webpack_require__(/*! ./mcp3008.json */ "./src/lib/bw-circuit-ui/parts-data/mcp3008.json");
-/* harmony import */ var _mcp4725_json__WEBPACK_IMPORTED_MODULE_151__ = __webpack_require__(/*! ./mcp4725.json */ "./src/lib/bw-circuit-ui/parts-data/mcp4725.json");
-/* harmony import */ var _mcu_json__WEBPACK_IMPORTED_MODULE_152__ = __webpack_require__(/*! ./mcu.json */ "./src/lib/bw-circuit-ui/parts-data/mcu.json");
-/* harmony import */ var _memsic2125_json__WEBPACK_IMPORTED_MODULE_153__ = __webpack_require__(/*! ./memsic2125.json */ "./src/lib/bw-circuit-ui/parts-data/memsic2125.json");
-/* harmony import */ var _microbit_json__WEBPACK_IMPORTED_MODULE_154__ = __webpack_require__(/*! ./microbit.json */ "./src/lib/bw-circuit-ui/parts-data/microbit.json");
-/* harmony import */ var _microbit_breakout_json__WEBPACK_IMPORTED_MODULE_155__ = __webpack_require__(/*! ./microbit_breakout.json */ "./src/lib/bw-circuit-ui/parts-data/microbit_breakout.json");
-/* harmony import */ var _mos6532_json__WEBPACK_IMPORTED_MODULE_156__ = __webpack_require__(/*! ./mos6532.json */ "./src/lib/bw-circuit-ui/parts-data/mos6532.json");
-/* harmony import */ var _mpu6050_json__WEBPACK_IMPORTED_MODULE_157__ = __webpack_require__(/*! ./mpu6050.json */ "./src/lib/bw-circuit-ui/parts-data/mpu6050.json");
-/* harmony import */ var _msgeq7_json__WEBPACK_IMPORTED_MODULE_158__ = __webpack_require__(/*! ./msgeq7.json */ "./src/lib/bw-circuit-ui/parts-data/msgeq7.json");
-/* harmony import */ var _multimeter_json__WEBPACK_IMPORTED_MODULE_159__ = __webpack_require__(/*! ./multimeter.json */ "./src/lib/bw-circuit-ui/parts-data/multimeter.json");
-/* harmony import */ var _neopixel_json__WEBPACK_IMPORTED_MODULE_160__ = __webpack_require__(/*! ./neopixel.json */ "./src/lib/bw-circuit-ui/parts-data/neopixel.json");
-/* harmony import */ var _neopixel_jewel_json__WEBPACK_IMPORTED_MODULE_161__ = __webpack_require__(/*! ./neopixel_jewel.json */ "./src/lib/bw-circuit-ui/parts-data/neopixel_jewel.json");
-/* harmony import */ var _neopixel_ring_json__WEBPACK_IMPORTED_MODULE_162__ = __webpack_require__(/*! ./neopixel_ring.json */ "./src/lib/bw-circuit-ui/parts-data/neopixel_ring.json");
-/* harmony import */ var _neopixel_strip_json__WEBPACK_IMPORTED_MODULE_163__ = __webpack_require__(/*! ./neopixel_strip.json */ "./src/lib/bw-circuit-ui/parts-data/neopixel_strip.json");
-/* harmony import */ var _nmos_json__WEBPACK_IMPORTED_MODULE_164__ = __webpack_require__(/*! ./nmos.json */ "./src/lib/bw-circuit-ui/parts-data/nmos.json");
-/* harmony import */ var _nmos_power_json__WEBPACK_IMPORTED_MODULE_165__ = __webpack_require__(/*! ./nmos_power.json */ "./src/lib/bw-circuit-ui/parts-data/nmos_power.json");
-/* harmony import */ var _npn_json__WEBPACK_IMPORTED_MODULE_166__ = __webpack_require__(/*! ./npn.json */ "./src/lib/bw-circuit-ui/parts-data/npn.json");
-/* harmony import */ var _nrf24l01_json__WEBPACK_IMPORTED_MODULE_167__ = __webpack_require__(/*! ./nrf24l01.json */ "./src/lib/bw-circuit-ui/parts-data/nrf24l01.json");
-/* harmony import */ var _ns16c550_json__WEBPACK_IMPORTED_MODULE_168__ = __webpack_require__(/*! ./ns16c550.json */ "./src/lib/bw-circuit-ui/parts-data/ns16c550.json");
-/* harmony import */ var _ntc_json__WEBPACK_IMPORTED_MODULE_169__ = __webpack_require__(/*! ./ntc.json */ "./src/lib/bw-circuit-ui/parts-data/ntc.json");
-/* harmony import */ var _opamp_json__WEBPACK_IMPORTED_MODULE_170__ = __webpack_require__(/*! ./opamp.json */ "./src/lib/bw-circuit-ui/parts-data/opamp.json");
-/* harmony import */ var _optocoupler_json__WEBPACK_IMPORTED_MODULE_171__ = __webpack_require__(/*! ./optocoupler.json */ "./src/lib/bw-circuit-ui/parts-data/optocoupler.json");
-/* harmony import */ var _osc_can_json__WEBPACK_IMPORTED_MODULE_172__ = __webpack_require__(/*! ./osc_can.json */ "./src/lib/bw-circuit-ui/parts-data/osc_can.json");
-/* harmony import */ var _oscilloscope_json__WEBPACK_IMPORTED_MODULE_173__ = __webpack_require__(/*! ./oscilloscope.json */ "./src/lib/bw-circuit-ui/parts-data/oscilloscope.json");
-/* harmony import */ var _pcf8574_json__WEBPACK_IMPORTED_MODULE_174__ = __webpack_require__(/*! ./pcf8574.json */ "./src/lib/bw-circuit-ui/parts-data/pcf8574.json");
-/* harmony import */ var _photo_interrupter_json__WEBPACK_IMPORTED_MODULE_175__ = __webpack_require__(/*! ./photo_interrupter.json */ "./src/lib/bw-circuit-ui/parts-data/photo_interrupter.json");
-/* harmony import */ var _photodiode_json__WEBPACK_IMPORTED_MODULE_176__ = __webpack_require__(/*! ./photodiode.json */ "./src/lib/bw-circuit-ui/parts-data/photodiode.json");
-/* harmony import */ var _phototransistor_json__WEBPACK_IMPORTED_MODULE_177__ = __webpack_require__(/*! ./phototransistor.json */ "./src/lib/bw-circuit-ui/parts-data/phototransistor.json");
-/* harmony import */ var _pi_pico_json__WEBPACK_IMPORTED_MODULE_178__ = __webpack_require__(/*! ./pi_pico.json */ "./src/lib/bw-circuit-ui/parts-data/pi_pico.json");
-/* harmony import */ var _piezo_json__WEBPACK_IMPORTED_MODULE_179__ = __webpack_require__(/*! ./piezo.json */ "./src/lib/bw-circuit-ui/parts-data/piezo.json");
-/* harmony import */ var _pir_json__WEBPACK_IMPORTED_MODULE_180__ = __webpack_require__(/*! ./pir.json */ "./src/lib/bw-circuit-ui/parts-data/pir.json");
-/* harmony import */ var _pmos_json__WEBPACK_IMPORTED_MODULE_181__ = __webpack_require__(/*! ./pmos.json */ "./src/lib/bw-circuit-ui/parts-data/pmos.json");
-/* harmony import */ var _pmos_power_json__WEBPACK_IMPORTED_MODULE_182__ = __webpack_require__(/*! ./pmos_power.json */ "./src/lib/bw-circuit-ui/parts-data/pmos_power.json");
-/* harmony import */ var _pnp_json__WEBPACK_IMPORTED_MODULE_183__ = __webpack_require__(/*! ./pnp.json */ "./src/lib/bw-circuit-ui/parts-data/pnp.json");
-/* harmony import */ var _polarized_cap_json__WEBPACK_IMPORTED_MODULE_184__ = __webpack_require__(/*! ./polarized_cap.json */ "./src/lib/bw-circuit-ui/parts-data/polarized_cap.json");
-/* harmony import */ var _pololu_motor_ctrl_json__WEBPACK_IMPORTED_MODULE_185__ = __webpack_require__(/*! ./pololu_motor_ctrl.json */ "./src/lib/bw-circuit-ui/parts-data/pololu_motor_ctrl.json");
-/* harmony import */ var _potato_battery_json__WEBPACK_IMPORTED_MODULE_186__ = __webpack_require__(/*! ./potato_battery.json */ "./src/lib/bw-circuit-ui/parts-data/potato_battery.json");
-/* harmony import */ var _potentiometer_json__WEBPACK_IMPORTED_MODULE_187__ = __webpack_require__(/*! ./potentiometer.json */ "./src/lib/bw-circuit-ui/parts-data/potentiometer.json");
-/* harmony import */ var _r6507_json__WEBPACK_IMPORTED_MODULE_188__ = __webpack_require__(/*! ./r6507.json */ "./src/lib/bw-circuit-ui/parts-data/r6507.json");
-/* harmony import */ var _reed_switch_json__WEBPACK_IMPORTED_MODULE_189__ = __webpack_require__(/*! ./reed_switch.json */ "./src/lib/bw-circuit-ui/parts-data/reed_switch.json");
-/* harmony import */ var _relay_json__WEBPACK_IMPORTED_MODULE_190__ = __webpack_require__(/*! ./relay.json */ "./src/lib/bw-circuit-ui/parts-data/relay.json");
-/* harmony import */ var _relay_dpdt_json__WEBPACK_IMPORTED_MODULE_191__ = __webpack_require__(/*! ./relay_dpdt.json */ "./src/lib/bw-circuit-ui/parts-data/relay_dpdt.json");
-/* harmony import */ var _resistor_json__WEBPACK_IMPORTED_MODULE_192__ = __webpack_require__(/*! ./resistor.json */ "./src/lib/bw-circuit-ui/parts-data/resistor.json");
-/* harmony import */ var _rf433_rx_json__WEBPACK_IMPORTED_MODULE_193__ = __webpack_require__(/*! ./rf433_rx.json */ "./src/lib/bw-circuit-ui/parts-data/rf433_rx.json");
-/* harmony import */ var _rf433_tx_json__WEBPACK_IMPORTED_MODULE_194__ = __webpack_require__(/*! ./rf433_tx.json */ "./src/lib/bw-circuit-ui/parts-data/rf433_tx.json");
-/* harmony import */ var _rgb_led_json__WEBPACK_IMPORTED_MODULE_195__ = __webpack_require__(/*! ./rgb_led.json */ "./src/lib/bw-circuit-ui/parts-data/rgb_led.json");
-/* harmony import */ var _rnet_sip_json__WEBPACK_IMPORTED_MODULE_196__ = __webpack_require__(/*! ./rnet_sip.json */ "./src/lib/bw-circuit-ui/parts-data/rnet_sip.json");
-/* harmony import */ var _servo_json__WEBPACK_IMPORTED_MODULE_197__ = __webpack_require__(/*! ./servo.json */ "./src/lib/bw-circuit-ui/parts-data/servo.json");
-/* harmony import */ var _seven_seg_3_json__WEBPACK_IMPORTED_MODULE_198__ = __webpack_require__(/*! ./seven_seg_3.json */ "./src/lib/bw-circuit-ui/parts-data/seven_seg_3.json");
-/* harmony import */ var _seven_seg_4_json__WEBPACK_IMPORTED_MODULE_199__ = __webpack_require__(/*! ./seven_seg_4.json */ "./src/lib/bw-circuit-ui/parts-data/seven_seg_4.json");
-/* harmony import */ var _seven_segment_json__WEBPACK_IMPORTED_MODULE_200__ = __webpack_require__(/*! ./seven_segment.json */ "./src/lib/bw-circuit-ui/parts-data/seven_segment.json");
-/* harmony import */ var _simplevga_card_json__WEBPACK_IMPORTED_MODULE_201__ = __webpack_require__(/*! ./simplevga_card.json */ "./src/lib/bw-circuit-ui/parts-data/simplevga_card.json");
-/* harmony import */ var _slide_switch_json__WEBPACK_IMPORTED_MODULE_202__ = __webpack_require__(/*! ./slide_switch.json */ "./src/lib/bw-circuit-ui/parts-data/slide_switch.json");
-/* harmony import */ var _soil_moisture_json__WEBPACK_IMPORTED_MODULE_203__ = __webpack_require__(/*! ./soil_moisture.json */ "./src/lib/bw-circuit-ui/parts-data/soil_moisture.json");
-/* harmony import */ var _solar_cell_json__WEBPACK_IMPORTED_MODULE_204__ = __webpack_require__(/*! ./solar_cell.json */ "./src/lib/bw-circuit-ui/parts-data/solar_cell.json");
-/* harmony import */ var _solenoid_json__WEBPACK_IMPORTED_MODULE_205__ = __webpack_require__(/*! ./solenoid.json */ "./src/lib/bw-circuit-ui/parts-data/solenoid.json");
-/* harmony import */ var _sound_module_json__WEBPACK_IMPORTED_MODULE_206__ = __webpack_require__(/*! ./sound_module.json */ "./src/lib/bw-circuit-ui/parts-data/sound_module.json");
-/* harmony import */ var _spectrum_display_json__WEBPACK_IMPORTED_MODULE_207__ = __webpack_require__(/*! ./spectrum_display.json */ "./src/lib/bw-circuit-ui/parts-data/spectrum_display.json");
-/* harmony import */ var _ssd1306_json__WEBPACK_IMPORTED_MODULE_208__ = __webpack_require__(/*! ./ssd1306.json */ "./src/lib/bw-circuit-ui/parts-data/ssd1306.json");
-/* harmony import */ var _st7920_json__WEBPACK_IMPORTED_MODULE_209__ = __webpack_require__(/*! ./st7920.json */ "./src/lib/bw-circuit-ui/parts-data/st7920.json");
-/* harmony import */ var _stc15_mcu_json__WEBPACK_IMPORTED_MODULE_210__ = __webpack_require__(/*! ./stc15_mcu.json */ "./src/lib/bw-circuit-ui/parts-data/stc15_mcu.json");
-/* harmony import */ var _stc_mcu_json__WEBPACK_IMPORTED_MODULE_211__ = __webpack_require__(/*! ./stc_mcu.json */ "./src/lib/bw-circuit-ui/parts-data/stc_mcu.json");
-/* harmony import */ var _stepper_json__WEBPACK_IMPORTED_MODULE_212__ = __webpack_require__(/*! ./stepper.json */ "./src/lib/bw-circuit-ui/parts-data/stepper.json");
-/* harmony import */ var _switch_json__WEBPACK_IMPORTED_MODULE_213__ = __webpack_require__(/*! ./switch.json */ "./src/lib/bw-circuit-ui/parts-data/switch.json");
-/* harmony import */ var _tcs3200_json__WEBPACK_IMPORTED_MODULE_214__ = __webpack_require__(/*! ./tcs3200.json */ "./src/lib/bw-circuit-ui/parts-data/tcs3200.json");
-/* harmony import */ var _temp_sensor_json__WEBPACK_IMPORTED_MODULE_215__ = __webpack_require__(/*! ./temp_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/temp_sensor.json");
-/* harmony import */ var _tilevga_json__WEBPACK_IMPORTED_MODULE_216__ = __webpack_require__(/*! ./tilevga.json */ "./src/lib/bw-circuit-ui/parts-data/tilevga.json");
-/* harmony import */ var _tilt_sensor_json__WEBPACK_IMPORTED_MODULE_217__ = __webpack_require__(/*! ./tilt_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/tilt_sensor.json");
-/* harmony import */ var _tilt_switch_json__WEBPACK_IMPORTED_MODULE_218__ = __webpack_require__(/*! ./tilt_switch.json */ "./src/lib/bw-circuit-ui/parts-data/tilt_switch.json");
-/* harmony import */ var _tilt_switch_v2_json__WEBPACK_IMPORTED_MODULE_219__ = __webpack_require__(/*! ./tilt_switch_v2.json */ "./src/lib/bw-circuit-ui/parts-data/tilt_switch_v2.json");
-/* harmony import */ var _timer_555_json__WEBPACK_IMPORTED_MODULE_220__ = __webpack_require__(/*! ./timer_555.json */ "./src/lib/bw-circuit-ui/parts-data/timer_555.json");
-/* harmony import */ var _timer_556_json__WEBPACK_IMPORTED_MODULE_221__ = __webpack_require__(/*! ./timer_556.json */ "./src/lib/bw-circuit-ui/parts-data/timer_556.json");
-/* harmony import */ var _tip120_json__WEBPACK_IMPORTED_MODULE_222__ = __webpack_require__(/*! ./tip120.json */ "./src/lib/bw-circuit-ui/parts-data/tip120.json");
-/* harmony import */ var _tm1637_json__WEBPACK_IMPORTED_MODULE_223__ = __webpack_require__(/*! ./tm1637.json */ "./src/lib/bw-circuit-ui/parts-data/tm1637.json");
-/* harmony import */ var _tmp36_json__WEBPACK_IMPORTED_MODULE_224__ = __webpack_require__(/*! ./tmp36.json */ "./src/lib/bw-circuit-ui/parts-data/tmp36.json");
-/* harmony import */ var _tms9918_json__WEBPACK_IMPORTED_MODULE_225__ = __webpack_require__(/*! ./tms9918.json */ "./src/lib/bw-circuit-ui/parts-data/tms9918.json");
-/* harmony import */ var _touch_ttp223_json__WEBPACK_IMPORTED_MODULE_226__ = __webpack_require__(/*! ./touch_ttp223.json */ "./src/lib/bw-circuit-ui/parts-data/touch_ttp223.json");
-/* harmony import */ var _ultrasonic_json__WEBPACK_IMPORTED_MODULE_227__ = __webpack_require__(/*! ./ultrasonic.json */ "./src/lib/bw-circuit-ui/parts-data/ultrasonic.json");
-/* harmony import */ var _ultrasonic_3pin_json__WEBPACK_IMPORTED_MODULE_228__ = __webpack_require__(/*! ./ultrasonic_3pin.json */ "./src/lib/bw-circuit-ui/parts-data/ultrasonic_3pin.json");
-/* harmony import */ var _um245r_json__WEBPACK_IMPORTED_MODULE_229__ = __webpack_require__(/*! ./um245r.json */ "./src/lib/bw-circuit-ui/parts-data/um245r.json");
-/* harmony import */ var _um66t_json__WEBPACK_IMPORTED_MODULE_230__ = __webpack_require__(/*! ./um66t.json */ "./src/lib/bw-circuit-ui/parts-data/um66t.json");
-/* harmony import */ var _usb_a_json__WEBPACK_IMPORTED_MODULE_231__ = __webpack_require__(/*! ./usb_a.json */ "./src/lib/bw-circuit-ui/parts-data/usb_a.json");
-/* harmony import */ var _vcc_json__WEBPACK_IMPORTED_MODULE_232__ = __webpack_require__(/*! ./vcc.json */ "./src/lib/bw-circuit-ui/parts-data/vcc.json");
-/* harmony import */ var _vga_prop_card_json__WEBPACK_IMPORTED_MODULE_233__ = __webpack_require__(/*! ./vga_prop_card.json */ "./src/lib/bw-circuit-ui/parts-data/vga_prop_card.json");
-/* harmony import */ var _vibration_motor_json__WEBPACK_IMPORTED_MODULE_234__ = __webpack_require__(/*! ./vibration_motor.json */ "./src/lib/bw-circuit-ui/parts-data/vibration_motor.json");
-/* harmony import */ var _voltmeter_json__WEBPACK_IMPORTED_MODULE_235__ = __webpack_require__(/*! ./voltmeter.json */ "./src/lib/bw-circuit-ui/parts-data/voltmeter.json");
-/* harmony import */ var _vreg_json__WEBPACK_IMPORTED_MODULE_236__ = __webpack_require__(/*! ./vreg.json */ "./src/lib/bw-circuit-ui/parts-data/vreg.json");
-/* harmony import */ var _vsource_json__WEBPACK_IMPORTED_MODULE_237__ = __webpack_require__(/*! ./vsource.json */ "./src/lib/bw-circuit-ui/parts-data/vsource.json");
-/* harmony import */ var _w65c02_json__WEBPACK_IMPORTED_MODULE_238__ = __webpack_require__(/*! ./w65c02.json */ "./src/lib/bw-circuit-ui/parts-data/w65c02.json");
-/* harmony import */ var _w65c22_json__WEBPACK_IMPORTED_MODULE_239__ = __webpack_require__(/*! ./w65c22.json */ "./src/lib/bw-circuit-ui/parts-data/w65c22.json");
-/* harmony import */ var _w65c51_json__WEBPACK_IMPORTED_MODULE_240__ = __webpack_require__(/*! ./w65c51.json */ "./src/lib/bw-circuit-ui/parts-data/w65c51.json");
-/* harmony import */ var _xpt2046_json__WEBPACK_IMPORTED_MODULE_241__ = __webpack_require__(/*! ./xpt2046.json */ "./src/lib/bw-circuit-ui/parts-data/xpt2046.json");
-/* harmony import */ var _z80_json__WEBPACK_IMPORTED_MODULE_242__ = __webpack_require__(/*! ./z80.json */ "./src/lib/bw-circuit-ui/parts-data/z80.json");
-/* harmony import */ var _ze08_ch2o_json__WEBPACK_IMPORTED_MODULE_243__ = __webpack_require__(/*! ./ze08_ch2o.json */ "./src/lib/bw-circuit-ui/parts-data/ze08_ch2o.json");
-/* harmony import */ var _zener_json__WEBPACK_IMPORTED_MODULE_244__ = __webpack_require__(/*! ./zener.json */ "./src/lib/bw-circuit-ui/parts-data/zener.json");
+/* harmony import */ var _ay8912_json__WEBPACK_IMPORTED_MODULE_57__ = __webpack_require__(/*! ./ay8912.json */ "./src/lib/bw-circuit-ui/parts-data/ay8912.json");
+/* harmony import */ var _bargraph_json__WEBPACK_IMPORTED_MODULE_58__ = __webpack_require__(/*! ./bargraph.json */ "./src/lib/bw-circuit-ui/parts-data/bargraph.json");
+/* harmony import */ var _battery_json__WEBPACK_IMPORTED_MODULE_59__ = __webpack_require__(/*! ./battery.json */ "./src/lib/bw-circuit-ui/parts-data/battery.json");
+/* harmony import */ var _battery_9v_json__WEBPACK_IMPORTED_MODULE_60__ = __webpack_require__(/*! ./battery_9v.json */ "./src/lib/bw-circuit-ui/parts-data/battery_9v.json");
+/* harmony import */ var _battery_aa_json__WEBPACK_IMPORTED_MODULE_61__ = __webpack_require__(/*! ./battery_aa.json */ "./src/lib/bw-circuit-ui/parts-data/battery_aa.json");
+/* harmony import */ var _battery_coin_json__WEBPACK_IMPORTED_MODULE_62__ = __webpack_require__(/*! ./battery_coin.json */ "./src/lib/bw-circuit-ui/parts-data/battery_coin.json");
+/* harmony import */ var _breadboard_full_json__WEBPACK_IMPORTED_MODULE_63__ = __webpack_require__(/*! ./breadboard_full.json */ "./src/lib/bw-circuit-ui/parts-data/breadboard_full.json");
+/* harmony import */ var _breadboard_half_json__WEBPACK_IMPORTED_MODULE_64__ = __webpack_require__(/*! ./breadboard_half.json */ "./src/lib/bw-circuit-ui/parts-data/breadboard_half.json");
+/* harmony import */ var _breadboard_mini_json__WEBPACK_IMPORTED_MODULE_65__ = __webpack_require__(/*! ./breadboard_mini.json */ "./src/lib/bw-circuit-ui/parts-data/breadboard_mini.json");
+/* harmony import */ var _breadboard_psu_json__WEBPACK_IMPORTED_MODULE_66__ = __webpack_require__(/*! ./breadboard_psu.json */ "./src/lib/bw-circuit-ui/parts-data/breadboard_psu.json");
+/* harmony import */ var _button_json__WEBPACK_IMPORTED_MODULE_67__ = __webpack_require__(/*! ./button.json */ "./src/lib/bw-circuit-ui/parts-data/button.json");
+/* harmony import */ var _buzzer_json__WEBPACK_IMPORTED_MODULE_68__ = __webpack_require__(/*! ./buzzer.json */ "./src/lib/bw-circuit-ui/parts-data/buzzer.json");
+/* harmony import */ var _capacitor_json__WEBPACK_IMPORTED_MODULE_69__ = __webpack_require__(/*! ./capacitor.json */ "./src/lib/bw-circuit-ui/parts-data/capacitor.json");
+/* harmony import */ var _cd4017_json__WEBPACK_IMPORTED_MODULE_70__ = __webpack_require__(/*! ./cd4017.json */ "./src/lib/bw-circuit-ui/parts-data/cd4017.json");
+/* harmony import */ var _cd4093_json__WEBPACK_IMPORTED_MODULE_71__ = __webpack_require__(/*! ./cd4093.json */ "./src/lib/bw-circuit-ui/parts-data/cd4093.json");
+/* harmony import */ var _cd4511_json__WEBPACK_IMPORTED_MODULE_72__ = __webpack_require__(/*! ./cd4511.json */ "./src/lib/bw-circuit-ui/parts-data/cd4511.json");
+/* harmony import */ var _cd74hc4067_json__WEBPACK_IMPORTED_MODULE_73__ = __webpack_require__(/*! ./cd74hc4067.json */ "./src/lib/bw-circuit-ui/parts-data/cd74hc4067.json");
+/* harmony import */ var _char_lcd_json__WEBPACK_IMPORTED_MODULE_74__ = __webpack_require__(/*! ./char_lcd.json */ "./src/lib/bw-circuit-ui/parts-data/char_lcd.json");
+/* harmony import */ var _char_lcd_i2c_json__WEBPACK_IMPORTED_MODULE_75__ = __webpack_require__(/*! ./char_lcd_i2c.json */ "./src/lib/bw-circuit-ui/parts-data/char_lcd_i2c.json");
+/* harmony import */ var _clock_display_json__WEBPACK_IMPORTED_MODULE_76__ = __webpack_require__(/*! ./clock_display.json */ "./src/lib/bw-circuit-ui/parts-data/clock_display.json");
+/* harmony import */ var _darlington_driver_json__WEBPACK_IMPORTED_MODULE_77__ = __webpack_require__(/*! ./darlington_driver.json */ "./src/lib/bw-circuit-ui/parts-data/darlington_driver.json");
+/* harmony import */ var _dc_motor_json__WEBPACK_IMPORTED_MODULE_78__ = __webpack_require__(/*! ./dc_motor.json */ "./src/lib/bw-circuit-ui/parts-data/dc_motor.json");
+/* harmony import */ var _dc_motor_encoder_json__WEBPACK_IMPORTED_MODULE_79__ = __webpack_require__(/*! ./dc_motor_encoder.json */ "./src/lib/bw-circuit-ui/parts-data/dc_motor_encoder.json");
+/* harmony import */ var _decade_counter_json__WEBPACK_IMPORTED_MODULE_80__ = __webpack_require__(/*! ./decade_counter.json */ "./src/lib/bw-circuit-ui/parts-data/decade_counter.json");
+/* harmony import */ var _dff_json__WEBPACK_IMPORTED_MODULE_81__ = __webpack_require__(/*! ./dff.json */ "./src/lib/bw-circuit-ui/parts-data/dff.json");
+/* harmony import */ var _dfplayer_mini_json__WEBPACK_IMPORTED_MODULE_82__ = __webpack_require__(/*! ./dfplayer_mini.json */ "./src/lib/bw-circuit-ui/parts-data/dfplayer_mini.json");
+/* harmony import */ var _dht11_json__WEBPACK_IMPORTED_MODULE_83__ = __webpack_require__(/*! ./dht11.json */ "./src/lib/bw-circuit-ui/parts-data/dht11.json");
+/* harmony import */ var _dht22_json__WEBPACK_IMPORTED_MODULE_84__ = __webpack_require__(/*! ./dht22.json */ "./src/lib/bw-circuit-ui/parts-data/dht22.json");
+/* harmony import */ var _diode_json__WEBPACK_IMPORTED_MODULE_85__ = __webpack_require__(/*! ./diode.json */ "./src/lib/bw-circuit-ui/parts-data/diode.json");
+/* harmony import */ var _dip_switch_json__WEBPACK_IMPORTED_MODULE_86__ = __webpack_require__(/*! ./dip_switch.json */ "./src/lib/bw-circuit-ui/parts-data/dip_switch.json");
+/* harmony import */ var _dip_switch_dpst_json__WEBPACK_IMPORTED_MODULE_87__ = __webpack_require__(/*! ./dip_switch_dpst.json */ "./src/lib/bw-circuit-ui/parts-data/dip_switch_dpst.json");
+/* harmony import */ var _dip_switch_spst_json__WEBPACK_IMPORTED_MODULE_88__ = __webpack_require__(/*! ./dip_switch_spst.json */ "./src/lib/bw-circuit-ui/parts-data/dip_switch_spst.json");
+/* harmony import */ var _ds1302_json__WEBPACK_IMPORTED_MODULE_89__ = __webpack_require__(/*! ./ds1302.json */ "./src/lib/bw-circuit-ui/parts-data/ds1302.json");
+/* harmony import */ var _ds18b20_json__WEBPACK_IMPORTED_MODULE_90__ = __webpack_require__(/*! ./ds18b20.json */ "./src/lib/bw-circuit-ui/parts-data/ds18b20.json");
+/* harmony import */ var _ds3231_json__WEBPACK_IMPORTED_MODULE_91__ = __webpack_require__(/*! ./ds3231.json */ "./src/lib/bw-circuit-ui/parts-data/ds3231.json");
+/* harmony import */ var _eater6502_json__WEBPACK_IMPORTED_MODULE_92__ = __webpack_require__(/*! ./eater6502.json */ "./src/lib/bw-circuit-ui/parts-data/eater6502.json");
+/* harmony import */ var _eeprom_json__WEBPACK_IMPORTED_MODULE_93__ = __webpack_require__(/*! ./eeprom.json */ "./src/lib/bw-circuit-ui/parts-data/eeprom.json");
+/* harmony import */ var _flame_sensor_json__WEBPACK_IMPORTED_MODULE_94__ = __webpack_require__(/*! ./flame_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/flame_sensor.json");
+/* harmony import */ var _flex_sensor_json__WEBPACK_IMPORTED_MODULE_95__ = __webpack_require__(/*! ./flex_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/flex_sensor.json");
+/* harmony import */ var _force_sensor_json__WEBPACK_IMPORTED_MODULE_96__ = __webpack_require__(/*! ./force_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/force_sensor.json");
+/* harmony import */ var _function_gen_json__WEBPACK_IMPORTED_MODULE_97__ = __webpack_require__(/*! ./function_gen.json */ "./src/lib/bw-circuit-ui/parts-data/function_gen.json");
+/* harmony import */ var _fuse_json__WEBPACK_IMPORTED_MODULE_98__ = __webpack_require__(/*! ./fuse.json */ "./src/lib/bw-circuit-ui/parts-data/fuse.json");
+/* harmony import */ var _gas_sensor_json__WEBPACK_IMPORTED_MODULE_99__ = __webpack_require__(/*! ./gas_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/gas_sensor.json");
+/* harmony import */ var _gearmotor_json__WEBPACK_IMPORTED_MODULE_100__ = __webpack_require__(/*! ./gearmotor.json */ "./src/lib/bw-circuit-ui/parts-data/gearmotor.json");
+/* harmony import */ var _gnd_json__WEBPACK_IMPORTED_MODULE_101__ = __webpack_require__(/*! ./gnd.json */ "./src/lib/bw-circuit-ui/parts-data/gnd.json");
+/* harmony import */ var _h_bridge_json__WEBPACK_IMPORTED_MODULE_102__ = __webpack_require__(/*! ./h_bridge.json */ "./src/lib/bw-circuit-ui/parts-data/h_bridge.json");
+/* harmony import */ var _hall_analog_json__WEBPACK_IMPORTED_MODULE_103__ = __webpack_require__(/*! ./hall_analog.json */ "./src/lib/bw-circuit-ui/parts-data/hall_analog.json");
+/* harmony import */ var _hall_digital_json__WEBPACK_IMPORTED_MODULE_104__ = __webpack_require__(/*! ./hall_digital.json */ "./src/lib/bw-circuit-ui/parts-data/hall_digital.json");
+/* harmony import */ var _hc05_json__WEBPACK_IMPORTED_MODULE_105__ = __webpack_require__(/*! ./hc05.json */ "./src/lib/bw-circuit-ui/parts-data/hc05.json");
+/* harmony import */ var _hd44780_json__WEBPACK_IMPORTED_MODULE_106__ = __webpack_require__(/*! ./hd44780.json */ "./src/lib/bw-circuit-ui/parts-data/hd44780.json");
+/* harmony import */ var _header_json__WEBPACK_IMPORTED_MODULE_107__ = __webpack_require__(/*! ./header.json */ "./src/lib/bw-circuit-ui/parts-data/header.json");
+/* harmony import */ var _heartbeat_json__WEBPACK_IMPORTED_MODULE_108__ = __webpack_require__(/*! ./heartbeat.json */ "./src/lib/bw-circuit-ui/parts-data/heartbeat.json");
+/* harmony import */ var _hx711_json__WEBPACK_IMPORTED_MODULE_109__ = __webpack_require__(/*! ./hx711.json */ "./src/lib/bw-circuit-ui/parts-data/hx711.json");
+/* harmony import */ var _ili9341_json__WEBPACK_IMPORTED_MODULE_110__ = __webpack_require__(/*! ./ili9341.json */ "./src/lib/bw-circuit-ui/parts-data/ili9341.json");
+/* harmony import */ var _ili9341_par_json__WEBPACK_IMPORTED_MODULE_111__ = __webpack_require__(/*! ./ili9341_par.json */ "./src/lib/bw-circuit-ui/parts-data/ili9341_par.json");
+/* harmony import */ var _ili9341_parallel_json__WEBPACK_IMPORTED_MODULE_112__ = __webpack_require__(/*! ./ili9341_parallel.json */ "./src/lib/bw-circuit-ui/parts-data/ili9341_parallel.json");
+/* harmony import */ var _inductor_json__WEBPACK_IMPORTED_MODULE_113__ = __webpack_require__(/*! ./inductor.json */ "./src/lib/bw-circuit-ui/parts-data/inductor.json");
+/* harmony import */ var _ir_receiver_json__WEBPACK_IMPORTED_MODULE_114__ = __webpack_require__(/*! ./ir_receiver.json */ "./src/lib/bw-circuit-ui/parts-data/ir_receiver.json");
+/* harmony import */ var _ir_reflect_json__WEBPACK_IMPORTED_MODULE_115__ = __webpack_require__(/*! ./ir_reflect.json */ "./src/lib/bw-circuit-ui/parts-data/ir_reflect.json");
+/* harmony import */ var _ir_remote_json__WEBPACK_IMPORTED_MODULE_116__ = __webpack_require__(/*! ./ir_remote.json */ "./src/lib/bw-circuit-ui/parts-data/ir_remote.json");
+/* harmony import */ var _ir_transmitter_json__WEBPACK_IMPORTED_MODULE_117__ = __webpack_require__(/*! ./ir_transmitter.json */ "./src/lib/bw-circuit-ui/parts-data/ir_transmitter.json");
+/* harmony import */ var _isd1820_json__WEBPACK_IMPORTED_MODULE_118__ = __webpack_require__(/*! ./isd1820.json */ "./src/lib/bw-circuit-ui/parts-data/isd1820.json");
+/* harmony import */ var _isource_json__WEBPACK_IMPORTED_MODULE_119__ = __webpack_require__(/*! ./isource.json */ "./src/lib/bw-circuit-ui/parts-data/isource.json");
+/* harmony import */ var _jkff_json__WEBPACK_IMPORTED_MODULE_120__ = __webpack_require__(/*! ./jkff.json */ "./src/lib/bw-circuit-ui/parts-data/jkff.json");
+/* harmony import */ var _joystick_json__WEBPACK_IMPORTED_MODULE_121__ = __webpack_require__(/*! ./joystick.json */ "./src/lib/bw-circuit-ui/parts-data/joystick.json");
+/* harmony import */ var _kd9561_json__WEBPACK_IMPORTED_MODULE_122__ = __webpack_require__(/*! ./kd9561.json */ "./src/lib/bw-circuit-ui/parts-data/kd9561.json");
+/* harmony import */ var _keypad_4x4_json__WEBPACK_IMPORTED_MODULE_123__ = __webpack_require__(/*! ./keypad_4x4.json */ "./src/lib/bw-circuit-ui/parts-data/keypad_4x4.json");
+/* harmony import */ var _ky002_json__WEBPACK_IMPORTED_MODULE_124__ = __webpack_require__(/*! ./ky002.json */ "./src/lib/bw-circuit-ui/parts-data/ky002.json");
+/* harmony import */ var _ky040_json__WEBPACK_IMPORTED_MODULE_125__ = __webpack_require__(/*! ./ky040.json */ "./src/lib/bw-circuit-ui/parts-data/ky040.json");
+/* harmony import */ var _l293d_json__WEBPACK_IMPORTED_MODULE_126__ = __webpack_require__(/*! ./l293d.json */ "./src/lib/bw-circuit-ui/parts-data/l293d.json");
+/* harmony import */ var _ld1117v33_json__WEBPACK_IMPORTED_MODULE_127__ = __webpack_require__(/*! ./ld1117v33.json */ "./src/lib/bw-circuit-ui/parts-data/ld1117v33.json");
+/* harmony import */ var _ldr_json__WEBPACK_IMPORTED_MODULE_128__ = __webpack_require__(/*! ./ldr.json */ "./src/lib/bw-circuit-ui/parts-data/ldr.json");
+/* harmony import */ var _led_json__WEBPACK_IMPORTED_MODULE_129__ = __webpack_require__(/*! ./led.json */ "./src/lib/bw-circuit-ui/parts-data/led.json");
+/* harmony import */ var _led_7color_json__WEBPACK_IMPORTED_MODULE_130__ = __webpack_require__(/*! ./led_7color.json */ "./src/lib/bw-circuit-ui/parts-data/led_7color.json");
+/* harmony import */ var _led_cube_json__WEBPACK_IMPORTED_MODULE_131__ = __webpack_require__(/*! ./led_cube.json */ "./src/lib/bw-circuit-ui/parts-data/led_cube.json");
+/* harmony import */ var _led_matrix_json__WEBPACK_IMPORTED_MODULE_132__ = __webpack_require__(/*! ./led_matrix.json */ "./src/lib/bw-circuit-ui/parts-data/led_matrix.json");
+/* harmony import */ var _lemon_battery_json__WEBPACK_IMPORTED_MODULE_133__ = __webpack_require__(/*! ./lemon_battery.json */ "./src/lib/bw-circuit-ui/parts-data/lemon_battery.json");
+/* harmony import */ var _level_shifter4_json__WEBPACK_IMPORTED_MODULE_134__ = __webpack_require__(/*! ./level_shifter4.json */ "./src/lib/bw-circuit-ui/parts-data/level_shifter4.json");
+/* harmony import */ var _light_bulb_json__WEBPACK_IMPORTED_MODULE_135__ = __webpack_require__(/*! ./light_bulb.json */ "./src/lib/bw-circuit-ui/parts-data/light_bulb.json");
+/* harmony import */ var _light_sensor_json__WEBPACK_IMPORTED_MODULE_136__ = __webpack_require__(/*! ./light_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/light_sensor.json");
+/* harmony import */ var _lm339_json__WEBPACK_IMPORTED_MODULE_137__ = __webpack_require__(/*! ./lm339.json */ "./src/lib/bw-circuit-ui/parts-data/lm339.json");
+/* harmony import */ var _lm358_json__WEBPACK_IMPORTED_MODULE_138__ = __webpack_require__(/*! ./lm358.json */ "./src/lib/bw-circuit-ui/parts-data/lm358.json");
+/* harmony import */ var _lm3915_json__WEBPACK_IMPORTED_MODULE_139__ = __webpack_require__(/*! ./lm3915.json */ "./src/lib/bw-circuit-ui/parts-data/lm3915.json");
+/* harmony import */ var _lm393_json__WEBPACK_IMPORTED_MODULE_140__ = __webpack_require__(/*! ./lm393.json */ "./src/lib/bw-circuit-ui/parts-data/lm393.json");
+/* harmony import */ var _lm7805_json__WEBPACK_IMPORTED_MODULE_141__ = __webpack_require__(/*! ./lm7805.json */ "./src/lib/bw-circuit-ui/parts-data/lm7805.json");
+/* harmony import */ var _logic_probe_json__WEBPACK_IMPORTED_MODULE_142__ = __webpack_require__(/*! ./logic_probe.json */ "./src/lib/bw-circuit-ui/parts-data/logic_probe.json");
+/* harmony import */ var _m6532_json__WEBPACK_IMPORTED_MODULE_143__ = __webpack_require__(/*! ./m6532.json */ "./src/lib/bw-circuit-ui/parts-data/m6532.json");
+/* harmony import */ var _matrix16x8_json__WEBPACK_IMPORTED_MODULE_144__ = __webpack_require__(/*! ./matrix16x8.json */ "./src/lib/bw-circuit-ui/parts-data/matrix16x8.json");
+/* harmony import */ var _matrix8x8_json__WEBPACK_IMPORTED_MODULE_145__ = __webpack_require__(/*! ./matrix8x8.json */ "./src/lib/bw-circuit-ui/parts-data/matrix8x8.json");
+/* harmony import */ var _matrix9x9_json__WEBPACK_IMPORTED_MODULE_146__ = __webpack_require__(/*! ./matrix9x9.json */ "./src/lib/bw-circuit-ui/parts-data/matrix9x9.json");
+/* harmony import */ var _max232_json__WEBPACK_IMPORTED_MODULE_147__ = __webpack_require__(/*! ./max232.json */ "./src/lib/bw-circuit-ui/parts-data/max232.json");
+/* harmony import */ var _max7219_json__WEBPACK_IMPORTED_MODULE_148__ = __webpack_require__(/*! ./max7219.json */ "./src/lib/bw-circuit-ui/parts-data/max7219.json");
+/* harmony import */ var _mc6845_json__WEBPACK_IMPORTED_MODULE_149__ = __webpack_require__(/*! ./mc6845.json */ "./src/lib/bw-circuit-ui/parts-data/mc6845.json");
+/* harmony import */ var _mc6850_json__WEBPACK_IMPORTED_MODULE_150__ = __webpack_require__(/*! ./mc6850.json */ "./src/lib/bw-circuit-ui/parts-data/mc6850.json");
+/* harmony import */ var _mcp3008_json__WEBPACK_IMPORTED_MODULE_151__ = __webpack_require__(/*! ./mcp3008.json */ "./src/lib/bw-circuit-ui/parts-data/mcp3008.json");
+/* harmony import */ var _mcp4725_json__WEBPACK_IMPORTED_MODULE_152__ = __webpack_require__(/*! ./mcp4725.json */ "./src/lib/bw-circuit-ui/parts-data/mcp4725.json");
+/* harmony import */ var _mcu_json__WEBPACK_IMPORTED_MODULE_153__ = __webpack_require__(/*! ./mcu.json */ "./src/lib/bw-circuit-ui/parts-data/mcu.json");
+/* harmony import */ var _memsic2125_json__WEBPACK_IMPORTED_MODULE_154__ = __webpack_require__(/*! ./memsic2125.json */ "./src/lib/bw-circuit-ui/parts-data/memsic2125.json");
+/* harmony import */ var _microbit_json__WEBPACK_IMPORTED_MODULE_155__ = __webpack_require__(/*! ./microbit.json */ "./src/lib/bw-circuit-ui/parts-data/microbit.json");
+/* harmony import */ var _microbit_breakout_json__WEBPACK_IMPORTED_MODULE_156__ = __webpack_require__(/*! ./microbit_breakout.json */ "./src/lib/bw-circuit-ui/parts-data/microbit_breakout.json");
+/* harmony import */ var _mos6532_json__WEBPACK_IMPORTED_MODULE_157__ = __webpack_require__(/*! ./mos6532.json */ "./src/lib/bw-circuit-ui/parts-data/mos6532.json");
+/* harmony import */ var _mpu6050_json__WEBPACK_IMPORTED_MODULE_158__ = __webpack_require__(/*! ./mpu6050.json */ "./src/lib/bw-circuit-ui/parts-data/mpu6050.json");
+/* harmony import */ var _msgeq7_json__WEBPACK_IMPORTED_MODULE_159__ = __webpack_require__(/*! ./msgeq7.json */ "./src/lib/bw-circuit-ui/parts-data/msgeq7.json");
+/* harmony import */ var _multimeter_json__WEBPACK_IMPORTED_MODULE_160__ = __webpack_require__(/*! ./multimeter.json */ "./src/lib/bw-circuit-ui/parts-data/multimeter.json");
+/* harmony import */ var _neopixel_json__WEBPACK_IMPORTED_MODULE_161__ = __webpack_require__(/*! ./neopixel.json */ "./src/lib/bw-circuit-ui/parts-data/neopixel.json");
+/* harmony import */ var _neopixel_jewel_json__WEBPACK_IMPORTED_MODULE_162__ = __webpack_require__(/*! ./neopixel_jewel.json */ "./src/lib/bw-circuit-ui/parts-data/neopixel_jewel.json");
+/* harmony import */ var _neopixel_ring_json__WEBPACK_IMPORTED_MODULE_163__ = __webpack_require__(/*! ./neopixel_ring.json */ "./src/lib/bw-circuit-ui/parts-data/neopixel_ring.json");
+/* harmony import */ var _neopixel_strip_json__WEBPACK_IMPORTED_MODULE_164__ = __webpack_require__(/*! ./neopixel_strip.json */ "./src/lib/bw-circuit-ui/parts-data/neopixel_strip.json");
+/* harmony import */ var _nmos_json__WEBPACK_IMPORTED_MODULE_165__ = __webpack_require__(/*! ./nmos.json */ "./src/lib/bw-circuit-ui/parts-data/nmos.json");
+/* harmony import */ var _nmos_power_json__WEBPACK_IMPORTED_MODULE_166__ = __webpack_require__(/*! ./nmos_power.json */ "./src/lib/bw-circuit-ui/parts-data/nmos_power.json");
+/* harmony import */ var _npn_json__WEBPACK_IMPORTED_MODULE_167__ = __webpack_require__(/*! ./npn.json */ "./src/lib/bw-circuit-ui/parts-data/npn.json");
+/* harmony import */ var _nrf24l01_json__WEBPACK_IMPORTED_MODULE_168__ = __webpack_require__(/*! ./nrf24l01.json */ "./src/lib/bw-circuit-ui/parts-data/nrf24l01.json");
+/* harmony import */ var _ns16c550_json__WEBPACK_IMPORTED_MODULE_169__ = __webpack_require__(/*! ./ns16c550.json */ "./src/lib/bw-circuit-ui/parts-data/ns16c550.json");
+/* harmony import */ var _ntc_json__WEBPACK_IMPORTED_MODULE_170__ = __webpack_require__(/*! ./ntc.json */ "./src/lib/bw-circuit-ui/parts-data/ntc.json");
+/* harmony import */ var _opamp_json__WEBPACK_IMPORTED_MODULE_171__ = __webpack_require__(/*! ./opamp.json */ "./src/lib/bw-circuit-ui/parts-data/opamp.json");
+/* harmony import */ var _optocoupler_json__WEBPACK_IMPORTED_MODULE_172__ = __webpack_require__(/*! ./optocoupler.json */ "./src/lib/bw-circuit-ui/parts-data/optocoupler.json");
+/* harmony import */ var _osc_can_json__WEBPACK_IMPORTED_MODULE_173__ = __webpack_require__(/*! ./osc_can.json */ "./src/lib/bw-circuit-ui/parts-data/osc_can.json");
+/* harmony import */ var _oscilloscope_json__WEBPACK_IMPORTED_MODULE_174__ = __webpack_require__(/*! ./oscilloscope.json */ "./src/lib/bw-circuit-ui/parts-data/oscilloscope.json");
+/* harmony import */ var _pcf8574_json__WEBPACK_IMPORTED_MODULE_175__ = __webpack_require__(/*! ./pcf8574.json */ "./src/lib/bw-circuit-ui/parts-data/pcf8574.json");
+/* harmony import */ var _photo_interrupter_json__WEBPACK_IMPORTED_MODULE_176__ = __webpack_require__(/*! ./photo_interrupter.json */ "./src/lib/bw-circuit-ui/parts-data/photo_interrupter.json");
+/* harmony import */ var _photodiode_json__WEBPACK_IMPORTED_MODULE_177__ = __webpack_require__(/*! ./photodiode.json */ "./src/lib/bw-circuit-ui/parts-data/photodiode.json");
+/* harmony import */ var _phototransistor_json__WEBPACK_IMPORTED_MODULE_178__ = __webpack_require__(/*! ./phototransistor.json */ "./src/lib/bw-circuit-ui/parts-data/phototransistor.json");
+/* harmony import */ var _pi_pico_json__WEBPACK_IMPORTED_MODULE_179__ = __webpack_require__(/*! ./pi_pico.json */ "./src/lib/bw-circuit-ui/parts-data/pi_pico.json");
+/* harmony import */ var _piezo_json__WEBPACK_IMPORTED_MODULE_180__ = __webpack_require__(/*! ./piezo.json */ "./src/lib/bw-circuit-ui/parts-data/piezo.json");
+/* harmony import */ var _pir_json__WEBPACK_IMPORTED_MODULE_181__ = __webpack_require__(/*! ./pir.json */ "./src/lib/bw-circuit-ui/parts-data/pir.json");
+/* harmony import */ var _pmos_json__WEBPACK_IMPORTED_MODULE_182__ = __webpack_require__(/*! ./pmos.json */ "./src/lib/bw-circuit-ui/parts-data/pmos.json");
+/* harmony import */ var _pmos_power_json__WEBPACK_IMPORTED_MODULE_183__ = __webpack_require__(/*! ./pmos_power.json */ "./src/lib/bw-circuit-ui/parts-data/pmos_power.json");
+/* harmony import */ var _pnp_json__WEBPACK_IMPORTED_MODULE_184__ = __webpack_require__(/*! ./pnp.json */ "./src/lib/bw-circuit-ui/parts-data/pnp.json");
+/* harmony import */ var _polarized_cap_json__WEBPACK_IMPORTED_MODULE_185__ = __webpack_require__(/*! ./polarized_cap.json */ "./src/lib/bw-circuit-ui/parts-data/polarized_cap.json");
+/* harmony import */ var _pololu_motor_ctrl_json__WEBPACK_IMPORTED_MODULE_186__ = __webpack_require__(/*! ./pololu_motor_ctrl.json */ "./src/lib/bw-circuit-ui/parts-data/pololu_motor_ctrl.json");
+/* harmony import */ var _potato_battery_json__WEBPACK_IMPORTED_MODULE_187__ = __webpack_require__(/*! ./potato_battery.json */ "./src/lib/bw-circuit-ui/parts-data/potato_battery.json");
+/* harmony import */ var _potentiometer_json__WEBPACK_IMPORTED_MODULE_188__ = __webpack_require__(/*! ./potentiometer.json */ "./src/lib/bw-circuit-ui/parts-data/potentiometer.json");
+/* harmony import */ var _r6507_json__WEBPACK_IMPORTED_MODULE_189__ = __webpack_require__(/*! ./r6507.json */ "./src/lib/bw-circuit-ui/parts-data/r6507.json");
+/* harmony import */ var _reed_switch_json__WEBPACK_IMPORTED_MODULE_190__ = __webpack_require__(/*! ./reed_switch.json */ "./src/lib/bw-circuit-ui/parts-data/reed_switch.json");
+/* harmony import */ var _relay_json__WEBPACK_IMPORTED_MODULE_191__ = __webpack_require__(/*! ./relay.json */ "./src/lib/bw-circuit-ui/parts-data/relay.json");
+/* harmony import */ var _relay_dpdt_json__WEBPACK_IMPORTED_MODULE_192__ = __webpack_require__(/*! ./relay_dpdt.json */ "./src/lib/bw-circuit-ui/parts-data/relay_dpdt.json");
+/* harmony import */ var _resistor_json__WEBPACK_IMPORTED_MODULE_193__ = __webpack_require__(/*! ./resistor.json */ "./src/lib/bw-circuit-ui/parts-data/resistor.json");
+/* harmony import */ var _rf433_rx_json__WEBPACK_IMPORTED_MODULE_194__ = __webpack_require__(/*! ./rf433_rx.json */ "./src/lib/bw-circuit-ui/parts-data/rf433_rx.json");
+/* harmony import */ var _rf433_tx_json__WEBPACK_IMPORTED_MODULE_195__ = __webpack_require__(/*! ./rf433_tx.json */ "./src/lib/bw-circuit-ui/parts-data/rf433_tx.json");
+/* harmony import */ var _rgb_led_json__WEBPACK_IMPORTED_MODULE_196__ = __webpack_require__(/*! ./rgb_led.json */ "./src/lib/bw-circuit-ui/parts-data/rgb_led.json");
+/* harmony import */ var _rnet_sip_json__WEBPACK_IMPORTED_MODULE_197__ = __webpack_require__(/*! ./rnet_sip.json */ "./src/lib/bw-circuit-ui/parts-data/rnet_sip.json");
+/* harmony import */ var _servo_json__WEBPACK_IMPORTED_MODULE_198__ = __webpack_require__(/*! ./servo.json */ "./src/lib/bw-circuit-ui/parts-data/servo.json");
+/* harmony import */ var _seven_seg_3_json__WEBPACK_IMPORTED_MODULE_199__ = __webpack_require__(/*! ./seven_seg_3.json */ "./src/lib/bw-circuit-ui/parts-data/seven_seg_3.json");
+/* harmony import */ var _seven_seg_4_json__WEBPACK_IMPORTED_MODULE_200__ = __webpack_require__(/*! ./seven_seg_4.json */ "./src/lib/bw-circuit-ui/parts-data/seven_seg_4.json");
+/* harmony import */ var _seven_segment_json__WEBPACK_IMPORTED_MODULE_201__ = __webpack_require__(/*! ./seven_segment.json */ "./src/lib/bw-circuit-ui/parts-data/seven_segment.json");
+/* harmony import */ var _simplevga_card_json__WEBPACK_IMPORTED_MODULE_202__ = __webpack_require__(/*! ./simplevga_card.json */ "./src/lib/bw-circuit-ui/parts-data/simplevga_card.json");
+/* harmony import */ var _slide_switch_json__WEBPACK_IMPORTED_MODULE_203__ = __webpack_require__(/*! ./slide_switch.json */ "./src/lib/bw-circuit-ui/parts-data/slide_switch.json");
+/* harmony import */ var _soil_moisture_json__WEBPACK_IMPORTED_MODULE_204__ = __webpack_require__(/*! ./soil_moisture.json */ "./src/lib/bw-circuit-ui/parts-data/soil_moisture.json");
+/* harmony import */ var _solar_cell_json__WEBPACK_IMPORTED_MODULE_205__ = __webpack_require__(/*! ./solar_cell.json */ "./src/lib/bw-circuit-ui/parts-data/solar_cell.json");
+/* harmony import */ var _solenoid_json__WEBPACK_IMPORTED_MODULE_206__ = __webpack_require__(/*! ./solenoid.json */ "./src/lib/bw-circuit-ui/parts-data/solenoid.json");
+/* harmony import */ var _sound_module_json__WEBPACK_IMPORTED_MODULE_207__ = __webpack_require__(/*! ./sound_module.json */ "./src/lib/bw-circuit-ui/parts-data/sound_module.json");
+/* harmony import */ var _spectrum_display_json__WEBPACK_IMPORTED_MODULE_208__ = __webpack_require__(/*! ./spectrum_display.json */ "./src/lib/bw-circuit-ui/parts-data/spectrum_display.json");
+/* harmony import */ var _ssd1306_json__WEBPACK_IMPORTED_MODULE_209__ = __webpack_require__(/*! ./ssd1306.json */ "./src/lib/bw-circuit-ui/parts-data/ssd1306.json");
+/* harmony import */ var _st7920_json__WEBPACK_IMPORTED_MODULE_210__ = __webpack_require__(/*! ./st7920.json */ "./src/lib/bw-circuit-ui/parts-data/st7920.json");
+/* harmony import */ var _stc15_mcu_json__WEBPACK_IMPORTED_MODULE_211__ = __webpack_require__(/*! ./stc15_mcu.json */ "./src/lib/bw-circuit-ui/parts-data/stc15_mcu.json");
+/* harmony import */ var _stc_mcu_json__WEBPACK_IMPORTED_MODULE_212__ = __webpack_require__(/*! ./stc_mcu.json */ "./src/lib/bw-circuit-ui/parts-data/stc_mcu.json");
+/* harmony import */ var _stepper_json__WEBPACK_IMPORTED_MODULE_213__ = __webpack_require__(/*! ./stepper.json */ "./src/lib/bw-circuit-ui/parts-data/stepper.json");
+/* harmony import */ var _switch_json__WEBPACK_IMPORTED_MODULE_214__ = __webpack_require__(/*! ./switch.json */ "./src/lib/bw-circuit-ui/parts-data/switch.json");
+/* harmony import */ var _tcs3200_json__WEBPACK_IMPORTED_MODULE_215__ = __webpack_require__(/*! ./tcs3200.json */ "./src/lib/bw-circuit-ui/parts-data/tcs3200.json");
+/* harmony import */ var _temp_sensor_json__WEBPACK_IMPORTED_MODULE_216__ = __webpack_require__(/*! ./temp_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/temp_sensor.json");
+/* harmony import */ var _tilevga_json__WEBPACK_IMPORTED_MODULE_217__ = __webpack_require__(/*! ./tilevga.json */ "./src/lib/bw-circuit-ui/parts-data/tilevga.json");
+/* harmony import */ var _tilt_sensor_json__WEBPACK_IMPORTED_MODULE_218__ = __webpack_require__(/*! ./tilt_sensor.json */ "./src/lib/bw-circuit-ui/parts-data/tilt_sensor.json");
+/* harmony import */ var _tilt_switch_json__WEBPACK_IMPORTED_MODULE_219__ = __webpack_require__(/*! ./tilt_switch.json */ "./src/lib/bw-circuit-ui/parts-data/tilt_switch.json");
+/* harmony import */ var _tilt_switch_v2_json__WEBPACK_IMPORTED_MODULE_220__ = __webpack_require__(/*! ./tilt_switch_v2.json */ "./src/lib/bw-circuit-ui/parts-data/tilt_switch_v2.json");
+/* harmony import */ var _timer_555_json__WEBPACK_IMPORTED_MODULE_221__ = __webpack_require__(/*! ./timer_555.json */ "./src/lib/bw-circuit-ui/parts-data/timer_555.json");
+/* harmony import */ var _timer_556_json__WEBPACK_IMPORTED_MODULE_222__ = __webpack_require__(/*! ./timer_556.json */ "./src/lib/bw-circuit-ui/parts-data/timer_556.json");
+/* harmony import */ var _tip120_json__WEBPACK_IMPORTED_MODULE_223__ = __webpack_require__(/*! ./tip120.json */ "./src/lib/bw-circuit-ui/parts-data/tip120.json");
+/* harmony import */ var _tm1637_json__WEBPACK_IMPORTED_MODULE_224__ = __webpack_require__(/*! ./tm1637.json */ "./src/lib/bw-circuit-ui/parts-data/tm1637.json");
+/* harmony import */ var _tmp36_json__WEBPACK_IMPORTED_MODULE_225__ = __webpack_require__(/*! ./tmp36.json */ "./src/lib/bw-circuit-ui/parts-data/tmp36.json");
+/* harmony import */ var _tms9918_json__WEBPACK_IMPORTED_MODULE_226__ = __webpack_require__(/*! ./tms9918.json */ "./src/lib/bw-circuit-ui/parts-data/tms9918.json");
+/* harmony import */ var _touch_ttp223_json__WEBPACK_IMPORTED_MODULE_227__ = __webpack_require__(/*! ./touch_ttp223.json */ "./src/lib/bw-circuit-ui/parts-data/touch_ttp223.json");
+/* harmony import */ var _ultrasonic_json__WEBPACK_IMPORTED_MODULE_228__ = __webpack_require__(/*! ./ultrasonic.json */ "./src/lib/bw-circuit-ui/parts-data/ultrasonic.json");
+/* harmony import */ var _ultrasonic_3pin_json__WEBPACK_IMPORTED_MODULE_229__ = __webpack_require__(/*! ./ultrasonic_3pin.json */ "./src/lib/bw-circuit-ui/parts-data/ultrasonic_3pin.json");
+/* harmony import */ var _um245r_json__WEBPACK_IMPORTED_MODULE_230__ = __webpack_require__(/*! ./um245r.json */ "./src/lib/bw-circuit-ui/parts-data/um245r.json");
+/* harmony import */ var _um66t_json__WEBPACK_IMPORTED_MODULE_231__ = __webpack_require__(/*! ./um66t.json */ "./src/lib/bw-circuit-ui/parts-data/um66t.json");
+/* harmony import */ var _usb_a_json__WEBPACK_IMPORTED_MODULE_232__ = __webpack_require__(/*! ./usb_a.json */ "./src/lib/bw-circuit-ui/parts-data/usb_a.json");
+/* harmony import */ var _vcc_json__WEBPACK_IMPORTED_MODULE_233__ = __webpack_require__(/*! ./vcc.json */ "./src/lib/bw-circuit-ui/parts-data/vcc.json");
+/* harmony import */ var _vga_prop_card_json__WEBPACK_IMPORTED_MODULE_234__ = __webpack_require__(/*! ./vga_prop_card.json */ "./src/lib/bw-circuit-ui/parts-data/vga_prop_card.json");
+/* harmony import */ var _vibration_motor_json__WEBPACK_IMPORTED_MODULE_235__ = __webpack_require__(/*! ./vibration_motor.json */ "./src/lib/bw-circuit-ui/parts-data/vibration_motor.json");
+/* harmony import */ var _voltmeter_json__WEBPACK_IMPORTED_MODULE_236__ = __webpack_require__(/*! ./voltmeter.json */ "./src/lib/bw-circuit-ui/parts-data/voltmeter.json");
+/* harmony import */ var _vreg_json__WEBPACK_IMPORTED_MODULE_237__ = __webpack_require__(/*! ./vreg.json */ "./src/lib/bw-circuit-ui/parts-data/vreg.json");
+/* harmony import */ var _vsource_json__WEBPACK_IMPORTED_MODULE_238__ = __webpack_require__(/*! ./vsource.json */ "./src/lib/bw-circuit-ui/parts-data/vsource.json");
+/* harmony import */ var _w65c02_json__WEBPACK_IMPORTED_MODULE_239__ = __webpack_require__(/*! ./w65c02.json */ "./src/lib/bw-circuit-ui/parts-data/w65c02.json");
+/* harmony import */ var _w65c22_json__WEBPACK_IMPORTED_MODULE_240__ = __webpack_require__(/*! ./w65c22.json */ "./src/lib/bw-circuit-ui/parts-data/w65c22.json");
+/* harmony import */ var _w65c51_json__WEBPACK_IMPORTED_MODULE_241__ = __webpack_require__(/*! ./w65c51.json */ "./src/lib/bw-circuit-ui/parts-data/w65c51.json");
+/* harmony import */ var _xpt2046_json__WEBPACK_IMPORTED_MODULE_242__ = __webpack_require__(/*! ./xpt2046.json */ "./src/lib/bw-circuit-ui/parts-data/xpt2046.json");
+/* harmony import */ var _z80_json__WEBPACK_IMPORTED_MODULE_243__ = __webpack_require__(/*! ./z80.json */ "./src/lib/bw-circuit-ui/parts-data/z80.json");
+/* harmony import */ var _ze08_ch2o_json__WEBPACK_IMPORTED_MODULE_244__ = __webpack_require__(/*! ./ze08_ch2o.json */ "./src/lib/bw-circuit-ui/parts-data/ze08_ch2o.json");
+/* harmony import */ var _zener_json__WEBPACK_IMPORTED_MODULE_245__ = __webpack_require__(/*! ./zener.json */ "./src/lib/bw-circuit-ui/parts-data/zener.json");
 // GENERATED by scripts/sync-parts-data.mjs - do not edit.
 // Static imports so every bundler can resolve them; no vite-isms here.
 
@@ -43485,7 +43525,8 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-const SIDECARS = [_28c256_json__WEBPACK_IMPORTED_MODULE_0__, _555_json__WEBPACK_IMPORTED_MODULE_1__, _556_json__WEBPACK_IMPORTED_MODULE_2__, _62256_json__WEBPACK_IMPORTED_MODULE_3__, _74c922_json__WEBPACK_IMPORTED_MODULE_4__, _74hc00_json__WEBPACK_IMPORTED_MODULE_5__, _74hc02_json__WEBPACK_IMPORTED_MODULE_6__, _74hc04_json__WEBPACK_IMPORTED_MODULE_7__, _74hc08_json__WEBPACK_IMPORTED_MODULE_8__, _74hc10_json__WEBPACK_IMPORTED_MODULE_9__, _74hc11_json__WEBPACK_IMPORTED_MODULE_10__, _74hc125_json__WEBPACK_IMPORTED_MODULE_11__, _74hc132_json__WEBPACK_IMPORTED_MODULE_12__, _74hc138_json__WEBPACK_IMPORTED_MODULE_13__, _74hc14_json__WEBPACK_IMPORTED_MODULE_14__, _74hc165_json__WEBPACK_IMPORTED_MODULE_15__, _74hc20_json__WEBPACK_IMPORTED_MODULE_16__, _74hc21_json__WEBPACK_IMPORTED_MODULE_17__, _74hc244_json__WEBPACK_IMPORTED_MODULE_18__, _74hc245_json__WEBPACK_IMPORTED_MODULE_19__, _74hc27_json__WEBPACK_IMPORTED_MODULE_20__, _74hc283_json__WEBPACK_IMPORTED_MODULE_21__, _74hc32_json__WEBPACK_IMPORTED_MODULE_22__, _74hc34_json__WEBPACK_IMPORTED_MODULE_23__, _74hc373_json__WEBPACK_IMPORTED_MODULE_24__, _74hc374_json__WEBPACK_IMPORTED_MODULE_25__, _74hc4050_json__WEBPACK_IMPORTED_MODULE_26__, _74hc595_json__WEBPACK_IMPORTED_MODULE_27__, _74hc688_json__WEBPACK_IMPORTED_MODULE_28__, _74hc73_json__WEBPACK_IMPORTED_MODULE_29__, _74hc74_json__WEBPACK_IMPORTED_MODULE_30__, _74hc75_json__WEBPACK_IMPORTED_MODULE_31__, _74hc86_json__WEBPACK_IMPORTED_MODULE_32__, _74hc93_json__WEBPACK_IMPORTED_MODULE_33__, _74hc95_json__WEBPACK_IMPORTED_MODULE_34__, _74ls04_json__WEBPACK_IMPORTED_MODULE_35__, _74ls107_json__WEBPACK_IMPORTED_MODULE_36__, _74ls157_json__WEBPACK_IMPORTED_MODULE_37__, _74ls161_json__WEBPACK_IMPORTED_MODULE_38__, _74ls173_json__WEBPACK_IMPORTED_MODULE_39__, _74ls189_json__WEBPACK_IMPORTED_MODULE_40__, _74ls32_json__WEBPACK_IMPORTED_MODULE_41__, _74ls373_json__WEBPACK_IMPORTED_MODULE_42__, _adxl335_json__WEBPACK_IMPORTED_MODULE_43__, _ambient_light_json__WEBPACK_IMPORTED_MODULE_44__, _ammeter_json__WEBPACK_IMPORTED_MODULE_45__, _analog_meter_json__WEBPACK_IMPORTED_MODULE_46__, _arduino_mega_json__WEBPACK_IMPORTED_MODULE_47__, _arduino_nano_json__WEBPACK_IMPORTED_MODULE_48__, _arduino_uno_json__WEBPACK_IMPORTED_MODULE_49__, _at24c02_json__WEBPACK_IMPORTED_MODULE_50__, _at24c64_json__WEBPACK_IMPORTED_MODULE_51__, _at89c2051_json__WEBPACK_IMPORTED_MODULE_52__, _attiny13_json__WEBPACK_IMPORTED_MODULE_53__, _attiny2313_json__WEBPACK_IMPORTED_MODULE_54__, _attiny85_json__WEBPACK_IMPORTED_MODULE_55__, _attiny88_json__WEBPACK_IMPORTED_MODULE_56__, _bargraph_json__WEBPACK_IMPORTED_MODULE_57__, _battery_json__WEBPACK_IMPORTED_MODULE_58__, _battery_9v_json__WEBPACK_IMPORTED_MODULE_59__, _battery_aa_json__WEBPACK_IMPORTED_MODULE_60__, _battery_coin_json__WEBPACK_IMPORTED_MODULE_61__, _breadboard_full_json__WEBPACK_IMPORTED_MODULE_62__, _breadboard_half_json__WEBPACK_IMPORTED_MODULE_63__, _breadboard_mini_json__WEBPACK_IMPORTED_MODULE_64__, _breadboard_psu_json__WEBPACK_IMPORTED_MODULE_65__, _button_json__WEBPACK_IMPORTED_MODULE_66__, _buzzer_json__WEBPACK_IMPORTED_MODULE_67__, _capacitor_json__WEBPACK_IMPORTED_MODULE_68__, _cd4017_json__WEBPACK_IMPORTED_MODULE_69__, _cd4093_json__WEBPACK_IMPORTED_MODULE_70__, _cd4511_json__WEBPACK_IMPORTED_MODULE_71__, _cd74hc4067_json__WEBPACK_IMPORTED_MODULE_72__, _char_lcd_json__WEBPACK_IMPORTED_MODULE_73__, _char_lcd_i2c_json__WEBPACK_IMPORTED_MODULE_74__, _clock_display_json__WEBPACK_IMPORTED_MODULE_75__, _darlington_driver_json__WEBPACK_IMPORTED_MODULE_76__, _dc_motor_json__WEBPACK_IMPORTED_MODULE_77__, _dc_motor_encoder_json__WEBPACK_IMPORTED_MODULE_78__, _decade_counter_json__WEBPACK_IMPORTED_MODULE_79__, _dff_json__WEBPACK_IMPORTED_MODULE_80__, _dfplayer_mini_json__WEBPACK_IMPORTED_MODULE_81__, _dht11_json__WEBPACK_IMPORTED_MODULE_82__, _dht22_json__WEBPACK_IMPORTED_MODULE_83__, _diode_json__WEBPACK_IMPORTED_MODULE_84__, _dip_switch_json__WEBPACK_IMPORTED_MODULE_85__, _dip_switch_dpst_json__WEBPACK_IMPORTED_MODULE_86__, _dip_switch_spst_json__WEBPACK_IMPORTED_MODULE_87__, _ds1302_json__WEBPACK_IMPORTED_MODULE_88__, _ds18b20_json__WEBPACK_IMPORTED_MODULE_89__, _ds3231_json__WEBPACK_IMPORTED_MODULE_90__, _eater6502_json__WEBPACK_IMPORTED_MODULE_91__, _eeprom_json__WEBPACK_IMPORTED_MODULE_92__, _flame_sensor_json__WEBPACK_IMPORTED_MODULE_93__, _flex_sensor_json__WEBPACK_IMPORTED_MODULE_94__, _force_sensor_json__WEBPACK_IMPORTED_MODULE_95__, _function_gen_json__WEBPACK_IMPORTED_MODULE_96__, _fuse_json__WEBPACK_IMPORTED_MODULE_97__, _gas_sensor_json__WEBPACK_IMPORTED_MODULE_98__, _gearmotor_json__WEBPACK_IMPORTED_MODULE_99__, _gnd_json__WEBPACK_IMPORTED_MODULE_100__, _h_bridge_json__WEBPACK_IMPORTED_MODULE_101__, _hall_analog_json__WEBPACK_IMPORTED_MODULE_102__, _hall_digital_json__WEBPACK_IMPORTED_MODULE_103__, _hc05_json__WEBPACK_IMPORTED_MODULE_104__, _hd44780_json__WEBPACK_IMPORTED_MODULE_105__, _header_json__WEBPACK_IMPORTED_MODULE_106__, _heartbeat_json__WEBPACK_IMPORTED_MODULE_107__, _hx711_json__WEBPACK_IMPORTED_MODULE_108__, _ili9341_json__WEBPACK_IMPORTED_MODULE_109__, _ili9341_par_json__WEBPACK_IMPORTED_MODULE_110__, _ili9341_parallel_json__WEBPACK_IMPORTED_MODULE_111__, _inductor_json__WEBPACK_IMPORTED_MODULE_112__, _ir_receiver_json__WEBPACK_IMPORTED_MODULE_113__, _ir_reflect_json__WEBPACK_IMPORTED_MODULE_114__, _ir_remote_json__WEBPACK_IMPORTED_MODULE_115__, _ir_transmitter_json__WEBPACK_IMPORTED_MODULE_116__, _isd1820_json__WEBPACK_IMPORTED_MODULE_117__, _isource_json__WEBPACK_IMPORTED_MODULE_118__, _jkff_json__WEBPACK_IMPORTED_MODULE_119__, _joystick_json__WEBPACK_IMPORTED_MODULE_120__, _kd9561_json__WEBPACK_IMPORTED_MODULE_121__, _keypad_4x4_json__WEBPACK_IMPORTED_MODULE_122__, _ky002_json__WEBPACK_IMPORTED_MODULE_123__, _ky040_json__WEBPACK_IMPORTED_MODULE_124__, _l293d_json__WEBPACK_IMPORTED_MODULE_125__, _ld1117v33_json__WEBPACK_IMPORTED_MODULE_126__, _ldr_json__WEBPACK_IMPORTED_MODULE_127__, _led_json__WEBPACK_IMPORTED_MODULE_128__, _led_7color_json__WEBPACK_IMPORTED_MODULE_129__, _led_cube_json__WEBPACK_IMPORTED_MODULE_130__, _led_matrix_json__WEBPACK_IMPORTED_MODULE_131__, _lemon_battery_json__WEBPACK_IMPORTED_MODULE_132__, _level_shifter4_json__WEBPACK_IMPORTED_MODULE_133__, _light_bulb_json__WEBPACK_IMPORTED_MODULE_134__, _light_sensor_json__WEBPACK_IMPORTED_MODULE_135__, _lm339_json__WEBPACK_IMPORTED_MODULE_136__, _lm358_json__WEBPACK_IMPORTED_MODULE_137__, _lm3915_json__WEBPACK_IMPORTED_MODULE_138__, _lm393_json__WEBPACK_IMPORTED_MODULE_139__, _lm7805_json__WEBPACK_IMPORTED_MODULE_140__, _logic_probe_json__WEBPACK_IMPORTED_MODULE_141__, _m6532_json__WEBPACK_IMPORTED_MODULE_142__, _matrix16x8_json__WEBPACK_IMPORTED_MODULE_143__, _matrix8x8_json__WEBPACK_IMPORTED_MODULE_144__, _matrix9x9_json__WEBPACK_IMPORTED_MODULE_145__, _max232_json__WEBPACK_IMPORTED_MODULE_146__, _max7219_json__WEBPACK_IMPORTED_MODULE_147__, _mc6845_json__WEBPACK_IMPORTED_MODULE_148__, _mc6850_json__WEBPACK_IMPORTED_MODULE_149__, _mcp3008_json__WEBPACK_IMPORTED_MODULE_150__, _mcp4725_json__WEBPACK_IMPORTED_MODULE_151__, _mcu_json__WEBPACK_IMPORTED_MODULE_152__, _memsic2125_json__WEBPACK_IMPORTED_MODULE_153__, _microbit_json__WEBPACK_IMPORTED_MODULE_154__, _microbit_breakout_json__WEBPACK_IMPORTED_MODULE_155__, _mos6532_json__WEBPACK_IMPORTED_MODULE_156__, _mpu6050_json__WEBPACK_IMPORTED_MODULE_157__, _msgeq7_json__WEBPACK_IMPORTED_MODULE_158__, _multimeter_json__WEBPACK_IMPORTED_MODULE_159__, _neopixel_json__WEBPACK_IMPORTED_MODULE_160__, _neopixel_jewel_json__WEBPACK_IMPORTED_MODULE_161__, _neopixel_ring_json__WEBPACK_IMPORTED_MODULE_162__, _neopixel_strip_json__WEBPACK_IMPORTED_MODULE_163__, _nmos_json__WEBPACK_IMPORTED_MODULE_164__, _nmos_power_json__WEBPACK_IMPORTED_MODULE_165__, _npn_json__WEBPACK_IMPORTED_MODULE_166__, _nrf24l01_json__WEBPACK_IMPORTED_MODULE_167__, _ns16c550_json__WEBPACK_IMPORTED_MODULE_168__, _ntc_json__WEBPACK_IMPORTED_MODULE_169__, _opamp_json__WEBPACK_IMPORTED_MODULE_170__, _optocoupler_json__WEBPACK_IMPORTED_MODULE_171__, _osc_can_json__WEBPACK_IMPORTED_MODULE_172__, _oscilloscope_json__WEBPACK_IMPORTED_MODULE_173__, _pcf8574_json__WEBPACK_IMPORTED_MODULE_174__, _photo_interrupter_json__WEBPACK_IMPORTED_MODULE_175__, _photodiode_json__WEBPACK_IMPORTED_MODULE_176__, _phototransistor_json__WEBPACK_IMPORTED_MODULE_177__, _pi_pico_json__WEBPACK_IMPORTED_MODULE_178__, _piezo_json__WEBPACK_IMPORTED_MODULE_179__, _pir_json__WEBPACK_IMPORTED_MODULE_180__, _pmos_json__WEBPACK_IMPORTED_MODULE_181__, _pmos_power_json__WEBPACK_IMPORTED_MODULE_182__, _pnp_json__WEBPACK_IMPORTED_MODULE_183__, _polarized_cap_json__WEBPACK_IMPORTED_MODULE_184__, _pololu_motor_ctrl_json__WEBPACK_IMPORTED_MODULE_185__, _potato_battery_json__WEBPACK_IMPORTED_MODULE_186__, _potentiometer_json__WEBPACK_IMPORTED_MODULE_187__, _r6507_json__WEBPACK_IMPORTED_MODULE_188__, _reed_switch_json__WEBPACK_IMPORTED_MODULE_189__, _relay_json__WEBPACK_IMPORTED_MODULE_190__, _relay_dpdt_json__WEBPACK_IMPORTED_MODULE_191__, _resistor_json__WEBPACK_IMPORTED_MODULE_192__, _rf433_rx_json__WEBPACK_IMPORTED_MODULE_193__, _rf433_tx_json__WEBPACK_IMPORTED_MODULE_194__, _rgb_led_json__WEBPACK_IMPORTED_MODULE_195__, _rnet_sip_json__WEBPACK_IMPORTED_MODULE_196__, _servo_json__WEBPACK_IMPORTED_MODULE_197__, _seven_seg_3_json__WEBPACK_IMPORTED_MODULE_198__, _seven_seg_4_json__WEBPACK_IMPORTED_MODULE_199__, _seven_segment_json__WEBPACK_IMPORTED_MODULE_200__, _simplevga_card_json__WEBPACK_IMPORTED_MODULE_201__, _slide_switch_json__WEBPACK_IMPORTED_MODULE_202__, _soil_moisture_json__WEBPACK_IMPORTED_MODULE_203__, _solar_cell_json__WEBPACK_IMPORTED_MODULE_204__, _solenoid_json__WEBPACK_IMPORTED_MODULE_205__, _sound_module_json__WEBPACK_IMPORTED_MODULE_206__, _spectrum_display_json__WEBPACK_IMPORTED_MODULE_207__, _ssd1306_json__WEBPACK_IMPORTED_MODULE_208__, _st7920_json__WEBPACK_IMPORTED_MODULE_209__, _stc15_mcu_json__WEBPACK_IMPORTED_MODULE_210__, _stc_mcu_json__WEBPACK_IMPORTED_MODULE_211__, _stepper_json__WEBPACK_IMPORTED_MODULE_212__, _switch_json__WEBPACK_IMPORTED_MODULE_213__, _tcs3200_json__WEBPACK_IMPORTED_MODULE_214__, _temp_sensor_json__WEBPACK_IMPORTED_MODULE_215__, _tilevga_json__WEBPACK_IMPORTED_MODULE_216__, _tilt_sensor_json__WEBPACK_IMPORTED_MODULE_217__, _tilt_switch_json__WEBPACK_IMPORTED_MODULE_218__, _tilt_switch_v2_json__WEBPACK_IMPORTED_MODULE_219__, _timer_555_json__WEBPACK_IMPORTED_MODULE_220__, _timer_556_json__WEBPACK_IMPORTED_MODULE_221__, _tip120_json__WEBPACK_IMPORTED_MODULE_222__, _tm1637_json__WEBPACK_IMPORTED_MODULE_223__, _tmp36_json__WEBPACK_IMPORTED_MODULE_224__, _tms9918_json__WEBPACK_IMPORTED_MODULE_225__, _touch_ttp223_json__WEBPACK_IMPORTED_MODULE_226__, _ultrasonic_json__WEBPACK_IMPORTED_MODULE_227__, _ultrasonic_3pin_json__WEBPACK_IMPORTED_MODULE_228__, _um245r_json__WEBPACK_IMPORTED_MODULE_229__, _um66t_json__WEBPACK_IMPORTED_MODULE_230__, _usb_a_json__WEBPACK_IMPORTED_MODULE_231__, _vcc_json__WEBPACK_IMPORTED_MODULE_232__, _vga_prop_card_json__WEBPACK_IMPORTED_MODULE_233__, _vibration_motor_json__WEBPACK_IMPORTED_MODULE_234__, _voltmeter_json__WEBPACK_IMPORTED_MODULE_235__, _vreg_json__WEBPACK_IMPORTED_MODULE_236__, _vsource_json__WEBPACK_IMPORTED_MODULE_237__, _w65c02_json__WEBPACK_IMPORTED_MODULE_238__, _w65c22_json__WEBPACK_IMPORTED_MODULE_239__, _w65c51_json__WEBPACK_IMPORTED_MODULE_240__, _xpt2046_json__WEBPACK_IMPORTED_MODULE_241__, _z80_json__WEBPACK_IMPORTED_MODULE_242__, _ze08_ch2o_json__WEBPACK_IMPORTED_MODULE_243__, _zener_json__WEBPACK_IMPORTED_MODULE_244__];
+
+const SIDECARS = [_28c256_json__WEBPACK_IMPORTED_MODULE_0__, _555_json__WEBPACK_IMPORTED_MODULE_1__, _556_json__WEBPACK_IMPORTED_MODULE_2__, _62256_json__WEBPACK_IMPORTED_MODULE_3__, _74c922_json__WEBPACK_IMPORTED_MODULE_4__, _74hc00_json__WEBPACK_IMPORTED_MODULE_5__, _74hc02_json__WEBPACK_IMPORTED_MODULE_6__, _74hc04_json__WEBPACK_IMPORTED_MODULE_7__, _74hc08_json__WEBPACK_IMPORTED_MODULE_8__, _74hc10_json__WEBPACK_IMPORTED_MODULE_9__, _74hc11_json__WEBPACK_IMPORTED_MODULE_10__, _74hc125_json__WEBPACK_IMPORTED_MODULE_11__, _74hc132_json__WEBPACK_IMPORTED_MODULE_12__, _74hc138_json__WEBPACK_IMPORTED_MODULE_13__, _74hc14_json__WEBPACK_IMPORTED_MODULE_14__, _74hc165_json__WEBPACK_IMPORTED_MODULE_15__, _74hc20_json__WEBPACK_IMPORTED_MODULE_16__, _74hc21_json__WEBPACK_IMPORTED_MODULE_17__, _74hc244_json__WEBPACK_IMPORTED_MODULE_18__, _74hc245_json__WEBPACK_IMPORTED_MODULE_19__, _74hc27_json__WEBPACK_IMPORTED_MODULE_20__, _74hc283_json__WEBPACK_IMPORTED_MODULE_21__, _74hc32_json__WEBPACK_IMPORTED_MODULE_22__, _74hc34_json__WEBPACK_IMPORTED_MODULE_23__, _74hc373_json__WEBPACK_IMPORTED_MODULE_24__, _74hc374_json__WEBPACK_IMPORTED_MODULE_25__, _74hc4050_json__WEBPACK_IMPORTED_MODULE_26__, _74hc595_json__WEBPACK_IMPORTED_MODULE_27__, _74hc688_json__WEBPACK_IMPORTED_MODULE_28__, _74hc73_json__WEBPACK_IMPORTED_MODULE_29__, _74hc74_json__WEBPACK_IMPORTED_MODULE_30__, _74hc75_json__WEBPACK_IMPORTED_MODULE_31__, _74hc86_json__WEBPACK_IMPORTED_MODULE_32__, _74hc93_json__WEBPACK_IMPORTED_MODULE_33__, _74hc95_json__WEBPACK_IMPORTED_MODULE_34__, _74ls04_json__WEBPACK_IMPORTED_MODULE_35__, _74ls107_json__WEBPACK_IMPORTED_MODULE_36__, _74ls157_json__WEBPACK_IMPORTED_MODULE_37__, _74ls161_json__WEBPACK_IMPORTED_MODULE_38__, _74ls173_json__WEBPACK_IMPORTED_MODULE_39__, _74ls189_json__WEBPACK_IMPORTED_MODULE_40__, _74ls32_json__WEBPACK_IMPORTED_MODULE_41__, _74ls373_json__WEBPACK_IMPORTED_MODULE_42__, _adxl335_json__WEBPACK_IMPORTED_MODULE_43__, _ambient_light_json__WEBPACK_IMPORTED_MODULE_44__, _ammeter_json__WEBPACK_IMPORTED_MODULE_45__, _analog_meter_json__WEBPACK_IMPORTED_MODULE_46__, _arduino_mega_json__WEBPACK_IMPORTED_MODULE_47__, _arduino_nano_json__WEBPACK_IMPORTED_MODULE_48__, _arduino_uno_json__WEBPACK_IMPORTED_MODULE_49__, _at24c02_json__WEBPACK_IMPORTED_MODULE_50__, _at24c64_json__WEBPACK_IMPORTED_MODULE_51__, _at89c2051_json__WEBPACK_IMPORTED_MODULE_52__, _attiny13_json__WEBPACK_IMPORTED_MODULE_53__, _attiny2313_json__WEBPACK_IMPORTED_MODULE_54__, _attiny85_json__WEBPACK_IMPORTED_MODULE_55__, _attiny88_json__WEBPACK_IMPORTED_MODULE_56__, _ay8912_json__WEBPACK_IMPORTED_MODULE_57__, _bargraph_json__WEBPACK_IMPORTED_MODULE_58__, _battery_json__WEBPACK_IMPORTED_MODULE_59__, _battery_9v_json__WEBPACK_IMPORTED_MODULE_60__, _battery_aa_json__WEBPACK_IMPORTED_MODULE_61__, _battery_coin_json__WEBPACK_IMPORTED_MODULE_62__, _breadboard_full_json__WEBPACK_IMPORTED_MODULE_63__, _breadboard_half_json__WEBPACK_IMPORTED_MODULE_64__, _breadboard_mini_json__WEBPACK_IMPORTED_MODULE_65__, _breadboard_psu_json__WEBPACK_IMPORTED_MODULE_66__, _button_json__WEBPACK_IMPORTED_MODULE_67__, _buzzer_json__WEBPACK_IMPORTED_MODULE_68__, _capacitor_json__WEBPACK_IMPORTED_MODULE_69__, _cd4017_json__WEBPACK_IMPORTED_MODULE_70__, _cd4093_json__WEBPACK_IMPORTED_MODULE_71__, _cd4511_json__WEBPACK_IMPORTED_MODULE_72__, _cd74hc4067_json__WEBPACK_IMPORTED_MODULE_73__, _char_lcd_json__WEBPACK_IMPORTED_MODULE_74__, _char_lcd_i2c_json__WEBPACK_IMPORTED_MODULE_75__, _clock_display_json__WEBPACK_IMPORTED_MODULE_76__, _darlington_driver_json__WEBPACK_IMPORTED_MODULE_77__, _dc_motor_json__WEBPACK_IMPORTED_MODULE_78__, _dc_motor_encoder_json__WEBPACK_IMPORTED_MODULE_79__, _decade_counter_json__WEBPACK_IMPORTED_MODULE_80__, _dff_json__WEBPACK_IMPORTED_MODULE_81__, _dfplayer_mini_json__WEBPACK_IMPORTED_MODULE_82__, _dht11_json__WEBPACK_IMPORTED_MODULE_83__, _dht22_json__WEBPACK_IMPORTED_MODULE_84__, _diode_json__WEBPACK_IMPORTED_MODULE_85__, _dip_switch_json__WEBPACK_IMPORTED_MODULE_86__, _dip_switch_dpst_json__WEBPACK_IMPORTED_MODULE_87__, _dip_switch_spst_json__WEBPACK_IMPORTED_MODULE_88__, _ds1302_json__WEBPACK_IMPORTED_MODULE_89__, _ds18b20_json__WEBPACK_IMPORTED_MODULE_90__, _ds3231_json__WEBPACK_IMPORTED_MODULE_91__, _eater6502_json__WEBPACK_IMPORTED_MODULE_92__, _eeprom_json__WEBPACK_IMPORTED_MODULE_93__, _flame_sensor_json__WEBPACK_IMPORTED_MODULE_94__, _flex_sensor_json__WEBPACK_IMPORTED_MODULE_95__, _force_sensor_json__WEBPACK_IMPORTED_MODULE_96__, _function_gen_json__WEBPACK_IMPORTED_MODULE_97__, _fuse_json__WEBPACK_IMPORTED_MODULE_98__, _gas_sensor_json__WEBPACK_IMPORTED_MODULE_99__, _gearmotor_json__WEBPACK_IMPORTED_MODULE_100__, _gnd_json__WEBPACK_IMPORTED_MODULE_101__, _h_bridge_json__WEBPACK_IMPORTED_MODULE_102__, _hall_analog_json__WEBPACK_IMPORTED_MODULE_103__, _hall_digital_json__WEBPACK_IMPORTED_MODULE_104__, _hc05_json__WEBPACK_IMPORTED_MODULE_105__, _hd44780_json__WEBPACK_IMPORTED_MODULE_106__, _header_json__WEBPACK_IMPORTED_MODULE_107__, _heartbeat_json__WEBPACK_IMPORTED_MODULE_108__, _hx711_json__WEBPACK_IMPORTED_MODULE_109__, _ili9341_json__WEBPACK_IMPORTED_MODULE_110__, _ili9341_par_json__WEBPACK_IMPORTED_MODULE_111__, _ili9341_parallel_json__WEBPACK_IMPORTED_MODULE_112__, _inductor_json__WEBPACK_IMPORTED_MODULE_113__, _ir_receiver_json__WEBPACK_IMPORTED_MODULE_114__, _ir_reflect_json__WEBPACK_IMPORTED_MODULE_115__, _ir_remote_json__WEBPACK_IMPORTED_MODULE_116__, _ir_transmitter_json__WEBPACK_IMPORTED_MODULE_117__, _isd1820_json__WEBPACK_IMPORTED_MODULE_118__, _isource_json__WEBPACK_IMPORTED_MODULE_119__, _jkff_json__WEBPACK_IMPORTED_MODULE_120__, _joystick_json__WEBPACK_IMPORTED_MODULE_121__, _kd9561_json__WEBPACK_IMPORTED_MODULE_122__, _keypad_4x4_json__WEBPACK_IMPORTED_MODULE_123__, _ky002_json__WEBPACK_IMPORTED_MODULE_124__, _ky040_json__WEBPACK_IMPORTED_MODULE_125__, _l293d_json__WEBPACK_IMPORTED_MODULE_126__, _ld1117v33_json__WEBPACK_IMPORTED_MODULE_127__, _ldr_json__WEBPACK_IMPORTED_MODULE_128__, _led_json__WEBPACK_IMPORTED_MODULE_129__, _led_7color_json__WEBPACK_IMPORTED_MODULE_130__, _led_cube_json__WEBPACK_IMPORTED_MODULE_131__, _led_matrix_json__WEBPACK_IMPORTED_MODULE_132__, _lemon_battery_json__WEBPACK_IMPORTED_MODULE_133__, _level_shifter4_json__WEBPACK_IMPORTED_MODULE_134__, _light_bulb_json__WEBPACK_IMPORTED_MODULE_135__, _light_sensor_json__WEBPACK_IMPORTED_MODULE_136__, _lm339_json__WEBPACK_IMPORTED_MODULE_137__, _lm358_json__WEBPACK_IMPORTED_MODULE_138__, _lm3915_json__WEBPACK_IMPORTED_MODULE_139__, _lm393_json__WEBPACK_IMPORTED_MODULE_140__, _lm7805_json__WEBPACK_IMPORTED_MODULE_141__, _logic_probe_json__WEBPACK_IMPORTED_MODULE_142__, _m6532_json__WEBPACK_IMPORTED_MODULE_143__, _matrix16x8_json__WEBPACK_IMPORTED_MODULE_144__, _matrix8x8_json__WEBPACK_IMPORTED_MODULE_145__, _matrix9x9_json__WEBPACK_IMPORTED_MODULE_146__, _max232_json__WEBPACK_IMPORTED_MODULE_147__, _max7219_json__WEBPACK_IMPORTED_MODULE_148__, _mc6845_json__WEBPACK_IMPORTED_MODULE_149__, _mc6850_json__WEBPACK_IMPORTED_MODULE_150__, _mcp3008_json__WEBPACK_IMPORTED_MODULE_151__, _mcp4725_json__WEBPACK_IMPORTED_MODULE_152__, _mcu_json__WEBPACK_IMPORTED_MODULE_153__, _memsic2125_json__WEBPACK_IMPORTED_MODULE_154__, _microbit_json__WEBPACK_IMPORTED_MODULE_155__, _microbit_breakout_json__WEBPACK_IMPORTED_MODULE_156__, _mos6532_json__WEBPACK_IMPORTED_MODULE_157__, _mpu6050_json__WEBPACK_IMPORTED_MODULE_158__, _msgeq7_json__WEBPACK_IMPORTED_MODULE_159__, _multimeter_json__WEBPACK_IMPORTED_MODULE_160__, _neopixel_json__WEBPACK_IMPORTED_MODULE_161__, _neopixel_jewel_json__WEBPACK_IMPORTED_MODULE_162__, _neopixel_ring_json__WEBPACK_IMPORTED_MODULE_163__, _neopixel_strip_json__WEBPACK_IMPORTED_MODULE_164__, _nmos_json__WEBPACK_IMPORTED_MODULE_165__, _nmos_power_json__WEBPACK_IMPORTED_MODULE_166__, _npn_json__WEBPACK_IMPORTED_MODULE_167__, _nrf24l01_json__WEBPACK_IMPORTED_MODULE_168__, _ns16c550_json__WEBPACK_IMPORTED_MODULE_169__, _ntc_json__WEBPACK_IMPORTED_MODULE_170__, _opamp_json__WEBPACK_IMPORTED_MODULE_171__, _optocoupler_json__WEBPACK_IMPORTED_MODULE_172__, _osc_can_json__WEBPACK_IMPORTED_MODULE_173__, _oscilloscope_json__WEBPACK_IMPORTED_MODULE_174__, _pcf8574_json__WEBPACK_IMPORTED_MODULE_175__, _photo_interrupter_json__WEBPACK_IMPORTED_MODULE_176__, _photodiode_json__WEBPACK_IMPORTED_MODULE_177__, _phototransistor_json__WEBPACK_IMPORTED_MODULE_178__, _pi_pico_json__WEBPACK_IMPORTED_MODULE_179__, _piezo_json__WEBPACK_IMPORTED_MODULE_180__, _pir_json__WEBPACK_IMPORTED_MODULE_181__, _pmos_json__WEBPACK_IMPORTED_MODULE_182__, _pmos_power_json__WEBPACK_IMPORTED_MODULE_183__, _pnp_json__WEBPACK_IMPORTED_MODULE_184__, _polarized_cap_json__WEBPACK_IMPORTED_MODULE_185__, _pololu_motor_ctrl_json__WEBPACK_IMPORTED_MODULE_186__, _potato_battery_json__WEBPACK_IMPORTED_MODULE_187__, _potentiometer_json__WEBPACK_IMPORTED_MODULE_188__, _r6507_json__WEBPACK_IMPORTED_MODULE_189__, _reed_switch_json__WEBPACK_IMPORTED_MODULE_190__, _relay_json__WEBPACK_IMPORTED_MODULE_191__, _relay_dpdt_json__WEBPACK_IMPORTED_MODULE_192__, _resistor_json__WEBPACK_IMPORTED_MODULE_193__, _rf433_rx_json__WEBPACK_IMPORTED_MODULE_194__, _rf433_tx_json__WEBPACK_IMPORTED_MODULE_195__, _rgb_led_json__WEBPACK_IMPORTED_MODULE_196__, _rnet_sip_json__WEBPACK_IMPORTED_MODULE_197__, _servo_json__WEBPACK_IMPORTED_MODULE_198__, _seven_seg_3_json__WEBPACK_IMPORTED_MODULE_199__, _seven_seg_4_json__WEBPACK_IMPORTED_MODULE_200__, _seven_segment_json__WEBPACK_IMPORTED_MODULE_201__, _simplevga_card_json__WEBPACK_IMPORTED_MODULE_202__, _slide_switch_json__WEBPACK_IMPORTED_MODULE_203__, _soil_moisture_json__WEBPACK_IMPORTED_MODULE_204__, _solar_cell_json__WEBPACK_IMPORTED_MODULE_205__, _solenoid_json__WEBPACK_IMPORTED_MODULE_206__, _sound_module_json__WEBPACK_IMPORTED_MODULE_207__, _spectrum_display_json__WEBPACK_IMPORTED_MODULE_208__, _ssd1306_json__WEBPACK_IMPORTED_MODULE_209__, _st7920_json__WEBPACK_IMPORTED_MODULE_210__, _stc15_mcu_json__WEBPACK_IMPORTED_MODULE_211__, _stc_mcu_json__WEBPACK_IMPORTED_MODULE_212__, _stepper_json__WEBPACK_IMPORTED_MODULE_213__, _switch_json__WEBPACK_IMPORTED_MODULE_214__, _tcs3200_json__WEBPACK_IMPORTED_MODULE_215__, _temp_sensor_json__WEBPACK_IMPORTED_MODULE_216__, _tilevga_json__WEBPACK_IMPORTED_MODULE_217__, _tilt_sensor_json__WEBPACK_IMPORTED_MODULE_218__, _tilt_switch_json__WEBPACK_IMPORTED_MODULE_219__, _tilt_switch_v2_json__WEBPACK_IMPORTED_MODULE_220__, _timer_555_json__WEBPACK_IMPORTED_MODULE_221__, _timer_556_json__WEBPACK_IMPORTED_MODULE_222__, _tip120_json__WEBPACK_IMPORTED_MODULE_223__, _tm1637_json__WEBPACK_IMPORTED_MODULE_224__, _tmp36_json__WEBPACK_IMPORTED_MODULE_225__, _tms9918_json__WEBPACK_IMPORTED_MODULE_226__, _touch_ttp223_json__WEBPACK_IMPORTED_MODULE_227__, _ultrasonic_json__WEBPACK_IMPORTED_MODULE_228__, _ultrasonic_3pin_json__WEBPACK_IMPORTED_MODULE_229__, _um245r_json__WEBPACK_IMPORTED_MODULE_230__, _um66t_json__WEBPACK_IMPORTED_MODULE_231__, _usb_a_json__WEBPACK_IMPORTED_MODULE_232__, _vcc_json__WEBPACK_IMPORTED_MODULE_233__, _vga_prop_card_json__WEBPACK_IMPORTED_MODULE_234__, _vibration_motor_json__WEBPACK_IMPORTED_MODULE_235__, _voltmeter_json__WEBPACK_IMPORTED_MODULE_236__, _vreg_json__WEBPACK_IMPORTED_MODULE_237__, _vsource_json__WEBPACK_IMPORTED_MODULE_238__, _w65c02_json__WEBPACK_IMPORTED_MODULE_239__, _w65c22_json__WEBPACK_IMPORTED_MODULE_240__, _w65c51_json__WEBPACK_IMPORTED_MODULE_241__, _xpt2046_json__WEBPACK_IMPORTED_MODULE_242__, _z80_json__WEBPACK_IMPORTED_MODULE_243__, _ze08_ch2o_json__WEBPACK_IMPORTED_MODULE_244__, _zener_json__WEBPACK_IMPORTED_MODULE_245__];
 
 /***/ }),
 
@@ -44309,6 +44350,17 @@ module.exports = /*#__PURE__*/JSON.parse('{"kind":"attiny85","w":60,"h":48,"term
 
 "use strict";
 module.exports = /*#__PURE__*/JSON.parse('{"kind":"attiny88","w":70,"h":81,"terminals":[{"name":"pc6","x":0,"y":8,"functions":["reset"]},{"name":"pd0","x":0,"y":13,"functions":["gpio"]},{"name":"pd1","x":0,"y":18,"functions":["gpio"]},{"name":"pd2","x":0,"y":23,"functions":["gpio","int0"]},{"name":"pd3","x":0,"y":28,"functions":["gpio","int1"]},{"name":"pd4","x":0,"y":33,"functions":["gpio","t0"]},{"name":"vcc","x":0,"y":38,"functions":[]},{"name":"gnd","x":0,"y":43,"functions":[]},{"name":"pb6","x":0,"y":48,"functions":["gpio","xtal1"]},{"name":"pb7","x":0,"y":53,"functions":["gpio","xtal2"]},{"name":"pd5","x":0,"y":58,"functions":["gpio","t1"]},{"name":"pd6","x":0,"y":63,"functions":["gpio"]},{"name":"pd7","x":0,"y":68,"functions":["gpio"]},{"name":"pb0","x":0,"y":73,"functions":["gpio","icp1"]},{"name":"pc7","x":70,"y":8,"functions":["gpio"]},{"name":"pc5","x":70,"y":13,"functions":["gpio","adc5","scl"]},{"name":"pc4","x":70,"y":18,"functions":["gpio","adc4","sda"]},{"name":"pc3","x":70,"y":23,"functions":["gpio","adc3"]},{"name":"pc2","x":70,"y":28,"functions":["gpio","adc2"]},{"name":"pc1","x":70,"y":33,"functions":["gpio","adc1"]},{"name":"pc0","x":70,"y":38,"functions":["gpio","adc0"]},{"name":"pa0","x":70,"y":43,"functions":["gpio"]},{"name":"avcc","x":70,"y":48,"functions":[]},{"name":"pb5","x":70,"y":53,"functions":["gpio","sck"]},{"name":"pb4","x":70,"y":58,"functions":["gpio","miso"]},{"name":"pb3","x":70,"y":63,"functions":["gpio","mosi","oc1"]},{"name":"pb2","x":70,"y":68,"functions":["gpio","ss"]},{"name":"pb1","x":70,"y":73,"functions":["gpio","oc1a"]}],"variants":null,"_note":"ATtiny88 8-bit AVR MCU. Pin table audited against Microchip ATtiny88 datasheet (DS40002178). DIP-28 package. 8 KB flash, 512 B SRAM, 64 B EEPROM, 8 MHz internal RC. Ports B (PB0-PB7), C (PC0-PC7), D (PD0-PD7), and A (PA0-PA3 at 0x2C-0x2E). PC6 = RESET (active low). PB6/PB7 = XTAL1/XTAL2. No UART, no analog comparator pins. Timer0 simplified (CS bits in TCCR0A, no OC0A/OC0B). Used in Blinkenrocket congress badge: PB=columns, PD=rows, PC3=BTN_RIGHT, PC7=BTN_LEFT, PA0=modem input. Pin names match bw-board avr-chips.js ATTINY88_PINS config.","footprint":{"refTerminal":"pc6","leads":{"pc6":{"dRow":0,"dCol":0},"pd0":{"dRow":0,"dCol":1},"pd1":{"dRow":0,"dCol":2},"pd2":{"dRow":0,"dCol":3},"pd3":{"dRow":0,"dCol":4},"pd4":{"dRow":0,"dCol":5},"vcc":{"dRow":0,"dCol":6},"gnd":{"dRow":0,"dCol":7},"pb6":{"dRow":0,"dCol":8},"pb7":{"dRow":0,"dCol":9},"pd5":{"dRow":0,"dCol":10},"pd6":{"dRow":0,"dCol":11},"pd7":{"dRow":0,"dCol":12},"pb0":{"dRow":0,"dCol":13},"pc7":{"dRow":5,"dCol":0},"pc5":{"dRow":5,"dCol":1},"pc4":{"dRow":5,"dCol":2},"pc3":{"dRow":5,"dCol":3},"pc2":{"dRow":5,"dCol":4},"pc1":{"dRow":5,"dCol":5},"pc0":{"dRow":5,"dCol":6},"pa0":{"dRow":5,"dCol":7},"avcc":{"dRow":5,"dCol":8},"pb5":{"dRow":5,"dCol":9},"pb4":{"dRow":5,"dCol":10},"pb3":{"dRow":5,"dCol":11},"pb2":{"dRow":5,"dCol":12},"pb1":{"dRow":5,"dCol":13}},"straddlesGutter":true,"minCols":14}}');
+
+/***/ }),
+
+/***/ "./src/lib/bw-circuit-ui/parts-data/ay8912.json":
+/*!******************************************************!*\
+  !*** ./src/lib/bw-circuit-ui/parts-data/ay8912.json ***!
+  \******************************************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = /*#__PURE__*/JSON.parse('{"kind":"ay8912","w":70,"h":81,"terminals":[{"name":"analogc","x":0,"y":8,"functions":[]},{"name":"test1","x":0,"y":13,"functions":[]},{"name":"vcc","x":0,"y":18,"functions":[]},{"name":"analogb","x":0,"y":23,"functions":[]},{"name":"analoga","x":0,"y":28,"functions":[]},{"name":"vss","x":0,"y":33,"functions":[]},{"name":"ioa7","x":0,"y":38,"functions":[]},{"name":"ioa6","x":0,"y":43,"functions":[]},{"name":"ioa5","x":0,"y":48,"functions":[]},{"name":"ioa4","x":0,"y":53,"functions":[]},{"name":"ioa3","x":0,"y":58,"functions":[]},{"name":"ioa2","x":0,"y":63,"functions":[]},{"name":"ioa1","x":0,"y":68,"functions":[]},{"name":"ioa0","x":0,"y":73,"functions":[]},{"name":"da7","x":70,"y":8,"functions":[]},{"name":"da6","x":70,"y":13,"functions":[]},{"name":"da5","x":70,"y":18,"functions":[]},{"name":"da4","x":70,"y":23,"functions":[]},{"name":"da3","x":70,"y":28,"functions":[]},{"name":"da2","x":70,"y":33,"functions":[]},{"name":"da1","x":70,"y":38,"functions":[]},{"name":"da0","x":70,"y":43,"functions":[]},{"name":"a8","x":70,"y":48,"functions":[]},{"name":"resetb","x":70,"y":53,"functions":[]},{"name":"clock","x":70,"y":58,"functions":[]},{"name":"bdir","x":70,"y":63,"functions":[]},{"name":"bc2","x":70,"y":68,"functions":[]},{"name":"bc1","x":70,"y":73,"functions":[]}],"variants":null,"_note":"GI AY-3-8912 programmable sound generator, DIP-28. 1 ANALOG C, 2 TEST1, 3 VCC, 4 ANALOG B, 5 ANALOG A, 6 VSS, 7-14 IOA7-IOA0, 15-22 DA7-DA0, 23 A8 (active-high select, tied high when unwired), 24 /RESET, 25 CLOCK, 26 BDIR, 27 BC2 (tie high), 28 BC1. BDIR/BC1 are the GI bus-control pair — the extractor classifies them over (address, RWB) per bw-board\'s two-phase select spec; wire BDIR from select AND ~RWB.","footprint":{"refTerminal":"da7","leads":{"analogc":{"dRow":5,"dCol":0},"test1":{"dRow":5,"dCol":1},"vcc":{"dRow":5,"dCol":2},"analogb":{"dRow":5,"dCol":3},"analoga":{"dRow":5,"dCol":4},"vss":{"dRow":5,"dCol":5},"ioa7":{"dRow":5,"dCol":6},"ioa6":{"dRow":5,"dCol":7},"ioa5":{"dRow":5,"dCol":8},"ioa4":{"dRow":5,"dCol":9},"ioa3":{"dRow":5,"dCol":10},"ioa2":{"dRow":5,"dCol":11},"ioa1":{"dRow":5,"dCol":12},"ioa0":{"dRow":5,"dCol":13},"da7":{"dRow":0,"dCol":0},"da6":{"dRow":0,"dCol":1},"da5":{"dRow":0,"dCol":2},"da4":{"dRow":0,"dCol":3},"da3":{"dRow":0,"dCol":4},"da2":{"dRow":0,"dCol":5},"da1":{"dRow":0,"dCol":6},"da0":{"dRow":0,"dCol":7},"a8":{"dRow":0,"dCol":8},"resetb":{"dRow":0,"dCol":9},"clock":{"dRow":0,"dCol":10},"bdir":{"dRow":0,"dCol":11},"bc2":{"dRow":0,"dCol":12},"bc1":{"dRow":0,"dCol":13}},"straddlesGutter":true,"minCols":14}}');
 
 /***/ }),
 
