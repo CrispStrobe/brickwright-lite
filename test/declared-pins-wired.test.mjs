@@ -213,10 +213,59 @@ test('INSTRUMENT: the corpus walk actually derived something', () => {
         + `${withCircuit.length} have a circuit, ${resolved.length} resolved a non-empty netlist`);
     for (const r of failed.slice(0, 10)) console.log(`  load failed: ${r.id} — ${r.loadError}`);
     assert.equal(failed.length, 0, `${failed.length} circuit(s) failed to load`);
-    assert.ok(ROWS.length >= 200, `only ${ROWS.length} examples — the index walk found almost nothing`);
-    assert.ok(withPins.length >= 100, `only ${withPins.length} examples declare pins — the PIN extractor matched almost nothing`);
-    assert.ok(resolved.length >= 200, `only ${resolved.length} circuits resolved a netlist — `
-        + 'a registry that never populated looks exactly like this');
+
+    // Thresholds are PROPORTIONS of counts taken in this same run, not fixed
+    // numbers. bw-audit's ">= 25 opcodes" was right at 28 and would have gone
+    // on passing if the emitter grew to 200 while the deriver found 30. A
+    // constant floor stops tracking the corpus the moment the corpus moves.
+    const entries = JSON.parse(readFileSync(path.join(EXAMPLES, 'index.json'), 'utf8')).length;
+    assert.equal(ROWS.length, entries,
+        `walked ${ROWS.length} of ${entries} index entries — the walk is dropping examples`);
+
+    // Every circuit that loaded must resolve a non-empty netlist. An
+    // unpopulated device registry resolves almost nothing and looks exactly
+    // like "the whole corpus is unwired".
+    const unresolved = withCircuit.filter((r) => !r.wired || r.wired.size === 0);
+    assert.ok(unresolved.length <= 1,
+        `${unresolved.length} circuit(s) resolved an EMPTY netlist: `
+        + `${unresolved.slice(0, 5).map((r) => r.id).join(', ')} — a registry that never `
+        + 'populated produces exactly this');
+
+    // TERMINAL DEGRADATION IS SILENT, and a non-empty-netlist check cannot see
+    // it. Measured 2026-08-23: with NEITHER the sidecar registry nor
+    // registerAllDevices, a keypad_4x4 resolves to ["a","b"] — still forming
+    // nets, still "resolved", every pad wrong. And each registration MASKS the
+    // other's absence, so removing either one alone leaves this gate green;
+    // only removing both degrades. That is why this asserts real pin counts
+    // rather than trusting either bootstrap step to have run.
+    const MULTI_PIN = new Set(['keypad_4x4', 'ssd1306', 'char_lcd_i2c', 'hd44780', 'max7219',
+        'seven_segment', 'mcu', 'stc_mcu', 'stc15_mcu', 'arduino_uno', 'arduino_nano',
+        'arduino_mega', 'pi_pico', 'w65c22', 'attiny88']);
+    const degraded = [];
+    for (const r of ROWS) {
+        for (const p of (r.parts || [])) {
+            // Exactly the default pair, not merely a short list: generated
+            // benches legitimately TRIM an MCU to the pins they use, e.g.
+            // ["P2.1","P2.2"], and flagging those made this fire on a healthy
+            // corpus. Degradation has a signature — the literal a/b fallback.
+            const t = (p.terminals || []).map((x) => String(x).toLowerCase());
+            if (MULTI_PIN.has(p.kind) && t.length === 2 && t[0] === 'a' && t[1] === 'b') {
+                degraded.push(`${r.id}:${p.id}(${p.kind})=${JSON.stringify(p.terminals)}`);
+            }
+        }
+    }
+    assert.deepEqual(degraded.slice(0, 10), [],
+        `${degraded.length} multi-pin part(s) resolved to two or fewer terminals — the default `
+        + '["a","b"] fallback. Neither the sidecar registry nor bw-board devices supplied '
+        + 'real pins, and every pad this gate checks would be wrong');
+
+    // Declared pins are the gate's whole input; if the extractor stops matching
+    // the dialect, every check below passes over nothing.
+    assert.ok(withPins.length / ROWS.length >= 0.25,
+        `only ${withPins.length}/${ROWS.length} examples declare pins — below a quarter, `
+        + 'suspect the PIN extractor rather than the corpus');
+    assert.ok(withCircuit.length / ROWS.length >= 0.5,
+        `only ${withCircuit.length}/${ROWS.length} examples resolved a circuit path`);
 });
 
 test('an example with no circuit is a deviceOnly board, not a missing circuit', () => {

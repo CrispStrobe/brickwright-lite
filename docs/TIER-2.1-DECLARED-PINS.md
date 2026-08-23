@@ -96,6 +96,28 @@ Recorded because both looked exactly like corpus findings:
   a 74HC595 is driven indirectly and its net never touches a pad at all; the gate
   therefore says nothing about those rather than guessing.
 
+### A third, found by testing the guard instead of trusting it
+
+The first instrument guard said "a registry that never populated looks exactly
+like this" and asserted a non-empty netlist. Mutating the bootstrap to prove it
+showed the claim was false, twice over:
+
+- Removing `registerAllDevices()` left the gate **green**. So did removing the
+  sidecar-registration loop. **Each registration masks the other's absence** —
+  either one alone supplies real terminal names, so no single-step mutation
+  could turn the guard red.
+- Removing **both** degrades a `keypad_4x4` to the default `["a","b"]`. Those
+  parts still form non-empty nets and still count as "resolved", so the
+  netlist-is-non-empty check could not have seen it either. Every pad the gate
+  checks would have been wrong while it reported success.
+
+The guard now asserts the degradation signature directly: a multi-pin kind whose
+terminals are literally `["a","b"]`. It had to be the exact pair rather than "two
+or fewer" — generated benches legitimately TRIM an MCU to the pins they use
+(`["P2.1","P2.2"]`), and a length test fired on a healthy corpus. Mutation-proven
+in both directions: both registrations off → RED naming 50 degraded parts;
+restored → green.
+
 Per bw-audit's rule, the gate now asserts **its own yield first** — that the walk
 found ≥200 examples, ≥100 with declared pins, ≥200 resolving a non-empty netlist
 — because a detector that matches nothing makes every later assertion pass
@@ -107,6 +129,8 @@ vacuously and looks exactly like success.
 | --- | --- |
 | repoint a declared pin to an unwired pad (`01-blink` P1.0 → P2.7) | RED (2 checks), restored green |
 | delete a ratchet entry so its defect resurfaces | RED, restored green |
+| disable BOTH terminal registrations | RED, 50 parts degraded to `["a","b"]`, restored green |
+| disable EITHER registration alone | green — they mask each other; recorded, not hidden |
 
 Both applied to the files the gate actually reads, with save-before and restore,
 and each verified to have changed the file — a mutation that changes nothing
