@@ -1,0 +1,378 @@
+/**
+ * Wave 1 lesson review — the measurements the review rests on, as a gate.
+ *
+ * `docs/LESSON-REVIEW-WAVE-1.md` says, of each lesson in the "Electricity you
+ * can see" wave, whether the bench it names can produce the observation its
+ * checkpoints ask for. Every "yes" in that document is a number that came out
+ * of the engine. This file re-derives those numbers so the verdicts cannot go
+ * stale silently: change a resistor in a shipped circuit, or change the engine,
+ * and the claim that a lesson is teachable fails here rather than in a
+ * classroom.
+ *
+ * It also pins the two defects that could not be fixed in the lesson copy —
+ * the transistor ammeter and the dead `circuit-changed` observable — so that
+ * whoever fixes them is told to update the review instead of leaving it wrong.
+ *
+ * Instrument checks, because a bench that reports nothing looks exactly like a
+ * bench that reports zero:
+ *   - a negative control per solve claim (reverse the diode, drop the supply),
+ *     so a solver that returned a constant would fail;
+ *   - `registerAllDevices()` before any board, checked by asserting a device
+ *     model actually loaded — an unpopulated registry produced a whole false
+ *     blast-radius report on 2026-08-20;
+ *   - `ledBrightness` is a 20 ms MOVING AVERAGE, so every brightness assertion
+ *     is taken after the window has filled. Read one step after a change and it
+ *     reports the previous state, which is not a defect and is not a reading.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import path from 'node:path';
+import {boot, load, EXAMPLES, circuitPathFor} from '../scripts/lesson-bench.mjs';
+
+const MS = 1_000_000n;
+const near = (actual, expected, tol, what) => assert.ok(
+    Math.abs(actual - expected) <= tol,
+    `${what}: measured ${Number(actual).toFixed(4)}, expected ${expected} +-${tol}`);
+
+const volts = (board, part, terminal) => {
+    for (const net of board.nets) {
+        if (net.terminals.some(t => t.part === part && t.terminal === terminal)) {
+            return board.nodeVoltage(net.id);
+        }
+    }
+    assert.fail(`${part}.${terminal} is on no net — the bench does not have it`);
+};
+const milliamps = (board, part, terminal) => board.branchCurrent(part, terminal) * 1000;
+
+const fresh = async id => {
+    const {board, circuit, data} = await load(id);
+    return {board, circuit, data};
+};
+
+// ── Instrument check: the engine is real and the registry is populated ──────
+test('instrument: the device registry is populated before any board is built', async () => {
+    const {BoardImpl} = await boot();
+    assert.equal(typeof BoardImpl, 'function');
+    const {getDevice, registeredKinds} = await import(path.join(
+        path.resolve(import.meta.dirname, '..'),
+        'overlay/scratch-gui/src/lib/bw-board/devices.js'));
+    // dc_motor and switch come from registerAllDevices(); with an empty registry
+    // pc26-motor-clamp solves to a bench with no motor and reads as "0 V, fine".
+    // (`npn` is deliberately NOT checked: it is a BUILTIN element kind stamped
+    // by board.js, so it is absent from the registry even when the registry is
+    // fully populated — asserting on it tests nothing about registration.)
+    assert.ok(getDevice('dc_motor'), 'registerAllDevices() did not run');
+    assert.ok(registeredKinds().length > 100,
+        `registry holds only ${registeredKinds().length} kinds — it is not populated`);
+});
+
+// ── electricity-polarity → 28-diode-polarity ────────────────────────────────
+test('electricity-polarity: the bench reverses a DIODE, and both LEDs face the same way', async () => {
+    const {board} = await fresh('28-diode-polarity');
+    board.advanceTo(50n * MS);
+
+    // Both LEDs forward-biased — there are not "two LED directions" to identify.
+    assert.ok(volts(board, 'led1', 'anode') > volts(board, 'led1', 'cathode') + 0.5);
+    assert.ok(volts(board, 'led2', 'anode') > volts(board, 'led2', 'cathode') + 0.5);
+    // d1 forward, d2 reverse — that is the whole lesson.
+    assert.ok(volts(board, 'd1', 'anode') > volts(board, 'd1', 'cathode'), 'd1 is forward');
+    assert.ok(volts(board, 'd2', 'cathode') > volts(board, 'd2', 'anode'), 'd2 is reverse');
+
+    near(milliamps(board, 'r1', 'b'), 4.694, 0.01, 'forward branch current');
+    near(milliamps(board, 'r2', 'b'), 0, 0.001, 'reverse branch current');
+    near(volts(board, 'd1', 'anode'), 2.794, 0.01, 'V at d1 anode');
+    near(volts(board, 'd2', 'cathode'), 5.0, 0.01, 'V at d2 cathode (blocked, sits at VCC)');
+    near(board.ledBrightness('led1'), 0.2347, 0.001, 'green LED brightness');
+    near(board.ledBrightness('led2'), 0, 0.001, 'red LED brightness');
+});
+
+test('negative control: truly reversing d1 extinguishes led1, turning d2 forward lights led2', async () => {
+    const {Circuit} = await boot();
+    const raw = JSON.parse(readFileSync(path.join(EXAMPLES, circuitPathFor('28-diode-polarity')), 'utf8'));
+    // A seated part's orientation lives in BOTH its breadboard leadMap and its
+    // wire terminals. Flipping only the wires SHORTS the diode (6.25 mA, measured)
+    // instead of reversing it — which is what makes this a control and not a
+    // restatement: get the mutation wrong and the numbers say so.
+    const flip = (data, id) => {
+        const part = data.parts.find(p => p.id === id);
+        const m = part.seat.leadMap;
+        [m.anode, m.cathode] = [m.cathode, m.anode];
+        for (const w of data.wires) {
+            if (w.to === id) w.toTerminal = w.toTerminal === 'anode' ? 'cathode' : 'anode';
+            if (w.from === id) w.fromTerminal = w.fromTerminal === 'anode' ? 'cathode' : 'anode';
+        }
+        return data;
+    };
+    const solve = data => {
+        const c = Circuit.fromJSON(data);
+        c.board.advanceTo(50n * MS);
+        return [c.board.ledBrightness('led1'), c.board.ledBrightness('led2')];
+    };
+    const [onA, offA] = solve(structuredClone(raw));
+    assert.ok(onA > 0.2 && offA < 0.001, 'shipped: green on, red off');
+    const [offB, offB2] = solve(flip(structuredClone(raw), 'd1'));
+    assert.ok(offB < 0.001 && offB2 < 0.001, 'd1 reversed: both dark');
+    const [onC, onC2] = solve(flip(structuredClone(raw), 'd2'));
+    assert.ok(onC > 0.2 && onC2 > 0.2, 'd2 forward: both lit');
+});
+
+// ── electricity-resistance → 45-led-current-comparison ──────────────────────
+test('electricity-resistance: three branches are ordered and separable by eye', async () => {
+    const {board} = await fresh('45-led-current-comparison');
+    board.advanceTo(50n * MS);
+    near(milliamps(board, 'r1', 'b'), 13.043, 0.01, '220 ohm branch');
+    near(milliamps(board, 'r2', 'b'), 6.250, 0.01, '470 ohm branch');
+    near(milliamps(board, 'r3', 'b'), 2.970, 0.01, '1k branch');
+    const b = ['led1', 'led2', 'led3'].map(id => board.ledBrightness(id));
+    assert.ok(b[0] > b[1] && b[1] > b[2], `brightness must be monotone, got ${b}`);
+    assert.ok(b[0] - b[2] > 0.4, 'the brightest and dimmest must be tellable apart');
+});
+
+// ── electricity-ohms-law → 34-ohms-law ──────────────────────────────────────
+test('electricity-ohms-law: the calculation and the measurement differ by ~1%, as the lesson says', async () => {
+    const {board} = await fresh('34-ohms-law');
+    board.advanceTo(50n * MS);
+    const measured = milliamps(board, 'r1', 'b');
+    const naive = (5 - 2) / 1000 * 1000;     // the lesson's I = (Vsupply - Vled) / R
+    near(measured, 2.970, 0.01, 'branch current');
+    near(volts(board, 'r1', 'b'), 2.0297, 0.01, 'V at the LED anode');
+    // The "explain the difference" checkpoint needs a difference that is real
+    // but small: big enough to notice, small enough to be the LED model.
+    const errorPct = Math.abs(measured - naive) / naive * 100;
+    assert.ok(errorPct > 0.2 && errorPct < 5, `expected a small honest gap, got ${errorPct}%`);
+});
+
+// ── electricity-series-parallel → 22-series-parallel ────────────────────────
+test('electricity-series-parallel: the supply carries all THREE branches, not just the parallel pair', async () => {
+    const {board} = await fresh('22-series-parallel');
+    board.advanceTo(50n * MS);
+    const series = milliamps(board, 'r1', 'b');
+    const p1 = milliamps(board, 'r3', 'b');
+    const p2 = milliamps(board, 'r4', 'b');
+    const supply = -milliamps(board, 'vcc1', 'vcc');
+    near(series, 3.158, 0.01, 'series branch');
+    near(p1, 6.250, 0.01, 'parallel branch 1');
+    near(p2, 6.250, 0.01, 'parallel branch 2');
+    near(supply, 15.658, 0.01, 'supply current');
+    near(supply, series + p1 + p2, 0.01, 'Isupply = Iseries + Ip1 + Ip2 (the v2 hint)');
+    // The v1 hint said Isource = Ibranch1 + Ibranch2. It is false here by the
+    // series branch, and there is no node on this bench where it holds.
+    assert.ok(Math.abs(supply - (p1 + p2)) > 3,
+        'if this ever becomes true, the v1 hint was right and the review is wrong');
+});
+
+// ── electricity-button → 11-toggle-button ───────────────────────────────────
+test('electricity-button: the pull-up gives a defined level in both button states', async () => {
+    const {board, circuit} = await fresh('11-toggle-button');
+    let t = 50n * MS;
+    board.advanceTo(t);
+    near(volts(board, 'MCU', 'P3.2'), 5.0, 0.01, 'input released');
+    near(milliamps(board, 'R_PU_btn', 'a'), 0, 0.001, 'pull-up current released');
+    circuit.setControl('BTN_btn', 1);
+    board.advanceTo(t += 50n * MS);
+    near(volts(board, 'MCU', 'P3.2'), 0.0, 0.01, 'input pressed');
+    near(-milliamps(board, 'R_PU_btn', 'a'), 0.5, 0.001, 'pull-up current pressed');
+});
+
+// ── electricity-capacitor (already v2) → pc29-capacitor-discharge ───────────
+test('electricity-capacitor: charge and discharge are separate paths, and the tail flattens at Vf', async () => {
+    const {board, circuit} = await fresh('pc29-capacitor-discharge');
+    let t = 10n * MS;
+    board.advanceTo(t);
+    near(volts(board, 'cap', 'a'), 0, 0.01, 'capacitor starts empty');
+    circuit.setControl('charge', 1);
+    board.advanceTo(t = 4010n * MS);
+    assert.ok(volts(board, 'cap', 'a') > 4.8, 'charge path reaches near 5 V');
+    circuit.setControl('charge', 0);
+    circuit.setControl('discharge', 1);
+    board.advanceTo(t += 1n * MS);
+    const first = milliamps(board, 'led', 'anode');
+    assert.ok(first > 2.5, `discharge starts with real LED current, got ${first} mA`);
+    board.advanceTo(t += 8000n * MS);
+    // The revised lesson's teaching point: it does NOT decay to 0 V.
+    near(volts(board, 'cap', 'a'), 2.0, 0.05, 'discharge tail flattens at the LED forward voltage');
+});
+
+// ── electricity-inductor → pc52-inductor-filter ─────────────────────────────
+test('electricity-inductor: at rest the two nodes are 0.2 mV apart; the difference lives on an edge', async () => {
+    const {Circuit} = await boot();
+    const raw = JSON.parse(readFileSync(path.join(EXAMPLES, circuitPathFor('pc52-inductor-filter')), 'utf8'));
+
+    const atRest = Circuit.fromJSON(structuredClone(raw));
+    atRest.board.advanceTo(50n * MS);
+    const before = volts(atRest.board, 'r', 'b');
+    const after = volts(atRest.board, 'load', 'a');
+    assert.ok(Math.abs(before - after) < 0.001,
+        `as the lesson OPENS the traces must be indistinguishable, got ${before} vs ${after}`);
+
+    // v2 tells the learner to make an edge. It has to be worth looking at.
+    const stepped = Circuit.fromJSON(structuredClone(raw));
+    let t = 20n * MS;
+    stepped.setControl('src', 0);
+    stepped.board.advanceTo(t);
+    stepped.setControl('src', 5);
+    stepped.board.advanceTo(t + 20n * 1000n);   // +20 us
+    const edgeBefore = volts(stepped.board, 'r', 'b');
+    const edgeAfter = volts(stepped.board, 'load', 'a');
+    assert.ok(edgeBefore - edgeAfter > 3,
+        `20 us after the edge the two nodes must be far apart, got ${edgeBefore} vs ${edgeAfter}`);
+});
+
+// ── electricity-diode (already v2) → pc31-bridge-rectifier ──────────────────
+test('electricity-diode: reversing the source keeps load polarity and costs two diode drops', async () => {
+    const {board, circuit} = await fresh('pc31-bridge-rectifier');
+    let t = 50n * MS;
+    const readOut = () => ({
+        out: volts(board, 'r1', 'a'),
+        load: milliamps(board, 'r1', 'b'),
+        conducting: ['d1', 'd2', 'd3', 'd4'].filter(d => Math.abs(milliamps(board, d, 'anode')) > 0.01)
+    });
+    circuit.setControl('src', 9);
+    board.advanceTo(t);
+    const pos = readOut();
+    circuit.setControl('src', -9);
+    board.advanceTo(t += 50n * MS);
+    const neg = readOut();
+
+    assert.deepEqual(pos.conducting, ['d1', 'd4'], '+9 V selects one diagonal');
+    assert.deepEqual(neg.conducting, ['d2', 'd3'], '-9 V selects the other');
+    near(pos.out, 7.4913, 0.01, 'bridge output at +9 V');
+    near(neg.out, pos.out, 0.001, 'bridge output is unchanged by reversing the source');
+    near(neg.load, pos.load, 0.001, 'load current is unchanged, and never reverses');
+    near(9 - pos.out, 1.5087, 0.01, 'the output is short of the source by exactly two forward drops');
+});
+
+// ── electricity-transistor-switch → 38-npn-switch ───────────────────────────
+test('electricity-transistor-switch: the switch really switches', async () => {
+    const {board, circuit} = await fresh('38-npn-switch');
+    let t = 50n * MS;
+    board.advanceTo(t);
+    near(volts(board, 'q1', 'base'), 0.005, 0.01, 'base at cutoff');
+    near(milliamps(board, 'r1', 'b'), 0, 0.001, 'load branch at cutoff');
+    circuit.setControl('btn1', 1);
+    board.advanceTo(t += 50n * MS);
+    near(volts(board, 'q1', 'base'), 0.704, 0.01, 'base on');
+    near(volts(board, 'q1', 'collector'), 0.201, 0.01, 'collector saturated');
+    near(milliamps(board, 'r1', 'b'), 5.832, 0.01, 'load branch on');
+    // ledBrightness averages over a 20 ms window whose samples are recorded at
+    // each advance boundary, so one 50 ms hop leaves the window holding the OLD
+    // state and reads 0. Step it, the way the app's animation loop does.
+    for (let i = 0; i < 4; i++) board.advanceTo(t += 10n * MS);
+    near(board.ledBrightness('led1'), 0.2916, 0.001, 'LED on (after the 20 ms window fills)');
+});
+
+test('OPEN DEFECT: the ammeter on the NPN collector contradicts the branch it is in', async () => {
+    // Not a lesson bug — an engine one. `branchCurrent` on a device-model
+    // terminal returns the model's own quantity, not the solved branch current.
+    // Pinned so that fixing it fails here and forces the review to be updated.
+    const {board, circuit} = await fresh('38-npn-switch');
+    circuit.setControl('btn1', 1);
+    board.advanceTo(60n * MS);
+    const inBranch = milliamps(board, 'r1', 'b');
+    const atCollector = milliamps(board, 'q1', 'collector');
+    const atButton = milliamps(board, 'btn1', 'a');
+    const throughBaseResistor = milliamps(board, 'rb1', 'b');
+    near(inBranch, 5.832, 0.01, 'the LED branch, which is the truth');
+    assert.ok(Math.abs(atCollector - inBranch) > 30,
+        'the collector reading STILL disagrees with its own branch — if this now ' +
+        'agrees, the engine was fixed: update docs/LESSON-REVIEW-WAVE-1.md and ' +
+        'the electricity-transistor-switch hint, then delete this test');
+    near(throughBaseResistor, 0.430, 0.01, 'base resistor carries a real current');
+    near(atButton, 0, 0.001,
+        'and the button in series with it STILL reads zero — same defect, same fix');
+});
+
+// ── electricity-motor-flyback → pc26-motor-clamp ────────────────────────────
+test('electricity-motor-flyback: the bench opens unpowered, and the spike needs the scope', async () => {
+    const {Circuit} = await boot();
+    const raw = JSON.parse(readFileSync(path.join(EXAMPLES, circuitPathFor('pc26-motor-clamp')), 'utf8'));
+
+    // As it opens: switch OFF, every node at 0 V. Nothing to "verify while powered".
+    const idle = Circuit.fromJSON(structuredClone(raw));
+    idle.board.advanceTo(50n * MS);
+    near(volts(idle.board, 'sw1', 'b'), 0, 0.001, 'switched node with the switch open');
+    near(volts(idle.board, 'd1', 'cathode'), 0, 0.001, 'diode cathode with the switch open');
+
+    // Closed: the diode is reverse-biased, which is what the checkpoint asks for.
+    const run = Circuit.fromJSON(structuredClone(raw));
+    let t = 0n;
+    run.setControl('sw1', 1);
+    run.board.advanceTo(t += 10n * MS);
+    assert.ok(volts(run.board, 'd1', 'cathode') > volts(run.board, 'd1', 'anode') + 8,
+        'diode must be reverse-biased while the motor runs');
+
+    // Read on the UI's control path (advanceBy 1 ms) there is no spike to see.
+    run.setControl('sw1', 0);
+    run.board.advanceTo(t += 1n * MS);
+    assert.ok(volts(run.board, 'sw1', 'b') > -1,
+        'a 1 ms sample shows no spike — this is why the v2 hint names the scope');
+
+    // With a 100 kHz scope channel — what ScopePanel attaches — it is there.
+    const scoped = Circuit.fromJSON(structuredClone(raw));
+    const net = scoped.board.nets.find(n =>
+        n.terminals.some(x => x.part === 'sw1' && x.terminal === 'b'));
+    const handle = scoped.board.addScopeChannel({type: 'voltage', netId: net.id, sampleRateHz: 100_000});
+    let u = 0n;
+    scoped.setControl('sw1', 1);
+    scoped.board.advanceTo(u += 21n * MS);
+    scoped.setControl('sw1', 0);
+    scoped.board.advanceTo(u += 6n * MS);
+    const d = scoped.board.getScopeData(handle);
+    let lo = Infinity;
+    for (let i = 0; i < d.samples.length; i += 2) if (!Number.isNaN(d.samples[i])) lo = Math.min(lo, d.samples[i]);
+    assert.equal(Number(d.sampleIntervalNs), 10_000, 'scope samples at 10 us');
+    assert.ok(lo < -8, `the scope must catch the clamped spike, saw ${lo} V`);
+});
+
+// ── starter-circuit-path → 47-battery-led ───────────────────────────────────
+test('starter-circuit-path: the loop is closed and the numbers are the ones a learner traces', async () => {
+    const {board} = await fresh('47-battery-led');
+    board.advanceTo(50n * MS);
+    near(volts(board, 'bat1', 'pos'), 9.0, 0.01, 'battery +');
+    near(volts(board, 'bat1', 'neg'), 0.0, 0.01, 'battery -');
+    near(milliamps(board, 'r1', 'b'), 6.931, 0.01, 'loop current');
+    assert.ok(board.ledBrightness('led1') > 0.3, 'the LED is lit');
+});
+
+test('OPEN DEFECT: `circuit-changed` cannot fire for the edits starter-circuit-path asks for', async () => {
+    // guided-lessons.jsx listens for `bw-circuit-changed`, which circuit-tab.jsx
+    // dispatches ONLY from handleDeclarationChange — and CircuitDesigner calls
+    // that only when JSON.stringify(circuitToDeclarations(...)) changes. On an
+    // MCU-less bench the declarations are constant, so the checkpoint can only
+    // ever be completed by its manual button.
+    const {Circuit} = await boot();
+    const root = path.resolve(import.meta.dirname, '..');
+    const {circuitToDeclarations} = await import(path.join(root,
+        'overlay/scratch-gui/src/lib/bw-circuit-ui/model/declarations.js'));
+    const raw = JSON.parse(readFileSync(path.join(EXAMPLES, circuitPathFor('47-battery-led')), 'utf8'));
+    const decl = data => {
+        const c = Circuit.fromJSON(data);
+        return JSON.stringify(circuitToDeclarations(c.parts, c.wires, c.resolvedNets));
+    };
+    const base = decl(structuredClone(raw));
+    const changedResistance = structuredClone(raw);
+    changedResistance.parts.find(p => p.id === 'r1').params.ohms = 470;
+    const brokenWire = structuredClone(raw);
+    brokenWire.wires = brokenWire.wires.slice(0, -1);
+
+    assert.equal(decl(changedResistance), base,
+        'if a resistance change now moves the declarations, the event fires: ' +
+        'update docs/LESSON-REVIEW-WAVE-1.md and delete this test');
+    assert.equal(decl(brokenWire), base, 'same for breaking a wire');
+});
+
+// ── instrument-voltage-divider → 52-battery-voltage-divider ─────────────────
+test('instrument-voltage-divider: the midpoint is exactly what the formula predicts', async () => {
+    const {board} = await fresh('52-battery-voltage-divider');
+    board.advanceTo(50n * MS);
+    near(volts(board, 'r1', 'b'), 4.5, 0.01, 'midpoint');
+    near(volts(board, 'bat1', 'pos'), 9.0, 0.01, 'supply');
+    near(milliamps(board, 'r1', 'b'), 0.45, 0.001, 'divider current');
+    // "An ideal voltmeter draws almost no current" — here it draws none at all:
+    // the meter part is filtered out of the engine netlist before the solve.
+    const {getMeterReading} = await import(path.join(
+        path.resolve(import.meta.dirname, '..'),
+        'overlay/scratch-gui/src/lib/bw-circuit-ui/model/meter-reading.js'));
+    assert.equal(typeof getMeterReading, 'function');
+});

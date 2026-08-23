@@ -48,10 +48,11 @@ The evidence that it needs to be first, not folded into the others:
   dead.
 - **A shipped extension is missing 8 opcodes the emitter emits**, affecting three shipped examples,
   and the gate that would catch it skips in CI by construction. See `ROADMAP.md` §5.1.
-- **Two of the first lessons put to technical review were teaching observations their example
-  cannot produce** (the diode lesson asked for alternating traces from a static polarity bench; the
-  capacitor lesson asked for discharge from a charge-only bench). Both are now content version 2.
-  Two found in the first review pass, out of 79 lessons drafted.
+- **Lessons were teaching observations their example cannot produce.** The first two put to
+  technical review both failed that way (the diode lesson asked for alternating traces from a
+  static polarity bench; the capacitor lesson asked for discharge from a charge-only bench).
+  The full Wave 1 pass that followed found the same fault in five of its twelve lessons —
+  see the ledger below and `docs/LESSON-REVIEW-WAVE-1.md`. Sixty-seven lessons remain unreviewed.
 
 The common shape: **breadth shipped ahead of verification, and the verification that existed could
 not fail.** Adding more content on that base multiplies the debt rather than the value.
@@ -99,12 +100,13 @@ read only the residue.
 
 ### Verification-debt ledger
 
-Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**, and all
-seven carry an open review item. Stated plainly, so it cannot read as finished work:
+Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**. Wave 1's
+technical review is now closed; the other six are still open. Stated plainly, so it cannot read as
+finished work:
 
 | Wave | Lessons | Draft | Technical review | Translation review | Learner field test |
 | --- | --- | --- | --- | --- | --- |
-| 1 Electricity you can see | 12 | done | **partial** (2 revisions found) | open | open |
+| 1 Electricity you can see | 12 | done | **done 2026-08-23** (5 of 12 defective; 4 fixed, 2 open engine/app defects) | open | open |
 | 2 Measure rather than guess | 10 | done | open | open | open |
 | 3 One idea, several languages | 12 | done | open | open | open |
 | 4 Interactive systems | 8 | done | open | open | open |
@@ -112,10 +114,42 @@ seven carry an open review item. Stated plainly, so it cannot read as finished w
 | 6 Signals and systems | 10 | done | open | open | open |
 | 7 Computers from wires upward | 10 | done | open | open | open |
 
-**72 of 79 lessons have had no technical review at all.** The two defects found in the seven that
-did are the estimate of what the other 72 hold. Treat this table as the plan's real critical path:
-a lesson that teaches an observation its bench cannot produce is worse than a missing lesson,
-because a learner blames themselves.
+**67 of 79 lessons have had no technical review at all.** Treat this table as the plan's real
+critical path: a lesson that teaches an observation its bench cannot produce is worse than a
+missing lesson, because a learner blames themselves.
+
+Wave 1 is now reviewed in full — `docs/LESSON-REVIEW-WAVE-1.md`, every verdict backed by a
+measurement taken from the engine the browser runs and re-derived on every test run by
+`test/lesson-bench-claims.test.mjs` (mutation-proven: breaking a shipped circuit makes it red).
+It found **five defective lessons out of twelve**, which is close to the rate the first two
+predicted and is the reason waves 2–7 come before any new content:
+
+- `electricity-polarity` asked the learner to identify two LED directions on a bench where both
+  LEDs are forward-biased; the reversed part is a diode. Fixed, v2.
+- `electricity-series-parallel` told the learner to write `Isource = Ibranch1 + Ibranch2`, which
+  is false there by 3.158 mA at every node — all three branches share the supply rail. Fixed, v2.
+- `electricity-inductor` asked to compare the signal before and after the inductor at a DC
+  operating point where the two nodes are 0.2 mV apart, and never told the learner to make an
+  edge. Fixed, v2.
+- `electricity-motor-flyback` asked to verify the diode is reverse-biased "while powered" on a
+  bench that opens with the switch off and every node at 0 V. Fixed, v2.
+- `electricity-transistor-switch` switches correctly, but an ammeter on the transistor's
+  collector reads 43.0 mA against 5.8 mA in its own series branch. Copy steered to the load
+  resistor, v2; the engine defect is open.
+
+Two defects could not be fixed from the lesson side and stay open, both pinned by tests that
+fail when they are fixed: `branchCurrent()` reports a device model's internal quantity rather
+than the solved branch current (and a flat zero for `switch`, `button`, `dc_motor`), and
+`bw-circuit-changed` fires only on pin-declaration changes, so `starter-circuit-path`'s "change
+one thing" checkpoint can never tick itself on an MCU-less bench. A third, found in passing:
+`dc_motor` stamps its winding inductance in parallel with the winding resistance, so its DC
+operating point depends on the solver's time step and its declared `windingR: 10` behaves as
+4.5–5.0 Ω.
+
+One finding is structural rather than per-lesson: ten of Wave 1's twelve lessons hang their
+measuring checkpoint on `circuit-ready`, which fires when the example finishes loading. Those
+checkpoints tick themselves before the learner has measured anything. Read waves 2–7 knowing
+that, rather than rediscovering it seven times.
 
 ## Milestone 1 — First useful result
 
