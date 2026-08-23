@@ -2,8 +2,9 @@
 
 Reviewed 2026-08-23 against `a3f30be6b`. Ten lessons, twenty checkpoints.
 
-**3 defective of 10 · 3 revised to content version 2 · 3 defects open, all in
-the debugger UI rather than in a lesson or a bench.**
+**3 defective of 10 · 3 revised to content version 2 · 4 defects open, all in
+the debugger rather than in a lesson or a bench — and the fourth applies to all
+ten lessons at once.**
 
 Wave 5 is the first wave whose observable is not a circuit. Every other wave asks
 whether a bench can produce a reading, and `scripts/lesson-bench.mjs` answers by
@@ -35,6 +36,45 @@ bench capability.
 | debug-simulation-hardware | pico02-pot-print | 1 | achievable (`optional-hardware`) |
 
 ## The defects
+
+### 0. The debugger cannot start offline, on any device family — and all ten lessons say `simulation`
+
+Found last, while reviewing Wave 3, and it should have been found first. My whole
+first pass asked what the debugger can **show**; none of it asked whether the
+debugger can **start**.
+
+`debug-runner.js` names the four things only a browser can do, and the first is
+"**build the image over the network**":
+
+```
+project  --generateC({debug:true})-->  C + @bw yield map
+         --POST /compile{symbols}-->   .hex + symbol table
+         --emu8051 + bw-board------->  a running, breakable program
+```
+
+The fetch is unconditional. `COMPILE_TARGET` translates board names to chip names
+— `arduino-nano`/`arduino-uno` → `atmega328p`, `pico` → `rp2040`, `eater6502` →
+`eater6502` — and then every one of them goes to the same
+`POST https://stc-compiler.vercel.app/compile`. There is no device for which a
+local path is chosen. The reason is given and is not incidental: a browser cannot
+run SDCC, and the yield map alone does not say where `<task>_state` lives in RAM
+or what code address a yield sits at — "only the linker knows that".
+
+So **every Wave 5 lesson needs a network connection before its first checkpoint**,
+and all ten declare `environment: "simulation"`.
+
+There is an escape hatch, and it is real: an in-bundle SDCC WASM at
+`lib/sdcc-wasm/intercept.js` that *intercepts* the same fetch, enabled by
+`localStorage['bw-use-wasm-compiler'] === '1'`. It is opt-in, off by default, and
+discoverable from no lesson and no checkpoint. When it fails to load the status
+line says "local compiler unavailable — using the hosted one", which is honest
+about the fallback but only visible to someone who already opted in.
+
+Not fixed in copy. Ten lessons declaring an environment they do not have is a
+curriculum-schema question — whether `simulation` should mean "no hardware" or
+"no network" — and answering it by editing ten hints would bury it. Pinned by a
+test that fails if the default compiler URL moves or the opt-in becomes the
+default.
 
 ### 1. The task list shows one of the four fields the lesson asks for
 
@@ -72,6 +112,14 @@ deadline is meaningful. The front end then never rendered it at all.
 learner derive runnable/waiting from states plus program time, and says plainly
 that the name column is blank and the deadline unprinted — take the names from
 your own program. The two UI faults are open and pinned.
+
+**Where the fix belongs, which neither I nor bw-bundle checked at first:**
+`DebugStatus.jsx` is **vendored** — it is one of the 574 entries in
+`bw-circuit-ui/.vendor-manifest.json`. Repairing it in lite would drift from the
+vendor and be reverted by the next `npm run sync:circuitui`, so it is
+bw-circuit-ui's bug to fix and has been passed there with the producer evidence.
+The pinned test is the holding pattern: it goes red when they fix it, rather than
+this document quietly becoming wrong.
 
 ### 2. There is no call stack to inspect
 
@@ -171,6 +219,10 @@ field appears and this lesson needs its hint softened again.
 - **Pedagogy** — in particular whether a wave about debugging should be taught on
   a debugger this young. Three of its ten lessons describe a richer tool than the
   one that exists.
+- **Whether the hosted compiler is actually reachable**, and what a learner sees
+  when it is not. I read the call site and the fallback message; I did not take
+  the network away and watch. That is the obvious next probe and it needs a
+  browser.
 
 ## Reproducing
 
@@ -178,6 +230,7 @@ field appears and this lesson needs its hint softened again.
 node --test test/lesson-debugger-surface.test.mjs
 ```
 
-Three of its six tests are named `OPEN DEFECT`. They fail the day the panel binds
-the task name correctly, renders the deadline, or grows a frames view — each
-message naming this document and the lesson hint to update.
+Four of its seven tests are named `OPEN DEFECT`. They fail the day the panel binds
+the task name correctly, renders the deadline, grows a frames view, or the
+debugger stops needing a hosted compiler — each message naming this document and
+the lesson hint to update.

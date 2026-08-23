@@ -108,9 +108,9 @@ finished work:
 | --- | --- | --- | --- | --- | --- |
 | 1 Electricity you can see | 12 | done | **full, done 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | open | open |
 | 2 Measure rather than guess | 10 | done | **full, done 2026-08-23** — 5 of 10 defective; 6 revised to v2, 4 open engine defects, 1 fixed upstream mid-review | open | open |
-| 3 One idea, several languages | 12 | done | scanned; **full review open** | open | open |
+| 3 One idea, several languages | 12 | done | **full, done 2026-08-23** — 1 of 12 defective; 1 revised to v2 | open | open |
 | 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
-| 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 3 open UI defects | open | open |
+| 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | open | open |
 | 6 Signals and systems | 10 | done | scanned; **full review open** | open | open |
 | 7 Computers from wires upward | 10 | done | scanned; **full review open** | open | open |
 
@@ -122,7 +122,7 @@ names? **Reviewed** means a human worked through every checkpoint against a
 solved bench, which is what Wave 1 got and what found the other four classes of
 defect the detector cannot see.
 
-**47 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
+**35 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
 the one defect class that detector understands. Treat this table as the plan's real critical path:
 a lesson that teaches an observation its bench cannot produce is worse than a missing lesson,
 because a learner blames themselves.
@@ -177,6 +177,28 @@ The two lessons that needed no engine change were straightforwardly wrong and ar
 resistors that does not exist on its bench (every branch carries an LED; the whole network reads
 2192 Ω rail to rail and the two branch tops are the same node), and `measurement-scope-timebase`
 asked for cycle counts in 1/10/100 ms windows when the scope offers 4.096/20.48/81.92 ms.
+
+### Wave 3, the healthiest wave, and the dependency it exposed
+
+Reviewed 2026-08-23 — `docs/LESSON-REVIEW-WAVE-3.md`. **12 lessons, 24 checkpoints, 62 declared
+language variants, 1 defective, 1 revised to v2.** Sixty-one of the sixty-two variants were
+GENERATED from each lesson's own example through lite's own compiler (asserted byte-identical to
+the overlay copy) — every program parses, produces blocks, and emits Python, JavaScript and C, with
+nothing empty and nothing throwing. For a wave whose premise is "the same idea in several
+languages", that is worth recording as a positive result.
+
+The exception: `languages-protocols` is the only lesson declaring `asm`, and there is no ASM
+emitter. The Code tab's ASM view is real but both its modes go over the network — the listing comes
+from `POST stc-compiler.vercel.app/compile`, the source mode from `/assemble` — while the lesson
+declares `environment: simulation`. Fixed as a disclosure: its asm variant now says so, EN and DE.
+
+**Following that dependency upstream is what found Wave 5's defect 0**, which is larger than
+anything else in either wave and is recorded there: the debugger takes the same route, for every
+device family, so all ten Wave 5 lessons need a network connection before their first checkpoint —
+and all ten also declare `simulation`. An in-bundle SDCC WASM exists behind a `localStorage`
+opt-in, off by default and discoverable from no lesson. I found the small instance first and only
+then looked upstream; the general lesson is to trace a dependency to its origin rather than stop at
+the first component that answers the question.
 
 ### Wave 5, where the subject under test is the debugger
 
