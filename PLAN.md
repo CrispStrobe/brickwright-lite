@@ -107,7 +107,7 @@ finished work:
 | Wave | Lessons | Draft | Technical review | Translation review | Learner field test |
 | --- | --- | --- | --- | --- | --- |
 | 1 Electricity you can see | 12 | done | **full, done 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | open | open |
-| 2 Measure rather than guess | 10 | done | scanned; **full review open** | open | open |
+| 2 Measure rather than guess | 10 | done | **full, done 2026-08-23** — 5 of 10 defective; 6 revised to v2, 5 open engine defects | open | open |
 | 3 One idea, several languages | 12 | done | scanned; **full review open** | open | open |
 | 4 Interactive systems | 8 | done | scanned; **full review open** | open | open |
 | 5 Debug with evidence | 10 | done | scanned; **full review open** | open | open |
@@ -122,10 +122,50 @@ names? **Reviewed** means a human worked through every checkpoint against a
 solved bench, which is what Wave 1 got and what found the other four classes of
 defect the detector cannot see.
 
-**67 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
+**57 of 79 lessons have had no full technical review**, though all 79 are now machine-scanned for
 the one defect class that detector understands. Treat this table as the plan's real critical path:
 a lesson that teaches an observation its bench cannot produce is worse than a missing lesson,
 because a learner blames themselves.
+
+### Wave 2, and what the instrument wave turned up
+
+Reviewed 2026-08-23 — `docs/LESSON-REVIEW-WAVE-2.md`. **10 lessons, 30 checkpoints, 5 defective,
+6 revised to content version 2, 4 defects open and none of them in a lesson.** The Tier-3 detector
+reported nothing on this wave, which is the expected result: none of the five is a demand for a
+missing capability, so all five were found by measuring.
+
+Three of the four open defects are the same discovery from different angles — **the simulator
+cannot show a reading to a learner**:
+
+- `73-voltmeter`'s OLED never renders: the program's `oled clear/set cursor/print` map to opcodes
+  the bundled `devices` extension does not declare at all, and an undefined opcode is silent.
+- `74-ammeter`'s LCD never renders for a harder-to-see reason: `lcdprint`/`lcdcursor`/`lcdclear`
+  ARE declared and implemented, but each body is `if (b && b.setDeviceControl) b.setDeviceControl(…)`
+  and `setDeviceControl` is defined nowhere in the repository. Twelve actuator verbs share the
+  shape — servo, motor, relay, neopixel, matrix — so the whole actuator surface of that extension
+  is an unconditional no-op that passes every opcode-resolution check. First reported by bw-bundle,
+  re-derived here rather than taken on trust.
+- `76-multimeter`'s current amplifier delivers a gain of 31–39 against a documented ×46.45, and
+  the realised figure depends on the input. bw-board's LM358 is a damped integrator that halts once
+  its per-round output step drops below 1 mV, leaving up to 0.667 mV of input error unamplified — a
+  third of a 2 mV shunt signal. The example's own EXPECTED.md is self-inconsistent as a result: it
+  documents ×46.5 and records a display of `067` for a current measuring 99.96 mA.
+
+A fifth, found while re-checking my own continuity verdict: `board.resistance(a, b)` is **not
+symmetric**. The solver makes `testNodeB` the reference and then skips the gnd-symbol merge, so on
+22-series-parallel the whole network reads 2191.6 Ω probed one way and 333 MΩ — an open circuit —
+probed the other. It corrected a verdict I had already written down, and the measurement-resistance
+hint now tells the learner which way round to hold the probes.
+
+The fourth is a bench, not an engine: `43-rc-timing` has no controls at all, so the charging step
+its cursor lesson measures happens once and cannot be repeated — power-off freezes the capacitor
+rather than discharging it, and power-on resumes from where it stopped.
+
+The two lessons that needed no engine change were straightforwardly wrong and are fixed:
+`measurement-resistance` told the learner to apply 1/R = 1/R1 + 1/R2 to a pair of parallel
+resistors that does not exist on its bench (every branch carries an LED; the whole network reads
+2192 Ω rail to rail and the two branch tops are the same node), and `measurement-scope-timebase`
+asked for cycle counts in 1/10/100 ms windows when the scope offers 4.096/20.48/81.92 ms.
 
 ### The Tier-3 detector, and what it changes about the estimate
 
