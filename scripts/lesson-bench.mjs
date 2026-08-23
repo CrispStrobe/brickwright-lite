@@ -46,6 +46,8 @@ function assertInputsAreLocal() {
         path.join(cui, 'engine.js'),
         path.join(cui, 'model/circuit.js'),
         path.join(cui, 'parts-data'),
+        path.join(bwb, 'sweep.js'),
+        path.join(cui, 'model/sweep-runner.js'),
         path.join(EXAMPLES, 'index.json')
     ];
     const problems = [];
@@ -73,7 +75,13 @@ export async function boot() {
     const {inferNetlist, checkWiring} = await import(path.join(bwb, 'infer-netlist.js'));
     const {hasDevice, getDevice} = await import(path.join(bwb, 'devices.js'));
     (await import(path.join(bwb, 'register-all.js'))).registerAllDevices();
-    setEngine({BoardImpl, inferNetlist, checkWiring, hasDevice, getDevice});
+    // The sweep instrument is part of the engine injection the app makes
+    // (circuit-tab.jsx), and Wave 6 is the first wave whose lessons name it.
+    // Without these three keys `runBode` refuses with "this build has no AC
+    // sweep wired" — a truthful refusal that would read here as a bench defect.
+    const {runDcSweep, runAcSweep, logSpace} = await import(path.join(bwb, 'sweep.js'));
+    setEngine({BoardImpl, inferNetlist, checkWiring, hasDevice, getDevice,
+        runDcSweep, runAcSweep, logSpace});
     const {registerSidecar} = await import(path.join(cui, 'model/parts-registry.js'));
     for (const name of readdirSync(path.join(cui, 'parts-data'))) {
         if (!name.endsWith('.json')) continue;
