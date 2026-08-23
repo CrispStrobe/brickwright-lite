@@ -1,6 +1,9 @@
 # Wave 6 technical review — "Signals and systems"
 
-Reviewed 2026-08-23 against `d7325a272`. Ten lessons, twenty checkpoints.
+Reviewed 2026-08-23 against `d7325a272`, and every number re-derived unchanged
+against `1d10902cb` after the `bw-board` vendor that landed mid-review
+(scheduled device events, gate tpd, controller floor fix — 640 changed lines
+across `board.js`, `mna.js` and `ac.js`). Ten lessons, twenty checkpoints.
 
 **9 defective of 10 · 10 revised (one to content version 3, nine to 2) · 11
 defects open, every one of them in an instrument or an engine, none in a
