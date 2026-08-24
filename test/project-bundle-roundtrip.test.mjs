@@ -104,3 +104,73 @@ describe('the project file carries every tab', () => {
         }
     });
 });
+
+describe('save-what-you-see and the widgets key (2026-08-25)', () => {
+    test('attach dispatches the collect event BEFORE reading state', async () => {
+        // The defect this pins: the screen showed the 27-part calculator
+        // while the file carried the 4-part demo, because the bundle read
+        // a debounced autosave nobody had flushed. The collect event is
+        // the flush point; a listener writing during it must be captured.
+        const store = new Map();
+        global.localStorage = {
+            get length() { return store.size; },
+            key: i => [...store.keys()][i] ?? null,
+            getItem: k => (store.has(k) ? store.get(k) : null),
+            setItem: (k, v) => store.set(k, String(v)),
+            removeItem: k => store.delete(k)
+        };
+        const events = [];
+        global.window = {
+            dispatchEvent: e => {
+                events.push(e.type);
+                // the live tab's listener, flushing fresh state:
+                store.set('bw-circuit-autosave', JSON.stringify({parts: [{id: 'FRESH'}]}));
+            }
+        };
+        global.CustomEvent = class { constructor(type) { this.type = type; } };
+        try {
+            const {attachBrickwrightState} =
+                await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+            const blob = {
+                arrayBuffer: async () => (await makeSb3()).buffer
+            };
+            const out = await attachBrickwrightState(blob);
+            assert.deepEqual(events, ['bw-project-bundle-collect'],
+                'the flush event fires exactly once, before collection');
+            const zip = await JSZip.loadAsync(
+                typeof out.arrayBuffer === 'function' ? await out.arrayBuffer() : out);
+            const doc = JSON.parse(await zip.file(BUNDLE_PATH).async('text'));
+            assert.match(doc.state['bw-circuit-autosave'], /FRESH/,
+                'the bundle carries what the flush wrote, not what was there before');
+        } finally {
+            delete global.localStorage;
+            delete global.window;
+            delete global.CustomEvent;
+        }
+    });
+
+    test('a controller panel round-trips through the bw-ctl-widgets key', async () => {
+        const {ControllerPanel} =
+            await import('../overlay/scratch-gui/src/lib/bw-board/controller.js');
+        const panel = new ControllerPanel();
+        const w = panel.addWidget('speed', 'slider', {min: 0, max: 255}, {x: 10, y: 20});
+        w.binding = {kind: 'pin', pin: 'P1.0'};
+        panel.addWidget('temp', 'gauge', {min: -10, max: 50}, {x: 40, y: 20});
+        panel.setMode('play');
+        const stored = JSON.stringify(panel.toJSON());
+
+        const back = ControllerPanel.fromJSON(JSON.parse(stored));
+        assert.deepEqual(back.getWidgetNames().sort(), ['speed', 'temp']);
+        assert.equal(back.mode, 'play', 'the mode is part of the layout');
+        assert.deepEqual(back.getWidget('speed').binding, {kind: 'pin', pin: 'P1.0'},
+            'bindings survive');
+        assert.equal(back.getWidget('temp').config.max, 50);
+    });
+
+    test('bw-ctl-widgets is on the bundle allowlist', async () => {
+        const {isContentKey} =
+            await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+        assert.equal(isContentKey('bw-ctl-widgets'), true);
+        assert.equal(isContentKey('bw-theme'), false, 'preferences stay personal');
+    });
+});

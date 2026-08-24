@@ -38,7 +38,10 @@ const BUNDLE_VERSION = 1;
  * deliberately NOT carried: they belong to the person and the screen, not the
  * project, and copying them between machines would be a surprise.
  */
-const EXACT_KEYS = ['bw-circuit-autosave', 'bw-code-autosave'];
+const EXACT_KEYS = ['bw-circuit-autosave', 'bw-code-autosave', 'bw-ctl-widgets'];
+// The old per-widget prefix stays on the allowlist so a file saved while it
+// was documented (nothing ever wrote such keys, but a hand-built bundle
+// might) still restores; the panel itself serializes to ONE key above.
 const KEY_PREFIXES = ['bw-ctl-widget-'];
 
 const isContentKey = key =>
@@ -75,6 +78,18 @@ const loadJSZip = async () => {
  * @returns {Promise<Blob>} the blob to hand to the download
  */
 const attachBrickwrightState = async blob => {
+    // Save-what-you-SEE, not what the debounced autosaves last wrote: the
+    // circuit autosave only updates on an EDIT, so a loaded-but-untouched
+    // example saved the PREVIOUS bench (measured: the screen showed the
+    // 27-part calculator while the file carried the 4-part demo). Ask the
+    // live tabs to flush their current state synchronously before reading.
+    // Widgets never persisted at all until this event existed — the panel
+    // lives on vm.runtime and its listener writes `bw-ctl-widgets` here.
+    try {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('bw-project-bundle-collect'));
+        }
+    } catch (e) { /* a listener throwing must never break the save */ }
     const state = collectState();
     if (Object.keys(state).length === 0) return blob;
     try {

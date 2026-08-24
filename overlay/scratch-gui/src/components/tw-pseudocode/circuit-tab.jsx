@@ -138,6 +138,59 @@ class CircuitTab extends React.Component {
             this.loadExamples();
         }
         window.addEventListener('resize', this._measureBox);
+        // Project save/load carries the Circuit and Widgets tabs through the
+        // .sb3 bundle (lib/bw-project-bundle.js). COLLECT: flush the LIVE
+        // state into the bundle's keys before the save reads them — the
+        // autosave only updates on an edit, so an untouched example saved
+        // the previous bench. LOADED: the restored keys are in localStorage
+        // but a mounted tab shows its old content; hand the circuit to the
+        // Designer as fresh circuitData (it loads any new prop reference)
+        // and rebuild the controller panel in place (listeners keep refs).
+        this._onBundleCollect = () => {
+            try {
+                const rt = this.props.vm && this.props.vm.runtime;
+                const m = rt && rt.circuitModel;
+                if (m && typeof m.toJSON === 'function') {
+                    localStorage.setItem('bw-circuit-autosave', JSON.stringify(m.toJSON()));
+                }
+                const p = rt && rt.controllerPanel;
+                if (p && typeof p.toJSON === 'function') {
+                    if (p.getWidgetNames().length) {
+                        localStorage.setItem('bw-ctl-widgets', JSON.stringify(p.toJSON()));
+                    } else {
+                        localStorage.removeItem('bw-ctl-widgets');
+                    }
+                }
+            } catch (e) { /* the Scratch half of the save must survive this */ }
+        };
+        window.addEventListener('bw-project-bundle-collect', this._onBundleCollect);
+        this._onBundleLoaded = () => {
+            try {
+                const raw = localStorage.getItem('bw-circuit-autosave');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch (e) { /* full */ }
+                    this.setState({circuitData: parsed});
+                }
+                const wraw = localStorage.getItem('bw-ctl-widgets');
+                const rt = this.props.vm && this.props.vm.runtime;
+                const p = rt && rt.controllerPanel;
+                if (wraw && p) {
+                    const data = JSON.parse(wraw);
+                    if (data && data.version === 1 && Array.isArray(data.widgets)) {
+                        for (const name of p.getWidgetNames()) p.removeWidget(name);
+                        for (const w of data.widgets) {
+                            const added = p.addWidget(w.name, w.type, w.config || {}, w.layout || {});
+                            if (w.binding) added.binding = {...w.binding};
+                        }
+                        if (data.mode === 'play' || data.mode === 'edit') p.setMode(data.mode);
+                    }
+                }
+            } catch (e) {
+                console.warn('[brickwright] restoring the loaded project\'s tabs failed', e);
+            }
+        };
+        window.addEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
         // The stage-hiding CSS lives here rather than in a stylesheet because
         // the wrapper's class is a hashed CSS-module name; the attribute-
         // contains selector survives rebuilds.
@@ -338,6 +391,8 @@ class CircuitTab extends React.Component {
         cancelAnimationFrame(this._hostResizeFrame);
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
+        window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
+        window.removeEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
         window.removeEventListener('bw-settings-change', this._settingsHandler);
         window.removeEventListener('bw-start-journey', this._starterJourneyHandler);
         window.removeEventListener('bw-machine-extracted', this._machineExtractedHandler);

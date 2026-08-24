@@ -577,6 +577,30 @@ class PseudocodeImporter extends React.Component {
             this.computeExampleCompat(device);
             this.loadCatalog();
         }
+        // Project save/load (lib/bw-project-bundle.js). COLLECT: the autosave
+        // is debounced 600 ms, so a save right after typing would carry the
+        // buffer minus the last keystrokes — flush synchronously. LOADED: the
+        // restored autosave is in localStorage but this mounted editor still
+        // shows the old buffer; a loaded PROJECT wins over anything unsaved.
+        this._onBundleCollect = () => {
+            if (this._autosaveTimer) {
+                clearTimeout(this._autosaveTimer);
+                this._autosaveTimer = null;
+            }
+            this.writeAutosave();
+        };
+        window.addEventListener('bw-project-bundle-collect', this._onBundleCollect);
+        this._onBundleLoaded = () => {
+            const saved = this.readAutosave();
+            if (saved) {
+                this.setState(st => ({
+                    lang: saved.lang,
+                    buffers: {...st.buffers, [saved.lang]: saved.code},
+                    status: this.L.restored(LANG_LABEL[saved.lang] || saved.lang)
+                }));
+            }
+        };
+        window.addEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
     }
 
     componentDidUpdate (prevProps, prevState) {
@@ -690,6 +714,8 @@ class PseudocodeImporter extends React.Component {
         if (vm && vm.runtime && this._onProjectChanged) {
             vm.runtime.removeListener('PROJECT_CHANGED', this._onProjectChanged);
         }
+        window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
+        window.removeEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
         // A pending debounce would otherwise lose the last edits on unmount.
         if (this._autosaveTimer) {
             clearTimeout(this._autosaveTimer);
