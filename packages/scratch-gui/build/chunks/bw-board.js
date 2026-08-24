@@ -3655,6 +3655,8 @@ class BoardImpl {
      * @type {Map<number, object>}
      */
     this._scopeChannels = new Map();
+    /** Bench temperature in °C (E2.2, spec-updates/bench-temperature.md). */
+    this.temperatureC = 25;
 
     /** Next scope channel handle. */
     this._nextScopeHandle = 1;
@@ -4637,6 +4639,13 @@ class BoardImpl {
           if (!this._updateDevices()) break;
           this._solve();
         }
+
+        // Feed the scope at every sub-step, not only at the advance's
+        // end: a digital channel records its transition AT the wake that
+        // caused it (E4.2 — the end-of-advance feed alone collapsed a
+        // whole ring oscillation into one sample), and analog envelopes
+        // get the same per-event fidelity.
+        if (this._scopeChannels.size > 0) this._updateScopeChannels(nextT);
         cursor = nextT;
         steps++;
 
@@ -4789,23 +4798,46 @@ class BoardImpl {
    * Attach a scope channel with fixed sim-time cadence and (min,max) decimation.
    *
    * @param {object} opts
-   * @param {'voltage' | 'current'} opts.type - Channel type
-   * @param {string} [opts.netId] - Net to probe (for voltage channels)
+   * @param {'voltage' | 'current' | 'digital'} opts.type - Channel type
+   * @param {string} [opts.netId] - Net to probe (voltage/digital channels)
    * @param {string} [opts.partId] - Part to probe (for current channels)
    * @param {string} [opts.terminal] - Terminal to probe (for current channels)
    * @param {number} [opts.sampleRateHz=100000] - Sim-time sample rate
    * @param {number} [opts.depth=8192] - Ring buffer depth in (min,max) pairs
+   *   (voltage) or transitions (digital, default 4096)
+   * @param {number} [opts.threshold] - Digital logic threshold in volts
+   *   (default vcc/2, captured at add time)
    * @returns {number} Channel handle
    */
   addScopeChannel(opts) {
-    var _opts$sampleRateHz, _opts$depth, _opts$netId, _opts$partId, _opts$terminal;
+    var _opts$sampleRateHz, _opts$depth2, _opts$netId2, _opts$partId, _opts$terminal;
     const handle = this._nextScopeHandle++;
+    if (opts.type === 'digital') {
+      var _opts$depth, _opts$netId, _opts$threshold;
+      // E4.2: a logic-analyzer channel stores (t, level) TRANSITIONS,
+      // not sampled envelopes — with E4.1 every gate flip and source
+      // edge lands on a solve point, so the timestamps are exact, and
+      // a quiet net costs nothing however long the run.
+      const depth = (_opts$depth = opts.depth) !== null && _opts$depth !== void 0 ? _opts$depth : 4096;
+      this._scopeChannels.set(handle, {
+        type: 'digital',
+        netId: (_opts$netId = opts.netId) !== null && _opts$netId !== void 0 ? _opts$netId : null,
+        threshold: (_opts$threshold = opts.threshold) !== null && _opts$threshold !== void 0 ? _opts$threshold : this.vcc / 2,
+        depth,
+        // Interleaved [tNs0, level0, tNs1, level1, ...]; NaN = unwritten.
+        trans: new Float64Array(depth * 2).fill(NaN),
+        writeIndex: 0,
+        count: 0,
+        _lastLevel: null
+      });
+      return handle;
+    }
     const sampleRateHz = (_opts$sampleRateHz = opts.sampleRateHz) !== null && _opts$sampleRateHz !== void 0 ? _opts$sampleRateHz : 100000;
-    const depth = (_opts$depth = opts.depth) !== null && _opts$depth !== void 0 ? _opts$depth : 8192;
+    const depth = (_opts$depth2 = opts.depth) !== null && _opts$depth2 !== void 0 ? _opts$depth2 : 8192;
     const intervalNs = BigInt(Math.round(1e9 / sampleRateHz));
     const ch = {
       type: opts.type,
-      netId: (_opts$netId = opts.netId) !== null && _opts$netId !== void 0 ? _opts$netId : null,
+      netId: (_opts$netId2 = opts.netId) !== null && _opts$netId2 !== void 0 ? _opts$netId2 : null,
       partId: (_opts$partId = opts.partId) !== null && _opts$partId !== void 0 ? _opts$partId : null,
       terminal: (_opts$terminal = opts.terminal) !== null && _opts$terminal !== void 0 ? _opts$terminal : null,
       sampleRateHz,
@@ -4851,6 +4883,16 @@ class BoardImpl {
   getScopeData(handle) {
     const ch = this._scopeChannels.get(handle);
     if (!ch) return null;
+    if (ch.type === 'digital') {
+      return {
+        transitions: ch.trans,
+        writeIndex: ch.writeIndex,
+        count: ch.count,
+        depth: ch.depth,
+        threshold: ch.threshold,
+        channelType: 'digital'
+      };
+    }
     return {
       samples: ch.samples,
       startTNs: ch.startTNs,
@@ -4901,12 +4943,31 @@ class BoardImpl {
   _feedScopeVoltages() {
     for (const [, ch] of this._scopeChannels) {
       var _this$nodeVoltages$ge6;
+      if (ch.type === 'digital') {
+        this._feedDigital(ch, this.timeNs);
+        continue;
+      }
       if (ch.type !== 'voltage') continue;
       const v = (_this$nodeVoltages$ge6 = this.nodeVoltages.get(ch.netId)) !== null && _this$nodeVoltages$ge6 !== void 0 ? _this$nodeVoltages$ge6 : 0;
       const val = Number.isFinite(v) ? v : 0;
       if (val < ch._bucketMin) ch._bucketMin = val;
       if (val > ch._bucketMax) ch._bucketMax = val;
     }
+  }
+
+  /** Record a digital channel's level at tNs, only when it changed.
+   * @private */
+  _feedDigital(ch, tNs) {
+    var _this$nodeVoltages$ge7;
+    const v = (_this$nodeVoltages$ge7 = this.nodeVoltages.get(ch.netId)) !== null && _this$nodeVoltages$ge7 !== void 0 ? _this$nodeVoltages$ge7 : 0;
+    const level = (Number.isFinite(v) ? v : 0) > ch.threshold ? 1 : 0;
+    if (ch._lastLevel === level) return;
+    ch._lastLevel = level;
+    const idx = ch.writeIndex * 2;
+    ch.trans[idx] = Number(tNs);
+    ch.trans[idx + 1] = level;
+    ch.writeIndex = (ch.writeIndex + 1) % ch.depth;
+    ch.count++;
   }
 
   /**
@@ -4916,11 +4977,15 @@ class BoardImpl {
    */
   _updateScopeChannels(tNs) {
     for (const [, ch] of this._scopeChannels) {
-      var _this$nodeVoltages$ge7;
+      var _this$nodeVoltages$ge8;
+      if (ch.type === 'digital') {
+        this._feedDigital(ch, tNs);
+        continue;
+      }
       if (ch.type !== 'voltage') continue;
 
       // Get current voltage
-      const v = (_this$nodeVoltages$ge7 = this.nodeVoltages.get(ch.netId)) !== null && _this$nodeVoltages$ge7 !== void 0 ? _this$nodeVoltages$ge7 : 0;
+      const v = (_this$nodeVoltages$ge8 = this.nodeVoltages.get(ch.netId)) !== null && _this$nodeVoltages$ge8 !== void 0 ? _this$nodeVoltages$ge8 : 0;
       const val = Number.isFinite(v) ? v : 0;
 
       // Track running min/max for this bucket
@@ -5080,7 +5145,7 @@ class BoardImpl {
    * datasheet-typical 2400 Hz default.
    */
   _buzzerDcTone(partId) {
-    var _this$nodeVoltages$ge8, _this$nodeVoltages$ge9, _part$params$toneHz, _part$params;
+    var _this$nodeVoltages$ge9, _this$nodeVoltages$ge10, _part$params$toneHz, _part$params;
     const part = this.partMap.get(partId);
     if (!part || part.kind !== 'buzzer' || !this.powered) return {
       hz: 0,
@@ -5090,7 +5155,7 @@ class BoardImpl {
       const n = this.nets.find(x => x.terminals.some(t => t.part === partId && t.terminal === terminal));
       return n ? n.id : null;
     };
-    const v = Math.abs(((_this$nodeVoltages$ge8 = this.nodeVoltages.get(netOf('a'))) !== null && _this$nodeVoltages$ge8 !== void 0 ? _this$nodeVoltages$ge8 : 0) - ((_this$nodeVoltages$ge9 = this.nodeVoltages.get(netOf('b'))) !== null && _this$nodeVoltages$ge9 !== void 0 ? _this$nodeVoltages$ge9 : 0));
+    const v = Math.abs(((_this$nodeVoltages$ge9 = this.nodeVoltages.get(netOf('a'))) !== null && _this$nodeVoltages$ge9 !== void 0 ? _this$nodeVoltages$ge9 : 0) - ((_this$nodeVoltages$ge10 = this.nodeVoltages.get(netOf('b'))) !== null && _this$nodeVoltages$ge10 !== void 0 ? _this$nodeVoltages$ge10 : 0));
     if (v > 2.0) return {
       hz: (_part$params$toneHz = (_part$params = part.params) === null || _part$params === void 0 ? void 0 : _part$params.toneHz) !== null && _part$params$toneHz !== void 0 ? _part$params$toneHz : 2400,
       on: true,
@@ -5416,6 +5481,24 @@ class BoardImpl {
   /**
    * @param {boolean} on
    */
+  /**
+   * Bench temperature in celsius (E2.2). Default 25. Consumers: every
+   * silicon junction's forward drop (−2 mV/°C — diode, LED, zener
+   * forward, BJT Vbe) and the TMP36's default reading. A part whose
+   * user-set param already fixes the quantity (params.tempC on a TMP36,
+   * an explicit control) is NOT overridden.
+   * @param {number} celsius
+   */
+  setTemperature(celsius) {
+    const t = Number(celsius);
+    if (!Number.isFinite(t)) return;
+    if (t === this.temperatureC) return;
+    this.temperatureC = t;
+    this._solve();
+    this._notifyChange('temperature', {
+      celsius: t
+    });
+  }
   setPower(on) {
     this.powered = on;
     this._solve();
@@ -5460,6 +5543,7 @@ class BoardImpl {
     // small-signal model is valid around.
     const op = (0,_mna_js__WEBPACK_IMPORTED_MODULE_1__.solveMNA)(this._solveParts, this._solveNets, this._pinSources(), this.controls, this.vcc, {
       tSeconds: Number(this.timeNs) / 1e9,
+      temperatureC: this.temperatureC,
       deviceStates: this._deviceStates,
       qualifiedSources: this._qualifiedSources(),
       powerOff: !this.powered
@@ -5502,15 +5586,15 @@ class BoardImpl {
   _integrateInductors(dtSec) {
     if (dtSec <= 0) return;
     for (const part of this.parts) {
-      var _part$params$henrys, _this$nodeVoltages$ge10, _this$nodeVoltages$ge11, _this$inductorCurrent;
+      var _part$params$henrys, _this$nodeVoltages$ge11, _this$nodeVoltages$ge12, _this$inductorCurrent;
       if (part.kind !== 'inductor') continue;
       const henrys = /** @type {number} */(_part$params$henrys = part.params.henrys) !== null && _part$params$henrys !== void 0 ? _part$params$henrys : 0.01;
       if (henrys <= 0) continue;
       const netA = this._netForTerminal(part.id, 'a');
       const netB = this._netForTerminal(part.id, 'b');
       if (!netA || !netB) continue;
-      const vA = (_this$nodeVoltages$ge10 = this.nodeVoltages.get(netA)) !== null && _this$nodeVoltages$ge10 !== void 0 ? _this$nodeVoltages$ge10 : 0;
-      const vB = (_this$nodeVoltages$ge11 = this.nodeVoltages.get(netB)) !== null && _this$nodeVoltages$ge11 !== void 0 ? _this$nodeVoltages$ge11 : 0;
+      const vA = (_this$nodeVoltages$ge11 = this.nodeVoltages.get(netA)) !== null && _this$nodeVoltages$ge11 !== void 0 ? _this$nodeVoltages$ge11 : 0;
+      const vB = (_this$nodeVoltages$ge12 = this.nodeVoltages.get(netB)) !== null && _this$nodeVoltages$ge12 !== void 0 ? _this$nodeVoltages$ge12 : 0;
       const vAcross = vA - vB;
 
       // Backward Euler: I_new = I_old + (V / L) × dt
@@ -5988,13 +6072,13 @@ class BoardImpl {
 
     // Check for LED wired backward (cathode to VCC, anode to GND)
     for (const part of this.parts) {
-      var _this$nodeVoltages$ge12, _this$nodeVoltages$ge13;
+      var _this$nodeVoltages$ge13, _this$nodeVoltages$ge14;
       if (part.kind !== 'led') continue;
       const anodeNet = this._netForTerminal(part.id, 'anode');
       const cathodeNet = this._netForTerminal(part.id, 'cathode');
       if (!anodeNet || !cathodeNet) continue;
-      const anodeV = (_this$nodeVoltages$ge12 = this.nodeVoltages.get(anodeNet)) !== null && _this$nodeVoltages$ge12 !== void 0 ? _this$nodeVoltages$ge12 : 0;
-      const cathodeV = (_this$nodeVoltages$ge13 = this.nodeVoltages.get(cathodeNet)) !== null && _this$nodeVoltages$ge13 !== void 0 ? _this$nodeVoltages$ge13 : 0;
+      const anodeV = (_this$nodeVoltages$ge13 = this.nodeVoltages.get(anodeNet)) !== null && _this$nodeVoltages$ge13 !== void 0 ? _this$nodeVoltages$ge13 : 0;
+      const cathodeV = (_this$nodeVoltages$ge14 = this.nodeVoltages.get(cathodeNet)) !== null && _this$nodeVoltages$ge14 !== void 0 ? _this$nodeVoltages$ge14 : 0;
       if (cathodeV > anodeV + 0.5) {
         warnings.push({
           severity: 'warning',
@@ -6178,6 +6262,7 @@ class BoardImpl {
     this._syncDeviceGpioDrives();
     return (0,_mna_js__WEBPACK_IMPORTED_MODULE_1__.solveMNA)(this._solveParts, this._solveNets, this._pinSources(), this.controls, this.vcc, {
       powerOff,
+      temperatureC: this.temperatureC,
       testNodeA,
       testNodeB,
       testCurrent,
@@ -6524,11 +6609,11 @@ class BoardImpl {
       // stale nodeVoltages would re-clock edges that _settleShiftRegister
       // already processed.
       const readV = terminal => {
-        var _this$nodeVoltages$ge14;
+        var _this$nodeVoltages$ge15;
         const n = this._netForTerminal(part.id, terminal);
         if (!n) return 0;
         const ov = this._digitalOverlay.get(n);
-        return ov !== undefined ? ov : (_this$nodeVoltages$ge14 = this.nodeVoltages.get(n)) !== null && _this$nodeVoltages$ge14 !== void 0 ? _this$nodeVoltages$ge14 : 0;
+        return ov !== undefined ? ov : (_this$nodeVoltages$ge15 = this.nodeVoltages.get(n)) !== null && _this$nodeVoltages$ge15 !== void 0 ? _this$nodeVoltages$ge15 : 0;
       };
       const dataV = readV('data');
       const clockV = readV('clock');
@@ -6585,14 +6670,14 @@ class BoardImpl {
       if (!model || !model.update) continue;
       const state = this._deviceStates.get(part.id);
       const read = terminal => {
-        var _this$nodeVoltages$ge15;
+        var _this$nodeVoltages$ge16;
         const n = this._netForTerminal(part.id, terminal);
         if (!n) return 0;
         // Overlay first: while the digital fast path holds deferred
         // levels, the last-solved voltage on those nets is stale — a
         // decoder reading it would see phantom edges.
         const ov = this._digitalOverlay.get(n);
-        return ov !== undefined ? ov : (_this$nodeVoltages$ge15 = this.nodeVoltages.get(n)) !== null && _this$nodeVoltages$ge15 !== void 0 ? _this$nodeVoltages$ge15 : 0;
+        return ov !== undefined ? ov : (_this$nodeVoltages$ge16 = this.nodeVoltages.get(n)) !== null && _this$nodeVoltages$ge16 !== void 0 ? _this$nodeVoltages$ge16 : 0;
       };
       if (model.update(part, state, read, atNs)) changed = true;
     }
@@ -6651,6 +6736,7 @@ class BoardImpl {
     let nSolves = 0;
     const solveStep = (tStart, hs, method, cvS, ilS, ccS, lvS) => (nSolves++, (0,_mna_js__WEBPACK_IMPORTED_MODULE_1__.solveMNA)(this._solveParts, this._solveNets, pinSources, this.controls, this.vcc, {
       tSeconds: tStart + hs,
+      temperatureC: this.temperatureC,
       transient: {
         dtSec: hs,
         method,
@@ -6900,7 +6986,7 @@ class BoardImpl {
       }
     }
     for (const part of this.parts) {
-      var _part$params$farads, _this$capVoltages$get2, _this$nodeVoltages$ge16;
+      var _part$params$farads, _this$capVoltages$get2, _this$nodeVoltages$ge17;
       if (part.kind !== 'capacitor') continue;
       const farads = /** @type {number} */(_part$params$farads = part.params.farads) !== null && _part$params$farads !== void 0 ? _part$params$farads : 0.0001;
       const netA = this._netForTerminal(part.id, 'a');
@@ -6946,7 +7032,7 @@ class BoardImpl {
       // Update node voltages for the capacitor's terminals
       // The capacitor voltage determines the node voltage at its "a" terminal
       // relative to "b"
-      const vB = (_this$nodeVoltages$ge16 = this.nodeVoltages.get(netB)) !== null && _this$nodeVoltages$ge16 !== void 0 ? _this$nodeVoltages$ge16 : 0;
+      const vB = (_this$nodeVoltages$ge17 = this.nodeVoltages.get(netB)) !== null && _this$nodeVoltages$ge17 !== void 0 ? _this$nodeVoltages$ge17 : 0;
       this.nodeVoltages.set(netA, vB + vNew);
     }
 
@@ -7050,8 +7136,8 @@ class BoardImpl {
       const netA = this._netForTerminal(part.id, 'a');
       const netB = this._netForTerminal(part.id, 'b');
       if (netA) {
-        var _this$nodeVoltages$ge17;
-        const vB = netB ? (_this$nodeVoltages$ge17 = this.nodeVoltages.get(netB)) !== null && _this$nodeVoltages$ge17 !== void 0 ? _this$nodeVoltages$ge17 : 0 : 0;
+        var _this$nodeVoltages$ge18;
+        const vB = netB ? (_this$nodeVoltages$ge18 = this.nodeVoltages.get(netB)) !== null && _this$nodeVoltages$ge18 !== void 0 ? _this$nodeVoltages$ge18 : 0 : 0;
         this.nodeVoltages.set(netA, vB + capV);
       }
     }
@@ -7290,15 +7376,15 @@ class BoardImpl {
    * @param {Part} pot
    */
   _solvePot(pot) {
-    var _this$controls$get5, _this$nodeVoltages$ge18, _this$nodeVoltages$ge19;
+    var _this$controls$get5, _this$nodeVoltages$ge19, _this$nodeVoltages$ge20;
     const position = (_this$controls$get5 = this.controls.get(pot.id)) !== null && _this$controls$get5 !== void 0 ? _this$controls$get5 : 0.5;
     // Find the nets connected to terminals a and b
     const netA = this._netForTerminal(pot.id, 'a');
     const netB = this._netForTerminal(pot.id, 'b');
     const netW = this._netForTerminal(pot.id, 'wiper');
     if (!netA || !netB || !netW) return;
-    const vA = (_this$nodeVoltages$ge18 = this.nodeVoltages.get(netA)) !== null && _this$nodeVoltages$ge18 !== void 0 ? _this$nodeVoltages$ge18 : 0;
-    const vB = (_this$nodeVoltages$ge19 = this.nodeVoltages.get(netB)) !== null && _this$nodeVoltages$ge19 !== void 0 ? _this$nodeVoltages$ge19 : 0;
+    const vA = (_this$nodeVoltages$ge19 = this.nodeVoltages.get(netA)) !== null && _this$nodeVoltages$ge19 !== void 0 ? _this$nodeVoltages$ge19 : 0;
+    const vB = (_this$nodeVoltages$ge20 = this.nodeVoltages.get(netB)) !== null && _this$nodeVoltages$ge20 !== void 0 ? _this$nodeVoltages$ge20 : 0;
 
     // Wiper voltage: linear interpolation from b to a
     const vWiper = vB + (vA - vB) * position;
@@ -7516,9 +7602,9 @@ class BoardImpl {
     // MNA solve inside syncInputs — which the adapters run every advance
     // slice — and quietly resurrect the per-edge cost.
     const at = netId => {
-      var _this$nodeVoltages$ge20;
+      var _this$nodeVoltages$ge21;
       const ov = this._digitalOverlay.get(netId);
-      return ov !== undefined ? ov : (_this$nodeVoltages$ge20 = this.nodeVoltages.get(netId)) !== null && _this$nodeVoltages$ge20 !== void 0 ? _this$nodeVoltages$ge20 : 0;
+      return ov !== undefined ? ov : (_this$nodeVoltages$ge21 = this.nodeVoltages.get(netId)) !== null && _this$nodeVoltages$ge21 !== void 0 ? _this$nodeVoltages$ge21 : 0;
     };
     // The pin namespace lives on the MCU-surface part: the STC12 body
     // (kind 'mcu') or any gpioFollowsPinStates device (dev boards, bare
@@ -12758,7 +12844,12 @@ function registerAnalogICs() {
           '2_out': null
         },
         // null = high-Z (open collector)
-        _comp: [0, 0] // output states: 0=LOW(sinking), 1=floating
+        // null = NOT YET EVALUATED: the first update always applies its
+        // drive. The old init of 0-with-floating-drives was inconsistent
+        // — a comparator whose first comparison came out low never sank
+        // until the input crossed high and back (found by the E3.6
+        // hysteresis oracle's fresh-bench case).
+        _comp: [null, null] // 0=LOW(sinking), 1=floating
       };
     },
     stamp(ctx) {
@@ -12768,29 +12859,25 @@ function registerAnalogICs() {
       ctx.conductance('2_neg', null, 1 / R_INPUT);
     },
     update(part, state, read) {
+      var _part$params$hysteres, _part$params3;
+      // E3.6: optional hysteresis in volts (default 0 — the bare LM393
+      // has none, and the datasheet-honest default keeps every existing
+      // bench bit-identical; h=0 uses the exact legacy comparison).
+      const h = (_part$params$hysteres = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.hysteresis) !== null && _part$params$hysteres !== void 0 ? _part$params$hysteres : 0;
       let changed = false;
-
-      // Comparator 1
-      const comp1 = read('1_pos') > read('1_neg') ? 1 : 0;
-      if (comp1 !== state._comp[0]) {
-        state._comp[0] = comp1;
-        // Open-collector: V+ > V- → float (null), V+ < V- → sink to GND (Vce_sat ~ 0.2V)
-        state.drives['1_out'] = comp1 ? null : {
-          vTh: 0.2,
-          rTh: 10
-        };
-        changed = true;
-      }
-
-      // Comparator 2
-      const comp2 = read('2_pos') > read('2_neg') ? 1 : 0;
-      if (comp2 !== state._comp[1]) {
-        state._comp[1] = comp2;
-        state.drives['2_out'] = comp2 ? null : {
-          vTh: 0.2,
-          rTh: 10
-        };
-        changed = true;
+      for (let i = 1; i <= 2; i++) {
+        const d = read("".concat(i, "_pos")) - read("".concat(i, "_neg"));
+        const prev = state._comp[i - 1];
+        const comp = h === 0 || prev === null ? d > 0 ? 1 : 0 : prev === 1 ? d < -h / 2 ? 0 : 1 : d > h / 2 ? 1 : 0;
+        if (comp !== prev) {
+          state._comp[i - 1] = comp;
+          // Open-collector: high → float (null), low → sink (Vce_sat ~0.2 V)
+          state.drives["".concat(i, "_out")] = comp ? null : {
+            vTh: 0.2,
+            rTh: 10
+          };
+          changed = true;
+        }
       }
       return changed;
     }
@@ -12802,8 +12889,8 @@ function registerAnalogICs() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('tmp36', {
     terminals: ['vcc', 'out', 'gnd'],
     init(part) {
-      var _part$params$tempC, _part$params3;
-      const tempC = (_part$params$tempC = (_part$params3 = part.params) === null || _part$params3 === void 0 ? void 0 : _part$params3.tempC) !== null && _part$params$tempC !== void 0 ? _part$params$tempC : 25;
+      var _part$params$tempC, _part$params4;
+      const tempC = (_part$params$tempC = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.tempC) !== null && _part$params$tempC !== void 0 ? _part$params$tempC : 25;
       const vOut = 0.5 + tempC * 0.01; // 500mV + 10mV/°C
       return {
         drives: {
@@ -12812,13 +12899,19 @@ function registerAnalogICs() {
             rTh: R_OUT
           }
         },
-        _tempC: tempC
+        _tempC: tempC,
+        _benchT: 25
       };
     },
-    stamp(ctx) {/* output drive handled by state.drives */},
+    stamp(ctx, part, state) {
+      var _ctx$temperatureC;
+      // E2.2: capture the bench temperature; it is the DEFAULT reading —
+      // an explicit params.tempC pins the sensor and is never overridden.
+      state._benchT = (_ctx$temperatureC = ctx.temperatureC) !== null && _ctx$temperatureC !== void 0 ? _ctx$temperatureC : 25;
+    },
     update(part, state) {
-      var _part$params$tempC2, _part$params4;
-      const tempC = (_part$params$tempC2 = (_part$params4 = part.params) === null || _part$params4 === void 0 ? void 0 : _part$params4.tempC) !== null && _part$params$tempC2 !== void 0 ? _part$params$tempC2 : 25;
+      var _ref, _part$params$tempC2, _part$params5;
+      const tempC = (_ref = (_part$params$tempC2 = (_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.tempC) !== null && _part$params$tempC2 !== void 0 ? _part$params$tempC2 : state._benchT) !== null && _ref !== void 0 ? _ref : 25;
       if (Math.abs(tempC - state._tempC) < 0.1) return false;
       state._tempC = tempC;
       const vOut = 0.5 + tempC * 0.01;
@@ -12838,55 +12931,112 @@ function registerAnalogICs() {
     init(part) {
       return {
         drives: {},
-        brightness: 0
+        brightness: 0,
+        _tempK: 0,
+        _lastTNs: null,
+        _rNow: null
       };
     },
-    stamp(ctx, part) {
-      var _part$params$ohms, _part$params5;
-      const ohms = (_part$params$ohms = (_part$params5 = part.params) === null || _part$params5 === void 0 ? void 0 : _part$params5.ohms) !== null && _part$params$ohms !== void 0 ? _part$params$ohms : 500; // typical incandescent
-      ctx.conductance('a', 'b', 1 / ohms);
+    stamp(ctx, part, state) {
+      var _part$params$ohms, _part$params6, _part$params7, _state$_rNow;
+      // E3.6, opt-in with params.filament: a PTC filament whose
+      // resistance grows with its own dissipation — cold it is
+      // params.ohms/10 (tungsten's ~10:1 hot/cold ratio), at rated
+      // dissipation it warms to params.ohms, and the one-pole thermal
+      // state in update() makes INRUSH demonstrable: the first
+      // milliseconds draw ~10× the steady current, which is why real
+      // bulbs die at switch-on. Default (no param) stays the fixed
+      // resistor every existing bench solved.
+      const ohms = (_part$params$ohms = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.ohms) !== null && _part$params$ohms !== void 0 ? _part$params$ohms : 500;
+      const r = (_part$params7 = part.params) !== null && _part$params7 !== void 0 && _part$params7.filament ? (_state$_rNow = state._rNow) !== null && _state$_rNow !== void 0 ? _state$_rNow : ohms / 10 : ohms;
+      ctx.conductance('a', 'b', 1 / r);
     },
-    update(part, state, read) {
-      var _part$params$vRated, _part$params6;
+    update(part, state, read, tNs) {
+      var _part$params$vRated, _part$params8, _part$params9;
       const vA = read('a');
       const vB = read('b');
       const v = Math.abs(vA - vB);
-      const vRated = (_part$params$vRated = (_part$params6 = part.params) === null || _part$params6 === void 0 ? void 0 : _part$params6.vRated) !== null && _part$params$vRated !== void 0 ? _part$params$vRated : 5.0;
+      const vRated = (_part$params$vRated = (_part$params8 = part.params) === null || _part$params8 === void 0 ? void 0 : _part$params8.vRated) !== null && _part$params$vRated !== void 0 ? _part$params$vRated : 5.0;
       const newBrightness = Math.min(1.0, (v / vRated) ** 2);
-      if (Math.abs(newBrightness - state.brightness) < 0.001) return false;
-      state.brightness = newBrightness;
-      return false; // brightness is read-only state, no electrical re-solve
+      let changed = false;
+      if ((_part$params9 = part.params) !== null && _part$params9 !== void 0 && _part$params9.filament) {
+        var _part$params$ohms2, _part$params10, _part$params$tauMs, _part$params11, _state$_rNow2;
+        const rHot = (_part$params$ohms2 = (_part$params10 = part.params) === null || _part$params10 === void 0 ? void 0 : _part$params10.ohms) !== null && _part$params$ohms2 !== void 0 ? _part$params$ohms2 : 500;
+        const rCold = rHot / 10;
+        // Thermal pole: tauMs (default 30 ms — small-bulb scale).
+        const tauMs = (_part$params$tauMs = (_part$params11 = part.params) === null || _part$params11 === void 0 ? void 0 : _part$params11.tauMs) !== null && _part$params$tauMs !== void 0 ? _part$params$tauMs : 30;
+        // Steady temp normalized so rated dissipation (vRated²/rHot)
+        // lands the filament AT rHot: tSS = P / pRated, r = rCold + (rHot−rCold)·min(tSS,1)… 
+        const r = (_state$_rNow2 = state._rNow) !== null && _state$_rNow2 !== void 0 ? _state$_rNow2 : rCold;
+        const p = v * v / r;
+        const pRated = vRated * vRated / rHot;
+        const tSS = Math.min(p / pRated, 1.5);
+        const dtMs = state._lastTNs === null ? 0 : Number(tNs - state._lastTNs) / 1e6;
+        state._lastTNs = tNs;
+        const alpha = dtMs <= 0 ? 0 : 1 - Math.exp(-dtMs / tauMs);
+        state._tempK = state._tempK + (tSS - state._tempK) * alpha;
+        const rNew = rCold + (rHot - rCold) * Math.min(state._tempK, 1);
+        if (state._rNow === null || Math.abs(rNew - state._rNow) > state._rNow * 0.02) {
+          state._rNow = rNew;
+          changed = true; // the network must see the new filament
+        } else {
+          state._rNow = rNew;
+        }
+      }
+      if (Math.abs(newBrightness - state.brightness) >= 0.001) {
+        state.brightness = newBrightness;
+      }
+      return changed;
     }
   });
 
   // ─── Optocoupler ──────────────────────────────────────────────────
-  // LED side (anode/cathode) drives a phototransistor (collector/emitter).
-  // When LED current > threshold, transistor saturates.
+  // E3.6: the LED side is a real junction segment (off: 1 MΩ leak; on:
+  // rd above vf, so vLed clamps near vf + i·rd instead of the old
+  // 150 Ω-from-zero fiction), and the output is SCALED by the current
+  // transfer ratio instead of snapping to one saturation conductance:
+  // the phototransistor can sink at most CTR·iLed, modeled as a
+  // conductance ctr·iLed/vceSat — half the LED current, half the sink.
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('optocoupler', {
     terminals: ['anode', 'cathode', 'collector', 'emitter'],
     init() {
       return {
         drives: {},
-        _on: false
+        _on: false,
+        _gCe: 0
       };
     },
     stamp(ctx, part, state) {
-      // LED side: forward voltage drop modeled as simple resistor above Vf
-      const rd = 50; // dynamic R of internal LED
-      ctx.conductance('anode', 'cathode', 1 / (rd + 100));
-
-      // Transistor side: controlled by LED state
+      var _part$params$vf, _part$params12;
+      const rd = 50; // dynamic R of the internal LED
+      const vf = (_part$params$vf = (_part$params12 = part.params) === null || _part$params12 === void 0 ? void 0 : _part$params12.vf) !== null && _part$params$vf !== void 0 ? _part$params$vf : 1.2;
       if (state._on) {
-        ctx.conductance('collector', 'emitter', 1 / 5); // saturated: ~5Ω
+        // Conducting segment: i = (v − vf)/rd as a Norton pair.
+        ctx.conductance('anode', 'cathode', 1 / rd);
+        // Norton pair for i = (v − vf)/rd: the −vf/rd constant is an
+        // inflow at the anode and an outflow at the cathode (b += amps
+        // is inflow in this MNA).
+        ctx.current('anode', vf / rd);
+        ctx.current('cathode', -vf / rd);
+      } else {
+        ctx.conductance('anode', 'cathode', 1e-6); // dark leakage
       }
+      if (state._gCe > 0) ctx.conductance('collector', 'emitter', state._gCe);
     },
     update(part, state, read) {
-      var _part$params$vf, _part$params7;
+      var _part$params$vf2, _part$params13, _part$params$ctr, _part$params14;
+      const rd = 50;
+      const vf = (_part$params$vf2 = (_part$params13 = part.params) === null || _part$params13 === void 0 ? void 0 : _part$params13.vf) !== null && _part$params$vf2 !== void 0 ? _part$params$vf2 : 1.2;
+      const ctr = (_part$params$ctr = (_part$params14 = part.params) === null || _part$params14 === void 0 ? void 0 : _part$params14.ctr) !== null && _part$params$ctr !== void 0 ? _part$params$ctr : 1.0;
+      const vceSat = 0.2;
       const vLed = read('anode') - read('cathode');
-      const vfThreshold = (_part$params$vf = (_part$params7 = part.params) === null || _part$params7 === void 0 ? void 0 : _part$params7.vf) !== null && _part$params$vf !== void 0 ? _part$params$vf : 1.2;
-      const shouldBeOn = vLed > vfThreshold;
-      if (shouldBeOn === state._on) return false;
-      state._on = shouldBeOn;
+      const on = vLed > vf;
+      const iLed = on ? Math.max(0, (vLed - vf) / rd) : 0;
+      const gCe = Math.min(ctr * iLed / vceSat, 1 / 5); // cap at the old hard-sat 5 Ω
+      const changed = on !== state._on || Math.abs(gCe - state._gCe) > state._gCe * 0.05 + 1e-9;
+      if (!changed) return false;
+      state._on = on;
+      state._gCe = gCe;
       return true;
     }
   });
@@ -12903,7 +13053,7 @@ function registerAnalogICs() {
           '3_out': null,
           '4_out': null
         },
-        _comp: [0, 0, 0, 0]
+        _comp: [null, null, null, null] // null = not yet evaluated (see lm393)
       };
     },
     stamp(ctx) {
@@ -12913,10 +13063,14 @@ function registerAnalogICs() {
       }
     },
     update(part, state, read) {
+      var _part$params$hysteres2, _part$params15;
+      const h = (_part$params$hysteres2 = (_part$params15 = part.params) === null || _part$params15 === void 0 ? void 0 : _part$params15.hysteresis) !== null && _part$params$hysteres2 !== void 0 ? _part$params$hysteres2 : 0; // E3.6, same contract as lm393
       let changed = false;
       for (let i = 1; i <= 4; i++) {
-        const result = read("".concat(i, "_pos")) > read("".concat(i, "_neg")) ? 1 : 0;
-        if (result !== state._comp[i - 1]) {
+        const d = read("".concat(i, "_pos")) - read("".concat(i, "_neg"));
+        const prev = state._comp[i - 1];
+        const result = h === 0 || prev === null ? d > 0 ? 1 : 0 : prev === 1 ? d < -h / 2 ? 0 : 1 : d > h / 2 ? 1 : 0;
+        if (result !== prev) {
           state._comp[i - 1] = result;
           state.drives["".concat(i, "_out")] = result ? null : {
             vTh: 0.2,
@@ -12935,8 +13089,8 @@ function registerAnalogICs() {
   (0,_devices_js__WEBPACK_IMPORTED_MODULE_0__.registerDevice)('timer_556', {
     terminals: ['1_trigger', '1_threshold', '1_control', '1_discharge', '1_output', '1_reset', '2_trigger', '2_threshold', '2_control', '2_discharge', '2_output', '2_reset', 'vcc', 'gnd'],
     init(part) {
-      var _part$params$rOut, _part$params8;
-      const rOut = (_part$params$rOut = (_part$params8 = part.params) === null || _part$params8 === void 0 ? void 0 : _part$params8.rOut) !== null && _part$params$rOut !== void 0 ? _part$params$rOut : 50;
+      var _part$params$rOut, _part$params16;
+      const rOut = (_part$params$rOut = (_part$params16 = part.params) === null || _part$params16 === void 0 ? void 0 : _part$params16.rOut) !== null && _part$params$rOut !== void 0 ? _part$params$rOut : 50;
       return {
         drives: {
           '1_output': {
@@ -12976,10 +13130,10 @@ function registerAnalogICs() {
       if (ch2.dischargeActive) ctx.conductance('2_discharge', 'gnd', 1 / rDischarge);
     },
     update(part, state, read) {
-      var _part$params$rOut2, _part$params9;
+      var _part$params$rOut2, _part$params17;
       const vcc = read('vcc');
       const vGnd = read('gnd');
-      const rOut = (_part$params$rOut2 = (_part$params9 = part.params) === null || _part$params9 === void 0 ? void 0 : _part$params9.rOut) !== null && _part$params$rOut2 !== void 0 ? _part$params$rOut2 : 50;
+      const rOut = (_part$params$rOut2 = (_part$params17 = part.params) === null || _part$params17 === void 0 ? void 0 : _part$params17.rOut) !== null && _part$params$rOut2 !== void 0 ? _part$params$rOut2 : 50;
       let changed = false;
       for (let ch = 0; ch < 2; ch++) {
         const prefix = "".concat(ch + 1, "_");
@@ -32080,13 +32234,18 @@ function shockleyCompanion(vAcross, vf, rd, is, n) {
  *             converged?: boolean }}
  */
 function solveMNA(parts, nets, pinSources, controls, vcc) {
-  var _opts$powerOff, _opts$testCurrent, _opts$tSeconds, _opts$transient;
+  var _opts$powerOff, _opts$testCurrent, _opts$tSeconds, _opts$temperatureC, _opts$transient;
   let opts = arguments.length > 5 && arguments[5] !== undefined ? arguments[5] : {};
   const powerOff = (_opts$powerOff = opts.powerOff) !== null && _opts$powerOff !== void 0 ? _opts$powerOff : false;
   const testNodeA = opts.testNodeA;
   const testNodeB = opts.testNodeB;
   const testCurrent = (_opts$testCurrent = opts.testCurrent) !== null && _opts$testCurrent !== void 0 ? _opts$testCurrent : 0.001;
   const tSeconds = (_opts$tSeconds = opts.tSeconds) !== null && _opts$tSeconds !== void 0 ? _opts$tSeconds : 0;
+  // E2.2: silicon junctions shift −2 mV/°C. Assigned on EVERY entry (no
+  // stale state); solveMNA is synchronous and never re-enters, and a
+  // worker thread has its own module instance.
+  benchTemperatureC = (_opts$temperatureC = opts.temperatureC) !== null && _opts$temperatureC !== void 0 ? _opts$temperatureC : 25;
+  tempVfShiftV = (benchTemperatureC - 25) * -0.002;
   const transient = (_opts$transient = opts.transient) !== null && _opts$transient !== void 0 ? _opts$transient : null;
   const capVoltagesIn = transient ? transient.capVoltages : opts.capVoltages;
   // Every node gets a tiny conductance to the reference (gmin). This keeps a
@@ -32697,7 +32856,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         // convergence check, so a limited step cannot fake convergence.
         let rawDelta = vNew - vOld;
         let vLimited;
-        const lim = part.kind === 'led' || part.kind === 'diode' ? junctionLimitParams(part, /** @type {number} */(_part$params$vf = part.params.vf) !== null && _part$params$vf !== void 0 ? _part$params$vf : part.kind === 'diode' ? 0.7 : 2.0) : null;
+        const lim = part.kind === 'led' || part.kind === 'diode' ? junctionLimitParams(part, effVf(/** @type {number} */(_part$params$vf = part.params.vf) !== null && _part$params$vf !== void 0 ? _part$params$vf : part.kind === 'diode' ? 0.7 : 2.0)) : null;
         if (lim) {
           // The solve gives TOTAL branch volts; the NR state is the
           // JUNCTION voltage behind rs — recover it, limit it, and drive
@@ -32760,7 +32919,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
         var _part$params$beta, _part$params$vbe, _part$params$vceSat;
         if (part.kind !== 'npn' && part.kind !== 'pnp') continue;
         const beta = /** @type {number} */(_part$params$beta = part.params.beta) !== null && _part$params$beta !== void 0 ? _part$params$beta : 100;
-        const vbe = /** @type {number} */(_part$params$vbe = part.params.vbe) !== null && _part$params$vbe !== void 0 ? _part$params$vbe : 0.7;
+        const vbe = effVf(/** @type {number} */(_part$params$vbe = part.params.vbe) !== null && _part$params$vbe !== void 0 ? _part$params$vbe : 0.7);
         const vceSat = /** @type {number} */(_part$params$vceSat = part.params.vceSat) !== null && _part$params$vceSat !== void 0 ? _part$params$vceSat : 0.2;
         const netC = findNet(nets, part.id, 'collector');
         const netE = findNet(nets, part.id, 'emitter');
@@ -32984,7 +33143,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       // A bare LED is a ~2 V junction; a bare diode is silicon, 0.7 V.
       // (Sweep finding 2026-08-15: both defaulted to 2.0, so an
       // unparameterized diode behaved exactly like an LED.)
-      const vf = /** @type {number} */(_part$params$vf2 = part.params.vf) !== null && _part$params$vf2 !== void 0 ? _part$params$vf2 : part.kind === 'diode' ? 0.7 : 2.0;
+      const vf = effVf(/** @type {number} */(_part$params$vf2 = part.params.vf) !== null && _part$params$vf2 !== void 0 ? _part$params$vf2 : part.kind === 'diode' ? 0.7 : 2.0);
       const rd = 10; // dynamic resistance
       const vAcross = vAnode - vCathode;
       // Same model as the stamp — a PWL current read off a Shockley solve
@@ -32999,7 +33158,10 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       const cathodeNet = findNet(nets, part.id, 'cathode');
       const vAnode = anodeNet ? (_nodeVoltages$get5 = nodeVoltages.get(anodeNet)) !== null && _nodeVoltages$get5 !== void 0 ? _nodeVoltages$get5 : 0 : 0;
       const vCathode = cathodeNet ? (_nodeVoltages$get6 = nodeVoltages.get(cathodeNet)) !== null && _nodeVoltages$get6 !== void 0 ? _nodeVoltages$get6 : 0 : 0;
-      const vf = /** @type {number} */(_part$params$vf3 = part.params.vf) !== null && _part$params$vf3 !== void 0 ? _part$params$vf3 : 0.7;
+      // The forward junction shifts with temperature; vz stays put —
+      // zener/avalanche tempco is a different, weaker physics and
+      // pretending −2 mV/°C would be invention (E2.2 scope note).
+      const vf = effVf(/** @type {number} */(_part$params$vf3 = part.params.vf) !== null && _part$params$vf3 !== void 0 ? _part$params$vf3 : 0.7);
       const vz = /** @type {number} */(_part$params$vz = part.params.vz) !== null && _part$params$vz !== void 0 ? _part$params$vz : 5.1;
       const rd = 10;
       const rzener = /** @type {number} */(_part$params$rz = part.params.rz) !== null && _part$params$rz !== void 0 ? _part$params$rz : 5;
@@ -33270,6 +33432,12 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
  * findNet calls per stamp per NR iteration are O(1) lookups. Arrays without
  * the map — external callers of the exported findNet — keep the linear scan.
  */
+/** Bench-temperature junction shift in volts (E2.2), set per solve. */
+let tempVfShiftV = 0;
+/** The bench temperature itself, for device ctx (same lifetime rules). */
+let benchTemperatureC = 25;
+/** A junction's effective forward drop at the bench temperature. */
+const effVf = raw => raw + tempVfShiftV;
 const NETS_TERM_MAP = Symbol('bw-term-map');
 const termKey = (partId, terminal) => partId + String.fromCharCode(0) + terminal;
 
@@ -33350,7 +33518,7 @@ function stampDiode(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
   var _part$params$vf4, _diodeVoltages$get5;
   const anodeNet = findNet(nets, part.id, 'anode');
   const cathodeNet = findNet(nets, part.id, 'cathode');
-  const vf = /** @type {number} */(_part$params$vf4 = part.params.vf) !== null && _part$params$vf4 !== void 0 ? _part$params$vf4 : part.kind === 'diode' ? 0.7 : 2.0;
+  const vf = effVf(/** @type {number} */(_part$params$vf4 = part.params.vf) !== null && _part$params$vf4 !== void 0 ? _part$params$vf4 : part.kind === 'diode' ? 0.7 : 2.0);
   const rd = 10;
   const vAcross = (_diodeVoltages$get5 = diodeVoltages.get(part.id)) !== null && _diodeVoltages$get5 !== void 0 ? _diodeVoltages$get5 : 0;
   const {
@@ -33507,6 +33675,8 @@ function stampBuzzerResistance(A, b, part, nets, nodeIndex, groundNetId) {
  */
 function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, dtSec) {
   let srcScale = arguments.length > 11 && arguments[11] !== undefined ? arguments[11] : 1;
+  // E2.2: the bench temperature reaches device stamps through ctx (the
+  // TMP36 defaults to it; an explicit params.tempC wins).
   // Drives: terminal → {vTh, rTh, ref?} | null
   //
   // Without `ref` the Norton is stamped against the reference node — right
@@ -33574,6 +33744,7 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
     },
     vcc,
     tSeconds,
+    temperatureC: benchTemperatureC,
     dtSec,
     control: controls.get(part.id)
   };
@@ -33783,7 +33954,7 @@ function stampPNP(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
  */
 function stampZener(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
   var _part$params$vf5, _part$params$vz2, _part$params$rz2, _diodeVoltages$get8;
-  const vf = /** @type {number} */(_part$params$vf5 = part.params.vf) !== null && _part$params$vf5 !== void 0 ? _part$params$vf5 : 0.7;
+  const vf = effVf(/** @type {number} */(_part$params$vf5 = part.params.vf) !== null && _part$params$vf5 !== void 0 ? _part$params$vf5 : 0.7); // vz stays put (see the branch-current twin)
   const vz = /** @type {number} */(_part$params$vz2 = part.params.vz) !== null && _part$params$vz2 !== void 0 ? _part$params$vz2 : 5.1;
   const rd = 10;
   const rzener = /** @type {number} */(_part$params$rz2 = part.params.rz) !== null && _part$params$rz2 !== void 0 ? _part$params$rz2 : 5; // zener dynamic R
