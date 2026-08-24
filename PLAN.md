@@ -340,6 +340,41 @@ Two shapes are worth carrying forward from the rest:
   Wave 6's whole finding — a good engine behind instruments that report pictures
   rather than numbers — and it is where the remaining 24 mostly live.
 
+#### The twenty-four still open, and what blocks each
+
+Ordered by lessons affected, as in the table. Every row here is a decision
+someone has to make, not work someone has to find.
+
+| # | Lessons | Owner | What blocks it |
+| --- | --- | --- | --- |
+| D2 hosted compiler | 12 | lite | **A schema question first.** Every debug image is built through `POST stc-compiler.vercel.app/compile`, and there is an in-bundle SDCC WASM behind a `localStorage` opt-in that is off by default. Making it the default is a build-size and reliability call; declaring the lessons `optional-hardware` is a curriculum call. Editing ten hints would bury the question. |
+| D4 fixed scope record | 4 | bw-board + bw-circuit-ui | 100 kHz × 8192 are hard-coded in `addScopeChannel` and `ScopePanel` passes neither. Additive: a timebase argument plus a control. Nothing blocks it but the work — it is the largest instrument win left. |
+| D3 Bode sweep has no numbers | 4 | bw-circuit-ui | `drawBode` writes four strings on a canvas. A per-point readout or a CSV export needs a UI decision about where the numbers go; the data is already in `runBode`'s result. |
+| D7 empty machine ROMs | 3 | sb3-creator | Either three examples ship a ROM image (which needs an assembler, or a checked-in binary and a provenance note), or the lessons keep naming a bundled preset — which they now do. Closing it properly is the ROM. |
+| D8 `pc52` is an RLC used as an RL | 3 | sb3-creator | A bench change: either split it into an RL bench and an RLC bench, or keep it and let three lessons carry the 300 µs window in their copy. The second is what they do now. |
+| D9 sweep cost, D10 `pc50` corner | 2 each | bw-board + sb3-creator | Rescaling `pc50-two-stage-rc` from 10 kΩ/100 µF to 10 kΩ/100 nF moves its corner from 0.159 Hz to 159 Hz and makes both lessons sweep in milliseconds. That is the right fix and it invalidates the example's own EXPECTED.md, which is why it has not been done casually. |
+| D11 one-shot RC step | 2 | sb3-creator | `43-rc-timing` needs a charge switch. A bench change, small, and it also fixes `signals-rc-response`'s reload-to-repeat instruction. |
+| D12 no ASM emitter | 2 | sb3-creator | A real feature. The Code tab's ASM view works over the network; both lessons disclose it. |
+| D13 directional `resistance()` | 2 | bw-board | **Not a bug.** `testNodeB` is the reference and ground symbols are switched out on purpose (`mna.js:354`). What is open is whether the API should refuse an ambiguous probe order rather than answering; the lessons teach the rule instead. |
+| D18 LM358 halts short of its gain | 1 | bw-board | The op-amp is a damped integrator with a 1 mV halt threshold, so a 2 mV shunt signal loses a third of its input. Raising the threshold or iterating to convergence changes every op-amp bench in the corpus; it needs the differential oracle run over all of them. |
+| D20 no op-amp output limit, D21 meter has no input impedance | 1 each | bw-board, bw-circuit-ui | Both are deliberate idealisations. Adding either changes solved values corpus-wide, so both need the same oracle pass as D18. |
+| D22 bit-exact potentiometer | 1 | bw-board | Adding noise to a sensor makes every gate that quotes a reading flaky. It needs a seeded, per-part, opt-in noise model, not a global one. |
+| D23 first solve is a DC operating point | 1 | bw-board / bw-circuit-ui | The meter reads 5 V on a capacitor the engine holds at 0 until one nanosecond has been advanced. Correct physics, wrong first impression; the fix is to advance before the first read, which is a designer decision. |
+| D24 no FFT | 1 | bw-circuit-ui + bw-board | Two pieces: a spectrum view, and a second scope tap — the ring buffer stores an interleaved (min, max) envelope, which is right for drawing and wrong for transforming. |
+| D25 no cycle-level step | 1 | lite + bw-circuit-ui | The 6502 target steps by instruction; a cycle step means new capability in the debug target, not just a button. |
+| D26 `bitand` compared to a number | 1 | sb3-creator | **Not isolated.** `bitand val 128 > 0` is false with `val = 128` while `bitand val 128` alone is true. Whether the fault is the emitted comparison or the referee's evaluation was never determined, and the real device runs generated C. Isolating it is the next step. |
+| D27 `ttl-clock-module`'s dead step button | 1 | sb3-creator | A wire plus a flip-flop, i.e. a real example revision. `EXPECTED.md` claims the button injects a pulse; it reaches nothing. |
+| D28 no call stack | 1 | lite | A frames-and-locals view. Real work, and the lesson's revised exercise (reconstruct the stack from where Step Out lands) is arguably better. |
+| D29 watchpoints gated off | 1 | lite | The pinned emu8051 WASM does not export `_emu_dbg_set_bp_write`. Upstream builds do; this is a pin bump plus a rebuild, and **the claim is second-hand** — it comes from the module's own docs, not from instantiating lite's actual binary. Verify before acting. |
+| D30 `microbitplus` no-ops | 1 | lite | **Deliberate and documented.** The blocks lower to MicroPython for the simulator; the VM methods are intentional no-ops. What is open is only the missing `showStatusButton`, and declaring one for an extension with no transport would be a lie. |
+| D31 one global V/div | 1 | bw-circuit-ui | Per-channel vertical scale. Small, additive, unblocked. |
+| D32 no filter to time | 1 | sb3-creator | `arduino-03-calibration` has no moving average. Adding one changes what the lesson predicts; the lesson currently asks the learner to choose a window and say what it would cost, which is a better exercise. |
+
+Three of those — D13, D26, D30 — are labelled because they are not what they
+look like: one is a documented design decision, one was never isolated to a
+component, and one is deliberate. Recording them as "open defects" without that
+label would send someone to fix something that is not broken.
+
 What is still open is in that table with what blocks it. The biggest by lessons
 is **D2**, the debugger's unconditional `POST` to the hosted compiler, which puts
 all ten Wave 5 lessons behind a network connection while they declare
