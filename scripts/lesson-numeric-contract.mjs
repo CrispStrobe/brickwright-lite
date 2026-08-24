@@ -210,10 +210,30 @@ export async function benchQuantities(exampleId, opts = {}) {
     for (let i = 0; i < base.length; i++) {
         for (let j = i + 1; j < base.length; j++) q.V.add(round4(Math.abs(base[i] - base[j])));
     }
-    // RC / RL time constants the bench can exhibit
+    // RC / RL time constants the bench can exhibit, and the same pairs read as a
+    // corner frequency. A filter lesson quotes the corner, not the time constant:
+    // 10 kOhm with 100 nF is 1.0 ms and 159.155 Hz, and only the first of those was
+    // ever derived, so a correct Bode lesson read as unmatched with an EMPTY nearest
+    // list -- the tell that the pool lacked the dimension rather than disagreeing
+    // about a value in it. q.F otherwise holds only a source's declared `freq`.
     for (const r of q.R) {
-        for (const c of q.C) q.T.add(r * c);
-        for (const l of q.L) q.T.add(l / r);
+        for (const c of q.C) {
+            q.T.add(r * c);
+            if (r > 0 && c > 0) q.F.add(1 / (2 * Math.PI * r * c));
+        }
+        for (const l of q.L) {
+            q.T.add(l / r);
+            if (r > 0 && l > 0) q.F.add(r / (2 * Math.PI * l));
+        }
+    }
+    // A Bode lesson states its sweep as a decade either side of the corner
+    // ("sweep about 15.9 Hz to 1592 Hz" for a 159.155 Hz corner). Those endpoints
+    // are derived from the bench by a fixed convention, so they belong in the pool
+    // -- but ONLY the two adjacent decades, never an open ladder: a span the author
+    // picked freely (25 Hz) still reads as unmatched, which is what keeps this
+    // check discriminating rather than merely green.
+    for (const f of [...q.F]) {
+        if (f > 0) { q.F.add(f / 10); q.F.add(f * 10); }
     }
     for (const key of Object.keys(q)) q[key] = new Set([...q[key]].map(round4));
     return {q, partial};
@@ -257,7 +277,11 @@ const matches = (value, dimension, pool, quantum = 0) => {
  * claims about what this circuit produces, and checking them against the
  * circuit's own quantities produces noise, not findings.
  */
-const INSTRUMENT_CONTEXT = /\b(timebase|window|per div|v\/div|refresh|display|adc|counts?|resolution|sample|per count|bit|fit in|fits in)\b/i;
+// `of simulation` / `simulated time` are deliberately narrow: a sweep point's COST
+// is a fact about the run budget, not about the circuit. Bare `simulat` would match
+// 92 places catalog-wide and blunt the check wherever a lesson merely says a real
+// measured value was taken in simulation; these two phrases match four sentences.
+const INSTRUMENT_CONTEXT = /\b(timebase|window|per div|v\/div|refresh|display|adc|counts?|resolution|sample|per count|bit|fit in|fits in|of simulation|simulated time)\b/i;
 
 /**
  * Check one lesson's quoted numbers against its bench.
