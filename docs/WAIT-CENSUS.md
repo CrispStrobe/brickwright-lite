@@ -157,6 +157,48 @@ a well-formed measurement of the wrong thing.
 
 ---
 
+## 6. Found by accident, and bigger than this lane: a suite that cannot be built reads as green
+
+`test/wait-census.test.mjs` shells out to `aggregate-timeouts.mjs`, which imported `acorn` —
+present on a developer box that ran a root `npm install`, absent in CI, which installs into
+`packages/scratch-gui` and never at the root. So in run **32779945069** the `describe` body threw
+while the suite was being **constructed**, and the runner printed:
+
+```
+not ok 662 - the wait census: fixed sleeps are counted, and may only shrink
+    failureType: 'testCodeFailure'
+    error: Cannot find package 'acorn' …
+# tests 1014   # pass 1013   # fail 0   # skipped 1
+```
+
+**`# fail 0`, and the step went green.** The build failed later, at my own measurement step, for
+the same missing import — which is the only reason this was noticed at all. Had the aggregator
+been called from nowhere but the test, the run would have been entirely green with a gate that
+never ran.
+
+A construction failure is the worst kind to lose. A gate that failed found something; a gate
+that could not be *built* found nothing and cannot have, and a green line says it did. This repo
+has already found five gates that could not fail. This is one that could not be assembled.
+
+What is established, and by what:
+
+| claim | evidence |
+|---|---|
+| CI printed `not ok`, counted `# fail 0`, and the step concluded `success` | run 32779945069 log + `gh run view --json jobs` step conclusion, node 22.23.2 |
+| the same shape exits **1** on node 20.20.2 | minimal repro (a `describe` whose body throws, plus one passing test) run locally |
+| so the miscount is version-independent; the **exit code** is not | both of the above — I had no node 22 to test on directly, and say so |
+
+The fix is not to trust the summary. `build.yml`'s unit-test step now tees the TAP stream and
+fails on any `^not ok ` line the summary did not count, with the reason in the error. Proved
+both ways against the minimal repro (caught 1 / clean), and against the archived log of the run
+that produced it: exactly 1 line, exactly the right one.
+
+Two dependency fixes came with it: the aggregator now resolves `acorn` from the copy webpack
+already commits under `packages/scratch-gui/node_modules`, so it needs no install anywhere, and
+that is verified by deleting the root install and re-running.
+
+---
+
 ## 5. Reproducing
 
 ```bash
