@@ -435,7 +435,7 @@ test('the Wave 7 revisions are present, EN and DE, at the content version this r
     assert.deepEqual(Object.fromEntries(WAVE.lessons.map(l => [l.id, l.version])), {
         'machines-logic-levels': 3,
         'machines-gates-registers': 3,
-        'machines-clocks': 2,
+        'machines-clocks': 3,
         'machines-buses': 2,
         'machines-memory-maps': 1,
         'machines-address-decode': 1,

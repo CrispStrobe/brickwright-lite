@@ -122,24 +122,52 @@ test('OPEN DEFECT: the t = 0 sample reads the supply, not zero', async () => {
     assert.equal(fmt(terminalVolts(fresh.board)['c1.a']), '0.0000');
 });
 
-test('OPEN DEFECT: the scope cannot hold a step this slow', async () => {
-    // 100 kHz x 8192 samples is fixed in the engine and the panel passes neither,
-    // so every scope capture in this wave is 81.92 ms long — against a 1 s tau.
+test('the scope record is chosen, and a full RC step now fits in one', async () => {
+    // Was an OPEN DEFECT, and it fired on its own terms: "ScopePanel now chooses
+    // a sample rate or depth — the fixed 81.92 ms record is gone."
+    //
+    // The engine ALWAYS took `sampleRateHz` and `depth`; `ScopePanel` passed
+    // neither, so every capture in the app was the default 100 kHz x 8192 =
+    // 81.92 ms against a 1 s time constant. D4 records the owner as
+    // "bw-board + bw-circuit-ui" and that was wrong: every read inside the
+    // engine uses ch.intervalNs and ch.depth rather than a constant, so the
+    // repair is one repo (bw-circuit-ui `29f6da6`).
     const {board} = await load('43-rc-timing');
     const netId = board.nets.find(n =>
         n.terminals.some(t => t.part === 'c1' && t.terminal === 'a')).id;
-    const handle = board.addScopeChannel({type: 'voltage', netId});
+
+    // The default is unchanged, so a bench that was fine before still is.
+    const fast = board.addScopeChannel({type: 'voltage', netId});
     board.advanceTo(200n * MS);
-    const d = board.getScopeData(handle);
-    assert.equal(Number(d.sampleIntervalNs), 10_000, 'the scope cadence changed — re-measure Wave 6');
-    assert.equal(d.samples.length / 2, 8192, 'the scope depth changed — re-measure Wave 6');
-    const recordMs = (d.samples.length / 2) * Number(d.sampleIntervalNs) / 1e6;
-    assert.equal(recordMs, 81.92);
-    assert.ok(recordMs < 1000, 'the scope record now spans a full RC time constant — ' +
-        'restore the scope to signals-rc-response and delete this test');
+    const dFast = board.getScopeData(fast);
+    assert.equal(Number(dFast.sampleIntervalNs), 10_000, 'the default cadence moved');
+    assert.equal(dFast.samples.length / 2, 8192, 'the default depth moved');
+    assert.equal((dFast.samples.length / 2) * Number(dFast.sampleIntervalNs) / 1e6, 81.92);
+
+    // And a slower record holds the whole step the lesson measures. This is the
+    // measurement that proves the engine was never the constraint.
+    const {SCOPE_DEPTH, recordSeconds} = await import(path.join(CUI, 'model/scope-timebase.js'));
+    const slow = board.addScopeChannel({type: 'voltage', netId, sampleRateHz: 1000, depth: SCOPE_DEPTH});
+    let t = 200n * MS;
+    for (let k = 0; k < 60; k++) board.advanceTo(t += 100n * MS);
+    const dSlow = board.getScopeData(slow);
+    assert.equal(Number(dSlow.sampleIntervalNs), 1_000_000, 'a 1 kHz channel samples every millisecond');
+    const slowRecordS = (dSlow.samples.length / 2) * Number(dSlow.sampleIntervalNs) / 1e9;
+    assert.equal(slowRecordS, 8.192);
+    assert.ok(slowRecordS > 5, 'five time constants of a 1 s tau fit in one record');
+    const seen = [...dSlow.samples].filter(Number.isFinite);
+    assert.ok(Math.max(...seen) > 4.5,
+        `the slow record reaches the charged tail (${Math.max(...seen).toFixed(3)} V)`);
+    assert.equal(recordSeconds(1000, SCOPE_DEPTH), slowRecordS,
+        'the panel\'s own arithmetic agrees with the engine it drives');
+
+    // The panel passes them. A rate the panel never sends is a control that
+    // moves a label and nothing else.
     const panel = readFileSync(path.join(CUI, 'components/ScopePanel.jsx'), 'utf8');
-    assert.ok(!/sampleRateHz|depth:/.test(panel),
-        'ScopePanel now chooses a sample rate or depth — the fixed 81.92 ms record is gone');
+    assert.match(panel, /data-testid="bw-scope-record"/, 'the record control is rendered');
+    const calls = [...panel.matchAll(/board\.addScopeChannel\(\{[\s\S]*?\}\)/g)].map(m => m[0]);
+    assert.equal(calls.length, 2, `expected two addScopeChannel call sites, found ${calls.length}`);
+    for (const c of calls) assert.match(c, /sampleRateHz/, `a channel is created without a rate: ${c}`);
 });
 
 // ── signals-rl-response / pc52-inductor-filter ─────────────────────────────
@@ -610,30 +638,42 @@ test('OPEN DEFECT: there is no FFT, and the samples an FFT would need are an env
     assert.equal(d.samples.length, 8192 * 2, 'interleaved (min, max) pairs, not a sample series');
     const boardSrc = readFileSync(path.join(BWB, 'board.js'), 'utf8');
     assert.match(boardSrc, /Ring buffer: interleaved \[min0, max0/);
-    // The two numbers the predict step needs, neither of which the app displays.
+    // The two numbers the predict step needs, at the default rate.
     assert.equal(1e9 / Number(d.sampleIntervalNs) / 2, 50_000, 'Nyquist');
     assert.equal(1e9 / Number(d.sampleIntervalNs) / 8192, 12.20703125, 'bin spacing, Hz');
-    // The panel uses the cadence to label its cursor delta and never shows the
-    // cadence or the record length themselves, so neither number the predict
-    // step needs is on screen.
-    assert.ok(!/100\s*kHz|8192|81\.92|Nyquist/i.test(panel),
-        'the panel now states the sample cadence or the record length — the predict step ' +
-        'has its inputs, so soften signals-aliasing-fft and delete this test');
+});
+
+test('the predict step has its inputs on screen now, which the FFT half still lacks', () => {
+    // This test used to be the third assertion inside the one above, and it
+    // healed while the other two did not — so it is split out rather than
+    // deleted with them. The bundled version would have forced a choice between
+    // reporting a defect that no longer reproduces and dropping two that do.
+    //
+    // What healed (D4): the panel states its record length, so the learner can
+    // derive Nyquist and bin spacing, which is exactly what
+    // `signals-aliasing-fft`'s predict step asks for. What did NOT heal (D24):
+    // there is still no spectrum view, and the scope still stores a min/max
+    // envelope rather than the series a transform consumes — asserted above.
+    const panel = readFileSync(path.join(CUI, 'components/ScopePanel.jsx'), 'utf8');
+    assert.match(panel, /data-testid="bw-scope-span"/,
+        'the panel no longer states its record length — the predict step lost its inputs again');
+    assert.match(panel, /recordSeconds\(sampleRateHz\)/,
+        'the stated span is computed from the rate in force, not a constant');
 });
 
 // ── The lesson copy this review wrote, in both languages ───────────────────
 
 test('the Wave 6 revisions are present, EN and DE, at the content version this review recorded', () => {
     assert.deepEqual(Object.fromEntries(WAVE.lessons.map(l => [l.id, l.version])), {
-        'signals-rc-response': 4,
+        'signals-rc-response': 5,
         'signals-rl-response': 2,
-        'signals-complex-impedance': 2,
+        'signals-complex-impedance': 3,
         'signals-cutoff-phase': 3,
         'signals-bode-sweep': 4,
         'signals-resonance': 2,
         'signals-loading': 2,
         'signals-noise': 2,
-        'signals-aliasing-fft': 2,
+        'signals-aliasing-fft': 3,
         'signals-model-measurement': 4
     }, 'a Wave 6 lesson changed content version — update docs/LESSON-REVIEW-WAVE-6.md with it');
 
@@ -648,7 +688,9 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
     says('signals-rc-response', 'predict', 'hint', /discharge switch/i, /Entladeschalter/i);
     says('signals-rl-response', 'measure', 'action', /step the source/i, /Quelle.*(0|null)/i);
     says('signals-rl-response', 'predict', 'hint', /100/, /100/);
-    says('signals-complex-impedance', 'measure', 'hint', /81\.92 ms|sweep/i, /81,92 ms|81\.92 ms|Sweep/i);
+    // v3 (D4 closed): the record is selectable, so the below-cutoff point is a
+    // scope measurement rather than one the sweep instrument has to supply.
+    says('signals-complex-impedance', 'measure', 'hint', /record is selectable/i, /Aufzeichnungsl(ä|ae)nge ist jetzt w(ä|ae)hlbar/i);
     says('signals-bode-sweep', 'sweep', 'hint', /corner|ten cycles/i, /Eckfrequenz|Perioden/i);
     says('signals-resonance', 'sweep', 'action', /100 µF|100 uF/, /100 µF|100 uF/);
     says('signals-loading', 'measure', 'hint', /no output limit|ideal/i, /ideal|keine? (Ausgangs)?begrenzung/i);

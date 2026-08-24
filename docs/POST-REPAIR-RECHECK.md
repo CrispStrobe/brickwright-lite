@@ -49,6 +49,7 @@ it.
 | **NEW** | the simulator driver arms a quasi pin at zero, so no 8051 button can move its own pin | none directly; 12 benches, 3 of them Wave 5's | **this pass** — sb3-creator `553a639`, vendored here | the repair at `0777a17` was half of one | **D35**: fixed upstream, new gate, 43 → 22 → 1 (below) |
 | **NEW** | `arduino-02-digital-input-pullup` declares an active-HIGH input for an `INPUT_PULLUP` bench | none | open | n/a | recorded as **D36**, ratcheted in the new gate so it can only shrink |
 | D10 | the Bode bench corners at 0.159 Hz, where a sweep point costs 629 s of simulated time | signals-bode-sweep, signals-model-measurement | **this pass** — sb3-creator `776a96e` | **no longer true** | bench 100 µF → 100 nF; `signals-model-measurement` → v3, `signals-bode-sweep` → v4 after a parallel session's further correction (below) |
+| D4 | the scope record is fixed at 100 kHz × 8192 = 81.92 ms | signals-rc-response, signals-complex-impedance, signals-aliasing-fft, machines-clocks (all 4) | **this pass** — bw-circuit-ui `29f6da6` | **no longer true** | a record-length control; the ledger's "bw-board + bw-circuit-ui" owner was wrong — the engine always took both parameters |
 | D3 | the Bode sweep plots a curve and reports no numbers | signals-cutoff-phase, signals-model-measurement (2 of the 4 D3 is counted against) | **this pass** — bw-circuit-ui `2c66851` | **no longer true** | frequency axis, a twelve-row table and a full-precision CSV; `signals-cutoff-phase` → v3, `signals-model-measurement` → v4 |
 | D11 | `43-rc-timing` has no control, so its charging step happens once and cannot be repeated | measurement-rc-cursors, signals-rc-response | **this pass** — sb3-creator `ac83352` | **no longer true** | a DISCHARGE switch, not the charge switch PLAN proposed — see below; `measurement-rc-cursors` → v3, `signals-rc-response` → v4 |
 
@@ -62,7 +63,7 @@ so every one of these sentences is still true and must not be "restored".
 | machines-clocks | "the board's push button is wired to a pull resistor and to nothing else" | D27, example topology | yes |
 | signals-loading | "it holds its output at 2.5 V into a one-ohm load"; "the meter is removed from the netlist" | D20, D21 | yes — `devices/analog-amps.js` and the op-amp stamp are unchanged since Wave 6's sha |
 | signals-noise | "the simulated potentiometer is bit-exact" | D22 | yes |
-| signals-rc-response | "the meter says 5 V on a capacitor the engine itself holds at 0 V"; "81.92 milliseconds" | D23, D4 | yes |
+| signals-rc-response | "the meter says 5 V on a capacitor the engine itself holds at 0 V" | D23 | yes — the 81.92 ms half went with D4 |
 | signals-rl-response | "the RL law holds to about 1 % out to 300 microseconds" | D8 | yes |
 | machines-logic-levels | "this bench has no button" | topology, by design | yes |
 | measurement-resistance | "probe that last one the other way round and the meter reports an open circuit" | D13, by design | yes |
