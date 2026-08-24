@@ -79,6 +79,21 @@ like a second smaller loss and wasn't; the `comm` against the last
 pre-wipe tree — zero missing, zero spurious, non-ledger diff empty — is
 what established "nothing was lost" at content level, not count level.)
 
+None of the above sees a rollback WITHIN this file — the file stays
+present and non-empty while rows vanish. The same incident had that
+too: a second, parallel restore carried a stale LANES.md and silently
+dropped four rows (three DONE — exactly the invitation to redo landed
+work that rule 3 warns about), and it stayed invisible for four commits
+because every later edit built on the rolled-back base. So: a restore
+that touches LANES.md must be a SUPERSET check against the tip it
+replaces (`comm` the non-blank lines both ways — zero missing), never a
+checkout of an older copy. And when you verify a repair, say WHAT your
+check is scoped to: the audit that reported "nothing was lost" here had
+excluded LANES.md — right for auditing the tree restore, wrong as a
+statement about the repository, and scoped to exclude the one file that
+was actually damaged. A check scoped away from the likely damage always
+comes back clean.
+
 ## CLAIMS — work in progress
 
 | lane | who | started | what |
