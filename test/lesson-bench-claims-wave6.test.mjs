@@ -228,36 +228,91 @@ test('OPEN DEFECT: a tone a decade below cutoff does not fit in a scope record',
 
 // ── signals-bode-sweep + signals-model-measurement / pc50-two-stage-rc ─────
 
-test('OPEN DEFECT: the Bode bench corners at 0.159 Hz, where a sweep point costs 63 s of simulation', async () => {
+test('the Bode bench corners inside the instrument\'s range', async () => {
+    // Was an OPEN DEFECT, and it fired as written: "the sweep got cheaper —
+    // re-measure Wave 6 and restore the corner sweep to the lesson."
+    //
+    // pc50-two-stage-rc was two 10 kΩ / 100 µF stages cornering at 0.159 Hz.
+    // `runAcSweep` measures each point by single-frequency correlation over
+    // settleCycles + measureCycles cycles, so a point costs 10/f seconds of
+    // SIMULATED time — 629 s a decade below that corner, which is why the
+    // checkpoint had to be reworded to stay two decades ABOVE the corners, i.e.
+    // away from the only part of a Bode plot worth looking at.
+    //
+    // 100 µF → 100 nF (sb3-creator 776a96e) moves both corners to 159.155 Hz.
+    // The transfer function depends on R·C, so only the frequency axis moved:
+    // every magnitude, phase and slope below is what the old bench produced at
+    // one thousandth of the frequency. Both lessons are restored to version 3.
     assert.equal(lesson('signals-bode-sweep').exampleId, 'pc50-two-stage-rc');
     assert.equal(lesson('signals-model-measurement').exampleId, 'pc50-two-stage-rc');
     const {board, data} = await load('pc50-two-stage-rc');
     const r1 = data.parts.find(p => p.id === 'r1').params.ohms;
     const c1 = data.parts.find(p => p.id === 'c1').params.farads;
     const fc = 1 / (2 * Math.PI * r1 * c1);
-    near(fc, 0.15915, 1e-5, 'each stage corners here');
+    near(fc, 159.1549, 1e-3, 'each stage corners here');
 
-    // The cost model, read off the engine rather than off a stopwatch:
-    // runAcSweep spends settleCycles + measureCycles cycles per point.
+    // The cost model, read off the engine rather than off a stopwatch.
     const sweepSrc = readFileSync(path.join(BWB, 'sweep.js'), 'utf8');
     assert.match(sweepSrc, /settleCycles = 6/);
     assert.match(sweepSrc, /measureCycles = 4/);
     assert.match(sweepSrc, /samplesPerCycle = 32/);
     const secondsPerPoint = f => (6 + 4) / f;
-    near(secondsPerPoint(fc / 10), 628.3, 0.5,
-        'one point a decade below the corner costs this many seconds of simulated time');
-    assert.ok(secondsPerPoint(fc / 10) > 600,
-        'the sweep got cheaper — re-measure Wave 6 and restore the corner sweep to the lesson');
+    near(secondsPerPoint(fc / 10), 0.628, 0.005,
+        'one point a decade below the corner now costs this many seconds of simulated time');
+    assert.ok(secondsPerPoint(fc / 10) < 1,
+        'a point a decade below the corner costs more than a second of simulated time again — ' +
+        'the bench moved back out of range. Re-measure Wave 6 and re-word signals-bode-sweep ' +
+        'and signals-model-measurement, which both now tell the learner to sweep ACROSS the corner.');
 
-    // And the panel's own default range shows nothing but the far stopband.
-    const panel = readFileSync(path.join(CUI, 'components/SweepPanel.jsx'), 'utf8');
-    assert.match(panel, /useState\(10\)/, 'the panel default fFrom changed — re-measure');
+    // The response the lesson teaches, at the frequencies the lesson now names.
     const inNet = netOfTerminal(board, 'src', 'pos');
     const outNet = netOfTerminal(board, 'c2', 'a');
+    const below = bodePoint(board, 'src', inNet, outNet, fc / 10);
+    const at = bodePoint(board, 'src', inNet, outNet, fc);
+    const above = bodePoint(board, 'src', inNet, outNet, fc * 10);
+    near(below.magDb, -0.456, 0.02, 'magnitude a decade below the corner');
+    near(below.phaseDeg, -16.60, 0.1, 'phase a decade below the corner');
+    near(at.magDb, -9.572, 0.02, 'magnitude at the corner');
+    near(at.phaseDeg, -89.62, 0.1, 'phase at the corner');
+    near(above.magDb, -40.738, 0.05, 'magnitude a decade above the corner');
+    near(above.phaseDeg, -161.98, 0.1, 'phase a decade above the corner');
+
+    // And the finding the checkpoint's `explain` step exists for: two poles, but
+    // short of the ideal −40 dB/decade because the second stage loads the first.
+    const twoAbove = bodePoint(board, 'src', inNet, outNet, fc * 100);
+    const slope = twoAbove.magDb - above.magDb;
+    near(slope, -36.64, 0.1, 'slope one to two decades above the corner');
+    assert.ok(slope > -40,
+        'the loaded cascade must attenuate LESS steeply than the product of two ideal stages');
+
+    // The panel's default start is now inside the passband rather than deep in
+    // the stopband, which was the other half of the finding.
+    const panel = readFileSync(path.join(CUI, 'components/SweepPanel.jsx'), 'utf8');
+    assert.match(panel, /useState\(10\)/, 'the panel default fFrom changed — re-measure');
     const atDefault = bodePoint(board, 'src', inNet, outNet, 10);
-    near(atDefault.magDb, -71.549, 0.05, 'magnitude at the panel default start frequency');
-    assert.ok(atDefault.magDb < -60,
-        'the default sweep start is no longer deep in the stopband — re-measure Wave 6');
+    assert.ok(atDefault.magDb > -1,
+        `a learner who just clicks Sweep now starts in the passband (${atDefault.magDb.toFixed(3)} dB ` +
+        'at the panel default 10 Hz), not at −71.549 dB as on the old bench');
+});
+
+test('both pc50 lessons were restored when their bench was', () => {
+    // The pairing this campaign keeps getting wrong in the other direction: a
+    // bench repaired without its lesson leaves the workaround in the copy.
+    for (const id of ['signals-bode-sweep', 'signals-model-measurement']) {
+        assert.equal(lesson(id).version, 3, `${id} must be at content version 3`);
+    }
+    const sweepHint = lesson('signals-bode-sweep').checkpoints
+        .find(c => c.id === 'sweep').copy.en.hint;
+    assert.ok(!/Stay two decades above|over ten minutes|R × C = 1 s/.test(sweepHint),
+        'the workaround wording is still in signals-bode-sweep');
+    assert.match(sweepHint, /159\.155 Hz/, 'the hint names the corner it can now reach');
+    const compare = lesson('signals-model-measurement').checkpoints
+        .find(c => c.id === 'compare').copy.en;
+    assert.ok(!/two decades above the corner/.test(compare.action),
+        'the workaround wording is still in signals-model-measurement');
+    // D3 is still open, so the transcribe-by-hand half must NOT have been dropped.
+    assert.match(compare.hint, /no numeric readout and no export/,
+        'the sweep still reports no numbers (D3) — that disclosure must stay until it does');
 });
 
 test('OPEN DEFECT: the sweep plots but reports no numbers', () => {
@@ -278,21 +333,27 @@ test('OPEN DEFECT: the sweep plots but reports no numbers', () => {
         'the sweep panel grew an export — the residual analysis is now possible');
 });
 
-test('signals-bode-sweep: the two-pole slope and the loading effect are both measurable higher up', async () => {
-    const {board} = await load('pc50-two-stage-rc');
+test('signals-bode-sweep: the two-pole slope and the loading effect are both measurable', async () => {
+    // These were 1 Hz and 10 Hz on the 100 µF bench — 6.28x and 62.8x the
+    // corner. The corner moved by 1000x, so the SAME two points are now at
+    // 1 kHz and 10 kHz, and they read what they read before, to the millibel.
+    // That equality is the evidence that changing the capacitor moved the axis
+    // and nothing else.
+    const {board, data} = await load('pc50-two-stage-rc');
     const inNet = netOfTerminal(board, 'src', 'pos');
     const outNet = netOfTerminal(board, 'c2', 'a');
-    const one = bodePoint(board, 'src', inNet, outNet, 1);
-    const ten = bodePoint(board, 'src', inNet, outNet, 10);
-    near(one.magDb, -32.782, 0.05, 'magnitude at 1 Hz');
-    near(ten.magDb, -71.549, 0.05, 'magnitude at 10 Hz');
+    const fc = 1 / (2 * Math.PI * data.parts.find(p => p.id === 'r1').params.ohms
+        * data.parts.find(p => p.id === 'c1').params.farads);
+    const one = bodePoint(board, 'src', inNet, outNet, fc * 6.2832);
+    const ten = bodePoint(board, 'src', inNet, outNet, fc * 62.832);
+    near(one.magDb, -32.782, 0.05, 'magnitude at 2*pi times the corner');
+    near(ten.magDb, -71.549, 0.05, 'magnitude a decade above that');
     const slope = ten.magDb - one.magDb;
     assert.ok(slope < -38 && slope > -41,
         `two poles give about -40 dB/decade; measured ${slope.toFixed(2)}`);
     // The lesson's point: the ideal unloaded cascade is not what this bench does.
-    const fc = 0.159155;
     const idealOneStageDb = f => 20 * Math.log10(1 / Math.sqrt(1 + ((f / fc) ** 2)));
-    const unloaded = 2 * idealOneStageDb(1);
+    const unloaded = 2 * idealOneStageDb(fc * 6.2832);
     assert.ok(one.magDb < unloaded - 0.3,
         `the loaded cascade attenuates more than the ideal product ` +
         `(${one.magDb.toFixed(3)} dB against ${unloaded.toFixed(3)} dB)`);
@@ -490,12 +551,12 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
         'signals-rl-response': 2,
         'signals-complex-impedance': 2,
         'signals-cutoff-phase': 2,
-        'signals-bode-sweep': 2,
+        'signals-bode-sweep': 3,
         'signals-resonance': 2,
         'signals-loading': 2,
         'signals-noise': 2,
         'signals-aliasing-fft': 2,
-        'signals-model-measurement': 2
+        'signals-model-measurement': 3
     }, 'a Wave 6 lesson changed content version — update docs/LESSON-REVIEW-WAVE-6.md with it');
 
     const says = (id, cp, field, en, de) => {

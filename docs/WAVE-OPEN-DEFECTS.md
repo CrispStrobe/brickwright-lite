@@ -34,7 +34,7 @@ Two counting rules, so the numbers are comparable:
 | **D7** | Three machine benches boot with an empty ROM: no example ships an image, `sb3-creator` has no assembler, and the runner skips the build for machine targets | sb3-creator (examples) | **3** | 7 | open — see PLAN.md |
 | **D8** | `pc52-inductor-filter` is an RLC used as an RL bench; the L/R law holds for its first ~300 µs and then the 100 µF takes over | sb3-creator (example) | **3** | 1, 6 | open — see PLAN.md |
 | **D9** | A Bode point costs 10/f seconds of simulated time (`settleCycles` 6 + `measureCycles` 4) and `SweepPanel` runs the sweep synchronously | bw-board (`runAcSweep`) + bw-circuit-ui | **2** | 6 | open — see PLAN.md |
-| **D10** | `pc50-two-stage-rc` corners at 0.159 Hz, so the decade below the corner its own lesson asks for costs 629 s of simulation per point | sb3-creator (example) | **2** | 6 | open — see PLAN.md |
+| **D10** | `pc50-two-stage-rc` corners at 0.159 Hz, so the decade below the corner its own lesson asks for costs 629 s of simulation per point | sb3-creator (example) | **2** | 6 | **FIXED** — 100 µF → 100 nF |
 | **D11** | `43-rc-timing` has no controls at all, so the charging step it measures happens once and cannot be repeated | sb3-creator (example) | **2** | 2, 6 | open — see PLAN.md |
 | **D12** | There is no ASM emitter; the Code tab's ASM view is real but both its modes go over the network (`/compile`, `/assemble`) | sb3-creator | **2** | 3, 7 | open — see PLAN.md |
 | **D13** | `board.resistance(a, b)` is directional — B is the reference and ground symbols are deliberately switched out of that solve, so a real path reads as open when probed the other way | bw-board (`mna.js`) — **by design** | **2** | 2 | open — not a bug |
@@ -59,13 +59,33 @@ Two counting rules, so the numbers are comparable:
 | **D32** | `arduino-03-calibration` has no filter, so its lesson's "estimate filter delay" has nothing to check against | sb3-creator (example) | **1** | 4 | open — see PLAN.md |
 | **D33** | `6502-terminal/controller.json` declares widget type `terminal`, which is not in `ControllerPanel`'s `DEFAULTS`, so `addWidget` throws — and the importer removes every widget *before* adding, inside a bare `catch`, leaving the panel **empty** | bw-board (`controller.js`) + lite (importer) | **0** | 4 | **FIXED** — `terminal` type + guarded restore |
 | **D34** | `dc_motor` stamps the winding's inductor companion conductance `dt/L` in parallel with `1/R` rather than in series, so its DC operating point depends on the solver step (1.801 A at 1 µs, 1.980 A at 1 ms, against 0.900 A) | bw-board (`devices/dc-motor.js`) | **0** | 1 | **EXPIRED** — re-measured, no longer reproduces |
+| **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
+| **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | open — the last of 67 |
 
-**34 defects. Ten are closed on this branch** — D1, D5, D6, D14, D15, D16, D17,
-D19, D33 by repair, and D34 by re-measurement, which is a different and weaker
-claim: it stopped reproducing between the Wave 1 vendor and today, and this
-campaign only found that out. Together they account for **39 of the 89
+**36 defects. Twelve are closed** — D1, D5, D6, D10, D14, D15, D16, D17, D19,
+D33 and D35 by repair, and D34 by re-measurement, which is a different and
+weaker claim: it stopped reproducing between the Wave 1 vendor and today, and
+this campaign only found that out. Together they account for **41 of the 89
 lesson-slots** the table counts, and D1 alone is 28 of them. Every row still open
 is recorded in `PLAN.md` with what blocks it and who owns it.
+
+**D35 and D36 were added on 2026-08-25** by the post-repair re-check
+(`docs/POST-REPAIR-RECHECK.md`), which went looking for lesson findings the
+Pocket Calculator repair had invalidated and found instead that the repair was
+half of one. D35 is closed in the same pass; D36 is the residue it left, named
+rather than tolerated, and ratcheted by
+`test/simulator-driver-controls-respond.test.mjs` so it can only shrink.
+
+**D10 was closed on 2026-08-25** by moving the bench rather than the
+instrument — `pc50-two-stage-rc`'s two stages went from 10 kΩ/100 µF to
+10 kΩ/100 nF, which moves both corners from 0.159 Hz to 159.155 Hz and takes a
+point a decade below the corner from 629 s of simulated time to 0.63 s. The
+transfer function depends on R·C, so only the frequency axis moved: the same two
+points the Wave 6 review measured at 1 Hz and 10 Hz now read the same
+magnitudes, to the millibel, at 1 kHz and 10 kHz, and that equality is what the
+gate asserts. `signals-bode-sweep` and `signals-model-measurement` are restored
+to content version 3, and a paired gate refuses a bench repaired without its
+lesson.
 
 ## Why these thirty-four, and not thirty-eight
 
@@ -90,7 +110,7 @@ affected and nothing else.
 | bw-board | D4·D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D19, D33, D34 |
 | lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D33 |
 | bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D6 |
-| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32 | 18 | D5 |
+| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D10, D35 |
 
 Rows appear under every owner that must change, so the columns oversum: D4, D6,
 D9 and D33 each need two repos and D5 needed three — the example file, the panel
@@ -123,6 +143,13 @@ RLC asked to be an RL (D8), `43-rc-timing` has no control to repeat its own step
 (D11), and three machine benches boot with no ROM (D7). These are the cheapest
 of the lot to fix and the ones most likely to be fixed by *changing the bench*
 rather than the instrument.
+
+That prediction held for the first one to be tried: **D10 was closed by a
+two-character change to a capacitor value**, and it was the right change rather
+than the cheap one — the instrument's cost model (10/f seconds of simulated time
+per sweep point) is a property of correlation measurement and not a defect, so
+the bench was the thing in the wrong place. The measured proof that only the
+axis moved is in D10's note above.
 
 ## Reproducing the counts
 

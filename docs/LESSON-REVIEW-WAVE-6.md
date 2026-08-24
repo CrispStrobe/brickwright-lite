@@ -5,9 +5,19 @@ against `1d10902cb` after the `bw-board` vendor that landed mid-review
 (scheduled device events, gate tpd, controller floor fix — 640 changed lines
 across `board.js`, `mna.js` and `ac.js`). Ten lessons, twenty checkpoints.
 
-**9 defective of 10 · 10 revised (one to content version 3, nine to 2) · 11
+**9 defective of 10 · 10 revised (three to content version 3, seven to 2) · 9
 defects open, every one of them in an instrument or an engine, none in a
 lesson.**
+
+> **Updated 2026-08-25.** `signals-resonance`'s observable was closed on
+> 2026-08-24 (D6), and **D10 is closed now**: `pc50-two-stage-rc` was rescaled
+> from 10 kΩ/100 µF to 10 kΩ/100 nF, which moves both corners from 0.159 Hz to
+> 159.155 Hz and takes a point a decade below the corner from 629 s of simulated
+> time to 0.63 s. `signals-bode-sweep` and `signals-model-measurement` are
+> re-measured and restored to content version 3 — both now tell the learner to
+> sweep ACROSS the corner, which is what their checkpoints asked for in the
+> first place. Defect 4 below carries the numbers. Everything else in this
+> document was re-derived against lite `1311898d5` and is unchanged.
 
 Wave 6 goes back to circuits, so it goes back to Wave 1's instrument: every
 number below came out of the engine the browser runs — `bw-circuit-ui`'s
@@ -55,12 +65,12 @@ and it is a smaller and more fixable story than "nine broken lessons".
 | signals-rl-response | pc52-inductor-filter | 1→**2** | **defect, fixed** — the bench is an RLC; L/R holds only in its first 300 µs, and the hint's "total series resistance" is the wrong R |
 | signals-complex-impedance | 50-rc-scope | 1→**2** | **defect, fixed** — the scope route it names cannot reach the below-cutoff point |
 | signals-cutoff-phase | 50-rc-scope | 1→**2** | achievable; **revised for disclosure** — both criteria bracket the same cutoff, but the plot has no frequency axis to read one off |
-| signals-bode-sweep | pc50-two-stage-rc | 1→**2** | **defect, fixed** — the corners are at 0.159 Hz, where one sweep point costs over ten minutes of simulated time |
+| signals-bode-sweep | pc50-two-stage-rc | 1→2→**3** | defect, **BENCH FIXED 2026-08-25** — the corners were at 0.159 Hz, where one sweep point cost over ten minutes of simulated time; they are now at 159.155 Hz |
 | signals-resonance | pc52-inductor-filter | 1→**2** | **defect ×2, fixed** — as shipped the network is overdamped and has no peak; and its observable cannot fire |
 | signals-loading | pc54-opamp-follower | 1→**2** | **defect, fixed** — the divider half is excellent; the follower-limit and probe-loading halves have no model behind them |
 | signals-noise | arduino-03-smoothing | 1→**2** | **defect, fixed** — the simulated sensor is bit-exact, so the standard deviation is exactly zero |
 | signals-aliasing-fft | 49-function-generator-sine | 1→**2** | **defect, fixed** — there is no FFT, and what the scope stores is an envelope, not a sample series |
-| signals-model-measurement | pc50-two-stage-rc | 1→**2** | **defect, fixed** — "report residuals with propagated uncertainty" from an instrument that reports no numbers |
+| signals-model-measurement | pc50-two-stage-rc | 1→2→**3** | **defect, fixed** — "report residuals with propagated uncertainty" from an instrument that reports no numbers; the range half is **BENCH FIXED 2026-08-25**, the readout half (D3) is still open |
 
 `signals-cutoff-phase` is counted as achievable: both of its search criteria
 work and bracket the same answer. Nine of the other ten checkpoints that measure
@@ -225,9 +235,53 @@ so the loaded network attenuates 0.72 dB more than the product of two ideal
 stages — which is precisely the "cascaded passive stages load each other"
 comparison the checkpoint's `explain` promises.
 
-**Fixed**, version 2: the sweep is now specified between 1 Hz and 10 Hz, the
-hint gives the corner frequency and the ten-cycles-per-point cost, and says
-plainly to stay well above the corners.
+**Fixed**, version 2 at the time: the sweep was specified between 1 Hz and
+10 Hz, the hint gave the corner frequency and the ten-cycles-per-point cost, and
+said plainly to stay well above the corners.
+
+**Then fixed at the bench, 2026-08-25** (sb3-creator `776a96e`). Telling a
+learner to stay away from the corners is telling them to stay away from the only
+part of a Bode plot worth looking at, and the 10/f cost is a property of
+single-frequency correlation rather than a defect — so the thing in the wrong
+place was the bench. Both stages went from 10 kΩ/100 µF to 10 kΩ/100 nF:
+
+```
+                      before          after
+each stage corners    0.159 Hz        159.155 Hz
+a point a decade
+  below the corner    628.3 s         0.628 s     of simulated time
+five points,
+  wall clock          (57-84 s each   26.5 s total, on a box at load 25
+                       at 1-0.5 Hz)
+```
+
+Nothing the lesson teaches moved. The transfer function depends on R·C, so only
+the frequency axis shifted — and that is asserted rather than argued: the two
+points measured above at 1 Hz and 10 Hz are 6.2832× and 62.832× the old corner,
+and at the same multiples of the new one they read **−32.782 dB** and
+**−71.549 dB**, the same numbers to the millibel. Re-measured across the range
+the restored checkpoint names:
+
+```
+f (rel. fc)   f (Hz)     magnitude    phase
+fc/10          15.915     -0.456 dB   -16.60°
+fc/3.162       50.334     -2.437 dB   -45.98°
+fc            159.155     -9.572 dB   -89.62°
+fc*3.162      503.248    -22.344 dB  -133.28°
+fc*10        1591.549    -40.738 dB  -161.98°
+```
+
+Slope one to two decades above the corner: **−36.64 dB/decade** — two poles, and
+short of the ideal −40 because the second stage loads the first, which is
+exactly the comparison the `explain` step promises. And the panel's default
+start frequency, which used to land at −71.549 dB in the far stopband, is now in
+the passband.
+
+**Version 3** sweeps from a decade below the corner to a decade above it, quotes
+the three measured points, and keeps the loading finding. `signals-model-measurement`
+is version 3 for the same reason — its `compare` step spans the corner now — while
+**keeping** the sentence about the sweep having no numeric readout and no export,
+because D3 is still open and dropping that would be the opposite error.
 
 ### 5. signals-resonance — overdamped as shipped, and its observable cannot fire
 
@@ -428,7 +482,8 @@ that is Check C's limitation, not the lesson's.
 - **Pedagogy** — in particular whether `pc50-two-stage-rc` should be rescaled
   (10 kΩ/100 nF would corner at 159 Hz and sweep in milliseconds) rather than
   worked around in lesson copy. That is the right fix and it belongs upstream;
-  it is recorded in `PLAN.md`.
+  it is recorded in `PLAN.md`. **Done 2026-08-25** — sb3-creator `776a96e`; see
+  defect 4. The prediction in this bullet was exact, including the corner.
 
 ## Reproducing this
 
@@ -436,12 +491,26 @@ that is Check C's limitation, not the lesson's.
 node --test test/lesson-bench-claims-wave6.test.mjs
 ```
 
-Eleven of its eighteen tests are named `OPEN DEFECT` and assert that a defect
+Nine of its nineteen tests are named `OPEN DEFECT` and assert that a defect
 **still reproduces**. They fail the day the sweep grows a readout, the scope
 grows a spectrum or a timebase, the op-amp grows an output limit, the meter
-stops being filtered out, the pot grows noise, or a bench is rescaled — and each
-message names the lesson hint to soften and this document to update.
+stops being filtered out, or the pot grows noise — and each message names the
+lesson hint to soften and this document to update.
+
+**One of them fired as written and was retired on 2026-08-25**, which is what a
+sentinel is for. `OPEN DEFECT: the Bode bench corners at 0.159 Hz` carried the
+instruction "the sweep got cheaper — re-measure Wave 6 and restore the corner
+sweep to the lesson", and that is what happened; it is now a positive assertion
+that the corner sits inside the instrument's range, with the three measured
+points and the loading slope. It is joined by a PAIRING test — `both pc50
+lessons were restored when their bench was` — because the failure this campaign
+keeps having in the other direction is a bench repaired while its lesson keeps
+the workaround. That test also refuses to let the D3 disclosure be dropped along
+with the rest of the hint, since D3 is still open.
 
 The gate is mutation-proven: changing `50-rc-scope`'s capacitor from 1 µF to
 2 µF turns two tests red (the cutoff bracket and the scope-record comparison),
-and reverting restores them.
+and reverting restores them. The pc50 work was mutation-proven separately and
+both halves independently: putting the capacitors back to 100 µF turns the bench
+test red, and reverting only the lesson version turns the pairing test and the
+version ledger red while the bench test stays green.

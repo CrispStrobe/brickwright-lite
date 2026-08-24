@@ -355,7 +355,8 @@ someone has to make, not work someone has to find.
 | D3 Bode sweep has no numbers | 4 | bw-circuit-ui | `drawBode` writes four strings on a canvas. A per-point readout or a CSV export needs a UI decision about where the numbers go; the data is already in `runBode`'s result. |
 | D7 empty machine ROMs | 3 | sb3-creator | Either three examples ship a ROM image (which needs an assembler, or a checked-in binary and a provenance note), or the lessons keep naming a bundled preset — which they now do. Closing it properly is the ROM. |
 | D8 `pc52` is an RLC used as an RL | 3 | sb3-creator | A bench change: either split it into an RL bench and an RLC bench, or keep it and let three lessons carry the 300 µs window in their copy. The second is what they do now. |
-| D9 sweep cost, D10 `pc50` corner | 2 each | bw-board + sb3-creator | Rescaling `pc50-two-stage-rc` from 10 kΩ/100 µF to 10 kΩ/100 nF moves its corner from 0.159 Hz to 159 Hz and makes both lessons sweep in milliseconds. That is the right fix and it invalidates the example's own EXPECTED.md, which is why it has not been done casually. |
+| D9 sweep cost | 2 | bw-board + bw-circuit-ui | `SweepPanel` runs the sweep synchronously, so a slow point freezes the tab. Still open, and now the whole of what D9 is: the bench that made it bite was D10. |
+| ~~D10 `pc50` corner~~ | 2 | sb3-creator | **CLOSED 2026-08-25** (`776a96e`), by the rescale this row predicted: 10 kΩ/100 µF → 10 kΩ/100 nF, corner 0.159 Hz → 159.155 Hz, a point a decade below from 629 s of simulated time to 0.63 s. The caution in this row was right and was paid rather than skipped — EXPECTED.md is rewritten with the measured table and the reason, `circuit-flat.json` carries the change too, and `signals-bode-sweep` and `signals-model-measurement` are restored to content version 3. The evidence that only the frequency axis moved: the two points Wave 6 measured at 1 Hz and 10 Hz read the same magnitudes to the millibel at 1 kHz and 10 kHz, and the gate asserts that equality rather than the new numbers alone. |
 | D11 one-shot RC step | 2 | sb3-creator | `43-rc-timing` needs a charge switch. A bench change, small, and it also fixes `signals-rc-response`'s reload-to-repeat instruction. |
 | D12 no ASM emitter | 2 | sb3-creator | A real feature. The Code tab's ASM view works over the network; both lessons disclose it. |
 | D13 directional `resistance()` | 2 | bw-board | **Not a bug.** `testNodeB` is the reference and ground symbols are switched out on purpose (`mna.js:354`). What is open is whether the API should refuse an ambiguous probe order rather than answering; the lessons teach the rule instead. |
@@ -385,6 +386,22 @@ all ten Wave 5 lessons behind a network connection while they declare
 code one — whether `simulation` means "no hardware" or "no network" — and
 answering it by editing ten hints would bury it.
 
+**Added 2026-08-25 by the post-repair re-check** (`docs/POST-REPAIR-RECHECK.md`):
+
+| defect | lessons | owner | what blocks it |
+| --- | --- | --- | --- |
+| ~~D35 quasi pins armed at zero~~ | 0 | sb3-creator | **CLOSED** (`553a639`). The Pocket Calculator repair fixed the board-class half of a two-family defect; the arming loop it added passed `false` as the pull's rail, and a quasi pin idles HIGH. 43 → 22 → 1 of 67 wired controls dead. |
+| D36 `arduino-02-digital-input-pullup` declares the wrong polarity | 0 | sb3-creator | The last dead control of the 67. `INPUT_PULLUP` plus button-to-ground is an active-LOW input; the example declares active HIGH. One word in a declaration — but it changes what the example emits for real silicon, so it wants its own which-side-was-wrong verdict rather than a drive-by edit. Ratcheted in `test/simulator-driver-controls-respond.test.mjs`. |
+
+That pass also leaves one gap named rather than closed: **`declared-pins-wired`
+asks whether a declared pad is WIRED, and nothing asks whether it is wired with
+the polarity its declaration claims.** The new gate deliberately asks the weaker
+question (does the pin CHANGE when its control is operated), because a
+polarity gate written around one convention condemns the other — `26-debounce`
+inverts in the program, `05-counter` lets the driver do it, and both are
+correct. D36 is the single case where the two questions give different answers,
+which is exactly why it is worth a row instead of a ratchet entry alone.
+
 ### Verification-debt ledger
 
 Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**;
@@ -399,13 +416,23 @@ as current as that sha, and several findings expired within hours of being writt
 
 | Wave | Lessons | Draft | Technical review | Measured against | Translation | Field test |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 Electricity you can see | 12 | done | **full, 2026-08-23**; open defects closed 2026-08-24 — 5 of 12 defective; 5 fixed, **0 open** (the ammeter fixed at the source, the motor expired on re-measurement) | `3c6948f5d`, re-measured `7ce24a619` | open | open |
-| 2 Measure rather than guess | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24 — 5 of 10 defective; 7 revised (one to v3), **3 open** engine defects, 2 fixed upstream | `3e87340f5`, re-measured `7ce24a619` | open | open |
+| 1 Electricity you can see | 12 | done | **full, 2026-08-23**; open defects closed 2026-08-24 — 5 of 12 defective; 5 fixed, **0 open** (the ammeter fixed at the source, the motor expired on re-measurement) | `3c6948f5d`, re-measured `7ce24a619`, re-derived `1311898d5` | open | open |
+| 2 Measure rather than guess | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24 — 5 of 10 defective; 7 revised (one to v3), **3 open** engine defects, 2 fixed upstream | `3e87340f5`, re-measured `7ce24a619`, re-derived `1311898d5` | open | open |
 | 3 One idea, several languages | 12 | done | **full, 2026-08-23** — 1 of 12 defective; 1 revised to v2 | `a3f30be6b` | open | open |
-| 4 Interactive systems | 8 | done | **full, 2026-08-23**; 4 of 5 closed 2026-08-24 — 7 of 8 defective; 10 revised (three to v3), **1 open** app defect (the micro:bit no-ops, deliberate) | `2e294ceaf`, re-measured `d7325a272` then `7ce24a619` | open | open |
+| 4 Interactive systems | 8 | done | **full, 2026-08-23**; 4 of 5 closed 2026-08-24 — 7 of 8 defective; 10 revised (three to v3), **1 open** app defect (the micro:bit no-ops, deliberate) | `2e294ceaf`, re-measured `d7325a272` then `7ce24a619`, re-derived `1311898d5` | open | open |
 | 5 Debug with evidence | 10 | done | **full, 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | `a3f30be6b` | open | open |
-| 6 Signals and systems | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24 — 9 of 10 defective; 10 revised (one to v3), **10 open** instrument/engine defects | `1d10902cb` | open | open |
-| 7 Computers from wires upward | 10 | done | **full, 2026-08-23**; re-measured 2026-08-24 — 8 of 10 defective; 9 revised (two to v3), **7 open**, of which the shift register's is now compiler-only (its example was repaired upstream) | `1d10902cb`, re-measured `91a95ba42` | open | open |
+| 6 Signals and systems | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24, 1 more 2026-08-25 — 9 of 10 defective; 10 revised (three to v3), **9 open** instrument/engine defects | `1d10902cb`, re-derived `1311898d5` | open | open |
+| 7 Computers from wires upward | 10 | done | **full, 2026-08-23**; re-measured 2026-08-24 — 8 of 10 defective; 9 revised (two to v3), **7 open**, of which the shift register's is now compiler-only (its example was repaired upstream) | `1d10902cb`, re-measured `91a95ba42`, re-derived `1311898d5` | open | open |
+
+**"Re-derived" is a weaker claim than "measured against", and the difference matters.**
+A review measured against a sha means a human worked every checkpoint on that tree.
+Re-derived means the numbers that tree's review PINNED were re-run on a later one and
+still hold — it inherits the review's judgement and only refreshes its arithmetic. The
+2026-08-25 entries are of the second kind: the whole lite suite at `eed6fcc73` came back
+993 pass / 0 fail / 1 skip, so every pinned wave quantity survived three bw-board vendors
+(`b5c02b1` source-and-transistor honesty, `a301937` buzzer KCL, `88e96681`) that all landed
+AFTER the shas those waves were measured against. Nothing in a wave doc was re-judged by
+that run, and it is not evidence about any quantity a wave did not pin.
 
 **Examples.** Milestone 0's scope covers the corpus as well as the lessons, and the ledger
 never tracked it. Measured against sb3-creator `fix/milestone0-corpus`, with siblings pinned
