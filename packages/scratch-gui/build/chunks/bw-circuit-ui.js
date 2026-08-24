@@ -4252,29 +4252,57 @@ function VoltageLabels(_ref13) {
   // first draft dropped pills at ambiguous midpoints and skipped every
   // net whose first wire had a breadboard endpoint (owner screenshot:
   // orphaned 5.0V pills in empty space, interesting nets unlabeled).
-  const best = new Map(); // netId → {len, mx, my, ax, ay}
-  const consider = (netId, a, b, lift) => {
-    if (!netId) return;
+  const best = new Map(); // netId → {len, mx, my, v}
+  const considerAt = (netId, m, len) => {
+    if (!netId || !m) return;
     const v = nodeVoltages[netId];
     if (v == null) return;
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
     const cur = best.get(netId);
     if (cur && cur.len >= len) return;
-    const mx = (a.x + b.x) / 2,
-      my = (a.y + b.y) / 2 - (lift || 0);
     best.set(netId, {
       len,
-      mx,
-      my,
+      mx: m.x,
+      my: m.y,
       v
     });
+  };
+  /** Arclength midpoint of a polyline — a point ON the drawn conductor. */
+  const polyMid = pts => {
+    let total = 0;
+    const segs = [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const L = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+      segs.push(L);
+      total += L;
+    }
+    let d = total / 2;
+    for (let i = 0; i < segs.length; i++) {
+      if (d <= segs[i]) {
+        const t = segs[i] ? d / segs[i] : 0;
+        return {
+          m: {
+            x: pts[i].x + (pts[i + 1].x - pts[i].x) * t,
+            y: pts[i].y + (pts[i + 1].y - pts[i].y) * t
+          },
+          total
+        };
+      }
+      d -= segs[i];
+    }
+    return {
+      m: pts[0],
+      total
+    };
   };
   for (const wire of wires) {
     var _wire$netId2;
     const a = endpointWorld(parts, wire.from);
     const b = endpointWorld(parts, wire.to);
     if (!a || !b) continue;
-    consider((_wire$netId2 = wire.netId) !== null && _wire$netId2 !== void 0 ? _wire$netId2 : wireNetId(circuit, wire), a, b, 0);
+    considerAt((_wire$netId2 = wire.netId) !== null && _wire$netId2 !== void 0 ? _wire$netId2 : wireNetId(circuit, wire), {
+      x: (a.x + b.x) / 2,
+      y: (a.y + b.y) / 2
+    }, Math.hypot(b.x - a.x, b.y - a.y));
   }
   if (circuit && circuit.holeWires && circuit.boardStripNets && circuit.breadboards) {
     for (const jw of circuit.holeWires()) {
@@ -4286,7 +4314,18 @@ function VoltageLabels(_ref13) {
       const a = (0,_interaction_seat_geometry_js__WEBPACK_IMPORTED_MODULE_6__.holeWorldPos)(bb, jw.a),
         b = (0,_interaction_seat_geometry_js__WEBPACK_IMPORTED_MODULE_6__.holeWorldPos)(bb, jw.b);
       if (!a || !b) continue;
-      consider(netId, a, b, Math.max(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.25));
+      // Anchor ON the rendered conductor: jumpers draw via
+      // jumperHitPoints (short = arc, long = orthogonal lane route),
+      // and the old straight-midpoint-minus-25%-of-length lift matched
+      // NEITHER — a 686-unit generated jumper on the calculator bench
+      // put its pill 170 units into empty space, leader pointing at
+      // nothing (owner screenshot, 2026-08-25). The label now rides the
+      // arclength midpoint of the same polyline the renderer draws.
+      const {
+        m,
+        total
+      } = polyMid(jumperHitPoints(bb, a, b, 0));
+      considerAt(netId, m, total);
     }
   }
   const fmtV = v => Math.abs(v) < 1 ? "".concat((v * 1000).toFixed(0), "mV") : "".concat(v.toFixed(1), "V");
@@ -4294,6 +4333,8 @@ function VoltageLabels(_ref13) {
     let [netId, c] = _ref14;
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("g", {
       key: "vl-".concat(netId),
+      "data-vl-net": netId,
+      "data-vl-len": Math.round(c.len),
       pointerEvents: "none"
     }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("line", {
       x1: c.mx,
@@ -4660,8 +4701,19 @@ function WokwiParts(_ref15) {
           },
           onMouseUp: () => {
             if (simulate) onButtonUp(id);
-          },
-          onMouseLeave: () => {
+          }
+          // NO release on mouseleave: the canvas pointer-down path
+          // captures the pointer on the container (so a game-mode press
+          // can roam), and capture RETARGETS boundary events — the div
+          // under a perfectly still pointer got a spurious mouseleave on
+          // the first post-press re-render, releasing the key after
+          // ~80 ms of simulated time: too short for any firmware scan
+          // loop, so calculator keys typed nothing (owner report,
+          // 2026-08-25). Release is owned by the container's
+          // pointer-up/cancel, which capture makes reliable wherever
+          // the pointer ends up.
+          ,
+          onPointerCancel: () => {
             if (simulate) onButtonUp(id);
           },
           onContextMenu: simulate ? e => e.preventDefault() : undefined
@@ -13237,7 +13289,13 @@ const RULE_SHORT = {
   'missing-pullup': 'no pull-up',
   'aggregate-current': '⚡ chip limit',
   'supply-current': '⚡ USB limit',
-  'engine': '⚠'
+  'engine': '⚠',
+  // The engine's shared-terminal repair note (a terminal listed in two
+  // nets is merged deterministically and REPORTED — bw-board setNetlist).
+  // Without an entry the pill printed the raw rule id "net-coalesced",
+  // which reads as jargon on the canvas (owner screenshot, 2026-08-25);
+  // the full message stays available as the badge tooltip below.
+  'net-coalesced': '⧉ nets merged'
 };
 
 // Rules whose information is conveyed by in-body visual cues (color-coded
@@ -13284,7 +13342,7 @@ function DrcOverlay(_ref) {
       style: {
         pointerEvents: 'none'
       }
-    }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("rect", {
+    }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("title", null, w.explanation || w.rule), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("rect", {
       x: bx,
       y: by,
       width: label.length * 6 + 10,
@@ -13595,7 +13653,19 @@ function parseIntro(text) {
   };
 }
 
-/** Render minimal markdown to React elements (## headings, **bold**, `code`, lists, links, paragraphs). */
+/**
+ * Render minimal markdown to React elements.
+ *
+ * "Minimal" was too minimal, and it showed. It handled `## ` but not `# `, and
+ * no fenced code blocks at all, so every unhandled line fell through to the
+ * paragraph branch and was printed VERBATIM. An intro opening with
+ * `# Pocket Calculator` displayed the hash, and its keypad table — a ``` block —
+ * appeared as raw lines with the fences still in them.
+ *
+ * Handles: # and ## headings, ``` fenced code, **bold**, `code`, - and 1. lists,
+ * links, paragraphs. Anything else still falls through to a paragraph, which is
+ * the right default; the bug was that two COMMON constructs were in that bucket.
+ */
 function renderMarkdown(md, palette) {
   const lines = md.split('\n');
   const elements = [];
@@ -13616,7 +13686,43 @@ function renderMarkdown(md, palette) {
   };
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (/^## /.test(line)) {
+    // Fenced code: consume to the closing fence and render as a block. Done
+    // first so nothing inside a fence is interpreted as markdown.
+    if (/^```/.test(line)) {
+      flushList();
+      const buf = [];
+      let j = i + 1;
+      for (; j < lines.length && !/^```/.test(lines[j]); j++) buf.push(lines[j]);
+      i = j; // skip the closing fence; if it is missing, we consumed the rest
+      elements.push(/*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("pre", {
+        key: "pre-".concat(i),
+        style: {
+          margin: '4px 0 8px',
+          padding: '6px 8px',
+          overflowX: 'auto',
+          background: palette.codeBg || 'rgba(127,127,127,0.12)',
+          color: palette.text,
+          fontSize: 11,
+          lineHeight: 1.45,
+          borderRadius: 4
+        }
+      }, buf.join('\n')));
+    } else if (/^# /.test(line)) {
+      // The document title. Bigger than ##, and it was previously printed with
+      // its hash still attached.
+      flushList();
+      elements.push(/*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", {
+        key: "h1-".concat(i),
+        style: {
+          fontWeight: 700,
+          fontSize: 15,
+          color: palette.heading,
+          marginTop: i > 0 ? 12 : 0,
+          marginBottom: 4
+        },
+        "data-intro-heading": true
+      }, line.slice(2)));
+    } else if (/^## /.test(line)) {
       flushList();
       elements.push(/*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("div", {
         key: "h-".concat(i),
@@ -25259,6 +25365,37 @@ const PINS_74HC138 = {
  * Exported so engine-contract.test.js can fire every rule and check that the
  * kinds and terminal names it produces are ones the engine actually has.
  */
+/**
+ * Raspberry Pi Pico pins, keyed by the NAME its schematic symbols print.
+ * Several spellings per signal because libraries differ: "GPIO 0", "GPIO0" and
+ * "GP0" all name the same leg, and the 3V3 output appears as "3v3 (OUT)".
+ */
+const PICO_PIN_NAMES = (() => {
+  const m = {
+    GND: 'gnd_1',
+    AGND: 'agnd',
+    RUN: 'run',
+    ADC_VREF: 'adc_vref',
+    VSYS: 'vsys',
+    VBUS: 'vbus',
+    '3V3_EN': '3v3_en',
+    '3v3_EN': '3v3_en',
+    '3V3': '3v3',
+    '3v3': '3v3',
+    '3V3(OUT)': '3v3',
+    '3v3 (OUT)': '3v3',
+    '3V3 (OUT)': '3v3',
+    SWCLK: 'swclk',
+    SWDIO: 'swdio',
+    SWD_GND: 'swd_gnd'
+  };
+  for (let i = 0; i <= 28; i++) {
+    for (const spelling of ["GPIO ".concat(i), "GPIO".concat(i), "GP".concat(i), "gpio ".concat(i), "gp".concat(i)]) {
+      m[spelling] = "gp".concat(i);
+    }
+  }
+  return m;
+})();
 const EASYEDA_RULES = [
 // -- regulators. Part number first: the engine models these three by name,
 //    and falling through to the generic `vreg` would lose their models.
@@ -25382,6 +25519,50 @@ const EASYEDA_RULES = [
 })], [/^(SSD1306)/i, () => ({
   kind: 'ssd1306',
   byName: true
+})],
+// Raspberry Pi Pico. BY PIN NAME, NEVER BY NUMBER, and that is the whole
+// point of this entry.
+//
+// `terminalFor` tries `pins[number]` BEFORE `pins[name]`, so a numeric map
+// would win — and it would be wrong. The symbol on a real sheet numbers its
+// pins 1..20 and 23..42, skipping 21 and 22 entirely: its pin 23 is GPIO 16,
+// where the PHYSICAL pin 23 is a ground. A positional map built from the
+// datasheet header order would have quietly mis-wired everything from pin 23
+// up. The names, by contrast, are unambiguous and the symbol carries them.
+//
+// Every GND lands on `gnd_1`. All of the Pico's grounds are the same node —
+// board-kinds.js maps `gnd_1`..`gnd_7`, `agnd` and `swd_gnd` to one `gnd`
+// role — so distinguishing them buys nothing and inventing an order would
+// reintroduce exactly the positional guess this rule avoids.
+[/^(RASPBERRY[\s_-]*PI[\s_-]*)?PICO\b/i, () => ({
+  kind: 'pi_pico',
+  pins: PICO_PIN_NAMES
+})],
+// The 4-pin 0.96" I2C OLED MODULE, as EasyEDA's library names it. The rule
+// above only matches parts called SSD1306; a module carrying the controller
+// is usually called after its size, and imported as UNMAPPED.
+//
+// Its symbol names NO pins — segments 3 and 4 of every pin record read "1".."4"
+// and the string SDA/SCL/VCC/GND appears nowhere in it — so `byName` has
+// nothing to work with and the order has to come from somewhere.
+//
+// It was DERIVED, not assumed: on a real sheet using this exact part, pin 1
+// wires to the Pico's GPIO 0, pin 2 to GPIO 1, pin 3 to GND and pin 4 to
+// 3v3 (OUT). That is SDA, SCL, GND, VCC — which is NOT the GND/VCC/SCL/SDA
+// order most 4-pin modules use, so guessing from the usual convention would
+// have swapped power and ground and put the data lines on the wrong pins.
+//
+// Keyed tightly on the library name for that reason: another OLED symbol may
+// well number its pins differently, and must not silently inherit this order.
+[/^0\.96\s*OLED(_4P)?$/i, () => ({
+  kind: 'ssd1306',
+  pins: {
+    1: 'sda',
+    2: 'scl',
+    3: 'gnd',
+    4: 'vcc'
+  },
+  _note: 'pin order derived from wiring; this symbol carries no pin names'
 })],
 // The export dialect's own chips (exporters/easyeda-schematic.js writes
 // these Manufacturer Part names; the round-trip test keeps both in step).
@@ -25556,8 +25737,17 @@ function mapSpicePre(pre, value, pinCount, pkg) {
       };
     case 'S':
     case 'SW':
-      // A 2-pin switch is a momentary button; a 3-pin one is a changeover.
-      return n >= 3 ? {
+      // A 2- OR 4-pin switch is a momentary button; a 3-pin one is a changeover.
+      //
+      // `n >= 3` sent FOUR-pin parts to slide_switch, and four pins is the
+      // commonest tactile key there is: a through-hole button bonds its pins in
+      // two pairs, so it draws as four. Measured on a real EasyEDA calculator
+      // sheet, all seventeen keys imported as slide_switch and none as a button.
+      //
+      // The giveaway that this was a typo rather than a decision is the map on
+      // the button branch itself — `{1:'a', 2:'b', 3:'a', 4:'b'}` describes the
+      // four-pin part exactly, and was unreachable.
+      return n === 3 ? {
         kind: 'slide_switch',
         byName: true
       } : {
@@ -36078,7 +36268,14 @@ function toEasyEdaSchematic(circuit) {
     // lands EXACTLY on one at slot ≡ 2 (mod 4). Only arduino_mega (78
     // right-band pins) walked that far — both mega retro-console variants
     // exported a two-net short, found by an independent reader of the
-    // shape stream, not by the shared-assumption round trip. Clearing the
+    // shape stream. The round trip was NOT blind to it — re-measured
+    // against the broken exporter, it goes red on the same files (the
+    // importer binds endpoint-on-span fine); only the sweep's
+    // denominator hid it, enumerating bare circuit.json and missing the
+    // per-MCU twins. So the glob fix + file-count floor IS the complete
+    // guard for this class; an independent reader's residual value is
+    // narrower — checking our importer's binding rule against the real
+    // dialect, which only the vendor artefact can settle. Clearing the
     // whole escape region is the invariant; making ESC_STEP and LANE_STEP
     // coprime would only dodge the exact-hit case and leave a lane
     // endpoint free to land on an escape's vertical leg.
