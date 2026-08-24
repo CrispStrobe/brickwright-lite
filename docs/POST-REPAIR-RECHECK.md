@@ -162,11 +162,19 @@ The 22 are the whole 8051 side: `05-counter`, `11-toggle-button`,
 `27-led-dice`, `60-retro-console`, `61-console-pong`, `76-multimeter`,
 `78-a2-calculator`, `arduino-02-digital-input-pullup`. Three of those are Wave 5
 lesson benches, so it is not only a corpus fact — though it is worth being exact
-about the blast radius: **no Wave 5 checkpoint's wording became false**, because
-Wave 5's lessons drive the debugger (emu8051 over compiled C), not the Code
-tab's simulated-board driver. What the defect cost was the other route a learner
-can take on those benches, and on that route they would have seen the
-calculator's symptom exactly.
+about the blast radius, and the exactness matters because the first version of
+this paragraph was too loose.
+
+**No Wave 5 checkpoint's wording became false.** The defect lives in ONE route:
+the Code tab's Run with the simulated-board driver. Wave 5's four press
+checkpoints observe two other things — `debug-watches/watch` and
+`debug-conditional-breakpoints/halt` wait on `debug-phase: paused`, which is
+emu8051 over compiled C; `debug-reproduce-minimize/minimize` and
+`debug-pins-signals/trace` wait on `project-run`, which is the green flag and
+therefore the Scratch VM's own extension methods. Neither is the JS driver. What
+the defect cost was a third route a learner can take on those same benches, and
+on it they would have seen the calculator's symptom exactly — a key that reads
+pressed from boot and cannot be released.
 
 ### Two things the new gate got wrong before it got them right
 
