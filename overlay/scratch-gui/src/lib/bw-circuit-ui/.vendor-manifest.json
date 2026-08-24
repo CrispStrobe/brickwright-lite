@@ -68,7 +68,7 @@
  "model/export-png.js": "ba310a3efc6909bc43242cac99120f36ad1eeaa6",
  "model/exporters/download.js": "7337bea76c43d8b1d98d027620d225053106e6d7",
  "model/exporters/eagle.js": "27f76786ae3639830a888058cb1f1218358ce32b",
- "model/exporters/easyeda-schematic.js": "0f4237be43711c66c8d208da714f5cce383a3114",
+ "model/exporters/easyeda-schematic.js": "33ce2790c64cd9400e75a064235943a0684f434c",
  "model/exporters/easyeda.js": "7d5d49271fe7e89b9acbbf647a14d256d688c2de",
  "model/exporters/kicad-sch.js": "7bc873d74fe9ae2c63530f907a544f71f27177cf",
  "model/exporters/kicad.js": "8a218c306767071edb52bbb34a8e94f517b5a878",
