@@ -243,7 +243,7 @@ Machine and a preset and names where each view lives;
 `machines-interrupts-performance` names the preset and drops the pin-edge route
 in favour of the instruction trace.
 
-### 8. machines-contention — the third wave to meet the same dead observable
+### 8. machines-contention — the third wave to meet the same dead observable — FIXED 2026-08-24
 
 `circuit-changed` maps to `bw-circuit-changed`, dispatched only when the derived
 **pin declarations** change. A 6502 bench has none, so no wiring edit can fire
@@ -252,8 +252,17 @@ it. Wave 1 recorded this for `starter-circuit-path`, Wave 6 for
 
 **Fixed**, version 2: the checkpoint now names Build Machine as the evidence —
 which refuses with the conflicting address before the repair and prints the map
-after it — and tells the learner to tick the step manually. The app defect stays
-open and is now pinned by three waves' gates.
+after it — and tells the learner to tick the step manually.
+
+**The app defect is fixed as of 2026-08-24**, in the repo that owns it.
+`CircuitDesigner` gained `onCircuitEdit`, a second callback fired from a
+structural signature of the circuit (part ids, kinds, params, wire endpoints)
+rather than from the derived declarations, and lite's `circuit-tab.jsx`
+dispatches `bw-circuit-changed` from it. So a wiring repair on a 6502 bench —
+which has no pin declarations to move — now reaches the lesson. Three waves
+found this one at a time; `docs/WAVE-OPEN-DEFECTS.md` D6 records it once. The
+"tick it manually" sentence stays in the hint: it costs nothing and a learner
+who mis-clicks still needs the button.
 
 ## Checkpoint ledger
 

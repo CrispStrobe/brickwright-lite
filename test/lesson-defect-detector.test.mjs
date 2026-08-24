@@ -216,14 +216,17 @@ test('MUTATION: a decimal point must not end a sentence', async () => {
 // **Ratchets only shrink.** Fixing one removes it here in the same commit; the
 // second assertion below fails if an entry stops reproducing, so a fix cannot
 // leave the documentation behind.
-const KNOWN_UNACHIEVABLE = new Set([
-    // `bw-circuit-changed` fires only when the derived pin declarations move, so
-    // no MCU-less bench can ever raise it. Needs a CircuitDesigner change in
-    // bw-circuit-ui; the lessons' intent is right, so the observables stay.
-    'starter-circuit-path/change',
-    'signals-resonance/sweep',
-    'machines-contention/repair'
-]);
+// Empty as of 2026-08-24, and that is the whole point of a ratchet.
+//
+// It held three entries, all one defect found three times: `bw-circuit-changed`
+// was dispatched only when the derived pin declarations moved, so no MCU-less
+// bench could raise it, and `starter-circuit-path/change`,
+// `signals-resonance/sweep` and `machines-contention/repair` were each
+// discovered independently by Waves 1, 6 and 7. The CircuitDesigner change the
+// entry asked for landed (bw-circuit-ui `a4aa9ec`, an `onCircuitEdit` callback
+// fired from a structural signature of the circuit), the detector now checks
+// that signature instead, and all three heal.
+const KNOWN_UNACHIEVABLE = new Set([]);
 
 test('corpus ratchet: no lesson checkpoint is unachievable except the known three', async () => {
     const report = await detect();

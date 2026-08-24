@@ -27,7 +27,7 @@ here cannot quietly stop being true.
 | electricity-capacitor | pc29-capacitor-discharge | 2 | achievable — the earlier revision verified |
 | electricity-inductor | pc52-inductor-filter | 1→**2** | **defect, fixed** — at the state the lesson opens, "before" and "after" are 0.2 mV apart |
 | electricity-diode | pc31-bridge-rectifier | 2 | achievable — the earlier revision verified |
-| electricity-transistor-switch | 38-npn-switch | 1→**2** | switching is sound; **the instrument lies** about collector current (engine defect, open) |
+| electricity-transistor-switch | 38-npn-switch | 1→2→**3** | switching is sound; the instrument lied about collector current — **engine defect FIXED 2026-08-24**, copy restored |
 | electricity-motor-flyback | pc26-motor-clamp | 1→**2** | **defect, fixed** — asked to verify a condition "while powered" on a bench that opens with the switch off |
 | starter-circuit-path | 47-battery-led | 1 | achievable, but **one observable cannot fire** (app defect, open) |
 | instrument-voltage-divider | 52-battery-voltage-divider | 1 | achievable |
@@ -175,7 +175,7 @@ Not fixed here because the fix belongs in `CircuitDesigner`, which is vendored f
 `test/lesson-bench-claims.test.mjs`, which fails when the behaviour changes so this
 document gets updated with it.
 
-### 6. The ammeter contradicts itself on a transistor terminal — OPEN, engine-side
+### 6. The ammeter contradicts itself on a transistor terminal — FIXED 2026-08-24
 
 `38-npn-switch` switches correctly. Base 0.0050 → 0.7043 V, collector 4.4970 → 0.2006 V,
 LED branch 0 → 5.832 mA, LED brightness 0 → 0.2916. The `test` checkpoint asked the
@@ -197,12 +197,37 @@ device-model terminal rather than the solved branch current, and returns a flat 
 `switch`, `button` and `dc_motor` terminals. Node voltages are unaffected and correct;
 this is a reporting defect, not a solver defect.
 
-**Partly mitigated** in copy: the hint now tells the learner to measure the collector
-current in the load resistor rather than on the transistor terminal — which is better
-practice anyway, since current is measured in a branch — and says plainly why. Bumped to
-version 2. The engine defect stays open and is pinned by the claims gate.
+**Partly mitigated** in copy at the time: the hint told the learner to measure the collector
+current in the load resistor rather than on the transistor terminal, and said plainly why.
+Bumped to version 2.
 
-### 7. `dc_motor` ignores its declared winding resistance, and its DC answer depends on the time step — OPEN, engine-side
+**Fixed at the source 2026-08-24** (bw-board `6df60a5`, vendored here), and the copy is
+restored to version 3. Two separate faults, both in the *extraction* rather than the solve:
+
+- the BJT extraction always computed `beta * Ib`, ignoring the region. The stamp already
+  knew better — in saturation it replaces the VCCS with a stiff Vce clamp, so the collector
+  passes whatever the load passes — and the extraction now uses the same clamp;
+- `button` and `switch` are stamped as plain two-terminal conductances and nothing
+  extracted their current, so `branchCurrent` fell through to its flat 0. `dc_motor` gets
+  the same treatment through a `branchCurrents` hook.
+
+Re-measured on the same bench, through the same `getMeterReading` path:
+
+```
+                       before (Wave 1)        after
+q1.collector             43.0 mA             5.8321 mA
+r1.b                      5.8 mA             5.8321 mA
+led1.anode                5.8 mA             5.8321 mA
+q1.base                   0.4 mA             0.4304 mA
+rb1.b                     0.4 mA             0.4304 mA
+btn1.a / btn1.b           0.0 mA             0.4304 mA
+```
+
+Every reading in a series loop now agrees to four figures, and KCL holds across the whole
+bench. Version 3's hint quotes those numbers and asks for the collector current directly,
+which is what the lesson wanted in the first place.
+
+### 7. `dc_motor` ignored its declared winding resistance — ALREADY FIXED, re-measured 2026-08-24
 
 Found while measuring the flyback bench; it does not change that lesson's verdict, but it
 makes `pc26-motor-clamp/EXPECTED.md` wrong, so it is recorded here.
@@ -237,6 +262,25 @@ sample step     no diode     with d1
 
 EXPECTED.md's numbers are left alone pending the engine fix, since correcting them to
 today's dt-dependent values would only have to be corrected again.
+
+**Re-measured 2026-08-24 against `7ce24a619`: it no longer reproduces.** `dc-motor.js` now
+declines to stamp the winding inductance at all, and the board expands every `dc_motor`
+into a motor plus a first-class solver inductor on a hidden series net
+(`_expandMotorWindings`), so the motor's `a` pin sits between L and R and the resistive
+formula reads the true series current:
+
+```
+advance step     100 us     1 ms     10 ms     50 ms
+I(winding)       0.8999 A  0.8999 A  0.8999 A  0.8999 A
+```
+
+9 V across a declared 10 Ω winding, at every step size — which is exactly what
+`pc26-motor-clamp/EXPECTED.md` said all along, so that file needed no correction after all.
+The finding expired between the Wave 1 vendor (`3c6948f5d`) and today; it was not fixed by
+this campaign, and the new gate pins it so it cannot come back. Re-measuring the clamp
+while I was there found one thing the doc DID need: the diode-clamped bound is now
+−9.6973 V at every sample step rather than climbing −3.5 / −8.1 / −9.5 / −9.7 V as the step
+shrank, and the unclamped spike is still unbounded. EXPECTED.md is updated upstream.
 
 ## The eight lessons with no defect, and what was measured
 
@@ -274,7 +318,7 @@ today's dt-dependent values would only have to be corrected again.
 - **electricity-transistor-switch** / `38-npn-switch`: the switching itself, listed under
   defect 6 above, is sound.
 
-## A structural note that belongs to the whole catalog, not to Wave 1
+## A structural note that belongs to the whole catalog, not to Wave 1 — FIXED 2026-08-24
 
 Ten of the twelve lessons carry `observe: {event: "circuit-ready"}` on their measuring
 checkpoint. `bw-circuit-ready` fires once, when the circuit finishes loading. So those
@@ -284,6 +328,21 @@ lesson text still says what to do — but the automatic tick certifies nothing, 
 worth knowing that the catalog's apparent progress-tracking is, for circuit lessons,
 almost entirely decorative. Waves 2–7 should be read with that in mind rather than
 discovering it seven more times.
+
+**Measured across all seven waves afterwards: 28 lessons, not ten.** Counted from the wave
+JSON — `circuit-ready` is the observable on a measuring checkpoint in nine Wave 1 lessons,
+seven of Wave 2, eight of Wave 6 and four of Wave 7. That makes it the largest open defect
+of the whole campaign by lessons affected, by a factor of two over the next one, and no
+wave counted it, because each wave counted defects in ITS lessons and this was filed as a
+note about the catalog. `docs/WAVE-OPEN-DEFECTS.md` D1.
+
+**Fixed 2026-08-24.** `guided-lessons.jsx` now separates ARMING observables from completing
+ones: `circuit-ready` sets an `armed` flag and the step says "Bench ready — mark this step
+when you have the reading", leaving the manual button as the only thing that completes it.
+The other four observables are untouched, because pressing the green flag, editing the
+circuit, reaching a debug phase and connecting a hub are all things the LEARNER did. The
+observable is not deleted: on a circuit lesson, "the bench came up" is the one thing the
+app can honestly tell the learner, and it is worth telling them.
 
 ## Reproducing this
 
@@ -297,6 +356,7 @@ and deleting the flyback diode from `pc26-motor-clamp` makes it red ("d1.cathode
 net"). Both mutations were applied to the real file — `realpath` checked, no symlink in
 the path — and reverted afterwards.
 
-Two of its tests are named `OPEN DEFECT` and assert that a defect **still reproduces**.
-They are supposed to fail the day someone fixes the engine or the app; that failure is the
-instruction to come back and update this document.
+Two of its tests were named `OPEN DEFECT` and asserted that a defect **still reproduces**.
+Both have now fired: the ammeter defect was fixed at the source and the motor defect
+expired on its own. `test/wave-open-defects.test.mjs` pins both repairs, and bw-board's own
+`test/wave-open-defects.test.mjs` holds the measurements.

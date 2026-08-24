@@ -262,25 +262,39 @@ test('electricity-transistor-switch: the switch really switches', async () => {
     near(board.ledBrightness('led1'), 0.2916, 0.001, 'LED on (after the 20 ms window fills)');
 });
 
-test('OPEN DEFECT: the ammeter on the NPN collector contradicts the branch it is in', async () => {
-    // Not a lesson bug — an engine one. `branchCurrent` on a device-model
-    // terminal returns the model's own quantity, not the solved branch current.
-    // Pinned so that fixing it fails here and forces the review to be updated.
-    const {board, circuit} = await fresh('38-npn-switch');
-    circuit.setControl('btn1', 1);
-    board.advanceTo(60n * MS);
-    const inBranch = milliamps(board, 'r1', 'b');
-    const atCollector = milliamps(board, 'q1', 'collector');
-    const atButton = milliamps(board, 'btn1', 'a');
-    const throughBaseResistor = milliamps(board, 'rb1', 'b');
-    near(inBranch, 5.832, 0.01, 'the LED branch, which is the truth');
-    assert.ok(Math.abs(atCollector - inBranch) > 30,
-        'the collector reading STILL disagrees with its own branch — if this now ' +
-        'agrees, the engine was fixed: update docs/LESSON-REVIEW-WAVE-1.md and ' +
-        'the electricity-transistor-switch hint, then delete this test');
-    near(throughBaseResistor, 0.430, 0.01, 'base resistor carries a real current');
-    near(atButton, 0, 0.001,
-        'and the button in series with it STILL reads zero — same defect, same fix');
+test('electricity-transistor-switch: every reading in the load loop agrees', async () => {
+    // Was an OPEN DEFECT: `branchCurrent` reported beta*Ib on a saturated
+    // collector — 43.0 mA against 5.8 mA in the same series loop — and a flat 0
+    // on a button carrying 0.43 mA. Fixed at the source 2026-08-24 (bw-board):
+    // the BJT extraction now uses the same Vce clamp the stamp uses in
+    // saturation, and button/switch/dc_motor terminals report their current.
+    const raw = JSON.parse(readFileSync(path.join(EXAMPLES, circuitPathFor('38-npn-switch')), 'utf8'));
+    const {Circuit} = await boot();
+
+    const off = Circuit.fromJSON(structuredClone(raw));
+    off.board.advanceTo(50n * MS);
+    near(volts(off.board, 'q1', 'base'), 0.005, 0.002, 'base with the button released');
+    near(volts(off.board, 'q1', 'collector'), 4.497, 0.01, 'collector with the button released');
+
+    const on = Circuit.fromJSON(structuredClone(raw));
+    on.setControl('btn1', 1);
+    on.board.advanceTo(50n * MS);
+    near(volts(on.board, 'q1', 'base'), 0.6957, 0.002, 'base pressed');
+    near(volts(on.board, 'q1', 'collector'), 0.2006, 0.002, 'collector pressed');
+
+    // One series loop, therefore one current. This is the claim the lesson's
+    // version 3 hint makes and the one that was false before the repair.
+    const load = milliamps(on.board, 'r1', 'b');
+    near(load, 5.8321, 0.01, 'load resistor');
+    for (const [part, terminal] of [['led1', 'anode'], ['q1', 'collector']]) {
+        near(milliamps(on.board, part, terminal), load, 0.01,
+            `${part}.${terminal} must agree with the load resistor in the same series loop`);
+    }
+    // And the base loop, including the button that used to read zero.
+    const base = milliamps(on.board, 'rb1', 'b');
+    near(base, 0.4304, 0.01, 'base resistor');
+    near(milliamps(on.board, 'btn1', 'b'), base, 0.001,
+        'a closed button must carry the current of the branch it is in');
 });
 
 // ── electricity-motor-flyback → pc26-motor-clamp ────────────────────────────
@@ -335,31 +349,53 @@ test('starter-circuit-path: the loop is closed and the numbers are the ones a le
     assert.ok(board.ledBrightness('led1') > 0.3, 'the LED is lit');
 });
 
-test('OPEN DEFECT: `circuit-changed` cannot fire for the edits starter-circuit-path asks for', async () => {
-    // guided-lessons.jsx listens for `bw-circuit-changed`, which circuit-tab.jsx
-    // dispatches ONLY from handleDeclarationChange — and CircuitDesigner calls
-    // that only when JSON.stringify(circuitToDeclarations(...)) changes. On an
-    // MCU-less bench the declarations are constant, so the checkpoint can only
-    // ever be completed by its manual button.
+test('starter-circuit-path: the edits its checkpoint asks for now reach the lesson', async () => {
+    // Was an OPEN DEFECT. `bw-circuit-changed` was dispatched only from
+    // `handleDeclarationChange`, and CircuitDesigner called that only when the
+    // DERIVED PIN DECLARATIONS moved. On this bench — battery, resistor, LED,
+    // no MCU — they never do, so a resistance change and a broken wire, the two
+    // edits the hint suggests, were both silent.
+    //
+    // Fixed 2026-08-24: `onCircuitEdit` fires from a structural signature of the
+    // circuit instead, and circuit-tab.jsx dispatches the DOM event from there.
+    // The declaration fact below is unchanged and is exactly why the second
+    // producer had to exist.
     const {Circuit} = await boot();
     const root = path.resolve(import.meta.dirname, '..');
-    const {circuitToDeclarations} = await import(path.join(root,
-        'overlay/scratch-gui/src/lib/bw-circuit-ui/model/declarations.js'));
+    const cui = path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
+    const {circuitToDeclarations} = await import(path.join(cui, 'model/declarations.js'));
+    const {circuitSignature} = await import(path.join(cui, 'model/circuit-signature.js'));
     const raw = JSON.parse(readFileSync(path.join(EXAMPLES, circuitPathFor('47-battery-led')), 'utf8'));
-    const decl = data => {
+    const of = data => {
         const c = Circuit.fromJSON(data);
-        return JSON.stringify(circuitToDeclarations(c.parts, c.wires, c.resolvedNets));
+        return {
+            decl: JSON.stringify(circuitToDeclarations(c.parts, c.wires, c.resolvedNets)),
+            sig: circuitSignature(c.parts, c.wires)
+        };
     };
-    const base = decl(structuredClone(raw));
+    const base = of(structuredClone(raw));
     const changedResistance = structuredClone(raw);
     changedResistance.parts.find(p => p.id === 'r1').params.ohms = 470;
     const brokenWire = structuredClone(raw);
     brokenWire.wires = brokenWire.wires.slice(0, -1);
 
-    assert.equal(decl(changedResistance), base,
-        'if a resistance change now moves the declarations, the event fires: ' +
-        'update docs/LESSON-REVIEW-WAVE-1.md and delete this test');
-    assert.equal(decl(brokenWire), base, 'same for breaking a wire');
+    for (const [label, data] of [['a resistance change', changedResistance], ['a broken wire', brokenWire]]) {
+        const now = of(data);
+        assert.equal(now.decl, base.decl,
+            `${label} still moves no declaration on an MCU-less bench — that is the reason ` +
+            'the circuit signal exists, and if it stops being true this test can be simplified');
+        assert.notEqual(now.sig, base.sig,
+            `${label} must move the circuit signature, or starter-circuit-path's change ` +
+            'checkpoint goes back to being completable only by its manual button');
+    }
+
+    // And the host must actually dispatch from the new producer.
+    const tab = readFileSync(path.join(root,
+        'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'), 'utf8');
+    assert.match(tab, /handleCircuitEdit \(detail\) \{[\s\S]*?bw-circuit-changed/,
+        'circuit-tab.jsx no longer dispatches bw-circuit-changed from onCircuitEdit');
+    assert.match(tab, /onCircuitEdit=\{this\.handleCircuitEdit\}/,
+        'the designer is no longer given the onCircuitEdit callback');
 });
 
 // ── instrument-voltage-divider → 52-battery-voltage-divider ─────────────────

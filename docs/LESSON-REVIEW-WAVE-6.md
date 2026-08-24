@@ -251,6 +251,7 @@ resistor, is the dominant damper.
 
 **(b) `circuit-changed` cannot fire here** — the Tier-3 detector's one blocking
 finding, and the same app defect Wave 1 recorded for `starter-circuit-path`.
+**FIXED 2026-08-24; see below.**
 `guided-lessons.jsx` maps the observable to `bw-circuit-changed`, whose only
 producer is `circuit-tab.jsx`'s `handleDeclarationChange`, which fires only when
 the derived **pin declarations** change. `pc52` has no microcontroller, so the
@@ -261,7 +262,19 @@ wire.
 **Fixed**, version 2: the action now says to replace the shipped capacitor, the
 hint names the overdamping, the 1 kΩ load as the dominant loss, and tells the
 learner to tick the checkpoint manually because the event will not arrive.
-Defect (b) stays open, pinned, and shared with Wave 1.
+
+**Defect (b) fixed 2026-08-24** (bw-circuit-ui, vendored here). `CircuitDesigner`
+gained an `onCircuitEdit` callback beside `onDeclarationChange`, fired from a
+STRUCTURAL signature of the circuit — part ids, kinds and params, plus wire
+endpoints — so replacing a capacitor is visible to the host on a bench with no
+microcontroller. Position is deliberately excluded: dragging a part changes the
+drawing, not the circuit, and a host that treated it as an edit would fire on
+every pointermove. Lite's `circuit-tab.jsx` now dispatches `bw-circuit-changed`
+from that callback instead of from the declaration change, which strictly
+subsumes the old producer since declarations derive from the same parts and
+wires. The hint's "tick it manually" sentence is now belt-and-braces rather than
+a workaround, and is left as it is — a learner who mis-clicks still needs the
+button. `docs/WAVE-OPEN-DEFECTS.md` D6.
 
 ### 6. signals-loading — two of its three regimes have no model behind them
 

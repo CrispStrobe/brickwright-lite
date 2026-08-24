@@ -302,6 +302,51 @@ quietly dropped**, because both are instrument failures worth knowing about:
   metadata that was merely unchecked becomes load-bearing.** Any kind flip must name the
   gates that newly apply and be run against them.
 
+### The open defects the seven waves left behind
+
+Compiled and worked 2026-08-24 — **`docs/WAVE-OPEN-DEFECTS.md`**, one table of
+every defect the seven lesson reviews left open, sorted by lessons affected and
+carrying the repo that owns each fix. It exists because the reviews repaired
+lessons and recorded causes: 38 defective lessons were fixed in copy, and 34
+distinct causes were written down in seven places and worked on in none.
+
+**Ten are now closed.** Nine by repair and one — the `dc_motor` winding — by
+re-measurement, which is a weaker claim and is labelled as one: it stopped
+reproducing between the Wave 1 vendor and today, and this pass only found that
+out. Together they cover 48 of the 89 lesson-slots the table counts.
+
+The largest of them was on nobody's list. **28 checkpoints across four waves
+observe `circuit-ready`**, which fires once when the example loads, so every one
+of them ticked itself before the learner measured anything — the progress bar
+filled in on load and nothing it recorded had happened. Wave 1 saw it and filed
+it as "a structural note that belongs to the whole catalog"; each later wave read
+past it. It is twice the next-largest defect and it was never counted, because
+every wave counted defects in ITS lessons. `guided-lessons.jsx` now separates
+ARMING observables from completing ones: the bench being up is reported and the
+manual button stays the only thing that completes the step.
+
+Two shapes are worth carrying forward from the rest:
+
+- **A one-line fix in the wrong number of places is not a fix.** The four
+  faceplates that opened with dead controls needed `"mode": "play"` in the
+  example (sb3-creator), `mode` in `ControllerPanel.toJSON`/`fromJSON`
+  (bw-board, which dropped it), and `setMode` in `gui.jsx`'s `PROJECT_LOADED`
+  restore (lite, which never called it). Fixing only the example would have been
+  undone by the first save.
+- **The solver was right and the readout was wrong, three times.** The ammeter
+  reporting 43.0 mA on a collector carrying 5.83 mA, the flat 0 on a closed
+  button, and the blank `char_lcd_i2c` were all extraction or dispatch faults
+  sitting on top of a solve that had the right answer. That is the same shape as
+  Wave 6's whole finding — a good engine behind instruments that report pictures
+  rather than numbers — and it is where the remaining 24 mostly live.
+
+What is still open is in that table with what blocks it. The biggest by lessons
+is **D2**, the debugger's unconditional `POST` to the hosted compiler, which puts
+all ten Wave 5 lessons behind a network connection while they declare
+`environment: "simulation"`. That is a curriculum-schema question before it is a
+code one — whether `simulation` means "no hardware" or "no network" — and
+answering it by editing ten hints would bury it.
+
 ### Verification-debt ledger
 
 Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**;
@@ -316,13 +361,13 @@ as current as that sha, and several findings expired within hours of being writt
 
 | Wave | Lessons | Draft | Technical review | Measured against | Translation | Field test |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 Electricity you can see | 12 | done | **full, 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | `3c6948f5d` | open | open |
-| 2 Measure rather than guess | 10 | done | **full, 2026-08-23** — 5 of 10 defective; 6 revised to v2, 4 open engine defects, 1 fixed upstream mid-review | `3e87340f5` | open | open |
+| 1 Electricity you can see | 12 | done | **full, 2026-08-23**; open defects closed 2026-08-24 — 5 of 12 defective; 5 fixed, **0 open** (the ammeter fixed at the source, the motor expired on re-measurement) | `3c6948f5d`, re-measured `7ce24a619` | open | open |
+| 2 Measure rather than guess | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24 — 5 of 10 defective; 7 revised (one to v3), **3 open** engine defects, 2 fixed upstream | `3e87340f5`, re-measured `7ce24a619` | open | open |
 | 3 One idea, several languages | 12 | done | **full, 2026-08-23** — 1 of 12 defective; 1 revised to v2 | `a3f30be6b` | open | open |
-| 4 Interactive systems | 8 | done | **full, 2026-08-23** — 7 of 8 defective; 7 revised (one to v3), 5 open app/example defects, 1 fixed upstream mid-review | `2e294ceaf`, re-measured `d7325a272` | open | open |
+| 4 Interactive systems | 8 | done | **full, 2026-08-23**; 4 of 5 closed 2026-08-24 — 7 of 8 defective; 10 revised (three to v3), **1 open** app defect (the micro:bit no-ops, deliberate) | `2e294ceaf`, re-measured `d7325a272` then `7ce24a619` | open | open |
 | 5 Debug with evidence | 10 | done | **full, 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | `a3f30be6b` | open | open |
-| 6 Signals and systems | 10 | done | **full, 2026-08-23** — 9 of 10 defective; 10 revised (one to v3), 11 open instrument/engine defects | `1d10902cb` | open | open |
-| 7 Computers from wires upward | 10 | done | **full, 2026-08-23** — 8 of 10 defective; 8 revised (one to v3), 8 open example/instrument defects | `1d10902cb` | open | open |
+| 6 Signals and systems | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24 — 9 of 10 defective; 10 revised (one to v3), **10 open** instrument/engine defects | `1d10902cb` | open | open |
+| 7 Computers from wires upward | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24 — 8 of 10 defective; 8 revised (one to v3), **7 open** example/instrument defects | `1d10902cb` | open | open |
 
 **Examples.** Milestone 0's scope covers the corpus as well as the lessons, and the ledger
 never tracked it. Measured against sb3-creator `fix/milestone0-corpus`, with siblings pinned

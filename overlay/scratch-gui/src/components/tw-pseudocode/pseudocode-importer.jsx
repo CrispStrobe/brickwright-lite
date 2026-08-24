@@ -1577,10 +1577,36 @@ class PseudocodeImporter extends React.Component {
                         const panel = rt && rt.controllerPanel;
                         if (panel && layout && Array.isArray(layout.widgets)) {
                             for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+                            // ONE BAD WIDGET MUST NOT EMPTY THE PANEL. This loop
+                            // removes every existing widget before it adds any,
+                            // and used to sit inside the outer bare `catch` — so
+                            // a single `addWidget` throw (an unknown type, a
+                            // duplicate name) left the panel with nothing at all
+                            // and no message. `6502-terminal` declared a
+                            // `terminal` widget the model did not have, and lost
+                            // its keyboard along with its screen
+                            // (docs/LESSON-REVIEW-WAVE-4.md defect 8). Skip the
+                            // widget that fails, keep the rest, and say so.
+                            const skipped = [];
                             for (const w of layout.widgets) {
-                                const added = panel.addWidget(w.name, w.type, w.config || {}, w.layout || {});
-                                if (w.binding) added.binding = { ...w.binding };
+                                try {
+                                    const added = panel.addWidget(w.name, w.type, w.config || {}, w.layout || {});
+                                    if (w.binding) added.binding = { ...w.binding };
+                                } catch (err) {
+                                    skipped.push(`${w && w.name} (${w && w.type})`);
+                                }
                             }
+                            if (skipped.length) {
+                                this.setState(st => ({status: [st.status,
+                                    `Controller layout: skipped ${skipped.join(', ')}`]
+                                    .filter(Boolean).join('; ')}));
+                            }
+                            // A layout that names no mode opens in `edit`, where
+                            // every input control renders disabled — so a
+                            // faceplate of buttons comes up dead. Four shipped
+                            // layouts were in that state; they now declare it,
+                            // and the panel's own toJSON carries it through a
+                            // save (Wave 4 defect 5b).
                             if (layout.mode) panel.setMode(layout.mode);
                             if (rt.stc) rt.stc.controller = layout;
                         }

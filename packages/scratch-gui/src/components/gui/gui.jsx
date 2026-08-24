@@ -267,10 +267,28 @@ const GUIComponent = props => {
                     for (const name of controllerPanel.getWidgetNames()) {
                         controllerPanel.removeWidget(name);
                     }
+                    const skipped = [];
                     for (const w of restored.getWidgets()) {
-                        const added = controllerPanel.addWidget(w.name, w.type, w.config, w.layout);
-                        if (w.binding) added.binding = { ...w.binding };
+                        // Same rule as the importer's restore: one widget the
+                        // model refuses must not empty the panel, because this
+                        // loop has already removed everything that was there.
+                        try {
+                            const added = controllerPanel.addWidget(w.name, w.type, w.config, w.layout);
+                            if (w.binding) added.binding = { ...w.binding };
+                        } catch (err) {
+                            skipped.push(w && w.name);
+                        }
                     }
+                    if (skipped.length) {
+                        // eslint-disable-next-line no-console
+                        console.warn('controller layout: skipped', skipped.join(', '));
+                    }
+                    // The MODE travels with the layout. Without this a saved
+                    // project restored its widgets and then sat in `edit`,
+                    // where every input control renders disabled — so a
+                    // faceplate that worked when the example was opened was
+                    // dead the next time the project was loaded.
+                    controllerPanel.setMode(restored.mode);
                 }
             } catch { /* ignore corrupt data */ }
         };

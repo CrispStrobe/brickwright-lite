@@ -251,15 +251,41 @@ test('machines-contention: the evidence the lesson asks for is exact, down to th
     ], 'the contention report changed — re-measure Wave 7');
 });
 
-test('OPEN DEFECT: machines-contention observes an event this bench cannot fire', () => {
-    // The same app defect Wave 1 recorded for starter-circuit-path and Wave 6
-    // for signals-resonance: `circuit-changed` fires only when the derived PIN
-    // declarations move, and a 6502 bench has none.
+test('machines-contention: the edit its checkpoint asks for now reaches the lesson', async () => {
+    // Was an OPEN DEFECT, and the third of three: `bw-circuit-changed` was
+    // dispatched only when the derived PIN DECLARATIONS moved, and this bench
+    // has no MCU, so no wiring edit could raise it. Wave 1 found it on
+    // starter-circuit-path, Wave 6 on signals-resonance, Wave 7 on
+    // machines-contention — one defect, three discoveries.
+    //
+    // Fixed 2026-08-24: CircuitDesigner fires `onCircuitEdit` from a STRUCTURAL
+    // signature of the circuit, and circuit-tab.jsx dispatches the DOM event
+    // from there.
     assert.deepEqual(checkpoint('machines-contention', 'repair').observe, {event: 'circuit-changed'});
-    const designer = readFileSync(path.join(CUI, 'components/CircuitDesigner.jsx'), 'utf8');
-    assert.match(designer, /circuitToDeclarations/,
-        'CircuitDesigner no longer derives declarations to decide whether to notify — ' +
-        're-measure and update docs/LESSON-REVIEW-WAVE-7.md');
+    const {circuitSignature} = await import(path.join(CUI, 'model/circuit-signature.js'));
+    const raw = circuitOf(lesson('machines-contention').exampleId);
+
+    const base = circuitSignature(raw.parts, raw.wires);
+    const swapped = structuredClone(raw);
+    const part = swapped.parts.find(p => p.params && typeof p.params.ohms === 'number') ||
+        swapped.parts.find(p => p.params && Object.keys(p.params).length);
+    assert.ok(part, 'the bench has no parameterised part to edit');
+    const key = Object.keys(part.params)[0];
+    part.params[key] = typeof part.params[key] === 'number' ? part.params[key] * 2 : 'changed';
+    assert.notEqual(circuitSignature(swapped.parts, swapped.wires), base,
+        'editing a part param must move the circuit signature, or this checkpoint goes back ' +
+        'to being completable only by its manual button');
+
+    if ((raw.wires || []).length) {
+        const cut = structuredClone(raw);
+        cut.wires = cut.wires.slice(0, -1);
+        assert.notEqual(circuitSignature(cut.parts, cut.wires), base, 'so must breaking a wire');
+    }
+
+    const tab = readFileSync(path.join(GUI, 'components/tw-pseudocode/circuit-tab.jsx'), 'utf8');
+    assert.match(tab, /onCircuitEdit=\{this\.handleCircuitEdit\}/,
+        'circuit-tab.jsx no longer subscribes to onCircuitEdit — re-measure and update ' +
+        'docs/LESSON-REVIEW-WAVE-7.md');
 });
 
 test('OPEN DEFECT: the machine benches boot with an empty ROM — the example program is not the image', () => {

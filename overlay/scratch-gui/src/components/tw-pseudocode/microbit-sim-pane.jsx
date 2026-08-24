@@ -14,7 +14,10 @@ const L10N = {
         paused: 'Paused', debugging: 'Debugging', pausedAt: 'Paused at block',
         vars: 'Variables', board: 'Board', trace: 'Trace', stack: 'Stack',
         topLevel: '(top level)',
-        noVars: '(no variables)', pauseToInspect: 'Pause to inspect state'
+        noVars: '(no variables)', pauseToInspect: 'Pause to inspect state',
+        sensors: 'Sensors', sensorsHide: 'Hide', sensorsShow: 'Show',
+        sensorsReset: '↺ Defaults',
+        sensorsHint: 'Range and default come from the simulator, not from this panel.'
     },
     de: {
         simTitle: 'micro:bit-Simulator',
@@ -25,7 +28,10 @@ const L10N = {
         paused: 'Angehalten', debugging: 'Debugging', pausedAt: 'Angehalten bei Block',
         vars: 'Variablen', board: 'Board', trace: 'Verlauf', stack: 'Stapel',
         topLevel: '(oberste Ebene)',
-        noVars: '(keine Variablen)', pauseToInspect: 'Zum Inspizieren anhalten'
+        noVars: '(keine Variablen)', pauseToInspect: 'Zum Inspizieren anhalten',
+        sensors: 'Sensoren', sensorsHide: 'Ausblenden', sensorsShow: 'Anzeigen',
+        sensorsReset: '↺ Standardwerte',
+        sensorsHint: 'Bereich und Standardwert kommen vom Simulator, nicht von diesem Panel.'
     }
 };
 const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' : 'en'; } catch { return 'en'; } };
@@ -62,6 +68,55 @@ const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' :
  * microbit-debug.js.
  */
 
+/**
+ * The sensors this pane offers a control for, in display order.
+ *
+ * DELIBERATELY a subset. The simulator's `setValue` accepts fifteen ids, but
+ * `buttonA`/`buttonB`/`pinLogo`/`pin0..2` already have controls drawn inside
+ * the iframe — a second, desynchronised set of them in the parent would be
+ * worse than none. What is left is exactly the set with NO in-iframe control,
+ * which is the set a learner could not vary at all.
+ *
+ * The RANGES, UNITS and DEFAULTS are not listed here on purpose: they arrive
+ * in the simulator's own `ready` message, where each sensor is a serialised
+ * `RangeSensor`/`EnumSensor` carrying `{type, id, min, max, unit, value}` (or
+ * `choices`). Hard-coding them here would be a second declaration of the same
+ * contract, free to drift from the bundle it describes — and the whole point
+ * of `interactive-sensor-capability` is that a learner can read a sensor's
+ * unit, range and default off the thing that implements it.
+ */
+const SENSOR_IDS = [
+    'temperature', 'lightLevel', 'soundLevel',
+    'accelerometerX', 'accelerometerY', 'accelerometerZ',
+    'compassHeading', 'gesture'
+];
+
+/** Short labels; the raw ids are long and the strip is narrow. */
+const SENSOR_LABELS = {
+    temperature: 'temp', lightLevel: 'light', soundLevel: 'sound',
+    accelerometerX: 'accel X', accelerometerY: 'accel Y', accelerometerZ: 'accel Z',
+    compassHeading: 'heading', gesture: 'gesture'
+};
+
+/**
+ * Pull the settable sensors out of a simulator state frame.
+ *
+ * `ready` carries the whole state; `state_change` carries only what moved, so
+ * this is written to tolerate a partial frame and is merged rather than
+ * replacing.
+ */
+const readSensors = frame => {
+    const out = {};
+    if (!frame || typeof frame !== 'object') return out;
+    for (const id of SENSOR_IDS) {
+        const s = frame[id];
+        if (!s || typeof s !== 'object') continue;
+        if (s.type !== 'range' && s.type !== 'enum') continue;
+        out[id] = s;
+    }
+    return out;
+};
+
 const SIM_URL = 'static/microbit-sim/simulator.html';
 // The line-level (settrace) debugger loads a separate page that pulls the
 // settrace-enabled debug firmware. Switching to it reloads the iframe.
@@ -75,10 +130,20 @@ class MicrobitSimPane extends React.Component {
             simReady: false,
             simUrl: SIM_URL,   // switched to SIM_DEBUG_URL for a line-level (trace) run
             running: false,
+            // Settable sensors, keyed by id, as the SIMULATOR declares them:
+            // {type, id, min, max, unit, value} for a range, {choices} for an
+            // enum. Empty until the first `ready` frame arrives.
+            sensors: {},
+            sensorsOpen: true,
             // Mirror of the debug controller, for the render.
             dbg: {active: false, running: false, halted: false, block: null, index: null,
                 vars: null, board: null, trace: [], stack: []}
         };
+        // The DEFAULTS, captured from the first `ready` frame and never
+        // rewritten — a learner who has moved three sliders needs a way back
+        // to the values the simulator started with, and `reset` reloads the
+        // program too, which is a different and heavier thing.
+        this._sensorDefaults = null;
         this._iframeRef = React.createRef();
         this._pendingCode = null;
         this._pendingDebug = null;   // {positions} when the pending flash is a debug run
@@ -151,12 +216,21 @@ class MicrobitSimPane extends React.Component {
         if (!iframe || e.source !== iframe.contentWindow) return;
         const {kind} = e.data || {};
         switch (kind) {
-        case 'ready':
+        case 'ready': {
             // Do NOT auto-flash here: board.flash before an in-iframe user
             // gesture throws (the sim's AudioContext guard). The play button
             // (request_flash) is that gesture and drives every flash.
-            this.setState({simReady: true});
+            //
+            // The frame also carries every sensor with its range, unit and
+            // starting value, which is where this pane's controls come from.
+            const sensors = readSensors(e.data.state);
+            if (!this._sensorDefaults && Object.keys(sensors).length) {
+                this._sensorDefaults = Object.fromEntries(
+                    Object.entries(sensors).map(([id, s]) => [id, s.value]));
+            }
+            this.setState({simReady: true, sensors});
             break;
+        }
         case 'request_flash':
             // User clicked the play button inside the sim
             if (this._pendingCode) {
@@ -175,9 +249,17 @@ class MicrobitSimPane extends React.Component {
                 if (text) this.setState(s => ({serial: s.serial + text}));
             }
             break;
-        case 'state_change':
-            // Could be used for LED readback, etc. — not wired yet.
+        case 'state_change': {
+            // A PARTIAL frame: only what moved. The program itself can move a
+            // sensor (setRange rewrites the accelerometer's min/max), so the
+            // controls must follow the simulator rather than assume they are
+            // the only writer.
+            const moved = readSensors(e.data.change);
+            if (Object.keys(moved).length) {
+                this.setState(st => ({sensors: {...st.sensors, ...moved}}));
+            }
             break;
+        }
         }
     }
 
@@ -221,6 +303,43 @@ class MicrobitSimPane extends React.Component {
                 return usable;
             });
         }).catch(() => { /* no bw-debug chunk -> plain breakpoints only */ });
+    }
+
+    /**
+     * Move a simulated sensor.
+     *
+     * `RangeSensor.setValue` THROWS on an out-of-range value, and the
+     * simulator's message listener has no try/catch around the dispatch — so
+     * an unclamped write does not just fail, it takes the listener down and
+     * every later message with it. Clamp here, against the range the
+     * simulator itself declared.
+     *
+     * The local mirror is updated optimistically: the simulator answers with
+     * a `state_change` and that is authoritative, but a slider that waits a
+     * round trip for its own thumb to move feels broken.
+     */
+    _setSensor (id, raw) {
+        const s = this.state.sensors[id];
+        if (!s) return;
+        let value = raw;
+        if (s.type === 'range') {
+            const n = Number(raw);
+            if (!Number.isFinite(n)) return;
+            value = Math.max(s.min, Math.min(s.max, Math.round(n)));
+        } else if (!Array.isArray(s.choices) || !s.choices.includes(raw)) {
+            return;
+        }
+        this.setState(st => ({sensors: {...st.sensors, [id]: {...st.sensors[id], value}}}));
+        const iframe = this._iframeRef.current;
+        if (!iframe || !iframe.contentWindow) return;
+        iframe.contentWindow.postMessage({kind: 'set_value', id, value}, '*');
+    }
+
+    /** Return every sensor to the value the simulator started it at. */
+    _resetSensors () {
+        const defaults = this._sensorDefaults;
+        if (!defaults) return;
+        for (const [id, value] of Object.entries(defaults)) this._setSensor(id, value);
     }
 
     /** Write a string to the program's serial-IN (the debug resume bytes). */
@@ -401,6 +520,85 @@ class MicrobitSimPane extends React.Component {
                                 ))}
                             </div>
                         </div>
+                    </div>
+                ) : null}
+                {/* Simulated sensors. The bundled simulator models each one
+                    with a range, a unit and a default and accepts a
+                    `set_value` message to move it; until this strip existed
+                    lite sent that message from nowhere, so the temperature was
+                    21 °C and the light level 127 for ever and
+                    `interactive-sensor-capability` had no input to vary.
+                    Ranges and defaults are read off the simulator's own `ready`
+                    frame, never declared here. */}
+                {Object.keys(this.state.sensors).length > 0 ? (
+                    <div style={{flexShrink: 0, borderTop: '1px solid #e5e7eb', background: '#fff'}}
+                        data-testid="bw-microbit-sensors">
+                        <div style={{display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '4px 8px'}}>
+                            <span style={{...inspHead, marginBottom: 0}}>{t.sensors}</span>
+                            <button type="button"
+                                onClick={() => this._resetSensors()}
+                                disabled={!this._sensorDefaults}
+                                data-testid="bw-microbit-sensors-reset"
+                                style={{...btn, background: '#64748b', padding: '2px 8px', fontSize: 11}}>
+                                {t.sensorsReset}
+                            </button>
+                            <span style={{flex: 1}} />
+                            <button type="button"
+                                onClick={() => this.setState(st => ({sensorsOpen: !st.sensorsOpen}))}
+                                data-testid="bw-microbit-sensors-toggle"
+                                style={{...btn, background: '#94a3b8', padding: '2px 8px', fontSize: 11}}>
+                                {this.state.sensorsOpen ? t.sensorsHide : t.sensorsShow}
+                            </button>
+                        </div>
+                        {this.state.sensorsOpen ? (
+                            <div style={{maxHeight: 150, overflow: 'auto', padding: '0 8px 6px'}}>
+                                {SENSOR_IDS.filter(id => this.state.sensors[id]).map(id => {
+                                    const sensor = this.state.sensors[id];
+                                    const label = SENSOR_LABELS[id] || id;
+                                    return (
+                                        <div key={id} style={{display: 'flex', alignItems: 'center',
+                                            gap: 6, fontSize: 11, padding: '1px 0'}}>
+                                            <span style={{width: 56, flexShrink: 0, color: '#475569',
+                                                fontWeight: 600}}>{label}</span>
+                                            {sensor.type === 'range' ? (
+                                                <React.Fragment>
+                                                    <span style={{width: 34, textAlign: 'right', color: '#94a3b8',
+                                                        fontFamily: 'ui-monospace,Menlo,monospace'}}>
+                                                        {sensor.min}
+                                                    </span>
+                                                    <input type="range"
+                                                        min={sensor.min} max={sensor.max} step={1}
+                                                        value={sensor.value}
+                                                        data-testid={`bw-microbit-sensor-${id}`}
+                                                        onChange={ev => this._setSensor(id, ev.target.value)}
+                                                        style={{flex: 1, minWidth: 60}} />
+                                                    <span style={{width: 34, color: '#94a3b8',
+                                                        fontFamily: 'ui-monospace,Menlo,monospace'}}>
+                                                        {sensor.max}
+                                                    </span>
+                                                    <span style={{width: 62, textAlign: 'right', color: '#0f172a',
+                                                        fontWeight: 700,
+                                                        fontFamily: 'ui-monospace,Menlo,monospace'}}>
+                                                        {sensor.value}{sensor.unit || ''}
+                                                    </span>
+                                                </React.Fragment>
+                                            ) : (
+                                                <select value={sensor.value}
+                                                    data-testid={`bw-microbit-sensor-${id}`}
+                                                    onChange={ev => this._setSensor(id, ev.target.value)}
+                                                    style={{flex: 1, minWidth: 60, fontSize: 11}}>
+                                                    {(sensor.choices || []).map(choice => (
+                                                        <option key={choice} value={choice}>{choice}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                <div style={{...inspHint, fontSize: 10, paddingTop: 2}}>{t.sensorsHint}</div>
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
                 {/* Controls */}

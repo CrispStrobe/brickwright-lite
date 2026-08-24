@@ -7,6 +7,14 @@ sixteen checkpoints.
 open in the app or an example rather than in a lesson, and 1 fixed upstream by
 another lane mid-review.**
 
+> **Updated 2026-08-24.** Four of the five open defects are now fixed — the
+> faceplate mode, the widget inspector's functional config, the re-bind UI and
+> the micro:bit simulator's sensors — along with the incidental `terminal` widget
+> and the restore loop that emptied the panel behind it. Three lessons are
+> re-measured and revised to content version 3. The one still open is the
+> `microbitplus` no-ops, which are deliberate. Each section below says what
+> changed; `docs/WAVE-OPEN-DEFECTS.md` carries the whole campaign's table.
+
 Wave 4 is the third wave whose subject is not a circuit, and it needs a third
 instrument. Wave 1–2 asked whether a **bench** can produce a reading and
 answered by solving it; Wave 3 asked whether the app can **render** a language
@@ -31,11 +39,11 @@ to this wave's question. Seven defects sat behind it.
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
 | interactive-extension-discovery | mb05-lesson | 2→**3** | **defect, fixed** — the green flag runs blocks that are all no-ops, and the "connection indicator" it names does not exist for this extension |
-| interactive-sensor-capability | mb02-sensors | 1→**2** | **defect, fixed** — no simulated sensor input can be varied from the app, and a flat 0 is not an unavailable indication |
+| interactive-sensor-capability | mb02-sensors | 1→2→**3** | defect, **FIXED 2026-08-24** — the sim pane now carries a sensor control per declared range; copy restored |
 | interactive-lego-recovery | spike01-obstacle-avoid | 1→**2** | **defect (disclosure), fixed** — the hub path needs the Scratch Link helper, which the lesson never says |
-| interactive-input-controls | retro-console | 1→**2** | **defect, fixed** — asked the learner to predict a toggle contract on a bench with no toggle, which the panel cannot create either |
+| interactive-input-controls | retro-console | 1→2→**3** | defect, **FIXED 2026-08-24** — the inspector edits functional config, and the bench opens in play mode |
 | interactive-displays | lego-hub-face | 1→**2** | **defect, fixed** — two of the values its checkpoint asks for cannot be produced by running the project |
-| interactive-two-way-binding | mb05-faceplate-matrix | 1→**2** | **defect, fixed** — "rebind" has no UI at all and "rename" is a no-op by design |
+| interactive-two-way-binding | mb05-faceplate-matrix | 1→2→**3** | defect, **FIXED 2026-08-24** — the inspector has a Binding section; "rename" is still a no-op by design and is now taught as the contrast |
 | interactive-dashboard | lego-hub-face | 1 | achievable |
 | interactive-calibration-control | arduino-03-calibration | 1→**2** | **defect, fixed** — no filter exists to time; the dead actuator it also pointed at was repaired upstream mid-review |
 
@@ -129,7 +137,7 @@ bundled WASM simulator. It does not fire `project-run`.
 both ways and compare, says plainly that the green flag runs no-ops, and points
 at the block wording instead of an icon that is not drawn.
 
-### 2. interactive-sensor-capability/observe — no simulated input can be varied
+### 2. interactive-sensor-capability/observe — no simulated input could be varied — FIXED 2026-08-24
 
 `mb02-sensors` reads accelerometer X, light level and temperature. The
 checkpoint said "Run, **vary both simulated inputs**, and record minimum,
@@ -166,11 +174,43 @@ is 21 °C and the light level is 127, for ever.
 The lesson asks for exactly the contract the simulator already declares — unit,
 range, default — and the app is one slider row away from delivering it.
 
-**Fixed** in copy, EN and DE, version 2: the checkpoint now asks the learner to
-establish *which* inputs they can change and what a missing device looks like,
-states the frozen values, and makes "a flat 0 is a legal reading and therefore
-not an unavailable indication" the finding to record. The app gap is open and
-pinned.
+**Fixed** in copy, EN and DE, version 2 at the time: the checkpoint asked the
+learner to establish *which* inputs they could change and what a missing device
+looks like, stated the frozen values, and made "a flat 0 is a legal reading and
+therefore not an unavailable indication" the finding to record.
+
+**Then fixed in the app, 2026-08-24.** `MicrobitSimPane` now renders a Sensors
+strip and posts `{kind: 'set_value', id, value}`. The controls are built from the
+simulator's own `ready` frame rather than from a second declaration here — each
+sensor arrives as a serialised `RangeSensor`/`EnumSensor` carrying
+`{type, id, min, max, unit, value}`, so the range, unit and starting value on
+screen are the ones the bundle implements and cannot drift from it. That is the
+right shape for THIS lesson in particular, whose whole subject is reading a
+sensor's contract off the thing that provides it.
+
+Seven sensors and one gesture list: temperature (−5…50 °C, 21), light level
+(0…255, 127), sound level (0…255, 0), three accelerometer axes in mg, compass
+heading, and gesture. Deliberately not offered: buttons and pins, which already
+have controls inside the iframe — a second, desynchronised set in the parent
+would be worse than none. `↺ Defaults` restores the values captured from the
+first `ready` frame.
+
+Two details worth recording because both would have been silent failures. The
+pane clamps before posting: `RangeSensor.setValue` THROWS out of range and the
+simulator's message listener has no try/catch around its dispatch, so an
+unclamped write would take the listener down and every later message with it.
+And `state_change` frames are merged rather than replacing, because a program
+can move a sensor itself (`setRange` rewrites the accelerometer's min/max) and
+the controls must follow the simulator rather than assume they are the only
+writer.
+
+Version 3 asks the learner to move each sensor through its declared range and
+record the values and the cadence. The finding that survives — and it is the
+better half of the original — is that **no reading is reserved for "no device"**:
+a flat 0 is a legal light level and a legal accelerometer value, so an
+unavailable sensor has to be signalled some other way. The green-flag path is
+named separately, because the micro:bit blocks are still VM no-ops there
+whatever the sliders say (defect 1, still open).
 
 ### 3. interactive-lego-recovery/recover — the hub path needs a helper application
 
@@ -194,7 +234,7 @@ already asked them to record the "OS", which is half of the same thought.
 OS-level pairing. This is a disclosure fix in the shape of Wave 3's `asm`
 finding, not a rewrite.
 
-### 4. interactive-input-controls/predict — a toggle contract with no toggle
+### 4. interactive-input-controls/predict — a toggle contract with no toggle — FIXED 2026-08-24
 
 The `predict` checkpoint asked for "values for D-pad opposites, press/release,
 **toggle twice**, and joystick centre/corners". Three of those four are on the
@@ -221,11 +261,26 @@ credit: "Use play mode for input and edit mode for layout changes" is exactly
 right, because this panel opens in **edit** mode (defect 5b) where every control
 renders `disabled`.
 
-**Fixed** in copy, EN and DE, version 2: the prediction now covers the three
-contracts this console can show and sends the learner to `wedo2-faceplate` or
-`boost-faceplate` for the toggle; the test hint says that + Add Widget always
-makes a momentary button and the inspector cannot change that. The inspector gap
-is open and pinned.
+**Fixed** in copy, EN and DE, version 2 at the time: the prediction covered the
+three contracts this console could show and sent the learner to `wedo2-faceplate`
+or `boost-faceplate` for the toggle; the test hint said that + Add Widget always
+makes a momentary button and the inspector could not change that.
+
+**Then fixed in the app, 2026-08-24.** `WidgetInspector` has a Config section
+driven by a `CONFIG_FIELDS` table: a button's `toggle`, a slider's and dial's and
+gauge's and bargraph's `min`/`max`/`step`, a matrix's and keypad's and every text
+display's `rows`/`cols`, a seven-segment's `digits`, an RGB light's `mode`. What
+is deliberately NOT editable is named in `NON_FIELD_CONFIG_KEYS` with its reason,
+so "not editable on purpose" and "nobody wrote an editor" are distinguishable —
+which is the distinction that let the whole functional half go missing unnoticed.
+
+The coverage is gated rather than trusted: `test/wave-open-defects.test.mjs`
+checks the table against `WIDGET_DEFAULTS` (now exported from bw-board for this
+purpose), so a widget type that grows a config key and no editor fails.
+
+Version 3 asks for the toggle prediction on this console, because the learner can
+now make one here. The mode disclosure is gone with it — `retro-console` ships
+`"mode": "play"` as of the same day (defect 5b).
 
 ### 5. interactive-displays/observe — two of its four values cannot be produced by running
 
@@ -257,7 +312,7 @@ each quantity's own range first and then edit the program to write a value
 beyond a gauge's range and a non-numeric one; the hint gives the distance
 gauge's 10-and-190 shortfall and explains what the clamp hides.
 
-### 5b. Two faceplate examples ship no play mode — OPEN, example-side
+### 5b. Two faceplate examples shipped no play mode — FIXED 2026-08-24
 
 `pseudocode-importer.jsx` restores a layout and then calls
 `panel.setMode(layout.mode)` **only if the file says so**, and `ControllerPanel`
@@ -267,14 +322,23 @@ shipped `controller.json` layouts, four declare no mode — including
 wave's eight lessons. So those lessons open on a panel whose controls are dead
 until the learner finds the Play button.
 
-Not fixed here: the fix is one line per example (`"mode": "play"`) and the
-examples are vendored from `sb3-creator`, so it belongs upstream. Recorded in
-`PLAN.md`, pinned by the claims gate, and disclosed in
-`interactive-input-controls`'s test hint in the meantime. The display widgets are
-unaffected — the variable pump ignores mode — which is why
-`interactive-displays` and `interactive-dashboard` still work on `lego-hub-face`.
+Not fixed at the time: the fix is one line per example (`"mode": "play"`) and the
+examples are vendored from `sb3-creator`, so it belonged upstream. The display
+widgets are unaffected — the variable pump ignores mode — which is why
+`interactive-displays` and `interactive-dashboard` still worked on
+`lego-hub-face`.
 
-### 6. interactive-two-way-binding/test — "rebind" has no UI, and "rename" is a no-op
+**Fixed 2026-08-24, in three places, because one was not enough.** All four
+layouts declare `"mode": "play"` upstream (sb3-creator `65db1dd`), with
+`test/faceplate-layouts.test.mjs` as the schema gate those files never had: every
+layout with an operable control must open in play mode. But the panel's own
+`toJSON` did not serialise the mode and `fromJSON` did not apply it, so the
+corrected file would have been lost on the first save; and `gui.jsx`'s
+`PROJECT_LOADED` restore never called `setMode` at all, so a saved project came
+back in `edit` regardless. Both are fixed. A layout written before the field
+existed still restores as `edit`, which is what it means.
+
+### 6. interactive-two-way-binding/test — "rebind" had no UI, and "rename" is a no-op — FIXED 2026-08-24
 
 Both directions of this lesson's loop work, and were measured above. Its second
 instruction was "then **rename or rebind** one widget and retest", explained as
@@ -295,9 +359,25 @@ binds the new one to the *program*, not to the variable the old one wrote, so
 the loop stays broken until the example is reloaded. Measured — after
 remove-and-re-add, pressing the button leaves `screen` at 1.
 
-**Fixed** in copy, EN and DE, version 2: the action is now remove-and-re-add,
-and the hint states both facts — renaming keeps the binding, a re-added widget
-is program-bound — so the learner's own test tells them who owns the arrow.
+**Fixed** in copy, EN and DE, version 2 at the time: the action became
+remove-and-re-add, and the hint stated both facts — renaming keeps the binding, a
+re-added widget is program-bound — so the learner's own test told them who owns
+the arrow.
+
+**Then fixed in the app, 2026-08-24.** The inspector has a Binding section: a
+target selector over the five the model implements (program, variable, part, pin,
+unbound), a variable field backed by a datalist of the stage's own variable names,
+a part picker over the board's part ids with a param field, and a pin field. It
+calls `bindToVariable`, `bindToPart`, `bindToPin`, `bindToProgram` and `unbind` —
+the methods that had existed since the model was written and were called from
+nowhere. Re-binding a display also rebuilds the board binding, because the pump
+only writes on CHANGE and a newly bound face would otherwise hold the old
+variable's last reading until the new one happened to move.
+
+Version 3 makes re-binding the action and keeps both original facts as the
+contrast: renaming keeps the binding so the loop survives, and a re-added widget
+is program-bound so it breaks until you re-bind it by hand. `WidgetCard`'s unused
+`onBindPart` prop is gone with it.
 
 ### 7. interactive-calibration-control — no filter to time, and (until mid-review) a dead actuator
 
@@ -361,7 +441,7 @@ What did not change: the program still has no plausibility check and no defined
 safe state, so "verify … safe output" remains something the learner must
 specify rather than observe. Version 2 asks for exactly that.
 
-### 8. `6502-terminal` declares a widget type the panel does not have — OPEN, incidental
+### 8. `6502-terminal` declared a widget type the panel did not have — FIXED 2026-08-24
 
 Found while auditing the eleven shipped controller layouts; no Wave 4 lesson
 uses it, so it changes no verdict here and is recorded so a later wave does not
@@ -372,6 +452,28 @@ importer's restore loop removes every existing widget *before* adding the new
 ones and is wrapped in a bare `catch`, so the throw on the first widget leaves
 the panel **empty** — the keyboard widget that would have followed never
 arrives either.
+
+**Fixed 2026-08-24, on both sides, because either alone would have been half a
+fix.** `terminal` now exists: an OLED-like text face, but **tail-anchored**,
+because a terminal's bound variable is a growing transcript (`6502-terminal`'s
+`serial_out` grows with every echoed keystroke) and head-anchoring would freeze
+the face on the first screenful and never show the prompt the learner just typed
+at. Long lines wrap rather than truncate, for the same reason: the end of a line
+is the part being read.
+
+And **both** restore loops — the importer's and `gui.jsx`'s — now guard each
+widget individually, so one type the model refuses costs that widget and not the
+panel. The importer reports what it skipped in its status line rather than
+failing silently. That is the durable half: a bare catch around a loop that has
+already cleared its target is a defect independent of which type happened to
+trigger it.
+
+Two more holes fell out of the same audit and are closed: `lcd`, `oled` and
+`keypad` were in `WIDGET_TYPES` with no `WIDGET_RENDER_INFO` entry, so a host
+reading `renderInfo[type]` got `undefined` and invented a size. bw-board's gate
+now requires every declared type to have both a default config and a render
+descriptor, and lite's requires every type any shipped layout declares to be one
+the panel has.
 
 ## interactive-dashboard, and why it is the one that holds up
 
@@ -471,11 +573,18 @@ No Wave 3-style gap here: nothing is empty and nothing throws.
 node --test test/lesson-panel-claims-wave4.test.mjs
 ```
 
-Five of its tests are named `OPEN DEFECT` and assert that a defect **still
+Five of its tests were named `OPEN DEFECT` and asserted that a defect **still
 reproduces**: the missing toggle config editor, the absent re-bind UI, the
 micro:bit no-ops, the frozen simulator sensors, and the mode-less faceplates.
-They are supposed to fail the day someone fixes the app or the example; each
-message names the lesson hint to soften and this document to update. A sixth was
-written for the calibration example's dead PWM line and has already been
-replaced by a positive assertion — the repair landed before this branch did,
-which is the mechanism working as intended.
+They were supposed to fail the day someone fixed the app or the example; each
+message named the lesson hint to soften and this document to update. A sixth was
+written for the calibration example's dead PWM line and had already been
+replaced by a positive assertion — the repair landed before this branch did.
+
+**Four of the five have now fired**, on 2026-08-24: the config editor, the
+re-bind UI, the simulator sensors and the faceplate mode. All four were retired
+per their own instructions and replaced by positive assertions in
+`test/wave-open-defects.test.mjs`, which also re-derives this document's counts
+from the wave JSON. The one still standing is the micro:bit no-ops, which are
+deliberate and documented in the extension itself — see
+`docs/WAVE-OPEN-DEFECTS.md` D30 for what closing it would mean.

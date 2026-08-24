@@ -126,6 +126,7 @@ class CircuitTab extends React.Component {
         this._boxRef = React.createRef();
         this._measureBox = this._measureBox.bind(this);
         this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
+        this.handleCircuitEdit = this.handleCircuitEdit.bind(this);
         this.handleProjectStart = this.handleProjectStart.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
         this.handleProjectChanged = this.handleProjectChanged.bind(this);
@@ -645,13 +646,30 @@ class CircuitTab extends React.Component {
      * Merge only the circuit-owned tables so compiler/device settings and any
      * declarations not represented by the visual starter-kit parts survive.
      */
+    /**
+     * The designer telling us the CIRCUIT changed — a part added or removed, a
+     * param edited, a wire made or broken.
+     *
+     * `bw-circuit-changed` used to be dispatched from `handleDeclarationChange`
+     * below, which fires only when the DERIVED PIN DECLARATIONS move. On a bench
+     * with no microcontroller they never do — `{"pins":[],"ports":[],"parts":[]}`
+     * before and after every edit — so on those benches the event could not fire
+     * at all, and three lessons that ask the learner to edit a circuit and watch
+     * for a response were left with a checkpoint only their manual button could
+     * complete (`starter-circuit-path`, `signals-resonance`,
+     * `machines-contention`; `docs/WAVE-OPEN-DEFECTS.md` D6).
+     *
+     * `onCircuitEdit` is the honest producer and strictly subsumes the old one,
+     * since declarations are derived from the same parts and wires. It does not
+     * fire on the circuit arriving, only on a change to it.
+     */
+    handleCircuitEdit (detail) {
+        if (typeof window === 'undefined') return;
+        window.dispatchEvent(new CustomEvent('bw-circuit-changed', {detail: detail || {}}));
+    }
+
     handleDeclarationChange (decls) {
         this.setState(s => ({circuitRev: (s.circuitRev || 0) + 1}));
-        if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('bw-circuit-changed', {
-                detail: {device: decls && decls.device, pins: decls && decls.pins ? decls.pins.length : 0}
-            }));
-        }
         if (!decls || !decls.device || !Array.isArray(decls.pins)) return;
         const vm = this.props.vm;
         if (!vm) return;
@@ -1341,6 +1359,7 @@ class CircuitTab extends React.Component {
                         if (caps) return false; // live hardware → no sim values
                         return undefined; // default: simulator assumed
                     })()}
+                        onCircuitEdit={this.handleCircuitEdit}
                         onDeclarationChange={this.handleDeclarationChange}
                         panelNav={this.renderPanelStrip()}
                     embedded={this._portalOn}
