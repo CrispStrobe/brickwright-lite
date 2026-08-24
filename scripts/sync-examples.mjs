@@ -176,6 +176,40 @@ if (orphans.length && check) {
     for (const f of orphans) console.log(`  ORPHAN ${f}`);
 }
 
+/**
+ * Record the upstream commit, exactly as sync-sb3creator.mjs does.
+ *
+ * THIS SCRIPT DID NOT, and that was a hole rather than an omission. Two sync
+ * scripts vendor from sb3-creator — this one (the examples gallery) and
+ * sync-sb3creator.mjs (the compiler) — and vendor-freshness's PUSH run checks
+ * lite's tree against whatever single sha `vendor-pins.json` names for the
+ * repo. So vendoring examples forward moved 92 files while the pin stayed
+ * where the last COMPILER sync left it, and CI reported all 92 stale against a
+ * sha lite had deliberately moved past. Found 2026-08-24, by that CI run.
+ *
+ * One repo, one pin: vendoring either half from a commit commits lite to the
+ * other half from the same commit. That is the truth of a single-repo
+ * upstream, and writing the pin here makes the tooling say so.
+ *
+ * Called on the NO-OP path too. A sync that found nothing to write has still
+ * established that lite's examples match this commit, and that is exactly the
+ * fact the pin records — leaving it unwritten there is how a correct tree keeps
+ * a stale pin.
+ */
+async function recordPin () {
+    if (check || !srcDir) return;
+    try {
+        const {execSync} = await import('node:child_process');
+        const pinSha = execSync(`git -C ${JSON.stringify(srcDir)} rev-parse HEAD`).toString().trim();
+        const pinsFile = path.join(here, '..', 'vendor-pins.json');
+        const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
+        if (pins['sb3-creator'] === pinSha) return;
+        pins['sb3-creator'] = pinSha;
+        await writeFile(pinsFile, JSON.stringify(pins, null, 1));
+        console.log(`  pinned sb3-creator@${pinSha.slice(0, 8)}`);
+    } catch (e) { console.warn(`  (pin not recorded: ${e.message})`); }
+}
+
 if (check) {
     if (stale || orphans.length) {
         console.error(`\n${stale} stale, ${orphans.length} orphan(s) — run: npm run sync:examples`);
@@ -187,6 +221,7 @@ if (check) {
 
 if (!stale && !orphans.length) {
     console.log('examples up to date.');
+    await recordPin();
     process.exit(0);
 }
 
@@ -220,3 +255,5 @@ for (const f of orphans) {
 
 console.log(`wrote ${stale} file(s) (${added} new), removed ${orphans.length} orphan(s).`);
 console.log(`\nsynced from sb3-creator@${srcDir ? 'local' : REF}. ${index.length} examples in index.`);
+
+await recordPin();
