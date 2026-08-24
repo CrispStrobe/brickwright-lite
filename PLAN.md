@@ -313,7 +313,8 @@ distinct causes were written down in seven places and worked on in none.
 **Ten are now closed.** Nine by repair and one — the `dc_motor` winding — by
 re-measurement, which is a weaker claim and is labelled as one: it stopped
 reproducing between the Wave 1 vendor and today, and this pass only found that
-out. Together they cover 48 of the 89 lesson-slots the table counts.
+out. Together they cover 39 of the 89 lesson-slots the table counts, and D1 alone is 28 of
+them.
 
 The largest of them was on nobody's list. **28 checkpoints across four waves
 observe `circuit-ready`**, which fires once when the example loads, so every one

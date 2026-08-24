@@ -63,7 +63,7 @@ Two counting rules, so the numbers are comparable:
 **34 defects. Ten are closed on this branch** — D1, D5, D6, D14, D15, D16, D17,
 D19, D33 by repair, and D34 by re-measurement, which is a different and weaker
 claim: it stopped reproducing between the Wave 1 vendor and today, and this
-campaign only found that out. Together they account for **48 of the 89
+campaign only found that out. Together they account for **39 of the 89
 lesson-slots** the table counts, and D1 alone is 28 of them. Every row still open
 is recorded in `PLAN.md` with what blocks it and who owns it.
 

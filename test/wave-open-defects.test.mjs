@@ -59,6 +59,22 @@ test('the open-defect table exists and every row carries an owner and a count', 
             `the table is not sorted by lessons affected: row ${i + 1} has ${counts[i]} ` +
             `after ${counts[i - 1]}`);
     }
+
+    // The totals in the prose are re-derived, not trusted. The first draft of
+    // this document said 48 closed lesson-slots where the rows add to 39 —
+    // a summary number nobody had computed, in a document whose entire point
+    // is that summary numbers go uncounted.
+    const text = readFileSync(DOC, 'utf8');
+    const closed = rows.filter(r => /FIXED|EXPIRED/.test(r.split('|')[6]));
+    const closedSlots = closed.reduce((n, r) => n + Number(r.split('|')[4].replace(/\D/g, '')), 0);
+    const total = counts.reduce((a, b) => a + b, 0);
+    assert.ok(text.includes(`**${closedSlots} of the ${total}`),
+        `the prose does not say "${closedSlots} of the ${total} lesson-slots" — the rows and ` +
+        'the summary disagree');
+    for (const [n, word] of [[closed.length, 'closed']]) {
+        assert.ok(text.includes(`Ten are closed`) === (n === 10),
+            `${n} rows are ${word} but the prose still says Ten`);
+    }
 });
 
 // ── D1: 28 checkpoints observe an event that fires before they are read ────
