@@ -5731,8 +5731,14 @@ function FileMenu(_ref19) {
   const pendingFormat = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
   const handleImportFile = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(/*#__PURE__*/function () {
     var _ref20 = _asyncToGenerator(function* (e) {
-      var _e$target$files;
-      const file = (_e$target$files = e.target.files) === null || _e$target$files === void 0 ? void 0 : _e$target$files[0];
+      var _input$files;
+      // Capture the input BEFORE any await: this React pools synthetic
+      // events, so past the first await `e.target` is null and the old
+      // trailing `e.target.value = ''` threw on EVERY import (measured:
+      // a pageerror per import; the import itself had already landed, so
+      // it looked like a working feature with a crash in the console).
+      const input = e.target;
+      const file = (_input$files = input.files) === null || _input$files === void 0 ? void 0 : _input$files[0];
       if (!file || !onImport) return;
       let text;
       try {
@@ -5754,8 +5760,11 @@ function FileMenu(_ref19) {
         parts: r.parts,
         wires: r.wires
       });
+      // Reset the input BEFORE onDone unmounts the menu (and the input).
+      try {
+        input.value = '';
+      } catch (err) {/* already unmounted */}
       if (onDone) onDone();
-      e.target.value = '';
     });
     return function (_x) {
       return _ref20.apply(this, arguments);
@@ -5937,11 +5946,16 @@ function FileMenu(_ref19) {
     onMouseLeave: itemLeave,
     style: subStyle
   }, "KiCad Netlist (.net)"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", {
+    onClick: () => handleExport('easyeda-native'),
+    onMouseEnter: itemHover,
+    onMouseLeave: itemLeave,
+    style: subStyle
+  }, de ? 'EasyEDA-Schaltplan (.json)' : 'EasyEDA schematic (.json)'), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("button", {
     onClick: () => handleExport('easyeda'),
     onMouseEnter: itemHover,
     onMouseLeave: itemLeave,
     style: subStyle
-  }, "EasyEDA (via KiCad)"))), onClear && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", {
+  }, de ? 'EasyEDA (via KiCad-Netzliste)' : 'EasyEDA (via KiCad)'))), onClear && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("span", {
     style: {
       display: 'block',
       height: 1,
@@ -26009,6 +26023,7 @@ function importEasyEda(text) {
   let attached = 0;
   let floating = 0;
   let pinCount = 0;
+  let declaredNC = 0;
   let buses = 0;
   let busEntries = 0;
   let labels = 0;
@@ -26037,12 +26052,30 @@ function importEasyEda(text) {
     // duplicating a fixture sheet, which is the cheapest possible collision.
     const netKey = id => "s".concat(sheetIx, "\0").concat(id);
     const railNames = new Set();
+    /**
+     * Pin dots the author marked NO-CONNECT, as "x,y".
+     *
+     * `O~x~y~id~pathStr~color` — the X. EasyEDA's Design Manager flags every
+     * unconnected pin until one of these sits on it, so a sheet that carries
+     * them is stating which pins are unused ON PURPOSE. Reading them keeps the
+     * deliberate ones out of the "touches no wire" count, where they would bury
+     * the accidental ones — the whole reason that count exists.
+     */
+    const noConnects = new Set();
 
     // -- geometry first, so every pin has something to land on ------
     for (const raw of sheet.shape) {
       const s = String(raw);
       const f = s.split('~');
       switch (f[0]) {
+        case 'O':
+          {
+            // a NO-CONNECT flag (the X)
+            const nx = Number(f[1]);
+            const ny = Number(f[2]);
+            if (Number.isFinite(nx) && Number.isFinite(ny)) noConnects.add("".concat(nx, ",").concat(ny));
+            break;
+          }
         case 'W':
           {
             // a wire polyline
@@ -26192,7 +26225,8 @@ function importEasyEda(text) {
           part: id,
           terminal: term
         });
-        if (live.has(raw)) attached++;else floating++;
+        if (live.has(raw)) attached++;else if (noConnects.has("".concat(p.x, ",").concat(p.y))) declaredNC++; // author said so
+        else floating++;
       }
     }
   });
@@ -26218,6 +26252,13 @@ function importEasyEda(text) {
   if (!parts.length) warnings.push('No mappable components found -- is this an EasyEDA schematic (docType 5)?');
   warnings.push("geometry: ".concat(attached, "/").concat(pinCount, " mapped pins landed on a net ") + "(".concat(nets, " nets, ").concat(labels, " labels)"));
   if (floating) warnings.push("".concat(floating, " pin(s) touch no wire, junction or label"));
+  // A NO-CONNECT is not a defect, it is a statement. EasyEDA flags every
+  // unconnected pin in the Design Manager until the author puts an `O` (the X)
+  // on it, so a sheet that HAS them is telling us which pins are unused on
+  // purpose -- and lumping those in with the accidents would bury the accidents.
+  if (declaredNC) {
+    warnings.push("".concat(declaredNC, " pin(s) marked no-connect by the author"));
+  }
   return {
     parts,
     wires,
