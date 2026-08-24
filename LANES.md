@@ -45,6 +45,22 @@ case this file was written for.
 **5. If you push something that changes what another repo's gates load** — a
 pin, a vendored file, a shared fixture — say so in the same minute, in the row.
 
+**6. Before pushing a ledger edit, check the SHAPE of your commit, not just
+its diff.** On 2026-08-24 four LANES rows pushed from a sparse checkout wiped
+main's entire tree — the commits were correct-by-construction and wrong only in
+what they omitted, so "pull first" could not have caught it and the diffstat
+read as clean. Two commands catch it:
+
+```bash
+git show --stat HEAD                        # a LANES edit is ONE file. More is wrong.
+git ls-tree -r --name-only HEAD | wc -l     # vs the parent: must not drop
+```
+
+The second is the one that matters — a wipe still looks like a one-line edit if
+you only read the file's own diff, but the tree count falls off a cliff. Same
+failure species as a detector confidently reporting a number about the wrong
+thing: check the shape of what you are about to believe.
+
 ## CLAIMS — work in progress
 
 | lane | who | started | what |
