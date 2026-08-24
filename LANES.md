@@ -99,6 +99,7 @@ comes back clean.
 | lane | who | started | what |
 | --- | --- | --- | --- |
 | release 0.1.7 | coordinating session | 2026-08-24 | version bump + tester notes prepared. The TAG PUSH is deliberately NOT done: it uploads to App Store Connect and reaches external testers, so it waits for the owner |
+| device KCL-visibility | bw-engine (lite-61) | 2026-08-24 | Every registered device model becomes KCL-visible GENERICALLY: solveMNA records each device's stamped Thevenin/Norton companions per terminal and derives terminal currents from exactly those at extraction (model.branchCurrents stays as override). Closes bw-corpus's census finding "the relay coil in pc38 is 25 mA that reads as 0" for all ~40 stamping models at once, not per-hook. bw-board master. **Rule 5:** their gate's declined-as-unreadable kinds become measurands at the next pin bump. |
 | lite fetch pinning | coordinating session | 2026-08-24 | bw-audit's four findings for THIS repo: sync-sb3creator/sync-examples fetch `REF='main'`, vendor-forward clones with no ref, sync-emu8051-wasm pins a 7-char sha, 47 unpinned `uses:` across 6 workflows |
 
 ## DONE — recently, so nobody redoes it
