@@ -1,0 +1,68 @@
+# Who is doing what — claim before you start, release when you finish
+
+Created 2026-08-24, after two sessions independently did the same repair.
+
+## Why this file exists
+
+The vendor of `sb3-creator eac7a1a` made two OPEN DEFECT sentinels fire — the
+shift-register bit test and the four faceplates with dead controls. Both are
+written to go red the moment their defect is fixed, and both carry instructions
+for what to do when that happens. Two of us followed those instructions, at the
+same time, without knowing about each other. The work was done twice, reached
+`main` twice, and had to be merged against itself.
+
+Nobody ignored a rule; there was no rule. The coordinating session worked from a
+worktree created *before* the other landed, and never re-checked. A worktree is a
+photograph of `main`, and the longer you hold it the more of a lie it becomes.
+
+## The protocol
+
+**1. Before you start anything, look.**
+
+```bash
+git fetch origin
+git log --oneline -20 origin/main          # what landed while you were away
+git branch -r --sort=-committerdate | head # what someone else has open
+```
+Then read the CLAIMS table below. If your work is already claimed or already
+landed, you have just saved yourself an hour — say so and pick something else.
+
+**2. Claim it here, in the same push as your first commit.**
+
+Add a row before you begin. A claim costs one line and is the only thing that
+makes a collision visible *before* both of you have done the work.
+
+**3. Release it here when you finish**, in the same push as your last commit.
+Move the row to DONE with the sha. An abandoned claim is worse than no claim:
+the next person reads it as work in progress and stays away from something
+nobody is doing.
+
+**4. Sentinels are claimable work too.** A test whose name begins `OPEN DEFECT:`
+is a standing instruction that fires later, possibly for someone who did not
+write it. If one goes red for you, CLAIM IT before acting — that is exactly the
+case this file was written for.
+
+**5. If you push something that changes what another repo's gates load** — a
+pin, a vendored file, a shared fixture — say so in the same minute, in the row.
+
+## CLAIMS — work in progress
+
+| lane | who | started | what |
+| --- | --- | --- | --- |
+| _(none)_ | | | |
+
+## DONE — recently, so nobody redoes it
+
+| lane | who | landed | what |
+| --- | --- | --- | --- |
+| lessons | bw-lessons | `1b74412f8`… | Wave 4 and Wave 7 technical reviews; the two OPEN DEFECT sentinels resolved and replaced |
+| project save | coordinating session | `a69679979` | export errors caught and shown in the GUI; Circuit/Code/Widgets carried inside the `.sb3` as `brickwright/state.json` |
+| footprints | coordinating session | `eac7a1a` (sb3-creator) | bw-parts vs bw-circuit-ui canon settled by measurement; attiny88 checked against the datasheet |
+| CI | bw-audit | `965d172` (sb3-creator) | the abbreviated-pin blackout, the sibling lint, the timeout discriminator |
+
+## What this does not solve
+
+Two people can still claim the same thing within the same minute, and a claim in
+a worktree nobody has pushed is invisible. This is a convention, not a lock. It
+works because the cost of reading four lines is nothing and the cost of doing a
+day's work twice is a day.
