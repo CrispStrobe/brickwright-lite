@@ -17,14 +17,29 @@
 //   --ref <r>    a branch/tag/sha of CrispStrobe/emu8051-stc (default: the pinned commit).
 
 import {readFile, writeFile, mkdir} from 'node:fs/promises';
+import {resolveRef, fetchRetry} from './lib-pin.mjs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
 // Pinned to the commit whose BUILD-INFO.md records these hashes. Bump both together.
-// Current with emu8051-stc HEAD e04b15a as of 2026-08-16 — the P5/STC15
-// build that also exports _emu_set_part (part selection ABI).
-const PIN = '2f1855a';
+//
+// FULL 40-HEX, and that is not pedantry. This read `'2f1855a'` — seven
+// characters — and an abbreviated sha is not an immutable name: git's own
+// abbreviation is unique only within one repository at one moment, it grows as
+// the repo does, and nothing here would notice if it became ambiguous. The same
+// shape cost this fleet seven blind CI commits when an abbreviated pin named a
+// commit that could not be fetched. The abbreviation also HID a discrepancy in
+// this very comment, which called `e04b15a` "current" while PIN was a different
+// commit: they are two real commits four hours apart
+// (e04b15a0b0b8561556c32dfb40e1fbb04b1029b5, 2026-08-16T15:42Z — the P5/STC15
+// port that exports _emu_set_part) and PIN is the later fix on top of it.
+//
+// This is the one vendored artifact with an integrity check STRONGER than
+// sha-addressing: EXPECT below is the content hash of each file, so even a
+// compromised CDN cannot substitute a binary. The pin says WHICH build; the
+// hashes say WHAT arrived. Keep both.
+const PIN = '2f1855a26dacd17619e6d398bbd9b0ae177a476a';
 const EXPECT = {
     'emu8051.wasm': '329a85f5a3fc93c02e4a3e8604d11c04dca221ca89ccc46c1c836e4ba50bc808',
     'emu8051.js': 'b8cdeacdda0b7fb2e5608881deead877d0a497f60b4a074d91bec3e9733ee365'
@@ -34,7 +49,14 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'emu8051');
 const check = process.argv.includes('--check');
 const refIdx = process.argv.indexOf('--ref');
-const ref = refIdx !== -1 ? process.argv[refIdx + 1] : PIN;
+const refArg = refIdx !== -1 ? process.argv[refIdx + 1] : PIN;
+
+// `--ref` accepts a branch or tag for convenience, and a branch on the raw CDN
+// is a cached URL that can serve an older commit. Resolve it to a sha before
+// any content is fetched, so what the run REPORTS is what it read. A full sha
+// is returned untouched and costs no request.
+const {sha: ref, resolved} = await resolveRef('CrispStrobe/emu8051-stc', refArg);
+if (resolved) console.log(`  resolved ${refArg} -> ${ref}`);
 
 await mkdir(dest, {recursive: true});
 let changed = 0;
@@ -44,17 +66,10 @@ for (const [name, want] of Object.entries(EXPECT)) {
     // deploys on 2026-08-17 after the ancestry check had already passed).
     // Retry with backoff, honoring Retry-After when present.
     let res;
-    for (let attempt = 1; ; attempt++) {
-        res = await fetch(url);
-        if (res.ok) break;
-        const retryable = res.status === 429 || res.status >= 500;
-        if (!retryable || attempt >= 4) {
-            throw new Error(`fetch ${name} @ ${ref}: HTTP ${res.status} (after ${attempt} attempt${attempt > 1 ? 's' : ''})`);
-        }
-        const ra = Number(res.headers.get('retry-after')) || 0;
-        const delay = Math.max(ra * 1000, attempt * 20_000);
-        console.log(`  retry ${name}: HTTP ${res.status}, waiting ${Math.round(delay / 1000)}s (attempt ${attempt}/3)`);
-        await new Promise(r => setTimeout(r, delay));
+    try {
+        res = await fetchRetry(url);
+    } catch (e) {
+        throw new Error(`fetch ${name} @ ${ref}: ${e.message}`);
     }
     const buf = Buffer.from(await res.arrayBuffer());
     const got = createHash('sha256').update(buf).digest('hex');
@@ -75,4 +90,7 @@ for (const [name, want] of Object.entries(EXPECT)) {
     console.log(`  wrote ${name} (${buf.length} bytes, sha256 verified)`);
 }
 if (check && changed) { console.error(`\n${changed} stale — run: npm run sync:emuwasm`); process.exit(1); }
-console.log(check ? '\nvendored WASM up to date.' : `\nsynced from emu8051-stc@${ref.slice(0, 8)}. Next: npm run integrate`);
+// The full sha, not `.slice(0, 8)`. An abbreviation in the RECORD is the same
+// defect as an abbreviation in the pin: it is not a name anything can fetch by
+// with certainty, and it is what a later reader copies.
+console.log(check ? '\nvendored WASM up to date.' : `\nsynced from emu8051-stc@${ref}. Next: npm run integrate`);

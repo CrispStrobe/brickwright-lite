@@ -14,6 +14,7 @@
 
 import {readFile, writeFile, mkdir, readdir, unlink} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
+import { recordPin, localSha } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -146,18 +147,17 @@ if (!check) {
     console.log(`  checked ${files.length} files: imports resolve, only allow-listed packages`);
 }
 if (check && stale) { console.error(`\n${stale} stale — run: npm run sync:circuitui`); process.exit(1); }
-console.log(check ? '\nvendored panel up to date.' : '\nsynced. Next: npm run integrate');
+// "synced." named nothing at all — not the commit, not even the checkout. This
+// script is --dir-only, so the sha is free to obtain and there was no reason
+// for the sentence to be contentless.
+const sourceSha = srcDir ? await localSha(srcDir) : null;
+console.log(check ? '\nvendored panel up to date.'
+    : `\nsynced from bw-circuit-ui@${sourceSha} (local checkout ${srcDir}). Next: npm run integrate`);
 
 // Record the upstream commit this sync captured, so vendor-freshness CI
 // compares against the PIN, not a moving HEAD (bump = re-run this sync).
 if (!check && srcDir) {
     try {
-        const { execSync } = await import('node:child_process');
-        const pinSha = execSync(`git -C ${JSON.stringify(srcDir)} rev-parse HEAD`).toString().trim();
-        const pinsFile = path.join(here, '..', 'vendor-pins.json');
-        const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
-        pins['bw-circuit-ui'] = pinSha;
-        await writeFile(pinsFile, JSON.stringify(pins, null, 1));
-        console.log(`  pinned bw-circuit-ui@${pinSha.slice(0, 8)}`);
+        await recordPin('bw-circuit-ui', sourceSha);
     } catch (e) { console.warn(`  (pin not recorded: ${e.message})`); }
 }

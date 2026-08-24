@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22 }
       - name: Vendor the pinned permissive Scratch sources
         run: npm run vendor
@@ -58,10 +58,16 @@ jobs:
 
       - name: Guard — WASM pin is a descendant of the crash-fix floor
         run: |
-          # The floor: 85ed23d is the commit with the emu_init crash fix and
-          # corrected BUILD-INFO.md. Any pin older than this ships a crashing
-          # binary. Bump the floor when a newer build is deliberately adopted.
-          FLOOR=85ed23d
+          # The floor: 85ed23d94a1fbf8a15c2ddff068d438a832913cc is the commit
+          # with the emu_init crash fix and corrected BUILD-INFO.md. Any pin
+          # older than this ships a crashing binary. Bump the floor when a
+          # newer build is deliberately adopted.
+          #
+          # Full 40-hex, like the PIN it is compared against: an abbreviation is
+          # unique only within one repo at one moment, and `--is-ancestor` given
+          # an ambiguous or unknown rev fails in a way this step reads as "not a
+          # descendant" — a true-looking error about the wrong thing.
+          FLOOR=85ed23d94a1fbf8a15c2ddff068d438a832913cc
           PIN=$(node -e "
             const src = require('fs').readFileSync('scripts/sync-emu8051-wasm.mjs','utf8');
             const m = src.match(/const PIN = '([^']+)'/);
@@ -93,30 +99,64 @@ jobs:
           fi
           echo "blocks.jsx: toolbox null-guard present (good)"
 
-      - name: Guard — vendored sources are not stale
+      - name: Guard — the vendored overlay matches the commit it PINS
         run: |
-          # Compare vendored overlay against upstream HEAD for key files.
-          # Warns (does not fail) — silent staleness is how finished work
-          # becomes invisible to users.
-          stale=0
+          # WHAT THIS COMPARES, AND WHAT IT USED TO.
+          #
+          # It used to fetch the raw CDN at `<repo>/master/<file>` with a
+          # `main` fallback and compare the overlay against THAT. Three things
+          # were wrong with one line:
+          #
+          #   1. It named a MUTABLE ref. Upstream advancing made this warn, so
+          #      the warning meant "someone pushed", not "lite is broken" — and
+          #      a warning that fires for a non-problem is one nobody reads.
+          #   2. It read the RAW CDN, which caches branch URLs for minutes. A
+          #      run right after a push compares against the previous commit and
+          #      says "up to date" about a tree it did not see. That exact
+          #      mechanism vendored a stale bw-board on 2026-08-23.
+          #   3. `master || main` guessed the branch name, and a wrong guess
+          #      curls a 404 into `$upstream`, which this reads as "not
+          #      accessible (private repo?)" — a confident, well-formed, wrong
+          #      statement about why nothing was compared.
+          #
+          # The right comparand is what lite CLAIMS: vendor-pins.json. Fetched
+          # sha-addressed, so the CDN cannot lie about it, and a difference now
+          # means the overlay does not match its own pin — an integrity failure
+          # rather than news about upstream. Freshness-vs-HEAD is a separate
+          # question and it has its own workflow (vendor-freshness.yml, nightly).
+          #
+          # Still a warning, not a failure: vendor-freshness.yml is the blocking
+          # gate, and two red gates for one fact is how a real one gets muted.
+          mismatch=0
           for pair in \
             "bw-circuit-ui:CrispStrobe/bw-circuit-ui:src/index.js:overlay/scratch-gui/src/lib/bw-circuit-ui/index.js" \
             "bw-board:CrispStrobe/bw-board:src/index.js:overlay/scratch-gui/src/lib/bw-board/index.js"; do
             IFS=: read -r name repo remote local <<< "$pair"
             if [ ! -f "$local" ]; then continue; fi
-            upstream=$(curl -sf "https://raw.githubusercontent.com/$repo/master/$remote" 2>/dev/null || \
-                       curl -sf "https://raw.githubusercontent.com/$repo/main/$remote" 2>/dev/null || echo "")
-            if [ -z "$upstream" ]; then echo "$name: upstream not accessible (private repo?)"; continue; fi
+            pin=$(jq -r --arg r "$name" '.[$r] // empty' vendor-pins.json)
+            case "$pin" in
+              [0-9a-f]*) [ ${#pin} -eq 40 ] || { echo "::error::vendor-pins.json pins $name to '$pin', which is not a 40-hex sha"; exit 1; } ;;
+              *) echo "::warning::$name has no pin in vendor-pins.json — nothing to compare against"; continue ;;
+            esac
+            upstream=$(curl -sf "https://raw.githubusercontent.com/$repo/$pin/$remote" || echo "")
+            if [ -z "$upstream" ]; then
+              # A sha-addressed 404 is NOT ambiguous the way the branch-name
+              # version was: the commit is unreachable, so say that.
+              echo "::warning::$name: $repo@$pin/$remote is not fetchable (private repo, or the pin names a commit that is gone)"
+              continue
+            fi
             local_hash=$(sha256sum "$local" | cut -d' ' -f1)
-            remote_hash=$(echo "$upstream" | sha256sum | cut -d' ' -f1)
+            # `echo` not `printf '%s'`: command substitution stripped the
+              # trailing newline curl delivered, and the file on disk has one.
+              remote_hash=$(echo "$upstream" | sha256sum | cut -d' ' -f1)
             if [ "$local_hash" != "$remote_hash" ]; then
-              echo "::warning::$name overlay differs from upstream HEAD — re-vendor needed"
-              stale=$((stale+1))
+              echo "::warning::$name overlay does NOT match its own pin $pin — re-run the sync, or correct vendor-pins.json"
+              mismatch=$((mismatch+1))
             else
-              echo "$name: up to date"
+              echo "$name: overlay matches pin $pin"
             fi
           done
-          echo "vendor staleness: $stale stale"
+          echo "overlay-vs-pin mismatches: $mismatch"
 
       # --- tests ---
 
@@ -188,6 +228,26 @@ jobs:
             }
             process.exit(bad ? 1 : 0);
           "
+
+      - name: Guard — the fetch-pinning gate exists and can still fail
+        run: |
+          set -e
+          # `npm test` below runs test/fetch-pinning.test.mjs through its glob.
+          # This step exists for the two failure modes a green suite cannot
+          # distinguish from a passing gate: the gate DELETED, and the gate
+          # unable to go red. Both have happened in this repo — five gates were
+          # found that could not fail, and one of them walked a tree containing
+          # its own prover, so every string-literal target matched itself.
+          #
+          # The prover mutates tracked files and reverts each in a finally
+          # block; it exits 2 if the tree does not come back green, so a failed
+          # revert cannot be mistaken for a passing run.
+          if [ ! -f test/fetch-pinning.test.mjs ]; then
+            echo "::error::test/fetch-pinning.test.mjs is missing — every fetch in this repo would be unchecked"
+            exit 1
+          fi
+          node scripts/prove-fetch-pinning.mjs
+          git diff --quiet || { echo "::error::the pinning prover left the tree dirty"; git diff --stat; exit 1; }
 
       - name: Run unit tests
         run: |
@@ -272,7 +332,7 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with: { path: packages/scratch-gui/build }
 
   deploy:
@@ -288,7 +348,7 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
 
   verify-gui:
     needs: deploy

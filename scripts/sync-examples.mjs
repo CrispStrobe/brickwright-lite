@@ -19,23 +19,32 @@
 // vendor.
 
 import {readFile, writeFile, mkdir, readdir, rm, stat} from 'node:fs/promises';
+import { resolveRef, recordPin, localSha } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
+const REPO = 'CrispStrobe/sb3-creator';
 const REF = process.env.SB3CREATOR_REF || 'main';
-const RAW = `https://raw.githubusercontent.com/CrispStrobe/sb3-creator/${REF}`;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'examples');
 const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 
+// Resolve the mutable name to a sha ONCE, before any content is read, then
+// address every file by that sha. `main` on the raw CDN is a cached branch
+// URL: it serves whatever it last saw, and this script fetches ~1500 example
+// files across many minutes, so a branch-addressed run can straddle a push and
+// vendor two different commits into one tree. A sha cannot. See lib-pin.mjs.
+const remoteSha = srcDir ? null : (await resolveRef(REPO, REF)).sha;
+const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 async function readSource (rel) {
     if (srcDir) return readFile(path.join(srcDir, 'examples', rel));
     const res = await fetch(`${RAW}/examples/${rel}`);
-    if (!res.ok) throw new Error(`fetch examples/${rel} @ ${REF}: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`fetch examples/${rel} @ ${remoteSha}: HTTP ${res.status}`);
     return Buffer.from(await res.arrayBuffer());
 }
 
@@ -195,18 +204,17 @@ if (orphans.length && check) {
  * established that lite's examples match this commit, and that is exactly the
  * fact the pin records — leaving it unwritten there is how a correct tree keeps
  * a stale pin.
+ *
+ * REMOTE MODE RECORDS TOO. It did not, and `!srcDir` was the whole of the
+ * reason: a remote sync had no sha to write because it fetched by branch name.
+ * Now it resolves one before reading anything, so the asymmetry has no cause
+ * left — and an unrecorded remote sync is precisely the state that made
+ * "synced from sb3-creator@main" a sentence with no checkable content.
  */
-async function recordPin () {
-    if (check || !srcDir) return;
+async function writePin () {
+    if (check) return;
     try {
-        const {execSync} = await import('node:child_process');
-        const pinSha = execSync(`git -C ${JSON.stringify(srcDir)} rev-parse HEAD`).toString().trim();
-        const pinsFile = path.join(here, '..', 'vendor-pins.json');
-        const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
-        if (pins['sb3-creator'] === pinSha) return;
-        pins['sb3-creator'] = pinSha;
-        await writeFile(pinsFile, JSON.stringify(pins, null, 1));
-        console.log(`  pinned sb3-creator@${pinSha.slice(0, 8)}`);
+        await recordPin('sb3-creator', srcDir ? await localSha(srcDir) : remoteSha);
     } catch (e) { console.warn(`  (pin not recorded: ${e.message})`); }
 }
 
@@ -221,7 +229,7 @@ if (check) {
 
 if (!stale && !orphans.length) {
     console.log('examples up to date.');
-    await recordPin();
+    await writePin();
     process.exit(0);
 }
 
@@ -254,6 +262,11 @@ for (const f of orphans) {
 }
 
 console.log(`wrote ${stale} file(s) (${added} new), removed ${orphans.length} orphan(s).`);
-console.log(`\nsynced from sb3-creator@${srcDir ? 'local' : REF}. ${index.length} examples in index.`);
+// The sha, not the label. `${srcDir ? 'local' : REF}` named neither a commit
+// nor a place — "local" identifies nothing at all, and REF is the part of the
+// sentence that moves.
+console.log(`\nsynced from ${REPO}@${srcDir ? await localSha(srcDir) : remoteSha}`
+    + `${srcDir ? ` (local checkout ${srcDir})` : ` (resolved from ${REF})`}. `
+    + `${index.length} examples in index.`);
 
-await recordPin();
+await writePin();
