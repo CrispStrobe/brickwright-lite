@@ -65,6 +65,20 @@ checkouts were fine. Same failure species as a detector confidently
 reporting a number about the wrong thing: the diffstat was true, it was
 just about the wrong thing.
 
+A count that drops means LOOK, not PANIC — the count flags candidates,
+the name-level diff gives verdicts:
+
+```bash
+comm -23 <(git ls-tree -r --name-only <before> | sort) \
+         <(git ls-tree -r --name-only HEAD | sort)      # names missing now
+```
+
+(Post-restore audit of the 2026-08-24 wipe used exactly this: tree
+counts differed across tips by ordinary commit traffic, which looked
+like a second smaller loss and wasn't; the `comm` against the last
+pre-wipe tree — zero missing, zero spurious, non-ledger diff empty — is
+what established "nothing was lost" at content level, not count level.)
+
 ## CLAIMS — work in progress
 
 | lane | who | started | what |
