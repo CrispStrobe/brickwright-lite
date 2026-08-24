@@ -75,6 +75,21 @@ test('the open-defect table exists and every row carries an owner and a count', 
         assert.ok(text.includes(`Ten are closed`) === (n === 10),
             `${n} rows are ${word} but the prose still says Ten`);
     }
+
+    // The per-owner "Closed here" column must name only rows the State column
+    // agrees are closed. Two hand-maintained lists of the same set is exactly
+    // how a table starts lying.
+    const closedIds = new Set(closed.map(r => r.split('|')[1].trim().replace(/\*/g, '')));
+    for (const line of text.split('\n')) {
+        if (!/^\| (bw-board|lite|bw-circuit-ui|sb3-creator) \|/.test(line)) continue;
+        const cells = line.split('|').map(c => c.trim());
+        const claimed = cells[4].match(/D\d+/g) || [];
+        for (const id of claimed) {
+            assert.ok(closedIds.has(id),
+                `the owner table says ${cells[1]} closed ${id}, but its row is not marked ` +
+                'FIXED or EXPIRED');
+        }
+    }
 });
 
 // ── D1: 28 checkpoints observe an event that fires before they are read ────
