@@ -10,8 +10,18 @@ gates with a stated reason:
 > `scripts/verify-*.mjs`, which need a built editor and a browser. They are listed and left;
 > probing them is a lane of its own.
 
-This is that lane. It reaches two conclusions the individual-probe plan would not have, and
-both were available before a browser was ever started.
+This is that lane. Four findings, in rough order of how much they matter:
+
+- **D** — four fifths of the time the CI browser gates spend inside Playwright is
+  `waitForTimeout`: **65.9 s of 82.0 s**, asleep on purpose, in no inventory anywhere (§4).
+- **C** — the 119 counted literals govern **32** of the 279 real waits; the other 247 inherit a
+  30 s default nobody wrote (§4).
+- **B** — there are **249 fixed sleeps against 119 bounds**, and no threshold inventory collects
+  them, correctly and unhelpfully (§2).
+- **A** — **40 of the 119** are in `_tmp-` scratch scripts nothing runs (§2).
+
+A and B needed no browser at all. Plus one found by accident that is bigger than the lane: a
+test suite that cannot be *constructed* was reading as green in CI (§5).
 
 ---
 
@@ -131,33 +141,76 @@ the census's parse-yield guard disabled ............... RED, exit 1
 
 ---
 
-## 4. The observed sweep
+## 4. The observed sweep — measured on a CI runner
 
-**Status: queued, not run.** The sweep needs a built editor, and this repo's own guard
-(`scripts/check-system-load.mjs`) reports **6.1 load per CPU against an allowed 1.5** on a box
-running several agents at once. It refuses the build, and it is right to: a p90 measured there
-is a number about the box, not about the app — the same discrimination the CI timeout
-discriminator makes, for the same reason.
+**Run [32780994663](https://github.com/CrispStrobe/brickwright-lite/actions/runs/32780994663), branch tip `d739ff4d9`.**
 
-What the instrument produces, from the one gate run so far (`verify-view-buttons` against an
-existing build, for wiring validation only — see the caveat below):
+Not on a developer box. This repo's own `check-system-load.mjs` reported **6.1 load per CPU
+against an allowed 1.5** here and refused to build at all — and it was right to. These
+thresholds exist to protect CI, so CI's runner is the box whose durations matter, and it already
+has the built editor and the browser this needs. `build.yml` grew a `workflow_dispatch`-only step
+that re-runs the same five gates under the observer and uploads the JSONL.
+
+**Five gates, 745 playwright calls, 279 bounded waits, 73 fixed sleeps.**
+
+### Every observed bound has at least 35× headroom, and none timed out
 
 | site | literal | observed | headroom |
 |---|---|---|---|
-| `verify-view-buttons.mjs:33` `page.goto` | 60,000 ms | 223 ms | **269×** |
-| `verify-view-buttons.mjs:41` `page.reload` | 60,000 ms | 182 ms | **329×** |
-| `verify-view-buttons.mjs:67` `locator.getAttribute` | *(none — inherits 30 s)* | 30,022 ms, **timed out** | — |
+| `verify-debug-dock.mjs:187` | 60,000 ms | 26 ms | 2273× |
+| `verify-circuit-ux.mjs:45` | 60,000 ms | 34 ms | 1786× |
+| `verify-circuit-rendering.mjs:61` | 10,000 ms | 7 ms | 1515× |
+| `verify-circuit-ux.mjs:192` | 3,000 ms | 2 ms | 1500× |
+| … 17 more between 1770× and 55× … | | | |
+| `verify-view-buttons.mjs:33` | 60,000 ms | 697 ms | 86× |
+| `verify-debug-dock.mjs:186` | 90,000 ms | 1,561 ms | 58× |
+| `verify-circuit-ux.mjs:44` | 60,000 ms | 1,679 ms | **35.6× — the tightest** |
 
-The third row is the most informative kind of observation there is, and it is also the caveat:
-that gate **fails against the build available on this box while passing in CI**, so this run is
-evidence that the instrument works and is *not* evidence about those two thresholds. The
-measured p90s will come from a sweep against a build made in this worktree, named by its commit.
-Publishing the first two numbers as the answer would be the exact defect this campaign is about:
-a well-formed measurement of the wrong thing.
+279 bounded waits, outcome `ok` on **all** of them. The full table is in the run's
+`wait-observations` artifact (`wait-report.txt`, `wait-report.json`).
+
+### What this does and does not establish
+
+**25 of the 119 literals were reached.** 54 runnable ones were not — the report lists every one
+by `file:line` rather than omitting them — and 40 more are in `_tmp-` scratch. A sweep that
+reaches a fifth of the population and says so is worth more than one that reports a fraction it
+did not compute.
+
+**n is 1 or 2 at every site**, so "p50/p90/max" are one observation wearing three column
+headings. The tool now prints that caveat itself rather than leaving it to the reader. The
+headroom is a real fact — a 60,000 ms bound over a wait seen at 1,679 ms is a fact about that
+bound — but **the tail is unmeasured, and the tail is what a timeout exists for.** Nothing here
+licenses dropping 60,000 ms to 2,000 ms; it licenses asking why it is 60,000.
+
+### Finding C — the literals are not where the waiting happens
+
+**247 of the 279 bounded waits passed no timeout at all**, inheriting Playwright's 30 s default.
+The slowest of them took 219 ms.
+
+So the 119 literals the inventory counts govern **32** of the 279 real waits. The other 247 are
+bounded by a number nobody wrote, which no inventory can count because there is no literal to
+count, and which is the same 30,000 ms everywhere regardless of what it is waiting for.
+
+### Finding D — 80 % of the browser gates' Playwright time is unconditional sleeping
+
+| | time |
+|---|---|
+| bounded waits (279) — actually waiting for something | 14.4 s |
+| **fixed sleeps (73) — `waitForTimeout`** | **65.9 s** |
+| everything else (393 calls) | 1.7 s |
+| **total inside playwright** | **82.0 s** |
+
+Measured, on the runner, in the run linked above. Section 2 predicted 61.9 s of sleeping from
+static analysis; the sweep observed 65.9 s, the difference being sleeps inside loops that the
+static count sees once. Two independent methods, 6 % apart, agreeing on the shape.
+
+**Four fifths of the time these gates spend in the browser, they are asleep on purpose.** That
+is the largest single number in this whole census, and until now it appeared in no inventory,
+no report and no budget — because a fixed sleep bounds nothing, and only bounds get counted.
 
 ---
 
-## 6. Found by accident, and bigger than this lane: a suite that cannot be built reads as green
+## 5. Found by accident, and bigger than this lane: a suite that cannot be built reads as green
 
 `test/wait-census.test.mjs` shells out to `aggregate-timeouts.mjs`, which imported `acorn` —
 present on a developer box that ran a root `npm install`, absent in CI, which installs into
@@ -199,7 +252,7 @@ that is verified by deleting the root install and re-running.
 
 ---
 
-## 5. Reproducing
+## 6. Reproducing
 
 ```bash
 node scripts/aggregate-timeouts.mjs --census          # findings A and B, no browser

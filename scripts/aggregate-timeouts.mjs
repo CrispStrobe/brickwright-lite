@@ -263,6 +263,38 @@ for (const r of observedRows) {
         + ` ${String(r.p50).padStart(7)} ${String(r.p90).padStart(7)} ${String(r.max).padStart(7)}`
         + ` ${String(r.headroom).padStart(9)}×  ${r.outcomes}`);
 }
+// A p90 over one sample is the sample. Saying "p90" without saying `n` is how a
+// single observation acquires the authority of a distribution, so the tool says
+// it rather than leaving it to whoever reads the column header.
+const singles = observedRows.filter((r) => r.n < 5).length;
+if (singles) {
+    console.log(`\nNOTE: ${singles} of ${observedRows.length} sites were reached fewer than 5 times in this`);
+    console.log('sweep, so their p50/p90/max are the same one or two observations wearing three');
+    console.log('column headings. Treat them as "observed once", not as a distribution. The');
+    console.log('headroom is still meaningful — a 60,000 ms bound over a wait seen at 1,678 ms is');
+    console.log('a fact about that bound — but the TAIL is unmeasured, and the tail is what a');
+    console.log('timeout exists for. Re-run the sweep n times to get one.');
+}
+
+// A wait with no written literal inherits playwright's default. Those are not
+// in any threshold inventory either — nobody wrote them — and here they are the
+// large majority, which says the 119 literals are not where the waiting happens.
+const inherited = o.bounded.filter((r) => r.timeout == null);
+if (inherited.length) {
+    const slowest = Math.max(...inherited.map((r) => r.ms));
+    console.log(`\n${inherited.length} of ${o.bounded.length} bounded waits passed NO timeout and inherited the`);
+    console.log(`default; the slowest took ${Math.round(slowest)} ms. They bound real waits and no inventory`);
+    console.log('counts them, because there is no literal to count.');
+}
+
+const slept = o.sleeps.reduce((a, r) => a + r.ms, 0);
+const total = o.recs.reduce((a, r) => a + r.ms, 0);
+if (total > 0) {
+    console.log(`\nOf ${(total / 1000).toFixed(1)} s spent inside playwright, ${(slept / 1000).toFixed(1)} s `
+        + `(${Math.round(100 * slept / total)} %) was waitForTimeout() —`);
+    console.log('time spent whether or not the app was ready.');
+}
+
 const unobserved = rows.filter((r) => r.n === 0 && !r.scratch);
 console.log(`\n${observedRows.length} of ${c.bounds.length} bounds observed. `
     + `${unobserved.length} runnable bounds were NOT reached by this sweep — listed, not silently omitted:`);
