@@ -15,20 +15,33 @@
 //                fetching over HTTP (deterministic; no CDN lag).
 //
 // Override the HTTP source with SB3CREATOR_REF (branch/tag/sha), default "main".
+//
+// REMOTE MODE FETCHES BY RESOLVED SHA, never by the branch name. `main` is a
+// mutable name and raw.githubusercontent caches branch URLs for minutes, so
+// fetching it quotes a freshness it does not have — the exact failure that
+// vendored a stale bw-board on 2026-08-23 while printing "@master". The
+// commits API resolves the name once; every file after that is fetched from an
+// immutable URL, and the sha is written to vendor-pins.json so a later reader
+// can tell what was taken. See scripts/lib-pin.mjs.
 
 import {readFile, writeFile} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
+import { resolveRef, recordPin, localSha } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
+const REPO = 'CrispStrobe/sb3-creator';
 const REF = process.env.SB3CREATOR_REF || 'main';
-const RAW = `https://raw.githubusercontent.com/CrispStrobe/sb3-creator/${REF}`;
 const here = path.dirname(fileURLToPath(import.meta.url));
 const lib = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib');
 const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 if (dirIdx !== -1 && srcDir) guardSource(srcDir);
+
+// Resolve BEFORE the first content fetch, so nothing is ever read by name.
+const remoteSha = srcDir ? null : (await resolveRef(REPO, REF)).sha;
+const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
 
 // [source path relative to the sb3-creator repo, local vendored destination]
 const FILES = [
@@ -58,7 +71,7 @@ const FILES = [
 async function readSource (rel) {
     if (srcDir) return readFile(path.join(srcDir, rel), 'utf8');
     const res = await fetch(`${RAW}/${rel}`);
-    if (!res.ok) throw new Error(`fetch ${rel} @ ${REF}: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`fetch ${rel} @ ${remoteSha}: HTTP ${res.status}`);
     return res.text();
 }
 
@@ -110,19 +123,20 @@ if (check && stale) {
     console.error(`\n${stale} vendored file(s) out of date — run: npm run sync:sb3creator`);
     process.exit(1);
 }
+// Name the SHA, never the ref. "synced from sb3-creator@main" is the sentence
+// that was true and useless: it records the label, and the label is the part
+// that moves.
+const sourceSha = srcDir ? await localSha(srcDir) : remoteSha;
 console.log(check ? '\nvendored files up to date.'
-    : `\nsynced from sb3-creator@${REF}. Next: npm run integrate`);
+    : `\nsynced from ${REPO}@${sourceSha}${srcDir ? ` (local checkout ${srcDir})` : ` (resolved from ${REF})`}.`
+      + ' Next: npm run integrate');
 
 // Record the upstream commit this sync captured, so vendor-freshness CI
 // compares against the PIN, not a moving HEAD (bump = re-run this sync).
-if (!check && srcDir) {
+// Remote mode records too — it resolved a real sha above; leaving the pin
+// untouched is what made a remote sync lie about what it vendored.
+if (!check) {
     try {
-        const { execSync } = await import('node:child_process');
-        const pinSha = execSync(`git -C ${JSON.stringify(srcDir)} rev-parse HEAD`).toString().trim();
-        const pinsFile = path.join(here, '..', 'vendor-pins.json');
-        const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
-        pins['sb3-creator'] = pinSha;
-        await writeFile(pinsFile, JSON.stringify(pins, null, 1));
-        console.log(`  pinned sb3-creator@${pinSha.slice(0, 8)}`);
+        await recordPin('sb3-creator', sourceSha);
     } catch (e) { console.warn(`  (pin not recorded: ${e.message})`); }
 }

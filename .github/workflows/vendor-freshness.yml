@@ -22,20 +22,20 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: brickwright-lite
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/bw-circuit-ui
           path: bw-circuit-ui
           fetch-depth: 0
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/bw-board
           path: bw-board
           fetch-depth: 0
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/sb3-creator
           path: sb3-creator
@@ -51,7 +51,7 @@ jobs:
             sha=$(node -e "const p=require('./brickwright-lite/vendor-pins.json'); const v=p['$repo']||p[Object.keys(p).find(k=>k.includes('$repo'))]; console.log((typeof v==='string'?v:v.sha||v.commit||'').trim())")
             if [ -n "$sha" ]; then (cd "$repo" && git checkout -q "$sha" && echo "$repo pinned to $sha") || echo "$repo: pin $sha not found, staying on HEAD"; fi
           done
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
