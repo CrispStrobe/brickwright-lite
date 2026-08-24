@@ -74,4 +74,33 @@ test('native package versions stay aligned for the TestFlight train', async () =
         `docs/app-store-metadata.md has no English tester notes for ${config.version}`);
     assert.match(notes, new RegExp(`## What to Test — ${config.version.replace(/\./g, '\\.')} de-DE`),
         `docs/app-store-metadata.md has no German tester notes for ${config.version}`);
+
+    // ...and that someone SENDS them, and that what gets sent is the WHOLE
+    // section. The two assertions above prove the notes were WRITTEN, which is
+    // not the property anyone cares about: 0.1.7 and 0.1.8 both reached App
+    // Store Connect with `whatsNew` EMPTY in both locales while this file
+    // stayed green, because nothing in the repo transmitted them. A gate that
+    // can only see a value's source, never its destination, is green for the
+    // wrong reason.
+    const mobile = await readFile(new URL('../.github/workflows/mobile.yml', import.meta.url), 'utf8');
+    assert.match(mobile, /run: node scripts\/push-tester-notes\.mjs/,
+        'mobile.yml no longer runs scripts/push-tester-notes.mjs — the tester notes ' +
+        'would be written and never sent, which is how 0.1.7 shipped with none');
+
+    // Behavioural, not textual: the first version of this check banned the
+    // regex that truncated the notes and matched the COMMENT explaining it.
+    // So exercise the real slicer against the real file instead.
+    const {testerNotes} = await import('../scripts/push-tester-notes.mjs');
+    for (const locale of ['en-US', 'de-DE']) {
+        const body = testerNotes(notes, config.version, locale);
+        assert.ok(body, `the sender finds no ${locale} section for ${config.version}`);
+        // The truncation bug returned a single line of an otherwise fine file.
+        assert.ok(body.split('\n').length > 3,
+            `the sender returns ${body.split('\n').length} line(s) of ${locale} notes — ` +
+            'it is truncating the section again');
+        assert.ok(body.length <= 4000,
+            `${locale} notes are ${body.length} chars; App Store Connect caps whatsNew at 4000`);
+        assert.ok(!body.startsWith('## '),
+            'the slice starts at a heading — it is capturing the following section');
+    }
 });
