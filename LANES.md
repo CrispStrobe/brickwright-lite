@@ -45,21 +45,25 @@ case this file was written for.
 **5. If you push something that changes what another repo's gates load** — a
 pin, a vendored file, a shared fixture — say so in the same minute, in the row.
 
-**6. Before pushing a ledger edit, check the SHAPE of your commit, not just
-its diff.** On 2026-08-24 four LANES rows pushed from a sparse checkout wiped
-main's entire tree — the commits were correct-by-construction and wrong only in
-what they omitted, so "pull first" could not have caught it and the diffstat
-read as clean. Two commands catch it:
+**6. Before pushing a ledger edit, check the SHAPE of your tree, not just
+your diff.** On 2026-08-24 main's entire tree was wiped (84,148 files,
+12.6 M deletions) by a single LANES commit made from a one-file working
+copy — and the NEXT session then inherited the wipe by rebasing onto the
+wiped tip: its own commit read `1 file changed, 1 insertion(+)` and
+nothing looked wrong, because a rebase onto an empty tree silently makes
+your commit an edit OF that empty tree. So neither "pull first" nor
+reading your own diffstat catches this. One command does, at every point
+it passed through:
 
 ```bash
-git show --stat HEAD                        # a LANES edit is ONE file. More is wrong.
-git ls-tree -r --name-only HEAD | wc -l     # vs the parent: must not drop
+git ls-tree HEAD | wc -l     # a single entry means your tree is a DELETION, not an edit
 ```
 
-The second is the one that matters — a wipe still looks like a one-line edit if
-you only read the file's own diff, but the tree count falls off a cliff. Same
-failure species as a detector confidently reporting a number about the wrong
-thing: check the shape of what you are about to believe.
+Run it before pushing a ledger row, and ESPECIALLY after any rebase —
+rebasing onto a broken tip is how a wipe propagates to people whose
+checkouts were fine. Same failure species as a detector confidently
+reporting a number about the wrong thing: the diffstat was true, it was
+just about the wrong thing.
 
 ## CLAIMS — work in progress
 
