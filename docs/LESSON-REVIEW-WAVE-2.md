@@ -39,7 +39,7 @@ every run, and is mutation-proven: changing the ammeter's shunt from 10 Ω to
 | measurement-scope-probes-scale | 50-rc-scope | 1 | achievable, with one caveat below |
 | measurement-scope-timebase | 49-function-generator-sine | 1→**2** | minor — named three windows the scope does not offer |
 | measurement-scope-trigger | 49-function-generator-sine | 1 | achievable |
-| measurement-rc-cursors | 43-rc-timing | 1→**2** | **defect** — the step it measures happens once and cannot be repeated |
+| measurement-rc-cursors | 43-rc-timing | 1→2→**3** | **defect, BENCH FIXED 2026-08-25** — the step it measured happened once and could not be repeated |
 
 The Tier-3 detector scanned all ten and reported **nothing**. That is the
 expected result and worth stating: none of these five is a demand for a
@@ -292,11 +292,41 @@ one-shot with a reload as the workaround, pinned by an OPEN DEFECT test that
 fails if a control ever appears on that bench.
 
 **Resolved for real, 2026-08-25**: the bench change landed — sb3-creator
-`ac83352` adds `sw_discharge` + 1 kΩ from the capacitor to ground, exactly the
-charge switch this entry named. The sentinel fired on the vendor as designed;
-it now asserts the FIX (close = drain to the 10k/1k divider floor at 0.4545 V,
-reopen = the step runs again), and the hint teaches the switch instead of the
-reload.
+`ac83352` adds `sw_discharge` + 1 kΩ from the capacitor to ground. The sentinel
+fired on the vendor as designed; it now asserts the FIX (close = drain to the
+10k/1k divider floor at 0.4545 V, reopen = the step runs again), and the hint
+teaches the switch instead of the reload.
+
+**It is a DISCHARGE switch, not the charge switch this entry named**, and the
+difference is load-bearing rather than cosmetic. A charge switch open at rest
+makes the capacitor read 0 V in the first DC operating point — and `43-rc-timing`
+is the bench Wave 6 uses to demonstrate the engine reading the **supply** there
+(its D23 sentinel, still open, and `signals-rc-response`'s hint both rest on it).
+The obvious part would have stopped a live defect reproducing on the only bench
+that shows it, while repairing nothing. That is the failure `bw-circuit-ui`'s
+Class H already recorded once, where a fix relocated a defect past its own gate.
+
+**Version 3**, EN and DE, and the first restoration of the hint had to be
+corrected — which is this review's own defect class turning up inside the repair.
+The hint as first restored said the capacitor "falls to about 0.45 V in a tenth
+of a second". A tenth of a second is the discharge TIME CONSTANT —
+(1 kΩ ∥ 10 kΩ) × 100 µF = 90.9 ms — but the fall settles toward 0.4545 V rather
+than 0 V, so one time constant still leaves most of the charge behind:
+
+```
+100 ms of discharge   1.8847 V        400 ms   0.5073 V
+200 ms                0.9306 V        500 ms   0.4721 V
+300 ms                0.6130 V       1000 ms   0.4546 V
+```
+
+The claim was wrong by 1.4 V at the instant it named. Check C did not catch it,
+and could not: both quantities are individually producible on this bench — 0.45 V
+is the divider floor and 0.1 s is a real time constant — and the check compares
+quantities one at a time, not the sentence's claim that they belong together.
+Version 3 says to hold the switch closed for about half a second rather than a
+tenth, and to take τ from where the trace actually begins rather than from the
+bottom of the screen. The gate pins the correction directly, in both languages,
+because the same restoration left the German hint carrying the same number.
 
 ### 5. The ohmmeter is directional, by design
 

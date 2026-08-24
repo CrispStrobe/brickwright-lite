@@ -69,6 +69,46 @@ so every one of these sentences is still true and must not be "restored".
 | measurement-range-error | "its ×46.5 stage is where the next checkpoint finds a discrepancy" | D18 | yes |
 | interactive-extension-discovery | "the green flag runs no-ops" | D30, deliberate | yes |
 
+## A second collision, and what it cost
+
+`LANES.md` exists because two sessions did one repair twice. This lane collided
+again, differently, and the honest account is worth more than the tidy one.
+
+Pushing D10 left lite's CI **red**: `signals-bode-sweep`'s restored hint quoted
+`159.155 Hz`, and check C had no frequency dimension to match it in. A parallel
+session picked that red up and fixed it — `e51bda00a` — and did it better than
+this lane then did, deriving corner frequencies AND the adjacent decades so a
+lesson can still name its sweep endpoints, and adding a sentence-scoped
+instrument-context exclusion so "0.63 s of simulation" is allowed as a fact about
+the run budget rather than about the circuit. Four mutations, including one that
+proves what the exclusion costs. Their version is what is in the tree; mine was
+dropped in the rebase.
+
+Two things follow, and only one of them is comfortable.
+
+**The claim protocol worked and the push discipline did not.** The row in
+`LANES.md` was current and named this work, so nobody duplicated the lane. What
+went wrong is upstream of that: a red pushed to `main` is an open invitation for
+someone else to fix it, and they are right to. "Push at every checkpoint" and
+"push only green" are in tension, and the resolution is not to push less often —
+it is to run the gate that the change plausibly touches BEFORE the push rather
+than in the suite afterwards. Check C is the gate that reads lesson prose; a
+commit that rewrites lesson prose should run it first. It takes twenty minutes,
+which is exactly the reason it got deferred, and exactly why it should not have
+been.
+
+**And the parallel repair carried a defect of its own**, found by re-measuring it
+rather than by reading it: their restored `measurement-rc-cursors` hint said the
+capacitor "falls to about 0.45 V in a tenth of a second". A tenth of a second is
+the discharge time constant; the fall settles toward 0.45 V rather than 0 V, so
+one time constant leaves it at **1.8847 V** — wrong by 1.4 V at the instant it
+names. Check C cannot see it: both quantities are individually producible on that
+bench, and the check compares quantities, not the sentence's claim that they go
+together. Corrected here in both languages, with the correction pinned. That
+gap — a sentence whose parts each check out and whose whole does not — is the
+next thing check C is missing, and it is recorded here rather than fixed because
+fixing it means teaching the check to read sentences.
+
 ## Closing D11, and the fix that would have hidden a defect
 
 `PLAN.md` proposed a **charge switch** for `43-rc-timing`, and that would have

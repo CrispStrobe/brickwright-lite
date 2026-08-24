@@ -122,7 +122,7 @@ affected and nothing else.
 | bw-board | D4·D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D19, D33, D34 |
 | lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D33 |
 | bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D6 |
-| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D10, D35 |
+| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D10, D11, D35 |
 
 Rows appear under every owner that must change, so the columns oversum: D4, D6,
 D9 and D33 each need two repos and D5 needed three — the example file, the panel

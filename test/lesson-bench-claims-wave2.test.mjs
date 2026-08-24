@@ -37,6 +37,16 @@ const netId = (board, part, terminal) => {
 };
 const milliamps = (board, part, terminal) => board.branchCurrent(part, terminal) * 1000;
 
+// The wave's own copy, so a claim about a hint is read from the file the app
+// ships rather than restated here.
+const WAVE = JSON.parse(readFileSync(path.join(ROOT,
+    'overlay/scratch-gui/src/components/gui/lesson-waves/measurement-2.json'), 'utf8'));
+const lesson = id => {
+    const found = WAVE.lessons.find(l => l.id === id);
+    assert.ok(found, `${id} is no longer in measurement-2.json`);
+    return found;
+};
+
 // ── measurement-voltage → 73-voltmeter ──────────────────────────────────────
 test('measurement-voltage: the probe spans the full ADC range', async () => {
     const {board, circuit} = await load('73-voltmeter');
@@ -287,28 +297,79 @@ test('measurement-rc-cursors: tau is 1 s and 63.2% is 3.16 V, exactly as taught'
 });
 
 test('RESOLVED (was OPEN DEFECT): the discharge switch makes the RC step repeatable', async () => {
-    // The sentinel fired on 2026-08-25: sb3-creator ac83352 gave the bench
-    // the charge switch the review asked for (c1.a → switch → 1 kΩ → gnd).
-    // What it asserts now is the FIX: closing the switch drains the cap to
-    // the 10k/1k divider floor, reopening it runs the step AGAIN — the
-    // measurement the lesson teaches is finally repeatable in place.
+    // The sentinel fired on 2026-08-25: sb3-creator ac83352 gave the bench a
+    // switch. It is a DISCHARGE switch (c1.a -> switch -> 1 kΩ -> gnd), not the
+    // charge switch this review asked for, and the difference is load-bearing:
+    // a charge switch open at rest would make this bench read 0 V in its first
+    // DC operating point, and this is the bench Wave 6 uses to demonstrate the
+    // engine reading the SUPPLY there (its D23 sentinel, still open, and
+    // signals-rc-response's hint both depend on it). A bench change that stops
+    // a live defect reproducing on the only bench that shows it is not a fix.
     const {board, circuit} = await load('43-rc-timing');
     const controlIds = circuit.getControls().map(c => (typeof c === 'string' ? c : c.id));
     assert.deepEqual(controlIds, ['sw_discharge'],
-        'the bench carries exactly the discharge switch the wave-2 review asked for');
-    let t = 4000n * MS;
-    board.advanceTo(t);
-    const charged = volts(board, 'c1', 'a');
-    assert.ok(charged > 4.7, 'the capacitor is charged after 4 s');
-    board.setControl('sw_discharge', 1);
-    board.advanceTo(t += 1000n * MS);   // ~11 discharge time constants
-    near(volts(board, 'c1', 'a'), 5 * 1000 / 11000, 0.05,
-        'closed: the cap drains to the 10k/1k divider floor, 0.4545 V');
-    board.setControl('sw_discharge', 0);
-    board.advanceTo(t += 1000n * MS);   // one tau of recharge
-    const again = volts(board, 'c1', 'a');
-    assert.ok(again > 2.5 && again < 4.3,
-        `reopened: the step runs AGAIN (one tau in: ${again.toFixed(3)} V)`);
+        'the bench carries exactly one control, and it is the discharge switch');
+
+    // 1. The charge from t=0 is UNTOUCHED. An open switch stamps 1e-12 S, and
+    //    these are the same four landmarks the test above pins — asserted here
+    //    too, because "adding a branch changed nothing" is the claim that makes
+    //    this repair safe, and it is worth failing loudly if it stops holding.
+    let t = 0n;
+    const at = ms => { board.advanceTo(t = BigInt(ms) * MS); return volts(board, 'c1', 'a'); };
+    near(at(500), 1.9673, 0.001, '0.5 tau with the discharge branch present');
+    near(at(1000), 3.1606, 0.001, '1 tau');
+    near(at(2000), 4.3233, 0.001, '2 tau');
+    near(at(3000), 4.7511, 0.001, '3 tau');
+
+    // 2. Closing it drains toward the divider floor, not to zero: the charging
+    //    resistor stays connected, so the floor is 5 * 1k/11k with a time
+    //    constant of (1k || 10k) * 100 uF = 90.9 ms. A tenth of a second is
+    //    therefore NOT enough to clear the capacitor — measured 1.8847 V at
+    //    100 ms against 0.4721 V at 500 ms — which is why the restored hint
+    //    tells the learner to hold it closed for about half a second.
+    circuit.setControl('sw_discharge', 1);
+    const tClosed = t;
+    board.advanceTo(t = tClosed + 100n * MS);
+    const oneTau = volts(board, 'c1', 'a');
+    assert.ok(oneTau > 1.5,
+        `one discharge time constant leaves ${oneTau.toFixed(4)} V — still most of the charge`);
+    board.advanceTo(t = tClosed + 500n * MS);
+    const v0 = volts(board, 'c1', 'a');
+    near(v0, 5 * 1000 / 11000, 0.05,
+        'half a second closed: the cap is at the 10k/1k divider floor, 0.4545 V');
+
+    // 3. Reopening runs the step AGAIN, and the rise obeys the GENERAL form —
+    //    not the from-zero one. Getting that wrong is the trap the restored hint
+    //    warns about, so it is pinned to the millivolt rather than to a band.
+    circuit.setControl('sw_discharge', 0);
+    const t0 = t;
+    for (const secs of [0.5, 1, 2, 3]) {
+        board.advanceTo(t = t0 + BigInt(Math.round(secs * 1000)) * MS);
+        near(volts(board, 'c1', 'a'), 5 + ((v0 - 5) * Math.exp(-secs)), 0.002,
+            `recharge at ${secs} tau follows Vf+(V0-Vf)e^(-t/RC)`);
+    }
+});
+
+test('both RC lessons were restored when their bench was, in both languages', () => {
+    // The pairing this campaign keeps getting wrong in one direction or the
+    // other: a bench repaired while its lesson keeps the workaround, or an
+    // English hint restored beside a stale German one. Both are checked here.
+    const cursors = lesson('measurement-rc-cursors');
+    assert.equal(cursors.version, 3,
+        'the measurement-rc-cursors hint changed, so its content version must move with it');
+    const measure = cursors.checkpoints.find(c => c.id === 'measure').copy;
+    for (const [lang, stale, fresh] of [
+        ['en', /no switch|reload the example/, /discharge switch/],
+        ['de', /keinen Schalter|lade das Beispiel neu/, /Entlade-?[Ss]chalter/]]) {
+        assert.ok(!stale.test(measure[lang].hint),
+            `the ${lang} hint still tells the learner to reload; the bench has a control now`);
+        assert.match(measure[lang].hint, fresh, `the ${lang} hint names the control`);
+    }
+    // And the number that was wrong when the hint was first restored: the fall
+    // has a 0.1 s time constant but settles at 0.45 V rather than 0 V, so "it
+    // falls to about 0.45 V in a tenth of a second" was false by 1.4 V.
+    assert.ok(!/0\.45 V in a tenth of a second/.test(measure.en.hint),
+        'one discharge time constant leaves the capacitor at 1.88 V, not at the floor');
 });
 
 test('OPEN DEFECT: the ohmmeter answers differently depending on which probe is which', async () => {
