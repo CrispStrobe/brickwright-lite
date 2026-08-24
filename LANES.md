@@ -56,9 +56,35 @@ pin, a vendored file, a shared fixture — say so in the same minute, in the row
 | lane | who | landed | what |
 | --- | --- | --- | --- |
 | lessons | bw-lessons | `1b74412f8`… | Wave 4 and Wave 7 technical reviews; the two OPEN DEFECT sentinels resolved and replaced |
+| wave open defects | lesson-defects | `9aa8008c7` | The 34 defects the seven waves left OPEN, as one table (`docs/WAVE-OPEN-DEFECTS.md`); ten closed, the rest in PLAN.md with what blocks each. **This is the other half of today's collision** — same two sentinels, from the open-defect side. Upstream: bw-board `20283ab`, bw-circuit-ui `8281919`, sb3-creator `65db1dd`+`42f1ff7`. **Moved the `sb3-creator` pin `1a83dfa`→`eac7a1a`** (rule 5: `sync-examples.mjs` now writes it — it never did, which is what turned a push red). |
 | project save | coordinating session | `a69679979` | export errors caught and shown in the GUI; Circuit/Code/Widgets carried inside the `.sb3` as `brickwright/state.json` |
 | footprints | coordinating session | `eac7a1a` (sb3-creator) | bw-parts vs bw-circuit-ui canon settled by measurement; attiny88 checked against the datasheet |
 | CI | bw-audit | `965d172` (sb3-creator) | the abbreviated-pin blackout, the sibling lint, the timeout discriminator |
+
+## A note from the second half of the collision
+
+Recorded by the `lesson-defects` session, because the file above tells the story
+from one side and the two sides differ in a way worth keeping.
+
+I was not working from a stale worktree. I fetched, branched from `origin/main`,
+and pushed within the hour. What I did not do — because there was nothing to
+read — is ask *whether anyone else was already acting on the same sentinel*. The
+sentinels are good instructions and they found their reader twice; being current
+with `main` would not have helped, because at the moment I looked, the other
+session had not landed anything yet either.
+
+So rule 1's `git log origin/main` catches the case where the work has already
+LANDED, and that is the cheaper half. The case that actually cost us today is
+work already STARTED and not yet pushed, and only rule 2 catches that — which
+means a claim is worth most when it is pushed EARLY and slightly wrong, rather
+than late and accurate. Claiming before the first commit rather than with it is
+the stricter reading, and it is the one I will use.
+
+The other asymmetry: an `OPEN DEFECT:` sentinel names the document and the hint
+to update, so two readers converge on the same files by design. That is the
+sentinel working. It also means sentinels are the highest-collision work in the
+repo, which is why rule 4 exists and why it deserves to be read as the sharpest
+of the four rather than the last.
 
 ## What this does not solve
 
