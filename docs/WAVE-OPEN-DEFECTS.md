@@ -140,9 +140,22 @@ and the gate's own classifier reported `COMPUTING, not starved: … Compare
 against a quiet run before touching either number.`
 
 That is the gate working. Raising the ceiling to make it pass would destroy the
-only thing it does. The numbers in this campaign's revised lesson copy were
-verified by running it when the box was quiet, and the run under load is
-recorded here rather than in a raised constant.
+only thing it does.
+
+Two measurements settle what it could not settle for itself, and neither needed
+a quiet box:
+
+- **The claims it protects pass.** `checkLesson` run directly over the five
+  lessons this campaign revised examines thirteen quantities and matches all
+  thirteen — `10 Ω`, `10.000 Ω`, `9.804 mA`, `98.0 mV`, `4.950 mA`, `49.5 mV`,
+  `0.005 V`, `0.0 mA`, `0.696 V`, `0.201 V`, `5.83 mA`, `5.83 mA`, `0.43 mA`.
+  Nothing unmatched. What fails is the gate's coverage guard, not its subject.
+- **The overrun is the box, not this branch.** Running the same truncation probe
+  over all 51 lesson benches on lite `7ce24a619` and on this branch, back to
+  back under the same load, gives the SAME set both times:
+  `eater6502-full-build` and `ttl-clock-module`. Zero additional truncation from
+  these changes. That comparison is the right instrument precisely because it
+  does not need a quiet machine — both halves see the same one.
 
 The gate re-derives this table's lesson counts from the wave JSON rather than
 trusting the prose, so a lesson that stops naming a defective bench takes the
