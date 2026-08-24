@@ -94,7 +94,7 @@ you open.**
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
 | machines-logic-levels | 06-active-low-high | 2→**3** | **defect, fixed** — its measured 4.93 V holds only in push-pull; in the 8051's default mode the same pin reads 2.12 V |
-| machines-gates-registers | 20-shift-register-binary | 1→**2** | **defect, fixed** — the data line never changes level: the program's bit test is false even when the bit is set |
+| machines-gates-registers | 20-shift-register-binary | 1→2→**3** | defect, **example FIXED upstream 2026-08-24** (prefix bit test → infix); the compiler defect under it survives, in a different shape than reported |
 | machines-clocks | ttl-clock-module | 1→**2** | **defect ×2, fixed** — the step button is wired to nothing, and there is no downstream state to advance |
 | machines-buses | eater6502-bench | 1→**2** | **defect, fixed** — "single-step the clock" has no cycle-level step, and the scope is ten times too slow for the bus |
 | machines-memory-maps | eater6502-full-build | 1 | achievable |
@@ -130,7 +130,7 @@ gives the quasi-mode reading beside it, and makes the contrast the point —
 same bit, same Boolean meaning, different electrical level, which is the
 lesson's own objective.
 
-### 2. machines-gates-registers — the register is fed a constant zero
+### 2. machines-gates-registers — the register was fed a constant zero — FIXED 2026-08-24
 
 The `trace` checkpoint asks the learner to "correlate data, clock, latch,
 internal sequence, and final LEDs". Run through lite's own trace referee for
@@ -159,10 +159,49 @@ referee's evaluation of it was not isolated, and that is stated rather than
 guessed: the real device runs generated C, not the referee. What is certain is
 that lite's own execution model shifts zeros through this example.
 
-**Fixed**, version 2: the checkpoint now has the learner record that the data
-line never moves, explains that a stuck data line shows up as eight identical
-bits, and names the working form. Finding it becomes the exercise. The
-underlying fault is open and belongs upstream.
+**Fixed**, version 2 at the time: the checkpoint had the learner record that the
+data line never moves, explained that a stuck data line shows up as eight
+identical bits, and named the working form.
+
+**The example was repaired upstream on 2026-08-24**, by rewriting the bit test
+from the PREFIX form to the INFIX one — `IF (val bitand 128) > 0` where it was
+`IF bitand val 128 > 0`, and `set val to (val shiftleft 1) bitand 255` where it
+was `set val to bitand shiftleft val 1 255`. Re-measured over the same 3 s of
+program time:
+
+```
+              before        after
+clock          208           208
+latch           26            26
+data             0            32
+```
+
+All four signals move, so the correlation the checkpoint asks for is real.
+Version 3 drops the never-moves finding and quotes the three edge counts,
+adding the thing actually worth noticing: the data line changes only BETWEEN
+clock pulses, never during one, and that ordering is what makes the shift
+deterministic.
+
+**And the finding underneath it has a different shape than I reported.** I wrote
+that "it is not operator precedence — parentheses do not help — but the
+comparison of a bitops reporter against a number". The first half is right and
+the second is too broad. Measured across all six forms:
+
+```
+  bitand val 128 > 0      prefix, compared    no edge
+  (bitand val 128) > 0    prefix, compared    no edge     <- parentheses do not help
+  bitand val 128          prefix, bare        fires
+  val bitand 128 > 0      infix,  compared    fires
+  (val bitand 128) > 0    infix,  compared    fires       <- the form now shipped
+  (val bitand 128)        infix,  bare        no edge
+```
+
+The two forms have **complementary holes**: prefix works bare and fails
+compared; infix works compared and fails bare. "A bitops reporter compared
+against a number is false" would have predicted the fourth and fifth lines
+wrong. Whether the fault is the emitted comparison or the referee's evaluation
+is still not isolated — the real device runs generated C — so that stays
+recorded rather than claimed, and all six lines are now pinned by the gate.
 
 ### 3. machines-clocks — nothing downstream, and a step button that reaches nothing
 
@@ -318,11 +357,17 @@ All twenty accounted for.
 node --test test/lesson-bench-claims-wave7.test.mjs
 ```
 
-Six of its thirteen tests are named `OPEN DEFECT`. They fail the day the port
+Six of its thirteen tests were named `OPEN DEFECT`. They fail the day the port
 mode question is settled, the shift register's data line moves, the clock
 module's button is wired, a cycle step appears, an example ships a ROM, or
 `circuit-changed` learns to fire — each message naming the lesson hint to soften
 and this document to update.
+
+**Two fired on 2026-08-24** and were retired per their own instructions: the
+shift register's data line (the example was repaired upstream) and
+`circuit-changed` (fixed in bw-circuit-ui). Both were replaced by positive
+assertions, and the shift-register one carries the six-form probe above, so the
+compiler defect that survives cannot quietly change shape again.
 
 The gate is mutation-proven: changing the clock module's potentiometer from
 100 kΩ to 50 kΩ turns the oscillator test red, and reverting restores it.

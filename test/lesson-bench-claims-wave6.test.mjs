@@ -336,20 +336,27 @@ test('signals-resonance: the edit its checkpoint asks for now reaches the lesson
     const raw = circuitOf(lesson('signals-resonance').exampleId);
 
     const base = circuitSignature(raw.parts, raw.wires);
-    const swapped = structuredClone(raw);
-    const part = swapped.parts.find(p => p.params && typeof p.params.ohms === 'number') ||
-        swapped.parts.find(p => p.params && Object.keys(p.params).length);
-    assert.ok(part, 'the bench has no parameterised part to edit');
-    const key = Object.keys(part.params)[0];
-    part.params[key] = typeof part.params[key] === 'number' ? part.params[key] * 2 : 'changed';
-    assert.notEqual(circuitSignature(swapped.parts, swapped.wires), base,
-        'editing a part param must move the circuit signature, or this checkpoint goes back ' +
-        'to being completable only by its manual button');
 
-    if ((raw.wires || []).length) {
-        const cut = structuredClone(raw);
-        cut.wires = cut.wires.slice(0, -1);
-        assert.notEqual(circuitSignature(cut.parts, cut.wires), base, 'so must breaking a wire');
+    // A WIRING edit, which is what this checkpoint actually asks for — and on a
+    // 6502 bench it is the only edit there is: every part on it carries an empty
+    // `params`, so a param-based probe would assert nothing here. (It did, in the
+    // first draft of this test, and failed for the right reason.)
+    assert.ok((raw.wires || []).length, 'the bench has no wires to edit');
+    const cut = structuredClone(raw);
+    cut.wires = cut.wires.slice(0, -1);
+    assert.notEqual(circuitSignature(cut.parts, cut.wires), base,
+        'breaking a wire must move the circuit signature, or this checkpoint goes back to ' +
+        'being completable only by its manual button');
+
+    // A PARAM edit too, where the bench has one — the other half of what
+    // `starter-circuit-path`'s hint suggests.
+    const swapped = structuredClone(raw);
+    const part = swapped.parts.find(p => p.params && Object.keys(p.params).length);
+    if (part) {
+        const key = Object.keys(part.params)[0];
+        part.params[key] = typeof part.params[key] === 'number' ? part.params[key] * 2 : 'changed';
+        assert.notEqual(circuitSignature(swapped.parts, swapped.wires), base,
+            'editing a part param must move the signature too');
     }
 
     const tab = readFileSync(path.join(GUI, 'components/tw-pseudocode/circuit-tab.jsx'), 'utf8');

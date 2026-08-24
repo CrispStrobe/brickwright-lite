@@ -105,7 +105,18 @@ test('OPEN DEFECT: the active-high level the lesson quotes depends on the port m
 
 // ── machines-gates-registers / 20-shift-register-binary ────────────────────
 
-test('OPEN DEFECT: the shift register never receives a one — the data line never moves', () => {
+test('machines-gates-registers: all four signals move, and the prefix bitop form still does not', () => {
+    // Was an OPEN DEFECT: over 3 s of program time the example produced 208
+    // clock edges, 26 latch edges and ZERO data edges, so every byte shifted in
+    // was 0x00 and all eight LEDs stayed dark — while its lesson asks the
+    // learner to correlate all four signals.
+    //
+    // Fixed upstream 2026-08-24 by rewriting the bit test from the PREFIX form
+    // to the INFIX one: `IF (val bitand 128) > 0` where it was
+    // `IF bitand val 128 > 0`. The example is repaired and the lesson is
+    // version 3. The COMPILER defect underneath it is not, and the second half
+    // of this test pins what it actually is — which is not what Wave 7
+    // concluded.
     assert.equal(lesson('machines-gates-registers').exampleId, '20-shift-register-binary');
     const creator = new SB3Creator();
     creator.parse(readFileSync(path.join(EXAMPLES, '20-shift-register-binary/program.bw'), 'utf8'));
@@ -117,14 +128,23 @@ test('OPEN DEFECT: the shift register never receives a one — the data line nev
     for (const e of trace.events) byPin[e.pin] = (byPin[e.pin] || 0) + 1;
     assert.ok(byPin.clock > 100, `the clock line runs: ${byPin.clock} edges`);
     assert.ok(byPin.latch > 10, `the latch line runs: ${byPin.latch} edges`);
-    assert.equal(byPin.data, undefined,
-        'the data line now toggles — the lesson can correlate all four signals again, ' +
-        'so restore machines-gates-registers and delete this test');
+    assert.ok(byPin.data > 10,
+        `the data line must move, or the register is fed a constant zero again: ${byPin.data} edges`);
 
-    // Isolated: it is the COMPARISON that fails, not the bit test and not the
-    // argument binding. With val = 128, `bitand val 128` is true on its own and
-    // false the moment it is compared against a number — with or without
-    // parentheses.
+    // The two forms have COMPLEMENTARY holes, which is sharper than either
+    // "it is the comparison" (Wave 7's reading) or "it is precedence". Measured:
+    //
+    //   bitand val 128 > 0      prefix, compared   NO EDGE
+    //   (bitand val 128) > 0    prefix, compared   NO EDGE   <- parentheses do not help
+    //   bitand val 128          prefix, bare       fires
+    //   val bitand 128 > 0      infix,  compared   fires
+    //   (val bitand 128) > 0    infix,  compared   fires     <- the shipped form
+    //   (val bitand 128)        infix,  bare       NO EDGE
+    //
+    // So prefix works bare and fails compared; infix works compared and fails
+    // bare. Whether the fault is the emitted comparison or the referee's
+    // evaluation is STILL not isolated — the real device runs generated C —
+    // and that is why this is recorded rather than claimed.
     const probe = cond => {
         const c = new SB3Creator();
         c.parse(['DEVICE STC12C5A60S2', 'CLOCK 11059200', 'PIN data = P1.0 OUTPUT', '',
@@ -133,12 +153,18 @@ test('OPEN DEFECT: the shift register never receives a one — the data line nev
         return interpretTrace(c.project,
             {horizonMs: 400, stimulus: [], adc: {bits: 10, vref: 5}, maxSteps: 400_000}).events;
     };
-    assert.deepEqual(probe('bitand val 128 > 0'), [],
-        'the shipped form now fires — re-measure Wave 7 and restore the lesson');
-    assert.deepEqual(probe('(bitand val 128) > 0'), [],
-        'parentheses now fix it — the defect is a precedence one after all; re-measure');
-    assert.deepEqual(probe('bitand val 128').map(e => `${e.pin}=${e.level}`), ['data=1'],
-        'the bare bit test no longer works either — the finding has changed shape');
+    const fires = cond => probe(cond).length > 0;
+    assert.equal(fires('bitand val 128 > 0'), false,
+        'the prefix form now composes with a comparison — the compiler defect is fixed, ' +
+        'update docs/LESSON-REVIEW-WAVE-7.md and docs/WAVE-OPEN-DEFECTS.md D26');
+    assert.equal(fires('(bitand val 128) > 0'), false,
+        'parentheses now fix the prefix form — it was a precedence defect after all; re-measure');
+    assert.equal(fires('bitand val 128'), true, 'the bare prefix bit test must still work');
+    assert.equal(fires('(val bitand 128) > 0'), true,
+        'the INFIX form the example now ships must work, or the example regresses');
+    assert.equal(fires('(val bitand 128)'), false,
+        'the bare infix form now works — the two forms no longer have complementary holes, ' +
+        'which changes the shape of D26');
 });
 
 // ── machines-clocks / ttl-clock-module ─────────────────────────────────────
@@ -266,20 +292,27 @@ test('machines-contention: the edit its checkpoint asks for now reaches the less
     const raw = circuitOf(lesson('machines-contention').exampleId);
 
     const base = circuitSignature(raw.parts, raw.wires);
-    const swapped = structuredClone(raw);
-    const part = swapped.parts.find(p => p.params && typeof p.params.ohms === 'number') ||
-        swapped.parts.find(p => p.params && Object.keys(p.params).length);
-    assert.ok(part, 'the bench has no parameterised part to edit');
-    const key = Object.keys(part.params)[0];
-    part.params[key] = typeof part.params[key] === 'number' ? part.params[key] * 2 : 'changed';
-    assert.notEqual(circuitSignature(swapped.parts, swapped.wires), base,
-        'editing a part param must move the circuit signature, or this checkpoint goes back ' +
-        'to being completable only by its manual button');
 
-    if ((raw.wires || []).length) {
-        const cut = structuredClone(raw);
-        cut.wires = cut.wires.slice(0, -1);
-        assert.notEqual(circuitSignature(cut.parts, cut.wires), base, 'so must breaking a wire');
+    // A WIRING edit, which is what this checkpoint actually asks for — and on a
+    // 6502 bench it is the only edit there is: every part on it carries an empty
+    // `params`, so a param-based probe would assert nothing here. (It did, in the
+    // first draft of this test, and failed for the right reason.)
+    assert.ok((raw.wires || []).length, 'the bench has no wires to edit');
+    const cut = structuredClone(raw);
+    cut.wires = cut.wires.slice(0, -1);
+    assert.notEqual(circuitSignature(cut.parts, cut.wires), base,
+        'breaking a wire must move the circuit signature, or this checkpoint goes back to ' +
+        'being completable only by its manual button');
+
+    // A PARAM edit too, where the bench has one — the other half of what
+    // `starter-circuit-path`'s hint suggests.
+    const swapped = structuredClone(raw);
+    const part = swapped.parts.find(p => p.params && Object.keys(p.params).length);
+    if (part) {
+        const key = Object.keys(part.params)[0];
+        part.params[key] = typeof part.params[key] === 'number' ? part.params[key] * 2 : 'changed';
+        assert.notEqual(circuitSignature(swapped.parts, swapped.wires), base,
+            'editing a part param must move the signature too');
     }
 
     const tab = readFileSync(path.join(GUI, 'components/tw-pseudocode/circuit-tab.jsx'), 'utf8');
@@ -401,7 +434,7 @@ test('machines-interrupts-performance: the Z80 bench extracts, and its only bund
 test('the Wave 7 revisions are present, EN and DE, at the content version this review recorded', () => {
     assert.deepEqual(Object.fromEntries(WAVE.lessons.map(l => [l.id, l.version])), {
         'machines-logic-levels': 3,
-        'machines-gates-registers': 2,
+        'machines-gates-registers': 3,
         'machines-clocks': 2,
         'machines-buses': 2,
         'machines-memory-maps': 1,
@@ -418,7 +451,7 @@ test('the Wave 7 revisions are present, EN and DE, at the content version this r
         assert.match(copy.de[field], de, `${id}/${cp}: the German ${field} lost its Wave 7 revision`);
     };
     says('machines-logic-levels', 'measure', 'hint', /push-pull|quasi/i, /Push-Pull|quasi/i);
-    says('machines-gates-registers', 'trace', 'action', /data line|never/i, /Datenleitung|nie/i);
+    says('machines-gates-registers', 'trace', 'action', /correlate data, clock, latch/i, /ordne Daten, Takt, Latch/i);
     says('machines-clocks', 'measure', 'action', /no downstream|nothing downstream/i, /nichts.*nachgelagert|kein.*nachgelagert/i);
     says('machines-buses', 'trace', 'action', /instruction|per-cycle|cycle-level/i, /Befehl|Zyklus/i);
     says('machines-6502-execution', 'step', 'action', /load a program|preset/i, /Programm laden|Preset/i);
