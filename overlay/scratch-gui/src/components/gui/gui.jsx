@@ -307,8 +307,28 @@ const GUIComponent = props => {
         return () => window.removeEventListener('bw-controller-changed', onChanged);
     }, [props.vm, controllerPanel]);
 
-    // Resolve the board instance from the runtime (circuit-tab creates it)
-    const board = props.vm?.runtime?.stc?.board || null;
+    // Resolve the board instance from the runtime (circuit-tab creates it).
+    //
+    // THIS IS A PLAIN READ OF A MUTABLE RUNTIME FIELD, so React has no reason to
+    // re-render when the board appears. The Circuit tab creates it asynchronously
+    // when a circuit finishes loading; anything mounted before that — the Widgets
+    // tab's part picker in particular — captured `null` and kept it. That is why
+    // an OLED sitting on the board could not be selected under Binding > part:
+    // the picker calls `board.parts`, got nothing, and silently rendered an empty
+    // list (`_partIds()` swallows the throw).
+    //
+    // `bw-circuit-ready` already fires exactly once when the circuit finishes
+    // loading. Listening to it and bumping a counter is the whole fix: the read
+    // below re-runs and the picker fills.
+    const [boardEpoch, setBoardEpoch] = React.useState(0);
+    React.useEffect(() => {
+        const onReady = () => setBoardEpoch(n => n + 1);
+        window.addEventListener('bw-circuit-ready', onReady);
+        return () => window.removeEventListener('bw-circuit-ready', onReady);
+    }, []);
+    const board = React.useMemo(
+        () => props.vm?.runtime?.stc?.board || null,
+        [props.vm, boardEpoch]);
 
     const {
         accountNavOpen,
