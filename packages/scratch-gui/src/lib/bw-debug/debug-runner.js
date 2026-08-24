@@ -269,6 +269,13 @@ function netlistFromCircuitFile(data) {
 export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, onChange = () => {} }) {
     let session = null;
     let target = null;
+    /** capabilities() builds a fresh literal per call, and snapshot() runs on
+     *  every change event — consumers that guard their setState on capability
+     *  IDENTITY (circuit-tab's debugState stamp) then re-render at the event
+     *  rate, ~60 Hz during a live session. Capabilities are static per target
+     *  by design, so hand out one object per attached target. */
+    let capsFor = null;
+    let capsOf = null;
     let board = null;
     let symbols = null;
     /** `${task}/${state}` -> block id, joined from the two halves. */
@@ -330,7 +337,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             phase,
             message: status.message,
             session: sess,
-            capabilities: target ? target.capabilities() : null,
+            capabilities: target
+                ? (capsFor === target ? capsOf : (capsFor = target, capsOf = target.capabilities()))
+                : null,
             breakpoints: listBreakpoints(),
             /** Marked blocks the current build has no yield point for. */
             unreachableBreakpoints: listBreakpoints().filter((id) => yieldOf.size && !yieldOf.has(id)),
