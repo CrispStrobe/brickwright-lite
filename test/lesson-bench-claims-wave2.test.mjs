@@ -94,32 +94,35 @@ test('measurement-current-burden: Vshunt/I recovers the shunt at every load', as
     near(-milliamps(board, 'shunt1', 'a'), 5000 / 510, 0.01, 'I = 5 V / (500 + 10)');
 });
 
-test('OPEN DEFECT: 74-ammeter\'s LCD stays blank — char_lcd_i2c has no control handler', async () => {
-    // Narrower than first reported, and the narrowing matters. The original
-    // finding was "setDeviceControl is defined nowhere", true at 3e87340f5 and
-    // fixed by 6f8d11c5c. What is left is one device model: of the four display
-    // kinds this corpus uses, char_lcd_i2c is the ONLY one without a control()
-    // handler — and it is the kind 74-ammeter seats.
+test('measurement-current-burden: 74-ammeter\'s LCD renders what the program prints', async () => {
+    // Was an OPEN DEFECT, and the narrowing mattered. The original finding was
+    // "setDeviceControl is defined nowhere", true at 3e87340f5 and fixed by
+    // 6f8d11c5c. What was left was one device model: of the four display kinds
+    // this corpus uses, char_lcd_i2c was the ONLY one without a control()
+    // handler — and it is the kind 74-ammeter seats. Fixed at the source
+    // 2026-08-24 (bw-board 6df60a5); the lesson is version 3 and asks for the
+    // display again.
     const {getDevice} = await import(path.join(ROOT,
         'overlay/scratch-gui/src/lib/bw-board/devices.js'));
     const {board} = await load('74-ammeter');
     board.advanceTo(50n * MS);
     assert.equal(board.parts.find(p => p.id === 'lcd1').kind, 'char_lcd_i2c');
 
-    for (const kind of ['char_lcd', 'hd44780', 'ssd1306']) {
+    for (const kind of ['char_lcd', 'hd44780', 'ssd1306', 'char_lcd_i2c']) {
         assert.equal(typeof getDevice(kind)?.control, 'function',
-            `${kind} has lost its control handler`);
+            `${kind} has lost its control handler — a display kind without one is blank in ` +
+            'simulation with nothing to say why, which is what cost this lesson its screen');
     }
-    assert.notEqual(typeof getDevice('char_lcd_i2c')?.control, 'function',
-        'char_lcd_i2c now has a control handler — re-measure 74-ammeter, update ' +
-        'docs/LESSON-REVIEW-WAVE-2.md and the measurement-current-burden hint, ' +
-        'then delete this test.');
 
-    // and the consequence, executed rather than inferred
-    for (const [verb, value] of [['clear', 1], ['cursor', [0, 0]], ['print', 'I = 9.8 mA']]) {
-        assert.equal(board.setDeviceControl('lcd1', verb, value), false,
-            `the I2C LCD now accepts ${verb} — the lesson can read its display again`);
+    // Executed rather than inferred: the verbs the lesson's program issues.
+    for (const [verb, value] of [['clear', 1], ['cursor', [0, 0]], ['print', 'I = 9.80 mA'],
+        ['cursor', [1, 0]], ['print', 'Vsh 98.0 mV']]) {
+        assert.equal(board.setDeviceControl('lcd1', verb, value), true,
+            `the I2C LCD refused ${verb}`);
     }
+    assert.deepEqual(board.getDeviceState('lcd1').display,
+        ['I = 9.80 mA     ', 'Vsh 98.0 mV     '],
+        'the verb path must write the same display rows the I2C decode writes');
 });
 
 // ── measurement-resistance → 22-series-parallel ─────────────────────────────

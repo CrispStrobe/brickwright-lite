@@ -41,7 +41,8 @@ const UI = {
         progress: 'progress',
         resume: 'Resume',
         start: 'Start',
-        manualNote: 'Automatic checks are aids, not tests.'},
+        manualNote: 'Automatic checks are aids, not tests.',
+        benchReady: 'Bench ready — mark this step when you have the reading.'},
     de: {library: 'Lektionen',
         close: 'Lektionen schließen',
         back: 'Alle Lektionen',
@@ -64,7 +65,8 @@ const UI = {
         progress: 'Fortschritt',
         resume: 'Fortsetzen',
         start: 'Starten',
-        manualNote: 'Automatische Prüfungen sind Hilfen, keine Tests.'}
+        manualNote: 'Automatische Prüfungen sind Hilfen, keine Tests.',
+        benchReady: 'Aufbau bereit — hake diesen Schritt ab, wenn du die Messung hast.'}
 };
 
 const language = locale => (/^de/i.test(locale || '') ? 'de' : 'en');
@@ -97,6 +99,33 @@ const eventNames = {
     'hardware-state': 'bw-hardware-state'
 };
 
+/**
+ * Observables that mean the bench is READY, not that the learner has done
+ * anything on it.
+ *
+ * `bw-circuit-ready` fires exactly once, when the circuit finishes loading —
+ * which is after the learner presses Start and before they have measured
+ * anything at all. Twenty-eight lessons across four waves hang a MEASURING
+ * checkpoint on it ("take the reading at 0.5 tau", "compare the two traces",
+ * "verify the map"), and every one of them used to tick itself the moment the
+ * example opened. The progress bar filled in on load; nothing it recorded had
+ * happened.
+ *
+ * Wave 1's review found this and filed it as "a structural note that belongs
+ * to the whole catalog", and no wave counted it — so the largest defect in the
+ * campaign by lessons affected was on nobody's list
+ * (`docs/WAVE-OPEN-DEFECTS.md` D1).
+ *
+ * The fix is not to delete the observable: a learner genuinely wants to know
+ * the bench came up, and on a circuit lesson that is the one thing the app can
+ * honestly tell them. It ARMS the checkpoint instead — the step says the bench
+ * is ready and the "I did it" button stays the thing that completes it. The
+ * other four observables are unaffected, because pressing the green flag,
+ * editing the circuit, hitting a debug phase and connecting a hub are all
+ * things the LEARNER did.
+ */
+const ARMING_EVENTS = new Set(['circuit-ready']);
+
 const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}) => {
     const lang = language(locale);
     const text = UI[lang];
@@ -105,6 +134,10 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
     const [step, setStep] = React.useState(0);
     const [hint, setHint] = React.useState(false);
     const [projectStatus, setProjectStatus] = React.useState('');
+    // Checkpoints whose bench has come up. Session state, deliberately NOT
+    // persisted: "the bench is ready" is true of this sitting, not of the
+    // lesson.
+    const [armed, setArmed] = React.useState({});
     const [selectedVariant, setSelectedVariant] = React.useState('');
     const [query, setQuery] = React.useState('');
     const [depthFilter, setDepthFilter] = React.useState('');
@@ -113,6 +146,7 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
         setCompleted(lesson ? loadProgress(lesson) : {});
         setStep(0);
         setHint(false);
+        setArmed({});
         setProjectStatus('');
         setSelectedVariant(lesson && lesson.languages.length ? lesson.languages[0] : '');
     }, [lessonId]);
@@ -150,10 +184,12 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
             if (!checkpoint.observe || checkpoint.observe.event === 'starter-loaded') continue;
             const domName = eventNames[checkpoint.observe.event];
             if (!domName) continue;
+            const arming = ARMING_EVENTS.has(checkpoint.observe.event);
             const listener = event => {
-                if (matches(checkpoint.observe.match, event.detail || {})) {
-                    complete(checkpoint.id, 'observed');
-                }
+                if (!matches(checkpoint.observe.match, event.detail || {})) return;
+                if (arming) setArmed(previous => (previous[checkpoint.id] ?
+                    previous : {...previous, [checkpoint.id]: true}));
+                else complete(checkpoint.id, 'observed');
             };
             window.addEventListener(domName, listener);
             removers.push(() => window.removeEventListener(domName, listener));
@@ -329,6 +365,11 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
                     <h3>{checkpointCopy.action}</h3>
                     <p>{checkpointCopy.explain}</p>
                     {hint ? <div className={styles.hint}>{checkpointCopy.hint}</div> : null}
+                    {/* The bench is up. Said plainly, and NOT counted as the
+                        measurement — see ARMING_EVENTS above. */}
+                    {armed[checkpoint.id] && !completed[checkpoint.id] ?
+                        <div className={styles.armed} data-testid="bw-lesson-armed">{text.benchReady}</div> :
+                        null}
                     <button
                         className={styles.hintButton}
                         type="button"

@@ -404,7 +404,12 @@ test('every device kind the devices extension can drive accepts a control verb',
     // two; what certainly does not reach them is anything a model must interpret
     // — speed, direction, print, cursor. Not measured per verb, so the entry
     // claims only what was measured: no control() handler.
-    const KNOWN_NO_CONTROL = new Set(['char_lcd_i2c', 'dc_motor', 'gearmotor',
+    // char_lcd_i2c came off this list on 2026-08-24: it was the only DISPLAY kind
+    // in the corpus without a handler, so `74-ammeter`'s screen was blank in
+    // simulation with nothing to say why, and `measurement-current-burden` was
+    // rewritten around it (docs/LESSON-REVIEW-WAVE-2.md defect 1). Four left,
+    // all of them motion.
+    const KNOWN_NO_CONTROL = new Set(['dc_motor', 'gearmotor',
         'relay_dpdt', 'solenoid']);
 
     const registered = new Set(registeredKinds());

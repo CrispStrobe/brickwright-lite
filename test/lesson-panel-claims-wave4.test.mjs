@@ -173,43 +173,51 @@ test('interactive-two-way-binding: the whole loop runs — button to variable to
     }
 });
 
-test('OPEN DEFECT: a widget cannot be re-bound from the app, and renaming one changes nothing', async () => {
-    // interactive-two-way-binding v1 said "rename or rebind one widget and
-    // retest". Neither half does what it promises, so v2 asks for the
-    // remove-and-re-add instead — which is a real, observable ownership change.
+test('interactive-two-way-binding: re-binding a widget is reachable, and rename still is not', async () => {
+    // Was an OPEN DEFECT: `bindToVariable`, `bindToPart` and `bindToPin` were
+    // called from nowhere in the GUI, so the only reachable configuration
+    // change was remove-and-re-add, which silently converted a variable
+    // binding into a program binding. Fixed 2026-08-24 — the inspector has a
+    // Binding section. The lesson is version 3 and re-binding is its action.
     const uiFiles = [
         readFileSync(path.join(GUI, 'components/tw-pseudocode/controller-panel-view.jsx'), 'utf8'),
         readFileSync(path.join(GUI, 'components/gui/gui.jsx'), 'utf8')
     ].join('\n');
-    assert.ok(!/\bbindToVariable\s*\(/.test(uiFiles) && !/\bbindToPart\s*\(/.test(uiFiles) &&
-              !/\bbindToPin\s*\(/.test(uiFiles),
-        'the panel UI can now re-bind a widget. Restore "rebind" to the ' +
-        'interactive-two-way-binding test checkpoint and delete this test.');
+    for (const call of ['bindToVariable', 'bindToPart', 'bindToPin', 'unbind']) {
+        assert.match(uiFiles, new RegExp(`panel\\.${call}\\(`),
+            `the panel UI stopped calling ${call} — interactive-two-way-binding's action ` +
+            'is to re-bind a widget, and would become impossible again');
+    }
 
     const f = await faceplate('mb05-faceplate-matrix');
     try {
+        // Rename is still a no-op by design, and version 3 teaches that as the
+        // CONTRAST to re-binding, so it must stay true.
         f.panel.renameWidget('a', 'buttonA');
         assert.deepEqual(f.panel.getWidget('buttonA').binding, {target: 'variable', variableName: 'btnA'},
-            'renaming a widget leaves its binding untouched — the retest sees no change');
+            'renaming a widget must still leave its binding untouched');
         f.step();
         f.panel.setButtonInput('buttonA', true);
         f.step();
         assert.equal(Number(f.val('screen')), 18157905, 'the renamed widget still drives the program');
 
-        // What the app's own "+ Add Widget" does: panel.addWidget then
-        // panel.bindToProgram (controller-panel-view.jsx `_addWidget`). A
-        // re-added widget is therefore PROGRAM-bound, not variable-bound.
+        // Re-binding through the model the inspector now calls: point it
+        // somewhere else, and the loop stops.
         f.panel.setButtonInput('buttonA', false);
         f.step();
-        f.panel.removeWidget('buttonA');
-        const re = f.panel.addWidget('buttonA', 'button');
-        f.panel.bindToProgram('buttonA');
-        assert.deepEqual(re.binding, {target: 'program'},
-            'a re-added widget binds to the program, not to the variable it used to write');
+        f.panel.bindToVariable('buttonA', 'somethingElse');
         f.panel.setButtonInput('buttonA', true);
         f.step();
-        assert.equal(Number(f.val('screen')), 1,
-            'and so the loop stays broken: the matrix falls back to one dot');
+        assert.equal(Number(f.val('screen')), 1, 're-binding away from btnA breaks the loop');
+
+        // And back: the arrow is repairable from the app, which is the whole
+        // point of the checkpoint.
+        f.panel.setButtonInput('buttonA', false);
+        f.step();
+        f.panel.bindToVariable('buttonA', 'btnA');
+        f.panel.setButtonInput('buttonA', true);
+        f.step();
+        assert.equal(Number(f.val('screen')), 18157905, 're-binding back must restore the loop');
     } finally {
         f.done();
     }
@@ -283,44 +291,30 @@ test('interactive-input-controls: every control retro-console ships has a readab
     }
 });
 
-test('OPEN DEFECT: no toggle control exists on this bench and the panel UI cannot make one', () => {
-    // interactive-input-controls v1 asked the learner to predict "toggle twice"
-    // on retro-console. The model implements toggle buttons; nothing reachable
-    // from the app creates one.
-    const shipped = JSON.parse(readFileSync(path.join(EX, 'retro-console/controller.json'), 'utf8'));
-    const toggles = shipped.widgets.filter(w => w.type === 'button' && w.config && w.config.toggle);
-    assert.deepEqual(toggles, [], 'retro-console now ships a toggle button — restore the ' +
-        'toggle half of interactive-input-controls and delete this test');
-
-    const panel = new ControllerPanel();
-    const added = panel.addWidget('btn1', 'button');
-    assert.equal(added.config.toggle, false,
-        '"+ Add Widget" still creates a momentary button (controller-panel-view.jsx `_addWidget` ' +
-        'passes no config)');
-
-    // And the inspector edits no functional config: only name, label, colour,
-    // x/y/w/h/rotation, the style flags, and the text/image decoration configs.
+test('interactive-input-controls: a toggle contract is reachable from the panel UI', () => {
+    // Was an OPEN DEFECT: the widget inspector edited `color`, `fontSize`,
+    // `src` and `text` and nothing else, so a button's `toggle` was reachable
+    // only by hand-editing controller.json. Fixed 2026-08-24 — the inspector
+    // has a Config section, and version 3 of the lesson asks for the toggle
+    // prediction on THIS console instead of sending the learner elsewhere.
     const view = readFileSync(path.join(GUI, 'components/tw-pseudocode/controller-panel-view.jsx'), 'utf8');
-    const configEditors = [...view.matchAll(/onConfig\(\{\s*([A-Za-z]+)/g)].map(m => m[1]);
-    assert.deepEqual([...new Set(configEditors)].sort(), ['color', 'fontSize', 'src', 'text'],
-        'the widget inspector grew a config editor. If it can now set `toggle`, restore the ' +
-        'toggle half of interactive-input-controls and delete this test.');
+    assert.match(view, /button: \[\{ key: 'toggle', kind: 'bool'/,
+        "the inspector lost its `toggle` field — interactive-input-controls asks the learner " +
+        'to make a toggle button on retro-console');
+    assert.match(view, /data-testid=\{'bw-ctl-insp-cfg-' \+ f\.key\}/,
+        'the config fields are no longer rendered');
 
-    // The toggle behaviour itself is real — which is what makes this an app gap
-    // rather than a missing feature.
-    const toggled = panel.addWidget('btn2', 'button', {toggle: true});
-    panel.setButtonInput('btn2', true);
-    panel.setButtonInput('btn2', false);
-    assert.equal(toggled.state.pressed, true, 'a toggle button latches on press and ignores release');
-    panel.setButtonInput('btn2', true);
-    assert.equal(toggled.state.pressed, false, 'and the second press releases it');
-
-    // Two shipped examples DO carry one, which is where v2 sends the learner.
-    for (const id of ['wedo2-faceplate', 'boost-faceplate']) {
-        const data = JSON.parse(readFileSync(path.join(EX, `${id}/controller.json`), 'utf8'));
-        assert.ok(data.widgets.some(w => w.type === 'button' && w.config && w.config.toggle),
-            `${id} no longer ships a toggle button — interactive-input-controls sends the learner there`);
-    }
+    // The behaviour the field reaches, driven through the model.
+    const panel = new ControllerPanel();
+    assert.equal(panel.addWidget('btn1', 'button').config.toggle, false,
+        '"+ Add Widget" still creates a momentary button, which is why the field matters');
+    panel.setWidgetConfig('btn1', {toggle: true});
+    panel.setButtonInput('btn1', true);
+    panel.setButtonInput('btn1', false);
+    assert.equal(panel.getWidget('btn1').state.pressed, true,
+        'a toggled button latches on press and ignores release');
+    panel.setButtonInput('btn1', true);
+    assert.equal(panel.getWidget('btn1').state.pressed, false, 'the second press releases it');
 });
 
 // ── interactive-displays + interactive-dashboard / lego-hub-face ───────────
@@ -389,32 +383,30 @@ test('interactive-displays: what the shipped run actually puts on each face', as
     }
 });
 
-// The OPEN DEFECT sentinel for "faceplates open with dead controls" is GONE,
-// on its own instructions. Four shipped layouts — a2-faceplate-calculator,
-// lego-hub-face, mb05-faceplate-calc and retro-console — declared no
-// `"mode": "play"`, and since the importer only calls setMode when the file says
-// so and ControllerPanel defaults to 'edit', every input control on them
-// rendered `disabled`. A learner opened the example and nothing responded.
-//
-// Fixed upstream in sb3-creator and vendored in 2026-08-24. Re-measured here:
-// EVERY shipped controller layout now declares a mode, so the sentinel's list
-// went to empty and it fired as designed. The guard that replaces it is below —
-// it states the property rather than the defect, so it keeps working as layouts
-// are added.
+test('every faceplate with an operable control opens in play mode', () => {
+    // Was an OPEN DEFECT: four of the eleven shipped layouts declared no mode
+    // and ControllerPanel defaults to `edit`, where every input control renders
+    // disabled — including `retro-console` and `lego-hub-face`, the benches for
+    // three Wave 4 lessons. Fixed 2026-08-24 in three places, because the
+    // example file alone would have been undone by the first save.
+    const INPUTS = new Set(['button', 'slider', 'joystick', 'dpad', 'dial', 'keypad', 'keyboard']);
+    const dead = [];
+    for (const e of [...index.values()].filter(x => x.files && x.files.controller)) {
+        const data = JSON.parse(readFileSync(path.join(EX, e.files.controller), 'utf8'));
+        if (!(data.widgets || []).some(w => INPUTS.has(w.type))) continue;
+        if (data.mode !== 'play') dead.push(e.id);
+    }
+    assert.deepEqual(dead, [], 'these faceplates open with dead controls: ' + dead.join(', '));
 
-test('every shipped controller layout declares a mode, so no example opens dead', () => {
-    const withController = [...index.values()].filter(e => e.files && e.files.controller);
-    assert.ok(withController.length >= 10,
-        `only ${withController.length} controller layouts found — the walk is broken ` +
-        'and an empty result would mean nothing');
-    const missing = withController
-        .filter(e => !JSON.parse(readFileSync(path.join(EX, e.files.controller), 'utf8')).mode)
-        .map(e => e.id)
-        .sort();
-    assert.deepEqual(missing, [],
-        'a controller layout ships without "mode" — ControllerPanel defaults to ' +
-        "'edit', where every input control renders disabled, so this example opens " +
-        'with controls a learner cannot use');
+    // And the mode survives the round trip the host actually makes.
+    const panel = new ControllerPanel();
+    panel.addWidget('go', 'button');
+    panel.setMode('play');
+    assert.equal(ControllerPanel.fromJSON(panel.toJSON()).mode, 'play',
+        'the panel model dropped the mode again — the example fix is lost on the first save');
+    assert.match(readFileSync(path.join(GUI, 'components/gui/gui.jsx'), 'utf8'),
+        /controllerPanel\.setMode\(restored\.mode\)/,
+        "gui.jsx's PROJECT_LOADED restore no longer applies the mode");
 });
 
 // ── interactive-extension-discovery + interactive-sensor-capability ────────
@@ -438,24 +430,35 @@ test('OPEN DEFECT: the micro:bit blocks are no-ops in the VM, and this extension
     assert.match(readFileSync(path.join(VM_EXT, 'spikeprime/index.js'), 'utf8'), /showStatusButton: true/);
 });
 
-test('OPEN DEFECT: the micro:bit simulator models its sensors, and lite never varies them', () => {
+test('the micro:bit simulator models its sensors, and lite can now vary them', () => {
+    // Was an OPEN DEFECT: the simulator declared each sensor with its range,
+    // default and unit and accepted `{kind:'set_value', id, value}`, and the
+    // string `set_value` appeared nowhere in lite — so the temperature was
+    // 21 °C and the light level 127 for ever. Fixed 2026-08-24.
     const sim = readFileSync(
         path.join(GUI, '../static/microbit-sim/build/simulator.js'), 'utf8');
-    // The vendored simulator declares each sensor with its range, default and unit...
     assert.match(sim, /new RangeSensor\("temperature", -5, 50, 21, "\\xB0C"\)/,
         'the simulator temperature sensor changed — re-measure Wave 4');
     assert.match(sim, /new RangeSensor\("lightLevel", 0, 255, 127/,
         'the simulator light sensor changed — re-measure Wave 4');
-    assert.match(sim, /case "temperature":/, 'the simulator still accepts set_value for a sensor');
 
-    // ...and nothing in lite ever sends one.
     const pane = readFileSync(path.join(GUI, 'components/tw-pseudocode/microbit-sim-pane.jsx'), 'utf8');
-    const sent = [...pane.matchAll(/postMessage\(\{kind:\s*'([a-z_]+)'/g)].map(m => m[1]);
-    assert.deepEqual([...new Set(sent)].sort(), ['flash', 'reset', 'serial_input', 'stop'],
-        'the micro:bit sim pane now posts a different message set. If it posts set_value, the ' +
-        'learner can vary a simulated sensor — soften interactive-sensor-capability and delete this test.');
-    assert.ok(!/set_value/.test(readFileSync(path.join(GUI, 'components/gui/gui.jsx'), 'utf8')),
-        'something else in the GUI now sends set_value — re-measure Wave 4');
+    const sent = new Set([...pane.matchAll(/postMessage\(\{kind: '([a-z_]+)'/g)].map(m => m[1]));
+    assert.ok(sent.has('set_value'),
+        'the sim pane stopped posting set_value — interactive-sensor-capability asks the ' +
+        'learner to move each sensor through its declared range');
+
+    // Every id the strip offers must be one the simulator's own switch handles,
+    // or the write is silently dropped.
+    const offered = [...pane.match(/const SENSOR_IDS = \[([\s\S]*?)\]/)[1]
+        .matchAll(/'([A-Za-z]+)'/g)].map(m => m[1]);
+    for (const id of offered) {
+        assert.ok(sim.includes(`case "${id}":`),
+            `the pane offers a control for ${id}, which the simulator cannot set`);
+    }
+    for (const id of ['temperature', 'lightLevel', 'soundLevel', 'gesture']) {
+        assert.ok(offered.includes(id), `${id} is no longer offered a control`);
+    }
 });
 
 // ── interactive-lego-recovery / spike01-obstacle-avoid ─────────────────────
@@ -572,11 +575,11 @@ test('the Wave 4 revisions are present, EN and DE, at the content version this r
     const versions = Object.fromEntries(wave.lessons.map(l => [l.id, l.version]));
     assert.deepEqual(versions, {
         'interactive-extension-discovery': 3,
-        'interactive-sensor-capability': 2,
+        'interactive-sensor-capability': 3,
         'interactive-lego-recovery': 2,
-        'interactive-input-controls': 2,
+        'interactive-input-controls': 3,
         'interactive-displays': 2,
-        'interactive-two-way-binding': 2,
+        'interactive-two-way-binding': 3,
         'interactive-dashboard': 1,
         'interactive-calibration-control': 2
     }, 'a Wave 4 lesson changed content version — update docs/LESSON-REVIEW-WAVE-4.md with it');
@@ -587,11 +590,11 @@ test('the Wave 4 revisions are present, EN and DE, at the content version this r
         assert.match(copy.de[field], de, `${id}/${cp}: the German ${field} lost its Wave 4 revision`);
     };
     says('interactive-extension-discovery', 'inspect', 'hint', /Run on Simulator/, /Im Simulator/);
-    says('interactive-sensor-capability', 'observe', 'hint', /cannot be varied|frozen/i, /nicht ver(ä|ae)ndern|fest/i);
+    says('interactive-sensor-capability', 'observe', 'hint', /Sensors strip/, /Sensorleiste/);
     says('interactive-lego-recovery', 'recover', 'hint', /Scratch Link/, /Scratch Link/);
-    says('interactive-input-controls', 'predict', 'action', /wedo2-faceplate|boost-faceplate/, /wedo2-faceplate|boost-faceplate/);
+    says('interactive-input-controls', 'predict', 'action', /toggle.*inspector|inspector.*toggle/i, /Inspektor/);
     says('interactive-displays', 'observe', 'action', /beyond|outside/i, /au(ß|ss)erhalb/i);
-    says('interactive-two-way-binding', 'test', 'action', /remove/i, /entfern/i);
+    says('interactive-two-way-binding', 'test', 'action', /re-bind/i, /binde .*neu|neu — /i);
     says('interactive-calibration-control', 'predict', 'hint', /no filter|has none/i, /kein(en)? Filter/i);
     says('interactive-calibration-control', 'test', 'action', /sensorValue.*outputValue/, /sensorValue.*outputValue/);
     says('interactive-calibration-control', 'test', 'hint', /no plausibility check/i, /Plausibilit(ä|ae)tspr(ü|ue)fung fehlt/i);

@@ -17,5 +17,22 @@ Reviewed on 2026-08-21:
 - `z80-pd-bench-circuit.svg` — retro-machine stress case; packages remain
   separated and bounded, with labelled buses at a readable fit scale.
 
+Regenerated 2026-08-24, after vendoring bw-circuit-ui `a5fbe12` ("Five nets
+drawn as one wire, and an MCU drawn with no power"). Three of the four moved;
+`z80-pd-bench` did not. What changed, and why it is an improvement rather than a
+drift:
+
+- the `pi_pico` symbol now draws `gnd_1` and `vbus` alongside `gp25`, so an MCU
+  is no longer drawn with no power — which is half of what that commit's title
+  names;
+- nets that were being collapsed into one drawn wire are now separate, and the
+  three GND connections render as labelled stubs instead of long routes across
+  the sheet.
+
+The evidence that this is intended rather than incidental is that the same
+upstream commit reviewed and regenerated bw-circuit-ui's OWN baselines for the
+same reason; these are the downstream half of that review, not a fresh
+judgement made here.
+
 Run `node --test test/schematic-visual-baselines.test.mjs` after an intentional
 layout change. Review regenerated SVG/PNG output before updating these files.

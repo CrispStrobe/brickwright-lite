@@ -33,7 +33,7 @@ list, which predates them:
 | --- | --- | --- |
 | `project-run` / `project-stop` | `containers/controls.jsx` | a program is loaded |
 | `circuit-ready` | `tw-pseudocode/circuit-tab.jsx` (`handleCircuitReady`) | a circuit is loaded |
-| `circuit-changed` | `tw-pseudocode/circuit-tab.jsx` (`handleDeclarationChange`) | the derived **pin declarations** move |
+| `circuit-changed` | `tw-pseudocode/circuit-tab.jsx` (`handleCircuitEdit`, since 2026-08-24; `handleDeclarationChange` before it) | the circuit's **structural signature** moves — a part id, kind or param, or a wire endpoint |
 | `debug-phase` | `tw-pseudocode/circuit-tab.jsx` (`handleRunnerChange`) | a debug session |
 | `hardware-state` | `components/gui/gui.jsx` | a real peripheral connects |
 | `starter-loaded` | `guided-lessons.jsx` itself | the lesson opened from a starter journey |
@@ -129,7 +129,7 @@ for a lesson opened from the first-run chooser. The three journeys are
 among them, so the observable could never fire. The dead `observe` was removed —
 the checkpoint is an inspection, and its manual affordance is the honest one.
 
-### Real, open, and all the same cause (3)
+### Real, all the same cause (3) — CLOSED 2026-08-24
 
 `starter-circuit-path/change`, `signals-resonance/sweep`,
 `machines-contention/repair` all observe `circuit-changed` on a bench with no
@@ -148,13 +148,27 @@ delete the LED entirely           {"pins":[],"ports":[],"parts":[]}    no
 The first two are exactly the edits `starter-circuit-path`'s hint suggests. Be
 clear about severity: the learner is **not** misled and **not** blocked, only
 unaided — the manual affordance still completes the checkpoint. That is why the
-observables are left in place rather than deleted. The lessons' intent is right;
+observables were left in place rather than deleted. The lessons' intent is right;
 the app should emit `bw-circuit-changed` when the circuit changes, not only when
-the derived pin declarations do. The fix belongs in `CircuitDesigner`, which is
-vendored from `bw-circuit-ui` and would be reverted by the next
-`npm run sync:circuitui`. All three are on the ratchet in
-`test/lesson-defect-detector.test.mjs`, which fails when they stop reproducing,
-so the fix cannot leave this document behind.
+the derived pin declarations do.
+
+**Fixed 2026-08-24, exactly where this entry said it belonged.** `CircuitDesigner`
+gained an `onCircuitEdit` callback fired from a STRUCTURAL signature of the
+circuit — part ids, kinds and params, plus wire endpoints — and `circuit-tab.jsx`
+dispatches `bw-circuit-changed` from that instead. Position is deliberately
+excluded: dragging a part changes the drawing, not the circuit, and a host that
+treated it as an edit would fire on every pointermove. The new producer strictly
+subsumes the old one, since declarations derive from the same parts and wires.
+
+Two things about the shape of it are worth keeping. The fix went **upstream**
+into `bw-circuit-ui` rather than into the vendored copy, which is what this entry
+warned about — a local edit would have been reverted by the next
+`npm run sync:circuitui`. And the DETECTOR moved with it: it now compares the
+same `circuitSignature` the designer compares, imported rather than re-derived,
+so the scanner and the app cannot disagree about what counts as an edit. All
+three checkpoints heal, and `KNOWN_UNACHIEVABLE` in
+`test/lesson-defect-detector.test.mjs` is now **empty** — which is what a ratchet
+is for.
 
 ### False positives, and what each taught
 
@@ -214,7 +228,8 @@ overlap. Both are needed.
 - **Which side to fix.** Every finding says a lesson and a bench disagree. It
   never says which is wrong: `signals-rc-response` was fixed in the lesson,
   `machines-logic-levels` could equally have been repointed at a bench with a
-  button, and the `circuit-changed` three are app bugs.
+  button, and the `circuit-changed` three were app bugs — and were fixed in the app,
+  which is the outcome this line was arguing for.
 - **A checkpoint with no `observe` clause**, under Check A. Ninety-nine of the
   180 have none, by design — "explain it in your own words" has no observable —
   so they are reachable only through Checks B and C.

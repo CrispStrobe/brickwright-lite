@@ -1,5 +1,5 @@
 import React from 'react';
-import { ControllerPanel, WIDGET_TYPES } from '../../lib/bw-board/controller.js';
+import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from '../../lib/bw-board/controller.js';
 import { bindPanelToBoard } from '../../lib/bw-board/controller-binding.js';
 
 const L10N = {
@@ -14,6 +14,11 @@ const L10N = {
         namePlaceholder: 'name',
         noWidgets: 'No widgets yet. Click "+ Add Widget" to begin.',
         x: 'X', y: 'Y',
+        config: 'Config', binding: 'Binding', bindTo: 'target',
+        bind_program: 'Program only', bind_variable: 'Variable', bind_part: 'Board part',
+        bind_pin: 'Pin', bind_none: 'Unbound',
+        variable: 'name', part: 'part', param: 'param', pin: 'pin',
+        toggleHint: 'latches on press',
     },
     de: {
         title: 'Controller',
@@ -26,10 +31,122 @@ const L10N = {
         namePlaceholder: 'Name',
         noWidgets: 'Noch keine Widgets. Klicke auf „+ Widget hinzufügen".',
         x: 'X', y: 'Y',
+        config: 'Konfiguration', binding: 'Bindung', bindTo: 'Ziel',
+        bind_program: 'Nur Programm', bind_variable: 'Variable', bind_part: 'Bauteil',
+        bind_pin: 'Pin', bind_none: 'Ungebunden',
+        variable: 'Name', part: 'Bauteil', param: 'Parameter', pin: 'Pin',
+        toggleHint: 'rastet beim Drücken ein',
     }
 };
 const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' : 'en'; } catch { return 'en'; } };
 const t = key => (L10N[pickLocale()] || L10N.en)[key] || L10N.en[key] || key;
+
+// ─── Functional widget config ─────────────────────────────────────────────
+//
+// What the inspector can EDIT about a widget, beyond its placement and its
+// decoration. Until this table existed the inspector's only `onConfig` calls
+// were `color`, `fontSize`, `src` and `text` — the two decoration widgets —
+// so a button's `toggle`, a slider's `min`/`max`/`step`, a gauge's range and
+// a matrix's `rows`/`cols` were reachable only by hand-editing
+// `controller.json`. The behaviour behind every one of them was implemented
+// and correct; it was simply unreachable, which is what broke
+// `interactive-input-controls` (docs/LESSON-REVIEW-WAVE-4.md defect 4).
+//
+// Keys named here are CONFIG (the template). A widget's live reading lives in
+// `state` and is not editable from the inspector — a gauge shows what the
+// program writes, and a slider whose value the inspector could overwrite
+// would fight the learner's thumb.
+//
+// `test/controller-inspector-config.test.mjs` checks this table against
+// `WIDGET_DEFAULTS`, so a widget type that grows a config key and does not
+// grow an editor here fails rather than quietly becoming JSON-only.
+const CONFIG_FIELDS = {
+    button: [{ key: 'toggle', kind: 'bool', label: 'toggle' }],
+    slider: [
+        { key: 'min', kind: 'num', label: 'min' },
+        { key: 'max', kind: 'num', label: 'max' },
+        { key: 'step', kind: 'num', label: 'step', min: 0 },
+    ],
+    dial: [
+        { key: 'min', kind: 'num', label: 'min' },
+        { key: 'max', kind: 'num', label: 'max' },
+    ],
+    gauge: [
+        { key: 'min', kind: 'num', label: 'min' },
+        { key: 'max', kind: 'num', label: 'max' },
+        { key: 'label', kind: 'text', label: 'units' },
+    ],
+    bargraph: [
+        { key: 'min', kind: 'num', label: 'min' },
+        { key: 'max', kind: 'num', label: 'max' },
+        { key: 'segments', kind: 'num', label: 'segs', min: 1 },
+        { key: 'label', kind: 'text', label: 'units' },
+    ],
+    // rows*cols must stay <= 32: the matrix's whole state is one row-major
+    // bitmask, so a bigger face would lose bits to int coercion.
+    matrix: [
+        { key: 'rows', kind: 'num', label: 'rows', min: 1, max: 32 },
+        { key: 'cols', kind: 'num', label: 'cols', min: 1, max: 32 },
+    ],
+    keypad: [
+        { key: 'rows', kind: 'num', label: 'rows', min: 1 },
+        { key: 'cols', kind: 'num', label: 'cols', min: 1 },
+    ],
+    lcd: [
+        { key: 'rows', kind: 'num', label: 'rows', min: 1 },
+        { key: 'cols', kind: 'num', label: 'cols', min: 1 },
+    ],
+    oled: [
+        { key: 'rows', kind: 'num', label: 'rows', min: 1 },
+        { key: 'cols', kind: 'num', label: 'cols', min: 1 },
+    ],
+    terminal: [
+        { key: 'rows', kind: 'num', label: 'rows', min: 1 },
+        { key: 'cols', kind: 'num', label: 'cols', min: 1 },
+    ],
+    sevenseg: [{ key: 'digits', kind: 'num', label: 'digits', min: 1, max: 12 }],
+    simplevga: [
+        { key: 'width', kind: 'num', label: 'width', min: 1 },
+        { key: 'height', kind: 'num', label: 'height', min: 1 },
+    ],
+    mono_lcd: [
+        { key: 'width', kind: 'num', label: 'width', min: 1 },
+        { key: 'height', kind: 'num', label: 'height', min: 1 },
+    ],
+    rgb_light: [{ key: 'mode', kind: 'choice', label: 'mode', choices: ['rgb', 'legoColor'] }],
+    text: [
+        { key: 'text', kind: 'text', label: 'text' },
+        { key: 'fontSize', kind: 'num', label: 'size', min: 1 },
+        { key: 'color', kind: 'color', label: 'colour' },
+    ],
+    image: [{ key: 'alt', kind: 'text', label: 'alt' }],
+};
+
+// Config keys with no field in the table above, and why. Named explicitly so
+// the coverage gate can tell "not editable on purpose" from "nobody wrote an
+// editor" — which is the distinction that let the whole functional half go
+// missing unnoticed.
+//
+//   value/pressed/x/y/up/down/left/right/lastKey/buffer — a widget's LIVE
+//     READING, not its template. A gauge shows what the program writes; a
+//     slider the inspector could overwrite would fight the learner's thumb.
+//   text — a display's contents, written by its binding. (The `text`
+//     DECORATION's own text IS editable; it has a field above.)
+//   src — the image widget's picture, edited by the Library/Upload buttons
+//     rather than by a text field.
+//   labels — a keypad's custom key captions, an array with no sane inline
+//     editor; still settable from controller.json.
+const NON_FIELD_CONFIG_KEYS = new Set([
+    'value', 'pressed', 'text', 'x', 'y', 'up', 'down', 'left', 'right',
+    'lastKey', 'buffer', 'labels', 'src',
+]);
+
+/** Binding targets the panel model implements, in the order the UI offers them. */
+const BIND_TARGETS = ['program', 'variable', 'part', 'pin', 'none'];
+
+// Presentation-only widgets: neither input nor display, so nothing binds them.
+// Mirrors DECORATION_TYPES in the panel model; the coverage gate checks it.
+const DECORATION_NAMES = new Set(['text', 'image']);
 
 // ─── Joystick widget ─────────────────────────────────────────────────────
 
@@ -388,6 +505,46 @@ function OledWidget({ widget }) {
     );
 }
 
+/**
+ * TERMINAL face: an OLED-like text display whose bound variable is a GROWING
+ * transcript, so it shows the LAST `rows` lines rather than the first.
+ *
+ * `makeTextRows` above is head-anchored and correct for an LCD or OLED, where
+ * the variable holds exactly what the screen should show. A terminal's
+ * variable is appended to for as long as the program runs — `6502-terminal`'s
+ * `serial_out` grows with every echoed keystroke — so head-anchoring would
+ * freeze the face on the first screenful and never show the prompt the
+ * learner just typed at. Long lines wrap rather than truncate, for the same
+ * reason: the end of a line is exactly the part being read.
+ */
+function makeTerminalRows(text, rows, cols) {
+    const wrapped = [];
+    for (const line of String(text || '').split('\n')) {
+        if (line.length <= cols) { wrapped.push(line); continue; }
+        for (let i = 0; i < line.length; i += cols) wrapped.push(line.slice(i, i + cols));
+    }
+    const out = wrapped.slice(-rows);
+    while (out.length < rows) out.push('');
+    return out.map(l => l.padEnd(cols, ' '));
+}
+
+function TerminalWidget({ widget }) {
+    const cols = (widget.config.cols | 0) || 40;
+    const rows = (widget.config.rows | 0) || 8;
+    const shown = makeTerminalRows(widget.state.text, rows, cols);
+    return (
+        <div data-testid={`bw-ctl-terminal-${widget.name}`} data-shown={shown.join('|')}
+            style={{
+                padding: 8, background: '#0b1020', borderRadius: 6,
+                fontFamily: 'ui-monospace,SFMono-Regular,Menlo,monospace',
+                fontSize: 12, lineHeight: '15px',
+                color: '#a7f3d0', whiteSpace: 'pre', letterSpacing: 0.5,
+            }}>
+            {shown.join('\n')}
+        </div>
+    );
+}
+
 // ─── Positioned widget (the layout editor's canvas item) ──────────────────
 // Applies layout.{x,y,w,h,rotation}; in EDIT mode adds drag-to-move (grid
 // snapped by the host), a corner resize handle and a rotate handle (15deg
@@ -520,7 +677,8 @@ function PositionedWidget({ widget, mode, selected, snap, onSelect, onLayout, ch
 // the widget object), label, colour, numeric layout entry, and the
 // decoration configs (text content / image source).
 
-function WidgetInspector({ widget, onRename, onLayout, onConfig, onOpenLibrary }) {
+function WidgetInspector({ widget, onRename, onLayout, onConfig, onBind, onOpenLibrary,
+    variableNames = [], partIds = [] }) {
     const L = widget.layout || {};
     const [name, setName] = React.useState(widget.name);
     React.useEffect(() => { setName(widget.name); }, [widget.name]);
@@ -606,24 +764,132 @@ function WidgetInspector({ widget, onRename, onLayout, onConfig, onOpenLibrary }
                     </label>
                 ))}
             </div>
-            {widget.type === 'text' && (
-                <React.Fragment>
-                    <div style={row}>
-                        <span style={lbl}>text</span>
-                        <input value={widget.config.text} data-testid="bw-ctl-insp-text" style={inp}
-                            onChange={e => onConfig({ text: e.target.value })} />
+            {/* Functional config: what the widget IS, as against where it
+                sits and how it is painted. A button's toggle contract, a
+                slider's range, a matrix's shape. */}
+            {(CONFIG_FIELDS[widget.type] || []).length > 0 && (
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 6, marginTop: 2 }}
+                    data-testid="bw-ctl-insp-config">
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
+                        {t('config')}
+                    </div>
+                    {CONFIG_FIELDS[widget.type].map(f => (
+                        <div key={f.key} style={row}>
+                            <span style={lbl}>{f.label}</span>
+                            {f.kind === 'bool' && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 6,
+                                    fontSize: 12, cursor: 'pointer', flex: 1 }}>
+                                    <input type="checkbox" checked={!!widget.config[f.key]}
+                                        data-testid={'bw-ctl-insp-cfg-' + f.key}
+                                        onChange={e => onConfig({ [f.key]: e.target.checked })} />
+                                    {f.key === 'toggle' ? t('toggleHint') : ''}
+                                </label>
+                            )}
+                            {f.kind === 'num' && (
+                                <input type="number" value={widget.config[f.key] ?? ''}
+                                    min={f.min} max={f.max}
+                                    data-testid={'bw-ctl-insp-cfg-' + f.key}
+                                    onChange={e => {
+                                        const n = Number(e.target.value);
+                                        if (e.target.value === '' || !Number.isFinite(n)) return;
+                                        // Clamp to the model's own limits rather than
+                                        // letting a typo through: a matrix wider than
+                                        // 32 cells loses bits to int coercion, and a
+                                        // zero-row display renders nothing at all.
+                                        const lo = f.min ?? -Infinity;
+                                        const hi = f.max ?? Infinity;
+                                        onConfig({ [f.key]: Math.max(lo, Math.min(hi, n)) });
+                                    }}
+                                    style={{ ...inp, width: 70, flex: 'none' }} />
+                            )}
+                            {f.kind === 'text' && (
+                                <input value={widget.config[f.key] ?? ''} style={inp}
+                                    data-testid={'bw-ctl-insp-cfg-' + f.key}
+                                    onChange={e => onConfig({ [f.key]: e.target.value })} />
+                            )}
+                            {f.kind === 'color' && (
+                                <input type="color" value={widget.config[f.key] || '#334155'}
+                                    data-testid={'bw-ctl-insp-cfg-' + f.key}
+                                    onChange={e => onConfig({ [f.key]: e.target.value })}
+                                    style={{ width: 40, height: 24, padding: 0,
+                                        border: '1px solid #cbd5e1', borderRadius: 4 }} />
+                            )}
+                            {f.kind === 'choice' && (
+                                <select value={widget.config[f.key] ?? f.choices[0]} style={inp}
+                                    data-testid={'bw-ctl-insp-cfg-' + f.key}
+                                    onChange={e => onConfig({ [f.key]: e.target.value })}>
+                                    {f.choices.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+            {/* Binding: WHO this widget talks to. The panel model has had
+                bindToVariable / bindToPart / bindToPin since it was written
+                and the GUI called none of them — the only binding call in the
+                app was bindToProgram, inside "+ Add Widget". So removing a
+                widget and adding it back silently converted a variable
+                binding into a program binding, and only reloading the example
+                put it back (docs/LESSON-REVIEW-WAVE-4.md defect 6). */}
+            {!DECORATION_NAMES.has(widget.type) && (
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 6, marginTop: 2 }}
+                    data-testid="bw-ctl-insp-binding">
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>
+                        {t('binding')}
                     </div>
                     <div style={row}>
-                        <span style={lbl}>size</span>
-                        <input type="number" value={widget.config.fontSize} data-testid="bw-ctl-insp-fontsize"
-                            onChange={e => onConfig({ fontSize: Number(e.target.value) || 16 })}
-                            style={{ ...inp, width: 54, flex: 'none' }} />
-                        <input type="color" value={widget.config.color || '#334155'}
-                            data-testid="bw-ctl-insp-textcolor"
-                            onChange={e => onConfig({ color: e.target.value })}
-                            style={{ width: 40, height: 24, padding: 0, border: '1px solid #cbd5e1', borderRadius: 4 }} />
+                        <span style={lbl}>{t('bindTo')}</span>
+                        <select value={widget.binding ? widget.binding.target : 'none'} style={inp}
+                            data-testid="bw-ctl-insp-bind-target"
+                            onChange={e => onBind(e.target.value, '')}>
+                            {BIND_TARGETS.map(target => (
+                                <option key={target} value={target}>{t('bind_' + target)}</option>
+                            ))}
+                        </select>
                     </div>
-                </React.Fragment>
+                    {widget.binding && widget.binding.target === 'variable' && (
+                        <div style={row}>
+                            <span style={lbl}>{t('variable')}</span>
+                            <input list="bw-ctl-varlist" style={inp}
+                                value={widget.binding.variableName || ''}
+                                data-testid="bw-ctl-insp-bind-variable"
+                                onChange={e => onBind('variable', e.target.value)} />
+                            <datalist id="bw-ctl-varlist">
+                                {variableNames.map(n => <option key={n} value={n} />)}
+                            </datalist>
+                        </div>
+                    )}
+                    {widget.binding && widget.binding.target === 'part' && (
+                        <React.Fragment>
+                            <div style={row}>
+                                <span style={lbl}>{t('part')}</span>
+                                <select value={widget.binding.partId || ''} style={inp}
+                                    data-testid="bw-ctl-insp-bind-part"
+                                    onChange={e => onBind('part', e.target.value, widget.binding.param)}>
+                                    <option value="">—</option>
+                                    {partIds.map(id => <option key={id} value={id}>{id}</option>)}
+                                </select>
+                            </div>
+                            <div style={row}>
+                                <span style={lbl}>{t('param')}</span>
+                                <input value={widget.binding.param || ''} style={inp}
+                                    placeholder="x / y"
+                                    data-testid="bw-ctl-insp-bind-param"
+                                    onChange={e => onBind('part', widget.binding.partId || '', e.target.value)} />
+                            </div>
+                        </React.Fragment>
+                    )}
+                    {widget.binding && widget.binding.target === 'pin' && (
+                        <div style={row}>
+                            <span style={lbl}>{t('pin')}</span>
+                            <input value={widget.binding.pinName || ''} style={inp}
+                                placeholder="P1.0 / D9"
+                                data-testid="bw-ctl-insp-bind-pin"
+                                onChange={e => onBind('pin', e.target.value)} />
+                        </div>
+                    )}
+                </div>
             )}
             {widget.type === 'image' && (
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -719,7 +985,8 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
         dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg',
-        keypad: 'Keypad', lcd: 'LCD', oled: 'OLED', text: 'Text', image: 'Image',
+        keypad: 'Keypad', lcd: 'LCD', oled: 'OLED', terminal: 'Terminal',
+        text: 'Text', image: 'Image',
         keyboard: 'Keyboard', bargraph: 'Bar Graph', simplevga: 'VGA',
         mono_lcd: 'Mono LCD', rgb_light: 'RGB Light',
     };
@@ -855,6 +1122,10 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
 
             {widget.type === 'lcd' && (
                 <LcdWidget widget={widget} />
+            )}
+
+            {widget.type === 'terminal' && (
+                <TerminalWidget widget={widget} />
             )}
 
             {widget.type === 'oled' && (
@@ -1117,6 +1388,61 @@ class ControllerPanelView extends React.Component {
         this._persist();
     }
 
+    /**
+     * Re-bind a widget. The one thing the app could not do.
+     *
+     * `bindToVariable`, `bindToPart` and `bindToPin` have existed on the panel
+     * model since it was written and were called from nowhere in the GUI; the
+     * only binding call the app made was `bindToProgram`, inside `_addWidget`.
+     * So "remove a widget and add it back" silently turned a variable binding
+     * into a program binding, and nothing short of reloading the example put it
+     * back (docs/LESSON-REVIEW-WAVE-4.md defect 6).
+     *
+     * `value` is the identifier the chosen target needs — a variable name, a
+     * part id, a pin name — and is allowed to be empty while the learner is
+     * still typing it. An empty identifier is stored rather than refused,
+     * because refusing it would make the field impossible to clear.
+     */
+    _bind(name, target, value, param) {
+        const panel = this._getPanel();
+        if (!name || !panel.getWidget(name)) return;
+        switch (target) {
+        case 'variable': panel.bindToVariable(name, String(value ?? '')); break;
+        case 'part': panel.bindToPart(name, String(value ?? ''), param || null); break;
+        case 'pin': panel.bindToPin(name, String(value ?? '')); break;
+        case 'program': panel.bindToProgram(name); break;
+        default: panel.unbind(name); break;
+        }
+        // A display bound to a new variable must show that variable's value,
+        // not the last one's: the pump only writes on CHANGE, so without this
+        // the face keeps the stale reading until the new variable happens to
+        // move. The board binding is rebuilt for the same reason.
+        if (panel.mode === 'play' && this.props.board) this._bindToBoard(panel);
+        this._persist();
+    }
+
+    /** Stage variable names, for the binding field's suggestions. */
+    _variableNames() {
+        try {
+            const stage = this.props.vm.runtime.getTargetForStage();
+            return Object.values(stage.variables || {})
+                .filter(v => v.type !== 'list')
+                .map(v => v.name)
+                .sort();
+        } catch {
+            return [];
+        }
+    }
+
+    /** Board part ids, for the part binding's picker. */
+    _partIds() {
+        try {
+            return (this.props.board.parts || []).map(p => p.id).sort();
+        } catch {
+            return [];
+        }
+    }
+
     _rename(oldName, newName) {
         try {
             this._getPanel().renameWidget(oldName, newName);
@@ -1300,6 +1626,10 @@ class ControllerPanelView extends React.Component {
                             onRename={n => this._rename(this.state.selected, n)}
                             onLayout={patch => this._layout(this.state.selected, patch, true)}
                             onConfig={patch => this._config(this.state.selected, patch)}
+                            onBind={(target, value, param) =>
+                                this._bind(this.state.selected, target, value, param)}
+                            variableNames={this._variableNames()}
+                            partIds={this._partIds()}
                             onOpenLibrary={() => this.setState({ libraryOpen: true })}
                         />
                     )}

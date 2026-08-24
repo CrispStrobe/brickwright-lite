@@ -32,7 +32,7 @@ every run, and is mutation-proven: changing the ammeter's shunt from 10 Ω to
 | --- | --- | --- | --- |
 | measurement-continuity | 76-multimeter | 1 | achievable |
 | measurement-voltage | 73-voltmeter | 1→**2** | defect at `3e87340f5`, **resolved upstream** by `802fc1050`; copy restored |
-| measurement-current-burden | 74-ammeter | 1→**2** | **defect, still open** — narrower than first reported: one display model lacks a handler |
+| measurement-current-burden | 74-ammeter | 1→2→**3** | defect, **FIXED 2026-08-24** — `char_lcd_i2c` gained the `control()` handler it was the only display kind to lack; copy restored |
 | measurement-resistance | 22-series-parallel | 1→**2** | **defect** — the parallel-resistor formula has nothing to apply to |
 | measurement-range-error | 76-multimeter | 1→**2** | **defect** — the amps gain is 31–39, not the documented 46.45 |
 | measurement-function-generator | 49-function-generator-sine | 1 | achievable (was not, before the `freq` fix) |
@@ -76,7 +76,7 @@ the dispatcher against the lesson's own bench, not by looking symbols up:
 change is therefore **reverted**: the lesson asks for its three-way comparison
 again, with the 200 ms refresh caveat it always had.
 
-**`74-ammeter` — still blank, and the reason is one device model.** My original
+**`74-ammeter` — was blank, and the reason was one device model. Fixed 2026-08-24.** My original
 report said the whole actuator surface was inert because `setDeviceControl` was
 defined nowhere. That was true of `3e87340f5` and is false now. What survives is
 much narrower, and I would not have found it without re-measuring:
@@ -118,9 +118,41 @@ The benches themselves were always fine, and that remains the frustrating part:
 ```
 
 **Fixed** in copy, EN and DE. `measurement-voltage` is back to the three-way
-comparison. `measurement-current-burden` has the learner measure the shunt
+comparison. `measurement-current-burden` had the learner measure the shunt
 voltage and work the current back out of it — the better exercise anyway — and
-now names the real reason its screen is blank rather than the one since fixed.
+named the real reason its screen was blank rather than the one since fixed.
+
+**Then fixed at the source, 2026-08-24** (bw-board `6df60a5`, vendored here).
+`char_lcd_i2c` now has a `control()` handler that writes the same `display` rows
+and `cursor` the I2C decode writes, so the bus path stays authoritative for
+MCU-driven benches and the two cannot disagree. Re-measured through
+`board.setDeviceControl` on the lesson's own bench:
+
+```
+74-ammeter, part lcd1, kind char_lcd_i2c
+  clear                -> true
+  cursor [0,0]         -> true
+  print "I = 9.80 mA"  -> true
+  cursor [1,0]         -> true
+  print "Vsh 98.0 mV"  -> true
+  display state: ["I = 9.80 mA     ", "Vsh 98.0 mV     "]
+```
+
+The lesson is version 3: the shunt-voltage exercise stays (it is the better one),
+the disclosure about a blank screen is gone, and the hint now quotes the two load
+endpoints and asks the learner to cross-check the LCD against the circuit
+multimeter — two instruments agreeing being the point of the step.
+
+**Check C pushed back on the first draft of that hint**, and was right. I quoted
+the 25/50/75 % load points from the measurements above — 6.579, 9.804 and
+19.231 mA — and the gate refused two of the three, because its prober visits each
+control at 0 and 1 only, so the intermediate potentiometer settings are not in the
+pool it compares against. The numbers are real; they are not numbers *this gate*
+can confirm, and a hint quoting a number no gate holds is exactly the thing this
+campaign keeps finding. The copy quotes the two endpoints instead — 9.804 mA at
+98.0 mV and 4.950 mA at 49.5 mV, both in the pool — and states the formula, which
+is the teaching point anyway. That is Check C's third correct objection in this
+wave and its first outside the original review.
 
 **How this nearly went wrong**, because the shape is worth more than the finding.
 The original defect was reported to me by bw-bundle and I confirmed it
@@ -384,5 +416,8 @@ the op-amp reaches its gain, `43-rc-timing` grows a switch, or the ohmmeter stop
 being directional — and each failure message names the document and the lesson
 hint to update.
 
-Two of them already have. The OLED pair fired within hours of being written,
-which is the only reason this document is right.
+Three of them already have. The OLED pair fired within hours of being written,
+which is the only reason this document is right, and the `char_lcd_i2c` sentinel
+fired on 2026-08-24 when the handler landed. All three were retired per their own
+instructions; the repairs are held by `test/wave-open-defects.test.mjs` here and
+by bw-board's gate of the same name.

@@ -27,7 +27,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
-import {boot, load, terminalVolts, EXAMPLES, fmt} from '../scripts/lesson-bench.mjs';
+import {boot, load, terminalVolts, EXAMPLES, circuitPathFor, fmt} from '../scripts/lesson-bench.mjs';
 
 const REPO = path.resolve(import.meta.dirname, '..');
 const GUI = path.join(REPO, 'overlay/scratch-gui/src');
@@ -35,6 +35,9 @@ const CUI = path.join(GUI, 'lib/bw-circuit-ui');
 const BWB = path.join(GUI, 'lib/bw-board');
 const WAVE = JSON.parse(readFileSync(
     path.join(GUI, 'components/gui/lesson-waves/signals-6.json'), 'utf8'));
+
+const circuitOf = id => JSON.parse(
+    readFileSync(path.join(EXAMPLES, circuitPathFor(id)), 'utf8'));
 
 const MS = 1000n * 1000n;
 const US = 1000n;
@@ -318,17 +321,48 @@ test('OPEN DEFECT: as shipped the resonance bench is overdamped and has no peak 
     assert.ok(peak.magDb > 0, 'a resonant peak rises above the passband');
 });
 
-test('OPEN DEFECT: signals-resonance observes an event this bench cannot fire', () => {
-    // Same app defect Wave 1 recorded for starter-circuit-path: `circuit-changed`
-    // maps to `bw-circuit-changed`, which circuit-tab.jsx dispatches only when the
-    // derived PIN DECLARATIONS change. pc52 has no MCU, so they never do.
+test('signals-resonance: the edit its checkpoint asks for now reaches the lesson', async () => {
+    // Was an OPEN DEFECT, and the third of three: `bw-circuit-changed` was
+    // dispatched only when the derived PIN DECLARATIONS moved, and this bench
+    // has no MCU, so no wiring edit could raise it. Wave 1 found it on
+    // starter-circuit-path, Wave 6 on signals-resonance, Wave 7 on
+    // machines-contention — one defect, three discoveries.
+    //
+    // Fixed 2026-08-24: CircuitDesigner fires `onCircuitEdit` from a STRUCTURAL
+    // signature of the circuit, and circuit-tab.jsx dispatches the DOM event
+    // from there.
     assert.deepEqual(checkpoint('signals-resonance', 'sweep').observe, {event: 'circuit-changed'});
+    const {circuitSignature} = await import(path.join(CUI, 'model/circuit-signature.js'));
+    const raw = circuitOf(lesson('signals-resonance').exampleId);
+
+    const base = circuitSignature(raw.parts, raw.wires);
+
+    // A WIRING edit, which is what this checkpoint actually asks for — and on a
+    // 6502 bench it is the only edit there is: every part on it carries an empty
+    // `params`, so a param-based probe would assert nothing here. (It did, in the
+    // first draft of this test, and failed for the right reason.)
+    assert.ok((raw.wires || []).length, 'the bench has no wires to edit');
+    const cut = structuredClone(raw);
+    cut.wires = cut.wires.slice(0, -1);
+    assert.notEqual(circuitSignature(cut.parts, cut.wires), base,
+        'breaking a wire must move the circuit signature, or this checkpoint goes back to ' +
+        'being completable only by its manual button');
+
+    // A PARAM edit too, where the bench has one — the other half of what
+    // `starter-circuit-path`'s hint suggests.
+    const swapped = structuredClone(raw);
+    const part = swapped.parts.find(p => p.params && Object.keys(p.params).length);
+    if (part) {
+        const key = Object.keys(part.params)[0];
+        part.params[key] = typeof part.params[key] === 'number' ? part.params[key] * 2 : 'changed';
+        assert.notEqual(circuitSignature(swapped.parts, swapped.wires), base,
+            'editing a part param must move the signature too');
+    }
+
     const tab = readFileSync(path.join(GUI, 'components/tw-pseudocode/circuit-tab.jsx'), 'utf8');
-    assert.match(tab, /bw-circuit-changed/);
-    const designer = readFileSync(path.join(CUI, 'components/CircuitDesigner.jsx'), 'utf8');
-    assert.match(designer, /circuitToDeclarations/,
-        'CircuitDesigner no longer derives declarations to decide whether to notify — ' +
-        're-measure and update docs/LESSON-REVIEW-WAVE-6.md');
+    assert.match(tab, /onCircuitEdit=\{this\.handleCircuitEdit\}/,
+        'circuit-tab.jsx no longer subscribes to onCircuitEdit — re-measure and update ' +
+        'docs/LESSON-REVIEW-WAVE-6.md');
 });
 
 // ── signals-loading / pc54-opamp-follower ──────────────────────────────────

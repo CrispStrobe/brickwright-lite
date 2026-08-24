@@ -5763,6 +5763,16 @@ function FileMenu(_ref19) {
             downloadText(text, 'circuit-for-easyeda.net');
             break;
           }
+        case 'easyeda-native':
+          {
+            const {
+              toEasyEdaSchematic
+            } = yield Promise.resolve(/*! import() */).then(__webpack_require__.bind(__webpack_require__, /*! ../model/exporters/easyeda-schematic.js */ "./src/lib/bw-circuit-ui/model/exporters/easyeda-schematic.js"));
+            const out = toEasyEdaSchematic(circuit);
+            if (out.report.skipped.length) console.warn('EasyEDA export omissions:', out.report.skipped);
+            downloadText(out.text, 'circuit.easyeda.json');
+            break;
+          }
       }
       if (onDone) onDone();
     });
@@ -14736,8 +14746,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _model_exporters_spice_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../model/exporters/spice.js */ "./src/lib/bw-circuit-ui/model/exporters/spice.js");
 /* harmony import */ var _model_exporters_kicad_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../model/exporters/kicad.js */ "./src/lib/bw-circuit-ui/model/exporters/kicad.js");
 /* harmony import */ var _model_exporters_easyeda_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../model/exporters/easyeda.js */ "./src/lib/bw-circuit-ui/model/exporters/easyeda.js");
-/* harmony import */ var _model_exporters_eagle_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../model/exporters/eagle.js */ "./src/lib/bw-circuit-ui/model/exporters/eagle.js");
-/* harmony import */ var _model_exporters_download_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../model/exporters/download.js */ "./src/lib/bw-circuit-ui/model/exporters/download.js");
+/* harmony import */ var _model_exporters_easyeda_schematic_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../model/exporters/easyeda-schematic.js */ "./src/lib/bw-circuit-ui/model/exporters/easyeda-schematic.js");
+/* harmony import */ var _model_exporters_eagle_js__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../model/exporters/eagle.js */ "./src/lib/bw-circuit-ui/model/exporters/eagle.js");
+/* harmony import */ var _model_exporters_download_js__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ../model/exporters/download.js */ "./src/lib/bw-circuit-ui/model/exporters/download.js");
 /**
  * Export Netlist Menu — dropdown offering SPICE / KiCad / EasyEDA export.
  *
@@ -14758,6 +14769,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
+
 const FORMATS = [{
   id: 'spice',
   label: 'SPICE (.cir)',
@@ -14770,10 +14782,19 @@ const FORMATS = [{
   labelDe: 'KiCad-Netzliste (.net)',
   ext: '.net',
   mime: 'text/plain'
+},
+// Native dialect: the application opens this directly; round-trips
+// through our importer with partition equality (221/222 examples).
+{
+  id: 'easyeda-native',
+  label: 'EasyEDA schematic (.json)',
+  labelDe: 'EasyEDA-Schaltplan (.json)',
+  ext: '.json',
+  mime: 'application/json'
 }, {
   id: 'easyeda',
-  label: 'EasyEDA (via KiCad)',
-  labelDe: 'EasyEDA (via KiCad)',
+  label: 'EasyEDA (via KiCad netlist)',
+  labelDe: 'EasyEDA (via KiCad-Netzliste)',
   ext: '.net',
   mime: 'text/plain'
 },
@@ -14823,13 +14844,13 @@ function ExportNetlistMenu(_ref) {
           if (skipped.length > 0) {
             console.log('[Export] SPICE skipped parts:', skipped);
           }
-          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_6__.downloadText)(text, filename);
+          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_7__.downloadText)(text, filename);
           break;
         }
       case 'kicad':
         {
           const text = (0,_model_exporters_kicad_js__WEBPACK_IMPORTED_MODULE_3__.toKicadNet)(netlist);
-          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_6__.downloadText)(text, filename);
+          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_7__.downloadText)(text, filename);
           break;
         }
       case 'eagle':
@@ -14840,12 +14861,24 @@ function ExportNetlistMenu(_ref) {
           const {
             xml,
             warnings
-          } = (0,_model_exporters_eagle_js__WEBPACK_IMPORTED_MODULE_5__.toEagleSch)({
+          } = (0,_model_exporters_eagle_js__WEBPACK_IMPORTED_MODULE_6__.toEagleSch)({
             parts: circuit.parts,
             wires: circuit.wires
           });
           if (warnings.length) console.log('[Export] EAGLE:\n  ' + warnings.join('\n  '));
-          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_6__.downloadText)(xml, filename);
+          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_7__.downloadText)(xml, filename);
+          break;
+        }
+      case 'easyeda-native':
+        {
+          const {
+            text,
+            report
+          } = (0,_model_exporters_easyeda_schematic_js__WEBPACK_IMPORTED_MODULE_5__.toEasyEdaSchematic)(circuit);
+          if (report.skipped.length) {
+            console.warn('EasyEDA export omissions:', report.skipped);
+          }
+          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_7__.downloadText)(text, 'circuit.easyeda.json');
           break;
         }
       case 'easyeda':
@@ -14854,7 +14887,7 @@ function ExportNetlistMenu(_ref) {
             text,
             instructions
           } = (0,_model_exporters_easyeda_js__WEBPACK_IMPORTED_MODULE_4__.toEasyEDA)(netlist);
-          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_6__.downloadText)(text, "circuit-for-easyeda".concat(FORMATS.find(f => f.id === formatId).ext));
+          (0,_model_exporters_download_js__WEBPACK_IMPORTED_MODULE_7__.downloadText)(text, "circuit-for-easyeda".concat(FORMATS.find(f => f.id === formatId).ext));
           console.log('[Export] EasyEDA import instructions:\n' + instructions);
           break;
         }
@@ -25349,6 +25382,62 @@ const EASYEDA_RULES = [
 })], [/^(SSD1306)/i, () => ({
   kind: 'ssd1306',
   byName: true
+})],
+// The export dialect's own chips (exporters/easyeda-schematic.js writes
+// these Manufacturer Part names; the round-trip test keeps both in step).
+[/^RPI[-_ ]?PICO|^PI[-_ ]?PICO/i, () => ({
+  kind: 'pi_pico',
+  byName: true
+})], [/^KEYPAD[-_ ]?4X4/i, () => ({
+  kind: 'keypad_4x4',
+  byName: true
+})], [/^SEVENSEG4|^SEVEN[-_ ]?SEG[-_ ]?4/i, () => ({
+  kind: 'seven_seg_4',
+  byName: true
+})], [/^BW-MCU/i, () => ({
+  kind: 'mcu',
+  byName: true
+})], [/^ARDUINO[-_ ]?UNO/i, () => ({
+  kind: 'arduino_uno',
+  byName: true
+})], [/^BW-SWITCH/i, () => ({
+  kind: 'switch',
+  pins: {
+    1: 'a',
+    2: 'b'
+  }
+})], [/^BW-BUZZER/i, () => ({
+  kind: 'buzzer',
+  byName: true
+})], [/^BW-LDR/i, () => ({
+  kind: 'ldr',
+  pins: {
+    1: 'a',
+    2: 'b'
+  }
+})], [/^BW-NTC/i, () => ({
+  kind: 'ntc',
+  pins: {
+    1: 'a',
+    2: 'b'
+  }
+})], [/^62256|^AS6C62256/i, () => ({
+  kind: '62256',
+  byName: true
+})], [/^28C256|^AT28C256/i, () => ({
+  kind: '28c256',
+  byName: true
+})],
+// The exporter's universal escape hatch: BW-<KIND> restores the exact
+// kind. Only OUR exports write these descriptors, so the trust is in
+// the name we minted, not in the wild.
+// rawNames: bind pins by their LITERAL lowercased name, skipping
+// normalizeEaglePin's vdd→vcc / vss→gnd remap — these are OUR OWN
+// engine terminal names round-tripping (a w65c22's 'vdd' terminal
+// must come back 'vdd', not 'vcc').
+[/^BW-([A-Z0-9_.-]+)$/i, (v, d) => ({
+  kind: /^BW-([A-Z0-9_.-]+)$/i.exec(d)[1].toLowerCase(),
+  rawNames: true
 })]];
 
 /** 74-series numbers with a real engine device, from bw-board's registry. */
@@ -25902,7 +25991,7 @@ function importEasyEda(text) {
         // A pin NUMBER may be "P1" rather than "1"; headerOf() carries both
         // spellings, and the digits are the fallback for anything else.
         const digits = (_exec = /(\d+)/.exec(p.num)) === null || _exec === void 0 ? void 0 : _exec[1];
-        const term = (_terminalFor = (0,_kicad_common_js__WEBPACK_IMPORTED_MODULE_0__.terminalFor)(hit, p.num, p.name, undefined)) !== null && _terminalFor !== void 0 ? _terminalFor : digits ? (_hit$pins = hit.pins) === null || _hit$pins === void 0 ? void 0 : _hit$pins[digits] : undefined;
+        const term = hit.rawNames && p.name && p.name !== '~' ? String(p.name).toLowerCase() : (_terminalFor = (0,_kicad_common_js__WEBPACK_IMPORTED_MODULE_0__.terminalFor)(hit, p.num, p.name, undefined)) !== null && _terminalFor !== void 0 ? _terminalFor : digits ? (_hit$pins = hit.pins) === null || _hit$pins === void 0 ? void 0 : _hit$pins[digits] : undefined;
         if (!term) continue;
         if (allow && !allow.has(term)) continue;
         pinCount++;
@@ -35532,6 +35621,649 @@ function toEagleSch(_ref) {
 
 /***/ }),
 
+/***/ "./src/lib/bw-circuit-ui/model/exporters/easyeda-schematic.js":
+/*!********************************************************************!*\
+  !*** ./src/lib/bw-circuit-ui/model/exporters/easyeda-schematic.js ***!
+  \********************************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   exportEasyEdaJson: () => (/* binding */ exportEasyEdaJson),
+/* harmony export */   toEasyEdaSchematic: () => (/* binding */ toEasyEdaSchematic)
+/* harmony export */ });
+/* harmony import */ var _parts_registry_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../parts-registry.js */ "./src/lib/bw-circuit-ui/model/parts-registry.js");
+/**
+ * Native EasyEDA schematic serializer — the tilde-DSL JSON dialect our
+ * own importer (src/importers/easyeda.js) reads. That importer IS the
+ * round-trip oracle: export → importEasyEda → the electrical partition
+ * must equal the source circuit's resolved nets.
+ *
+ * ── Why this exists next to the KiCad-netlist shim ──────────────────
+ * exporters/easyeda.js routes through a KiCad netlist and asks the user
+ * to run the app's KiCad import. Its header once claimed the native
+ * format "is not practical to synthesize" — a judgment that aged out:
+ * the sidecars carry exact per-terminal geometry, the importer proves
+ * the dialect is fully understood, and connectivity-as-geometry can be
+ * made SAFE BY CONSTRUCTION (below). Both paths now ship; this one
+ * produces a document the app opens natively.
+ *
+ * ── The geometry rules this router is built on ──────────────────────
+ * In this dialect connectivity IS geometry (kicad-common NetSolver):
+ *   - endpoints that coincide connect;
+ *   - a REGISTERED POINT (pin, wire endpoint, junction, label anchor)
+ *     lying ON a segment's span T-connects;
+ *   - mere X-crossings do NOT connect;
+ *   - names (F flags, labels) merge across any distance.
+ * So the only phantom-connection hazards are shared/overlapping
+ * endpoints and points-on-spans. The router removes them by
+ * construction, not by checking afterwards:
+ *   - parts sit in ONE ROW, each with exclusive left/right margin bands;
+ *   - every pin escapes OUTWARD from its edge with a per-edge-unique
+ *     first leg (unique bend coordinates), then travels on a
+ *     per-pin-unique vertical x (a margin slot no other wire uses),
+ *   - down to a per-NET-unique horizontal lane y below the row, where
+ *     members chain endpoint-to-endpoint.
+ * Distinct pins never share a vertical line; distinct nets never share
+ * a lane; every remaining contact between different nets is an
+ * X-crossing, which does not bind. The round-trip oracle then verifies
+ * what the construction promises.
+ *
+ * ── Honesty bounds, stated ──────────────────────────────────────────
+ * - "Imports cleanly into EasyEDA" is verified by (a) round-trip
+ *   through our own importer and (b) conformance to the field template
+ *   the importer measured against the 8085 vendor reference. The
+ *   vendor artefact itself lives on an external volume not always
+ *   mounted; when it is absent the template in the importer's parsing
+ *   code is the spec of record. An import into the actual application
+ *   is a manual step — hand the .json to the owner.
+ * - The BREADBOARD exports as NOTHING: a symbol whose strips implied
+ *   nets would be a drawing asserting connections, exactly the failure
+ *   the schematic-correspondence gate exists to prevent. Its seated
+ *   connectivity arrives through resolvedNets and is drawn as real
+ *   wires; the omission is named in the report.
+ * - vcc/gnd export as F power flags (one per rail NET), the dialect's
+ *   own idiom; they import back as one rail part per name.
+ * - A document with no parts/wires (a faceplate controller.json) is
+ *   REFUSED by name — an empty-but-valid schematic is the worst output
+ *   because every downstream check passes it.
+ *
+ * @module
+ */
+
+
+
+// ── kind → dialect classification ───────────────────────────────────
+// The inverse of the importer's EASYEDA_RULES/mapSpicePre; the
+// round-trip test keeps the two in step (the eagle exporter learned
+// this the hard way: a missing inverse entry silently dropped 84 of
+// 287 corpus files' parts).
+const KIND_TABLE = {
+  resistor: {
+    pre: 'R',
+    value: p => {
+      var _p$ohms;
+      return String((_p$ohms = p.ohms) !== null && _p$ohms !== void 0 ? _p$ohms : 1000);
+    },
+    numbered: ['a', 'b']
+  },
+  capacitor: {
+    pre: 'C',
+    value: p => {
+      var _p$farads;
+      return String((_p$farads = p.farads) !== null && _p$farads !== void 0 ? _p$farads : 1e-7);
+    },
+    numbered: ['a', 'b']
+  },
+  inductor: {
+    pre: 'L',
+    value: p => {
+      var _ref, _p$henrys;
+      return String((_ref = (_p$henrys = p.henrys) !== null && _p$henrys !== void 0 ? _p$henrys : p.henries) !== null && _ref !== void 0 ? _ref : 1e-3);
+    },
+    numbered: ['a', 'b']
+  },
+  led: {
+    pre: 'D',
+    value: () => 'LED',
+    numbered: ['anode', 'cathode']
+  },
+  diode: {
+    pre: 'D',
+    value: p => {
+      var _p$_value;
+      return String((_p$_value = p._value) !== null && _p$_value !== void 0 ? _p$_value : '1N4148');
+    },
+    numbered: ['anode', 'cathode']
+  },
+  zener: {
+    pre: 'D',
+    value: () => 'ZENER',
+    numbered: ['anode', 'cathode']
+  },
+  button: {
+    pre: 'S',
+    value: () => 'SW',
+    numbered: ['a', 'b']
+  },
+  slide_switch: {
+    pre: 'S',
+    value: () => 'SW-SPDT',
+    byName: true
+  },
+  potentiometer: {
+    pre: 'R',
+    pkg: 'POT',
+    value: p => {
+      var _p$ohms2;
+      return String((_p$ohms2 = p.ohms) !== null && _p$ohms2 !== void 0 ? _p$ohms2 : 10000);
+    },
+    numbered: ['a', 'wiper', 'b']
+  },
+  crystal: {
+    pre: 'X',
+    value: p => {
+      var _ref2, _p$frequency;
+      return String((_ref2 = (_p$frequency = p.frequency) !== null && _p$frequency !== void 0 ? _p$frequency : p._value) !== null && _ref2 !== void 0 ? _ref2 : '8MHz');
+    },
+    numbered: ['a', 'b']
+  },
+  vsource: {
+    pre: 'V',
+    value: p => {
+      var _p$volts;
+      return String((_p$volts = p.volts) !== null && _p$volts !== void 0 ? _p$volts : 0);
+    },
+    numbered: ['pos', 'neg']
+  },
+  battery: {
+    pre: 'BT',
+    value: p => {
+      var _p$volts2;
+      return String((_p$volts2 = p.volts) !== null && _p$volts2 !== void 0 ? _p$volts2 : 9);
+    },
+    numbered: ['pos', 'neg']
+  },
+  // byName chips: the pin NAMES are the engine terminals; the importer
+  // lowercases them back (normalizeEaglePin), and the descriptor (the
+  // `Manufacturer Part` attr) is what EASYEDA_RULES classify.
+  ssd1306: {
+    pre: 'U',
+    mp: 'SSD1306',
+    byName: true
+  },
+  pi_pico: {
+    pre: 'U',
+    mp: 'RPI-PICO',
+    byName: true
+  },
+  keypad_4x4: {
+    pre: 'U',
+    mp: 'KEYPAD-4X4',
+    byName: true
+  },
+  seven_seg_4: {
+    pre: 'U',
+    mp: 'SEVENSEG4',
+    byName: true
+  },
+  mcu: {
+    pre: 'U',
+    mp: 'BW-MCU',
+    byName: true
+  },
+  pcf8574: {
+    pre: 'U',
+    mp: 'PCF8574',
+    byName: true
+  },
+  arduino_uno: {
+    pre: 'U',
+    mp: 'ARDUINO-UNO',
+    byName: true
+  },
+  switch: {
+    pre: 'S',
+    mp: 'BW-SWITCH',
+    value: () => 'SW-LATCH',
+    numbered: ['a', 'b']
+  },
+  buzzer: {
+    pre: 'U',
+    mp: 'BW-BUZZER',
+    byName: true
+  },
+  ldr: {
+    pre: 'R',
+    mp: 'BW-LDR',
+    value: () => 'LDR',
+    numbered: ['a', 'b']
+  },
+  ntc: {
+    pre: 'R',
+    mp: 'BW-NTC',
+    value: () => 'NTC',
+    numbered: ['a', 'b']
+  },
+  npn: {
+    pre: 'Q',
+    value: p => {
+      var _p$_value2;
+      return String((_p$_value2 = p._value) !== null && _p$_value2 !== void 0 ? _p$_value2 : '2N2222');
+    },
+    numbered: ['base', 'collector', 'emitter']
+  },
+  pnp: {
+    pre: 'Q',
+    value: () => 'S8550',
+    numbered: ['base', 'collector', 'emitter']
+  },
+  555: {
+    pre: 'U',
+    mp: 'NE555',
+    byName: true
+  },
+  timer_555: {
+    pre: 'U',
+    mp: 'NE555',
+    byName: true
+  },
+  62256: {
+    pre: 'U',
+    mp: 'AS6C62256',
+    byName: true
+  },
+  '28c256': {
+    pre: 'U',
+    mp: 'AT28C256',
+    byName: true
+  }
+};
+
+/** The 74-series family exports generically (the importer's
+ *  family-aware logicKind maps the descriptor straight back), and any
+ *  OTHER kind with sidecar geometry rides the universal escape hatch:
+ *  Manufacturer Part BW-<KIND>, pins by name — our importer's BW- rule
+ *  restores the exact kind. The application still imports it cleanly
+ *  as a generic symbol with named pins; only a kind with no geometry
+ *  at all is refused by name. */
+function kindEntry(kind) {
+  if (KIND_TABLE[kind]) return KIND_TABLE[kind];
+  if (/^74(hc|hct|ls)\d+$/.test(kind)) {
+    return {
+      pre: 'U',
+      mp: kind.toUpperCase(),
+      byName: true
+    };
+  }
+  return {
+    pre: 'U',
+    mp: "BW-".concat(String(kind).toUpperCase()),
+    byName: true
+  };
+}
+const RAIL_KINDS = new Set(['vcc', 'gnd']);
+const STRUCTURAL_KINDS = new Set(['breadboard']);
+const esc = s => String(s).replace(/~/g, '-').replace(/`/g, "'");
+
+/**
+ * @param {import('../circuit.js').Circuit} circuit - a live Circuit
+ *   (resolvedNets present). Raw JSON goes through exportEasyEdaJson.
+ * @param {{ title?: string }} [opts]
+ * @returns {{ text: string, report: {
+ *   exported: string[], rails: string[],
+ *   skipped: Array<{id: string, kind: string, reason: string}>,
+ *   nets: number, wires: number } }}
+ */
+function toEasyEdaSchematic(circuit) {
+  var _circuit$parts, _circuit$resolvedNets, _opts$title, _opts$title2;
+  let opts = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+  const parts = (_circuit$parts = circuit.parts) !== null && _circuit$parts !== void 0 ? _circuit$parts : [];
+  const nets = (_circuit$resolvedNets = circuit.resolvedNets) !== null && _circuit$resolvedNets !== void 0 ? _circuit$resolvedNets : [];
+  if (!Array.isArray(parts) || parts.length === 0) {
+    throw new Error('EasyEDA export refused: the document has no parts — ' + 'an empty-but-valid schematic would pass every downstream check ' + 'while containing nothing (faceplate controller.json files are ' + 'UI descriptions, not circuits)');
+  }
+  const report = {
+    exported: [],
+    rails: [],
+    skipped: [],
+    nets: 0,
+    wires: 0
+  };
+  const shape = [];
+  let gge = 1000;
+  const id = () => "gge".concat(gge++);
+
+  // ── classify parts ──────────────────────────────────────────────
+  const libParts = [];
+  const railPartIds = new Map(); // part id -> 'vcc' | 'gnd'
+  for (const p of parts) {
+    if (RAIL_KINDS.has(p.kind)) {
+      railPartIds.set(p.id, p.kind);
+      continue;
+    }
+    if (STRUCTURAL_KINDS.has(p.kind)) {
+      report.skipped.push({
+        id: p.id,
+        kind: p.kind,
+        reason: 'structural: connectivity-as-geometry forbids a symbol whose strips imply nets; its seated joins are drawn as wires'
+      });
+      continue;
+    }
+    const t = kindEntry(p.kind);
+    if (!t) {
+      report.skipped.push({
+        id: p.id,
+        kind: p.kind,
+        reason: 'no EasyEDA mapping (KIND_TABLE) — add the inverse entry or accept the loss BY NAME'
+      });
+      continue;
+    }
+    let sc = (0,_parts_registry_js__WEBPACK_IMPORTED_MODULE_0__.getSidecar)(p.kind);
+    // A sidecar that exists but does not COVER the terminals the
+    // resolved nets actually use (the generic mcu's dynamic PinIds vs
+    // its generic sidecar) would silently drop those pins from the
+    // routing — the corpus property test caught 76-multimeter's mcu
+    // pins vanishing exactly this way. Whole-part synthesis from usage
+    // is the deterministic fix; partial grafting would perturb the box.
+    if (sc && Array.isArray(sc.terminals)) {
+      const have = new Set(sc.terminals.map(tm => tm.name));
+      for (const n of nets) {
+        for (const tm of (_n$terminals = n.terminals) !== null && _n$terminals !== void 0 ? _n$terminals : []) {
+          var _n$terminals;
+          if (tm.part === p.id && !have.has(tm.terminal) && !have.has(String(tm.terminal).toLowerCase())) {
+            sc = null;
+            break;
+          }
+        }
+        if (!sc) break;
+      }
+    }
+    if (!sc || !Array.isArray(sc.terminals) || sc.terminals.length === 0) {
+      // Kinds with DYNAMIC terminals (the generic mcu's PinIds) have no
+      // sidecar; synthesize a deterministic box from the terminals the
+      // resolved nets actually use — pins stacked left/right, unique y.
+      const used = new Set();
+      for (const n of nets) {
+        for (const tm of (_n$terminals2 = n.terminals) !== null && _n$terminals2 !== void 0 ? _n$terminals2 : []) {
+          var _n$terminals2;
+          if (tm.part === p.id) used.add(tm.terminal);
+        }
+      }
+      const names = [...used].sort();
+      if (names.length === 0) {
+        report.skipped.push({
+          id: p.id,
+          kind: p.kind,
+          reason: 'no sidecar geometry and no connected terminals — nothing to draw'
+        });
+        continue;
+      }
+      const half = Math.ceil(names.length / 2);
+      const h = Math.max(20, (half + 1) * 5 + 10);
+      sc = {
+        w: 60,
+        h,
+        terminals: names.map((nm, i) => i < half ? {
+          name: nm,
+          x: 0,
+          y: 8 + i * 5
+        } : {
+          name: nm,
+          x: 60,
+          y: 8 + (i - half) * 5
+        })
+      };
+    }
+    libParts.push({
+      p,
+      t,
+      sc
+    });
+  }
+
+  // ── placement: one row, exclusive margins ───────────────────────
+  const PY0 = 100; // parts row top
+  const ESC0 = 6; // first escape length
+  const ESC_STEP = 3; // per-slot growth → unique bend coords
+  let maxBottom = PY0;
+  let cursor = 60;
+  const placed = []; // { p, t, sc, x0, y0, pinAbs: Map(term -> {x,y,edge}) }
+  for (const lp of libParts) {
+    var _sc$h2, _sc$w2;
+    const {
+      sc
+    } = lp;
+    const leftPins = sc.terminals.filter(tm => tm.x === 0).length;
+    const rightPins = sc.terminals.length - leftPins; // right/top/bottom share the right band
+    const ml = ESC0 + leftPins * ESC_STEP + 8;
+    const mr = ESC0 + rightPins * ESC_STEP + 8;
+    const x0 = cursor + ml;
+    lp.x0 = x0;
+    lp.y0 = PY0;
+    lp.ml = ml;
+    lp.mr = mr;
+    lp.pinAbs = new Map();
+    for (const tm of sc.terminals) {
+      var _sc$w, _sc$h;
+      // NEAREST edge, not exact-edge equality: module sidecars (the
+      // Pico's castellated rows sit at x = 4 and w−4, not 0 and w)
+      // otherwise all classified 'bottom', and each pin's first escape
+      // leg ran straight down its own column THROUGH every sibling pin
+      // below it — the 70-calculator round-trip collapsed into one net
+      // (found by the oracle, pinned by the culprit-wire bisection).
+      const dl = tm.x;
+      const dr = ((_sc$w = sc.w) !== null && _sc$w !== void 0 ? _sc$w : 40) - tm.x;
+      const dt = tm.y;
+      const db = ((_sc$h = sc.h) !== null && _sc$h !== void 0 ? _sc$h : 40) - tm.y;
+      const min = Math.min(dl, dr, dt, db);
+      const edge = min === dl ? 'left' : min === dr ? 'right' : min === dt ? 'top' : 'bottom';
+      lp.pinAbs.set(tm.name, {
+        x: x0 + tm.x,
+        y: PY0 + tm.y,
+        edge
+      });
+    }
+    maxBottom = Math.max(maxBottom, PY0 + ((_sc$h2 = sc.h) !== null && _sc$h2 !== void 0 ? _sc$h2 : 40));
+    cursor = x0 + ((_sc$w2 = sc.w) !== null && _sc$w2 !== void 0 ? _sc$w2 : 40) + mr;
+  }
+  const LANE0 = maxBottom + 40;
+  const LANE_STEP = 4;
+
+  // ── emit LIB shapes ─────────────────────────────────────────────
+  void placed;
+  for (const lp of libParts) {
+    var _t$pkg, _t$mp, _p$params, _p$params$_value, _p$params2;
+    const {
+      p,
+      t,
+      sc,
+      x0,
+      y0
+    } = lp;
+    // Backtick attr string: key`value` pairs, taken by position. Both
+    // proven readers take pairs the same way; KiCad's parser
+    // additionally consumes `pre` as the reference-designator prefix
+    // (sch_easyeda_parser.cpp), so it ships alongside spicePre.
+    const attrStr = "package`".concat(esc((_t$pkg = t.pkg) !== null && _t$pkg !== void 0 ? _t$pkg : p.kind.toUpperCase()), "`") + "Manufacturer Part`".concat(esc((_t$mp = t.mp) !== null && _t$mp !== void 0 ? _t$mp : ''), "`") + "pre`".concat(t.pre, "?`") + "spicePre`".concat(t.pre, "`");
+    const head = "LIB~".concat(x0, "~").concat(y0, "~").concat(attrStr, "~~0~").concat(id(), "~").concat(id(), "~0~");
+    const subs = [];
+    const val = t.value ? t.value((_p$params = p.params) !== null && _p$params !== void 0 ? _p$params : {}) : (_p$params$_value = (_p$params2 = p.params) === null || _p$params2 === void 0 ? void 0 : _p$params2._value) !== null && _p$params$_value !== void 0 ? _p$params$_value : '';
+    subs.push("T~N~".concat(x0, "~").concat(y0 - 12, "~0~#000000~Arial~7pt~normal~normal~0~comment~").concat(esc(val), "~1~end~").concat(id(), "~0~"));
+    subs.push("T~P~".concat(x0, "~").concat(y0 - 20, "~0~#000000~Arial~7pt~normal~normal~0~comment~").concat(esc(p.id), "~1~end~").concat(id(), "~0~"));
+    let seq = 0;
+    for (const tm of sc.terminals) {
+      // Pin NUMBERS must follow the importer's numeric pin maps
+      // (1:a, 2:b — or 1:a, 2:wiper, 3:b), not the sidecar's drawing
+      // order; byName kinds fall back to sequence, their names carry
+      // the binding.
+      seq += 1;
+      const num = t.numbered && t.numbered.indexOf(tm.name) !== -1 ? t.numbered.indexOf(tm.name) + 1 : seq;
+      const a = lp.pinAbs.get(tm.name);
+      const pname = t.byName ? tm.name.toUpperCase() : '';
+      // Head: P~show~display~electric~NUMBER~x~y~rot~id~locked
+      // ^^ sections: [1] dot x~y  [2] path  [3] name row (name at field 4).
+      // First ^^section fields the importer reads: f[3]=NUMBER, f[4]=x, f[5]=y.
+      subs.push("P~show~0~".concat(num, "~").concat(a.x, "~").concat(a.y, "~0~").concat(id(), "~0") + "^^".concat(a.x, "~").concat(a.y) + "^^M ".concat(a.x, " ").concat(a.y, " h -10") + "^^0~".concat(a.x, "~").concat(a.y, "~0~").concat(esc(pname), "~start~~~#000000"));
+    }
+    shape.push(head + subs.map(s => "#@$".concat(s)).join(''));
+    report.exported.push(p.id);
+  }
+
+  // ── route nets ──────────────────────────────────────────────────
+  // Escape-slot allocation: per part, per band (left | right+top+bottom).
+  const slotOf = new Map(); // part id -> { left: n, right: n }
+  const drops = new Map(); // netIdx -> [{x, y: laneY}] drop points
+  const partById = new Map(libParts.map(lp => [lp.p.id, lp]));
+  const wireShapes = [];
+  const laneOf = new Map();
+  let laneIdx = 0;
+  const exportableNets = [];
+  for (const n of nets) {
+    var _n$terminals3, _n$terminals4;
+    const members = ((_n$terminals3 = n.terminals) !== null && _n$terminals3 !== void 0 ? _n$terminals3 : []).filter(tm => partById.has(tm.part));
+    const railKinds = new Set(((_n$terminals4 = n.terminals) !== null && _n$terminals4 !== void 0 ? _n$terminals4 : []).filter(tm => railPartIds.has(tm.part)).map(tm => railPartIds.get(tm.part)));
+    if (members.length === 0 && railKinds.size === 0) continue;
+    exportableNets.push({
+      n,
+      members,
+      railKinds
+    });
+  }
+  report.nets = exportableNets.length;
+  for (const {
+    n,
+    members,
+    railKinds
+  } of exportableNets) {
+    var _n$id;
+    const laneY = LANE0 + laneIdx * LANE_STEP;
+    laneOf.set((_n$id = n.id) !== null && _n$id !== void 0 ? _n$id : laneIdx, laneY);
+    laneIdx += 1;
+    const dropXs = [];
+    for (const tm of members) {
+      var _lp$pinAbs$get, _slotOf$get;
+      const lp = partById.get(tm.part);
+      const a = (_lp$pinAbs$get = lp.pinAbs.get(tm.terminal)) !== null && _lp$pinAbs$get !== void 0 ? _lp$pinAbs$get : lp.pinAbs.get(String(tm.terminal).toLowerCase());
+      if (!a) continue;
+      const s = (_slotOf$get = slotOf.get(tm.part)) !== null && _slotOf$get !== void 0 ? _slotOf$get : {
+        left: 0,
+        right: 0
+      };
+      slotOf.set(tm.part, s);
+      const band = a.edge === 'left' ? 'left' : 'right';
+      const slot = s[band]++;
+      const eLen = ESC0 + slot * ESC_STEP;
+      const pts = [[a.x, a.y]];
+      let ex;
+      if (a.edge === 'left') {
+        ex = a.x - eLen;
+        pts.push([ex, a.y]);
+      } else if (a.edge === 'right') {
+        ex = a.x + eLen;
+        pts.push([ex, a.y]);
+      } else {
+        var _lp$sc$h, _lp$sc$w;
+        // top/bottom: outward vertical first (unique length → unique
+        // bend y), then horizontal into the right band. ONE slot serves
+        // both the bend depth and the drop x — a second allocation here
+        // once overflowed the exclusive band onto the NEXT part's pin
+        // column, and the drop vertical T-connected through its pin
+        // (found by the 78-a2 round-trip oracle: two nets merged at
+        // x=695, kp1's own pin column).
+        const by = a.edge === 'top' ? lp.y0 - eLen : lp.y0 + ((_lp$sc$h = lp.sc.h) !== null && _lp$sc$h !== void 0 ? _lp$sc$h : 40) + eLen;
+        ex = lp.x0 + ((_lp$sc$w = lp.sc.w) !== null && _lp$sc$w !== void 0 ? _lp$sc$w : 40) + eLen;
+        pts.push([a.x, by], [ex, by]);
+      }
+      pts.push([ex, laneY]);
+      dropXs.push(ex);
+      // The net index rides in the gge id — both parsers ignore the
+      // suffix, and a collision audit can name the nets involved.
+      for (let i = 0; i + 1 < pts.length; i++) {
+        wireShapes.push("W~".concat(pts[i][0], " ").concat(pts[i][1], " ").concat(pts[i + 1][0], " ").concat(pts[i + 1][1], "~#008800~1~0~none~").concat(id(), "_n").concat(laneIdx - 1, "~0"));
+      }
+    }
+    dropXs.sort((a, b) => a - b);
+    for (let i = 0; i + 1 < dropXs.length; i++) {
+      wireShapes.push("W~".concat(dropXs[i], " ").concat(laneY, " ").concat(dropXs[i + 1], " ").concat(laneY, "~#008800~1~0~none~").concat(id(), "_n").concat(laneIdx - 1, "~0"));
+    }
+    for (const rk of railKinds) {
+      const name = rk === 'vcc' ? 'VCC' : 'GND';
+      const fx = dropXs.length ? dropXs[0] : 40 + laneIdx;
+      if (!dropXs.length) {
+        // A rail net with no exportable pins still needs an anchor point.
+        wireShapes.push("W~".concat(fx, " ").concat(laneY, " ").concat(fx + 2, " ").concat(laneY, "~#008800~1~0~none~").concat(id(), "~0"));
+      }
+      // F flag: name anchored AT a lane endpoint — merges by name AND
+      // by geometry. Field template per BOTH proven readers: our
+      // importer takes f[2]=x, f[3]=y and sections[2][0] as the name;
+      // KiCad additionally interprets arr[1] as the FLAG TYPE and draws
+      // the matching power symbol — so the type must match the rail
+      // (a VCC flag typed gnD imports as a ground symbol there).
+      const ftype = rk === 'gnd' ? 'part_netLabel_gnD' : 'part_netLabel_VCC';
+      shape.push("F~".concat(ftype, "~").concat(fx, "~").concat(laneY, "~0~").concat(id(), "~0") + "^^".concat(fx, "~").concat(laneY) + "^^".concat(name, "~#000000~Arial~9pt~start~~").concat(id()));
+      if (!report.rails.includes(name)) report.rails.push(name);
+    }
+  }
+  shape.push(...wireShapes);
+  report.wires = wireShapes.length;
+  const doc = {
+    editorVersion: '6.5.5',
+    docType: '5',
+    title: (_opts$title = opts.title) !== null && _opts$title !== void 0 ? _opts$title : 'brickwright-export',
+    schematics: [{
+      docType: '1',
+      dataStr: {
+        head: {
+          docType: '1',
+          editorVersion: '6.5.5',
+          title: (_opts$title2 = opts.title) !== null && _opts$title2 !== void 0 ? _opts$title2 : 'brickwright-export'
+        },
+        canvas: 'CA~1000~1000~#FFFFFF~yes~#CCCCCC~5~1000~1000~line~5~pixel~5~0~0',
+        shape,
+        BBox: {
+          x: 0,
+          y: 0,
+          width: cursor + 100,
+          height: LANE0 + laneIdx * LANE_STEP + 60
+        }
+      }
+    }]
+  };
+  return {
+    text: JSON.stringify(doc),
+    report
+  };
+}
+
+/**
+ * File-level entry: parse a circuit JSON string, refuse non-circuit
+ * documents BY NAME, build a live Circuit, export.
+ * @param {string} jsonText
+ * @param {new (json: any) => any} CircuitClass - Circuit (injected to
+ *   avoid a model→exporter→model cycle; callers pass Circuit).
+ */
+function exportEasyEdaJson(jsonText, CircuitClass) {
+  let opts = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+  let json;
+  try {
+    json = JSON.parse(jsonText);
+  } catch (e) {
+    throw new Error("EasyEDA export refused: not JSON (".concat(e.message, ")"));
+  }
+  if (json && Array.isArray(json.widgets) && !Array.isArray(json.parts)) {
+    throw new Error('EasyEDA export refused: this is a faceplate controller ' + 'document ({version, widgets}) — a UI description, not a circuit. ' + 'Exporting it would produce a structurally valid but EMPTY schematic.');
+  }
+  if (!json || !Array.isArray(json.parts)) {
+    throw new Error('EasyEDA export refused: no parts array — not a circuit document');
+  }
+  const c = CircuitClass.fromJSON(json);
+  return toEasyEdaSchematic(c, opts);
+}
+
+/***/ }),
+
 /***/ "./src/lib/bw-circuit-ui/model/exporters/easyeda.js":
 /*!**********************************************************!*\
   !*** ./src/lib/bw-circuit-ui/model/exporters/easyeda.js ***!
@@ -35545,17 +36277,19 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ });
 /* harmony import */ var _kicad_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./kicad.js */ "./src/lib/bw-circuit-ui/model/exporters/kicad.js");
 /**
- * EasyEDA export — via KiCad netlist import.
+ * EasyEDA export — via KiCad netlist import (the FALLBACK path).
  *
- * EasyEDA's native JSON schematic format uses a tilde-delimited DSL
- * for every drawing primitive (pin geometry, component body outlines,
- * wire paths) that requires exact canvas coordinates and is not
- * practical to synthesize from a netlist. The documented import path
- * is KiCad .net → EasyEDA schematic, which handles symbol placement
- * and wiring automatically.
+ * HISTORY: this header once claimed the native tilde-DSL format "is not
+ * practical to synthesize from a netlist." That judgment aged out on
+ * 2026-08-24 — exporters/easyeda-schematic.js now writes the native
+ * dialect directly (sidecar pin geometry + a collision-free router +
+ * our own importer as the round-trip oracle: 221 of 222 lite examples
+ * export fully with partition equality). Prefer that path; the
+ * application opens its output natively.
  *
- * This module re-exports the KiCad serializer with an EasyEDA-branded
- * filename and adds user-facing instructions.
+ * This KiCad-netlist route stays as the working fallback for anything
+ * the native writer refuses, re-exporting the KiCad serializer with an
+ * EasyEDA-branded filename plus user-facing instructions.
  *
  * @module
  */
@@ -36942,7 +37676,7 @@ const BUILTIN_FOOTPRINTS = {
     }
   },
   attiny88: {
-    refTerminal: 'pb1',
+    refTerminal: 'pc5',
     straddlesGutter: true,
     leads: {
       'pc6': {
@@ -37001,61 +37735,61 @@ const BUILTIN_FOOTPRINTS = {
         dRow: 5,
         dCol: 13
       },
-      'pc7': {
-        dRow: 0,
-        dCol: 13
-      },
       'pc5': {
         dRow: 0,
-        dCol: 12
+        dCol: 0
       },
       'pc4': {
         dRow: 0,
-        dCol: 11
+        dCol: 1
       },
       'pc3': {
         dRow: 0,
-        dCol: 10
+        dCol: 2
       },
       'pc2': {
         dRow: 0,
-        dCol: 9
+        dCol: 3
       },
       'pc1': {
         dRow: 0,
-        dCol: 8
+        dCol: 4
       },
       'pc0': {
         dRow: 0,
-        dCol: 7
+        dCol: 5
       },
       'pa0': {
         dRow: 0,
         dCol: 6
       },
+      'pc7': {
+        dRow: 0,
+        dCol: 7
+      },
       'avcc': {
         dRow: 0,
-        dCol: 5
+        dCol: 8
       },
       'pb5': {
         dRow: 0,
-        dCol: 4
+        dCol: 9
       },
       'pb4': {
         dRow: 0,
-        dCol: 3
+        dCol: 10
       },
       'pb3': {
         dRow: 0,
-        dCol: 2
+        dCol: 11
       },
       'pb2': {
         dRow: 0,
-        dCol: 1
+        dCol: 12
       },
       'pb1': {
         dRow: 0,
-        dCol: 0
+        dCol: 13
       }
     }
   },
@@ -44621,7 +45355,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"kind":"attiny85","w":60,"h":48,"term
 /***/ ((module) => {
 
 "use strict";
-module.exports = /*#__PURE__*/JSON.parse('{"kind":"attiny88","w":70,"h":81,"terminals":[{"name":"pc6","x":0,"y":8,"functions":["reset"]},{"name":"pd0","x":0,"y":13,"functions":["gpio"]},{"name":"pd1","x":0,"y":18,"functions":["gpio"]},{"name":"pd2","x":0,"y":23,"functions":["gpio","int0"]},{"name":"pd3","x":0,"y":28,"functions":["gpio","int1"]},{"name":"pd4","x":0,"y":33,"functions":["gpio","t0"]},{"name":"vcc","x":0,"y":38,"functions":[]},{"name":"gnd","x":0,"y":43,"functions":[]},{"name":"pb6","x":0,"y":48,"functions":["gpio","xtal1"]},{"name":"pb7","x":0,"y":53,"functions":["gpio","xtal2"]},{"name":"pd5","x":0,"y":58,"functions":["gpio","t1"]},{"name":"pd6","x":0,"y":63,"functions":["gpio"]},{"name":"pd7","x":0,"y":68,"functions":["gpio"]},{"name":"pb0","x":0,"y":73,"functions":["gpio","icp1"]},{"name":"pc7","x":70,"y":8,"functions":["gpio"]},{"name":"pc5","x":70,"y":13,"functions":["gpio","adc5","scl"]},{"name":"pc4","x":70,"y":18,"functions":["gpio","adc4","sda"]},{"name":"pc3","x":70,"y":23,"functions":["gpio","adc3"]},{"name":"pc2","x":70,"y":28,"functions":["gpio","adc2"]},{"name":"pc1","x":70,"y":33,"functions":["gpio","adc1"]},{"name":"pc0","x":70,"y":38,"functions":["gpio","adc0"]},{"name":"pa0","x":70,"y":43,"functions":["gpio"]},{"name":"avcc","x":70,"y":48,"functions":[]},{"name":"pb5","x":70,"y":53,"functions":["gpio","sck"]},{"name":"pb4","x":70,"y":58,"functions":["gpio","miso"]},{"name":"pb3","x":70,"y":63,"functions":["gpio","mosi","oc1"]},{"name":"pb2","x":70,"y":68,"functions":["gpio","ss"]},{"name":"pb1","x":70,"y":73,"functions":["gpio","oc1a"]}],"variants":null,"_note":"ATtiny88 8-bit AVR MCU. Pin table audited against Microchip ATtiny88 datasheet (DS40002178). DIP-28 package. 8 KB flash, 512 B SRAM, 64 B EEPROM, 8 MHz internal RC. Ports B (PB0-PB7), C (PC0-PC7), D (PD0-PD7), and A (PA0-PA3 at 0x2C-0x2E). PC6 = RESET (active low). PB6/PB7 = XTAL1/XTAL2. No UART, no analog comparator pins. Timer0 simplified (CS bits in TCCR0A, no OC0A/OC0B). Used in Blinkenrocket congress badge: PB=columns, PD=rows, PC3=BTN_RIGHT, PC7=BTN_LEFT, PA0=modem input. Pin names match bw-board avr-chips.js ATTINY88_PINS config.","footprint":{"refTerminal":"pc6","leads":{"pc6":{"dRow":0,"dCol":0},"pd0":{"dRow":0,"dCol":1},"pd1":{"dRow":0,"dCol":2},"pd2":{"dRow":0,"dCol":3},"pd3":{"dRow":0,"dCol":4},"pd4":{"dRow":0,"dCol":5},"vcc":{"dRow":0,"dCol":6},"gnd":{"dRow":0,"dCol":7},"pb6":{"dRow":0,"dCol":8},"pb7":{"dRow":0,"dCol":9},"pd5":{"dRow":0,"dCol":10},"pd6":{"dRow":0,"dCol":11},"pd7":{"dRow":0,"dCol":12},"pb0":{"dRow":0,"dCol":13},"pc7":{"dRow":5,"dCol":0},"pc5":{"dRow":5,"dCol":1},"pc4":{"dRow":5,"dCol":2},"pc3":{"dRow":5,"dCol":3},"pc2":{"dRow":5,"dCol":4},"pc1":{"dRow":5,"dCol":5},"pc0":{"dRow":5,"dCol":6},"pa0":{"dRow":5,"dCol":7},"avcc":{"dRow":5,"dCol":8},"pb5":{"dRow":5,"dCol":9},"pb4":{"dRow":5,"dCol":10},"pb3":{"dRow":5,"dCol":11},"pb2":{"dRow":5,"dCol":12},"pb1":{"dRow":5,"dCol":13}},"straddlesGutter":true,"minCols":14}}');
+module.exports = /*#__PURE__*/JSON.parse('{"kind":"attiny88","w":70,"h":81,"terminals":[{"name":"pc6","x":0,"y":8,"functions":["reset"]},{"name":"pd0","x":0,"y":13,"functions":["gpio"]},{"name":"pd1","x":0,"y":18,"functions":["gpio"]},{"name":"pd2","x":0,"y":23,"functions":["gpio","int0"]},{"name":"pd3","x":0,"y":28,"functions":["gpio","int1"]},{"name":"pd4","x":0,"y":33,"functions":["gpio","t0"]},{"name":"vcc","x":0,"y":38,"functions":[]},{"name":"gnd","x":0,"y":43,"functions":[]},{"name":"pb6","x":0,"y":48,"functions":["gpio","xtal1"]},{"name":"pb7","x":0,"y":53,"functions":["gpio","xtal2"]},{"name":"pd5","x":0,"y":58,"functions":["gpio","t1"]},{"name":"pd6","x":0,"y":63,"functions":["gpio"]},{"name":"pd7","x":0,"y":68,"functions":["gpio"]},{"name":"pb0","x":0,"y":73,"functions":["gpio","icp1"]},{"name":"pc5","x":70,"y":8,"functions":["gpio","adc5","scl"]},{"name":"pc4","x":70,"y":13,"functions":["gpio","adc4","sda"]},{"name":"pc3","x":70,"y":18,"functions":["gpio","adc3"]},{"name":"pc2","x":70,"y":23,"functions":["gpio","adc2"]},{"name":"pc1","x":70,"y":28,"functions":["gpio","adc1"]},{"name":"pc0","x":70,"y":33,"functions":["gpio","adc0"]},{"name":"pa0","x":70,"y":38,"functions":["gpio"]},{"name":"pc7","x":70,"y":43,"functions":["gpio"]},{"name":"avcc","x":70,"y":48,"functions":[]},{"name":"pb5","x":70,"y":53,"functions":["gpio","sck"]},{"name":"pb4","x":70,"y":58,"functions":["gpio","miso"]},{"name":"pb3","x":70,"y":63,"functions":["gpio","mosi","oc1"]},{"name":"pb2","x":70,"y":68,"functions":["gpio","ss"]},{"name":"pb1","x":70,"y":73,"functions":["gpio","oc1a"]}],"variants":null,"_note":"ATtiny88 8-bit AVR MCU, PDIP-28. Pin ORDER re-audited against Microchip ATtiny88 datasheet (DS40002178) on 2026-08-24. A DIP counts 1..14 along one row then crosses and counts 15..28 back along the other, so at column c the bottom row is pin c+1 and the top row is pin 28-c:\\n  bottom (pins 1-14):  PC6 PD0 PD1 PD2 PD3 PD4 VCC GND PB6 PB7 PD5 PD6 PD7 PB0\\n  top    (pins 28-15): PC5 PC4 PC3 PC2 PC1 PC0 [22] PC7 AVCC PB5 PB4 PB3 PB2 PB1\\nFIXED HERE: PC7 IS PIN 21 and sat at pin 28\'s column; the whole top row was misordered (8 of 14 columns wrong in this file, 14 of 14 in the built-in table in src/model/footprints.js, which is the one seating actually uses).\\nNOT FIXED HERE, and it is a real defect: the pin-22 lead is still called `pa0`. THE PDIP-28 HAS NO PA0 — port A is bonded out only on the 32-pin QFN — and pin 22 is a SECOND GND that somebody needed a name for. It keeps the wrong name because bw-board\'s ATTINY88_TERMINALS is the AUTHORITY for terminal names (circuit.js consults engineTerminals() first) and the canvas looks positions up BY NAME out of this file; renaming here alone would render the engine\'s `pa0` at the part origin. The rename is sequenced in PLAN.md: bw-board first, then this file and bw-parts, then a corpus re-seat. Port A registers (PA0-PA3 at 0x2C-0x2E) do exist on the die and in bw-board\'s ATTINY88_PINS; they are simply not reachable through this package.\\nPC6 = RESET (active low). PB6/PB7 = XTAL1/XTAL2. No UART, no analog comparator pins.\\nPART FACTS (unchanged): 8 KB flash, 512 B SRAM, 64 B EEPROM, 8 MHz internal RC. Timer0 simplified (CS bits in TCCR0A, no OC0A/OC0B). Pin names match bw-board avr-chips.js ATTINY88_PINS. The Blinkenrocket congress badge uses PB=columns, PD=rows, PC3=BTN_RIGHT, PC7=BTN_LEFT and PA0=modem input — note that its PA0 use is only reachable on the QFN-32, not on this PDIP-28.","footprint":{"refTerminal":"pc5","straddlesGutter":true,"leads":{"pc6":{"dRow":5,"dCol":0},"pd0":{"dRow":5,"dCol":1},"pd1":{"dRow":5,"dCol":2},"pd2":{"dRow":5,"dCol":3},"pd3":{"dRow":5,"dCol":4},"pd4":{"dRow":5,"dCol":5},"vcc":{"dRow":5,"dCol":6},"gnd":{"dRow":5,"dCol":7},"pb6":{"dRow":5,"dCol":8},"pb7":{"dRow":5,"dCol":9},"pd5":{"dRow":5,"dCol":10},"pd6":{"dRow":5,"dCol":11},"pd7":{"dRow":5,"dCol":12},"pb0":{"dRow":5,"dCol":13},"pc5":{"dRow":0,"dCol":0},"pc4":{"dRow":0,"dCol":1},"pc3":{"dRow":0,"dCol":2},"pc2":{"dRow":0,"dCol":3},"pc1":{"dRow":0,"dCol":4},"pc0":{"dRow":0,"dCol":5},"pa0":{"dRow":0,"dCol":6},"pc7":{"dRow":0,"dCol":7},"avcc":{"dRow":0,"dCol":8},"pb5":{"dRow":0,"dCol":9},"pb4":{"dRow":0,"dCol":10},"pb3":{"dRow":0,"dCol":11},"pb2":{"dRow":0,"dCol":12},"pb1":{"dRow":0,"dCol":13}}}}');
 
 /***/ }),
 

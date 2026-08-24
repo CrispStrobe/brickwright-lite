@@ -65,7 +65,14 @@ export const OBSERVABLES = {
     'circuit-ready': {producer: 'tw-pseudocode/circuit-tab.jsx', needs: 'circuit'},
     // tw-pseudocode/circuit-tab.jsx handleDeclarationChange — fires ONLY when the
     // derived pin declarations change, not when the circuit does
-    'circuit-changed': {producer: 'tw-pseudocode/circuit-tab.jsx', needs: 'declarations'},
+    // `bw-circuit-changed` was dispatched from `handleDeclarationChange`, which
+    // fires only when the DERIVED PIN DECLARATIONS move — never on an MCU-less
+    // bench. Since 2026-08-24 circuit-tab.jsx dispatches it from
+    // `onCircuitEdit`, which CircuitDesigner fires from a STRUCTURAL signature
+    // of the circuit, so what has to be true is that an edit moves the
+    // signature. That is a weaker and correct requirement: a bench whose parts
+    // and wires cannot change at all still fails it.
+    'circuit-changed': {producer: 'tw-pseudocode/circuit-tab.jsx', needs: 'circuit-edit'},
     // tw-pseudocode/circuit-tab.jsx handleRunnerChange — needs a debug session.
     // A circuit-only lesson can have one: circuit-tab reads `bwDeviceCore` off a
     // `w65c02` or `z80` part on the board, so a machine bench boots from the ROM
@@ -242,14 +249,17 @@ const sentenceAround = (text, index) => {
 const HYPOTHETICAL = /\b(would|were|imagine|suppose|if you|hypothetical|in a real|on real hardware|do not|never|instead of|rather than|is not|are not|cannot|has no|have no|there is no|without a|lacks)\b|\bno \w+ path\b/i;
 
 /** Does an ordinary circuit edit move the derived declarations? Measured. */
-async function declarationsCanChange(exampleId) {
+async function circuitEditIsVisible(exampleId) {
     const {Circuit} = await boot();
-    const {circuitToDeclarations} = await import(
-        path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/declarations.js'));
+    const cui = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
+    // The SAME function CircuitDesigner compares against, not a re-derivation:
+    // a second copy of the rule would be free to disagree with the one that
+    // decides whether the host is notified.
+    const {circuitSignature} = await import(path.join(cui, 'model/circuit-signature.js'));
     const raw = readJson(path.join(EXAMPLES, circuitPathFor(exampleId)));
     const decl = data => {
         const c = Circuit.fromJSON(data);
-        return JSON.stringify(circuitToDeclarations(c.parts, c.wires, c.resolvedNets));
+        return circuitSignature(c.parts, c.wires);
     };
     const base = decl(structuredClone(raw));
     const edits = [];
@@ -379,13 +389,13 @@ export async function detect(opts = {}) {
                             `observes starter-loaded, but ${lesson.exampleId} is not a starter-journey target`,
                             {journeyExamples: [...starters]});
                     }
-                    if (spec.needs === 'declarations' && circuitPathOrNull(lesson.exampleId)) {
-                        const moved = await declarationsCanChange(lesson.exampleId);
+                    if (spec.needs === 'circuit-edit' && circuitPathOrNull(lesson.exampleId)) {
+                        const moved = await circuitEditIsVisible(lesson.exampleId);
                         if (!moved.moved.length) {
                             add(checkpoint, 'A', 'blocking',
-                                `observes circuit-changed, which fires only when the derived pin ` +
-                                `declarations move; on this bench they do not`,
-                                {declarations: moved.base, tried: moved.tried});
+                                `observes circuit-changed, and no edit this scanner can make to ` +
+                                `the bench moves its circuit signature`,
+                                {signature: moved.base, tried: moved.tried});
                         }
                     }
                     if (observe.match && observe.match.minimumParts != null) {
