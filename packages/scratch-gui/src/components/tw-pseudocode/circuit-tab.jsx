@@ -207,6 +207,19 @@ class CircuitTab extends React.Component {
             if (key === 'about') return;
             if (key === 'debugDock' || key === 'bw-debug-dock') {
                 this.setDock(value);
+                // A right-docked debugger (or a controller faceplate) is a
+                // request to USE the optional right pane. gui.jsx opens its
+                // column on this same event — but this tab keeps its own
+                // rightPaneHidden, and _syncStageAttr re-nones the stage
+                // wrapper from that stale flag on EVERY update. Since the
+                // dock's portal host is a CHILD of that wrapper, the whole
+                // dock — debugger, serial console, input line — was
+                // display:none while every existence probe still passed
+                // (the browser gate's :visible click caught it).
+                if (value === 'right' || value === 'controller') {
+                    try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+                    this.setState({rightPaneHidden: false});
+                }
                 // Stage-header view changes can arrive while this tab is still
                 // mounted but not selected. Request the designer here too;
                 // otherwise the portal host is visible before its content has
@@ -1260,9 +1273,22 @@ class CircuitTab extends React.Component {
         const msMoved = (typeof bwMs === 'number' && typeof prev.bwMs === 'number')
             ? Math.abs(bwMs - prev.bwMs) >= 250
             : bwMs !== prev.bwMs;
+        // Serial progress must always reach the screen: the first stamp
+        // guard ignored it and the debugger's console froze mid-banner
+        // (the browser gate caught it — BBC BASIC's prompt never showed).
+        // Complete lines are stamped; a PARTIAL line (a prompt with no
+        // newline) is invisible to the snapshot, so a 10 Hz floor keeps
+        // repainting while a session is live — still one sixth of the
+        // per-frame setState this guard exists to stop.
+        const so = ui && ui.session && ui.session.serialOutput;
+        const serialStamp = so ? `${so.length}:${(so[so.length - 1] || '').length}` : '';
+        const now = Date.now();
+        const floorDue = (now - (this._debugStateAt || 0)) >= 100;
         if (board !== this.state.board || halted !== prev.halted ||
             haltReason !== prev.haltReason || tasksStamp !== (prev._tasksStamp ?? null) ||
-            msMoved || caps !== prev.capabilities) {
+            serialStamp !== (prev._serialStamp ?? '') ||
+            msMoved || caps !== prev.capabilities || floorDue) {
+            this._debugStateAt = now;
             this.setState({
                 board,
                 debugState: {
@@ -1272,6 +1298,7 @@ class CircuitTab extends React.Component {
                     bwMs,
                     tasks: enriched,
                     _tasksStamp: tasksStamp,
+                    _serialStamp: serialStamp,
                     capabilities: caps
                 }
             });
