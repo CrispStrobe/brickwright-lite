@@ -128,6 +128,35 @@ those are two different answers to "where is the corner", which is the question
 `signals-cutoff-phase` is built on. The gate asserts both that they differ now
 and that rounding really did collapse them, so the reason survives the fix.
 
+### The word that turned a green push red
+
+Recorded because it is the third failure of the same family in this lane, and my
+first two statements of the rule were both too narrow.
+
+The restored `signals-model-measurement` hint said "the CSV **button** copies all
+of them". The Tier-3 detector's `press-a-button` demand matches the bare word
+`button` and then asks whether the bench the lesson names has one;
+`pc50-two-stage-rc` does not. Blocking, and correct by the detector's own rule.
+Reworded to "the CSV control" in both languages, which is the honest word anyway
+— the affordance is app chrome, not a part.
+
+**The detector's pattern is deliberately NOT softened.** It cannot tell app
+chrome from a bench part, and that limitation is real. But "button" in lesson
+prose almost always means the bench's, and loosening a pattern that guards 79
+lessons to accommodate one sentence trades a gate for a phrasing. Changing the
+sentence costs nothing.
+
+The process failure underneath it: **"the gate" is not singular.** Lesson prose
+is read by TWO gates — check C (`lesson-numeric-contract`) and the Tier-3
+detector (`lesson-defect-detector`). I ran check C before pushing, saw green, and
+treated it as covering the class. The detector takes ten minutes, which is
+exactly why it only ever ran inside the full suite, and exactly why it was the
+one skipped. The three statements of the rule, in the order they were earned:
+
+1. run the gate a change touches BEFORE the push, not in the suite after it;
+2. a suite run owns the worktree until it exits;
+3. enumerate the gates that read what you changed, and run all of them.
+
 ## Closing D11, and the fix that would have hidden a defect
 
 `PLAN.md` proposed a **charge switch** for `43-rc-timing`, and that would have
