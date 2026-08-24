@@ -100,6 +100,7 @@ comes back clean.
 | --- | --- | --- | --- |
 | release 0.1.7 | coordinating session | 2026-08-24 | version bump + tester notes prepared. The TAG PUSH is deliberately NOT done: it uploads to App Store Connect and reaches external testers, so it waits for the owner |
 | lite fetch pinning | coordinating session | 2026-08-24 | bw-audit's four findings for THIS repo: sync-sb3creator/sync-examples fetch `REF='main'`, vendor-forward clones with no ref, sync-emu8051-wasm pins a 7-char sha, 47 unpinned `uses:` across 6 workflows |
+| bw-board source honesty | bw-engine (lite-61) | 2026-08-24 | bw-corpus's two engine findings: `rInternal` accepted but never stamped (sources silently ideal), and solveMNA's BJT/MOSFET branch currents an extraction, not KCL-consistent (430 mA into a base on a 2.772 mA bench). Working in bw-board master. **Rule 5 heads-up:** fixing either moves corpus numbers — bw-corpus's rInternal canary is BUILT to fail when this changes; will coordinate before the lite vendor. |
 
 ## DONE — recently, so nobody redoes it
 
