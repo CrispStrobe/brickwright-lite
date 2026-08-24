@@ -10,7 +10,16 @@ defects open, every one of them in an instrument or an engine, none in a
 lesson.**
 
 > **Updated 2026-08-25.** `signals-resonance`'s observable was closed on
-> 2026-08-24 (D6), and **D10 is closed now**: `pc50-two-stage-rc` was rescaled
+> 2026-08-24 (D6), and **D10 and D11 are closed now**. D11: `43-rc-timing` grew
+> a discharge switch (sb3-creator `ac83352`), so the step this wave's
+> `signals-rc-response` measures can be run more than once. It is deliberately a
+> DISCHARGE control rather than a charge one — a charge switch open at rest would
+> make this bench read 0 V in its first DC operating point, and this is the bench
+> that demonstrates defect 1's 5 V. `signals-rc-response` goes to version 4: its
+> predict hint stops saying the bench has no discharge path and teaches the
+> general form V(t)=Vf+(V0−Vf)e^(−t/RC) instead, which its python variant already
+> asked for. Every number in defect 1 and in "what works" is unchanged to four
+> decimals. D10: `pc50-two-stage-rc` was rescaled
 > from 10 kΩ/100 µF to 10 kΩ/100 nF, which moves both corners from 0.159 Hz to
 > 159.155 Hz and takes a point a decade below the corner from 629 s of simulated
 > time to 0.63 s. `signals-bode-sweep` and `signals-model-measurement` are
@@ -61,7 +70,7 @@ and it is a smaller and more fixable story than "nine broken lessons".
 
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
-| signals-rc-response | 43-rc-timing | 2→**3** | **defect, fixed** — the t = 0 reading the checkpoint asks for is the supply voltage, not zero |
+| signals-rc-response | 43-rc-timing | 2→3→**4** | **defect, fixed** — the t = 0 reading the checkpoint asks for is the supply voltage, not zero |
 | signals-rl-response | pc52-inductor-filter | 1→**2** | **defect, fixed** — the bench is an RLC; L/R holds only in its first 300 µs, and the hint's "total series resistance" is the wrong R |
 | signals-complex-impedance | 50-rc-scope | 1→**2** | **defect, fixed** — the scope route it names cannot reach the below-cutoff point |
 | signals-cutoff-phase | 50-rc-scope | 1→**2** | achievable; **revised for disclosure** — both criteria bracket the same cutoff, but the plot has no frequency axis to read one off |

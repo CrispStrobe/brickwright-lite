@@ -35,7 +35,7 @@ Two counting rules, so the numbers are comparable:
 | **D8** | `pc52-inductor-filter` is an RLC used as an RL bench; the L/R law holds for its first ~300 µs and then the 100 µF takes over | sb3-creator (example) | **3** | 1, 6 | open — see PLAN.md |
 | **D9** | A Bode point costs 10/f seconds of simulated time (`settleCycles` 6 + `measureCycles` 4) and `SweepPanel` runs the sweep synchronously | bw-board (`runAcSweep`) + bw-circuit-ui | **2** | 6 | open — see PLAN.md |
 | **D10** | `pc50-two-stage-rc` corners at 0.159 Hz, so the decade below the corner its own lesson asks for costs 629 s of simulation per point | sb3-creator (example) | **2** | 6 | **FIXED** — 100 µF → 100 nF |
-| **D11** | `43-rc-timing` has no controls at all, so the charging step it measures happens once and cannot be repeated | sb3-creator (example) | **2** | 2, 6 | open — see PLAN.md |
+| **D11** | `43-rc-timing` has no controls at all, so the charging step it measures happens once and cannot be repeated | sb3-creator (example) | **2** | 2, 6 | **FIXED** — a discharge switch |
 | **D12** | There is no ASM emitter; the Code tab's ASM view is real but both its modes go over the network (`/compile`, `/assemble`) | sb3-creator | **2** | 3, 7 | open — see PLAN.md |
 | **D13** | `board.resistance(a, b)` is directional — B is the reference and ground symbols are deliberately switched out of that solve, so a real path reads as open when probed the other way | bw-board (`mna.js`) — **by design** | **2** | 2 | open — not a bug |
 | **D14** | The widget inspector edits no functional config: only `color`, `fontSize`, `src`, `text`. A button's `toggle`, a slider's `min`/`max`/`step`, a gauge's range and a matrix's `rows`/`cols` are reachable only by hand-editing `controller.json` | lite (`controller-panel-view.jsx`) | **1** | 4 | **FIXED** — Config section |
@@ -62,10 +62,10 @@ Two counting rules, so the numbers are comparable:
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | open — the last of 67 |
 
-**36 defects. Twelve are closed** — D1, D5, D6, D10, D14, D15, D16, D17, D19,
-D33 and D35 by repair, and D34 by re-measurement, which is a different and
+**36 defects. Thirteen are closed** — D1, D5, D6, D10, D11, D14, D15, D16, D17,
+D19, D33 and D35 by repair, and D34 by re-measurement, which is a different and
 weaker claim: it stopped reproducing between the Wave 1 vendor and today, and
-this campaign only found that out. Together they account for **41 of the 89
+this campaign only found that out. Together they account for **43 of the 89
 lesson-slots** the table counts, and D1 alone is 28 of them. Every row still open
 is recorded in `PLAN.md` with what blocks it and who owns it.
 
@@ -75,6 +75,18 @@ Pocket Calculator repair had invalidated and found instead that the repair was
 half of one. D35 is closed in the same pass; D36 is the residue it left, named
 rather than tolerated, and ratcheted by
 `test/simulator-driver-controls-respond.test.mjs` so it can only shrink.
+
+**D11 was closed on 2026-08-25** the same way, and the interesting part is what
+it deliberately did NOT do. `43-rc-timing` grew `sw_discharge` + a 1 kΩ
+`r_discharge` across the capacitor, so the step repeats. The obvious design — a
+CHARGE switch — was rejected: open at rest it would make this bench read 0 V in
+its first DC operating point, and this is the bench that demonstrates the engine
+reading the supply there (D23, still open, with its own sentinel and its own
+sentence in `signals-rc-response`'s hint). A bench change that hides a defect
+from the gate that pins it is not a fix, and this repo has already recorded one
+of those. Every number both lessons pin is unchanged to four decimals, because an
+open switch stamps 1e-12 S. `measurement-rc-cursors` goes to content version 3
+and `signals-rc-response` to 4.
 
 **D10 was closed on 2026-08-25** by moving the bench rather than the
 instrument — `pc50-two-stage-rc`'s two stages went from 10 kΩ/100 µF to
@@ -140,11 +152,12 @@ than the one that exists.*
 **Three benches were chosen against limits nobody checked.** `pc50-two-stage-rc`
 corners below the sweep's practical range (D10), `pc52-inductor-filter` is an
 RLC asked to be an RL (D8), `43-rc-timing` has no control to repeat its own step
-(D11), and three machine benches boot with no ROM (D7). These are the cheapest
+(D11), and three machine benches boot with no ROM (D7). **D10 and D11 are now
+closed**; D8 and D7 are not. These are the cheapest
 of the lot to fix and the ones most likely to be fixed by *changing the bench*
 rather than the instrument.
 
-That prediction held for the first one to be tried: **D10 was closed by a
+That prediction held for the two that were tried: **D10 was closed by a
 two-character change to a capacitor value**, and it was the right change rather
 than the cheap one — the instrument's cost model (10/f seconds of simulated time
 per sweep point) is a property of correlation measurement and not a defect, so

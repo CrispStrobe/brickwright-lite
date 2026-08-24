@@ -563,7 +563,7 @@ test('OPEN DEFECT: there is no FFT, and the samples an FFT would need are an env
 
 test('the Wave 6 revisions are present, EN and DE, at the content version this review recorded', () => {
     assert.deepEqual(Object.fromEntries(WAVE.lessons.map(l => [l.id, l.version])), {
-        'signals-rc-response': 3,
+        'signals-rc-response': 4,
         'signals-rl-response': 2,
         'signals-complex-impedance': 2,
         'signals-cutoff-phase': 2,
@@ -581,6 +581,9 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
         assert.match(copy.de[field], de, `${id}/${cp}: the German ${field} lost its Wave 6 revision`);
     };
     says('signals-rc-response', 'measure', 'hint', /before the simulation has advanced|meter/i, /Messger(ä|ae)t|fortgeschritten/i);
+    // v4: the bench grew a discharge switch (D11), so the predict hint stopped
+    // saying it has no discharge path and started teaching the general form.
+    says('signals-rc-response', 'predict', 'hint', /discharge switch/i, /Entladeschalter/i);
     says('signals-rl-response', 'measure', 'action', /step the source/i, /Quelle.*(0|null)/i);
     says('signals-rl-response', 'predict', 'hint', /100/, /100/);
     says('signals-complex-impedance', 'measure', 'hint', /81\.92 ms|sweep/i, /81,92 ms|81\.92 ms|Sweep/i);

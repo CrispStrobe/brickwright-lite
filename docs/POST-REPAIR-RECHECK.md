@@ -49,6 +49,7 @@ it.
 | **NEW** | the simulator driver arms a quasi pin at zero, so no 8051 button can move its own pin | none directly; 12 benches, 3 of them Wave 5's | **this pass** — sb3-creator `553a639`, vendored here | the repair at `0777a17` was half of one | fixed upstream, new gate, 43 → 22 → 1 (below) |
 | **NEW** | `arduino-02-digital-input-pullup` declares an active-HIGH input for an `INPUT_PULLUP` bench | none | open | n/a | recorded as D35, ratcheted in the new gate |
 | D10 | the Bode bench corners at 0.159 Hz, where a sweep point costs 629 s of simulated time | signals-bode-sweep, signals-model-measurement | **this pass** — sb3-creator `776a96e` | **no longer true** | bench 100 µF → 100 nF; both lessons restored to v3 |
+| D11 | `43-rc-timing` has no control, so its charging step happens once and cannot be repeated | measurement-rc-cursors, signals-rc-response | **this pass** — sb3-creator `ac83352` | **no longer true** | a DISCHARGE switch, not the charge switch PLAN proposed — see below; `measurement-rc-cursors` → v3, `signals-rc-response` → v4 |
 
 ### The checkpoints still carrying a workaround, and why each one stays
 
@@ -58,7 +59,6 @@ so every one of these sentences is still true and must not be "restored".
 | lesson | the wording | cause | still reproduces? |
 | --- | --- | --- | --- |
 | machines-clocks | "the board's push button is wired to a pull resistor and to nothing else" | D27, example topology | yes |
-| measurement-rc-cursors | "this bench has no switch: the charge happens once" | D11 | yes |
 | signals-loading | "it holds its output at 2.5 V into a one-ohm load"; "the meter is removed from the netlist" | D20, D21 | yes — `devices/analog-amps.js` and the op-amp stamp are unchanged since Wave 6's sha |
 | signals-noise | "the simulated potentiometer is bit-exact" | D22 | yes |
 | signals-rc-response | "the meter says 5 V on a capacitor the engine itself holds at 0 V"; "81.92 milliseconds" | D23, D4 | yes |
@@ -68,6 +68,26 @@ so every one of these sentences is still true and must not be "restored".
 | measurement-resistance | "probe that last one the other way round and the meter reports an open circuit" | D13, by design | yes |
 | measurement-range-error | "its ×46.5 stage is where the next checkpoint finds a discrepancy" | D18 | yes |
 | interactive-extension-discovery | "the green flag runs no-ops" | D30, deliberate | yes |
+
+## Closing D11, and the fix that would have hidden a defect
+
+`PLAN.md` proposed a **charge switch** for `43-rc-timing`, and that would have
+been the wrong part. A charge switch open at rest makes the capacitor read 0 V in
+the first DC operating point — and `43-rc-timing` is the bench that demonstrates
+the engine reading the **supply** there (D23, still open, with its own sentinel
+in `lesson-bench-claims-wave6` and its own sentence in `signals-rc-response`'s
+hint). The obvious fix would have made a live defect stop reproducing on the only
+bench that shows it, without repairing anything — the same species as the Class H
+finding this repo already recorded, where a fix relocated a defect past its own
+gate.
+
+A **discharge** switch closes D11 and touches nothing else. Every number the two
+lessons pin is unchanged to four decimals (an open switch stamps 1e-12 S), and
+the repeat is better than a reset because it is not one: the charging resistor
+stays connected, so the drain settles toward the 0.4545 V divider floor and the
+next rise starts from there — which is exactly what
+V(t) = Vf + (V0 − Vf)·e^(−t/RC) is for, and what `signals-rc-response`'s own
+python variant already told the learner to use.
 
 ## The finding this pass exists for
 
