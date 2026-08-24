@@ -760,6 +760,18 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
   let solution = new Float64Array(dim);
   let converged = false;
 
+  // Device KCL-visibility: everything a registered device stamps — its
+  // state.drives and every ctx primitive its model.stamp calls — is recorded
+  // per part, overwritten each NR iteration so the surviving record matches
+  // the linearization the final solution was solved against ("the extraction
+  // must read the same element the solve stamped"). Extraction derives each
+  // terminal's current from exactly these records, so ALL ~40 registered
+  // models become KCL-visible at once instead of the per-model
+  // branchCurrents hooks (which remain as overrides). Before this, a relay
+  // coil carrying 25 mA read 0 A because no hook existed for it.
+  /** @type {Map<string, Array<object>>} part id → stamped-companion records */
+  const deviceStamps = new Map();
+
   // The Newton loop, callable per ladder rung. Knobs: `gmin` (GMIN
   // stepping) and `srcScale` (source stepping — every independent source,
   // pin drive, device drive, and rail scales together, so a 0.1 rung is
@@ -1072,8 +1084,10 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
               }
               if (changed) state = { ...state, drives };
             }
+            const rec = [];
+            deviceStamps.set(part.id, rec);
             stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds,
-              transient ? transient.dtSec : undefined, srcScale);
+              transient ? transient.dtSec : undefined, srcScale, groundNetId, rec);
           }
           break;
         }
@@ -1438,9 +1452,26 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       const vA = netA ? (nodeVoltages.get(netA) ?? 0) : 0;
       const vB = netB ? (nodeVoltages.get(netB) ?? 0) : 0;
       const ohms = /** @type {number} */ (part.params.ohms ?? 1000);
-      const i = (vA - vB) / ohms; // current from a to b
-      currents.set('a', -i); // into terminal a
-      currents.set('b', i);  // into terminal b
+      const i = (vA - vB) / ohms; // current from a to b, INSIDE the part
+      // OUT-OF-PART positive. `i` enters at 'a' and leaves at 'b', so the
+      // stored values are its negation at 'a' and itself at 'b'. Both comments
+      // here used to read "into terminal", which states the opposite of what is
+      // stored -- and it was the only place in this file naming a convention
+      // for a passive part, so the one signpost pointed the wrong way. That is
+      // the likeliest reason the codebase carries TWO conventions without
+      // anyone noticing:
+      //   OUT-of-part positive: resistor, button/switch, buzzer, dc-motor, and
+      //     the generic device derivation (dc-motor's hook documents this as
+      //     what a meter in either lead expects)
+      //   INTO-part positive:   led/diode/zener (see "into anode" below), BJT
+      //     (its `emitter: -(ib + ic)` only sums to zero this way), FET, isource
+      // Measured on VCC(5V)->R1(1k)->D1(led)->GND, one current everywhere:
+      // R1.a = -2.9703 mA and D1.anode = +2.9703 mA -- the SAME physical
+      // situation, current entering the leg, with opposite stored signs.
+      // Unifying them is a real behavioural change and its own lane; this
+      // comment only stops the file from misdescribing what it does.
+      currents.set('a', -i); // out of terminal a
+      currents.set('b', i);  // out of terminal b
     }
 
     // A button or switch is stamped as a plain two-terminal conductance
@@ -1756,16 +1787,47 @@ export function solveMNA(parts, nets, pinSources, controls, vcc, opts = {}) {
       currents.set('vcc', iVcc);
     }
 
-    // Registered device models may report their own terminal currents.
+    // Registered device models: terminal currents derived GENERICALLY from
+    // the very companions the final NR iteration stamped (deviceStamps), so
+    // every model is KCL-visible without writing a per-model hook. Sign
+    // convention is the RESISTOR convention (positive = current OUT of the
+    // part into the net) — the one dc-motor's hand-written hook documents as
+    // what a meter placed in either lead expects, agreeing with a meter on a
+    // series resistor. A device whose stamps all pair terminals sums to
+    // zero; single-terminal companions (a logic output's Norton against the
+    // reference) return through ground, which is exactly the physics.
     {
       const model = getDevice(part.kind);
-      if (model && model.branchCurrents) {
-        const state = (opts.deviceStates && opts.deviceStates.get(part.id)) || { drives: {} };
+      if (model) {
         const read = (terminal) => {
           const n = findNet(nets, part.id, terminal);
           return n ? (nodeVoltages.get(n) ?? 0) : 0;
         };
-        for (const [t, i] of model.branchCurrents(part, state, read)) currents.set(t, i);
+        const rec = deviceStamps.get(part.id);
+        if (rec && rec.length) {
+          const acc = new Map();
+          const add = (t, i) => acc.set(t, (acc.get(t) ?? 0) + i);
+          for (const r of rec) {
+            if (r.kind === 'cond') {
+              const i = (read(r.tA) - read(r.tB)) * r.g; // internal tA → tB
+              add(r.tA, -i); add(r.tB, i);
+            } else if (r.kind === 'norton') {
+              add(r.t, (r.vth - read(r.t)) * r.g);
+            } else if (r.kind === 'between') {
+              const i = ((read(r.tP) - read(r.tN)) - r.vth) * r.g; // internal tP → tN
+              add(r.tP, -i); add(r.tN, i);
+            } else if (r.kind === 'inject') {
+              add(r.t, r.amps);
+            }
+          }
+          for (const [t, i] of acc) currents.set(t, i);
+        }
+        // A model's own branchCurrents hook stays as the per-terminal
+        // override — it may know region physics the companions flatten.
+        if (model.branchCurrents) {
+          const state = (opts.deviceStates && opts.deviceStates.get(part.id)) || { drives: {} };
+          for (const [t, i] of model.branchCurrents(part, state, read)) currents.set(t, i);
+        }
       }
     }
   }
@@ -2103,7 +2165,15 @@ function stampBuzzerResistance(A, b, part, nets, nodeIndex, groundNetId) {
  * Stamp a registered device: its `state.drives` as Norton sources, then the
  * model's own `stamp(ctx)` for input impedance / analog loading.
  */
-function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, dtSec, srcScale = 1) {
+function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, tSeconds, dtSec, srcScale = 1, groundNetId = undefined, rec = null) {
+  // KCL-visibility: `rec` collects one record per stamped companion so the
+  // extraction can derive terminal currents from exactly what was stamped.
+  // A terminal on the GROUND net has no matrix row (nodeIndex miss) and its
+  // b-injection is skipped, but the current is physically real and returns
+  // through the reference — those records are kept (guarded on the net
+  // being ground, not merely unindexed, so a floating net fabricates
+  // nothing).
+  const rowOrGround = (net) => nodeIndex.has(net) || net === groundNetId;
   // E2.2: the bench temperature reaches device stamps through ctx (the
   // TMP36 defaults to it; an explicit params.tempC wins).
   // Drives: terminal → {vTh, rTh, ref?} | null
@@ -2126,7 +2196,10 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       const refIdx = nodeIndex.get(refNet);
       if (idx !== undefined) b[idx] += drive.vTh * srcScale * g;
       if (refIdx !== undefined) b[refIdx] -= drive.vTh * srcScale * g;
+      if (rec) rec.push({ kind: 'between', tP: terminal, tN: drive.ref, g, vth: drive.vTh * srcScale });
     } else {
+      if (!rowOrGround(net)) continue;
+      if (rec) rec.push({ kind: 'norton', t: terminal, g, vth: drive.vTh * srcScale });
       const idx = nodeIndex.get(net);
       if (idx === undefined) continue;
       A.add(idx, idx, g);
@@ -2139,13 +2212,19 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
     conductance: (tA, tB, g) => {
       const netA = findNet(nets, part.id, tA);
       const netB = tB ? findNet(nets, part.id, tB) : undefined;
+      // Record mirrors the stamp condition (stampTwoTerminal no-ops unless
+      // BOTH legs are netted), so the derived current can never claim a
+      // path the solve did not have.
+      if (rec && netA && netB) rec.push({ kind: 'cond', tA, tB, g });
       stampTwoTerminal(A, netA, netB, g, nodeIndex);
     },
     thevenin: (terminal, vTh, rTh) => {
       const net = findNet(nets, part.id, terminal);
-      const idx = net ? nodeIndex.get(net) : undefined;
-      if (idx === undefined) return;
+      if (!net || !rowOrGround(net)) return;
       const g = 1 / Math.max(rTh, 1e-3);
+      if (rec) rec.push({ kind: 'norton', t: terminal, g, vth: vTh * srcScale });
+      const idx = nodeIndex.get(net);
+      if (idx === undefined) return;
       A.add(idx, idx, g);
       b[idx] += vTh * srcScale * g;
     },
@@ -2159,6 +2238,7 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
       const netN = findNet(nets, part.id, termMinus);
       if (!netP || !netN) return; // a leg in the air carries no current
       const g = 1 / Math.max(rTh, 1e-3);
+      if (rec) rec.push({ kind: 'between', tP: termPlus, tN: termMinus, g, vth: vTh * srcScale });
       stampTwoTerminal(A, netP, netN, g, nodeIndex);
       const idxP = nodeIndex.get(netP);
       const idxN = nodeIndex.get(netN);
@@ -2167,7 +2247,9 @@ function stampDevice(A, b, part, nets, nodeIndex, model, state, controls, vcc, t
     },
     current: (terminal, amps) => {
       const net = findNet(nets, part.id, terminal);
-      const idx = net ? nodeIndex.get(net) : undefined;
+      if (!net || !rowOrGround(net)) return;
+      if (rec) rec.push({ kind: 'inject', t: terminal, amps: amps * srcScale });
+      const idx = nodeIndex.get(net);
       if (idx !== undefined) b[idx] += amps * srcScale;
     },
     vcc,
