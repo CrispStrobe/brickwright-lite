@@ -340,6 +340,56 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
 
+      # MEASURE the browser waits, on a runner instead of a developer box.
+      #
+      # docs/WAIT-CENSUS.md: lite has 119 `timeout: N` bounding literals and not
+      # one carries a recorded measurement, because probing each needs a built
+      # editor and a browser. A bound's evidence is just the observed duration
+      # under it, and this job has already built the editor and installed the
+      # browser — so one extra pass over the same five gates, with every wait
+      # timed, gives all of them a number.
+      #
+      # A RUNNER IS THE RIGHT BOX TO MEASURE ON, and that is the point of doing
+      # it here rather than locally: these thresholds exist to protect CI, so
+      # the p90 that matters is CI's. A developer box shared with several agents
+      # produces a number about the box (measured: 6.1 load per CPU against this
+      # repo's own allowed 1.5, which is why check-system-load refuses to build
+      # there at all).
+      #
+      # workflow_dispatch ONLY. It re-runs five browser gates, so it costs a few
+      # minutes, and nothing about a normal push needs it.
+      #
+      # `|| true`: this step must not turn a build red. The same five gates have
+      # ALREADY run and passed above as real gates — this pass is instrumentation
+      # over ground already covered, and a wait that TIMES OUT here is the single
+      # most informative observation the sweep can make. Swallowing the exit code
+      # keeps that observation instead of discarding the run that produced it.
+      - name: Measure — time every browser wait (manual runs only)
+        id: waits
+        if: github.event_name == 'workflow_dispatch' && steps.playwright.outcome == 'success'
+        run: |
+          for g in verify-circuit-ux verify-circuit-rendering verify-view-buttons \
+                   verify-editor verify-debug-dock; do
+            echo "--- $g"
+            OBSERVE_OUT="$PWD/wait-observations.jsonl" PROOF_URL=http://localhost:8617/ \
+              node --import ./scripts/observe-timeouts.mjs "scripts/$g.mjs" || true
+          done
+          # The aggregator refuses a file with no `installed` marker or no
+          # bounded waits, so a hook that silently failed to attach fails HERE
+          # rather than being reported as a sweep that observed nothing.
+          node scripts/aggregate-timeouts.mjs --observed wait-observations.jsonl | tee wait-report.txt
+          node scripts/aggregate-timeouts.mjs --observed wait-observations.jsonl --json > wait-report.json
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.waits.outcome != 'skipped'
+        with:
+          name: wait-observations
+          path: |
+            wait-observations.jsonl
+            wait-report.txt
+            wait-report.json
+          if-no-files-found: warn
+
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with: { path: packages/scratch-gui/build }
 
