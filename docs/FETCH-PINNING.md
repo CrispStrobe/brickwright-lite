@@ -171,6 +171,17 @@ Three ways it could report a clean sweep over nothing, each closed:
   gate that walked a tree containing its own prover, so every string-literal target matched
   itself and it could never fail.
 
+**It caught its own prover, on the first commit.** `scripts/prove-fetch-pinning.mjs` was
+untracked while the gate was being written, so `git ls-files` never mentioned it and it was
+outside the walk *for the wrong reason*. The moment it was committed the census reported four
+undeclared fetch sites in it — the mutation targets, which are necessarily the text of real
+fetch sites. That is the same shape as the finding this gate was built around, one file over.
+
+The fix was **not** a second exclusion. URL literals in the prover are now assembled from
+pieces, so what that file contains is a *recipe* for a URL and not a URL, and the exclusion
+stays at exactly one path. A future mutation that pastes a whole URL in will turn the gate red
+and say so — which is the correct outcome, not a nuisance.
+
 The `uses:` detector is deliberately scoped to workflow files and anchored to the head of a
 step. An unanchored `/uses:/` reads `refuses: ${…}` in a script and `'…board uses:'` in a
 component as action references — three false offenders in its first run, which is its own small

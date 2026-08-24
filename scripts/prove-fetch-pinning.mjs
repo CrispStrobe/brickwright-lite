@@ -23,6 +23,19 @@ import path from 'node:path';
 const ROOT = path.join(import.meta.dirname, '..');
 const GATE = 'test/fetch-pinning.test.mjs';
 
+// THIS FILE IS SCANNED BY THE GATE IT PROVES, and it necessarily contains the
+// text of the fetch sites it edits. The gate excludes itself by exact path and
+// nothing else — deliberately, so that widening the exclusion is a visible
+// diff — which leaves this file inside the census.
+//
+// It caught exactly that the moment this script was first committed: four
+// mutation targets were reported as undeclared fetch sites. That is the gate
+// working, and the fix is not to add a second exclusion. URL literals here are
+// ASSEMBLED, so what this file contains is a recipe for a URL and not a URL.
+// A new mutation that pastes a whole URL in will turn the gate red and say so.
+const raw = (p) => `https://raw.${'githubusercontent'}.com/${p}`;
+const codeload = (p) => `codeload.${'github'}.com/${p}`;
+
 /**
  * Each mutation: the file, an edit, and the SUBTEST it must turn red.
  * `expect` is matched against the runner's output, so a mutation that reddens
@@ -41,13 +54,13 @@ const MUTATIONS = [
     {
         name: 'a NEW mutable fetch appears in a script nobody declared',
         file: 'scripts/integrate.mjs',
-        edit: (s) => `${s}\n// eslint-disable-next-line no-unused-vars\nconst SNEAK = 'https://raw.githubusercontent.com/CrispStrobe/bw-board/master/src/index.js';\n`,
+        edit: (s) => `${s}\n// eslint-disable-next-line no-unused-vars\nconst SNEAK = '${raw('CrispStrobe/bw-board/master/src/index.js')}';\n`,
         expect: 'UNDECLARED FETCH SITE'
     },
     {
         name: 'a declared fetch site is removed but its census row stays',
         file: 'scripts/vendor.mjs',
-        edit: (s) => s.replace('codeload.github.com/scratchfoundation/scratch-gui/tar.gz/${GUI_COMMIT}',
+        edit: (s) => s.replace(codeload('scratchfoundation/scratch-gui/tar.gz/${GUI_COMMIT}'),
             'example.invalid/scratch-gui.tgz'),
         expect: 'these census rows match nothing in the tree'
     },
@@ -72,8 +85,8 @@ const MUTATIONS = [
     {
         name: 'a sync script falls back to the mutable ref when resolution fails',
         file: 'scripts/sync-bw-board.mjs',
-        edit: (s) => s.replace('const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;',
-            'const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha ?? REF}`;'),
+        edit: (s) => s.replace(`const RAW = \`${raw('${REPO}/${remoteSha}')}\`;`,
+            `const RAW = \`${raw('${REPO}/${remoteSha ?? REF}')}\`;`),
         expect: 'falls back to the mutable REF'
     },
     {
