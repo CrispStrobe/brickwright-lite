@@ -320,7 +320,31 @@ jobs:
             echo "::error::package.json has no test script — tests exist but nothing runs them"
             exit 1
           fi
-          npm test
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/unit.tap
+          # A SUITE THAT CANNOT BE CONSTRUCTED CURRENTLY READS AS A SUITE THAT
+          # PASSED, and that is not a hypothesis — it happened in run
+          # 32779945069 on this branch. `test/wait-census.test.mjs` calls a
+          # script that could not resolve its import, so the `describe` body
+          # threw while the suite was being built. The runner printed
+          #
+          #     not ok 662 - the wait census: fixed sleeps are counted…
+          #     # tests 1014   # pass 1013   # fail 0
+          #
+          # and the step went GREEN on the runner's node (22.23.2). The same
+          # minimal repro exits 1 on node 20.20.2, so the exit-code half is
+          # version-dependent; the miscount is not — `# fail 0` alongside a
+          # `not ok` appears on both.
+          #
+          # A construction failure is the WORST kind to lose: the gate did not
+          # run at all, so it cannot have found anything, and a green line says
+          # it did. This repo has found five gates that could not fail; this one
+          # could not even be built. Read the stream, not the summary.
+          if grep -qE '^not ok ' /tmp/unit.tap; then
+            echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED (a missing import, a fixture that cannot be built). Those are not counted in \`# fail\` and may not affect the exit code."
+            grep -E '^not ok ' /tmp/unit.tap | head -20
+            exit 1
+          fi
 
       # --- build ---
 

@@ -36,10 +36,34 @@
  */
 import {readFileSync, readdirSync, existsSync} from 'node:fs';
 import {join, relative} from 'node:path';
-import * as acorn from 'acorn';
-import * as walk from 'acorn-walk';
+import {createRequire} from 'node:module';
 
 const ROOT = join(import.meta.dirname, '..');
+
+// acorn, from wherever this checkout actually has one.
+//
+// A bare `import 'acorn'` works on a developer box that ran `npm install` at
+// the root and fails in CI, which installs into packages/scratch-gui and never
+// at the root. That is how this script's first CI run died — and worse, how the
+// TEST that calls it reported `not ok` and a GREEN step (see
+// docs/WAIT-CENSUS.md section 6).
+//
+// Rather than add a root dependency to a repo that deliberately has almost
+// none, borrow the acorn webpack already brings: it is committed under
+// packages/scratch-gui/node_modules, so it is present in every checkout,
+// including a fresh CI one, with no install step at all.
+const localRequire = createRequire(import.meta.url);
+const guiRequire = createRequire(join(ROOT, 'packages', 'scratch-gui', 'package.json'));
+const need = (name) => {
+    for (const r of [localRequire, guiRequire]) {
+        try { return r(name); } catch { /* try the next */ }
+    }
+    throw new Error(`cannot resolve ${name} from the repo root or from `
+        + 'packages/scratch-gui. It ships with webpack and is committed there; if that tree '
+        + 'is missing, run `npm run vendor`.');
+};
+const acorn = need('acorn');
+const walk = need('acorn-walk');
 const DIRS = ['scripts', 'test'];
 
 const jsFiles = (dir) => {
