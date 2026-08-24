@@ -120,6 +120,19 @@ reported reads as a class nobody looked at:
 | C. A `kind:` contradicting the files present | 274 index entries | **1** | `test/example-kind-matches-content.test.mjs` | yes, both directions |
 | D. An assignment that parses to something other than what reads it back | 272 programs | **2** (3 phantom variable names, 2 dangling reads) | `test/program-reads-what-it-writes.test.mjs` | yes, all three shapes |
 | E. Arithmetic that means one thing in the VM and another on the device | 272 programs, 122 emitting device C | **5** | `test/vm-and-c-agree-on-arithmetic.test.mjs` | yes, both shapes |
+| F. Index metadata contradicting the files on disk | 274 entries, all 26 fields they use | **44** (36 phantom thumbnails, 8 stale refusals) | `test/index-metadata-matches-disk.test.mjs` | yes, three shapes |
+| G. An EXPECTED.md quantity that no longer matches the engine | 274 EXPECTED.md, 49 prose current claims, 7 frequency+period pairs | **4** (1 bench that could not do its lesson, 2 values in the wrong field, 1 self-contradiction) | `test/expected-quantities-hold.test.mjs` | yes, three shapes |
+| H. An example whose gate coverage changed when its metadata did | 274 entries against 16 metadata-filtered gates | **1** (the shared 33-inductive-no-flyback mistake) | `test/example-gate-enrolment.test.mjs` | yes, four shapes incl. the exact mistake |
+
+**The denominators, stated, because a sweep without one cannot be told apart from a sweep
+that only looked where it expected to find something.** Class A covers 53 of the 53
+(kind, key) param pairs the corpus declares — exhaustive over params — and its tier-1
+extraction was widened after `genPower` was briefly mis-reported dead: the reader set had
+only searched each sibling's `src/`, and that field is read from `scripts/`. Circuit JSONs
+also carry **35 structural key paths** beyond `params` (wires, holeWires, seats, leadMaps);
+every one was checked by hand against the widened reader set and all 35 are read. Class F
+covers 7 of the index's 26 fields against the world and NAMES the other 19 with the gate
+that holds each, so a 27th field fails until somebody decides which it is.
 
 Class E was not in the brief. It was found while sweeping for the others and it is the
 same shape: Brickwright `/` is real division and the C emitter's `/` truncates, so five
@@ -164,6 +177,29 @@ What the sweep repaired, with the evidence:
   fraction (0.2988 at reading 102) matching none of its four `range = N` branches, so it
   printed nothing at all.
 
+- **Class F.** 36 entries declared a `thumbnail`; not one file exists, none ever did, and
+  nothing reads the field. `gallery.test.mjs` has asserted "every index entry points to
+  files that exist" the whole time and walked past all 36, because it iterates
+  `entry.files` and `thumbnail` sits beside it. 8 `refusals` named a device the catalog
+  OFFERS — 46-port-overcurrent told the reader arduino-uno "has more digital outputs than
+  its convention offers" while offering it and shipping it a bench, and 07-buzzer-siren
+  refused its own authored chip, for which retarget is the identity. All eight were
+  measured against `retargetPseudocode`; all eight dry-runs succeed.
+- **Class G.** `23-voltage-regulator` could not regulate: its zener is declared
+  `kind: "diode"` with `vf: 5.1`, and a forward diode does not clamp in reverse, so no
+  current took the zener branch and both resistors carried the same 8.642 mA. Declared as
+  a `zener` with `vz: 5.1` the bench measures 11.739 / 6.513 / 5.226 mA against the
+  document's own hand-derived 11.82 / 6.60 / 5.22 — the prose was right about all three
+  and the circuit was wrong. `39-zener-clamp` and `pc18-zener-clamp` put the breakdown
+  voltage in `vf`, the forward-drop field, and were right only by the 5.1 V default;
+  measured identical before and after. `arduino-01-blink` claimed "1 Hz (period = 2 s)",
+  contradicting itself and its program, which waits 1 s twice for 0.5 Hz.
+- **Class H.** The gate for our own shared mistake. `test/fixtures/example-enrolment.json`
+  records which of 16 metadata-filtered gates enrol each of the 274 examples, recomputed
+  every run and diffed. Flipping 33-inductive-no-flyback's kind now reports
+  `+[retarget-amplification, retarget-gallery]` BEFORE retarget-gallery fails on it, which
+  is the ordering that was missing.
+
 Two documents were describing a program that no longer exists, found by the same sweeps:
 
 - `blinkenrocket-pendant` says a "smiley face" scrolls under two buttons. The program was
@@ -193,6 +229,15 @@ Found and NOT fixed, because the fix is not in this repo:
 
 What the sweep did NOT establish, said plainly:
 
+- **`assert-physics` skips every `current` assertion** — "current readback not yet wired" —
+  so no current claim in the corpus has ever been checked by it, which is how
+  41-pot-as-dimmer shipped 2.3 mA against a bench delivering 0.188. Class G's gate now
+  derives current from Ohm's law across the series resistor and checks the PROSE claims;
+  wiring the assert-block kind itself is still open, though the corpus currently contains
+  no `current` assertion for it to check.
+- **24 of 49 prose current claims cannot be compared at all**: an MCU bench's current
+  depends on firmware state and an oscillator's on the sampling instant, and one solve
+  speaks for neither. Closing that needs the execution harness, not another reader.
 - The tier-2 probe answers "does perturbing this key move a bench", and 22 (kind, key)
   pairs have no bench in the corpus that responds — an op-amp that never saturates says
   nothing about `railHigh`, and no bench spins the `dc_motor` or drives I2C at the
@@ -213,15 +258,25 @@ the document was updated and the pin was not. sb3-creator's pins are now the ful
 `caeac2b…` / `b5761ad…`, at which the bench measures 2.0301 V at the wiper and 1.9887 V at
 the anode — exactly the hand-derived numbers the document carries.
 
-**Verdict, from CI rather than from this box.** sb3-creator CI on
-`fix/milestone0-corpus` (run 32661292667, workflow_dispatch): **6473 tests, 6378 pass,
-0 fail, 0 cancelled, 95 skipped**, 443 s. The same tree run locally in twelve chunks gives
-6430 / 6337 / 0 fail / 92 skipped with ONE cancellation — `gallery-e2e` timing out at 900 s
-against eight files sharing four cores at load average 18-26. CI, on a quieter runner,
-cancels nothing. Where the two disagree, the disagreement is the box, and CI is the number
-to quote; nine of the local failures on an earlier pass were literally
-`[Errno 28] No space left on device` from `python3 -m py_compile`, and passed 697/0 on
-retry once the disk drained.
+**Verdict.** sb3-creator CI on `fix/milestone0-corpus`, run
+[32668122092](https://github.com/CrispStrobe/sb3-creator/actions/runs/32668122092), success
+in 3m35s: **6469 tests, 6374 pass, 0 fail, 0 cancelled, 95 skipped**. Local, all 97 test
+files run one at a time against the pinned siblings: **6469 tests, 6377 pass, 0 fail, 0
+cancelled, 92 skipped**. Same test count, same zero failures; the three-skip difference is
+the local box having tools CI does not (and vice versa).
+
+Where CI and this box have differed, the difference has been the box every time, and it is
+worth writing down because each one briefly looked like a finding: nine failures that were
+`[Errno 28] No space left on device` out of `python3 -m py_compile` and passed 697/0 on
+retry; a `gallery-e2e` timeout at 900 s with eight files sharing four cores at load average
+18-26, which CI does not reproduce; and a four-minute file mistaken for a hang, bisected to
+an innocent commit. A contended, full-disk box does not produce failures that mean anything
+about the code, and it takes a second run to tell which kind you are looking at.
+
+The one time CI reported something local did not, they had not disagreed: the enrolment
+gate had been run BEFORE the edit that broke it and never re-run, so the local result was
+stale rather than wrong. CI ran the tree as pushed. That is the value of CI actually
+rendering a verdict again.
 
 **Two of this lane's own conclusions were wrong, and are corrected here rather than
 quietly dropped**, because both are instrument failures worth knowing about:
@@ -249,19 +304,40 @@ quietly dropped**, because both are instrument failures worth knowing about:
 
 ### Verification-debt ledger
 
-Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**. The
-technical reviews of waves 1, 2, 3, 4 and 5 are now closed; waves 6 and 7 are still open. Stated
-plainly, so it cannot read as finished work:
+Waves 1–7 are all recorded in the execution log as engineering/content drafts **complete**;
+the technical reviews of waves 1–6 are closed and wave 7 is open. Stated plainly, so it
+cannot read as finished work.
 
-| Wave | Lessons | Draft | Technical review | Translation review | Learner field test |
-| --- | --- | --- | --- | --- | --- |
-| 1 Electricity you can see | 12 | done | **full, done 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | open | open |
-| 2 Measure rather than guess | 10 | done | **full, done 2026-08-23** — 5 of 10 defective; 6 revised to v2, 4 open engine defects, 1 fixed upstream mid-review | open | open |
-| 3 One idea, several languages | 12 | done | **full, done 2026-08-23** — 1 of 12 defective; 1 revised to v2 | open | open |
-| 4 Interactive systems | 8 | done | **full, done 2026-08-23** — 7 of 8 defective; 7 revised (one to v3), 5 open app/example defects, 1 fixed upstream mid-review | open | open |
-| 5 Debug with evidence | 10 | done | **full, done 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | open | open |
-| 6 Signals and systems | 10 | done | **full, done 2026-08-23** — 9 of 10 defective; 10 revised (one to v3), 11 open instrument/engine defects | open | open |
-| 7 Computers from wires upward | 10 | done | **full, done 2026-08-23** — 8 of 10 defective; 8 revised (one to v3), 8 open example/instrument defects | open | open |
+Milestone 0 gates the other ten milestones, so this table is the gate's readout. It records
+what was MEASURED, against which revision, and what is still open — not what was drafted.
+
+**Lessons.** Every closed review names the lite sha it was measured against; a review is only
+as current as that sha, and several findings expired within hours of being written.
+
+| Wave | Lessons | Draft | Technical review | Measured against | Translation | Field test |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 Electricity you can see | 12 | done | **full, 2026-08-23** — 5 of 12 defective; 4 fixed, 2 open engine/app defects | `3c6948f5d` | open | open |
+| 2 Measure rather than guess | 10 | done | **full, 2026-08-23** — 5 of 10 defective; 6 revised to v2, 4 open engine defects, 1 fixed upstream mid-review | `3e87340f5` | open | open |
+| 3 One idea, several languages | 12 | done | **full, 2026-08-23** — 1 of 12 defective; 1 revised to v2 | `a3f30be6b` | open | open |
+| 4 Interactive systems | 8 | done | **full, 2026-08-23** — 7 of 8 defective; 7 revised (one to v3), 5 open app/example defects, 1 fixed upstream mid-review | `2e294ceaf`, re-measured `d7325a272` | open | open |
+| 5 Debug with evidence | 10 | done | **full, 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | `a3f30be6b` | open | open |
+| 6 Signals and systems | 10 | done | **full, 2026-08-23** — 9 of 10 defective; 10 revised (one to v3), 11 open instrument/engine defects | `1d10902cb` | open | open |
+| 7 Computers from wires upward | 10 | done | **full, 2026-08-23** — 8 of 10 defective; 8 revised (one to v3), 8 open example/instrument defects | `1d10902cb` | open | open |
+
+**Examples.** Milestone 0's scope covers the corpus as well as the lessons, and the ledger
+never tracked it. Measured against sb3-creator `fix/milestone0-corpus`, with siblings pinned
+at bw-board `dcaf05fb` and bw-circuit-ui `0a3ec00e`:
+
+| Surface | Population | Swept for | State |
+| --- | --- | --- | --- |
+| Example programs | 272 `program.bw` | classes B, D, E, and the kind/content contract | **done** — 8 defects fixed, all gated |
+| Circuit params | 2,098 circuit files, 53 (kind, key) pairs | class A, both tiers | **done** — 9 keys fixed; 22 pairs no bench exercises, each listed with its reason |
+| Circuit structure | 35 structural key paths | class A by hand against the widened reader set | **done** — all 35 read; no gate, checked once |
+| Index metadata | 274 entries, 26 fields | class F | **done** — 44 defects fixed; 7 fields gated, 19 named with the gate that holds each |
+| EXPECTED.md prose | 274 files, 49 current claims, 7 freq/period pairs | class G | **partial** — 4 defects fixed; **24 of 49 current claims cannot be compared** (MCU and oscillating benches) |
+| EXPECTED.md assert blocks | 359 assertions | assert-physics | **partial** — 317 pass, **42 skipped** as unknown kinds (display text, audio state, terminal transcripts) |
+| Gate coverage per example | 274 examples × 16 metadata-filtered gates | class H | **done** — recorded in `test/fixtures/example-enrolment.json`, diffed every run |
+| Circuit variants | 1,034 rendered | electrical faithfulness | **OPEN** — `schematic-*` checks mechanical legibility only; nothing asserts a variant is what the simulator solves |
 
 **What the corpus sweep contributed to this table (2026-08-23).** The sweep above reviewed
 the EXAMPLES, not the lessons, but four lesson waves name examples it changed, and one of
