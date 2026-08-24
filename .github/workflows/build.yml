@@ -246,8 +246,16 @@ jobs:
             echo "::error::test/fetch-pinning.test.mjs is missing — every fetch in this repo would be unchecked"
             exit 1
           fi
+          # No `git diff` here. By this point `npm install`, vendor and integrate
+          # have modified thousands of tracked files, so a dirty tree says
+          # nothing about the prover — and the first version of this step
+          # reported "the pinning prover left the tree dirty" after the prover
+          # had just printed 11/11 caught (run 32762117022). A well-formed,
+          # confident statement about the wrong thing, in the step meant to
+          # catch exactly that. The prover checks its own restoration at BYTE
+          # level against what each file held before it touched it, which is
+          # the question, and exits 2 if a revert failed.
           node scripts/prove-fetch-pinning.mjs
-          git diff --quiet || { echo "::error::the pinning prover left the tree dirty"; git diff --stat; exit 1; }
 
       - name: Run unit tests
         run: |
