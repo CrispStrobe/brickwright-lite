@@ -33348,12 +33348,27 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     // An ammeter probe on a closed button in a live loop therefore read
     // 0.0 mA, which is indistinguishable from an open circuit and is the
     // one answer a continuity-minded learner will not question.
-    if (part.kind === 'button' || part.kind === 'switch') {
-      var _nodeVoltages$get3, _nodeVoltages$get4, _controls$get;
+    // The buzzer had the same gap the button did: stamped as a plain
+    // 100 Ω (stampBuzzerResistance) but no extraction rule, so its
+    // branchCurrent read 0.0 mA while its own net carried 43 mA — a
+    // KCL-invisible part (found by the EXPECTED-quantities gate on
+    // 44-darlington-motor, where the buzzer IS the load being taught).
+    if (part.kind === 'buzzer') {
+      var _nodeVoltages$get3, _nodeVoltages$get4;
       const netA = findNet(nets, part.id, 'a');
       const netB = findNet(nets, part.id, 'b');
       const vA = netA ? (_nodeVoltages$get3 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get3 !== void 0 ? _nodeVoltages$get3 : 0 : 0;
       const vB = netB ? (_nodeVoltages$get4 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get4 !== void 0 ? _nodeVoltages$get4 : 0 : 0;
+      const i = (vA - vB) / 100; // must match stampBuzzerResistance
+      currents.set('a', -i);
+      currents.set('b', i);
+    }
+    if (part.kind === 'button' || part.kind === 'switch') {
+      var _nodeVoltages$get5, _nodeVoltages$get6, _controls$get;
+      const netA = findNet(nets, part.id, 'a');
+      const netB = findNet(nets, part.id, 'b');
+      const vA = netA ? (_nodeVoltages$get5 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get5 !== void 0 ? _nodeVoltages$get5 : 0 : 0;
+      const vB = netB ? (_nodeVoltages$get6 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get6 !== void 0 ? _nodeVoltages$get6 : 0 : 0;
       const closed = ((_controls$get = controls === null || controls === void 0 ? void 0 : controls.get(part.id)) !== null && _controls$get !== void 0 ? _controls$get : 0) === 1;
       const g = closed ? 1 / 0.001 : 1e-12; // must match stampButton
       const i = (vA - vB) * g; // current from a to b
@@ -33361,11 +33376,11 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('b', i);
     }
     if (part.kind === 'led' || part.kind === 'diode') {
-      var _nodeVoltages$get5, _nodeVoltages$get6, _part$params$vf2;
+      var _nodeVoltages$get7, _nodeVoltages$get8, _part$params$vf2;
       const anodeNet = findNet(nets, part.id, 'anode');
       const cathodeNet = findNet(nets, part.id, 'cathode');
-      const vAnode = anodeNet ? (_nodeVoltages$get5 = nodeVoltages.get(anodeNet)) !== null && _nodeVoltages$get5 !== void 0 ? _nodeVoltages$get5 : 0 : 0;
-      const vCathode = cathodeNet ? (_nodeVoltages$get6 = nodeVoltages.get(cathodeNet)) !== null && _nodeVoltages$get6 !== void 0 ? _nodeVoltages$get6 : 0 : 0;
+      const vAnode = anodeNet ? (_nodeVoltages$get7 = nodeVoltages.get(anodeNet)) !== null && _nodeVoltages$get7 !== void 0 ? _nodeVoltages$get7 : 0 : 0;
+      const vCathode = cathodeNet ? (_nodeVoltages$get8 = nodeVoltages.get(cathodeNet)) !== null && _nodeVoltages$get8 !== void 0 ? _nodeVoltages$get8 : 0 : 0;
       // A bare LED is a ~2 V junction; a bare diode is silicon, 0.7 V.
       // (Sweep finding 2026-08-15: both defaulted to 2.0, so an
       // unparameterized diode behaved exactly like an LED.)
@@ -33379,11 +33394,11 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('cathode', -i); // out of cathode
     }
     if (part.kind === 'zener') {
-      var _nodeVoltages$get7, _nodeVoltages$get8, _part$params$vf3, _part$params$vz, _part$params$rz;
+      var _nodeVoltages$get9, _nodeVoltages$get10, _part$params$vf3, _part$params$vz, _part$params$rz;
       const anodeNet = findNet(nets, part.id, 'anode');
       const cathodeNet = findNet(nets, part.id, 'cathode');
-      const vAnode = anodeNet ? (_nodeVoltages$get7 = nodeVoltages.get(anodeNet)) !== null && _nodeVoltages$get7 !== void 0 ? _nodeVoltages$get7 : 0 : 0;
-      const vCathode = cathodeNet ? (_nodeVoltages$get8 = nodeVoltages.get(cathodeNet)) !== null && _nodeVoltages$get8 !== void 0 ? _nodeVoltages$get8 : 0 : 0;
+      const vAnode = anodeNet ? (_nodeVoltages$get9 = nodeVoltages.get(anodeNet)) !== null && _nodeVoltages$get9 !== void 0 ? _nodeVoltages$get9 : 0 : 0;
+      const vCathode = cathodeNet ? (_nodeVoltages$get10 = nodeVoltages.get(cathodeNet)) !== null && _nodeVoltages$get10 !== void 0 ? _nodeVoltages$get10 : 0 : 0;
       // The forward junction shifts with temperature; vz stays put —
       // zener/avalanche tempco is a different, weaker physics and
       // pretending −2 mV/°C would be invention (E2.2 scope note).
@@ -33398,14 +33413,14 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('cathode', -i);
     }
     if (part.kind === 'npn' || part.kind === 'pnp') {
-      var _nodeVoltages$get9, _nodeVoltages$get10, _nodeVoltages$get11, _part$params$beta2, _part$params$vbe2, _part$params$vceSat2;
+      var _nodeVoltages$get11, _nodeVoltages$get12, _nodeVoltages$get13, _part$params$beta2, _part$params$vbe2, _part$params$vceSat2;
       // Extract collector current from node voltages
       const netB = findNet(nets, part.id, 'base');
       const netC = findNet(nets, part.id, 'collector');
       const netE = findNet(nets, part.id, 'emitter');
-      const vB = netB ? (_nodeVoltages$get9 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get9 !== void 0 ? _nodeVoltages$get9 : 0 : 0;
-      const vC = netC ? (_nodeVoltages$get10 = nodeVoltages.get(netC)) !== null && _nodeVoltages$get10 !== void 0 ? _nodeVoltages$get10 : 0 : 0;
-      const vE = netE ? (_nodeVoltages$get11 = nodeVoltages.get(netE)) !== null && _nodeVoltages$get11 !== void 0 ? _nodeVoltages$get11 : 0 : 0;
+      const vB = netB ? (_nodeVoltages$get11 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get11 !== void 0 ? _nodeVoltages$get11 : 0 : 0;
+      const vC = netC ? (_nodeVoltages$get12 = nodeVoltages.get(netC)) !== null && _nodeVoltages$get12 !== void 0 ? _nodeVoltages$get12 : 0 : 0;
+      const vE = netE ? (_nodeVoltages$get13 = nodeVoltages.get(netE)) !== null && _nodeVoltages$get13 !== void 0 ? _nodeVoltages$get13 : 0 : 0;
       const beta = /** @type {number} */(_part$params$beta2 = part.params.beta) !== null && _part$params$beta2 !== void 0 ? _part$params$beta2 : 100;
       const vbeThresh = /** @type {number} */(_part$params$vbe2 = part.params.vbe) !== null && _part$params$vbe2 !== void 0 ? _part$params$vbe2 : 0.7;
       const rd = 10;
@@ -33439,13 +33454,13 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('emitter', -(ib + ic));
     }
     if (part.kind === 'nmos' || part.kind === 'pmos') {
-      var _nodeVoltages$get12, _nodeVoltages$get13, _nodeVoltages$get14, _part$params$vth3, _part$params$k;
+      var _nodeVoltages$get14, _nodeVoltages$get15, _nodeVoltages$get16, _part$params$vth3, _part$params$k;
       const netG = findNet(nets, part.id, 'gate');
       const netD = findNet(nets, part.id, 'drain');
       const netS = findNet(nets, part.id, 'source');
-      const vG = netG ? (_nodeVoltages$get12 = nodeVoltages.get(netG)) !== null && _nodeVoltages$get12 !== void 0 ? _nodeVoltages$get12 : 0 : 0;
-      const vD = netD ? (_nodeVoltages$get13 = nodeVoltages.get(netD)) !== null && _nodeVoltages$get13 !== void 0 ? _nodeVoltages$get13 : 0 : 0;
-      const vS = netS ? (_nodeVoltages$get14 = nodeVoltages.get(netS)) !== null && _nodeVoltages$get14 !== void 0 ? _nodeVoltages$get14 : 0 : 0;
+      const vG = netG ? (_nodeVoltages$get14 = nodeVoltages.get(netG)) !== null && _nodeVoltages$get14 !== void 0 ? _nodeVoltages$get14 : 0 : 0;
+      const vD = netD ? (_nodeVoltages$get15 = nodeVoltages.get(netD)) !== null && _nodeVoltages$get15 !== void 0 ? _nodeVoltages$get15 : 0 : 0;
+      const vS = netS ? (_nodeVoltages$get16 = nodeVoltages.get(netS)) !== null && _nodeVoltages$get16 !== void 0 ? _nodeVoltages$get16 : 0 : 0;
       const vth = /** @type {number} */(_part$params$vth3 = part.params.vth) !== null && _part$params$vth3 !== void 0 ? _part$params$vth3 : part.kind === 'nmos' ? 2.0 : -2.0;
       const k = /** @type {number} */(_part$params$k = part.params.k) !== null && _part$params$k !== void 0 ? _part$params$k : 0.5;
       let id;
@@ -33478,11 +33493,11 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('neg', -amps);
     }
     if (part.kind === 'ldr' || part.kind === 'ntc') {
-      var _nodeVoltages$get15, _nodeVoltages$get16;
+      var _nodeVoltages$get17, _nodeVoltages$get18;
       const netA = findNet(nets, part.id, 'a');
       const netB = findNet(nets, part.id, 'b');
-      const vA = netA ? (_nodeVoltages$get15 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get15 !== void 0 ? _nodeVoltages$get15 : 0 : 0;
-      const vB = netB ? (_nodeVoltages$get16 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get16 !== void 0 ? _nodeVoltages$get16 : 0 : 0;
+      const vA = netA ? (_nodeVoltages$get17 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get17 !== void 0 ? _nodeVoltages$get17 : 0 : 0;
+      const vB = netB ? (_nodeVoltages$get18 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get18 !== void 0 ? _nodeVoltages$get18 : 0 : 0;
       let ohms;
       if (part.kind === 'ldr') {
         var _part$params$rDark, _part$params$rLight, _controls$get2;
@@ -33502,11 +33517,11 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('b', i);
     }
     if (part.kind === 'inductor') {
-      var _nodeVoltages$get17, _nodeVoltages$get18;
+      var _nodeVoltages$get19, _nodeVoltages$get20;
       const netA = findNet(nets, part.id, 'a');
       const netB = findNet(nets, part.id, 'b');
-      const vA = netA ? (_nodeVoltages$get17 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get17 !== void 0 ? _nodeVoltages$get17 : 0 : 0;
-      const vB = netB ? (_nodeVoltages$get18 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get18 !== void 0 ? _nodeVoltages$get18 : 0 : 0;
+      const vA = netA ? (_nodeVoltages$get19 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get19 !== void 0 ? _nodeVoltages$get19 : 0 : 0;
+      const vB = netB ? (_nodeVoltages$get20 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get20 !== void 0 ? _nodeVoltages$get20 : 0 : 0;
       let i;
       if (transient) {
         var _ref2, _part$params$henrys2, _transient$inductorCu4;
@@ -33528,9 +33543,9 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('b', i);
     }
     if (part.kind === 'transformer') {
-      var _nodeVoltages$get19, _nodeVoltages$get20, _nodeVoltages$get21, _nodeVoltages$get22;
-      const vP = ((_nodeVoltages$get19 = nodeVoltages.get(findNet(nets, part.id, 'p1'))) !== null && _nodeVoltages$get19 !== void 0 ? _nodeVoltages$get19 : 0) - ((_nodeVoltages$get20 = nodeVoltages.get(findNet(nets, part.id, 'p2'))) !== null && _nodeVoltages$get20 !== void 0 ? _nodeVoltages$get20 : 0);
-      const vS = ((_nodeVoltages$get21 = nodeVoltages.get(findNet(nets, part.id, 's1'))) !== null && _nodeVoltages$get21 !== void 0 ? _nodeVoltages$get21 : 0) - ((_nodeVoltages$get22 = nodeVoltages.get(findNet(nets, part.id, 's2'))) !== null && _nodeVoltages$get22 !== void 0 ? _nodeVoltages$get22 : 0);
+      var _nodeVoltages$get21, _nodeVoltages$get22, _nodeVoltages$get23, _nodeVoltages$get24;
+      const vP = ((_nodeVoltages$get21 = nodeVoltages.get(findNet(nets, part.id, 'p1'))) !== null && _nodeVoltages$get21 !== void 0 ? _nodeVoltages$get21 : 0) - ((_nodeVoltages$get22 = nodeVoltages.get(findNet(nets, part.id, 'p2'))) !== null && _nodeVoltages$get22 !== void 0 ? _nodeVoltages$get22 : 0);
+      const vS = ((_nodeVoltages$get23 = nodeVoltages.get(findNet(nets, part.id, 's1'))) !== null && _nodeVoltages$get23 !== void 0 ? _nodeVoltages$get23 : 0) - ((_nodeVoltages$get24 = nodeVoltages.get(findNet(nets, part.id, 's2'))) !== null && _nodeVoltages$get24 !== void 0 ? _nodeVoltages$get24 : 0);
       let iP;
       let iS;
       if (transient) {
@@ -33559,11 +33574,11 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('s2', iS);
     }
     if (part.kind === 'capacitor') {
-      var _nodeVoltages$get23, _nodeVoltages$get24;
+      var _nodeVoltages$get25, _nodeVoltages$get26;
       const netA = findNet(nets, part.id, 'a');
       const netB = findNet(nets, part.id, 'b');
-      const vA = netA ? (_nodeVoltages$get23 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get23 !== void 0 ? _nodeVoltages$get23 : 0 : 0;
-      const vB = netB ? (_nodeVoltages$get24 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get24 !== void 0 ? _nodeVoltages$get24 : 0 : 0;
+      const vA = netA ? (_nodeVoltages$get25 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get25 !== void 0 ? _nodeVoltages$get25 : 0 : 0;
+      const vB = netB ? (_nodeVoltages$get26 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get26 !== void 0 ? _nodeVoltages$get26 : 0 : 0;
       let i = 0;
       if (transient) {
         var _part$params$farads2, _transient$capVoltage2;
@@ -33603,10 +33618,10 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       const region = (_vccsClamps$get = vccsClamps.get(part.id)) !== null && _vccsClamps$get !== void 0 ? _vccsClamps$get : 'linear';
       let i;
       if (region === 'clamp+') i = /** @type {number} */part.params.iMax;else if (region === 'clamp-') i = -(/** @type {number} */part.params.iMax);else {
-        var _nodeVoltages$get25, _nodeVoltages$get26, _part$params$gm2;
+        var _nodeVoltages$get27, _nodeVoltages$get28, _part$params$gm2;
         const nP = findNet(nets, part.id, 'inp');
         const nN = findNet(nets, part.id, 'inn');
-        const vin = (nP ? (_nodeVoltages$get25 = nodeVoltages.get(nP)) !== null && _nodeVoltages$get25 !== void 0 ? _nodeVoltages$get25 : 0 : 0) - (nN ? (_nodeVoltages$get26 = nodeVoltages.get(nN)) !== null && _nodeVoltages$get26 !== void 0 ? _nodeVoltages$get26 : 0 : 0);
+        const vin = (nP ? (_nodeVoltages$get27 = nodeVoltages.get(nP)) !== null && _nodeVoltages$get27 !== void 0 ? _nodeVoltages$get27 : 0 : 0) - (nN ? (_nodeVoltages$get28 = nodeVoltages.get(nN)) !== null && _nodeVoltages$get28 !== void 0 ? _nodeVoltages$get28 : 0 : 0);
         i = (/** @type {number} */(_part$params$gm2 = part.params.gm) !== null && _part$params$gm2 !== void 0 ? _part$params$gm2 : 1e-3) * vin;
       }
       currents.set('outp', i);
@@ -33622,11 +33637,11 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
 
     // Drawable parts: supply current from VCC to GND
     if (part.kind === 'char_lcd' || part.kind === 'ir_receiver' || part.kind === 'temp_sensor' || part.kind === 'eeprom') {
-      var _nodeVoltages$get27, _nodeVoltages$get28;
+      var _nodeVoltages$get29, _nodeVoltages$get30;
       const vNet = findNet(nets, part.id, 'vcc');
       const gNet = findNet(nets, part.id, 'gnd');
-      const vV = vNet ? (_nodeVoltages$get27 = nodeVoltages.get(vNet)) !== null && _nodeVoltages$get27 !== void 0 ? _nodeVoltages$get27 : 0 : 0;
-      const vG = gNet ? (_nodeVoltages$get28 = nodeVoltages.get(gNet)) !== null && _nodeVoltages$get28 !== void 0 ? _nodeVoltages$get28 : 0 : 0;
+      const vV = vNet ? (_nodeVoltages$get29 = nodeVoltages.get(vNet)) !== null && _nodeVoltages$get29 !== void 0 ? _nodeVoltages$get29 : 0 : 0;
+      const vG = gNet ? (_nodeVoltages$get30 = nodeVoltages.get(gNet)) !== null && _nodeVoltages$get30 !== void 0 ? _nodeVoltages$get30 : 0 : 0;
       const rSupply = part.kind === 'ir_receiver' ? 1000 : 5000;
       const iSupply = (vV - vG) / rSupply;
       currents.set('vcc', -iSupply);
@@ -33646,9 +33661,9 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
           drives: {}
         };
         const read = terminal => {
-          var _nodeVoltages$get29;
+          var _nodeVoltages$get31;
           const n = findNet(nets, part.id, terminal);
-          return n ? (_nodeVoltages$get29 = nodeVoltages.get(n)) !== null && _nodeVoltages$get29 !== void 0 ? _nodeVoltages$get29 : 0 : 0;
+          return n ? (_nodeVoltages$get31 = nodeVoltages.get(n)) !== null && _nodeVoltages$get31 !== void 0 ? _nodeVoltages$get31 : 0 : 0;
         };
         for (const [t, i] of model.branchCurrents(part, state, read)) currents.set(t, i);
       }
@@ -33665,32 +33680,32 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     const inductorVoltagesNext = new Map();
     for (const part of parts) {
       if (part.kind === 'capacitor') {
-        var _nodeVoltages$get30, _nodeVoltages$get31, _c$get;
+        var _nodeVoltages$get32, _nodeVoltages$get33, _c$get;
         const netA = findNet(nets, part.id, 'a');
         const netB = findNet(nets, part.id, 'b');
-        const vA = netA ? (_nodeVoltages$get30 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get30 !== void 0 ? _nodeVoltages$get30 : 0 : 0;
-        const vB = netB ? (_nodeVoltages$get31 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get31 !== void 0 ? _nodeVoltages$get31 : 0 : 0;
+        const vA = netA ? (_nodeVoltages$get32 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get32 !== void 0 ? _nodeVoltages$get32 : 0 : 0;
+        const vB = netB ? (_nodeVoltages$get33 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get33 !== void 0 ? _nodeVoltages$get33 : 0 : 0;
         capVoltagesNext.set(part.id, vA - vB);
         const c = branchCurrents.get(part.id);
         capCurrentsNext.set(part.id, c ? (_c$get = c.get('b')) !== null && _c$get !== void 0 ? _c$get : 0 : 0);
       }
       if (part.kind === 'inductor') {
-        var _c$get2, _nodeVoltages$get32, _nodeVoltages$get33;
+        var _c$get2, _nodeVoltages$get34, _nodeVoltages$get35;
         const c = branchCurrents.get(part.id);
         inductorCurrentsNext.set(part.id, c ? (_c$get2 = c.get('b')) !== null && _c$get2 !== void 0 ? _c$get2 : 0 : 0);
         const netA = findNet(nets, part.id, 'a');
         const netB = findNet(nets, part.id, 'b');
-        const vA = netA ? (_nodeVoltages$get32 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get32 !== void 0 ? _nodeVoltages$get32 : 0 : 0;
-        const vB = netB ? (_nodeVoltages$get33 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get33 !== void 0 ? _nodeVoltages$get33 : 0 : 0;
+        const vA = netA ? (_nodeVoltages$get34 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get34 !== void 0 ? _nodeVoltages$get34 : 0 : 0;
+        const vB = netB ? (_nodeVoltages$get35 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get35 !== void 0 ? _nodeVoltages$get35 : 0 : 0;
         inductorVoltagesNext.set(part.id, vA - vB);
       }
       if (part.kind === 'transformer') {
-        var _c$get3, _c$get4, _nodeVoltages$get34, _nodeVoltages$get35, _nodeVoltages$get36, _nodeVoltages$get37;
+        var _c$get3, _c$get4, _nodeVoltages$get36, _nodeVoltages$get37, _nodeVoltages$get38, _nodeVoltages$get39;
         const c = branchCurrents.get(part.id);
         inductorCurrentsNext.set(part.id + ':p', c ? (_c$get3 = c.get('p2')) !== null && _c$get3 !== void 0 ? _c$get3 : 0 : 0);
         inductorCurrentsNext.set(part.id + ':s', c ? (_c$get4 = c.get('s2')) !== null && _c$get4 !== void 0 ? _c$get4 : 0 : 0);
-        const vP = ((_nodeVoltages$get34 = nodeVoltages.get(findNet(nets, part.id, 'p1'))) !== null && _nodeVoltages$get34 !== void 0 ? _nodeVoltages$get34 : 0) - ((_nodeVoltages$get35 = nodeVoltages.get(findNet(nets, part.id, 'p2'))) !== null && _nodeVoltages$get35 !== void 0 ? _nodeVoltages$get35 : 0);
-        const vS = ((_nodeVoltages$get36 = nodeVoltages.get(findNet(nets, part.id, 's1'))) !== null && _nodeVoltages$get36 !== void 0 ? _nodeVoltages$get36 : 0) - ((_nodeVoltages$get37 = nodeVoltages.get(findNet(nets, part.id, 's2'))) !== null && _nodeVoltages$get37 !== void 0 ? _nodeVoltages$get37 : 0);
+        const vP = ((_nodeVoltages$get36 = nodeVoltages.get(findNet(nets, part.id, 'p1'))) !== null && _nodeVoltages$get36 !== void 0 ? _nodeVoltages$get36 : 0) - ((_nodeVoltages$get37 = nodeVoltages.get(findNet(nets, part.id, 'p2'))) !== null && _nodeVoltages$get37 !== void 0 ? _nodeVoltages$get37 : 0);
+        const vS = ((_nodeVoltages$get38 = nodeVoltages.get(findNet(nets, part.id, 's1'))) !== null && _nodeVoltages$get38 !== void 0 ? _nodeVoltages$get38 : 0) - ((_nodeVoltages$get39 = nodeVoltages.get(findNet(nets, part.id, 's2'))) !== null && _nodeVoltages$get39 !== void 0 ? _nodeVoltages$get39 : 0);
         inductorVoltagesNext.set(part.id + ':p', vP);
         inductorVoltagesNext.set(part.id + ':s', vS);
       }
