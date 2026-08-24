@@ -199,6 +199,76 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.8 en-US
+
+0.1.7 shipped a broken save, and this build fixes it. If you saved a project from
+0.1.7, please open it and check what came back — parts of it may be missing, and
+we would rather hear that from you than assume.
+
+Three defects, all in saving:
+- The file carried the last AUTOSAVED circuit, not the one on screen. Open an
+  example, save it without touching anything, and 0.1.7 wrote the PREVIOUS
+  bench — a 27-part calculator on screen, a 4-part demo in the file.
+- Loading a project did not refresh the Circuit or Code tabs. They only showed
+  the loaded content after a reload.
+- Widgets were never saved at all.
+
+Please test:
+- **Save and re-open a project that uses several tabs.** Build something in
+  Blocks, Circuit and Widgets, save to computer, quit, reopen. All four tabs
+  should come back, and the circuit should be the one you were looking at.
+- **Save straight after loading an example**, without editing. The saved file
+  should contain that example, not the one before it.
+- **Load a project while tabs are open.** They should update immediately, with
+  no reload.
+- Older project files must still open normally.
+- EasyEDA import and export from the Circuit tab: both had no working button, or
+  errored on use.
+
+Also in: the calculator's keys now respond in SIM (they were dead — press a key
+and the OLED should update), and lesson checkpoints that had been reworded around
+that defect are corrected.
+
+Please report the exact steps, and for a save problem tell us which tabs you had
+open and which came back.
+
+## What to Test — 0.1.8 de-DE
+
+0.1.7 hatte einen kaputten Speicher-Vorgang; dieser Build behebt ihn. Falls du mit
+0.1.7 ein Projekt gespeichert hast: bitte öffne es und prüfe, was zurückkommt —
+möglicherweise fehlen Teile, und das möchten wir lieber von dir hören als
+annehmen.
+
+Drei Fehler, alle beim Speichern:
+- Die Datei enthielt die zuletzt AUTOMATISCH gesicherte Schaltung, nicht die auf
+  dem Bildschirm. Ein Beispiel öffnen und ohne Änderung speichern schrieb den
+  VORHERIGEN Aufbau — 27-teiliger Rechner auf dem Schirm, 4-teilige Demo in der
+  Datei.
+- Beim Laden aktualisierten sich die Reiter Schaltung und Code nicht. Der Inhalt
+  erschien erst nach einem Neuladen.
+- Widgets wurden überhaupt nicht gespeichert.
+
+Bitte testen:
+- **Ein Projekt mit mehreren Reitern speichern und wieder öffnen.** In Blöcken,
+  Schaltung und Widgets etwas bauen, auf dem Computer speichern, beenden, erneut
+  öffnen. Alle vier Reiter sollten zurückkommen, und die Schaltung soll die sein,
+  die du gesehen hast.
+- **Direkt nach dem Laden eines Beispiels speichern**, ohne Änderung. Die Datei
+  soll dieses Beispiel enthalten, nicht das davor.
+- **Ein Projekt laden, während Reiter offen sind.** Sie sollen sich sofort
+  aktualisieren, ohne Neuladen.
+- Ältere Projektdateien müssen weiterhin normal öffnen.
+- EasyEDA-Import und -Export im Reiter Schaltung: beides hatte keinen
+  funktionierenden Knopf bzw. lief auf einen Fehler.
+
+Ebenfalls enthalten: Die Tasten des Taschenrechners reagieren in der Simulation
+wieder (sie waren tot — eine Taste drücken, das OLED soll sich ändern), und
+Lektions-Prüfpunkte, die um diesen Fehler herum umformuliert worden waren, sind
+korrigiert.
+
+Bitte die genauen Schritte melden; bei Speicherproblemen bitte dazuschreiben,
+welche Reiter offen waren und welche zurückkamen.
+
 ## What to Test — 0.1.7 en-US
 
 This build is mostly repairs. All seven lesson waves were reviewed against the

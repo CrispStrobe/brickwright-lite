@@ -52,8 +52,16 @@ test('native package versions stay aligned for the TestFlight train', async () =
     // The Cargo.lock entry too: the 0.1.5 -> 0.1.6 release touched all three, and
     // a lock left behind is the kind of thing nobody notices until a build differs
     // from the tag that produced it.
-    assert.ok(lock.includes(`version = "${config.version}"`),
-        `Cargo.lock does not carry ${config.version} — bump it with the other two`);
+    //
+    // Anchored on OUR PACKAGE BLOCK, not on the version string appearing anywhere.
+    // At 0.1.7 the lock held five `version = "0.1.7"` lines — ours plus
+    // crypto-common, num_threads, windows-version and zerofrom-derive, which sit
+    // at that version by coincidence. A substring check passes on any of them, so
+    // it would have gone green with our own entry left behind: the exact failure
+    // it exists to catch.
+    assert.match(lock, new RegExp(
+        `name = "brickwright-tauri"\\nversion = "${config.version.replace(/\./g, '\\.')}"`),
+    `Cargo.lock's brickwright-tauri entry is not at ${config.version} — bump it with the other two`);
 
     // NO HARDCODED VERSION HERE ANY MORE. This assertion used to read
     // `assert.equal(config.version, '0.1.6')`, which meant every release had to
