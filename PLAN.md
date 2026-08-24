@@ -428,7 +428,8 @@ as current as that sha, and several findings expired within hours of being writt
 A review measured against a sha means a human worked every checkpoint on that tree.
 Re-derived means the numbers that tree's review PINNED were re-run on a later one and
 still hold — it inherits the review's judgement and only refreshes its arithmetic. The
-2026-08-25 entries are of the second kind: the whole lite suite at `eed6fcc73` came back
+2026-08-25 entries are of the second kind: the whole lite suite at `b8afbc5e3` (`eed6fcc73`
+plus a LANES row, so no test input differs) came back
 993 pass / 0 fail / 1 skip, so every pinned wave quantity survived three bw-board vendors
 (`b5c02b1` source-and-transistor honesty, `a301937` buzzer KCL, `88e96681`) that all landed
 AFTER the shas those waves were measured against. Nothing in a wave doc was re-judged by
