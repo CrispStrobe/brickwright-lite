@@ -13,6 +13,7 @@
 
 import {readFile, writeFile, mkdir, readdir} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
+import { resolveRef, recordPin, localSha } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -21,6 +22,7 @@ import path from 'node:path';
 // "synced": a sync that cannot sync and a --check that cannot fail
 // (found 2026-08-23 when sparse.js failed to arrive). Prefer --dir with the
 // local sibling checkout; the GitHub path is the fallback.
+const REPO = 'CrispStrobe/bw-board';
 const REF = process.env.BWBOARD_REF || 'master';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
@@ -72,19 +74,19 @@ const FILES = srcDir ? await listSrc() : FALLBACK;
 // 2026-08-23 — the E5.2 marker never arrived, the pin never moved). The
 // commits API is not the raw CDN and answers with the current head; the
 // sha-addressed raw URLs are immutable, so the cache cannot lie about them.
+//
+// `?? REF` was the last thread back to the mutable name: it looked like a
+// harmless fallback and it was the whole defect wearing a different hat — one
+// failed API call and every file is served from a cached branch URL again,
+// silently. Resolution failing is now a failed sync (lib-pin.mjs throws).
 let remoteSha = null;
-if (!srcDir) {
-    const r = await fetch(`https://api.github.com/repos/CrispStrobe/bw-board/commits/${REF}`,
-        { headers: { accept: 'application/vnd.github+json' } });
-    if (!r.ok) throw new Error(`resolve ${REF} via the commits API: HTTP ${r.status}`);
-    remoteSha = (await r.json()).sha;
-}
-const RAW = `https://raw.githubusercontent.com/CrispStrobe/bw-board/${remoteSha ?? REF}`;
+if (!srcDir) remoteSha = (await resolveRef(REPO, REF)).sha;
+const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
 
 async function readSource (rel) {
     if (srcDir) return readFile(path.join(srcDir, rel), 'utf8');
     const res = await fetch(`${RAW}/${rel}`);
-    if (!res.ok) throw new Error(`fetch ${rel} @ ${REF}: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`fetch ${rel} @ ${remoteSha}: HTTP ${res.status}`);
     return res.text();
 }
 
@@ -168,22 +170,22 @@ if (!check) {
 }
 
 if (check && stale) { console.error(`\n${stale} stale — run: npm run sync:bwboard`); process.exit(1); }
-console.log(check ? '\nvendored engine up to date.' : `\nsynced from bw-board@${REF}. Next: npm run integrate`);
+
+// THIS LINE IS THE ONE THAT LIED. It said "synced from bw-board@master" while
+// the CDN had served the previous commit, and it would have said exactly that
+// however wrong the content was, because `master` is the one part of the
+// sentence guaranteed not to be about what arrived. Say the sha.
+const sourceSha = srcDir ? await localSha(srcDir) : remoteSha;
+console.log(check ? '\nvendored engine up to date.'
+    : `\nsynced from ${REPO}@${sourceSha}${srcDir ? ` (local checkout ${srcDir})` : ` (resolved from ${REF})`}.`
+      + ' Next: npm run integrate');
 
 // Record the upstream commit this sync captured, so vendor-freshness CI
 // compares against the PIN, not a moving HEAD (bump = re-run this sync).
 // Remote mode records too — it resolved a real sha above; leaving the
 // pin untouched made a remote sync lie about what it vendored.
-if (!check && (srcDir || remoteSha)) {
+if (!check) {
     try {
-        const { execSync } = await import('node:child_process');
-        const pinSha = srcDir
-            ? execSync(`git -C ${JSON.stringify(srcDir)} rev-parse HEAD`).toString().trim()
-            : remoteSha;
-        const pinsFile = path.join(here, '..', 'vendor-pins.json');
-        const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
-        pins['bw-board'] = pinSha;
-        await writeFile(pinsFile, JSON.stringify(pins, null, 1));
-        console.log(`  pinned bw-board@${pinSha.slice(0, 8)}`);
+        await recordPin('bw-board', sourceSha);
     } catch (e) { console.warn(`  (pin not recorded: ${e.message})`); }
 }
