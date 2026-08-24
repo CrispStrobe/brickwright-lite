@@ -5,7 +5,7 @@ against `1d10902cb` after the `bw-board` vendor that landed mid-review
 (scheduled device events, gate tpd, controller floor fix — 640 changed lines
 across `board.js`, `mna.js` and `ac.js`). Ten lessons, twenty checkpoints.
 
-**9 defective of 10 · 10 revised (three to content version 3, seven to 2) · 9
+**9 defective of 10 · 10 revised (three now at v4, one at v3, six at v2) · 7
 defects open, every one of them in an instrument or an engine, none in a
 lesson.**
 
@@ -56,6 +56,7 @@ into the app. It does not have:
 1. **any numeric readout on the sweep.** The Bode plot is a 260×140 canvas whose
    only labels are the two dB extremes rounded to whole decibels, and `+180°` /
    `-180°`. There is no frequency axis, no per-point value, no table, no export.
+   **Closed 2026-08-25** (bw-circuit-ui `2c66851`) — see defect 9.
 2. **any spectrum view at all.** No FFT exists anywhere in the circuit UI.
 3. **any choice of scope timebase.** 100 kHz × 8192 samples is fixed in the
    engine, and the panel passes neither, so every capture in this wave is
@@ -73,13 +74,13 @@ and it is a smaller and more fixable story than "nine broken lessons".
 | signals-rc-response | 43-rc-timing | 2→3→**4** | **defect, fixed** — the t = 0 reading the checkpoint asks for is the supply voltage, not zero |
 | signals-rl-response | pc52-inductor-filter | 1→**2** | **defect, fixed** — the bench is an RLC; L/R holds only in its first 300 µs, and the hint's "total series resistance" is the wrong R |
 | signals-complex-impedance | 50-rc-scope | 1→**2** | **defect, fixed** — the scope route it names cannot reach the below-cutoff point |
-| signals-cutoff-phase | 50-rc-scope | 1→**2** | achievable; **revised for disclosure** — both criteria bracket the same cutoff, but the plot has no frequency axis to read one off |
+| signals-cutoff-phase | 50-rc-scope | 1→2→**3** | achievable; **revised for disclosure**, then **READOUT FIXED 2026-08-25** — both criteria bracket the same cutoff, and the plot now has the frequency axis and the per-point table to read one off |
 | signals-bode-sweep | pc50-two-stage-rc | 1→2→3→**4** | defect, **BENCH FIXED 2026-08-25** — the corners were at 0.159 Hz, where one sweep point cost over ten minutes of simulated time; they are now at 159.155 Hz. **v4 (2026-08-24):** the hint still contrasted the new cost against "the ten minutes it cost while the stages were 100 µF" — a changelog note quoting a capacitance this bench no longer has. Dropped in both languages; check C now derives corner frequencies, which is what surfaced it |
 | signals-resonance | pc52-inductor-filter | 1→**2** | **defect ×2, fixed** — as shipped the network is overdamped and has no peak; and its observable cannot fire |
 | signals-loading | pc54-opamp-follower | 1→**2** | **defect, fixed** — the divider half is excellent; the follower-limit and probe-loading halves have no model behind them |
 | signals-noise | arduino-03-smoothing | 1→**2** | **defect, fixed** — the simulated sensor is bit-exact, so the standard deviation is exactly zero |
 | signals-aliasing-fft | 49-function-generator-sine | 1→**2** | **defect, fixed** — there is no FFT, and what the scope stores is an envelope, not a sample series |
-| signals-model-measurement | pc50-two-stage-rc | 1→2→**3** | **defect, fixed** — "report residuals with propagated uncertainty" from an instrument that reports no numbers; the range half is **BENCH FIXED 2026-08-25**, the readout half (D3) is still open |
+| signals-model-measurement | pc50-two-stage-rc | 1→2→3→**4** | **defect, fixed** — "report residuals with propagated uncertainty" from an instrument that reports no numbers; the range half is **BENCH FIXED 2026-08-25** and the readout half (D3) **the same day** — the sweep exports every point at full precision |
 
 `signals-cutoff-phase` is counted as achievable: both of its search criteria
 work and bracket the same answer. Nine of the other ten checkpoints that measure
@@ -424,6 +425,32 @@ one frequency at a time by setting the sweep's start and end to the same value �
 which is the only way to attach a number to a point on that canvas — and the
 hint says why.
 
+
+**Then fixed at the instrument, 2026-08-25** (bw-circuit-ui `2c66851`). The
+engine was never the problem — `runBode` returned every `{f, magDb, phaseDeg}`
+it measured, and `drawBode` threw all of them away. The panel now keeps the
+rows, labels the frequency axis, renders a table of up to twelve points (thinned
+but always keeping the two the axis names, so a reader can check one against the
+other), and copies every point as CSV.
+
+Two decisions in it are worth recording because both are about what a number is
+FOR:
+
+- **dB labels went from whole decibels to one decimal.** `-3.010 dB` is the
+  half-power point and `-3.5 dB` is not, and the old label rendered both as
+  `-3dB` — collapsing the two answers `signals-cutoff-phase` exists to
+  distinguish. The gate asserts both that they differ now and that rounding
+  really did collapse them.
+- **The CSV carries full precision while the table stays readable.** A residual
+  analysis that starts from three significant figures is measuring the
+  formatter, not the circuit, and residuals are precisely what this checkpoint
+  asks for. Version 4 says so: take the CSV rather than the table for the fit.
+
+`signals-model-measurement` is version 4 and `signals-cutoff-phase` version 3 —
+the two of D3's four lessons that carried text written around the gap. The other
+two were affected without their copy being changed, so there was nothing in them
+to restore; counting four restorations would report the defect's cost as the
+repair's size.
 ## Checkpoint ledger
 
 | checkpoint | settled by |

@@ -49,6 +49,7 @@ it.
 | **NEW** | the simulator driver arms a quasi pin at zero, so no 8051 button can move its own pin | none directly; 12 benches, 3 of them Wave 5's | **this pass** — sb3-creator `553a639`, vendored here | the repair at `0777a17` was half of one | **D35**: fixed upstream, new gate, 43 → 22 → 1 (below) |
 | **NEW** | `arduino-02-digital-input-pullup` declares an active-HIGH input for an `INPUT_PULLUP` bench | none | open | n/a | recorded as **D36**, ratcheted in the new gate so it can only shrink |
 | D10 | the Bode bench corners at 0.159 Hz, where a sweep point costs 629 s of simulated time | signals-bode-sweep, signals-model-measurement | **this pass** — sb3-creator `776a96e` | **no longer true** | bench 100 µF → 100 nF; `signals-model-measurement` → v3, `signals-bode-sweep` → v4 after a parallel session's further correction (below) |
+| D3 | the Bode sweep plots a curve and reports no numbers | signals-cutoff-phase, signals-model-measurement (2 of the 4 D3 is counted against) | **this pass** — bw-circuit-ui `2c66851` | **no longer true** | frequency axis, a twelve-row table and a full-precision CSV; `signals-cutoff-phase` → v3, `signals-model-measurement` → v4 |
 | D11 | `43-rc-timing` has no control, so its charging step happens once and cannot be repeated | measurement-rc-cursors, signals-rc-response | **this pass** — sb3-creator `ac83352` | **no longer true** | a DISCHARGE switch, not the charge switch PLAN proposed — see below; `measurement-rc-cursors` → v3, `signals-rc-response` → v4 |
 
 ### The checkpoints still carrying a workaround, and why each one stays
@@ -63,7 +64,6 @@ so every one of these sentences is still true and must not be "restored".
 | signals-noise | "the simulated potentiometer is bit-exact" | D22 | yes |
 | signals-rc-response | "the meter says 5 V on a capacitor the engine itself holds at 0 V"; "81.92 milliseconds" | D23, D4 | yes |
 | signals-rl-response | "the RL law holds to about 1 % out to 300 microseconds" | D8 | yes |
-| signals-model-measurement | "the sweep has no numeric readout and no export" | D3 | yes — kept deliberately when the rest of that hint was restored |
 | machines-logic-levels | "this bench has no button" | topology, by design | yes |
 | measurement-resistance | "probe that last one the other way round and the meter reports an open circuit" | D13, by design | yes |
 | measurement-range-error | "its ×46.5 stage is where the next checkpoint finds a discrepancy" | D18 | yes |
@@ -108,6 +108,25 @@ together. Corrected here in both languages, with the correction pinned. That
 gap — a sentence whose parts each check out and whose whole does not — is the
 next thing check C is missing, and it is recorded here rather than fixed because
 fixing it means teaching the check to read sentences.
+
+## Closing D3, and counting a repair by what it repaired
+
+`D3` is recorded as costing **4 lessons**, and it was tempting to report four
+restorations. Only **two** of the four carry text that was written around the
+gap — `signals-cutoff-phase`'s "no frequency axis and no per-point readout" and
+`signals-model-measurement`'s "no numeric readout and no export … record it by
+hand". The other two were affected without their copy ever being changed, so
+there is nothing in them to restore. The lessons-affected count is a measure of
+what the DEFECT cost; using it as the size of the REPAIR would be the same
+species of error as a denominator that quietly counts the wrong population.
+
+The repair itself was small because the engine was never wrong: `runBode`
+returned every point it measured and `drawBode` discarded all of them. What is
+worth keeping from it is one judgement — the dB labels went from whole decibels
+to one decimal, because `-3.010 dB` and `-3.5 dB` both rendered as `-3dB`, and
+those are two different answers to "where is the corner", which is the question
+`signals-cutoff-phase` is built on. The gate asserts both that they differ now
+and that rounding really did collapse them, so the reason survives the fix.
 
 ## Closing D11, and the fix that would have hidden a defect
 

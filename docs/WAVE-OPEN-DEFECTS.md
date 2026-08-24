@@ -27,7 +27,7 @@ Two counting rules, so the numbers are comparable:
 | --- | --- | --- | --- | --- | --- |
 | **D1** | 28 checkpoints observe `circuit-ready`, which fires once when the example loads — so they tick themselves before the learner measures anything | lite (`guided-lessons.jsx`) | **28** | 1, 2, 6, 7 | **FIXED** — arming semantics |
 | **D2** | The debugger cannot start offline on any device family: `debug-runner.js` builds every image through `POST stc-compiler.vercel.app/compile`, while all ten Wave 5 lessons declare `environment: "simulation"` | lite (`bw-debug/debug-runner.js`) | **12** | 5, 3, 7 | open — see PLAN.md |
-| **D3** | The Bode sweep reports no numbers: `drawBode` writes four strings on a 260×140 canvas (two dB extremes, ±180°), no frequency axis, no per-point value, no export | bw-circuit-ui | **4** | 6 | open |
+| **D3** | The Bode sweep reports no numbers: `drawBode` writes four strings on a 260×140 canvas (two dB extremes, ±180°), no frequency axis, no per-point value, no export | bw-circuit-ui | **4** | 6 | **FIXED** — axis, table and CSV |
 | **D4** | The scope record is fixed at 100 kHz × 8192 = 81.92 ms; both numbers are hard-coded in `addScopeChannel` and `ScopePanel` passes neither | bw-board + bw-circuit-ui | **4** | 6, 7 | open — see PLAN.md |
 | **D5** | Four faceplate layouts ship no `"mode": "play"`, and `ControllerPanel` defaults to `edit` where every input control renders `disabled`; the panel's own `toJSON`/`fromJSON` drop `mode` entirely, so even a corrected file is lost on the first save | sb3-creator (examples) + bw-board (`controller.js`) + lite (`gui.jsx`) | **3** | 4 | **FIXED** — three repos |
 | **D6** | `bw-circuit-changed` is dispatched only when the derived **pin declarations** change, so on an MCU-less bench no wiring edit can raise it | bw-circuit-ui (`CircuitDesigner`) + lite (`circuit-tab.jsx`) | **3** | 1, 6, 7 | **FIXED** — `onCircuitEdit` |
@@ -62,10 +62,10 @@ Two counting rules, so the numbers are comparable:
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | open — the last of 67 |
 
-**36 defects. Thirteen are closed** — D1, D5, D6, D10, D11, D14, D15, D16, D17,
-D19, D33 and D35 by repair, and D34 by re-measurement, which is a different and
+**36 defects. Fourteen are closed** — D1, D3, D5, D6, D10, D11, D14, D15, D16,
+D17, D19, D33 and D35 by repair, and D34 by re-measurement, which is a different and
 weaker claim: it stopped reproducing between the Wave 1 vendor and today, and
-this campaign only found that out. Together they account for **43 of the 89
+this campaign only found that out. Together they account for **47 of the 89
 lesson-slots** the table counts, and D1 alone is 28 of them. Every row still open
 is recorded in `PLAN.md` with what blocks it and who owns it.
 
@@ -75,6 +75,29 @@ Pocket Calculator repair had invalidated and found instead that the repair was
 half of one. D35 is closed in the same pass; D36 is the residue it left, named
 rather than tolerated, and ratcheted by
 `test/simulator-driver-controls-respond.test.mjs` so it can only shrink.
+
+**D3 was closed on 2026-08-25** (bw-circuit-ui `2c66851`), and it was the
+cheapest of the three big instrument gaps because the engine never had a
+problem: `runBode` always returned every `{f, magDb, phaseDeg}` it measured and
+`drawBode` discarded all of them. The panel now keeps the rows, labels the
+frequency axis the plot never had, renders a table of up to twelve points, and
+copies every point as CSV at full precision. Two notes worth keeping:
+
+- the dB labels went from WHOLE decibels to one decimal, because `-3.010 dB` and
+  `-3.5 dB` both rendered as `-3dB` — two different answers to "where is the
+  corner", which is the question `signals-cutoff-phase` is built on;
+- the CSV carries full precision while the table stays readable, because a
+  residual analysis that starts from three significant figures is measuring the
+  formatter rather than the circuit — and residuals are exactly what
+  `signals-model-measurement` asks for.
+
+**Two of the four, not four.** D3 is counted at 4 lessons, and that count is
+about lessons the gap AFFECTED. Only two carry text that was written around it —
+`signals-cutoff-phase` ("no frequency axis and no per-point readout") and
+`signals-model-measurement` ("no numeric readout and no export … record it by
+hand"). Those two are restored, to versions 3 and 4. The other two were never
+re-worded, so there is nothing in them to restore, and saying "four
+restorations" would be counting the defect's cost as the repair's size.
 
 **D11 was closed on 2026-08-25** the same way, and the interesting part is what
 it deliberately did NOT do. `43-rc-timing` grew `sw_discharge` + a 1 kΩ
@@ -121,7 +144,7 @@ affected and nothing else.
 | --- | --- | --- | --- |
 | bw-board | D4·D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D19, D33, D34 |
 | lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D33 |
-| bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D6 |
+| bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D3, D6 |
 | sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D10, D11, D35 |
 
 Rows appear under every owner that must change, so the columns oversum: D4, D6,

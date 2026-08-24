@@ -300,8 +300,9 @@ test('both pc50 lessons were restored when their bench was', () => {
     // The pairing this campaign keeps getting wrong in the other direction: a
     // bench repaired without its lesson leaves the workaround in the copy.
     // signals-bode-sweep went to 4 when the hint stopped citing the OLD bench's
-    // 100 uF; its pair is untouched at 3.
-    const EXPECTED_VERSION = {'signals-bode-sweep': 4, 'signals-model-measurement': 3};
+    // 100 uF; its pair went to 4 when D3 gave the sweep a readout and its
+    // transcribe-by-hand instruction became false.
+    const EXPECTED_VERSION = {'signals-bode-sweep': 4, 'signals-model-measurement': 4};
     for (const [id, want] of Object.entries(EXPECTED_VERSION)) {
         assert.equal(lesson(id).version, want, `${id} must be at content version ${want}`);
     }
@@ -326,27 +327,88 @@ test('both pc50 lessons were restored when their bench was', () => {
         .find(c => c.id === 'compare').copy.en;
     assert.ok(!/two decades above the corner/.test(compare.action),
         'the workaround wording is still in signals-model-measurement');
-    // D3 is still open, so the transcribe-by-hand half must NOT have been dropped.
-    assert.match(compare.hint, /no numeric readout and no export/,
-        'the sweep still reports no numbers (D3) — that disclosure must stay until it does');
+    // This assertion used to read the other way: while D3 was open, the
+    // transcribe-by-hand disclosure had to STAY, and dropping it with the rest
+    // of the hint would have been the opposite error. D3 closed on 2026-08-25
+    // (bw-circuit-ui `2c66851`), so the guard inverts rather than disappears —
+    // the disclosure is now the false sentence, and the test below proves the
+    // readout it described is really there.
+    assert.ok(!/no numeric readout and no export|record it by hand/.test(compare.hint),
+        'the sweep reports numbers now (D3 closed) — this hint still tells the learner it does not');
 });
 
-test('OPEN DEFECT: the sweep plots but reports no numbers', () => {
-    // signals-model-measurement asks for residuals with propagated uncertainty
-    // and its python variant says to "export or transcribe sweep rows". The
-    // panel draws a 260x140 canvas whose only labels are the two dB extremes
-    // and +/-180 deg: no frequency axis, no per-point readout, no export.
+test('the sweep reports numbers, and they are the ones it measured', async () => {
+    // Was an OPEN DEFECT (D3), and it fired as written: "if it now reports
+    // frequencies or rows, soften signals-model-measurement and
+    // signals-bode-sweep and delete this test."
+    //
+    // `runBode` always returned every {f, magDb, phaseDeg} it measured;
+    // `drawBode` discarded all of them and wrote four strings on a 260x140
+    // canvas — the two dB extremes rounded to WHOLE decibels, and +/-180 deg.
+    // No frequency axis, no per-point value, no export. Fixed in bw-circuit-ui
+    // `2c66851`: src/model/sweep-readout.js plus the panel wiring.
     const panel = readFileSync(path.join(CUI, 'components/SweepPanel.jsx'), 'utf8');
-    const labels = [...panel.matchAll(/g\.fillText\(([^,]+),/g)].map(m => m[1].trim());
-    assert.deepEqual(labels, [
-        '`${(iHi * 1000).toFixed(2)}mA`', '`${(iLo * 1000).toFixed(2)}mA`',
-        '`${vLo.toFixed(1)}V`', '`${vHi.toFixed(1)}V`',
-        '`${dbHi.toFixed(0)}dB`', '`${dbLo.toFixed(0)}dB`',
-        "'+180°'", "'-180°'"
-    ], 'the sweep panel grew or lost a label — if it now reports frequencies or rows, ' +
-       'soften signals-model-measurement and signals-bode-sweep and delete this test');
-    assert.ok(!/download|toCSV|copyRows|clipboard/i.test(panel),
-        'the sweep panel grew an export — the residual analysis is now possible');
+    assert.match(panel, /data-testid="bw-sweep-readout"/, 'the numeric table is rendered');
+    assert.match(panel, /data-testid="bw-sweep-csv"/, 'the export is reachable');
+    assert.match(panel, /setRows\(result\.rows\)/,
+        'the measured rows are kept rather than discarded after drawing');
+    assert.ok(!/dbHi\.toFixed\(0\)|dbLo\.toFixed\(0\)/.test(panel),
+        'whole-decibel labels are back — they render -3.010 dB and -3.5 dB as the same string, ' +
+        'which are two different answers to "where is the corner"');
+
+    // And the numbers it shows are the ones the engine measured, on the bench
+    // the lesson names — the half a source-text assertion cannot reach.
+    const {bodeAxisLabels, formatHz, sweepRowsToCsv, thinRows} =
+        await import(path.join(CUI, 'model/sweep-readout.js'));
+    const {board} = await load('pc50-two-stage-rc');
+    const inNet = netOfTerminal(board, 'src', 'pos');
+    const outNet = netOfTerminal(board, 'c2', 'a');
+    const swept = runBode(getEngine(), board,
+        {sourceId: 'src', inNet, outNet, fFrom: 15.9155, fTo: 1591.55, pointsPerDecade: 4});
+    assert.ok(swept.ok, `the sweep refused: ${swept.reason}`);
+    assert.ok(swept.rows.length >= 8, `${swept.rows.length} points measured`);
+
+    const ax = bodeAxisLabels(swept.rows);
+    assert.equal(ax.fLo, '15.9 Hz', 'the frequency axis this plot never had, at the low end');
+    assert.equal(ax.fHi, '1.59 kHz', 'and at the high end');
+    assert.equal(formatHz(159.155), '159 Hz', 'the corner, in the unit a reader says it in');
+
+    // The CSV is the export signals-model-measurement's python variant asks for,
+    // and it carries FULL precision: a residual analysis that starts from the
+    // display rounding is measuring the formatter.
+    const csv = sweepRowsToCsv(swept.rows, 'bode');
+    const lines = csv.trim().split('\n');
+    assert.equal(lines[0], 'f_hz,mag_db,phase_deg');
+    assert.equal(lines.length, swept.rows.length + 1, 'every measured point is exported');
+    const first = lines[1].split(',').map(Number);
+    assert.equal(first[0], swept.rows[0].f, 'the CSV frequency IS the measured one, unrounded');
+    assert.equal(first[1], swept.rows[0].magDb, 'and so is the magnitude');
+    assert.ok(String(swept.rows[0].magDb).length > 6,
+        'the fixture would not distinguish rounded from unrounded if the value were short');
+
+    // The table is thinned for the screen but never drops the two points the
+    // axis names, which is what lets a reader check one against the other.
+    const shown = thinRows(swept.rows, 12);
+    assert.ok(shown.length <= 12);
+    assert.equal(shown[0].f, swept.rows[0].f);
+    assert.equal(shown[shown.length - 1].f, swept.rows[swept.rows.length - 1].f);
+});
+
+test('the two lessons worded around the missing readout were restored with it', () => {
+    // D3 is recorded as costing 4 lessons, but only TWO carry text written
+    // around it — stated rather than rounded up to four restorations.
+    for (const id of ['signals-cutoff-phase', 'signals-model-measurement']) {
+        const cp = lesson(id).checkpoints.find(c => c.id === 'measure' || c.id === 'compare');
+        for (const lang of ['en', 'de']) {
+            const text = `${cp.copy[lang].action || ''} ${cp.copy[lang].hint || ''}`;
+            assert.ok(!/no frequency axis|no per-point readout|no numeric readout|no export|record it by hand/i.test(text),
+                `${id} (${lang}) still describes a sweep that reports nothing`);
+            assert.ok(!/keine Frequenzachse|keine Punktanzeige|weder Zahlenanzeige noch Export|von Hand/i.test(text),
+                `${id} (${lang}) still describes a sweep that reports nothing`);
+        }
+    }
+    assert.equal(lesson('signals-cutoff-phase').version, 3);
+    assert.equal(lesson('signals-model-measurement').version, 4);
 });
 
 test('signals-bode-sweep: the two-pole slope and the loading effect are both measurable', async () => {
@@ -566,13 +628,13 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
         'signals-rc-response': 4,
         'signals-rl-response': 2,
         'signals-complex-impedance': 2,
-        'signals-cutoff-phase': 2,
+        'signals-cutoff-phase': 3,
         'signals-bode-sweep': 4,
         'signals-resonance': 2,
         'signals-loading': 2,
         'signals-noise': 2,
         'signals-aliasing-fft': 2,
-        'signals-model-measurement': 3
+        'signals-model-measurement': 4
     }, 'a Wave 6 lesson changed content version — update docs/LESSON-REVIEW-WAVE-6.md with it');
 
     const says = (id, cp, field, en, de) => {
@@ -592,5 +654,10 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
     says('signals-loading', 'measure', 'hint', /no output limit|ideal/i, /ideal|keine? (Ausgangs)?begrenzung/i);
     says('signals-noise', 'measure', 'action', /no spread|identical|zero/i, /identisch|keine Streuung|null/i);
     says('signals-aliasing-fft', 'measure', 'action', /no FFT|without an FFT/i, /kein(e)? FFT|ohne FFT/i);
-    says('signals-model-measurement', 'compare', 'hint', /no numeric readout|canvas/i, /Zahlen|Leinwand|Kurve/i);
+    // v4 (D3 closed): the hint stopped describing a plot with no numbers on it
+    // and started telling the learner which of the two readouts to fit against.
+    says('signals-model-measurement', 'compare', 'hint', /CSV/, /CSV/);
+    // v3 (D3 closed): the crossing is bracketed from the table now, not by
+    // re-running a narrower sweep because nothing could be read off the curve.
+    says('signals-cutoff-phase', 'measure', 'hint', /frequency axis and a table/i, /Frequenzachse und darunter eine Tabelle/i);
 });
