@@ -1247,8 +1247,22 @@ class CircuitTab extends React.Component {
         const bwMs = ui ? ui.bwMs : undefined;
         const caps = ui ? ui.capabilities : null;
         const prev = this.state.debugState || {};
+        // CONTENT comparison, not identity: `enriched` is a fresh array on
+        // every runner emit — emits come once per rAF pump frame — so the
+        // old `enriched !== prev.tasks` guard was always true and this
+        // setState re-rendered the entire tab subtree at 60 Hz throughout
+        // a run (the dominant React cost in the run-mode CPU profile,
+        // after the canvas layers were memoized). The ms tick alone must
+        // not force a frame either: a live counter is readable at 4 Hz.
+        const tasksStamp = enriched
+            ? enriched.map(t => `${t.task}/${t.state}/${t.blockId || ''}`).join('|')
+            : null;
+        const msMoved = (typeof bwMs === 'number' && typeof prev.bwMs === 'number')
+            ? Math.abs(bwMs - prev.bwMs) >= 250
+            : bwMs !== prev.bwMs;
         if (board !== this.state.board || halted !== prev.halted ||
-            haltReason !== prev.haltReason || enriched !== prev.tasks) {
+            haltReason !== prev.haltReason || tasksStamp !== (prev._tasksStamp ?? null) ||
+            msMoved || caps !== prev.capabilities) {
             this.setState({
                 board,
                 debugState: {
@@ -1257,6 +1271,7 @@ class CircuitTab extends React.Component {
                     haltReason,
                     bwMs,
                     tasks: enriched,
+                    _tasksStamp: tasksStamp,
                     capabilities: caps
                 }
             });

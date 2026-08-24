@@ -2867,7 +2867,30 @@ export function BoardCanvas({
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
   // what you hit stays true for seated parts too).
-  parts = resolveSeatedParts(parts);
+  //
+  // MEMOIZED on the parts array identity + a content stamp: this used to
+  // mint fresh part objects on every render, which defeated every child
+  // React.memo — during a run the 20 Hz renderState tick re-rendered the
+  // whole breadboard subtree (thousands of static hole circles) and
+  // starved the emulator to 4.8 % of real time (CPU profile 2026-08-25).
+  // The stamp covers what resolution READS (seats + positions), so edits
+  // still re-resolve while run-time ticks reuse the same objects.
+  // The stamp is deliberately NOT memoized: edits mutate the parts array
+  // in place (same identity), so any memo keyed on identity would serve
+  // stale seats after an edit. Building a 30-part string per render is
+  // nothing; the memo below keys on its VALUE.
+  const seatStamp = parts.map(p => `${p.id}:${p.x},${p.y},${p.rotation || 0}:${p.flipped ? 'f' : ''}:${p.seat ? `${p.seat.boardId}|${Object.values(p.seat.leadMap || {}).join(',')}` : ''}:${p.kind === 'breadboard' ? (p.params?.size || 'full') : ''}`).join(';');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  parts = React.useMemo(() => resolveSeatedParts(parts), [seatStamp]);
+  // Footprints too: `footprint={bbFootprint(bb)}` minted a fresh object
+  // per render, silently defeating BreadboardView's React.memo — the
+  // profile still showed stripOf/HoleGrid burning 0.6 s after the first
+  // memoization pass. Same value-stamp key as the resolution above.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bbFootprints = React.useMemo(
+    () => new Map(parts.filter(p => p.kind === 'breadboard').map(bb => [bb.id, bbFootprint(bb)])),
+    [parts]
+  );
   const circuitRef = useRef(null); circuitRef.current = circuit;
   const [placeGhost, setPlaceGhost] = useState(null);
   const [dragLegs, setDragLegs] = useState(null); // hole highlights while dragging an existing part
@@ -4206,7 +4229,7 @@ export function BoardCanvas({
           {parts.filter(p => p.kind === 'breadboard').map(bb => (
             <BreadboardView key={bb.id} part={bb}
               model={circuit?.breadboards?.get(bb.id)}
-              footprint={bbFootprint(bb)}
+              footprint={bbFootprints.get(bb.id)}
               selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
           ))}
 
