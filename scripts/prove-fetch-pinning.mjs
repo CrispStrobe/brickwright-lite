@@ -143,11 +143,20 @@ if (baseline.red) {
 console.log('baseline: GREEN\n');
 
 let failures = 0;
+// What each mutated file held before anything touched it, so restoration can be
+// checked at BYTE level. `git diff` cannot answer this question in CI: by the
+// time this runs, `npm install` / vendor / integrate have already modified
+// thousands of tracked files, so a dirty tree says nothing about the prover —
+// and a check that reports "the prover left the tree dirty" about that is the
+// same well-formed, wrong statement this whole branch is about. (It said
+// exactly that, in run 32762117022, after reporting 11/11 caught.)
+const originals = new Map();
 for (const [i, m] of MUTATIONS.entries()) {
     const n = i + 1;
     if (only !== null && only !== n) continue;
     const abs = path.join(ROOT, m.file);
     const before = readFileSync(abs, 'utf8');
+    if (!originals.has(abs)) originals.set(abs, before);
     const after = m.edit(before);
     // THE NO-OP GUARD. A mutation that hardcodes a value silently dies when the
     // value moves, and the gate then goes green over an unchanged tree — which
@@ -173,13 +182,25 @@ for (const [i, m] of MUTATIONS.entries()) {
     }
 }
 
-// And green again afterwards: a prover that leaves the tree damaged has
-// invalidated every run after it.
-const restored = runGate();
-if (restored.red) {
-    console.error('THE TREE DID NOT COME BACK GREEN — a revert failed. `git diff` will show it.');
+// Every mutated file back to the exact bytes it started with, and the gate green
+// again: a prover that leaves the tree damaged has invalidated every run after
+// it. Both halves are needed — byte equality catches a failed revert even where
+// the gate would not notice, and a green gate catches damage to a file this run
+// did not itself mutate.
+const damaged = [...originals].filter(([abs, before]) => readFileSync(abs, 'utf8') !== before)
+    .map(([abs]) => path.relative(ROOT, abs));
+if (damaged.length) {
+    console.error('A REVERT FAILED — these files do not match the bytes they started with:\n  '
+        + damaged.join('\n  '));
     process.exit(2);
 }
+const restored = runGate();
+if (restored.red) {
+    console.error('THE TREE DID NOT COME BACK GREEN, though every mutated file was restored '
+        + 'byte-for-byte. Something outside this prover changed underneath it.');
+    process.exit(2);
+}
+console.log(`${originals.size} mutated file(s) restored byte-for-byte.`);
 
 const ran = only !== null ? 1 : MUTATIONS.length;
 console.log(`${ran - failures}/${ran} mutations caught; tree restored, gate green.`);
