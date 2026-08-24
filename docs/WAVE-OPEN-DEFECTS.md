@@ -130,6 +130,20 @@ rather than the instrument.
 node --test test/wave-open-defects.test.mjs
 ```
 
+A note on the neighbouring gate, because it fired during this work and the
+answer is not to touch it. `test/lesson-numeric-contract.test.mjs` refuses a
+number in lesson prose that the named bench cannot produce, and it also refuses
+to trust its own result when too many benches outran their 15 s measurement
+budget. On a box carrying four other agents' test suites — load 34 on four
+cores, 25 node processes — eight benches outran it against a ceiling of four,
+and the gate's own classifier reported `COMPUTING, not starved: … Compare
+against a quiet run before touching either number.`
+
+That is the gate working. Raising the ceiling to make it pass would destroy the
+only thing it does. The numbers in this campaign's revised lesson copy were
+verified by running it when the box was quiet, and the run under load is
+recorded here rather than in a raised constant.
+
 The gate re-derives this table's lesson counts from the wave JSON rather than
 trusting the prose, so a lesson that stops naming a defective bench takes the
 count down with it. Each fixed row is asserted **fixed**, and each open row is
