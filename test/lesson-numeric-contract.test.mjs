@@ -22,6 +22,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {claimsIn, checkLesson} from '../scripts/lesson-numeric-contract.mjs';
 import {loadCatalog} from '../scripts/detect-lesson-defects.mjs';
+import {classifyElapsed, selfCpuSeconds} from './helpers/timed.mjs';
+import {loadavg} from 'node:os';
 
 test('the extractor finds electrical quantities and ignores everything else', () => {
     const claims = claimsIn(
@@ -41,6 +43,11 @@ test('the extractor finds electrical quantities and ignores everything else', ()
 });
 
 test('the whole catalog matches, and enough was examined for that to mean something', async () => {
+    // Sampled before the work so the discriminator can be given the same window the
+    // benches ran in, rather than a guess about it.
+    const runStarted = process.hrtime.bigint();
+    const cpuStarted = selfCpuSeconds();
+    const loadAtStart = loadavg()[0];
     let examined = 0;
     let unmatched = 0;
     let quoting = 0;
@@ -67,8 +74,43 @@ test('the whole catalog matches, and enough was examined for that to mean someth
     // is bounded rather than pinned: pinning it made this gate fail on a loaded
     // box, which is a flaky gate, which is a gate people learn to ignore.
     assert.equal(skipped['no-circuit'], 9, 'nine program-only lessons have no bench');
-    assert.ok((skipped['measurement-truncated'] || 0) <= 4,
-        `${skipped['measurement-truncated']} benches outran the budget — raise it or check the box`);
+    // WHEN THIS FIRES, SAY WHICH IT WAS. The old message was "raise it or check the
+    // box", which names the two possibilities and helps with neither — and "raise
+    // it" is the remedy that destroys the check. sb3-creator's PLAN.md §27 calls
+    // this the cannot-be-trusted-when-busy shape; test/helpers/timed.mjs is the
+    // instrument for it. A bench that outran the budget while COMPUTING is a bench
+    // that got slower; one that outran it while starved is a busy machine.
+    const truncated = skipped['measurement-truncated'] || 0;
+    if (truncated > 4) {
+        // The window measured here is the WHOLE catalog walk, not one bench's 15 s.
+        // So the sentence is built from the classifier's fields rather than taken
+        // from its ready-made message, which would otherwise read "timed out after
+        // 1161 s (budget 15000 ms)" and be false about both numbers. What transfers
+        // across the two scales is the verdict: over the whole run, was this process
+        // computing or starved?
+        const wallSeconds = Number(process.hrtime.bigint() - runStarted) / 1e9;
+        const cpuSeconds = selfCpuSeconds() - cpuStarted;
+        const v = classifyElapsed({
+            what: 'the catalog walk', budgetMs: 15_000, wallSeconds, cpuSeconds, loadStart: loadAtStart
+        });
+        const reading = v.verdict === 'contention'
+            ? 'STARVED: over the whole walk this process barely got the CPU, so the 15 s ' +
+              'per-bench budget bought less work than it normally does. This is the machine. ' +
+              'Re-run on a quieter box; raising the budget would hide a real slowdown later.'
+            : v.verdict === 'unknown'
+                ? 'the CPU reference was unavailable, so which of the two this is cannot be said here.'
+                : 'COMPUTING, not starved: the process spent the CPU it was given. Either these ' +
+                  'benches genuinely got slower, or the box is slow enough that 15 s buys less ' +
+                  'work than when the ceiling of 4 was set. Compare against a quiet run before ' +
+                  'touching either number.';
+        assert.fail(
+            `${truncated} benches outran the 15 s measurement budget (ceiling 4). ` +
+            `Over the whole catalog walk: ${cpuSeconds.toFixed(1)} s of CPU in ` +
+            `${wallSeconds.toFixed(1)} s wall (ratio ${v.ratio?.toFixed(3)}), while a deliberately ` +
+            `CPU-bound child measured right now achieves ${v.achievable?.toFixed(3)} — ` +
+            `${((v.share ?? 0) * 100).toFixed(0)}% of what was going. Load ${v.loadStart.toFixed(1)} ` +
+            `-> ${v.loadEnd.toFixed(1)} on ${v.nodes ?? '?'} node processes. Reading: ${reading}`);
+    }
     assert.deepEqual(Object.keys(skipped).filter(k =>
         !['no-circuit', 'measurement-truncated'].includes(k)), [],
         'an unexpected skip reason appeared; a skip is not a pass');
