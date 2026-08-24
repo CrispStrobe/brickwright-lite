@@ -79,7 +79,12 @@ const MUTATIONS = [
     {
         name: 'a vendor pin is recorded as a short sha',
         file: 'vendor-pins.json',
-        edit: (s) => s.replace('"a301937d9912a66aa4a7cdae403e39a337ac9eb2"', '"a301937"'),
+        // FIRST pin, matched by shape rather than by value: the original
+        // edit named a literal sha, and the next ordinary pin bump made
+        // the mutation a no-op — which the prover loudly reported as its
+        // own failure ('the edit changed nothing'), exactly the
+        // self-staleness check working. Shape-matching survives churn.
+        edit: (s) => s.replace(/"([0-9a-f]{40})"/, (m, sha) => `"${sha.slice(0, 7)}"`),
         expect: 'these pins are not 40-hex shas'
     },
     {
