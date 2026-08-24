@@ -417,11 +417,11 @@ as current as that sha, and several findings expired within hours of being writt
 | Wave | Lessons | Draft | Technical review | Measured against | Translation | Field test |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 Electricity you can see | 12 | done | **full, 2026-08-23**; open defects closed 2026-08-24 — 5 of 12 defective; 5 fixed, **0 open** (the ammeter fixed at the source, the motor expired on re-measurement) | `3c6948f5d`, re-measured `7ce24a619`, re-derived `1311898d5` | open | open |
-| 2 Measure rather than guess | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24, 1 more 2026-08-25 — 5 of 10 defective; 7 revised (two to v3), **2 open** engine defects, 2 fixed upstream | `3e87340f5`, re-measured `7ce24a619`, re-derived `1311898d5` | open | open |
+| 2 Measure rather than guess | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24, 1 more 2026-08-25 — 5 of 10 defective; 6 revised (two now at v3, four at v2), **2 open** engine defects, 2 fixed upstream | `3e87340f5`, re-measured `7ce24a619`, re-derived `1311898d5` | open | open |
 | 3 One idea, several languages | 12 | done | **full, 2026-08-23** — 1 of 12 defective; 1 revised to v2 | `a3f30be6b` | open | open |
 | 4 Interactive systems | 8 | done | **full, 2026-08-23**; 4 of 5 closed 2026-08-24 — 7 of 8 defective; 10 revised (three to v3), **1 open** app defect (the micro:bit no-ops, deliberate) | `2e294ceaf`, re-measured `d7325a272` then `7ce24a619`, re-derived `1311898d5` | open | open |
 | 5 Debug with evidence | 10 | done | **full, 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | `a3f30be6b` | open | open |
-| 6 Signals and systems | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24, 2 more 2026-08-25 — 9 of 10 defective; 10 revised (two to v3, one to v4), **8 open** instrument/engine defects | `1d10902cb`, re-derived `1311898d5` | open | open |
+| 6 Signals and systems | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24, 2 more 2026-08-25 — 9 of 10 defective; 10 revised (two now at v4, one at v3, seven at v2), **8 open** instrument/engine defects | `1d10902cb`, re-derived `1311898d5` | open | open |
 | 7 Computers from wires upward | 10 | done | **full, 2026-08-23**; re-measured 2026-08-24 — 8 of 10 defective; 9 revised (two to v3), **7 open**, of which the shift register's is now compiler-only (its example was repaired upstream) | `1d10902cb`, re-measured `91a95ba42`, re-derived `1311898d5` | open | open |
 
 **"Re-derived" is a weaker claim than "measured against", and the difference matters.**
