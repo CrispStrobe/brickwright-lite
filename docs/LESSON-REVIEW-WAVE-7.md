@@ -94,7 +94,7 @@ you open.**
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
 | machines-logic-levels | 06-active-low-high | 2→**3** | **defect, fixed** — its measured 4.93 V holds only in push-pull; in the 8051's default mode the same pin reads 2.12 V |
-| machines-gates-registers | 20-shift-register-binary | 1→**2** | **defect, fixed** — the data line never changes level: the program's bit test is false even when the bit is set |
+| machines-gates-registers | 20-shift-register-binary | 1→2→**3** | **defect, RESOLVED 2026-08-24** — the data line never changed level, because the bit test was false even when the bit was set. Repaired upstream (prefix bit operators rewritten to the dialect's infix form); the v2 wording that told the learner to record the stuck line became false, so the v1 checkpoint is restored at v3 |
 | machines-clocks | ttl-clock-module | 1→**2** | **defect ×2, fixed** — the step button is wired to nothing, and there is no downstream state to advance |
 | machines-buses | eater6502-bench | 1→**2** | **defect, fixed** — "single-step the clock" has no cycle-level step, and the scope is ten times too slow for the bus |
 | machines-memory-maps | eater6502-full-build | 1 | achievable |
@@ -131,6 +131,16 @@ same bit, same Boolean meaning, different electrical level, which is the
 lesson's own objective.
 
 ### 2. machines-gates-registers — the register is fed a constant zero
+
+> **RESOLVED 2026-08-24.** Fixed at the source in `sb3-creator` — the program
+> wrote `bitand val 128 > 0` in PREFIX form, which the dialect parses as three
+> variable names, none of them ever written; the dialect's form is infix. The fix
+> reached lite with the vendor of `eac7a1a`. The `OPEN DEFECT` sentinel in
+> `test/lesson-bench-claims-wave7.test.mjs` fired on exactly that, as designed,
+> and has been removed on its own instructions. The lesson is back to its
+> original checkpoint at content version 3. What follows is the finding as it
+> stood, kept because it is what the sentinel was measuring.
+
 
 The `trace` checkpoint asks the learner to "correlate data, clock, latch,
 internal sequence, and final LEDs". Run through lite's own trace referee for

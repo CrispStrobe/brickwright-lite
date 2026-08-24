@@ -104,42 +104,17 @@ test('OPEN DEFECT: the active-high level the lesson quotes depends on the port m
 });
 
 // ── machines-gates-registers / 20-shift-register-binary ────────────────────
-
-test('OPEN DEFECT: the shift register never receives a one — the data line never moves', () => {
-    assert.equal(lesson('machines-gates-registers').exampleId, '20-shift-register-binary');
-    const creator = new SB3Creator();
-    creator.parse(readFileSync(path.join(EXAMPLES, '20-shift-register-binary/program.bw'), 'utf8'));
-    const trace = interpretTrace(creator.project,
-        {horizonMs: 3000, stimulus: [], adc: {bits: 10, vref: 5}, maxSteps: 4_000_000});
-    assert.deepEqual([...new Set(trace.unsupported)], [],
-        'the referee now refuses an opcode here — this measurement is no longer comparable');
-    const byPin = {};
-    for (const e of trace.events) byPin[e.pin] = (byPin[e.pin] || 0) + 1;
-    assert.ok(byPin.clock > 100, `the clock line runs: ${byPin.clock} edges`);
-    assert.ok(byPin.latch > 10, `the latch line runs: ${byPin.latch} edges`);
-    assert.equal(byPin.data, undefined,
-        'the data line now toggles — the lesson can correlate all four signals again, ' +
-        'so restore machines-gates-registers and delete this test');
-
-    // Isolated: it is the COMPARISON that fails, not the bit test and not the
-    // argument binding. With val = 128, `bitand val 128` is true on its own and
-    // false the moment it is compared against a number — with or without
-    // parentheses.
-    const probe = cond => {
-        const c = new SB3Creator();
-        c.parse(['DEVICE STC12C5A60S2', 'CLOCK 11059200', 'PIN data = P1.0 OUTPUT', '',
-            'WHEN flag clicked:', '  set val to 128', `  IF ${cond} THEN:`,
-            '    turn on data', '  ELSE:', '    turn off data', '  wait 0.2 seconds'].join('\n'));
-        return interpretTrace(c.project,
-            {horizonMs: 400, stimulus: [], adc: {bits: 10, vref: 5}, maxSteps: 400_000}).events;
-    };
-    assert.deepEqual(probe('bitand val 128 > 0'), [],
-        'the shipped form now fires — re-measure Wave 7 and restore the lesson');
-    assert.deepEqual(probe('(bitand val 128) > 0'), [],
-        'parentheses now fix it — the defect is a precedence one after all; re-measure');
-    assert.deepEqual(probe('bitand val 128').map(e => `${e.pin}=${e.level}`), ['data=1'],
-        'the bare bit test no longer works either — the finding has changed shape');
-});
+//
+// The OPEN DEFECT sentinel that stood here is GONE, on its own instructions.
+// It asserted that the data line never toggles — `bitand val 128 > 0` parsed as
+// three variable names, so the 595 was fed a constant zero and all eight LEDs
+// stayed dark for the whole 64-second count — and it was written to go RED the
+// moment that stopped being true. The upstream repair (prefix bit operators
+// rewritten to the dialect's infix form) reached lite in this vendor, the
+// sentinel fired, and the lesson's version-2 wording — which told the learner to
+// "record that the data line never changes level at all" — became the false
+// statement. `machines-gates-registers` is restored to its version-1 checkpoint
+// and bumped to version 3.
 
 // ── machines-clocks / ttl-clock-module ─────────────────────────────────────
 
@@ -375,7 +350,11 @@ test('machines-interrupts-performance: the Z80 bench extracts, and its only bund
 test('the Wave 7 revisions are present, EN and DE, at the content version this review recorded', () => {
     assert.deepEqual(Object.fromEntries(WAVE.lessons.map(l => [l.id, l.version])), {
         'machines-logic-levels': 3,
-        'machines-gates-registers': 2,
+        // 2 -> 3: the shift-register defect this wave documented was repaired
+        // upstream, so the version-2 wording ("record that the data line never
+        // changes level at all") became false and the version-1 checkpoint was
+        // restored. The OPEN DEFECT sentinel that guarded it is gone, as it asked.
+        'machines-gates-registers': 3,
         'machines-clocks': 2,
         'machines-buses': 2,
         'machines-memory-maps': 1,
@@ -392,7 +371,10 @@ test('the Wave 7 revisions are present, EN and DE, at the content version this r
         assert.match(copy.de[field], de, `${id}/${cp}: the German ${field} lost its Wave 7 revision`);
     };
     says('machines-logic-levels', 'measure', 'hint', /push-pull|quasi/i, /Push-Pull|quasi/i);
-    says('machines-gates-registers', 'trace', 'action', /data line|never/i, /Datenleitung|nie/i);
+    // machines-gates-registers is deliberately NOT asserted here any more: its
+    // Wave 7 revision was a workaround for a defect that no longer exists, and
+    // the restored copy is the ORIGINAL version-1 text. What guards it now is the
+    // version pin above plus the corpus gates on the repaired example itself.
     says('machines-clocks', 'measure', 'action', /no downstream|nothing downstream/i, /nichts.*nachgelagert|kein.*nachgelagert/i);
     says('machines-buses', 'trace', 'action', /instruction|per-cycle|cycle-level/i, /Befehl|Zyklus/i);
     says('machines-6502-execution', 'step', 'action', /load a program|preset/i, /Programm laden|Preset/i);

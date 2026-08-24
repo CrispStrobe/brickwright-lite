@@ -389,22 +389,32 @@ test('interactive-displays: what the shipped run actually puts on each face', as
     }
 });
 
-test('OPEN DEFECT: two faceplate examples ship no play mode, so their controls open dead', () => {
-    // 7 of the 11 shipped controller layouts declare "mode": "play"; the
-    // importer only calls setMode when the file says so, and ControllerPanel
-    // defaults to 'edit', where every input control renders `disabled`.
+// The OPEN DEFECT sentinel for "faceplates open with dead controls" is GONE,
+// on its own instructions. Four shipped layouts — a2-faceplate-calculator,
+// lego-hub-face, mb05-faceplate-calc and retro-console — declared no
+// `"mode": "play"`, and since the importer only calls setMode when the file says
+// so and ControllerPanel defaults to 'edit', every input control on them
+// rendered `disabled`. A learner opened the example and nothing responded.
+//
+// Fixed upstream in sb3-creator and vendored in 2026-08-24. Re-measured here:
+// EVERY shipped controller layout now declares a mode, so the sentinel's list
+// went to empty and it fired as designed. The guard that replaces it is below —
+// it states the property rather than the defect, so it keeps working as layouts
+// are added.
+
+test('every shipped controller layout declares a mode, so no example opens dead', () => {
     const withController = [...index.values()].filter(e => e.files && e.files.controller);
+    assert.ok(withController.length >= 10,
+        `only ${withController.length} controller layouts found — the walk is broken ` +
+        'and an empty result would mean nothing');
     const missing = withController
         .filter(e => !JSON.parse(readFileSync(path.join(EX, e.files.controller), 'utf8')).mode)
         .map(e => e.id)
         .sort();
-    assert.deepEqual(missing,
-        ['a2-faceplate-calculator', 'arduino-03-calibration', 'lego-hub-face',
-            'mb05-faceplate-calc', 'retro-console'].filter(id => withController.some(e => e.id === id)),
-        'the set of faceplate examples missing "mode": "play" changed — re-measure and update ' +
-        'docs/LESSON-REVIEW-WAVE-4.md');
-    assert.equal(new ControllerPanel().mode, 'edit',
-        'ControllerPanel no longer defaults to edit — these examples may now open playable');
+    assert.deepEqual(missing, [],
+        'a controller layout ships without "mode" — ControllerPanel defaults to ' +
+        "'edit', where every input control renders disabled, so this example opens " +
+        'with controls a learner cannot use');
 });
 
 // ── interactive-extension-discovery + interactive-sensor-capability ────────

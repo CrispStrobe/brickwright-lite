@@ -5,7 +5,10 @@ export default (filename, blob) => {
     const tauri = typeof window !== 'undefined' && window.__TAURI__;
     if (tauri && tauri.core && typeof tauri.core.invoke === 'function') {
         const invoke = tauri.core.invoke;
-        blob.arrayBuffer()
+        // RETURN the promise. It used to be fire-and-forget with a console.error,
+        // so a failed native export was invisible to the caller and to the user;
+        // sb3-downloader now catches and shows it in the GUI.
+        return blob.arrayBuffer()
             .then(async buf => {
                 const bytes = Array.from(new Uint8Array(buf));
                 const mobile = await invoke('is_mobile').catch(() => false);
@@ -18,9 +21,11 @@ export default (filename, blob) => {
                     await invoke('save_project', {filename, bytes});
                 }
             })
-            // eslint-disable-next-line no-console
-            .catch(e => console.error('[brickwright] native export failed', e));
-        return;
+            .catch(e => {
+                // eslint-disable-next-line no-console
+                console.error('[brickwright] native export failed', e);
+                throw e;
+            });
     }
 
     const downloadLink = document.createElement('a');

@@ -257,7 +257,20 @@ each quantity's own range first and then edit the program to write a value
 beyond a gauge's range and a non-numeric one; the hint gives the distance
 gauge's 10-and-190 shortfall and explains what the clamp hides.
 
-### 5b. Two faceplate examples ship no play mode — OPEN, example-side
+### 5b. Two faceplate examples ship no play mode — **RESOLVED 2026-08-24**
+
+> All four affected layouts (`a2-faceplate-calculator`, `lego-hub-face`,
+> `mb05-faceplate-calc`, `retro-console`) now declare `"mode": "play"`, fixed
+> upstream in `sb3-creator` and vendored into lite. Re-measured: EVERY shipped
+> controller layout declares a mode, so no example opens with dead controls.
+>
+> The `OPEN DEFECT` sentinel in `test/lesson-panel-claims-wave4.test.mjs` fired
+> as designed and is replaced by a PROPERTY guard — *every shipped controller
+> layout declares a mode* — rather than another list of known-bad ids, which
+> would go stale the next time a layout is added. Mutation-proved: dropping
+> `mode` from `lego-hub-face` turns it red naming that example.
+>
+> What follows is the finding as it stood.
 
 `pseudocode-importer.jsx` restores a layout and then calls
 `panel.setMode(layout.mode)` **only if the file says so**, and `ControllerPanel`

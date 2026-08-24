@@ -40,6 +40,11 @@
     "defaultMessage": "Project could not save."
   },
   {
+    "id": "gui.alerts.exportError",
+    "description": "Message shown when exporting a project file failed",
+    "defaultMessage": "Could not save the project to your computer."
+  },
+  {
     "id": "gui.alerts.savesuccess",
     "description": "Message indicating that project was successfully saved",
     "defaultMessage": "Project saved."
