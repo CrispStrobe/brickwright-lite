@@ -199,6 +199,63 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.7 en-US
+
+This build is mostly repairs. All seven lesson waves were reviewed against the
+running app rather than read, and 38 of 72 lessons turned out to be teaching
+something the bench could not show; 42 of them were revised. Several examples
+could not do what they demonstrated.
+
+Please test:
+- **Saving.** File > Save to Computer. If it fails it now SAYS SO, with the
+  reason, instead of doing nothing — please report the exact message. A saved
+  project also now carries the Circuit, Code and Widgets tabs, not just the
+  blocks: save a project that uses several tabs, load it on another device, and
+  check all of it came back. Older project files still open normally.
+- **Faceplates.** Open a2-faceplate-calculator, lego-hub-face, mb05-faceplate-calc
+  and retro-console. Every control on these used to open disabled, so nothing
+  responded to a tap. They should now be operable immediately.
+- **Fading and PWM.** The Arduino fade examples declared their pins as plain
+  outputs and so could only switch on and off. They should now fade smoothly.
+- **The shift register.** 20-shift-register-binary lit no LEDs at all — its bit
+  test was false even when the bit was set. All eight should now count.
+- **Lessons.** Work through any lesson and check that what a checkpoint asks you
+  to observe is actually observable on the bench it names. That is precisely what
+  the review found wrong 38 times, and it is the report we most want.
+
+Please report the exact example, device, and steps for anything that does not
+respond, does not save, or asks you to observe something you cannot see.
+
+## What to Test — 0.1.7 de-DE
+
+Dieser Build besteht überwiegend aus Korrekturen. Alle sieben Lernwellen wurden
+gegen die laufende App geprüft statt nur gelesen; bei 38 von 72 Lektionen zeigte
+sich, dass der genannte Aufbau das Verlangte gar nicht zeigen kann. 42 wurden
+überarbeitet. Mehrere Beispiele konnten nicht, was sie vorführten.
+
+Bitte testen:
+- **Speichern.** Datei > Auf dem Computer speichern. Schlägt es fehl, wird das
+  jetzt MIT GRUND ANGEZEIGT, statt einfach nichts zu tun — bitte die genaue
+  Meldung melden. Eine gespeicherte Datei enthält jetzt auch die Reiter
+  Schaltung, Code und Widgets, nicht nur die Blöcke: ein Projekt mit mehreren
+  Reitern speichern, auf einem anderen Gerät laden und prüfen, ob alles wieder da
+  ist. Ältere Projektdateien öffnen weiterhin normal.
+- **Bedienfelder.** a2-faceplate-calculator, lego-hub-face, mb05-faceplate-calc
+  und retro-console öffnen. Deren Bedienelemente waren bisher alle deaktiviert,
+  es reagierte nichts. Sie sollten jetzt sofort bedienbar sein.
+- **Dimmen und PWM.** Die Arduino-Fade-Beispiele hatten ihre Pins als einfache
+  Ausgänge deklariert und konnten daher nur ein- und ausschalten. Sie sollten
+  jetzt weich dimmen.
+- **Das Schieberegister.** 20-shift-register-binary ließ überhaupt keine LED
+  leuchten — sein Bittest war auch dann falsch, wenn das Bit gesetzt war. Alle
+  acht sollten jetzt zählen.
+- **Lektionen.** Eine beliebige Lektion durcharbeiten und prüfen, ob das, was ein
+  Prüfpunkt beobachten lässt, auf dem genannten Aufbau überhaupt beobachtbar ist.
+  Genau das war 38-mal falsch, und darüber wollen wir am meisten hören.
+
+Bitte bei allem, was nicht reagiert, nicht speichert oder etwas beobachten lässt,
+das nicht sichtbar ist, das genaue Beispiel, das Gerät und die Schritte melden.
+
 ## What to Test — 0.1.6 en-US
 
 This build focuses on circuit, schematic, and debugger reliability across the
