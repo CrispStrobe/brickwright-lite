@@ -156,6 +156,11 @@ a quiet box:
   `eater6502-full-build` and `ttl-clock-module`. Zero additional truncation from
   these changes. That comparison is the right instrument precisely because it
   does not need a quiet machine — both halves see the same one.
+- **And the gate then agreed with itself.** Re-run once the other agents' suites
+  drained — two node processes instead of twenty-five — it passes: `3 tests,
+  3 pass, 0 fail`. So of the two possibilities its message names, it was the
+  second: the box was slow, not the benches. Nothing was changed to make that
+  happen, which is the point.
 
 The gate re-derives this table's lesson counts from the wave JSON rather than
 trusting the prose, so a lesson that stops naming a defective bench takes the
