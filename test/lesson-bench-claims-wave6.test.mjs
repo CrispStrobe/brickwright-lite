@@ -242,7 +242,8 @@ test('the Bode bench corners inside the instrument\'s range', async () => {
     // 100 µF → 100 nF (sb3-creator 776a96e) moves both corners to 159.155 Hz.
     // The transfer function depends on R·C, so only the frequency axis moved:
     // every magnitude, phase and slope below is what the old bench produced at
-    // one thousandth of the frequency. Both lessons are restored to version 3.
+    // one thousandth of the frequency. Both lessons were restored to version 3;
+    // signals-bode-sweep is at 4 since its hint stopped citing the old bench.
     assert.equal(lesson('signals-bode-sweep').exampleId, 'pc50-two-stage-rc');
     assert.equal(lesson('signals-model-measurement').exampleId, 'pc50-two-stage-rc');
     const {board, data} = await load('pc50-two-stage-rc');
@@ -298,14 +299,29 @@ test('the Bode bench corners inside the instrument\'s range', async () => {
 test('both pc50 lessons were restored when their bench was', () => {
     // The pairing this campaign keeps getting wrong in the other direction: a
     // bench repaired without its lesson leaves the workaround in the copy.
-    for (const id of ['signals-bode-sweep', 'signals-model-measurement']) {
-        assert.equal(lesson(id).version, 3, `${id} must be at content version 3`);
+    // signals-bode-sweep went to 4 when the hint stopped citing the OLD bench's
+    // 100 uF; its pair is untouched at 3.
+    const EXPECTED_VERSION = {'signals-bode-sweep': 4, 'signals-model-measurement': 3};
+    for (const [id, want] of Object.entries(EXPECTED_VERSION)) {
+        assert.equal(lesson(id).version, want, `${id} must be at content version ${want}`);
     }
     const sweepHint = lesson('signals-bode-sweep').checkpoints
         .find(c => c.id === 'sweep').copy.en.hint;
     assert.ok(!/Stay two decades above|over ten minutes|R × C = 1 s/.test(sweepHint),
         'the workaround wording is still in signals-bode-sweep');
     assert.match(sweepHint, /159\.155 Hz/, 'the hint names the corner it can now reach');
+    // The repair left a changelog note behind: the cost was contrasted against
+    // "the ten minutes it cost while the stages were 100 uF". A lesson should
+    // describe the bench a reader loads, not the one it replaced.
+    // Checked in BOTH languages: check C reads only the English prose, so a stale
+    // German copy would otherwise be the one place this can rot unseen.
+    const sweepHintDe = lesson('signals-bode-sweep').checkpoints
+        .find(c => c.id === 'sweep').copy.de.hint;
+    for (const [lang, text] of [['en', sweepHint], ['de', sweepHintDe]]) {
+        assert.ok(!/100 \u00b5F|100 uF/.test(text),
+            `the ${lang} hint quotes the superseded bench's capacitance again`);
+    }
+    assert.match(sweepHintDe, /159,155 Hz/, 'the German hint names the corner too');
     const compare = lesson('signals-model-measurement').checkpoints
         .find(c => c.id === 'compare').copy.en;
     assert.ok(!/two decades above the corner/.test(compare.action),
@@ -551,7 +567,7 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
         'signals-rl-response': 2,
         'signals-complex-impedance': 2,
         'signals-cutoff-phase': 2,
-        'signals-bode-sweep': 3,
+        'signals-bode-sweep': 4,
         'signals-resonance': 2,
         'signals-loading': 2,
         'signals-noise': 2,
