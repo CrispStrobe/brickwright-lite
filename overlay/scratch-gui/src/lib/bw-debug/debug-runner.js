@@ -647,6 +647,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         board = new BoardImpl();
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
+        // Publish the RUN board: the Widgets panel binds to whatever board
+        // the GUI resolves, and during a run the DESIGNER's board is the
+        // wrong one — its OLED never sees the emulator's I2C, so a
+        // part-bound display widget stayed dark and a widget key press
+        // reached a board nobody was executing against (owner report,
+        // 2026-08-25). Cleared in stop(), announced so the epoch bumps.
+        if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
         adapter.attachBoard(board);
 
         // ccall marshals the string itself. Nothing here may touch a heap view:
@@ -731,6 +739,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         board = new BoardImpl();
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
+        // Publish the RUN board: the Widgets panel binds to whatever board
+        // the GUI resolves, and during a run the DESIGNER's board is the
+        // wrong one — its OLED never sees the emulator's I2C, so a
+        // part-bound display widget stayed dark and a widget key press
+        // reached a board nobody was executing against (owner report,
+        // 2026-08-25). Cleared in stop(), announced so the epoch bumps.
+        if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
 
         // The factory creates the adapter, attaches the board, parses the
         // Intel HEX into Uint16Array words, loads the program, and — if
@@ -800,6 +816,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         board = new BoardImpl(3.3);
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
+        // Publish the RUN board: the Widgets panel binds to whatever board
+        // the GUI resolves, and during a run the DESIGNER's board is the
+        // wrong one — its OLED never sees the emulator's I2C, so a
+        // part-bound display widget stayed dark and a widget key press
+        // reached a board nobody was executing against (owner report,
+        // 2026-08-25). Cleared in stop(), announced so the epoch bumps.
+        if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
 
         // Convert raw binary to Uint16Array halfwords (Thumb).
         // The compile response returns base64 of the raw SRAM image.
@@ -1243,6 +1267,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             unschedule();
             if (session) session.stop();
             clearGlow();
+            // The run board dies with the run — fall back to the designer's.
+            if (vm && vm.runtime && vm.runtime.bwRunBoard) {
+                delete vm.runtime.bwRunBoard;
+                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
+            }
             setStatus('idle');
         },
 

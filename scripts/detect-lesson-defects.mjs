@@ -308,7 +308,12 @@ export async function detect(opts = {}) {
         }
 
         // The bench's measured capabilities — solved once per example.
-        let cap = capCache.get(lesson.exampleId);
+        // opts.capabilities injects an override (tests: a mutated bench —
+        // the discharge mutation lost its real-world specimen the day
+        // 43-rc-timing grew its switch, and the property must outlive the
+        // corpus happening to contain a broken bench).
+        let cap = (opts.capabilities && opts.capabilities.get(lesson.exampleId)) ||
+            capCache.get(lesson.exampleId);
         if (!cap) {
             // Progress on stderr. Solving sixty-odd benches takes long enough
             // that a silent run is indistinguishable from a hung one — and this

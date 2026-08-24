@@ -287,10 +287,16 @@ clean transition". A learner who reads the objective, sets up channels, picks a
 timebase and then looks for the step finds a flat 5 V line and no control that
 brings it back.
 
-**Fixed**, version 2: set the scope up first, and the hint now says the charge is
-one-shot and that reloading the example is the way to see it again. Pinned by an
-OPEN DEFECT test that fails if a control ever appears on that bench — the real
-fix is a charge switch, which is a bench change rather than a lesson change.
+**Fixed**, version 2: set the scope up first, and the hint said the charge was
+one-shot with a reload as the workaround, pinned by an OPEN DEFECT test that
+fails if a control ever appears on that bench.
+
+**Resolved for real, 2026-08-25**: the bench change landed — sb3-creator
+`ac83352` adds `sw_discharge` + 1 kΩ from the capacitor to ground, exactly the
+charge switch this entry named. The sentinel fired on the vendor as designed;
+it now asserts the FIX (close = drain to the 10k/1k divider floor at 0.4545 V,
+reopen = the step runs again), and the hint teaches the switch instead of the
+reload.
 
 ### 5. The ohmmeter is directional, by design
 

@@ -110,6 +110,7 @@ export async function benchQuantities(exampleId, opts = {}) {
     }
     if (typeof raw.vcc === 'number') q.V.add(raw.vcc);
 
+
     // solved values, across every control setting and several times
     const circuit0 = Circuit.fromJSON(structuredClone(raw));
     if (circuit0.netlistError) return {error: circuit0.netlistError, q};

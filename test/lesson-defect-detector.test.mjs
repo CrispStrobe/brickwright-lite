@@ -197,10 +197,20 @@ test('MUTATION: a decimal point must not end a sentence', async () => {
     const predict = lesson.checkpoints.find(c => c.id === 'predict');
     predict.copy.en.action = 'Calculate voltage at 0, 0.5\u03c4, 1\u03c4, 2\u03c4, and 3\u03c4 for charging and discharging.';
     predict.copy.en.hint = 'State initial value, final value, R and C before substituting.';
-    const report = await detect({lessons: [lesson]});
+    // The real 43-rc-timing GREW a discharge switch on 2026-08-25, so the
+    // original specimen no longer reproduces on the shipped bench. The
+    // property this pins is the DETECTOR's, not the corpus's: inject the
+    // pre-switch bench capabilities so the sentence-split regression stays
+    // caught even with a healthy corpus.
+    const noDischarge = new Map([[lesson.exampleId, {
+        partial: false, stateCount: 15, controls: [], controlKinds: [],
+        timeVarying: true, alternates: false, capDischarges: false,
+        ledSwitches: false, hasCapacitor: true, hasInductor: false
+    }]]);
+    const report = await detect({lessons: [lesson], capabilities: noDischarge});
     assert.ok(report.findings.some(f => f.evidence.demand === 'discharge'),
         'the 43-rc-timing discharge defect must be reported for the v1 text');
-    // and the repaired text must not be
+    // and the repaired text must not be — on the REAL (now-discharging) bench
     const clean = await detect({lessons: [loadCatalog().find(l => l.id === 'signals-rc-response')]});
     assert.deepEqual(clean.findings, [], 'the repaired v2 text must come back clean');
 });

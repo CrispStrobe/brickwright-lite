@@ -169,7 +169,12 @@ export async function benchCapabilities(exampleId, opts = {}) {
     // prober report `ledSwitches: false` for pc29-capacitor-discharge, whose
     // LED measurably reaches 0.14 during discharge — a false negative that
     // would have flagged a correct lesson.)
-    if (controls.length >= 2 && !overBudget()) {
+    // >= 1, not >= 2: a ONE-switch bench has the same sequence-only state
+    // (charge with the switch open, then close it to discharge) and the
+    // per-setting probes apply every control from t=0 — so 43-rc-timing's
+    // new discharge switch read capDischarges:false and the detector
+    // flagged the corrected lesson as unachievable (2026-08-25).
+    if (controls.length >= 1 && !overBudget()) {
         const circuit = Circuit.fromJSON(structuredClone(raw));
         const board = circuit.board;
         let t = 0n;
@@ -177,6 +182,14 @@ export async function benchCapabilities(exampleId, opts = {}) {
         for (const c of controls) circuit.setControl(c.id, c.kind === 'vsource' ? c.value : 0);
         // close each non-source control in turn, holding the previous ones open
         const switches = controls.filter(c => c.kind === 'switch' || c.kind === 'button');
+        // Settle with everything open FIRST — the charge phase. Without it a
+        // one-switch bench closes its only switch at t=0 and there is
+        // nothing charged left to fall.
+        for (const ms of [50, 1000, 3000]) {
+            board.advanceTo(t += BigInt(ms) * MS);
+            seq.push(capVolts(board));
+            allStates.add(vector(board));
+        }
         for (const sw of switches) {
             for (const other of switches) circuit.setControl(other.id, other.id === sw.id ? 1 : 0);
             for (const ms of [50, 250, 1000, 3000]) {

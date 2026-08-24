@@ -492,6 +492,39 @@ function LcdWidget({ widget }) {
 function OledWidget({ widget }) {
     const cols = (widget.config.cols | 0) || 21;
     const rows = (widget.config.rows | 0) || 4;
+    // PIXEL mode: a part binding mirrors the circuit SSD1306's actual
+    // GDDRAM (panel.setOledPixels). There is no text to show — the device
+    // draws through a pixel font — so the face becomes a canvas. Text mode
+    // below is unchanged for variable bindings.
+    const fb = widget.state.fb;
+    const fbW = widget.state.fbW || 128;
+    const fbH = widget.state.fbH || 64;
+    const canvasRef = React.useRef(null);
+    React.useEffect(() => {
+        if (!fb || !canvasRef.current) return;
+        const ctx = canvasRef.current.getContext('2d');
+        const img = ctx.createImageData(fbW, fbH);
+        for (let y = 0; y < fbH; y++) {
+            for (let x = 0; x < fbW; x++) {
+                // ssd1306 page layout: pages×width bytes, LSB at the top row.
+                const on = (fb[(y >> 3) * fbW + x] >> (y & 7)) & 1;
+                const o = (y * fbW + x) * 4;
+                img.data[o] = on ? 0xe0 : 0x08;
+                img.data[o + 1] = on ? 0xf2 : 0x0a;
+                img.data[o + 2] = on ? 0xfe : 0x14;
+                img.data[o + 3] = 255;
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+    }, [fb, fbW, fbH]);
+    if (fb) {
+        return (
+            <canvas ref={canvasRef} width={fbW} height={fbH}
+                data-testid={`bw-ctl-oled-${widget.name}`} data-pixels="1"
+                style={{ width: '100%', display: 'block', imageRendering: 'pixelated',
+                    background: '#000', borderRadius: 6 }} />
+        );
+    }
     const shown = makeTextRows(widget.state.text, rows, cols);
     return (
         <div data-testid={`bw-ctl-oled-${widget.name}`} data-shown={shown.join('|')}
@@ -678,7 +711,7 @@ function PositionedWidget({ widget, mode, selected, snap, onSelect, onLayout, ch
 // decoration configs (text content / image source).
 
 function WidgetInspector({ widget, onRename, onLayout, onConfig, onBind, onOpenLibrary,
-    variableNames = [], partIds = [] }) {
+    variableNames = [], partIds = [], onOk, onCancel }) {
     const L = widget.layout || {};
     const [name, setName] = React.useState(widget.name);
     React.useEffect(() => { setName(widget.name); }, [widget.name]);
@@ -703,8 +736,24 @@ function WidgetInspector({ widget, onRename, onLayout, onConfig, onBind, onOpenL
             }}
             onPointerDown={e => e.stopPropagation()}
         >
-            <div style={{ fontWeight: 700, fontSize: 12, color: '#7C3AED' }}>
-                {widget.type} · {widget.name}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: '#7C3AED',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {widget.type} · {widget.name}
+                </div>
+                {/* ✓ accepts (edits apply live, so accept = close); ✕ reverts
+                    every edit since the inspector opened, via the parent's
+                    snapshot (owner request: the dialog needs OK/Cancel). */}
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    <button onClick={onOk} title="OK" data-testid="bw-ctl-insp-ok"
+                        style={{ width: 24, height: 24, padding: 0, cursor: 'pointer',
+                            background: '#dcfce7', color: '#15803d', fontWeight: 700,
+                            border: '1px solid #86efac', borderRadius: 4 }}>✓</button>
+                    <button onClick={onCancel} title="Cancel" data-testid="bw-ctl-insp-cancel"
+                        style={{ width: 24, height: 24, padding: 0, cursor: 'pointer',
+                            background: '#fee2e2', color: '#dc2626', fontWeight: 700,
+                            border: '1px solid #fca5a5', borderRadius: 4 }}>✕</button>
+                </div>
             </div>
             <div style={row}>
                 <span style={lbl}>name</span>
@@ -1446,12 +1495,39 @@ class ControllerPanelView extends React.Component {
     _rename(oldName, newName) {
         try {
             this._getPanel().renameWidget(oldName, newName);
+            // Keep the inspector's revert snapshot attached across the
+            // rename: the snapshot's job is "the widget as it was when the
+            // inspector opened", and a rename is an edit, not a re-open.
+            if (this._snapFor === oldName) this._snapFor = newName;
             this.setState({ selected: newName });
             this._persist();
             return true;
         } catch (e) {
             return false;   // collision/empty: the inspector keeps the old name
         }
+    }
+
+    /** Revert a widget to the snapshot taken when its inspector opened (✕). */
+    _restoreWidget(currentName, snap) {
+        try {
+            const panel = this._getPanel();
+            if (!snap || !panel.getWidget(currentName)) {
+                this.setState({ selected: null });
+                return;
+            }
+            if (currentName !== snap.name) {
+                try { panel.renameWidget(currentName, snap.name); } catch (e) { /* collision: keep name */ }
+            }
+            const w = panel.getWidget(snap.name) || panel.getWidget(currentName);
+            if (w) {
+                w.config = JSON.parse(JSON.stringify(snap.config));
+                w.layout = JSON.parse(JSON.stringify(snap.layout));
+                w.binding = snap.binding ? JSON.parse(JSON.stringify(snap.binding)) : null;
+            }
+            this._persist();
+        } catch (e) { /* a failed revert must still close the inspector */ }
+        this._snapFor = null;
+        this.setState(s => ({ selected: null, revision: s.revision + 1 }));
     }
 
     async _pickLibraryImage(item) {
@@ -1620,19 +1696,37 @@ class ControllerPanelView extends React.Component {
                             />
                         </PositionedWidget>
                     ))}
-                    {mode === 'edit' && this.state.selected && panel.getWidget(this.state.selected) && (
-                        <WidgetInspector
-                            widget={panel.getWidget(this.state.selected)}
-                            onRename={n => this._rename(this.state.selected, n)}
-                            onLayout={patch => this._layout(this.state.selected, patch, true)}
-                            onConfig={patch => this._config(this.state.selected, patch)}
-                            onBind={(target, value, param) =>
-                                this._bind(this.state.selected, target, value, param)}
-                            variableNames={this._variableNames()}
-                            partIds={this._partIds()}
-                            onOpenLibrary={() => this.setState({ libraryOpen: true })}
-                        />
-                    )}
+                    {mode === 'edit' && this.state.selected && panel.getWidget(this.state.selected) && (() => {
+                        // Snapshot the widget the moment its inspector opens,
+                        // so ✕ can revert everything edited since (config,
+                        // layout, binding, name). _rename keeps the snapshot
+                        // attached across a rename; a NEW selection re-snaps.
+                        if (this._snapFor !== this.state.selected) {
+                            const sw = panel.getWidget(this.state.selected);
+                            this._snapFor = this.state.selected;
+                            this._inspectorSnap = {
+                                name: sw.name,
+                                config: JSON.parse(JSON.stringify(sw.config || {})),
+                                layout: JSON.parse(JSON.stringify(sw.layout || {})),
+                                binding: sw.binding ? JSON.parse(JSON.stringify(sw.binding)) : null
+                            };
+                        }
+                        return (
+                            <WidgetInspector
+                                widget={panel.getWidget(this.state.selected)}
+                                onRename={n => this._rename(this.state.selected, n)}
+                                onLayout={patch => this._layout(this.state.selected, patch, true)}
+                                onConfig={patch => this._config(this.state.selected, patch)}
+                                onBind={(target, value, param) =>
+                                    this._bind(this.state.selected, target, value, param)}
+                                variableNames={this._variableNames()}
+                                partIds={this._partIds()}
+                                onOpenLibrary={() => this.setState({ libraryOpen: true })}
+                                onOk={() => { this._snapFor = null; this.setState({ selected: null }); }}
+                                onCancel={() => this._restoreWidget(this.state.selected, this._inspectorSnap)}
+                            />
+                        );
+                    })()}
                 </div>
                 {this.state.libraryOpen && (
                     <ScratchImagePicker

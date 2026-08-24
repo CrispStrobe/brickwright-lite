@@ -286,23 +286,29 @@ test('measurement-rc-cursors: tau is 1 s and 63.2% is 3.16 V, exactly as taught'
     near(landmarks[3000], 4.7511, 0.01, '3 tau');
 });
 
-test('OPEN DEFECT: the RC step is one-shot and nothing on the bench repeats it', async () => {
+test('RESOLVED (was OPEN DEFECT): the discharge switch makes the RC step repeatable', async () => {
+    // The sentinel fired on 2026-08-25: sb3-creator ac83352 gave the bench
+    // the charge switch the review asked for (c1.a → switch → 1 kΩ → gnd).
+    // What it asserts now is the FIX: closing the switch drains the cap to
+    // the 10k/1k divider floor, reopening it runs the step AGAIN — the
+    // measurement the lesson teaches is finally repeatable in place.
     const {board, circuit} = await load('43-rc-timing');
-    assert.deepEqual(circuit.getControls(), [],
-        'a control appeared on 43-rc-timing — if the step can now be repeated, ' +
-        'update docs/LESSON-REVIEW-WAVE-2.md and the measurement-rc-cursors hint');
+    const controlIds = circuit.getControls().map(c => (typeof c === 'string' ? c : c.id));
+    assert.deepEqual(controlIds, ['sw_discharge'],
+        'the bench carries exactly the discharge switch the wave-2 review asked for');
     let t = 4000n * MS;
     board.advanceTo(t);
     const charged = volts(board, 'c1', 'a');
     assert.ok(charged > 4.7, 'the capacitor is charged after 4 s');
-    // Power off does NOT discharge it: the state freezes and resumes.
-    board.setPower(false);
-    board.advanceTo(t += 3000n * MS);
-    near(volts(board, 'c1', 'a'), charged, 0.05, 'power off freezes rather than discharges');
-    board.setPower(true);
-    board.advanceTo(t += 1000n * MS);
-    assert.ok(volts(board, 'c1', 'a') > charged,
-        'power on resumes the charge from where it stopped — there is no second step');
+    board.setControl('sw_discharge', 1);
+    board.advanceTo(t += 1000n * MS);   // ~11 discharge time constants
+    near(volts(board, 'c1', 'a'), 5 * 1000 / 11000, 0.05,
+        'closed: the cap drains to the 10k/1k divider floor, 0.4545 V');
+    board.setControl('sw_discharge', 0);
+    board.advanceTo(t += 1000n * MS);   // one tau of recharge
+    const again = volts(board, 'c1', 'a');
+    assert.ok(again > 2.5 && again < 4.3,
+        `reopened: the step runs AGAIN (one tau in: ${again.toFixed(3)} V)`);
 });
 
 test('OPEN DEFECT: the ohmmeter answers differently depending on which probe is which', async () => {

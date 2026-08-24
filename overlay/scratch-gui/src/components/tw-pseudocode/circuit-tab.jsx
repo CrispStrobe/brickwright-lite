@@ -836,6 +836,45 @@ class CircuitTab extends React.Component {
         }
     }
 
+    /**
+     * Apply an example's shipped controller layout (files.controller) to
+     * the runtime panel — replacing whatever widgets the previous project
+     * left, exactly as loading an example replaces its circuit and program.
+     * With no controller file the panel is CLEARED for the same reason.
+     * Factored out of loadProgramOnlyStarter (2026-08-25) because the
+     * general loadExample path never applied layouts at all: a circuit
+     * example could not ship pre-defined widgets (owner report — the
+     * calculator "SHOULD come with widgets pre-defined").
+     */
+    async applyControllerLayout (example, opts = {}) {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const panel = runtime && runtime.controllerPanel;
+        const path = example && example.files && example.files.controller;
+        if (!path) {
+            if (panel) for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+            return false;
+        }
+        const response = await fetch(`examples/${path}`);
+        if (!response.ok) {
+            if (opts.required) throw new Error(`controller: HTTP ${response.status}`);
+            return false;
+        }
+        const layout = await response.json();
+        if (!panel || !layout || !Array.isArray(layout.widgets)) {
+            if (opts.required) throw new Error('controller layout is not available');
+            return false;
+        }
+        for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+        for (const widget of layout.widgets) {
+            const added = panel.addWidget(widget.name, widget.type,
+                widget.config || {}, widget.layout || {});
+            if (widget.binding) added.binding = {...widget.binding};
+        }
+        if (layout.mode) panel.setMode(layout.mode);
+        if (runtime.stc) runtime.stc.controller = layout;
+        return true;
+    }
+
     /** Program-only starters (currently LEGO) have no fictional circuit to load. */
     async loadProgramOnlyStarter (example) {
         if (typeof confirm === 'function') {
@@ -850,22 +889,7 @@ class CircuitTab extends React.Component {
             this.setState({loadingExample: null, stc: this.readStc()});
             this.publishExampleTitle(example);
             if (example.files && example.files.controller) {
-                const response = await fetch(`examples/${example.files.controller}`);
-                if (!response.ok) throw new Error(`controller: HTTP ${response.status}`);
-                const layout = await response.json();
-                const runtime = this.props.vm && this.props.vm.runtime;
-                const panel = runtime && runtime.controllerPanel;
-                if (!panel || !layout || !Array.isArray(layout.widgets)) {
-                    throw new Error('controller layout is not available');
-                }
-                for (const name of panel.getWidgetNames()) panel.removeWidget(name);
-                for (const widget of layout.widgets) {
-                    const added = panel.addWidget(widget.name, widget.type,
-                        widget.config || {}, widget.layout || {});
-                    if (widget.binding) added.binding = {...widget.binding};
-                }
-                if (layout.mode) panel.setMode(layout.mode);
-                if (runtime.stc) runtime.stc.controller = layout;
+                await this.applyControllerLayout(example, {required: true});
                 window.dispatchEvent(new CustomEvent('bw-settings-change', {
                     detail: {key: 'bw-stage-circuit', value: '1'}
                 }));
@@ -1085,6 +1109,31 @@ class CircuitTab extends React.Component {
                 } catch (e) {
                     programError = e.message;
                 }
+            }
+            // The example's faceplate, if it ships one — after the program,
+            // whose vm.loadProject would have wiped a panel set earlier.
+            // Non-fatal: a circuit without its widgets is still a circuit.
+            // When a layout DID apply, surface it: dock the right pane on
+            // the controller, else the shipped faceplate sits invisible
+            // behind a toggle nobody knows to press.
+            try {
+                const applied = await this.applyControllerLayout(ex);
+                if (applied) {
+                    // BOTH events: the dock chooses WHAT the right column
+                    // shows; the pane key makes the column exist. This tab
+                    // itself nones the stage wrapper while rightPaneHidden
+                    // is set, so a dock switch alone mounted 19 widgets
+                    // into display:none (measured: every rect 0×0 while
+                    // the OLED canvas painted invisibly).
+                    window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                        detail: {key: 'bw-right-pane-hidden', value: '0'}
+                    }));
+                    window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                        detail: {key: 'bw-debug-dock', value: 'controller'}
+                    }));
+                }
+            } catch (e) {
+                console.warn('[brickwright] example controller layout failed', e);
             }
             const pins = !!(prog && prog.pins);
             // Switching to the Designer is the point of clicking an example —
@@ -1403,6 +1452,10 @@ class CircuitTab extends React.Component {
                             // can read it (it uses a lazy getter on this.runtime.circuitBoard).
                             console.assert(vm.runtime.circuitBoard === board,
                                 'circuitBoard not readable from runtime');
+                            // The Widgets tab resolves this board through an
+                            // epoch — announce it, since the circuit-ready
+                            // event fires before the board exists.
+                            window.dispatchEvent(new CustomEvent('bw-board-ready'));
                         }
                     }}
                     simulationOnly={(() => {

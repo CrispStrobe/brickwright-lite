@@ -228,7 +228,12 @@ const GUIComponent = props => {
                 // pane, not merely to mount it in hidden DOM. Fresh projects
                 // remain collapsed; this opens only on explicit debugger
                 // demand from Settings or the stage controls.
-                if (detail.value === 'right') {
+                // Same rule for the CONTROLLER dock: an example shipping a
+                // faceplate docks it here, and mounting 19 widgets into a
+                // collapsed pane is indistinguishable from nothing loading
+                // (measured: the calculator's shipped layout, present in
+                // the DOM, invisible on screen).
+                if (detail.value === 'right' || detail.value === 'controller') {
                     setStagePaneVisible(true);
                     try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
                 }
@@ -324,10 +329,26 @@ const GUIComponent = props => {
     React.useEffect(() => {
         const onReady = () => setBoardEpoch(n => n + 1);
         window.addEventListener('bw-circuit-ready', onReady);
-        return () => window.removeEventListener('bw-circuit-ready', onReady);
+        // The board is published in onBoardReady, a separate (later)
+        // callback than the circuit publish above — listen to both so the
+        // memo re-runs when the board actually exists.
+        window.addEventListener('bw-board-ready', onReady);
+        return () => {
+            window.removeEventListener('bw-circuit-ready', onReady);
+            window.removeEventListener('bw-board-ready', onReady);
+        };
     }, []);
     const board = React.useMemo(
-        () => props.vm?.runtime?.stc?.board || null,
+        // `runtime.circuitBoard` is what circuit-tab's onBoardReady
+        // actually publishes. The previous read, `runtime.stc.board`, is a
+        // field NOTHING in the codebase writes — the epoch listener re-read
+        // a nonexistent path forever, so the Widgets part picker stayed
+        // empty and an OLED on the board could not be bound (owner report,
+        // 2026-08-25; verified with git grep: zero writers).
+        // A RUNNING emulator's board outranks the designer's: widget
+        // presses must land where the program executes, and part-bound
+        // displays must mirror the device the emulator drives.
+        () => props.vm?.runtime?.bwRunBoard || props.vm?.runtime?.circuitBoard || props.vm?.runtime?.stc?.board || null,
         [props.vm, boardEpoch]);
 
     const {
