@@ -314,7 +314,9 @@ distinct causes were written down in seven places and worked on in none.
 re-measurement, which is a weaker claim and is labelled as one: it stopped
 reproducing between the Wave 1 vendor and today, and this pass only found that
 out. Together they cover 39 of the 89 lesson-slots the table counts, and D1 alone is 28 of
-them.
+them. An eleventh, the shift register's stuck data line, was repaired upstream
+at the EXAMPLE level while this pass ran, so no lesson is blocked by it; the
+compiler defect underneath survives and is counted as open.
 
 The largest of them was on nobody's list. **28 checkpoints across four waves
 observe `circuit-ready`**, which fires once when the example loads, so every one
@@ -403,7 +405,7 @@ as current as that sha, and several findings expired within hours of being writt
 | 4 Interactive systems | 8 | done | **full, 2026-08-23**; 4 of 5 closed 2026-08-24 — 7 of 8 defective; 10 revised (three to v3), **1 open** app defect (the micro:bit no-ops, deliberate) | `2e294ceaf`, re-measured `d7325a272` then `7ce24a619` | open | open |
 | 5 Debug with evidence | 10 | done | **full, 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | `a3f30be6b` | open | open |
 | 6 Signals and systems | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24 — 9 of 10 defective; 10 revised (one to v3), **10 open** instrument/engine defects | `1d10902cb` | open | open |
-| 7 Computers from wires upward | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24 — 8 of 10 defective; 8 revised (one to v3), **7 open** example/instrument defects | `1d10902cb` | open | open |
+| 7 Computers from wires upward | 10 | done | **full, 2026-08-23**; re-measured 2026-08-24 — 8 of 10 defective; 9 revised (two to v3), **7 open**, of which the shift register's is now compiler-only (its example was repaired upstream) | `1d10902cb`, re-measured `91a95ba42` | open | open |
 
 **Examples.** Milestone 0's scope covers the corpus as well as the lessons, and the ledger
 never tracked it. Measured against sb3-creator `fix/milestone0-corpus`, with siblings pinned
