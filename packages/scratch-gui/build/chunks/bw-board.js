@@ -232,6 +232,39 @@ function acSweep(args) {
           // Y = 1/(jωL) = −j/(ωL)
           addG2(netOf(part.id, 'a'), netOf(part.id, 'b'), 0, -1 / (omega * Math.max((_ref = (_P$henrys = P.henrys) !== null && _P$henrys !== void 0 ? _P$henrys : P.henries) !== null && _ref !== void 0 ? _ref : 1e-3, 1e-12)));
           break;
+        case 'transformer':
+          {
+            var _P$lm, _P$l, _P$l2, _P$k;
+            // Coupled pair (spec-updates/coupled-inductors.md): Y(ω) =
+            // Γ/(jω) — pure susceptance B = −Γ/ω with the full 2×2
+            // pattern; the diagonal entries reduce to the lone inductor's.
+            const n = Number(P.ratio) || 0;
+            const lm = Number((_P$lm = P.lm) !== null && _P$lm !== void 0 ? _P$lm : 10);
+            const l1 = Number((_P$l = P.l1) !== null && _P$l !== void 0 ? _P$l : n ? lm : 1);
+            const l2 = Number((_P$l2 = P.l2) !== null && _P$l2 !== void 0 ? _P$l2 : n ? lm / (n * n) : 1);
+            const k = Math.min(Math.max(Number((_P$k = P.k) !== null && _P$k !== void 0 ? _P$k : 0.999), 1e-6), 0.999999);
+            const m = k * Math.sqrt(l1 * l2);
+            const det = l1 * l2 - m * m;
+            const p1 = netOf(part.id, 'p1');
+            const p2 = netOf(part.id, 'p2');
+            const s1 = netOf(part.id, 's1');
+            const s2 = netOf(part.id, 's2');
+            const addPort = (rA, rB, cA, cB, susc) => {
+              const ra = idxOf(rA);
+              const rb = idxOf(rB);
+              const ca = idxOf(cA);
+              const cb = idxOf(cB);
+              if (ra !== undefined && ca !== undefined) addC(ra, ca, 0, susc);
+              if (ra !== undefined && cb !== undefined) addC(ra, cb, 0, -susc);
+              if (rb !== undefined && ca !== undefined) addC(rb, ca, 0, -susc);
+              if (rb !== undefined && cb !== undefined) addC(rb, cb, 0, susc);
+            };
+            addPort(p1, p2, p1, p2, -(l2 / det) / omega);
+            addPort(p1, p2, s1, s2, -(-m / det) / omega);
+            addPort(s1, s2, p1, p2, -(-m / det) / omega);
+            addPort(s1, s2, s1, s2, -(l1 / det) / omega);
+            break;
+          }
         case 'led':
         case 'diode':
           {
@@ -289,12 +322,12 @@ function acSweep(args) {
         case 'nmos':
         case 'pmos':
           {
-            var _P$vth, _P$k;
+            var _P$vth, _P$k2;
             const nG = netOf(part.id, 'gate');
             const nD = netOf(part.id, 'drain');
             const nS = netOf(part.id, 'source');
             const vth = (_P$vth = P.vth) !== null && _P$vth !== void 0 ? _P$vth : part.kind === 'nmos' ? 2.0 : -2.0;
-            const k = (_P$k = P.k) !== null && _P$k !== void 0 ? _P$k : 0.5;
+            const k = (_P$k2 = P.k) !== null && _P$k2 !== void 0 ? _P$k2 : 0.5;
             const vgs = part.kind === 'nmos' ? vOp(nG) - vOp(nS) : vOp(nS) - vOp(nG);
             const [vovS, dVovS] = (0,_mna_js__WEBPACK_IMPORTED_MODULE_0__.smoothVov)(vgs - Math.abs(vth));
             const gm = 2 * k * vovS * dVovS;
@@ -3523,7 +3556,7 @@ const LED_I_RATED = 0.020; // 20 mA rated current (for brightness normalization)
  * _solve() through the full MNA path — the walker would otherwise report
  * voltages as if these parts were absent.
  */
-const MNA_ONLY_KINDS = new Set(['npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource', 'vcvs', 'vccs']);
+const MNA_ONLY_KINDS = new Set(['npn', 'pnp', 'nmos', 'pmos', 'opamp', 'zener', 'diode', 'vsource', 'isource', 'vcvs', 'vccs', 'transformer']);
 
 /**
  * Brightness integrator window.
@@ -6483,7 +6516,7 @@ class BoardImpl {
     // follower sat at 0 V forever.
     for (const p of (_this$_solveParts = this._solveParts) !== null && _this$_solveParts !== void 0 ? _this$_solveParts : this.parts) {
       var _this$_solveParts;
-      if (p.kind === 'capacitor' || p.kind === 'inductor') return true;
+      if (p.kind === 'capacitor' || p.kind === 'inductor' || p.kind === 'transformer') return true;
     }
     return false;
   }
@@ -11864,7 +11897,7 @@ function initDeviceState(part) {
  * Part kinds owned by the core engine. The registry may not shadow them.
  * (Kept here, not imported from board.js, to avoid a dependency cycle.)
  */
-const BUILTIN_KINDS = new Set(['vcc', 'gnd', 'resistor', 'capacitor', 'inductor', 'diode', 'led', 'zener', 'potentiometer', 'button', 'switch', 'buzzer', 'ldr', 'ntc', 'npn', 'pnp', 'nmos', 'pmos', 'opamp', 'vsource', 'isource', 'mcu', 'seven_segment', 'rgb_led', 'led_matrix', 'led_cube',
+const BUILTIN_KINDS = new Set(['vcc', 'gnd', 'resistor', 'capacitor', 'inductor', 'transformer', 'diode', 'led', 'zener', 'potentiometer', 'button', 'switch', 'buzzer', 'ldr', 'ntc', 'npn', 'pnp', 'nmos', 'pmos', 'opamp', 'vsource', 'isource', 'mcu', 'seven_segment', 'rgb_led', 'led_matrix', 'led_cube',
 // char_lcd moved OUT of the built-ins 2026-08-14: it was a
 // validation-only entry with no board behavior, while the registry
 // has the real HD44780 silicon — registerHD44780() provides the
@@ -32300,7 +32333,7 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
 
   // Assign node indices (skip ground and, when power is off, skip nets that
   // only connect to active sources and have no passive element terminals).
-  const passiveKinds = new Set(['resistor', 'capacitor', 'diode', 'led', 'potentiometer', 'button', 'switch', 'buzzer', 'ldr', 'ntc', 'npn', 'pnp', 'zener', 'inductor', 'nmos', 'pmos', 'opamp', 'vsource', 'isource']);
+  const passiveKinds = new Set(['resistor', 'capacitor', 'diode', 'led', 'potentiometer', 'button', 'switch', 'buzzer', 'ldr', 'ntc', 'npn', 'pnp', 'zener', 'inductor', 'transformer', 'nmos', 'pmos', 'opamp', 'vsource', 'isource']);
 
   // EVERY net bearing a gnd symbol IS the reference — EXCEPT in the
   // power-off resistance measurement, where testNodeB is the reference
@@ -32610,6 +32643,53 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
               } else {
                 // DC steady-state: an inductor is a short (1 mΩ wire).
                 stampTwoTerminal(A, findNet(nets, part.id, 'a'), findNet(nets, part.id, 'b'), 1 / 0.001, nodeIndex);
+              }
+              break;
+            }
+          case 'transformer':
+            {
+              // Coupled pair (spec-updates/coupled-inductors.md): with
+              // Γ = L⁻¹, BE gives i(t+h) = i(t) + h·Γ·v(t+h) and trap
+              // i(t+h) = i(t) + (h/2)·Γ·(v(t+h)+v(t)) — a full 2×2
+              // conductance whose off-diagonal terms ARE the mutual
+              // coupling. State rides the inductor maps as <id>:p / <id>:s.
+              const netP1 = findNet(nets, part.id, 'p1');
+              const netP2 = findNet(nets, part.id, 'p2');
+              const netS1 = findNet(nets, part.id, 's1');
+              const netS2 = findNet(nets, part.id, 's2');
+              if (transient) {
+                var _transient$inductorCu2, _transient$inductorCu3, _transient$inductorVo3, _transient$inductorVo4, _transient$inductorVo5, _transient$inductorVo6;
+                const {
+                  g11,
+                  g12,
+                  g22
+                } = transformerGamma(part);
+                const h = Math.max(transient.dtSec, 1e-15);
+                const trap = transient.method === 'trap';
+                const sc = trap ? h / 2 : h;
+                const iP = (_transient$inductorCu2 = transient.inductorCurrents.get(part.id + ':p')) !== null && _transient$inductorCu2 !== void 0 ? _transient$inductorCu2 : 0;
+                const iS = (_transient$inductorCu3 = transient.inductorCurrents.get(part.id + ':s')) !== null && _transient$inductorCu3 !== void 0 ? _transient$inductorCu3 : 0;
+                const vpP = trap ? (_transient$inductorVo3 = (_transient$inductorVo4 = transient.inductorVoltages) === null || _transient$inductorVo4 === void 0 ? void 0 : _transient$inductorVo4.get(part.id + ':p')) !== null && _transient$inductorVo3 !== void 0 ? _transient$inductorVo3 : 0 : 0;
+                const vpS = trap ? (_transient$inductorVo5 = (_transient$inductorVo6 = transient.inductorVoltages) === null || _transient$inductorVo6 === void 0 ? void 0 : _transient$inductorVo6.get(part.id + ':s')) !== null && _transient$inductorVo5 !== void 0 ? _transient$inductorVo5 : 0 : 0;
+                const inP = iP + (trap ? sc * (g11 * vpP + g12 * vpS) : 0);
+                const inS = iS + (trap ? sc * (g12 * vpP + g22 * vpS) : 0);
+                stampPortCoupling(A, netP1, netP2, netP1, netP2, sc * g11, nodeIndex);
+                stampPortCoupling(A, netP1, netP2, netS1, netS2, sc * g12, nodeIndex);
+                stampPortCoupling(A, netS1, netS2, netP1, netP2, sc * g12, nodeIndex);
+                stampPortCoupling(A, netS1, netS2, netS1, netS2, sc * g22, nodeIndex);
+                const ip1 = netP1 ? nodeIndex.get(netP1) : undefined;
+                const ip2 = netP2 ? nodeIndex.get(netP2) : undefined;
+                const is1 = netS1 ? nodeIndex.get(netS1) : undefined;
+                const is2 = netS2 ? nodeIndex.get(netS2) : undefined;
+                if (ip1 !== undefined) b[ip1] -= inP; // i flows p1→p2 (dot at p1)
+                if (ip2 !== undefined) b[ip2] += inP;
+                if (is1 !== undefined) b[is1] -= inS;
+                if (is2 !== undefined) b[is2] += inS;
+              } else {
+                // DC: each winding the same 1 mΩ short a lone inductor is,
+                // and NO coupling — di/dt = 0 induces nothing.
+                stampTwoTerminal(A, netP1, netP2, 1 / 0.001, nodeIndex);
+                stampTwoTerminal(A, netS1, netS2, 1 / 0.001, nodeIndex);
               }
               break;
             }
@@ -33260,13 +33340,13 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       const vB = netB ? (_nodeVoltages$get16 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get16 !== void 0 ? _nodeVoltages$get16 : 0 : 0;
       let i;
       if (transient) {
-        var _ref2, _part$params$henrys2, _transient$inductorCu2;
+        var _ref2, _part$params$henrys2, _transient$inductorCu4;
         const L = /** @type {number} */(_ref2 = (_part$params$henrys2 = part.params.henrys) !== null && _part$params$henrys2 !== void 0 ? _part$params$henrys2 : part.params.henries) !== null && _ref2 !== void 0 ? _ref2 : 0.001;
-        const iPrev = (_transient$inductorCu2 = transient.inductorCurrents.get(part.id)) !== null && _transient$inductorCu2 !== void 0 ? _transient$inductorCu2 : 0;
+        const iPrev = (_transient$inductorCu4 = transient.inductorCurrents.get(part.id)) !== null && _transient$inductorCu4 !== void 0 ? _transient$inductorCu4 : 0;
         const h = Math.max(transient.dtSec, 1e-15);
         if (transient.method === 'trap') {
-          var _transient$inductorVo3, _transient$inductorVo4;
-          const vPrev = (_transient$inductorVo3 = (_transient$inductorVo4 = transient.inductorVoltages) === null || _transient$inductorVo4 === void 0 ? void 0 : _transient$inductorVo4.get(part.id)) !== null && _transient$inductorVo3 !== void 0 ? _transient$inductorVo3 : 0;
+          var _transient$inductorVo7, _transient$inductorVo8;
+          const vPrev = (_transient$inductorVo7 = (_transient$inductorVo8 = transient.inductorVoltages) === null || _transient$inductorVo8 === void 0 ? void 0 : _transient$inductorVo8.get(part.id)) !== null && _transient$inductorVo7 !== void 0 ? _transient$inductorVo7 : 0;
           i = iPrev + h / (2 * Math.max(L, 1e-12)) * (vA - vB + vPrev);
         } else {
           i = iPrev + h / Math.max(L, 1e-12) * (vA - vB);
@@ -33278,12 +33358,43 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       currents.set('a', -i);
       currents.set('b', i);
     }
+    if (part.kind === 'transformer') {
+      var _nodeVoltages$get17, _nodeVoltages$get18, _nodeVoltages$get19, _nodeVoltages$get20;
+      const vP = ((_nodeVoltages$get17 = nodeVoltages.get(findNet(nets, part.id, 'p1'))) !== null && _nodeVoltages$get17 !== void 0 ? _nodeVoltages$get17 : 0) - ((_nodeVoltages$get18 = nodeVoltages.get(findNet(nets, part.id, 'p2'))) !== null && _nodeVoltages$get18 !== void 0 ? _nodeVoltages$get18 : 0);
+      const vS = ((_nodeVoltages$get19 = nodeVoltages.get(findNet(nets, part.id, 's1'))) !== null && _nodeVoltages$get19 !== void 0 ? _nodeVoltages$get19 : 0) - ((_nodeVoltages$get20 = nodeVoltages.get(findNet(nets, part.id, 's2'))) !== null && _nodeVoltages$get20 !== void 0 ? _nodeVoltages$get20 : 0);
+      let iP;
+      let iS;
+      if (transient) {
+        var _transient$inductorCu5, _transient$inductorCu6, _transient$inductorVo9, _transient$inductorVo10, _transient$inductorVo11, _transient$inductorVo12;
+        const {
+          g11,
+          g12,
+          g22
+        } = transformerGamma(part);
+        const h = Math.max(transient.dtSec, 1e-15);
+        const trap = transient.method === 'trap';
+        const sc = trap ? h / 2 : h;
+        const iPp = (_transient$inductorCu5 = transient.inductorCurrents.get(part.id + ':p')) !== null && _transient$inductorCu5 !== void 0 ? _transient$inductorCu5 : 0;
+        const iSp = (_transient$inductorCu6 = transient.inductorCurrents.get(part.id + ':s')) !== null && _transient$inductorCu6 !== void 0 ? _transient$inductorCu6 : 0;
+        const vpP = trap ? (_transient$inductorVo9 = (_transient$inductorVo10 = transient.inductorVoltages) === null || _transient$inductorVo10 === void 0 ? void 0 : _transient$inductorVo10.get(part.id + ':p')) !== null && _transient$inductorVo9 !== void 0 ? _transient$inductorVo9 : 0 : 0;
+        const vpS = trap ? (_transient$inductorVo11 = (_transient$inductorVo12 = transient.inductorVoltages) === null || _transient$inductorVo12 === void 0 ? void 0 : _transient$inductorVo12.get(part.id + ':s')) !== null && _transient$inductorVo11 !== void 0 ? _transient$inductorVo11 : 0 : 0;
+        iP = iPp + sc * (g11 * (vP + vpP) + g12 * (vS + vpS));
+        iS = iSp + sc * (g12 * (vP + vpP) + g22 * (vS + vpS));
+      } else {
+        iP = vP / 0.001;
+        iS = vS / 0.001;
+      }
+      currents.set('p1', -iP);
+      currents.set('p2', iP);
+      currents.set('s1', -iS);
+      currents.set('s2', iS);
+    }
     if (part.kind === 'capacitor') {
-      var _nodeVoltages$get17, _nodeVoltages$get18;
+      var _nodeVoltages$get21, _nodeVoltages$get22;
       const netA = findNet(nets, part.id, 'a');
       const netB = findNet(nets, part.id, 'b');
-      const vA = netA ? (_nodeVoltages$get17 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get17 !== void 0 ? _nodeVoltages$get17 : 0 : 0;
-      const vB = netB ? (_nodeVoltages$get18 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get18 !== void 0 ? _nodeVoltages$get18 : 0 : 0;
+      const vA = netA ? (_nodeVoltages$get21 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get21 !== void 0 ? _nodeVoltages$get21 : 0 : 0;
+      const vB = netB ? (_nodeVoltages$get22 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get22 !== void 0 ? _nodeVoltages$get22 : 0 : 0;
       let i = 0;
       if (transient) {
         var _part$params$farads2, _transient$capVoltage2;
@@ -33323,10 +33434,10 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
       const region = (_vccsClamps$get = vccsClamps.get(part.id)) !== null && _vccsClamps$get !== void 0 ? _vccsClamps$get : 'linear';
       let i;
       if (region === 'clamp+') i = /** @type {number} */part.params.iMax;else if (region === 'clamp-') i = -(/** @type {number} */part.params.iMax);else {
-        var _nodeVoltages$get19, _nodeVoltages$get20, _part$params$gm2;
+        var _nodeVoltages$get23, _nodeVoltages$get24, _part$params$gm2;
         const nP = findNet(nets, part.id, 'inp');
         const nN = findNet(nets, part.id, 'inn');
-        const vin = (nP ? (_nodeVoltages$get19 = nodeVoltages.get(nP)) !== null && _nodeVoltages$get19 !== void 0 ? _nodeVoltages$get19 : 0 : 0) - (nN ? (_nodeVoltages$get20 = nodeVoltages.get(nN)) !== null && _nodeVoltages$get20 !== void 0 ? _nodeVoltages$get20 : 0 : 0);
+        const vin = (nP ? (_nodeVoltages$get23 = nodeVoltages.get(nP)) !== null && _nodeVoltages$get23 !== void 0 ? _nodeVoltages$get23 : 0 : 0) - (nN ? (_nodeVoltages$get24 = nodeVoltages.get(nN)) !== null && _nodeVoltages$get24 !== void 0 ? _nodeVoltages$get24 : 0 : 0);
         i = (/** @type {number} */(_part$params$gm2 = part.params.gm) !== null && _part$params$gm2 !== void 0 ? _part$params$gm2 : 1e-3) * vin;
       }
       currents.set('outp', i);
@@ -33342,11 +33453,11 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
 
     // Drawable parts: supply current from VCC to GND
     if (part.kind === 'char_lcd' || part.kind === 'ir_receiver' || part.kind === 'temp_sensor' || part.kind === 'eeprom') {
-      var _nodeVoltages$get21, _nodeVoltages$get22;
+      var _nodeVoltages$get25, _nodeVoltages$get26;
       const vNet = findNet(nets, part.id, 'vcc');
       const gNet = findNet(nets, part.id, 'gnd');
-      const vV = vNet ? (_nodeVoltages$get21 = nodeVoltages.get(vNet)) !== null && _nodeVoltages$get21 !== void 0 ? _nodeVoltages$get21 : 0 : 0;
-      const vG = gNet ? (_nodeVoltages$get22 = nodeVoltages.get(gNet)) !== null && _nodeVoltages$get22 !== void 0 ? _nodeVoltages$get22 : 0 : 0;
+      const vV = vNet ? (_nodeVoltages$get25 = nodeVoltages.get(vNet)) !== null && _nodeVoltages$get25 !== void 0 ? _nodeVoltages$get25 : 0 : 0;
+      const vG = gNet ? (_nodeVoltages$get26 = nodeVoltages.get(gNet)) !== null && _nodeVoltages$get26 !== void 0 ? _nodeVoltages$get26 : 0 : 0;
       const rSupply = part.kind === 'ir_receiver' ? 1000 : 5000;
       const iSupply = (vV - vG) / rSupply;
       currents.set('vcc', -iSupply);
@@ -33366,9 +33477,9 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
           drives: {}
         };
         const read = terminal => {
-          var _nodeVoltages$get23;
+          var _nodeVoltages$get27;
           const n = findNet(nets, part.id, terminal);
-          return n ? (_nodeVoltages$get23 = nodeVoltages.get(n)) !== null && _nodeVoltages$get23 !== void 0 ? _nodeVoltages$get23 : 0 : 0;
+          return n ? (_nodeVoltages$get27 = nodeVoltages.get(n)) !== null && _nodeVoltages$get27 !== void 0 ? _nodeVoltages$get27 : 0 : 0;
         };
         for (const [t, i] of model.branchCurrents(part, state, read)) currents.set(t, i);
       }
@@ -33385,24 +33496,34 @@ function solveMNA(parts, nets, pinSources, controls, vcc) {
     const inductorVoltagesNext = new Map();
     for (const part of parts) {
       if (part.kind === 'capacitor') {
-        var _nodeVoltages$get24, _nodeVoltages$get25, _c$get;
+        var _nodeVoltages$get28, _nodeVoltages$get29, _c$get;
         const netA = findNet(nets, part.id, 'a');
         const netB = findNet(nets, part.id, 'b');
-        const vA = netA ? (_nodeVoltages$get24 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get24 !== void 0 ? _nodeVoltages$get24 : 0 : 0;
-        const vB = netB ? (_nodeVoltages$get25 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get25 !== void 0 ? _nodeVoltages$get25 : 0 : 0;
+        const vA = netA ? (_nodeVoltages$get28 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get28 !== void 0 ? _nodeVoltages$get28 : 0 : 0;
+        const vB = netB ? (_nodeVoltages$get29 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get29 !== void 0 ? _nodeVoltages$get29 : 0 : 0;
         capVoltagesNext.set(part.id, vA - vB);
         const c = branchCurrents.get(part.id);
         capCurrentsNext.set(part.id, c ? (_c$get = c.get('b')) !== null && _c$get !== void 0 ? _c$get : 0 : 0);
       }
       if (part.kind === 'inductor') {
-        var _c$get2, _nodeVoltages$get26, _nodeVoltages$get27;
+        var _c$get2, _nodeVoltages$get30, _nodeVoltages$get31;
         const c = branchCurrents.get(part.id);
         inductorCurrentsNext.set(part.id, c ? (_c$get2 = c.get('b')) !== null && _c$get2 !== void 0 ? _c$get2 : 0 : 0);
         const netA = findNet(nets, part.id, 'a');
         const netB = findNet(nets, part.id, 'b');
-        const vA = netA ? (_nodeVoltages$get26 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get26 !== void 0 ? _nodeVoltages$get26 : 0 : 0;
-        const vB = netB ? (_nodeVoltages$get27 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get27 !== void 0 ? _nodeVoltages$get27 : 0 : 0;
+        const vA = netA ? (_nodeVoltages$get30 = nodeVoltages.get(netA)) !== null && _nodeVoltages$get30 !== void 0 ? _nodeVoltages$get30 : 0 : 0;
+        const vB = netB ? (_nodeVoltages$get31 = nodeVoltages.get(netB)) !== null && _nodeVoltages$get31 !== void 0 ? _nodeVoltages$get31 : 0 : 0;
         inductorVoltagesNext.set(part.id, vA - vB);
+      }
+      if (part.kind === 'transformer') {
+        var _c$get3, _c$get4, _nodeVoltages$get32, _nodeVoltages$get33, _nodeVoltages$get34, _nodeVoltages$get35;
+        const c = branchCurrents.get(part.id);
+        inductorCurrentsNext.set(part.id + ':p', c ? (_c$get3 = c.get('p2')) !== null && _c$get3 !== void 0 ? _c$get3 : 0 : 0);
+        inductorCurrentsNext.set(part.id + ':s', c ? (_c$get4 = c.get('s2')) !== null && _c$get4 !== void 0 ? _c$get4 : 0 : 0);
+        const vP = ((_nodeVoltages$get32 = nodeVoltages.get(findNet(nets, part.id, 'p1'))) !== null && _nodeVoltages$get32 !== void 0 ? _nodeVoltages$get32 : 0) - ((_nodeVoltages$get33 = nodeVoltages.get(findNet(nets, part.id, 'p2'))) !== null && _nodeVoltages$get33 !== void 0 ? _nodeVoltages$get33 : 0);
+        const vS = ((_nodeVoltages$get34 = nodeVoltages.get(findNet(nets, part.id, 's1'))) !== null && _nodeVoltages$get34 !== void 0 ? _nodeVoltages$get34 : 0) - ((_nodeVoltages$get35 = nodeVoltages.get(findNet(nets, part.id, 's2'))) !== null && _nodeVoltages$get35 !== void 0 ? _nodeVoltages$get35 : 0);
+        inductorVoltagesNext.set(part.id + ':p', vP);
+        inductorVoltagesNext.set(part.id + ':s', vS);
       }
     }
     return {
@@ -33438,6 +33559,49 @@ let tempVfShiftV = 0;
 let benchTemperatureC = 25;
 /** A junction's effective forward drop at the bench temperature. */
 const effVf = raw => raw + tempVfShiftV;
+
+/**
+ * A transformer's inverse inductance matrix Γ = L⁻¹ (E3.4,
+ * spec-updates/coupled-inductors.md). Accepts {l1, l2, k} or the
+ * pedagogical {ratio, lm, k}; k is clamped inside (0, 1) here as a
+ * belt-and-braces for programmatic callers — validateNetlist REFUSES
+ * out-of-range k with the reason named before a board ever solves.
+ */
+function transformerGamma(part) {
+  var _part$params11, _P$lm, _P$l, _P$l2, _P$k;
+  const P = (_part$params11 = part.params) !== null && _part$params11 !== void 0 ? _part$params11 : {};
+  const n = Number(P.ratio) || 0;
+  const lm = Number((_P$lm = P.lm) !== null && _P$lm !== void 0 ? _P$lm : 10);
+  const l1 = Number((_P$l = P.l1) !== null && _P$l !== void 0 ? _P$l : n ? lm : 1);
+  const l2 = Number((_P$l2 = P.l2) !== null && _P$l2 !== void 0 ? _P$l2 : n ? lm / (n * n) : 1);
+  const k = Math.min(Math.max(Number((_P$k = P.k) !== null && _P$k !== void 0 ? _P$k : 0.999), 1e-6), 0.999999);
+  const m = k * Math.sqrt(l1 * l2);
+  const det = l1 * l2 - m * m;
+  return {
+    l1,
+    l2,
+    m,
+    g11: l2 / det,
+    g12: -m / det,
+    g22: l1 / det
+  };
+}
+
+/**
+ * Stamp the coupling between two ports: current at port (rowA→rowB)
+ * responding to voltage across port (colA→colB) with conductance g.
+ * With row === col this is exactly stampTwoTerminal's pattern.
+ */
+function stampPortCoupling(A, rowNetA, rowNetB, colNetA, colNetB, g, nodeIndex) {
+  const ra = rowNetA ? nodeIndex.get(rowNetA) : undefined;
+  const rb = rowNetB ? nodeIndex.get(rowNetB) : undefined;
+  const ca = colNetA ? nodeIndex.get(colNetA) : undefined;
+  const cb = colNetB ? nodeIndex.get(colNetB) : undefined;
+  if (ra !== undefined && ca !== undefined) A.add(ra, ca, g);
+  if (ra !== undefined && cb !== undefined) A.add(ra, cb, -g);
+  if (rb !== undefined && ca !== undefined) A.add(rb, ca, -g);
+  if (rb !== undefined && cb !== undefined) A.add(rb, cb, g);
+}
 const NETS_TERM_MAP = Symbol('bw-term-map');
 const termKey = (partId, terminal) => partId + String.fromCharCode(0) + terminal;
 
@@ -33552,12 +33716,12 @@ function stampDiode(A, b, part, nets, nodeIndex, groundNetId, diodeVoltages) {
  * @param {Map<string, number>} controls
  */
 function stampPotentiometer(A, b, part, nets, nodeIndex, groundNetId, controls) {
-  var _part$params11, _controls$get3, _part$params$ohms3;
+  var _part$params12, _controls$get3, _part$params$ohms3;
   // params.position is the AUTHORED default — where the example's trimmer
   // was left. The user's control always wins once touched; mid-travel
   // remains the fallback. (The LCD contrast pot defaulted to a washed-out
   // 0.25 contrast because every pot woke at 0.5 regardless of wiring.)
-  const authored = Number.isFinite((_part$params11 = part.params) === null || _part$params11 === void 0 ? void 0 : _part$params11.position) ? part.params.position : 0.5;
+  const authored = Number.isFinite((_part$params12 = part.params) === null || _part$params12 === void 0 ? void 0 : _part$params12.position) ? part.params.position : 0.5;
   const position = (_controls$get3 = controls.get(part.id)) !== null && _controls$get3 !== void 0 ? _controls$get3 : authored;
   const totalOhms = /** @type {number} */(_part$params$ohms3 = part.params.ohms) !== null && _part$params$ohms3 !== void 0 ? _part$params$ohms3 : 10000;
 
@@ -34299,8 +34463,8 @@ function stampCapAsSource(A, b, part, nets, nodeIndex, vsIndex, vStored) {
  * @returns {number}
  */
 function sourceVoltage(part, tSeconds, vcc) {
-  var _part$params12, _p$wave, _p$volts, _p$freq, _p$amplitude, _p$offset2, _p$phase, _p$duty;
-  const p = (_part$params12 = part.params) !== null && _part$params12 !== void 0 ? _part$params12 : {};
+  var _part$params13, _p$wave, _p$volts, _p$freq, _p$amplitude, _p$offset2, _p$phase, _p$duty;
+  const p = (_part$params13 = part.params) !== null && _part$params13 !== void 0 ? _part$params13 : {};
   const wave = /** @type {string} */(_p$wave = p.wave) !== null && _p$wave !== void 0 ? _p$wave : 'dc';
   const volts = /** @type {number} */(_p$volts = p.volts) !== null && _p$volts !== void 0 ? _p$volts : vcc;
   if (wave === 'dc') return volts;
@@ -38992,6 +39156,7 @@ const KNOWN_TERMINALS = {
   npn: ['base', 'collector', 'emitter'],
   pnp: ['base', 'collector', 'emitter'],
   inductor: ['a', 'b'],
+  transformer: ['p1', 'p2', 's1', 's2'],
   zener: ['anode', 'cathode'],
   nmos: ['gate', 'drain', 'source'],
   pmos: ['gate', 'drain', 'source'],
@@ -39042,7 +39207,8 @@ const REQUIRED_PARAMS = {
   // beta/vbe have defaults
   zener: [],
   // vf/vz have defaults
-  inductor: ['henrys']
+  inductor: ['henrys'],
+  transformer: [] // l1/l2/k or ratio/lm/k — all have defaults
 };
 
 /**
@@ -39136,6 +39302,16 @@ function validateNetlist(parts, nets) {
     }
 
     // Param value validation
+    if (part.kind === 'transformer' && params.k !== undefined) {
+      const k = /** @type {number} */params.k;
+      if (!(k > 0 && k < 1)) {
+        errors.push({
+          severity: 'error',
+          message: "Part \"".concat(part.id, "\" (transformer) has k=").concat(k, " \u2014 coupling must sit in (0, 1). ") + "A perfectly coupled pair has a singular inductance matrix: the ideal " + "transformer is the LIMIT of this model, not a member; use k close to 1 " + "(spec-updates/coupled-inductors.md).",
+          partId: part.id
+        });
+      }
+    }
     if (params.ohms !== undefined) {
       const v = /** @type {number} */params.ohms;
       if (typeof v !== 'number' || Number.isNaN(v)) {

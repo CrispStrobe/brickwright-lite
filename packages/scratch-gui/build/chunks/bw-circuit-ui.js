@@ -1116,6 +1116,7 @@ const DIP_CHIP_LABELS = {
   ns16c550: 'NS16C550',
   m6532: 'M6532',
   ay8912: 'AY-3-8912',
+  transformer: 'XFMR',
   '62256': '62256',
   '28c256': '28C256',
   z80: 'Z80 CPU',
@@ -9291,24 +9292,25 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _hooks_useBoard_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ../hooks/useBoard.js */ "./src/lib/bw-circuit-ui/hooks/useBoard.js");
 /* harmony import */ var _model_inference_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ../model/inference.js */ "./src/lib/bw-circuit-ui/model/inference.js");
 /* harmony import */ var _model_declarations_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(/*! ../model/declarations.js */ "./src/lib/bw-circuit-ui/model/declarations.js");
-/* harmony import */ var _model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ../model/wire-endpoints.js */ "./src/lib/bw-circuit-ui/model/wire-endpoints.js");
-/* harmony import */ var _audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ../audio/buzzer-audio.js */ "./src/lib/bw-circuit-ui/audio/buzzer-audio.js");
-/* harmony import */ var _model_cube_scan_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ../model/cube-scan.js */ "./src/lib/bw-circuit-ui/model/cube-scan.js");
-/* harmony import */ var _DebugStatus_jsx__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! ./DebugStatus.jsx */ "./src/lib/bw-circuit-ui/components/DebugStatus.jsx");
-/* harmony import */ var _VdpScreen_jsx__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(/*! ./VdpScreen.jsx */ "./src/lib/bw-circuit-ui/components/VdpScreen.jsx");
-/* harmony import */ var _model_circuit_js__WEBPACK_IMPORTED_MODULE_21__ = __webpack_require__(/*! ../model/circuit.js */ "./src/lib/bw-circuit-ui/model/circuit.js");
-/* harmony import */ var _model_machine_extract_js__WEBPACK_IMPORTED_MODULE_22__ = __webpack_require__(/*! ../model/machine-extract.js */ "./src/lib/bw-circuit-ui/model/machine-extract.js");
-/* harmony import */ var _OrientationInput_jsx__WEBPACK_IMPORTED_MODULE_23__ = __webpack_require__(/*! ./OrientationInput.jsx */ "./src/lib/bw-circuit-ui/components/OrientationInput.jsx");
-/* harmony import */ var _SerialConsole_jsx__WEBPACK_IMPORTED_MODULE_24__ = __webpack_require__(/*! ./SerialConsole.jsx */ "./src/lib/bw-circuit-ui/components/SerialConsole.jsx");
-/* harmony import */ var _ArchitectureFace_jsx__WEBPACK_IMPORTED_MODULE_25__ = __webpack_require__(/*! ./ArchitectureFace.jsx */ "./src/lib/bw-circuit-ui/components/ArchitectureFace.jsx");
-/* harmony import */ var _FramebufferFace_jsx__WEBPACK_IMPORTED_MODULE_26__ = __webpack_require__(/*! ./FramebufferFace.jsx */ "./src/lib/bw-circuit-ui/components/FramebufferFace.jsx");
-/* harmony import */ var _StimulusControls_jsx__WEBPACK_IMPORTED_MODULE_27__ = __webpack_require__(/*! ./StimulusControls.jsx */ "./src/lib/bw-circuit-ui/components/StimulusControls.jsx");
-/* harmony import */ var _engine_js__WEBPACK_IMPORTED_MODULE_28__ = __webpack_require__(/*! ../engine.js */ "./src/lib/bw-circuit-ui/engine.js");
-/* harmony import */ var _model_footprints_js__WEBPACK_IMPORTED_MODULE_29__ = __webpack_require__(/*! ../model/footprints.js */ "./src/lib/bw-circuit-ui/model/footprints.js");
-/* harmony import */ var _model_infer_seated_js__WEBPACK_IMPORTED_MODULE_30__ = __webpack_require__(/*! ../model/infer-seated.js */ "./src/lib/bw-circuit-ui/model/infer-seated.js");
-/* harmony import */ var _model_drc_js__WEBPACK_IMPORTED_MODULE_31__ = __webpack_require__(/*! ../model/drc.js */ "./src/lib/bw-circuit-ui/model/drc.js");
-/* harmony import */ var _model_starter_migration_js__WEBPACK_IMPORTED_MODULE_32__ = __webpack_require__(/*! ../model/starter-migration.js */ "./src/lib/bw-circuit-ui/model/starter-migration.js");
-/* harmony import */ var _circuit_theme_css__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ./circuit-theme.css */ "./src/lib/bw-circuit-ui/components/circuit-theme.css");
+/* harmony import */ var _model_circuit_signature_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(/*! ../model/circuit-signature.js */ "./src/lib/bw-circuit-ui/model/circuit-signature.js");
+/* harmony import */ var _model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(/*! ../model/wire-endpoints.js */ "./src/lib/bw-circuit-ui/model/wire-endpoints.js");
+/* harmony import */ var _audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(/*! ../audio/buzzer-audio.js */ "./src/lib/bw-circuit-ui/audio/buzzer-audio.js");
+/* harmony import */ var _model_cube_scan_js__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(/*! ../model/cube-scan.js */ "./src/lib/bw-circuit-ui/model/cube-scan.js");
+/* harmony import */ var _DebugStatus_jsx__WEBPACK_IMPORTED_MODULE_20__ = __webpack_require__(/*! ./DebugStatus.jsx */ "./src/lib/bw-circuit-ui/components/DebugStatus.jsx");
+/* harmony import */ var _VdpScreen_jsx__WEBPACK_IMPORTED_MODULE_21__ = __webpack_require__(/*! ./VdpScreen.jsx */ "./src/lib/bw-circuit-ui/components/VdpScreen.jsx");
+/* harmony import */ var _model_circuit_js__WEBPACK_IMPORTED_MODULE_22__ = __webpack_require__(/*! ../model/circuit.js */ "./src/lib/bw-circuit-ui/model/circuit.js");
+/* harmony import */ var _model_machine_extract_js__WEBPACK_IMPORTED_MODULE_23__ = __webpack_require__(/*! ../model/machine-extract.js */ "./src/lib/bw-circuit-ui/model/machine-extract.js");
+/* harmony import */ var _OrientationInput_jsx__WEBPACK_IMPORTED_MODULE_24__ = __webpack_require__(/*! ./OrientationInput.jsx */ "./src/lib/bw-circuit-ui/components/OrientationInput.jsx");
+/* harmony import */ var _SerialConsole_jsx__WEBPACK_IMPORTED_MODULE_25__ = __webpack_require__(/*! ./SerialConsole.jsx */ "./src/lib/bw-circuit-ui/components/SerialConsole.jsx");
+/* harmony import */ var _ArchitectureFace_jsx__WEBPACK_IMPORTED_MODULE_26__ = __webpack_require__(/*! ./ArchitectureFace.jsx */ "./src/lib/bw-circuit-ui/components/ArchitectureFace.jsx");
+/* harmony import */ var _FramebufferFace_jsx__WEBPACK_IMPORTED_MODULE_27__ = __webpack_require__(/*! ./FramebufferFace.jsx */ "./src/lib/bw-circuit-ui/components/FramebufferFace.jsx");
+/* harmony import */ var _StimulusControls_jsx__WEBPACK_IMPORTED_MODULE_28__ = __webpack_require__(/*! ./StimulusControls.jsx */ "./src/lib/bw-circuit-ui/components/StimulusControls.jsx");
+/* harmony import */ var _engine_js__WEBPACK_IMPORTED_MODULE_29__ = __webpack_require__(/*! ../engine.js */ "./src/lib/bw-circuit-ui/engine.js");
+/* harmony import */ var _model_footprints_js__WEBPACK_IMPORTED_MODULE_30__ = __webpack_require__(/*! ../model/footprints.js */ "./src/lib/bw-circuit-ui/model/footprints.js");
+/* harmony import */ var _model_infer_seated_js__WEBPACK_IMPORTED_MODULE_31__ = __webpack_require__(/*! ../model/infer-seated.js */ "./src/lib/bw-circuit-ui/model/infer-seated.js");
+/* harmony import */ var _model_drc_js__WEBPACK_IMPORTED_MODULE_32__ = __webpack_require__(/*! ../model/drc.js */ "./src/lib/bw-circuit-ui/model/drc.js");
+/* harmony import */ var _model_starter_migration_js__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ../model/starter-migration.js */ "./src/lib/bw-circuit-ui/model/starter-migration.js");
+/* harmony import */ var _circuit_theme_css__WEBPACK_IMPORTED_MODULE_34__ = __webpack_require__(/*! ./circuit-theme.css */ "./src/lib/bw-circuit-ui/components/circuit-theme.css");
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
@@ -9391,6 +9393,7 @@ function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = 
 
 
 
+
 const MS = 1000000n;
 const GRID = 20;
 function snapToGrid(v) {
@@ -9408,6 +9411,7 @@ function CircuitDesigner(_ref) {
     benchOpen = false,
     simulationOnly,
     onDeclarationChange,
+    onCircuitEdit,
     onBoardReady,
     onCircuitReady,
     circuitData,
@@ -9548,6 +9552,41 @@ function CircuitDesigner(_ref) {
     }
   }, [parts, wires, onDeclarationChange, circuit]);
 
+  // ── Tell the host the CIRCUIT changed, as against the declarations ──
+  //
+  // `onDeclarationChange` above fires only when the DERIVED PIN DECLARATIONS
+  // move. On a bench with no microcontroller they never do —
+  // `{"pins":[],"ports":[],"parts":[]}` before and after every edit — so on
+  // those benches the host was told nothing, ever. Changing a resistor value,
+  // breaking a wire, deleting a part: all silent.
+  //
+  // That cost three of brickwright-lite's lesson waves a checkpoint each
+  // (`starter-circuit-path`, `signals-resonance`, `machines-contention`), all of
+  // which ask the learner to edit the circuit and watch for a response, and all
+  // three of whose benches are MCU-less by design — a battery and an LED, an RLC
+  // network, a 6502 bus. Their reviews found it independently, one wave at a
+  // time.
+  //
+  // The signature is deliberately STRUCTURAL rather than a reference compare on
+  // `parts`/`wires`: those arrays are rebuilt on every render, so a reference
+  // compare would fire continuously. `circuitSignature` says what is in it and
+  // what is left out, and is tested directly.
+  const lastEditRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
+    if (!onCircuitEdit) return;
+    const signature = (0,_model_circuit_signature_js__WEBPACK_IMPORTED_MODULE_16__.circuitSignature)(parts, wires);
+    if (signature === lastEditRef.current) return;
+    const first = lastEditRef.current === null;
+    lastEditRef.current = signature;
+    // The first signature is the circuit ARRIVING, not the learner editing it.
+    // A host that treats it as an edit gets one spurious event per load, which
+    // is precisely the false positive `circuit-ready` already covers.
+    if (!first) onCircuitEdit({
+      parts: parts.length,
+      wires: wires.length
+    });
+  }, [parts, wires, onCircuitEdit]);
+
   // ── Expose the Board to the host (for the circuit extension) ──
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
     if (onBoardReady && circuit.board) {
@@ -9671,16 +9710,16 @@ function CircuitDesigner(_ref) {
       // fifth private copy of it (`w.from?.part || w.from`), which
       // handed a breadboard-hole endpoint straight through as the
       // extractor's `from` string.
-      wires: wires.map(_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.flatWire)
+      wires: wires.map(_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.flatWire)
     };
 
     // Try extractors from the engine injection
-    const eng = typeof _engine_js__WEBPACK_IMPORTED_MODULE_28__.getEngine === 'function' ? (0,_engine_js__WEBPACK_IMPORTED_MODULE_28__.getEngine)() : {};
+    const eng = typeof _engine_js__WEBPACK_IMPORTED_MODULE_29__.getEngine === 'function' ? (0,_engine_js__WEBPACK_IMPORTED_MODULE_29__.getEngine)() : {};
     const extractors = {
       extract6502Machine: eng.extract6502Machine,
       extractZ80Machine: eng.extractZ80Machine
     };
-    const result = (0,_model_machine_extract_js__WEBPACK_IMPORTED_MODULE_22__.extractMachine)(flatCircuit, extractors);
+    const result = (0,_model_machine_extract_js__WEBPACK_IMPORTED_MODULE_23__.extractMachine)(flatCircuit, extractors);
     setMachineResult(result);
 
     // On success, notify the host so it can boot the machine. The two
@@ -9709,7 +9748,7 @@ function CircuitDesigner(_ref) {
   const [annotations, setAnnotations] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]);
 
   // LED cube scan accumulator
-  const cubeScanRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(new _model_cube_scan_js__WEBPACK_IMPORTED_MODULE_18__.CubeScanAccumulator());
+  const cubeScanRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(new _model_cube_scan_js__WEBPACK_IMPORTED_MODULE_19__.CubeScanAccumulator());
   const [cubeScans, setCubeScans] = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({});
 
   // Sample pin states for cube when renderState updates
@@ -9761,7 +9800,7 @@ function CircuitDesigner(_ref) {
   const handleTerminalClickForProbe = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)((partId, terminal) => {
     if (!placingProbe) return false;
     const wire = wires.find(w => ['from', 'to'].some(side => {
-      const e = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.wireEndpoint)(w, side);
+      const e = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.wireEndpoint)(w, side);
       return e && e.part === partId && e.terminal === terminal;
     }));
     setProbePlacement({
@@ -9815,7 +9854,7 @@ function CircuitDesigner(_ref) {
         if (saved) {
           const data = JSON.parse(saved);
           if (data && Array.isArray(data.parts) && data.parts.length > 0) {
-            handleLoad((0,_model_starter_migration_js__WEBPACK_IMPORTED_MODULE_32__.migrateStarterAutosave)(data));
+            handleLoad((0,_model_starter_migration_js__WEBPACK_IMPORTED_MODULE_33__.migrateStarterAutosave)(data));
             return;
           }
         }
@@ -9839,8 +9878,8 @@ function CircuitDesigner(_ref) {
         const led = addPart('led', {
           color: 'red'
         }, 0, 0, 'led1');
-        circuit.seatPart(r1.id, bb.id, (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.computeLeadMap)(_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.FOOTPRINTS.resistor, 'b5'));
-        circuit.seatPart(led.id, bb.id, (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.computeLeadMap)(_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.FOOTPRINTS.led, 'c9'));
+        circuit.seatPart(r1.id, bb.id, (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.computeLeadMap)(_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.FOOTPRINTS.resistor, 'b5'));
+        circuit.seatPart(led.id, bb.id, (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.computeLeadMap)(_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.FOOTPRINTS.led, 'c9'));
         addTapWire(bat.id, 'pos', bb.id, 'a5', '#e74c3c');
         addTapWire(bat.id, 'neg', bb.id, 'a10', '#2c3e50');
         setAnnotations([{
@@ -9862,7 +9901,7 @@ function CircuitDesigner(_ref) {
         circuit.breadboards = new Map();
         const {
           notes
-        } = (0,_model_infer_seated_js__WEBPACK_IMPORTED_MODULE_30__.buildSeatedFromDeclarations)(circuit, projectData);
+        } = (0,_model_infer_seated_js__WEBPACK_IMPORTED_MODULE_31__.buildSeatedFromDeclarations)(circuit, projectData);
         setAnnotations(notes.map((text, i) => ({
           x: 470,
           y: 585 + i * 14,
@@ -9933,7 +9972,7 @@ function CircuitDesigner(_ref) {
     return () => window.removeEventListener('bw-circuit-theme', onTheme);
   }, []);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
-    return () => (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_17__.stopAllBuzzers)();
+    return () => (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_18__.stopAllBuzzers)();
   }, []);
 
   // The Scratch green flag is the shared start affordance. Pure circuits do
@@ -9963,12 +10002,12 @@ function CircuitDesigner(_ref) {
     for (const bz of buzzers) {
       try {
         const tone = readBuzzerTone(bz.id);
-        (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_17__.updateBuzzerAudio)(bz.id, tone);
+        (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_18__.updateBuzzerAudio)(bz.id, tone);
       } catch (_unused20) {}
     }
   }, [rev, parts, readBuzzerTone, renderState, mode]);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(() => {
-    if (mode !== 'simulate') (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_17__.stopAllBuzzers)();
+    if (mode !== 'simulate') (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_18__.stopAllBuzzers)();
   }, [mode]);
 
   // Spectrum beeper: poll debugState.audio() and pipe to updateBuzzerAudio
@@ -9978,13 +10017,13 @@ function CircuitDesigner(_ref) {
     let raf;
     const poll = () => {
       const tone = debugState.audio();
-      (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_17__.updateBuzzerAudio)(BEEPER_ID, tone);
+      (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_18__.updateBuzzerAudio)(BEEPER_ID, tone);
       raf = requestAnimationFrame(poll);
     };
     raf = requestAnimationFrame(poll);
     return () => {
       cancelAnimationFrame(raf);
-      (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_17__.stopBuzzer)(BEEPER_ID);
+      (0,_audio_buzzer_audio_js__WEBPACK_IMPORTED_MODULE_18__.stopBuzzer)(BEEPER_ID);
     };
   }, [debugState]);
 
@@ -10018,8 +10057,8 @@ function CircuitDesigner(_ref) {
         // Find what's wired to this pin
         const connectedKinds = new Set();
         for (const w of wires) {
-          const f = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.wireEndpoint)(w, 'from');
-          const t = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.wireEndpoint)(w, 'to');
+          const f = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.wireEndpoint)(w, 'from');
+          const t = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.wireEndpoint)(w, 'to');
           if (!f || !t) continue;
           let otherPart = null;
           if (f.part === mcu.id && f.terminal === pin) {
@@ -10132,8 +10171,8 @@ function CircuitDesigner(_ref) {
     // wireEndpoint already returns a fresh object per side, so the copy the
     // clipboard needs falls out of reading through the canonical accessor.
     const copiedWires = wires.flatMap(w => {
-      const from = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.wireEndpoint)(w, 'from');
-      const to = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.wireEndpoint)(w, 'to');
+      const from = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.wireEndpoint)(w, 'from');
+      const to = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.wireEndpoint)(w, 'to');
       if (!from || !to || !idSet.has(from.part) || !idSet.has(to.part)) return [];
       return [_objectSpread(_objectSpread({}, w), {}, {
         from,
@@ -10182,8 +10221,8 @@ function CircuitDesigner(_ref) {
 
     // Re-create internal wires with new IDs
     for (const w of srcWires) {
-      const f = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.wireEndpoint)(w, 'from');
-      const t = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.wireEndpoint)(w, 'to');
+      const f = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.wireEndpoint)(w, 'from');
+      const t = (0,_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.wireEndpoint)(w, 'to');
       if (!f || !t) continue;
       const fromId = idMap.get(f.part);
       const toId = idMap.get(t.part);
@@ -10335,7 +10374,7 @@ function CircuitDesigner(_ref) {
     // the hole wires, so loaded saves stopped conducting through the rails).
     let parsed;
     try {
-      parsed = _model_circuit_js__WEBPACK_IMPORTED_MODULE_21__.Circuit.fromJSON(data);
+      parsed = _model_circuit_js__WEBPACK_IMPORTED_MODULE_22__.Circuit.fromJSON(data);
     } catch (e) {
       console.error('circuit load rejected:', e);
       return; // a bad file must never take the designer down
@@ -10380,7 +10419,7 @@ function CircuitDesigner(_ref) {
     // strictly more truth — build the seated bench from them and let the
     // legacy file inform nothing. Modern files (endpoint objects) load
     // verbatim.
-    const legacy = Array.isArray(circuitData.wires) && circuitData.wires.some(_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_16__.isLegacyFlatWire);
+    const legacy = Array.isArray(circuitData.wires) && circuitData.wires.some(_model_wire_endpoints_js__WEBPACK_IMPORTED_MODULE_17__.isLegacyFlatWire);
     // A file carrying seats or hole wires was deliberately RE-AUTHORED as a
     // breadboard build — the seated-catalog generator keeps the original
     // flat wires as electrical truth, so the wire dialect alone no longer
@@ -10412,7 +10451,7 @@ function CircuitDesigner(_ref) {
         circuit.breadboards = new Map();
         const {
           notes
-        } = (0,_model_infer_seated_js__WEBPACK_IMPORTED_MODULE_30__.buildSeatedFromDeclarations)(circuit, projectData);
+        } = (0,_model_infer_seated_js__WEBPACK_IMPORTED_MODULE_31__.buildSeatedFromDeclarations)(circuit, projectData);
         circuit._syncNetlist();
         circuit._saveHistory();
         setSelectedParts(new Set());
@@ -10449,8 +10488,8 @@ function CircuitDesigner(_ref) {
       const mcuKinds = new Set(['mcu', 'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85', 'attiny88', 'attiny13', 'attiny2313']);
       const bb = circuit.parts.find(p => p.kind === 'breadboard');
       const unseatMcu = circuit.parts.find(p => mcuKinds.has(p.kind) && !p.seat);
-      if (bb && unseatMcu && _model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.FOOTPRINTS[unseatMcu.kind]) {
-        circuit.seatPart(unseatMcu.id, bb.id, (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.computeLeadMap)(_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.FOOTPRINTS[unseatMcu.kind], 'e1'));
+      if (bb && unseatMcu && _model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.FOOTPRINTS[unseatMcu.kind]) {
+        circuit.seatPart(unseatMcu.id, bb.id, (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.computeLeadMap)(_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.FOOTPRINTS[unseatMcu.kind], 'e1'));
       }
     } catch (_unused32) {/* seating failed — leave as-is */}
   }, [circuitData, handleLoad, projectData, circuit]);
@@ -11003,9 +11042,9 @@ function CircuitDesigner(_ref) {
       // A snapped drop keeps the exact hole-lattice position; free
       // drops take the 20 px grid.
       const p = addPart(kind, params, seat ? x : snapToGrid(x), seat ? y : snapToGrid(y), declName);
-      if (p && seat && _model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.FOOTPRINTS[kind]) {
+      if (p && seat && _model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.FOOTPRINTS[kind]) {
         try {
-          const leadMap = (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.computeLeadMap)(_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.FOOTPRINTS[kind], seat.hole);
+          const leadMap = (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.computeLeadMap)(_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.FOOTPRINTS[kind], seat.hole);
           circuit.seatPart(p.id, seat.boardId, leadMap);
         } catch (_unused34) {/* rail or edge reference: part stays free, honestly */}
       }
@@ -11013,11 +11052,11 @@ function CircuitDesigner(_ref) {
     },
     onSeatPart: (partId, boardId, hole) => {
       const part = parts.find(pp => pp.id === partId);
-      if (!part || !_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.FOOTPRINTS[part.kind]) return false;
-      const fp = _model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.FOOTPRINTS[part.kind];
+      if (!part || !_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.FOOTPRINTS[part.kind]) return false;
+      const fp = _model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.FOOTPRINTS[part.kind];
       const tryAt = h => {
         try {
-          return circuit.seatPart(partId, boardId, (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_29__.computeLeadMap)(fp, h));
+          return circuit.seatPart(partId, boardId, (0,_model_footprints_js__WEBPACK_IMPORTED_MODULE_30__.computeLeadMap)(fp, h));
         } catch (_unused35) {
           return false;
         }
@@ -11079,7 +11118,7 @@ function CircuitDesigner(_ref) {
     },
     drcWarnings: (() => {
       try {
-        const drc = (0,_model_drc_js__WEBPACK_IMPORTED_MODULE_31__.runDrc)(circuit, circuit.board);
+        const drc = (0,_model_drc_js__WEBPACK_IMPORTED_MODULE_32__.runDrc)(circuit, circuit.board);
         if (circuit.netlistError) {
           var _parts$;
           drc.unshift({
@@ -11255,7 +11294,7 @@ function CircuitDesigner(_ref) {
       padding: '36px 6px 6px',
       boxSizing: 'border-box'
     }
-  }, debugDock === 'top' && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, debugState && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_DebugStatus_jsx__WEBPACK_IMPORTED_MODULE_19__.DebugStatus, {
+  }, debugDock === 'top' && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react__WEBPACK_IMPORTED_MODULE_0__.Fragment, null, debugState && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_DebugStatus_jsx__WEBPACK_IMPORTED_MODULE_20__.DebugStatus, {
     debugState: debugState,
     capabilities: debugState.capabilities || null,
     onStep: debugState.step,
@@ -11263,7 +11302,7 @@ function CircuitDesigner(_ref) {
     onStepOut: debugState.stepOut,
     onAddWatchpoint: debugState.addWatchpoint,
     lang: lang
-  }), debugState && typeof debugState.video === 'function' && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_VdpScreen_jsx__WEBPACK_IMPORTED_MODULE_20__.VdpScreen, {
+  }), debugState && typeof debugState.video === 'function' && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_VdpScreen_jsx__WEBPACK_IMPORTED_MODULE_21__.VdpScreen, {
     videoFn: debugState.video,
     setButtonsFn: debugState.setButtons,
     setKeysFn: debugState.setKeys,
@@ -11283,18 +11322,18 @@ function CircuitDesigner(_ref) {
       marginBottom: 4,
       fontFamily: 'monospace'
     }
-  }, (0,_i18n_strings_js__WEBPACK_IMPORTED_MODULE_7__.t)('serialConsole', lang)), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_SerialConsole_jsx__WEBPACK_IMPORTED_MODULE_24__.SerialConsole, {
+  }, (0,_i18n_strings_js__WEBPACK_IMPORTED_MODULE_7__.t)('serialConsole', lang)), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_SerialConsole_jsx__WEBPACK_IMPORTED_MODULE_25__.SerialConsole, {
     onSerialFn: debugState.onSerial,
     sendSerialFn: debugState.sendSerial,
     newline: debugState.serialNewline || 0x0d,
     lang: lang
-  })), debugState && debugState.framebuffer && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_FramebufferFace_jsx__WEBPACK_IMPORTED_MODULE_26__.FramebufferFace, {
+  })), debugState && debugState.framebuffer && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_FramebufferFace_jsx__WEBPACK_IMPORTED_MODULE_27__.FramebufferFace, {
     chipState: debugState.framebuffer,
     width: debugState.framebuffer.width || 128,
     height: debugState.framebuffer.height || 64,
     stride: debugState.framebuffer.stride,
     lang: lang
-  }), debugState && typeof debugState.regs === 'function' && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_ArchitectureFace_jsx__WEBPACK_IMPORTED_MODULE_25__.ArchitectureFace, {
+  }), debugState && typeof debugState.regs === 'function' && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_ArchitectureFace_jsx__WEBPACK_IMPORTED_MODULE_26__.ArchitectureFace, {
     debugState: debugState,
     lang: lang
   }), (hasMcuPins || debugState || benchOpen || machineResult && machineResult.ok) && debuggerPanel && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement("section", {
@@ -11777,7 +11816,7 @@ function CircuitDesigner(_ref) {
       return (_n$id2 = n.id) !== null && _n$id2 !== void 0 ? _n$id2 : n;
     }) : [],
     lang: lang
-  })), parts.filter(p => ['mpu6050', 'adxl335', 'memsic2125'].includes(p.kind)).map(p => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_OrientationInput_jsx__WEBPACK_IMPORTED_MODULE_23__.OrientationInput, {
+  })), parts.filter(p => ['mpu6050', 'adxl335', 'memsic2125'].includes(p.kind)).map(p => /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_OrientationInput_jsx__WEBPACK_IMPORTED_MODULE_24__.OrientationInput, {
     key: p.id,
     partId: p.id,
     kind: p.kind,
@@ -11786,7 +11825,7 @@ function CircuitDesigner(_ref) {
       var _circuit$board;
       if (circuit !== null && circuit !== void 0 && (_circuit$board = circuit.board) !== null && _circuit$board !== void 0 && _circuit$board.setDeviceParam) circuit.board.setDeviceParam(id, key, val);
     }
-  })), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_StimulusControls_jsx__WEBPACK_IMPORTED_MODULE_27__.StimulusControls, {
+  })), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(_StimulusControls_jsx__WEBPACK_IMPORTED_MODULE_28__.StimulusControls, {
     parts: parts,
     lang: lang,
     onSetParam: (id, key, val) => {
@@ -30115,6 +30154,10 @@ const FOOTPRINTS = {
     w: 220,
     h: 90
   },
+  transformer: {
+    w: 130,
+    h: 100
+  },
   w65c51: {
     w: 220,
     h: 90
@@ -32374,6 +32417,58 @@ class BreadboardModel {
       notes
     };
   }
+}
+
+/***/ }),
+
+/***/ "./src/lib/bw-circuit-ui/model/circuit-signature.js":
+/*!**********************************************************!*\
+  !*** ./src/lib/bw-circuit-ui/model/circuit-signature.js ***!
+  \**********************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   circuitSignature: () => (/* binding */ circuitSignature)
+/* harmony export */ });
+/**
+ * A structural fingerprint of a circuit: what a host needs in order to know
+ * that the CIRCUIT changed, as against its derived pin declarations.
+ *
+ * The designer's only "something changed" signal used to be
+ * `onDeclarationChange`, which fires when `circuitToDeclarations` produces a
+ * different result. On a bench with no microcontroller it never does — the
+ * declarations are `{pins: [], ports: [], parts: []}` before and after every
+ * edit — so hosts were told nothing at all on those benches. Changing a
+ * resistor value, breaking a wire and deleting a part were all silent.
+ *
+ * What belongs in the signature, and what deliberately does not:
+ *
+ *   IN   part id, kind and params — a 1 kΩ resistor becoming 470 Ω is the
+ *        commonest edit a lesson asks for and the one most likely to be
+ *        mistaken for "nothing happened".
+ *   IN   wire endpoints — made and broken connections are the topology.
+ *   OUT  part POSITION. Dragging a part across the canvas changes the
+ *        drawing, not the circuit; a host that treated it as an edit would
+ *        fire continuously while the pointer moved.
+ *   OUT  wire routing waypoints, for the same reason.
+ *
+ * @param {Array<{id: string, kind: string, params?: object}>} parts
+ * @param {Array<{from?: {part?: string, terminal?: string}, to?: {part?: string, terminal?: string}}>} wires
+ * @returns {string}
+ */
+function circuitSignature(parts, wires) {
+  return JSON.stringify({
+    parts: (parts || []).map(p => {
+      var _p$params;
+      return [p.id, p.kind, (_p$params = p.params) !== null && _p$params !== void 0 ? _p$params : null];
+    }),
+    wires: (wires || []).map(w => {
+      var _w$from, _w$from2, _w$to, _w$to2;
+      return [(_w$from = w.from) === null || _w$from === void 0 ? void 0 : _w$from.part, (_w$from2 = w.from) === null || _w$from2 === void 0 ? void 0 : _w$from2.terminal, (_w$to = w.to) === null || _w$to === void 0 ? void 0 : _w$to.part, (_w$to2 = w.to) === null || _w$to2 === void 0 ? void 0 : _w$to2.terminal];
+    })
+  });
 }
 
 /***/ }),
@@ -40383,9 +40478,45 @@ function projectSchematic(parts, nets) {
     if (!cols.has(c)) cols.set(c, []);
     cols.get(c).push(p);
   }
-  const connectedTerms = p => {
+
+  // A part's DECLARED terminal list and the RESOLVED NETS are two different
+  // truths about the same part, and in the shipped corpus they disagree. A
+  // seated MCU ships `terminals: ["pb0"]` — only the terminal an explicit wire
+  // names — while its `seat.leadMap` drops 28 leads into breadboard holes, so
+  // the strips resolve nets that attribute `vcc`, `avcc` and `gnd` to that same
+  // part. Drawing the declared list alone renders an ATtiny88 as a one-pin
+  // symbol with no supply and no ground, which is a teaching falsehood: the
+  // chip is powered, and the drawing says it is not.
+  //
+  // Measured before this union existed: 763 connected terminals across 365 of
+  // 2,098 shipped circuits had no drawn pin. The correspondence gate could not
+  // see it, because it restricts the SOLVER side of the comparison to terminals
+  // the projection chose to draw — so a terminal the projection omits leaves
+  // both sides of the equation at once and the gate stays green. That is the
+  // same shape of blind spot as the two already recorded in the audit.
+  const netTerms = new Map(electrical.map(p => [p.id, new Map()]));
+  for (const pins of netPins.values()) {
+    for (const t of pins) {
+      const m = netTerms.get(t.part);
+      const lc = String(t.terminal).toLowerCase();
+      if (m && !m.has(lc)) m.set(lc, t.terminal);
+    }
+  }
+  const declaredAndWired = p => {
     var _p$terminals;
-    const all = (_p$terminals = p.terminals) !== null && _p$terminals !== void 0 ? _p$terminals : [];
+    const all = [...((_p$terminals = p.terminals) !== null && _p$terminals !== void 0 ? _p$terminals : [])];
+    const seen = new Set(all.map(n => String(n).toLowerCase()));
+    for (const [lc, name] of (_netTerms$get = netTerms.get(p.id)) !== null && _netTerms$get !== void 0 ? _netTerms$get : []) {
+      var _netTerms$get;
+      if (!seen.has(lc)) {
+        seen.add(lc);
+        all.push(name);
+      }
+    }
+    return all;
+  };
+  const connectedTerms = p => {
+    const all = declaredAndWired(p);
     const used = all.filter(name => {
       var _netPins$get2;
       const netId = findPinNet(nets, p.id, name);
@@ -40472,18 +40603,14 @@ function projectSchematic(parts, nets) {
   // "the chip is connected to nothing" (owner screenshots, 2026-08-10).
   const symbols = [];
   for (const p of electrical) {
-    var _yOf$get, _p$terminals2, _p$params, _p$params2;
+    var _yOf$get, _p$params, _p$params2;
     const col = layoutCol.get(p.id);
     const row = rowOf.get(p.id);
     const x = MARGIN_X + col * COL_W;
     const y = (_yOf$get = yOf.get(p.id)) !== null && _yOf$get !== void 0 ? _yOf$get : MARGIN_Y + row * ROW_H;
-    const allTerms = (_p$terminals2 = p.terminals) !== null && _p$terminals2 !== void 0 ? _p$terminals2 : [];
-    let terms = allTerms.filter(name => {
-      var _netPins$get3;
-      const netId = findPinNet(nets, p.id, name);
-      return netId && ((_netPins$get3 = netPins.get(netId)) !== null && _netPins$get3 !== void 0 ? _netPins$get3 : []).length >= 2;
-    });
-    if (terms.length === 0) terms = allTerms.slice(0, 2); // disconnected part: keep its shape
+    // ONE definition of "which terminals get pins", shared with halfHeight
+    // above. It used to be written twice; two copies of a rule are two rules.
+    const terms = connectedTerms(p);
     const perSide = Math.ceil(terms.length / 2);
     const art = (0,_schematic_symbols_js__WEBPACK_IMPORTED_MODULE_0__.shapeFor)(p.kind, (_p$params = p.params) !== null && _p$params !== void 0 ? _p$params : {});
     const pins = terms.map((name, i) => {
@@ -40631,7 +40758,16 @@ function projectSchematic(parts, nets) {
       routeName.set(r.netId, seen === 0 ? base : "".concat(base).concat(seen + 1));
     }
   }
+  // A label's LEADER is drawn in the same stroke as copper, so it obeys the
+  // same rule: it may cross another net's conductor and must not touch one. It
+  // used to be neither checked nor registered, so a route could end exactly on
+  // one — 43 of 2,098 circuits, e.g. in 46-port-overcurrent net b40's wire
+  // ended at (305,117), which is a point on net b27's VCC leader spanning
+  // x=300..313 at y=117. Shorten the leader until it is clear; the text
+  // follows it, and a leader is only there to join a pin to its own text.
+  const LEADER_LENGTHS = [13, 10, 8, 6, 4];
   const labelPin = (r, text, pin) => {
+    var _LEADER_LENGTHS$find;
     const vectors = {
       left: [-1, 0, 'end'],
       right: [1, 0, 'start'],
@@ -40639,17 +40775,33 @@ function projectSchematic(parts, nets) {
       bottom: [0, 1, 'middle']
     };
     const [dx, dy, anchor] = vectors[pin.side] || vectors.right;
+    const len = (_LEADER_LENGTHS$find = LEADER_LENGTHS.find(l => !segmentTouchesForeignConductor({
+      x: pin.x,
+      y: pin.y
+    }, {
+      x: pin.x + dx * l,
+      y: pin.y + dy * l
+    }, r.netId))) !== null && _LEADER_LENGTHS$find !== void 0 ? _LEADER_LENGTHS$find : 13;
+    const x2 = pin.x + dx * len,
+      y2 = pin.y + dy * len;
     netLabels.push({
       netId: r.netId,
       text,
       x1: pin.x,
       y1: pin.y,
-      x2: pin.x + dx * 13,
-      y2: pin.y + dy * 13,
-      x: pin.x + dx * 16,
-      y: pin.y + dy * 16 + (dy === 0 ? 2.5 : dy < 0 ? -2 : 7),
+      x2,
+      y2,
+      x: pin.x + dx * (len + 3),
+      y: pin.y + dy * (len + 3) + (dy === 0 ? 2.5 : dy < 0 ? -2 : 7),
       anchor
     });
+    registerConductor({
+      x: pin.x,
+      y: pin.y
+    }, {
+      x: x2,
+      y: y2
+    }, r.netId);
   };
   const bodyBounds = s => {
     const art = (0,_schematic_symbols_js__WEBPACK_IMPORTED_MODULE_0__.shapeFor)(s.kind, s.params);
@@ -40697,6 +40849,117 @@ function projectSchematic(parts, nets) {
     }
     return false;
   };
+
+  // A conductor may CROSS another net's conductor — two lines meeting at a
+  // proper X with no dot is the schematic convention for "not connected", and
+  // orthogonal routing cannot avoid it. What it may NOT do is TOUCH one:
+  //
+  //   * end ON another net's line (a T), or share a corner vertex with it (an
+  //     L). Convention reads a T as a branch — there is no reason to draw one
+  //     otherwise — so a foreign T asserts a connection the solver denies.
+  //   * run COLLINEAR with one within a few px over any shared span. Two lines
+  //     that close together are one line to a reader.
+  //
+  // The router had no notion of another net's copper at all: it avoided symbol
+  // bodies and (since the previous lane) foreign pins, and nothing else. Worse,
+  // obstacleRoute derives its candidate coordinates from box edges, so every
+  // net detouring around the same column proposes the SAME x, and the cheapest
+  // candidate wins for all of them. Measured before this check existed, on
+  // 2,098 shipped circuits:
+  //
+  //     foreign T, no dot          426 circuits / 3,461 incidences
+  //     foreign shared corner       85 circuits /   218 incidences
+  //     collinear within 4px       426 circuits / 1,807 incidences
+  //
+  // In arduino-05-arrays five different column nets ran down x=385 at dx=0,
+  // overlapping 38-116px: five nets drawn as one wire. The existing class-H
+  // gate was aimed at exactly this and reported 0, because it inspects only
+  // `w.trunk` wires and every one of these is a `segments` detour.
+  const MERGE_CLEARANCE = 4; // two lines closer than this read as one
+  const TOUCH = 0.75;
+  // Committed foreign conductors, indexed four ways so the check stays cheap:
+  // by the fixed axis (collinear tests) and by endpoint (contact tests).
+  const hByY = new Map(),
+    vByX = new Map(),
+    hByEndX = new Map(),
+    vByEndY = new Map();
+  const push = (map, key, value) => {
+    const k = Math.round(key);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(value);
+  };
+  const bucket = function bucket(map, key) {
+    let span = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+    const out = [];
+    for (let k = Math.round(key) - span; k <= Math.round(key) + span; k++) {
+      const hit = map.get(k);
+      if (hit) out.push(...hit);
+    }
+    return out;
+  };
+  const registerConductor = (a, b, netId) => {
+    const seg = {
+      netId,
+      x1: Math.min(a.x, b.x),
+      x2: Math.max(a.x, b.x),
+      y1: Math.min(a.y, b.y),
+      y2: Math.max(a.y, b.y)
+    };
+    if (Math.abs(a.y - b.y) < 0.5) {
+      push(hByY, seg.y1, seg);
+      push(hByEndX, seg.x1, seg);
+      push(hByEndX, seg.x2, seg);
+    } else if (Math.abs(a.x - b.x) < 0.5) {
+      push(vByX, seg.x1, seg);
+      push(vByEndY, seg.y1, seg);
+      push(vByEndY, seg.y2, seg);
+    }
+  };
+  const registerRoute = route => {
+    const segments = route.segments || [[{
+      x: route.trunk.x,
+      y: route.trunk.y1
+    }, {
+      x: route.trunk.x,
+      y: route.trunk.y2
+    }], ...route.stubs];
+    for (const [a, b] of segments) registerConductor(a, b, route.netId);
+  };
+  const inSpan = (v, lo, hi) => v >= lo - TOUCH && v <= hi + TOUCH;
+  const segmentTouchesForeignConductor = (a, b, netId) => {
+    const horizontal = Math.abs(a.y - b.y) < 0.5;
+    const vertical = Math.abs(a.x - b.x) < 0.5;
+    if (!horizontal && !vertical) return false;
+    const lo = horizontal ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
+    const hi = horizontal ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
+    const fixed = horizontal ? a.y : a.x;
+    // 1. collinear and close: two parallel lines that read as one
+    for (const o of bucket(horizontal ? hByY : vByX, fixed, MERGE_CLEARANCE + 1)) {
+      if (o.netId === netId) continue;
+      if (Math.abs((horizontal ? o.y1 : o.x1) - fixed) >= MERGE_CLEARANCE) continue;
+      const olo = horizontal ? o.x1 : o.y1,
+        ohi = horizontal ? o.x2 : o.y2;
+      if (Math.min(hi, ohi) - Math.max(lo, olo) > TOUCH) return true;
+    }
+    // 2. THIS segment's endpoint lands on a foreign perpendicular line
+    for (const end of [lo, hi]) {
+      for (const o of bucket(horizontal ? vByX : hByY, end, 1)) {
+        if (o.netId === netId) continue;
+        const operp = horizontal ? o.x1 : o.y1;
+        if (Math.abs(operp - end) > TOUCH) continue;
+        if (inSpan(fixed, horizontal ? o.y1 : o.x1, horizontal ? o.y2 : o.x2)) return true;
+      }
+    }
+    // 3. a foreign perpendicular line's endpoint lands on THIS segment
+    for (const o of bucket(horizontal ? vByEndY : hByEndX, fixed, 1)) {
+      if (o.netId === netId) continue;
+      const oFixed = horizontal ? o.x1 : o.y1;
+      const oEnds = horizontal ? [o.y1, o.y2] : [o.x1, o.x2];
+      if (!oEnds.some(e => Math.abs(e - fixed) <= TOUCH)) continue;
+      if (inSpan(oFixed, lo, hi)) return true;
+    }
+    return false;
+  };
   const segmentCrossesBody = (a, b, box) => {
     if (a.y === b.y) {
       return a.y > box.top && a.y < box.bottom && Math.max(a.x, b.x) > box.left && Math.min(a.x, b.x) < box.right;
@@ -40726,6 +40989,10 @@ function projectSchematic(parts, nets) {
       let [a, b] = _ref2;
       return segmentHitsForeignPin(a, b, route.netId);
     })) hits.push('__foreign_pin__');
+    if (segments.some(_ref3 => {
+      let [a, b] = _ref3;
+      return segmentTouchesForeignConductor(a, b, route.netId);
+    })) hits.push('__foreign_conductor__');
     return hits;
   };
   const collisionRoutedNets = [];
@@ -40742,9 +41009,9 @@ function projectSchematic(parts, nets) {
       y: end.y
     };
     const boxes = symbols.map(bodyBounds);
-    const clear = _ref3 => {
-      let [a, b] = _ref3;
-      return (a.x === b.x || a.y === b.y) && !boxes.some(box => segmentCrossesBody(a, b, box)) && !segmentHitsForeignPin(a, b, netId);
+    const clear = _ref4 => {
+      let [a, b] = _ref4;
+      return (a.x === b.x || a.y === b.y) && !boxes.some(box => segmentCrossesBody(a, b, box)) && !segmentHitsForeignPin(a, b, netId) && !segmentTouchesForeignConductor(a, b, netId);
     };
     const xs = new Set([start.x, end.x]);
     const ys = new Set([start.y, end.y]);
@@ -40825,8 +41092,8 @@ function projectSchematic(parts, nets) {
         y: point.y
       }]);
       if (!segments.every(clear)) continue;
-      const length = segments.reduce((n, _ref4) => {
-        let [a, b] = _ref4;
+      const length = segments.reduce((n, _ref5) => {
+        let [a, b] = _ref5;
         return n + Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
       }, 0);
       const cost = length + Math.max(0, segments.length - 1) * 12;
@@ -40877,10 +41144,12 @@ function projectSchematic(parts, nets) {
       if (r.pins.length === 2) {
         const segments = obstacleRoute(r.pins[0], r.pins[1], r.netId);
         if (segments) {
-          wires.push({
+          const detour = {
             netId: r.netId,
             segments
-          });
+          };
+          wires.push(detour);
+          registerRoute(detour);
           detouredRoutingNets.push(r.netId);
           continue;
         }
@@ -40894,6 +41163,7 @@ function projectSchematic(parts, nets) {
       continue;
     }
     wires.push(route);
+    registerRoute(route);
     if (r.pins.length > 2) {
       for (const pin of r.pins) junctions.push({
         x: trunkX,
@@ -43260,24 +43530,25 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _tmp36_json__WEBPACK_IMPORTED_MODULE_225__ = __webpack_require__(/*! ./tmp36.json */ "./src/lib/bw-circuit-ui/parts-data/tmp36.json");
 /* harmony import */ var _tms9918_json__WEBPACK_IMPORTED_MODULE_226__ = __webpack_require__(/*! ./tms9918.json */ "./src/lib/bw-circuit-ui/parts-data/tms9918.json");
 /* harmony import */ var _touch_ttp223_json__WEBPACK_IMPORTED_MODULE_227__ = __webpack_require__(/*! ./touch_ttp223.json */ "./src/lib/bw-circuit-ui/parts-data/touch_ttp223.json");
-/* harmony import */ var _ultrasonic_json__WEBPACK_IMPORTED_MODULE_228__ = __webpack_require__(/*! ./ultrasonic.json */ "./src/lib/bw-circuit-ui/parts-data/ultrasonic.json");
-/* harmony import */ var _ultrasonic_3pin_json__WEBPACK_IMPORTED_MODULE_229__ = __webpack_require__(/*! ./ultrasonic_3pin.json */ "./src/lib/bw-circuit-ui/parts-data/ultrasonic_3pin.json");
-/* harmony import */ var _um245r_json__WEBPACK_IMPORTED_MODULE_230__ = __webpack_require__(/*! ./um245r.json */ "./src/lib/bw-circuit-ui/parts-data/um245r.json");
-/* harmony import */ var _um66t_json__WEBPACK_IMPORTED_MODULE_231__ = __webpack_require__(/*! ./um66t.json */ "./src/lib/bw-circuit-ui/parts-data/um66t.json");
-/* harmony import */ var _usb_a_json__WEBPACK_IMPORTED_MODULE_232__ = __webpack_require__(/*! ./usb_a.json */ "./src/lib/bw-circuit-ui/parts-data/usb_a.json");
-/* harmony import */ var _vcc_json__WEBPACK_IMPORTED_MODULE_233__ = __webpack_require__(/*! ./vcc.json */ "./src/lib/bw-circuit-ui/parts-data/vcc.json");
-/* harmony import */ var _vga_prop_card_json__WEBPACK_IMPORTED_MODULE_234__ = __webpack_require__(/*! ./vga_prop_card.json */ "./src/lib/bw-circuit-ui/parts-data/vga_prop_card.json");
-/* harmony import */ var _vibration_motor_json__WEBPACK_IMPORTED_MODULE_235__ = __webpack_require__(/*! ./vibration_motor.json */ "./src/lib/bw-circuit-ui/parts-data/vibration_motor.json");
-/* harmony import */ var _voltmeter_json__WEBPACK_IMPORTED_MODULE_236__ = __webpack_require__(/*! ./voltmeter.json */ "./src/lib/bw-circuit-ui/parts-data/voltmeter.json");
-/* harmony import */ var _vreg_json__WEBPACK_IMPORTED_MODULE_237__ = __webpack_require__(/*! ./vreg.json */ "./src/lib/bw-circuit-ui/parts-data/vreg.json");
-/* harmony import */ var _vsource_json__WEBPACK_IMPORTED_MODULE_238__ = __webpack_require__(/*! ./vsource.json */ "./src/lib/bw-circuit-ui/parts-data/vsource.json");
-/* harmony import */ var _w65c02_json__WEBPACK_IMPORTED_MODULE_239__ = __webpack_require__(/*! ./w65c02.json */ "./src/lib/bw-circuit-ui/parts-data/w65c02.json");
-/* harmony import */ var _w65c22_json__WEBPACK_IMPORTED_MODULE_240__ = __webpack_require__(/*! ./w65c22.json */ "./src/lib/bw-circuit-ui/parts-data/w65c22.json");
-/* harmony import */ var _w65c51_json__WEBPACK_IMPORTED_MODULE_241__ = __webpack_require__(/*! ./w65c51.json */ "./src/lib/bw-circuit-ui/parts-data/w65c51.json");
-/* harmony import */ var _xpt2046_json__WEBPACK_IMPORTED_MODULE_242__ = __webpack_require__(/*! ./xpt2046.json */ "./src/lib/bw-circuit-ui/parts-data/xpt2046.json");
-/* harmony import */ var _z80_json__WEBPACK_IMPORTED_MODULE_243__ = __webpack_require__(/*! ./z80.json */ "./src/lib/bw-circuit-ui/parts-data/z80.json");
-/* harmony import */ var _ze08_ch2o_json__WEBPACK_IMPORTED_MODULE_244__ = __webpack_require__(/*! ./ze08_ch2o.json */ "./src/lib/bw-circuit-ui/parts-data/ze08_ch2o.json");
-/* harmony import */ var _zener_json__WEBPACK_IMPORTED_MODULE_245__ = __webpack_require__(/*! ./zener.json */ "./src/lib/bw-circuit-ui/parts-data/zener.json");
+/* harmony import */ var _transformer_json__WEBPACK_IMPORTED_MODULE_228__ = __webpack_require__(/*! ./transformer.json */ "./src/lib/bw-circuit-ui/parts-data/transformer.json");
+/* harmony import */ var _ultrasonic_json__WEBPACK_IMPORTED_MODULE_229__ = __webpack_require__(/*! ./ultrasonic.json */ "./src/lib/bw-circuit-ui/parts-data/ultrasonic.json");
+/* harmony import */ var _ultrasonic_3pin_json__WEBPACK_IMPORTED_MODULE_230__ = __webpack_require__(/*! ./ultrasonic_3pin.json */ "./src/lib/bw-circuit-ui/parts-data/ultrasonic_3pin.json");
+/* harmony import */ var _um245r_json__WEBPACK_IMPORTED_MODULE_231__ = __webpack_require__(/*! ./um245r.json */ "./src/lib/bw-circuit-ui/parts-data/um245r.json");
+/* harmony import */ var _um66t_json__WEBPACK_IMPORTED_MODULE_232__ = __webpack_require__(/*! ./um66t.json */ "./src/lib/bw-circuit-ui/parts-data/um66t.json");
+/* harmony import */ var _usb_a_json__WEBPACK_IMPORTED_MODULE_233__ = __webpack_require__(/*! ./usb_a.json */ "./src/lib/bw-circuit-ui/parts-data/usb_a.json");
+/* harmony import */ var _vcc_json__WEBPACK_IMPORTED_MODULE_234__ = __webpack_require__(/*! ./vcc.json */ "./src/lib/bw-circuit-ui/parts-data/vcc.json");
+/* harmony import */ var _vga_prop_card_json__WEBPACK_IMPORTED_MODULE_235__ = __webpack_require__(/*! ./vga_prop_card.json */ "./src/lib/bw-circuit-ui/parts-data/vga_prop_card.json");
+/* harmony import */ var _vibration_motor_json__WEBPACK_IMPORTED_MODULE_236__ = __webpack_require__(/*! ./vibration_motor.json */ "./src/lib/bw-circuit-ui/parts-data/vibration_motor.json");
+/* harmony import */ var _voltmeter_json__WEBPACK_IMPORTED_MODULE_237__ = __webpack_require__(/*! ./voltmeter.json */ "./src/lib/bw-circuit-ui/parts-data/voltmeter.json");
+/* harmony import */ var _vreg_json__WEBPACK_IMPORTED_MODULE_238__ = __webpack_require__(/*! ./vreg.json */ "./src/lib/bw-circuit-ui/parts-data/vreg.json");
+/* harmony import */ var _vsource_json__WEBPACK_IMPORTED_MODULE_239__ = __webpack_require__(/*! ./vsource.json */ "./src/lib/bw-circuit-ui/parts-data/vsource.json");
+/* harmony import */ var _w65c02_json__WEBPACK_IMPORTED_MODULE_240__ = __webpack_require__(/*! ./w65c02.json */ "./src/lib/bw-circuit-ui/parts-data/w65c02.json");
+/* harmony import */ var _w65c22_json__WEBPACK_IMPORTED_MODULE_241__ = __webpack_require__(/*! ./w65c22.json */ "./src/lib/bw-circuit-ui/parts-data/w65c22.json");
+/* harmony import */ var _w65c51_json__WEBPACK_IMPORTED_MODULE_242__ = __webpack_require__(/*! ./w65c51.json */ "./src/lib/bw-circuit-ui/parts-data/w65c51.json");
+/* harmony import */ var _xpt2046_json__WEBPACK_IMPORTED_MODULE_243__ = __webpack_require__(/*! ./xpt2046.json */ "./src/lib/bw-circuit-ui/parts-data/xpt2046.json");
+/* harmony import */ var _z80_json__WEBPACK_IMPORTED_MODULE_244__ = __webpack_require__(/*! ./z80.json */ "./src/lib/bw-circuit-ui/parts-data/z80.json");
+/* harmony import */ var _ze08_ch2o_json__WEBPACK_IMPORTED_MODULE_245__ = __webpack_require__(/*! ./ze08_ch2o.json */ "./src/lib/bw-circuit-ui/parts-data/ze08_ch2o.json");
+/* harmony import */ var _zener_json__WEBPACK_IMPORTED_MODULE_246__ = __webpack_require__(/*! ./zener.json */ "./src/lib/bw-circuit-ui/parts-data/zener.json");
 // GENERATED by scripts/sync-parts-data.mjs - do not edit.
 // Static imports so every bundler can resolve them; no vite-isms here.
 
@@ -43526,7 +43797,8 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-const SIDECARS = [_28c256_json__WEBPACK_IMPORTED_MODULE_0__, _555_json__WEBPACK_IMPORTED_MODULE_1__, _556_json__WEBPACK_IMPORTED_MODULE_2__, _62256_json__WEBPACK_IMPORTED_MODULE_3__, _74c922_json__WEBPACK_IMPORTED_MODULE_4__, _74hc00_json__WEBPACK_IMPORTED_MODULE_5__, _74hc02_json__WEBPACK_IMPORTED_MODULE_6__, _74hc04_json__WEBPACK_IMPORTED_MODULE_7__, _74hc08_json__WEBPACK_IMPORTED_MODULE_8__, _74hc10_json__WEBPACK_IMPORTED_MODULE_9__, _74hc11_json__WEBPACK_IMPORTED_MODULE_10__, _74hc125_json__WEBPACK_IMPORTED_MODULE_11__, _74hc132_json__WEBPACK_IMPORTED_MODULE_12__, _74hc138_json__WEBPACK_IMPORTED_MODULE_13__, _74hc14_json__WEBPACK_IMPORTED_MODULE_14__, _74hc165_json__WEBPACK_IMPORTED_MODULE_15__, _74hc20_json__WEBPACK_IMPORTED_MODULE_16__, _74hc21_json__WEBPACK_IMPORTED_MODULE_17__, _74hc244_json__WEBPACK_IMPORTED_MODULE_18__, _74hc245_json__WEBPACK_IMPORTED_MODULE_19__, _74hc27_json__WEBPACK_IMPORTED_MODULE_20__, _74hc283_json__WEBPACK_IMPORTED_MODULE_21__, _74hc32_json__WEBPACK_IMPORTED_MODULE_22__, _74hc34_json__WEBPACK_IMPORTED_MODULE_23__, _74hc373_json__WEBPACK_IMPORTED_MODULE_24__, _74hc374_json__WEBPACK_IMPORTED_MODULE_25__, _74hc4050_json__WEBPACK_IMPORTED_MODULE_26__, _74hc595_json__WEBPACK_IMPORTED_MODULE_27__, _74hc688_json__WEBPACK_IMPORTED_MODULE_28__, _74hc73_json__WEBPACK_IMPORTED_MODULE_29__, _74hc74_json__WEBPACK_IMPORTED_MODULE_30__, _74hc75_json__WEBPACK_IMPORTED_MODULE_31__, _74hc86_json__WEBPACK_IMPORTED_MODULE_32__, _74hc93_json__WEBPACK_IMPORTED_MODULE_33__, _74hc95_json__WEBPACK_IMPORTED_MODULE_34__, _74ls04_json__WEBPACK_IMPORTED_MODULE_35__, _74ls107_json__WEBPACK_IMPORTED_MODULE_36__, _74ls157_json__WEBPACK_IMPORTED_MODULE_37__, _74ls161_json__WEBPACK_IMPORTED_MODULE_38__, _74ls173_json__WEBPACK_IMPORTED_MODULE_39__, _74ls189_json__WEBPACK_IMPORTED_MODULE_40__, _74ls32_json__WEBPACK_IMPORTED_MODULE_41__, _74ls373_json__WEBPACK_IMPORTED_MODULE_42__, _adxl335_json__WEBPACK_IMPORTED_MODULE_43__, _ambient_light_json__WEBPACK_IMPORTED_MODULE_44__, _ammeter_json__WEBPACK_IMPORTED_MODULE_45__, _analog_meter_json__WEBPACK_IMPORTED_MODULE_46__, _arduino_mega_json__WEBPACK_IMPORTED_MODULE_47__, _arduino_nano_json__WEBPACK_IMPORTED_MODULE_48__, _arduino_uno_json__WEBPACK_IMPORTED_MODULE_49__, _at24c02_json__WEBPACK_IMPORTED_MODULE_50__, _at24c64_json__WEBPACK_IMPORTED_MODULE_51__, _at89c2051_json__WEBPACK_IMPORTED_MODULE_52__, _attiny13_json__WEBPACK_IMPORTED_MODULE_53__, _attiny2313_json__WEBPACK_IMPORTED_MODULE_54__, _attiny85_json__WEBPACK_IMPORTED_MODULE_55__, _attiny88_json__WEBPACK_IMPORTED_MODULE_56__, _ay8912_json__WEBPACK_IMPORTED_MODULE_57__, _bargraph_json__WEBPACK_IMPORTED_MODULE_58__, _battery_json__WEBPACK_IMPORTED_MODULE_59__, _battery_9v_json__WEBPACK_IMPORTED_MODULE_60__, _battery_aa_json__WEBPACK_IMPORTED_MODULE_61__, _battery_coin_json__WEBPACK_IMPORTED_MODULE_62__, _breadboard_full_json__WEBPACK_IMPORTED_MODULE_63__, _breadboard_half_json__WEBPACK_IMPORTED_MODULE_64__, _breadboard_mini_json__WEBPACK_IMPORTED_MODULE_65__, _breadboard_psu_json__WEBPACK_IMPORTED_MODULE_66__, _button_json__WEBPACK_IMPORTED_MODULE_67__, _buzzer_json__WEBPACK_IMPORTED_MODULE_68__, _capacitor_json__WEBPACK_IMPORTED_MODULE_69__, _cd4017_json__WEBPACK_IMPORTED_MODULE_70__, _cd4093_json__WEBPACK_IMPORTED_MODULE_71__, _cd4511_json__WEBPACK_IMPORTED_MODULE_72__, _cd74hc4067_json__WEBPACK_IMPORTED_MODULE_73__, _char_lcd_json__WEBPACK_IMPORTED_MODULE_74__, _char_lcd_i2c_json__WEBPACK_IMPORTED_MODULE_75__, _clock_display_json__WEBPACK_IMPORTED_MODULE_76__, _darlington_driver_json__WEBPACK_IMPORTED_MODULE_77__, _dc_motor_json__WEBPACK_IMPORTED_MODULE_78__, _dc_motor_encoder_json__WEBPACK_IMPORTED_MODULE_79__, _decade_counter_json__WEBPACK_IMPORTED_MODULE_80__, _dff_json__WEBPACK_IMPORTED_MODULE_81__, _dfplayer_mini_json__WEBPACK_IMPORTED_MODULE_82__, _dht11_json__WEBPACK_IMPORTED_MODULE_83__, _dht22_json__WEBPACK_IMPORTED_MODULE_84__, _diode_json__WEBPACK_IMPORTED_MODULE_85__, _dip_switch_json__WEBPACK_IMPORTED_MODULE_86__, _dip_switch_dpst_json__WEBPACK_IMPORTED_MODULE_87__, _dip_switch_spst_json__WEBPACK_IMPORTED_MODULE_88__, _ds1302_json__WEBPACK_IMPORTED_MODULE_89__, _ds18b20_json__WEBPACK_IMPORTED_MODULE_90__, _ds3231_json__WEBPACK_IMPORTED_MODULE_91__, _eater6502_json__WEBPACK_IMPORTED_MODULE_92__, _eeprom_json__WEBPACK_IMPORTED_MODULE_93__, _flame_sensor_json__WEBPACK_IMPORTED_MODULE_94__, _flex_sensor_json__WEBPACK_IMPORTED_MODULE_95__, _force_sensor_json__WEBPACK_IMPORTED_MODULE_96__, _function_gen_json__WEBPACK_IMPORTED_MODULE_97__, _fuse_json__WEBPACK_IMPORTED_MODULE_98__, _gas_sensor_json__WEBPACK_IMPORTED_MODULE_99__, _gearmotor_json__WEBPACK_IMPORTED_MODULE_100__, _gnd_json__WEBPACK_IMPORTED_MODULE_101__, _h_bridge_json__WEBPACK_IMPORTED_MODULE_102__, _hall_analog_json__WEBPACK_IMPORTED_MODULE_103__, _hall_digital_json__WEBPACK_IMPORTED_MODULE_104__, _hc05_json__WEBPACK_IMPORTED_MODULE_105__, _hd44780_json__WEBPACK_IMPORTED_MODULE_106__, _header_json__WEBPACK_IMPORTED_MODULE_107__, _heartbeat_json__WEBPACK_IMPORTED_MODULE_108__, _hx711_json__WEBPACK_IMPORTED_MODULE_109__, _ili9341_json__WEBPACK_IMPORTED_MODULE_110__, _ili9341_par_json__WEBPACK_IMPORTED_MODULE_111__, _ili9341_parallel_json__WEBPACK_IMPORTED_MODULE_112__, _inductor_json__WEBPACK_IMPORTED_MODULE_113__, _ir_receiver_json__WEBPACK_IMPORTED_MODULE_114__, _ir_reflect_json__WEBPACK_IMPORTED_MODULE_115__, _ir_remote_json__WEBPACK_IMPORTED_MODULE_116__, _ir_transmitter_json__WEBPACK_IMPORTED_MODULE_117__, _isd1820_json__WEBPACK_IMPORTED_MODULE_118__, _isource_json__WEBPACK_IMPORTED_MODULE_119__, _jkff_json__WEBPACK_IMPORTED_MODULE_120__, _joystick_json__WEBPACK_IMPORTED_MODULE_121__, _kd9561_json__WEBPACK_IMPORTED_MODULE_122__, _keypad_4x4_json__WEBPACK_IMPORTED_MODULE_123__, _ky002_json__WEBPACK_IMPORTED_MODULE_124__, _ky040_json__WEBPACK_IMPORTED_MODULE_125__, _l293d_json__WEBPACK_IMPORTED_MODULE_126__, _ld1117v33_json__WEBPACK_IMPORTED_MODULE_127__, _ldr_json__WEBPACK_IMPORTED_MODULE_128__, _led_json__WEBPACK_IMPORTED_MODULE_129__, _led_7color_json__WEBPACK_IMPORTED_MODULE_130__, _led_cube_json__WEBPACK_IMPORTED_MODULE_131__, _led_matrix_json__WEBPACK_IMPORTED_MODULE_132__, _lemon_battery_json__WEBPACK_IMPORTED_MODULE_133__, _level_shifter4_json__WEBPACK_IMPORTED_MODULE_134__, _light_bulb_json__WEBPACK_IMPORTED_MODULE_135__, _light_sensor_json__WEBPACK_IMPORTED_MODULE_136__, _lm339_json__WEBPACK_IMPORTED_MODULE_137__, _lm358_json__WEBPACK_IMPORTED_MODULE_138__, _lm3915_json__WEBPACK_IMPORTED_MODULE_139__, _lm393_json__WEBPACK_IMPORTED_MODULE_140__, _lm7805_json__WEBPACK_IMPORTED_MODULE_141__, _logic_probe_json__WEBPACK_IMPORTED_MODULE_142__, _m6532_json__WEBPACK_IMPORTED_MODULE_143__, _matrix16x8_json__WEBPACK_IMPORTED_MODULE_144__, _matrix8x8_json__WEBPACK_IMPORTED_MODULE_145__, _matrix9x9_json__WEBPACK_IMPORTED_MODULE_146__, _max232_json__WEBPACK_IMPORTED_MODULE_147__, _max7219_json__WEBPACK_IMPORTED_MODULE_148__, _mc6845_json__WEBPACK_IMPORTED_MODULE_149__, _mc6850_json__WEBPACK_IMPORTED_MODULE_150__, _mcp3008_json__WEBPACK_IMPORTED_MODULE_151__, _mcp4725_json__WEBPACK_IMPORTED_MODULE_152__, _mcu_json__WEBPACK_IMPORTED_MODULE_153__, _memsic2125_json__WEBPACK_IMPORTED_MODULE_154__, _microbit_json__WEBPACK_IMPORTED_MODULE_155__, _microbit_breakout_json__WEBPACK_IMPORTED_MODULE_156__, _mos6532_json__WEBPACK_IMPORTED_MODULE_157__, _mpu6050_json__WEBPACK_IMPORTED_MODULE_158__, _msgeq7_json__WEBPACK_IMPORTED_MODULE_159__, _multimeter_json__WEBPACK_IMPORTED_MODULE_160__, _neopixel_json__WEBPACK_IMPORTED_MODULE_161__, _neopixel_jewel_json__WEBPACK_IMPORTED_MODULE_162__, _neopixel_ring_json__WEBPACK_IMPORTED_MODULE_163__, _neopixel_strip_json__WEBPACK_IMPORTED_MODULE_164__, _nmos_json__WEBPACK_IMPORTED_MODULE_165__, _nmos_power_json__WEBPACK_IMPORTED_MODULE_166__, _npn_json__WEBPACK_IMPORTED_MODULE_167__, _nrf24l01_json__WEBPACK_IMPORTED_MODULE_168__, _ns16c550_json__WEBPACK_IMPORTED_MODULE_169__, _ntc_json__WEBPACK_IMPORTED_MODULE_170__, _opamp_json__WEBPACK_IMPORTED_MODULE_171__, _optocoupler_json__WEBPACK_IMPORTED_MODULE_172__, _osc_can_json__WEBPACK_IMPORTED_MODULE_173__, _oscilloscope_json__WEBPACK_IMPORTED_MODULE_174__, _pcf8574_json__WEBPACK_IMPORTED_MODULE_175__, _photo_interrupter_json__WEBPACK_IMPORTED_MODULE_176__, _photodiode_json__WEBPACK_IMPORTED_MODULE_177__, _phototransistor_json__WEBPACK_IMPORTED_MODULE_178__, _pi_pico_json__WEBPACK_IMPORTED_MODULE_179__, _piezo_json__WEBPACK_IMPORTED_MODULE_180__, _pir_json__WEBPACK_IMPORTED_MODULE_181__, _pmos_json__WEBPACK_IMPORTED_MODULE_182__, _pmos_power_json__WEBPACK_IMPORTED_MODULE_183__, _pnp_json__WEBPACK_IMPORTED_MODULE_184__, _polarized_cap_json__WEBPACK_IMPORTED_MODULE_185__, _pololu_motor_ctrl_json__WEBPACK_IMPORTED_MODULE_186__, _potato_battery_json__WEBPACK_IMPORTED_MODULE_187__, _potentiometer_json__WEBPACK_IMPORTED_MODULE_188__, _r6507_json__WEBPACK_IMPORTED_MODULE_189__, _reed_switch_json__WEBPACK_IMPORTED_MODULE_190__, _relay_json__WEBPACK_IMPORTED_MODULE_191__, _relay_dpdt_json__WEBPACK_IMPORTED_MODULE_192__, _resistor_json__WEBPACK_IMPORTED_MODULE_193__, _rf433_rx_json__WEBPACK_IMPORTED_MODULE_194__, _rf433_tx_json__WEBPACK_IMPORTED_MODULE_195__, _rgb_led_json__WEBPACK_IMPORTED_MODULE_196__, _rnet_sip_json__WEBPACK_IMPORTED_MODULE_197__, _servo_json__WEBPACK_IMPORTED_MODULE_198__, _seven_seg_3_json__WEBPACK_IMPORTED_MODULE_199__, _seven_seg_4_json__WEBPACK_IMPORTED_MODULE_200__, _seven_segment_json__WEBPACK_IMPORTED_MODULE_201__, _simplevga_card_json__WEBPACK_IMPORTED_MODULE_202__, _slide_switch_json__WEBPACK_IMPORTED_MODULE_203__, _soil_moisture_json__WEBPACK_IMPORTED_MODULE_204__, _solar_cell_json__WEBPACK_IMPORTED_MODULE_205__, _solenoid_json__WEBPACK_IMPORTED_MODULE_206__, _sound_module_json__WEBPACK_IMPORTED_MODULE_207__, _spectrum_display_json__WEBPACK_IMPORTED_MODULE_208__, _ssd1306_json__WEBPACK_IMPORTED_MODULE_209__, _st7920_json__WEBPACK_IMPORTED_MODULE_210__, _stc15_mcu_json__WEBPACK_IMPORTED_MODULE_211__, _stc_mcu_json__WEBPACK_IMPORTED_MODULE_212__, _stepper_json__WEBPACK_IMPORTED_MODULE_213__, _switch_json__WEBPACK_IMPORTED_MODULE_214__, _tcs3200_json__WEBPACK_IMPORTED_MODULE_215__, _temp_sensor_json__WEBPACK_IMPORTED_MODULE_216__, _tilevga_json__WEBPACK_IMPORTED_MODULE_217__, _tilt_sensor_json__WEBPACK_IMPORTED_MODULE_218__, _tilt_switch_json__WEBPACK_IMPORTED_MODULE_219__, _tilt_switch_v2_json__WEBPACK_IMPORTED_MODULE_220__, _timer_555_json__WEBPACK_IMPORTED_MODULE_221__, _timer_556_json__WEBPACK_IMPORTED_MODULE_222__, _tip120_json__WEBPACK_IMPORTED_MODULE_223__, _tm1637_json__WEBPACK_IMPORTED_MODULE_224__, _tmp36_json__WEBPACK_IMPORTED_MODULE_225__, _tms9918_json__WEBPACK_IMPORTED_MODULE_226__, _touch_ttp223_json__WEBPACK_IMPORTED_MODULE_227__, _ultrasonic_json__WEBPACK_IMPORTED_MODULE_228__, _ultrasonic_3pin_json__WEBPACK_IMPORTED_MODULE_229__, _um245r_json__WEBPACK_IMPORTED_MODULE_230__, _um66t_json__WEBPACK_IMPORTED_MODULE_231__, _usb_a_json__WEBPACK_IMPORTED_MODULE_232__, _vcc_json__WEBPACK_IMPORTED_MODULE_233__, _vga_prop_card_json__WEBPACK_IMPORTED_MODULE_234__, _vibration_motor_json__WEBPACK_IMPORTED_MODULE_235__, _voltmeter_json__WEBPACK_IMPORTED_MODULE_236__, _vreg_json__WEBPACK_IMPORTED_MODULE_237__, _vsource_json__WEBPACK_IMPORTED_MODULE_238__, _w65c02_json__WEBPACK_IMPORTED_MODULE_239__, _w65c22_json__WEBPACK_IMPORTED_MODULE_240__, _w65c51_json__WEBPACK_IMPORTED_MODULE_241__, _xpt2046_json__WEBPACK_IMPORTED_MODULE_242__, _z80_json__WEBPACK_IMPORTED_MODULE_243__, _ze08_ch2o_json__WEBPACK_IMPORTED_MODULE_244__, _zener_json__WEBPACK_IMPORTED_MODULE_245__];
+
+const SIDECARS = [_28c256_json__WEBPACK_IMPORTED_MODULE_0__, _555_json__WEBPACK_IMPORTED_MODULE_1__, _556_json__WEBPACK_IMPORTED_MODULE_2__, _62256_json__WEBPACK_IMPORTED_MODULE_3__, _74c922_json__WEBPACK_IMPORTED_MODULE_4__, _74hc00_json__WEBPACK_IMPORTED_MODULE_5__, _74hc02_json__WEBPACK_IMPORTED_MODULE_6__, _74hc04_json__WEBPACK_IMPORTED_MODULE_7__, _74hc08_json__WEBPACK_IMPORTED_MODULE_8__, _74hc10_json__WEBPACK_IMPORTED_MODULE_9__, _74hc11_json__WEBPACK_IMPORTED_MODULE_10__, _74hc125_json__WEBPACK_IMPORTED_MODULE_11__, _74hc132_json__WEBPACK_IMPORTED_MODULE_12__, _74hc138_json__WEBPACK_IMPORTED_MODULE_13__, _74hc14_json__WEBPACK_IMPORTED_MODULE_14__, _74hc165_json__WEBPACK_IMPORTED_MODULE_15__, _74hc20_json__WEBPACK_IMPORTED_MODULE_16__, _74hc21_json__WEBPACK_IMPORTED_MODULE_17__, _74hc244_json__WEBPACK_IMPORTED_MODULE_18__, _74hc245_json__WEBPACK_IMPORTED_MODULE_19__, _74hc27_json__WEBPACK_IMPORTED_MODULE_20__, _74hc283_json__WEBPACK_IMPORTED_MODULE_21__, _74hc32_json__WEBPACK_IMPORTED_MODULE_22__, _74hc34_json__WEBPACK_IMPORTED_MODULE_23__, _74hc373_json__WEBPACK_IMPORTED_MODULE_24__, _74hc374_json__WEBPACK_IMPORTED_MODULE_25__, _74hc4050_json__WEBPACK_IMPORTED_MODULE_26__, _74hc595_json__WEBPACK_IMPORTED_MODULE_27__, _74hc688_json__WEBPACK_IMPORTED_MODULE_28__, _74hc73_json__WEBPACK_IMPORTED_MODULE_29__, _74hc74_json__WEBPACK_IMPORTED_MODULE_30__, _74hc75_json__WEBPACK_IMPORTED_MODULE_31__, _74hc86_json__WEBPACK_IMPORTED_MODULE_32__, _74hc93_json__WEBPACK_IMPORTED_MODULE_33__, _74hc95_json__WEBPACK_IMPORTED_MODULE_34__, _74ls04_json__WEBPACK_IMPORTED_MODULE_35__, _74ls107_json__WEBPACK_IMPORTED_MODULE_36__, _74ls157_json__WEBPACK_IMPORTED_MODULE_37__, _74ls161_json__WEBPACK_IMPORTED_MODULE_38__, _74ls173_json__WEBPACK_IMPORTED_MODULE_39__, _74ls189_json__WEBPACK_IMPORTED_MODULE_40__, _74ls32_json__WEBPACK_IMPORTED_MODULE_41__, _74ls373_json__WEBPACK_IMPORTED_MODULE_42__, _adxl335_json__WEBPACK_IMPORTED_MODULE_43__, _ambient_light_json__WEBPACK_IMPORTED_MODULE_44__, _ammeter_json__WEBPACK_IMPORTED_MODULE_45__, _analog_meter_json__WEBPACK_IMPORTED_MODULE_46__, _arduino_mega_json__WEBPACK_IMPORTED_MODULE_47__, _arduino_nano_json__WEBPACK_IMPORTED_MODULE_48__, _arduino_uno_json__WEBPACK_IMPORTED_MODULE_49__, _at24c02_json__WEBPACK_IMPORTED_MODULE_50__, _at24c64_json__WEBPACK_IMPORTED_MODULE_51__, _at89c2051_json__WEBPACK_IMPORTED_MODULE_52__, _attiny13_json__WEBPACK_IMPORTED_MODULE_53__, _attiny2313_json__WEBPACK_IMPORTED_MODULE_54__, _attiny85_json__WEBPACK_IMPORTED_MODULE_55__, _attiny88_json__WEBPACK_IMPORTED_MODULE_56__, _ay8912_json__WEBPACK_IMPORTED_MODULE_57__, _bargraph_json__WEBPACK_IMPORTED_MODULE_58__, _battery_json__WEBPACK_IMPORTED_MODULE_59__, _battery_9v_json__WEBPACK_IMPORTED_MODULE_60__, _battery_aa_json__WEBPACK_IMPORTED_MODULE_61__, _battery_coin_json__WEBPACK_IMPORTED_MODULE_62__, _breadboard_full_json__WEBPACK_IMPORTED_MODULE_63__, _breadboard_half_json__WEBPACK_IMPORTED_MODULE_64__, _breadboard_mini_json__WEBPACK_IMPORTED_MODULE_65__, _breadboard_psu_json__WEBPACK_IMPORTED_MODULE_66__, _button_json__WEBPACK_IMPORTED_MODULE_67__, _buzzer_json__WEBPACK_IMPORTED_MODULE_68__, _capacitor_json__WEBPACK_IMPORTED_MODULE_69__, _cd4017_json__WEBPACK_IMPORTED_MODULE_70__, _cd4093_json__WEBPACK_IMPORTED_MODULE_71__, _cd4511_json__WEBPACK_IMPORTED_MODULE_72__, _cd74hc4067_json__WEBPACK_IMPORTED_MODULE_73__, _char_lcd_json__WEBPACK_IMPORTED_MODULE_74__, _char_lcd_i2c_json__WEBPACK_IMPORTED_MODULE_75__, _clock_display_json__WEBPACK_IMPORTED_MODULE_76__, _darlington_driver_json__WEBPACK_IMPORTED_MODULE_77__, _dc_motor_json__WEBPACK_IMPORTED_MODULE_78__, _dc_motor_encoder_json__WEBPACK_IMPORTED_MODULE_79__, _decade_counter_json__WEBPACK_IMPORTED_MODULE_80__, _dff_json__WEBPACK_IMPORTED_MODULE_81__, _dfplayer_mini_json__WEBPACK_IMPORTED_MODULE_82__, _dht11_json__WEBPACK_IMPORTED_MODULE_83__, _dht22_json__WEBPACK_IMPORTED_MODULE_84__, _diode_json__WEBPACK_IMPORTED_MODULE_85__, _dip_switch_json__WEBPACK_IMPORTED_MODULE_86__, _dip_switch_dpst_json__WEBPACK_IMPORTED_MODULE_87__, _dip_switch_spst_json__WEBPACK_IMPORTED_MODULE_88__, _ds1302_json__WEBPACK_IMPORTED_MODULE_89__, _ds18b20_json__WEBPACK_IMPORTED_MODULE_90__, _ds3231_json__WEBPACK_IMPORTED_MODULE_91__, _eater6502_json__WEBPACK_IMPORTED_MODULE_92__, _eeprom_json__WEBPACK_IMPORTED_MODULE_93__, _flame_sensor_json__WEBPACK_IMPORTED_MODULE_94__, _flex_sensor_json__WEBPACK_IMPORTED_MODULE_95__, _force_sensor_json__WEBPACK_IMPORTED_MODULE_96__, _function_gen_json__WEBPACK_IMPORTED_MODULE_97__, _fuse_json__WEBPACK_IMPORTED_MODULE_98__, _gas_sensor_json__WEBPACK_IMPORTED_MODULE_99__, _gearmotor_json__WEBPACK_IMPORTED_MODULE_100__, _gnd_json__WEBPACK_IMPORTED_MODULE_101__, _h_bridge_json__WEBPACK_IMPORTED_MODULE_102__, _hall_analog_json__WEBPACK_IMPORTED_MODULE_103__, _hall_digital_json__WEBPACK_IMPORTED_MODULE_104__, _hc05_json__WEBPACK_IMPORTED_MODULE_105__, _hd44780_json__WEBPACK_IMPORTED_MODULE_106__, _header_json__WEBPACK_IMPORTED_MODULE_107__, _heartbeat_json__WEBPACK_IMPORTED_MODULE_108__, _hx711_json__WEBPACK_IMPORTED_MODULE_109__, _ili9341_json__WEBPACK_IMPORTED_MODULE_110__, _ili9341_par_json__WEBPACK_IMPORTED_MODULE_111__, _ili9341_parallel_json__WEBPACK_IMPORTED_MODULE_112__, _inductor_json__WEBPACK_IMPORTED_MODULE_113__, _ir_receiver_json__WEBPACK_IMPORTED_MODULE_114__, _ir_reflect_json__WEBPACK_IMPORTED_MODULE_115__, _ir_remote_json__WEBPACK_IMPORTED_MODULE_116__, _ir_transmitter_json__WEBPACK_IMPORTED_MODULE_117__, _isd1820_json__WEBPACK_IMPORTED_MODULE_118__, _isource_json__WEBPACK_IMPORTED_MODULE_119__, _jkff_json__WEBPACK_IMPORTED_MODULE_120__, _joystick_json__WEBPACK_IMPORTED_MODULE_121__, _kd9561_json__WEBPACK_IMPORTED_MODULE_122__, _keypad_4x4_json__WEBPACK_IMPORTED_MODULE_123__, _ky002_json__WEBPACK_IMPORTED_MODULE_124__, _ky040_json__WEBPACK_IMPORTED_MODULE_125__, _l293d_json__WEBPACK_IMPORTED_MODULE_126__, _ld1117v33_json__WEBPACK_IMPORTED_MODULE_127__, _ldr_json__WEBPACK_IMPORTED_MODULE_128__, _led_json__WEBPACK_IMPORTED_MODULE_129__, _led_7color_json__WEBPACK_IMPORTED_MODULE_130__, _led_cube_json__WEBPACK_IMPORTED_MODULE_131__, _led_matrix_json__WEBPACK_IMPORTED_MODULE_132__, _lemon_battery_json__WEBPACK_IMPORTED_MODULE_133__, _level_shifter4_json__WEBPACK_IMPORTED_MODULE_134__, _light_bulb_json__WEBPACK_IMPORTED_MODULE_135__, _light_sensor_json__WEBPACK_IMPORTED_MODULE_136__, _lm339_json__WEBPACK_IMPORTED_MODULE_137__, _lm358_json__WEBPACK_IMPORTED_MODULE_138__, _lm3915_json__WEBPACK_IMPORTED_MODULE_139__, _lm393_json__WEBPACK_IMPORTED_MODULE_140__, _lm7805_json__WEBPACK_IMPORTED_MODULE_141__, _logic_probe_json__WEBPACK_IMPORTED_MODULE_142__, _m6532_json__WEBPACK_IMPORTED_MODULE_143__, _matrix16x8_json__WEBPACK_IMPORTED_MODULE_144__, _matrix8x8_json__WEBPACK_IMPORTED_MODULE_145__, _matrix9x9_json__WEBPACK_IMPORTED_MODULE_146__, _max232_json__WEBPACK_IMPORTED_MODULE_147__, _max7219_json__WEBPACK_IMPORTED_MODULE_148__, _mc6845_json__WEBPACK_IMPORTED_MODULE_149__, _mc6850_json__WEBPACK_IMPORTED_MODULE_150__, _mcp3008_json__WEBPACK_IMPORTED_MODULE_151__, _mcp4725_json__WEBPACK_IMPORTED_MODULE_152__, _mcu_json__WEBPACK_IMPORTED_MODULE_153__, _memsic2125_json__WEBPACK_IMPORTED_MODULE_154__, _microbit_json__WEBPACK_IMPORTED_MODULE_155__, _microbit_breakout_json__WEBPACK_IMPORTED_MODULE_156__, _mos6532_json__WEBPACK_IMPORTED_MODULE_157__, _mpu6050_json__WEBPACK_IMPORTED_MODULE_158__, _msgeq7_json__WEBPACK_IMPORTED_MODULE_159__, _multimeter_json__WEBPACK_IMPORTED_MODULE_160__, _neopixel_json__WEBPACK_IMPORTED_MODULE_161__, _neopixel_jewel_json__WEBPACK_IMPORTED_MODULE_162__, _neopixel_ring_json__WEBPACK_IMPORTED_MODULE_163__, _neopixel_strip_json__WEBPACK_IMPORTED_MODULE_164__, _nmos_json__WEBPACK_IMPORTED_MODULE_165__, _nmos_power_json__WEBPACK_IMPORTED_MODULE_166__, _npn_json__WEBPACK_IMPORTED_MODULE_167__, _nrf24l01_json__WEBPACK_IMPORTED_MODULE_168__, _ns16c550_json__WEBPACK_IMPORTED_MODULE_169__, _ntc_json__WEBPACK_IMPORTED_MODULE_170__, _opamp_json__WEBPACK_IMPORTED_MODULE_171__, _optocoupler_json__WEBPACK_IMPORTED_MODULE_172__, _osc_can_json__WEBPACK_IMPORTED_MODULE_173__, _oscilloscope_json__WEBPACK_IMPORTED_MODULE_174__, _pcf8574_json__WEBPACK_IMPORTED_MODULE_175__, _photo_interrupter_json__WEBPACK_IMPORTED_MODULE_176__, _photodiode_json__WEBPACK_IMPORTED_MODULE_177__, _phototransistor_json__WEBPACK_IMPORTED_MODULE_178__, _pi_pico_json__WEBPACK_IMPORTED_MODULE_179__, _piezo_json__WEBPACK_IMPORTED_MODULE_180__, _pir_json__WEBPACK_IMPORTED_MODULE_181__, _pmos_json__WEBPACK_IMPORTED_MODULE_182__, _pmos_power_json__WEBPACK_IMPORTED_MODULE_183__, _pnp_json__WEBPACK_IMPORTED_MODULE_184__, _polarized_cap_json__WEBPACK_IMPORTED_MODULE_185__, _pololu_motor_ctrl_json__WEBPACK_IMPORTED_MODULE_186__, _potato_battery_json__WEBPACK_IMPORTED_MODULE_187__, _potentiometer_json__WEBPACK_IMPORTED_MODULE_188__, _r6507_json__WEBPACK_IMPORTED_MODULE_189__, _reed_switch_json__WEBPACK_IMPORTED_MODULE_190__, _relay_json__WEBPACK_IMPORTED_MODULE_191__, _relay_dpdt_json__WEBPACK_IMPORTED_MODULE_192__, _resistor_json__WEBPACK_IMPORTED_MODULE_193__, _rf433_rx_json__WEBPACK_IMPORTED_MODULE_194__, _rf433_tx_json__WEBPACK_IMPORTED_MODULE_195__, _rgb_led_json__WEBPACK_IMPORTED_MODULE_196__, _rnet_sip_json__WEBPACK_IMPORTED_MODULE_197__, _servo_json__WEBPACK_IMPORTED_MODULE_198__, _seven_seg_3_json__WEBPACK_IMPORTED_MODULE_199__, _seven_seg_4_json__WEBPACK_IMPORTED_MODULE_200__, _seven_segment_json__WEBPACK_IMPORTED_MODULE_201__, _simplevga_card_json__WEBPACK_IMPORTED_MODULE_202__, _slide_switch_json__WEBPACK_IMPORTED_MODULE_203__, _soil_moisture_json__WEBPACK_IMPORTED_MODULE_204__, _solar_cell_json__WEBPACK_IMPORTED_MODULE_205__, _solenoid_json__WEBPACK_IMPORTED_MODULE_206__, _sound_module_json__WEBPACK_IMPORTED_MODULE_207__, _spectrum_display_json__WEBPACK_IMPORTED_MODULE_208__, _ssd1306_json__WEBPACK_IMPORTED_MODULE_209__, _st7920_json__WEBPACK_IMPORTED_MODULE_210__, _stc15_mcu_json__WEBPACK_IMPORTED_MODULE_211__, _stc_mcu_json__WEBPACK_IMPORTED_MODULE_212__, _stepper_json__WEBPACK_IMPORTED_MODULE_213__, _switch_json__WEBPACK_IMPORTED_MODULE_214__, _tcs3200_json__WEBPACK_IMPORTED_MODULE_215__, _temp_sensor_json__WEBPACK_IMPORTED_MODULE_216__, _tilevga_json__WEBPACK_IMPORTED_MODULE_217__, _tilt_sensor_json__WEBPACK_IMPORTED_MODULE_218__, _tilt_switch_json__WEBPACK_IMPORTED_MODULE_219__, _tilt_switch_v2_json__WEBPACK_IMPORTED_MODULE_220__, _timer_555_json__WEBPACK_IMPORTED_MODULE_221__, _timer_556_json__WEBPACK_IMPORTED_MODULE_222__, _tip120_json__WEBPACK_IMPORTED_MODULE_223__, _tm1637_json__WEBPACK_IMPORTED_MODULE_224__, _tmp36_json__WEBPACK_IMPORTED_MODULE_225__, _tms9918_json__WEBPACK_IMPORTED_MODULE_226__, _touch_ttp223_json__WEBPACK_IMPORTED_MODULE_227__, _transformer_json__WEBPACK_IMPORTED_MODULE_228__, _ultrasonic_json__WEBPACK_IMPORTED_MODULE_229__, _ultrasonic_3pin_json__WEBPACK_IMPORTED_MODULE_230__, _um245r_json__WEBPACK_IMPORTED_MODULE_231__, _um66t_json__WEBPACK_IMPORTED_MODULE_232__, _usb_a_json__WEBPACK_IMPORTED_MODULE_233__, _vcc_json__WEBPACK_IMPORTED_MODULE_234__, _vga_prop_card_json__WEBPACK_IMPORTED_MODULE_235__, _vibration_motor_json__WEBPACK_IMPORTED_MODULE_236__, _voltmeter_json__WEBPACK_IMPORTED_MODULE_237__, _vreg_json__WEBPACK_IMPORTED_MODULE_238__, _vsource_json__WEBPACK_IMPORTED_MODULE_239__, _w65c02_json__WEBPACK_IMPORTED_MODULE_240__, _w65c22_json__WEBPACK_IMPORTED_MODULE_241__, _w65c51_json__WEBPACK_IMPORTED_MODULE_242__, _xpt2046_json__WEBPACK_IMPORTED_MODULE_243__, _z80_json__WEBPACK_IMPORTED_MODULE_244__, _ze08_ch2o_json__WEBPACK_IMPORTED_MODULE_245__, _zener_json__WEBPACK_IMPORTED_MODULE_246__];
 
 /***/ }),
 
@@ -46231,6 +46503,17 @@ module.exports = /*#__PURE__*/JSON.parse('{"kind":"tms9918","w":80,"h":111,"term
 
 "use strict";
 module.exports = /*#__PURE__*/JSON.parse('{"kind":"touch_ttp223","w":32,"h":45,"terminals":[{"name":"vcc","x":8,"y":45,"functions":[]},{"name":"gnd","x":16,"y":45,"functions":[]},{"name":"do","x":24,"y":45,"functions":[]}],"variants":null,"_note":"TTP223 capacitive touch sensor module (37-in-1 kit). 3-pin: VCC, GND, DO (high when touched). Param: touched (boolean, default false).","footprint":{"refTerminal":"vcc","leads":{"vcc":{"dRow":0,"dCol":0},"gnd":{"dRow":0,"dCol":1},"do":{"dRow":0,"dCol":2}}}}');
+
+/***/ }),
+
+/***/ "./src/lib/bw-circuit-ui/parts-data/transformer.json":
+/*!***********************************************************!*\
+  !*** ./src/lib/bw-circuit-ui/parts-data/transformer.json ***!
+  \***********************************************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = /*#__PURE__*/JSON.parse('{"kind":"transformer","w":60,"h":46,"terminals":[{"name":"p1","x":0,"y":8,"functions":[]},{"name":"p2","x":0,"y":38,"functions":[]},{"name":"s1","x":60,"y":8,"functions":[]},{"name":"s2","x":60,"y":38,"functions":[]}],"variants":null,"_note":"Coupled-inductor transformer (bw-board E3.4, spec-updates/coupled-inductors.md). Dots at p1/s1. params: {l1,l2,k} in henries, or {ratio, lm, k} (turns ratio + magnetizing inductance; defaults lm=10, k=0.999). k must sit in (0,1) — k=1 is refused at validation. Lossless windings; DC passes each winding as a short with no coupling, exactly like the silicon-free physics.","footprint":{"refTerminal":"p1","leads":{"p1":{"dRow":0,"dCol":0},"p2":{"dRow":0,"dCol":3},"s1":{"dRow":5,"dCol":0},"s2":{"dRow":5,"dCol":3}},"straddlesGutter":true,"minCols":4}}');
 
 /***/ }),
 

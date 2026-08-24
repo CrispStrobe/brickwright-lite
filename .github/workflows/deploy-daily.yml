@@ -1,0 +1,39 @@
+# The Vercel free tier allows a limited number of deploys per day, and
+# agent push volume exhausted it (2026-08-23) — after which every later
+# push silently served a stale site. scripts/vercel-ignore.sh therefore
+# gates Vercel on a [deploy] commit-message marker; this workflow is the
+# other half: once a day (or on demand), IF web-affecting files moved
+# since the last deployed commit, it pushes one empty "[deploy]" commit
+# so the site catches up. Net deploy budget: at most one scheduled
+# deploy per day plus explicit release deploys.
+name: deploy-daily
+on:
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push a [deploy] refresh commit when the site is behind
+        run: |
+          last_deploy=$(git log --format=%H --grep='\[deploy\]' -1)
+          if [ -z "$last_deploy" ]; then
+            range="HEAD~1..HEAD"   # never deployed under this scheme: refresh once
+          elif [ "$last_deploy" = "$(git rev-parse HEAD)" ]; then
+            echo "head already carries [deploy] — nothing to do"; exit 0
+          else
+            range="$last_deploy..HEAD"
+          fi
+          if ! git diff --name-only "$range" | grep -qE '^(overlay/|packages/|scripts/|static/|vercel\.json|package\.json|package-lock\.json)'; then
+            echo "no web-affecting changes since the last deploy — nothing to do"; exit 0
+          fi
+          # Author must be the Vercel-authorized identity (see CLAUDE.md).
+          git -c user.name=CrispStrobe -c user.email=cze+github@mailbox.org \
+            commit --allow-empty -m "site: [deploy] daily refresh"
+          git push origin HEAD:main
