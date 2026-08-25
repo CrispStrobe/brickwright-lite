@@ -70,6 +70,51 @@ const SKIP_BUDGET = 20000;
  *
  * @param {(phase: string, detail: string) => void} setStatus
  */
+/* ── compile cache ─────────────────────────────────────────────────────
+ * A tiny localStorage LRU of successful compile responses, keyed by the
+ * FULL (code, target, format) tuple — exact string match, so a stale or
+ * colliding image is impossible; only the service itself changing output
+ * for identical input could go stale, which the version suffix below
+ * exists to flush. Failures are never cached (they may be transient).
+ * Size discipline: few entries, and a quota error evicts before retry —
+ * a cache must never be the reason a Run fails. */
+const COMPILE_CACHE_KEY = 'bw-compile-cache-v1';
+const COMPILE_CACHE_MAX = 6;
+// Exported for the unit test only — nothing else imports these.
+export function compileCacheLoad () {
+    try {
+        const raw = localStorage.getItem(COMPILE_CACHE_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+    } catch { return []; }
+}
+export function compileCacheGet (key) {
+    const list = compileCacheLoad();
+    const i = list.findIndex(e => e && e.key === key);
+    if (i < 0) return null;
+    // refresh recency
+    const [entry] = list.splice(i, 1);
+    list.unshift(entry);
+    try { localStorage.setItem(COMPILE_CACHE_KEY, JSON.stringify(list)); } catch { /* recency is optional */ }
+    return entry.out;
+}
+export function compileCachePut (key, out) {
+    try {
+        let list = compileCacheLoad().filter(e => e && e.key !== key);
+        list.unshift({ key, out, at: Date.now() });
+        list = list.slice(0, COMPILE_CACHE_MAX);
+        for (;;) {
+            try {
+                localStorage.setItem(COMPILE_CACHE_KEY, JSON.stringify(list));
+                return;
+            } catch (e) {
+                if (list.length === 0) return; // quota gone entirely: give up quietly
+                list.pop(); // evict the oldest and retry
+            }
+        }
+    } catch { /* private browsing: no cache, no harm */ }
+}
+
 let wasmCompilerInstalled = false;
 async function installWasmCompilerIfOptedIn (setStatus) {
     if (wasmCompilerInstalled) return;
@@ -490,23 +535,36 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         };
         const deviceLower = (stc.device || 'stc12c5a60s2').toLowerCase();
         const compileTarget = COMPILE_TARGET[deviceLower] || deviceLower;
-        const res = await fetch(`${compilerUrl}/compile`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                code: c,
-                language: 'c',
-                target: compileTarget,
-                // 'bin' — the service's name for the raw SRAM image. It
-                // refuses 'uf2' outright ("format must be ihx, hex or bin"),
-                // which made every Pico compile fail with status stuck on the
-                // stale RUNNING label (found by the production probe).
-                format: deviceLower === 'pico' ? 'bin' : 'ihx',
-                // Both, from the SAME request — see the header.
-                symbols: true
-            })
-        });
-        const out = await res.json();
+        // 'bin' — the service's name for the raw SRAM image. It refuses
+        // 'uf2' outright ("format must be ihx, hex or bin"), which made
+        // every Pico compile fail with status stuck on the stale RUNNING
+        // label (found by the production probe).
+        const compileFormat = deviceLower === 'pico' ? 'bin' : 'ihx';
+        // The compile is a pure function of (code, target, format), and the
+        // edit-run-edit loop mostly re-runs UNCHANGED programs — while a
+        // serverless cold start costs seconds per Run. Successful responses
+        // live in a small localStorage LRU keyed by the FULL request (exact
+        // match, no hash collisions), so a repeat Run skips the network.
+        const cacheKey = JSON.stringify([c, compileTarget, compileFormat]);
+        let out = compileCacheGet(cacheKey);
+        if (out) {
+            setStatus('building', 'compiled (cached)');
+        } else {
+            const res = await fetch(`${compilerUrl}/compile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: c,
+                    language: 'c',
+                    target: compileTarget,
+                    format: compileFormat,
+                    // Both, from the SAME request — see the header.
+                    symbols: true
+                })
+            });
+            out = await res.json();
+            if (out.success) compileCachePut(cacheKey, out);
+        }
         if (!out.success) throw new Error(out.error || 'the compiler refused this program');
         const isPico = String(stc.device || '').toLowerCase() === 'pico';
         if (!out.symbols && !isPico) {
