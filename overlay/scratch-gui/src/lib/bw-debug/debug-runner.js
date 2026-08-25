@@ -960,7 +960,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      *  adapter's facade. */
     async function attachStm32F0Target(built) {
         setStatus('attaching', 'starting the STM32F030 emulator…');
-        const { createDebugTarget, BoardImpl, inferNetlist } =
+        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
 
         const stc = projectStc(null);
