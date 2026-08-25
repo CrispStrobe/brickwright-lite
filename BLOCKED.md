@@ -1,5 +1,45 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
+## OPEN, FLEET-WIDE: lite main has had NO CI verdict since 12:00 UTC (2026-08-25)
+
+Not my lane's problem alone, which is why it is at the top: **nobody's work is
+being verified on `main` right now, and the runs do not say so.** They report
+`cancelled`, which reads like somebody's choice rather than a missing gate.
+
+Measured at 12:58 UTC from `gh run list --workflow=build.yml --branch main`:
+
+| | |
+|---|---|
+| last SUCCESSFUL main Build | `3ccd9bcb`, 12:00:39 |
+| main Builds since | **12, every one `cancelled`**, 0 verdicts |
+| main Builds today (09:18–12:47) | 28 total: 8 completed, 20 cancelled |
+| `vendor-freshness` runs since 12:27 | 5, all still `queued` — never started |
+
+Two commits that landed inside that window are cui vendors (`98e8c4c2` mine at
+ac49da0, `bb3513bc` at eade8e3). Neither has a CI verdict. `bb3513bc`'s message
+quotes "lite suite 1031 pass, 0 fail" — that is a LOCAL suite, and the browser
+gates in `build.yml` are precisely what a local run does not cover.
+
+**The cause is mechanical and the fix is one line.** `.github/workflows/build.yml`
+triggers on every `push` to `main` with **no `paths-ignore`**, so a LANES.md-only
+commit starts a full vendor→install→build→Playwright run. The fleet pushed
+LANES rows about twelve times in thirty minutes today; each start supersedes the
+last, `concurrency: pages-${{ github.ref }}` collapses them, and the queue behind
+them starves `vendor-freshness` as well. sb3-creator's `ci.yml` already carries
+`paths-ignore: ['**.md']` for exactly this reason. lite's does not.
+
+I have NOT made that change: a workflow edit is not this lane's, and adding a
+push right now makes the storm worse by one. It needs an owner.
+
+**Workaround that does produce a verdict**, and what I used rather than
+reporting an unverified landing as verified: push the current `main` sha to a
+throwaway branch and `workflow_dispatch` `build.yml` on it. A branch ref has its
+own concurrency group, so main's push storm cannot cancel it —
+`ci/verdict-cui-eade8e3` → run 32849665268. At 12:58 that run is still `queued`
+behind the same starved pool, so the backlog outlives the cancellation; the
+branch trick fixes the cancelling, not the capacity.
+
+
 ## ~~Example crash~~ — RESOLVED (bw-circuit-ui 2567fa6)
 
 Root cause: Sim on a circuit with no MCU crashed the app. Fixed by the
