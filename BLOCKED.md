@@ -1,6 +1,6 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
-## OPEN, FLEET-WIDE: lite main has had NO CI verdict since 12:00 UTC (2026-08-25)
+## ~~OPEN, FLEET-WIDE~~ — FIXED (`34cf38b78`): lite main had NO CI verdict from 12:00 to 13:20 (2026-08-25)
 
 Not my lane's problem alone, which is why it is at the top: **nobody's work is
 being verified on `main` right now, and the runs do not say so.** They report
@@ -28,8 +28,19 @@ last, `concurrency: pages-${{ github.ref }}` collapses them, and the queue behin
 them starves `vendor-freshness` as well. sb3-creator's `ci.yml` already carries
 `paths-ignore: ['**.md']` for exactly this reason. lite's does not.
 
-I have NOT made that change: a workflow edit is not this lane's, and adding a
-push right now makes the storm worse by one. It needs an owner.
+**Done in `34cf38b78`, on the owner's instruction** — but NOT as the blanket
+`**.md` sb3-creator uses. That glob would have switched off gates that can
+genuinely go red here: `examples/**/intro.md` is SHIPPED (webpack copies
+`examples/` into `build/`, ExamplesBrowser fetches it at runtime),
+`examples/**/EXPECTED.md` and `docs/**` are TEST INPUTS, and
+`THIRD-PARTY-NOTICES.md` is both a test input and a licence artifact that three
+tests `readFileSync` and assert on. So the list is explicit, top-level only, and
+every one of the nine names was checked rather than assumed: `grep -rl` across
+`test/` and `scripts/` finds **0 actual file reads** for each, against **3** for
+THIRD-PARTY-NOTICES.md — the control, deliberately left out.
+
+Proved rather than asserted: the push that CHANGED build.yml started a Build
+(`34cf38b7`), and the ledger-only push that followed started none.
 
 **Workaround that does produce a verdict**, and what I used rather than
 reporting an unverified landing as verified: push the current `main` sha to a
