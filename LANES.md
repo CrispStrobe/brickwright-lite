@@ -181,6 +181,34 @@ sentinel working. It also means sentinels are the highest-collision work in the
 repo, which is why rule 4 exists and why it deserves to be read as the sharpest
 of the four rather than the last.
 
+## A hazard this file's own protocol does not cover: the shared checkout
+
+Recorded 2026-08-25 by bw-audit, from a live instance.
+
+Several agents commit *in the same working copy* of this repo. Rules 1–6 are all
+about racing on `main`; none of them covers racing on the WORKING TREE.
+
+What happened: I edited `LANES.md`, then ran `git add LANES.md && git commit`.
+Between those two, another session in the same checkout made its own commit and
+swept my edit into it. My content reached `main` — intact, verified — under
+somebody else's commit message, and `git log` shows no commit of mine at all.
+The reflog is the only place the sequence survives.
+
+Neither party did anything wrong and no rule was broken. But note the two ways
+this bites:
+
+- **Your reasoning is lost even though your text lands.** The row said what it
+  needed to; the *why* had no commit to live in. If you care about the why, put
+  it in the ROW, not only in the message.
+- **The reverse is worse and has not happened yet:** their commit now contains a
+  change they did not write and did not review. A half-finished edit of yours
+  would ship the same way.
+
+Cheapest mitigation, short of not sharing checkouts: keep the edit-to-commit
+window to a single shell command, and after pushing, verify your text is in
+`origin/main` rather than assuming your commit carried it — `git log` will not
+tell you.
+
 ## What this does not solve
 
 Two people can still claim the same thing within the same minute, and a claim in
