@@ -100,6 +100,17 @@ const L10N = {
         deployPicoFail: e => `Pico deploy failed: ${e}`,
         deployPicoNoPort: 'No Pico found on USB. Plug it in (a normal boot, not BOOTSEL) and try again.',
         deployPicoBootsel: 'The Pico is in BOOTSEL mode — it needs MicroPython first. Flash a MicroPython UF2 onto the RPI-RP2 volume, then deploy again.',
+        flashBoard: '⚡ Flash to board',
+        flashBoardTitle: 'Compile and write this program to a real board over USB serial',
+        flashCompiling: 'compiling for the board…',
+        flashing: 'flashing…',
+        flashDone: n => `flashed ${n} bytes — the board is running it`,
+        flashNoSerial: 'This browser cannot flash over USB (Chrome or Edge can). The compiled image was downloaded instead.',
+        flashNoPort: 'No port chosen.',
+        flashFail: e => `flashing failed: ${e}`,
+        flashColdBoot: 'PULL THE POWER AND REAPPLY IT — a reset button will not do; the STC bootloader only answers after a cold power-on.',
+        flashStm32Boot: 'Set BOOT0 HIGH and reset the board (the F030 breakout has a jumper), then pick the port — the ROM bootloader only listens then.',
+        flashNeedsProgrammer: d => `${d} has no serial bootloader — it needs an ISP/SPI programmer (or, for a 6502/Z80 breadboard, an EEPROM burner). Compiled image downloaded so you can use your own tool.`,
         stLoaded: 'Compiled to blocks and loaded. Switch to the Code tab to see them.',
         stWarn: w => `Loaded with warnings — ${w}`,
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
@@ -186,6 +197,17 @@ const L10N = {
         deployPicoFail: e => `Pico-Übertragung fehlgeschlagen: ${e}`,
         deployPicoNoPort: 'Kein Pico am USB gefunden. Anstecken (normaler Start, nicht BOOTSEL) und erneut versuchen.',
         deployPicoBootsel: 'Der Pico ist im BOOTSEL-Modus — er braucht zuerst MicroPython. Ein MicroPython-UF2 auf das RPI-RP2-Laufwerk kopieren, dann erneut übertragen.',
+        flashBoard: '⚡ Auf Platine flashen',
+        flashBoardTitle: 'Dieses Programm kompilieren und per USB auf eine echte Platine schreiben',
+        flashCompiling: 'wird für die Platine kompiliert…',
+        flashing: 'wird geflasht…',
+        flashDone: n => `${n} Bytes geflasht — die Platine führt es aus`,
+        flashNoSerial: 'Dieser Browser kann nicht per USB flashen (Chrome oder Edge können es). Das kompilierte Abbild wurde stattdessen heruntergeladen.',
+        flashNoPort: 'Kein Port gewählt.',
+        flashFail: e => `Flashen fehlgeschlagen: ${e}`,
+        flashColdBoot: 'STROM ZIEHEN UND WIEDER ANLEGEN — eine Reset-Taste genügt nicht; der STC-Bootloader antwortet nur nach einem Kaltstart.',
+        flashStm32Boot: 'BOOT0 auf HIGH setzen und die Platine zurücksetzen (das F030-Board hat einen Jumper), dann den Port wählen — nur dann lauscht der ROM-Bootloader.',
+        flashNeedsProgrammer: d => `${d} hat keinen seriellen Bootloader — es braucht einen ISP/SPI-Programmer (oder, für ein 6502/Z80-Steckbrett, ein EEPROM-Brenngerät). Kompiliertes Abbild heruntergeladen.`,
         stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
         stWarn: w => `Mit Warnungen geladen — ${w}`,
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
@@ -537,6 +559,7 @@ class PseudocodeImporter extends React.Component {
         this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
         this.flashMicrobitSimDebug = this.flashMicrobitSimDebug.bind(this);
         this.deployToPico = this.deployToPico.bind(this);
+        this.flashToBoard = this.flashToBoard.bind(this);
         this.openCodeFile = this.openCodeFile.bind(this);
         this.saveCodeFile = this.saveCodeFile.bind(this);
         this._autosaveTimer = null;
@@ -1126,6 +1149,106 @@ class PseudocodeImporter extends React.Component {
             // A cancelled port picker is a choice, not an error.
             const cancelled = e && (e.name === 'NotFoundError' || /No port selected/i.test(e.message));
             this.setState({busy: false, status: cancelled ? '' : this.L.deployPicoFail(e.message)});
+        }
+    }
+
+    /** Which serial-flash family a device belongs to, or null when it has
+     *  no serial bootloader (needs an external programmer). One place, so
+     *  the button's enablement and the flasher agree. */
+    flashFamily (device) {
+        const d = String(device || '').toLowerCase();
+        if (d === 'pico') return 'micropython';        // handled by deployToPico
+        if (d === 'stm32f030') return 'stm32';
+        if (/^stc/.test(d)) return 'stc';
+        // optiboot STK500v1 boards only: the ATtinys have no bootloader and
+        // the Mega speaks STK500v2 (a different protocol flash.js does not
+        // implement) — both fall through to the programmer message.
+        if (['arduino-uno', 'arduino-nano', 'atmega328p', 'atmega168p'].includes(d)) return 'avr';
+        return null;
+    }
+
+    /** Compile the current program for its device and write it to a real
+     *  board over Web Serial, dispatching to the vendored flasher by
+     *  family. Non-serial-bootloader devices get their image downloaded
+     *  with a message naming the programmer they need. */
+    async flashToBoard () {
+        const device = this.currentDevice();
+        const family = this.flashFamily(device);
+        if (family === 'micropython') { return this.deployToPico(); }
+
+        const src = this.state.buffers.pseudocode || '';
+        if (!src.trim()) return;
+
+        const noSerial = typeof navigator === 'undefined' || !navigator.serial;
+        const downloadImage = (bytes, name) => {
+            const url = URL.createObjectURL(new Blob([bytes], {type: 'application/octet-stream'}));
+            const a = document.createElement('a');
+            a.href = url; a.download = name; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        };
+
+        this.setState({busy: true, status: this.L.flashCompiling});
+        try {
+            // Compile through the same hosted service and format the Run
+            // path uses: hex for STC/AVR, a raw bin for STM32.
+            const SB3Creator = (await this.lib()).default;
+            const creator = new SB3Creator();
+            creator.parse(src);
+            const cSrc = creator.generateC(creator.project, {debug: false});
+            const COMPILE_TARGET = {
+                'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
+                'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
+                'stm32f030': 'stm32f030'
+            };
+            const target = COMPILE_TARGET[String(device).toLowerCase()] || String(device).toLowerCase();
+            const format = family === 'stm32' ? 'bin' : 'ihx';
+            const res = await fetch('https://stc-compiler.vercel.app/compile', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code: cSrc, language: 'c', target, format})
+            });
+            const out = await res.json();
+            if (!out.success) throw new Error(out.error || 'the compiler refused this program');
+            const raw = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
+
+            if (family === null) {
+                downloadImage(raw, out.filename || `firmware.${format === 'bin' ? 'bin' : 'hex'}`);
+                this.setState({busy: false, status: this.L.flashNeedsProgrammer(device)});
+                return;
+            }
+            if (noSerial) {
+                downloadImage(raw, out.filename || `firmware.${format === 'bin' ? 'bin' : 'hex'}`);
+                this.setState({busy: false, status: this.L.flashNoSerial});
+                return;
+            }
+
+            const flasher = await import(/* webpackChunkName: "bw-flasher" */ '../../lib/flasher.js');
+            const lines = [];
+            const log = (t) => { lines.push(t); this.setState({output: lines.join('\n')}); };
+
+            if (family === 'stm32') {
+                this.setState({status: this.L.flashStm32Boot});
+                const port = await navigator.serial.requestPort();
+                await flasher.openStm32Port(port);
+                this.setState({status: this.L.flashing});
+                const done = await flasher.flashStm32(port, raw, {log});
+                this.setState({busy: false, status: this.L.flashDone(done.bytes)});
+            } else if (family === 'stc') {
+                this.setState({status: this.L.flashColdBoot});
+                const port = await navigator.serial.requestPort();
+                await port.open({baudRate: 115200});
+                const done = await flasher.flashStc(port, new TextDecoder().decode(raw), {
+                    log, onPowerCycle: () => this.setState({status: this.L.flashColdBoot})
+                });
+                this.setState({busy: false, status: this.L.flashDone(done.bytes)});
+            } else { // avr
+                const port = await navigator.serial.requestPort();
+                this.setState({status: this.L.flashing});
+                const done = await flasher.flashAvr(port, new TextDecoder().decode(raw), {log});
+                this.setState({busy: false, status: this.L.flashDone(done.bytes)});
+            }
+        } catch (e) {
+            const cancelled = e && (e.name === 'NotFoundError' || /No port selected/i.test(e.message));
+            this.setState({busy: false, status: cancelled ? this.L.flashNoPort : this.L.flashFail(e.message)});
         }
     }
 
@@ -2451,6 +2574,20 @@ class PseudocodeImporter extends React.Component {
                             title={this.L.deployPicoTitle}
                             style={{...btn, background: 'linear-gradient(135deg,#2f9e44,#237a34)'}}>
                             {this.L.deployPico}
+                        </button>
+                    ) : null}
+                    {/* Flash to a real board for every family that has a serial
+                        bootloader (STC ISP, AVR STK500v1, STM32 AN3155); the
+                        method downloads the image + names the programmer for
+                        the rest. Pico keeps its own MicroPython button above. */}
+                    {this.currentDevice() !== 'pico'
+                     && this.state.lang === 'pseudocode'
+                     && this.flashFamily(this.currentDevice()) !== null ? (
+                        <button onClick={this.flashToBoard} disabled={this.state.busy}
+                            data-testid="bw-flash-board"
+                            title={this.L.flashBoardTitle}
+                            style={{...btn, background: 'linear-gradient(135deg,#c9761b,#a35d12)'}}>
+                            {this.L.flashBoard}
                         </button>
                     ) : null}
                     {this.state.lang !== 'pseudocode' && this.state.lang !== 'c' && /_[a-z]+\.|Driver/.test(this.activeCode()) ? (
