@@ -35,7 +35,7 @@
  "data/easyeda-symbols.js": "521eb4221dbbe78ffa3d6d7a06e6147051efc8af",
  "engine.js": "05fc2dc59da63a4b777924c3e5dbc21800bb121b",
  "hooks/useBoard.js": "f423684593a777843a6594443ba6415094a0d5ff",
- "hooks/useCircuit.js": "71ae46ac333811ebe5f25201e321829decb7c59a",
+ "hooks/useCircuit.js": "d74e52942b436b67fa0ddb0b95582dd5668da92d",
  "hooks/useTouch.js": "f2c110b594883da8a0db98b30c75321a0591738a",
  "i18n/strings.js": "b289dbf5de0d6ab9572756db08d8e8793566f191",
  "importers/detect.js": "e587efb7947cc35458f37c34bf2ee2efaf9e5895",
