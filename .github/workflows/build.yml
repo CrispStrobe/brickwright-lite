@@ -4,6 +4,47 @@ on:
   pull_request:
   push:
     branches: [main]
+    # A LEDGER ROW IS NOT A BUILD, and until now every one started a full
+    # vendor -> install -> build -> Playwright run.
+    #
+    # Measured on 2026-08-25: main took 12 pushes between 12:00 and 13:20 and
+    # got ZERO verdicts. `concurrency: pages-<ref>` keeps one run per ref, so
+    # each new push superseded the pending one and the older run came back
+    # `cancelled` — which reads like somebody chose to stop it. Nine of those
+    # twelve pushes changed nothing but LANES.md. The queue behind them also
+    # starved `vendor-freshness`, whose runs sat queued and never started.
+    #
+    # WHY THIS IS A LIST AND NOT `**.md`. sb3-creator's ci.yml can use the
+    # blanket glob; lite cannot, and copying it here would silently switch off
+    # gates that can genuinely go red:
+    #
+    #   overlay/scratch-gui/examples/**/intro.md   SHIPPED CONTENT. webpack
+    #     copies `examples` wholesale into build/, and ExamplesBrowser.jsx
+    #     fetches `examples/<dir>/intro.md` at runtime.
+    #   overlay/scratch-gui/examples/**/EXPECTED.md   TEST INPUT. The lesson
+    #     claim gates read these; wave7 asserts on ttl-clock-module's text.
+    #   THIRD-PARTY-NOTICES.md   TEST INPUT, and a licence one. Three tests
+    #     readFileSync it and assert a dependency is named in it.
+    #   docs/**   TEST INPUT. app-store-metadata and several lesson gates read
+    #     files under it.
+    #
+    # So: only top-level prose that nothing reads. Each name below was checked
+    # with `grep -rl` across test/, scripts/ and .github/ — the hits for
+    # BLOCKED, CLAUDE and PLAN are all comments, not reads. Add to this list
+    # only after making that check, and never widen it to a glob.
+    #
+    # A skipped run means no Pages deploy for that push. That is correct: the
+    # app is byte-identical, and deploy-daily republishes regardless.
+    paths-ignore:
+      - 'BLOCKED.md'
+      - 'BUILD.md'
+      - 'CLAUDE.md'
+      - 'HANDOFF.md'
+      - 'LANES.md'
+      - 'MBIT-BUILD.md'
+      - 'PLAN.md'
+      - 'README.md'
+      - 'ROADMAP.md'
 permissions:
   contents: read
   pages: write
