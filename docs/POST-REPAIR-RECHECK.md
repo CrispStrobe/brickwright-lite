@@ -129,6 +129,30 @@ those are two different answers to "where is the corner", which is the question
 `signals-cutoff-phase` is built on. The gate asserts both that they differ now
 and that rounding really did collapse them, so the reason survives the fix.
 
+### And the count that turned the next one red
+
+Same family, fourth instance, and the generalisation moves again.
+
+Adding `pc89-rl-step` made `circuit-corpus-invariants` fail with
+`1093 !== 1092` — an exact-count floor asserting the gate had covered the whole
+vendored corpus. It is a good assertion (a glob that silently stops matching
+would otherwise report zero failures over nothing) and it is bookkeeping, not a
+defect in the bench.
+
+I had run the gates that read lesson prose, and the gates that read a lesson's
+BENCH — `example-bench`, `circuit-declarations`, `declared-pins-wired`. A new
+EXAMPLE is read by a third set: the ones that sweep the whole circuit corpus and
+carry a denominator. Enumerating "the gates that read what I changed" is only as
+good as my model of what I changed, and I had modelled this as a lesson change
+with a bench attached rather than as a corpus addition.
+
+The rule that actually covers all four instances is duller and cheaper than the
+three before it, and it is the one to keep: **when a change is pushed, the full
+suite is the enumeration.** Run it before the push when the change touches
+anything shared, and accept the twenty minutes. Every one of these four reds was
+a gate that the full suite would have caught and that my judgement about "the
+relevant gates" did not.
+
 ### The word that turned a green push red
 
 Recorded because it is the third failure of the same family in this lane, and my

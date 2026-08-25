@@ -148,7 +148,11 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
         }
     }
 
-    assert.equal(files.length, 1092, 'the gate must cover the complete vendored corpus');
+    // 1092 -> 1093 on 2026-08-25: pc89-rl-step, the pure RL bench that closed D8.
+    // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
+    // glob that silently stops matching cannot report zero failures. It moves
+    // only when the corpus does, and the commit that moves it says which example.
+    assert.equal(files.length, 1093, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
