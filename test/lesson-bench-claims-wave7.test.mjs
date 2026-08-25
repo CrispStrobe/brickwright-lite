@@ -379,16 +379,22 @@ test('D7 CLOSED for the two 6502 benches: they ship an image and the example loa
     assert.match(runner, /extracted machine booted with an empty ROM — load a program \(presets, file, or ASM tab\)/,
         'the empty-ROM status line changed -- re-measure Wave 7');
 
-    // 5. STILL OPEN: machines-interrupts-performance. Its bench is z80-bench,
-    //    which ships no image ON PURPOSE -- its only I/O is an MC6850 ACIA and
-    //    the emitter's Z80 pin axis is a 74HC374 latch / 74HC244 buffer, so
-    //    there is no pin for a program to drive. Measured further: NEITHER Z80
-    //    bench has an interrupt source at all, so the lesson's question cannot
-    //    be answered by shipping a ROM. It needs an interrupt-capable bench.
+    // 5. AND D37 IS CLOSED TOO, by moving the lesson rather than the wiring.
+    //    This clause used to pin the interrupts lesson to z80-bench and say a
+    //    ROM could not help it. Both halves of that were wrong, and measuring
+    //    is what corrected them: the CPU interrupt inputs are not unconnected,
+    //    they are tied to VCC (held inactive, correct idle wiring); and the
+    //    simulator never needed a wire at all, because M6502Machine polls every
+    //    chip's irqAsserted. What was missing was a PROGRAM. eater6502-bench
+    //    now ships one, so the lesson moved to the bench that can answer it.
+    assert.equal(lesson('machines-interrupts-performance').exampleId, 'eater6502-bench',
+        'the interrupts lesson moved bench again -- re-measure Wave 7');
+    assert.equal(entry('eater6502-bench').files.rom, 'eater6502-bench/rom.bin',
+        'the interrupts bench stopped declaring its image -- D37 has regressed');
+    // z80-bench still ships none, and still on purpose: its only I/O is an
+    // MC6850 ACIA and the emitter's Z80 pin axis is a '374 latch / '244 buffer.
     assert.equal(entry('z80-bench').files.rom, undefined,
         'z80-bench now declares an image -- if it gained a program axis, re-measure Wave 7');
-    assert.equal(lesson('machines-interrupts-performance').exampleId, 'z80-bench',
-        'the interrupts lesson moved bench -- re-measure Wave 7');
 
     // 6. The presets that give the learner a bigger program, all bundled, no
     //    network. The lessons still name them, now as an option rather than a
@@ -453,8 +459,28 @@ test('OPEN DEFECT: there is no cycle-level step, and the scope cannot resolve a 
         'machines-buses and machines-interrupts-performance and delete this test');
 });
 
-test('machines-interrupts-performance: the Z80 bench extracts, and its only bundled program is a shell', () => {
-    assert.equal(lesson('machines-interrupts-performance').exampleId, 'z80-bench');
+test('machines-interrupts-performance: its bench ships an interrupt program with a handler of its own', () => {
+    // D37. The lesson asks what an interrupt costs; until this bench shipped a
+    // program, nothing in the gallery raised one. The NUMBERS it can now be
+    // asked for are asserted where they can be executed -- sb3-creator's
+    // machine-roms-boot gate boots this image and measures the period, the
+    // jitter and the foreground deficit. What belongs HERE is only that the
+    // lesson and the bench still agree about which image that is.
+    assert.equal(lesson('machines-interrupts-performance').exampleId, 'eater6502-bench');
+    const rom = readFileSync(path.join(EXAMPLES, 'eater6502-bench', 'rom.bin'));
+    assert.equal(rom.length, 0x8000, 'the interrupts bench image changed size — re-measure Wave 7');
+    const vec = (a) => rom[a - 0x8000] | (rom[a - 0x8000 + 1] << 8);
+    assert.equal(vec(0xFFFC), 0x8000, 'RESET -> $8000');
+    assert.notEqual(vec(0xFFFE), vec(0xFFFC),
+        'the IRQ vector points back at RESET — there is no handler, and the lesson asks for one');
+    assert.equal(rom[vec(0xFFFE) - 0x8000 + 6], 0x40, 'the handler must end in RTI');
+    // The copy quotes the VIA's own period. If the image stops arming T1 from
+    // a $0FFF latch, the 4097 cycles in that hint describe a different program.
+    assert.ok([...rom.slice(0, 0x40)].join(',').includes('169,15,141,5,96'),
+        'the image no longer loads $0F into T1C-H — the hint\'s 4097 cycles is stale');
+});
+
+test('z80-bench still extracts as the machine it draws, and keeps its BBC BASIC fallback', () => {
     const r = extractZ80Machine(circuitOf('z80-bench'));
     assert.ok(r.ok, `z80-bench: ${(r.reasons || []).join('; ')}`);
     const rom = r.regions.find(x => x.kind === 'rom');
@@ -480,7 +506,7 @@ test('the Wave 7 revisions are present, EN and DE, at the content version this r
         'machines-6502-execution': 3,
         'machines-source-asm': 3,
         'machines-contention': 2,
-        'machines-interrupts-performance': 2
+        'machines-interrupts-performance': 3
     }, 'a Wave 7 lesson changed content version — update docs/LESSON-REVIEW-WAVE-7.md with it');
 
     const says = (id, cp, field, en, de) => {
@@ -495,5 +521,7 @@ test('the Wave 7 revisions are present, EN and DE, at the content version this r
     says('machines-6502-execution', 'step', 'action', /load a program|preset/i, /Programm laden|Preset/i);
     says('machines-source-asm', 'trace', 'hint', /preset|hosted/i, /Preset|gehostet/i);
     says('machines-contention', 'repair', 'hint', /Build Machine/, /Build Machine/);
-    says('machines-interrupts-performance', 'measure', 'action', /BBC BASIC|preset/i, /BBC BASIC|Preset/i);
+    // The action no longer sends the learner to a preset: the bench brings
+    // its own interrupt program, which is the whole of D37.
+    says('machines-interrupts-performance', 'measure', 'action', /Timer 1|interrupt program/i, /Timer 1|Interruptprogramm/i);
 });
