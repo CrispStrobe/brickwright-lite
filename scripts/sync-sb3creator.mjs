@@ -139,4 +139,19 @@ if (!check) {
     try {
         await recordPin('sb3-creator', sourceSha);
     } catch (e) { console.warn(`  (pin not recorded: ${e.message})`); }
+    // A pin bump and its examples sync belong in ONE commit — twice in one
+    // day a bump shipped without the gallery and vendor-freshness went red
+    // in CI (abcadd8, then f53f576). Refuse to end quietly while the
+    // gallery lags the pin this sync just recorded.
+    try {
+        const { execFileSync } = await import('node:child_process');
+        const args = ['scripts/sync-examples.mjs', '--check'];
+        if (srcDir) args.push('--dir', srcDir);
+        execFileSync(process.execPath, args, { stdio: 'pipe' });
+    } catch {
+        console.error('\nSTALE GALLERY: the examples no longer match the pin this sync just');
+        console.error('recorded. Run `npm run sync:examples` and commit it WITH the bump —');
+        console.error('shipping them apart is exactly what turned CI red twice on 2026-08-25.');
+        process.exit(1);
+    }
 }
