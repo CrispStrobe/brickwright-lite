@@ -13,6 +13,37 @@ name: vendor-freshness
 on:
   push:
     branches: [main]
+    # Same nine top-level prose files build.yml skips, and for the same
+    # measured reason: on 2026-08-25 the fleet's ledger pushes starved this
+    # workflow's queue so completely that five consecutive runs sat `queued`
+    # and never started at all. A run that never starts is not a gate.
+    #
+    # THE HEADER ABOVE ARGUES FOR RUNNING ON EVERY PUSH. It still holds, and
+    # this does not weaken it, because the two reasons it gives are untouched:
+    #
+    #   the PUSH run is an INTEGRITY gate — does the vendored tree match
+    #     vendor-pins.json? Its inputs are vendor-pins.json, overlay/** and
+    #     scripts/**. None of the nine names below can change any of them.
+    #   the NIGHTLY run is the staleness alarm, and `paths-ignore` narrows only
+    #     the `push` trigger. `schedule` is not path-filtered, so upstream
+    #     moving while lite is idle is still caught at 04:17 exactly as before.
+    #
+    # NOT top-level `*.md` and emphatically not `**.md`: sync-examples.mjs
+    # --check compares overlay/scratch-gui/examples/** file for file, and that
+    # tree contains intro.md, intro.de.md, EXPECTED.md and its OWN README.md /
+    # README.de.md — a different file from the repo-root README.md below. Those
+    # must keep triggering this workflow, or the vendored gallery can drift in
+    # exactly the way the header describes.
+    paths-ignore:
+      - 'BLOCKED.md'
+      - 'BUILD.md'
+      - 'CLAUDE.md'
+      - 'HANDOFF.md'
+      - 'LANES.md'
+      - 'MBIT-BUILD.md'
+      - 'PLAN.md'
+      - 'README.md'
+      - 'ROADMAP.md'
   pull_request:
   schedule:
     - cron: '17 4 * * *'
