@@ -112,6 +112,9 @@ const L10N = {
         flashStm32Boot: 'Set BOOT0 HIGH and reset the board (the F030 breakout has a jumper), then pick the port — the ROM bootloader only listens then.',
         flashEepromHint: 'Pick the Ben Eater EEPROM programmer (running bweep.ino) — this burns the CHIP, not the 6502/Z80; move the chip to the board after.',
         flashIspHint: 'Pick the USBasp/USBISP programmer wired to the chip\'s 6-pin ICSP header (MOSI/MISO/SCK/RST/VCC/GND).',
+        flashSwd: '⚡ Flash via SWD',
+        flashSwdTitle: 'Flash over the debug port using a CMSIS-DAP probe (DAPLink, or a Pico running picoprobe) — no BOOT0, no reset',
+        flashSwdHint: 'Pick the CMSIS-DAP probe wired to SWDIO/SWCLK/GND (a DAPLink board, or a Pico running picoprobe).',
         flashNoWebUsb: 'This browser cannot do WebUSB (Chrome or Edge can — they flash the USBasp directly, here, no extra software). The compiled .hex was downloaded so you can use any external programmer you already have.',
         flashNeedsProgrammer: d => `${d} has no serial bootloader — it needs an ISP/SPI programmer (or, for a 6502/Z80 breadboard, an EEPROM burner). Compiled image downloaded so you can use your own tool.`,
         stLoaded: 'Compiled to blocks and loaded. Switch to the Code tab to see them.',
@@ -212,6 +215,9 @@ const L10N = {
         flashStm32Boot: 'BOOT0 auf HIGH setzen und die Platine zurücksetzen (das F030-Board hat einen Jumper), dann den Port wählen — nur dann lauscht der ROM-Bootloader.',
         flashEepromHint: 'Den Ben-Eater-EEPROM-Programmer (mit bweep.ino) wählen — das brennt den CHIP, nicht den 6502/Z80; den Chip danach auf die Platine setzen.',
         flashIspHint: 'Den USBasp/USBISP-Programmer wählen, der am 6-poligen ICSP-Header des Chips hängt (MOSI/MISO/SCK/RST/VCC/GND).',
+        flashSwd: '⚡ Über SWD flashen',
+        flashSwdTitle: 'Über den Debug-Port mit einem CMSIS-DAP-Adapter flashen (DAPLink oder ein Pico mit picoprobe) — ohne BOOT0, ohne Reset',
+        flashSwdHint: 'Den CMSIS-DAP-Adapter wählen, der an SWDIO/SWCLK/GND hängt (ein DAPLink-Board oder ein Pico mit picoprobe).',
         flashNoWebUsb: 'Dieser Browser kann kein WebUSB (Chrome oder Edge können es — sie flashen den USBasp direkt, hier, ohne Zusatzsoftware). Die kompilierte .hex wurde heruntergeladen, damit ein bereits vorhandenes externes Programmiergerät genutzt werden kann.',
         flashNeedsProgrammer: d => `${d} hat keinen seriellen Bootloader — es braucht einen ISP/SPI-Programmer (oder, für ein 6502/Z80-Steckbrett, ein EEPROM-Brenngerät). Kompiliertes Abbild heruntergeladen.`,
         stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
@@ -566,6 +572,7 @@ class PseudocodeImporter extends React.Component {
         this.flashMicrobitSimDebug = this.flashMicrobitSimDebug.bind(this);
         this.deployToPico = this.deployToPico.bind(this);
         this.flashToBoard = this.flashToBoard.bind(this);
+        this.flashStm32ViaSwd = this.flashStm32ViaSwd.bind(this);
         this.openCodeFile = this.openCodeFile.bind(this);
         this.saveCodeFile = this.saveCodeFile.bind(this);
         this._autosaveTimer = null;
@@ -1155,6 +1162,42 @@ class PseudocodeImporter extends React.Component {
             // A cancelled port picker is a choice, not an error.
             const cancelled = e && (e.name === 'NotFoundError' || /No port selected/i.test(e.message));
             this.setState({busy: false, status: cancelled ? '' : this.L.deployPicoFail(e.message)});
+        }
+    }
+
+    /** STM32 over SWD via a CMSIS-DAP probe (WebUSB) — the bootloader-free
+     *  alternative to the AN3155 UART path. No BOOT0, no reset button. */
+    async flashStm32ViaSwd () {
+        const src = this.state.buffers.pseudocode || '';
+        if (!src.trim()) return;
+        if (typeof navigator === 'undefined' || !navigator.usb) {
+            this.setState({status: this.L.flashNoWebUsb});
+            return;
+        }
+        this.setState({busy: true, status: this.L.flashCompiling});
+        try {
+            const SB3Creator = (await this.lib()).default;
+            const creator = new SB3Creator();
+            creator.parse(src);
+            const cSrc = creator.generateC(creator.project, {debug: false});
+            const res = await fetch('https://stc-compiler.vercel.app/compile', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code: cSrc, language: 'c', target: 'stm32f030', format: 'bin'})
+            });
+            const out = await res.json();
+            if (!out.success) throw new Error(out.error || 'the compiler refused this program');
+            const raw = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
+            const flasher = await import(/* webpackChunkName: "bw-flasher" */ '../../lib/flasher.js');
+            const lines = [];
+            const log = (t) => { lines.push(t); this.setState({output: lines.join('\n')}); };
+            this.setState({status: this.L.flashSwdHint});
+            const device = await navigator.usb.requestDevice({filters: []});
+            this.setState({status: this.L.flashing});
+            const done = await flasher.flashSwdStm32(device, raw, {log});
+            this.setState({busy: false, status: this.L.flashDone(done.bytes)});
+        } catch (e) {
+            const cancelled = e && (e.name === 'NotFoundError' || /No device selected/i.test(e.message));
+            this.setState({busy: false, status: cancelled ? this.L.flashNoPort : this.L.flashFail(e.message)});
         }
     }
 
@@ -2631,6 +2674,14 @@ class PseudocodeImporter extends React.Component {
                             title={this.L.flashBoardTitle}
                             style={{...btn, background: 'linear-gradient(135deg,#c9761b,#a35d12)'}}>
                             {this.L.flashBoard}
+                        </button>
+                    ) : null}
+                    {this.currentDevice() === 'stm32f030' && this.state.lang === 'pseudocode' ? (
+                        <button onClick={this.flashStm32ViaSwd} disabled={this.state.busy}
+                            data-testid="bw-flash-swd"
+                            title={this.L.flashSwdTitle}
+                            style={{...btn, background: 'linear-gradient(135deg,#1b7fc9,#125fa3)'}}>
+                            {this.L.flashSwd}
                         </button>
                     ) : null}
                     {this.state.lang !== 'pseudocode' && this.state.lang !== 'c' && /_[a-z]+\.|Driver/.test(this.activeCode()) ? (
