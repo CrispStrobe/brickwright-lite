@@ -149,10 +149,14 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     }
 
     // 1092 -> 1093 on 2026-08-25: pc89-rl-step, the pure RL bench that closed D8.
+    // 1093 -> 1094 on 2026-08-25: 71-calculator-pcb, which arrived with the
+    // sb3-creator gallery sync to 73d3174 — one circuit.json, and the only new
+    // file in that sync the glob counts (eater6502-bench/rom.bin is the other
+    // new file and is not a circuit).
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1093, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1094, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 

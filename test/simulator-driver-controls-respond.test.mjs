@@ -14,12 +14,19 @@
  * upstream gate written alongside it (`js-driver-oled-chain`) covers the
  * 70-calculator, which is a Pico. Measured over every example that ships both a
  * `program.bw` declaring an INPUT pin and a `circuit.json` with a button or
- * switch on that pin's net — 33 benches, 67 such pins — counting pins whose
+ * switch on that pin's net — 34 benches, 84 such pins — counting pins whose
  * `readPin` does NOT change when their own control is operated:
  *
- *     no arming at all           (before sb3-creator 0777a17)   43 / 67 dead
- *     armed with driveHigh=false (0777a17)                      22 / 67 dead
- *     armed at the pull's rail   (553a639)                       1 / 67 dead
+ *     no arming at all           (before sb3-creator 0777a17)   60 / 84 dead
+ *     armed with driveHigh=false (0777a17)                      22 / 84 dead
+ *     armed at the pull's rail   (553a639)                       1 / 84 dead
+ *
+ * RE-DERIVED 2026-08-25 when the gallery sync to sb3-creator 73d3174 took the
+ * population from 33/67 to 34/84. ONE of the three moved: unarmed 43 -> 60,
+ * because all 17 new pins are ones the repair rescues. `armedLow` stayed at 22
+ * and `armedRail` stayed at 1, so no bench joined the dead set with the repair
+ * in place — the growth is in the counterfactual, which is the direction that
+ * means the repair covers more, not that something regressed.
  *
  * WHAT "RESPOND" MEANS, and why it is not "an unpressed key reads 0".
  * This gate is deliberately declaration-AGNOSTIC. `26-debounce` declares
@@ -262,8 +269,9 @@ test('both halves of the repair are measurable, and each one helps', async () =>
     const armedRail = await sweep('shipped');
 
     assert.equal(unarmed.pins, armedRail.pins, 'the three sweeps see the same population');
-    assert.equal(unarmed.dead.length, 43,
-        `unarmed: ${unarmed.dead.length} dead of ${unarmed.pins} (the pre-0777a17 corpus number)`);
+    assert.equal(unarmed.dead.length, 60,
+        `unarmed: ${unarmed.dead.length} dead of ${unarmed.pins} (the pre-0777a17 corpus number, ` +
+        're-derived at 84 pins on 2026-08-25; it was 43 of 67)');
     assert.equal(armedLow.dead.length, 22,
         `armed low: ${armedLow.dead.length} dead of ${armedLow.pins} (the 0777a17 corpus number — ` +
         'the board-class half of the repair, with the 8051 half still open)');
