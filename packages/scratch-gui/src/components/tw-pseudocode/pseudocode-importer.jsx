@@ -31,6 +31,9 @@ const DEVICE_GROUPS = [
     { label: 'Raspberry Pi', core: 'rp2040', devices: [
         { id: 'pico', label: 'Raspberry Pi Pico', compile: true, emulator: 'rp2040js' },
     ]},
+    { label: 'STM32 (ARM)', core: 'arm', devices: [
+        { id: 'stm32f030', label: 'STM32F030', compile: true, emulator: 'stm32f0' },
+    ]},
     { label: '6502', core: 'w65c02', devices: [
         { id: 'eater6502', label: 'Eater 6502', compile: false, emulator: null },
     ]},
@@ -847,7 +850,8 @@ class PseudocodeImporter extends React.Component {
             const COMPILE_TARGET = {
                 'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
                 'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
-                'arduino-mega': 'atmega2560', 'pico': 'rp2040', 'eater6502': 'eater6502'
+                'arduino-mega': 'atmega2560', 'pico': 'rp2040',
+                'stm32f030': 'stm32f030', 'eater6502': 'eater6502'
             };
             const compileTarget = COMPILE_TARGET[deviceId] || deviceId;
             const res = await fetch('https://stc-compiler.vercel.app/compile', {
@@ -857,7 +861,7 @@ class PseudocodeImporter extends React.Component {
                     code: cSrc,
                     language: 'c',
                     target: compileTarget,
-                    format: deviceId === 'pico' ? 'bin' : 'ihx',
+                    format: (deviceId === 'pico' || deviceId === 'stm32f030') ? 'bin' : 'ihx',
                     disassemble: true
                 })
             });

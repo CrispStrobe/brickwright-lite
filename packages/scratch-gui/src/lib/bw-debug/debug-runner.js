@@ -172,6 +172,7 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     if (normalized === 'attiny88') return 'attiny88';
     if (normalized === 'attiny85') return 'attiny85';
     if (normalized === 'pico') return 'rp2040js';
+    if (normalized === 'stm32f030') return 'stm32f0';
     if (['eater6502', '6502', 'w65c02'].includes(normalized)) return 'eater6502';
     if (['z80', 'zx48', 'zx128'].includes(normalized)) return 'z80';
     return requested;
@@ -531,6 +532,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
             'arduino-mega': 'atmega2560',
             'pico': 'rp2040',
+            'stm32f030': 'stm32f030',
             'eater6502': 'eater6502',
         };
         const deviceLower = (stc.device || 'stc12c5a60s2').toLowerCase();
@@ -539,7 +541,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // 'uf2' outright ("format must be ihx, hex or bin"), which made
         // every Pico compile fail with status stuck on the stale RUNNING
         // label (found by the production probe).
-        const compileFormat = deviceLower === 'pico' ? 'bin' : 'ihx';
+        const compileFormat = (deviceLower === 'pico' || deviceLower === 'stm32f030') ? 'bin' : 'ihx';
         // The compile is a pure function of (code, target, format), and the
         // edit-run-edit loop mostly re-runs UNCHANGED programs — while a
         // serverless cold start costs seconds per Run. Successful responses
@@ -567,7 +569,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
         if (!out.success) throw new Error(out.error || 'the compiler refused this program');
         const isPico = String(stc.device || '').toLowerCase() === 'pico';
-        if (!out.symbols && !isPico) {
+        const isStm32 = deviceLower === 'stm32f030';
+        if (!out.symbols && !isPico && !isStm32) {
             throw new Error(
                 `the image built but carries no symbol table, so the debugger cannot ` +
                 `say where it is: ${out.symbols_error || 'no reason given'}`
@@ -587,6 +590,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         // For Pico the compile response is a raw SRAM binary, not Intel HEX.
         // Convert base64 → Uint8Array → Uint16Array (little-endian halfwords).
+        // The STM32F030 image is also a raw binary, but a REAL flash image
+        // (vectors first: word 0 = SP, word 1 = reset) — it stays BYTES,
+        // because the F0 machine boots it the way the silicon would.
         let image = null;
         if (isPico) {
             const bytes = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
@@ -595,16 +601,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 ? new Uint8Array([...bytes, 0])
                 : bytes;
             image = new Uint16Array(padded.buffer, padded.byteOffset, padded.length / 2);
+        } else if (isStm32) {
+            image = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
         }
 
         return {
-            hex: isPico ? null : atob(out.base64),
+            hex: (isPico || isStm32) ? null : atob(out.base64),
             image,
             symbols: out.symbols,
             c,
             bytes: out.bytes,
             f_cpu: out.f_cpu || out.fcpu || out.clockHz,
-            format: out.format || (isPico ? 'bin' : 'ihx'),
+            format: out.format || ((isPico || isStm32) ? 'bin' : 'ihx'),
         };
     }
 
@@ -634,6 +642,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         if (selectedTargetKind === 'eater6502') {
             return attachEater6502();
+        }
+
+        if (selectedTargetKind === 'stm32f0') {
+            return attachStm32F0Target(built);
         }
 
         if (selectedTargetKind === 'rp2040js') {
@@ -937,6 +949,74 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         });
 
         setStatus('ready', `${built.bytes} bytes (Pico), ${blockOf.size} yield points`);
+        return session;
+    }
+
+    /** STM32F030 — same shape as the Pico attach, three differences: the
+     *  program is a raw flash image in BYTES (vectors first — the F0
+     *  machine boots it like the silicon), the default clock is the
+     *  F030's 48 MHz, and the target kind is 'stm32f0'. The debug target
+     *  underneath is the SAME rp2040js one, driven through the F0
+     *  adapter's facade. */
+    async function attachStm32F0Target(built) {
+        setStatus('attaching', 'starting the STM32F030 emulator…');
+        const { createDebugTarget, BoardImpl, inferNetlist } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+
+        const stc = projectStc(null);
+        const clockHz = built.f_cpu || built.clockHz || 48_000_000;
+
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
+        board = new BoardImpl(3.3);
+        board.setNetlist(netlist.parts, netlist.nets);
+        board.setPower(true);
+        // Publish the RUN board — same one-board-one-truth rule as the
+        // Pico path above (widget panel binds to the executing board).
+        if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
+
+        const program = built.image instanceof Uint8Array ? built.image : null;
+        if (!program) throw new Error('the STM32F030 build produced no flash image');
+
+        const { target: f0Target, adapter: f0Adapter } = await createDebugTarget('stm32f0', {
+            board, program, symbols: built.symbols, clockHz,
+        });
+
+        if (f0Adapter && f0Adapter.onSerial) {
+            let lineBuf = '';
+            serialLines = [];
+            f0Adapter.onSerial((byte) => {
+                const ch = String.fromCharCode(byte);
+                if (ch === '\n') {
+                    serialLines.push(lineBuf);
+                    lineBuf = '';
+                    if (serialLines.length > 200) serialLines.shift();
+                } else if (ch !== '\r') {
+                    lineBuf += ch;
+                }
+            });
+        }
+
+        setValueResolver((blockId) => runner.valuesAtBlock(blockId));
+        if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
+        symbols = built.symbols;
+        variableTable = (symbols && symbols.variables || []).filter((v) => v.space);
+        pinTable = stc.pins || [];
+
+        target = f0Target;
+        session = createDebugSession(target, {
+            onChange: (st) => {
+                if (st.halted) {
+                    if (shouldSkip(st)) { skipped++; skipRequested = true; return; }
+                    glow(st.tasks);
+                    trace.record(target, st.why ? st.why.cause : 'halt',
+                        { variables: runner.variables(), tasks: st.tasks });
+                } else clearGlow();
+                emit();
+            }
+        });
+
+        setStatus('ready', `${built.bytes} bytes (STM32F030), ${blockOf.size} yield points`);
         return session;
     }
 

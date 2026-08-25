@@ -1038,6 +1038,7 @@ class CircuitTab extends React.Component {
                 /^stc/.test(id) ? '8051' :
                 /^(arduino-|atmega|attiny)/.test(id) ? 'arduino' :
                 id === 'pico' ? 'rp2040' :
+                /^stm32/.test(id) ? 'arm' :
                 /^(eater6502|6502|w65c02)$/.test(id) ? 'w65c02' :
                 /^(z80|zx48|zx128)$/.test(id) ? 'z80' :
                 id === 'microbit' ? 'micropython' : null;

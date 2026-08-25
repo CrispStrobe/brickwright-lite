@@ -268,10 +268,10 @@ class DebugPanel extends React.Component {
         const DEVICE_TO_KIND = {
             attiny88: 'attiny88', attiny85: 'attiny85',
             'arduino-mega': 'atmega2560', atmega2560: 'atmega2560',
-            pico: 'rp2040js', eater6502: 'eater6502',
+            pico: 'rp2040js', stm32f030: 'stm32f0', eater6502: 'eater6502',
             z80: 'z80', zx48: 'z80', zx128: 'z80',
         };
-        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
+        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', arm: 'stm32f0', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
         const kind = DEVICE_TO_KIND[dev] || CORE_TO_KIND[core];
         if (kind && kind !== this.state.kind) {
             // Changing the kind while a runner exists would leave it on the

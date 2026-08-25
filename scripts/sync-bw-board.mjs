@@ -83,11 +83,30 @@ let remoteSha = null;
 if (!srcDir) remoteSha = (await resolveRef(REPO, REF)).sha;
 const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
 
+// cortex-m0-machine.js deep-imports rp2040js's core BY FILE PATH
+// ('../node_modules/rp2040js/dist/esm/cortex-m0-core.js') because the
+// package's exports map exposes only '.' and './gdb-tcp-server'. That
+// relative path is correct in the bw-board checkout but not from the
+// vendored location, so rewrite it to the path that reaches
+// packages/scratch-gui/node_modules from src/lib/bw-board/ (three
+// levels up). A plain file path bypasses the exports map, which a bare
+// 'rp2040js/dist/…' specifier would trip over in webpack 5.
+const DEEP_IMPORT_REWRITES = [
+    [`'../node_modules/rp2040js/dist/esm/cortex-m0-core.js'`,
+        `'../../../node_modules/rp2040js/dist/esm/cortex-m0-core.js'`],
+];
+
 async function readSource (rel) {
-    if (srcDir) return readFile(path.join(srcDir, rel), 'utf8');
-    const res = await fetch(`${RAW}/${rel}`);
-    if (!res.ok) throw new Error(`fetch ${rel} @ ${remoteSha}: HTTP ${res.status}`);
-    return res.text();
+    let text;
+    if (srcDir) {
+        text = await readFile(path.join(srcDir, rel), 'utf8');
+    } else {
+        const res = await fetch(`${RAW}/${rel}`);
+        if (!res.ok) throw new Error(`fetch ${rel} @ ${remoteSha}: HTTP ${res.status}`);
+        text = await res.text();
+    }
+    for (const [from, to] of DEEP_IMPORT_REWRITES) text = text.replaceAll(from, to);
+    return text;
 }
 
 await mkdir(dest, {recursive: true});
