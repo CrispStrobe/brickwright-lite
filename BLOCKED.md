@@ -35,9 +35,15 @@ push right now makes the storm worse by one. It needs an owner.
 reporting an unverified landing as verified: push the current `main` sha to a
 throwaway branch and `workflow_dispatch` `build.yml` on it. A branch ref has its
 own concurrency group, so main's push storm cannot cancel it —
-`ci/verdict-cui-eade8e3` → run 32849665268. At 12:58 that run is still `queued`
-behind the same starved pool, so the backlog outlives the cancellation; the
-branch trick fixes the cancelling, not the capacity.
+`ci/verdict-cui-eade8e3`. **It worked, on the second attempt, and the two
+attempts are the whole lesson.** Run 32849665268 sat queued 26 minutes, then ran
+and was cancelled 3m25s in at *Build the editor* — steps 1-15 already green,
+including the overlay-vs-pin guard and the unit tests. Run 32852621714 on the
+same sha (`75ccc105b`) went all 27 steps **green**, browser gates included.
+
+So the branch trick defeats the cancelling; it does not defeat the capacity, and
+a run that gets far enough to pass fifteen steps can still die without a verdict.
+Anyone reading a `cancelled` as "someone chose to stop it" is reading it wrong.
 
 
 ## ~~Example crash~~ — RESOLVED (bw-circuit-ui 2567fa6)
