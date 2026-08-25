@@ -701,3 +701,324 @@ export async function openStm32Port(port, { baud = 115200 } = {}) {
   await port.open({ baudRate: baud, dataBits: 8, parity: 'even', stopBits: 1, flowControl: 'none' });
   return port;
 }
+
+// ------------------------------------------------- parallel EEPROM (Ben Eater programmer)
+//
+// The fifth path, and the odd one: it does not flash the TARGET at all.
+// A 6502 / Z80 breadboard computer has no bootloader — its program lives
+// in a parallel EEPROM (28C256) that is burned on a bench programmer and
+// physically moved to the board. Ben Eater's Arduino programmer (MIT) is
+// that bench, and the fleet's bweep.ino sketch gives it a serial upload
+// protocol (tools/eeprom-programmer/bweep.ino in the stc repo). This
+// drives that sketch: paginate the image on 64-byte page boundaries,
+// write+verify each, ACK/NACK per page (the AN3155 values, so one log
+// reads every flasher).
+//
+// The port is a plain 115200 8N1 Web Serial port (no parity, no DTR
+// dance) — the programmer is an Arduino running our sketch, not the
+// target.
+
+const EEPROM_PAGE = 64;
+
+/**
+ * @param {SerialPort} port  an OPEN 115200 8N1 Web Serial port to the programmer
+ * @param {Uint8Array} image the ROM bytes; written from base (default 0)
+ */
+export async function flashEeprom(port, image, {
+  base = 0, log = () => {}, timeout = 3000, identify = true,
+} = {}) {
+  const io = serialTransport(port, { timeout });
+  const ack = async (what) => {
+    const b = (await io.read(1))[0];
+    if (b === 0x1f) throw new Error(`${what}: NACK (write or verify failed at the programmer)`);
+    if (b !== 0x79) throw new Error(`${what}: expected ACK 0x79, got 0x${b.toString(16)}`);
+  };
+  try {
+    if (identify) {
+      await io.write(Uint8Array.of(0x56)); // 'V'
+      // "BWEEP1\n" then ACK — read the line, then the ack.
+      let banner = '';
+      for (let i = 0; i < 16; i++) {
+        const c = String.fromCharCode((await io.read(1))[0]);
+        if (c === '\n') break;
+        banner += c;
+      }
+      await ack('identify');
+      if (!/^BWEEP/.test(banner)) throw new Error(`not a bweep programmer (said "${banner}")`);
+      log(`programmer: ${banner}`);
+    }
+    let written = 0;
+    let off = 0;
+    while (off < image.length) {
+      // Never straddle a page: the chunk reaches the next page boundary,
+      // then advances by exactly what was sent (NOT a fixed page — an
+      // aligned-short first chunk would otherwise skip the tail bytes).
+      const addr = base + off;
+      const room = EEPROM_PAGE - (addr % EEPROM_PAGE);
+      const n = Math.min(room, EEPROM_PAGE, image.length - off);
+      const chunk = image.subarray(off, off + n);
+      const aHi = (addr >> 8) & 0xff, aLo = addr & 0xff;
+      let ck = n ^ aHi ^ aLo;
+      for (const b of chunk) ck ^= b;
+      await io.write(Uint8Array.of(0x57, aHi, aLo, n, ...chunk, ck & 0xff)); // 'W'
+      await ack(`write 0x${addr.toString(16)}`);
+      written += n;
+      off += n;
+      if ((off & 0x3ff) < n) log(`  ${written}/${image.length} bytes`);
+    }
+    await io.write(Uint8Array.of(0x51)); // 'Q'
+    await ack('finish');
+    log(`done: ${written} bytes burned and verified`);
+    return { bytes: written };
+  } finally {
+    await io.close();
+    try { await port.close(); } catch {}
+  }
+}
+
+// ------------------------------------------------- ATmega2560 / Arduino Mega (STK500v2)
+//
+// The Mega's bootloader (stk500boot) speaks STK500v2, not v1 — a
+// different framing entirely — so the optiboot path above cannot touch
+// it. Clean-room from Atmel's AVR068 application note ("STK500
+// Communication Protocol"), the wire format only. avrdude calls this the
+// `wiring` programmer; the reset is the same DTR pulse as v1.
+//
+// Frame (AVR068 §2): MESSAGE_START(0x1B) SEQ SIZE_HI SIZE_LO TOKEN(0x0E)
+//   BODY... CHECKSUM(XOR of every byte from MESSAGE_START through the last
+//   body byte). Every reply echoes the command byte then STATUS_CMD_OK(0).
+
+const STK2 = {
+  MESSAGE_START: 0x1b, TOKEN: 0x0e, STATUS_CMD_OK: 0x00,
+  CMD_SIGN_ON: 0x01, CMD_LOAD_ADDRESS: 0x06,
+  CMD_ENTER_PROGMODE_ISP: 0x10, CMD_LEAVE_PROGMODE_ISP: 0x11,
+  CMD_PROGRAM_FLASH_ISP: 0x13, CMD_READ_FLASH_ISP: 0x14,
+};
+
+/** A framed STK500v2 conversation over the same byte transport. */
+export class Stk500v2 {
+  constructor(transport, { pageSize = 256, log = () => {} } = {}) {
+    this.io = transport; this.pageSize = pageSize; this.log = log;
+    this.seq = 1;
+  }
+
+  async command(body) {
+    const seq = this.seq; this.seq = (this.seq + 1) & 0xff;
+    const size = body.length;
+    const frame = [STK2.MESSAGE_START, seq, (size >> 8) & 0xff, size & 0xff, STK2.TOKEN, ...body];
+    let ck = 0; for (const b of frame) ck ^= b;
+    frame.push(ck);
+    await this.io.write(Uint8Array.from(frame));
+
+    // Read a reply frame and verify its structure + checksum.
+    const start = await this.io.read(1);
+    if (start[0] !== STK2.MESSAGE_START) throw new Error(`v2: no MESSAGE_START (got 0x${start[0].toString(16)})`);
+    const rseq = (await this.io.read(1))[0];
+    if (rseq !== seq) throw new Error(`v2: sequence ${rseq} != ${seq}`);
+    const sz = await this.io.read(2);
+    const rsize = (sz[0] << 8) | sz[1];
+    const token = (await this.io.read(1))[0];
+    if (token !== STK2.TOKEN) throw new Error(`v2: no TOKEN (got 0x${token.toString(16)})`);
+    const rbody = await this.io.read(rsize);
+    const rck = (await this.io.read(1))[0];
+    let rc = STK2.MESSAGE_START ^ rseq ^ sz[0] ^ sz[1] ^ token;
+    for (const b of rbody) rc ^= b;
+    if (rc !== rck) throw new Error('v2: reply checksum mismatch');
+    if (rbody[0] !== body[0]) throw new Error(`v2: reply for 0x${rbody[0].toString(16)}, expected 0x${body[0].toString(16)}`);
+    if (rbody[1] !== STK2.STATUS_CMD_OK) throw new Error(`v2: command 0x${body[0].toString(16)} status 0x${rbody[1].toString(16)}`);
+    return rbody;
+  }
+
+  async signOn() {
+    const r = await this.command([STK2.CMD_SIGN_ON]);
+    // body: CMD, STATUS_OK, len, signature bytes
+    return String.fromCharCode(...r.slice(3, 3 + r[2]));
+  }
+
+  /** Load a WORD address. The top byte's bit 7 is the extended-address
+   *  flag AVR068 uses for >128 KB parts — the 2560's 256 KB needs it. */
+  async loadAddress(byteOffset) {
+    const word = byteOffset >> 1;
+    await this.command([STK2.CMD_LOAD_ADDRESS,
+      ((word >> 24) & 0xff) | 0x80, (word >> 16) & 0xff, (word >> 8) & 0xff, word & 0xff]);
+  }
+
+  async program(image) {
+    await this.command([STK2.CMD_ENTER_PROGMODE_ISP, 200, 100, 25, 32, 0, 0x53, 3, 0xac, 0x53, 0, 0]);
+    for (let off = 0; off < image.length; off += this.pageSize) {
+      const page = image.subarray(off, Math.min(off + this.pageSize, image.length));
+      await this.loadAddress(off);
+      // CMD, size_hi, size_lo, mode(0xC1 = page mode + write page), delay,
+      // cmd1..3, poll1..2, then data. The bootloader ignores the ISP timing
+      // fields and writes `data` at the loaded address.
+      await this.command([STK2.CMD_PROGRAM_FLASH_ISP,
+        (page.length >> 8) & 0xff, page.length & 0xff, 0xc1, 6, 0x40, 0x4c, 0x20, 0, 0, ...page]);
+      this.log(`  wrote ${page.length} bytes at 0x${off.toString(16).padStart(4, '0')}`);
+    }
+    await this.command([STK2.CMD_LEAVE_PROGMODE_ISP, 1, 1]);
+  }
+
+  async verify(image) {
+    await this.command([STK2.CMD_ENTER_PROGMODE_ISP, 200, 100, 25, 32, 0, 0x53, 3, 0xac, 0x53, 0, 0]);
+    for (let off = 0; off < image.length; off += this.pageSize) {
+      const len = Math.min(this.pageSize, image.length - off);
+      await this.loadAddress(off);
+      const r = await this.command([STK2.CMD_READ_FLASH_ISP, (len >> 8) & 0xff, len & 0xff, 0x20]);
+      // body: CMD, STATUS_OK, data..., STATUS_OK
+      for (let i = 0; i < len; i++) {
+        if (r[2 + i] !== image[off + i]) {
+          await this.command([STK2.CMD_LEAVE_PROGMODE_ISP, 1, 1]);
+          throw new Error(`verify failed at 0x${(off + i).toString(16)}: ` +
+            `wrote 0x${image[off + i].toString(16)}, read 0x${r[2 + i].toString(16)}`);
+        }
+      }
+    }
+    await this.command([STK2.CMD_LEAVE_PROGMODE_ISP, 1, 1]);
+    return true;
+  }
+}
+
+/** Flash an ATmega2560 / Arduino Mega over its STK500v2 bootloader. */
+export async function flashAvrMega(port, hexText, {
+  baud = 115200, pageSize = 256, log = () => {}, verify = true,
+} = {}) {
+  const { image, highest } = parseIntelHex(hexText);
+  await port.open({ baudRate: baud });
+  const io = serialTransport(port, { timeout: 5000 });
+  const stk = new Stk500v2(io, { pageSize, log });
+  try {
+    if (port.setSignals) await pulseReset(port);
+    const sig = await stk.signOn();
+    log(`bootloader: ${sig}`);
+    await stk.program(image);
+    if (verify) await stk.verify(image);
+    log(`done: ${highest + 1} bytes written${verify ? ' and verified' : ''}`);
+    return { bytes: highest + 1 };
+  } finally {
+    await io.close();
+    try { await port.close(); } catch {}
+  }
+}
+
+// ------------------------------------------------- USBasp (ISP/SPI, WebUSB)
+//
+// An in-system programmer, not a bootloader path: a USBasp / USBISP
+// dongle drives the AVR's 6-pin ICSP header (MOSI/MISO/SCK/RST) over SPI
+// and programs the raw flash — bypassing the bootloader entirely. That
+// makes it the ONLY path for the ATtiny85/88 (which have no serial
+// bootloader at all) and a bootloader-free, DTR-free path for every
+// other AVR (Uno/Nano/Mega/328/168).
+//
+// Clean-room from two open, documented sources — no GPL firmware read:
+//   - the USBasp USB function numbers (fischl.de/usbasp; the same values
+//     avrdude uses), and
+//   - the AVR "Serial Programming Instruction Set" in every AVR
+//     datasheet (Programming Enable / Chip Erase / Load & Write Program
+//     Memory Page / Read).
+//
+// WebUSB, not Web Serial: a USBasp is a raw USB device (VID 0x16c0 /
+// PID 0x05dc), driven by vendor control transfers. Chrome/Edge only, and
+// the OS must let the page claim it (Linux udev / macOS just works;
+// Windows needs the WinUSB driver via Zadig).
+//
+// WHY THIS EXISTS AND avrdude DOES NOT: Brickwright ships fully
+// permissive (BSD-3/Apache-2.0/MIT) and avrdude is GPL-2, so it can
+// never be bundled. This clean-room flasher is the point — the product
+// flashes a USBasp with no GPL tool anywhere in it. avrdude is named in
+// a couple of comments only as the reference every AVR programmer knows;
+// nothing here invokes or requires it.
+
+const USBASP = { CONNECT: 1, DISCONNECT: 2, TRANSMIT: 3 };
+
+// signature (3 bytes) -> {name, flash bytes, page bytes}. Only the parts
+// we emulate; an unknown signature is reported, never guessed.
+const AVR_BY_SIGNATURE = {
+  '1e930b': { name: 'ATtiny85', flash: 8192, page: 64 },
+  '1e9311': { name: 'ATtiny88', flash: 8192, page: 64 },
+  '1e9307': { name: 'ATmega8',  flash: 8192, page: 64 },
+  '1e940b': { name: 'ATmega168P', flash: 16384, page: 128 },
+  '1e950f': { name: 'ATmega328P', flash: 32768, page: 128 },
+  '1e9801': { name: 'ATmega2560', flash: 262144, page: 256 },
+};
+
+/**
+ * Flash an AVR through a USBasp over WebUSB.
+ * @param {USBDevice} device an opened-or-openable WebUSB device (VID 0x16c0)
+ */
+export async function flashUsbasp(device, hexText, { log = () => {}, verify = true } = {}) {
+  const { image } = parseIntelHex(hexText);
+  await device.open();
+  if (device.configuration === null) await device.selectConfiguration(1);
+  await device.claimInterface(0);
+
+  // One raw 4-byte SPI exchange. USBasp packs the two low bytes into
+  // wValue and the two high into wIndex, and returns the 4 MISO bytes.
+  const transmit = async (b0, b1, b2, b3) => {
+    const r = await device.controlTransferIn({
+      requestType: 'vendor', recipient: 'device', request: USBASP.TRANSMIT,
+      value: b0 | (b1 << 8), index: b2 | (b3 << 8),
+    }, 4);
+    return new Uint8Array(r.data.buffer);
+  };
+  const connect = () => device.controlTransferOut({
+    requestType: 'vendor', recipient: 'device', request: USBASP.CONNECT, value: 0, index: 0,
+  });
+  const disconnect = () => device.controlTransferOut({
+    requestType: 'vendor', recipient: 'device', request: USBASP.DISCONNECT, value: 0, index: 0,
+  });
+
+  try {
+    await connect();
+    // Programming Enable — the 3rd MISO byte echoes 0x53 when the AVR is
+    // in sync (datasheet). A retry, because the first can miss.
+    let synced = false;
+    for (let i = 0; i < 3 && !synced; i++) {
+      const r = await transmit(0xac, 0x53, 0x00, 0x00);
+      synced = r[2] === 0x53;
+    }
+    if (!synced) throw new Error('no AVR answered ISP — check the ICSP wiring, power, and that RESET reaches the chip');
+
+    // Signature: read 3 bytes at 0,1,2.
+    let sig = '';
+    for (let i = 0; i < 3; i++) sig += (await transmit(0x30, 0x00, i, 0x00))[3].toString(16).padStart(2, '0');
+    const part = AVR_BY_SIGNATURE[sig];
+    if (!part) throw new Error(`unknown AVR signature 0x${sig} — this programmer path knows ${Object.values(AVR_BY_SIGNATURE).map(p => p.name).join(', ')}`);
+    log(`target: ${part.name} (signature 0x${sig})`);
+    if (image.length > part.flash) throw new Error(`image ${image.length} B exceeds ${part.name}'s ${part.flash} B flash`);
+
+    // Chip erase, then wait the write cycle.
+    await transmit(0xac, 0x80, 0x00, 0x00);
+    await new Promise(r => setTimeout(r, 12));
+
+    const pageWords = part.page / 2;
+    for (let base = 0; base < image.length; base += part.page) {
+      const page = image.subarray(base, Math.min(base + part.page, image.length));
+      // Load the page buffer word by word (low then high byte).
+      for (let w = 0; w < page.length / 2; w++) {
+        const lo = page[2 * w] ?? 0xff;
+        const hi = page[2 * w + 1] ?? 0xff;
+        await transmit(0x40, 0x00, w & (pageWords - 1), lo);
+        await transmit(0x48, 0x00, w & (pageWords - 1), hi);
+      }
+      // Write the page at its WORD address.
+      const wordAddr = base >> 1;
+      await transmit(0x4c, (wordAddr >> 8) & 0xff, wordAddr & 0xff, 0x00);
+      await new Promise(r => setTimeout(r, 6));
+      log(`  wrote ${page.length} bytes at 0x${base.toString(16).padStart(4, '0')}`);
+    }
+
+    if (verify) {
+      for (let i = 0; i < image.length; i++) {
+        const wordAddr = i >> 1;
+        const cmd = (i & 1) ? 0x28 : 0x20; // read high : read low byte
+        const got = (await transmit(cmd, (wordAddr >> 8) & 0xff, wordAddr & 0xff, 0x00))[3];
+        if (got !== image[i]) throw new Error(`verify failed at 0x${i.toString(16)}: wrote 0x${image[i].toString(16)}, read 0x${got.toString(16)}`);
+      }
+    }
+    log(`done: ${image.length} bytes written${verify ? ' and verified' : ''}`);
+    return { bytes: image.length, part: part.name };
+  } finally {
+    try { await disconnect(); } catch { /* going away anyway */ }
+    try { await device.close(); } catch { /* ditto */ }
+  }
+}

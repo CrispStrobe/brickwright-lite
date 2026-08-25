@@ -110,6 +110,9 @@ const L10N = {
         flashFail: e => `flashing failed: ${e}`,
         flashColdBoot: 'PULL THE POWER AND REAPPLY IT — a reset button will not do; the STC bootloader only answers after a cold power-on.',
         flashStm32Boot: 'Set BOOT0 HIGH and reset the board (the F030 breakout has a jumper), then pick the port — the ROM bootloader only listens then.',
+        flashEepromHint: 'Pick the Ben Eater EEPROM programmer (running bweep.ino) — this burns the CHIP, not the 6502/Z80; move the chip to the board after.',
+        flashIspHint: 'Pick the USBasp/USBISP programmer wired to the chip\'s 6-pin ICSP header (MOSI/MISO/SCK/RST/VCC/GND).',
+        flashNoWebUsb: 'This browser cannot do WebUSB (Chrome or Edge can — they flash the USBasp directly, here, no extra software). The compiled .hex was downloaded so you can use any external programmer you already have.',
         flashNeedsProgrammer: d => `${d} has no serial bootloader — it needs an ISP/SPI programmer (or, for a 6502/Z80 breadboard, an EEPROM burner). Compiled image downloaded so you can use your own tool.`,
         stLoaded: 'Compiled to blocks and loaded. Switch to the Code tab to see them.',
         stWarn: w => `Loaded with warnings — ${w}`,
@@ -207,6 +210,9 @@ const L10N = {
         flashFail: e => `Flashen fehlgeschlagen: ${e}`,
         flashColdBoot: 'STROM ZIEHEN UND WIEDER ANLEGEN — eine Reset-Taste genügt nicht; der STC-Bootloader antwortet nur nach einem Kaltstart.',
         flashStm32Boot: 'BOOT0 auf HIGH setzen und die Platine zurücksetzen (das F030-Board hat einen Jumper), dann den Port wählen — nur dann lauscht der ROM-Bootloader.',
+        flashEepromHint: 'Den Ben-Eater-EEPROM-Programmer (mit bweep.ino) wählen — das brennt den CHIP, nicht den 6502/Z80; den Chip danach auf die Platine setzen.',
+        flashIspHint: 'Den USBasp/USBISP-Programmer wählen, der am 6-poligen ICSP-Header des Chips hängt (MOSI/MISO/SCK/RST/VCC/GND).',
+        flashNoWebUsb: 'Dieser Browser kann kein WebUSB (Chrome oder Edge können es — sie flashen den USBasp direkt, hier, ohne Zusatzsoftware). Die kompilierte .hex wurde heruntergeladen, damit ein bereits vorhandenes externes Programmiergerät genutzt werden kann.',
         flashNeedsProgrammer: d => `${d} hat keinen seriellen Bootloader — es braucht einen ISP/SPI-Programmer (oder, für ein 6502/Z80-Steckbrett, ein EEPROM-Brenngerät). Kompiliertes Abbild heruntergeladen.`,
         stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
         stWarn: w => `Mit Warnungen geladen — ${w}`,
@@ -1164,6 +1170,14 @@ class PseudocodeImporter extends React.Component {
         // the Mega speaks STK500v2 (a different protocol flash.js does not
         // implement) — both fall through to the programmer message.
         if (['arduino-uno', 'arduino-nano', 'atmega328p', 'atmega168p'].includes(d)) return 'avr';
+        if (['arduino-mega', 'atmega2560'].includes(d)) return 'avr-mega';  // STK500v2
+        // ATtiny has no bootloader; a USBasp/USBISP dongle flashes it over
+        // the ICSP header (WebUSB). The same path flashes any AVR too, but
+        // those default to their bootloader above.
+        if (['attiny85', 'attiny88'].includes(d)) return 'isp';
+        // 6502/Z80 breadboards: no bootloader — the ROM is burned on a
+        // Ben Eater EEPROM programmer running bweep.ino over serial.
+        if (['eater6502', '6502', 'w65c02', 'z80'].includes(d)) return 'eeprom';
         return null;
     }
 
@@ -1198,10 +1212,12 @@ class PseudocodeImporter extends React.Component {
             const COMPILE_TARGET = {
                 'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
                 'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
-                'stm32f030': 'stm32f030'
+                'stm32f030': 'stm32f030', 'arduino-mega': 'atmega2560', 'atmega2560': 'atmega2560',
+                'attiny85': 'attiny85', 'attiny88': 'attiny88',
+                'eater6502': 'eater6502', '6502': 'eater6502', 'w65c02': 'eater6502'
             };
             const target = COMPILE_TARGET[String(device).toLowerCase()] || String(device).toLowerCase();
-            const format = family === 'stm32' ? 'bin' : 'ihx';
+            const format = (family === 'stm32' || family === 'eeprom') ? 'bin' : 'ihx';
             const res = await fetch('https://stc-compiler.vercel.app/compile', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({code: cSrc, language: 'c', target, format})
@@ -1225,6 +1241,21 @@ class PseudocodeImporter extends React.Component {
             const lines = [];
             const log = (t) => { lines.push(t); this.setState({output: lines.join('\n')}); };
 
+            if (family === 'isp') {
+                // WebUSB, not Web Serial: a USBasp is a raw USB device.
+                if (typeof navigator === 'undefined' || !navigator.usb) {
+                    downloadImage(raw, out.filename || 'firmware.hex');
+                    this.setState({busy: false, status: this.L.flashNoWebUsb});
+                    return;
+                }
+                this.setState({status: this.L.flashIspHint});
+                const device = await navigator.usb.requestDevice({filters: [{vendorId: 0x16c0}]});
+                this.setState({status: this.L.flashing});
+                const done = await flasher.flashUsbasp(device, new TextDecoder().decode(raw), {log});
+                this.setState({busy: false, status: this.L.flashDone(done.bytes)});
+                return;
+            }
+
             if (family === 'stm32') {
                 this.setState({status: this.L.flashStm32Boot});
                 const port = await navigator.serial.requestPort();
@@ -1240,7 +1271,19 @@ class PseudocodeImporter extends React.Component {
                     log, onPowerCycle: () => this.setState({status: this.L.flashColdBoot})
                 });
                 this.setState({busy: false, status: this.L.flashDone(done.bytes)});
-            } else { // avr
+            } else if (family === 'eeprom') {
+                this.setState({status: this.L.flashEepromHint});
+                const port = await navigator.serial.requestPort();
+                await port.open({baudRate: 115200});
+                this.setState({status: this.L.flashing});
+                const done = await flasher.flashEeprom(port, raw, {log});
+                this.setState({busy: false, status: this.L.flashDone(done.bytes)});
+            } else if (family === 'avr-mega') {
+                const port = await navigator.serial.requestPort();
+                this.setState({status: this.L.flashing});
+                const done = await flasher.flashAvrMega(port, new TextDecoder().decode(raw), {log});
+                this.setState({busy: false, status: this.L.flashDone(done.bytes)});
+            } else { // avr (optiboot v1)
                 const port = await navigator.serial.requestPort();
                 this.setState({status: this.L.flashing});
                 const done = await flasher.flashAvr(port, new TextDecoder().decode(raw), {log});
