@@ -199,6 +199,94 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.9 en-US
+
+This build is about the simulator: a new chip to run in it, and a big jump in how
+fast it runs.
+
+New in the simulator:
+- **STM32F030 is now a supported target.** Pick it in the device picker, build a
+  program in Blocks, and press Run — it runs on the built-in emulator, the same
+  way the STC and Pico chips already did. The Code tab shows the C it generates
+  for the F030, and the serial console's send box now reaches the running machine.
+- **Per-device emulator preference is remembered.** Choose how a device runs and
+  the choice sticks the next time you pick that device.
+- **Run firmware from a file.** Point the emulator at a firmware image on disk and
+  run it directly.
+
+Faster:
+- **Repeat runs skip the compiler.** Running the same program again reuses the
+  last compile instead of rebuilding, so the second Run is near-instant.
+- **The calculator example is dramatically quicker** — press-to-pixel is around
+  110× faster than before, and Run mode no longer starves the emulator of time.
+
+Also in:
+- The **Widgets** tab now binds to real parts, and the calculator example ships
+  its faceplate.
+- The interrupts lesson moved to a bench that can actually interrupt, and several
+  lesson checkpoints were corrected.
+
+Please test:
+- **Pick STM32F030, build a small Blocks program, and Run it.** Check the
+  simulation behaves, the Code tab shows F030 C, and typing in the serial console
+  reaches the program.
+- **Run the same program twice** and confirm the second run starts fast.
+- **Open the calculator example and press keys** — the display should update
+  smoothly and quickly.
+- **Switch a device's emulator preference, leave and come back** — it should be
+  remembered.
+- Older projects and the existing STC / Pico / Arduino targets must still open and
+  run normally.
+
+Please report the exact steps, your device and iOS version, and anything that ran
+slowly, showed the wrong result, or would not open.
+
+## What to Test — 0.1.9 de-DE
+
+In diesem Build geht es um die Simulation: ein neuer Chip, der darin läuft, und
+ein großer Sprung bei der Geschwindigkeit.
+
+Neu in der Simulation:
+- **STM32F030 wird jetzt unterstützt.** Im Geräte-Auswahlmenü wählen, ein Programm
+  in Blöcken bauen und auf Start drücken — es läuft im eingebauten Emulator, genau
+  wie schon die STC- und Pico-Chips. Der Code-Reiter zeigt das dafür erzeugte C
+  für den F030, und das Sendefeld der seriellen Konsole erreicht nun die laufende
+  Maschine.
+- **Die Emulator-Einstellung pro Gerät wird gemerkt.** Einmal gewählt, bleibt sie
+  beim nächsten Mal für dieses Gerät erhalten.
+- **Firmware aus einer Datei ausführen.** Den Emulator auf ein Firmware-Abbild auf
+  der Festplatte richten und direkt starten.
+
+Schneller:
+- **Wiederholte Läufe überspringen den Compiler.** Dasselbe Programm erneut zu
+  starten nutzt den letzten Compile-Vorgang wieder, statt neu zu bauen — der zweite
+  Start ist nahezu sofort.
+- **Das Rechner-Beispiel ist deutlich schneller** — von Tastendruck bis Pixel etwa
+  110× schneller als zuvor, und der Start-Modus entzieht dem Emulator keine Zeit
+  mehr.
+
+Ebenfalls enthalten:
+- Der **Widgets**-Reiter ist jetzt an echte Bauteile gebunden, und das
+  Rechner-Beispiel bringt seine Frontplatte mit.
+- Die Interrupt-Lektion wurde auf einen Aufbau verlegt, der wirklich unterbrechen
+  kann, und mehrere Lektions-Prüfpunkte wurden korrigiert.
+
+Bitte testen:
+- **STM32F030 wählen, ein kleines Blöcke-Programm bauen und starten.** Prüfen, ob
+  die Simulation sich richtig verhält, der Code-Reiter F030-C zeigt und Eingaben in
+  der seriellen Konsole das Programm erreichen.
+- **Dasselbe Programm zweimal starten** und prüfen, ob der zweite Start schnell
+  beginnt.
+- **Das Rechner-Beispiel öffnen und Tasten drücken** — die Anzeige soll sich
+  flüssig und schnell aktualisieren.
+- **Die Emulator-Einstellung eines Geräts ändern, wechseln und zurückkommen** —
+  sie soll gemerkt sein.
+- Ältere Projekte und die bestehenden Ziele STC / Pico / Arduino müssen weiterhin
+  normal öffnen und laufen.
+
+Bitte die genauen Schritte, dein Gerät und die iOS-Version melden sowie alles, was
+langsam lief, ein falsches Ergebnis zeigte oder sich nicht öffnen ließ.
+
 ## What to Test — 0.1.8 en-US
 
 0.1.7 shipped a broken save, and this build fixes it. If you saved a project from
