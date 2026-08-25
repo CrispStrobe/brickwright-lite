@@ -374,7 +374,10 @@ test('D7 CLOSED for the two 6502 benches: they ship an image and the example loa
     //    example's own program for these targets yet (that is D12's ASM
     //    emitter, not D7).
     const runner = readFileSync(path.join(GUI, 'lib/bw-debug/debug-runner.js'), 'utf8');
-    assert.match(runner, /selectedKind === 'z80' \|\| selectedKind === 'eater6502'\) \? null : await build\(\)/,
+    // The pin's guarantee: machine targets take the `null` arm and never
+    // call build(). The line grew a user-firmware branch (2026-08-25 —
+    // arbitrary .bin/.hex loading); the machine arm is unchanged.
+    assert.match(runner, /selectedKind === 'z80' \|\| selectedKind === 'eater6502'\) \? null\n\s*: userFirmware \? builtFromUserFirmware\(selectedKind\)\n\s*: await build\(\)/,
         'the machine path now builds an image -- re-measure Wave 7');
     assert.match(runner, /extracted machine booted with an empty ROM — load a program \(presets, file, or ASM tab\)/,
         'the empty-ROM status line changed -- re-measure Wave 7');

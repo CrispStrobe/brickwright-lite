@@ -1365,7 +1365,56 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     // ─── the verbs ───────────────────────────────────────────────────────
 
+    // ── arbitrary firmware ───────────────────────────────────────────
+    // A user-supplied image replaces the compile step entirely: the
+    // emulator runs THEIR bytes. No symbol table exists, so block glow,
+    // yield breakpoints and the variables view honestly disappear —
+    // run/pause/step-insn, pins, board and serial all still work.
+    let userFirmware = null; // {name, bytes: Uint8Array|null, text: string|null}
+
+    function builtFromUserFirmware(kind) {
+        const fw = userFirmware;
+        blockOf = new Map();
+        yieldOf = new Map();
+        const isHexKind = ['emulator', 'avr8js', 'atmega2560', 'attiny85', 'attiny88'].includes(kind);
+        if (isHexKind) {
+            const text = fw.text || (fw.bytes ? new TextDecoder().decode(fw.bytes) : '');
+            if (!/^\s*:/.test(text)) {
+                throw new Error(`${fw.name}: this engine takes Intel HEX (a text file of ':' records) — ` +
+                    'a raw .bin cannot say where its bytes live');
+            }
+            return { hex: text, image: null, symbols: null, c: null,
+                bytes: text.length, f_cpu: null, format: 'ihx' };
+        }
+        if (kind === 'rp2040js' || kind === 'stm32f0') {
+            const bytes = fw.bytes || new TextEncoder().encode(fw.text || '');
+            if (!bytes.length) throw new Error(`${fw.name}: empty firmware file`);
+            if (kind === 'rp2040js') {
+                const padded = bytes.length & 1 ? Uint8Array.of(...bytes, 0) : bytes;
+                return { hex: null, image: new Uint16Array(padded.buffer, padded.byteOffset, padded.length / 2),
+                    symbols: null, c: null, bytes: bytes.length, f_cpu: null, format: 'bin' };
+            }
+            // stm32f0: a REAL flash image — sanity-check the boot words so
+            // a wrong file fails with a sentence, not a silent HardFault.
+            if (bytes.length >= 8) {
+                const sp = bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
+                if ((sp >>> 24) !== 0x20) {
+                    throw new Error(`${fw.name}: word 0 is 0x${(sp >>> 0).toString(16)} — not an SRAM ` +
+                        'stack pointer, so this is not an STM32 flash image (vectors must come first)');
+                }
+            }
+            return { hex: null, image: bytes, symbols: null, c: null,
+                bytes: bytes.length, f_cpu: null, format: 'bin' };
+        }
+        throw new Error(`arbitrary firmware is not wired for the '${kind}' engine yet`);
+    }
+
     const runner = {
+        /** Use this image instead of compiling the blocks. */
+        setFirmware(fw) { userFirmware = fw || null; },
+        clearFirmware() { userFirmware = null; },
+        get firmwareName() { return userFirmware ? userFirmware.name : null; },
+
         state: snapshot,
 
         /** Build, attach, and run. The ⚑ of the debug world. */
@@ -1375,7 +1424,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     const device = String(projectStc(null)?.device || '').toLowerCase();
                     const selectedKind = selectDebugTargetKind(device, targetKind);
                     // Z80/6502 interactive interpreters: no compile step
-                    const built = (selectedKind === 'z80' || selectedKind === 'eater6502') ? null : await build();
+                    const built = (selectedKind === 'z80' || selectedKind === 'eater6502') ? null
+                        : userFirmware ? builtFromUserFirmware(selectedKind)
+                            : await build();
                     await attach(built);
                     // The user's breakpoints only became SETTABLE now: until a
                     // target exists there is nothing to set them on, and until

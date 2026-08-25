@@ -89,7 +89,7 @@ class DebugPanel extends React.Component {
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
-            machineConfig: null, serialInput: ''};
+            machineConfig: null, serialInput: '', firmwareName: null};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
@@ -272,13 +272,42 @@ class DebugPanel extends React.Component {
             z80: 'z80', zx48: 'z80', zx128: 'z80',
         };
         const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', arm: 'stm32f0', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
-        const kind = DEVICE_TO_KIND[dev] || CORE_TO_KIND[core];
+        // The user's remembered pick for THIS device wins over the map:
+        // choosing an engine in the picker persists per device (see
+        // onChange below), so "I always debug my Uno on the 2560 engine"
+        // survives a reload. An unknown stored kind (an engine that no
+        // longer exists) falls back to the map rather than a dead panel.
+        let stored = null;
+        try { stored = localStorage.getItem(`bw-emulator-pref:${dev}`); } catch { /* private mode */ }
+        const kind = stored || DEVICE_TO_KIND[dev] || CORE_TO_KIND[core];
         if (kind && kind !== this.state.kind) {
             // Changing the kind while a runner exists would leave it on the
             // wrong engine. Destroy it so the next Start creates a fresh one.
             this._teardownRunner();
             this.setState({ kind, runner: null, ui: { phase: 'idle', message: '' } });
         }
+    }
+
+    async onFirmwareFile (e) {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = ''; // same file again should re-trigger
+        if (!file) return;
+        const buf = new Uint8Array(await file.arrayBuffer());
+        const isText = /\.(hex|ihx)$/i.test(file.name) || (buf.length && buf[0] === 0x3a);
+        this._userFirmware = {
+            name: file.name,
+            bytes: isText ? null : buf,
+            text: isText ? new TextDecoder().decode(buf) : null
+        };
+        // The next Start must attach fresh with this image.
+        this._teardownRunner();
+        this.setState({firmwareName: file.name, runner: null, ui: {phase: 'idle', message: ''}});
+    }
+
+    onFirmwareClear () {
+        this._userFirmware = null;
+        this._teardownRunner();
+        this.setState({firmwareName: null, runner: null, ui: {phase: 'idle', message: ''}});
     }
 
     syncProjectTokens (prevProps, initial) {
@@ -341,6 +370,9 @@ class DebugPanel extends React.Component {
                 if (this.props.onRunnerChange) this.props.onRunnerChange(runner, ui);
             }
         });
+        if (this._userFirmware && typeof runner.setFirmware === 'function') {
+            runner.setFirmware(this._userFirmware);
+        }
         if (this.props.onRunnerChange) this.props.onRunnerChange(runner, this.state.ui);
         // setState is async, so hand the instance back directly rather than
         // reading it out of state on the very next line.
@@ -461,13 +493,50 @@ class DebugPanel extends React.Component {
                         explicit that an interface hiding the differences "produces a
                         front end that lies to the user the moment it is pointed at
                         real hardware". So this chooses; it does not adapt. */}
+                    {/* Arbitrary firmware: run YOUR .bin/.hex instead of the
+                        blocks. No symbols, so glow/yield-breakpoints disappear
+                        — pins, board, serial and stepping stay. */}
+                    <span style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                        <label style={{...BTN, padding: '3px 6px', cursor: 'pointer'}}
+                            title={'Load a firmware file (.bin for Pico/STM32, .hex/.ihx for 8051/AVR) and run it instead of the blocks'}>
+                            {'📂'}
+                            <input
+                                type="file"
+                                accept=".bin,.hex,.ihx"
+                                style={{display: 'none'}}
+                                disabled={running || paused || busy}
+                                onChange={e => this.onFirmwareFile(e)}
+                            />
+                        </label>
+                        {this.state.firmwareName ? (
+                            <span style={{fontSize: 11, opacity: 0.85}}>
+                                {this.state.firmwareName}
+                                <button
+                                    style={{...BTN, padding: '0 4px', marginLeft: 3}}
+                                    title={'Back to running the blocks'}
+                                    onClick={() => this.onFirmwareClear()}
+                                >{'✕'}</button>
+                            </span>
+                        ) : null}
+                    </span>
                     {this.state.kinds && this.state.kinds.length > 1 ? (
                         <span style={{display: 'flex', alignItems: 'center', gap: 6}}>
                             <select
                                 value={this.state.kind}
                                 disabled={running || paused || busy}
                                 title={(this.state.kinds.find(k => k.kind === this.state.kind) || {}).description}
-                                onChange={e => this.setState({kind: e.target.value})}
+                                onChange={e => {
+                                    const kind = e.target.value;
+                                    // Persist per device — the setting the
+                                    // picker IS. Cleared by picking the
+                                    // device's default again.
+                                    try {
+                                        const rt = this.props.vm && this.props.vm.runtime;
+                                        const dev = rt && rt.bwDeviceId;
+                                        if (dev) localStorage.setItem(`bw-emulator-pref:${dev}`, kind);
+                                    } catch { /* private mode */ }
+                                    this.setState({kind});
+                                }}
                                 style={{...BTN, padding: '3px 6px'}}
                             >
                                 {this.state.kinds.map(k => (
