@@ -7188,7 +7188,18 @@ class SB3Creator {
         const cond = () => this.cCond(b.inputs.CONDITION ? b.inputs.CONDITION[1] : null, blocks);
         const line = (t) => [pad + t];
         switch (b.opcode) {
-            case 'control_forever': return [pad + 'for (;;) {', ...sub('SUBSTACK'), pad + '}'];
+            case 'control_forever': {
+                // ARM: a forever iteration yields to the ms edge, like the
+                // reference schedulers (generated JS / MicroPython run one
+                // pass per ms) - the emulated core stops grinding a poll
+                // loop at 125 MHz, and silicon stops burning full power.
+                if (this._core === 'arm') {
+                    return [pad + 'for (;;) {', ...sub('SUBSTACK'),
+                        pad + '    bw_idle();               /* forever yields: ms cadence, not a spin */',
+                        pad + '}'];
+                }
+                return [pad + 'for (;;) {', ...sub('SUBSTACK'), pad + '}'];
+            }
             case 'control_repeat': {
                 // The counter is scoped to its own block so nested REPEATs never collide,
                 // and declared up front because C89 wants declarations before statements.
@@ -7208,7 +7219,10 @@ class SB3Creator {
                 this._cUses.delay = true;
                 return line(`delay_ms(${this.cMs(b.inputs.DURATION, blocks)});`);
             }
-            case 'control_wait_until': return line(`while (!(${cond()})) ;`);
+            case 'control_wait_until': {
+                if (this._core === 'arm') return line(`while (!(${cond()})) bw_idle();  /* poll at the ms edge */`);
+                return line(`while (!(${cond()})) ;`);
+            }
             case 'control_stop': {
                 const option = f('STOP_OPTION');
                 if (option === 'this script') return line('return;');
@@ -10569,6 +10583,12 @@ class SB3Creator {
                 '#define BW_PADS(n)           BW_MMIO(0x4001c004u + (uint32_t)(n) * 4u)',
                 '#define BW_TIMER_TIMELR      BW_MMIO(0x4005400cu)',
                 '#define BW_TIMER_TIMEHR      BW_MMIO(0x40054008u)',
+                '#define BW_TIMER_ALARM0      BW_MMIO(0x40054010u)',
+                '#define BW_TIMER_INTR        BW_MMIO(0x40054034u)',
+                '#define BW_TIMER_INTE        BW_MMIO(0x40054038u)',
+                '#define BW_NVIC_ISER         BW_MMIO(0xe000e100u)',
+                '#define BW_NVIC_ICPR         BW_MMIO(0xe000e280u)',
+                '#define BW_SCB_VTOR          BW_MMIO(0xe000ed08u)',
                 '#define BW_WATCHDOG_TICK     BW_MMIO(0x4005802cu)',
                 '#define BW_ADC_CS            BW_MMIO(0x4004c000u)',
                 '#define BW_ADC_RESULT        BW_MMIO(0x4004c004u)',
@@ -10582,6 +10602,35 @@ class SB3Creator {
                 '#define BW_PWM_DIV(s)        BW_MMIO(0x40050004u + (uint32_t)(s) * 0x14u)',
                 '#define BW_PWM_CC(s)         BW_MMIO(0x4005000cu + (uint32_t)(s) * 0x14u)',
                 '#define BW_PWM_TOP(s)        BW_MMIO(0x40050010u + (uint32_t)(s) * 0x14u)', '');
+            out.push('/* Sleep to the next millisecond edge instead of spinning against it.',
+                ' * TIMER ALARM0 is armed at the edge and the core executes WFE. The',
+                ' * alarm IRQ vectors through bw_vectors to bw_alarm_irq, which clears',
+                ' * the TIMER latch; exception return sets the event register, so a',
+                ' * WFE that races the alarm falls through instead of sleeping past',
+                ' * it (ARMv6-M WFE semantics). A stale event costs one extra pass -',
+                ' * the loop re-arms and sleeps on the next call. On the simulator the',
+                ' * emulator fast-forwards the sleep; on silicon this is the standard',
+                ' * low-power idle. Unused in a build with no loops or waits - the',
+                ' * compiler drops the unused statics. */',
+                'static void bw_alarm_irq(void)',
+                '{',
+                '    BW_TIMER_INTR = 1u;                /* clear the latched alarm */',
+                '}',
+                '/* Every slot points at the wake handler: the ONLY enabled interrupt',
+                ' * is TIMER_IRQ_0, so nothing else can ever vector. Slots 0/1 (SP,',
+                ' * reset) are unused - this SRAM build enters at main, not via a',
+                ' * reset fetch. RP2040 requires 256-byte VTOR alignment. */',
+                'typedef void (*bw_vec_t)(void);',
+                '__attribute__((aligned(256))) static const bw_vec_t bw_vectors[48] = {',
+                ...Array.from({length: 6}, () => '    ' + Array.from({length: 8}, () => 'bw_alarm_irq').join(', ') + ','),
+                '};',
+                'static uint32_t bw_calm;',
+                'static void bw_idle(void)',
+                '{',
+                '    uint32_t us = BW_TIMER_TIMELR;',
+                '    BW_TIMER_ALARM0 = us + (1000u - us % 1000u);   /* the next ms edge */',
+                '    __asm volatile ("wfe");',
+                '}', '');
         } else if (this._core === 'avr') {
             out.push('#include <avr/io.h>',
                 '#include <avr/interrupt.h>',
@@ -10700,6 +10749,9 @@ class SB3Creator {
                 ' * every loop iteration (Scratch\'s own scheduling contract). There is',
                 ' * NO tick ISR on this core: the RP2040\'s TIMER counts microseconds in',
                 ' * hardware, so program time is read, not maintained. */', '');
+            // The idle scheduler below reads the clock every pass, so the
+            // ARM tasks build always carries bw_now.
+            this._cUses.now = true;
             if (this._cUses.now || this._cUses.blockDelay) {
                 out.push('/* TIMELR latches TIMEHR: the pair is a coherent 64-bit read, so the',
                     ' * millisecond count wraps as a uint32 truncation of a monotonic count',
@@ -10790,7 +10842,8 @@ class SB3Creator {
             }
         } else if (this._cUses.delay && this._core === 'arm') {
             out.push('/* No scheduler in this build; the hardware timer still counts, so a',
-                ' * blocking delay is a wait on the microsecond counter. */',
+                ' * blocking delay is a wait on the microsecond counter - SLEPT in',
+                ' * millisecond steps (bw_idle), never spun. */',
                 'static uint32_t bw_now(void)',
                 '{',
                 '    uint32_t lo = BW_TIMER_TIMELR;',
@@ -10800,7 +10853,7 @@ class SB3Creator {
                 'static void delay_ms(uint32_t ms)',
                 '{',
                 '    uint32_t start = bw_now();',
-                '    while ((int32_t)(bw_now() - start - ms) < 0) ;',
+                '    while ((int32_t)(bw_now() - start - ms) < 0) bw_idle();',
                 '}', '');
         } else if (this._cUses.delay && this._core !== '6502' && this._core !== 'z80') {
             out.push(...(this._core === 'avr' ? [
@@ -13220,7 +13273,25 @@ class SB3Creator {
         out.push('}', '',
             (this._core !== '8051' && this._core !== 'z80') ? 'int main(void)' : 'void main(void)',
             '{', '    bw_setup();');
-        if (this._cTasks && (this._core === 'arm' || this._core === '6502')) {
+        if (this._cTasks && this._core === 'arm') {
+            out.push('',
+                '    BW_SCB_VTOR = (uint32_t)bw_vectors;  /* the wake handler owns every vector */',
+                '    BW_TIMER_INTE = 1u;            /* alarm 0 may interrupt */',
+                '    BW_NVIC_ISER = 1u;             /* TIMER_IRQ_0 wakes bw_idle */',
+                '',
+                '    for (;;) {                     /* no tick to start: time is read */',
+                '        uint32_t pass_ms = bw_now();',
+                ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
+                '        /* Two full passes inside one millisecond: sleep to the next ms',
+                '         * edge instead of spinning the core against it. The reference',
+                '         * schedulers (the generated JS and MicroPython) sleep 1 ms after',
+                '         * EVERY pass, so two passes per millisecond is the more generous',
+                '         * reading of the same contract — tasks yield in milliseconds,',
+                '         * and a pass whose work crosses the edge resets the count. */',
+                '        if (bw_now() == pass_ms) { if (++bw_calm >= 2u) { bw_calm = 0u; bw_idle(); } }',
+                '        else bw_calm = 0u;',
+                '    }');
+        } else if (this._cTasks && this._core === '6502') {
             out.push('',
                 '    for (;;) {                     /* no tick to start: time is read */',
                 ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
@@ -13246,7 +13317,10 @@ class SB3Creator {
             out.push(...mainNote.map((l) => `    ${l}`));
             out.push(...mainBody);
         } else if (this._core === 'arm') {
-            out.push('');
+            out.push('    BW_SCB_VTOR = (uint32_t)bw_vectors;  /* the wake handler owns every vector */',
+                '    BW_TIMER_INTE = 1u;            /* alarm 0 may interrupt */',
+                '    BW_NVIC_ISER = 1u;             /* TIMER_IRQ_0 wakes bw_idle */',
+                '');
             out.push(...mainNote.map((l) => `    ${l}`));
             out.push(...mainBody);
         } else {
