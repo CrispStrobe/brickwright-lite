@@ -5551,7 +5551,8 @@
       "program": "eater6502-blink/program.bw",
       "circuit": "eater6502-blink/circuit.json",
       "intro": "eater6502-blink/intro.md",
-      "introDE": "eater6502-blink/intro.de.md"
+      "introDE": "eater6502-blink/intro.de.md",
+      "rom": "eater6502-blink/rom.bin"
     },
     "kind": "full"
   },
@@ -5601,7 +5602,8 @@
       "circuit": "eater6502-vdp-hello/circuit.json",
       "intro": "eater6502-vdp-hello/intro.md",
       "introDE": "eater6502-vdp-hello/intro.de.md",
-      "expected": "eater6502-vdp-hello/EXPECTED.md"
+      "expected": "eater6502-vdp-hello/EXPECTED.md",
+      "rom": "eater6502-vdp-hello/rom.bin"
     },
     "kind": "circuit"
   },
@@ -5635,9 +5637,10 @@
       "circuit": "z80-pd-bench/circuit.json",
       "intro": "z80-pd-bench/intro.md",
       "introDE": "z80-pd-bench/intro.de.md",
-      "expected": "z80-pd-bench/EXPECTED.md"
+      "expected": "z80-pd-bench/EXPECTED.md",
+        "rom": "z80-pd-bench/rom.bin"
     },
-    "kind": "circuit"
+    "kind": "full"
   },
   {
     "id": "ttl-clock-module",
