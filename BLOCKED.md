@@ -39,8 +39,16 @@ every one of the nine names was checked rather than assumed: `grep -rl` across
 `test/` and `scripts/` finds **0 actual file reads** for each, against **3** for
 THIRD-PARTY-NOTICES.md — the control, deliberately left out.
 
-Proved rather than asserted: the push that CHANGED build.yml started a Build
-(`34cf38b7`), and the ledger-only push that followed started none.
+`vendor-freshness.yml` got the same nine names in `5bf3d14db`, and it was the
+one actually starving — five consecutive push runs `queued` and never started.
+Its "every push AND nightly" header still holds: the push run checks the
+vendored tree against `vendor-pins.json` (inputs: `vendor-pins.json`,
+`overlay/**`, `scripts/**` — no sync script touches any of the nine), and
+`paths-ignore` narrows only `push`, so the 04:17 staleness alarm is unchanged.
+
+Proved rather than asserted, in both directions and for both workflows: the
+pushes that CHANGED a workflow file started runs (`34cf38b7`, `5bf3d14d`), and
+the ledger-only pushes started none.
 
 **Workaround that does produce a verdict**, and what I used rather than
 reporting an unverified landing as verified: push the current `main` sha to a
