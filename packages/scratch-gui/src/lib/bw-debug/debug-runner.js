@@ -997,6 +997,24 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             });
         }
 
+        // RX into the machine — same both-shapes contract as the 8051
+        // path (a typed line arrives as a string, the SerialConsole
+        // sends single keycodes as numbers). USART1's RXNE/RDR model
+        // pops the queue; a WFI-parked poll loop sees RXNE on its next
+        // millisecond tick.
+        if (f0Adapter && f0Adapter.feedSerial) {
+            runner.sendSerial = (data) => {
+                if (typeof data === 'number') {
+                    f0Adapter.feedSerial(data & 0xff);
+                    return;
+                }
+                const text = String(data);
+                for (let i = 0; i < text.length; i++) {
+                    f0Adapter.feedSerial(text.charCodeAt(i));
+                }
+            };
+        }
+
         setValueResolver((blockId) => runner.valuesAtBlock(blockId));
         if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
         symbols = built.symbols;
