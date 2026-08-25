@@ -1148,6 +1148,46 @@ class CircuitTab extends React.Component {
             } catch (e) {
                 console.warn('[brickwright] example controller layout failed', e);
             }
+            // The example's own ROM, if it ships one. Three machine benches
+            // used to extract a machine cleanly and then boot with ZERO ROM
+            // bytes — the bus extract was never the problem, there was simply
+            // no image (D7). Now that sb3-creator builds and declares them,
+            // the bench that HAS an image boots its own program instead of
+            // asking the learner to pick a generic preset from the loader.
+            //
+            // Non-fatal on purpose, like the faceplate above: a machine with
+            // no image is still the machine the example wires, and the
+            // preset loader remains available. The event is the SAME one
+            // CircuitDesigner's preset buttons dispatch, so it takes the
+            // established path — this tab stashes it to window.__bwPendingMedia
+            // and debug-panel applies it when the panel mounts, which is what
+            // makes an example loaded BEFORE the debugger exists still boot.
+            try {
+                const romPath = ex.files && ex.files.rom;
+                if (romPath) {
+                    // The machine kind comes off the parts actually on the
+                    // board, not off the example id or its category — the
+                    // same test CircuitDesigner uses to decide it has a
+                    // retro CPU at all.
+                    const cpu = data.parts.find(pt => pt.kind === 'w65c02' || pt.kind === 'z80');
+                    if (cpu) {
+                        const rres = await fetch(`examples/${romPath}`);
+                        if (!rres.ok) throw new Error(`HTTP ${rres.status}`);
+                        const bytes = new Uint8Array(await rres.arrayBuffer());
+                        window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
+                            detail: {
+                                slotId: 'rom',
+                                bytes,
+                                kind: cpu.kind === 'z80' ? 'z80' : 'eater6502',
+                                profile: null,
+                                name: romPath.split('/').pop(),
+                            },
+                        }));
+                    }
+                }
+            } catch (e) {
+                console.warn('[brickwright] example ROM load failed', e);
+            }
             const pins = !!(prog && prog.pins);
             // Switching to the Designer is the point of clicking an example —
             // leaving the user on the gallery with an invisible change would be

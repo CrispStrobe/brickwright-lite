@@ -51,6 +51,45 @@ const EXAMPLES = path.join(root, 'overlay/scratch-gui/examples');
  *  reported eight false unwired pins on a correctly wired bench. */
 const PAD_PROVIDERS = new Set(['mcu', 'stc_mcu', 'stc15_mcu', 'arduino_uno', 'arduino_nano',
     'arduino_mega', 'pi_pico', 'attiny85', 'attiny88', 'w65c22', 'microbit']);
+
+/** A core may ADDRESS a pad under a name the board does not use for the
+ *  terminal. The w65c22 case above needed only the part, because there the
+ *  names already matched: the program says PB0 and the VIA's terminal is pb0.
+ *  The Z80 goes one step further -- the program says OUT0 and the '374's
+ *  terminal is q0 -- so the name has to be resolved too, or eight correctly
+ *  wired LEDs read as eight unwired pins.
+ *
+ *  TWO LIMITS, measured by mutating this alias rather than assumed:
+ *    - Aiming it at the '374's D inputs instead of its Q outputs does NOT go
+ *      red, and that is correct: the D pins sit on the Z80 data bus and so are
+ *      genuinely wired. "Is this pin wired to something" is true either way.
+ *      That OUT0 is the Q side is proved where it can be -- sb3-creator's
+ *      machine-roms gate reads the emitted __sfr address and the extracted
+ *      latch port and requires them equal, then boots the image and watches
+ *      the eight LEDs walk. This gate is not the place for it.
+ *    - Aiming it at the wrong CHIP does go red, which is what the per-part
+ *      lookup below buys.
+ *
+ *  Deliberately NOT extended to the 74HC244 input side: that chip is two
+ *  4-bit halves (1a0-1a3, 2a0-2a3) and which half IN0 means is a wiring
+ *  convention this gate has not measured. An unmeasured alias would turn a
+ *  real miss into a silent pass, so IN pins stay unresolved and get flagged. */
+const PAD_ALIASES = [
+    {part: '74hc374', from: /^out([0-7])$/, to: m => `q${m[1]}`},
+];
+
+/** Every terminal name a declared pad could legitimately be wired as. */
+const padResolves = (row, pad) => {
+    if (row.wired.has(pad)) return true;
+    for (const a of PAD_ALIASES) {
+        const m = pad.match(a.from);
+        if (!m) continue;
+        // The aliased terminal must be wired ON THAT PART, not merely present
+        // somewhere in the circuit under the same name.
+        if (row.wiredOn?.get(a.part)?.has(a.to(m))) return true;
+    }
+    return false;
+};
 const INFRA = new Set(['breadboard', 'breadboard_full', 'breadboard_half', 'breadboard_mini', 'meter']);
 
 /** Interactive or observable parts a learner expects to do something. */
@@ -171,6 +210,12 @@ async function survey () {
         } catch (err) { row.loadError = err.message.slice(0, 80); continue; }
         const byId = new Map(c.parts.map((p) => [p.id, p]));
         const wired = new Set();        // every terminal in a multi-terminal net
+        // ...and the same, kept per PART KIND. `wired` is a flat set of names,
+        // so it cannot tell the '374's q0 from the Z80's d0; an alias checked
+        // against it passes while pointing at the wrong silicon (measured: an
+        // alias aimed at the latch's D inputs instead of its Q outputs stayed
+        // green). Alias resolution uses this instead.
+        const wiredOn = new Map();      // part kind -> terminals wired on it
         const padsOf = new Map();       // part id -> signal pads it shares a net with
         const anyWire = new Set();
         for (const net of (c.resolvedNets || [])) {
@@ -181,13 +226,20 @@ async function survey () {
             const pads = new Set(real.filter((t) => PAD_PROVIDERS.has(byId.get(t.part)?.kind))
                 .map((t) => String(t.terminal).toLowerCase()).filter((t) => !isRail(t)));
             for (const t of real) {
-                wired.add(String(t.terminal).toLowerCase());
+                const term = String(t.terminal).toLowerCase();
+                wired.add(term);
+                const kind = byId.get(t.part)?.kind;
+                if (kind) {
+                    if (!wiredOn.has(kind)) wiredOn.set(kind, new Set());
+                    wiredOn.get(kind).add(term);
+                }
                 anyWire.add(t.part);
                 if (!padsOf.has(t.part)) padsOf.set(t.part, new Set());
                 for (const p of pads) padsOf.get(t.part).add(p);
             }
         }
         row.wired = wired;
+        row.wiredOn = wiredOn;
         row.parts = c.parts;
         row.padsOf = padsOf;
         row.anyWire = anyWire;
@@ -278,8 +330,10 @@ test('every declared pin is wired to something', () => {
     const found = [];
     for (const r of ROWS) {
         if (!r.hasCircuit || !r.wired) continue;
-        const missing = r.pins.filter((p) => !r.wired.has(p.pad.toLowerCase())
-            && !ON_PCB_PADS.has(`${r.id}:${p.pad.toLowerCase()}`));
+        const missing = r.pins.filter((p) => {
+            const pad = p.pad.toLowerCase();
+            return !padResolves(r, pad) && !ON_PCB_PADS.has(`${r.id}:${pad}`);
+        });
         if (missing.length) found.push({id: r.id, detail: missing.map((p) => `${p.name}@${p.pad}`).join(' ')});
     }
     const unexpected = found.filter((f) => !KNOWN_UNWIRED.has(f.id));
