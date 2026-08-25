@@ -172,45 +172,84 @@ test('the scope record is chosen, and a full RC step now fits in one', async () 
 
 // ── signals-rl-response / pc52-inductor-filter ─────────────────────────────
 
-test('OPEN DEFECT: the RL lesson names an RLC bench, and L/R holds only in its first 300 us', async () => {
-    assert.equal(lesson('signals-rl-response').exampleId, 'pc52-inductor-filter');
-    const {board, data} = await load('pc52-inductor-filter');
+test('the RL lesson is on an RL bench, and the law holds across the whole response', async () => {
+    // Was an OPEN DEFECT. signals-rl-response was taught on pc52-inductor-filter,
+    // an R-L-C, where the RL law holds only while the capacitor is still a short
+    // — 0.9870 of ideal at 300 us, 0.9229 at 1 ms, and by 2 ms the current has
+    // TURNED AROUND. pc89-rl-step (sb3-creator `4512354`) is src -> 100 ohm ->
+    // 10 mH -> gnd and nothing else.
+    assert.equal(lesson('signals-rl-response').exampleId, 'pc89-rl-step');
+    const {board, data} = await load('pc89-rl-step');
     const L = data.parts.find(p => p.id === 'l').params.henrys;
-    const rSeries = data.parts.find(p => p.id === 'r').params.ohms;
-    const rLoad = data.parts.find(p => p.id === 'load').params.ohms;
-    const cap = data.parts.find(p => p.id === 'c').params.farads;
-    assert.deepEqual([L, rSeries, rLoad, cap], [0.01, 100, 1000, 0.0001],
-        'pc52 changed — re-measure Wave 6');
+    const R = data.parts.find(p => p.id === 'r').params.ohms;
+    assert.deepEqual([L, R], [0.01, 100], 'pc89 changed — re-measure Wave 6');
+    assert.ok(!data.parts.some(p => p.kind === 'capacitor'),
+        'a capacitor appeared on the RL bench — that is the defect this example exists to avoid');
 
     // Nothing in the app steps this source for the learner; the lesson has to.
     board.setPartParam('src', 'volts', 0);
     board.advanceTo(200n * MS);
     board.setPartParam('src', 'volts', 5);
-    // `advanceTo` only moves forward, so every sample is taken once, in order,
-    // and read back from the record afterwards.
+    const ideal = us => 0.05 * (1 - Math.exp(-us / 100));
     const I = {};
-    for (const us of [50, 100, 200, 300, 500, 1000]) {
+    for (const us of [25, 50, 100, 200, 300, 500, 1000, 2000]) {
         board.advanceTo((200n * MS) + (BigInt(us) * US));
         I[us] = (5 - terminalVolts(board)['r.b']) / 100;   // the hint's own method
     }
-    // Inside the window the capacitor is still a short, so the current obeys
-    // the RL law with R = 100 ohm and an asymptote of 50 mA.
-    const ideal = us => 0.05 * (1 - Math.exp(-us / 100));
-    for (const us of [50, 100, 200, 300]) {
+    // The whole response, not a window: within a hundredth of a percent out to
+    // 5 tau and past it. On pc52 the same comparison fell to 0.84.
+    for (const us of [25, 50, 100, 200, 300, 500, 1000, 2000]) {
         const ratio = I[us] / ideal(us);
-        assert.ok(ratio > 0.98 && ratio <= 1.0,
-            `at ${us} us the measured current is ${(ratio * 100).toFixed(2)} % of the ideal RL curve`);
+        assert.ok(ratio > 0.9999 && ratio < 1.0002,
+            `at ${us} us the measured current is ${(ratio * 100).toFixed(4)} % of the ideal RL curve`);
     }
-    near(I[100], 0.031556, 5e-6, 'I at t = 1 tau (63 % of 50 mA)');
-    // And outside it the capacitor owns the response: the current turns around.
-    near(I[500], 0.048161, 5e-6, 'the current peaks near 500 us');
-    assert.ok(I[1000] < I[500], 'and falls again — an RL step response never does that');
-    board.advanceTo((200n * MS) + (500n * MS));
-    const settled = (5 - terminalVolts(board)['r.b']) / 100;
-    near(settled, 0.0045455, 1e-6,
-        'the circuit settles at 5 V / 1100 ohm, not at the RL asymptote of 50 mA');
-    assert.ok(settled / 0.05 < 0.1,
-        'the settled current is now within a decade of the RL asymptote — re-measure Wave 6');
+    near(I[100], 0.0316086, 5e-6, 'I at t = 1 tau — 63.2 % of the 50 mA asymptote');
+    // And it SETTLES at the RL asymptote rather than walking off to a divider.
+    board.advanceTo((200n * MS) + (20n * MS));
+    near((5 - terminalVolts(board)['r.b']) / 100, 0.05, 1e-6, 'settles at V/R = 50 mA');
+});
+
+test('OPEN DEFECT: pc52 still cannot be both an RL bench and a resonant one', async () => {
+    // The reason pc89 is a NEW bench rather than a changed pc52, pinned so the
+    // next person does not do what I nearly did.
+    //
+    // signals-resonance still names pc52 and still needs it to resonate, which
+    // it does at C = 0.1 uF — the Wave 6 review measured +3.871 dB at 5032.9 Hz
+    // and this test re-derives it. But at 0.1 uF the RL window is destroyed:
+    // ratio 0.676 at 50 us, 0.193 at 100 us, because the current rings at 5 kHz
+    // instead of rising. The two open defects on one bench want opposite parts.
+    //
+    // The sharp bit: changing C to close the resonance defect would have left
+    // the OLD RL sentinel green — it asserted the RL law fails after 300 us,
+    // which would still have been true, more so. The regression would have been
+    // silent. That is why this is pinned as a conflict rather than left implied.
+    assert.equal(lesson('signals-resonance').exampleId, 'pc52-inductor-filter');
+    const {data} = await load('pc52-inductor-filter');
+    assert.equal(data.parts.find(p => p.id === 'c').params.farads, 0.0001,
+        'pc52 capacitor changed — if it is now 0.1 uF, signals-resonance may be fixed and ' +
+        'signals-rl-response must NOT be moved back here; re-measure both');
+
+    const resonant = structuredClone(data);
+    resonant.parts.find(p => p.id === 'c').params.farads = 1e-7;
+    const {Circuit} = await boot();
+    const rb = Circuit.fromJSON(structuredClone(resonant)).board;
+    const inNet = netOfTerminal(rb, 'src', 'pos');
+    const outNet = netOfTerminal(rb, 'load', 'a');
+    const f0 = 1 / (2 * Math.PI * Math.sqrt(0.01 * 1e-7));
+    near(f0, 5032.9, 0.5, 'the resonant frequency signals-resonance would get');
+    near(bodePoint(rb, 'src', inNet, outNet, f0).magDb, 3.871, 0.05,
+        'and the peak it would see — a real peak, above 0 dB');
+
+    // The same change, measured against the RL law the other lesson needs.
+    const lb = Circuit.fromJSON(structuredClone(resonant)).board;
+    lb.setPartParam('src', 'volts', 0);
+    lb.advanceTo(200n * MS);
+    lb.setPartParam('src', 'volts', 5);
+    lb.advanceTo((200n * MS) + (100n * US));
+    const iAt1Tau = (5 - terminalVolts(lb)['r.b']) / 100;
+    assert.ok(iAt1Tau / (0.05 * (1 - Math.exp(-1))) < 0.25,
+        `at one time constant the resonant bench reaches only ${(iAt1Tau * 1000).toFixed(3)} mA ` +
+        'of the 31.6 mA the RL law predicts — the capacitor that makes it resonate makes it useless as an RL');
 });
 
 // ── signals-complex-impedance + signals-cutoff-phase / 50-rc-scope ─────────
@@ -666,7 +705,7 @@ test('the predict step has its inputs on screen now, which the FFT half still la
 test('the Wave 6 revisions are present, EN and DE, at the content version this review recorded', () => {
     assert.deepEqual(Object.fromEntries(WAVE.lessons.map(l => [l.id, l.version])), {
         'signals-rc-response': 5,
-        'signals-rl-response': 2,
+        'signals-rl-response': 3,
         'signals-complex-impedance': 3,
         'signals-cutoff-phase': 3,
         'signals-bode-sweep': 4,

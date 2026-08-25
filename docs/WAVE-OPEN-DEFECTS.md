@@ -32,7 +32,7 @@ Two counting rules, so the numbers are comparable:
 | **D5** | Four faceplate layouts ship no `"mode": "play"`, and `ControllerPanel` defaults to `edit` where every input control renders `disabled`; the panel's own `toJSON`/`fromJSON` drop `mode` entirely, so even a corrected file is lost on the first save | sb3-creator (examples) + bw-board (`controller.js`) + lite (`gui.jsx`) | **3** | 4 | **FIXED** — three repos |
 | **D6** | `bw-circuit-changed` is dispatched only when the derived **pin declarations** change, so on an MCU-less bench no wiring edit can raise it | bw-circuit-ui (`CircuitDesigner`) + lite (`circuit-tab.jsx`) | **3** | 1, 6, 7 | **FIXED** — `onCircuitEdit` |
 | **D7** | Three machine benches boot with an empty ROM: no example ships an image, `sb3-creator` has no assembler, and the runner skips the build for machine targets | sb3-creator (examples) | **3** | 7 | open — see PLAN.md |
-| **D8** | `pc52-inductor-filter` is an RLC used as an RL bench; the L/R law holds for its first ~300 µs and then the 100 µF takes over | sb3-creator (example) | **3** | 1, 6 | open — see PLAN.md |
+| **D8** | `pc52-inductor-filter` is an RLC used as an RL bench; the L/R law holds for its first ~300 µs and then the 100 µF takes over | sb3-creator (example) | **3** | 1, 6 | **FIXED** — a new RL bench |
 | **D9** | A Bode point costs 10/f seconds of simulated time (`settleCycles` 6 + `measureCycles` 4) and `SweepPanel` runs the sweep synchronously | bw-board (`runAcSweep`) + bw-circuit-ui | **2** | 6 | open — see PLAN.md |
 | **D10** | `pc50-two-stage-rc` corners at 0.159 Hz, so the decade below the corner its own lesson asks for costs 629 s of simulation per point | sb3-creator (example) | **2** | 6 | **FIXED** — 100 µF → 100 nF |
 | **D11** | `43-rc-timing` has no controls at all, so the charging step it measures happens once and cannot be repeated | sb3-creator (example) | **2** | 2, 6 | **FIXED** — a discharge switch |
@@ -62,10 +62,10 @@ Two counting rules, so the numbers are comparable:
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | open — the last of 67 |
 
-**36 defects. Fifteen are closed** — D1, D3, D4, D5, D6, D10, D11, D14, D15,
-D16, D17, D19, D33 and D35 by repair, and D34 by re-measurement, which is a different and
+**36 defects. Sixteen are closed** — D1, D3, D4, D5, D6, D8, D10, D11, D14,
+D15, D16, D17, D19, D33 and D35 by repair, and D34 by re-measurement, which is a different and
 weaker claim: it stopped reproducing between the Wave 1 vendor and today, and
-this campaign only found that out. Together they account for **51 of the 89
+this campaign only found that out. Together they account for **54 of the 89
 lesson-slots** the table counts, and D1 alone is 28 of them. Every row still open
 is recorded in `PLAN.md` with what blocks it and who owns it.
 
@@ -75,6 +75,35 @@ Pocket Calculator repair had invalidated and found instead that the repair was
 half of one. D35 is closed in the same pass; D36 is the residue it left, named
 rather than tolerated, and ratcheted by
 `test/simulator-driver-controls-respond.test.mjs` so it can only shrink.
+
+**D8 was closed on 2026-08-25** (sb3-creator `4512354`) with a NEW bench,
+`pc89-rl-step` — `src → 100 Ω → 10 mH → gnd` and nothing else — because the
+obvious fix would have opened another defect while looking like it closed one.
+
+The obvious fix was to change `pc52`'s capacitor, the same one-parameter move
+that closed D10. Measured, C = 0.1 µF gives `signals-resonance` exactly the peak
+the Wave 6 review predicted (**+3.871 dB at 5032.9 Hz**, and the response stops
+being monotone). It also destroys the RL window: ratio **0.676 at 50 µs** and
+**0.193 at 100 µs**, because the current rings at 5 kHz instead of rising.
+**The two open defects on `pc52` want opposite capacitors.**
+
+And the failure would have been silent. The old RL sentinel asserted "L/R holds
+only in its first 300 µs" — after that change it would still have been true,
+more so. So the conflict is now pinned as its own `OPEN DEFECT:` test, and the
+mutation proves it: changing `pc52`'s capacitor fires two tests today where it
+would have fired none.
+
+On `pc89` the RL law holds to within **0.01 %** at every point out to 5τ, against
+0.987 at 300 µs and a reversal by 2 ms on `pc52`. τ = L/R = 100 µs and
+I∞ = V/R = 50 mA are the numbers `signals-rl-response` already taught, so its
+arithmetic is untouched and only the caveat goes.
+
+**One of D8's three lessons moved, not three.** `electricity-inductor` teaches
+the RLC contrast on purpose — "the 100 µF capacitor on the load node owns the
+slow tail; the inductor owns the fast jump" — and `signals-resonance` needs the
+capacitor. Both stay on `pc52` and both are correct about the bench they name.
+Only `signals-rl-response` was being taught on the wrong one; it is version 3 and
+points at `pc89-rl-step`.
 
 **D4 was closed on 2026-08-25** (bw-circuit-ui `29f6da6`), and **this row's owner
 column was wrong.** It read "bw-board + bw-circuit-ui". `addScopeChannel` has
@@ -182,7 +211,7 @@ affected and nothing else.
 | bw-board | D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D19, D33, D34 |
 | lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D33 |
 | bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D3, D4, D6 |
-| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D10, D11, D35 |
+| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D8, D10, D11, D35 |
 
 Rows appear under every owner that must change, so the columns oversum: D6,
 D9 and D33 each need two repos (D4 was listed as needing two and did not —
@@ -213,8 +242,9 @@ than the one that exists.*
 **Three benches were chosen against limits nobody checked.** `pc50-two-stage-rc`
 corners below the sweep's practical range (D10), `pc52-inductor-filter` is an
 RLC asked to be an RL (D8), `43-rc-timing` has no control to repeat its own step
-(D11), and three machine benches boot with no ROM (D7). **D10 and D11 are now
-closed**; D8 and D7 are not. These are the cheapest
+(D11), and three machine benches boot with no ROM (D7). **D10, D11 and D8 are now
+closed**; D7 is not — and D8 was the one that did NOT yield to a parameter
+change, because `pc52` is wanted as an RLC by two other lessons. These are the cheapest
 of the lot to fix and the ones most likely to be fixed by *changing the bench*
 rather than the instrument.
 

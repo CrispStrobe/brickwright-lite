@@ -5,8 +5,8 @@ against `1d10902cb` after the `bw-board` vendor that landed mid-review
 (scheduled device events, gate tpd, controller floor fix — 640 changed lines
 across `board.js`, `mna.js` and `ac.js`). Ten lessons, twenty checkpoints.
 
-**9 defective of 10 · 10 revised (three now at v4, one at v3, six at v2) · 7
-defects open, every one of them in an instrument or an engine, none in a
+**9 defective of 10 · 10 revised (one at v5, two at v4, four at v3, three at
+v2) · 5 defects open, every one of them in an instrument or an engine, none in a
 lesson.**
 
 > **Updated 2026-08-25.** `signals-resonance`'s observable was closed on
@@ -72,7 +72,7 @@ and it is a smaller and more fixable story than "nine broken lessons".
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
 | signals-rc-response | 43-rc-timing | 2→3→**4** | **defect, fixed** — the t = 0 reading the checkpoint asks for is the supply voltage, not zero |
-| signals-rl-response | pc52-inductor-filter | 1→**2** | **defect, fixed** — the bench is an RLC; L/R holds only in its first 300 µs, and the hint's "total series resistance" is the wrong R |
+| signals-rl-response | **pc89-rl-step** (was pc52-inductor-filter) | 1→2→**3** | **defect, BENCH REPLACED 2026-08-25** — the old bench was an RLC; L/R held only in its first 300 µs, and the hint's "total series resistance" was the wrong R |
 | signals-complex-impedance | 50-rc-scope | 1→**2** | **defect, fixed** — the scope route it names cannot reach the below-cutoff point |
 | signals-cutoff-phase | 50-rc-scope | 1→2→**3** | achievable; **revised for disclosure**, then **READOUT FIXED 2026-08-25** — both criteria bracket the same cutoff, and the plot now has the frequency axis and the per-point table to read one off |
 | signals-bode-sweep | pc50-two-stage-rc | 1→2→3→**4** | defect, **BENCH FIXED 2026-08-25** — the corners were at 0.159 Hz, where one sweep point cost over ten minutes of simulated time; they are now at 159.155 Hz. **v4 (2026-08-24):** the hint still contrasted the new cost against "the ten minutes it cost while the stages were 100 µF" — a changelog note quoting a capacitance this bench no longer has. Dropped in both languages; check C now derives corner frequencies, which is what surfaced it |
@@ -201,6 +201,38 @@ inside the window is 100 Ω; `measure` tells the learner to step the source, to
 sample the first 300 µs, and that the turning point at ~500 µs is the finding
 rather than a mistake.
 
+
+**Resolved 2026-08-25 with a new bench, not a changed one** (sb3-creator
+`4512354`). `pc89-rl-step` is `src → 100 Ω → 10 mH → gnd` and nothing else.
+Measured against 50 mA × (1 − e^(−t/100 µs)), stepping the source 0 → 5 V:
+
+```
+      25 µs  1.00004      300 µs  1.00008
+      50 µs  1.00005      500 µs  1.00005
+     100 µs  1.00008     1000 µs  1.00001
+     150 µs  1.00009     2000 µs  1.00000
+     200 µs  1.00009     5000 µs  1.00000
+```
+
+within a hundredth of a percent out to 5τ and past it, against 0.9870 at 300 µs
+and 0.8354 at 2 ms on `pc52`. The excess is a few parts in 100,000 and it is the
+solver's companion model for the inductor, not the bench.
+
+**Why a new bench.** The obvious fix was `pc52`'s capacitor — the same
+one-parameter move that closed defect 4. Measured, C = 0.1 µF gives defect 5's
+resonance exactly as this review predicted (**+3.871 dB at 5032.9 Hz**) and
+destroys the RL window (ratio **0.193** at one time constant, because the current
+rings at 5 kHz instead of rising). The two defects on this bench want opposite
+capacitors.
+
+And it would have failed quietly: the RL sentinel asserted "L/R holds only in its
+first 300 µs", which the change would have left true — more true. The conflict is
+now its own `OPEN DEFECT:` test, and the mutation shows it working: changing
+`pc52`'s capacitor fires two tests today where it would have fired none.
+
+`electricity-inductor` (Wave 1) and `signals-resonance` stay on `pc52` and are
+right to — one teaches the RLC contrast on purpose, the other needs the
+capacitor. Only this lesson was on the wrong bench.
 ### 3. signals-complex-impedance/measure — one of its three frequencies will not fit on the screen
 
 The checkpoint measures "amplitude ratio and time shift at all three
