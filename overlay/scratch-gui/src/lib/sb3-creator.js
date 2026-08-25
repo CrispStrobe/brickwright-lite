@@ -10599,6 +10599,7 @@ class SB3Creator {
                 '#define BW_VIA_T1CH  BW_VIA(0x5u)',
                 '#define BW_VIA_ACR   BW_VIA(0xbu)',
                 '#define BW_VIA_IFR   BW_VIA(0xdu)',
+                '#define BW_VIA_IER   BW_VIA(0xeu)',
                 '#define BW_VIA_IRB   BW_VIA_ORB',
                 '/* Port A reads through $600F: no handshake, so no CA-flag clears. */',
                 '#define BW_VIA_IRA   BW_VIA(0xfu)',
@@ -10795,7 +10796,14 @@ class SB3Creator {
                 ' * a (void)-cast volatile read outright (measured: IFR6 stayed set and',
                 ' * bw_ms counted scheduler passes, ~2.4x fast). A store to a volatile',
                 ' * sink cannot be dropped. */',
-                'static volatile uint8_t bw_t1_sink;', '',
+                'static volatile uint8_t bw_t1_sink;',
+                '/* WAI, spelled as code bytes: cc65\'s inline asm knows neither the',
+                ' * mnemonic nor .byte (WAI is a WDC extension its C-side parser',
+                ' * lacks even at --cpu 65C02), so the opcode lives in a const array',
+                ' * - RODATA is ROM here, and a 6502 executes anything addressable.',
+                ' * The 12-cycle JSR/RTS detour is noise against a 1 ms park. */',
+                'static const unsigned char bw_wai_code[] = { 0xcb, 0x60 };  /* wai; rts */',
+                'static void bw_wai(void) { ((void (*)(void))bw_wai_code)(); }', '',
                 'static uint32_t bw_now(void)',
                 '{',
                 '    if (BW_VIA_IFR & 0x40u) {',
@@ -10852,6 +10860,13 @@ class SB3Creator {
                     '}', '');
             }
         } else if (this._cTasks && this._core !== '6502') {
+            // The 8051 idle scheduler below reads the clock every pass, so the
+            // tasks build always carries bw_now — the same dependency the ARM
+            // branch declares for the same reason. Without it a TASKS program
+            // that uses neither `now` nor a blocking wait would emit a
+            // scheduler calling a function that was never defined.
+            if (this._cTasks && this._core !== 'avr' && this._core !== 'arm'
+                && this._core !== '6502') this._cUses.now = true;
             out.push('/* One script = one cooperative task. Timer interrupts every millisecond;',
                 ' * tasks yield at every wait and at every loop iteration (Scratch\'s own',
                 ' * scheduling contract), so no task can starve the others. */',
@@ -10863,7 +10878,8 @@ class SB3Creator {
                     '    bw_ms++;',
                     '}', ''
                 ] : [
-                    'static volatile unsigned int bw_ms;', '',
+                    'static volatile unsigned int bw_ms;',
+                    ...(this._cTasks ? ['static unsigned char bw_calm;'] : []), '',
                     'void bw_tick(void) __interrupt(1)',
                     '{',
                     '    TL0 = (unsigned char)(T0_RELOAD & 0xFF);',
@@ -13143,7 +13159,13 @@ class SB3Creator {
                 || this._cUses.print || this._cUses.blockDelay) {
                 out.push('    BW_VIA_ACR = 0x40;             /* Timer 1 free-run */',
                     '    BW_VIA_T1CL = (uint8_t)(BW_T1_LATCH & 0xffu);',
-                    '    BW_VIA_T1CH = (uint8_t)(BW_T1_LATCH >> 8);   /* load + start */');
+                    '    BW_VIA_T1CH = (uint8_t)(BW_T1_LATCH >> 8);   /* load + start */',
+                    '    /* T1 may raise IRQB: the wake source for the WAI idle below.',
+                    '     * I stays SET (nothing ever CLIs), and the 65C02 wakes from',
+                    '     * WAI on the line WITHOUT vectoring - no handler, no vector',
+                    '     * table entry, the native vectorless idiom. bw_now()\'s poll',
+                    '     * clears IFR6, which drops the line again. */',
+                    '    BW_VIA_IER = 0xc0;             /* set + T1 */');
             }
             if (this._cUses.print) {
                 out.push('    BW_ACIA_CTRL = 0x1e;           /* 9600 8N1, internal clock */',
@@ -13443,7 +13465,15 @@ class SB3Creator {
         } else if (this._cTasks && this._core === '6502') {
             out.push('',
                 '    for (;;) {                     /* no tick to start: time is read */',
+                '        uint32_t pass_ms = bw_now();',
                 ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
+                '        /* A pass that completes inside one millisecond: WAI to the',
+                '         * next T1 assertion instead of spinning. ARM and AVR wait for',
+                '         * TWO quiet passes, but a cc65 pass costs ~0.15 ms - two in',
+                '         * one millisecond almost never line up, and the reference',
+                '         * schedulers (generated JS / MicroPython) sleep after EVERY',
+                '         * pass anyway; one quiet pass IS the contract here. */',
+                '        if (bw_now() == pass_ms) bw_wai();',
                 '    }');
         } else if (this._cTasks && this._core === 'avr') {
             out.push('    set_sleep_mode(SLEEP_MODE_IDLE);  /* timers keep running; the tick wakes us */',
@@ -13468,8 +13498,18 @@ class SB3Creator {
                 '    EA  = 1;',
                 '    TR0 = 1;',
                 '',
-                '    for (;;) {',
+                '    for (;;) {                     /* the tick keeps time; the core need not */',
+                '        unsigned int pass_ms = bw_now();',
                 ...[...(this._cPollTasks || []), ...taskNames].map((n) => `        ${n}();`),
+                '        /* Two full passes inside one millisecond: idle to the next tick',
+                '         * instead of spinning the core against it — the same contract the',
+                '         * pico and AVR targets keep, spelled in the 8051\'s own terms.',
+                '         * PCON.IDL stops the core; Timer 0 keeps counting and its',
+                '         * interrupt clears the bit and vectors, so bw_tick above is the',
+                '         * wake source. A pass whose work crosses the edge resets the',
+                '         * count. */',
+                '        if (bw_now() == pass_ms) { if (++bw_calm >= 2u) { bw_calm = 0u; PCON |= 0x01; } }',
+                '        else bw_calm = 0u;',
                 '    }');
         } else if (this._core === 'avr') {
             out.push('    sei();', '');
