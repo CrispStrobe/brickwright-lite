@@ -295,7 +295,9 @@ const GROUPS = [
         ['abyss_rescue', '🤿 Abyss Lift — polished'],
         ['specter_sweep', '🔮 Wardlight — polished'],
         ['moonlight_heist', '🐭 Pantry Prowl — polished'],
-        ['cloud_court', '🏐 Nimbus Volley — polished']
+        ['cloud_court', '🏐 Nimbus Volley — polished'],
+        ['ember_dojo', '⚔️ Ember Parry — polished'],
+        ['lockstep_lagoon', '🌊 Tidegate Rush — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

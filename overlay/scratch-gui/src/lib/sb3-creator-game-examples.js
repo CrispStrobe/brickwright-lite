@@ -1554,127 +1554,180 @@ SPRITE Net:
   WHEN I receive "start nimbus volley":
     show`,
 
-    ember_dojo: `# Ember Dojo — a tiny shogun boss fight. Left/Right moves, Up dashes, Space
-# swings the moon blade. Deflect the dragon's fireballs during a swing to damage it;
-# a mistimed hit costs one heart. The dragon enrages below half health.
+    ember_dojo: `# Ember Parry — a compact timing duel against a sky dragon.
+# GOAL: reflect eight fireballs into the dragon before three embers strike the ronin.
+# CONTROLS: Left/Right line up with each shot. Space opens a brief moon-blade parry.
 GLOBAL hearts
 GLOBAL dragonHP
 GLOBAL heroX
-GLOBAL swinging
+GLOBAL parrying
 GLOBAL fireSpeed
+GLOBAL streak
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art ember-parry/intro
+  BACKDROP dojo art ember-parry/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable hearts
+    hide variable dragonHP
+    hide variable streak
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to dojo
+      broadcast "start ember parry"
 
 SPRITE Ronin:
-  SHAPE rect 30 48 #d9e5ff
+  SHAPE art ember-parry/ronin
   WHEN flag clicked:
-    show variable hearts
-    show variable dragonHP
-    set hearts to 4
-    set dragonHP to 12
+    set hearts to 3
+    set dragonHP to 8
+    set streak to 0
     set heroX to -120
-    set swinging to 0
+    set parrying to 0
     set fireSpeed to 5
     go to x: heroX y: -125
+    hide
+  WHEN I receive "start ember parry":
+    show variable hearts
+    show variable dragonHP
+    show variable streak
     show
-  WHEN flag clicked:
     FOREVER:
       IF key left arrow pressed? THEN:
-        change heroX by -6
+        change heroX by -7
       IF key right arrow pressed? THEN:
-        change heroX by 6
-      IF key up arrow pressed? THEN:
-        change heroX by 12
-      IF heroX < -220 THEN:
-        set heroX to -220
-      IF heroX > 180 THEN:
-        set heroX to 180
+        change heroX by 7
+      IF heroX < -215 THEN:
+        set heroX to -215
+      IF heroX > 215 THEN:
+        set heroX to 215
       go to x: heroX y: -125
-      IF dragonHP < 7 THEN:
-        set fireSpeed to 8
+      IF dragonHP < 5 THEN:
+        set fireSpeed to 7
       IF dragonHP < 1 THEN:
-        say "The Ember Dragon bows." for 3 seconds
+        say "EIGHT PERFECT RETURNS — THE DRAGON YIELDS!" for 4 seconds
         stop all
       IF hearts < 1 THEN:
-        say "The dojo goes dark." for 3 seconds
+        say "THREE EMBERS LANDED — TRY THE RHYTHM AGAIN." for 4 seconds
         stop all
       wait 0.02 seconds
   WHEN space key pressed:
-    set swinging to 1
-    broadcast "swing"
-    wait 0.22 seconds
-    set swinging to 0
+    IF started = 1 and parrying = 0 THEN:
+      set parrying to 1
+      broadcast "moon parry"
+      wait 0.18 seconds
+      set parrying to 0
 
 SPRITE Blade:
-  SHAPE rect 58 12 #aef6ff
+  SHAPE art ember-parry/blade
   WHEN flag clicked:
     hide
-  WHEN I receive "swing":
-    go to x: heroX + 28 y: -105
+  WHEN I receive "moon parry":
+    go to x: heroX y: -91
     show
-    turn right 100 degrees
-    wait 0.2 seconds
+    wait 0.18 seconds
     hide
 
 SPRITE Dragon:
-  SHAPE triangle 75 #e64b3c
+  SHAPE art ember-parry/dragon
   WHEN flag clicked:
-    go to x: 145 y: 90
+    go to x: 145 y: 92
+    hide
+  WHEN I receive "start ember parry":
     show
     FOREVER:
-      glide 1 secs to x: pick random 80 to 190 y: pick random 40 to 130
-      broadcast "fire"
-      wait 0.7 seconds
+      glide 0.7 secs to x: pick random -175 to 175 y: pick random 65 to 125
+      broadcast "dragon fire"
+      IF dragonHP < 5 THEN:
+        wait 0.45 seconds
+      ELSE:
+        wait 0.8 seconds
 
 SPRITE Fireball:
-  SHAPE circle 24 #ff9d24
+  SHAPE art ember-parry/fireball
   SOUND clash 820
+  SOUND hit 160
   WHEN flag clicked:
     hide
-  WHEN I receive "fire":
+  WHEN I receive "dragon fire":
     go to Dragon
     point towards Ronin
     create clone of myself
   WHEN I start as a clone:
     show
-    REPEAT UNTIL touching Ronin or touching edge or touching Blade:
+    REPEAT UNTIL touching Ronin or touching edge:
       move fireSpeed steps
       wait 0.02 seconds
-    IF touching Blade THEN:
-      change dragonHP by -1
-      play sound "clash"
-    ELSE:
-      IF touching Ronin THEN:
+    IF touching Ronin THEN:
+      IF parrying = 1 THEN:
+        change dragonHP by -1
+        change streak by 1
+        play sound "clash"
+        say "REFLECT!" for 0.25 seconds
+      ELSE:
         change hearts by -1
+        set streak to 0
+        play sound "hit"
     delete this clone`,
 
-    lockstep_lagoon: `# Lockstep Lagoon — race a hydrofoil through tidal locks. Left/Right changes
-# channels; Up burns boost. Blue gates award time, red buoys cost hull. Enter a lift
-# lock while its light is green to ride the surge and multiply the next gate score.
+    lockstep_lagoon: `# Tidegate Rush — a finite three-lane hydrofoil sprint.
+# GOAL: clear eight blue gates before the 35-second tide closes; three buoy hits sink you.
+# CONTROLS: Left/Right change lanes. Hold Up to spend charge and accelerate.
+# Violet surge locks make the next three blue gates worth triple points.
 GLOBAL score
+GLOBAL gates
 GLOBAL hull
 GLOBAL timeLeft
 GLOBAL lane
 GLOBAL speed
 GLOBAL surge
-GLOBAL gateY
+GLOBAL charge
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art tidegate-rush/intro
+  BACKDROP course art tidegate-rush/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable gates
+    hide variable hull
+    hide variable timeLeft
+    hide variable charge
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to course
+      broadcast "start tidegate rush"
 
 SPRITE Foil:
-  SHAPE triangle 42 #38d9ff
-  COSTUME surge triangle 50 #ffe66d
+  SHAPE art tidegate-rush/foil
+  COSTUME boost art tidegate-rush/boost
   SOUND splash 260
   WHEN flag clicked:
-    show variable score
-    show variable hull
-    show variable timeLeft
     set score to 0
+    set gates to 0
     set hull to 3
-    set timeLeft to 45
+    set timeLeft to 35
     set lane to 0
     set speed to 5
-    set surge to 1
+    set surge to 0
+    set charge to 100
     point in direction 0
     go to x: 0 y: -125
+    hide
+  WHEN I receive "start tidegate rush":
+    show variable score
+    show variable gates
+    show variable hull
+    show variable timeLeft
+    show variable charge
     show
-  WHEN flag clicked:
     FOREVER:
       IF key left arrow pressed? THEN:
         change lane by -1
@@ -1686,37 +1739,41 @@ SPRITE Foil:
         set lane to -1
       IF lane > 1 THEN:
         set lane to 1
-      glide 0.08 secs to x: lane * 105 y: -125
-      IF key up arrow pressed? and timeLeft > 1 THEN:
-        set speed to 8
-        switch costume to surge
-        change timeLeft by -0.08
+      glide 0.08 secs to x: lane * 110 y: -125
+      IF key up arrow pressed? and charge > 0 THEN:
+        set speed to 9
+        switch costume to boost
+        change charge by -1
       ELSE:
         set speed to 5
         switch costume to costume1
+        IF charge < 100 THEN:
+          change charge by 0.25
+      IF gates = 8 THEN:
+        say ("EIGHT GATES CLEARED — HARBOUR SCORE " join score) for 4 seconds
+        stop all
       IF hull < 1 or timeLeft < 1 THEN:
-        say ("Harbour score: " join score) for 3 seconds
+        say ("TIDE CLOSED — " join gates) for 4 seconds
         stop all
       wait 0.02 seconds
-  WHEN flag clicked:
+  WHEN I receive "start tidegate rush":
     FOREVER:
       wait 1 seconds
       change timeLeft by -1
 
 SPRITE LockGate:
-  SHAPE rect 56 18 #4de39a
-  COSTUME buoy circle 34 #ff5263
+  SHAPE art tidegate-rush/gate
+  COSTUME buoy art tidegate-rush/buoy
   SOUND lock 720
   WHEN flag clicked:
     hide
+  WHEN I receive "start tidegate rush":
     FOREVER:
-      set gateY to 210
-      set x to pick random -1 to 1 * 105
+      go to x: pick random -1 to 1 * 110 y: 210
       IF pick random 1 to 4 = 1 THEN:
         switch costume to buoy
       ELSE:
         switch costume to costume1
-      go to x: x position y: gateY
       show
       REPEAT UNTIL y position < -190:
         change y by 0 - speed
@@ -1725,29 +1782,36 @@ SPRITE LockGate:
             change hull by -1
             play sound "splash"
           ELSE:
-            change score by 5 * surge
-            set surge to 1
-            change timeLeft by 2
+            change gates by 1
+            IF surge > 0 THEN:
+              change score by 15
+              change surge by -1
+            ELSE:
+              change score by 5
+            change timeLeft by 1
             play sound "lock"
           hide
           set y to -220
         wait 0.02 seconds
       hide
-      wait 0.3 seconds
+      wait 0.25 seconds
 
-SPRITE LiftLock:
-  SHAPE rect 72 24 #9c7cff
+SPRITE SurgeLock:
+  SHAPE art tidegate-rush/surge
   WHEN flag clicked:
     hide
+  WHEN I receive "start tidegate rush":
     FOREVER:
-      wait pick random 5 to 9 seconds
-      go to x: pick random -1 to 1 * 105 y: 210
+      wait pick random 4 to 7 seconds
+      go to x: pick random -1 to 1 * 110 y: 210
       show
       REPEAT UNTIL y position < -190:
         change y by 0 - speed
         IF touching Foil THEN:
           set surge to 3
-          change timeLeft by 4
+          change charge by 25
+          IF charge > 100 THEN:
+            set charge to 100
           hide
           set y to -220
         wait 0.02 seconds

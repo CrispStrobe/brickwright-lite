@@ -49,7 +49,8 @@ test('only quality-approved new games are wired into the visible examples galler
     }
     const approved = new Set([
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
-        'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court'
+        'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
+        'ember_dojo', 'lockstep_lagoon'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -272,6 +273,41 @@ test('Nimbus Volley explains its scoring and implements an airborne spike', () =
     assert.ok(svgs.some(svg => svg.includes('NIMBUS VOLLEY')));
     assert.ok(svgs.some(svg => svg.includes('FIRST TO 7 WINS')));
     assert.ok(svgs.some(svg => svg.includes('S AIR SPIKE')));
+});
+
+test('Ember Parry makes its short timing window and finite duel explicit', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.ember_dojo);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.ember_dojo, /GOAL: reflect eight fireballs into the dragon/);
+    assert.match(games.ember_dojo, /CONTROLS: Left\/Right line up with each shot/);
+    assert.match(games.ember_dojo, /wait 0\.18 seconds/);
+    assert.match(games.ember_dojo, /IF touching Ronin THEN:\n      IF parrying = 1 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'dojo']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('EMBER PARRY')));
+    assert.ok(svgs.some(svg => svg.includes('REFLECT 8 FIREBALLS')));
+    assert.ok(svgs.some(svg => svg.includes('SPACE = BRIEF MOON-BLADE PARRY')));
+});
+
+test('Tidegate Rush has a finish line, boost resource, hazards, and three-gate surge reward', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.lockstep_lagoon);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.lockstep_lagoon, /GOAL: clear eight blue gates before the 35-second tide closes/);
+    assert.match(games.lockstep_lagoon, /CONTROLS: Left\/Right change lanes/);
+    assert.match(games.lockstep_lagoon, /IF gates = 8 THEN:/);
+    assert.match(games.lockstep_lagoon, /set surge to 3/);
+    assert.match(games.lockstep_lagoon, /change charge by -1/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'course']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('TIDEGATE RUSH')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR 8 BLUE GATES')));
+    assert.ok(svgs.some(svg => svg.includes('VIOLET LOCK')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -542,6 +578,58 @@ test('stealth movement and aerial-spike controls work in the live Scratch VM', a
     }
 });
 
+test('parry timing and hydrofoil lane-boost controls work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+        const vm = new VM();
+        await vm.loadProject(buffer);
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const ember = await load(games.ember_dojo);
+    try {
+        const beforeX = Number(value(ember, 'heroX').value);
+        ember.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
+        for (let i = 0; i < 8; i++) ember.runtime._step();
+        ember.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
+        assert.ok(Number(value(ember, 'heroX').value) > beforeX, 'Right did not move the ronin');
+        ember.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 3; i++) ember.runtime._step();
+        assert.equal(Number(value(ember, 'parrying').value), 1, 'Space did not open the parry window');
+        ember.postIOData('keyboard', {key: ' ', isDown: false});
+    } finally {
+        ember.quit();
+        clearStrayTimers();
+    }
+
+    const tidegate = await load(games.lockstep_lagoon);
+    try {
+        tidegate.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
+        for (let i = 0; i < 5; i++) tidegate.runtime._step();
+        tidegate.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
+        assert.equal(Number(value(tidegate, 'lane').value), 1, 'Right did not select the next channel');
+        await new Promise(resolve => setTimeout(resolve, 120));
+        tidegate.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 12; i++) tidegate.runtime._step();
+        tidegate.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.ok(Number(value(tidegate, 'charge').value) < 100, 'Up did not spend boost charge');
+        assert.equal(Number(value(tidegate, 'gates').value), 0, 'the race began with phantom cleared gates');
+    } finally {
+        tidegate.quit();
+        clearStrayTimers();
+    }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -581,8 +669,8 @@ test('each new game keeps its signature playable mechanic', () => {
         specter_sweep: [/if on edge bounce/, /touching Orb/, /set ward to 3/, /change score by 1/],
         moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/],
         cloud_court: [/set rally to 1/, /touching Net/, /SPRITE CloudBot/],
-        ember_dojo: [/broadcast "swing"/, /touching Blade/, /change dragonHP by -1/],
-        lockstep_lagoon: [/set surge to 3/, /change timeLeft by 4/, /change score by 5 \* surge/],
+        ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/, /change dragonHP by -1/],
+        lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /change gates by 1/, /change score by 15/],
         rink_riot: [/set vx to vx \* 0\.94/, /key space pressed\?/, /touching Keeper/, /change goals by 1/],
         rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /change score by 2 \* streak/],
         comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by crowd/],
