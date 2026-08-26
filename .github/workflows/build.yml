@@ -417,6 +417,37 @@ jobs:
               const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
               const errors = [];
               page.on('pageerror', e => errors.push(e.message));
+              // A 404 on a script raises no pageerror — it is a failed REQUEST.
+              // The 2026-08-26 failure printed 'GUI did not render' and nothing
+              // else, because the only symptom was invisible here.
+              const httpFails = [];
+              page.on('response', r => { if (r.status() >= 400) httpFails.push(r.status() + ' ' + r.url()); });
+              page.on('requestfailed', r => httpFails.push('requestfailed ' + r.url()));
+
+              // GitHub Pages serves the new index.html before its CDN has the new
+              // content-hashed bundles. The page then requests a 404 and never
+              // renders — indistinguishable, until now, from a genuinely broken
+              // build. Wait for the assets index.html names to be servable, and
+              // this becomes a wait instead of a coin flip.
+              const assetDeadline = Date.now() + 300000;
+              for (;;) {
+                const bust = '?cb=' + Date.now();
+                const html = await (await page.request.get(url + bust)).text();
+                const refs = [...html.matchAll(/(?:src|href)=\"([^\"]+\.(?:js|css))\"/g)].map(m => m[1]);
+                const codes = [];
+                for (const r of refs) {
+                  const abs = /^https?:/.test(r) ? r : url + r.replace(/^\//, '');
+                  codes.push((await page.request.get(abs + bust)).status());
+                }
+                const report = refs.map((r, i) => r + '=' + codes[i]).join(', ');
+                if (refs.length && codes.every(c => c === 200)) { console.log('assets servable: ' + report); break; }
+                if (Date.now() > assetDeadline) {
+                  console.error('FAIL: GitHub Pages never served the assets index.html names: ' + (report || '(none parsed)'));
+                  process.exit(1);
+                }
+                console.log('waiting for Pages to publish the new assets: ' + (report || '(none parsed)'));
+                await new Promise(done => setTimeout(done, 10000));
+              }
 
               console.log('Loading ' + url + ' ...');
               await page.goto(url, {
@@ -427,6 +458,7 @@ jobs:
                 await page.waitForSelector('[class*=\"menu-bar\"], [class*=\"gui_\"], [role=\"tab\"]', { timeout: 60000 });
               } catch {
                 console.error('FAIL: GUI did not render');
+                if (httpFails.length) console.error('HTTP failures:', httpFails);
                 if (errors.length) console.error('Page errors:', errors);
                 process.exit(1);
               }
