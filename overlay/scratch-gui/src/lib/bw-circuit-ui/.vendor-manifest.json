@@ -56,7 +56,7 @@
  "importers/sexpr.js": "036d4da4432f718c9bf6e0539d8d3d0b0fa933ba",
  "importers/wokwi.js": "64dcb16985330521f48aaa39ced0bb22d121d82f",
  "importers/zip.js": "f03fd088d7b53345c21a9de82537da34db93934e",
- "index.js": "761cc4e4916c51a105e966f1f57c158d483c8c1b",
+ "index.js": "0cc0f00962163cca7731758493628ea2a61a8f84",
  "interaction/breadboard-snap.js": "e4cdb9508d94222128a06c5a3dfbf42400ab5233",
  "interaction/hittest.js": "a58e32d5b4eca9e74ccb70b4073becb1c181594c",
  "interaction/machine.js": "d6ebf0971bf729538e688a8f3c651477b83e2119",
