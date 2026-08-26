@@ -291,7 +291,9 @@ const GROUPS = [
         ['fusion_foundry', '☄️ Core Cascade — polished'],
         ['rooftop_relay', '🏃 Neon Relay — polished'],
         ['twinwall', '🪩 Rift Rally — polished'],
-        ['turbo_chicane', '🏁 Slipstream Circuit — polished']
+        ['turbo_chicane', '🏁 Slipstream Circuit — polished'],
+        ['abyss_rescue', '🤿 Abyss Lift — polished'],
+        ['specter_sweep', '🔮 Wardlight — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

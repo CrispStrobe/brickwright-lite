@@ -13,7 +13,7 @@ const check = (name, ok, detail = '') => {
 
 const NEW_GAMES = [
     'Skyline Swoop', 'Contrail Panic', 'Aegis Arc', 'Prism Lock', 'Core Cascade', 'Neon Relay',
-    'Rift Rally', 'Slipstream Circuit'
+    'Rift Rally', 'Slipstream Circuit', 'Abyss Lift', 'Wardlight'
 ];
 
 try {

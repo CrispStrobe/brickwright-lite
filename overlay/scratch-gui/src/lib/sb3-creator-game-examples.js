@@ -1058,30 +1058,53 @@ SPRITE Gate:
         set gateActive to 0
       hide`,
 
-    abyss_rescue: `# Abyss Rescue — pilot a tiny submarine through a living trench. Space adds
-# buoyancy; gravity pulls you down. Rescue gold divers, dodge mines and cave walls,
-# and use the current rather than fighting it. Three hull points buy close calls.
+    abyss_rescue: `# Abyss Lift — a buoyancy-driven rescue run.
+# GOAL: rescue six gold divers before mines or cave walls consume three hull points.
+# CONTROLS: hold Space to rise and release it to dive; the current continually shifts.
 GLOBAL score
 GLOBAL hull
+GLOBAL rescued
 GLOBAL suby
 GLOBAL vy
 GLOBAL current
 GLOBAL scroll
+GLOBAL invulnerable
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art abyss-lift/intro
+  BACKDROP trench art abyss-lift/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable hull
+    hide variable rescued
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to trench
+      broadcast "start abyss lift"
 
 SPRITE Sub:
-  SHAPE ellipse 54 28 #55d9ff
+  SHAPE art abyss-lift/sub
   SOUND sonar 540
+  SOUND hullHit 110
   WHEN flag clicked:
-    show variable score
-    show variable hull
     set score to 0
     set hull to 3
+    set rescued to 0
     set suby to 20
     set vy to 0
     set scroll to 4
+    set invulnerable to 0
     go to x: -130 y: suby
+    hide
+  WHEN I receive "start abyss lift":
+    show variable score
+    show variable hull
+    show variable rescued
     show
-  WHEN flag clicked:
     FOREVER:
       IF key space pressed? THEN:
         change vy by 0.65
@@ -1089,26 +1112,33 @@ SPRITE Sub:
       set current to (sin of timer * 90) * 0.08
       change suby by vy + current
       go to x: -130 y: suby
-      IF suby > 155 or suby < -155 or touching Mine THEN:
+      IF invulnerable > 0 THEN:
+        change invulnerable by -1
+      IF invulnerable = 0 and (suby > 145 or suby < -145 or touching Mine) THEN:
         change hull by -1
+        set invulnerable to 35
         set suby to 20
         set vy to 0
-        wait 0.7 seconds
+        play sound "hullHit"
         IF hull < 1 THEN:
-          say ("Trench score: " join score) for 3 seconds
+          say (("HULL LOST — " join rescued) join " DIVERS RESCUED") for 3 seconds
           stop all
-      IF touching Diver THEN:
-        change score by 5
-        play sound "sonar"
-        wait 0.15 seconds
-      IF score > 19 THEN:
+      IF rescued > 3 THEN:
         set scroll to 5
       wait 0.02 seconds
+  WHEN I receive "diver rescued":
+    change rescued by 1
+    change score by 10
+    play sound "sonar"
+    IF rescued = 6 THEN:
+      say ("ALL SIX SAFE! SCORE " join score) for 4 seconds
+      stop all
 
 SPRITE Mine:
-  SHAPE circle 30 #f24f6b
+  SHAPE art abyss-lift/mine
   WHEN flag clicked:
     hide
+  WHEN I receive "start abyss lift":
     FOREVER:
       go to x: 250 y: pick random -145 to 145
       create clone of myself
@@ -1123,11 +1153,12 @@ SPRITE Mine:
     delete this clone
 
 SPRITE Diver:
-  SHAPE circle 22 #ffd45a
+  SHAPE art abyss-lift/diver
   WHEN flag clicked:
     hide
+  WHEN I receive "start abyss lift":
     FOREVER:
-      wait pick random 4 to 7 seconds
+      wait pick random 2 to 4 seconds
       go to x: 250 y: pick random -120 to 120
       create clone of myself
   WHEN I start as a clone:
@@ -1136,26 +1167,43 @@ SPRITE Diver:
       change ghost effect by 3
       change x by (0 - scroll)
       wait 0.02 seconds
+    IF touching Sub THEN:
+      broadcast "diver rescued"
     delete this clone`,
 
-    specter_sweep: `# Specter Sweep — aim with the mouse and click to launch a spirit orb. Orbs
-# ricochet off the room edges, so bank shots can catch ghosts behind the pillars.
-# Clear twelve before three ghosts reach the ward in the centre.
+    specter_sweep: `# Wardlight — a ricochet defense game.
+# GOAL: banish twelve specters before three of them reach the central ward.
+# CONTROLS: aim with the mouse and click to cast an orb; shots bounce off room edges.
 GLOBAL score
 GLOBAL ward
-GLOBAL shotx
-GLOBAL shoty
+GLOBAL edgeSide
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art wardlight/intro
+  BACKDROP manor art wardlight/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable ward
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to manor
+      broadcast "light the ward"
 
 SPRITE Hunter:
-  SHAPE circle 32 #8be9fd
+  SHAPE art wardlight/hunter
   WHEN flag clicked:
-    show variable score
-    show variable ward
     set score to 0
     set ward to 3
     go to x: 0 y: 0
+    hide
+  WHEN I receive "light the ward":
+    show variable score
+    show variable ward
     show
-  WHEN flag clicked:
     FOREVER:
       point towards mouse-pointer
       IF score > 11 THEN:
@@ -1165,7 +1213,7 @@ SPRITE Hunter:
         say "The ward has fallen!" for 3 seconds
         stop all
       wait 0.02 seconds
-  WHEN flag clicked:
+  WHEN I receive "light the ward":
     FOREVER:
       IF mouse down? THEN:
         broadcast "cast"
@@ -1173,7 +1221,7 @@ SPRITE Hunter:
       wait 0.02 seconds
 
 SPRITE Orb:
-  SHAPE circle 14 #fff7a8
+  SHAPE art wardlight/orb
   SOUND zap 930
   WHEN flag clicked:
     hide
@@ -1184,21 +1232,29 @@ SPRITE Orb:
   WHEN I start as a clone:
     show
     set life to 180
-    REPEAT UNTIL life < 1 or touching Ghost:
+    REPEAT UNTIL life < 1:
       move 10 steps
       if on edge bounce
       change life by -1
       wait 0.02 seconds
-    IF touching Ghost THEN:
-      play sound "zap"
     delete this clone
 
 SPRITE Ghost:
-  SHAPE circle 34 #d08cff
+  SHAPE art wardlight/ghost
+  SOUND zap 930
   WHEN flag clicked:
     hide
+  WHEN I receive "light the ward":
     FOREVER:
-      go to x: pick random -220 to 220 y: pick random -160 to 160
+      set edgeSide to pick random 1 to 4
+      IF edgeSide = 1 THEN:
+        go to x: -220 y: pick random -150 to 150
+      IF edgeSide = 2 THEN:
+        go to x: 220 y: pick random -150 to 150
+      IF edgeSide = 3 THEN:
+        go to x: pick random -210 to 210 y: 160
+      IF edgeSide = 4 THEN:
+        go to x: pick random -210 to 210 y: -160
       create clone of myself
       wait 1.3 seconds
   WHEN I start as a clone:
@@ -1210,6 +1266,7 @@ SPRITE Ghost:
       wait 0.03 seconds
     IF touching Orb THEN:
       change score by 1
+      play sound "zap"
     ELSE:
       change ward by -1
     delete this clone`,

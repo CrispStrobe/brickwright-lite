@@ -49,7 +49,7 @@ test('only quality-approved new games are wired into the visible examples galler
     }
     const approved = new Set([
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
-        'twinwall', 'turbo_chicane'
+        'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -203,6 +203,41 @@ test('Slipstream Circuit separates drafting, collisions, and skill-based checkpo
     assert.ok(svgs.some(svg => svg.includes('SLIPSTREAM CIRCUIT')));
     assert.ok(svgs.some(svg => svg.includes('HIT 3 GREEN CHECKPOINT GATES')));
     assert.ok(svgs.some(svg => svg.includes('CYAN WAKE = BOOST')));
+});
+
+test('Abyss Lift has a finite rescue objective and reliable clone-to-sub rescue signal', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.abyss_rescue);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.abyss_rescue, /GOAL: rescue six gold divers/);
+    assert.match(games.abyss_rescue, /CONTROLS: hold Space to rise/);
+    assert.match(games.abyss_rescue, /broadcast "diver rescued"/);
+    assert.match(games.abyss_rescue, /IF rescued = 6 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'trench']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('ABYSS LIFT')));
+    assert.ok(svgs.some(svg => svg.includes('RESCUE 6 GOLD DIVERS')));
+    assert.ok(svgs.some(svg => svg.includes('SPACE = RISE')));
+});
+
+test('Wardlight makes the defense target clear and keeps ricochet orbs alive for real bank shots', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.specter_sweep);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.specter_sweep, /GOAL: banish twelve specters/);
+    assert.match(games.specter_sweep, /CONTROLS: aim with the mouse and click to cast/);
+    assert.match(games.specter_sweep, /REPEAT UNTIL life < 1:/);
+    assert.match(games.specter_sweep, /if on edge bounce/);
+    assert.doesNotMatch(games.specter_sweep, /behind the pillars/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'manor']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('WARDLIGHT')));
+    assert.ok(svgs.some(svg => svg.includes('BANISH 12 SPECTERS')));
+    assert.ok(svgs.some(svg => svg.includes('EDGE BOUNCES KEEP THE ORB ALIVE')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -380,6 +415,51 @@ test('dual-paddle defense and slipstream race respond in the live Scratch VM', a
     }
 });
 
+test('buoyancy and mouse-cast controls work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+        const vm = new VM();
+        await vm.loadProject(buffer);
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const abyss = await load(games.abyss_rescue);
+    try {
+        const beforeY = Number(value(abyss, 'suby').value);
+        abyss.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 18; i++) abyss.runtime._step();
+        abyss.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.ok(Number(value(abyss, 'suby').value) > beforeY, 'holding Space did not add buoyancy');
+        assert.equal(Number(value(abyss, 'hull').value), 3, 'the rescue began with the wrong hull count');
+    } finally {
+        abyss.quit();
+        clearStrayTimers();
+    }
+
+    const wardlight = await load(games.specter_sweep);
+    try {
+        wardlight.postIOData('mouse', {x: 120, y: 60, canvasWidth: 480, canvasHeight: 360, isDown: true});
+        for (let i = 0; i < 25; i++) wardlight.runtime._step();
+        wardlight.postIOData('mouse', {x: 120, y: 60, canvasWidth: 480, canvasHeight: 360, isDown: false});
+        assert.ok(wardlight.runtime.targets.some(target => !target.isOriginal && target.sprite.name === 'Orb'),
+            'mouse click did not create a ricochet orb');
+        assert.equal(Number(value(wardlight, 'ward').value), 3, 'the central ward began damaged');
+    } finally {
+        wardlight.quit();
+        clearStrayTimers();
+    }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -415,8 +495,8 @@ test('each new game keeps its signature playable mechanic', () => {
         rooftop_relay: [/set vy to 12/, /switch costume to slide/, /set overdrive to 0/],
         twinwall: [/SPRITE LeftWall/, /SPRITE RightWall/, /set bricks to 24/, /change score by rally/],
         turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /change checkpoints by 1/],
-        abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Diver/],
-        specter_sweep: [/if on edge bounce/, /touching Ghost/, /set ward to 3/],
+        abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/],
+        specter_sweep: [/if on edge bounce/, /touching Orb/, /set ward to 3/, /change score by 1/],
         moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/],
         cloud_court: [/set rally to 1/, /touching Net/, /SPRITE CloudBot/],
         ember_dojo: [/broadcast "swing"/, /touching Blade/, /change dragonHP by -1/],
