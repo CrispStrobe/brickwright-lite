@@ -287,7 +287,8 @@ const GROUPS = [
         ['twinwall', '↔️ Twinwall'], ['turbo_chicane', '🏁 Turbo Chicane'],
         ['abyss_rescue', '🤿 Abyss Rescue'], ['specter_sweep', '👻 Specter Sweep'],
         ['moonlight_heist', '🧀 Moonlight Heist'], ['cloud_court', '☁️ Cloud Court'],
-        ['ember_dojo', '🐉 Ember Dojo']
+        ['ember_dojo', '🐉 Ember Dojo'], ['lockstep_lagoon', '🚤 Lockstep Lagoon'],
+        ['rink_riot', '🏒 Rink Riot'], ['rim_reactor', '🏀 Rim Reactor']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

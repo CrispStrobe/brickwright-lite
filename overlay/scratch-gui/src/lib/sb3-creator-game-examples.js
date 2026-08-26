@@ -1225,7 +1225,317 @@ SPRITE Fireball:
     ELSE:
       IF touching Ronin THEN:
         change hearts by -1
-    delete this clone`
+    delete this clone`,
+
+    lockstep_lagoon: `# Lockstep Lagoon — race a hydrofoil through tidal locks. Left/Right changes
+# channels; Up burns boost. Blue gates award time, red buoys cost hull. Enter a lift
+# lock while its light is green to ride the surge and multiply the next gate score.
+GLOBAL score
+GLOBAL hull
+GLOBAL timeLeft
+GLOBAL lane
+GLOBAL speed
+GLOBAL surge
+GLOBAL gateY
+
+SPRITE Foil:
+  SHAPE triangle 42 #38d9ff
+  COSTUME surge triangle 50 #ffe66d
+  SOUND splash 260
+  WHEN flag clicked:
+    show variable score
+    show variable hull
+    show variable timeLeft
+    set score to 0
+    set hull to 3
+    set timeLeft to 45
+    set lane to 0
+    set speed to 5
+    set surge to 1
+    point in direction 0
+    go to x: 0 y: -125
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change lane by -1
+        wait 0.12 seconds
+      IF key right arrow pressed? THEN:
+        change lane by 1
+        wait 0.12 seconds
+      IF lane < -1 THEN:
+        set lane to -1
+      IF lane > 1 THEN:
+        set lane to 1
+      glide 0.08 secs to x: lane * 105 y: -125
+      IF key up arrow pressed? and timeLeft > 1 THEN:
+        set speed to 8
+        switch costume to surge
+        change timeLeft by -0.08
+      ELSE:
+        set speed to 5
+        switch costume to costume1
+      IF hull < 1 or timeLeft < 1 THEN:
+        say ("Harbour score: " join score) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN flag clicked:
+    FOREVER:
+      wait 1 seconds
+      change timeLeft by -1
+
+SPRITE LockGate:
+  SHAPE rect 56 18 #4de39a
+  COSTUME buoy circle 34 #ff5263
+  SOUND lock 720
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      set gateY to 210
+      set x to pick random -1 to 1 * 105
+      IF pick random 1 to 4 = 1 THEN:
+        switch costume to buoy
+      ELSE:
+        switch costume to costume1
+      go to x: x position y: gateY
+      show
+      REPEAT UNTIL y position < -190:
+        change y by 0 - speed
+        IF touching Foil THEN:
+          IF costume name = buoy THEN:
+            change hull by -1
+            play sound "splash"
+          ELSE:
+            change score by 5 * surge
+            set surge to 1
+            change timeLeft by 2
+            play sound "lock"
+          hide
+          set y to -220
+        wait 0.02 seconds
+      hide
+      wait 0.3 seconds
+
+SPRITE LiftLock:
+  SHAPE rect 72 24 #9c7cff
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      wait pick random 5 to 9 seconds
+      go to x: pick random -1 to 1 * 105 y: 210
+      show
+      REPEAT UNTIL y position < -190:
+        change y by 0 - speed
+        IF touching Foil THEN:
+          set surge to 3
+          change timeLeft by 4
+          hide
+          set y to -220
+        wait 0.02 seconds
+      hide`,
+
+    rink_riot: `# Rink Riot — compact ice hockey with slippery momentum. Arrows skate, Space
+# slap-shoots when the puck is close. Bank shots off the boards, beat the moving keeper,
+# and chain quick goals before the shot clock expires.
+GLOBAL goals
+GLOBAL clock
+GLOBAL skaterX
+GLOBAL skaterY
+GLOBAL vx
+GLOBAL vy
+GLOBAL puckLive
+GLOBAL keeperY
+
+SPRITE Skater:
+  SHAPE circle 38 #55aaff
+  WHEN flag clicked:
+    show variable goals
+    show variable clock
+    set goals to 0
+    set clock to 30
+    set skaterX to -150
+    set skaterY to 0
+    set vx to 0
+    set vy to 0
+    go to x: skaterX y: skaterY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change vx by -0.7
+      IF key right arrow pressed? THEN:
+        change vx by 0.7
+      IF key up arrow pressed? THEN:
+        change vy by 0.7
+      IF key down arrow pressed? THEN:
+        change vy by -0.7
+      set vx to vx * 0.94
+      set vy to vy * 0.94
+      change skaterX by vx
+      change skaterY by vy
+      IF skaterX < -220 THEN:
+        set skaterX to -220
+      IF skaterX > 180 THEN:
+        set skaterX to 180
+      IF skaterY < -150 THEN:
+        set skaterY to -150
+      IF skaterY > 150 THEN:
+        set skaterY to 150
+      go to x: skaterX y: skaterY
+      IF clock < 1 THEN:
+        say ("Rink Riot goals: " join goals) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN flag clicked:
+    FOREVER:
+      wait 1 seconds
+      change clock by -1
+
+SPRITE Puck:
+  SHAPE circle 18 #202936
+  SOUND goal 880
+  WHEN flag clicked:
+    set puckLive to 0
+    go to x: -30 y: 0
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF puckLive = 0 and touching Skater and key space pressed? THEN:
+        set puckLive to 1
+        point towards Goal
+        turn right pick random -18 to 18 degrees
+      IF puckLive = 1 THEN:
+        move 11 steps
+        IF y position > 165 or y position < -165 THEN:
+          if on edge bounce
+        IF touching Keeper THEN:
+          point in direction 180 - direction
+          move 14 steps
+        IF touching Goal THEN:
+          change goals by 1
+          change clock by 4
+          play sound "goal"
+          set puckLive to 0
+          go to x: -30 y: pick random -80 to 80
+        IF x position < -235 THEN:
+          set puckLive to 0
+          go to x: -30 y: 0
+      wait 0.02 seconds
+
+SPRITE Keeper:
+  SHAPE rect 18 70 #ff5b6e
+  WHEN flag clicked:
+    set keeperY to 0
+    go to x: 185 y: keeperY
+    show
+    FOREVER:
+      change keeperY by pick random -12 to 12
+      IF keeperY > 115 THEN:
+        set keeperY to 115
+      IF keeperY < -115 THEN:
+        set keeperY to -115
+      glide 0.12 secs to x: 185 y: keeperY
+
+SPRITE Goal:
+  SHAPE rect 12 120 #a8ffdf
+  WHEN flag clicked:
+    go to x: 220 y: 0
+    show`,
+
+    rim_reactor: `# Rim Reactor — an arcade basketball laboratory. Hold Space to charge, release
+# to launch. Left/Right changes the angle while airborne. The hoop slides faster after
+# every score; swishes build a reactor multiplier, rim hits reset it.
+GLOBAL score
+GLOBAL streak
+GLOBAL charge
+GLOBAL ballX
+GLOBAL ballY
+GLOBAL ballVX
+GLOBAL ballVY
+GLOBAL flying
+GLOBAL hoopX
+
+SPRITE Ball:
+  SHAPE circle 28 #ff8c32
+  SOUND swish 900
+  SOUND clang 190
+  WHEN flag clicked:
+    show variable score
+    show variable streak
+    set score to 0
+    set streak to 1
+    set charge to 0
+    set flying to 0
+    set ballX to -150
+    set ballY to -125
+    go to x: ballX y: ballY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF flying = 0 THEN:
+        IF key space pressed? THEN:
+          change charge by 0.7
+          IF charge > 18 THEN:
+            set charge to 18
+        ELSE:
+          IF charge > 2 THEN:
+            set flying to 1
+            set ballVX to charge * 0.55
+            set ballVY to charge
+            set charge to 0
+      ELSE:
+        IF key left arrow pressed? THEN:
+          change ballVX by -0.08
+        IF key right arrow pressed? THEN:
+          change ballVX by 0.08
+        change ballVY by -0.55
+        change ballX by ballVX
+        change ballY by ballVY
+        go to x: ballX y: ballY
+        turn right 12 degrees
+        IF touching Rim THEN:
+          IF ballVY < 0 and ballY > 35 THEN:
+            change score by 2 * streak
+            change streak by 1
+            play sound "swish"
+            set flying to 0
+            set ballX to -150
+            set ballY to -125
+            go to x: ballX y: ballY
+          ELSE:
+            set streak to 1
+            set ballVX to 0 - ballVX
+            set ballVY to abs of ballVY * 0.65
+            play sound "clang"
+        IF ballY < -170 or ballX > 245 THEN:
+          set streak to 1
+          set flying to 0
+          set ballX to -150
+          set ballY to -125
+          go to x: ballX y: ballY
+      wait 0.02 seconds
+
+SPRITE Rim:
+  SHAPE rect 68 12 #ff476f
+  WHEN flag clicked:
+    set hoopX to 110
+    go to x: hoopX y: 55
+    show
+    FOREVER:
+      change hoopX by 3 + score / 8
+      IF hoopX > 190 THEN:
+        set hoopX to 40
+      go to x: hoopX y: 55
+      wait 0.03 seconds
+
+SPRITE ChargeMeter:
+  SHAPE rect 12 100 #55e6a5
+  WHEN flag clicked:
+    go to x: -220 y: -80
+    show
+    FOREVER:
+      set size to 20 + charge * 4 %
+      wait 0.03 seconds`
 };
 
 export default gameExamples;

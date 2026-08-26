@@ -19,7 +19,10 @@ const EXPECTED = [
     'specter_sweep',
     'moonlight_heist',
     'cloud_court',
-    'ember_dojo'
+    'ember_dojo',
+    'lockstep_lagoon',
+    'rink_riot',
+    'rim_reactor'
 ];
 
 test.after(() => quitStrandedVMs());
@@ -71,7 +74,10 @@ test('each new game keeps its signature playable mechanic', () => {
         specter_sweep: [/if on edge bounce/, /touching Ghost/, /set ward to 3/],
         moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/],
         cloud_court: [/set rally to 1/, /touching Net/, /SPRITE CloudBot/],
-        ember_dojo: [/broadcast "swing"/, /touching Blade/, /change dragonHP by -1/]
+        ember_dojo: [/broadcast "swing"/, /touching Blade/, /change dragonHP by -1/],
+        lockstep_lagoon: [/set surge to 3/, /change timeLeft by 4/, /change score by 5 \* surge/],
+        rink_riot: [/set vx to vx \* 0\.94/, /key space pressed\?/, /touching Keeper/, /change goals by 1/],
+        rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /change score by 2 \* streak/]
     };
     for (const [name, patterns] of Object.entries(contracts)) {
         for (const pattern of patterns) assert.match(games[name], pattern, `${name}: missing ${pattern}`);

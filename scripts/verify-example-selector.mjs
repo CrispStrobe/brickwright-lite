@@ -15,7 +15,7 @@ const NEW_GAMES = [
     'Sky Skimmer', 'Chroma Vault', 'Fusion Foundry', 'Missile Ballet',
     'Orbit Ward', 'Rooftop Relay', 'Twinwall', 'Turbo Chicane',
     'Abyss Rescue', 'Specter Sweep', 'Moonlight Heist', 'Cloud Court',
-    'Ember Dojo'
+    'Ember Dojo', 'Lockstep Lagoon', 'Rink Riot', 'Rim Reactor'
 ];
 
 try {
@@ -37,7 +37,7 @@ try {
     const games = page.locator('[data-testid="bw-load-example"]');
     const labels = await games.locator('option').allTextContents();
     const missing = NEW_GAMES.filter(name => !labels.some(label => label.includes(name)));
-    check('all 13 original games are visible in the gallery', missing.length === 0,
+    check('all original games are visible in the gallery', missing.length === 0,
         missing.length ? `missing: ${missing.join(', ')}` : `${NEW_GAMES.length} present`);
     check('the hardware catalog is hidden in no-chip mode',
         await page.locator('[data-testid="bw-catalog-toggle"]').count() === 0);
