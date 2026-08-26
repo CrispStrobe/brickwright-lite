@@ -2263,7 +2263,381 @@ SPRITE SkyRoad:
     show
     FOREVER:
       change color effect by speed
-      wait 0.04 seconds`
+      wait 0.04 seconds`,
+
+    prism_spire: `# Prism Spire — stack a luminous tower while each floor sweeps faster.
+# Tap Space to drop. Only the overlap survives: off-centre landings narrow the next block,
+# perfect landings build a combo, and three misses end the construction.
+GLOBAL score
+GLOBAL misses
+GLOBAL level
+GLOBAL blockX
+GLOBAL towerX
+GLOBAL blockWidth
+GLOBAL sweep
+GLOBAL sweepDir
+GLOBAL perfect
+GLOBAL landingY
+
+SPRITE CraneBlock:
+  SHAPE rect 100 20 #58e6ff
+  COSTUME hot rect 100 20 #ff61c7
+  SOUND land 620
+  SOUND miss 150
+  WHEN flag clicked:
+    show variable score
+    show variable misses
+    show variable level
+    set score to 0
+    set misses to 0
+    set level to 0
+    set blockX to -170
+    set towerX to 0
+    set blockWidth to 100
+    set sweep to 4
+    set sweepDir to 1
+    set perfect to 0
+    set landingY to -135
+    go to x: blockX y: 120
+    show
+  WHEN flag clicked:
+    FOREVER:
+      change blockX by sweep * sweepDir
+      IF blockX > 190 THEN:
+        set sweepDir to -1
+      IF blockX < -190 THEN:
+        set sweepDir to 1
+      go to x: blockX y: 120
+      set size to blockWidth %
+      IF perfect > 2 THEN:
+        switch costume to hot
+      ELSE:
+        switch costume to costume1
+      IF misses > 2 THEN:
+        say ("Prism height: " join level) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN space key pressed:
+    broadcast "drop floor" and wait
+  WHEN I receive "drop floor":
+    IF (abs of (blockX - towerX)) < blockWidth THEN:
+      IF (abs of (blockX - towerX)) < 8 THEN:
+        change perfect by 1
+        change score by 5 * perfect
+      ELSE:
+        set perfect to 0
+      change blockWidth by 0 - (abs of (blockX - towerX))
+      IF blockWidth < 22 THEN:
+        set blockWidth to 22
+      set towerX to (towerX + blockX) / 2
+      change level by 1
+      change score by level
+      set landingY to -135 + level * 20
+      broadcast "freeze floor"
+      play sound "land"
+      change sweep by 0.25
+    ELSE:
+      change misses by 1
+      set perfect to 0
+      play sound "miss"
+    set blockX to -190
+
+SPRITE FrozenFloor:
+  SHAPE rect 100 20 #8b7cff
+  WHEN flag clicked:
+    hide
+  WHEN I receive "freeze floor":
+    go to x: towerX y: landingY
+    set size to blockWidth %
+    create clone of myself
+  WHEN I start as a clone:
+    change color effect by level * 13
+    show
+
+SPRITE Foundation:
+  SHAPE rect 150 22 #334168
+  WHEN flag clicked:
+    go to x: 0 y: -145
+    show`,
+
+    shard_sheriff: `# Shard Sheriff — run beneath bouncing plasma bubbles and split them safely.
+# Left/Right moves; Space fires a vertical lance. A large orb splits into a fast shard,
+# then both must be popped. Never let either touch the sheriff.
+GLOBAL score
+GLOBAL hearts
+GLOBAL sheriffX
+GLOBAL orbX
+GLOBAL orbY
+GLOBAL orbVX
+GLOBAL orbVY
+GLOBAL orbTier
+GLOBAL shardOn
+GLOBAL shardX
+GLOBAL shardY
+GLOBAL shardVX
+GLOBAL shardVY
+GLOBAL lanceOn
+
+SPRITE Sheriff:
+  SHAPE rect 34 48 #54d8ff
+  WHEN flag clicked:
+    show variable score
+    show variable hearts
+    set score to 0
+    set hearts to 3
+    set sheriffX to 0
+    set shardOn to 0
+    set lanceOn to 0
+    go to x: sheriffX y: -135
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change sheriffX by -5
+      IF key right arrow pressed? THEN:
+        change sheriffX by 5
+      IF sheriffX < -215 THEN:
+        set sheriffX to -215
+      IF sheriffX > 215 THEN:
+        set sheriffX to 215
+      go to x: sheriffX y: -135
+      IF hearts < 1 THEN:
+        say ("Shard Sheriff score: " join score) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN space key pressed:
+    IF lanceOn = 0 THEN:
+      set lanceOn to 1
+      broadcast "fire lance"
+
+SPRITE PlasmaOrb:
+  SHAPE circle 58 #ff4fa3
+  SOUND split 780
+  SOUND pop 1040
+  WHEN flag clicked:
+    set orbX to 120
+    set orbY to 80
+    set orbVX to -3
+    set orbVY to 4
+    set orbTier to 3
+    go to x: orbX y: orbY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      change orbVY by -0.38
+      change orbX by orbVX
+      change orbY by orbVY
+      IF orbX > 220 or orbX < -220 THEN:
+        set orbVX to 0 - orbVX
+      IF orbY < -105 THEN:
+        set orbY to -105
+        set orbVY to 8 + orbTier
+      go to x: orbX y: orbY
+      set size to 35 + orbTier * 18 %
+      IF touching Lance and lanceOn = 1 THEN:
+        change score by 5
+        change orbTier by -1
+        IF orbTier = 2 THEN:
+          set shardOn to 1
+          set shardX to orbX
+          set shardY to orbY
+          set shardVX to 5
+          set shardVY to 7
+          play sound "split"
+        IF orbTier < 1 THEN:
+          change score by 15
+          set orbTier to 3
+          set orbX to pick random -170 to 170
+          set orbY to 140
+          play sound "pop"
+        set lanceOn to 0
+      IF touching Sheriff THEN:
+        change hearts by -1
+        set orbX to 150
+        set orbY to 100
+        set orbVY to 5
+        wait 0.7 seconds
+      wait 0.02 seconds
+
+SPRITE Shard:
+  SHAPE circle 28 #ffd659
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      IF shardOn = 1 THEN:
+        show
+        change shardVY by -0.5
+        change shardX by shardVX
+        change shardY by shardVY
+        IF shardX > 225 or shardX < -225 THEN:
+          set shardVX to 0 - shardVX
+        IF shardY < -112 THEN:
+          set shardY to -112
+          set shardVY to 9
+        go to x: shardX y: shardY
+        IF touching Lance and lanceOn = 1 THEN:
+          set shardOn to 0
+          set lanceOn to 0
+          change score by 12
+          hide
+        IF touching Sheriff THEN:
+          change hearts by -1
+          set shardOn to 0
+          hide
+      ELSE:
+        hide
+      wait 0.02 seconds
+
+SPRITE Lance:
+  SHAPE rect 8 44 #b9fff5
+  WHEN flag clicked:
+    hide
+  WHEN I receive "fire lance":
+    go to x: sheriffX y: -105
+    show
+    REPEAT UNTIL y position > 180 or lanceOn = 0:
+      change y by 14
+      wait 0.02 seconds
+    hide
+    set lanceOn to 0`,
+
+    halo_foundry: `# Halo Foundry — circular Pong fused with Breakout.
+# Left/Right rotates the shield around the arena. Keep the core inside the halo while
+# smashing four reactor locks. Each cleared ring returns faster; three escapes end the run.
+GLOBAL score
+GLOBAL lives
+GLOBAL round
+GLOBAL shieldAngle
+GLOBAL shieldX
+GLOBAL shieldY
+GLOBAL coreSpeed
+GLOBAL locks
+
+SPRITE HaloShield:
+  SHAPE rect 68 16 #55f4d4
+  WHEN flag clicked:
+    show variable score
+    show variable lives
+    show variable round
+    set score to 0
+    set lives to 3
+    set round to 1
+    set locks to 4
+    set shieldAngle to 0
+    set coreSpeed to 5
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change shieldAngle by -4
+      IF key right arrow pressed? THEN:
+        change shieldAngle by 4
+      set shieldX to sin of shieldAngle * 205
+      set shieldY to cos of shieldAngle * 150
+      go to x: shieldX y: shieldY
+      point in direction shieldAngle
+      IF locks < 1 THEN:
+        change round by 1
+        change coreSpeed by 0.8
+        set locks to 4
+        broadcast "restore locks"
+      IF lives < 1 THEN:
+        say ("Halo Foundry score: " join score) for 3 seconds
+        stop all
+      wait 0.02 seconds
+
+SPRITE Core:
+  SHAPE circle 20 #fff68a
+  SOUND rebound 640
+  SOUND escape 120
+  WHEN flag clicked:
+    go to x: 0 y: 0
+    point in direction 37
+    show
+    FOREVER:
+      move coreSpeed steps
+      IF touching HaloShield THEN:
+        point towards Reactor
+        turn right pick random -20 to 20 degrees
+        move 12 steps
+        play sound "rebound"
+      IF touching edge THEN:
+        change lives by -1
+        play sound "escape"
+        go to x: 0 y: 0
+        point in direction pick random 20 to 160
+        wait 0.6 seconds
+      wait 0.02 seconds
+
+SPRITE LockNorth:
+  SHAPE rect 46 24 #ff5f78
+  WHEN flag clicked:
+    go to x: 0 y: 75
+    show
+    FOREVER:
+      IF touching Core THEN:
+        hide
+        change locks by -1
+        change score by round * 4
+        wait until locks = 4
+        show
+      wait 0.03 seconds
+  WHEN I receive "restore locks":
+    show
+
+SPRITE LockSouth:
+  SHAPE rect 46 24 #ff9c50
+  WHEN flag clicked:
+    go to x: 0 y: -75
+    show
+    FOREVER:
+      IF touching Core THEN:
+        hide
+        change locks by -1
+        change score by round * 4
+        wait until locks = 4
+        show
+      wait 0.03 seconds
+  WHEN I receive "restore locks":
+    show
+
+SPRITE LockEast:
+  SHAPE rect 24 46 #a96cff
+  WHEN flag clicked:
+    go to x: 95 y: 0
+    show
+    FOREVER:
+      IF touching Core THEN:
+        hide
+        change locks by -1
+        change score by round * 4
+        wait until locks = 4
+        show
+      wait 0.03 seconds
+  WHEN I receive "restore locks":
+    show
+
+SPRITE LockWest:
+  SHAPE rect 24 46 #4f8cff
+  WHEN flag clicked:
+    go to x: -95 y: 0
+    show
+    FOREVER:
+      IF touching Core THEN:
+        hide
+        change locks by -1
+        change score by round * 4
+        wait until locks = 4
+        show
+      wait 0.03 seconds
+  WHEN I receive "restore locks":
+    show
+
+SPRITE Reactor:
+  SHAPE circle 18 #26304d
+  WHEN flag clicked:
+    go to x: 0 y: 0
+    show`
 };
 
 export default gameExamples;

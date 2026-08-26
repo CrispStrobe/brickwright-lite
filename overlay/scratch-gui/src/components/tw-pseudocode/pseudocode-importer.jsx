@@ -291,7 +291,9 @@ const GROUPS = [
         ['rink_riot', '🏒 Rink Riot'], ['rim_reactor', '🏀 Rim Reactor'],
         ['comet_cup', '⚽ Comet Cup'], ['trench_signal', '🛟 Trench Signal'],
         ['whisker_switch', '🐭 Whisker Switch'], ['spiral_circuit', '🌀 Spiral Circuit'],
-        ['lilyway_rescue', '🐸 Lilyway Rescue'], ['rotor_rogue', '🏍️ Rotor Rogue']
+        ['lilyway_rescue', '🐸 Lilyway Rescue'], ['rotor_rogue', '🏍️ Rotor Rogue'],
+        ['prism_spire', '🔷 Prism Spire'], ['shard_sheriff', '🫧 Shard Sheriff'],
+        ['halo_foundry', '⭕ Halo Foundry']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

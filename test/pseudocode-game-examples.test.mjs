@@ -28,7 +28,10 @@ const EXPECTED = [
     'whisker_switch',
     'spiral_circuit',
     'lilyway_rescue',
-    'rotor_rogue'
+    'rotor_rogue',
+    'prism_spire',
+    'shard_sheriff',
+    'halo_foundry'
 ];
 
 test.after(() => quitStrandedVMs());
@@ -89,7 +92,10 @@ test('each new game keeps its signature playable mechanic', () => {
         whisker_switch: [/set hidden to 1/, /change scent by 3/, /point towards Pip/, /change lives by -1/],
         spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /set lane to -2/],
         lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/],
-        rotor_rogue: [/set wind to sin of score \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/]
+        rotor_rogue: [/set wind to sin of score \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/],
+        prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /change score by 5 \* perfect/],
+        shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /change orbTier by -1/],
+        halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/]
     };
     for (const [name, patterns] of Object.entries(contracts)) {
         for (const pattern of patterns) assert.match(games[name], pattern, `${name}: missing ${pattern}`);

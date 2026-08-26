@@ -17,7 +17,8 @@ const NEW_GAMES = [
     'Abyss Rescue', 'Specter Sweep', 'Moonlight Heist', 'Cloud Court',
     'Ember Dojo', 'Lockstep Lagoon', 'Rink Riot', 'Rim Reactor',
     'Comet Cup', 'Trench Signal', 'Whisker Switch',
-    'Spiral Circuit', 'Lilyway Rescue', 'Rotor Rogue'
+    'Spiral Circuit', 'Lilyway Rescue', 'Rotor Rogue',
+    'Prism Spire', 'Shard Sheriff', 'Halo Foundry'
 ];
 
 try {
