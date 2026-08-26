@@ -29,6 +29,7 @@
     "verify:interaction": "node scripts/verify-interaction.mjs",
     "verify:circuit-ux": "node scripts/verify-circuit-ux.mjs",
     "verify:circuit-rendering": "node scripts/verify-circuit-rendering.mjs",
+    "verify:examples": "node scripts/verify-example-selector.mjs",
     "verify:instruments": "node scripts/verify-instruments-scroll.mjs",
     "verify:microbit": "node scripts/verify-microbit.mjs",
     "verify:starters": "node scripts/verify-starter-journeys.mjs",
