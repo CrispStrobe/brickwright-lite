@@ -194,13 +194,21 @@ try {
         await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'right' &&
         await page.locator('[data-debugger-solo-pane]').count() === 1);
 
-    const designer = page.locator('.bw-circuit-designer').first();
+    // The stage-host designer remains mounted while the dedicated Circuit tab
+    // is open.  Its hidden view state is allowed to differ, so assertions for
+    // the tab must stay scoped to the visible designer selected above.
+    const designer = dedicatedDesigner;
     check('Circuit Designer rendered', await designer.count() >= 1);
     const modeToggle = designer.locator('[data-build-sim-toggle]');
     const toolbar = modeToggle.locator('..');
-    check('shared toolbar has view buttons', await designer.locator('[data-circuit-view-toggle] [aria-label="Realistic view"]').count() >= 1 && await designer.locator('[data-circuit-view-toggle] [aria-label="Schematic view"]').count() >= 1);
+    check('shared toolbar has view buttons', await designer.locator('[data-circuit-view-toggle] [aria-label="Realistic view"]').count() >= 1 && await designer.locator('[data-circuit-view-toggle] [aria-label="Schematic view"]').count() >= 1 && await designer.locator('[data-circuit-view-toggle] [aria-label="Board view"]').count() >= 1);
     const viewToggle = designer.locator('[data-circuit-view-toggle]').first();
-    check('Realistic/Schematic is one segmented view toggle', await viewToggle.count() === 1 && await viewToggle.getByRole('radio').count() === 2 && await viewToggle.getByRole('radio', {name: 'Realistic view'}).getAttribute('aria-checked') === 'true');
+    const viewState = await viewToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({
+        label: button.getAttribute('aria-label'),
+        checked: button.getAttribute('aria-checked')
+    })));
+    check('Realistic/Schematic/Board is one segmented view toggle', viewState.length === 3 && viewState.filter(button => button.checked === 'true').length === 1,
+        JSON.stringify(viewState));
     check('view toggle matches toolbar control height', await viewToggle.evaluate(el => el.getBoundingClientRect().height >= 34));
     check('Build/Sim is one segmented mode toggle', await modeToggle.count() === 1 && await modeToggle.getByRole('radio').count() === 2 && await modeToggle.getByRole('radio', {name: 'Build mode'}).getAttribute('aria-checked') === 'true');
     const modeMetrics = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
