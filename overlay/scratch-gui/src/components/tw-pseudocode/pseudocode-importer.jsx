@@ -290,7 +290,8 @@ const GROUPS = [
         ['ember_dojo', '🐉 Ember Dojo'], ['lockstep_lagoon', '🚤 Lockstep Lagoon'],
         ['rink_riot', '🏒 Rink Riot'], ['rim_reactor', '🏀 Rim Reactor'],
         ['comet_cup', '⚽ Comet Cup'], ['trench_signal', '🛟 Trench Signal'],
-        ['whisker_switch', '🐭 Whisker Switch']
+        ['whisker_switch', '🐭 Whisker Switch'], ['spiral_circuit', '🌀 Spiral Circuit'],
+        ['lilyway_rescue', '🐸 Lilyway Rescue'], ['rotor_rogue', '🏍️ Rotor Rogue']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

@@ -25,7 +25,10 @@ const EXPECTED = [
     'rim_reactor',
     'comet_cup',
     'trench_signal',
-    'whisker_switch'
+    'whisker_switch',
+    'spiral_circuit',
+    'lilyway_rescue',
+    'rotor_rogue'
 ];
 
 test.after(() => quitStrandedVMs());
@@ -83,7 +86,10 @@ test('each new game keeps its signature playable mechanic', () => {
         rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /change score by 2 \* streak/],
         comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by crowd/],
         trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /touching SonarRing/, /change pearls by 1/],
-        whisker_switch: [/set hidden to 1/, /change scent by 3/, /point towards Pip/, /change lives by -1/]
+        whisker_switch: [/set hidden to 1/, /change scent by 3/, /point towards Pip/, /change lives by -1/],
+        spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /set lane to -2/],
+        lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/],
+        rotor_rogue: [/set wind to sin of score \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/]
     };
     for (const [name, patterns] of Object.entries(contracts)) {
         for (const pattern of patterns) assert.match(games[name], pattern, `${name}: missing ${pattern}`);

@@ -1908,7 +1908,362 @@ SPRITE RightHole:
   SHAPE circle 48 #403651
   WHEN flag clicked:
     go to x: 205 y: -125
-    show`
+    show`,
+
+    spiral_circuit: `# Spiral Circuit — race down the inside of a five-lane energy tube.
+# Left/Right rotates the tube under you. Catch yellow cells to charge boost, then tap
+# Space to phase through hazards. Hit a magenta launch gate while boosting for a jackpot.
+GLOBAL score
+GLOBAL lives
+GLOBAL lane
+GLOBAL speed
+GLOBAL charge
+GLOBAL boosting
+GLOBAL obstacleLane
+GLOBAL obstacleY
+GLOBAL obstacleKind
+
+SPRITE Runner:
+  SHAPE triangle 38 #74f7ff
+  COSTUME phase triangle 46 #fff06a
+  SOUND boost 760
+  WHEN flag clicked:
+    show variable score
+    show variable lives
+    show variable charge
+    set score to 0
+    set lives to 3
+    set lane to 0
+    set speed to 5
+    set charge to 0
+    set boosting to 0
+    go to x: 0 y: -125
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change lane by -1
+        wait 0.1 seconds
+      IF key right arrow pressed? THEN:
+        change lane by 1
+        wait 0.1 seconds
+      IF lane < -2 THEN:
+        set lane to 2
+      IF lane > 2 THEN:
+        set lane to -2
+      glide 0.07 secs to x: lane * 82 y: -125
+      IF boosting = 1 THEN:
+        switch costume to phase
+        set speed to 9
+        change charge by -0.22
+        change score by 0.2
+        IF charge < 1 THEN:
+          set boosting to 0
+      ELSE:
+        switch costume to costume1
+        set speed to 5
+      IF lives < 1 THEN:
+        say ("Spiral score: " join score) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN space key pressed:
+    IF charge > 4 and boosting = 0 THEN:
+      set boosting to 1
+      play sound "boost"
+
+SPRITE TubeHazard:
+  SHAPE rect 58 28 #ff4d6d
+  COSTUME cell circle 26 #ffe85c
+  COSTUME gate rect 66 16 #ed63ff
+  SOUND hit 170
+  SOUND jackpot 1020
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      set obstacleLane to pick random -2 to 2
+      set obstacleY to 190
+      set obstacleKind to pick random 1 to 7
+      IF obstacleKind < 5 THEN:
+        switch costume to costume1
+      ELSE:
+        IF obstacleKind < 7 THEN:
+          switch costume to cell
+        ELSE:
+          switch costume to gate
+      go to x: obstacleLane * 82 y: obstacleY
+      show
+      REPEAT UNTIL y position < -190:
+        change y by 0 - speed
+        turn right 5 degrees
+        IF touching Runner THEN:
+          IF obstacleKind < 5 THEN:
+            IF boosting = 0 THEN:
+              change lives by -1
+              play sound "hit"
+            ELSE:
+              change score by 3
+          ELSE:
+            IF obstacleKind < 7 THEN:
+              change charge by 4
+              change score by 2
+            ELSE:
+              IF boosting = 1 THEN:
+                change score by 25
+                change charge by 3
+                play sound "jackpot"
+              ELSE:
+                change score by 5
+          hide
+          set y to -220
+        wait 0.02 seconds
+      hide
+      change score by 1
+      wait 0.15 seconds
+
+SPRITE TubeCore:
+  SHAPE circle 90 #342a66
+  WHEN flag clicked:
+    go to x: 0 y: 0
+    set ghost effect to 70
+    show
+    FOREVER:
+      turn right speed degrees
+      wait 0.03 seconds`,
+
+    lilyway_rescue: `# Lilyway Rescue — cross traffic, then ride drifting lily pads across the river.
+# Arrow keys hop one square at a time. Cars cost a heart; water is safe only while a
+# lily is beneath you. Reach the moon bank repeatedly as traffic accelerates.
+GLOBAL crossings
+GLOBAL hearts
+GLOBAL frogX
+GLOBAL frogY
+GLOBAL traffic
+GLOBAL riding
+
+SPRITE Juniper:
+  SHAPE circle 34 #67e35f
+  SOUND hop 620
+  SOUND splash 190
+  WHEN flag clicked:
+    show variable crossings
+    show variable hearts
+    set crossings to 0
+    set hearts to 3
+    set traffic to 4
+    set frogX to 0
+    set frogY to -150
+    set riding to 0
+    go to x: frogX y: frogY
+    show
+  WHEN left arrow key pressed:
+    change frogX by -45
+    play sound "hop"
+  WHEN right arrow key pressed:
+    change frogX by 45
+    play sound "hop"
+  WHEN up arrow key pressed:
+    change frogY by 45
+    play sound "hop"
+  WHEN down arrow key pressed:
+    change frogY by -45
+    play sound "hop"
+  WHEN flag clicked:
+    FOREVER:
+      IF frogX < -215 THEN:
+        set frogX to -215
+      IF frogX > 215 THEN:
+        set frogX to 215
+      IF frogY < -150 THEN:
+        set frogY to -150
+      go to x: frogX y: frogY
+      IF frogY > -70 and frogY < 45 THEN:
+        IF touching CarA or touching CarB THEN:
+          change hearts by -1
+          broadcast "frog reset"
+      IF frogY > 45 and frogY < 140 THEN:
+        set riding to 0
+        IF touching LilyA or touching LilyB THEN:
+          set riding to 1
+        IF riding = 0 THEN:
+          change hearts by -1
+          play sound "splash"
+          broadcast "frog reset"
+      IF frogY > 145 THEN:
+        change crossings by 1
+        change traffic by 0.7
+        broadcast "frog reset"
+      IF hearts < 1 THEN:
+        say ("Moon-bank crossings: " join crossings) for 3 seconds
+        stop all
+      wait 0.03 seconds
+  WHEN I receive "frog reset":
+    set frogX to 0
+    set frogY to -150
+    go to x: frogX y: frogY
+    wait 0.45 seconds
+
+SPRITE CarA:
+  SHAPE rect 62 28 #ff556f
+  WHEN flag clicked:
+    go to x: -230 y: -25
+    show
+    FOREVER:
+      change x by traffic
+      IF x position > 240 THEN:
+        set x to -240
+      wait 0.02 seconds
+
+SPRITE CarB:
+  SHAPE rect 72 30 #ffc34d
+  WHEN flag clicked:
+    go to x: 230 y: -65
+    show
+    FOREVER:
+      change x by 0 - traffic - 1
+      IF x position < -240 THEN:
+        set x to 240
+      wait 0.02 seconds
+
+SPRITE LilyA:
+  SHAPE circle 58 #43b86a
+  WHEN flag clicked:
+    go to x: -180 y: 75
+    show
+    FOREVER:
+      change x by 2.4
+      IF touching Juniper THEN:
+        change frogX by 2.4
+      IF x position > 240 THEN:
+        set x to -240
+      wait 0.02 seconds
+
+SPRITE LilyB:
+  SHAPE circle 64 #328f62
+  WHEN flag clicked:
+    go to x: 180 y: 120
+    show
+    FOREVER:
+      change x by -2
+      IF touching Juniper THEN:
+        change frogX by -2
+      IF x position < -240 THEN:
+        set x to 240
+      wait 0.02 seconds`,
+
+    rotor_rogue: `# Rotor Rogue — balance a gyro-bike along a road suspended over the clouds.
+# Up accelerates, Down brakes, Left/Right counter-steer against the changing crosswind.
+# Space jumps barriers. Land with the bike level to bank airtime and refill boost fuel.
+GLOBAL score
+GLOBAL lives
+GLOBAL speed
+GLOBAL tilt
+GLOBAL wind
+GLOBAL bikeY
+GLOBAL lift
+GLOBAL airborne
+GLOBAL fuel
+
+SPRITE GyroBike:
+  SHAPE rect 58 24 #43e6c7
+  COSTUME jump rect 58 24 #ffe56b
+  SOUND rev 440
+  SOUND crash 150
+  WHEN flag clicked:
+    show variable score
+    show variable lives
+    show variable speed
+    show variable fuel
+    set score to 0
+    set lives to 3
+    set speed to 4
+    set tilt to 0
+    set wind to 0
+    set bikeY to -120
+    set lift to 0
+    set airborne to 0
+    set fuel to 12
+    go to x: 0 y: bikeY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key up arrow pressed? and fuel > 0 THEN:
+        change speed by 0.08
+        change fuel by -0.025
+      IF key down arrow pressed? THEN:
+        change speed by -0.12
+      IF speed < 3 THEN:
+        set speed to 3
+      IF speed > 11 THEN:
+        set speed to 11
+      set wind to sin of score * speed / 8
+      change tilt by wind
+      IF key left arrow pressed? THEN:
+        change tilt by -1.8
+      IF key right arrow pressed? THEN:
+        change tilt by 1.8
+      set tilt to tilt * 0.96
+      point in direction 90 + tilt
+      IF airborne = 1 THEN:
+        switch costume to jump
+        change lift by -0.7
+        change bikeY by lift
+        change score by 0.12
+        IF bikeY < -120 THEN:
+          set bikeY to -120
+          set airborne to 0
+          set lift to 0
+          IF abs of tilt < 14 THEN:
+            change score by 8
+            change fuel by 3
+          ELSE:
+            change lives by -1
+            set tilt to 0
+      ELSE:
+        switch costume to costume1
+      go to x: 0 y: bikeY
+      IF abs of tilt > 48 THEN:
+        change lives by -1
+        set tilt to 0
+        set speed to 4
+        play sound "crash"
+        wait 0.7 seconds
+      change score by speed / 180
+      IF lives < 1 THEN:
+        say ("Rotor distance: " join score) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN space key pressed:
+    IF airborne = 0 THEN:
+      set airborne to 1
+      set lift to 11
+      play sound "rev"
+
+SPRITE Barrier:
+  SHAPE rect 52 42 #fb4968
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      go to x: 220 y: -120
+      show
+      REPEAT UNTIL x position < -240:
+        change x by 0 - speed
+        IF touching GyroBike and airborne = 0 THEN:
+          change lives by -1
+          set tilt to 24
+          hide
+          set x to -250
+        wait 0.02 seconds
+      hide
+      wait pick random 1 to 3 seconds
+
+SPRITE SkyRoad:
+  SHAPE rect 420 16 #6d70a8
+  WHEN flag clicked:
+    go to x: 0 y: -145
+    show
+    FOREVER:
+      change color effect by speed
+      wait 0.04 seconds`
 };
 
 export default gameExamples;

@@ -16,7 +16,8 @@ const NEW_GAMES = [
     'Orbit Ward', 'Rooftop Relay', 'Twinwall', 'Turbo Chicane',
     'Abyss Rescue', 'Specter Sweep', 'Moonlight Heist', 'Cloud Court',
     'Ember Dojo', 'Lockstep Lagoon', 'Rink Riot', 'Rim Reactor',
-    'Comet Cup', 'Trench Signal', 'Whisker Switch'
+    'Comet Cup', 'Trench Signal', 'Whisker Switch',
+    'Spiral Circuit', 'Lilyway Rescue', 'Rotor Rogue'
 ];
 
 try {
