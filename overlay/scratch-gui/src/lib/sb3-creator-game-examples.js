@@ -3072,7 +3072,295 @@ SPRITE ColumnD:
     show
     FOREVER:
       set size to 30 + length of colD * 10 %
-      wait 0.03 seconds`
+      wait 0.03 seconds`,
+
+    mooncoil_odyssey: `# Mooncoil Odyssey — grow a rover-snake across a cratered lunar grid.
+# Arrow keys steer. Collect moonfruit to lengthen the list-backed trail; avoid the roaming
+# bomb and your own recorded body. Space spends one oxygen unit on a two-cell lunar dash.
+GLOBAL score
+GLOBAL lives
+GLOBAL headX
+GLOBAL headY
+GLOBAL dirX
+GLOBAL dirY
+GLOBAL snakeLength
+GLOBAL foodX
+GLOBAL foodY
+GLOBAL bombX
+GLOBAL bombY
+GLOBAL oxygen
+GLOBAL i
+GLOBAL hitTail
+LIST trailX
+LIST trailY
+
+SPRITE Mooncoil:
+  SHAPE circle 30 #9cf5df
+  COSTUME dash circle 36 #fff078
+  SOUND fruit 960
+  SOUND boom 120
+  WHEN flag clicked:
+    show variable score
+    show variable lives
+    show variable oxygen
+    set score to 0
+    set lives to 3
+    set oxygen to 5
+    set headX to 0
+    set headY to 0
+    set dirX to 1
+    set dirY to 0
+    set snakeLength to 5
+    set hitTail to 0
+    delete all of trailX
+    delete all of trailY
+    go to x: headX * 24 y: headY * 24
+    show
+  WHEN left arrow key pressed:
+    IF dirX = 0 THEN:
+      set dirX to -1
+      set dirY to 0
+  WHEN right arrow key pressed:
+    IF dirX = 0 THEN:
+      set dirX to 1
+      set dirY to 0
+  WHEN up arrow key pressed:
+    IF dirY = 0 THEN:
+      set dirX to 0
+      set dirY to 1
+  WHEN down arrow key pressed:
+    IF dirY = 0 THEN:
+      set dirX to 0
+      set dirY to -1
+  WHEN flag clicked:
+    FOREVER:
+      add headX to trailX
+      add headY to trailY
+      IF length of trailX > snakeLength THEN:
+        delete 1 of trailX
+        delete 1 of trailY
+      change headX by dirX
+      change headY by dirY
+      IF headX > 9 THEN:
+        set headX to -9
+      IF headX < -9 THEN:
+        set headX to 9
+      IF headY > 6 THEN:
+        set headY to -6
+      IF headY < -6 THEN:
+        set headY to 6
+      set hitTail to 0
+      set i to 1
+      REPEAT UNTIL i > length of trailX:
+        IF headX = item i of trailX and headY = item i of trailY THEN:
+          set hitTail to 1
+        change i by 1
+      IF hitTail = 1 THEN:
+        change lives by -1
+        broadcast "coil reset"
+      IF headX = foodX and headY = foodY THEN:
+        change score by snakeLength
+        change snakeLength by 1
+        change oxygen by 1
+        play sound "fruit"
+        broadcast "new moonfruit"
+      IF headX = bombX and headY = bombY THEN:
+        change lives by -1
+        play sound "boom"
+        broadcast "coil reset"
+      go to x: headX * 24 y: headY * 24
+      IF lives < 1 THEN:
+        say ("Mooncoil score: " join score) for 3 seconds
+        stop all
+      wait 0.16 seconds
+  WHEN space key pressed:
+    IF oxygen > 0 THEN:
+      switch costume to dash
+      change headX by dirX
+      change headY by dirY
+      change oxygen by -1
+      wait 0.12 seconds
+      switch costume to costume1
+  WHEN I receive "coil reset":
+    set headX to 0
+    set headY to 0
+    set dirX to 1
+    set dirY to 0
+    set snakeLength to 5
+    delete all of trailX
+    delete all of trailY
+    wait 0.5 seconds
+
+SPRITE Moonfruit:
+  SHAPE circle 22 #ff79c9
+  WHEN flag clicked:
+    broadcast "new moonfruit"
+    show
+  WHEN I receive "new moonfruit":
+    set foodX to pick random -8 to 8
+    set foodY to pick random -5 to 5
+    go to x: foodX * 24 y: foodY * 24
+
+SPRITE RoverBomb:
+  SHAPE circle 28 #ff554f
+  WHEN flag clicked:
+    set bombX to 6
+    set bombY to -4
+    go to x: bombX * 24 y: bombY * 24
+    show
+    FOREVER:
+      wait 1.2 seconds
+      change bombX by pick random -1 to 1
+      change bombY by pick random -1 to 1
+      IF bombX > 8 THEN:
+        set bombX to 8
+      IF bombX < -8 THEN:
+        set bombX to -8
+      IF bombY > 5 THEN:
+        set bombY to 5
+      IF bombY < -5 THEN:
+        set bombY to -5
+      go to x: bombX * 24 y: bombY * 24
+
+SPRITE TrailEcho:
+  SHAPE circle 18 #4ea99a
+  WHEN flag clicked:
+    show
+    FOREVER:
+      IF length of trailX > 0 THEN:
+        go to x: item 1 of trailX * 24 y: item 1 of trailY * 24
+      wait 0.04 seconds`,
+
+    cinder_thrust: `# Cinder Thrust — rocket-boot through a volcanic cave where fuel is altitude.
+# Hold Up to thrust against gravity, Left/Right to steer. Touch cyan ledges to recharge,
+# skim ember rings for score, and avoid the moving basalt teeth.
+GLOBAL score
+GLOBAL hearts
+GLOBAL fuel
+GLOBAL flyerX
+GLOBAL flyerY
+GLOBAL flyerVX
+GLOBAL flyerVY
+GLOBAL caveSpeed
+GLOBAL grounded
+
+SPRITE Cinder:
+  SHAPE triangle 38 #ffb14f
+  COSTUME thrust triangle 46 #fff26b
+  SOUND jet 540
+  SOUND hit 140
+  WHEN flag clicked:
+    show variable score
+    show variable hearts
+    show variable fuel
+    set score to 0
+    set hearts to 3
+    set fuel to 18
+    set flyerX to -150
+    set flyerY to 20
+    set flyerVX to 0
+    set flyerVY to 0
+    set caveSpeed to 5
+    set grounded to 0
+    go to x: flyerX y: flyerY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      change flyerVY by -0.42
+      IF key up arrow pressed? and fuel > 0 THEN:
+        change flyerVY by 0.9
+        change fuel by -0.08
+        switch costume to thrust
+      ELSE:
+        switch costume to costume1
+      IF key left arrow pressed? THEN:
+        change flyerVX by -0.22
+      IF key right arrow pressed? THEN:
+        change flyerVX by 0.22
+      set flyerVX to flyerVX * 0.94
+      set flyerVY to flyerVY * 0.98
+      change flyerX by flyerVX
+      change flyerY by flyerVY
+      IF flyerX < -220 THEN:
+        set flyerX to -220
+      IF flyerX > 180 THEN:
+        set flyerX to 180
+      IF flyerY > 155 THEN:
+        set flyerY to 155
+        set flyerVY to -2
+      IF flyerY < -155 THEN:
+        change hearts by -1
+        broadcast "cinder reset"
+      go to x: flyerX y: flyerY
+      set grounded to 0
+      IF touching ChargeLedge and flyerVY < 1 THEN:
+        set grounded to 1
+        set flyerVY to 0
+        change fuel by 0.3
+        IF fuel > 20 THEN:
+          set fuel to 20
+      IF touching BasaltTooth THEN:
+        change hearts by -1
+        play sound "hit"
+        broadcast "cinder reset"
+      IF hearts < 1 THEN:
+        say ("Cinder distance: " join score) for 3 seconds
+        stop all
+      change score by caveSpeed / 220
+      wait 0.02 seconds
+  WHEN I receive "cinder reset":
+    set flyerX to -150
+    set flyerY to 20
+    set flyerVX to 0
+    set flyerVY to 0
+    wait 0.6 seconds
+
+SPRITE BasaltTooth:
+  SHAPE triangle 58 #632f48
+  WHEN flag clicked:
+    go to x: 230 y: pick random -90 to 120
+    show
+    FOREVER:
+      change x by 0 - caveSpeed
+      turn right 2 degrees
+      IF x position < -250 THEN:
+        set x to 250
+        set y to pick random -110 to 125
+        change caveSpeed by 0.12
+      wait 0.02 seconds
+
+SPRITE ChargeLedge:
+  SHAPE rect 100 18 #54e6df
+  SOUND charge 900
+  WHEN flag clicked:
+    go to x: 120 y: -115
+    show
+    FOREVER:
+      change x by 0 - caveSpeed * 0.6
+      IF x position < -250 THEN:
+        set x to 250
+        set y to pick random -125 to 10
+      IF touching Cinder THEN:
+        play sound "charge"
+      wait 0.03 seconds
+
+SPRITE EmberRing:
+  SHAPE circle 38 #ff5b4f
+  SOUND ring 1080
+  WHEN flag clicked:
+    go to x: 200 y: 80
+    show
+    FOREVER:
+      change x by 0 - caveSpeed
+      IF x position < -250 THEN:
+        set x to 250
+        set y to pick random -80 to 130
+      IF touching Cinder THEN:
+        change score by 12
+        change fuel by 2
+        set x to 260
+        play sound "ring"
+      wait 0.02 seconds`
 };
 
 export default gameExamples;

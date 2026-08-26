@@ -294,7 +294,8 @@ const GROUPS = [
         ['lilyway_rescue', '🐸 Lilyway Rescue'], ['rotor_rogue', '🏍️ Rotor Rogue'],
         ['prism_spire', '🔷 Prism Spire'], ['shard_sheriff', '🫧 Shard Sheriff'],
         ['halo_foundry', '⭕ Halo Foundry'], ['corridor_kestrel', '🛸 Corridor Kestrel'],
-        ['thunder_volley', '⚡ Thunder Volley'], ['cascade_pair', '💠 Cascade Pair']
+        ['thunder_volley', '⚡ Thunder Volley'], ['cascade_pair', '💠 Cascade Pair'],
+        ['mooncoil_odyssey', '🌙 Mooncoil Odyssey'], ['cinder_thrust', '🔥 Cinder Thrust']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

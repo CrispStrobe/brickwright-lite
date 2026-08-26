@@ -34,7 +34,9 @@ const EXPECTED = [
     'halo_foundry',
     'corridor_kestrel',
     'thunder_volley',
-    'cascade_pair'
+    'cascade_pair',
+    'mooncoil_odyssey',
+    'cinder_thrust'
 ];
 
 test.after(() => quitStrandedVMs());
@@ -101,7 +103,9 @@ test('each new game keeps its signature playable mechanic', () => {
         halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/],
         corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/],
         thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/, /change rivalPoints by 1/, /touching ThunderNet/],
-        cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/, /delete falls of colA/, /change score by 40 \* combo/]
+        cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/, /delete falls of colA/, /change score by 40 \* combo/],
+        mooncoil_odyssey: [/LIST trailX/, /add headX to trailX/, /headX = item i of trailX/, /delete 1 of trailX/, /change snakeLength by 1/],
+        cinder_thrust: [/change flyerVY by -0\.42/, /key up arrow pressed\? and fuel > 0/, /touching ChargeLedge/, /change caveSpeed by 0\.12/]
     };
     for (const [name, patterns] of Object.entries(contracts)) {
         for (const pattern of patterns) assert.match(games[name], pattern, `${name}: missing ${pattern}`);

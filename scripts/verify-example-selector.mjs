@@ -19,7 +19,8 @@ const NEW_GAMES = [
     'Comet Cup', 'Trench Signal', 'Whisker Switch',
     'Spiral Circuit', 'Lilyway Rescue', 'Rotor Rogue',
     'Prism Spire', 'Shard Sheriff', 'Halo Foundry',
-    'Corridor Kestrel', 'Thunder Volley', 'Cascade Pair'
+    'Corridor Kestrel', 'Thunder Volley', 'Cascade Pair',
+    'Mooncoil Odyssey', 'Cinder Thrust'
 ];
 
 try {
