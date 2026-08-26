@@ -6,6 +6,8 @@ import AppStateHOC from '../lib/app-state-hoc.jsx';
 import GUI from '../containers/gui.jsx';
 import HashParserHOC from '../lib/hash-parser-hoc.jsx';
 import log from '../lib/log.js';
+import initBleDiagnostics from '../lib/ble-diagnostics.js';
+import installNativeWebBluetooth from '../lib/native-web-bluetooth.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
 import initUrlExtensions from '../lib/url-extensions.js';
 import {applyStoredChrome} from '../components/gui/chrome-toggle.jsx';
@@ -33,6 +35,17 @@ const handleTelemetryModalOptOut = () => {
  */
 export default appTarget => {
     GUI.setAppElement(appTarget);
+
+    // Mirror the console into an on-screen log FIRST, so everything after this
+    // point — including a failure to install the Bluetooth shim — is readable on
+    // a device with no devtools. Settings › Connection diagnostics opens it.
+    initBleDiagnostics();
+
+    // Give the hardware extensions a `navigator.bluetooth` inside the app. No
+    // webview we ship on implements Web Bluetooth, so without this every
+    // extension whose default connection type is "ble" fails silently. No-op in
+    // a browser that has the real thing, and in one that has neither.
+    installNativeWebBluetooth();
 
     // Wire native file-open (Tauri) → web VM. No-op in a browser.
     initTauriBridge();

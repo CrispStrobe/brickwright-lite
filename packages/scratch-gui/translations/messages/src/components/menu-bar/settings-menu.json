@@ -17,5 +17,10 @@
     "id": "gui.menuBar.reloadBrickwright",
     "description": "Settings action that clears frontend caches and reloads the app",
     "defaultMessage": "Reload BrickWright"
+  },
+  {
+    "id": "gui.menuBar.connectionDiagnostics",
+    "description": "Settings action that opens the on-screen Bluetooth/connection log",
+    "defaultMessage": "Connection diagnostics…"
   }
 ]

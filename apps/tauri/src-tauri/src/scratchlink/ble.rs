@@ -4,6 +4,19 @@
 //! Web → native requests:  discover / connect / write / read / startNotifications / ping
 //! Native → web notifications: didDiscoverPeripheral / characteristicDidChange
 //!
+//! Two methods here are NOT part of Scratch Link's protocol and are only ever
+//! called by Brickwright's own web side (`native-ble.js`):
+//!
+//!   getStatus    — adapter permission/power, so a failure to find anything can
+//!                  be explained instead of just timing out. See ble_state.rs.
+//!   getServices  — the connected peripheral's services and characteristics,
+//!                  which the Web Bluetooth shim needs for getPrimaryServices()
+//!                  and getCharacteristics(). Scratch Link never enumerates,
+//!                  because the VM always knows its UUIDs up front.
+//!
+//! Real Scratch Link answers both with a method-not-found error, which the web
+//! side treats as "this feature is unavailable" rather than as a failure.
+//!
 //! blec addresses characteristics by a bare `Uuid` (service pairing is implicit
 //! in its internal characteristic registry), so `serviceId` is only echoed back
 //! in notifications; `characteristicId` drives read/write/subscribe.
@@ -48,6 +61,19 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
     // `ping` needs no BLE adapter — answer before touching the handler.
     if method == "ping" {
         return Ok(json!(42));
+    }
+    // `getStatus` must answer even when the handler failed to initialise: that
+    // IS the diagnosis, and swallowing it into a generic error is what made the
+    // original failure invisible.
+    if method == "getStatus" {
+        let h = tauri_plugin_blec::get_handler().ok();
+        let (scanning, connected) = match h {
+            Some(h) => (h.is_scanning().await, h.is_connected()),
+            None => (false, false),
+        };
+        let mut v = super::ble_state::status(scanning, connected);
+        v["handler"] = json!(h.is_some());
+        return Ok(v);
     }
     let h = tauri_plugin_blec::get_handler().map_err(|e| e.to_string())?;
     match method {
@@ -105,6 +131,20 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             subscribe(uuid, params, out.clone()).await?;
             Ok(Value::Null)
         }
+        // Non-standard; see the module header. The address is optional so the
+        // shim can ask about whatever is currently connected.
+        "getServices" => {
+            let addr = match params.get("peripheralId").and_then(Value::as_str) {
+                Some(a) => a.to_string(),
+                None => h
+                    .connected_device()
+                    .await
+                    .map_err(|e| e.to_string())?
+                    .address,
+            };
+            let services = h.discover_services(&addr).await.map_err(|e| e.to_string())?;
+            Ok(json!(services))
+        }
         other => Err(format!("unknown method: {other}")),
     }
 }
@@ -143,16 +183,39 @@ fn start_discover(params: &Value, out: Outbound) {
             Ok(h) => h,
             Err(e) => {
                 log::error!("[scratchlink/ble] discover: {e}");
+                scan_failed(&out, &format!("BLE is unavailable: {e}")).await;
                 return;
             }
         };
+        // Say up front whether the adapter can even scan. btleplug's start_scan
+        // against a central that is not powered on is a SILENT no-op on Apple
+        // platforms, so without this the only symptom is a 15 s wait followed by
+        // "no device found" — the exact report this whole path was failing with.
+        let status = super::ble_state::status(false, false);
+        if status["usable"] == json!(false) {
+            let why = status["advice"].as_str().unwrap_or("Bluetooth is unavailable");
+            log::warn!("[scratchlink/ble] refusing to scan: {why}");
+            scan_failed(&out, why).await;
+            return;
+        }
         let (dtx, mut drx) = mpsc::channel::<Vec<BleDevice>>(16);
         if let Err(e) = h.discover(Some(dtx), 15_000, filter).await {
             log::error!("[scratchlink/ble] scan failed: {e}");
+            scan_failed(&out, &format!("scan failed: {e}")).await;
             return;
         }
+        // blec re-reports every peripheral it has seen on each 200 ms poll, so
+        // over a 15 s scan one hub arrives 75 times. Deduplicating here keeps the
+        // socket (and the diagnostics log) readable, and matters more than it
+        // looks: the outbound channel holds 64 frames and drops on overflow, so
+        // the undeduplicated flood could evict a real reply.
+        let mut seen = std::collections::HashSet::new();
         while let Some(batch) = drx.recv().await {
             for d in batch {
+                if !seen.insert(d.address.clone()) {
+                    continue;
+                }
+                log::info!("[scratchlink/ble] discovered {} ({})", d.name, d.address);
                 let note = json!({
                     "jsonrpc": "2.0",
                     "method": "didDiscoverPeripheral",
@@ -161,7 +224,44 @@ fn start_discover(params: &Value, out: Outbound) {
                 let _ = out.try_send(Message::Text(note.to_string()));
             }
         }
+        if seen.is_empty() {
+            log::warn!("[scratchlink/ble] scan finished with no peripherals");
+        }
+        // The web side has no other way to learn the scan window closed: the
+        // `discover` reply returns immediately, and Scratch Link itself never
+        // says "done". Without this the UI can only wait out its own timeout.
+        let note = json!({
+            "jsonrpc": "2.0",
+            "method": "discoverDidFinish",
+            "params": { "count": seen.len() }
+        });
+        let _ = out.try_send(Message::Text(note.to_string()));
     });
+}
+
+/// Tell the web side a scan could not start, and why. This is a notification
+/// rather than an error reply because `discover` has already been answered by
+/// the time the scan is attempted.
+///
+/// TWO frames, on purpose. `discoverDidFail` carries the reason and is ours —
+/// only Brickwright's own web code reads it. `userDidNotPickPeripheral` is
+/// Scratch Link's, and the stock `io/ble.js` maps it to PERIPHERAL_SCAN_TIMEOUT;
+/// without it a stock extension has no idea anything went wrong and sits on its
+/// own 15 s timeout before saying "no device found". Same outcome, fifteen
+/// seconds of "nothing is happening" earlier.
+async fn scan_failed(out: &Outbound, why: &str) {
+    let note = json!({
+        "jsonrpc": "2.0",
+        "method": "discoverDidFail",
+        "params": { "message": why }
+    });
+    let _ = out.send(Message::Text(note.to_string())).await;
+    let legacy = json!({
+        "jsonrpc": "2.0",
+        "method": "userDidNotPickPeripheral",
+        "params": {}
+    });
+    let _ = out.send(Message::Text(legacy.to_string())).await;
 }
 
 /// Build a blec scan filter from the VM's `{filters:[{services:[…]}]}`. LEGO
@@ -314,6 +414,21 @@ mod tests {
             ScanFilter::AnyService(v) => assert_eq!(v.len(), 2),
             _ => panic!("expected AnyService"),
         }
+    }
+
+    #[tokio::test]
+    async fn a_failed_scan_tells_both_dialects() {
+        // Our own web code needs the reason; the stock VM needs a method it
+        // already understands, or it waits out its own timeout in silence.
+        let (tx, mut rx) = mpsc::channel(4);
+        scan_failed(&tx, "Bluetooth is switched off.").await;
+
+        let first: Value = serde_json::from_str(&rx.recv().await.unwrap().into_text().unwrap()).unwrap();
+        assert_eq!(first["method"], json!("discoverDidFail"));
+        assert_eq!(first["params"]["message"], json!("Bluetooth is switched off."));
+
+        let second: Value = serde_json::from_str(&rx.recv().await.unwrap().into_text().unwrap()).unwrap();
+        assert_eq!(second["method"], json!("userDidNotPickPeripheral"));
     }
 
     #[test]

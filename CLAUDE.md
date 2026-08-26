@@ -136,6 +136,25 @@ Scratch relicensed BSD-3 → AGPL-3.0 on 2024-11-25. Pin the last-BSD:
   its scope covers the app) and registered from index.ejs; stale-while-revalidate runtime cache of
   same-origin GETs → offline after first visit.
 
+## Bluetooth in the native app (fixed 2026-08-26) — read docs/BLUETOOTH.md first
+
+The LEGO extensions' default connection type is `ble` = `navigator.bluetooth`, and **no
+webview we ship on implements Web Bluetooth** (WKWebView on iOS *and* macOS never has).
+`overlay/scratch-gui/src/lib/native-web-bluetooth.js` now supplies it inside the app, over
+the same in-process Scratch-Link service (`ws://127.0.0.1:20111/scratch/ble`) that the
+stock extensions already use. The extensions' `scratchlink` type dialled only the LEGACY
+Scratch Link host and misread `discover`'s null reply; both are fixed in
+`overlay/scratch-vm/.../{legoboostunified,legopoweredup}/index.js`.
+
+This was **never** an iOS entitlement problem — `Info.ios.plist` has always carried the
+Bluetooth usage strings, and mobile.yml fails the build if they go missing.
+
+**Settings › Connection diagnostics…** (`lib/ble-diagnostics.js`) is the on-device console:
+mirrored `console.*`, every JSON-RPC frame, and a self-test that reports CoreBluetooth's
+permission + power state (`scratchlink/ble_state.rs` → `ble_apple.m`). There is no devtools
+on iOS; assume any future BLE report comes from this panel. Gates: `test/native-bluetooth.test.mjs`
+and `npm run verify:bluetooth`.
+
 ## Planned: on-device TTS (replace cloud AWS text2speech)
 See memory `brickwright-ondevice-tts`. `../../CrispASR` (MIT) has 23 TTS
 engines compiling to WASM (~4.3MB, client-side) → offline TTS. Needs COOP/COEP (SharedArrayBuffer);

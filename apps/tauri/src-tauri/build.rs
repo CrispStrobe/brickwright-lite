@@ -12,6 +12,7 @@ fn main() {
         println!("cargo:rerun-if-changed=src/scratchlink/bt_macos.m");
         println!("cargo:rustc-link-lib=framework=IOBluetooth");
         println!("cargo:rustc-link-lib=framework=Foundation");
+        println!("cargo:rustc-link-lib=framework=CoreBluetooth");
     } else if target_os == "ios" {
         // iOS BTC via MFi ExternalAccessory (EV3/NXT).
         cc::Build::new()
@@ -24,6 +25,18 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=CoreBluetooth");
         println!("cargo:rustc-link-lib=framework=ExternalAccessory");
         println!("cargo:rustc-link-lib=framework=Foundation");
+    }
+
+    // CoreBluetooth *state* probe (permission + power), on both Apple targets.
+    // btleplug reports neither, and on iOS a scan against a central that is not
+    // powered on fails silently — so without this the diagnostics panel cannot
+    // tell "no hub in range" from "Bluetooth is off". See ble_apple.m.
+    if target_os == "macos" || target_os == "ios" {
+        cc::Build::new()
+            .file("src/scratchlink/ble_apple.m")
+            .flag("-fobjc-arc")
+            .compile("ble_apple");
+        println!("cargo:rerun-if-changed=src/scratchlink/ble_apple.m");
     }
 
     tauri_build::build();

@@ -33,6 +33,7 @@
 //!        platform we ship — do not read it as "BTC is unimplemented".
 
 mod ble;
+mod ble_state;
 #[cfg(target_os = "macos")]
 mod bt_macos;
 #[cfg(target_os = "linux")]

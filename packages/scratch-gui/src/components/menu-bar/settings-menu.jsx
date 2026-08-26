@@ -138,6 +138,13 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             onRequestClose={onRequestClose}
                         />
                     </MenuItem>}
+                    <MenuItem onClick={() => { emit('bw-open-ble-diagnostics'); onRequestClose(); }}>
+                        <FormattedMessage
+                            defaultMessage="Connection diagnostics…"
+                            description="Settings action that opens the on-screen Bluetooth/connection log"
+                            id="gui.menuBar.connectionDiagnostics"
+                        />
+                    </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-about'); onRequestClose(); }}>
                         About Brickwright…
                     </MenuItem>
