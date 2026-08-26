@@ -31,7 +31,10 @@ const EXPECTED = [
     'rotor_rogue',
     'prism_spire',
     'shard_sheriff',
-    'halo_foundry'
+    'halo_foundry',
+    'corridor_kestrel',
+    'thunder_volley',
+    'cascade_pair'
 ];
 
 test.after(() => quitStrandedVMs());
@@ -95,7 +98,10 @@ test('each new game keeps its signature playable mechanic', () => {
         rotor_rogue: [/set wind to sin of score \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/],
         prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /change score by 5 \* perfect/],
         shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /change orbTier by -1/],
-        halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/]
+        halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/],
+        corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/],
+        thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/, /change rivalPoints by 1/, /touching ThunderNet/],
+        cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/, /delete falls of colA/, /change score by 40 \* combo/]
     };
     for (const [name, patterns] of Object.entries(contracts)) {
         for (const pattern of patterns) assert.match(games[name], pattern, `${name}: missing ${pattern}`);

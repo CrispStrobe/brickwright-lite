@@ -18,7 +18,8 @@ const NEW_GAMES = [
     'Ember Dojo', 'Lockstep Lagoon', 'Rink Riot', 'Rim Reactor',
     'Comet Cup', 'Trench Signal', 'Whisker Switch',
     'Spiral Circuit', 'Lilyway Rescue', 'Rotor Rogue',
-    'Prism Spire', 'Shard Sheriff', 'Halo Foundry'
+    'Prism Spire', 'Shard Sheriff', 'Halo Foundry',
+    'Corridor Kestrel', 'Thunder Volley', 'Cascade Pair'
 ];
 
 try {

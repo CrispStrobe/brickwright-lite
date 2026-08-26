@@ -2637,7 +2637,442 @@ SPRITE Reactor:
   SHAPE circle 18 #26304d
   WHEN flag clicked:
     go to x: 0 y: 0
-    show`
+    show`,
+
+    corridor_kestrel: `# Corridor Kestrel — free-fly a survey drone through an alien carrier.
+# Arrows control inertia in both axes. Thread each moving aperture, skim its energy cell,
+# and spend battery with Space for a short shield when the corridor gets too tight.
+GLOBAL distance
+GLOBAL hull
+GLOBAL battery
+GLOBAL droneX
+GLOBAL droneY
+GLOBAL driftX
+GLOBAL driftY
+GLOBAL gateX
+GLOBAL gapY
+GLOBAL gateSpeed
+GLOBAL shield
+
+SPRITE Kestrel:
+  SHAPE triangle 40 #62efff
+  COSTUME shield triangle 52 #ffe66a
+  SOUND scrape 160
+  SOUND pulse 820
+  WHEN flag clicked:
+    show variable distance
+    show variable hull
+    show variable battery
+    set distance to 0
+    set hull to 3
+    set battery to 12
+    set droneX to -150
+    set droneY to 0
+    set driftX to 0
+    set driftY to 0
+    set gateSpeed to 5
+    set shield to 0
+    go to x: droneX y: droneY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change driftX by -0.35
+      IF key right arrow pressed? THEN:
+        change driftX by 0.35
+      IF key up arrow pressed? THEN:
+        change driftY by 0.35
+      IF key down arrow pressed? THEN:
+        change driftY by -0.35
+      set driftX to driftX * 0.92
+      set driftY to driftY * 0.92
+      change droneX by driftX
+      change droneY by driftY
+      IF droneX < -220 THEN:
+        set droneX to -220
+      IF droneX > 180 THEN:
+        set droneX to 180
+      IF droneY < -155 THEN:
+        set droneY to -155
+      IF droneY > 155 THEN:
+        set droneY to 155
+      go to x: droneX y: droneY
+      IF shield = 1 THEN:
+        switch costume to shield
+        change battery by -0.12
+        IF battery < 1 THEN:
+          set shield to 0
+      ELSE:
+        switch costume to costume1
+      IF touching UpperGate or touching LowerGate THEN:
+        IF shield = 0 THEN:
+          change hull by -1
+          set droneX to -150
+          set droneY to 0
+          set driftX to 0
+          set driftY to 0
+          play sound "scrape"
+          wait 0.6 seconds
+        ELSE:
+          change distance by 3
+      IF hull < 1 THEN:
+        say ("Carrier distance: " join distance) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN space key pressed:
+    IF battery > 3 and shield = 0 THEN:
+      set shield to 1
+      play sound "pulse"
+      wait 0.8 seconds
+      set shield to 0
+
+SPRITE GateClock:
+  SHAPE circle 8 #1d264d
+  WHEN flag clicked:
+    hide
+    set gateX to 240
+    set gapY to 0
+    FOREVER:
+      change gateX by 0 - gateSpeed
+      IF gateX < -250 THEN:
+        set gateX to 250
+        set gapY to pick random -75 to 75
+        change distance by 1
+        change gateSpeed by 0.12
+      wait 0.02 seconds
+
+SPRITE UpperGate:
+  SHAPE rect 54 170 #7a4fff
+  WHEN flag clicked:
+    show
+    FOREVER:
+      go to x: gateX y: gapY + 135
+      wait 0.02 seconds
+
+SPRITE LowerGate:
+  SHAPE rect 54 170 #d54fff
+  WHEN flag clicked:
+    show
+    FOREVER:
+      go to x: gateX y: gapY - 135
+      wait 0.02 seconds
+
+SPRITE EnergyCell:
+  SHAPE circle 24 #ffe45c
+  SOUND charge 980
+  WHEN flag clicked:
+    show
+    FOREVER:
+      go to x: gateX y: gapY
+      IF touching Kestrel THEN:
+        change battery by 4
+        change distance by 4
+        set x to -260
+        play sound "charge"
+        wait 0.5 seconds
+      wait 0.02 seconds`,
+
+    thunder_volley: `# Thunder Volley — jump, block, and spike against a reactive storm rival.
+# Left/Right move, Up jumps, Space spikes when the ball is close. The first side to seven
+# wins; long rallies accelerate the ball and make the rival anticipate earlier.
+GLOBAL playerPoints
+GLOBAL rivalPoints
+GLOBAL rally
+GLOBAL playerX
+GLOBAL playerY
+GLOBAL playerVY
+GLOBAL rivalX
+GLOBAL rivalY
+GLOBAL rivalVY
+GLOBAL ballX
+GLOBAL ballY
+GLOBAL ballVX
+GLOBAL ballVY
+
+SPRITE Volt:
+  SHAPE circle 38 #4edcff
+  SOUND spike 720
+  WHEN flag clicked:
+    show variable playerPoints
+    show variable rivalPoints
+    show variable rally
+    set playerPoints to 0
+    set rivalPoints to 0
+    set rally to 0
+    set playerX to -130
+    set playerY to -125
+    set playerVY to 0
+    go to x: playerX y: playerY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change playerX by -5
+      IF key right arrow pressed? THEN:
+        change playerX by 5
+      IF playerX < -220 THEN:
+        set playerX to -220
+      IF playerX > -25 THEN:
+        set playerX to -25
+      change playerVY by -0.75
+      change playerY by playerVY
+      IF playerY < -125 THEN:
+        set playerY to -125
+        set playerVY to 0
+      go to x: playerX y: playerY
+      IF playerPoints > 6 THEN:
+        say "Thunder court champion!" for 3 seconds
+        stop all
+      IF rivalPoints > 6 THEN:
+        say "The storm rival wins." for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN up arrow key pressed:
+    IF playerY = -125 THEN:
+      set playerVY to 12
+  WHEN space key pressed:
+    IF touching StormBall THEN:
+      set ballVX to 8 + rally / 3
+      set ballVY to -3
+      change rally by 1
+      play sound "spike"
+
+SPRITE Nimbus:
+  SHAPE circle 40 #ff5b8f
+  WHEN flag clicked:
+    set rivalX to 135
+    set rivalY to -125
+    set rivalVY to 0
+    go to x: rivalX y: rivalY
+    show
+    FOREVER:
+      IF ballX > 15 THEN:
+        IF ballX > rivalX THEN:
+          change rivalX by 3.5
+        ELSE:
+          change rivalX by -3.5
+      IF ballY > 10 and ballX > 20 and rivalY = -125 THEN:
+        set rivalVY to 11
+      change rivalVY by -0.72
+      change rivalY by rivalVY
+      IF rivalY < -125 THEN:
+        set rivalY to -125
+        set rivalVY to 0
+      IF rivalX < 25 THEN:
+        set rivalX to 25
+      IF rivalX > 220 THEN:
+        set rivalX to 220
+      go to x: rivalX y: rivalY
+      wait 0.02 seconds
+
+SPRITE StormBall:
+  SHAPE circle 24 #fff277
+  SOUND point 960
+  WHEN flag clicked:
+    set ballX to -80
+    set ballY to 70
+    set ballVX to 5
+    set ballVY to 5
+    go to x: ballX y: ballY
+    show
+    FOREVER:
+      change ballVY by -0.38
+      change ballX by ballVX
+      change ballY by ballVY
+      IF touching Volt and ballVX < 0 THEN:
+        set ballVX to abs of ballVX + 0.4
+        set ballVY to 7
+        change rally by 1
+      IF touching Nimbus and ballVX > 0 THEN:
+        set ballVX to 0 - abs of ballVX - 0.4
+        set ballVY to 7 + rally / 8
+        change rally by 1
+      IF touching ThunderNet THEN:
+        set ballVX to 0 - ballVX
+        set ballVY to 4
+      IF ballX > 230 or ballX < -230 THEN:
+        set ballVX to 0 - ballVX
+      IF ballY < -145 THEN:
+        IF ballX < 0 THEN:
+          change rivalPoints by 1
+        ELSE:
+          change playerPoints by 1
+        play sound "point"
+        set rally to 0
+        set ballX to 0
+        set ballY to 100
+        set ballVX to pick random -5 to 5
+        set ballVY to 5
+        wait 0.8 seconds
+      go to x: ballX y: ballY
+      wait 0.02 seconds
+
+SPRITE ThunderNet:
+  SHAPE rect 14 110 #a9b7d8
+  WHEN flag clicked:
+    go to x: 0 y: -90
+    show`,
+
+    cascade_pair: `# Cascade Pair — steer falling color pairs into four reactor columns.
+# Left/Right selects a column, Up swaps the pair, Space drops. Four equal colors on top
+# clear together; consecutive clears raise the combo. Overflow any column and the reactor melts.
+GLOBAL score
+GLOBAL combo
+GLOBAL column
+GLOBAL colorA
+GLOBAL colorB
+GLOBAL overflow
+GLOBAL falls
+LIST colA
+LIST colB
+LIST colC
+LIST colD
+
+SPRITE PairPilot:
+  SHAPE rect 42 22 #55ddff
+  COSTUME second rect 42 22 #ff66b3
+  SOUND clear 980
+  SOUND drop 420
+  WHEN flag clicked:
+    show variable score
+    show variable combo
+    show variable column
+    set score to 0
+    set combo to 1
+    set column to 2
+    set colorA to pick random 1 to 4
+    set colorB to pick random 1 to 4
+    set overflow to 0
+    set falls to 0
+    delete all of colA
+    delete all of colB
+    delete all of colC
+    delete all of colD
+    go to x: -180 + column * 72 y: 130
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change column by -1
+        wait 0.12 seconds
+      IF key right arrow pressed? THEN:
+        change column by 1
+        wait 0.12 seconds
+      IF column < 1 THEN:
+        set column to 1
+      IF column > 4 THEN:
+        set column to 4
+      go to x: -180 + column * 72 y: 130
+      set color effect to colorA * 35
+      IF overflow = 1 THEN:
+        say ("Cascade score: " join score) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN up arrow key pressed:
+    set falls to colorA
+    set colorA to colorB
+    set colorB to falls
+  WHEN space key pressed:
+    broadcast "drop pair" and wait
+    set colorA to pick random 1 to 4
+    set colorB to pick random 1 to 4
+
+SPRITE ReactorLogic:
+  SHAPE circle 8 #20263f
+  SOUND clear 980
+  SOUND drop 420
+  WHEN flag clicked:
+    hide
+  WHEN I receive "drop pair":
+    IF column = 1 THEN:
+      add colorA to colA
+      add colorB to colA
+      IF length of colA > 3 and item (length of colA) of colA = item ((length of colA) - 1) of colA and item (length of colA) of colA = item ((length of colA) - 2) of colA and item (length of colA) of colA = item ((length of colA) - 3) of colA THEN:
+        set falls to length of colA
+        REPEAT 4:
+          delete falls of colA
+          change falls by -1
+        broadcast "pair clear"
+      IF length of colA > 9 THEN:
+        set overflow to 1
+    IF column = 2 THEN:
+      add colorA to colB
+      add colorB to colB
+      IF length of colB > 3 and item (length of colB) of colB = item ((length of colB) - 1) of colB and item (length of colB) of colB = item ((length of colB) - 2) of colB and item (length of colB) of colB = item ((length of colB) - 3) of colB THEN:
+        set falls to length of colB
+        REPEAT 4:
+          delete falls of colB
+          change falls by -1
+        broadcast "pair clear"
+      IF length of colB > 9 THEN:
+        set overflow to 1
+    IF column = 3 THEN:
+      add colorA to colC
+      add colorB to colC
+      IF length of colC > 3 and item (length of colC) of colC = item ((length of colC) - 1) of colC and item (length of colC) of colC = item ((length of colC) - 2) of colC and item (length of colC) of colC = item ((length of colC) - 3) of colC THEN:
+        set falls to length of colC
+        REPEAT 4:
+          delete falls of colC
+          change falls by -1
+        broadcast "pair clear"
+      IF length of colC > 9 THEN:
+        set overflow to 1
+    IF column = 4 THEN:
+      add colorA to colD
+      add colorB to colD
+      IF length of colD > 3 and item (length of colD) of colD = item ((length of colD) - 1) of colD and item (length of colD) of colD = item ((length of colD) - 2) of colD and item (length of colD) of colD = item ((length of colD) - 3) of colD THEN:
+        set falls to length of colD
+        REPEAT 4:
+          delete falls of colD
+          change falls by -1
+        broadcast "pair clear"
+      IF length of colD > 9 THEN:
+        set overflow to 1
+    change falls by 1
+    play sound "drop"
+    IF falls > 2 THEN:
+      set combo to 1
+  WHEN I receive "pair clear":
+    change score by 40 * combo
+    change combo by 1
+    set falls to 0
+    play sound "clear"
+
+SPRITE ColumnA:
+  SHAPE rect 36 18 #5be3ff
+  WHEN flag clicked:
+    go to x: -108 y: -120
+    show
+    FOREVER:
+      set size to 30 + length of colA * 10 %
+      wait 0.03 seconds
+
+SPRITE ColumnB:
+  SHAPE rect 36 18 #ff5fbd
+  WHEN flag clicked:
+    go to x: -36 y: -120
+    show
+    FOREVER:
+      set size to 30 + length of colB * 10 %
+      wait 0.03 seconds
+
+SPRITE ColumnC:
+  SHAPE rect 36 18 #ffe05c
+  WHEN flag clicked:
+    go to x: 36 y: -120
+    show
+    FOREVER:
+      set size to 30 + length of colC * 10 %
+      wait 0.03 seconds
+
+SPRITE ColumnD:
+  SHAPE rect 36 18 #7cff71
+  WHEN flag clicked:
+    go to x: 108 y: -120
+    show
+    FOREVER:
+      set size to 30 + length of colD * 10 %
+      wait 0.03 seconds`
 };
 
 export default gameExamples;
