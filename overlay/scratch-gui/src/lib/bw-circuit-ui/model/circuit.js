@@ -1194,6 +1194,8 @@ export function terminalsForKind(kind, params) {
     // designer board stayed empty and the machine drove a phantom
     // ('designer board empty', owner: LCD Hello shows nothing).
     case 'ps2': return ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'da'];
+    case 'simplevga_card': return ['vcc', 'gnd', 'bus', 'bank'];
+    case 'tilevga': case 'vga_prop_card': return ['vcc', 'gnd', 'bus'];
     case 'led_matrix': return ['a', 'b'];
     case 'led_cube': return [
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),

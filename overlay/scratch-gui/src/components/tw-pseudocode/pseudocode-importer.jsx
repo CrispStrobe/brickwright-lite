@@ -1,10 +1,14 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
-import examples from '../../lib/sb3-creator-examples.js';
+import upstreamExamples from '../../lib/sb3-creator-examples.js';
+import gameExamples from '../../lib/sb3-creator-game-examples.js';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
+
+// Keep locally-authored games outside the upstream-synchronized examples file.
+const examples = {...upstreamExamples, ...gameExamples};
 
 // Device groups for the device selector. Mirrors STC_PARTS in sb3-creator.js; the parser
 // validates the DEVICE line against STC_PARTS and warns on unknowns, so this list is a
@@ -276,7 +280,14 @@ const GROUPS = [
         ['pong_2p', '🏓 Pong (2 players)'], ['pong_ai', '🤖 Pong (vs AI)'], ['tetris', '🟦 Tetris'],
         ['sokoban', '📦 Sokoban'], ['bomberman', '💣 Bomberman'], ['invaders', '👾 Space Invaders'],
         ['flappy', '🐤 Flappy'], ['tictactoe', '⭕ Tic-Tac-Toe (2 players)'], ['tictactoe_ai', '⭕ Tic-Tac-Toe (vs AI)'],
-        ['g2048', '🔢 2048'], ['maze', '👻 Maze Chase'], ['connect4', '🔴 Connect Four (vs AI)'], ['minesweeper', '💥 Minesweeper']
+        ['g2048', '🔢 2048'], ['maze', '👻 Maze Chase'], ['connect4', '🔴 Connect Four (vs AI)'], ['minesweeper', '💥 Minesweeper'],
+        ['sky_skim', '🪽 Sky Skimmer'], ['chroma_code', '🔐 Chroma Vault'],
+        ['fusion_foundry', '⚗️ Fusion Foundry'], ['missile_ballet', '🚀 Missile Ballet'],
+        ['orbit_ward', '🪐 Orbit Ward'], ['rooftop_relay', '🏙️ Rooftop Relay'],
+        ['twinwall', '↔️ Twinwall'], ['turbo_chicane', '🏁 Turbo Chicane'],
+        ['abyss_rescue', '🤿 Abyss Rescue'], ['specter_sweep', '👻 Specter Sweep'],
+        ['moonlight_heist', '🧀 Moonlight Heist'], ['cloud_court', '☁️ Cloud Court'],
+        ['ember_dojo', '🐉 Ember Dojo']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

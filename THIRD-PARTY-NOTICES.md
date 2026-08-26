@@ -42,6 +42,17 @@ in your own work isn't bound by whichever repo it happens to sit in:
   original artwork (not derived from Scratch's CC-BY-SA library or any
   third party).
 
+## Retro-video design references
+
+The independently written 6502 video-device models use the documented
+interfaces and behavior of these permissively released reference designs:
+
+- gfoot/simplevga6502 -- Unlicense -- https://github.com/gfoot/simplevga6502
+- rene6502/6502-vga-prop -- Unlicense -- https://github.com/rene6502/6502-vga-prop
+
+No EasyEDA, Gerber, PCB artwork, or source files from the unlicensed rehsd
+6502/PS2/VGA article are distributed in this repository.
+
 ## Rust (apps/tauri/src-tauri)
 
 Generated from `cargo metadata` against the current Cargo.lock (all

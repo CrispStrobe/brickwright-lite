@@ -804,12 +804,22 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // engine stamps/unstamps the row-column bridge (-1 = none). Same
   // one-board-one-truth rule as buttons for an external board.
   const handleKeypadKey = useCallback((partId, key) => {
+    if (key && typeof key === 'object' && key.ps2) {
+      const verb = key.down ? 'keyDown' : 'keyUp';
+      const localBoard = circuit && circuit.board;
+      if (localBoard && localBoard.setDeviceControl) localBoard.setDeviceControl(partId, verb, key.ps2);
+      if (externalBoard && externalBoard.setDeviceControl) {
+        try { externalBoard.setDeviceControl(partId, verb, key.ps2); } catch { /* board mid-rebuild */ }
+      }
+      advanceBy(1n * MS);
+      return;
+    }
     setPartParam(partId, 'pressed', key);
     if (externalBoard && externalBoard.setPartParam) {
       try { externalBoard.setPartParam(partId, 'pressed', key); } catch { /* board mid-rebuild */ }
     }
     advanceBy(1n * MS);
-  }, [setPartParam, advanceBy, externalBoard]);
+  }, [setPartParam, advanceBy, externalBoard, circuit]);
 
   const handleSetPartParam = useCallback((partId, param, value) => {
     setPartParam(partId, param, value);
