@@ -12,8 +12,9 @@
  * (base64 of the .p8) and APPSTORE_APP_ID. Run by mobile.yml on a version tag.
  */
 import {readFile} from 'node:fs/promises';
-import {createSign} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
+
+import {client, readEnv} from './lib-appstore.mjs';
 
 const LOCALES = ['en-US', 'de-DE'];
 /** App Store Connect's cap on a single whatsNew field. */
@@ -37,47 +38,9 @@ export function testerNotes(md, version, locale) {
     return body || null;
 }
 
-const b64url = buf => Buffer.from(buf).toString('base64url');
-
-/** ES256 JWT, the shape App Store Connect wants. */
-const token = env => {
-    const header = {alg: 'ES256', kid: env.APPSTORE_API_KEY_ID, typ: 'JWT'};
-    const now = Math.floor(Date.now() / 1000);
-    const payload = {iss: env.APPSTORE_API_ISSUER_ID, iat: now, exp: now + 900, aud: 'appstoreconnect-v1'};
-    const signingInput = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(payload))}`;
-    const signer = createSign('SHA256');
-    signer.update(signingInput);
-    const der = signer.sign(Buffer.from(env.APPSTORE_API_KEY_P8, 'base64').toString('utf8'));
-    // DER wraps r and s in ASN.1 INTEGERs; JWS wants them raw and 32 bytes each.
-    let i = (der[1] & 0x80) ? 2 + (der[1] & 0x7f) : 2;
-    const parts = [];
-    for (let n = 0; n < 2; n++) {
-        const len = der[i + 1];
-        let v = der.subarray(i + 2, i + 2 + len);
-        while (v.length > 32 && v[0] === 0) v = v.subarray(1);
-        parts.push(Buffer.concat([Buffer.alloc(32 - v.length), v]));
-        i += 2 + len;
-    }
-    return `${signingInput}.${b64url(Buffer.concat(parts))}`;
-};
-
 async function main() {
-    const env = {};
-    for (const key of ['APPSTORE_API_KEY_ID', 'APPSTORE_API_ISSUER_ID', 'APPSTORE_API_KEY_P8', 'APPSTORE_APP_ID']) {
-        if (!process.env[key]) throw new Error(`${key} is not set`);
-        env[key] = process.env[key];
-    }
-
-    const api = async (path, method = 'GET', body) => {
-        const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
-            method,
-            headers: {Authorization: `Bearer ${token(env)}`, 'Content-Type': 'application/json'},
-            body: body ? JSON.stringify(body) : undefined,
-        });
-        if (!res.ok) throw new Error(`${method} ${path} -> ${res.status} ${await res.text()}`);
-        const text = await res.text();
-        return text ? JSON.parse(text) : {};
-    };
+    const env = readEnv();
+    const api = client(env);
 
     const version = JSON.parse(await readFile(
         new URL('../apps/tauri/src-tauri/tauri.conf.json', import.meta.url), 'utf8')).version;

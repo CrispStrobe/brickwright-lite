@@ -87,6 +87,15 @@ test('native package versions stay aligned for the TestFlight train', async () =
         'mobile.yml no longer runs scripts/push-tester-notes.mjs — the tester notes ' +
         'would be written and never sent, which is how 0.1.7 shipped with none');
 
+    // The same property one step further out. Notes on a build nobody can
+    // install are worth as little as notes never sent: until 0.1.10 the group
+    // assignment and Beta App Review submission were manual, and the INTERNAL
+    // group sat on 0.1.0 through nine releases because one release forgot and
+    // nothing ever noticed.
+    assert.match(mobile, /run: node scripts\/testflight-submit\.mjs/,
+        'mobile.yml no longer runs scripts/testflight-submit.mjs — builds would upload ' +
+        'and reach no tester group');
+
     // Behavioural, not textual: the first version of this check banned the
     // regex that truncated the notes and matched the COMMENT explaining it.
     // So exercise the real slicer against the real file instead.
