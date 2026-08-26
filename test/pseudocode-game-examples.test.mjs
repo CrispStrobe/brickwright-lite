@@ -49,7 +49,7 @@ test('only quality-approved new games are wired into the visible examples galler
     }
     const approved = new Set([
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
-        'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep'
+        'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -238,6 +238,40 @@ test('Wardlight makes the defense target clear and keeps ricochet orbs alive for
     assert.ok(svgs.some(svg => svg.includes('WARDLIGHT')));
     assert.ok(svgs.some(svg => svg.includes('BANISH 12 SPECTERS')));
     assert.ok(svgs.some(svg => svg.includes('EDGE BOUNCES KEEP THE ORB ALIVE')));
+});
+
+test('Pantry Prowl communicates a finite stealth loop and uses motion-driven alert', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.moonlight_heist);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.moonlight_heist, /GOAL: steal five cheeses and return to the blue hideout/);
+    assert.match(games.moonlight_heist, /CONTROLS: Arrow keys move/);
+    assert.match(games.moonlight_heist, /set moving to 1/);
+    assert.match(games.moonlight_heist, /IF score > 4 and touching Tunnel THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'pantry']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('PANTRY PROWL')));
+    assert.ok(svgs.some(svg => svg.includes('STEAL 5 CHEESES')));
+    assert.ok(svgs.some(svg => svg.includes('MOVING IN MOONLIGHT RAISES ALERT')));
+});
+
+test('Nimbus Volley explains its scoring and implements an airborne spike', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.cloud_court);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.cloud_court, /GOAL: land the ball on the rival cloud; the first side to seven points wins/);
+    assert.match(games.cloud_court, /CONTROLS: A\/D move, W jumps, and S while airborne/);
+    assert.match(games.cloud_court, /set spiking to 1/);
+    assert.match(games.cloud_court, /change playerScore by 1/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('NIMBUS VOLLEY')));
+    assert.ok(svgs.some(svg => svg.includes('FIRST TO 7 WINS')));
+    assert.ok(svgs.some(svg => svg.includes('S AIR SPIKE')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -456,6 +490,54 @@ test('buoyancy and mouse-cast controls work in the live Scratch VM', async () =>
         assert.equal(Number(value(wardlight, 'ward').value), 3, 'the central ward began damaged');
     } finally {
         wardlight.quit();
+        clearStrayTimers();
+    }
+});
+
+test('stealth movement and aerial-spike controls work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+        const vm = new VM();
+        await vm.loadProject(buffer);
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const pantry = await load(games.moonlight_heist);
+    try {
+        const beforeX = Number(value(pantry, 'px').value);
+        pantry.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
+        for (let i = 0; i < 12; i++) pantry.runtime._step();
+        pantry.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
+        assert.ok(Number(value(pantry, 'px').value) > beforeX, 'Right did not move the mouse');
+        assert.ok(Number(value(pantry, 'alert').value) > 0, 'moving in the open did not raise alert');
+    } finally {
+        pantry.quit();
+        clearStrayTimers();
+    }
+
+    const nimbus = await load(games.cloud_court);
+    try {
+        const floorY = Number(value(nimbus, 'py').value);
+        nimbus.postIOData('keyboard', {key: 'w', isDown: true});
+        for (let i = 0; i < 8; i++) nimbus.runtime._step();
+        nimbus.postIOData('keyboard', {key: 'w', isDown: false});
+        assert.ok(Number(value(nimbus, 'py').value) > floorY, 'W did not launch a jump');
+        nimbus.postIOData('keyboard', {key: 's', isDown: true});
+        for (let i = 0; i < 4; i++) nimbus.runtime._step();
+        assert.equal(Number(value(nimbus, 'spiking').value), 1, 'S in the air did not arm the spike');
+        nimbus.postIOData('keyboard', {key: 's', isDown: false});
+    } finally {
+        nimbus.quit();
         clearStrayTimers();
     }
 });

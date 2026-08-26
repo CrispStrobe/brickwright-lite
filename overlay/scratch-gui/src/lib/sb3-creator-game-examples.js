@@ -1271,37 +1271,57 @@ SPRITE Ghost:
       change ward by -1
     delete this clone`,
 
-    moonlight_heist: `# Moonlight Heist — you are a mouse stealing cheese from a sleeping cat.
-# Arrow keys move. Sprint only when the cat looks away: every cheese makes it faster,
-# but hiding inside a blue tunnel breaks line-of-sight and resets the chase.
+    moonlight_heist: `# Pantry Prowl — a compact stealth chase.
+# GOAL: steal five cheeses and return to the blue hideout without being caught.
+# CONTROLS: Arrow keys move. Motion in the open raises alert; the hideout clears it.
 GLOBAL score
 GLOBAL alert
 GLOBAL px
 GLOBAL py
-GLOBAL cheeseX
-GLOBAL cheeseY
+GLOBAL moving
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art pantry-prowl/intro
+  BACKDROP pantry art pantry-prowl/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable alert
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to pantry
+      broadcast "start pantry prowl"
 
 SPRITE Mouse:
-  SHAPE circle 25 #e8edf7
+  SHAPE art pantry-prowl/mouse
   WHEN flag clicked:
-    show variable score
-    show variable alert
     set score to 0
     set alert to 0
     set px to -180
     set py to -120
     go to x: px y: py
+    hide
+  WHEN I receive "start pantry prowl":
+    show variable score
+    show variable alert
     show
-  WHEN flag clicked:
     FOREVER:
+      set moving to 0
       IF key left arrow pressed? THEN:
         change px by -5
+        set moving to 1
       IF key right arrow pressed? THEN:
         change px by 5
+        set moving to 1
       IF key up arrow pressed? THEN:
         change py by 5
+        set moving to 1
       IF key down arrow pressed? THEN:
         change py by -5
+        set moving to 1
       IF px < -225 THEN:
         set px to -225
       IF px > 225 THEN:
@@ -1314,46 +1334,67 @@ SPRITE Mouse:
       IF touching Tunnel THEN:
         set alert to 0
       ELSE:
-        change alert by 0.03
-      IF touching Cat THEN:
+        IF moving = 1 THEN:
+          change alert by 0.04
+        ELSE:
+          IF alert > 0 THEN:
+            change alert by -0.02
+      IF alert > 1 and touching Cat THEN:
         say ("Caught with " join score) for 3 seconds
         stop all
       IF touching Cheese THEN:
         change score by 1
         broadcast "new cheese"
         wait 0.2 seconds
+      IF score > 4 and touching Tunnel THEN:
+        say "FIVE CHEESES SAFE — PERFECT HEIST!" for 4 seconds
+        stop all
       wait 0.02 seconds
 
 SPRITE Cat:
-  SHAPE circle 44 #ff9f68
+  SHAPE art pantry-prowl/cat
   WHEN flag clicked:
     go to x: 170 y: 110
+    hide
+  WHEN I receive "start pantry prowl":
     show
     FOREVER:
       IF alert > 1 THEN:
         point towards Mouse
         move 1 + (score * 0.12) steps
       ELSE:
-        turn right 2 degrees
+        IF x position < 168 THEN:
+          change x by 2
+        IF x position > 172 THEN:
+          change x by -2
+        IF y position < 108 THEN:
+          change y by 2
+        IF y position > 112 THEN:
+          change y by -2
+        turn right 1 degrees
       wait 0.03 seconds
 
 SPRITE Cheese:
-  SHAPE triangle 24 #ffd84a
+  SHAPE art pantry-prowl/cheese
   WHEN flag clicked:
     go to x: 0 y: 0
+    hide
+  WHEN I receive "start pantry prowl":
     show
   WHEN I receive "new cheese":
     go to x: pick random -200 to 200 y: pick random -140 to 140
 
 SPRITE Tunnel:
-  SHAPE rect 74 54 #3978c6
+  SHAPE art pantry-prowl/tunnel
   WHEN flag clicked:
     go to x: -40 y: 100
+    hide
+  WHEN I receive "start pantry prowl":
     show`,
 
-    cloud_court: `# Cloud Court — arcade volleyball above the clouds. A/D moves, W jumps. The
-# computer reads the ball and leaps for returns. First to seven, but every long
-# rally makes the ball faster and the winning point more valuable.
+    cloud_court: `# Nimbus Volley — a one-player cloud-court match.
+# GOAL: land the ball on the rival cloud; the first side to seven points wins.
+# CONTROLS: A/D move, W jumps, and S while airborne turns contact into a fast spike.
 GLOBAL playerScore
 GLOBAL cpuScore
 GLOBAL rally
@@ -1361,24 +1402,51 @@ GLOBAL bx
 GLOBAL by
 GLOBAL vx
 GLOBAL vy
+GLOBAL px
 GLOBAL py
 GLOBAL pvy
+GLOBAL cy
+GLOBAL cvy
+GLOBAL target
+GLOBAL spiking
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art nimbus-volley/intro
+  BACKDROP court art nimbus-volley/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable playerScore
+    hide variable cpuScore
+    hide variable rally
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to court
+      broadcast "start nimbus volley"
 
 SPRITE Player:
-  SHAPE circle 46 #4fc3f7
+  SHAPE art nimbus-volley/player
   WHEN flag clicked:
-    show variable playerScore
-    show variable cpuScore
     set px to -150
     set py to -125
     set pvy to 0
+    set spiking to 0
+    go to x: px y: py
+    hide
+  WHEN I receive "start nimbus volley":
+    show
     FOREVER:
+      set spiking to 0
       IF key a pressed? THEN:
         change px by -7
       IF key d pressed? THEN:
         change px by 7
       IF key w pressed? and py = -125 THEN:
         set pvy to 11
+      IF key s pressed? and py > -115 THEN:
+        set spiking to 1
       change pvy by -0.7
       change py by pvy
       IF py < -125 THEN:
@@ -1392,11 +1460,14 @@ SPRITE Player:
       wait 0.02 seconds
 
 SPRITE CloudBot:
-  SHAPE circle 46 #ff7a8a
+  SHAPE art nimbus-volley/bot
   WHEN flag clicked:
     set cy to -125
     set cvy to 0
     go to x: 150 y: cy
+    hide
+  WHEN I receive "start nimbus volley":
+    show
     FOREVER:
       set target to x position of Ball
       IF target > x position + 5 THEN:
@@ -1418,7 +1489,7 @@ SPRITE CloudBot:
       wait 0.02 seconds
 
 SPRITE Ball:
-  SHAPE circle 24 #fff06a
+  SHAPE art nimbus-volley/ball
   SOUND bump 760
   WHEN flag clicked:
     set playerScore to 0
@@ -1428,14 +1499,25 @@ SPRITE Ball:
     set by to 80
     set vx to -4
     set vy to 4
+    go to x: bx y: by
+    hide
+  WHEN I receive "start nimbus volley":
+    show variable playerScore
+    show variable cpuScore
+    show variable rally
+    show
     FOREVER:
       change vy by -0.32
       change bx by vx
       change by by vy
       go to x: bx y: by
       IF touching Player THEN:
-        set vx to (abs of vx) + 0.2
-        set vy to 8
+        IF spiking = 1 and py > -110 THEN:
+          set vx to (abs of vx) + 2
+          set vy to -5
+        ELSE:
+          set vx to (abs of vx) + 0.2
+          set vy to 8
         change rally by 1
         play sound "bump"
         wait 0.06 seconds
@@ -1450,24 +1532,26 @@ SPRITE Ball:
         wait 0.06 seconds
       IF by < -165 THEN:
         IF bx > 0 THEN:
-          change playerScore by rally
+          change playerScore by 1
           set vx to -4
         ELSE:
-          change cpuScore by rally
+          change cpuScore by 1
           set vx to 4
         set rally to 1
         set bx to 0
         set by to 100
         set vy to 3
-      IF playerScore > 6 or cpuScore > 6 THEN:
+      IF playerScore = 7 or cpuScore = 7 THEN:
         say (("Final " join playerScore) join (" - " join cpuScore)) for 3 seconds
         stop all
       wait 0.02 seconds
 
 SPRITE Net:
-  SHAPE rect 12 110 #ffffff
+  SHAPE art nimbus-volley/net
   WHEN flag clicked:
     go to x: 0 y: -115
+    hide
+  WHEN I receive "start nimbus volley":
     show`,
 
     ember_dojo: `# Ember Dojo — a tiny shogun boss fight. Left/Right moves, Up dashes, Space

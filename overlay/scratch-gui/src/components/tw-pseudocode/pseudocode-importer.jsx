@@ -293,7 +293,9 @@ const GROUPS = [
         ['twinwall', '🪩 Rift Rally — polished'],
         ['turbo_chicane', '🏁 Slipstream Circuit — polished'],
         ['abyss_rescue', '🤿 Abyss Lift — polished'],
-        ['specter_sweep', '🔮 Wardlight — polished']
+        ['specter_sweep', '🔮 Wardlight — polished'],
+        ['moonlight_heist', '🐭 Pantry Prowl — polished'],
+        ['cloud_court', '🏐 Nimbus Volley — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],
