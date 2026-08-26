@@ -71,6 +71,10 @@ jobs:
         working-directory: apps/tauri
         run: |
           npx tauri android init --ci
+          # `tauri android init` templates TAURI'S OWN logo into gen/android and
+          # never looks at src-tauri/icons/android, so every APK shipped the
+          # default launcher icon.
+          node scripts/patch-mobile-icons.mjs android
           # tauri-plugin-blec's Android library requires minSdk 26; the generated
           # project defaults to 24, which fails the manifest merge.
           sed -i 's/minSdk = 24/minSdk = 26/' src-tauri/gen/android/app/build.gradle.kts
@@ -149,6 +153,11 @@ jobs:
           # + `xcodegen generate`: regenerating discards the signing settings the
           # tauri CLI writes into the pbxproj, which breaks the signed job.
           node scripts/patch-ios-privacy.mjs
+          # Same shape, different asset: `tauri ios init` templates Tauri's own
+          # logo into gen/apple's AppIcon.appiconset and never looks at
+          # src-tauri/icons/ios, so every build — including the ones testers
+          # installed from TestFlight — carried the Tauri icon, not the robot.
+          node scripts/patch-mobile-icons.mjs ios
           npx tauri ios build --target aarch64-sim
 
       # Guard the two things that were silently missing before: the frameworks
@@ -175,7 +184,17 @@ jobs:
             /usr/libexec/PlistBuddy -c "Print :$key" "$PLIST" >/dev/null 2>&1 \
               || { echo "::error::$key missing from the built app's Info.plist"; exit 1; }
           done
-          echo "frameworks + Info.plist keys present in $APP"
+
+          # The icon is the one thing no test looks at and every tester sees.
+          # Assert the SOURCE that went into the asset catalog is ours (the
+          # compiled Assets.car is not readable without actool), and that actool
+          # emitted a bundle-root icon at all.
+          SET=src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset
+          cmp -s src-tauri/icons/ios/AppIcon-512@2x.png "$SET/AppIcon-512@2x.png" \
+            || { echo "::error::the app icon set is not ours — patch-mobile-icons did not run"; exit 1; }
+          ls "$APP"/AppIcon*.png >/dev/null 2>&1 \
+            || { echo "::error::no AppIcon*.png in the built app — actool compiled no icon"; exit 1; }
+          echo "frameworks + Info.plist keys + robot app icon present in $APP"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -239,6 +258,7 @@ jobs:
 
           npx tauri ios init --ci
           node scripts/patch-ios-privacy.mjs
+          node scripts/patch-mobile-icons.mjs ios
 
           # The CLI's IOS_* variables import the certificate but do not touch the
           # Xcode project, so install the profile where Xcode looks for it and
@@ -269,8 +289,10 @@ jobs:
             || { echo "::error::PrivacyInfo.xcprivacy missing from the IPA"; exit 1; }
           [ -f "$APP/embedded.mobileprovision" ] \
             || { echo "::error::no embedded provisioning profile — the app is not distribution-signed"; exit 1; }
+          ls "$APP"/AppIcon*.png >/dev/null 2>&1 \
+            || { echo "::error::no AppIcon*.png in the IPA — this is the build testers install"; exit 1; }
           codesign --verify --deep --strict --verbose=2 "$APP"
-          echo "signed, privacy manifest present, profile embedded"
+          echo "signed, privacy manifest present, profile embedded, app icon present"
           echo "IPA=apps/tauri/$IPA" >> "$GITHUB_ENV"
 
       # Validate + upload to App Store Connect -- only on real version tags,
