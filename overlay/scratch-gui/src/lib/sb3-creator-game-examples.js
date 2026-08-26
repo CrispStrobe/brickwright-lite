@@ -119,9 +119,9 @@ SPRITE Hill:
         change score by 1
       wait 0.02 seconds`,
 
-    chroma_code: `# Chroma Vault — crack a four-gem code in eight turns. Enter colours as digits:
-# 1 red, 2 orange, 3 yellow, 4 green, 5 blue, 6 violet. Exact reports the right
-# colour in the right slot; Near reports a right colour in the wrong slot.
+    chroma_code: `# Prism Lock — a clickable four-gem deduction game.
+# GOAL: discover the secret sequence within eight attempts.
+# CONTROLS: click four gems. Exact means right gem and slot; Near means right gem, wrong slot.
 GLOBAL turn
 GLOBAL exact
 GLOBAL near
@@ -130,31 +130,41 @@ GLOBAL j
 GLOBAL v
 GLOBAL found
 GLOBAL won
+GLOBAL vaultStarted
+GLOBAL accepting
+GLOBAL LIST secret
+GLOBAL LIST guess
+GLOBAL LIST usedSecret
+GLOBAL LIST usedGuess
+
+STAGE:
+  BACKDROP sealed art prism-lock/intro
+  BACKDROP board art prism-lock/play
+  WHEN flag clicked:
+    set vaultStarted to 0
+    switch backdrop to sealed
+    hide variable turn
+    hide variable exact
+    hide variable near
+  WHEN space key pressed:
+    IF vaultStarted = 0 THEN:
+      set vaultStarted to 1
+      switch backdrop to board
+      broadcast "open prism lock"
 
 SPRITE Vault:
-  LIST secret
-  LIST guess
-  LIST usedSecret
-  LIST usedGuess
-  COSTUME red circle 34 #ef476f
-  COSTUME orange circle 34 #ff8c42
-  COSTUME yellow circle 34 #ffd166
-  COSTUME green circle 34 #06d6a0
-  COSTUME blue circle 34 #118ab2
-  COSTUME violet circle 34 #8e5bd9
+  COSTUME gem1 art prism-lock/gem1
+  COSTUME gem2 art prism-lock/gem2
+  COSTUME gem3 art prism-lock/gem3
+  COSTUME gem4 art prism-lock/gem4
+  COSTUME gem5 art prism-lock/gem5
+  COSTUME gem6 art prism-lock/gem6
 
   DEFINE FAST make code:
     delete all of secret
     REPEAT 4:
       set v to pick random 1 to 6
       add v to secret
-
-  DEFINE ask gem (slot):
-    ask (("Gem " join slot) join "? 1R 2O 3Y 4G 5B 6V") and wait
-    set v to answer
-    IF v < 1 or v > 6 THEN:
-      set v to 1
-    add round v to guess
 
   DEFINE FAST score guess:
     delete all of usedSecret
@@ -189,44 +199,85 @@ SPRITE Vault:
     REPEAT 4:
       set v to item i of guess
       IF v = 1 THEN:
-        switch costume to red
+        switch costume to gem1
       IF v = 2 THEN:
-        switch costume to orange
+        switch costume to gem2
       IF v = 3 THEN:
-        switch costume to yellow
+        switch costume to gem3
       IF v = 4 THEN:
-        switch costume to green
+        switch costume to gem4
       IF v = 5 THEN:
-        switch costume to blue
+        switch costume to gem5
       IF v = 6 THEN:
-        switch costume to violet
-      go to x: (-90 + (i * 48)) y: (155 - (turn * 38))
+        switch costume to gem6
+      go to x: (-95 + (i * 55)) y: (143 - (turn * 28))
       stamp
       change i by 1
 
   WHEN flag clicked:
     hide
     clear
+    set accepting to 0
+  WHEN I receive "open prism lock":
     make code
+    delete all of guess
     set turn to 1
+    set exact to 0
+    set near to 0
     set won to 0
-    say "Crack the Chroma Vault in 8 turns!" for 2 seconds
-    REPEAT UNTIL turn > 8 or won = 1:
-      delete all of guess
-      ask gem 1
-      ask gem 2
-      ask gem 3
-      ask gem 4
+    set accepting to 1
+    show variable turn
+    show variable exact
+    show variable near
+    say "Click any four gems below." for 1.5 seconds
+  WHEN I receive "gem chosen":
+    IF accepting = 1 and length of guess = 4 THEN:
+      set accepting to 0
       score guess
       paint row
       IF exact = 4 THEN:
         set won to 1
-        say ("Vault open in " join turn) for 3 seconds
+        say (("PRISM UNSEALED IN " join turn) join " ATTEMPTS!") for 4 seconds
+        stop all
       ELSE:
-        say ((("Exact " join exact) join "  Near ") join near) for 2 seconds
+        say ((("EXACT " join exact) join "   NEAR ") join near) for 1.8 seconds
         change turn by 1
-    IF won = 0 THEN:
-      say ((((("Code: " join item 1 of secret) join item 2 of secret) join item 3 of secret) join item 4 of secret) for 4 seconds`,
+        IF turn > 8 THEN:
+          say ((((((("LOCKED — CODE WAS " join item 1 of secret) join "-") join item 2 of secret) join "-") join item 3 of secret) join "-") join item 4 of secret) for 5 seconds
+          stop all
+        ELSE:
+          delete all of guess
+          set accepting to 1
+
+SPRITE GemButton:
+  LOCAL gemValue
+  SHAPE art prism-lock/gem1
+  COSTUME gem1 art prism-lock/gem1
+  COSTUME gem2 art prism-lock/gem2
+  COSTUME gem3 art prism-lock/gem3
+  COSTUME gem4 art prism-lock/gem4
+  COSTUME gem5 art prism-lock/gem5
+  COSTUME gem6 art prism-lock/gem6
+  SOUND choose 520
+  WHEN flag clicked:
+    hide
+  WHEN I receive "open prism lock":
+    set gemValue to 1
+    REPEAT 6:
+      switch costume to ("gem" join gemValue)
+      go to x: (-210 + (gemValue * 60)) y: -150
+      create clone of myself
+      change gemValue by 1
+  WHEN I start as a clone:
+    show
+  WHEN sprite clicked:
+    IF accepting = 1 and length of guess < 4 THEN:
+      add gemValue to guess
+      play sound "choose"
+      set size to 116
+      broadcast "gem chosen"
+      wait 0.08 seconds
+      set size to 100`,
 
     fusion_foundry: `# Fusion Foundry — choose a bay with Left/Right and drop with Space. Matching
 # cores fuse upward: circles become squares, then diamonds, then stars. Cascades
@@ -419,9 +470,9 @@ SPRITE Pulse:
       change score by 5
       hide`,
 
-    orbit_ward: `# Orbit Ward — Pong turned inside-out. Left/Right rotates the cyan shield around
-# the reactor. Keep the spark inside the ring while it smashes the eight red seals.
-# Each seal speeds the spark up; clear all eight to win.
+    orbit_ward: `# Aegis Arc — a circular defense game.
+# GOAL: rebound the spark through all eight inner locks without letting it escape.
+# CONTROLS: Left and Right rotate the cyan shield around the outer orbit.
 GLOBAL angle
 GLOBAL ballx
 GLOBAL bally
@@ -430,11 +481,29 @@ GLOBAL vy
 GLOBAL score
 GLOBAL lives
 GLOBAL sealangle
+GLOBAL aegisStarted
+
+STAGE:
+  BACKDROP briefing art aegis-arc/intro
+  BACKDROP reactor art aegis-arc/play
+  WHEN flag clicked:
+    set aegisStarted to 0
+    switch backdrop to briefing
+    hide variable score
+    hide variable lives
+  WHEN space key pressed:
+    IF aegisStarted = 0 THEN:
+      set aegisStarted to 1
+      switch backdrop to reactor
+      broadcast "arm aegis"
 
 SPRITE Shield:
-  SHAPE rect 58 15 #43e8e0
+  SHAPE art aegis-arc/shield
   WHEN flag clicked:
     set angle to 0
+    hide
+  WHEN I receive "arm aegis":
+    show
     FOREVER:
       IF key left arrow pressed? THEN:
         change angle by -4
@@ -445,19 +514,20 @@ SPRITE Shield:
       wait 0.02 seconds
 
 SPRITE Spark:
-  SHAPE circle 18 #fff4a3
+  SHAPE art aegis-arc/spark
   SOUND ping 880
   WHEN flag clicked:
-    show variable score
-    show variable lives
     set score to 0
     set lives to 3
     set ballx to 0
     set bally to 0
     set vx to 4
     set vy to 6
+    hide
+  WHEN I receive "arm aegis":
+    show variable score
+    show variable lives
     show
-  WHEN flag clicked:
     FOREVER:
       change ballx by vx
       change bally by vy
@@ -485,9 +555,10 @@ SPRITE Spark:
       wait 0.02 seconds
 
 SPRITE Seal:
-  SHAPE square 28 #f04464
+  SHAPE art aegis-arc/lock
   WHEN flag clicked:
     hide
+  WHEN I receive "arm aegis":
     set sealangle to 0
     REPEAT 8:
       go to x: ((sin of sealangle) * 82) y: ((cos of sealangle) * 82)

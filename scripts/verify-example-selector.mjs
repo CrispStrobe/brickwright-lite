@@ -12,7 +12,7 @@ const check = (name, ok, detail = '') => {
 };
 
 const NEW_GAMES = [
-    'Skyline Swoop', 'Contrail Panic'
+    'Skyline Swoop', 'Contrail Panic', 'Aegis Arc', 'Prism Lock'
 ];
 
 try {

@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 
 import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
 import games from '../overlay/scratch-gui/src/lib/sb3-creator-game-examples.js';
-import {runProgram, quitStrandedVMs} from './helpers/bw-vm.mjs';
+import {VM, clearStrayTimers, runProgram, quitStrandedVMs} from './helpers/bw-vm.mjs';
 
 const EXPECTED = [
     'sky_skim',
@@ -47,7 +47,7 @@ test('only quality-approved new games are wired into the visible examples galler
     for (const [name, source] of Object.entries(games)) {
         assert.ok(source.length > 0, `${name}: empty game source`);
     }
-    const approved = new Set(['sky_skim', 'missile_ballet']);
+    const approved = new Set(['sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code']);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
     }
@@ -93,6 +93,105 @@ test('second quality-approved game explains and renders its collision strategy',
     assert.ok(svgs.some(svg => svg.includes('CROSS THEIR PATHS')));
 });
 
+test('Aegis Arc makes its circular defense state visible and start-gated', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.orbit_ward);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.orbit_ward, /GOAL: rebound the spark through all eight inner locks/);
+    assert.match(games.orbit_ward, /CONTROLS: Left and Right rotate the cyan shield/);
+    assert.match(games.orbit_ward, /broadcast "arm aegis"/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'briefing', 'reactor']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('AEGIS ARC')));
+    assert.ok(svgs.some(svg => svg.includes('BREAK ALL 8 INNER LOCKS')));
+    assert.ok(svgs.some(svg => svg.includes('3 ESCAPES = DEFEAT')));
+});
+
+test('Prism Lock uses clickable authored gems instead of modal number prompts', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.chroma_code);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.doesNotMatch(games.chroma_code, /ask .* and wait/);
+    assert.match(games.chroma_code, /CONTROLS: click four gems/);
+    assert.match(games.chroma_code, /WHEN sprite clicked:/);
+    const stage = project.targets.find(target => target.isStage);
+    const buttons = project.targets.find(target => target.name === 'GemButton');
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'sealed', 'board']);
+    assert.ok(Object.values(buttons.blocks).some(block => block.opcode === 'event_whenthisspriteclicked'));
+    assert.deepEqual(Object.values(stage.lists).map(list => list[0]).sort(),
+        ['guess', 'secret', 'usedGuess', 'usedSecret']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('PRISM LOCK')));
+    assert.ok(svgs.some(svg => svg.includes('EXACT = RIGHT GEM + SLOT')));
+    assert.ok(svgs.some(svg => svg.includes('CLICK 4 GEMS')));
+});
+
+test('new click and orbit controls advance in the real Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+        const vm = new VM();
+        await vm.loadProject(buffer);
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return {creator, vm};
+    };
+    const scalar = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const prism = await load(games.chroma_code);
+    try {
+        const {vm} = prism;
+        const secret = scalar(vm, 'secret').value.slice();
+        const clones = vm.runtime.targets.filter(target =>
+            !target.isOriginal && target.sprite.name === 'GemButton');
+        assert.equal(clones.length, 6, 'six clickable gem choices were not created');
+        const cloneFor = value => clones.find(target => Object.values(target.variables)
+            .some(variable => variable.name === 'gemValue' && Number(variable.value) === value));
+        for (let slot = 0; slot < 4; slot++) {
+            // Deliberately choose a different value in every slot, guaranteeing
+            // this is a scored non-winning attempt rather than a random fluke.
+            const choice = (Number(secret[slot]) % 6) + 1;
+            vm.runtime.startHats('event_whenthisspriteclicked', {}, cloneFor(choice));
+            for (let i = 0; i < 35; i++) vm.runtime._step();
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        assert.equal(Number(scalar(vm, 'exact').value), 0, 'clicked guess was not scored');
+        await new Promise(resolve => setTimeout(resolve, 1900));
+        for (let i = 0; i < 50; i++) vm.runtime._step();
+        assert.equal(Number(scalar(vm, 'turn').value), 2, 'the next deduction row did not open');
+        assert.equal(Number(scalar(vm, 'accepting').value), 1, 'gem buttons did not re-arm');
+        assert.deepEqual(scalar(vm, 'guess').value, [], 'previous guess was not cleared');
+    } finally {
+        prism.vm.quit();
+        clearStrayTimers();
+    }
+
+    const aegis = await load(games.orbit_ward);
+    try {
+        const {vm} = aegis;
+        const locks = vm.runtime.targets.filter(target =>
+            !target.isOriginal && target.sprite.name === 'Seal');
+        assert.equal(locks.length, 8, 'eight reactor locks were not created');
+        const before = Number(scalar(vm, 'angle').value);
+        vm.postIOData('keyboard', {key: 'ArrowLeft', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: 'ArrowLeft', isDown: false});
+        assert.ok(Number(scalar(vm, 'angle').value) < before, 'left arrow did not rotate the shield');
+    } finally {
+        aegis.vm.quit();
+        clearStrayTimers();
+    }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -120,7 +219,8 @@ test('each new game keeps its signature playable mechanic', () => {
     const contracts = {
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/],
-        chroma_code: [/LIST secret/, /set exact to 0/, /set near to 0/, /REPEAT UNTIL turn > 8 or won = 1/],
+        chroma_code: [/GLOBAL LIST secret/, /set exact to 0/, /set near to 0/,
+            /WHEN sprite clicked:/, /add gemValue to guess/],
         fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/],
         missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/],
         orbit_ward: [/sin of angle/, /cos of angle/, /REPEAT 8/, /IF touching Shield/],

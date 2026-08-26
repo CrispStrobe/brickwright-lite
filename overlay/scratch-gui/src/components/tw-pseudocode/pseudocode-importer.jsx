@@ -285,7 +285,9 @@ const GROUPS = [
         // audit as Skyline Swoop: authored art, an in-stage goal/control screen,
         // a legible HUD, and screenshots of both onboarding and live play.
         ['sky_skim', '🪽 Skyline Swoop — polished'],
-        ['missile_ballet', '✈️ Contrail Panic — polished']
+        ['missile_ballet', '✈️ Contrail Panic — polished'],
+        ['orbit_ward', '🛡️ Aegis Arc — polished'],
+        ['chroma_code', '💎 Prism Lock — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],
