@@ -740,21 +740,46 @@ SPRITE Battery:
       wait 0.02 seconds
     delete this clone`,
 
-    twinwall: `# Twinwall — Breakout with a paddle on both sides. W/S controls the left wall;
-# Up/Down controls the right. The ball can never escape, so the challenge is to
-# smash every shifting brick quickly and keep a rally multiplier alive.
+    twinwall: `# Rift Rally — a two-paddle crystal clear.
+# GOAL: break all 24 drifting crystals before the comet escapes three times.
+# CONTROLS: W/S move the cyan left paddle; Up/Down move the gold right paddle.
 GLOBAL score
 GLOBAL bricks
 GLOBAL rally
+GLOBAL lives
 GLOBAL bx
 GLOBAL by
 GLOBAL vx
 GLOBAL vy
+GLOBAL ly
+GLOBAL ry
+GLOBAL gx
+GLOBAL gy
+GLOBAL drift
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art rift-rally/intro
+  BACKDROP arena art rift-rally/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable lives
+    hide variable bricks
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to arena
+      broadcast "serve rift"
 
 SPRITE LeftWall:
-  SHAPE rect 14 86 #49d6ff
+  SHAPE art rift-rally/left
   WHEN flag clicked:
     set ly to 0
+    hide
+  WHEN I receive "serve rift":
+    show
     FOREVER:
       IF key w pressed? THEN:
         change ly by 9
@@ -767,9 +792,12 @@ SPRITE LeftWall:
       go to x: -220 y: ly
 
 SPRITE RightWall:
-  SHAPE rect 14 86 #ffcf4a
+  SHAPE art rift-rally/right
   WHEN flag clicked:
     set ry to 0
+    hide
+  WHEN I receive "serve rift":
+    show
     FOREVER:
       IF key up arrow pressed? THEN:
         change ry by 9
@@ -782,19 +810,24 @@ SPRITE RightWall:
       go to x: 220 y: ry
 
 SPRITE Comet:
-  SHAPE circle 16 #ffffff
+  SHAPE art rift-rally/comet
   SOUND hit 840
+  SOUND escape 160
   WHEN flag clicked:
-    show variable score
     set score to 0
+    set lives to 3
     set rally to 1
     set bx to 0
     set by to -120
     set vx to 7
     set vy to 5
     go to x: bx y: by
+    hide
+  WHEN I receive "serve rift":
+    show variable score
+    show variable lives
+    show variable bricks
     show
-  WHEN flag clicked:
     FOREVER:
       change bx by vx
       change by by vy
@@ -809,23 +842,28 @@ SPRITE Comet:
         set vx to 0 - (abs of vx)
         change rally by 1
         play sound "hit"
-      IF touching Shifter THEN:
-        set vy to vy * -1
-        wait 0.05 seconds
       IF bx < -238 or bx > 238 THEN:
+        change lives by -1
+        play sound "escape"
         set bx to 0
         set by to 0
         set rally to 1
         set vx to vx * -1
+        wait 0.4 seconds
+        IF lives < 1 THEN:
+          say ("RIFTS LOST — SCORE " join score) for 3 seconds
+          stop all
       IF bricks < 1 THEN:
-        say ("Twinwall cleared! " join score) for 3 seconds
+        say ("RIFT CLEARED! SCORE " join score) for 4 seconds
         stop all
       wait 0.015 seconds
 
 SPRITE Shifter:
-  SHAPE square 28 #a66cff
+  SHAPE art rift-rally/crystal
+  SOUND break 1040
   WHEN flag clicked:
     hide
+  WHEN I receive "serve rift":
     set bricks to 24
     set gy to -90
     REPEAT 6:
@@ -845,33 +883,63 @@ SPRITE Shifter:
       IF touching Comet THEN:
         change score by rally
         change bricks by -1
+        set vx to vx * -1
+        play sound "break"
         delete this clone
       wait 0.03 seconds`,
 
-    turbo_chicane: `# Turbo Chicane — a neon time-trial distilled from grand-prix and motorcycle
-# racing. Steer with Left/Right, draft behind blue rivals for boost, avoid red oil,
-# and pass checkpoint gates before the clock drains. Up spends boost.
+    turbo_chicane: `# Slipstream Circuit — a lane-based checkpoint sprint.
+# GOAL: drive through three green checkpoint gates before your energy reaches zero.
+# CONTROLS: Left/Right steer. Up spends boost collected from cyan rival slipstreams.
 GLOBAL score
 GLOBAL roadSpeed
 GLOBAL fuel
 GLOBAL boost
 GLOBAL lane
-GLOBAL kind
+GLOBAL checkpoints
+GLOBAL started
+GLOBAL spawnLane
+GLOBAL draftLock
+GLOBAL crashLock
+GLOBAL gateActive
+
+STAGE:
+  BACKDROP intro art slipstream/intro
+  BACKDROP circuit art slipstream/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable fuel
+    hide variable boost
+    hide variable checkpoints
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to circuit
+      broadcast "start slipstream"
 
 SPRITE Racer:
-  SHAPE triangle 38 #ffe04b
+  SHAPE art slipstream/racer
+  SOUND draft 920
+  SOUND crash 120
   WHEN flag clicked:
-    show variable score
-    show variable fuel
-    show variable boost
     set score to 0
     set fuel to 100
     set boost to 0
+    set checkpoints to 0
     set roadSpeed to 6
     set lane to 0
+    set draftLock to 0
+    set crashLock to 0
     go to x: 0 y: -125
+    hide
+  WHEN I receive "start slipstream":
+    show variable score
+    show variable fuel
+    show variable boost
+    show variable checkpoints
     show
-  WHEN flag clicked:
     FOREVER:
       IF key left arrow pressed? THEN:
         change lane by -8
@@ -882,30 +950,56 @@ SPRITE Racer:
       IF lane > 145 THEN:
         set lane to 145
       IF key up arrow pressed? and boost > 0 THEN:
-        set roadSpeed to 10
+        set roadSpeed to 11 + checkpoints
         change boost by -1
       ELSE:
-        set roadSpeed to 6 + (score / 20)
+        set roadSpeed to 6 + checkpoints + (score / 30)
       go to x: lane y: -125
-      change fuel by -0.04
-      IF touching Rival THEN:
-        change boost by 2
-      IF touching Oil THEN:
+      change fuel by -0.05
+      IF draftLock > 0 THEN:
+        change draftLock by -1
+      IF crashLock > 0 THEN:
+        change crashLock by -1
+      IF touching Draft and draftLock = 0 THEN:
+        change boost by 25
+        change score by 3
+        set draftLock to 40
+        play sound "draft"
+        IF boost > 100 THEN:
+          set boost to 100
+      IF touching Rival and crashLock = 0 THEN:
+        change fuel by -15
+        set crashLock to 50
+        play sound "crash"
+      IF touching Oil and crashLock = 0 THEN:
+        change fuel by -12
         set roadSpeed to 2
-        change fuel by -8
-        wait 0.35 seconds
+        set crashLock to 50
+        play sound "crash"
+      IF touching Gate and gateActive = 1 THEN:
+        set gateActive to 0
+        change checkpoints by 1
+        change score by 15
+        change fuel by 22
+        say ("CHECKPOINT " join checkpoints) for 0.7 seconds
+        IF checkpoints = 3 THEN:
+          say ("CIRCUIT CLEARED! SCORE " join score) for 4 seconds
+          stop all
       IF fuel < 1 THEN:
-        say ("Out of time — " join score) for 3 seconds
+        say ("ENERGY EMPTY — SCORE " join score) for 3 seconds
         stop all
       wait 0.02 seconds
 
 SPRITE Rival:
-  SHAPE triangle 34 #49b6ff
+  SHAPE art slipstream/rival
   WHEN flag clicked:
     hide
+  WHEN I receive "start slipstream":
     FOREVER:
-      go to x: pick random -130 to 130 y: 190
+      set spawnLane to pick random -125 to 125
+      go to x: spawnLane y: 190
       create clone of myself
+      broadcast "spawn draft"
       wait pick random 1 to 2 seconds
   WHEN I start as a clone:
     show
@@ -913,13 +1007,27 @@ SPRITE Rival:
       change y by (0 - roadSpeed)
       wait 0.02 seconds
     change score by 2
-    change fuel by 3
+    delete this clone
+
+SPRITE Draft:
+  SHAPE art slipstream/draft
+  WHEN flag clicked:
+    hide
+  WHEN I receive "spawn draft":
+    go to x: spawnLane y: 128
+    create clone of myself
+  WHEN I start as a clone:
+    show
+    REPEAT UNTIL y position < -220:
+      change y by (0 - roadSpeed)
+      wait 0.02 seconds
     delete this clone
 
 SPRITE Oil:
-  SHAPE circle 30 #ff4267
+  SHAPE art slipstream/oil
   WHEN flag clicked:
     hide
+  WHEN I receive "start slipstream":
     FOREVER:
       wait pick random 2 to 4 seconds
       go to x: pick random -140 to 140 y: 190
@@ -932,18 +1040,22 @@ SPRITE Oil:
     delete this clone
 
 SPRITE Gate:
-  SHAPE rect 330 10 #62ffad
+  SHAPE art slipstream/gate
   WHEN flag clicked:
     hide
+    set gateActive to 0
+  WHEN I receive "start slipstream":
     FOREVER:
-      wait 7 seconds
-      go to x: 0 y: 190
+      wait 6 seconds
+      set gateActive to 1
+      go to x: pick random -120 to 120 y: 190
       show
-      REPEAT UNTIL y position < -190:
+      REPEAT UNTIL y position < -190 or gateActive = 0:
         change y by (0 - roadSpeed)
         wait 0.02 seconds
-      change score by 5
-      change fuel by 18
+      IF gateActive = 1 THEN:
+        change fuel by -18
+        set gateActive to 0
       hide`,
 
     abyss_rescue: `# Abyss Rescue — pilot a tiny submarine through a living trench. Space adds

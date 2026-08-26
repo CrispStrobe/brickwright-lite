@@ -48,7 +48,8 @@ test('only quality-approved new games are wired into the visible examples galler
         assert.ok(source.length > 0, `${name}: empty game source`);
     }
     const approved = new Set([
-        'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay'
+        'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
+        'twinwall', 'turbo_chicane'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -167,6 +168,41 @@ test('Neon Relay teaches distinct jump and slide hazards and gates the run', () 
     assert.ok(svgs.some(svg => svg.includes('NEON RELAY')));
     assert.ok(svgs.some(svg => svg.includes('JUMP OVER RED VENTS')));
     assert.ok(svgs.some(svg => svg.includes('ORANGE DRONE = SLIDE')));
+});
+
+test('Rift Rally exposes its dual controls, crystals, and three-escape loss condition', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.twinwall);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.twinwall, /GOAL: break all 24 drifting crystals before the comet escapes three times/);
+    assert.match(games.twinwall, /CONTROLS: W\/S move the cyan left paddle/);
+    assert.match(games.twinwall, /change lives by -1/);
+    assert.match(games.twinwall, /set vx to vx \* -1/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'arena']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('RIFT RALLY')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR ALL 24 DRIFTING CRYSTALS')));
+    assert.ok(svgs.some(svg => svg.includes('3 ESCAPES = DEFEAT')));
+});
+
+test('Slipstream Circuit separates drafting, collisions, and skill-based checkpoint gates', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.turbo_chicane);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.turbo_chicane, /GOAL: drive through three green checkpoint gates/);
+    assert.match(games.turbo_chicane, /CONTROLS: Left\/Right steer/);
+    assert.match(games.turbo_chicane, /SPRITE Draft:/);
+    assert.match(games.turbo_chicane, /IF touching Gate and gateActive = 1 THEN:/);
+    assert.match(games.turbo_chicane, /IF checkpoints = 3 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'circuit']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('SLIPSTREAM CIRCUIT')));
+    assert.ok(svgs.some(svg => svg.includes('HIT 3 GREEN CHECKPOINT GATES')));
+    assert.ok(svgs.some(svg => svg.includes('CYAN WAKE = BOOST')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -288,6 +324,62 @@ test('new merge and runner controls change live Scratch VM state', async () => {
     }
 });
 
+test('dual-paddle defense and slipstream race respond in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+        const vm = new VM();
+        await vm.loadProject(buffer);
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const rift = await load(games.twinwall);
+    try {
+        assert.equal(rift.runtime.targets.filter(target =>
+            !target.isOriginal && target.sprite.name === 'Shifter').length, 24,
+        'the 24-crystal field was not created');
+        rift.postIOData('keyboard', {key: 'w', isDown: true});
+        rift.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 12; i++) rift.runtime._step();
+        rift.postIOData('keyboard', {key: 'w', isDown: false});
+        rift.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.ok(Number(value(rift, 'ly').value) > 0, 'W did not move the left paddle');
+        assert.ok(Number(value(rift, 'ry').value) > 0, 'Up did not move the right paddle');
+        value(rift, 'bx').value = 240;
+        for (let i = 0; i < 8; i++) rift.runtime._step();
+        assert.equal(Number(value(rift, 'lives').value), 2, 'an escaped comet did not cost one life');
+    } finally {
+        rift.quit();
+        clearStrayTimers();
+    }
+
+    const circuit = await load(games.turbo_chicane);
+    try {
+        circuit.postIOData('keyboard', {key: 'ArrowLeft', isDown: true});
+        for (let i = 0; i < 12; i++) circuit.runtime._step();
+        circuit.postIOData('keyboard', {key: 'ArrowLeft', isDown: false});
+        assert.ok(Number(value(circuit, 'lane').value) < 0, 'Left did not steer the racer');
+        await new Promise(resolve => setTimeout(resolve, 2200));
+        for (let i = 0; i < 25; i++) circuit.runtime._step();
+        assert.ok(circuit.runtime.targets.some(target => !target.isOriginal && target.sprite.name === 'Rival'),
+            'rival traffic did not start');
+        assert.ok(circuit.runtime.targets.some(target => !target.isOriginal && target.sprite.name === 'Draft'),
+            'the separate collectible slipstream did not spawn behind the rival');
+    } finally {
+        circuit.quit();
+        clearStrayTimers();
+    }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -322,7 +414,7 @@ test('each new game keeps its signature playable mechanic', () => {
         orbit_ward: [/sin of angle/, /cos of angle/, /REPEAT 8/, /IF touching Shield/],
         rooftop_relay: [/set vy to 12/, /switch costume to slide/, /set overdrive to 0/],
         twinwall: [/SPRITE LeftWall/, /SPRITE RightWall/, /set bricks to 24/, /change score by rally/],
-        turbo_chicane: [/touching Rival/, /touching Oil/, /change fuel by 18/],
+        turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /change checkpoints by 1/],
         abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Diver/],
         specter_sweep: [/if on edge bounce/, /touching Ghost/, /set ward to 3/],
         moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/],

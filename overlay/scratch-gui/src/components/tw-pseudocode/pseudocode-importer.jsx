@@ -289,7 +289,9 @@ const GROUPS = [
         ['orbit_ward', '🛡️ Aegis Arc — polished'],
         ['chroma_code', '💎 Prism Lock — polished'],
         ['fusion_foundry', '☄️ Core Cascade — polished'],
-        ['rooftop_relay', '🏃 Neon Relay — polished']
+        ['rooftop_relay', '🏃 Neon Relay — polished'],
+        ['twinwall', '🪩 Rift Rally — polished'],
+        ['turbo_chicane', '🏁 Slipstream Circuit — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],
