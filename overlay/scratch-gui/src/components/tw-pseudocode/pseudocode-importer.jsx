@@ -287,7 +287,9 @@ const GROUPS = [
         ['sky_skim', '🪽 Skyline Swoop — polished'],
         ['missile_ballet', '✈️ Contrail Panic — polished'],
         ['orbit_ward', '🛡️ Aegis Arc — polished'],
-        ['chroma_code', '💎 Prism Lock — polished']
+        ['chroma_code', '💎 Prism Lock — polished'],
+        ['fusion_foundry', '☄️ Core Cascade — polished'],
+        ['rooftop_relay', '🏃 Neon Relay — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

@@ -47,7 +47,9 @@ test('only quality-approved new games are wired into the visible examples galler
     for (const [name, source] of Object.entries(games)) {
         assert.ok(source.length > 0, `${name}: empty game source`);
     }
-    const approved = new Set(['sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code']);
+    const approved = new Set([
+        'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay'
+    ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
     }
@@ -129,6 +131,44 @@ test('Prism Lock uses clickable authored gems instead of modal number prompts', 
     assert.ok(svgs.some(svg => svg.includes('CLICK 4 GEMS')));
 });
 
+test('Core Cascade shows its next piece, fusion ladder, and concrete Nova goal', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.fusion_foundry);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.fusion_foundry, /GOAL: fuse identical cores vertically until you create the white Nova core/);
+    assert.match(games.fusion_foundry, /CONTROLS: Left and Right choose a shaft/);
+    assert.match(games.fusion_foundry, /set nextLevel to pick random 1 to 2/);
+    assert.match(games.fusion_foundry, /IF level = 5 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    const foundry = project.targets.find(target => target.name === 'Foundry');
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'reactor']);
+    assert.ok(foundry.costumes.some(costume => costume.name === 'core5'));
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('CORE CASCADE')));
+    assert.ok(svgs.some(svg => svg.includes('NEXT CORE')));
+    assert.ok(svgs.some(svg => svg.includes('CREATE THE WHITE NOVA')));
+});
+
+test('Neon Relay teaches distinct jump and slide hazards and gates the run', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.rooftop_relay);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.rooftop_relay, /GOAL: survive as long as possible/);
+    assert.match(games.rooftop_relay, /CONTROLS: Up jumps, Down slides/);
+    assert.match(games.rooftop_relay, /broadcast "start neon relay"/);
+    assert.match(games.rooftop_relay, /go to x: 250 y: -96/);
+    const stage = project.targets.find(target => target.isStage);
+    const runner = project.targets.find(target => target.name === 'Runner');
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'skyline']);
+    assert.ok(runner.costumes.some(costume => costume.name === 'slide'));
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('NEON RELAY')));
+    assert.ok(svgs.some(svg => svg.includes('JUMP OVER RED VENTS')));
+    assert.ok(svgs.some(svg => svg.includes('ORANGE DRONE = SLIDE')));
+});
+
 test('new click and orbit controls advance in the real Scratch VM', async () => {
     const load = async source => {
         const creator = new SB3Creator();
@@ -188,6 +228,62 @@ test('new click and orbit controls advance in the real Scratch VM', async () => 
         assert.ok(Number(scalar(vm, 'angle').value) < before, 'left arrow did not rotate the shield');
     } finally {
         aegis.vm.quit();
+        clearStrayTimers();
+    }
+});
+
+test('new merge and runner controls change live Scratch VM state', async () => {
+    const load = async source => {
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+        const vm = new VM();
+        await vm.loadProject(buffer);
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const stageValue = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const cascade = await load(games.fusion_foundry);
+    try {
+        const foundry = cascade.runtime.targets.find(target => target.sprite.name === 'Foundry');
+        const grid = Object.values(foundry.variables).find(variable => variable.name === 'grid');
+        assert.equal(grid.value.length, 42, 'reactor grid was not initialized');
+        const beforeColumn = Number(stageValue(cascade, 'column').value);
+        cascade.postIOData('keyboard', {key: 'ArrowLeft', isDown: true});
+        for (let i = 0; i < 15; i++) cascade.runtime._step();
+        cascade.postIOData('keyboard', {key: 'ArrowLeft', isDown: false});
+        assert.equal(Number(stageValue(cascade, 'column').value), beforeColumn - 1,
+            'shaft selector did not move');
+        cascade.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 35; i++) cascade.runtime._step();
+        cascade.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 1,
+            'Space did not drop exactly one preview core');
+    } finally {
+        cascade.quit();
+        clearStrayTimers();
+    }
+
+    const relay = await load(games.rooftop_relay);
+    try {
+        const beforeY = Number(stageValue(relay, 'runy').value);
+        relay.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 12; i++) relay.runtime._step();
+        relay.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.ok(Number(stageValue(relay, 'runy').value) > beforeY, 'Up did not launch the runner');
+        await new Promise(resolve => setTimeout(resolve, 2200));
+        for (let i = 0; i < 25; i++) relay.runtime._step();
+        assert.ok(relay.runtime.targets.some(target => !target.isOriginal && target.sprite.name === 'Hazard'),
+            'hazard stream did not start after the onboarding gate');
+    } finally {
+        relay.quit();
         clearStrayTimers();
     }
 });

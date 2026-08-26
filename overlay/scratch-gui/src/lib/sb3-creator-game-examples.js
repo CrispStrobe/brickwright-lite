@@ -279,30 +279,48 @@ SPRITE GemButton:
       wait 0.08 seconds
       set size to 100`,
 
-    fusion_foundry: `# Fusion Foundry — choose a bay with Left/Right and drop with Space. Matching
-# cores fuse upward: circles become squares, then diamonds, then stars. Cascades
-# multiply the score, so building several merges into one drop is the key.
+    fusion_foundry: `# Core Cascade — a tactical drop-and-merge puzzle.
+# GOAL: fuse identical cores vertically until you create the white Nova core.
+# CONTROLS: Left and Right choose a shaft. Space drops the core shown in NEXT.
 GLOBAL score
 GLOBAL column
 GLOBAL level
 GLOBAL row
-GLOBAL idx
 GLOBAL chain
 GLOBAL over
 GLOBAL i
 GLOBAL r
 GLOBAL c
 GLOBAL v
+GLOBAL nextLevel
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art core-cascade/intro
+  BACKDROP reactor art core-cascade/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to reactor
+      broadcast "ignite cascade"
+    ELSE:
+      broadcast "drop core"
 
 SPRITE Foundry:
   LIST grid
-  COSTUME empty tile "" #26344a
-  COSTUME core1 circle 38 #55d6ff
-  COSTUME core2 square 38 #44e08a
-  COSTUME core3 tile "◆" #ffcf4a #7b3ff2
-  COSTUME core4 tile "★" #ff6b6b #fff2a8
-  COSTUME cursor tile "▼" #172033 #ffffff
+  SHAPE art core-cascade/core1
+  COSTUME core1 art core-cascade/core1
+  COSTUME core2 art core-cascade/core2
+  COSTUME core3 art core-cascade/core3
+  COSTUME core4 art core-cascade/core4
+  COSTUME core5 art core-cascade/core5
+  COSTUME cursor art core-cascade/cursor
   SOUND fuse 680
+  SOUND nova 960
 
   DEFINE FAST reset:
     delete all of grid
@@ -311,6 +329,7 @@ SPRITE Foundry:
     set score to 0
     set column to 3
     set over to 0
+    set nextLevel to pick random 1 to 2
 
   DEFINE FAST render:
     clear
@@ -319,15 +338,16 @@ SPRITE Foundry:
       set r to floor of (i / 6)
       set c to i mod 6
       set v to item (i + 1) of grid
-      IF v = 0 THEN:
-        switch costume to empty
-      ELSE:
+      IF v > 0 THEN:
         switch costume to ("core" join v)
-      go to x: (-125 + (c * 50)) y: (115 - (r * 45))
-      stamp
+        go to x: (-137 + (c * 55)) y: (128 - (r * 43))
+        stamp
       change i by 1
     switch costume to cursor
-    go to x: (-125 + (column * 50)) y: 160
+    go to x: (-137 + (column * 55)) y: 162
+    stamp
+    switch costume to ("core" join nextLevel)
+    go to x: 183 y: 63
     stamp
 
   DEFINE drop core:
@@ -340,12 +360,14 @@ SPRITE Foundry:
         say ("Foundry sealed! Score " join score) for 3 seconds
         stop all
       ELSE:
-        set level to 1
+        set level to nextLevel
+        set nextLevel to 1
         IF pick random 1 to 5 = 1 THEN:
-          set level to 2
+          set nextLevel to 2
         replace item ((row * 6) + column) + 1 of grid with level
         set chain to 1
-        REPEAT UNTIL row = 6 or level > 3 or item (((row + 1) * 6) + column) + 1 of grid = 0 or not item (((row + 1) * 6) + column) + 1 of grid = level:
+        render
+        REPEAT UNTIL row = 6 or level > 4 or item (((row + 1) * 6) + column) + 1 of grid = 0 or not item (((row + 1) * 6) + column) + 1 of grid = level:
           replace item ((row * 6) + column) + 1 of grid with 0
           change row by 1
           change level by 1
@@ -356,21 +378,28 @@ SPRITE Foundry:
           render
           wait 0.12 seconds
         render
+        IF level = 5 THEN:
+          play sound "nova"
+          change score by 500
+          say ("NOVA FORGED! SCORE " join score) for 4 seconds
+          stop all
 
   WHEN flag clicked:
     hide
-    show variable score
+    clear
+  WHEN I receive "ignite cascade":
     reset
+    show variable score
     render
   WHEN left arrow key pressed:
-    IF column > 0 THEN:
+    IF started = 1 and column > 0 THEN:
       change column by -1
       render
   WHEN right arrow key pressed:
-    IF column < 5 THEN:
+    IF started = 1 and column < 5 THEN:
       change column by 1
       render
-  WHEN space key pressed:
+  WHEN I receive "drop core":
     drop core`,
 
     missile_ballet: `# Contrail Panic — a mouse-steering survival game.
@@ -572,9 +601,9 @@ SPRITE Seal:
         delete this clone
       wait 0.02 seconds`,
 
-    rooftop_relay: `# Rooftop Relay — an endless runner with two moves: Up jumps, Down slides.
-# Clear drones and vents, collect batteries, and survive as the city accelerates.
-# A battery streak triggers a short neon overdrive worth double points.
+    rooftop_relay: `# Neon Relay — a readable two-action rooftop runner.
+# GOAL: survive as long as possible; red vents require a jump, orange drones a slide.
+# CONTROLS: Up jumps, Down slides. Batteries grant a short obstacle-smashing boost.
 GLOBAL score
 GLOBAL speed
 GLOBAL runy
@@ -583,13 +612,30 @@ GLOBAL grounded
 GLOBAL sliding
 GLOBAL spawnKind
 GLOBAL overdrive
+GLOBAL hurtLock
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art neon-relay/intro
+  BACKDROP skyline art neon-relay/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable overdrive
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to skyline
+      broadcast "start neon relay"
 
 SPRITE Runner:
-  COSTUME run square 34 #5ee7ff
-  COSTUME slide rect 52 20 #5ee7ff
+  SHAPE art neon-relay/run
+  COSTUME run art neon-relay/run
+  COSTUME slide art neon-relay/slide
   SOUND jump 620
+  SOUND boost 880
   WHEN flag clicked:
-    show variable score
     set score to 0
     set speed to 6
     set runy to -125
@@ -597,14 +643,19 @@ SPRITE Runner:
     set grounded to 1
     set sliding to 0
     set overdrive to 0
+    set hurtLock to 0
     go to x: -120 y: runy
+    hide
+  WHEN I receive "start neon relay":
+    show variable score
+    show variable overdrive
     show
   WHEN up arrow key pressed:
-    IF grounded = 1 THEN:
+    IF started = 1 and grounded = 1 THEN:
       set vy to 12
       set grounded to 0
       play sound "jump"
-  WHEN flag clicked:
+  WHEN I receive "start neon relay":
     FOREVER:
       set sliding to 0
       IF key down arrow pressed? and grounded = 1 THEN:
@@ -619,17 +670,23 @@ SPRITE Runner:
         set vy to 0
         set grounded to 1
       go to x: -120 y: runy
-      IF touching Hazard THEN:
+      IF hurtLock > 0 THEN:
+        change hurtLock by -1
+      IF touching Hazard and hurtLock = 0 THEN:
         IF overdrive > 0 THEN:
-          change score by 4
-          wait 0.2 seconds
+          change score by 10
+          set overdrive to 0
+          set hurtLock to 45
+          play sound "boost"
+          say "BOOST SMASH +10" for 0.5 seconds
         ELSE:
           say ("Relay ended: " join score) for 3 seconds
           stop all
       IF touching Battery THEN:
-        change overdrive by 80
-        change score by 3
-        wait 0.15 seconds
+        set overdrive to 120
+        change score by 5
+        play sound "boost"
+        wait 0.12 seconds
       IF overdrive > 0 THEN:
         change overdrive by -1
         change color effect by 10
@@ -642,20 +699,22 @@ SPRITE Runner:
       wait 0.02 seconds
 
 SPRITE Hazard:
-  COSTUME vent rect 35 48 #ff5d73
-  COSTUME drone rect 58 22 #ff9f43
+  SHAPE art neon-relay/vent
+  COSTUME vent art neon-relay/vent
+  COSTUME drone art neon-relay/drone
   WHEN flag clicked:
     hide
+  WHEN I receive "start neon relay":
     FOREVER:
       set spawnKind to pick random 1 to 2
       IF spawnKind = 1 THEN:
         switch costume to vent
-        go to x: 250 y: -122
+        go to x: 250 y: -120
       ELSE:
         switch costume to drone
-        go to x: 250 y: -70
+        go to x: 250 y: -96
       create clone of myself
-      wait pick random 1 to 2 seconds
+      wait pick random 1.2 to 2.1 seconds
   WHEN I start as a clone:
     show
     REPEAT UNTIL x position < -250:
@@ -665,12 +724,13 @@ SPRITE Hazard:
     delete this clone
 
 SPRITE Battery:
-  SHAPE circle 20 #ffe66d
+  SHAPE art neon-relay/battery
   WHEN flag clicked:
     hide
+  WHEN I receive "start neon relay":
     FOREVER:
       wait pick random 3 to 6 seconds
-      go to x: 250 y: pick random -80 to 70
+      go to x: 250 y: pick random -105 to 40
       create clone of myself
   WHEN I start as a clone:
     show
