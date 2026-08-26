@@ -10,6 +10,15 @@
  *
  * Needs APPSTORE_API_KEY_ID, APPSTORE_API_ISSUER_ID, APPSTORE_API_KEY_P8
  * (base64 of the .p8) and APPSTORE_APP_ID. Run by mobile.yml on a version tag.
+ *
+ * `--platform IOS` names the build this run is REQUIRED to wait for. One app
+ * record carries iOS and macOS, and on a tag mobile.yml and release.yml upload
+ * them in parallel — so "wait for a VALID build at this version" was a race, and
+ * on 0.1.10 it lost: the macOS build finished processing first, this script
+ * patched it, reported success, and the iOS build testers were about to install
+ * went out with whatsNew EMPTY in both locales. Exactly the failure the script
+ * exists to prevent, in a shape it did not cover. Every VALID build at the
+ * version is still patched; the flag only decides when there is enough to do.
  */
 import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
@@ -58,18 +67,38 @@ async function main() {
         notes[locale] = found;
     }
 
+    // The platform this run must not finish without. See the header: without it
+    // the wait is a race between two parallel uploads into one app record.
+    const at = process.argv.indexOf('--platform');
+    const required = at === -1 ? null : process.argv[at + 1];
+
+    /** The platform of a build, or null if Apple has not attached one yet. */
+    const platformOf = async id => (await api(`/v1/builds/${id}/preReleaseVersion` +
+        '?fields[preReleaseVersions]=platform')).data?.attributes?.platform || null;
+
     // A build is only patchable once Apple has finished processing it, which
     // takes minutes after the upload step in the same job.
     const deadline = Date.now() + 25 * 60 * 1000;
     let builds = [];
     for (;;) {
         const all = (await api(`/v1/builds?filter[app]=${env.APPSTORE_APP_ID}` +
-            '&limit=10&sort=-uploadedDate&fields[builds]=version,processingState')).data;
-        builds = all.filter(b => b.attributes.version === version && b.attributes.processingState === 'VALID');
-        if (builds.length) break;
-        if (Date.now() > deadline) throw new Error(`no VALID build at ${version} after 25 min`);
-        console.log(`waiting for a VALID ${version} build (have: ` +
-            `${all.map(b => `${b.attributes.version}/${b.attributes.processingState}`).join(', ') || 'none'})`);
+            '&limit=20&sort=-uploadedDate&fields[builds]=version,processingState')).data;
+        builds = all.filter(b => b.attributes.version === version &&
+            b.attributes.processingState === 'VALID');
+        if (builds.length) {
+            if (!required) break;
+            const platforms = await Promise.all(builds.map(b => platformOf(b.id)));
+            if (platforms.includes(required)) break;
+            console.log(`waiting for the ${required} build at ${version} ` +
+                `(VALID so far: ${platforms.join(', ') || 'none'})`);
+        } else {
+            console.log(`waiting for a VALID ${version} build (have: ` +
+                `${all.map(b => `${b.attributes.version}/${b.attributes.processingState}`)
+                    .join(', ') || 'none'})`);
+        }
+        if (Date.now() > deadline) {
+            throw new Error(`no VALID ${required || ''} build at ${version} after 25 min`);
+        }
         await new Promise(resolve => setTimeout(resolve, 60_000));
     }
 

@@ -349,7 +349,11 @@ jobs:
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
           APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
           APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
-        run: node scripts/push-tester-notes.mjs
+        # --platform IOS: one app record carries both platforms and
+        # release.yml uploads the macOS build on the same tag, so an
+        # unqualified "wait for a VALID build" is a race. It lost on
+        # 0.1.10 and that build's notes went out empty.
+        run: node scripts/push-tester-notes.mjs --platform IOS
 
       # ...and then actually put it in front of testers. Uploading a build and
       # annotating it distributes it to nobody: the group assignment and the

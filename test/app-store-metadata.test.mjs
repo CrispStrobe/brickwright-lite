@@ -83,9 +83,14 @@ test('native package versions stay aligned for the TestFlight train', async () =
     // can only see a value's source, never its destination, is green for the
     // wrong reason.
     const mobile = await readFile(new URL('../.github/workflows/mobile.yml', import.meta.url), 'utf8');
-    assert.match(mobile, /run: node scripts\/push-tester-notes\.mjs/,
-        'mobile.yml no longer runs scripts/push-tester-notes.mjs — the tester notes ' +
-        'would be written and never sent, which is how 0.1.7 shipped with none');
+    // `--platform IOS` is load-bearing, not decoration: one app record carries
+    // both platforms and release.yml uploads the macOS build on the same tag, so
+    // an unqualified wait is a race between two parallel uploads. It lost on
+    // 0.1.10 — the macOS build finished first, was patched, the step reported
+    // success, and the iOS build testers install went out with whatsNew empty.
+    assert.match(mobile, /run: node scripts\/push-tester-notes\.mjs --platform IOS/,
+        'mobile.yml no longer runs scripts/push-tester-notes.mjs --platform IOS — ' +
+        'without the flag the step can patch the macOS build and call it done');
 
     // The same property one step further out. Notes on a build nobody can
     // install are worth as little as notes never sent: until 0.1.10 the group
