@@ -199,6 +199,107 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.10 en-US
+
+Bluetooth. This build is almost entirely about getting LEGO hubs to connect from
+the app, and it is the first build where that can work at all on iPhone and iPad.
+
+What was wrong: the LEGO extensions asked the web view for Bluetooth, and no web
+view Brickwright runs inside has ever provided it. The connect block threw an
+error into a place with no visible console, so it looked as if pressing it did
+nothing at all. The app now supplies Bluetooth itself, over the same connection
+the built-in Scratch hardware blocks already used.
+
+New:
+- **The LEGO extensions connect over Bluetooth in the app** — Boost, WeDo 2.0,
+  Powered Up and SPIKE Prime (BLE). Add the extension, press "connect", and a
+  device chooser appears listing the hubs it can hear; tap one to connect.
+- **A second, repaired route.** The extensions' "set connection to Scratch Link"
+  option previously pointed at an address nothing in the app listens on, and
+  misread the reply it got back. Both are fixed, so that option now works too.
+- **Being told what is wrong.** If Bluetooth is switched off, or permission was
+  declined, the app now says so in a sentence naming the setting to change,
+  instead of searching for fifteen seconds and reporting "no device found".
+- **Settings › Connection diagnostics…** — a log you can read on the device
+  itself, with a "Run Bluetooth self-test" button. There is no developer console
+  on iPhone or iPad, so this is how a problem can be reported precisely.
+
+Please test:
+- **Connect a hub.** Add the LEGO Boost, WeDo 2.0, Powered Up or SPIKE Prime
+  extension, press the connect block, pick your hub from the list, and then drive
+  a motor or read a sensor. Please say which hub you used.
+- **The first connection asks for Bluetooth permission** — please allow it, and
+  tell us if the prompt did not appear.
+- **Turn Bluetooth off and press connect.** You should get a sentence telling you
+  to turn it on, quickly — not a long wait.
+- **Open Settings › Connection diagnostics…, press "Run Bluetooth self-test"**,
+  and send us what it says. That report is useful whether the hub connected or
+  not, and Copy puts the whole log on the clipboard.
+- Everything else should be unchanged — the simulator, the Code tab, the lessons
+  and older projects must still open and run exactly as in 0.1.9.
+
+Also fixed:
+- **The app icon is the Brickwright robot again.** Every build so far shipped the
+  Tauri framework's own logo by mistake. Please check the icon on your home screen
+  after updating — you should see the teal robot, not a blue-and-yellow ring.
+
+Please report your device and iOS version, which hub you tried, and — if anything
+went wrong — the diagnostics log, which usually contains the answer.
+
+## What to Test — 0.1.10 de-DE
+
+Bluetooth. In diesem Build geht es fast ausschließlich darum, dass sich LEGO-Hubs
+aus der App verbinden lassen — und es ist der erste Build, in dem das auf iPhone
+und iPad überhaupt funktionieren kann.
+
+Was kaputt war: Die LEGO-Erweiterungen haben die Web-Ansicht nach Bluetooth
+gefragt, und keine Web-Ansicht, in der Brickwright läuft, hat das je angeboten.
+Der Verbinden-Block lief in einen Fehler an einer Stelle ohne sichtbare Konsole —
+es sah also so aus, als würde beim Drücken schlicht nichts passieren. Die App
+liefert Bluetooth jetzt selbst, über dieselbe Verbindung, die die eingebauten
+Scratch-Hardwareblöcke schon benutzt haben.
+
+Neu:
+- **Die LEGO-Erweiterungen verbinden sich in der App über Bluetooth** — Boost,
+  WeDo 2.0, Powered Up und SPIKE Prime (BLE). Erweiterung hinzufügen, "verbinden"
+  drücken, und eine Geräteauswahl zeigt die gefundenen Hubs; einen antippen, um
+  zu verbinden.
+- **Ein zweiter, reparierter Weg.** Die Option "Verbindung auf Scratch Link
+  setzen" zeigte bisher auf eine Adresse, auf der in der App nichts lauscht, und
+  hat die Antwort falsch gelesen. Beides ist behoben, die Option funktioniert
+  jetzt ebenfalls.
+- **Sagen, was los ist.** Ist Bluetooth aus oder die Berechtigung abgelehnt, sagt
+  die App das jetzt in einem Satz und nennt die Einstellung, die zu ändern ist —
+  statt fünfzehn Sekunden zu suchen und "kein Gerät gefunden" zu melden.
+- **Einstellungen › Verbindungsdiagnose…** — ein Protokoll, das sich direkt auf
+  dem Gerät lesen lässt, mit einem Knopf "Bluetooth-Selbsttest". Auf iPhone und
+  iPad gibt es keine Entwicklerkonsole; so lässt sich ein Problem genau melden.
+
+Bitte testen:
+- **Einen Hub verbinden.** Die Erweiterung LEGO Boost, WeDo 2.0, Powered Up oder
+  SPIKE Prime hinzufügen, den Verbinden-Block drücken, den Hub aus der Liste
+  wählen und dann einen Motor ansteuern oder einen Sensor auslesen. Bitte dazu
+  sagen, welcher Hub es war.
+- **Beim ersten Verbinden fragt die App nach der Bluetooth-Berechtigung** — bitte
+  erlauben, und melden, falls die Abfrage nicht erscheint.
+- **Bluetooth ausschalten und verbinden drücken.** Es sollte schnell ein Satz
+  kommen, der zum Einschalten auffordert — kein langes Warten.
+- **Einstellungen › Verbindungsdiagnose… öffnen, "Bluetooth-Selbsttest" drücken**
+  und uns schicken, was dort steht. Der Bericht hilft, egal ob der Hub sich
+  verbunden hat oder nicht; "Kopieren" legt das ganze Protokoll in die
+  Zwischenablage.
+- Alles Übrige soll unverändert sein — Simulation, Code-Reiter, Lektionen und
+  ältere Projekte müssen genau wie in 0.1.9 öffnen und laufen.
+
+Außerdem behoben:
+- **Das App-Symbol ist wieder der Brickwright-Roboter.** Alle bisherigen Builds
+  haben versehentlich das Logo des Tauri-Frameworks mitgeliefert. Bitte nach dem
+  Update das Symbol auf dem Startbildschirm prüfen — dort sollte der türkise
+  Roboter stehen, kein blau-gelber Ring.
+
+Bitte Gerät und iOS-Version melden, welcher Hub versucht wurde, und — falls etwas
+schiefging — das Diagnoseprotokoll; darin steht meistens die Antwort.
+
 ## What to Test — 0.1.9 en-US
 
 This build is about the simulator: a new chip to run in it, and a big jump in how
