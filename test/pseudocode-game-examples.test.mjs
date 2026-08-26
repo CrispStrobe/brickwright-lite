@@ -41,14 +41,56 @@ const EXPECTED = [
 
 test.after(() => quitStrandedVMs());
 
-test('new games are wired into the visible examples gallery', () => {
+test('only quality-approved new games are wired into the visible examples gallery', () => {
     const importer = readFileSync(new URL(
         '../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
     for (const [name, source] of Object.entries(games)) {
         assert.ok(source.length > 0, `${name}: empty game source`);
-        assert.match(importer, new RegExp(`\\['${name}',`), `${name}: missing from the Games menu`);
+    }
+    const approved = new Set(['sky_skim', 'missile_ballet']);
+    for (const name of approved) {
+        assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
+    }
+    for (const name of EXPECTED.filter(name => !approved.has(name))) {
+        assert.doesNotMatch(importer, new RegExp(`\\['${name}',`), `${name}: unaudited prototype is public`);
     }
     assert.match(importer, /\.\.\.gameExamples/, 'game module is not merged into the gallery examples');
+});
+
+test('quality-approved game has authored SVG art and explicit onboarding', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.sky_skim);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    const stage = project.targets.find(target => target.isStage);
+    const bird = project.targets.find(target => target.name === 'Skimmer');
+    const hill = project.targets.find(target => target.name === 'Hill');
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'flight']);
+    assert.equal(bird.costumes.length, 2);
+    assert.equal(hill.costumes.length, 1);
+    assert.match(games.sky_skim, /GOAL:/);
+    assert.match(games.sky_skim, /CONTROLS:/);
+    assert.match(games.sky_skim, /WHEN space key pressed:/);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('SKYLINE SWOOP')));
+    assert.ok(svgs.some(svg => svg.includes('PRESS SPACE TO FLY')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAN DIVE = LAUNCH + COMBO')));
+});
+
+test('second quality-approved game explains and renders its collision strategy', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.missile_ballet);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.missile_ballet, /GOAL: cross the paths of homing missiles/);
+    assert.match(games.missile_ballet, /CONTROLS: move the mouse to steer/);
+    assert.match(games.missile_ballet, /WHEN space key pressed:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'scramble']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('CONTRAIL PANIC')));
+    assert.ok(svgs.some(svg => svg.includes('MAKE THE HOMING MISSILES HIT EACH OTHER')));
+    assert.ok(svgs.some(svg => svg.includes('CROSS THEIR PATHS')));
 });
 
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
@@ -76,7 +118,8 @@ test('new pseudocode games compile cleanly into substantial Scratch projects', (
 
 test('each new game keeps its signature playable mechanic', () => {
     const contracts = {
-        sky_skim: [/touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/],
+        sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
+            /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/],
         chroma_code: [/LIST secret/, /set exact to 0/, /set near to 0/, /REPEAT UNTIL turn > 8 or won = 1/],
         fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/],
         missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/],

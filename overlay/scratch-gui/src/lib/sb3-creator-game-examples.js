@@ -2,9 +2,10 @@
 // module so the language examples remain readable. Every game uses only commands
 // accepted by SB3Creator and is compiled to ordinary Scratch blocks.
 const gameExamples = {
-    sky_skim: `# Sky Skimmer — surf the rolling hills to charge lift, then release Down to soar.
-# Down dives. Up gives a small emergency flap. Near-ground passes build a combo;
-# clipping a hill costs a life. The landscape gets faster every ten points.
+    sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
+# GOAL: skim the green hilltops to turn a dive into a launch. Each clean launch
+# grows your combo. Survive on three hearts and set the highest distance score.
+# CONTROLS: Down dives; release it as you touch a hill to launch; Up flaps.
 GLOBAL score
 GLOBAL lives
 GLOBAL speed
@@ -15,15 +16,28 @@ GLOBAL hillx
 GLOBAL hilly
 GLOBAL combo
 GLOBAL alive
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art skyline-swoop/intro
+  BACKDROP flight art skyline-swoop/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable lives
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to flight
+      broadcast "take off"
 
 SPRITE Skimmer:
-  COSTUME cruise triangle 34 #ff4b4b
-  COSTUME charged triangle 40 #ffd23f
+  SHAPE art skyline-swoop/bird
+  COSTUME charged art skyline-swoop/bird-charged
   SOUND boost 760
   SOUND crash 130
   WHEN flag clicked:
-    show variable score
-    show variable lives
     set score to 0
     set lives to 3
     set speed to 4
@@ -33,8 +47,11 @@ SPRITE Skimmer:
     set alive to 1
     set rotation style all around
     go to x: -120 y: birdy
+    hide
+  WHEN I receive "take off":
+    show variable score
+    show variable lives
     show
-  WHEN flag clicked:
     FOREVER:
       IF alive = 1 THEN:
         set diving to 0
@@ -56,7 +73,7 @@ SPRITE Skimmer:
         IF birdy < -105 and vy < 0 THEN:
           switch costume to charged
         ELSE:
-          switch costume to cruise
+          switch costume to costume1
         IF touching Hill THEN:
           IF diving = 1 and vy < -1 THEN:
             set vy to (abs of vy) + 5
@@ -82,22 +99,23 @@ SPRITE Skimmer:
       wait 0.02 seconds
 
 SPRITE Hill:
-  SHAPE circle 150 #35b779
+  SHAPE art skyline-swoop/hill
   WHEN flag clicked:
     hide
+  WHEN I receive "take off":
     set hillx to -180
-    REPEAT 7:
-      set hilly to pick random -205 to -175
+    REPEAT 4:
+      set hilly to pick random -194 to -170
       go to x: hillx y: hilly
       create clone of myself
-      change hillx by 80
+      change hillx by 170
   WHEN I start as a clone:
     show
     FOREVER:
       change x by (0 - speed)
-      IF x position < -280 THEN:
-        change x by 560
-        set y to pick random -205 to -175
+      IF x position < -330 THEN:
+        change x by 680
+        set y to pick random -194 to -170
         change score by 1
       wait 0.02 seconds`,
 
@@ -304,29 +322,45 @@ SPRITE Foundry:
   WHEN space key pressed:
     drop core`,
 
-    missile_ballet: `# Missile Ballet — steer with the mouse. Homing rockets constantly turn toward
-# you; curve between them so they collide with each other. Every near miss raises
-# the tempo. The gold pulse recharges one shield hit.
+    missile_ballet: `# Contrail Panic — a mouse-steering survival game.
+# GOAL: cross the paths of homing missiles so they crash into each other.
+# CONTROLS: move the mouse to steer. Collect a gold beacon to restore your shield.
 GLOBAL score
 GLOBAL shield
 GLOBAL tempo
 GLOBAL spawnx
 GLOBAL spawny
 GLOBAL alive
+GLOBAL scrambleStarted
+
+STAGE:
+  BACKDROP intro art contrail-panic/intro
+  BACKDROP scramble art contrail-panic/play
+  WHEN flag clicked:
+    set scrambleStarted to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable shield
+  WHEN space key pressed:
+    IF scrambleStarted = 0 THEN:
+      set scrambleStarted to 1
+      switch backdrop to scramble
+      broadcast "scramble"
 
 SPRITE Jet:
-  SHAPE triangle 34 #58c7ff
+  SHAPE art contrail-panic/jet
   SOUND hit 120
   WHEN flag clicked:
-    show variable score
-    show variable shield
     set score to 0
     set shield to 1
     set tempo to 1.5
     set alive to 1
     go to x: 0 y: 0
+    hide
+  WHEN I receive "scramble":
+    show variable score
+    show variable shield
     show
-  WHEN flag clicked:
     FOREVER:
       IF alive = 1 THEN:
         point towards mouse-pointer
@@ -342,11 +376,11 @@ SPRITE Jet:
       wait 0.02 seconds
 
 SPRITE Rocket:
-  SHAPE triangle 30 #ff4d6d
+  SHAPE art contrail-panic/missile
   SOUND boom 70
   WHEN flag clicked:
     hide
-  WHEN flag clicked:
+  WHEN I receive "scramble":
     FOREVER:
       set spawnx to pick random -220 to 220
       set spawny to 175
@@ -370,9 +404,10 @@ SPRITE Rocket:
     delete this clone
 
 SPRITE Pulse:
-  SHAPE circle 22 #ffd23f
+  SHAPE art contrail-panic/pulse
   WHEN flag clicked:
     hide
+  WHEN I receive "scramble":
     FOREVER:
       wait 8 seconds
       go to x: pick random -180 to 180 y: pick random -120 to 120

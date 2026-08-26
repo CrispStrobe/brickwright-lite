@@ -12,15 +12,7 @@ const check = (name, ok, detail = '') => {
 };
 
 const NEW_GAMES = [
-    'Sky Skimmer', 'Chroma Vault', 'Fusion Foundry', 'Missile Ballet',
-    'Orbit Ward', 'Rooftop Relay', 'Twinwall', 'Turbo Chicane',
-    'Abyss Rescue', 'Specter Sweep', 'Moonlight Heist', 'Cloud Court',
-    'Ember Dojo', 'Lockstep Lagoon', 'Rink Riot', 'Rim Reactor',
-    'Comet Cup', 'Trench Signal', 'Whisker Switch',
-    'Spiral Circuit', 'Lilyway Rescue', 'Rotor Rogue',
-    'Prism Spire', 'Shard Sheriff', 'Halo Foundry',
-    'Corridor Kestrel', 'Thunder Volley', 'Cascade Pair',
-    'Mooncoil Odyssey', 'Cinder Thrust'
+    'Skyline Swoop', 'Contrail Panic'
 ];
 
 try {
@@ -42,16 +34,16 @@ try {
     const games = page.locator('[data-testid="bw-load-example"]');
     const labels = await games.locator('option').allTextContents();
     const missing = NEW_GAMES.filter(name => !labels.some(label => label.includes(name)));
-    check('all original games are visible in the gallery', missing.length === 0,
+    check('all quality-approved games are visible in the gallery', missing.length === 0,
         missing.length ? `missing: ${missing.join(', ')}` : `${NEW_GAMES.length} present`);
     check('the hardware catalog is hidden in no-chip mode',
         await page.locator('[data-testid="bw-catalog-toggle"]').count() === 0);
 
     await games.selectOption('sky_skim');
-    await page.waitForFunction(() => /Sky Skimmer/.test(document.querySelector('.cm-content')?.textContent || ''),
+    await page.waitForFunction(() => /Skyline Swoop/.test(document.querySelector('.cm-content')?.textContent || ''),
         null, {timeout: 10000});
     const source = await page.locator('.cm-content').textContent();
-    check('a game loads as editable pseudocode', /Sky Skimmer/.test(source || '') && /WHEN flag clicked/.test(source || ''));
+    check('a game loads as editable pseudocode', /Skyline Swoop/.test(source || '') && /WHEN flag clicked/.test(source || ''));
 
     await device.selectOption('arduino-uno');
     const catalogToggle = page.locator('[data-testid="bw-catalog-toggle"]');

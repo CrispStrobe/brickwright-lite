@@ -281,21 +281,11 @@ const GROUPS = [
         ['sokoban', '📦 Sokoban'], ['bomberman', '💣 Bomberman'], ['invaders', '👾 Space Invaders'],
         ['flappy', '🐤 Flappy'], ['tictactoe', '⭕ Tic-Tac-Toe (2 players)'], ['tictactoe_ai', '⭕ Tic-Tac-Toe (vs AI)'],
         ['g2048', '🔢 2048'], ['maze', '👻 Maze Chase'], ['connect4', '🔴 Connect Four (vs AI)'], ['minesweeper', '💥 Minesweeper'],
-        ['sky_skim', '🪽 Sky Skimmer'], ['chroma_code', '🔐 Chroma Vault'],
-        ['fusion_foundry', '⚗️ Fusion Foundry'], ['missile_ballet', '🚀 Missile Ballet'],
-        ['orbit_ward', '🪐 Orbit Ward'], ['rooftop_relay', '🏙️ Rooftop Relay'],
-        ['twinwall', '↔️ Twinwall'], ['turbo_chicane', '🏁 Turbo Chicane'],
-        ['abyss_rescue', '🤿 Abyss Rescue'], ['specter_sweep', '👻 Specter Sweep'],
-        ['moonlight_heist', '🧀 Moonlight Heist'], ['cloud_court', '☁️ Cloud Court'],
-        ['ember_dojo', '🐉 Ember Dojo'], ['lockstep_lagoon', '🚤 Lockstep Lagoon'],
-        ['rink_riot', '🏒 Rink Riot'], ['rim_reactor', '🏀 Rim Reactor'],
-        ['comet_cup', '⚽ Comet Cup'], ['trench_signal', '🛟 Trench Signal'],
-        ['whisker_switch', '🐭 Whisker Switch'], ['spiral_circuit', '🌀 Spiral Circuit'],
-        ['lilyway_rescue', '🐸 Lilyway Rescue'], ['rotor_rogue', '🏍️ Rotor Rogue'],
-        ['prism_spire', '🔷 Prism Spire'], ['shard_sheriff', '🫧 Shard Sheriff'],
-        ['halo_foundry', '⭕ Halo Foundry'], ['corridor_kestrel', '🛸 Corridor Kestrel'],
-        ['thunder_volley', '⚡ Thunder Volley'], ['cascade_pair', '💠 Cascade Pair'],
-        ['mooncoil_odyssey', '🌙 Mooncoil Odyssey'], ['cinder_thrust', '🔥 Cinder Thrust']
+        // New examples enter the public gallery only after the same visual/play
+        // audit as Skyline Swoop: authored art, an in-stage goal/control screen,
+        // a legible HUD, and screenshots of both onboarding and live play.
+        ['sky_skim', '🪽 Skyline Swoop — polished'],
+        ['missile_ballet', '✈️ Contrail Panic — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],
@@ -320,7 +310,8 @@ const GROUPS = [
 // Section header keys map to L10N.h — the code snippet items stay English (they ARE code).
 const SYNTAX = [
     ['Structure', ['SPRITE Name:', 'STAGE:', 'GLOBAL score / LOCAL hp', 'LIST inventory',
-        'SHAPE rect 16 90 / circle 18', 'SHAPE polygon 20 0 40 40 0 40 #f53',
+        'SHAPE rect 16 90 / circle 18', 'SHAPE art skyline-swoop/bird',
+        'SHAPE polygon 20 0 40 40 0 40 #f53',
         'COSTUME walk2 / BACKDROP night', 'SOUND jump 660', '# comment']],
     ['EventsHats', ['WHEN flag clicked:', 'WHEN space key pressed:', 'WHEN sprite clicked:',
         'WHEN I receive "go":', 'WHEN I start as a clone:']],
