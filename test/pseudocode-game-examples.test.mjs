@@ -22,7 +22,10 @@ const EXPECTED = [
     'ember_dojo',
     'lockstep_lagoon',
     'rink_riot',
-    'rim_reactor'
+    'rim_reactor',
+    'comet_cup',
+    'trench_signal',
+    'whisker_switch'
 ];
 
 test.after(() => quitStrandedVMs());
@@ -77,7 +80,10 @@ test('each new game keeps its signature playable mechanic', () => {
         ember_dojo: [/broadcast "swing"/, /touching Blade/, /change dragonHP by -1/],
         lockstep_lagoon: [/set surge to 3/, /change timeLeft by 4/, /change score by 5 \* surge/],
         rink_riot: [/set vx to vx \* 0\.94/, /key space pressed\?/, /touching Keeper/, /change goals by 1/],
-        rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /change score by 2 \* streak/]
+        rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /change score by 2 \* streak/],
+        comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by crowd/],
+        trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /touching SonarRing/, /change pearls by 1/],
+        whisker_switch: [/set hidden to 1/, /change scent by 3/, /point towards Pip/, /change lives by -1/]
     };
     for (const [name, patterns] of Object.entries(contracts)) {
         for (const pattern of patterns) assert.match(games[name], pattern, `${name}: missing ${pattern}`);

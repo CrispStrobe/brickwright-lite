@@ -1535,7 +1535,380 @@ SPRITE ChargeMeter:
     show
     FOREVER:
       set size to 20 + charge * 4 %
-      wait 0.03 seconds`
+      wait 0.03 seconds`,
+
+    comet_cup: `# Comet Cup — tiny tactical football with momentum instead of glued-to-foot dribbling.
+# Arrows move your striker. Tap Space near the ball to shoot; your movement bends the shot.
+# Beat the roaming keeper before the match clock ends. Fast goals grow the crowd multiplier.
+GLOBAL goals
+GLOBAL matchTime
+GLOBAL strikerX
+GLOBAL strikerY
+GLOBAL runX
+GLOBAL runY
+GLOBAL ballSpeed
+GLOBAL crowd
+GLOBAL keeperY
+
+SPRITE Striker:
+  SHAPE circle 36 #43c7ff
+  WHEN flag clicked:
+    show variable goals
+    show variable matchTime
+    show variable crowd
+    set goals to 0
+    set matchTime to 50
+    set crowd to 1
+    set strikerX to -150
+    set strikerY to 0
+    set runX to 0
+    set runY to 0
+    go to x: strikerX y: strikerY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      set runX to 0
+      set runY to 0
+      IF key left arrow pressed? THEN:
+        set runX to -4
+      IF key right arrow pressed? THEN:
+        set runX to 4
+      IF key up arrow pressed? THEN:
+        set runY to 4
+      IF key down arrow pressed? THEN:
+        set runY to -4
+      change strikerX by runX
+      change strikerY by runY
+      IF strikerX < -220 THEN:
+        set strikerX to -220
+      IF strikerX > 175 THEN:
+        set strikerX to 175
+      IF strikerY < -155 THEN:
+        set strikerY to -155
+      IF strikerY > 155 THEN:
+        set strikerY to 155
+      go to x: strikerX y: strikerY
+      IF matchTime < 1 THEN:
+        say ("Comet Cup goals: " join goals) for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN flag clicked:
+    FOREVER:
+      wait 1 seconds
+      change matchTime by -1
+
+SPRITE Ball:
+  SHAPE circle 19 #fff4d6
+  SOUND kick 520
+  SOUND goal 920
+  WHEN flag clicked:
+    set ballSpeed to 0
+    go to x: -50 y: 0
+    point in direction 90
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF touching Striker and key space pressed? and ballSpeed < 2 THEN:
+        point towards CometGoal
+        turn right runY * -3 degrees
+        set ballSpeed to 14
+        play sound "kick"
+      IF ballSpeed > 0.2 THEN:
+        move ballSpeed steps
+        set ballSpeed to ballSpeed * 0.97
+      ELSE:
+        set ballSpeed to 0
+      IF y position > 165 or y position < -165 THEN:
+        if on edge bounce
+      IF touching Keeper THEN:
+        point in direction 180 - direction
+        set ballSpeed to 9
+        set crowd to 1
+      IF touching CometGoal THEN:
+        change goals by crowd
+        change crowd by 1
+        change matchTime by 5
+        play sound "goal"
+        set ballSpeed to 0
+        go to x: -50 y: pick random -80 to 80
+      IF x position < -235 THEN:
+        set ballSpeed to 0
+        set crowd to 1
+        go to x: -50 y: 0
+      wait 0.02 seconds
+
+SPRITE Keeper:
+  SHAPE rect 18 74 #ff4f72
+  WHEN flag clicked:
+    set keeperY to 0
+    go to x: 182 y: keeperY
+    show
+    FOREVER:
+      IF Ball y position > keeperY THEN:
+        change keeperY by 3 + goals / 3
+      ELSE:
+        change keeperY by 0 - 3 - goals / 3
+      IF keeperY > 118 THEN:
+        set keeperY to 118
+      IF keeperY < -118 THEN:
+        set keeperY to -118
+      go to x: 182 y: keeperY
+      wait 0.03 seconds
+
+SPRITE CometGoal:
+  SHAPE rect 12 126 #7dffb2
+  WHEN flag clicked:
+    go to x: 220 y: 0
+    show`,
+
+    trench_signal: `# Trench Signal — pilot a research submarine through a living deep-sea trench.
+# Up adds buoyancy, Down dives, Left/Right steers. Recover three signal pearls, but sonar
+# pulses also wake the hunter mine. Space fires a short pulse that shoves the mine away.
+GLOBAL pearls
+GLOBAL hull
+GLOBAL oxygen
+GLOBAL subX
+GLOBAL subY
+GLOBAL rise
+GLOBAL current
+GLOBAL mineSpeed
+GLOBAL pulseOn
+
+SPRITE Sub:
+  SHAPE rect 62 28 #ffd34e
+  COSTUME dive rect 62 28 #ff8b3d
+  SOUND sonar 680
+  WHEN flag clicked:
+    show variable pearls
+    show variable hull
+    show variable oxygen
+    set pearls to 0
+    set hull to 3
+    set oxygen to 40
+    set subX to -150
+    set subY to 60
+    set rise to 0
+    set current to 0
+    set mineSpeed to 2
+    set pulseOn to 0
+    go to x: subX y: subY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      change rise by 0.08
+      IF key up arrow pressed? THEN:
+        change rise by 0.35
+      IF key down arrow pressed? THEN:
+        change rise by -0.48
+        switch costume to dive
+      ELSE:
+        switch costume to costume1
+      set rise to rise * 0.94
+      IF key left arrow pressed? THEN:
+        change subX by -4
+      IF key right arrow pressed? THEN:
+        change subX by 4
+      set current to sin of oxygen * 1.2
+      change subX by current
+      change subY by rise
+      IF subX < -220 THEN:
+        set subX to -220
+      IF subX > 220 THEN:
+        set subX to 220
+      IF subY > 155 THEN:
+        set subY to 155
+        set rise to -1
+      IF subY < -155 THEN:
+        set subY to -155
+        set rise to 2
+        change hull by -1
+      go to x: subX y: subY
+      IF pearls > 2 THEN:
+        say "Signal restored — ascent complete!" for 3 seconds
+        stop all
+      IF hull < 1 or oxygen < 1 THEN:
+        say "The trench keeps its secret." for 3 seconds
+        stop all
+      wait 0.02 seconds
+  WHEN flag clicked:
+    FOREVER:
+      wait 1 seconds
+      change oxygen by -1
+  WHEN space key pressed:
+    set pulseOn to 1
+    play sound "sonar"
+    broadcast "sonar pulse"
+    wait 0.35 seconds
+    set pulseOn to 0
+
+SPRITE SignalPearl:
+  SHAPE circle 24 #64f5ff
+  SOUND found 980
+  WHEN flag clicked:
+    go to x: pick random -170 to 190 y: pick random -125 to 125
+    show
+    FOREVER:
+      change y by sin of oxygen * 0.4
+      IF touching Sub THEN:
+        change pearls by 1
+        change oxygen by 7
+        change mineSpeed by 0.7
+        play sound "found"
+        go to x: pick random -190 to 190 y: pick random -130 to 130
+      wait 0.03 seconds
+
+SPRITE HunterMine:
+  SHAPE circle 34 #f34f65
+  WHEN flag clicked:
+    go to x: 190 y: -110
+    show
+    FOREVER:
+      point towards Sub
+      move mineSpeed steps
+      IF touching Sub THEN:
+        change hull by -1
+        go to x: pick random 130 to 210 y: pick random -130 to 130
+        wait 0.8 seconds
+      IF touching SonarRing THEN:
+        point in direction 180 - direction
+        move 35 steps
+      wait 0.03 seconds
+
+SPRITE SonarRing:
+  SHAPE circle 28 #9c8cff
+  WHEN flag clicked:
+    hide
+  WHEN I receive "sonar pulse":
+    go to Sub
+    set size to 20 %
+    show
+    REPEAT 8:
+      change size by 22
+      change ghost effect by 10
+      wait 0.03 seconds
+    clear graphic effects
+    hide`,
+
+    whisker_switch: `# Whisker Switch — a stealthy cat-and-mice chase across a moonlit pantry.
+# Arrows guide Pip the mouse. Cheese raises score and scent; Space spends one cheese on
+# a silent dash. Duck into either mouse hole to break the cat's lock before it pounces.
+GLOBAL cheese
+GLOBAL lives
+GLOBAL scent
+GLOBAL mouseX
+GLOBAL mouseY
+GLOBAL catSpeed
+GLOBAL hidden
+
+SPRITE Pip:
+  SHAPE circle 30 #d7d9e8
+  COSTUME dash circle 26 #fff3a6
+  SOUND squeak 760
+  WHEN flag clicked:
+    show variable cheese
+    show variable lives
+    show variable scent
+    set cheese to 0
+    set lives to 3
+    set scent to 0
+    set catSpeed to 2
+    set hidden to 0
+    set mouseX to -160
+    set mouseY to -100
+    go to x: mouseX y: mouseY
+    show
+  WHEN flag clicked:
+    FOREVER:
+      IF key left arrow pressed? THEN:
+        change mouseX by -4
+        change scent by 0.12
+      IF key right arrow pressed? THEN:
+        change mouseX by 4
+        change scent by 0.12
+      IF key up arrow pressed? THEN:
+        change mouseY by 4
+        change scent by 0.12
+      IF key down arrow pressed? THEN:
+        change mouseY by -4
+        change scent by 0.12
+      IF key space pressed? and cheese > 0 THEN:
+        switch costume to dash
+        change mouseX by 8
+        change cheese by -1
+        set scent to 0
+      ELSE:
+        switch costume to costume1
+      IF mouseX < -220 THEN:
+        set mouseX to -220
+      IF mouseX > 220 THEN:
+        set mouseX to 220
+      IF mouseY < -155 THEN:
+        set mouseY to -155
+      IF mouseY > 155 THEN:
+        set mouseY to 155
+      go to x: mouseX y: mouseY
+      set hidden to 0
+      IF touching LeftHole or touching RightHole THEN:
+        set hidden to 1
+        set scent to 0
+      IF scent > 0 THEN:
+        change scent by -0.03
+      IF lives < 1 THEN:
+        say ("Pantry score: " join cheese) for 3 seconds
+        stop all
+      wait 0.02 seconds
+
+SPRITE CheeseMoon:
+  SHAPE triangle 32 #ffd85a
+  SOUND crumb 1040
+  WHEN flag clicked:
+    go to x: pick random -180 to 180 y: pick random -130 to 130
+    show
+    FOREVER:
+      turn right 4 degrees
+      IF touching Pip THEN:
+        change cheese by 2
+        change scent by 3
+        change catSpeed by 0.18
+        play sound "crumb"
+        go to x: pick random -190 to 190 y: pick random -135 to 135
+      wait 0.03 seconds
+
+SPRITE Marmalade:
+  SHAPE triangle 52 #ff854f
+  SOUND pounce 180
+  WHEN flag clicked:
+    go to x: 170 y: 110
+    show
+    FOREVER:
+      IF hidden = 0 and scent > 0.8 THEN:
+        point towards Pip
+        move catSpeed + scent / 5 steps
+      ELSE:
+        turn right pick random -20 to 20 degrees
+        move 1.5 steps
+        if on edge bounce
+      IF touching Pip and hidden = 0 THEN:
+        change lives by -1
+        set scent to 0
+        set mouseX to -160
+        set mouseY to -100
+        go to x: 170 y: 110
+        play sound "pounce"
+        wait 1 seconds
+      wait 0.03 seconds
+
+SPRITE LeftHole:
+  SHAPE circle 48 #403651
+  WHEN flag clicked:
+    go to x: -205 y: 125
+    show
+
+SPRITE RightHole:
+  SHAPE circle 48 #403651
+  WHEN flag clicked:
+    go to x: 205 y: -125
+    show`
 };
 
 export default gameExamples;

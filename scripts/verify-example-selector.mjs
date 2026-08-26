@@ -15,7 +15,8 @@ const NEW_GAMES = [
     'Sky Skimmer', 'Chroma Vault', 'Fusion Foundry', 'Missile Ballet',
     'Orbit Ward', 'Rooftop Relay', 'Twinwall', 'Turbo Chicane',
     'Abyss Rescue', 'Specter Sweep', 'Moonlight Heist', 'Cloud Court',
-    'Ember Dojo', 'Lockstep Lagoon', 'Rink Riot', 'Rim Reactor'
+    'Ember Dojo', 'Lockstep Lagoon', 'Rink Riot', 'Rim Reactor',
+    'Comet Cup', 'Trench Signal', 'Whisker Switch'
 ];
 
 try {
