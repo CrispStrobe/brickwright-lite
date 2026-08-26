@@ -90,9 +90,10 @@ test('part-bound keyboard widget sends text through PS/2 device control', () => 
   binding.dispose();
 });
 
-test('circuit keyboard face exposes more than forty clickable scan-code keys', () => {
+test('circuit keyboard face exposes all 74 clickable scan-code keys', () => {
   const src = readFileSync(resolve(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx'), 'utf8');
-  const keys = [...src.matchAll(/\['[^']*','([a-z0-9]+)'\]/g)].map(m => m[1]);
-  assert.ok(new Set(keys).size > 40, `only ${new Set(keys).size} key definitions found`);
-  assert.match(src, /data-ps2-key=\{code\}/);
+  const face = src.slice(src.indexOf("case 'ps2':"), src.indexOf("case 'ps2':") + 7000);
+  const keys = [...face.matchAll(/,\s*'([a-z0-9]+)'\]/g)].map(m => m[1]);
+  assert.equal(new Set(keys).size, 74, `expected the labelled 74-key face, found ${new Set(keys).size}`);
+  assert.match(face, /data-ps2-key=\{code\}/);
 });

@@ -148,6 +148,8 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
         }
     }
 
+    // 1171 -> 1193 on 2026-08-26: repin to the current sb3-creator corpus,
+    // including the complete C1-C10 logic-computer ladder and soldered-key PCB.
     // 1092 -> 1093 on 2026-08-25: pc89-rl-step, the pure RL bench that closed D8.
     // 1170 -> 1171 on 2026-08-26: aurora65-workstation, the complete
     // OLED + PS/2 + VIA + SimpleVGA circuit/ROM/controller example.
@@ -162,7 +164,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1171, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1193, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 

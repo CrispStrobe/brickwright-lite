@@ -1,22 +1,7 @@
 # Aurora-65 dual-display workstation. The drawn circuit is the machine
 # definition; program.c is the complete firmware used to build rom.bin.
 DEVICE EATER6502
-CLOCK 1000000
-MAP RAM $0000-$3FFF
-MAP ROM $8000-$FFFF
-CHIP via = W65C22 AT $6000
-CHIP acia = W65C51 AT $5000
-CHIP vga = SIMPLEVGA
-PIN vgaBank = PB0 OUTPUT
-PIN sda = PB1 OUTPUT
-PIN scl = PB2 OUTPUT
 
-WHEN flag clicked:
-  # Firmware initializes real VGA timing bytes and the real SSD1306 bus.
-  oled clear 0
-  oled cursor 0 row 0 column 0
-  oled print 0 "AURORA-65 READY"
-  FOREVER:
-    # PS/2 bytes arrive on VIA PA0..PA7; CA1 says DATA READY.
-    # Every key changes both the OLED barcode and VGA colour trail.
-    wait 0.01 seconds
+# program.c/startup.s are the executable firmware behind rom.bin. They initialize
+# real VGA timing and the SSD1306 over VIA PB1/PB2, then consume PS/2 bytes from
+# VIA PA0..PA7 when CA1 signals DATA READY. Every key changes both displays.
