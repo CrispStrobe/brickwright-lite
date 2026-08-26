@@ -1,4 +1,10 @@
 node_modules/
 src-tauri/target/
 src-tauri/gen/
+# ...and the SLASHLESS form. A trailing-slash pattern matches DIRECTORIES
+# only, so moving the generated project onto external storage and leaving a
+# symlink behind makes git see an untracked FILE here — and a symlink with an
+# absolute machine path is exactly what broke CI's module census when it
+# happened to node_modules at the repo root (see the root .gitignore).
+src-tauri/gen
 # Tauri generated mobile projects are re-generatable via `tauri {ios,android} init`.
