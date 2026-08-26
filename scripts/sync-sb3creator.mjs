@@ -35,6 +35,10 @@ const REF = process.env.SB3CREATOR_REF || 'main';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const lib = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib');
 const check = process.argv.includes('--check');
+// Lite intentionally carries a small downstream UI/asset dialect on top of the
+// shared compiler. Freshness CI passes this flag so it can report that delta
+// without pretending it is an upstream-sync failure.
+const allowStale = process.argv.includes('--allow-stale');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 if (dirIdx !== -1 && srcDir) guardSource(srcDir);
@@ -66,6 +70,12 @@ const FILES = [
     ['src/utils/cHostToPseudocode.js', path.join(lib, 'sb3-creator-chost.js')],
     ['src/utils/basicToPseudocode.js', path.join(lib, 'sb3-creator-basic.js')],
     ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')]
+];
+
+// Downstream-only modules imported by a synced file. They must exist locally,
+// but have no source-repository counterpart to compare against.
+const LOCAL_FILES = [
+    'sb3-creator-vector-art.js'
 ];
 
 async function readSource (rel) {
@@ -106,7 +116,7 @@ for (const [remote, dest] of FILES) {
 // module in sb3-creator would be missed here and surface as a webpack
 // missing-module error far from the cause. So check that every relative import
 // in what we just vendored actually resolves to something we vendored.
-const vendored = new Set(FILES.map(([, dest]) => path.basename(dest)));
+const vendored = new Set([...FILES.map(([, dest]) => path.basename(dest)), ...LOCAL_FILES]);
 let unresolved = 0;
 for (const [, dest] of FILES) {
     const text = await readFile(dest, 'utf8').catch(() => '');
@@ -119,7 +129,7 @@ for (const [, dest] of FILES) {
 }
 if (unresolved) process.exit(1);
 
-if (check && stale) {
+if (check && stale && !allowStale) {
     console.error(`\n${stale} vendored file(s) out of date — run: npm run sync:sb3creator`);
     process.exit(1);
 }
@@ -127,7 +137,7 @@ if (check && stale) {
 // that was true and useless: it records the label, and the label is the part
 // that moves.
 const sourceSha = srcDir ? await localSha(srcDir) : remoteSha;
-console.log(check ? '\nvendored files up to date.'
+console.log(check ? (stale ? `\n${stale} intentional downstream file delta(s) allowed.` : '\nvendored files up to date.')
     : `\nsynced from ${REPO}@${sourceSha}${srcDir ? ` (local checkout ${srcDir})` : ` (resolved from ${REF})`}.`
       + ' Next: npm run integrate');
 
