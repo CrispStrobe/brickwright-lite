@@ -45,6 +45,20 @@ const BITWISE = {
     '>>>': 'shiftright'
 };
 
+/**
+ * Names that are NOT a variable in the pseudocode, however you spell them.
+ *
+ * `set x to 7` compiles to `motion_setx` — the Scratch MOTION block — and
+ * `change x by 1` to `motion_changexby`, case-insensitively. A MakeCode
+ * program with `let x = 0` therefore moved a sprite instead of keeping a
+ * number, silently and while compiling perfectly. `x` and `y` are the two
+ * most ordinary names a program that draws on a 5x5 grid can have.
+ *
+ * Reads are fine (`show text x` reads the variable), so this is only about
+ * where the name is WRITTEN.
+ */
+const NOT_A_VARIABLE = new Set(['x', 'y', 'size', 'volume', 'tempo']);
+
 /** Trim a computed number to something a human would have typed. */
 export const num = value => String(Math.round(value * 1000) / 1000);
 
@@ -61,6 +75,51 @@ export class BaseTranslator {
         this.usesBitops = false;      // the `bitops` extension is needed
         this.usesArrays = false;      // the `arrays` extension is needed
         this.arrays = new Set();      // names known to hold an array
+    }
+
+    /**
+     * Every name the program itself uses, so a rename cannot shadow one.
+     * Called once, before the walk.
+     */
+    claimNames (node, seen = new Set()) {
+        if (!node || typeof node !== 'object' || seen.has(node)) return;
+        seen.add(node);
+        if (!this.taken) this.taken = new Set();
+        if (typeof node.name === 'string') this.taken.add(node.name);
+        for (const value of Object.values(node)) {
+            if (Array.isArray(value)) value.forEach(v => this.claimNames(v, seen));
+            else if (value && typeof value === 'object') this.claimNames(value, seen);
+        }
+    }
+
+    /**
+     * The pseudocode name for a MakeCode variable.
+     *
+     * Renaming is a last resort — the reader should see the names they
+     * wrote — so it happens only for the handful the grammar takes for
+     * itself, and the new name is the old one with as little added as
+     * possible, extended again if the program already used it.
+     */
+    varName (name) {
+        const original = String(name);
+        if (!NOT_A_VARIABLE.has(original.toLowerCase())) return original;
+        if (!this.renamed) this.renamed = new Map();
+        if (this.renamed.has(original)) return this.renamed.get(original);
+        let renamed = `${original}_`;
+        while (this.taken && this.taken.has(renamed)) renamed += '_';
+        this.renamed.set(original, renamed);
+        // NOT a refusal — the variable is fully supported, it just cannot
+        // keep its name. It is announced once at the top of the program
+        // rather than counted among the things we could not do.
+        return renamed;
+    }
+
+    /** Lines explaining any renames, for the top of the program. */
+    renameNotes () {
+        if (!this.renamed || !this.renamed.size) return [];
+        return [...this.renamed].map(([from, to]) =>
+            `# "${from}" is written as "${to}" here: the pseudocode reads a bare ` +
+            `"${from}" as a Scratch block, not as a variable.`);
     }
 
     note (what, line) {
@@ -95,7 +154,7 @@ export class BaseTranslator {
         case 'String': return `"${node.value.replace(/\\n/g, ' ')}"`;
         case 'Boolean': return node.value ? 'true' : 'false';
         case 'Null': return '0';
-        case 'Identifier': return node.name;
+        case 'Identifier': return this.varName(node.name);
         case 'Unary':
             if (node.op === '!') return `not (${this.condition(node.argument)})`;
             // Parenthesised, and not optionally: `maxSpeed * -cos(a)` written
@@ -254,7 +313,7 @@ export class BaseTranslator {
                     this.declareArray(d.name, d.init, push);
                     continue;
                 }
-                push(`set ${d.name} to ${d.init ? this.expr(d.init) : '0'}`);
+                push(`set ${this.varName(d.name)} to ${d.init ? this.expr(d.init) : '0'}`);
             }
             return;
 
@@ -288,7 +347,7 @@ export class BaseTranslator {
             const counter = st.init && st.init.type === 'Declaration' ? st.init.decls[0] : null;
             if (counter) {
                 this.declared.add(counter.name);
-                push(`set ${counter.name} to ${counter.init ? this.expr(counter.init) : '0'}`);
+                push(`set ${this.varName(counter.name)} to ${counter.init ? this.expr(counter.init) : '0'}`);
             }
             push(`REPEAT UNTIL not (${this.condition(st.test)}):`);
             this.block(st.body, indent + 1, out);
@@ -345,7 +404,8 @@ export class BaseTranslator {
                 this.declareArray(expr.left.name, expr.right, push);
                 return;
             }
-            const target = expr.left.type === 'Identifier' ? expr.left.name : this.expr(expr.left);
+            const target = expr.left.type === 'Identifier' ?
+                this.varName(expr.left.name) : this.expr(expr.left);
             this.declared.add(target);
             if (expr.op === '=') push(`set ${target} to ${this.expr(expr.right)}`);
             else if (expr.op === '+=') push(`change ${target} by ${this.expr(expr.right)}`);
@@ -354,7 +414,8 @@ export class BaseTranslator {
             return;
         }
         if (expr.type === 'Update') {
-            const target = expr.argument.type === 'Identifier' ? expr.argument.name : this.expr(expr.argument);
+            const target = expr.argument.type === 'Identifier' ?
+                this.varName(expr.argument.name) : this.expr(expr.argument);
             push(`change ${target} by ${expr.op === '++' ? '1' : '0 - 1'}`);
             return;
         }

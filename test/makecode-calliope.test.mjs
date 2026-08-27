@@ -201,3 +201,54 @@ test('every committed Calliope fixture translates and compiles', {skip: !canComp
         compile(result.code);                       // throws if it does not parse
     }
 });
+
+// ── names the grammar takes for itself ──────────────────────────────────
+
+test('a variable named x is a variable, not the Scratch motion block',
+    {skip: !canCompile}, () => {
+    // `set x to 7` compiles to `motion_setx` and `change x by 1` to
+    // `motion_changexby`, case-insensitively. So a MakeCode program with
+    // `let x = 0` moved a sprite instead of keeping a number — silently,
+    // and while compiling perfectly. `x` and `y` are the two most ordinary
+    // names a program that draws on a 5x5 grid can have; the shipped
+    // Calliope corpus had eleven of these.
+    const {code} = microbitToPseudocode(
+        `let x = 0\nlet y = 0\n${forever('  x += 1\n  y = x * 2\n  basic.showNumber(y)')}`);
+    const {opcodes} = compile(code);
+    for (const stray of ['motion_setx', 'motion_sety', 'motion_changexby', 'motion_changeyby']) {
+        assert.ok(!opcodes.has(stray), `${stray} — the variable became a sprite move`);
+    }
+    assert.ok(opcodes.has('data_setvariableto'));
+    assert.ok(opcodes.has('data_changevariableby'));
+});
+
+test('the rename is announced, and is not counted as a refusal', () => {
+    // It is not a refusal: the variable is fully supported, it just cannot
+    // keep its name. Counting it as one would inflate the number this work
+    // is steered by; hiding it entirely would rename someone's variable
+    // behind their back.
+    const {code, unsupported} = microbitToPseudocode(`let x = 0\n${forever('  x += 1')}`);
+    assert.deepEqual(unsupported, [], 'a rename is not a thing we could not do');
+    assert.match(code, /^# "x" is written as "x_" here: /m, code);
+});
+
+test('a rename never lands on a name the program already uses', {skip: !canCompile}, () => {
+    const {code} = microbitToPseudocode(
+        `let x = 0\nlet x_ = 5\nlet x__ = 6\n${forever('  x += x_ + x__')}`);
+    assert.match(code, /set x___ to 0/, code);
+    // and all three are still distinct variables
+    const {project} = compile(code);
+    const names = new Set(Object.values(project.targets[0].variables || {})
+        .map(v => (Array.isArray(v) ? v[0] : v)));
+    for (const n of ['x___', 'x_', 'x__']) assert.ok(names.has(n), `${n} missing from ${[...names]}`);
+});
+
+test('the other four names the grammar takes are covered too', {skip: !canCompile}, () => {
+    // `size`, `volume` and `tempo` are set-blocks in looks/sound/music.
+    const {opcodes} = compile(microbitToPseudocode(
+        `let size = 0\nlet volume = 0\nlet tempo = 0\n${
+            forever('  size = 1\n  volume = 2\n  tempo = 3')}`).code);
+    for (const stray of ['looks_setsizeto', 'sound_setvolumeto', 'music_setTempo']) {
+        assert.ok(!opcodes.has(stray), `${stray} — a variable became a stage command`);
+    }
+});

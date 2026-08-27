@@ -147,9 +147,26 @@ sb3-creator [#4](https://github.com/CrispStrobe/sb3-creator/pull/4), the same
 shape as the `show text <reporter>` gap fixed in #3. The translator keeps refusing
 computed coordinates until that lands here through `npm run sync:sb3creator`.
 
-**A trap worth writing down**: a MakeCode variable named `x` or `y` compiles to
-`motion_setx` / `motion_sety`, the Scratch *motion* blocks, not to a variable.
-It cost an hour of misreading a bitwise bug that was really a name collision.
+**A variable named `x` was not a variable.** `set x to 7` compiles to
+`motion_setx` — the Scratch *motion* block — and `change x by 1` to
+`motion_changexby`, case-insensitively, so a MakeCode program with `let x = 0`
+moved a sprite instead of keeping a number. Silently, and while compiling
+perfectly. `x` and `y` are the two most ordinary names a program that draws on
+a 5x5 grid can have, and the corpus had **eleven** of them. Four other names do
+the same: `size`, `volume`, `tempo` (looks, sound and music set-blocks). Reads
+are fine — `show text x` reads the variable — so this is only about where the
+name is written.
+
+Those five are now renamed on the way in, with as little added as possible
+(`x` → `x_`, extended again if the program already uses that), announced once
+at the top of the program, and **not counted as a refusal**: the variable is
+fully supported, it just cannot keep its name. Counting it would inflate the
+one number this work is steered by; hiding it would rename someone's variable
+behind their back.
+
+It first showed up as an apparent bitwise bug — `set x to x & 255` looked like
+it produced a block with no value, which is what a `motion_setx` with an
+unparseable X input looks like from the outside.
 
 
 ## What the grammar will and will not take

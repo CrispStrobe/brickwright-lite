@@ -553,6 +553,9 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     const ast = parseMakeCodeTs(source);
     const t = new ArcadeTranslator(assets, tilemaps);
+    // Before anything is emitted: a variable this program has to be
+    // renamed must not land on a name the program already uses.
+    t.claimNames(ast);
     const costumes = [];
 
     // ── pass 1: find the sprites, because everything else refers to them
@@ -958,6 +961,10 @@ export function arcadeToPseudocode (files, opts = {}) {
     if (opts.name) out.push(`# Imported from MakeCode Arcade: ${opts.name}`);
     out.push('# Arcade is 160x120 with y downwards; the stage is 480x360 centred,',
         `# so positions are scaled x${SCALE} and y is mirrored.`, '');
+    // `change x by …` below IS the motion block, on purpose. A program's own
+    // variable called `x` is a different thing and cannot keep the name.
+    const renames = t.renameNotes();
+    if (renames.length) out.push(...renames, '');
 
     t.sprites.forEach(sprite => {
         out.push(`SPRITE ${sprite.name}:`);

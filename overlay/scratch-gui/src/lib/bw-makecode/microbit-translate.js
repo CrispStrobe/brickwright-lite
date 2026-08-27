@@ -436,6 +436,9 @@ const UNPOLLABLE_HANDLERS = {
 export function microbitToPseudocode (source, opts = {}) {
     const ast = parseMakeCodeTs(source);
     const t = new MicrobitTranslator();
+    // Before anything is emitted: a variable this program has to be
+    // renamed must not land on a name the program already uses.
+    t.claimNames(ast);
 
     // Enums and functions first: a call can precede its definition, and
     // an enum member can be referenced before the enum is declared.
@@ -515,6 +518,9 @@ export function microbitToPseudocode (source, opts = {}) {
         }
         out.push('');
     }
+
+    const renames = t.renameNotes();
+    if (renames.length) out.push(...renames, '');
 
     if (main.length) {
         out.push('WHEN flag clicked:', ...main, '');
