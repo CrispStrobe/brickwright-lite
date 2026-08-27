@@ -24,20 +24,46 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Message;
 
-use super::{ble, Outbound};
+use super::{ble, bt_dispatch, Outbound};
 
 /// The event the web side listens on. One event per outbound frame, payload is
 /// the JSON-RPC text exactly as the WebSocket route would have sent it.
 const EVENT: &str = "scratchlink://message";
 
-/// The open bridge session, if any. A single session matches the WebSocket
-/// route, where one client owns the BLE adapter at a time.
+/// The open bridge session: its outbound sink and WHICH transport it speaks.
+///
+/// The transport is not decoration. The socket route picks `ble` or `bt` from
+/// the request path (`/scratch/ble` vs `/scratch/bt`) and they are different
+/// backends entirely — BLE is btleplug/CoreBluetooth, BT is RFCOMM/MFi. A
+/// bridge that sent everything to `ble::dispatch` would work for the BLE hubs
+/// and silently break EV3 and NXT, which are exactly the devices that have no
+/// other route on iOS.
 #[derive(Default)]
-pub struct BridgeState(pub Mutex<Option<Outbound>>);
+pub struct BridgeState(pub Mutex<Option<(Outbound, Transport)>>);
+
+/// Which backend a bridge session talks to. Mirrors the socket route's own
+/// path-based choice rather than inventing a second vocabulary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Transport {
+    #[default]
+    Ble,
+    Bt,
+}
 
 /// Open the bridge and start pumping outbound frames to the webview.
+/// Open the bridge for one transport. `kind` is "ble" or "bt" — the same
+/// choice the socket route makes from the URL path.
 #[tauri::command]
-pub fn scratchlink_bridge_open(app: AppHandle, state: State<BridgeState>) -> Result<(), String> {
+pub fn scratchlink_bridge_open(
+    app: AppHandle,
+    state: State<BridgeState>,
+    kind: Option<String>,
+) -> Result<(), String> {
+    let transport = match kind.as_deref().unwrap_or("ble") {
+        "bt" => Transport::Bt,
+        "ble" => Transport::Ble,
+        other => return Err(format!("unknown scratchlink transport: {other}")),
+    };
     let (tx, mut rx) = mpsc::channel::<Message>(64);
     tauri::async_runtime::spawn(async move {
         while let Some(msg) = rx.recv().await {
@@ -48,8 +74,8 @@ pub fn scratchlink_bridge_open(app: AppHandle, state: State<BridgeState>) -> Res
             }
         }
     });
-    *state.0.lock().map_err(|e| e.to_string())? = Some(tx);
-    log::info!("[scratchlink/bridge] open");
+    *state.0.lock().map_err(|e| e.to_string())? = Some((tx, transport));
+    log::info!("[scratchlink/bridge] open ({transport:?})");
     Ok(())
 }
 
@@ -62,25 +88,33 @@ pub async fn scratchlink_bridge_send(
     // Clone the sender out of the lock before awaiting: a std::sync::MutexGuard
     // held across an await is not Send, and this command is async because
     // dispatch is.
-    let out = {
+    let session = {
         let guard = state.0.lock().map_err(|e| e.to_string())?;
         guard.clone()
     };
-    let Some(out) = out else {
+    let Some((out, transport)) = session else {
         return Err("the Scratch Link bridge is not open".into());
     };
-    ble::dispatch(&frame, &out).await;
+    match transport {
+        Transport::Ble => ble::dispatch(&frame, &out).await,
+        Transport::Bt => bt_dispatch(&frame, &out).await,
+    }
     Ok(())
 }
 
 /// Close the bridge and release the adapter, as a socket close would.
 #[tauri::command]
 pub async fn scratchlink_bridge_close(state: State<'_, BridgeState>) -> Result<(), String> {
-    {
+    let was = {
         let mut guard = state.0.lock().map_err(|e| e.to_string())?;
-        *guard = None;
+        guard.take()
+    };
+    // Only the BLE backend keeps global state to release; the BT backends own
+    // their connection per dispatch. Calling ble::cleanup() after a BT session
+    // would drop a BLE hub the user still has connected.
+    if matches!(was, Some((_, Transport::Ble)) | None) {
+        ble::cleanup().await;
     }
-    ble::cleanup().await;
     log::info!("[scratchlink/bridge] closed");
     Ok(())
 }

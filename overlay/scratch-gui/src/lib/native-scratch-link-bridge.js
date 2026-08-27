@@ -51,6 +51,16 @@ export const transportPreference = () => {
 /** Scratch Link lives on these ports — ours on 20111, the legacy host on 20110. */
 const isScratchLinkUrl = url => /:(20110|20111)\//.test(String(url));
 
+/**
+ * Which backend a Scratch Link URL is asking for. `/scratch/bt` is Bluetooth
+ * Classic (EV3, NXT, legacy SPIKE over RFCOMM); everything else is BLE. Read
+ * from the path exactly as the socket route reads it, so the two ways in
+ * cannot disagree about what a URL means.
+ * @param {string} url the URL being dialled.
+ * @returns {string} 'bt' or 'ble'.
+ */
+const transportOf = url => (/\/bt\b|\/scratch\/bt/.test(String(url)) ? 'bt' : 'ble');
+
 const isNativeApp = () => typeof window !== 'undefined' && typeof window.__TAURI__ !== 'undefined';
 
 const tauri = () => {
@@ -66,7 +76,15 @@ const tauri = () => {
  * full spec-compliant WebSocket here would be inventing behaviour nobody calls.
  */
 class BridgedSocket {
-    constructor () {
+    /**
+     * @param {string} [kind] 'ble' or 'bt' — which backend to talk to. The
+     *   socket route picks this from the URL path, and the two are different
+     *   backends entirely (BLE is CoreBluetooth/btleplug, BT is RFCOMM/MFi).
+     *   Defaulting everything to 'ble' would work for the BLE hubs and
+     *   silently break EV3 and NXT, which on iOS have no other route.
+     */
+    constructor (kind = 'ble') {
+        this._kind = kind;
         this.readyState = 0;                 // CONNECTING
         this.onopen = null;
         this.onclose = null;
@@ -102,7 +120,7 @@ class BridgedSocket {
             this._unlisten = await t.listen('scratchlink://message', event => {
                 this._emit('message', {data: event.payload});
             });
-            await t.invoke('scratchlink_bridge_open');
+            await t.invoke('scratchlink_bridge_open', {kind: this._kind});
             this.readyState = 1;             // OPEN
             this._emit('open', new Event('open'));
         } catch (e) {
@@ -138,7 +156,7 @@ class BridgedSocket {
  * @returns {object} a WebSocket-shaped object.
  */
 const socketWithBridgeFallback = (NativeWebSocket, url) => {
-    const facade = new BridgedSocket();
+    const facade = new BridgedSocket(transportOf(url));
     let real = null;
     let settled = false;
 
@@ -208,7 +226,7 @@ export default function installScratchLinkBridge () {
         if (pref === 'bridge') {
             // Explicitly the native path, socket never attempted — useful both
             // for testing it and for a platform where the socket is known bad.
-            const facade = new BridgedSocket();
+            const facade = new BridgedSocket(transportOf(url));
             facade._start();
             return facade;
         }
@@ -227,4 +245,4 @@ export default function installScratchLinkBridge () {
     return 'installed';
 }
 
-export {isScratchLinkUrl, BridgedSocket};
+export {isScratchLinkUrl, transportOf, BridgedSocket};

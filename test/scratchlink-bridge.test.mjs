@@ -52,7 +52,7 @@ define('window', {
     WebSocket: FakeWebSocket,
 });
 
-const {default: installScratchLinkBridge, isScratchLinkUrl, transportPreference} =
+const {default: installScratchLinkBridge, isScratchLinkUrl, transportPreference, transportOf} =
     await import(`${LIB}/native-scratch-link-bridge.js`);
 
 const LINK = 'ws://127.0.0.1:20111/scratch/ble';
@@ -153,5 +153,37 @@ describe('URL matching', () => {
         assert.ok(!isScratchLinkUrl('wss://example.com/socket'));
         assert.ok(!isScratchLinkUrl('ws://127.0.0.1:8080/bridge'),
             'the user-run bridge path is a DIFFERENT option and must stay untouched');
+    });
+});
+
+
+describe('BLE and Bluetooth Classic are different backends, and stay so', () => {
+    // The socket route picks ble vs bt from the request path; they are wholly
+    // different backends (CoreBluetooth/btleplug vs RFCOMM/MFi). A bridge that
+    // sent everything to the BLE dispatcher would work for the BLE hubs and
+    // silently break EV3 and NXT — the devices that, on iOS, have no other way
+    // in at all. That is the failure this describe exists for.
+    test('the transport is read from the path, as the socket route reads it', () => {
+        assert.equal(transportOf('ws://127.0.0.1:20111/scratch/ble'), 'ble');
+        assert.equal(transportOf('ws://127.0.0.1:20111/scratch/bt'), 'bt');
+        assert.equal(transportOf('wss://device-manager.scratch.mit.edu:20110/scratch/bt'), 'bt');
+    });
+
+    test('a bt URL opens the bridge as bt, not as ble', async () => {
+        store.set('bw-scratchlink-transport', 'bridge');
+        new window.WebSocket('ws://127.0.0.1:20111/scratch/bt');
+        await new Promise(r => setTimeout(r, 10));
+        const open = invoked.find(i => i.cmd === 'scratchlink_bridge_open');
+        assert.ok(open, 'the bridge must open');
+        assert.equal(open.args.kind, 'bt',
+            'EV3/NXT frames must not be handed to the BLE backend');
+    });
+
+    test('a ble URL still opens as ble', async () => {
+        store.set('bw-scratchlink-transport', 'bridge');
+        new window.WebSocket(LINK);
+        await new Promise(r => setTimeout(r, 10));
+        const open = invoked.find(i => i.cmd === 'scratchlink_bridge_open');
+        assert.equal(open.args.kind, 'ble');
     });
 });
