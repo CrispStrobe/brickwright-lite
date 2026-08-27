@@ -216,6 +216,44 @@ Gates: `test/makecode-{import,translate,arcade,export}.test.mjs`, against four r
 downloads. The export gate round-trips every shipped micro:bit example out to MakeCode TypeScript
 and back, and fails if a device block is lost.
 
+## Arduboy (2026-08-28) — read docs/ARDUBOY.md first
+
+Every other importer here is a PARSING problem: MakeCode embeds the project source in every
+artefact. An Arduboy `.hex` is compiled C++ with nothing else in it, so it is the other kind
+of support — **we run it**, and that was cheap for the reasons Arcade was impossible: it is
+an ATmega32U4 (avr8js, already here for the 328P) driving a 128x64 SSD1306 (already in
+`bw-board/devices`). Neither needed new emulation.
+
+- `lib/bw-arduboy/` the console: board, display, `advance(ms)`. `avr-chips.js` gained
+  `ATMEGA32U4` — a DATA FILE, since avr8js ships a generic core and no chip definitions.
+  Timer4 is deliberately absent (10-bit high-speed, a layout avr8js's timer model lacks).
+- `devices/ssd1306.js` gained `createSSD1306SPI()`. One chip, two front ends — I2C wraps each
+  byte in a control byte, SPI puts command/data on a pin — so it SHARES the command decode and
+  GDDRAM rather than describing the controller twice.
+- `components/tw-pseudocode/arduboy-pane.jsx`, dock mode `arduboy`. No iframe; the CPU runs in
+  the page and the canvas is painted from GDDRAM.
+
+**THE ONE REGISTER.** Every Arduboy game hangs three instructions into the Arduino core, on
+`IN r0,0x29 / SBRS r0,0 / RJMP -3` — waiting for the USB PLL to lock, which avr8js has no PLL
+for. This reads as "USB is not emulated, the 32U4 is a dead end" and is wrong: it is ONE BIT.
+Nothing else about USB is modelled and nothing else needs to be — a game never enumerates.
+
+**Anything analog is INTEGRATED, never sampled.** The speaker is a toggling pin and the RGB
+LED is common-anode PWM, so an instantaneous level is meaningless: `takeSpeaker()` counts
+edges over a window, `takeLed()` accumulates time-weighted duty, both reset on read. The
+evidence they are right is that the numbers match the games' own constants — RYSK plays
+~370 Hz (F#4) and lights the LED at ~0.063 duty, which is its `LED_LEVEL_START 16` of 255.
+
+`.hex` needed no new accept entry: MakeCode is tried FIRST always, and only when it finds no
+embedded source does `looksLikeAvrHex` get a say. Gates: `test/arduboy.test.mjs` (12) and
+`scripts/verify-arduboy.mjs`, which reads pixels back off the canvas AND checks a button
+press changes them — a static title screen means "the image changed on its own" is not a
+liveness test, and a mouse click is 10 ms against a 16 ms poll, so the pane holds presses for
+120 ms or quick taps do nothing.
+
+Corpus: **obono/ArduboyWorks** (MIT, ships 19 prebuilt `.hex`, so no avr-gcc and none of the
+GPL problem that keeps SDCC server-side). All 19 boot and hold 60-62 fps.
+
 ## Planned: on-device TTS (replace cloud AWS text2speech)
 See memory `brickwright-ondevice-tts`. `../../CrispASR` (MIT) has 23 TTS
 engines compiling to WASM (~4.3MB, client-side) → offline TTS. Needs COOP/COEP (SharedArrayBuffer);
