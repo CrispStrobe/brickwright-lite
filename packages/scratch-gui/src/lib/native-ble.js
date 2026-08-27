@@ -118,8 +118,16 @@ class BleSession {
             const {resolve, reject, method} = this._pending.get(msg.id);
             this._pending.delete(msg.id);
             if (msg.error) {
-                bleLog('error', 'ble', `◀ ${method} failed`, msg.error.message);
-                reject(new Error(msg.error.message || 'Bluetooth request failed'));
+                // JSON-RPC puts the CATEGORY in `message` ("Method Not Found")
+                // and the detail in `data`. Reporting `message` alone would
+                // show the user a category where a sentence belongs, so prefer
+                // the detail — and carry the code, so callers can branch on it
+                // instead of reading our prose.
+                const detail = msg.error.data || msg.error.message || 'Bluetooth request failed';
+                bleLog('error', 'ble', `◀ ${method} failed`, detail);
+                const err = new Error(detail);
+                err.code = msg.error.code;
+                reject(err);
             } else {
                 bleLog('debug', 'ble', `◀ ${method}`, msg.result);
                 resolve(msg.result);
@@ -224,7 +232,12 @@ export const getNativeStatus = async () => {
     try {
         return await getSession().request('getStatus', {});
     } catch (e) {
-        if (/unknown method/i.test(e.message)) return null;
+        // getStatus is OURS, not part of Scratch Link's protocol, so a real
+        // Scratch Link answers "method not found" and that is not an error —
+        // it means "this peer is the stock implementation". -32601 is the
+        // spec's code for it; the string check stays for any peer that only
+        // says it in prose.
+        if (e.code === -32601 || /unknown method|method not found/i.test(e.message)) return null;
         throw e;
     }
 };

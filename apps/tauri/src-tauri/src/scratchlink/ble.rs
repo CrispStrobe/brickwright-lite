@@ -183,7 +183,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             let services = h.discover_services(&addr).await.map_err(|e| e.to_string())?;
             Ok(json!(services))
         }
-        other => Err(format!("unknown method: {other}")),
+        other => Err(format!("{UNKNOWN_METHOD}{other}")),
     }
 }
 
@@ -642,8 +642,31 @@ async fn reply(out: &Outbound, id: Value, result: Value) {
     let _ = out.send(Message::Text(msg.to_string())).await;
 }
 
+/// The prefix `handle` uses for a method it does not implement. Shared with
+/// `reply_err` so the two cannot drift: it is what turns into -32601.
+pub const UNKNOWN_METHOD: &str = "unknown method: ";
+
+/// A JSON-RPC error, with the standard code where we can tell which it is.
+///
+/// The reference uses the spec's codes (-32601 Method Not Found, -32602 Invalid
+/// Params, …) and puts the detail in `data`, with `message` naming the
+/// category. We sent -32000 for everything with the detail in `message`, which
+/// scratch-vm tolerates — it only rejects — but which cost us elsewhere:
+/// `native-ble.js` detects an unsupported call by STRING-MATCHING
+/// /unknown method/i, because there was no code to test. A client should not
+/// have to read our prose to learn a feature is missing.
 async fn reply_err(out: &Outbound, id: Value, message: &str) {
-    let msg = json!({ "jsonrpc": "2.0", "id": id, "error": { "code": -32000, "message": message } });
+    let (code, category) = if let Some(detail) = message.strip_prefix(UNKNOWN_METHOD) {
+        let _ = detail;
+        (-32601, "Method Not Found")
+    } else {
+        (-32000, "Server Error")
+    };
+    let msg = json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "error": { "code": code, "message": category, "data": message }
+    });
     let _ = out.send(Message::Text(msg.to_string())).await;
 }
 
