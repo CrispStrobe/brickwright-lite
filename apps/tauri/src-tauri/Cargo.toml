@@ -75,6 +75,12 @@ windows = { version = "0.58", features = [
 jni = "0.21"
 ndk-context = "0.1"
 
+# 2.0.5's iOS UIActivityViewController has no popover anchor, which makes every
+# share crash on iPad. Keep the exact permissive upstream crate locally with
+# the minimal Swift repair in vendor/tauri-plugin-share/ios/Sources.
+[patch.crates-io]
+tauri-plugin-share = { path = "vendor/tauri-plugin-share" }
+
 [features]
 # Used by the desktop entrypoint (main.rs) to avoid the extra console window.
 custom-protocol = ["tauri/custom-protocol"]
