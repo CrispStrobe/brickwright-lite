@@ -513,3 +513,49 @@ test('scaling a position scales the Arcade coordinate, not the stage one', () =>
     assert.match(code, /x position \/ 3 \+ 80/, 'read back into Arcade units first');
     assert.doesNotMatch(code, /change x by 6/);
 });
+
+test('every compound operator survives on every kind of target', () => {
+    // Three separate bugs of one class have now been fixed here — the
+    // unary-minus precedence one, the velocity one, and the position one —
+    // and each was an operator quietly becoming a different operator, in
+    // code that compiled and ran. A substring assertion passes on all
+    // three, so this is the whole matrix, spelled out.
+    //
+    // The y rows carry TWO sign flips that compose: `-=` reverses the
+    // move, and Arcade's y grows downward while the stage's grows up.
+    // `vx`/`vy` stay in Arcade units — the motion loop applies the flip
+    // where it is used — which is why they do not mirror the y rows.
+    const EXPECTED = {
+        'v +=': 'change v by 4',
+        'v -=': 'change v by 0 - 4',
+        'v *=': 'set v to v * 4',
+        'v /=': 'set v to v / 4',
+        'b.x +=': 'change x by 12',
+        'b.x -=': 'change x by -12',
+        'b.x *=': 'set x to ((((x position / 3 + 80)) * 4) - 80) * 3',
+        'b.x /=': 'set x to ((((x position / 3 + 80)) / 4) - 80) * 3',
+        'b.y +=': 'change y by -12',
+        'b.y -=': 'change y by 12',
+        'b.y *=': 'set y to (60 - (((60 - y position / 3)) * 4)) * 3',
+        'b.y /=': 'set y to (60 - (((60 - y position / 3)) / 4)) * 3',
+        'b.vx +=': 'change b_vx by 4',
+        'b.vx -=': 'change b_vx by (0 - 4)',
+        'b.vx *=': 'set b_vx to b_vx * 4',
+        'b.vx /=': 'set b_vx to b_vx / 4',
+        'b.vy +=': 'change b_vy by 4',
+        'b.vy -=': 'change b_vy by (0 - 4)',
+        'b.vy *=': 'set b_vy to b_vy * 4',
+        'b.vy /=': 'set b_vy to b_vy / 4'
+    };
+
+    for (const [key, expected] of Object.entries(EXPECTED)) {
+        const {code} = arcadeToPseudocode(`
+            let b = sprites.create(img\`1\`, SpriteKind.Player)
+            let v = 0
+            game.onUpdate(function () { ${key} 4 })
+        `);
+        const lines = code.split('\n');
+        const loop = lines.findIndex(line => /FOREVER:/.test(line));
+        assert.equal((lines[loop + 1] || '').trim(), expected, `${key} 4`);
+    }
+});
