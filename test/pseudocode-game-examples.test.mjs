@@ -417,6 +417,9 @@ test('Rift Rally exposes its dual controls, crystals, and three-escape loss cond
     assert.match(games.twinwall, /CONTROLS: W\/S move the cyan left paddle/);
     assert.match(games.twinwall, /change lives by -1/);
     assert.match(games.twinwall, /set vx to vx \* -1/);
+    assert.match(games.twinwall, /WHEN flag clicked:\n    set score to 0\n    set lives to 3\n    set bricks to 24/);
+    assert.doesNotMatch(games.twinwall, /WHEN I receive "serve rift":\n    set bricks to 24/,
+        'parallel start receiver still owns the win-counter reset');
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'arena']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);

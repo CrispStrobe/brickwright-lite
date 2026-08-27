@@ -1148,6 +1148,7 @@ SPRITE Comet:
   WHEN flag clicked:
     set score to 0
     set lives to 3
+    set bricks to 24
     set rally to 1
     set bx to 0
     set by to -120
@@ -1196,7 +1197,6 @@ SPRITE Shifter:
   WHEN flag clicked:
     hide
   WHEN I receive "serve rift":
-    set bricks to 24
     set gy to -90
     REPEAT 6:
       set gx to -60
