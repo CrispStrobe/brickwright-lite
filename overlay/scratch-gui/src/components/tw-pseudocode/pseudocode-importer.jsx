@@ -2160,7 +2160,7 @@ class PseudocodeImporter extends React.Component {
             return;
         }
         this.setState({lang: 'pseudocode', output: null, status: '',
-            buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: ''}});
+            buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
     }
     // Sprite names declared in the current pseudocode — used to populate the
     // "associate SVG → sprite" dropdowns so you pick a real sprite, not guess a name.
@@ -2526,7 +2526,7 @@ class PseudocodeImporter extends React.Component {
                         // MicroPython program was imported from a .hex: there
                         // is no pseudocode then, and hiding the tab would hide
                         // the Run button of the one program we can run as-is.
-                        ...(this.currentDevice() === 'microbit' || this.state.buffers.micropython.trim() ?
+                        ...(this.currentDevice() === 'microbit' || (this.state.buffers.micropython || '').trim() ?
                             [['micropython', '🤖 micro:bit']] : [])].map(([l, label]) => {
                         const active = this.state.lang === l;
                         return (
