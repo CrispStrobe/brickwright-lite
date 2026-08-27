@@ -226,8 +226,23 @@ class DebugPanel extends React.Component {
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
-            .then(m => {
-                if (m.getTargetKinds) this.setState({kinds: m.getTargetKinds()});
+            .then(async m => {
+                if (!m.getTargetKinds) return;
+                const kinds = m.getTargetKinds();
+                // The heavy tier is offered only if its engine is actually
+                // here. It is a 20 MB artifact fetched at deploy time and
+                // loaded on demand, so unlike every other kind it can be
+                // genuinely absent — and an entry that fails when clicked is
+                // worse than one that is not there. The probe never throws:
+                // absence is an answer.
+                try {
+                    const {isLabwiredAvailable} = await import(
+                        /* webpackChunkName: "labwired-probe" */ '../../lib/labwired-engine.js');
+                    if (await isLabwiredAvailable() && m.LABWIRED_KIND) kinds.push(m.LABWIRED_KIND);
+                } catch (e) {
+                    // Probe module missing entirely — same outcome, no entry.
+                }
+                this.setState({kinds});
             })
             .catch(e => {
                 // Degrading to "no picker" is the right call for a genuine

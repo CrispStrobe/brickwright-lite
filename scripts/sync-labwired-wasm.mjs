@@ -47,26 +47,42 @@ const PIN = '41119903ced44a221a49aa0e8090ab012fbdba68';
 // from. Built and PUBLISHED by CI — two independent runners agreed byte for
 // byte before the asset was uploaded, so the sha256 below is a claim anyone can
 // re-derive rather than one machine's fingerprint.
-const TAG = 'labwired-wasm-41119903';
+const TAG = 'labwired-wasm-41119903-r2';
 const REPO = 'CrispStrobe/bw-board';
+// The WEB glue, not the nodejs one. The published release carries both: the
+// nodejs glue require()s and reads the module off disk, which cannot survive a
+// browser bundle. Asset names carry their target because a release's assets are
+// one flat namespace.
 const EXPECT = {
-    'labwired_wasm.js': 'fcfc0ed9d132899bdd8d998aaa023fed21f9a7996f74b52c071955bfb172f204',
-    'labwired_wasm_bg.wasm': '6ec12d4c63c0e63177f82adad9ecc1e98b586bb656309a954742855e4fe4c044'
+    'web-labwired_wasm.js': 'c65b589c51045a8d5b1243dde80d7d20e573a7d6320aa529041d14aeb0a2b412',
+    'web-labwired_wasm_bg.wasm': '6ec12d4c63c0e63177f82adad9ecc1e98b586bb656309a954742855e4fe4c044'
+};
+/** What each asset is called once it is ours. */
+const LOCAL = {
+    'web-labwired_wasm.js': 'labwired_wasm.js',
+    'web-labwired_wasm_bg.wasm': 'labwired_wasm_bg.wasm'
 };
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-// Under packages/, which .gitignore covers — a 20 MB build input, never a
-// tracked file.
-const dest = path.join(here, '..', 'packages', 'scratch-gui', 'src', 'generated', 'labwired');
+// static/, not src/. Webpack copies `static -> static` wholesale, so the engine
+// is served as a plain asset and fetched at RUNTIME — which means a checkout
+// that never ran this script still BUILDS. Putting it under src/ and importing
+// it would make webpack resolve the path at build time, so its absence would be
+// a build failure rather than an engine that is simply not offered, and lite
+// could never be built without shipping 20 MB.
+//
+// packages/scratch-gui/ is covered by .gitignore line 8, so nothing here is
+// ever tracked.
+const dest = path.join(here, '..', 'packages', 'scratch-gui', 'static', 'labwired');
 const check = process.argv.includes('--check');
 
 await mkdir(dest, {recursive: true});
 let changed = 0;
 for (const [name, want] of Object.entries(EXPECT)) {
-    const out = path.join(dest, name);
+    const out = path.join(dest, LOCAL[name]);
     const current = await readFile(out).catch(() => null);
     if (current && createHash('sha256').update(current).digest('hex') === want) {
-        console.log(`  ok    ${name} (${current.length} bytes, sha256 verified)`);
+        console.log(`  ok    ${LOCAL[name]} (${current.length} bytes, sha256 verified)`);
         continue;
     }
     changed++;
@@ -90,7 +106,7 @@ for (const [name, want] of Object.entries(EXPECT)) {
             + 'update PIN, TAG and EXPECT together from its BUILD-INFO.json.');
     }
     await writeFile(out, buf);
-    console.log(`  wrote ${name} (${buf.length} bytes, sha256 verified)`);
+    console.log(`  wrote ${LOCAL[name]} (${buf.length} bytes, sha256 verified)`);
 }
 if (check && changed) { console.error(`\n${changed} stale — run: npm run sync:labwiredwasm`); process.exit(1); }
 console.log(check
