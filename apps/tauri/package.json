@@ -10,6 +10,7 @@
     "icon": "tauri icon ../../packages/scratch-gui/build/static/images/512.png",
     "ios:init": "tauri ios init",
     "ios:dev": "tauri ios dev",
+    "ios:device-build": "tauri ios build --target aarch64 --export-method debugging --ci",
     "android:init": "tauri android init",
     "android:dev": "tauri android dev"
   },
