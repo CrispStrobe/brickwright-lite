@@ -464,6 +464,11 @@ test('Rift Rally exposes its dual controls, crystals, and three-escape loss cond
     assert.doesNotMatch(games.twinwall, /WHEN I receive "serve rift":\n    set bricks to 24/,
         'parallel start receiver still owns the win-counter reset');
     const stage = project.targets.find(target => target.isStage);
+    const shifter = project.targets.find(target => target.name === 'Shifter');
+    assert.ok(Object.values(shifter.variables).some(variable => variable[0] === 'drift'),
+        'crystal drift is not clone-local');
+    assert.ok(!Object.values(stage.variables).some(variable => variable[0] === 'drift'),
+        'all crystal clones still share one global drift direction');
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'arena']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('RIFT RALLY')));
@@ -1056,6 +1061,15 @@ test('dual-paddle defense and slipstream race respond in the live Scratch VM', a
         assert.equal(rift.runtime.targets.filter(target =>
             !target.isOriginal && target.sprite.name === 'Shifter').length, 24,
         'the 24-crystal field was not created');
+        const crystals = rift.runtime.targets.filter(target =>
+            !target.isOriginal && target.sprite.name === 'Shifter');
+        const firstDrift = Object.values(crystals[0].variables).find(variable => variable.name === 'drift');
+        const secondDrift = Object.values(crystals[1].variables).find(variable => variable.name === 'drift');
+        assert.notEqual(firstDrift, secondDrift, 'crystal clones share the same drift variable object');
+        firstDrift.value = 1;
+        secondDrift.value = -1;
+        assert.equal(Number(firstDrift.value), 1);
+        assert.equal(Number(secondDrift.value), -1, 'one crystal changed another crystal’s direction');
         rift.postIOData('keyboard', {key: 'w', isDown: true});
         rift.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
         for (let i = 0; i < 12; i++) rift.runtime._step();

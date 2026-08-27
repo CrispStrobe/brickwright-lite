@@ -1088,7 +1088,6 @@ GLOBAL ly
 GLOBAL ry
 GLOBAL gx
 GLOBAL gy
-GLOBAL drift
 GLOBAL started
 
 STAGE:
@@ -1193,6 +1192,7 @@ SPRITE Comet:
       wait 0.015 seconds
 
 SPRITE Shifter:
+  LOCAL drift
   SHAPE art rift-rally/crystal
   SOUND break 1040
   WHEN flag clicked:
