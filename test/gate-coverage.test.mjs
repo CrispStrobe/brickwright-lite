@@ -37,7 +37,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  */
 const KNOWN_UNWIRED = {
     // Passing, but unwatched — these will rot next unless wired in.
-    'verify-bluetooth.mjs': 'passes (2026-08-27)',
+    // (verify-bluetooth.mjs was here and is now in build.yml.)
     'verify-faceplate-blinkenrocket.mjs': 'passes (2026-08-27)',
     'verify-lego-hub-faces.mjs': 'passes (2026-08-27)',
     'verify-retro-console.mjs': 'passes (2026-08-27)',

@@ -415,6 +415,14 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: node scripts/verify-debugger-solo.mjs
 
+      # The navigator.bluetooth shim the LEGO extensions depend on inside the
+      # app. It is under active investigation on iOS right now, which is the
+      # worst possible time for it to regress unnoticed — and it was one of the
+      # four gates that still passed while nothing ran it.
+      - name: Browser gate — the native Web Bluetooth shim
+        if: steps.playwright.outcome == 'success'
+        run: node scripts/verify-bluetooth.mjs
+
       # The MakeCode importer lives behind a dynamic import(), so a webpack
       # misconfiguration would show up in a browser and in no unit test —
       # and the routing from the Open button is JSX that nothing else runs.
