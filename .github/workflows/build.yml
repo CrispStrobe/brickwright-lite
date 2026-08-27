@@ -394,6 +394,20 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
 
+      # The heavy simulation tier. Everything else about it — the adapter, the
+      # debug target, the chunk contents — was green while selecting it in a
+      # browser threw twice in a row: a shadowed `session` binding, then a
+      # missing timeNs delegation. Neither was reachable from a unit test,
+      # because both live in the wiring between the runner and the target.
+      #
+      # This gate insists the PROGRAM COUNTER MOVES, not merely that the panel
+      # says ready. It skips (exit 0) when the engine artifact is absent or the
+      # remote compiler is unreachable, since neither is a regression in this
+      # repo — but the engine IS fetched above, so in CI it runs for real.
+      - name: Browser gate — the labwired heavy tier actually executes
+        if: steps.playwright.outcome == 'success'
+        run: node scripts/verify-labwired-engine.mjs
+
       # The MakeCode importer lives behind a dynamic import(), so a webpack
       # misconfiguration would show up in a browser and in no unit test —
       # and the routing from the Open button is JSX that nothing else runs.

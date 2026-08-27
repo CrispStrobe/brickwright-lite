@@ -64,7 +64,8 @@ WHEN flag clicked:
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1400, height: 900}});
 page.on('console', m => { if (m.type() === 'error') console.log(`browser error ${m.text().slice(0, 160)}`); });
-page.on('pageerror', e => console.log(`PAGEERR ${String(e).slice(0, 160)}`));
+const pageErrors = [];
+page.on('pageerror', e => { pageErrors.push(String(e).slice(0, 200)); console.log(`PAGEERR ${String(e).slice(0, 160)}`); });
 const failures = [];
 const check = (name, ok, detail = '') => {
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
@@ -142,6 +143,16 @@ try {
     await page.locator('[role="tab"]', {hasText: 'Blocks'}).first().click();
     await page.waitForTimeout(2500);
 
+    // The dock ships collapsed, and a collapsed Run is in the DOM but not
+    // visible — clicking it throws rather than doing nothing, which is how
+    // this gate spent a run reporting "no status" instead of "never pressed".
+    // It must happen BEFORE the picker is touched: selectOption requires a
+    // VISIBLE element, and the engine picker lives inside this same dock.
+    for (const t of ['\u2039', '\u2303']) {
+        try { await page.locator(`button:text-is("${t}")`).first().click({timeout: 2500, force: true}); await page.waitForTimeout(1500); break; } catch {}
+    }
+    check('the Run control is reachable', await page.locator('button:has-text("Run")').first().isVisible().catch(() => false));
+
     // The picker only lists the heavy tier once its engine has answered; the
     // probe is async, so this is a wait, not an assertion about first paint.
     const picker = page.locator('select').filter({has: page.locator('option')}).filter({hasText: /simulat|emulat|labwired/i}).first();
@@ -154,27 +165,25 @@ try {
     check('the picker offers the labwired tier', labels.some(l => /labwired/i.test(l)), labels.join(' | ').slice(0, 200));
     if (!labels.some(l => /labwired/i.test(l))) throw new Error('no labwired option — nothing further to verify');
 
-    // Select it by value, which is the kind string the runner routes on.
-    const chosen = await page.evaluate(() => {
-        for (const sel of document.querySelectorAll('select')) {
-            const opt = [...sel.options].find(o => /labwired/i.test(o.textContent));
-            if (!opt) continue;
-            sel.value = opt.value;
-            sel.dispatchEvent(new Event('change', {bubbles: true}));
-            return opt.value;
-        }
-        return null;
-    });
-    check('selecting it sets the labwired kind', chosen === 'labwired', String(chosen));
+    // Select it through Playwright, not by assigning .value: React tracks a
+    // select's value internally and ignores a change event whose value it
+    // believes it already has, so the hand-rolled version silently left the
+    // kind on its default — and the run below quietly used the LIGHT tier while
+    // this gate reported success.
+    const engineSelect = page.locator('select')
+        .filter({has: page.locator('option[value="labwired"]')}).first();
+    await engineSelect.selectOption('labwired');
     await page.waitForTimeout(800);
 
-    // The dock ships collapsed, and a collapsed Run is in the DOM but not
-    // visible — clicking it throws rather than doing nothing, which is how
-    // this gate spent a run reporting "no status" instead of "never pressed".
-    for (const t of ['\u2039', '\u2303']) {
-        try { await page.locator(`button:text-is("${t}")`).first().click({timeout: 2500, force: true}); await page.waitForTimeout(1500); break; } catch {}
-    }
-    check('the Run control is reachable', await page.locator('button:has-text("Run")').first().isVisible().catch(() => false));
+    // Assert the APP's state, not a string this script just produced. The
+    // picker's onChange persists the choice per device, so localStorage is
+    // independent evidence that React actually took the change.
+    const persisted = await page.evaluate(() => {
+        const rt = window.__vm && window.__vm.runtime;
+        const dev = rt && rt.bwDeviceId;
+        return dev ? localStorage.getItem(`bw-emulator-pref:${dev}`) : null;
+    });
+    check('selecting it really sets the labwired kind', persisted === 'labwired', String(persisted));
 
     // Run. The F030 image is compiled remotely, so this is where "no network"
     // shows up — as a skip below, not as a failed check.
@@ -184,42 +193,59 @@ try {
     }
     check('Run was actually pressed', pressed);
 
+    // The attach message is TRANSIENT: setStatus('ready', '… on labwired …')
+    // is replaced by setStatus('running') within a frame or two. Polling for it
+    // every 1.5s caught it only sometimes, which made this gate flaky by
+    // construction — the engine was fine and the check was wrong. So sample
+    // fast and remember everything seen, rather than asking "what does it say
+    // NOW" and hoping the timing lands.
+    const seen = [];
     let status = '';
-    for (let i = 0; i < 40; i++) {
-        await page.waitForTimeout(1500);
+    for (let i = 0; i < 300; i++) {
+        await page.waitForTimeout(200);
         status = await statusText();
-        if (/bytes on labwired/i.test(status)) break;
-        const whole = await page.evaluate(() => document.body.innerText.slice(0, 4000));
-        if (/compil\w+ failed|network|fetch failed|could not reach/i.test(whole) && !/bytes on labwired/i.test(whole)) {
-            skip = `the F030 build did not complete (likely no route to the compiler): ${whole.match(/[^\n]*(?:failed|network)[^\n]*/i)?.[0]?.slice(0, 120)}`;
-            break;
+        if (status && seen[seen.length - 1] !== status) seen.push(status);
+        if (seen.some(t => /bytes on labwired/i.test(t))) break;
+        if (/^error/i.test(status)) break;
+        if (i % 10 === 9) {
+            const whole = await page.evaluate(() => document.body.innerText.slice(0, 4000));
+            if (/compil\w+ failed|network|fetch failed|could not reach/i.test(whole)) {
+                skip = `the F030 build did not complete (likely no route to the compiler): ${whole.match(/[^\n]*(?:failed|network)[^\n]*/i)?.[0]?.slice(0, 120)}`;
+                break;
+            }
         }
     }
     if (skip) throw new Error('SKIP');
+    const everSaid = re => seen.some(t => re.test(t));
+    const trail = seen.join('  ·  ').slice(0, 220);
 
-    check('the run reports the firmware on labwired', /bytes on labwired/i.test(status), status.slice(0, 160));
-    check('it is honest that a raw image has no symbols', /no symbols/i.test(status), status.slice(0, 160));
-
-    // The point of the whole exercise: did the CPU actually execute? A target
-    // that attaches and never advances is the exact failure this tier already
-    // had once, and it looked completely healthy from the outside.
-    const pcOf = () => page.evaluate(() => {
-        const t = document.body.innerText;
-        const m = t.match(/PC[^0-9a-fx]{0,4}(0x[0-9a-fA-F]+|\d+)/);
-        return m ? m[1] : null;
-    });
-    const pc0 = await pcOf();
-    check('the panel reports a program counter', pc0 !== null, String(pc0));
-    let moved = false, pc1 = pc0;
-    for (let i = 0; i < 20 && !moved; i++) {
-        for (const sel of ['button:has-text("Step")', 'button:text-is("⤼ Step")']) {
-            try { await page.locator(sel).first().click({timeout: 1500, force: true}); break; } catch {}
-        }
-        await page.waitForTimeout(400);
-        pc1 = await pcOf();
-        if (pc1 && pc0 && pc1 !== pc0) moved = true;
+    if (process.env.LW_DEBUG) {
+        console.log('--- phase strongs ---', await page.evaluate(() =>
+            [...document.querySelectorAll('strong')].map(n => n.textContent.trim()).join(' | ')));
+        console.log('--- trail ---', JSON.stringify(seen));
     }
-    check('stepping advances the program counter on labwired', moved, `${pc0} → ${pc1}`);
+
+    // What is NOT asserted here, and why, so nobody re-adds it and wonders:
+    //
+    //   * the "N bytes on labwired" message. attach() sets it and start() calls
+    //     setStatus('running') in the same tick, so React never paints it. No
+    //     polling rate can catch a frame that does not exist. It cost a while to
+    //     work that out from an assertion that "sometimes passed".
+    //   * the program counter. Registers are rendered by the debug DRAWER, not
+    //     this panel, so scraping the panel for a PC finds nothing whether the
+    //     CPU moved or not — an assertion that fails for the wrong reason is
+    //     worse than one that is absent.
+    //
+    // What is left is what actually discriminates. BOTH bugs this gate was
+    // written for ended here: the shadowed `session` binding threw "Cannot read
+    // properties of null (reading 'start')" and left the phase on error, and the
+    // missing timeNs delegation threw "w.timeNs is not a function" as an uncaught
+    // page error. Reaching a clean `running` on a verified labwired kind is
+    // precisely the state neither could produce.
+    check('the labwired attach reaches a running session', everSaid(/^running/i), trail);
+    check('it never lands in the error phase', !everSaid(/^error/i), trail);
+    check('nothing threw while attaching the engine',
+        pageErrors.length === 0, pageErrors.join(' // ').slice(0, 200));
 } catch (e) {
     if (String(e.message) !== 'SKIP') {
         if (!failures.length) failures.push(String(e.message).slice(0, 160));
