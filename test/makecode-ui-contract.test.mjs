@@ -86,8 +86,25 @@ test('the micro:bit tab appears for an imported .py, which has no DEVICE line', 
     // Hiding it would hide the Run-on-simulator button for the one
     // imported program that needs no translation at all.
     assert.match(source,
-        /this\.currentDevice\(\) === 'microbit' \|\| this\.state\.buffers\.micropython\.trim\(\)/);
+        /this\.currentDevice\(\) === 'microbit' \|\| \(this\.state\.buffers\.micropython \|\| ''\)\.trim\(\)/,
+        'and it reads that buffer defensively — see the buffer-shape test below');
     assert.match(source, /importedPython: res\.kind === 'micropython'/);
+});
+
+test('every buffer set carries every language', () => {
+    // A `buffers:` literal that spells out the set and omits one leaves
+    // that key undefined, and the next render to read it dies. That is
+    // not hypothetical: `loadExample` dropped `micropython`, and the
+    // moment the micro:bit tab started reading it to decide whether to
+    // show itself, loading any example crashed the pane. The unit tests
+    // saw nothing; a browser gate caught it.
+    const languages = ['pseudocode', 'python', 'javascript', 'c', 'basic', 'asm', 'micropython'];
+    const literals = source.match(/buffers: \{pseudocode:[^}]*\}/g) || [];
+    assert.ok(literals.length >= 5, `expected the buffer literals, found ${literals.length}`);
+    for (const literal of literals) {
+        const missing = languages.filter(lang => !literal.includes(`${lang}:`));
+        assert.deepEqual(missing, [], `a buffer literal omits ${missing.join(', ')}: ${literal.slice(0, 90)}`);
+    }
 });
 
 test('every MakeCode string exists in both languages', () => {
