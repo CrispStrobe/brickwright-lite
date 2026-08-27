@@ -169,3 +169,17 @@ test('the write type is chosen from the characteristic, not hardcoded', () => {
         'the characteristic properties decide when the client did not say');
     assert.match(BLE, /withResponse/, 'an explicit client choice still wins');
 });
+
+test('BT discovery filters by the device class the client asked for', () => {
+    // BTSession requires majorDeviceClass and minorDeviceClass on a discover,
+    // and EV3 sends 8/1 (toy / robot). A backend that ignores them lists every
+    // bonded device — headphones, phones, keyboards — as an EV3 brick.
+    const ANDROID = read('apps/tauri/src-tauri/src/scratchlink/bt_android.rs');
+    assert.match(ANDROID, /majorDeviceClass/, 'android BT ignored the major class');
+    assert.match(ANDROID, /minorDeviceClass/, 'android BT ignored the minor class');
+    assert.match(ANDROID, /getBluetoothClass/, 'the class has to be read from the device');
+    // Fail-open is deliberate: a JNI mistake must degrade to the old unfiltered
+    // behaviour, never to hiding every robot on the system.
+    assert.match(ANDROID, /FAILS OPEN/i,
+        'the fallback direction is the whole safety argument — keep it documented');
+});
