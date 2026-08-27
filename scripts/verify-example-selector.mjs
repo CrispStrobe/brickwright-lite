@@ -16,7 +16,7 @@ const NEW_GAMES = [
     'Rift Rally', 'Slipstream Circuit', 'Abyss Lift', 'Wardlight', 'Pantry Prowl', 'Nimbus Volley',
     'Ember Parry', 'Tidegate Rush', 'Blue-Line Breaker', 'Orbit Hoops', 'Comet Strikers', 'Echo Trench',
     'Whisker Relay', 'Helix Rush', 'Moonbank Hop', 'Crosswind Courier', 'Lumen Stack', 'Plasma Posse',
-    'Halo Lockdown', 'Carrier Kestrel', 'Skycourt Surge', 'Chromafall Reactor'
+    'Halo Lockdown', 'Carrier Kestrel', 'Skycourt Surge', 'Chromafall Reactor', 'Cratercoil', 'Magma Lift'
 ];
 
 try {

@@ -311,7 +311,9 @@ const GROUPS = [
         ['halo_foundry', '🛡️ Halo Lockdown — polished'],
         ['corridor_kestrel', '🛸 Carrier Kestrel — polished'],
         ['thunder_volley', '⚡ Skycourt Surge — polished'],
-        ['cascade_pair', '🌈 Chromafall Reactor — polished']
+        ['cascade_pair', '🌈 Chromafall Reactor — polished'],
+        ['mooncoil_odyssey', '🌙 Cratercoil — polished'],
+        ['cinder_thrust', '🚀 Magma Lift — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

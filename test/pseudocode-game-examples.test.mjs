@@ -52,7 +52,8 @@ test('only quality-approved new games are wired into the visible examples galler
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
         'whisker_switch', 'spiral_circuit', 'lilyway_rescue', 'rotor_rogue', 'prism_spire', 'shard_sheriff',
-        'halo_foundry', 'corridor_kestrel', 'thunder_volley', 'cascade_pair'
+        'halo_foundry', 'corridor_kestrel', 'thunder_volley', 'cascade_pair',
+        'mooncoil_odyssey', 'cinder_thrust'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -555,6 +556,44 @@ test('Chromafall Reactor renders every list cell and has a deterministic six-fus
     assert.ok(svgs.some(svg => svg.includes('CHROMAFALL REACTOR')));
     assert.ok(svgs.some(svg => svg.includes('MAKE 6 FUSIONS')));
     assert.ok(svgs.some(svg => svg.includes('MATCH 4 EQUAL COLORS')));
+});
+
+test('Cratercoil paints its full list-backed trail and ends after twelve moonblooms', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.mooncoil_odyssey);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.mooncoil_odyssey, /GOAL: collect twelve moonblooms before three crashes/);
+    assert.match(games.mooncoil_odyssey, /REPEAT length of trailX:/);
+    assert.match(games.mooncoil_odyssey, /go to x: item i of trailX \* 24 y: item i of trailY \* 24/);
+    assert.match(games.mooncoil_odyssey, /stamp/);
+    assert.match(games.mooncoil_odyssey, /IF blooms = 12 THEN:/);
+    assert.match(games.mooncoil_odyssey, /started = 1 and oxygen > 0/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'moon']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('CRATERCOIL')));
+    assert.ok(svgs.some(svg => svg.includes('COLLECT 12 MOONBLOOMS')));
+    assert.ok(svgs.some(svg => svg.includes('AVOID YOUR GROWING TRAIL')));
+});
+
+test('Magma Lift has a ten-ring finish, fuel economy, and guarded crash recovery', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.cinder_thrust);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.cinder_thrust, /GOAL: fly through ten ember rings before three crashes or falls/);
+    assert.match(games.cinder_thrust, /key up arrow pressed\? and fuel > 0/);
+    assert.match(games.cinder_thrust, /touching ChargeLedge and flyerVY < 1/);
+    assert.match(games.cinder_thrust, /touching BasaltTooth and invulnerable = 0/);
+    assert.match(games.cinder_thrust, /change rings by 1/);
+    assert.match(games.cinder_thrust, /IF rings = 10 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'cave']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('MAGMA LIFT')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR 10 EMBER RINGS')));
+    assert.ok(svgs.some(svg => svg.includes('CYAN LEDGES TO RECHARGE')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -1167,6 +1206,53 @@ test('aerial movement and deterministic color fusion work in the live Scratch VM
         assert.equal(Number(value(reactor, 'score').value), 40, 'first fusion did not score its base value');
         assert.equal(Number(value(reactor, 'combo').value), 2, 'fusion did not grow the combo multiplier');
     } finally { reactor.quit(); clearStrayTimers(); }
+});
+
+test('lunar dash and rocket thrust consume resources in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator(); creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start(); vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        await new Promise(resolve => setTimeout(resolve, 250));
+        for (let i = 0; i < 10; i++) vm.runtime._step();
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const coil = await load(games.mooncoil_odyssey);
+    try {
+        coil.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 4; i++) coil.runtime._step();
+        coil.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        const beforeY = Number(value(coil, 'headY').value);
+        coil.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 4; i++) coil.runtime._step();
+        coil.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(coil, 'dirY').value), 1, 'Up did not turn the coil north');
+        assert.equal(Number(value(coil, 'oxygen').value), 4, 'dash did not spend exactly one oxygen');
+        assert.ok(Number(value(coil, 'headY').value) > beforeY, 'dash did not advance an extra grid cell');
+        assert.ok(value(coil, 'trailX').value.length > 0, 'movement did not record a renderable trail');
+    } finally { coil.quit(); clearStrayTimers(); }
+
+    const lift = await load(games.cinder_thrust);
+    try {
+        value(lift, 'flyerY').value = 0;
+        value(lift, 'flyerVY').value = 0;
+        const beforeFuel = Number(value(lift, 'fuel').value);
+        lift.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 10; i++) lift.runtime._step();
+        lift.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.ok(Number(value(lift, 'flyerVY').value) > 0, 'Up did not overcome cave gravity');
+        assert.ok(Number(value(lift, 'fuel').value) < beforeFuel, 'thrust did not consume fuel');
+        assert.equal(Number(value(lift, 'rings').value), 0, 'run began with phantom rings');
+        assert.equal(Number(value(lift, 'hearts').value), 3, 'run began with damaged health');
+    } finally { lift.quit(); clearStrayTimers(); }
 });
 
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {

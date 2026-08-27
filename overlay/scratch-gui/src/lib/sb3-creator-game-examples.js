@@ -4162,11 +4162,12 @@ SPRITE ReactorLogic:
     set falls to 0
     play sound "clear"`,
 
-    mooncoil_odyssey: `# Mooncoil Odyssey — grow a rover-snake across a cratered lunar grid.
-# Arrow keys steer. Collect moonfruit to lengthen the list-backed trail; avoid the roaming
-# bomb and your own recorded body. Space spends one oxygen unit on a two-cell lunar dash.
+    mooncoil_odyssey: `# Cratercoil — a lunar grid snake with oxygen-powered dashes.
+# GOAL: collect twelve moonblooms before three crashes into your trail or the rover bomb.
+# CONTROLS: Arrow keys steer. Space spends one oxygen to dash an extra grid cell.
 GLOBAL score
 GLOBAL lives
+GLOBAL blooms
 GLOBAL headX
 GLOBAL headY
 GLOBAL dirX
@@ -4179,20 +4180,36 @@ GLOBAL bombY
 GLOBAL oxygen
 GLOBAL i
 GLOBAL hitTail
+GLOBAL started
 LIST trailX
 LIST trailY
 
+STAGE:
+  BACKDROP intro art cratercoil/intro
+  BACKDROP moon art cratercoil/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable lives
+    hide variable blooms
+    hide variable oxygen
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to moon
+      broadcast "start cratercoil"
+
 SPRITE Mooncoil:
-  SHAPE circle 30 #9cf5df
-  COSTUME dash circle 36 #fff078
+  SHAPE art cratercoil/head
+  COSTUME dash art cratercoil/dash
+  COSTUME tail art cratercoil/tail
   SOUND fruit 960
   SOUND boom 120
   WHEN flag clicked:
-    show variable score
-    show variable lives
-    show variable oxygen
     set score to 0
     set lives to 3
+    set blooms to 0
     set oxygen to 5
     set headX to 0
     set headY to 0
@@ -4203,6 +4220,14 @@ SPRITE Mooncoil:
     delete all of trailX
     delete all of trailY
     go to x: headX * 24 y: headY * 24
+    hide
+    clear
+  WHEN I receive "start cratercoil":
+    show variable score
+    show variable lives
+    show variable blooms
+    show variable oxygen
+    switch costume to costume1
     show
   WHEN left arrow key pressed:
     IF dirX = 0 THEN:
@@ -4220,7 +4245,7 @@ SPRITE Mooncoil:
     IF dirY = 0 THEN:
       set dirX to 0
       set dirY to -1
-  WHEN flag clicked:
+  WHEN I receive "start cratercoil":
     FOREVER:
       add headX to trailX
       add headY to trailY
@@ -4249,6 +4274,7 @@ SPRITE Mooncoil:
       IF headX = foodX and headY = foodY THEN:
         change score by snakeLength
         change snakeLength by 1
+        change blooms by 1
         change oxygen by 1
         play sound "fruit"
         broadcast "new moonfruit"
@@ -4256,13 +4282,24 @@ SPRITE Mooncoil:
         change lives by -1
         play sound "boom"
         broadcast "coil reset"
+      clear
+      switch costume to tail
+      set i to 1
+      REPEAT length of trailX:
+        go to x: item i of trailX * 24 y: item i of trailY * 24
+        stamp
+        change i by 1
+      switch costume to costume1
       go to x: headX * 24 y: headY * 24
       IF lives < 1 THEN:
-        say ("Mooncoil score: " join score) for 3 seconds
+        say ("CRATERCOIL LOST — BLOOMS " join blooms) for 4 seconds
+        stop all
+      IF blooms = 12 THEN:
+        say ("TWELVE MOONBLOOMS SECURED — SCORE " join score) for 4 seconds
         stop all
       wait 0.16 seconds
   WHEN space key pressed:
-    IF oxygen > 0 THEN:
+    IF started = 1 and oxygen > 0 THEN:
       switch costume to dash
       change headX by dirX
       change headY by dirY
@@ -4280,9 +4317,11 @@ SPRITE Mooncoil:
     wait 0.5 seconds
 
 SPRITE Moonfruit:
-  SHAPE circle 22 #ff79c9
+  SHAPE art cratercoil/bloom
   WHEN flag clicked:
     broadcast "new moonfruit"
+    hide
+  WHEN I receive "start cratercoil":
     show
   WHEN I receive "new moonfruit":
     set foodX to pick random -8 to 8
@@ -4290,11 +4329,13 @@ SPRITE Moonfruit:
     go to x: foodX * 24 y: foodY * 24
 
 SPRITE RoverBomb:
-  SHAPE circle 28 #ff554f
+  SHAPE art cratercoil/bomb
   WHEN flag clicked:
     set bombX to 6
     set bombY to -4
     go to x: bombX * 24 y: bombY * 24
+    hide
+  WHEN I receive "start cratercoil":
     show
     FOREVER:
       wait 1.2 seconds
@@ -4309,21 +4350,14 @@ SPRITE RoverBomb:
       IF bombY < -5 THEN:
         set bombY to -5
       go to x: bombX * 24 y: bombY * 24
+`,
 
-SPRITE TrailEcho:
-  SHAPE circle 18 #4ea99a
-  WHEN flag clicked:
-    show
-    FOREVER:
-      IF length of trailX > 0 THEN:
-        go to x: item 1 of trailX * 24 y: item 1 of trailY * 24
-      wait 0.04 seconds`,
-
-    cinder_thrust: `# Cinder Thrust — rocket-boot through a volcanic cave where fuel is altitude.
-# Hold Up to thrust against gravity, Left/Right to steer. Touch cyan ledges to recharge,
-# skim ember rings for score, and avoid the moving basalt teeth.
+    cinder_thrust: `# Magma Lift — a ten-ring rocket-boot run through a moving volcanic cave.
+# GOAL: fly through ten ember rings before three crashes or falls.
+# CONTROLS: Hold Up to thrust; Left/Right steer. Cyan ledges recharge fuel.
 GLOBAL score
 GLOBAL hearts
+GLOBAL rings
 GLOBAL fuel
 GLOBAL flyerX
 GLOBAL flyerY
@@ -4331,18 +4365,34 @@ GLOBAL flyerVX
 GLOBAL flyerVY
 GLOBAL caveSpeed
 GLOBAL grounded
+GLOBAL invulnerable
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art magma-lift/intro
+  BACKDROP cave art magma-lift/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable hearts
+    hide variable rings
+    hide variable fuel
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to cave
+      broadcast "launch magma lift"
 
 SPRITE Cinder:
-  SHAPE triangle 38 #ffb14f
-  COSTUME thrust triangle 46 #fff26b
+  SHAPE art magma-lift/cinder
+  COSTUME thrust art magma-lift/thrust
   SOUND jet 540
   SOUND hit 140
   WHEN flag clicked:
-    show variable score
-    show variable hearts
-    show variable fuel
     set score to 0
     set hearts to 3
+    set rings to 0
     set fuel to 18
     set flyerX to -150
     set flyerY to 20
@@ -4350,9 +4400,15 @@ SPRITE Cinder:
     set flyerVY to 0
     set caveSpeed to 5
     set grounded to 0
+    set invulnerable to 0
     go to x: flyerX y: flyerY
+    hide
+  WHEN I receive "launch magma lift":
+    show variable score
+    show variable hearts
+    show variable rings
+    show variable fuel
     show
-  WHEN flag clicked:
     FOREVER:
       change flyerVY by -0.42
       IF key up arrow pressed? and fuel > 0 THEN:
@@ -4376,7 +4432,7 @@ SPRITE Cinder:
       IF flyerY > 155 THEN:
         set flyerY to 155
         set flyerVY to -2
-      IF flyerY < -155 THEN:
+      IF flyerY < -155 and invulnerable = 0 THEN:
         change hearts by -1
         broadcast "cinder reset"
       go to x: flyerX y: flyerY
@@ -4387,26 +4443,33 @@ SPRITE Cinder:
         change fuel by 0.3
         IF fuel > 20 THEN:
           set fuel to 20
-      IF touching BasaltTooth THEN:
+      IF touching BasaltTooth and invulnerable = 0 THEN:
         change hearts by -1
         play sound "hit"
         broadcast "cinder reset"
       IF hearts < 1 THEN:
-        say ("Cinder distance: " join score) for 3 seconds
+        say ("MAGMA CLAIMED THE RUN — RINGS " join rings) for 4 seconds
+        stop all
+      IF rings = 10 THEN:
+        say ("TEN EMBER RINGS CLEARED — SCORE " join score) for 4 seconds
         stop all
       change score by caveSpeed / 220
       wait 0.02 seconds
   WHEN I receive "cinder reset":
+    set invulnerable to 1
     set flyerX to -150
     set flyerY to 20
     set flyerVX to 0
     set flyerVY to 0
     wait 0.6 seconds
+    set invulnerable to 0
 
 SPRITE BasaltTooth:
-  SHAPE triangle 58 #632f48
+  SHAPE art magma-lift/tooth
   WHEN flag clicked:
     go to x: 230 y: pick random -90 to 120
+    hide
+  WHEN I receive "launch magma lift":
     show
     FOREVER:
       change x by 0 - caveSpeed
@@ -4418,10 +4481,12 @@ SPRITE BasaltTooth:
       wait 0.02 seconds
 
 SPRITE ChargeLedge:
-  SHAPE rect 100 18 #54e6df
+  SHAPE art magma-lift/ledge
   SOUND charge 900
   WHEN flag clicked:
     go to x: 120 y: -115
+    hide
+  WHEN I receive "launch magma lift":
     show
     FOREVER:
       change x by 0 - caveSpeed * 0.6
@@ -4433,10 +4498,12 @@ SPRITE ChargeLedge:
       wait 0.03 seconds
 
 SPRITE EmberRing:
-  SHAPE circle 38 #ff5b4f
+  SHAPE art magma-lift/ring
   SOUND ring 1080
   WHEN flag clicked:
     go to x: 200 y: 80
+    hide
+  WHEN I receive "launch magma lift":
     show
     FOREVER:
       change x by 0 - caveSpeed
@@ -4444,8 +4511,10 @@ SPRITE EmberRing:
         set x to 250
         set y to pick random -80 to 130
       IF touching Cinder THEN:
+        change rings by 1
         change score by 12
         change fuel by 2
+        change caveSpeed by 0.1
         set x to 260
         play sound "ring"
       wait 0.02 seconds`
