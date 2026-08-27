@@ -22,9 +22,16 @@ const server = createServer(async (req, res) => {
         if (path.endsWith('/')) path += 'index.html';
         const file = join(build, normalize(path));
         if (!file.startsWith(build)) throw new Error('escape');
+        // Read before the head goes out: writing 200 and then failing to read
+        // leaves the catch unable to send a 404, and that throw kills the gate.
+        const body = await readFile(file);
         res.writeHead(200, {'content-type': types[extname(file)] || 'application/octet-stream'});
-        res.end(await readFile(file));
-    } catch { res.writeHead(404); res.end('not found'); }
+        res.end(body);
+    } catch {
+        console.log(`404 ${req.url}`);
+        if (!res.headersSent) res.writeHead(404);
+        res.end('not found');
+    }
 });
 await new Promise(done => server.listen(port, done));
 
@@ -42,6 +49,10 @@ try {
     await page.addInitScript(() => {
         localStorage.clear();
         sessionStorage.clear();
+        // The starter-journeys overlay covers the page on a first visit and
+        // intercepts every click. Every other browser gate sets this; this one
+        // did not, and since CI does not run it the rot went unnoticed.
+        localStorage.setItem('bw-starter-v1-complete', '1');
         localStorage.setItem('bw-stage-circuit', '1');
         localStorage.setItem('bw-hide-stage', '1');
         localStorage.setItem('bw-debug-dock', 'solo');
@@ -54,9 +65,21 @@ try {
     // Code tab, then back to Blocks so the portal is active.
     const codeTab = page.locator('[role="tab"]', {hasText: 'Code'}).first();
     await codeTab.click();
-    await page.waitForTimeout(500);
-    const editor = page.locator('textarea').first();
-    await editor.fill(`DEVICE STC12C5A60S2
+    await page.waitForTimeout(2500);
+    // The editor is CodeMirror 6; it is only a textarea while the chunk loads,
+    // which is why waiting for one timed out rather than typing into it.
+    const cm = page.locator('.cm-content').first();
+    const type = async text => {
+        if (await cm.count()) {
+            await cm.click();
+            await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+            await page.keyboard.press('Delete');
+            await page.keyboard.insertText(text);
+        } else {
+            await page.locator('textarea').first().fill(text, {timeout: 8000});
+        }
+    };
+    await type(`DEVICE STC12C5A60S2
 CLOCK 11059200
 PIN led1 = P1.0 OUTPUT ACTIVE LOW
 

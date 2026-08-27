@@ -1773,12 +1773,33 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return rows;
         },
 
+        /** Does the attached target implement `name` at all? Only the 8051
+         *  target has setPc/wipe; every Cortex one (labwired, rp2040js,
+         *  stm32f0) and the AVRs do not, and the drawer used to offer both
+         *  buttons unconditionally — so pressing them threw a TypeError
+         *  instead of doing nothing or explaining itself.
+         *  @param {string} name a DebugTarget method.
+         *  @returns {boolean} true when it can be called. */
+        supports(name) { return !!(target && typeof target[name] === 'function'); },
+
         /** Move the PC. The TUI's `g`. */
-        setPc(addr) { return target ? target.setPc(addr) : { refused: 'nothing is loaded' }; },
+        setPc(addr) {
+            if (!target) return { refused: 'nothing is loaded' };
+            if (typeof target.setPc !== 'function') {
+                return { refused: 'this engine cannot move the program counter' };
+            }
+            return target.setPc(addr);
+        },
 
         /** Reset registers only, or reset and clear RAM. The TUI's R) and W). */
         resetCpu() { if (target) { target.reset(); trace.record(target, 'reset', {variables: runner.variables()}); emit(); } },
-        wipe() { if (target) { target.wipe(); trace.record(target, 'reset', {variables: runner.variables()}); emit(); } },
+        wipe() {
+            if (!target || typeof target.wipe !== 'function') return { refused: 'this engine cannot wipe memory' };
+            target.wipe();
+            trace.record(target, 'reset', {variables: runner.variables()});
+            emit();
+            return true;
+        },
 
         /** A breakpoint at a code ADDRESS, which blocks cannot express. */
         addressBreakpoints: () => [...addrBps.keys()],

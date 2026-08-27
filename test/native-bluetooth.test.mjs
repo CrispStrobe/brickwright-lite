@@ -480,20 +480,23 @@ describe('a scan that cannot start does not leave a dialog behind', () => {
 });
 
 describe('switching transport while connected is not a silent no-op', () => {
-    test('legoboostunified reconnects instead of returning on a changed transport', () => {
-        // The reported symptom was "set connection to Scratch Link, then
-        // connect — nothing happens". One way to get exactly that, with a
-        // working Scratch Link, is to have connected over Direct first: the
-        // guard saw a live peripheral and returned, logging only to a console
-        // no phone displays. Whether or not it was THE cause, a connect block
-        // that silently does nothing is wrong on its own terms.
-        const src = extensionSource('legoboostunified');
-        const guard = src.match(
-            /if \(this\._peripheral && this\._peripheral\.isConnected\(\)\) \{([\s\S]*?)\n        \}/);
-        assert.ok(guard, 'the already-connected guard is gone or reshaped — re-read this test');
-        assert.match(guard[1], /_connectionType === this\._connectionType/,
-            'the guard must compare transports, not just "am I connected"');
-        assert.match(guard[1], /disconnect\(\)/,
-            'a changed transport has to drop the old connection before reconnecting');
-    });
+    // The reported symptom was "set connection to Scratch Link, then connect —
+    // nothing happens". One way to get exactly that, with a working Scratch
+    // Link, is to have connected over Direct first: the guard saw a live
+    // connection and returned, logging only to a console no phone displays.
+    // Whether or not it was THE cause, a connect block that silently does
+    // nothing is wrong on its own terms — and both extensions that offer a
+    // transport menu had the identical guard, so both are checked.
+    for (const [id, field] of [['legoboostunified', '_peripheral'], ['legopoweredup', '_hub']]) {
+        test(`${id} reconnects instead of returning on a changed transport`, () => {
+            const src = extensionSource(id);
+            const guard = src.match(new RegExp(
+                `if \\(this\\.${field} && this\\.${field}\\.isConnected\\(\\)\\) \\{([\\s\\S]*?)\\n        \\}`));
+            assert.ok(guard, `${id}: the already-connected guard is gone or reshaped — re-read this test`);
+            assert.match(guard[1], /_connectionType === this\._connectionType/,
+                `${id}: the guard must compare transports, not just "am I connected"`);
+            assert.match(guard[1], /disconnect\(\)/,
+                `${id}: a changed transport has to drop the old connection before reconnecting`);
+        });
+    }
 });

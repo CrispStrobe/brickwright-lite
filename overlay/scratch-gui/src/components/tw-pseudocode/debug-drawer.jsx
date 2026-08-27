@@ -68,6 +68,8 @@ const L10N = {
         cols: 'Columns', regs: 'registers', ports: 'ports', timers: 'timers',
         stepInsn: 'Step instruction', over: 'Step over', out: 'Step out',
         setPc: 'Set PC', breakAt: 'Break at', reset: 'Reset', wipe: 'Wipe',
+        noSetPc: 'This engine cannot move the program counter',
+        noWipe: 'This engine cannot wipe memory',
         stepTen: 'Step ×10', clear: 'Clear',
         csvTitle: 'Export the trace as CSV — every row with time, registers, SFRs and captured variables',
         tenHint: 'Ten instructions, each one a row in the trace',
@@ -91,6 +93,8 @@ const L10N = {
         cols: 'Spalten', regs: 'Register', ports: 'Ports', timers: 'Timer',
         stepInsn: 'Ein Befehl', over: 'Überspringen', out: 'Heraus',
         setPc: 'PC setzen', breakAt: 'Halt bei', reset: 'Reset', wipe: 'Löschen',
+        noSetPc: 'Diese Engine kann den Programmzähler nicht setzen',
+        noWipe: 'Diese Engine kann den Speicher nicht löschen',
         stepTen: 'Schritt ×10', clear: 'Leeren',
         csvTitle: 'Trace als CSV exportieren — jede Zeile mit Zeit, Registern, SFRs und erfassten Variablen',
         tenHint: 'Zehn Befehle, jeder eine Zeile im Protokoll',
@@ -153,6 +157,11 @@ class DebugDrawer extends React.Component {
         const {runner} = this.props;
         const caps = (this.props.ui && this.props.ui.capabilities) || null;
         const can = kind => !caps || caps.steps.includes(kind);
+        // Set PC and Wipe are NOT capability flags — only the 8051 target
+        // implements them at all. These two buttons were ungated while their
+        // neighbours were, so on any other engine they threw a TypeError
+        // rather than being visibly unavailable.
+        const has = name => !runner.supports || runner.supports(name);
         const off = {...BTN, color: '#4a5568', cursor: 'not-allowed'};
         return (
             <div style={{display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 8}}>
@@ -173,14 +182,21 @@ class DebugDrawer extends React.Component {
                     onClick={() => runner.stepOut()}
                 >{this.tx('out')}</button>
                 <button
-                    style={BTN}
+                    style={has('setPc') ? BTN : off}
+                    disabled={!has('setPc')}
+                    title={has('setPc') ? undefined : this.tx('noSetPc')}
                     onClick={() => {
                         const a = this.askAddress(this.tx('setPc'), this.currentPc());
                         if (a !== null) runner.setPc(a);
                     }}
                 >{this.tx('setPc')}</button>
                 <button style={BTN} onClick={() => runner.resetCpu()}>{this.tx('reset')}</button>
-                <button style={BTN} onClick={() => runner.wipe()}>{this.tx('wipe')}</button>
+                <button
+                    style={has('wipe') ? BTN : off}
+                    disabled={!has('wipe')}
+                    title={has('wipe') ? undefined : this.tx('noWipe')}
+                    onClick={() => runner.wipe()}
+                >{this.tx('wipe')}</button>
                 <button
                     style={BTN}
                     title={this.tx('tenHint')}
