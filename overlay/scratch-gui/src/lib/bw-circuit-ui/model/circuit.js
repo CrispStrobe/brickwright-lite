@@ -62,9 +62,17 @@ function engineKindFor(kind) {
   // gpioFollowsPinStates drives its GPIO, and readPin works through it.
   // Kinds the engine does not know (older engine builds, machine-class
   // DIPs) keep collapsing to 'mcu' exactly as before.
+  // getDevice, not hasDevice: the engine has never exported a hasDevice, so
+  // `typeof eng.hasDevice === 'function'` was false on every call and EVERY
+  // passthrough kind collapsed to 'mcu' — the exact opposite of what the
+  // paragraph above describes. A 28c256 reached the solver as a generic MCU
+  // surface with no memory behaviour, so its data pins never drove: a control
+  // ROM read back nothing, silently. The discrimination the comment wants is
+  // real and still applies — stc_mcu and attiny13 have no registered model and
+  // still collapse.
   try {
     const eng = getEngine();
-    if (eng && typeof eng.hasDevice === 'function' && eng.hasDevice(kind)) return kind;
+    if (eng && typeof eng.getDevice === 'function' && eng.getDevice(kind)) return kind;
   } catch { /* engine not injected yet — construction-time default below */ }
   return 'mcu';
 }
@@ -89,6 +97,34 @@ export function resetIds() { _nextId = 1; }
  * @property {{part: string, terminal: string}} from
  * @property {{part: string, terminal: string}} to
  */
+
+/**
+ * Carry a stored terminal list forward to what the engine calls those pins now.
+ *
+ * A saved `terminals` array is a snapshot of the naming at write time, and
+ * bw-board renames pins — attiny88's `pa0` became `gnd2` when the PDIP-28's
+ * second ground needed a name. TERMINAL_ALIASES exists to migrate those files,
+ * but nothing consulted it here: the stored list was taken verbatim, so the old
+ * name reached validateNetlist and the ENTIRE circuit was rejected. It also
+ * disabled the wire-alias pass below, whose guard is
+ * `!p.terminals.includes(e.terminal)` — with the stale name still in the list
+ * that test is false and the endpoint is never rewritten either. 57 shipped
+ * attiny88 circuits loaded to an empty board this way.
+ *
+ * Conservative on purpose: rewrite only a name the engine no longer has AND an
+ * alias resolves to one it does. Anything else is left exactly as stored, so a
+ * kind the engine does not model keeps its list untouched.
+ */
+function migrateTerminals (kind, stored, params) {
+  const live = terminalsForKind(kind, params);
+  if (!Array.isArray(stored)) return live;
+  if (!Array.isArray(live) || live.length === 0) return stored;
+  return stored.map((t) => {
+    if (live.includes(t)) return t;
+    const resolved = resolveTerminal(kind, t, live);
+    return live.includes(resolved) ? resolved : t;
+  });
+}
 
 export class Circuit {
   /**
@@ -947,7 +983,7 @@ export class Circuit {
         // shares, so no downstream reader needs to re-learn this.
         params: (p.params && typeof p.params === 'object') ? p.params : {},
         rotation: p.rotation ?? 0,
-        terminals: Array.isArray(p.terminals) ? p.terminals : terminalsForKind(kind, p.params || {}),
+        terminals: migrateTerminals(kind, p.terminals, p.params || {}),
       };
     });
     // Wires arrive in two dialects. Current saves carry endpoint objects

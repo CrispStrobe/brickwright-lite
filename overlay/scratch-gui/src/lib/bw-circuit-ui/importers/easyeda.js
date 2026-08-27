@@ -162,6 +162,16 @@ const PINS_74HC138 = {
   Y4: 'y4b', Y5: 'y5b', Y6: 'y6b', Y7: 'y7b',
   VCC: 'vcc', GND: 'gnd',
 };
+// ...and the ENGINE spelling too, because OUR OWN writer emits it. A byName
+// pin carries the engine terminal uppercased, so a document this app exported
+// says `Y0B`/`G2AB` where a vendor library says `Y0`/`G2A`. Accepting only the
+// vendor spelling made every wire to an active-low '138 pin resolve to nothing
+// and vanish on re-import — the export drew it, the geometry was correct, and
+// the connection was simply not there afterwards. Round-tripping our own
+// output is the least a reader owes its writer.
+for (const engineName of Object.values(PINS_74HC138)) {
+  PINS_74HC138[engineName.toUpperCase()] = engineName;
+}
 
 /**
  * Part-number rules, matched against a component's DESCRIPTOR.
@@ -316,7 +326,7 @@ export const EASYEDA_RULES = [
 const LOGIC_74HC = new Set(['00', '02', '04', '08', '10', '11', '125', '132', '138', '14',
   '165', '20', '21', '244', '245', '27', '283', '32', '34', '373', '374', '4050', '595', '688',
   '73', '74', '75', '86', '93', '95']);
-const LOGIC_74LS = new Set(['04', '107', '157', '161', '173', '189', '32', '373']);
+const LOGIC_74LS = new Set(['04', '107', '157', '161', '173', '189', '193', '32', '373']);
 
 /**
  * A 74-series number to an engine kind, or null.
