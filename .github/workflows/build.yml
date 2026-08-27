@@ -408,6 +408,13 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: node scripts/verify-labwired-engine.mjs
 
+      # The debugger-only pane, which the note above says has regressed to a
+      # blank pane twice. This gate existed for it and was never run by CI — so
+      # it rotted until it could not get past its first click, and nobody knew.
+      - name: Browser gate — the debugger-only pane and its round trip
+        if: steps.playwright.outcome == 'success'
+        run: node scripts/verify-debugger-solo.mjs
+
       # The MakeCode importer lives behind a dynamic import(), so a webpack
       # misconfiguration would show up in a browser and in no unit test —
       # and the routing from the Open button is JSX that nothing else runs.

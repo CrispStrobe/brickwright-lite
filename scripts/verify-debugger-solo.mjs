@@ -53,6 +53,11 @@ try {
         // intercepts every click. Every other browser gate sets this; this one
         // did not, and since CI does not run it the rot went unnoticed.
         localStorage.setItem('bw-starter-v1-complete', '1');
+        // The optional right pane now ships MINIMIZED — a fresh Circuit
+        // workspace gives its width to the editor, and only an explicit saved
+        // preference opens it. Without this the solo pane exists but has no
+        // box, which read as "the pane is missing" rather than "it is closed".
+        localStorage.setItem('bw-right-pane-hidden', '0');
         localStorage.setItem('bw-stage-circuit', '1');
         localStorage.setItem('bw-hide-stage', '1');
         localStorage.setItem('bw-debug-dock', 'solo');
@@ -110,26 +115,53 @@ WHEN flag clicked:
     const hostBox = await host.boundingBox();
     check('solo pane is wider than the old 320px column', !!hostBox && hostBox.width > 340, hostBox ? `${Math.round(hostBox.width)}px` : 'no box');
 
-    // The stage header offers all four views, solo selected. Webpack hashes
-    // the icon filenames, so locate the buttons by their title text.
-    const soloBtn = page.locator('[title="Debugger only (full pane)"]');
-    check('stage header has the solo view button', await soloBtn.count() >= 1);
+    // The view button that produces this pane is now titled "Debugger" and
+    // sets dock='right'; stage-header treats 'right' and 'solo' identically
+    // (`if (dock === 'solo' || dock === 'right') return 'solo'`). The old
+    // "Debugger only (full pane)" title no longer exists, so asserting it was
+    // testing a name rather than the behaviour behind it.
+    const soloBtn = page.locator('button[title*="Debugger" i]:visible').first();
+    check('the view buttons offer the debugger pane', await soloBtn.count() >= 1);
 
-    // Switch to circuit-with-debugger: designer returns WITH the compact
-    // debugger (the instruments-panel one the owner asked to keep).
-    await page.locator('[title="Switch to debugger"]').first().click({force: true});
-    await page.waitForTimeout(2500);
-    const stripAfter = await host.locator('[data-panel-navigation]').count();
-    check('circuit view: designer panel strip is back', stripAfter >= 1, `${stripAfter} strips`);
-    const hostTextAfter = await host.innerText();
-    check('circuit view still carries the compact debugger', /Run|Step|Halt|PC/i.test(hostTextAfter));
+    // There is no longer a "circuit WITH debugger" view to switch to — the
+    // buttons are Circuit Designer (dock 'off'), Debugger (dock 'right'),
+    // micro:bit, Arcade, Controller and Scratch Stage. The old
+    // `[title="Switch to debugger"]` was the previous model's name for a view
+    // that no longer exists, so this round trip is rewritten against what the
+    // buttons actually do rather than deleted: the pane must still swap
+    // cleanly between the designer and the debugger, which is the property
+    // that regressed to a blank pane twice.
+    const circuitBtn = page.locator('button[title*="Circuit Designer" i]:visible').first();
+    await circuitBtn.click({force: true});
+    // dock 'off' is a BARE circuit by design — stage-header says so in as many
+    // words ("'off' → bare circuit"). So asserting the panel-navigation strip
+    // comes back was asserting the opposite of the intent, and polling for it
+    // page-wide for 15s only made the wrong expectation take longer to fail.
+    // What this view actually promises is the circuit WITHOUT the debugger.
+    let circuitShown = 0;
+    for (let i = 0; i < 20 && circuitShown === 0; i++) {
+        circuitShown = await page.locator('[data-circuit-toolbar], [data-circuit-view-switcher]').count();
+        if (circuitShown === 0) await page.waitForTimeout(500);
+    }
+    check('circuit view: the designer is showing', circuitShown >= 1, `${circuitShown} circuit chrome elements`);
+    const hostTextCircuit = await host.innerText();
+    check('circuit view: the debugger is not in the pane',
+        !/▶ Run|⏸ Pause/.test(hostTextCircuit), hostTextCircuit.slice(0, 90).replace(/\s+/g, ' '));
+    check('circuit view records dock=off', await page.evaluate(() =>
+        localStorage.getItem('bw-debug-dock')) === 'off');
 
-    // And back to solo via the header button — the round trip holds.
-    await soloBtn.first().click({force: true});
-    await page.waitForTimeout(1500);
+    // And back again — the round trip holds, which is the actual regression.
+    await soloBtn.click({force: true});
+    await page.waitForTimeout(2000);
     const stripSolo = await host.locator('[data-panel-navigation]').count();
-    check('solo again: designer strip gone', stripSolo === 0, `${stripSolo} strips`);
-    check('localStorage records the solo dock', await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'solo');
+    check('debugger again: designer strip gone', stripSolo === 0, `${stripSolo} strips`);
+    const hostTextBack = await host.innerText();
+    check('debugger again: the pane carries the debugger, not a blank column',
+        /Run|Step|Pause|Stop/i.test(hostTextBack), hostTextBack.slice(0, 90).replace(/\s+/g, ' '));
+    // 'right' is what the button sets; stage-header renders it as the solo
+    // view. Asserting 'solo' here was asserting the old dock name.
+    check('localStorage records the debugger dock', await page.evaluate(() =>
+        localStorage.getItem('bw-debug-dock')) === 'right');
 } finally {
     await browser.close();
     server.close();
