@@ -197,6 +197,23 @@ The one legitimate difference: `show text` leaves as `basic.showString`
 and comes back as `scroll text`, because MakeCode has no non-scrolling
 string block.
 
+## The imported game RUNS
+
+Compiling is a parse-level claim, and this repo's bar is higher — a
+project can compile into blocks that start no thread and change nothing.
+`test/makecode-arcade-runs.test.mjs` packages each translated game as a
+real `.sb3`, loads it into the real Scratch VM with lite's real
+extensions, pulls the green flag and steps it: threads must start, blocks
+must survive packaging, something must change, and the VM must report no
+block errors.
+
+Three real games pass, including the pong whose cross-sprite work is
+mostly refused — what is left still has to be a program, not a shell that
+throws.
+
+The device referee in `trace-oracle.js` cannot do this job: it models
+hardware programs and refuses motion/looks/sensing outright.
+
 ## The labwired revision
 
 The claim in wall 2 — "no permissive JS ARMv7E-M core" — was true of this
