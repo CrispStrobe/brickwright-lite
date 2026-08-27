@@ -582,8 +582,16 @@ export class BaseTranslator {
     command (node, indent, out) {
         if (this.arrayCommand(node, line => out.push(`${'  '.repeat(indent)}${line}`))) return;
         const name = this.path(node.callee);
-        if (name && this.functions.some(f => f.name === name)) {
-            out.push(`${'  '.repeat(indent)}${name}`);
+        const fn = name && this.functions.find(f => f.name === name);
+        if (fn) {
+            // `zeigen(3)` used to become `zeigen` — the arguments were
+            // dropped, and the function ran on whatever its parameters
+            // happened to hold. A call is matched TOKEN BY TOKEN against
+            // the DEFINE's template, so each argument has to be one token,
+            // which is what single() guarantees.
+            const pad = '  '.repeat(indent);
+            const args = (node.args || []).map(arg => this.single(arg, out, pad));
+            out.push(`${pad}${[name, ...args].join(' ')}`);
             return;
         }
         out.push(`${'  '.repeat(indent)}${this.note(`${name || 'call'}()`)}`);
