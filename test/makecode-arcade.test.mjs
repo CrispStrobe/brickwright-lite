@@ -265,3 +265,55 @@ test('the controller reads as the keyboard, both ways', () => {
     assert.match(code, /IF key right arrow pressed\? THEN:/, 'moveSprite drives the arrows');
     assert.deepEqual(unsupported, []);
 });
+
+test('animation frames arrive as costumes on the sprite they were attached to', async () => {
+    // The shape a real game uses is the ACTION api, and until this landed
+    // every frame was lost outright:
+    //     walk = animation.createAnimation(ActionKind.Walking, 100)
+    //     animation.attachAnimation(hero, walk)
+    //     walk.addAnimationFrame(img`…`)
+    const files = await projectOf('arcade-tilemap.hex');
+    const out = arcadeToPseudocode(files, {name: 'jumpy platformer'});
+
+    const hero = out.costumes.filter(c => c.sprite === 'hero');
+    assert.ok(hero.length > 10, `the hero's animations should arrive; got ${hero.length} costume(s)`);
+    assert.equal(hero[0].mode, 'replace', 'its own art is the costume');
+    assert.ok(hero.slice(1).every(c => c.mode === 'add'), 'the frames are added beside it');
+    assert.ok(hero.some(c => /^mainIdleLeft-1$/.test(c.name)),
+        'named for the animation they came from, so the user can tell them apart');
+});
+
+test('what the frames cannot bring with them is said once', async () => {
+    const files = await projectOf('arcade-tilemap.hex');
+    const out = arcadeToPseudocode(files, {name: 'jumpy platformer'});
+
+    const setAction = out.unsupported.filter(u => /setAction/.test(u));
+    assert.equal(setAction.length, 1, 'one explanation, not one refusal per call');
+    assert.match(setAction[0], /no named animation with its own timer/);
+
+    // An animation bound to a sprite this translation never created — a
+    // coin spawned inside a function, which becomes a clone — has nowhere
+    // to put its frames, and that is reported rather than dropped.
+    assert.ok(out.unsupported.some(u => /attached to no sprite/.test(u)));
+
+    // And the declarations themselves are silent: a refusal per
+    // addAnimationFrame would bury the note that matters.
+    assert.equal(out.unsupported.filter(u => /addAnimationFrame/.test(u)).length, 0);
+    assert.equal(out.unsupported.filter(u => /attachAnimation\(\)/.test(u)).length, 0);
+});
+
+test('a frame cap keeps a platformer out of the paint editor', () => {
+    const frame = n => `walk${n}.addAnimationFrame(img\`1\`)`;
+    const many = Array.from({length: 40}, (_, i) => [
+        `let walk${i} = animation.createAnimation(ActionKind.Walking, 100)`,
+        `animation.attachAnimation(hero, walk${i})`,
+        frame(i)
+    ].join('\n')).join('\n');
+    const out = arcadeToPseudocode(`
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+        ${many}
+    `);
+    const heroCostumes = out.costumes.filter(c => c.sprite === 'hero');
+    assert.ok(heroCostumes.length <= 25, `capped; got ${heroCostumes.length}`);
+    assert.ok(out.unsupported.some(u => /past 24/.test(u)), 'and the rest are named');
+});

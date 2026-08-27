@@ -138,8 +138,17 @@ gets the first four as costumes on one background sprite — a level
 renders to a few hundred kilobytes of SVG, and handing the paint editor
 eight of those helps nobody.
 
+Animations arrive as ARTWORK. The shape a real game uses is the action
+API (`createAnimation` / `attachAnimation` / `addAnimationFrame`), and
+every frame used to be lost outright; now each becomes a costume on the
+sprite it was attached to, named for the animation it came from. What
+does not come with it is the playing: Scratch has costumes but no named
+animation with its own timer, and a game binds several animations to one
+sprite under the same `ActionKind`, so `setAction` cannot be resolved to
+one of them. Said once, not once per call. Capped at 24 frames a sprite.
+
 What does not survive: effects and particles, the physics engine's tile
-COLLISIONS (the level is a picture, not terrain), animations, music —
+COLLISIONS (the level is a picture, not terrain), animation PLAYBACK, music —
 and, structurally, any script that moves a sprite other than its own,
 which Scratch has no way to express. Each is named in the returned `unsupported` list and marked
 `# unsupported` where it stood, and the status line says how many.
