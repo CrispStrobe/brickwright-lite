@@ -510,13 +510,16 @@ const requestDevice = async (options = {}) => {
     const picker = chooseDevice({
         onCancel: () => bleLog('info', 'ble', 'chooser cancelled')
     });
-    // Mark the chooser's promise handled the moment it exists. `await
-    // picker.promise` is several lines below, but the user can hit Cancel
-    // before the scan request has even resolved — and a promise that rejects
-    // with no handler attached YET is reported as unhandled, which on a phone
-    // means a spurious error in the very log we use to diagnose this path.
-    // The real rejection is still delivered to the await below.
-    picker.promise.catch(() => {});
+    // Handle the picker's rejection immediately. `discover` is awaited below,
+    // so without this wrapper a fast Cancel can reject picker.promise before
+    // requestDevice reaches its `await`. Node 24 correctly reports that gap as
+    // an unhandled rejection; in a webview it becomes a noisy console error.
+    // Turn both outcomes into values now, then restore the Web Bluetooth
+    // rejection at the public requestDevice boundary.
+    const pickerResult = picker.promise.then(
+        value => ({value}),
+        error => ({error})
+    );
     const offDiscover = session.on('didDiscoverPeripheral', params => {
         const device = {id: params.peripheralId, name: params.name, rssi: params.rssi};
         if (matchesFilters(device, filters)) picker.add(device);
@@ -533,7 +536,9 @@ const requestDevice = async (options = {}) => {
 
     try {
         await session.request('discover', {filters: services.length ? [{services}] : []});
-        const chosen = await picker.promise;
+        const result = await pickerResult;
+        if (result.error) throw result.error;
+        const chosen = result.value;
         bleLog('info', 'ble', 'chose', `${chosen.name} (${chosen.id})`);
         return new BluetoothDevice(chosen.id, chosen.name);
     } finally {

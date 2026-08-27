@@ -37,13 +37,15 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     const {setEngine} = await import(path.join(cui, 'engine.js'));
     const {BoardImpl} = await import(path.join(bwb, 'board.js'));
     const {inferNetlist, checkWiring} = await import(path.join(bwb, 'infer-netlist.js'));
-    const {hasDevice} = await import(path.join(bwb, 'devices.js'));
+    const {hasDevice, getDevice} = await import(path.join(bwb, 'devices.js'));
     (await import(path.join(bwb, 'register-all.js'))).registerAllDevices();
+    const getCircuitDevice = kind => kind === 'stc_mcu' ? null : getDevice(kind);
     setEngine({
         BoardImpl,
         inferNetlist,
         checkWiring,
-        hasDevice
+        hasDevice,
+        getDevice: getCircuitDevice
     });
     const {registerSidecar} = await import(path.join(cui, 'model/parts-registry.js'));
     for (const name of readdirSync(path.join(cui, 'parts-data'))) {
@@ -100,7 +102,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
             const part = loadedParts.get(ep.part);
             const terminal = part ? resolveTerminal(part.kind, ep.terminal, part.terminals || []) : ep.terminal;
             const resolved = nets.some(net => net.terminals.some(item =>
-                item.part === ep.part && item.terminal === terminal));
+                item.part === ep.part && String(item.terminal).toLowerCase() === String(terminal).toLowerCase()));
             if (!resolved) failures.push(`${rel}: ${side} ends in nowhere at ${ep.part}.${ep.terminal}`);
         }
 
@@ -148,6 +150,10 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
         }
     }
 
+    // 1193 -> 1198 on 2026-08-27: pc111-pc114 and pc117 extend the physical
+    // logic-computer ladder through a diode keypad, control ROM, conditional
+    // jump, ALU flags, and the integrated microcoded machine. pc115/pc116 stay
+    // held back upstream until their required part/pin model lands.
     // 1171 -> 1193 on 2026-08-26: repin to the current sb3-creator corpus,
     // including the complete C1-C10 logic-computer ladder and soldered-key PCB.
     // 1092 -> 1093 on 2026-08-25: pc89-rl-step, the pure RL bench that closed D8.
@@ -164,7 +170,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1193, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1198, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 

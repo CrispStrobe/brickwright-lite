@@ -593,16 +593,31 @@ class CircuitTab extends React.Component {
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
             const setEngine = ui.setEngine || (ui.default && ui.default.setEngine);
             if (typeof setEngine !== 'function') throw new Error('bw-circuit-ui setEngine export is unavailable');
-            // hasDevice lets the designer keep registered board kinds
+            // `stc_mcu` is the legacy arbitrary-package surface: shipped
+            // circuits legitimately use P5 and package pins absent from the
+            // registry's smaller concrete STC model. Returning that model
+            // makes bw-circuit-ui treat its terminal list as authoritative and
+            // disconnects those wires. Null deliberately selects the generic
+            // MCU boundary for this one kind; every functional model below
+            // (PS/2, SimpleVGA, memories, modern boards) still passes through.
+            const getCircuitDevice = kind => kind === 'stc_mcu' ? null : engine.getDevice(kind);
+            // getDevice lets the designer keep registered board kinds
             // (arduino_uno, attiny85, ...) as themselves in the engine
             // netlist instead of collapsing them to 'mcu' — power pins
-            // source, inputs read. Optional: older engines simply lack it.
+            // source, inputs read, and stateful PS/2/VGA faces exist. The
+            // registry contract returns the model, not only a boolean: the
+            // designer also derives authoritative terminal names from it.
+            // Keep hasDevice for older vendored UI builds, but getDevice is
+            // the current contract. Omitting it collapsed Aurora-65's PS/2
+            // and SimpleVGA parts into generic MCUs in the browser while the
+            // isolated tests (which injected getDevice) remained green.
             // The machine extractors ride the SAME injection: Build Machine
             // reads eng.extract6502Machine from getEngine(). They were wired
             // into the DRC (setExtractors, top of this file) but not into the
             // engine object, so every deployed Build Machine answered "no
             // retro CPU found" with the W65C02 seated in plain sight.
-            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring, hasDevice: engine.hasDevice, extract6502Machine, extractZ80Machine,
+            setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring,
+                hasDevice: engine.hasDevice, getDevice: getCircuitDevice, extract6502Machine, extractZ80Machine,
                 // The sweep instrument (SweepPanel): Kennlinien + Bode run
                 // these on an offline board copy. Same contract as the
                 // extractors above — if they are absent, the panel refuses

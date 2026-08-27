@@ -1,9 +1,9 @@
 # Devices across the modules — what exists, what is missing
 
-The goal is Arduino Uno, Arduino Nano, Raspberry Pi Pico and BBC micro:bit
-supported *throughout* BrickWright, beside the STC12 that everything was built
-for. This is the survey that scopes that, done by reading the code rather than
-the intentions, on 2026-08-09.
+This matrix now also tracks MakeCode Arcade, Adafruit PyBadge/PyBadge LC and
+generic SAMD51 beside Arduino, Pico, micro:bit and the original STC families.
+It distinguishes a software target from a physical board: “Arcade” is a
+160x120 game API; PyBadge is an ATSAMD51J19 board with a 160x128 TFT.
 
 The short version: **the compiler and runtime now cover more families, but not
 with equal fidelity.** Arduino AVR and RP2040 execution have separate MIT
@@ -19,11 +19,19 @@ GPIO/debug state, while MicroPython compilation and source symbols remain open.
 | **compiler** | `stc-compiler` | — | STC12 ×2, STC15, STC89, ATmega328P/168P, Arduino Uno/Nano, micro:bit |
 | **AST / dialect** | `stc-compiler/stc_pseudocode.py` | 2.9k lines | same nine, via `TARGETS` |
 | **blocks** | `overlay/scratch-vm/.../crispstrobe/stc12/` | 305 lines | pin menus are already device-neutral; the extension is named for the part |
-| **circuits** | `overlay/.../lib/bw-circuit-ui/` | 5.6k lines | **STC12 only** — one board model |
+| **circuits** | `overlay/.../lib/bw-circuit-ui/` | — | STC/AVR/Pico/micro:bit and many retro boards; PyBadge has a code-drawn Feather/STEMMA connection model |
 | **transpilers** | `overlay/.../lib/sb3-creator-c.js` | — | infers `stc12c5a60s2`, `stc15f2k60s2`, `stc89c52rc` from `#include` |
 | | `overlay/.../lib/sb3-creator-python.js` | — | **STC12 only** |
 | **code ⇄ AST** | `sb3-creator/src/utils/` | 17.7k lines | device C (8051 **and Arduino**), host C, Python, JavaScript |
 | **debugger** | `overlay/.../lib/bw-debug/`, `bw-board/` | — | 8051, ATmega328P, and RP2040 targets with per-device capabilities |
+| **game console** | `arcade-device-pane.jsx`, `crispstrobe/arcade` | — | MakeCode Arcade, PyBadge and PyBadge LC: display, eight controls, light, tilt where present, NeoPixels |
+
+Current boundary (2026-08-27): MakeCode micro:bit and Arcade artefacts import;
+micro:bit runs through the MicroPython simulator; translated Arcade games run
+through the Scratch renderer and console. PyBadge wiring and controls are
+modeled. Generating a new UF2 from a modified BrickWright game is still open,
+as is a generic SAMD51 instruction emulator. The UI must not label either as
+compiled hardware support until those paths exist.
 
 Two things that survey corrects, because both are stale in the CLAUDE.md files:
 

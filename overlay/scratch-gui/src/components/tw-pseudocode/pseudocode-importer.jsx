@@ -6,6 +6,7 @@ import gameExamples from '../../lib/sb3-creator-game-examples.js';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
+import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.js';
 
 // Keep locally-authored games outside the upstream-synchronized examples file.
 const examples = {...upstreamExamples, ...gameExamples};
@@ -47,6 +48,12 @@ const DEVICE_GROUPS = [
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
     ]},
+    { label: 'Arcade & SAMD51', core: 'samd51', devices: [
+        { id: 'arcade', label: 'MakeCode Arcade (160×120)', compile: false, emulator: 'arcade' },
+        { id: 'pybadge', label: 'Adafruit PyBadge', compile: false, emulator: 'arcade' },
+        { id: 'pybadge-lc', label: 'Adafruit PyBadge LC', compile: false, emulator: 'arcade' },
+        { id: 'samd51', label: 'ATSAMD51J19 (generic)', compile: false, emulator: null },
+    ]},
 ];
 const DEVICE_BY_ID = {};
 for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = { ...d, core: g.core, group: g.label };
@@ -59,8 +66,17 @@ const L10N = {
         loadExample: '📚 Load example…', loadExampleTitle: 'Load a built-in example',
         openFile: '📂 Open', openFileTitle: t => `Open a source file (${t})`,
         saveFile: '💾 Save', saveFileTitle: n => `Save this tab as ${n}`,
+        exportMakeCode: '📦 MakeCode source',
+        exportMakeCodeTitle: 'Download the original recovered MakeCode project files for the official editor or PXT CLI',
         openBad: e => `Don't know that file type (${e}).`,
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
+        mcReading: f => `Reading ${f}…`,
+        mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
+        mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
+        mcPartial: (f, n, k) => `Imported "${n}" from ${f}. ${k} thing(s) from MakeCode have no equivalent here; each is marked "# unsupported" in the code.`,
+        mcArcade: (f, n, s, c) => `Imported the Arcade game "${n}" from ${f}: ${s} sprite(s), ${c} costume(s). Press ${'\u21D2'} To blocks to build it.`,
+        mcNoSource: (f, k) => `${f} is a ${k} file with no project source embedded in it — nothing to import.`,
+        mcFailed: (f, e) => `Could not read ${f}: ${e}`,
         saveEmpty: 'Nothing to save — this tab is empty.',
         restored: t => `Restored your unsaved ${t}.`,
         loadCatalogTitle: 'Load a catalog example for this device',
@@ -162,8 +178,17 @@ const L10N = {
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
         openFile: '📂 Öffnen', openFileTitle: t => `Eine Quelldatei öffnen (${t})`,
         saveFile: '💾 Speichern', saveFileTitle: n => `Diesen Tab als ${n} speichern`,
+        exportMakeCode: '📦 MakeCode-Quellcode',
+        exportMakeCodeTitle: 'Die unveränderten, wiederhergestellten MakeCode-Projektdateien für den offiziellen Editor oder die PXT-CLI laden',
         openBad: e => `Unbekannter Dateityp (${e}).`,
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
+        mcReading: f => `${f} wird gelesen…`,
+        mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
+        mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
+        mcPartial: (f, n, k) => `„${n}" aus ${f} importiert. Für ${k} Sache(n) aus MakeCode gibt es hier keine Entsprechung; jede ist im Code mit „# unsupported" markiert.`,
+        mcArcade: (f, n, s, c) => `Arcade-Spiel „${n}" aus ${f} importiert: ${s} Sprite(s), ${c} Kostüm(e). Mit ${'\u21D2'} Zu Blöcken bauen.`,
+        mcNoSource: (f, k) => `${f} ist eine ${k}-Datei ohne eingebetteten Projekt-Quelltext — nichts zu importieren.`,
+        mcFailed: (f, e) => `${f} konnte nicht gelesen werden: ${e}`,
         saveEmpty: 'Nichts zu speichern — dieser Tab ist leer.',
         restored: t => `Nicht gespeicherter ${t} wiederhergestellt.`,
         loadCatalogTitle: 'Ein Katalog-Beispiel für dieses Gerät laden',
@@ -738,6 +763,15 @@ class PseudocodeImporter extends React.Component {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
         if (!file) return;
+        this._makeCodeProject = null;
+        // A compiled artefact from ANOTHER editor — a MakeCode .hex/.uf2/.png
+        // cartridge, or a MicroPython .hex — is not source we can read as
+        // text, but it is not opaque either: both formats carry the project
+        // inside them. That import is its own path.
+        if (isImportableArtefact(file.name)) {
+            this.openArtefactFile(file);
+            return;
+        }
         const lang = this.langForFile(file.name);
         if (!lang) {
             this.setState({status: this.L.openBad(file.name)});
@@ -756,6 +790,74 @@ class PseudocodeImporter extends React.Component {
             status: this.L.openDone(file.name, LANG_LABEL[lang] || lang)
         }));
         reader.readAsText(file);
+    }
+
+    /**
+     * Import a compiled artefact from another editor.
+     *
+     * Three outcomes, and the status line tells the user which one they
+     * got, because the difference matters to what they can do next:
+     * a MicroPython hex is a program our simulator RUNS; a MakeCode
+     * micro:bit project is source we can read and translate; a MakeCode
+     * Arcade game is translated into sprites and opens on the 160x120
+     * console surface; unsupported engine features remain explicitly listed.
+     *
+     * The importer is loaded on demand: it carries an LZMA decoder and a
+     * PNG decoder that no other part of the app needs, and nobody should
+     * pay for them until they open a .hex.
+     */
+    openArtefactFile (file) {
+        this.setState({status: this.L.mcReading(file.name)});
+        const reader = new FileReader();
+        reader.onload = async () => {
+            let res;
+            try {
+                const {importArtefact} = await import(
+                    /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+                res = await importArtefact(new Uint8Array(reader.result), {name: file.name});
+            } catch (err) {
+                this.setState({status: err && err.code === 'NO_EMBEDDED_SOURCE' ?
+                    this.L.mcNoSource(file.name, err.format) :
+                    this.L.mcFailed(file.name, (err && err.message) || String(err))});
+                return;
+            }
+            const unsupported = (res.unsupported || []).length;
+            const arcade = res.project.target === 'arcade';
+            this._makeCodeProject = res.kind === 'makecode' ? {
+                files: res.files, name: res.project.name || file.name.replace(/\.[^.]+$/, ''), target: res.project.target
+            } : null;
+            let status;
+            if (res.kind === 'micropython') {
+                status = this.L.mcPython(file.name, Object.keys(res.files).join(', '));
+            } else if (arcade) {
+                status = this.L.mcArcade(file.name, res.project.name,
+                    (res.sprites || []).length, (res.costumes || []).length);
+            } else {
+                status = unsupported ?
+                    this.L.mcPartial(file.name, res.project.name, unsupported) :
+                    this.L.mcMicrobit(file.name, res.project.name);
+            }
+            this.setState({
+                lang: res.lang,
+                // Same exclusivity openCodeFile keeps: one authored buffer, so
+                // no stale translation of a previous source can masquerade.
+                buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
+                    asm: '', micropython: '', [res.lang]: res.code},
+                // The game's artwork rides the same route as an SVG the user
+                // drops in themselves: compile() applies `uploads` to the
+                // sprites it just parsed, so the costumes land with the code.
+                uploads: (res.costumes || []).map(costume => ({
+                    sprite: costume.sprite,
+                    filename: `${costume.name}.svg`,
+                    svg: costume.svg,
+                    mode: costume.mode || 'replace'
+                })),
+                output: null,
+                status
+            });
+        };
+        reader.onerror = () => this.setState({status: this.L.mcFailed(file.name, 'read error')});
+        reader.readAsArrayBuffer(file);
     }
 
     /** What `Save` would call this tab's file. */
@@ -783,6 +885,29 @@ class PseudocodeImporter extends React.Component {
         a.href = url;
         a.download = name;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+
+    // Export the exact source recovered from an imported MakeCode artefact.
+    // This is deliberately not labelled as a BrickWright->UF2 compiler: edits
+    // made after translation are not reverse-translated into these files.
+    async exportMakeCodeSource () {
+        const project = this._makeCodeProject;
+        if (!project || !project.files) return;
+        const imported = await import(/* webpackChunkName: "jszip" */ 'jszip');
+        const JSZip = imported.default || imported;
+        const zip = new JSZip();
+        Object.entries(project.files).forEach(([name, source]) => zip.file(name, source));
+        zip.file('BRICKWRIGHT-IMPORT.txt',
+            `Recovered ${project.target} source from an imported MakeCode artefact.\n` +
+            'These are the original files, not a reverse translation of later BrickWright edits.\n' +
+            'Open the folder with the MakeCode Asset Explorer/PXT toolchain and compile for your exact board.\n');
+        const blob = await zip.generateAsync({type: 'blob'});
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${String(project.name || 'makecode-project').replace(/[^a-z0-9_-]+/gi, '-')}.zip`;
+        anchor.click();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
 
@@ -2335,9 +2460,9 @@ class PseudocodeImporter extends React.Component {
                                 it; Save writes whichever tab you are looking at. */}
                             <label style={{...csel, alignSelf: 'center', cursor: 'pointer',
                                 border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.openFileTitle(CODE_ACCEPT)} data-testid="bw-open-file">
+                                title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)} data-testid="bw-open-file">
                                 {this.L.openFile}
-                                <input type="file" accept={CODE_ACCEPT} style={{display: 'none'}}
+                                <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
                                     onChange={this.openCodeFile} />
                             </label>
                             <button type="button" onClick={this.saveCodeFile}
@@ -2347,6 +2472,11 @@ class PseudocodeImporter extends React.Component {
                                 data-testid="bw-save-file">
                                 {this.L.saveFile}
                             </button>
+                            {this._makeCodeProject ? <button type="button" onClick={() => this.exportMakeCodeSource()}
+                                style={{...csel, alignSelf: 'center', cursor: 'pointer', border: '1px solid #cbd5e1', background: '#f1f5f9'}}
+                                title={this.L.exportMakeCodeTitle} data-testid="bw-export-makecode-source">
+                                {this.L.exportMakeCode}
+                            </button> : null}
                             {this.currentDevice() ? this.renderCatalogControl(csel) : (
                                 <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
                                     style={{...csel, alignSelf: 'center'}} title={this.L.loadExampleTitle}

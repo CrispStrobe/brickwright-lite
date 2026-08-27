@@ -26,3 +26,9 @@ test('Pico wiring emits GP declarations without pretending it is executable', ()
     assert.equal(result.pins[0].where, 'GP0');
     assert.equal(result.pins[0].port, undefined);
 });
+
+test('PyBadge Feather wiring keeps the SAMD51 board identity', () => {
+    const result = circuit('pybadge', 'd13');
+    assert.equal(result.device, 'pybadge');
+    assert.equal(result.pins[0].where, 'D13');
+});

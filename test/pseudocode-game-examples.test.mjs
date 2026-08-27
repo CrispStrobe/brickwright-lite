@@ -903,7 +903,15 @@ test('parry timing and hydrofoil lane-boost controls work in the live Scratch VM
         await new Promise(resolve => setTimeout(resolve, 180));
         for (let i = 0; i < 12; i++) tidegate.runtime._step();
         tidegate.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
-        for (let i = 0; i < 12; i++) tidegate.runtime._step();
+        // The game's movement loop contains real timed waits and a glide. A
+        // fixed burst of synchronous VM steps can therefore run entirely
+        // while that thread is sleeping on a loaded CI worker. Keep the key
+        // down and exercise the scheduler until the observable lane change
+        // occurs, with a hard bound so a broken control still fails quickly.
+        for (let i = 0; i < 50 && Number(value(tidegate, 'lane').value) !== 1; i++) {
+            tidegate.runtime._step();
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
         tidegate.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
         assert.equal(Number(value(tidegate, 'lane').value), 1, 'Right did not select the next channel');
         await new Promise(resolve => setTimeout(resolve, 120));

@@ -136,9 +136,6 @@ const KNOWN_UNWIRED = new Map([
     ['arduino-sk-p13-touch-lamp', 'touch@D2 led@D3'],
     ['arduino-sk-p14-serial-pot', 'pot@A0 — circuit is uno+power only, no potentiometer'],
     ['arduino-sk-p15-hacking-buttons', 'opto@D2 — no optocoupler part'],
-    ['eater6502-full-build', 'led0@PA0..led4@PA4 unwired, while PA5/PA6/PA7 are wired to the '
-        + 'hd44780 rs/rw/e and declared as led5/led6/led7. A pin-purpose conflict, not an '
-        + 'omission. Lesson-named (machines-memory-maps, wave 7) per bw-lessons.'],
 ]);
 
 /** Affordance wired to a pad the program never declares. RATCHET — may only shrink. */
@@ -151,10 +148,7 @@ const KNOWN_UNREAD = new Map([
 ]);
 
 /** Affordance with no wires at all. RATCHET — may only shrink. */
-const KNOWN_UNCONNECTED = new Map([
-    ['eater6502-full-build:bargraph', 'bargraph carries zero wires while the program declares '
-        + 'eight LEDs on PA0-PA7. Same defect as the unwired entry above, seen from the part side.'],
-]);
+const KNOWN_UNCONNECTED = new Map([]);
 
 const declaredPins = (src) => [...src.matchAll(/^\s*PIN\s+([A-Za-z0-9_]+)\s*=\s*([A-Za-z0-9._]+)\s+([A-Z]+)/gm)]
     .map((m) => ({name: m[1], pad: m[2], mode: m[3]}));
