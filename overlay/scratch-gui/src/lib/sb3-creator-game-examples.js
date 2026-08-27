@@ -2105,7 +2105,7 @@ SPRITE LockGate:
     hide
   WHEN I receive "start tidegate rush":
     FOREVER:
-      go to x: pick random -1 to 1 * 110 y: 210
+      go to x: (pick random -1 to 1) * 110 y: 210
       IF pick random 1 to 4 = 1 THEN:
         switch costume to buoy
       ELSE:
@@ -2139,7 +2139,7 @@ SPRITE SurgeLock:
   WHEN I receive "start tidegate rush":
     FOREVER:
       wait pick random 4 to 7 seconds
-      go to x: pick random -1 to 1 * 110 y: 210
+      go to x: (pick random -1 to 1) * 110 y: 210
       show
       REPEAT UNTIL y position < -190:
         change y by 0 - speed

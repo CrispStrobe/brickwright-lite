@@ -598,6 +598,10 @@ test('Tidegate Rush has a finish line, boost resource, hazards, and three-gate s
     assert.match(games.lockstep_lagoon, /IF gates = 8 THEN:/);
     assert.match(games.lockstep_lagoon, /set surge to 3/);
     assert.match(games.lockstep_lagoon, /change charge by -1/);
+    assert.equal((games.lockstep_lagoon.match(/\(pick random -1 to 1\) \* 110/g) || []).length, 2,
+        'a gate spawner is not constrained to the three taught lanes');
+    assert.doesNotMatch(games.lockstep_lagoon, /pick random -1 to 1 \* 110/,
+        'lane multiplication is still inside the random upper bound');
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'course']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1242,6 +1246,9 @@ test('parry timing and hydrofoil lane-boost controls work in the live Scratch VM
 
     const tidegate = await load(games.lockstep_lagoon);
     try {
+        const lockGate = tidegate.runtime.targets.find(target => target.sprite.name === 'LockGate');
+        assert.ok([-110, 0, 110].includes(Math.round(lockGate.x)),
+            `first gate spawned between lanes at x=${lockGate.x}`);
         await new Promise(resolve => setTimeout(resolve, 180));
         for (let i = 0; i < 12; i++) tidegate.runtime._step();
         tidegate.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
