@@ -29,6 +29,22 @@
  */
 const RADIANS_TO_DEGREES = '57.29578';
 
+/**
+ * The core grammar has no bitwise operators, but the bundled `bitops`
+ * extension does, and the pseudocode spells them as words. Mapping to
+ * those beats the alternative: `set x to x & 255` parses to a
+ * set-variable block with NO VALUE AT ALL — silently, which is the one
+ * outcome this translator exists to prevent.
+ */
+const BITWISE = {
+    '&': 'bitand', '|': 'bitor', '^': 'bitxor',
+    '<<': 'shiftleft', '>>': 'shiftright',
+    // JavaScript's `>>>` is the unsigned shift; the extension has only the
+    // signed one. They agree on every non-negative value, which is every
+    // value a MakeCode program shifting a pixel mask or a colour byte has.
+    '>>>': 'shiftright'
+};
+
 /** Trim a computed number to something a human would have typed. */
 export const num = value => String(Math.round(value * 1000) / 1000);
 
@@ -42,6 +58,9 @@ export class BaseTranslator {
         this.unsupported = [];
         this.declared = new Set();
         this.temps = 0;
+        this.usesBitops = false;      // the `bitops` extension is needed
+        this.usesArrays = false;      // the `arrays` extension is needed
+        this.arrays = new Set();      // names known to hold an array
     }
 
     note (what, line) {
@@ -83,6 +102,10 @@ export class BaseTranslator {
             // as `maxSpeed * 0 - cos(a)` is `(maxSpeed*0) - cos(a)`, which
             // runs and is wrong.
             if (node.op === '-') return `(0 - ${this.expr(node.argument)})`;
+            if (node.op === '~') {
+                this.usesBitops = true;
+                return `(bitnot ${this.expr(node.argument)})`;
+            }
             return this.expr(node.argument);
         case 'Binary': {
             const op = node.op;
@@ -93,6 +116,11 @@ export class BaseTranslator {
             if (op === '<=') return `not (${this.expr(node.left)} > ${this.expr(node.right)})`;
             if (op === '>=') return `not (${this.expr(node.left)} < ${this.expr(node.right)})`;
             if (op === '%') return `${this.expr(node.left)} mod ${this.expr(node.right)}`;
+            if (BITWISE[op]) {
+                this.usesBitops = true;
+                if (op === '>>>') this.needsBitopsNote = true;
+                return `(${this.expr(node.left)} ${BITWISE[op]} ${this.expr(node.right)})`;
+            }
             return `${this.expr(node.left)} ${op} ${this.expr(node.right)}`;
         }
         case 'Member': {
@@ -100,9 +128,26 @@ export class BaseTranslator {
             // angle wants the number, not a variable called PI.
             if (node.object && node.object.type === 'Identifier' &&
                 node.object.name === 'Math' && node.name === 'PI') return '3.14159';
+            const arrayLength = node.name === 'length' && this.arrayName(node.object);
+            if (arrayLength) return `length of ${this.arrayRef(arrayLength)}`;
+            // A property read on a CALL (`a.filter(…).length`) must still
+            // evaluate the call, or its refusal never happens and the
+            // property name alone is emitted as if it were a variable.
+            if (node.object && node.object.type === 'Call') {
+                const inner = this.expr(node.object);
+                if (node.name === 'length') return `length of ${inner}`;
+                this.unsupported.push(`.${node.name} of a call result`);
+                return inner;
+            }
             const token = this.enumToken(node);
             if (token !== null) return /^-?\d+$/.test(token) ? token : `"${token}"`;
             return node.name;                            // a bare property read
+        }
+        case 'Index': {
+            const name = this.arrayName(node.object);
+            if (name) return `item ${this.expr(node.index)} of ${this.arrayRef(name)}`;
+            this.unsupported.push('indexing something that is not an array');
+            return this.expr(node.object);
         }
         case 'Call': return this.callExpression(node);
         case 'Template': return '"(image)"';
@@ -205,6 +250,10 @@ export class BaseTranslator {
                     this.functions.push({name: d.name, params: d.init.params, body: d.init.body});
                     continue;
                 }
+                if (d.isArray || (d.init && d.init.type === 'Array')) {
+                    this.declareArray(d.name, d.init, push);
+                    continue;
+                }
                 push(`set ${d.name} to ${d.init ? this.expr(d.init) : '0'}`);
             }
             return;
@@ -284,6 +333,18 @@ export class BaseTranslator {
         const push = line => out.push(pad + line);
 
         if (expr.type === 'Assignment') {
+            if (expr.op === '=' && expr.left.type === 'Index') {
+                const name = this.arrayName(expr.left.object);
+                if (name) {
+                    push(`set item ${this.expr(expr.left.index)} of ${this.arrayRef(name)} ` +
+                        `to ${this.expr(expr.right)}`);
+                    return;
+                }
+            }
+            if (expr.op === '=' && expr.left.type === 'Identifier' && expr.right.type === 'Array') {
+                this.declareArray(expr.left.name, expr.right, push);
+                return;
+            }
             const target = expr.left.type === 'Identifier' ? expr.left.name : this.expr(expr.left);
             this.declared.add(target);
             if (expr.op === '=') push(`set ${target} to ${this.expr(expr.right)}`);
@@ -319,7 +380,102 @@ export class BaseTranslator {
     }
 
     /** Reporter calls. Subclasses override; the base knows only maths. */
+
+    // ── arrays ──────────────────────────────────────────────────────────
+    //
+    // MakeCode arrays map to the bundled `arrays` extension rather than to
+    // Scratch lists, for one decisive reason: the extension indexes from 0,
+    // exactly as TypeScript does. Lists index from 1, so every `a[i]` would
+    // need a +1 that is invisible in the resulting blocks — and any index
+    // the program computed would be silently off by one.
+
+    /** Is this expression a reference to an array we know about? */
+    arrayName (node) {
+        if (!node || node.type !== 'Identifier') return null;
+        return this.arrays.has(node.name) ? node.name : null;
+    }
+
+    /** The array a `.push`/`.length`/`a[i]` is reaching into, or null. */
+    arrayOf (node) {
+        return node ? this.arrayName(node.object) : null;
+    }
+
+    /** `array "name"`, the way every rule in the grammar spells it. */
+    arrayRef (name) {
+        this.usesArrays = true;
+        return `array "${name}"`;
+    }
+
+    /** Register a name as an array and emit its declaration. */
+    declareArray (name, init, push) {
+        this.arrays.add(name);
+        this.declared.add(name);
+        this.usesArrays = true;
+        const items = init && init.type === 'Array' ? init.items || [] : [];
+        // `new array "a" = [1,2,3]` takes JSON, so only a literal-valued
+        // initialiser can ride along; anything computed is pushed after.
+        const literals = items.map(i => this.expr(i));
+        if (literals.length && literals.every(v => /^(-?\d+(\.\d+)?|"[^"]*")$/.test(v))) {
+            push(`new ${this.arrayRef(name)} = [${literals.join(', ')}]`);
+            return;
+        }
+        push(`new ${this.arrayRef(name)}`);
+        for (const item of items) push(`push ${this.expr(item)} to ${this.arrayRef(name)}`);
+    }
+
+    /** An array method used as a value, or null if it is not one. */
+    arrayValue (node) {
+        const name = this.arrayOf(node.callee);
+        if (!name) return null;
+        const ref = this.arrayRef(name);
+        const a = node.args || [];
+        const arg = i => this.expr(a[i]);
+        switch (node.callee.name) {
+        case 'pop': return `pop from ${ref}`;
+        case 'get': return `item ${arg(0)} of ${ref}`;
+        case 'indexOf': return `index of ${arg(0)} in ${ref}`;
+        case 'find':
+        case 'filter':
+        case 'map':
+        case 'some':
+        case 'every':
+            // These take a callback. The extension's own map/filter want a
+            // named function, and inlining an arrow here would invent a
+            // name the project does not have.
+            this.unsupported.push(`${node.callee.name}() on an array — it takes a function`);
+            return '0';
+        case 'reverse': return `reverse of ${ref}`;
+        case 'slice': return a.length === 2 ? `slice of ${ref} from ${arg(0)} to ${arg(1)}` : null;
+        case 'join': return `${ref} as text`;
+        default: return null;
+        }
+    }
+
+    /** An array method used as a statement, or false if it is not one. */
+    arrayCommand (node, push) {
+        const name = this.arrayOf(node.callee);
+        if (!name) return false;
+        const ref = this.arrayRef(name);
+        const a = node.args || [];
+        const arg = i => this.expr(a[i]);
+        switch (node.callee.name) {
+        case 'push': push(`push ${arg(0)} to ${ref}`); return true;
+        case 'insertAt': push(`insert ${arg(1)} at ${arg(0)} of ${ref}`); return true;
+        case 'set': push(`set item ${arg(0)} of ${ref} to ${arg(1)}`); return true;
+        case 'removeAt': push(`remove item ${arg(0)} of ${ref}`); return true;
+        // `shift()` removes the first element; as a statement the removed
+        // value is discarded, which is exactly `remove item 0`.
+        case 'shift': push(`remove item 0 of ${ref}`); return true;
+        case 'pop': push(`pop from ${ref}`); return true;
+        case 'removeElement': push(`remove item (index of ${arg(0)} in ${ref}) of ${ref}`); return true;
+        case 'sort': push(`sort of ${ref} ascending`); return true;
+        default: return false;
+        }
+    }
+
     callExpression (node) {
+        const arrayValue = this.arrayValue(node);
+        if (arrayValue !== null) return arrayValue;
         const name = this.path(node.callee);
         const a = node.args || [];
         const arg = i => this.expr(a[i]);
@@ -363,6 +519,7 @@ export class BaseTranslator {
 
     /** Commands. Subclasses override; the base can only report. */
     command (node, indent, out) {
+        if (this.arrayCommand(node, line => out.push(`${'  '.repeat(indent)}${line}`))) return;
         const name = this.path(node.callee);
         if (name && this.functions.some(f => f.name === name)) {
             out.push(`${'  '.repeat(indent)}${name}`);
