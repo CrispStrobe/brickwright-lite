@@ -1874,8 +1874,11 @@ SPRITE Ball:
         set bx to 0
         set by to 100
         set vy to 3
-      IF playerScore = 7 or cpuScore = 7 THEN:
-        say (("Final " join playerScore) join (" - " join cpuScore)) for 3 seconds
+      IF playerScore = 7 THEN:
+        say (("STORM COURT WON! FINAL " join playerScore) join (" - " join cpuScore)) for 3 seconds
+        stop all
+      IF cpuScore = 7 THEN:
+        say (("NIMBUS WINS — FINAL " join playerScore) join (" - " join cpuScore)) for 3 seconds
         stop all
       wait 0.02 seconds
 

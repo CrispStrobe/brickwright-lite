@@ -561,6 +561,8 @@ test('Nimbus Volley explains its scoring and implements an airborne spike', () =
     assert.match(games.cloud_court, /CONTROLS: A\/D move, W jumps, and S while airborne/);
     assert.match(games.cloud_court, /set spiking to 1/);
     assert.match(games.cloud_court, /change playerScore by 1/);
+    assert.match(games.cloud_court, /STORM COURT WON! FINAL/);
+    assert.match(games.cloud_court, /NIMBUS WINS — FINAL/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1190,6 +1192,14 @@ test('stealth movement and aerial-spike controls work in the live Scratch VM', a
         for (let i = 0; i < 4; i++) nimbus.runtime._step();
         assert.equal(Number(value(nimbus, 'spiking').value), 1, 'S in the air did not arm the spike');
         nimbus.postIOData('keyboard', {key: 's', isDown: false});
+        value(nimbus, 'playerScore').value = 6;
+        value(nimbus, 'bx').value = 100;
+        value(nimbus, 'by').value = -170;
+        value(nimbus, 'vx').value = 0;
+        value(nimbus, 'vy').value = -1;
+        for (let i = 0; i < 12; i++) nimbus.runtime._step();
+        assert.equal(Number(value(nimbus, 'playerScore').value), 7,
+            'landing the seventh ball on the rival court did not win the match');
     } finally {
         nimbus.quit();
         clearStrayTimers();
