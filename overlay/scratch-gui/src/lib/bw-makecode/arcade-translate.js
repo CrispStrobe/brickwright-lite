@@ -63,6 +63,40 @@ const VELOCITY_DIVISOR = 10;
  */
 const MAX_BACKDROPS = 4;
 
+/**
+ * How many animation frames to carry onto one sprite. A platformer with
+ * eleven animations of eight frames would hand the paint editor ninety
+ * costumes; the ones past the cap are named in the unsupported list.
+ */
+const MAX_ANIMATION_FRAMES = 24;
+
+/**
+ * Which variables a player's score and lives live in.
+ *
+ * MakeCode's plain `info.setScore()` IS player one, so player one shares
+ * the variables that API already uses and only players two to four get a
+ * suffix. A game that mixes both — and the pong here does — then reads
+ * and writes one set of variables rather than two that drift apart.
+ */
+/**
+ * Properties that only make sense on a sprite. A read of one of these on
+ * something we cannot resolve is reported rather than turned into a
+ * variable of that name — see the note in expr().
+ */
+const SPRITE_PROPERTIES = new Set([
+    'x', 'y', 'vx', 'vy', 'ax', 'ay',
+    'width', 'height', 'left', 'right', 'top', 'bottom',
+    'image', 'kind', 'lifespan', 'z'
+]);
+
+const playerVar = (base, player) => (player > 1 ? `${base}${player}` : base);
+
+/** `info.player3` → 3; `info` → 1. */
+const playerOf = path => {
+    const match = /^info\.player(\d)\b/.exec(path || '');
+    return match ? Number(match[1]) : 1;
+};
+
 /** MakeCode's controller buttons → the Scratch key names. */
 const CONTROLLER_KEYS = {
     up: 'up arrow', down: 'down arrow', left: 'left arrow', right: 'right arrow',
@@ -145,13 +179,24 @@ class ArcadeTranslator extends BaseTranslator {
      * in the project's .g.jres gallery.
      */
     artOf (node) {
+        const image = this.imageOf(node);
+        return image ? imageToSvg(image) : null;
+    }
+
+    /**
+     * The decoded image behind an art argument, not its SVG.
+     *
+     * Kept separate because the SIZE is worth knowing on its own: a game
+     * asks a sprite for its `width` to do bounds arithmetic, and since we
+     * decoded the picture to make the costume, that number is exact
+     * rather than a guess.
+     */
+    imageOf (node) {
         if (!node || node.type !== 'Template') return null;
         if (node.tag && /^assets\./.test(node.tag)) {
-            const named = this.assets[node.value.trim()];
-            return named ? imageToSvg(named) : null;
+            return this.assets[node.value.trim()] || null;
         }
-        const image = parseImageLiteral(node.value);
-        return image ? imageToSvg(image) : null;
+        return parseImageLiteral(node.value);
     }
 
     isBooleanValue (value) {
@@ -172,7 +217,22 @@ class ArcadeTranslator extends BaseTranslator {
         // a few, and reporting them as unsupported would bury the real
         // refusals under noise. A number is exactly what they are.
         case 'SpriteKind.create': return String(100 + (++this.kinds));
+        case 'animation.createAnimation':
+        case 'animation.attachAnimation':
+            return '0';                       // collected in pass 1, not a value
+
         default: {
+            // The per-player info API: `info.player2.hasLife()` and friends.
+            // Player one shares the plain API's variables by design, so a
+            // game that mixes both reads and writes one set, not two.
+            if (/^info\.player\d\./.test(name || '')) {
+                const player = playerOf(name);
+                const method = name.split('.').pop();
+                if (method === 'score') return playerVar('score', player);
+                if (method === 'life') return playerVar('lives', player);
+                if (method === 'hasLife') return `${playerVar('lives', player)} > 0`;
+            }
+
             // `controller.left.isPressed()` is `key left arrow pressed?`,
             // which is the second most common way an Arcade game reads
             // input after controller.moveSprite.
@@ -217,9 +277,37 @@ class ArcadeTranslator extends BaseTranslator {
                 if (node.name === 'x') return `(x position${suffix} / ${SCALE} + ${HALF_WIDTH})`;
                 if (node.name === 'y') return `(${HALF_HEIGHT} - y position${suffix} / ${SCALE})`;
                 if (node.name === 'vx' || node.name === 'vy') return `${owner.name}_${node.name}`;
+                // A sprite's size is a CONSTANT here: we decoded its
+                // picture to build the costume, so the number the game
+                // wants for its bounds arithmetic is exactly known.
+                if (node.name === 'width' && owner.width) return String(owner.width);
+                if (node.name === 'height' && owner.height) return String(owner.height);
+                // The edges follow from the centre and the size, in the
+                // Arcade units the surrounding arithmetic is written in.
+                if (owner.width && owner.height) {
+                    const x = mine ? `(x position / ${SCALE} + ${HALF_WIDTH})` :
+                        `(x position of ${owner.name} / ${SCALE} + ${HALF_WIDTH})`;
+                    const y = mine ? `(${HALF_HEIGHT} - y position / ${SCALE})` :
+                        `(${HALF_HEIGHT} - y position of ${owner.name} / ${SCALE})`;
+                    if (node.name === 'left') return `${x} - ${owner.width / 2}`;
+                    if (node.name === 'right') return `${x} + ${owner.width / 2}`;
+                    if (node.name === 'top') return `${y} - ${owner.height / 2}`;
+                    if (node.name === 'bottom') return `${y} + ${owner.height / 2}`;
+                }
                 this.unsupported.push(`${owner.name}.${node.name} — no stage equivalent`);
                 return '0';
             }
+        }
+        // A sprite property on something we could NOT resolve to a sprite —
+        // `collisionPaddle.width`, where the variable holds whichever paddle
+        // was hit — used to fall through to the base and become a variable
+        // literally named `width`. That reads as a working program and is
+        // not one.
+        if (node && node.type === 'Member' && SPRITE_PROPERTIES.has(node.name)) {
+            const owner = node.object.type === 'Identifier' ? node.object.name : 'a value';
+            this.unsupported.push(
+                `${owner}.${node.name} — a sprite held in a variable, which the stage cannot follow`);
+            return '0';
         }
         return super.expr(node);
     }
@@ -248,6 +336,32 @@ class ArcadeTranslator extends BaseTranslator {
         case 'info.setScore':
             push(`set score to ${this.single(a[0], out, pad)}`);
             return;
+        // The per-player forms write the same variables the plain API does,
+        // so a game that mixes both stays consistent.
+        case 'info.player1.setScore':
+        case 'info.player2.setScore':
+        case 'info.player3.setScore':
+        case 'info.player4.setScore':
+            push(`set ${playerVar('score', playerOf(name))} to ${this.single(a[0], out, pad)}`);
+            return;
+        case 'info.player1.changeScoreBy':
+        case 'info.player2.changeScoreBy':
+        case 'info.player3.changeScoreBy':
+        case 'info.player4.changeScoreBy':
+            push(`change ${playerVar('score', playerOf(name))} by ${this.single(a[0], out, pad)}`);
+            return;
+        case 'info.player1.setLife':
+        case 'info.player2.setLife':
+        case 'info.player3.setLife':
+        case 'info.player4.setLife':
+            push(`set ${playerVar('lives', playerOf(name))} to ${this.single(a[0], out, pad)}`);
+            return;
+        case 'info.player1.changeLifeBy':
+        case 'info.player2.changeLifeBy':
+        case 'info.player3.changeLifeBy':
+        case 'info.player4.changeLifeBy':
+            push(`change ${playerVar('lives', playerOf(name))} by ${this.single(a[0], out, pad)}`);
+            return;
         case 'info.changeScoreBy':
             push(`change score by ${this.single(a[0], out, pad)}`);
             return;
@@ -272,7 +386,22 @@ class ArcadeTranslator extends BaseTranslator {
             push(this.note(`${name}() — Arcade's music has no stage equivalent`));
             return;
 
+        // Animation declarations are ASSETS, gathered in pass 1 and turned
+        // into costumes; as statements they have nothing to emit, and a
+        // generic refusal for each would bury the one note that matters.
+        case 'animation.createAnimation':
+        case 'animation.attachAnimation':
+        case 'animation.setAction':
+        case 'animation.runImageAnimation':
+        case 'animation.stopAnimation':
+            return;
+
         default:
+            // `walkLeft.addAnimationFrame(img`…`)` is a method on a plain
+            // variable rather than a sprite, so it arrives here; pass 1
+            // already read its art.
+            if (node.callee && node.callee.type === 'Member' &&
+                node.callee.name === 'addAnimationFrame') return;
             super.command(node, indent, out);
         }
     }
@@ -399,8 +528,15 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     // ── pass 1: find the sprites, because everything else refers to them
     const registerSprite = (name, createCall) => {
-        const art = t.artOf(createCall.args[0]);
-        const sprite = {name, kind: kindOf(createCall.args[1]), velocity: false};
+        const image = t.imageOf(createCall.args[0]);
+        const art = image ? imageToSvg(image) : null;
+        const sprite = {
+            name,
+            kind: kindOf(createCall.args[1]),
+            velocity: false,
+            width: image ? image.width : null,
+            height: image ? image.height : null
+        };
         t.sprites.push(sprite);
         if (art) costumes.push({sprite: name, name: `${name}-art`, svg: art, mode: 'replace'});
         return sprite;
@@ -469,6 +605,66 @@ export function arcadeToPseudocode (files, opts = {}) {
      * does NOT: one inside a body is a spawn, and pass 2 turns it into a
      * clone.
      */
+    /**
+     * MakeCode animations, brought in as costumes.
+     *
+     * The shape a real game uses is the action API, not runImageAnimation:
+     *
+     *   walkLeft = animation.createAnimation(ActionKind.Walking, 100)
+     *   animation.attachAnimation(hero, walkLeft)
+     *   walkLeft.addAnimationFrame(img`…`)
+     *
+     * Scratch has costumes but no NAMED animation with its own timer, and
+     * a game here binds several animations to one sprite under the same
+     * ActionKind — so `setAction` cannot be resolved to one of them. What
+     * CAN be saved is the artwork, which is otherwise lost outright: every
+     * frame becomes a costume on the sprite it was attached to, and the
+     * switching is reported rather than invented.
+     */
+    const animations = new Map();          // variable name → {sprite, frames}
+
+    const animationFor = name => {
+        if (!animations.has(name)) animations.set(name, {sprite: null, frames: []});
+        return animations.get(name);
+    };
+
+    const collectAnimations = (node, seen = new Set()) => {
+        if (!node || typeof node !== 'object' || seen.has(node)) return;
+        seen.add(node);
+        if (node.type === 'Assignment' && node.left.type === 'Identifier' &&
+            node.right && node.right.type === 'Call' &&
+            t.path(node.right.callee) === 'animation.createAnimation') {
+            animationFor(node.left.name);
+        }
+        if (node.type === 'Declaration') {
+            for (const d of node.decls || []) {
+                if (d.init && d.init.type === 'Call' &&
+                    t.path(d.init.callee) === 'animation.createAnimation') {
+                    animationFor(d.name);
+                }
+            }
+        }
+        if (node.type === 'Call') {
+            const called = t.path(node.callee);
+            if (called === 'animation.attachAnimation') {
+                const sprite = t.resolveSprite(node.args[0]);
+                const variable = node.args[1] && node.args[1].type === 'Identifier' ? node.args[1].name : null;
+                if (sprite && variable) animationFor(variable).sprite = sprite.name;
+            }
+            // `walkLeft.addAnimationFrame(img`…`)`
+            if (node.callee && node.callee.type === 'Member' &&
+                node.callee.name === 'addAnimationFrame' &&
+                node.callee.object.type === 'Identifier') {
+                const art = t.artOf(node.args[0]);
+                if (art) animationFor(node.callee.object.name).frames.push(art);
+            }
+        }
+        for (const value of Object.values(node)) {
+            if (Array.isArray(value)) value.forEach(v => collectAnimations(v, seen));
+            else if (value && typeof value === 'object') collectAnimations(value, seen);
+        }
+    };
+
     const visitCalls = (node, seen = new Set()) => {
         if (!node || typeof node !== 'object' || seen.has(node)) return;
         seen.add(node);
@@ -506,6 +702,42 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
     walkForSprites(ast.body);
     ast.body.forEach(st => visitCalls(st));
+    // After the sprites, because an animation is bound to one by name.
+    ast.body.forEach(st => collectAnimations(st));
+
+    // Frames become costumes on the sprite they were attached to. An
+    // animation nothing attached has no home here, so it is reported.
+    const framesTaken = new Map();
+    let hasAnimationFrames = false;
+    for (const [variable, animation] of animations) {
+        if (!animation.frames.length) continue;
+        if (!animation.sprite) {
+            t.unsupported.push(`animation ${variable} — attached to no sprite, so its frames have no home`);
+            continue;
+        }
+        for (const [index, svg] of animation.frames.entries()) {
+            const taken = framesTaken.get(animation.sprite) || 0;
+            if (taken >= MAX_ANIMATION_FRAMES) {
+                t.unsupported.push(
+                    `animation frames for ${animation.sprite} past ${MAX_ANIMATION_FRAMES} — ` +
+                    'the rest are not carried over');
+                break;
+            }
+            framesTaken.set(animation.sprite, taken + 1);
+            hasAnimationFrames = true;
+            costumes.push({
+                sprite: animation.sprite,
+                name: `${variable}-${index + 1}`,
+                svg,
+                mode: 'add'
+            });
+        }
+    }
+    if (hasAnimationFrames) {
+        t.unsupported.push(
+            'animation.setAction() — the frames arrive as costumes, but Scratch has no named ' +
+            'animation with its own timer, and one ActionKind here covers several animations');
+    }
     for (const st of ast.body) {
         if (st.type === 'ExpressionStatement' && st.expr.type === 'Call') {
             for (const arg of st.expr.args || []) {
@@ -622,6 +854,27 @@ export function arcadeToPseudocode (files, opts = {}) {
             emitScript(owner, [`WHEN ${key} key pressed:`], handler.body);
             continue;
         }
+        // `info.playerN.onLifeZero(fn)` fires once when that player runs
+        // out. Polled here, and the script stops itself afterwards —
+        // without that it would re-run the body every frame, because
+        // lives do not come back.
+        if (/^info\.player\d\.onLifeZero$/.test(name || '') && handler) {
+            const variable = playerVar('lives', playerOf(name));
+            const owner = ownerOf(handler.body);
+            const lines = [
+                `# ${name} — fires once; polled here and then stopped.`,
+                'WHEN flag clicked:',
+                '  FOREVER:',
+                `    IF ${variable} = 0 THEN:`
+            ];
+            t.self = owner;
+            t.block(handler.body, 3, lines);
+            t.self = null;
+            lines.push('      stop this script');
+            scriptsFor.get(owner.name).push(lines);
+            continue;
+        }
+
         if (name === 'scene.setBackgroundImage') continue;    // handled in pass 1
         if (name === 'tiles.setTilemap' || name === 'scene.setTileMapLevel') continue;
         if (name && /^(tiles|scene)\.(set|place)/.test(name)) {

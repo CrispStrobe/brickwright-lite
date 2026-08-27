@@ -265,3 +265,153 @@ test('the controller reads as the keyboard, both ways', () => {
     assert.match(code, /IF key right arrow pressed\? THEN:/, 'moveSprite drives the arrows');
     assert.deepEqual(unsupported, []);
 });
+
+test('sprite dimensions and edges use the decoded image geometry', () => {
+    const {code, unsupported} = arcadeToPseudocode(`
+        let hero = sprites.create(img\`
+            1 1 1 1
+            1 1 1 1
+        \`, SpriteKind.Player)
+        game.onUpdate(function () {
+            if (hero.left < 0 || hero.right > 160) { hero.vx = 0 }
+            if (hero.top < 0 || hero.bottom > 120) { hero.vy = 0 }
+            if (hero.width == 4 && hero.height == 2) { info.changeScoreBy(1) }
+        })
+    `);
+
+    assert.match(code, /\(x position \/ 3 \+ 80\) - 2 < 0/);
+    assert.match(code, /\(x position \/ 3 \+ 80\) \+ 2 > 160/);
+    assert.match(code, /\(60 - y position \/ 3\) - 1 < 0/);
+    assert.match(code, /\(60 - y position \/ 3\) \+ 1 > 120/);
+    assert.match(code, /IF \(4 = 4\) and \(2 = 2\) THEN:/);
+    assert.deepEqual(unsupported, []);
+});
+
+test('animation frames arrive as costumes on the sprite they were attached to', async () => {
+    // The shape a real game uses is the ACTION api, and until this landed
+    // every frame was lost outright:
+    //     walk = animation.createAnimation(ActionKind.Walking, 100)
+    //     animation.attachAnimation(hero, walk)
+    //     walk.addAnimationFrame(img`…`)
+    const files = await projectOf('arcade-tilemap.hex');
+    const out = arcadeToPseudocode(files, {name: 'jumpy platformer'});
+
+    const hero = out.costumes.filter(c => c.sprite === 'hero');
+    assert.ok(hero.length > 10, `the hero's animations should arrive; got ${hero.length} costume(s)`);
+    assert.equal(hero[0].mode, 'replace', 'its own art is the costume');
+    assert.ok(hero.slice(1).every(c => c.mode === 'add'), 'the frames are added beside it');
+    assert.ok(hero.some(c => /^mainIdleLeft-1$/.test(c.name)),
+        'named for the animation they came from, so the user can tell them apart');
+});
+
+test('what the frames cannot bring with them is said once', async () => {
+    const files = await projectOf('arcade-tilemap.hex');
+    const out = arcadeToPseudocode(files, {name: 'jumpy platformer'});
+
+    const setAction = out.unsupported.filter(u => /setAction/.test(u));
+    assert.equal(setAction.length, 1, 'one explanation, not one refusal per call');
+    assert.match(setAction[0], /no named animation with its own timer/);
+
+    // An animation bound to a sprite this translation never created — a
+    // coin spawned inside a function, which becomes a clone — has nowhere
+    // to put its frames, and that is reported rather than dropped.
+    assert.ok(out.unsupported.some(u => /attached to no sprite/.test(u)));
+
+    // And the declarations themselves are silent: a refusal per
+    // addAnimationFrame would bury the note that matters.
+    assert.equal(out.unsupported.filter(u => /addAnimationFrame/.test(u)).length, 0);
+    assert.equal(out.unsupported.filter(u => /attachAnimation\(\)/.test(u)).length, 0);
+});
+
+test('the frame cap is per sprite, so one actor cannot consume another actor\'s costumes', () => {
+    const many = sprite => Array.from({length: 40}, (_, i) => [
+        `let ${sprite}Walk${i} = animation.createAnimation(ActionKind.Walking, 100)`,
+        `animation.attachAnimation(${sprite}, ${sprite}Walk${i})`,
+        `${sprite}Walk${i}.addAnimationFrame(img\`1\`)`
+    ].join('\n')).join('\n');
+    const out = arcadeToPseudocode(`
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+        let rival = sprites.create(img\`1\`, SpriteKind.Enemy)
+        ${many('hero')}
+        ${many('rival')}
+    `);
+    const heroCostumes = out.costumes.filter(c => c.sprite === 'hero');
+    const rivalCostumes = out.costumes.filter(c => c.sprite === 'rival');
+    assert.equal(heroCostumes.length, 25, 'hero art plus 24 animation frames');
+    assert.equal(rivalCostumes.length, 25, 'rival gets its own independent frame budget');
+    assert.equal(out.unsupported.filter(u => /past 24/.test(u)).length, 2,
+        'the omitted frames are reported once for each capped sprite');
+});
+
+test('the per-player info API writes the same variables the plain one does', () => {
+    // MakeCode's plain `info.setScore()` IS player one, so player one must
+    // share those variables — a game that mixes both forms (the pong does)
+    // would otherwise keep two scores that drift apart.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+        info.setScore(0)
+        info.player1.changeScoreBy(1)
+        info.player2.setScore(5)
+        game.onUpdate(function () {
+            if (info.player2.hasLife()) { info.player2.changeLifeBy(-1) }
+            if (info.player1.hasLife()) { info.changeScoreBy(1) }
+        })
+    `);
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /set score to 0/);
+    assert.match(code, /change score by 1/, 'player one is the plain variable');
+    assert.match(code, /set score2 to 5/, 'and only the others get a suffix');
+    assert.match(code, /IF lives2 > 0 THEN:/, 'hasLife is a comparison, not a refusal');
+    assert.match(code, /IF lives > 0 THEN:/);
+});
+
+test('onLifeZero fires once, because lives do not come back', () => {
+    const {code} = arcadeToPseudocode(`
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+        info.player2.onLifeZero(function () { game.over() })
+    `);
+    assert.match(code, /IF lives2 = 0 THEN:/);
+    // Without this the body would re-run every frame for the rest of the game.
+    const body = code.slice(code.indexOf('IF lives2 = 0 THEN:'));
+    assert.match(body, /stop all[\s\S]*stop this script/);
+});
+
+test('a sprite knows its own size, because we decoded the picture', () => {
+    // The game does bounds arithmetic with `paddle.width`. We built that
+    // costume from a decoded image, so the number is exact rather than a
+    // guess — and the edges follow from the centre and the size, in the
+    // Arcade units the surrounding arithmetic is written in.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let paddle = sprites.create(img\`
+            . . . .
+            1 1 1 1
+        \`, SpriteKind.Player)
+        game.onUpdate(function () {
+            if (paddle.x > paddle.width) { paddle.x = paddle.left }
+        })
+    `);
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /\(x position \/ 3 \+ 80\) > 4/, 'width is the literal 4');
+    assert.match(code, /- 2\b/, 'and left is the centre minus half of it');
+});
+
+test('a sprite held in a variable is refused, not turned into one', () => {
+    // `collisionPaddle.width`, where the variable holds whichever paddle
+    // was hit, used to become a variable literally named `width`: a
+    // program that reads as working and is not. This is the failure mode
+    // the whole translator is written against.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let ball = sprites.create(img\`1\`, SpriteKind.Player)
+        let paddle = sprites.create(img\`2\`, SpriteKind.Food)
+        let hit: Sprite = null
+        game.onUpdate(function () {
+            // ball is mentioned first, so the script owns it and the write
+            // is legal — otherwise the cross-sprite refusal fires and the
+            // right-hand side is never even evaluated.
+            ball.vx = hit.width
+            hit = paddle
+        })
+    `);
+    assert.ok(unsupported.some(u => /hit\.width — a sprite held in a variable/.test(u)));
+    assert.doesNotMatch(code, /\bto width\b/, 'never a variable named after the property');
+});

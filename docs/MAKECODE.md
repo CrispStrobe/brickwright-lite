@@ -123,7 +123,10 @@ that used one, not only imported ones.
 `img` literals and `.g.jres` entries both. `game.onUpdate` → `WHEN flag
 clicked` + `FOREVER`. `sprites.onOverlap` → `IF touching <other>`.
 `controller.moveSprite` → arrow keys. `info.changeScoreBy` → a `score`
-variable. `sprite.vx/vy` → a per-frame motion loop. A mid-game
+variable, and the per-player API (`info.player2.hasLife()`,
+`onLifeZero`) → `score2`/`lives2` — player one shares the plain API's
+variables, because in MakeCode the plain API *is* player one and a game
+that mixes both would otherwise keep two scores that drift apart. `sprite.vx/vy` → a per-frame motion loop. A mid-game
 `sprites.create` → `create clone of <sprite>`, emitted *after* the
 positioning that precedes it, because a Scratch clone inherits the
 parent's state at the moment it is made. `scene.setBackgroundImage` → a
@@ -138,8 +141,17 @@ gets the first four as costumes on one background sprite — a level
 renders to a few hundred kilobytes of SVG, and handing the paint editor
 eight of those helps nobody.
 
+Animations arrive as ARTWORK. The shape a real game uses is the action
+API (`createAnimation` / `attachAnimation` / `addAnimationFrame`), and
+every frame used to be lost outright; now each becomes a costume on the
+sprite it was attached to, named for the animation it came from. What
+does not come with it is the playing: Scratch has costumes but no named
+animation with its own timer, and a game binds several animations to one
+sprite under the same `ActionKind`, so `setAction` cannot be resolved to
+one of them. Said once, not once per call. Capped at 24 frames a sprite.
+
 What does not survive: effects and particles, the physics engine's tile
-COLLISIONS (the level is a picture, not terrain), animations, music —
+COLLISIONS (the level is a picture, not terrain), animation PLAYBACK, music —
 and, structurally, any script that moves a sprite other than its own,
 which Scratch has no way to express. Each is named in the returned `unsupported` list and marked
 `# unsupported` where it stood, and the status line says how many.
