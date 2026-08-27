@@ -246,3 +246,22 @@ test('sprite kinds are numbers, not refusals', () => {
     `);
     assert.ok(!out.unsupported.some(u => /SpriteKind/.test(u)));
 });
+
+test('the controller reads as the keyboard, both ways', () => {
+    // moveSprite becomes arrow-key motion; isPressed becomes the key
+    // sensing block. Between them they cover how nearly every Arcade
+    // game reads input.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+        controller.moveSprite(hero, 100, 0)
+        game.onUpdate(function () {
+            if (controller.left.isPressed()) { hero.x += -2 }
+            if (controller.A.isPressed()) { hero.y += -5 }
+        })
+    `);
+    assert.match(code, /IF key left arrow pressed\? THEN:/);
+    assert.match(code, /IF key space pressed\? THEN:/, 'the A button is the space bar');
+    assert.match(code, /change y by 15/, "Arcade's y grows downwards and the stage's grows up");
+    assert.match(code, /IF key right arrow pressed\? THEN:/, 'moveSprite drives the arrows');
+    assert.deepEqual(unsupported, []);
+});
