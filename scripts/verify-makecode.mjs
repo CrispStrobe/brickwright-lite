@@ -152,8 +152,12 @@ try {
     // message template that grew a parameter its call site did not pass
     // renders the word "undefined" into the status line, and every other
     // check still passes.
+    // Scoped to the status SENTENCE, not the whole page: somewhere in a
+    // large app the word will legitimately appear, and a gate that cries
+    // wolf gets ignored.
+    const statusLine = (text.match(/[^\n]*sprite\(s\)[^\n]*/i) || [''])[0];
     check('no status line leaks an undefined interpolation',
-        !/\bundefined\b/.test(text), (text.match(/.{0,60}undefined.{0,30}/) || [''])[0].replace(/\s+/g, ' '));
+        !/\bundefined\b/.test(statusLine), statusLine.replace(/\s+/g, ' ').slice(0, 140));
     check('an Arcade game imports as sprites and costumes',
         /4 sprite\(s\)/i.test(text) && /4 (costume\(s\)|Kostüm\(e\))/i.test(text),
         (text.match(/.{0,40}sprite\(s\).{0,40}/i) || [''])[0].replace(/\s+/g, ' '));
