@@ -37,7 +37,12 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  */
 const KNOWN_UNWIRED = {
     // Passing, but unwatched — these will rot next unless wired in.
-    // (verify-bluetooth.mjs was here and is now in build.yml.)
+    // (verify-bluetooth.mjs was here and is now in build.yml. So are
+    // verify-microbit.mjs and verify-microbit-debug-toggle.mjs: both were
+    // listed FAILING and both failed for one reason — the starter-journeys
+    // backdrop swallowed every click, so each spent its whole timeout
+    // retrying the first one. One addInitScript each. Worth trying on the
+    // four still listed as timing out before rewriting a selector.)
     'verify-faceplate-blinkenrocket.mjs': 'passes (2026-08-27)',
     'verify-lego-hub-faces.mjs': 'passes (2026-08-27)',
     'verify-retro-console.mjs': 'passes (2026-08-27)',
@@ -51,8 +56,6 @@ const KNOWN_UNWIRED = {
     'verify-instruments-scroll.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-interaction.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-intro.mjs': 'FAILS (2026-08-27)',
-    'verify-microbit-debug-toggle.mjs': 'FAILS — timeout (2026-08-27)',
-    'verify-microbit.mjs': 'FAILS (2026-08-27)',
     'verify-schematic.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-ssd1306-face.mjs': 'FAILS — 0 ssd1306 case handlers in the built chunk (2026-08-27)',
     'verify-starter-journeys.mjs': 'FAILS — lesson search finds no Wave 1 topic (2026-08-27)',

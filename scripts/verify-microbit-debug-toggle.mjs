@@ -48,6 +48,15 @@ page.on('console', (m) => { if (m.type() === 'error') consoleErrs.push(m.text())
 const diag = [];
 page.on('console', (m) => { if (/\[bw-diag\]/.test(m.text())) { diag.push(m.text()); console.log('  ' + m.text()); } });
 
+// The starter-journeys overlay covers the page on a first visit and
+// intercepts every click. Every gate CI actually runs sets this; the ones
+// it does not run are where the rot collected.
+await page.addInitScript(() => {
+    try {
+        localStorage.setItem('bw-starter-v1-complete', '1');
+    } catch (e) { /* private mode: the overlay is the least of it */ }
+});
+
 await page.goto(URL_, { waitUntil: 'load' });
 // the VM rides the redux store (no window.vm in this GUI build)
 await page.waitForFunction(() => {
