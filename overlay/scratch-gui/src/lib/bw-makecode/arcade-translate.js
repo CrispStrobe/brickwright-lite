@@ -407,19 +407,16 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
 
     /**
-     * The backdrop becomes a SPRITE, not a Stage costume: the costume
-     * route the Code tab uses (`applyCustomSVG`) deliberately skips the
-     * Stage, and a full-screen sprite sent to the back looks the same
-     * and actually arrives.
-     */
-    /**
-     * Backdrop art: the first one becomes the sprite's costume, and every
-     * one after it is added beside it.
+     * Backdrop art: the first becomes the costume, the rest are added
+     * beside it.
      *
-     * A game usually has both a background image and one or more levels,
-     * and Scratch sprites hold many costumes — so they all arrive and the
-     * user can switch between them, rather than the second one being
-     * refused for having come second.
+     * The backdrop is a SPRITE and not a Stage costume because the route
+     * the Code tab uses (`applyCustomSVG`) deliberately skips the Stage —
+     * a full-screen sprite sent to the back looks the same and actually
+     * arrives. And a game usually has both a background image and one or
+     * more levels, so they all land as costumes on it and the user can
+     * switch between them, rather than the second being refused for
+     * having come second.
      */
     const backdropArt = (label, svg) => {
         if (!t.sprite('background')) {
