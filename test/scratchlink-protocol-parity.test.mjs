@@ -148,3 +148,24 @@ test('the Web Bluetooth GATT blocklist is present and enforced', () => {
     assert.equal(checks.length, 4,
         `the blocklist is consulted at ${checks.length} call sites; the reference checks read, write, startNotifications and stopNotifications`);
 });
+
+test('message encoding follows the reference, including the default', () => {
+    // EncodingHelpers: an ABSENT encoding means "plain Unicode string", and
+    // only "base64" means base64. We defaulted to base64, which is the
+    // opposite — a plain-string write became a decode error or wrong bytes.
+    assert.match(BLE, /Some\("base64"\)\s*=>/, 'base64 must be an explicit arm, not the default');
+    assert.match(BLE, /None\s*=>\s*Ok\(msg\.as_bytes\(\)/,
+        'an absent encoding must send the string as UTF-8 bytes');
+    assert.match(BLE, /unsupported encoding/, 'anything else is refused');
+});
+
+test('the write type is chosen from the characteristic, not hardcoded', () => {
+    // "If the client specified a write type, honour that. Otherwise, if the
+    // characteristic claims to support writing without response, do that.
+    // Otherwise, write with response." Hardcoding without-response is right for
+    // the LEGO hubs and silently wrong for a characteristic that lacks it.
+    assert.match(BLE, /fn choose_write_type/, 'the write type must be derived');
+    assert.match(BLE, /WriteWithoutResponse/,
+        'the characteristic properties decide when the client did not say');
+    assert.match(BLE, /withResponse/, 'an explicit client choice still wins');
+});

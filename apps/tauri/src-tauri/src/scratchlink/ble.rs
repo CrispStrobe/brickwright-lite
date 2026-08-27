@@ -130,12 +130,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             check_blocklist(params, true)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             let data = decode_message(params)?;
-            let write_type = if params.get("withResponse").and_then(Value::as_bool).unwrap_or(false)
-            {
-                WriteType::WithResponse
-            } else {
-                WriteType::WithoutResponse
-            };
+            let write_type = choose_write_type(&h, uuid, params).await;
             let n = data.len();
             h.send_data(uuid, &data, write_type)
                 .await
@@ -153,7 +148,9 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             {
                 subscribe(uuid, params, out.clone()).await?;
             }
-            Ok(json!({ "message": B64.encode(&data), "encoding": "base64" }))
+            // The reference encodes a read with the encoding the CLIENT asked
+            // for; only notifications are unconditionally base64.
+            encode_message(&data, params.get("encoding").and_then(Value::as_str))
         }
         "startNotifications" => {
             check_blocklist(params, false)?;
@@ -545,15 +542,71 @@ pub fn device_matches(specs: &[ScanFilterSpec], d: &BleDevice) -> bool {
     specs.iter().any(|f| f.matches(d))
 }
 
+/// Decode a `message` the way the reference does (EncodingHelpers.decodeBuffer).
+///
+/// The default was INVERTED here. Upstream treats an ABSENT `encoding` as "the
+/// message is a Unicode string, send its UTF-8 bytes"; only `"base64"` means
+/// base64, and anything else is an error. We defaulted to base64, so a plain
+/// string arrived as either a decode failure or, worse, whatever bytes it
+/// happened to decode to.
 fn decode_message(params: &Value) -> Result<Vec<u8>, String> {
     let msg = params
         .get("message")
         .and_then(Value::as_str)
-        .ok_or("missing message")?;
-    match params.get("encoding").and_then(Value::as_str).unwrap_or("base64") {
-        "base64" => B64.decode(msg).map_err(|e| e.to_string()),
-        other => Err(format!("unsupported encoding: {other}")),
+        .ok_or("missing message property")?;
+    match params.get("encoding").and_then(Value::as_str) {
+        Some("base64") => B64.decode(msg).map_err(|_| "failed to decode Base64 message".to_string()),
+        None => Ok(msg.as_bytes().to_vec()),
+        Some(other) => Err(format!("unsupported encoding: {other}")),
     }
+}
+
+/// Encode a buffer for a reply, mirroring EncodingHelpers.encodeBuffer: with
+/// `base64` the object carries an `encoding` key, without one it carries a
+/// plain string and NO encoding key — a client reads that difference.
+fn encode_message(data: &[u8], encoding: Option<&str>) -> Result<Value, String> {
+    match encoding {
+        Some("base64") => Ok(json!({ "message": B64.encode(data), "encoding": "base64" })),
+        None => match std::str::from_utf8(data) {
+            Ok(text) => Ok(json!({ "message": text })),
+            Err(_) => Err("failed to transcode message to UTF-8".into()),
+        },
+        Some(other) => Err(format!("unsupported encoding: {other}")),
+    }
+}
+
+/// Which write the reference would use.
+///
+/// "If the client specified a write type, honour that. Otherwise, if the
+/// characteristic claims to support writing without response, do that.
+/// Otherwise, write with response." We hardcoded without-response, which is
+/// right for the LEGO hubs and wrong for any characteristic that does not
+/// support it — there the write silently goes nowhere.
+async fn choose_write_type(h: &tauri_plugin_blec::Handler, uuid: Uuid, params: &Value) -> WriteType {
+    if let Some(with_response) = params.get("withResponse").and_then(Value::as_bool) {
+        return if with_response { WriteType::WithResponse } else { WriteType::WithoutResponse };
+    }
+    let supports_without = async {
+        let addr = h.connected_device().await.ok()?.address;
+        let services = h.discover_services(&addr).await.ok()?;
+        let ch = services
+            .iter()
+            .flat_map(|s| s.characteristics.iter())
+            .find(|c| c.uuid == uuid)?;
+        Some(c_supports_write_without_response(ch))
+    }
+    .await;
+    // Unknown properties fall back to without-response: that is what this
+    // always did, so a lookup failure cannot make a working hub stop working.
+    match supports_without {
+        Some(false) => WriteType::WithResponse,
+        _ => WriteType::WithoutResponse,
+    }
+}
+
+fn c_supports_write_without_response(ch: &tauri_plugin_blec::models::Characteristic) -> bool {
+    ch.properties
+        .contains(tauri_plugin_blec::models::CharProps::WriteWithoutResponse)
 }
 
 /// Accept either a full 128-bit UUID string or a 16/32-bit Bluetooth short id
@@ -630,6 +683,56 @@ mod tests {
     const LEGO_SERVICE: &str = "00001623-1212-efde-1623-785feabcd123";
 
     // ── the two shipped extensions that our old filter got wrong ──────────
+
+    // ── message encoding, where our default was INVERTED ─────────────────
+
+    #[test]
+    fn an_absent_encoding_means_a_plain_string_not_base64() {
+        // EncodingHelpers.decodeBuffer: no `encoding` key means the message is
+        // a Unicode string and its UTF-8 bytes are sent. We defaulted to
+        // base64, so "hello" was either a decode error or whatever bytes it
+        // happened to decode to — wrong data written to a hub.
+        let p = json!({"message": "hello"});
+        assert_eq!(decode_message(&p).unwrap(), b"hello".to_vec());
+    }
+
+    #[test]
+    fn base64_is_decoded_when_it_is_asked_for() {
+        let p = json!({"message": "aGVsbG8=", "encoding": "base64"});
+        assert_eq!(decode_message(&p).unwrap(), b"hello".to_vec());
+    }
+
+    #[test]
+    fn an_unknown_encoding_is_refused_rather_than_guessed() {
+        let p = json!({"message": "68656c6c6f", "encoding": "hex"});
+        assert!(decode_message(&p).is_err());
+    }
+
+    #[test]
+    fn a_missing_message_is_an_error() {
+        assert!(decode_message(&json!({"encoding": "base64"})).is_err());
+    }
+
+    #[test]
+    fn a_reply_carries_the_encoding_key_only_when_base64() {
+        // encodeBuffer removes the key for a plain string, and a client reads
+        // that difference to know how to interpret `message`.
+        let b64 = encode_message(b"hello", Some("base64")).unwrap();
+        assert_eq!(b64["message"], "aGVsbG8=");
+        assert_eq!(b64["encoding"], "base64");
+
+        let plain = encode_message(b"hello", None).unwrap();
+        assert_eq!(plain["message"], "hello");
+        assert!(plain.get("encoding").is_none(), "a plain string carries no encoding key");
+    }
+
+    #[test]
+    fn non_utf8_bytes_cannot_be_returned_as_a_plain_string() {
+        // Silently replacing them would hand back data that is not what the
+        // characteristic holds.
+        assert!(encode_message(&[0xFF, 0xFE], None).is_err());
+        assert!(encode_message(&[0xFF, 0xFE], Some("base64")).is_ok());
+    }
 
     // ── the GATT blocklist we did not have at all ────────────────────────
 
