@@ -42,6 +42,21 @@ breadboards before soldering the real thing.
 - SoundFX creator, costume editor, German i18n.
 - The green flag starts Scratch scripts and the circuit simulation together.
 
+### Bring a MakeCode project in, and take one back out
+
+- Open a MakeCode `.hex`, `.uf2`, `.elf` or `.png` cartridge and get the
+  project, not the machine code: MakeCode embeds its own source in everything
+  it downloads. A **micro:bit** project becomes blocks; a **MakeCode Arcade**
+  game becomes a Scratch project — sprites with their real artwork, overlaps as
+  `touching`, the controller as the arrow keys, levels painted whole as
+  backdrops.
+- A micro:bit **MicroPython** `.hex` (python.microbit.org, uflash) needs no
+  translating at all — the simulator runs it as it is.
+- Import from a MakeCode share link, or save a project as a `.hex` that
+  makecode.microbit.org opens.
+- What has no equivalent here is listed rather than dropped: every refusal is
+  marked in the code and counted in the status line.
+
 ### Guided lessons
 
 - Three first-run journeys lead to a useful circuit, board, or LEGO project.
