@@ -123,7 +123,10 @@ that used one, not only imported ones.
 `img` literals and `.g.jres` entries both. `game.onUpdate` → `WHEN flag
 clicked` + `FOREVER`. `sprites.onOverlap` → `IF touching <other>`.
 `controller.moveSprite` → arrow keys. `info.changeScoreBy` → a `score`
-variable. `sprite.vx/vy` → a per-frame motion loop. A mid-game
+variable, and the per-player API (`info.player2.hasLife()`,
+`onLifeZero`) → `score2`/`lives2` — player one shares the plain API's
+variables, because in MakeCode the plain API *is* player one and a game
+that mixes both would otherwise keep two scores that drift apart. `sprite.vx/vy` → a per-frame motion loop. A mid-game
 `sprites.create` → `create clone of <sprite>`, emitted *after* the
 positioning that precedes it, because a Scratch clone inherits the
 parent's state at the moment it is made. `scene.setBackgroundImage` → a

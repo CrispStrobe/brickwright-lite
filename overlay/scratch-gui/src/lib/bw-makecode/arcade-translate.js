@@ -70,6 +70,22 @@ const MAX_BACKDROPS = 4;
  */
 const MAX_ANIMATION_FRAMES = 24;
 
+/**
+ * Which variables a player's score and lives live in.
+ *
+ * MakeCode's plain `info.setScore()` IS player one, so player one shares
+ * the variables that API already uses and only players two to four get a
+ * suffix. A game that mixes both — and the pong here does — then reads
+ * and writes one set of variables rather than two that drift apart.
+ */
+const playerVar = (base, player) => (player > 1 ? `${base}${player}` : base);
+
+/** `info.player3` → 3; `info` → 1. */
+const playerOf = path => {
+    const match = /^info\.player(\d)\b/.exec(path || '');
+    return match ? Number(match[1]) : 1;
+};
+
 /** MakeCode's controller buttons → the Scratch key names. */
 const CONTROLLER_KEYS = {
     up: 'up arrow', down: 'down arrow', left: 'left arrow', right: 'right arrow',
@@ -184,6 +200,17 @@ class ArcadeTranslator extends BaseTranslator {
             return '0';                       // collected in pass 1, not a value
 
         default: {
+            // The per-player info API: `info.player2.hasLife()` and friends.
+            // Player one shares the plain API's variables by design, so a
+            // game that mixes both reads and writes one set, not two.
+            if (/^info\.player\d\./.test(name || '')) {
+                const player = playerOf(name);
+                const method = name.split('.').pop();
+                if (method === 'score') return playerVar('score', player);
+                if (method === 'life') return playerVar('lives', player);
+                if (method === 'hasLife') return `${playerVar('lives', player)} > 0`;
+            }
+
             // `controller.left.isPressed()` is `key left arrow pressed?`,
             // which is the second most common way an Arcade game reads
             // input after controller.moveSprite.
@@ -258,6 +285,32 @@ class ArcadeTranslator extends BaseTranslator {
 
         case 'info.setScore':
             push(`set score to ${this.single(a[0], out, pad)}`);
+            return;
+        // The per-player forms write the same variables the plain API does,
+        // so a game that mixes both stays consistent.
+        case 'info.player1.setScore':
+        case 'info.player2.setScore':
+        case 'info.player3.setScore':
+        case 'info.player4.setScore':
+            push(`set ${playerVar('score', playerOf(name))} to ${this.single(a[0], out, pad)}`);
+            return;
+        case 'info.player1.changeScoreBy':
+        case 'info.player2.changeScoreBy':
+        case 'info.player3.changeScoreBy':
+        case 'info.player4.changeScoreBy':
+            push(`change ${playerVar('score', playerOf(name))} by ${this.single(a[0], out, pad)}`);
+            return;
+        case 'info.player1.setLife':
+        case 'info.player2.setLife':
+        case 'info.player3.setLife':
+        case 'info.player4.setLife':
+            push(`set ${playerVar('lives', playerOf(name))} to ${this.single(a[0], out, pad)}`);
+            return;
+        case 'info.player1.changeLifeBy':
+        case 'info.player2.changeLifeBy':
+        case 'info.player3.changeLifeBy':
+        case 'info.player4.changeLifeBy':
+            push(`change ${playerVar('lives', playerOf(name))} by ${this.single(a[0], out, pad)}`);
             return;
         case 'info.changeScoreBy':
             push(`change score by ${this.single(a[0], out, pad)}`);
@@ -740,6 +793,27 @@ export function arcadeToPseudocode (files, opts = {}) {
             emitScript(owner, [`WHEN ${key} key pressed:`], handler.body);
             continue;
         }
+        // `info.playerN.onLifeZero(fn)` fires once when that player runs
+        // out. Polled here, and the script stops itself afterwards —
+        // without that it would re-run the body every frame, because
+        // lives do not come back.
+        if (/^info\.player\d\.onLifeZero$/.test(name || '') && handler) {
+            const variable = playerVar('lives', playerOf(name));
+            const owner = ownerOf(handler.body);
+            const lines = [
+                `# ${name} — fires once; polled here and then stopped.`,
+                'WHEN flag clicked:',
+                '  FOREVER:',
+                `    IF ${variable} = 0 THEN:`
+            ];
+            t.self = owner;
+            t.block(handler.body, 3, lines);
+            t.self = null;
+            lines.push('      stop this script');
+            scriptsFor.get(owner.name).push(lines);
+            continue;
+        }
+
         if (name === 'scene.setBackgroundImage') continue;    // handled in pass 1
         if (name === 'tiles.setTilemap' || name === 'scene.setTileMapLevel') continue;
         if (name && /^(tiles|scene)\.(set|place)/.test(name)) {

@@ -317,3 +317,36 @@ test('a frame cap keeps a platformer out of the paint editor', () => {
     assert.ok(heroCostumes.length <= 25, `capped; got ${heroCostumes.length}`);
     assert.ok(out.unsupported.some(u => /past 24/.test(u)), 'and the rest are named');
 });
+
+test('the per-player info API writes the same variables the plain one does', () => {
+    // MakeCode's plain `info.setScore()` IS player one, so player one must
+    // share those variables — a game that mixes both forms (the pong does)
+    // would otherwise keep two scores that drift apart.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+        info.setScore(0)
+        info.player1.changeScoreBy(1)
+        info.player2.setScore(5)
+        game.onUpdate(function () {
+            if (info.player2.hasLife()) { info.player2.changeLifeBy(-1) }
+            if (info.player1.hasLife()) { info.changeScoreBy(1) }
+        })
+    `);
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /set score to 0/);
+    assert.match(code, /change score by 1/, 'player one is the plain variable');
+    assert.match(code, /set score2 to 5/, 'and only the others get a suffix');
+    assert.match(code, /IF lives2 > 0 THEN:/, 'hasLife is a comparison, not a refusal');
+    assert.match(code, /IF lives > 0 THEN:/);
+});
+
+test('onLifeZero fires once, because lives do not come back', () => {
+    const {code} = arcadeToPseudocode(`
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+        info.player2.onLifeZero(function () { game.over() })
+    `);
+    assert.match(code, /IF lives2 = 0 THEN:/);
+    // Without this the body would re-run every frame for the rest of the game.
+    const body = code.slice(code.indexOf('IF lives2 = 0 THEN:'));
+    assert.match(body, /stop all[\s\S]*stop this script/);
+});
