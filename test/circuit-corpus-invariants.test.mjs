@@ -157,6 +157,9 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // 1171 -> 1193 on 2026-08-26: repin to the current sb3-creator corpus,
     // including the complete C1-C10 logic-computer ladder and soldered-key PCB.
     // 1092 -> 1093 on 2026-08-25: pc89-rl-step, the pure RL bench that closed D8.
+    // 1198 -> 1199 on 2026-08-27: pc118-eight-bit-machine, which arrived with
+    // the sb3-creator gallery sync to 4c714d3 — one circuit.json, and the only
+    // new example in that sync.
     // 1170 -> 1171 on 2026-08-26: aurora65-workstation, the complete
     // OLED + PS/2 + VIA + SimpleVGA circuit/ROM/controller example.
     // 1094 -> 1170 on 2026-08-25: the stm32f030 retarget axis (sb3-creator
@@ -170,7 +173,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1198, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1199, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 

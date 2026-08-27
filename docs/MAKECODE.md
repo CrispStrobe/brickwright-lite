@@ -132,20 +132,31 @@ block carries the pattern as a **field**, and a field cannot hold a reporter at
 all. That is a limit of the block, not a gap in the grammar.
 
 **What is refused, and named.** `basic.setLedColor` is the single most common
-unsupported call in the corpus (18 of 53 reports). It is the Calliope's RGB LED,
+unsupported call in the corpus (18 of 48 reports). It is the Calliope's RGB LED,
 and the micro:bit display we model is single-colour. The report says that rather
 than printing `basic.setLedColor()`, because the reports ARE the product for
 everything we cannot translate. Same for the on-board motor driver and the
 microphone.
 
-**One grammar gap went upstream.** `led.plot(x, y)` with variable coordinates is
-the ordinary way these programmes write to the display, and it was the third most
-common refusal — not because the block cannot do it (X and Y are *inputs*, so they
-can hold reporters) but because only `plot x <digits> y <digits>` parsed;
-`plot x col y row on` matched no rule and produced no block. Fixed in
-sb3-creator [#4](https://github.com/CrispStrobe/sb3-creator/pull/4), the same
-shape as the `show text <reporter>` gap fixed in #3. The translator keeps refusing
-computed coordinates until that lands here through `npm run sync:sb3creator`.
+**Three gaps went upstream and have landed.** All three were found by this
+corpus and fixed in sb3-creator
+[#4](https://github.com/CrispStrobe/sb3-creator/pull/4), now vendored at pin
+`4c714d3`:
+
+- `led.plot(x, y)` with variable coordinates — the ordinary way these
+  programmes write to the display, and the third most common refusal. Not
+  because the block cannot do it (X and Y are *inputs*) but because only
+  `plot x <digits> y <digits>` parsed; `plot x col y row on` matched no rule
+  and produced no block. Same shape as the `show text <reporter>` gap fixed
+  in #3. **The refusal is gone: 53 → 48.**
+- Arrays never reached the device. The reporters emitted `_arrays.length(…)`
+  with nothing defining `_arrays` — a `NameError` at the first array read,
+  reported as `ok` — and the array *commands* lowered to `pass`. Both halves
+  mattered: a program that pushed to an array then read its length got the
+  length of an array nothing had written to.
+- `timer` on a device was always **0**. It became `scratch.timer()`, which the
+  generator's guard turns into 0. The micro:bit has `running_time()`. Found in
+  a Calliope stopwatch whose elapsed time was permanently zero.
 
 **A variable named `x` was not a variable.** `set x to 7` compiles to
 `motion_setx` — the Scratch *motion* block — and `change x by 1` to

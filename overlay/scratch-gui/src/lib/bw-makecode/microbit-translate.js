@@ -216,12 +216,12 @@ class MicrobitTranslator extends BaseTranslator {
             return;
         case 'led.plot':
         case 'led.unplot': {
-            const x = this.literalNumber(a[0]);
-            const y = this.literalNumber(a[1]);
-            if (x === null || y === null) {
-                push(this.note(`${name}() with computed coordinates — plot takes literal x and y`));
-                return;
-            }
+            // X and Y are inputs on the block, so a computed coordinate is
+            // fine — but only since sb3-creator#4. Before that the grammar
+            // read two literals and `plot x col y row on` matched no rule at
+            // all, producing no block, so this used to be refused.
+            const x = this.literalNumber(a[0]) ?? this.expr(a[0]);
+            const y = this.literalNumber(a[1]) ?? this.expr(a[1]);
             push(`plot x ${x} y ${y} ${name === 'led.plot' ? 'on' : 'off'}`);
             return;
         }
