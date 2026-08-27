@@ -64,6 +64,13 @@ jobs:
         run: npm run vendor
       - name: Integrate the Code tab (sb3-creator)
         run: node scripts/integrate.mjs
+      # Same static asset Vercel deploys, so the browser gate below runs against the
+      # shape users get rather than one where the heavy tier is silently missing.
+      # Non-fatal on purpose: if the release fetch fails, the engine is simply not
+      # offered — lib/labwired-engine.js already answers null instead of throwing,
+      # and the gate covers that degraded path too.
+      - name: Fetch the heavy simulation engine (labwired-wasm)
+        run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
       - name: Install
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Apply the scratch-vm overlay (built-in extensions)
