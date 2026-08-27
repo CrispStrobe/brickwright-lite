@@ -88,6 +88,67 @@ Also reachable as `#ble-debug` in the URL and as `window.__brickwrightDiagnostic
 - `cargo test` in `apps/tauri/src-tauri` covers the advice table and the two-dialect scan
   failure.
 
+## What the first device report established (2026-08-27)
+
+First run on a real iPhone. Two sentences came back: Direct now shows "Choose a
+Bluetooth device / Searching…", and Scratch Link "does seemingly NOTHING".
+
+**Read carefully, the first sentence rules out most of the stack.** `requestDevice`
+calls `getNativeStatus()` and RE-THROWS anything that is not "unknown method",
+and it does that *before* it draws the chooser. So a chooser on screen proves,
+without anyone testing further:
+
+- `ws://127.0.0.1:20111` opens from inside WKWebView — the transport is fine, and
+  App Transport Security is not blocking cleartext to loopback;
+- the Rust ScratchLink server is up and answering in the app;
+- `getStatus` came back `usable`, so CoreBluetooth is **authorized and powered
+  on** — the permission strings and the entitlement question are settled.
+
+It is tempting to read "Searching… forever" as "the socket died", and that would
+be wrong for this build: the socket is proven by the dialog existing at all.
+
+**Also ruled out by inspection, so nobody re-checks them:**
+
+- `NSAllowsLocalNetworking` IS in the shipped app. Verified by unzipping the IPA
+  CI actually built and reading `Payload/Brickwright.app/Info.plist` — not by
+  reading `Info.ios.plist` and assuming Tauri merges it (`src-tauri/gen` is
+  gitignored, so the generated copy on a dev machine proves nothing).
+- The protocol matches. The extension sends `discover`, `connect`,
+  `startNotifications`, `write` and listens for `didDiscoverPeripheral` and
+  `characteristicDidChange`; `ble.rs` implements every one of them.
+- The endpoint order is right — the extension dials `127.0.0.1:20111` first and
+  keeps the legacy host only as a fallback.
+- The server is not single-client: `serve_on` spawns a task per connection, so
+  the extension's socket and the shim's session can coexist.
+
+**One cause found and fixed, which produces exactly the reported symptom.**
+`connect()` returned in silence when a peripheral was already connected —
+without comparing transports. Connect over Direct, switch the menu to Scratch
+Link, press connect: the guard sees a live peripheral and returns, logging only
+to a console no phone displays. It now compares the requested transport with the
+live one and reconnects when they differ. Whether or not this was THE cause of
+the report, a connect block that silently does nothing is wrong on its own terms.
+
+**What is still open**, and what to read next time:
+
+The extension's own `DebugLogger` writes through `console.*`, and the diagnostics
+panel mirrors `console.*` — so its entire trace is already in the log: "Dialling
+Scratch Link at …", "✓ WebSocket connected", "Already connected", "Connection
+failed: …". On top of that, the diagnostics layer now wraps the WebSocket
+constructor for scratch-link endpoints and records the URL, open/error/close with
+the close code, and the JSON-RPC frames both ways.
+
+So the next report should not need guessing. In the log:
+
+- no "Dialling Scratch Link" line at all → the block never ran; suspect the
+  already-connected guard above, or a script that stopped earlier;
+- "dialling" then ERROR/CLOSE with no OPEN → the socket is refused, and the close
+  code says which way;
+- OPEN then a `→` frame with no matching `←` → the server received a request it
+  never answered, and the frame names the method;
+- frames both ways then nothing → the failure is above the transport, in the
+  extension's own chain.
+
 ## Still unverified, and only a device can settle it
 
 Nobody has run this on a physical iPhone/iPad with a hub. What the diagnostics panel is
