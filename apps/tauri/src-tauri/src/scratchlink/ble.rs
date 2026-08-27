@@ -62,6 +62,29 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
     if method == "ping" {
         return Ok(json!(42));
     }
+    // The two calls the OFFICIAL Scratch Link answers on its base Session, so
+    // every session type has them (scratch-link macOS/Sources/scratch-link/
+    // Session.swift). We had neither, which meant a client written against the
+    // real thing — and every client is — could ask us something it is entitled
+    // to ask and get "unknown method" back.
+    //
+    // `getVersion` reports the NETWORK PROTOCOL version, not ours: 1.2 is what
+    // the upstream Session declares, and answering with a Brickwright version
+    // here would be a different number wearing the same key.
+    if method == "getVersion" {
+        return Ok(json!({ "protocol": "1.2" }));
+    }
+    // `pingMe` replies "willPing" and THEN sends the client a `ping` request.
+    // The reply is the acknowledgement; the ping is a separate frame, which is
+    // why it is emitted rather than returned.
+    if method == "pingMe" {
+        let out = out.clone();
+        tauri::async_runtime::spawn(async move {
+            let msg = json!({ "jsonrpc": "2.0", "method": "ping", "params": {} });
+            let _ = out.send(Message::Text(msg.to_string())).await;
+        });
+        return Ok(json!("willPing"));
+    }
     // `getStatus` must answer even when the handler failed to initialise: that
     // IS the diagnosis, and swallowing it into a generic error is what made the
     // original failure invisible.
@@ -129,6 +152,16 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
         "startNotifications" => {
             let uuid = parse_uuid(params.get("characteristicId"))?;
             subscribe(uuid, params, out.clone()).await?;
+            Ok(Value::Null)
+        }
+        // The official BLESession has this and we did not, so a client that
+        // stopped listening — which any well-behaved one does before switching
+        // characteristics or disconnecting — got "unknown method" and had to
+        // treat a legitimate request as an error. Notifications then kept
+        // arriving for a characteristic nobody was reading any more.
+        "stopNotifications" => {
+            let uuid = parse_uuid(params.get("characteristicId"))?;
+            h.unsubscribe(uuid).await.map_err(|e| e.to_string())?;
             Ok(Value::Null)
         }
         // Non-standard; see the module header. The address is optional so the

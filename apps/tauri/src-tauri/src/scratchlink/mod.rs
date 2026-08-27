@@ -262,6 +262,28 @@ mod tests {
         assert_eq!(v["result"], 42);
     }
 
+    // The two calls the OFFICIAL Scratch Link answers on its base Session
+    // (scratch-link macOS/Sources/scratch-link/Session.swift), which every
+    // session type inherits. We answered neither until 2026-08-28, so a client
+    // written against the real thing could ask something it is entitled to ask
+    // and be told "unknown method". Both are answered before the BLE handler is
+    // touched, so these tests need no adapter.
+    #[tokio::test]
+    async fn get_version_reports_the_network_protocol_version() {
+        let v = roundtrip("/scratch/ble", r#"{"jsonrpc":"2.0","id":7,"method":"getVersion"}"#).await;
+        assert_eq!(v["id"], 7);
+        // 1.2 is upstream's NetworkProtocolVersion. This is deliberately NOT
+        // the app version: same key, different number, silently wrong.
+        assert_eq!(v["result"]["protocol"], "1.2");
+    }
+
+    #[tokio::test]
+    async fn ping_me_acknowledges_with_will_ping() {
+        let v = roundtrip("/scratch/ble", r#"{"jsonrpc":"2.0","id":8,"method":"pingMe"}"#).await;
+        assert_eq!(v["id"], 8);
+        assert_eq!(v["result"], "willPing");
+    }
+
     #[tokio::test]
     async fn bt_fallback_acks_requests() {
         let v = roundtrip(
