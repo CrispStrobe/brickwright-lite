@@ -410,6 +410,10 @@ test('Neon Relay teaches distinct jump and slide hazards and gates the run', () 
     assert.match(games.rooftop_relay, /go to x: 250 y: -96/);
     assert.match(games.rooftop_relay, /change rooftops by 1/);
     assert.match(games.rooftop_relay, /IF rooftops = 30 THEN:/);
+    assert.match(games.rooftop_relay, /IF touching Runner THEN:\n      broadcast "battery collected"\n    delete this clone/);
+    assert.match(games.rooftop_relay, /WHEN I receive "battery collected":\n    set overdrive to 120/);
+    assert.doesNotMatch(games.rooftop_relay, /IF touching Battery THEN:/,
+        'battery pickup still depends on the runner winning a scheduler race');
     const stage = project.targets.find(target => target.isStage);
     const runner = project.targets.find(target => target.name === 'Runner');
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'skyline']);
@@ -1007,6 +1011,13 @@ test('new merge and runner controls change live Scratch VM state', async () => {
 
     const relay = await load(games.rooftop_relay);
     try {
+        const scoreBeforeBattery = Number(stageValue(relay, 'score').value);
+        relay.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'battery collected'});
+        for (let i = 0; i < 8; i++) relay.runtime._step();
+        assert.equal(Number(stageValue(relay, 'score').value), scoreBeforeBattery + 5,
+            'battery pickup did not award exactly five points');
+        assert.ok(Number(stageValue(relay, 'overdrive').value) > 0,
+            'battery pickup did not activate overdrive');
         const beforeY = Number(stageValue(relay, 'runy').value);
         relay.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
         for (let i = 0; i < 12; i++) relay.runtime._step();

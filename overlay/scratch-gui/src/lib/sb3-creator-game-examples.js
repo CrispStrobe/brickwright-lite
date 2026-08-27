@@ -1014,11 +1014,6 @@ SPRITE Runner:
         ELSE:
           say (("RELAY DROPPED AT ROOFTOP " join rooftops) join " OF 30") for 3 seconds
           stop all
-      IF touching Battery THEN:
-        set overdrive to 120
-        change score by 5
-        play sound "boost"
-        wait 0.12 seconds
       IF overdrive > 0 THEN:
         change overdrive by -1
         change color effect by 10
@@ -1029,6 +1024,10 @@ SPRITE Runner:
       IF score > 39 THEN:
         set speed to 8
       wait 0.02 seconds
+  WHEN I receive "battery collected":
+    set overdrive to 120
+    change score by 5
+    play sound "boost"
 
 SPRITE Hazard:
   SHAPE art neon-relay/vent
@@ -1070,6 +1069,8 @@ SPRITE Battery:
       turn right 12 degrees
       change x by (0 - speed)
       wait 0.02 seconds
+    IF touching Runner THEN:
+      broadcast "battery collected"
     delete this clone`,
 
     twinwall: `# Rift Rally — a two-paddle crystal clear.
