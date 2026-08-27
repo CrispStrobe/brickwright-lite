@@ -75,6 +75,13 @@ export function parseImageLiteral (text) {
     return {width, height, pixels};
 }
 
+/**
+ * base64 → bytes, in whichever runtime this is.
+ *
+ * `atob` first and `Buffer` only as a named fallback: a bare `Buffer`
+ * reference in a browser bundle is the kind of thing that survives the
+ * build and fails on someone's machine.
+ */
 const decodeBase64 = text => {
     if (typeof atob === 'function') {
         const binary = atob(text);
@@ -82,7 +89,8 @@ const decodeBase64 = text => {
         for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
         return out;
     }
-    return new Uint8Array(Buffer.from(text, 'base64'));   // Node, for the tests
+    if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(text, 'base64'));
+    throw new Error('No base64 decoder in this runtime');
 };
 
 /**
