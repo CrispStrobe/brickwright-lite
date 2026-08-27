@@ -11,6 +11,7 @@ import { cHostRuntime, cShimName, C_HOST_INCLUDES } from './sb3-creator-chostrun
 // The LED cube's shift directions. Shared with the C reader so the two cannot
 // drift — they already did once, and the round trip lost the block.
 import { CUBE_DIRECTIONS, cubeDirectionIndex } from './cubeDirections.js';
+import {getVectorArt} from './sb3-creator-vector-art.js';
 
 // The emitted no-import JSON serializer (the sim firmware ships without
 // the json module — measured 2026-08-19). Shared by the marker debugger's
@@ -4455,6 +4456,18 @@ class SB3Creator {
         return { assetId, name, md5ext: `${assetId}.svg`, dataFormat: 'svg', rotationCenterX: 240, rotationCenterY: 180 };
     }
 
+    // Bake an authored SVG from the built-in vector-art registry into the SB3.
+    // The resulting project remains a completely ordinary, offline Scratch file.
+    buildArtCostume(artName, costumeName) {
+        const svg = getVectorArt(artName);
+        if (!svg) return null;
+        const {width, height} = this.svgDimensions(svg);
+        const assetId = this.generateAssetId();
+        this.assets.set(assetId, {type: 'svg', data: svg, filename: `${assetId}.svg`, metadata: {width, height}});
+        return {assetId, name: costumeName, md5ext: `${assetId}.svg`, dataFormat: 'svg',
+            rotationCenterX: width / 2, rotationCenterY: height / 2};
+    }
+
     // Build a plain geometric costume at true size. Kinds: rect/square/circle/ellipse/
     // triangle, or `polygon` with an arbitrary list of x,y points (custom SVG art).
     buildShapeCostume(color, kind, dims) {
@@ -4494,8 +4507,20 @@ class SB3Creator {
         if (target.isStage) { this.warn(lineIndex, 'SHAPE has no effect on the Stage (use BACKDROP)'); return; }
         const tokens = spec.split(/\s+/).filter(Boolean);
         const kind = (tokens[0] || '').toLowerCase();
+        if (kind === 'art') {
+            const costume = this.buildArtCostume(tokens[1], 'costume1');
+            if (!costume) {
+                this.warn(lineIndex, `Unknown vector art "${tokens[1] || ''}"`);
+                return;
+            }
+            const old = target.costumes[0];
+            if (old && old.assetId) this.assets.delete(old.assetId);
+            target.costumes[0] = costume;
+            target.costumes[0]._shapeSpec = spec.trim();
+            return;
+        }
         if (!['rect', 'square', 'circle', 'ellipse', 'triangle', 'polygon'].includes(kind)) {
-            this.warn(lineIndex, `Unknown SHAPE "${tokens[0]}" (use rect/square/circle/ellipse/triangle/polygon)`);
+            this.warn(lineIndex, `Unknown SHAPE "${tokens[0]}" (use art/rect/square/circle/ellipse/triangle/polygon)`);
             return;
         }
         const hex = tokens.find((t) => /^#[0-9a-fA-F]{6}$/.test(t));
@@ -4517,6 +4542,16 @@ class SB3Creator {
         if (target.isStage) {
             const tks = this.tokenizeCostumeSpec(spec);
             const name = this.unquote(tks[0] || 'backdrop');
+            if ((tks[1] || '').toLowerCase() === 'art') {
+                const bd = this.buildArtCostume(tks[2], name);
+                if (!bd) {
+                    this.warnings.push(`Unknown vector art "${tks[2] || ''}"`);
+                    return;
+                }
+                bd._spec = spec.trim();
+                target.costumes.push(bd);
+                return;
+            }
             const hex = tks.find((t) => /^#[0-9a-fA-F]{6}$/.test(t));
             const palette = ['#576065', '#4a6fa5', '#8a5a83', '#3d7068', '#a5794a'];
             const color = hex || palette[(target.costumes.length - 1) % palette.length];
@@ -4529,7 +4564,13 @@ class SB3Creator {
         const name = this.unquote(tokens[0] || `costume${target.costumes.length + 1}`);
         const kind = (tokens[1] || '').toLowerCase();
         let costume;
-        if (kind === 'tile' || kind === 'label') {
+        if (kind === 'art') {
+            costume = this.buildArtCostume(tokens[2], name);
+            if (!costume) {
+                this.warnings.push(`Unknown vector art "${tokens[2] || ''}"`);
+                return;
+            }
+        } else if (kind === 'tile' || kind === 'label') {
             const text = this.unquote(tokens[2] || '');
             const colors = tokens.slice(3).filter((t) => /^#[0-9a-fA-F]{6}$/.test(t));
             const bg = kind === 'tile' ? (colors[0] || '#cccccc') : 'none';
@@ -14640,6 +14681,15 @@ SB3Creator.STC_PARTS = {
     // end for these by definition, not merely not yet. Pins are P0-P20 and the
     // two buttons on a micro:bit.
     microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
+    // MakeCode Arcade is a software target (160x120); PyBadge and PyBadge LC
+    // are concrete ATSAMD51J19 boards. They intentionally have no C emitter:
+    // selecting one must never silently produce firmware for another ARM MCU.
+    arcade: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: false, arcade: true },
+    pybadge: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
+        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 5, accelerometer: 'lis3dh' },
+    'pybadge-lc': { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
+        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 1, accelerometer: null },
+    samd51: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true },
     spike: { core: 'spikepython', header: null, portModes: false, aux1T: false, adc: false },
     // core: 'rp2040' -- GP0-GP28, and generateC() emits freestanding Cortex-M0
     // bare metal (SIO GPIO, the 1 MHz TIMER as an ISR-free timebase, UART0,
