@@ -173,6 +173,14 @@ class ArcadeTranslator extends BaseTranslator {
         // refusals under noise. A number is exactly what they are.
         case 'SpriteKind.create': return String(100 + (++this.kinds));
         default: {
+            // `controller.left.isPressed()` is `key left arrow pressed?`,
+            // which is the second most common way an Arcade game reads
+            // input after controller.moveSprite.
+            const button = /^controller\.(\w+)\.isPressed$/.exec(name || '');
+            if (button && CONTROLLER_KEYS[button[1]]) {
+                return `key ${CONTROLLER_KEYS[button[1]]} pressed?`;
+            }
+
             // `ball.overlapsWith(paddle)` is `touching paddle` — the one
             // sprite method that reports rather than acts.
             if (node.callee && node.callee.type === 'Member' && node.callee.name === 'overlapsWith') {
