@@ -6,7 +6,16 @@ carrying the Brickwright "Code" tab + SoundFX + LEGO/utility extensions. The "ow
 distinct from mainline **Brickwright** (a TurboWarp fork, GPL-3.0 editor chrome).
 
 - **Repo:** `CrispStrobe/brickwright-lite` (PUBLIC → free unlimited Actions).
-  Auto-deploys to **https://brickwright-lite.vercel.app** (Vercel) + GH Pages CI.
+- **Vercel deploys CHECKPOINTS, not pushes** (ruling 2026-08-27). The live site
+  <https://brickwright-lite.vercel.app> updates on a **version tag**, on the
+  `release: X.Y.Z …` commit that carries it, or on an explicit `[deploy]`
+  marker — nothing else (`scripts/vercel-ignore.sh`). `deploy-daily.yml` no
+  longer runs on a cron; it is `workflow_dispatch` only, because a timed
+  refresh publishes whatever is on main that morning, which is not a checkpoint
+  anyone chose. **CI still runs on every push** — only the public URL is gated.
+  The reason is a hard daily deploy cap that six parallel lanes exhausted twice;
+  when it trips, every push reports `Deployment rate limited — retry in 24
+  hours` and the site quietly serves a stale build. GH Pages CI is unaffected.
 - **Work in your OWN worktree, and ship via PR** (ruling 2026-08-27; this line
   used to say "push directly to `main`, no PRs", which is why sessions kept
   doing exactly that):
