@@ -31,6 +31,7 @@ import {decodePng} from './png.js';
 import {extractMicroPython} from './micropython-hex.js';
 import {microbitToPseudocode} from './microbit-translate.js';
 import {arcadeToPseudocode} from './arcade-translate.js';
+import {fetchSharedProject, parseShareId} from './share.js';
 
 export {sniffFormat, unpackMakeCodeSource, describeProject} from './embedded-source.js';
 export {decodePng} from './png.js';
@@ -40,9 +41,115 @@ export {parseShareId, fetchSharedProject} from './share.js';
 export {microbitToPseudocode} from './microbit-translate.js';
 export {arcadeToPseudocode} from './arcade-translate.js';
 export {parseImageLiteral, parseJres, imageToSvg, ARCADE_PALETTE} from './arcade-assets.js';
+export {exportToMakeCode, projectToMakeCodeTs, makeCodeSourceHex} from './export.js';
 export {parseMakeCodeTs} from './ts-import.js';
 
 export {IMPORT_ACCEPT, isImportableArtefact} from './accept.js';
+
+/**
+ * Which editor a project came from, when nothing authoritative says so.
+ *
+ * A share link's `pxt.json` carries `targetVersions.target`, which is a
+ * VERSION NUMBER, not a target name — so for shares the answer has to
+ * come from the URL's host or, failing that, from the vocabulary the
+ * code actually uses. Both are better than guessing "microbit" and
+ * translating a game against the wrong table.
+ *
+ * @param {Object<string, string>} files
+ * @param {string} [hint] a URL or host the project came from
+ * @returns {string}
+ */
+export function inferTarget (files = {}, hint = '') {
+    if (/arcade/.test(hint)) return 'arcade';
+    if (/microbit/.test(hint)) return 'microbit';
+    if (/calliope/.test(hint)) return 'calliopemini';
+    const source = files['main.ts'] || '';
+    if (/\b(sprites\.create|scene\.|controller\.|tiles\.|info\.setScore)/.test(source)) return 'arcade';
+    if (/\b(basic\.|input\.on|pins\.digital|radio\.|led\.plot)/.test(source)) return 'microbit';
+    return 'unknown';
+}
+
+/**
+ * Shape a recovered project — from a file, a share link, anywhere — into
+ * what the Code tab takes. The translation choice lives HERE rather than
+ * in each caller so a share and a .hex of the same game cannot end up
+ * being treated differently.
+ *
+ * @param {Object<string, string>} files
+ * @param {object} [opts]
+ * @param {string} [opts.target]
+ * @param {string} [opts.name]
+ * @returns {object} the same shape importArtefact returns
+ */
+export function importProjectFiles (files = {}, opts = {}) {
+    const target = opts.target || inferTarget(files);
+    const name = opts.name || '';
+    const main = files['main.ts'] || files['main.py'] || '';
+
+    if (target === 'microbit' && files['main.ts']) {
+        const translated = microbitToPseudocode(files['main.ts'], {name});
+        return {
+            kind: 'makecode',
+            lang: 'pseudocode',
+            code: translated.code,
+            source: main,
+            unsupported: translated.unsupported,
+            costumes: [],
+            files,
+            project: {target, name, version: opts.version || ''},
+            note: 'microbit'
+        };
+    }
+    // An Arcade game becomes a PLAYABLE Scratch project: its sprite model
+    // maps onto the stage's closely enough to be worth translating, and
+    // its artwork becomes costumes. What does not survive is listed, not
+    // dropped — see arcade-translate.js.
+    if (target === 'arcade' && files['main.ts']) {
+        const translated = arcadeToPseudocode(files, {name});
+        return {
+            kind: 'makecode',
+            lang: 'pseudocode',
+            code: translated.code,
+            source: main,
+            unsupported: translated.unsupported,
+            costumes: translated.costumes,
+            sprites: translated.sprites,
+            files,
+            project: {target, name, version: opts.version || ''},
+            note: 'arcade'
+        };
+    }
+    return {
+        kind: 'makecode',
+        lang: files['main.py'] ? 'micropython' : 'javascript',
+        code: main,
+        source: main,
+        unsupported: [],
+        costumes: [],
+        files,
+        project: {target, name, version: opts.version || ''},
+        note: 'other'
+    };
+}
+
+/**
+ * Import from a MakeCode share link. Needs the network; the file
+ * importer is what works offline and in the packaged app.
+ *
+ * @param {string} input a share URL or bare id
+ * @param {object} [opts] passed through to fetchSharedProject
+ * @returns {Promise<object>} the same shape importArtefact returns
+ */
+export async function importShareLink (input, opts = {}) {
+    const shared = await fetchSharedProject(input, opts);
+    const result = importProjectFiles(shared.files, {
+        target: inferTarget(shared.files, String(input)),
+        name: shared.meta.name || shared.id
+    });
+    result.format = 'share';
+    result.shareId = shared.id;
+    return result;
+}
 
 /**
  * The main entry point in the file's own name.
@@ -90,61 +197,14 @@ export async function importArtefact (bytes, opts = {}) {
     const res = await unpackMakeCodeSource(bytes, {decodePng});
     const project = describeProject(res.meta);
     const files = res.files || {};
-    const main = files['main.ts'] || files['main.py'] || res.source;
-
-    // A micro:bit project goes the whole way: its TypeScript becomes
-    // pseudocode, which the rest of the app already turns into blocks,
-    // MicroPython and a simulator run. An Arcade project stops at its
-    // source, because the machine it describes is not one we have.
-    if (project.target === 'microbit' && files['main.ts']) {
-        const translated = microbitToPseudocode(files['main.ts'], {name: project.name || name});
-        return {
-            kind: 'makecode',
-            format: res.format,
-            lang: 'pseudocode',
-            code: translated.code,
-            source: main,
-            unsupported: translated.unsupported,
-            costumes: [],
-            files,
-            project: {target: project.target, name: project.name || name, version: project.version},
-            note: 'microbit'
-        };
-    }
-
-    // An Arcade game becomes a playable Scratch project: its sprite model maps
-    // onto the stage's closely enough to be worth translating, and its
-    // artwork becomes costumes. What does not survive is listed, not
-    // dropped — see arcade-translate.js.
-    if (project.target === 'arcade' && files['main.ts']) {
-        const translated = arcadeToPseudocode(files, {name: project.name || name});
-        return {
-            kind: 'makecode',
-            format: res.format,
-            lang: 'pseudocode',
-            code: translated.code,
-            source: main,
-            unsupported: translated.unsupported,
-            costumes: translated.costumes,
-            sprites: translated.sprites,
-            files,
-            project: {target: project.target, name: project.name || name, version: project.version},
-            note: 'arcade'
-        };
-    }
-
-    return {
-        kind: 'makecode',
-        format: res.format,
-        lang: files['main.py'] ? 'micropython' : 'javascript',
-        code: main,
-        source: main,
-        unsupported: [],
-        costumes: [],
-        files,
-        project: {target: project.target, name: project.name || name, version: project.version},
-        note: 'other'
-    };
+    const shaped = importProjectFiles(files, {
+        target: project.target === 'unknown' ? inferTarget(files) : project.target,
+        name: project.name || name,
+        version: project.version
+    });
+    shaped.format = res.format;
+    if (!files['main.ts'] && !files['main.py']) shaped.code = res.source;
+    return shaped;
 }
 
 export default importArtefact;

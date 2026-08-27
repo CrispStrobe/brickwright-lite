@@ -47,6 +47,7 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `microbit-translate.js` | MakeCode micro:bit → BrickWright pseudocode → blocks, MicroPython, the simulator |
 | `arcade-translate.js` | MakeCode Arcade → a playable Scratch project: target selection, sprites, clones, `touching`, score, velocity loops |
 | `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), the 16-colour palette → SVG costumes |
+| `export.js` | the other direction: blocks → MakeCode TypeScript, and a .hex carrying only the source embed — which is all MakeCode's importer reads |
 | `index.js` | one `importArtefact(bytes)` door, wired into the Code tab's 📂 Open button |
 
 Evidence: `test/makecode-import.test.mjs` runs against **three real MakeCode
@@ -76,8 +77,9 @@ unsupported APIs remain visible in the import report.
 | 0b | MicroPython .hex → `.py` → runs in the simulator | **done** (extraction; the "flash it into the sim" button is next) |
 | 1 | MakeCode **micro:bit** TypeScript → our blocks | **done** |
 | 2 | MakeCode **Arcade** → a Scratch project, artwork included | **done** |
-| 3 | import from a share link (needs network; the file importer is what works offline and in the packaged app) | **done** (`share.js`) |
-| 4 | export: emit `main.ts` + `pxt.json` and compile a modified BrickWright project to board UF2 | **not done**; do not confuse import/play support with physical deployment |
+| 3 | import from a share link (needs network; the file importer is what works offline and in the packaged app) | **done** — 🔗 MakeCode… in the Code tab |
+| 4 | export: a Brickwright project opens *in* MakeCode | **done** — ⬆ To MakeCode writes a .hex whose only content is the source embed, which is what MakeCode's importer actually reads |
+| 4b | export: compile a modified project to a board `.uf2` | **not done**, and not the same thing — that needs pxt's own compiler. Opening in MakeCode is not physical deployment |
 | 5 | actually emulate a MakeCode hex | see below |
 
 ## What the grammar will and will not take
@@ -124,6 +126,19 @@ engine's tile collisions, animations, music — and, structurally, any
 script that moves a sprite other than its own, which Scratch has no way
 to express. Each is named in the returned `unsupported` list and marked
 `# unsupported` where it stood, and the status line says how many.
+
+## The round trip is the test
+
+`test/makecode-export.test.mjs` takes each shipped micro:bit example,
+exports it to MakeCode TypeScript, imports it back through the
+translator, compiles that, and asserts no device block was lost. Six
+examples pass with nothing unsupported in either direction. A mapping
+added to one side of the table and forgotten on the other shows up there
+and nowhere else.
+
+The one legitimate difference: `show text` leaves as `basic.showString`
+and comes back as `scroll text`, because MakeCode has no non-scrolling
+string block.
 
 ## The labwired revision
 
