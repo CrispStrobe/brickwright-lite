@@ -238,3 +238,26 @@ test('the accept list and the extension test agree with each other', () => {
     assert.equal(isImportableArtefact('main.py'), false, 'source files still go to their tab');
     assert.equal(isImportableArtefact(''), false);
 });
+
+test('a project with a non-ASCII name is not truncated', async () => {
+    // The container's `headerSize + textSize` looks like the byte count of
+    // the decompressed text and is not: one German character in the
+    // project name is enough to make the sum short. Capping the LZMA
+    // decoder at it chopped the tail, and the symptom was "unterminated
+    // JSON" ten thousand lines from the cause. The stream's own size
+    // field is the one to trust.
+    const res = await unpackMakeCodeSource(fixture('arcade-umlaut.hex'));
+    assert.equal(describeProject(res.meta).name, 'SpriteBewegungHöhle1 - Copy');
+    assert.ok(res.files, 'the project text must still parse as JSON');
+    assert.equal(Object.keys(res.files).length, 7);
+    assert.ok(res.files['main.ts'].length > 100);
+    // The last file in the map is the one a truncated tail loses first.
+    assert.ok(res.source.trimEnd().endsWith('}'), 'the JSON is whole');
+});
+
+test('the whole non-ASCII project translates, artwork and all', async () => {
+    const res = await importArtefact(fixture('arcade-umlaut.hex'), {name: 'umlaut.hex'});
+    assert.equal(res.lang, 'pseudocode');
+    assert.deepEqual(res.unsupported, [], 'and it happens to be a game we translate whole');
+    assert.ok(res.costumes.length >= 2);
+});
