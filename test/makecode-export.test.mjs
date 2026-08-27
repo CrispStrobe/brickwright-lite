@@ -17,7 +17,7 @@
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync, existsSync} from 'node:fs';
+import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import {join} from 'node:path';
 
 import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
@@ -214,4 +214,82 @@ test('what came in as MakeCode arrays goes back out as MakeCode arrays', {skip: 
         .map(l => l.trim())
         .filter(l => l && !l.startsWith('#') && !/^set wert to 0$/.test(l));
     assert.deepEqual(operations(second.code), operations(first.code));
+});
+
+test('a function keeps its arguments, in both directions', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // `zeigen(3, n + 1)` used to translate to the single word `zeigen` —
+    // the arguments were dropped on the way IN, so the function ran on
+    // whatever its parameters happened to hold. It emitted a line, so the
+    // anti-silence gate saw nothing wrong; only exporting showed it.
+    const {code} = microbitToPseudocode([
+        'function zeigen(wert: number, mal: number) { basic.showNumber(wert * mal) }',
+        'let n = 2',
+        'basic.forever(function () { zeigen(3, n + 1) })'
+    ].join('\n'));
+    // A call is matched token by token against the DEFINE's template, so a
+    // compound argument has to be hoisted to one token first.
+    assert.match(code, /set _mc\d+ to n \+ 1/, code);
+    assert.match(code, /zeigen 3 _mc\d+/, code);
+
+    const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(code));
+    assert.deepEqual(unsupported, []);
+    assert.match(ts, /function zeigen\(wert: number, mal: number\) \{/, ts);
+    assert.match(ts, /basic\.showNumber\(\(wert \* mal\)\)/, ts);
+    assert.match(ts, /zeigen\(3, _mc\d+\)/, ts);
+    // The definition has to come above the call.
+    assert.ok(ts.indexOf('function zeigen') < ts.indexOf('zeigen(3'), ts);
+});
+
+test('gesture and touch reporters have a way back', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // Added to the importer in sb3-creator#3 and never to the export table —
+    // the asymmetry this round-trip gate exists to catch. MakeCode names the
+    // logo gestures after the logo where our menu names them after the tilt.
+    const {code} = microbitToPseudocode(`
+        basic.forever(function () {
+            if (input.isGesture(Gesture.TiltLeft)) { basic.clearScreen() }
+            if (input.pinIsPressed(TouchPin.P1)) { basic.clearScreen() }
+        })
+    `);
+    const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(code));
+    assert.deepEqual(unsupported, []);
+    assert.match(ts, /input\.isGesture\(Gesture\.TiltLeft\)/, ts);
+    assert.match(ts, /input\.pinIsPressed\(TouchPin\.P1\)/, ts);
+});
+
+test('a boolean reporter is not compared to the string "true"', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // The compiler puts a boolean reporter into a boolean slot as
+    // `equals(reporter, "true")`. Rendered literally that is
+    // `input.isGesture(…) == "true"`, and Static TypeScript will not compare
+    // a boolean to a string — so the export would not build in MakeCode.
+    const {code} = microbitToPseudocode(
+        'let n = 0\nbasic.forever(function () {\n' +
+        '  if (input.isGesture(Gesture.Shake)) { basic.clearScreen() }\n' +
+        '  if (n == 3) { basic.clearScreen() }\n})');
+    const {ts} = projectToMakeCodeTs(new SB3Creator().parse(code));
+    assert.doesNotMatch(ts, /== "true"/, ts);
+    assert.match(ts, /if \(input\.isGesture\(Gesture\.Shake\)\) \{/, ts);
+    // and a real comparison is left alone
+    assert.match(ts, /\(n == 3\)/, ts);
+});
+
+test('every committed Calliope fixture survives the whole loop', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, async () => {
+    // Import, compile, export: nothing refused at either end. The Calliope
+    // corpus went from 47 export refusals to none once functions, gestures
+    // and touch had a way back.
+    const {importArtefact} = await import(
+        '../overlay/scratch-gui/src/lib/bw-makecode/index.js');
+    const dir = join(REPO, 'test', 'fixtures', 'makecode');
+    const files = readdirSync(dir).filter(f => f.startsWith('calliope-'));
+    assert.ok(files.length > 0);
+    for (const file of files) {
+        const imported = await importArtefact(
+            new Uint8Array(readFileSync(join(dir, file))), {name: file});
+        const exported = projectToMakeCodeTs(new SB3Creator().parse(imported.code));
+        assert.deepEqual(exported.unsupported, [], `${file} lost something on the way out`);
+        assert.doesNotMatch(exported.ts, /unsupported/, file);
+    }
 });
