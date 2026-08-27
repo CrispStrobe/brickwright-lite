@@ -2,6 +2,247 @@
 // module so the language examples remain readable. Every game uses only commands
 // accepted by SB3Creator and is compiled to ordinary Scratch blocks.
 const gameExamples = {
+    g2048: `# Nova Grid — a complete slide-and-fuse strategy game.
+# GOAL: forge the 2048 Nova tile before the four-by-four reactor locks.
+# CONTROLS: Arrow keys slide every tile. Equal neighbours fuse once per move.
+# Consecutive fusions in one move build a chain multiplier. Space starts/restarts.
+GLOBAL score
+GLOBAL chain
+GLOBAL started
+GLOBAL moved
+GLOBAL p
+GLOBAL v
+GLOBAL old
+GLOBAL i
+GLOBAL idx
+GLOBAL empties
+GLOBAL nv
+GLOBAL won
+GLOBAL possible
+GLOBAL r
+GLOBAL c
+
+STAGE:
+  BACKDROP intro art nova-grid/intro
+  BACKDROP reactor art nova-grid/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable chain
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to reactor
+      broadcast "ignite nova grid"
+
+SPRITE Board:
+  LIST grid
+  LIST linebuf
+  COSTUME blank tile "" #17233f
+  COSTUME t2 tile "2" #d9f7ff #18314f
+  COSTUME t4 tile "4" #8ce8f5 #123653
+  COSTUME t8 tile "8" #64c9ff #092747
+  COSTUME t16 tile "16" #7e9cff #ffffff
+  COSTUME t32 tile "32" #9c77ed #ffffff
+  COSTUME t64 tile "64" #d85ee8 #ffffff
+  COSTUME t128 tile "128" #f15ba7 #ffffff
+  COSTUME t256 tile "256" #ff6a68 #ffffff
+  COSTUME t512 tile "512" #ff984f #ffffff
+  COSTUME t1024 tile "1024" #ffd95a #271b45
+  COSTUME t2048 tile "2048" #fff6b0 #32184f
+  SOUND fuse 720
+  SOUND chain 1040
+
+  DEFINE FAST reset reactor:
+    delete all of grid
+    REPEAT 16:
+      add 0 to grid
+    set score to 0
+    set chain to 0
+    set won to 0
+    set possible to 1
+    spawn tile
+    spawn tile
+
+  DEFINE addcell (a):
+    set v to item a of grid
+    IF not v = 0 THEN:
+      add v to linebuf
+
+  DEFINE writeback (a) (slot):
+    set old to item a of grid
+    IF slot > length of linebuf THEN:
+      replace item a of grid with 0
+    ELSE:
+      replace item a of grid with item slot of linebuf
+    IF not old = item a of grid THEN:
+      set moved to 1
+
+  DEFINE slide (a) (b) (c) (d):
+    delete all of linebuf
+    addcell a
+    addcell b
+    addcell c
+    addcell d
+    set p to 1
+    REPEAT UNTIL p > (length of linebuf) - 1:
+      IF item p of linebuf = item (p + 1) of linebuf THEN:
+        replace item p of linebuf with (item p of linebuf) * 2
+        change chain by 1
+        change score by (item p of linebuf) * chain
+        delete (p + 1) of linebuf
+        IF chain > 1 THEN:
+          play sound "chain"
+        ELSE:
+          play sound "fuse"
+      change p by 1
+    writeback a 1
+    writeback b 2
+    writeback c 3
+    writeback d 4
+
+  DEFINE spawn tile:
+    set empties to 0
+    set i to 1
+    REPEAT 16:
+      IF item i of grid = 0 THEN:
+        change empties by 1
+      change i by 1
+    IF empties > 0 THEN:
+      set nv to 2
+      IF pick random 1 to 10 = 1 THEN:
+        set nv to 4
+      set possible to 0
+      REPEAT UNTIL possible = 1:
+        set idx to pick random 1 to 16
+        IF item idx of grid = 0 THEN:
+          replace item idx of grid with nv
+          set possible to 1
+
+  DEFINE FAST render reactor:
+    clear
+    set i to 0
+    REPEAT 16:
+      set v to item (i + 1) of grid
+      set r to floor of (i / 4)
+      set c to i mod 4
+      IF v = 0 THEN:
+        switch costume to blank
+      ELSE:
+        switch costume to ("t" join v)
+      go to x: (-120) + (c * 80) y: (120) - (r * 80)
+      stamp
+      change i by 1
+
+  DEFINE evaluate reactor:
+    set empties to 0
+    set possible to 0
+    set won to 0
+    set i to 1
+    REPEAT 16:
+      set v to item i of grid
+      IF v = 2048 THEN:
+        set won to 1
+      IF v = 0 THEN:
+        change empties by 1
+      set c to (i - 1) mod 4
+      set r to floor of ((i - 1) / 4)
+      IF c < 3 and v = item (i + 1) of grid THEN:
+        set possible to 1
+      IF r < 3 and v = item (i + 4) of grid THEN:
+        set possible to 1
+      change i by 1
+    IF won = 1 THEN:
+      set started to 0
+      broadcast "nova forged"
+    ELSE:
+      IF empties = 0 and possible = 0 THEN:
+        set started to 0
+        broadcast "reactor locked"
+
+  DEFINE finish move:
+    IF moved = 1 THEN:
+      spawn tile
+    render reactor
+    evaluate reactor
+
+  DEFINE move left:
+    set moved to 0
+    set chain to 0
+    slide 1 2 3 4
+    slide 5 6 7 8
+    slide 9 10 11 12
+    slide 13 14 15 16
+    finish move
+
+  DEFINE move right:
+    set moved to 0
+    set chain to 0
+    slide 4 3 2 1
+    slide 8 7 6 5
+    slide 12 11 10 9
+    slide 16 15 14 13
+    finish move
+
+  DEFINE move up:
+    set moved to 0
+    set chain to 0
+    slide 1 5 9 13
+    slide 2 6 10 14
+    slide 3 7 11 15
+    slide 4 8 12 16
+    finish move
+
+  DEFINE move down:
+    set moved to 0
+    set chain to 0
+    slide 13 9 5 1
+    slide 14 10 6 2
+    slide 15 11 7 3
+    slide 16 12 8 4
+    finish move
+
+  WHEN flag clicked:
+    hide
+    clear
+  WHEN I receive "ignite nova grid":
+    reset reactor
+    show variable score
+    show variable chain
+    render reactor
+  WHEN left arrow key pressed:
+    IF started = 1 THEN:
+      move left
+  WHEN right arrow key pressed:
+    IF started = 1 THEN:
+      move right
+  WHEN up arrow key pressed:
+    IF started = 1 THEN:
+      move up
+  WHEN down arrow key pressed:
+    IF started = 1 THEN:
+      move down
+
+SPRITE ReactorCore:
+  SHAPE art nova-grid/core
+  SOUND nova 1280
+  SOUND lock 180
+  WHEN flag clicked:
+    go to x: 205 y: 138
+    hide
+  WHEN I receive "ignite nova grid":
+    go to x: 205 y: 138
+    show
+  WHEN I receive "nova forged":
+    play sound "nova"
+    say ("NOVA FORGED — SCORE " join score) for 4 seconds
+    say "SPACE RESTARTS THE REACTOR" for 2 seconds
+  WHEN I receive "reactor locked":
+    play sound "lock"
+    say ("GRID LOCKED — SCORE " join score) for 4 seconds
+    say "SPACE RESTARTS THE REACTOR" for 2 seconds`,
+
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: skim the green hilltops to turn a dive into a launch. Each clean launch
 # grows your combo. Survive on three hearts and set the highest distance score.

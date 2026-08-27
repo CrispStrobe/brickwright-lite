@@ -7,6 +7,7 @@ import games from '../overlay/scratch-gui/src/lib/sb3-creator-game-examples.js';
 import {VM, clearStrayTimers, runProgram, quitStrandedVMs} from './helpers/bw-vm.mjs';
 
 const EXPECTED = [
+    'g2048',
     'sky_skim',
     'chroma_code',
     'fusion_foundry',
@@ -48,6 +49,7 @@ test('only quality-approved new games are wired into the visible examples galler
         assert.ok(source.length > 0, `${name}: empty game source`);
     }
     const approved = new Set([
+        'g2048',
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
@@ -62,6 +64,25 @@ test('only quality-approved new games are wired into the visible examples galler
         assert.doesNotMatch(importer, new RegExp(`\\['${name}',`), `${name}: unaudited prototype is public`);
     }
     assert.match(importer, /\.\.\.gameExamples/, 'game module is not merged into the gallery examples');
+});
+
+test('Nova Grid replaces the bare 2048 prototype with a complete reactor puzzle', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.g2048);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.g2048, /GOAL: forge the 2048 Nova tile/);
+    assert.match(games.g2048, /CONTROLS: Arrow keys slide every tile/);
+    assert.match(games.g2048, /broadcast "ignite nova grid"/);
+    assert.match(games.g2048, /change score by \(item p of linebuf\) \* chain/);
+    assert.match(games.g2048, /IF empties = 0 and possible = 0 THEN:/);
+    assert.match(games.g2048, /broadcast "nova forged"/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'reactor']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('NOVA GRID')));
+    assert.ok(svgs.some(svg => svg.includes('FUSE EQUAL TILES')));
+    assert.ok(svgs.some(svg => svg.includes('FORGE 2048')));
 });
 
 test('quality-approved game has authored SVG art and explicit onboarding', () => {
@@ -676,6 +697,24 @@ test('new merge and runner controls change live Scratch VM state', async () => {
     };
     const stageValue = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
         .find(variable => variable.name === name);
+
+    const nova = await load(games.g2048);
+    try {
+        const board = nova.runtime.targets.find(target => target.sprite.name === 'Board');
+        const grid = Object.values(board.variables).find(variable => variable.name === 'grid');
+        grid.value = [2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        nova.postIOData('keyboard', {key: 'ArrowLeft', isDown: true});
+        for (let i = 0; i < 35; i++) nova.runtime._step();
+        nova.postIOData('keyboard', {key: 'ArrowLeft', isDown: false});
+        assert.equal(Number(grid.value[0]), 4, 'equal tiles did not fuse toward the pressed edge');
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 2,
+            'a successful move did not leave the fused tile plus one new tile');
+        assert.equal(Number(stageValue(nova, 'score').value), 4, 'fusion score was not awarded');
+        assert.equal(Number(stageValue(nova, 'chain').value), 1, 'first fusion did not start the chain');
+    } finally {
+        nova.quit();
+        clearStrayTimers();
+    }
 
     const cascade = await load(games.fusion_foundry);
     try {
