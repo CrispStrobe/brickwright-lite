@@ -51,7 +51,8 @@ test('only quality-approved new games are wired into the visible examples galler
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
-        'whisker_switch', 'spiral_circuit', 'lilyway_rescue', 'rotor_rogue', 'prism_spire', 'shard_sheriff'
+        'whisker_switch', 'spiral_circuit', 'lilyway_rescue', 'rotor_rogue', 'prism_spire', 'shard_sheriff',
+        'halo_foundry', 'corridor_kestrel'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -479,6 +480,44 @@ test('Plasma Posse requires both split pieces before advancing each of four wave
     assert.ok(svgs.some(svg => svg.includes('PLASMA POSSE')));
     assert.ok(svgs.some(svg => svg.includes('CLEAR 4 SPLIT-ORB WAVES')));
     assert.ok(svgs.some(svg => svg.includes('POP BOTH PIECES')));
+});
+
+test('Halo Lockdown turns circular defense into a legible three-round lock hunt', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.halo_foundry);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.halo_foundry, /GOAL: clear all four inner locks across three increasingly fast rings/);
+    assert.match(games.halo_foundry, /set locks to 4/);
+    assert.match(games.halo_foundry, /IF round = 3 THEN:/);
+    assert.match(games.halo_foundry, /set shieldX to sin of shieldAngle \* 205/);
+    assert.match(games.halo_foundry, /set shieldY to cos of shieldAngle \* 150/);
+    assert.match(games.halo_foundry, /IF touching edge THEN:\n        change lives by -1/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'reactor']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('HALO LOCKDOWN')));
+    assert.ok(svgs.some(svg => svg.includes('BREAK 4 INNER LOCKS')));
+    assert.ok(svgs.some(svg => svg.includes('ROTATE THE CYAN SHIELD')));
+});
+
+test('Carrier Kestrel has inertial flight, finite shields, and a fifteen-gate finish', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.corridor_kestrel);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.corridor_kestrel, /GOAL: clear fifteen carrier gates before three hull breaches/);
+    assert.match(games.corridor_kestrel, /set driftX to driftX \* 0\.92/);
+    assert.match(games.corridor_kestrel, /set driftY to driftY \* 0\.92/);
+    assert.match(games.corridor_kestrel, /change gates by 1/);
+    assert.match(games.corridor_kestrel, /IF gates = 15 THEN:/);
+    assert.match(games.corridor_kestrel, /shieldReady = 1 and battery > 3 and shield = 0/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'corridor']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('CARRIER KESTREL')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR 15 MOVING APERTURES')));
+    assert.ok(svgs.some(svg => svg.includes('ARROWS ADD DRIFT')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -998,6 +1037,54 @@ test('precision drop and single-lance controls work in the live Scratch VM', asy
     } finally { posse.quit(); clearStrayTimers(); }
 });
 
+test('orbital shield and inertial drone controls work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator(); creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start(); vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        await new Promise(resolve => setTimeout(resolve, 260));
+        for (let i = 0; i < 10; i++) vm.runtime._step();
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const halo = await load(games.halo_foundry);
+    try {
+        const beforeX = Number(value(halo, 'shieldX').value);
+        halo.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
+        for (let i = 0; i < 8; i++) halo.runtime._step();
+        halo.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
+        assert.ok(Number(value(halo, 'shieldAngle').value) > 0, 'Right did not rotate the shield');
+        assert.notEqual(Number(value(halo, 'shieldX').value), beforeX, 'shield did not follow its ellipse');
+        assert.equal(Number(value(halo, 'locks').value), 4, 'ring began with the wrong lock count');
+        assert.equal(Number(value(halo, 'round').value), 1, 'ring began in the wrong round');
+    } finally { halo.quit(); clearStrayTimers(); }
+
+    const kestrel = await load(games.corridor_kestrel);
+    try {
+        kestrel.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        kestrel.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
+        for (let i = 0; i < 8; i++) kestrel.runtime._step();
+        kestrel.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        kestrel.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
+        assert.ok(Number(value(kestrel, 'driftX').value) > 0, 'Right did not add horizontal drift');
+        assert.ok(Number(value(kestrel, 'driftY').value) > 0, 'Up did not add vertical drift');
+        assert.ok(Number(value(kestrel, 'droneX').value) > -150, 'drone did not coast horizontally');
+        assert.ok(Number(value(kestrel, 'droneY').value) > 0, 'drone did not coast vertically');
+        kestrel.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 4; i++) kestrel.runtime._step();
+        kestrel.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(kestrel, 'shield').value), 1, 'Space did not engage the battery shield');
+        assert.equal(Number(value(kestrel, 'gates').value), 0, 'run began with phantom gates');
+    } finally { kestrel.quit(); clearStrayTimers(); }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -1049,8 +1136,8 @@ test('each new game keeps its signature playable mechanic', () => {
         rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/],
         prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /IF level = 12/],
         shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /set orbActive to 0/, /change waves by 1/],
-        halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/],
-        corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/],
+        halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/, /IF round = 3/],
+        corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/, /change gates by 1/],
         thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/, /change rivalPoints by 1/, /touching ThunderNet/],
         cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/, /delete falls of colA/, /change score by 40 \* combo/],
         mooncoil_odyssey: [/LIST trailX/, /add headX to trailX/, /headX = item i of trailX/, /delete 1 of trailX/, /change snakeLength by 1/],

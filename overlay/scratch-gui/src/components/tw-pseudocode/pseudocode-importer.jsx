@@ -307,7 +307,9 @@ const GROUPS = [
         ['lilyway_rescue', '🐸 Moonbank Hop — polished'],
         ['rotor_rogue', '🏍️ Crosswind Courier — polished'],
         ['prism_spire', '🏗️ Lumen Stack — polished'],
-        ['shard_sheriff', '🩸 Plasma Posse — polished']
+        ['shard_sheriff', '🩸 Plasma Posse — polished'],
+        ['halo_foundry', '🛡️ Halo Lockdown — polished'],
+        ['corridor_kestrel', '🛸 Carrier Kestrel — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

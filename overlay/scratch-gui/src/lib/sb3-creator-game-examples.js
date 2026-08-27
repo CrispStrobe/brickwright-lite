@@ -3369,9 +3369,10 @@ SPRITE Lance:
     hide
     set lanceOn to 0`,
 
-    halo_foundry: `# Halo Foundry — circular Pong fused with Breakout.
-# Left/Right rotates the shield around the arena. Keep the core inside the halo while
-# smashing four reactor locks. Each cleared ring returns faster; three escapes end the run.
+    halo_foundry: `# Halo Lockdown — circular paddle defense fused with a three-ring lock break.
+# GOAL: clear all four inner locks across three increasingly fast rings before three escapes.
+# CONTROLS: Left/Right rotate the cyan shield around the halo.
+# Rebound the gold core inward; letting it reach the outer edge costs one life.
 GLOBAL score
 GLOBAL lives
 GLOBAL round
@@ -3380,21 +3381,40 @@ GLOBAL shieldX
 GLOBAL shieldY
 GLOBAL coreSpeed
 GLOBAL locks
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art halo-lockdown/intro
+  BACKDROP reactor art halo-lockdown/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable lives
+    hide variable round
+    hide variable locks
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to reactor
+      broadcast "start halo lockdown"
 
 SPRITE HaloShield:
-  SHAPE rect 68 16 #55f4d4
+  SHAPE art halo-lockdown/shield
   WHEN flag clicked:
-    show variable score
-    show variable lives
-    show variable round
     set score to 0
     set lives to 3
     set round to 1
     set locks to 4
     set shieldAngle to 0
     set coreSpeed to 5
+    hide
+  WHEN I receive "start halo lockdown":
+    show variable score
+    show variable lives
+    show variable round
+    show variable locks
     show
-  WHEN flag clicked:
     FOREVER:
       IF key left arrow pressed? THEN:
         change shieldAngle by -4
@@ -3405,22 +3425,28 @@ SPRITE HaloShield:
       go to x: shieldX y: shieldY
       point in direction shieldAngle
       IF locks < 1 THEN:
-        change round by 1
-        change coreSpeed by 0.8
-        set locks to 4
-        broadcast "restore locks"
+        IF round = 3 THEN:
+          say ("THREE RINGS CLEARED — SCORE " join score) for 4 seconds
+          stop all
+        ELSE:
+          change round by 1
+          change coreSpeed by 0.8
+          set locks to 4
+          broadcast "restore locks"
       IF lives < 1 THEN:
-        say ("Halo Foundry score: " join score) for 3 seconds
+        say ("LOCKDOWN FAILED — SCORE " join score) for 3 seconds
         stop all
       wait 0.02 seconds
 
 SPRITE Core:
-  SHAPE circle 20 #fff68a
+  SHAPE art halo-lockdown/core
   SOUND rebound 640
   SOUND escape 120
   WHEN flag clicked:
     go to x: 0 y: 0
     point in direction 37
+    hide
+  WHEN I receive "start halo lockdown":
     show
     FOREVER:
       move coreSpeed steps
@@ -3438,9 +3464,11 @@ SPRITE Core:
       wait 0.02 seconds
 
 SPRITE LockNorth:
-  SHAPE rect 46 24 #ff5f78
+  SHAPE art halo-lockdown/lock-north
   WHEN flag clicked:
     go to x: 0 y: 75
+    hide
+  WHEN I receive "start halo lockdown":
     show
     FOREVER:
       IF touching Core THEN:
@@ -3454,9 +3482,11 @@ SPRITE LockNorth:
     show
 
 SPRITE LockSouth:
-  SHAPE rect 46 24 #ff9c50
+  SHAPE art halo-lockdown/lock-south
   WHEN flag clicked:
     go to x: 0 y: -75
+    hide
+  WHEN I receive "start halo lockdown":
     show
     FOREVER:
       IF touching Core THEN:
@@ -3470,9 +3500,11 @@ SPRITE LockSouth:
     show
 
 SPRITE LockEast:
-  SHAPE rect 24 46 #a96cff
+  SHAPE art halo-lockdown/lock-east
   WHEN flag clicked:
     go to x: 95 y: 0
+    hide
+  WHEN I receive "start halo lockdown":
     show
     FOREVER:
       IF touching Core THEN:
@@ -3486,9 +3518,11 @@ SPRITE LockEast:
     show
 
 SPRITE LockWest:
-  SHAPE rect 24 46 #4f8cff
+  SHAPE art halo-lockdown/lock-west
   WHEN flag clicked:
     go to x: -95 y: 0
+    hide
+  WHEN I receive "start halo lockdown":
     show
     FOREVER:
       IF touching Core THEN:
@@ -3502,15 +3536,19 @@ SPRITE LockWest:
     show
 
 SPRITE Reactor:
-  SHAPE circle 18 #26304d
+  SHAPE art halo-lockdown/reactor
   WHEN flag clicked:
     go to x: 0 y: 0
+    hide
+  WHEN I receive "start halo lockdown":
     show`,
 
-    corridor_kestrel: `# Corridor Kestrel — free-fly a survey drone through an alien carrier.
-# Arrows control inertia in both axes. Thread each moving aperture, skim its energy cell,
-# and spend battery with Space for a short shield when the corridor gets too tight.
+    corridor_kestrel: `# Carrier Kestrel — an inertial drone run through fifteen moving apertures.
+# GOAL: clear fifteen carrier gates before three hull breaches.
+# CONTROLS: Arrows add drift in both axes. Space spends battery on a short shield.
+# Thread the moving gap and skim its yellow cell to restore battery and earn bonus distance.
 GLOBAL distance
+GLOBAL gates
 GLOBAL hull
 GLOBAL battery
 GLOBAL droneX
@@ -3521,17 +3559,33 @@ GLOBAL gateX
 GLOBAL gapY
 GLOBAL gateSpeed
 GLOBAL shield
+GLOBAL shieldReady
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art carrier-kestrel/intro
+  BACKDROP corridor art carrier-kestrel/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable distance
+    hide variable gates
+    hide variable hull
+    hide variable battery
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to corridor
+      broadcast "start carrier kestrel"
 
 SPRITE Kestrel:
-  SHAPE triangle 40 #62efff
-  COSTUME shield triangle 52 #ffe66a
+  SHAPE art carrier-kestrel/drone
+  COSTUME shield art carrier-kestrel/shield
   SOUND scrape 160
   SOUND pulse 820
   WHEN flag clicked:
-    show variable distance
-    show variable hull
-    show variable battery
     set distance to 0
+    set gates to 0
     set hull to 3
     set battery to 12
     set droneX to -150
@@ -3540,9 +3594,17 @@ SPRITE Kestrel:
     set driftY to 0
     set gateSpeed to 5
     set shield to 0
+    set shieldReady to 0
     go to x: droneX y: droneY
+    hide
+  WHEN I receive "start carrier kestrel":
+    show variable distance
+    show variable gates
+    show variable hull
+    show variable battery
     show
-  WHEN flag clicked:
+    wait 0.2 seconds
+    set shieldReady to 1
     FOREVER:
       IF key left arrow pressed? THEN:
         change driftX by -0.35
@@ -3584,51 +3646,62 @@ SPRITE Kestrel:
         ELSE:
           change distance by 3
       IF hull < 1 THEN:
-        say ("Carrier distance: " join distance) for 3 seconds
+        say ("DRONE LOST AFTER " join gates) for 4 seconds
+        stop all
+      IF gates = 15 THEN:
+        say ("FIFTEEN GATES CLEARED — DISTANCE " join distance) for 4 seconds
         stop all
       wait 0.02 seconds
   WHEN space key pressed:
-    IF battery > 3 and shield = 0 THEN:
+    IF started = 1 and shieldReady = 1 and battery > 3 and shield = 0 THEN:
       set shield to 1
       play sound "pulse"
       wait 0.8 seconds
       set shield to 0
 
 SPRITE GateClock:
-  SHAPE circle 8 #1d264d
+  SHAPE art carrier-kestrel/clock
   WHEN flag clicked:
     hide
     set gateX to 240
     set gapY to 0
+  WHEN I receive "start carrier kestrel":
     FOREVER:
       change gateX by 0 - gateSpeed
       IF gateX < -250 THEN:
         set gateX to 250
         set gapY to pick random -75 to 75
+        change gates by 1
         change distance by 1
         change gateSpeed by 0.12
       wait 0.02 seconds
 
 SPRITE UpperGate:
-  SHAPE rect 54 170 #7a4fff
+  SHAPE art carrier-kestrel/gate-upper
   WHEN flag clicked:
+    hide
+  WHEN I receive "start carrier kestrel":
     show
     FOREVER:
       go to x: gateX y: gapY + 135
       wait 0.02 seconds
 
 SPRITE LowerGate:
-  SHAPE rect 54 170 #d54fff
+  SHAPE art carrier-kestrel/gate-lower
   WHEN flag clicked:
+    hide
+  WHEN I receive "start carrier kestrel":
     show
     FOREVER:
       go to x: gateX y: gapY - 135
       wait 0.02 seconds
 
 SPRITE EnergyCell:
-  SHAPE circle 24 #ffe45c
+  SHAPE art carrier-kestrel/cell
   SOUND charge 980
   WHEN flag clicked:
+    hide
+  WHEN I receive "start carrier kestrel":
     show
     FOREVER:
       go to x: gateX y: gapY
