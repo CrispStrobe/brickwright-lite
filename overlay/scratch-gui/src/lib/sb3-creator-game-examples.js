@@ -21,6 +21,9 @@ GLOBAL won
 GLOBAL possible
 GLOBAL r
 GLOBAL c
+GLOBAL touchX
+GLOBAL touchY
+GLOBAL touchLock
 
 STAGE:
   BACKDROP intro art nova-grid/intro
@@ -30,7 +33,17 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable chain
+    wait 0.6 seconds
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to reactor
+      broadcast "ignite nova grid"
   WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to reactor
+      broadcast "ignite nova grid"
+  WHEN I receive "touch start nova":
     IF started = 0 THEN:
       set started to 1
       switch backdrop to reactor
@@ -223,6 +236,18 @@ SPRITE Board:
   WHEN down arrow key pressed:
     IF started = 1 THEN:
       move down
+  WHEN I receive "move nova left":
+    IF started = 1 THEN:
+      move left
+  WHEN I receive "move nova right":
+    IF started = 1 THEN:
+      move right
+  WHEN I receive "move nova up":
+    IF started = 1 THEN:
+      move up
+  WHEN I receive "move nova down":
+    IF started = 1 THEN:
+      move down
 
 SPRITE ReactorCore:
   SHAPE art nova-grid/core
@@ -237,11 +262,40 @@ SPRITE ReactorCore:
   WHEN I receive "nova forged":
     play sound "nova"
     say ("NOVA FORGED — SCORE " join score) for 4 seconds
-    say "SPACE RESTARTS THE REACTOR" for 2 seconds
+    say "TAP OR SPACE RESTARTS THE REACTOR" for 2 seconds
   WHEN I receive "reactor locked":
     play sound "lock"
     say ("GRID LOCKED — SCORE " join score) for 4 seconds
-    say "SPACE RESTARTS THE REACTOR" for 2 seconds`,
+    say "TAP OR SPACE RESTARTS THE REACTOR" for 2 seconds
+
+SPRITE TouchGrid:
+  SHAPE circle 8 #70e3ef
+  WHEN flag clicked:
+    hide
+    set touchLock to 0
+    FOREVER:
+      IF started = 0 and mouse down? THEN:
+        broadcast "touch start nova"
+        wait until not mouse down?
+      IF started = 1 and mouse down? and touchLock = 0 THEN:
+        set touchX to mouse x
+        set touchY to mouse y
+        set touchLock to 1
+      IF touchLock = 1 and not mouse down? THEN:
+        IF abs of (mouse x - touchX) > 24 or abs of (mouse y - touchY) > 24 THEN:
+          IF abs of (mouse x - touchX) > abs of (mouse y - touchY) THEN:
+            IF mouse x > touchX THEN:
+              broadcast "move nova right"
+            ELSE:
+              broadcast "move nova left"
+          ELSE:
+            IF mouse y > touchY THEN:
+              broadcast "move nova up"
+            ELSE:
+              broadcast "move nova down"
+        set touchLock to 0
+      wait 0.02 seconds
+`,
 
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: skim the green hilltops to turn a dive into a launch. Each clean launch

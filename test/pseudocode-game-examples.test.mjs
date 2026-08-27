@@ -74,6 +74,9 @@ test('Nova Grid replaces the bare 2048 prototype with a complete reactor puzzle'
     assert.match(games.g2048, /GOAL: forge the 2048 Nova tile/);
     assert.match(games.g2048, /CONTROLS: Arrow keys slide every tile/);
     assert.match(games.g2048, /broadcast "ignite nova grid"/);
+    assert.match(games.g2048, /wait 0\.6 seconds/);
+    assert.match(games.g2048, /started = 0 and mouse down\?/);
+    assert.match(games.g2048, /broadcast "move nova left"/);
     assert.match(games.g2048, /change score by \(item p of linebuf\) \* chain/);
     assert.match(games.g2048, /IF empties = 0 and possible = 0 THEN:/);
     assert.match(games.g2048, /broadcast "nova forged"/);
@@ -681,7 +684,7 @@ test('new click and orbit controls advance in the real Scratch VM', async () => 
 });
 
 test('new merge and runner controls change live Scratch VM state', async () => {
-    const load = async source => {
+    const load = async (source, pressSpace = true) => {
         const creator = new SB3Creator();
         creator.parse(source);
         const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
@@ -690,23 +693,30 @@ test('new merge and runner controls change live Scratch VM state', async () => {
         vm.start();
         vm.greenFlag();
         for (let i = 0; i < 20; i++) vm.runtime._step();
-        vm.postIOData('keyboard', {key: ' ', isDown: true});
-        for (let i = 0; i < 30; i++) vm.runtime._step();
-        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        if (pressSpace) {
+            vm.postIOData('keyboard', {key: ' ', isDown: true});
+            for (let i = 0; i < 30; i++) vm.runtime._step();
+            vm.postIOData('keyboard', {key: ' ', isDown: false});
+        }
         return vm;
     };
     const stageValue = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
         .find(variable => variable.name === name);
 
-    const nova = await load(games.g2048);
+    const nova = await load(games.g2048, false);
     try {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 30; i++) nova.runtime._step();
+        assert.equal(Number(stageValue(nova, 'started').value), 1,
+            'the ordinary green flag left the game parked behind a Space/fullscreen gate');
         const board = nova.runtime.targets.find(target => target.sprite.name === 'Board');
         const grid = Object.values(board.variables).find(variable => variable.name === 'grid');
         grid.value = [2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        nova.postIOData('keyboard', {key: 'ArrowLeft', isDown: true});
+        nova.postIOData('mouse', {x: 320, y: 180, canvasWidth: 480, canvasHeight: 360, isDown: true});
+        for (let i = 0; i < 12; i++) nova.runtime._step();
+        nova.postIOData('mouse', {x: 120, y: 180, canvasWidth: 480, canvasHeight: 360, isDown: false});
         for (let i = 0; i < 35; i++) nova.runtime._step();
-        nova.postIOData('keyboard', {key: 'ArrowLeft', isDown: false});
-        assert.equal(Number(grid.value[0]), 4, 'equal tiles did not fuse toward the pressed edge');
+        assert.equal(Number(grid.value[0]), 4, 'left swipe did not fuse equal tiles toward its edge');
         assert.equal(grid.value.filter(value => Number(value) > 0).length, 2,
             'a successful move did not leave the fused tile plus one new tile');
         assert.equal(Number(stageValue(nova, 'score').value), 4, 'fusion score was not awarded');
