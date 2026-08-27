@@ -14609,6 +14609,15 @@ SB3Creator.STC_PARTS = {
     // end for these by definition, not merely not yet. Pins are P0-P20 and the
     // two buttons on a micro:bit.
     microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
+    // MakeCode Arcade is a software target (160x120); PyBadge and PyBadge LC
+    // are concrete ATSAMD51J19 boards. They intentionally have no C emitter:
+    // selecting one must never silently produce firmware for another ARM MCU.
+    arcade: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: false, arcade: true },
+    pybadge: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
+        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 5, accelerometer: 'lis3dh' },
+    'pybadge-lc': { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
+        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 1, accelerometer: null },
+    samd51: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true },
     spike: { core: 'spikepython', header: null, portModes: false, aux1T: false, adc: false },
     // core: 'rp2040' -- GP0-GP28, and generateC() emits freestanding Cortex-M0
     // bare metal (SIO GPIO, the 1 MHz TIMER as an ISR-free timebase, UART0,

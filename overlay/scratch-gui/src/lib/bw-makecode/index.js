@@ -112,7 +112,7 @@ export async function importArtefact (bytes, opts = {}) {
         };
     }
 
-    // An Arcade game becomes a Scratch project: its sprite model maps
+    // An Arcade game becomes a playable Scratch project: its sprite model maps
     // onto the stage's closely enough to be worth translating, and its
     // artwork becomes costumes. What does not survive is listed, not
     // dropped — see arcade-translate.js.

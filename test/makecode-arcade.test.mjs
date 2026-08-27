@@ -86,6 +86,7 @@ test('a real Arcade game becomes sprites, costumes and scripts', async () => {
     const files = await projectOf('arcade-assets.hex');
     const out = arcadeToPseudocode(files, {name: 'unterwasser'});
 
+    assert.match(out.code, /^DEVICE ARCADE/, 'an imported game selects the playable console');
     assert.deepEqual(out.sprites, ['background', 'mySprite', 'gegner', 'einfangen']);
     // The backdrop is a sprite, not a Stage costume: applyCustomSVG
     // deliberately skips the Stage, so a Stage costume would never arrive.

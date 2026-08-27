@@ -18,6 +18,7 @@ import unFullScreenIcon from './icon--unfullscreen.svg';
 import circuitIcon from './icon--circuit.svg';
 import debuggerSoloIcon from './icon--debugger-solo.svg';
 import microbitIcon from './icon--microbit.svg';
+import arcadeIcon from './icon--arcade.svg';
 import controllerIcon from './icon--controller.svg';
 import scratchStageIcon from './icon--scratch-stage.svg';
 
@@ -65,6 +66,11 @@ const messages = defineMessages({
         description: 'Button to show the micro:bit simulator in the right pane',
         id: 'gui.stageHeader.microbitSim'
     },
+    arcadeConsole: {
+        defaultMessage: 'Game Console',
+        description: 'Button to show the MakeCode Arcade or PyBadge console',
+        id: 'gui.stageHeader.arcadeConsole'
+    },
     controllerPanel: {
         defaultMessage: 'Controller',
         description: 'Button to show the controller panel with interactive widgets',
@@ -103,6 +109,7 @@ const viewForDock = dock => {
     // instead of falling back to the tiny instruments dock (owner spec).
     if (dock === 'solo' || dock === 'right') return 'solo';
     if (dock === 'microbit') return 'microbit';
+    if (dock === 'arcade') return 'arcade';
     if (dock === 'controller') return 'controller';
     // 'top' and any other value default to scratch stage
     return 'scratch';
@@ -121,9 +128,12 @@ const readCircuitView = () => {
     }
 };
 
-const StageViewButtons = ({intl}) => {
+const StageViewButtons = ({intl, vm}) => {
     const [view, setView] = useState(readCircuitView);
-    const [deviceIsMicrobit, setDeviceIsMicrobit] = useState(false);
+    const [deviceIsMicrobit, setDeviceIsMicrobit] = useState(() =>
+        (vm.runtime.bwDeviceId || vm.runtime.stc?.device) === 'microbit');
+    const [deviceIsArcade, setDeviceIsArcade] = useState(() => ['arcade', 'pybadge', 'pybadge-lc', 'samd51']
+        .includes(vm.runtime.bwDeviceId || vm.runtime.stc?.device));
     useEffect(() => {
         const sync = event => {
             const {key, value} = event.detail || {};
@@ -133,6 +143,7 @@ const StageViewButtons = ({intl}) => {
                 setView(localStorage.getItem('bw-stage-circuit') === '0' ? 'scratch' : viewForDock(value));
             } else if (key === 'bw-device-id') {
                 setDeviceIsMicrobit(value === 'microbit');
+                setDeviceIsArcade(['arcade', 'pybadge', 'pybadge-lc', 'samd51'].includes(value));
             }
         };
         window.addEventListener('bw-settings-change', sync);
@@ -173,6 +184,13 @@ const StageViewButtons = ({intl}) => {
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'microbit',
                         title: intl.formatMessage(messages.microbitSim)
+                    }] : []),
+                    ...(deviceIsArcade ? [{
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'arcade'}); setView('arcade'); },
+                        icon: arcadeIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'arcade',
+                        title: intl.formatMessage(messages.arcadeConsole)
                     }] : []),
                     {
                         handleClick: () => { setCircuitView({fullWidth: true, dock: 'controller'}); setView('controller'); },
@@ -295,7 +313,7 @@ const StageHeaderComponent = function (props) {
                     <Controls vm={vm} />
                     <div className={styles.stageSizeRow}>
                         {stageControls}
-                        <StageViewButtons intl={props.intl} />
+                        <StageViewButtons intl={props.intl} vm={vm} />
                         <div>
                             <Button
                                 className={styles.stageButton}

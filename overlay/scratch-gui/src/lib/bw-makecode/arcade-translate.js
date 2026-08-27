@@ -584,6 +584,7 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     // ── assemble
     const out = [];
+    out.push('DEVICE ARCADE', '');
     if (opts.name) out.push(`# Imported from MakeCode Arcade: ${opts.name}`);
     out.push('# Arcade is 160x120 with y downwards; the stage is 480x360 centred,',
         `# so positions are scaled x${SCALE} and y is mirrored.`, '');

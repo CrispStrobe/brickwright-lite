@@ -48,6 +48,12 @@ const DEVICE_GROUPS = [
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
     ]},
+    { label: 'Arcade & SAMD51', core: 'samd51', devices: [
+        { id: 'arcade', label: 'MakeCode Arcade (160×120)', compile: false, emulator: 'arcade' },
+        { id: 'pybadge', label: 'Adafruit PyBadge', compile: false, emulator: 'arcade' },
+        { id: 'pybadge-lc', label: 'Adafruit PyBadge LC', compile: false, emulator: 'arcade' },
+        { id: 'samd51', label: 'ATSAMD51J19 (generic)', compile: false, emulator: null },
+    ]},
 ];
 const DEVICE_BY_ID = {};
 for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = { ...d, core: g.core, group: g.label };
@@ -788,9 +794,8 @@ class PseudocodeImporter extends React.Component {
      * got, because the difference matters to what they can do next:
      * a MicroPython hex is a program our simulator RUNS; a MakeCode
      * micro:bit project is source we can read and translate; a MakeCode
-     * Arcade game is source for a machine we do not have — a 160x128
-     * screen driven by a Cortex-M4 — so it arrives as text, honestly
-     * labelled, rather than as a project that would not work.
+     * Arcade game is translated into sprites and opens on the 160x120
+     * console surface; unsupported engine features remain explicitly listed.
      *
      * The importer is loaded on demand: it carries an LZMA decoder and a
      * PNG decoder that no other part of the app needs, and nobody should
