@@ -43,7 +43,17 @@ const ENUM_VALUES = {
         TiltLeft: 'tilt left', TiltRight: 'tilt right', FreeFall: 'freefall',
         ThreeG: '3g', SixG: '6g', EightG: '8g'
     },
-    PinPullMode: {PullUp: 'up', PullDown: 'down', PullNone: 'none'}
+    PinPullMode: {PullUp: 'up', PullDown: 'down', PullNone: 'none'},
+    BeatFraction: {
+        Whole: 'Whole', Half: 'Half', Quarter: 'Quarter', Eighth: 'Eighth',
+        Sixteenth: 'Sixteenth', Double: 'Double', Breve: 'Breve'
+    }
+};
+
+/** BeatFraction → milliseconds at MakeCode's default 120 bpm. */
+const BEAT_MS = {
+    Whole: 500, Half: 250, Quarter: 125, Eighth: 62, Sixteenth: 31,
+    Double: 1000, Breve: 2000
 };
 
 const isPinEnum = name => /^(DigitalPin|AnalogPin|TouchPin|PwmPin)$/.test(name);
@@ -110,6 +120,11 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
         case 'radio.receivedString': return 'read last radio text';
+        // `music.beat(BeatFraction.Whole)` is a DURATION in milliseconds,
+        // not an opaque object: at MakeCode's default 120 bpm a beat is
+        // 500 ms and the fractions divide it. Reading it as one lets
+        // playTone keep the length the program wrote.
+        case 'music.beat': return String(BEAT_MS[this.enumToken(a[0]) || 'Whole'] || 500);
         case 'Math.randomRange':
         case 'randint': return `pick random ${arg(0)} to ${arg(1)}`;
         case 'Math.random': return 'pick random 0 to 1';
@@ -122,7 +137,26 @@ class MicrobitTranslator extends BaseTranslator {
         case 'Math.max': return `${arg(0)}`;
         case 'Math.map': return `${arg(0)}`;
         case 'game.score': return 'score';
-        default: return super.callExpression(node);
+        // An image is a value here, and the only thing our display can be
+        // handed is a pattern, so that is what it becomes: `"0101…"`. It
+        // survives being stored in an array, which is how these programs
+        // actually use them (`uhrbilder[i].showImage(0)`).
+        case 'images.createImage': return `"${ledPattern(a[0])}"`;
+        case 'images.iconImage':
+        case 'images.arrowImage': {
+            const table = name === 'images.arrowImage' ? MICROBIT_ARROWS : MICROBIT_ICONS;
+            const member = a[0] && a[0].type === 'Member' ? a[0].name : null;
+            const pattern = member ? table[member] : null;
+            if (pattern) return `"${pattern}"`;
+            this.unsupported.push(`${name}(${member || '…'}) — not an icon we have a pattern for`);
+            return '0';
+        }
+        default:
+            if (CALLIOPE_ONLY[name]) {
+                this.unsupported.push(`${name}() — ${CALLIOPE_ONLY[name]}`);
+                return '0';
+            }
+            return super.callExpression(node);
         }
     }
 
@@ -223,7 +257,12 @@ class MicrobitTranslator extends BaseTranslator {
         case 'music.playTone':
         case 'music.ringTone': {
             const freq = this.single(a[0], out, pad);
-            const ms = name === 'music.ringTone' ? '500' : this.literalNumber(a[1]);
+            // `music.beat(BeatFraction.Whole)` is a call that evaluates to a
+            // number, and the MS slot takes a literal — so ask what it
+            // became rather than what shape it arrived in.
+            const evaluated = a[1] ? this.expr(a[1]) : null;
+            const ms = name === 'music.ringTone' ? '500' :
+                (this.literalNumber(a[1]) ?? (/^\d+$/.test(evaluated || '') ? evaluated : null));
             if (ms === null) {
                 this.unsupported.push('music.playTone() with a computed duration — held at 500 ms');
                 push(`play tone ${freq} hz for 500 ms`);
@@ -270,10 +309,50 @@ class MicrobitTranslator extends BaseTranslator {
             return;
 
         default:
+            if (CALLIOPE_ONLY[name]) {
+                push(this.note(`${name}() — ${CALLIOPE_ONLY[name]}`));
+                return;
+            }
+            if (node.callee && node.callee.type === 'Member' &&
+                (node.callee.name === 'showImage' || node.callee.name === 'plotImage')) {
+                const image = this.expr(node.callee.object);
+                const literal = /^"([0-9:]+)"$/.exec(image);
+                if (literal) {
+                    push(`show pattern ${literal[1]}`);
+                    return;
+                }
+                // MATRIX is a FIELD on the block, not an input, so a
+                // computed pattern cannot be put there at all — this is a
+                // limit of the block, not a gap in the grammar.
+                push(this.note(`${image}.showImage() — the display block takes a fixed pattern, ` +
+                    'so an image chosen at runtime cannot be shown'));
+                return;
+            }
             super.command(node, indent, out);
         }
     }
 }
+
+/**
+ * Calliope-only API, named rather than merely refused.
+ *
+ * The Calliope mini runs the micro:bit's API plus its own hardware, and
+ * the extra hardware is genuinely not on the board we model. A report
+ * that says `basic.setLedColor()` teaches nothing; one that says which
+ * piece of hardware it wanted, and what the nearest thing we have is,
+ * tells the reader what to do next.
+ */
+const CALLIOPE_ONLY = {
+    'basic.setLedColor': 'the Calliope RGB LED — the micro:bit display we model is single-colour',
+    'basic.setLedColors': 'the Calliope RGB LED — the micro:bit display we model is single-colour',
+    'basic.turnRgbLedOff': 'the Calliope RGB LED — the micro:bit display we model is single-colour',
+    'basic.rgb': 'the Calliope RGB LED colour helper',
+    'basic.rgbw': 'the Calliope RGB LED colour helper',
+    'motors.dualMotorPower': 'the Calliope on-board motor driver — no motor on the micro:bit',
+    'motors.motorPower': 'the Calliope on-board motor driver — no motor on the micro:bit',
+    'motors.dualMotorStop': 'the Calliope on-board motor driver — no motor on the micro:bit',
+    'input.loudness': 'the Calliope microphone (use `sound level` if your board has one)'
+};
 
 /** ms → seconds, computed when it is a literal so the output reads naturally. */
 function seconds (node, translator) {
@@ -357,6 +436,9 @@ const UNPOLLABLE_HANDLERS = {
 export function microbitToPseudocode (source, opts = {}) {
     const ast = parseMakeCodeTs(source);
     const t = new MicrobitTranslator();
+    // Before anything is emitted: a variable this program has to be
+    // renamed must not land on a name the program already uses.
+    t.claimNames(ast);
 
     // Enums and functions first: a call can precede its definition, and
     // an enum member can be referenced before the enum is declared.
@@ -424,7 +506,21 @@ export function microbitToPseudocode (source, opts = {}) {
     }
 
     const out = ['DEVICE MICROBIT', ''];
-    if (opts.name) out.push(`# Imported from MakeCode: ${opts.name}`, '');
+    if (opts.name) {
+        // The Calliope runs the same core API; the DEVICE line is the
+        // closest board we model, and saying so beats implying the
+        // hardware matched.
+        out.push(opts.board === 'calliopemini' ?
+            `# Imported from MakeCode for Calliope mini: ${opts.name}` :
+            `# Imported from MakeCode: ${opts.name}`);
+        if (opts.board === 'calliopemini') {
+            out.push('# Translated against the micro:bit vocabulary, which the Calliope shares.');
+        }
+        out.push('');
+    }
+
+    const renames = t.renameNotes();
+    if (renames.length) out.push(...renames, '');
 
     if (main.length) {
         out.push('WHEN flag clicked:', ...main, '');

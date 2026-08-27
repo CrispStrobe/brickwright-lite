@@ -153,3 +153,65 @@ test('an exported icon reads as an icon, and brightness loss is reported', {skip
     assert.ok(dimmed.unsupported.some(u => /brightness/.test(u)),
         'MakeCode\'s display literals are on/off, and flattening 1..8 is a real loss');
 });
+
+test('arrays and bitwise go back to MakeCode as themselves', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // These two arrived through EXTENSIONS on the way in — the pseudocode
+    // has neither an array nor a bitwise operator of its own. MakeCode's
+    // TypeScript has both natively, so the way back is exact rather than
+    // approximate, and the 0-based indexing that made the `arrays`
+    // extension the right target is what makes `a[i]` survive unshifted.
+    const project = new SB3Creator().parse([
+        'DEVICE MICROBIT', '', 'WHEN flag clicked:',
+        '  new array "liste" = [1, 2, 3]',
+        '  push 4 to array "liste"',
+        '  set item 0 of array "liste" to 9',
+        '  set wert to (wert bitand 255)',
+        '  set wert to item 1 of array "liste"',
+        '  display length of array "liste"'
+    ].join('\n'));
+    const {ts, unsupported} = projectToMakeCodeTs(project);
+
+    assert.deepEqual(unsupported, [], 'a round trip that drops the arrays is not a round trip');
+    // The declaration has to be hoisted: an array's name is an INPUT on the
+    // block rather than a Scratch variable, so nothing else declares it.
+    assert.match(ts, /let liste: number\[\] = \[\]/, ts);
+    assert.match(ts, /liste\.push\(4\)/, ts);
+    assert.match(ts, /liste\[0\] = 9/, ts);
+    assert.match(ts, /liste\[1\]/, ts);
+    assert.match(ts, /liste\.length/, ts);
+    assert.match(ts, /basic\.showNumber\(liste\.length\)/, ts);
+    assert.match(ts, /wert & 255/, ts);
+    assert.doesNotMatch(ts, /unsupported/, ts);
+});
+
+test('what came in as MakeCode arrays goes back out as MakeCode arrays', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // The whole loop, which is the only way to prove the two halves agree:
+    // TypeScript → pseudocode → blocks → TypeScript → pseudocode.
+    const source = [
+        'let liste: number[] = []',
+        'let wert = 0',
+        'basic.forever(function () {',
+        '  liste.push(4)',
+        '  liste[0] = 9',
+        '  wert = wert & 255',
+        '  wert = liste[1]',
+        '  basic.showNumber(liste.length)',
+        '})'
+    ].join('\n');
+
+    const first = microbitToPseudocode(source);
+    assert.deepEqual(first.unsupported, []);
+    const exported = projectToMakeCodeTs(new SB3Creator().parse(first.code));
+    assert.deepEqual(exported.unsupported, []);
+    const second = microbitToPseudocode(exported.ts);
+    assert.deepEqual(second.unsupported, []);
+
+    // Comments and the declaration/assignment split differ; every operation
+    // must not.
+    const operations = text => text.split('\n')
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('#') && !/^set wert to 0$/.test(l));
+    assert.deepEqual(operations(second.code), operations(first.code));
+});

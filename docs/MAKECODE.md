@@ -43,7 +43,7 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `micropython-hex.js` | the *other* hex: a micro:bit MicroPython .hex from python.microbit.org or uflash, V1 appended script and V2 filesystem both |
 | `share.js` | `https://makecode.com/api/{id}/text` — the whole project as JSON, no binary parsing at all |
 | `ts-import.js` | a parser for the TypeScript subset MakeCode emits (annotations, `enum`, `namespace`, tagged template literals, function expressions) — needed because the translation has to walk *into* callbacks |
-| `translate-base.js` | what both translators share: the walk, the "nothing is dropped in silence" rule, and the slot discipline |
+| `translate-base.js` | what both translators share: the walk, the "nothing is dropped in silence" rule (which `test/makecode-nothing-vanishes.test.mjs` holds it to), the slot discipline, and the two bundled extensions the pseudocode borrows — `arrays` and `bitops` |
 | `microbit-translate.js` | MakeCode micro:bit → BrickWright pseudocode → blocks, MicroPython, the simulator |
 | `arcade-translate.js` | MakeCode Arcade → a playable Scratch project: target selection, sprites, clones, `touching`, score, velocity loops |
 | `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), tilemaps painted whole, the 16-colour palette → SVG costumes |
@@ -51,9 +51,10 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `export.js` | the other direction: blocks → MakeCode TypeScript, and a .hex carrying only the source embed — which is all MakeCode's importer reads |
 | `index.js` | one `importArtefact(bytes)` door, wired into the Code tab's 📂 Open button |
 
-Evidence: `test/makecode-import.test.mjs` runs against **three real MakeCode
-downloads** (see `test/fixtures/makecode/README.md`) plus round-trips for the
-two containers we have no committed sample of.
+Evidence: `test/makecode-import.test.mjs` runs against **eight real MakeCode
+downloads** — micro:bit, Arcade and Calliope, in .hex and .uf2 (see
+`test/fixtures/makecode/README.md`) — plus round-trips for the two containers
+we have no committed sample of.
 
 ### What actually runs
 
@@ -82,7 +83,91 @@ unsupported APIs remain visible in the import report.
 | 4 | export: a Brickwright project opens *in* MakeCode | **done** — ⬆ To MakeCode writes a .hex whose only content is the source embed, which is what MakeCode's importer actually reads |
 | 4b | export: compile a modified project to a board `.uf2` | **not done**, and not the same thing — that needs pxt's own compiler. Opening in MakeCode is not physical deployment |
 | 5 | actually emulate a MakeCode hex | see below |
-| 6 | **Calliope mini** (`makecode.calliope.cc`) | **not done, and not attempted blind.** The target is already recognised, but such a project currently lands in the JavaScript tab. Its core API is micro:bit's, so routing it through that translator would mostly work — with the Calliope-only calls (RGB LED, motors) refused, and `DEVICE MICROBIT` being an approximation of the board. Worth doing the moment one real `.hex` from that editor exists to test against; everything else here was built against real downloads and this should be too |
+| 6 | **Calliope mini** | **done**, both halves. The **Arcade** editor targeting a Calliope (GameKit shield) always worked — the board changes the binary, not the source, and the fixtures here ARE such builds. `makecode.calliope.cc`, the micro:bit-shaped editor, now routes through the micro:bit translator: **24 of the 25 example programmes on calliope.cc translate and compile**, and the 25th carries no embedded source at all. See below for what that cost |
+
+## Calliope mini: what 25 real programmes changed
+
+`makecode.calliope.cc` writes the micro:bit's API onto different hardware, so a
+Calliope hex goes through `microbit-translate.js` with a `board` note saying which
+board it came from. Routing it there was three lines. Everything else in this
+section is what the [25 example programmes](https://calliope.cc/calliope-mini/25programme)
+found once they could be run through it — the corpus went **0 → 24 of 24**
+(the 25th has no embedded source), and it found bugs on the Arcade side too,
+because the fixes are in the shared base.
+
+**The parser could not read the language they are written in.** German variable
+names (`ausgewählt`, `größe`) failed on an ASCII `IDENT_START`, and two programmes
+destructure their radio handler's argument —
+`radio.onDataPacketReceived(({receivedString: name}) => …)` — which was rejected
+outright, taking the whole file with it. Identifiers are now `\p{L}`-based and the
+parameter parser reads object patterns.
+
+**Two things compiled to something plausible and wrong**, which is the failure this
+translator exists to prevent:
+
+| written | was becoming | now |
+|---|---|---|
+| `wert = wert & 255` | `set wert to wert & 255`, which parses as a **string literal** — the variable ends up holding the ten characters `wert & 255` | `bitops` blocks: `bitand`, `bitor`, `bitxor`, `shiftleft`, `shiftright`, `bitnot` |
+| `let liste: number[] = []` | `set liste to 0` — and every later `liste[i]` read that number | the `arrays` extension |
+
+Arrays map to the **`arrays` extension rather than to Scratch lists**, and the
+reason is indexing: the extension indexes from 0, exactly as TypeScript does.
+A Scratch list indexes from 1, so every `a[i]` would need a `+1` that is invisible
+in the resulting blocks, and any index the program computed would be silently off
+by one. `push`, `pop`, `insertAt`, `removeAt`, `indexOf`, `length` and `a[i] = v`
+all map; the methods that take a callback (`filter`, `map`, `some`) are reported,
+because inlining an arrow would invent a function name the project does not have.
+
+**`.length` on a call result was dropping the call.** `a.filter(f).length` read the
+property and never evaluated `a.filter(f)`, so the refusal never fired and the
+program silently got a variable named `length`. Found by a test written for the
+callback case, not by the corpus.
+
+**Images are values.** These programmes build arrays of pictures —
+`uhrbilder = [images.createImage(…), …]` then `uhrbilder[i].showImage(0)` — so
+`images.createImage` and `images.iconImage` now return a pattern string, which
+survives being stored in an array. A **literal** pattern reaches
+`show pattern`; a runtime-chosen one is refused, and the refusal says why: the
+block carries the pattern as a **field**, and a field cannot hold a reporter at
+all. That is a limit of the block, not a gap in the grammar.
+
+**What is refused, and named.** `basic.setLedColor` is the single most common
+unsupported call in the corpus (18 of 53 reports). It is the Calliope's RGB LED,
+and the micro:bit display we model is single-colour. The report says that rather
+than printing `basic.setLedColor()`, because the reports ARE the product for
+everything we cannot translate. Same for the on-board motor driver and the
+microphone.
+
+**One grammar gap went upstream.** `led.plot(x, y)` with variable coordinates is
+the ordinary way these programmes write to the display, and it was the third most
+common refusal — not because the block cannot do it (X and Y are *inputs*, so they
+can hold reporters) but because only `plot x <digits> y <digits>` parsed;
+`plot x col y row on` matched no rule and produced no block. Fixed in
+sb3-creator [#4](https://github.com/CrispStrobe/sb3-creator/pull/4), the same
+shape as the `show text <reporter>` gap fixed in #3. The translator keeps refusing
+computed coordinates until that lands here through `npm run sync:sb3creator`.
+
+**A variable named `x` was not a variable.** `set x to 7` compiles to
+`motion_setx` — the Scratch *motion* block — and `change x by 1` to
+`motion_changexby`, case-insensitively, so a MakeCode program with `let x = 0`
+moved a sprite instead of keeping a number. Silently, and while compiling
+perfectly. `x` and `y` are the two most ordinary names a program that draws on
+a 5x5 grid can have, and the corpus had **eleven** of them. Four other names do
+the same: `size`, `volume`, `tempo` (looks, sound and music set-blocks). Reads
+are fine — `show text x` reads the variable — so this is only about where the
+name is written.
+
+Those five are now renamed on the way in, with as little added as possible
+(`x` → `x_`, extended again if the program already uses that), announced once
+at the top of the program, and **not counted as a refusal**: the variable is
+fully supported, it just cannot keep its name. Counting it would inflate the
+one number this work is steered by; hiding it would rename someone's variable
+behind their back.
+
+It first showed up as an apparent bitwise bug — `set x to x & 255` looked like
+it produced a block with no value, which is what a `motion_setx` with an
+unparseable X input looks like from the outside.
+
 
 ## What the grammar will and will not take
 
@@ -197,6 +282,50 @@ and nowhere else.
 The one legitimate difference: `show text` leaves as `basic.showString`
 and comes back as `scroll text`, because MakeCode has no non-scrolling
 string block.
+
+**Arrays and bitwise had to be given a way back.** They arrive through
+*extensions* — the pseudocode has neither an array nor a bitwise operator
+of its own — so making them importable opened a hole at the far end: a
+Calliope project brought in and exported again came back with
+`// unsupported: arrays_push` where its array had been. Reported, so
+nothing vanished, but a round trip that drops the arrays is not one.
+MakeCode's TypeScript has both natively, so the inverse is exact, and
+`a[i]` survives **unshifted** — the 0-based indexing that made the
+`arrays` extension the right target on the way in paying for itself in
+the other direction. The declaration needs a hoist of its own: an array's
+name is an *input* on the block rather than a Scratch variable, so it is
+only met while emitting and nothing in `target.variables` declares it.
+
+## Counting refusals cannot catch a silent drop
+
+The number this work is steered by is the refusal count, and it has one
+blind spot that matters more than everything it sees: **a silent drop
+lowers it**. A statement that produces neither a block nor a report makes
+the corpus look like it improved.
+
+Four defects in this file's history were exactly that, and all four
+compiled:
+
+| written | became | not caught by |
+|---|---|---|
+| `wert & 255` | a string literal whose text is `wert & 255` | compiling — it parses |
+| `let liste: number[] = []` | `set liste to 0` | compiling, and the refusal count went *down* |
+| `a.filter(f).length` | a variable named `length`, the call unevaluated | either |
+| `led.plot(x, y)` | no block at all (upstream) | either |
+
+So `test/makecode-nothing-vanishes.test.mjs` counts nothing. It wraps the
+walk and asserts every statement either emits a line, files a report, or
+hoists a definition, over every committed fixture on both sides. Two
+categories legitimately emit nothing *where they stand*, and they are
+listed at exact spellings rather than by pattern, because a broad
+exemption is how the next silent drop gets back out of reach: an `enum`
+(read into the substitution table, its members substituted at each use)
+and the Arcade animation API (gathered in pass 1 and turned into
+costumes, since Scratch has no named animation with its own timer).
+
+A third test breaks the walk on purpose and checks the instrument notices
+it — a gate that cannot fail is decoration, and a refactor that stopped
+calling `statement()` would otherwise turn the file green.
 
 ## The imported game RUNS
 

@@ -55,6 +55,7 @@ class Emitter {
     constructor (blocks) {
         this.blocks = blocks;
         this.unsupported = [];
+        this.arrays = new Set();   // names met on `arrays` blocks; declared by the caller
     }
 
     block (id) {
@@ -82,6 +83,20 @@ class Emitter {
 
     variableName (name) {
         return String(name).replace(/[^A-Za-z0-9_]/g, '_') || 'v';
+    }
+
+    /**
+     * The identifier for an `arrays` block's NAME input.
+     *
+     * The extension keys its registry by an arbitrary string, and
+     * TypeScript needs an identifier, so the same sanitising the variables
+     * get is applied — and the name is recorded, because nothing else
+     * declares it.
+     */
+    arrayName (b) {
+        const name = this.variableName(this.value(b, 'NAME', 'liste').replace(/^["']|["']$/g, ''));
+        this.arrays.add(name);
+        return name;
     }
 
     /** A boolean input. */
@@ -134,6 +149,25 @@ class Emitter {
         case 'microbitplus_radiolastnum': return 'receivedNumber';
         case 'microbitplus_radiolaststr': return 'receivedString';
         case 'sensing_timer': return '(input.runningTime() / 1000)';
+
+        // The `arrays` extension holds NAMED arrays in a registry, and it
+        // indexes from 0 — which is why the importer chose it over Scratch
+        // lists, and why the way back is exact rather than shifted.
+        case 'arrays_get': return `${this.arrayName(b)}[${v('INDEX')}]`;
+        case 'arrays_length': return `${this.arrayName(b)}.length`;
+        case 'arrays_pop': return `${this.arrayName(b)}.pop()`;
+        case 'arrays_indexOf': return `${this.arrayName(b)}.indexOf(${v('VALUE')})`;
+        case 'arrays_contains': return `(${this.arrayName(b)}.indexOf(${v('VALUE')}) >= 0)`;
+        case 'arrays_reverse': return `${this.arrayName(b)}.reverse()`;
+
+        // MakeCode's TypeScript has the operators the pseudocode had to
+        // borrow an extension for, so these go back as themselves.
+        case 'bitops_and': return `(${v('NUM1')} & ${v('NUM2')})`;
+        case 'bitops_or': return `(${v('NUM1')} | ${v('NUM2')})`;
+        case 'bitops_xor': return `(${v('NUM1')} ^ ${v('NUM2')})`;
+        case 'bitops_shl': return `(${v('NUM1')} << ${v('NUM2')})`;
+        case 'bitops_shr': return `(${v('NUM1')} >> ${v('NUM2')})`;
+        case 'bitops_not': return `(~${v('NUM')})`;
         default:
             this.unsupported.push(`${b.opcode} as a value`);
             return '0';
@@ -206,6 +240,36 @@ class Emitter {
             return;
         case 'data_changevariableby':
             push(`${this.variableName(f('VARIABLE'))} += ${v('VALUE')}`);
+            return;
+
+        // An array's name is an INPUT on these blocks rather than a Scratch
+        // variable, so the declaration cannot come from target.variables the
+        // way an ordinary one does. Each name met here is recorded, and
+        // projectToMakeCodeTs emits `let <name>: number[] = []` for it.
+        case 'arrays_createEmpty':
+            this.arrays.add(this.arrayName(b));
+            return;                                   // the declaration IS the creation
+        case 'arrays_create1D': {
+            const json = this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
+            push(`${this.arrayName(b)} = ${json}`);
+            return;
+        }
+        case 'arrays_createRange':
+            push(`${this.arrayName(b)} = []`);
+            push(`for (let i = ${v('START')}; i <= ${v('END')}; i++) ` +
+                `{ ${this.arrayName(b)}.push(i) }`);
+            return;
+        case 'arrays_push':
+            push(`${this.arrayName(b)}.push(${v('VALUE')})`);
+            return;
+        case 'arrays_set':
+            push(`${this.arrayName(b)}[${v('INDEX')}] = ${v('VALUE')}`);
+            return;
+        case 'arrays_insert':
+            push(`${this.arrayName(b)}.insertAt(${v('INDEX')}, ${v('VALUE')})`);
+            return;
+        case 'arrays_remove':
+            push(`${this.arrayName(b)}.removeAt(${v('INDEX')})`);
             return;
 
         case 'microbitplus_showmatrix': {
@@ -315,6 +379,10 @@ export function projectToMakeCodeTs (project) {
             lines.push(`let ${name} = 0`);
         }
 
+        // The body is emitted first because an array's name is only met
+        // while emitting — it is an input on the block, not a Scratch
+        // variable — and TypeScript wants the declaration above the use.
+        const body = [];
         for (const [id, block] of Object.entries(blocks)) {
             if (!block || !block.topLevel) continue;
             if (block.opcode !== 'event_whenflagclicked') {
@@ -323,9 +391,15 @@ export function projectToMakeCodeTs (project) {
                 }
                 continue;
             }
-            lines.push(...emitter.stack(block.next, 0));
+            body.push(...emitter.stack(block.next, 0));
             void id;
         }
+        for (const name of emitter.arrays) {
+            if (declared.has(name)) continue;
+            declared.add(name);
+            lines.push(`let ${name}: number[] = []`);
+        }
+        lines.push(...body);
         unsupported.push(...emitter.unsupported);
     }
 

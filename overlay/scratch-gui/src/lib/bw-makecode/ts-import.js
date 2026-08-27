@@ -36,10 +36,20 @@
 
 const PUNCT = [
     '===', '!==', '==', '!=', '<=', '>=', '&&', '||', '++', '--',
-    '+=', '-=', '*=', '/=', '=>', '...',
+    '+=', '-=', '*=', '/=', '=>', '...', '>>>', '<<', '>>',
     '{', '}', '(', ')', '[', ']', ';', ',', '.', ':', '?',
     '+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '^', '~'
 ];
+
+/**
+ * Identifiers may hold any Unicode letter, because JavaScript's do and
+ * real programs use them: `let ausgewählt = 0` is ordinary in the German
+ * Calliope material, and an ASCII-only rule splits it into `ausgew` and
+ * `hlt` with the umlaut dropped — which corrupts every token after it and
+ * surfaces as a syntax error four lines further down.
+ */
+const IDENT_START = /[\p{L}\p{Nl}_$]/u;
+const IDENT_PART = /[\p{L}\p{N}_$]/u;
 
 const KEYWORDS = new Set([
     'let', 'const', 'var', 'function', 'if', 'else', 'while', 'for', 'do',
@@ -123,9 +133,9 @@ export function tokenize (src) {
             push('number', s);
             continue;
         }
-        if (/[A-Za-z_$]/.test(c)) {
+        if (IDENT_START.test(c)) {
             let s = '';
-            while (i < src.length && /[A-Za-z0-9_$]/.test(src[i])) s += src[i++];
+            while (i < src.length && IDENT_PART.test(src[i])) s += src[i++];
             push(KEYWORDS.has(s) ? s : 'ident', s);
             continue;
         }
@@ -145,10 +155,15 @@ export function tokenize (src) {
 
 const BINARY_PRECEDENCE = {
     '||': 1, '&&': 2,
-    '==': 3, '!=': 3, '===': 3, '!==': 3,
-    '<': 4, '>': 4, '<=': 4, '>=': 4,
-    '+': 5, '-': 5,
-    '*': 6, '/': 6, '%': 6
+    // Bitwise and shifts have no Scratch equivalent, but they must PARSE:
+    // leaving them out did not fail, it silently ended the expression and
+    // read the rest as a new statement.
+    '|': 3, '^': 3, '&': 3,
+    '==': 4, '!=': 4, '===': 4, '!==': 4,
+    '<': 5, '>': 5, '<=': 5, '>=': 5,
+    '<<': 6, '>>': 6, '>>>': 6,
+    '+': 7, '-': 7,
+    '*': 8, '/': 8, '%': 8
 };
 
 /** The dotted name of a template literal's tag, for `img` / `assets.image`. */
@@ -198,21 +213,29 @@ class Parser {
     }
 
     /** Type annotations carry no runtime meaning here; step over them. */
+    /**
+     * Skip `: number[]`. Returns true when the type was an array — the
+     * translator needs that to declare a Scratch LIST rather than a
+     * variable, and `let a: number[] = []` carries the fact nowhere else.
+     */
     skipTypeAnnotation () {
-        if (!this.eat('punct', ':')) return;
+        if (!this.eat('punct', ':')) return false;
         let depth = 0;
+        let isArray = false;
         for (;;) {
             const t = this.peek();
-            if (t.type === 'eof') return;
+            if (t.type === 'eof') return isArray;
             // A return type ends at the function body: `): void {`.
-            if (depth === 0 && t.type === 'punct' && t.value === '{') return;
+            if (depth === 0 && t.type === 'punct' && t.value === '{') return isArray;
             if (t.type === 'punct' && '<[('.includes(t.value)) depth++;
+            if (t.type === 'punct' && t.value === '[') isArray = true;
+            if (t.type === 'ident' && t.value === 'Array') isArray = true;
             if (t.type === 'punct' && '>])'.includes(t.value)) {
-                if (depth === 0) return;
+                if (depth === 0) return isArray;
                 depth--;
             }
-            if (depth === 0 && t.type === 'punct' && (t.value === '=' || t.value === ';' || t.value === ',')) return;
-            if (depth === 0 && t.type === 'punct' && t.value === ')') return;
+            if (depth === 0 && t.type === 'punct' && (t.value === '=' || t.value === ';' || t.value === ',')) return isArray;
+            if (depth === 0 && t.type === 'punct' && t.value === ')') return isArray;
             this.next();
         }
     }
@@ -304,10 +327,10 @@ class Parser {
         const decls = [];
         do {
             const name = this.expect('ident').value;
-            this.skipTypeAnnotation();
+            const isArray = this.skipTypeAnnotation();
             let init = null;
             if (this.eat('punct', '=')) init = this.parseExpression();
-            decls.push({name, init});
+            decls.push({name, init, isArray});
         } while (this.eat('punct', ','));
         this.eat('punct', ';');
         return {type: 'Declaration', kind, decls};
@@ -317,14 +340,36 @@ class Parser {
         this.expect('punct', '(');
         const params = [];
         while (!this.at('punct', ')') && !this.at('eof')) {
-            const name = this.at('ident') ? this.next().value : this.next().value;
-            this.skipTypeAnnotation();
-            if (this.eat('punct', '=')) this.parseExpression();
-            params.push(name);
+            // `radio.onDataPacketReceived(({receivedString: text}) => ...)`
+            // binds a destructured object. The names that reach the body are
+            // the ones after each colon (or the key itself, when shorthand).
+            if (this.at('punct', '{')) {
+                params.push(...this.parseObjectPatternNames());
+            } else {
+                const name = this.next().value;
+                this.skipTypeAnnotation();
+                if (this.eat('punct', '=')) this.parseExpression();
+                params.push(name);
+            }
             if (!this.eat('punct', ',')) break;
         }
         this.expect('punct', ')');
         return params;
+    }
+
+    /** Read `{a, b: c}` and return the names it binds. */
+    parseObjectPatternNames () {
+        this.expect('punct', '{');
+        const names = [];
+        while (!this.at('punct', '}') && !this.at('eof')) {
+            const key = this.next().value;
+            names.push(this.eat('punct', ':') ? this.next().value : key);
+            if (this.eat('punct', '=')) this.parseExpression();
+            if (!this.eat('punct', ',')) break;
+        }
+        this.expect('punct', '}');
+        this.skipTypeAnnotation();
+        return names;
     }
 
     parseFunction () {
@@ -435,7 +480,8 @@ class Parser {
     }
 
     parseUnary () {
-        if (this.at('punct', '!') || this.at('punct', '-') || this.at('punct', '+')) {
+        if (this.at('punct', '!') || this.at('punct', '-') || this.at('punct', '+') ||
+            this.at('punct', '~')) {
             const op = this.next().value;
             return {type: 'Unary', op, argument: this.parseUnary()};
         }
