@@ -2177,6 +2177,12 @@ class PseudocodeImporter extends React.Component {
         if (!runtime) return;
         runtime.bwGameControlKey = gameKey || null;
         runtime.emit('BW_GAME_CONTROLS_CHANGED', runtime.bwGameControlKey);
+        if (gameKey && typeof window !== 'undefined') {
+            try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-right-pane-hidden', value: '0'}
+            }));
+        }
     }
 
     gameKeyForSource (source) {

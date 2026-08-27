@@ -28,6 +28,7 @@ test('game selection publishes controls and the right pane mounts them beside th
     const controls = read('components/tw-pseudocode/game-touch-controls.jsx');
     assert.match(importer, /runtime\.bwGameControlKey = gameKey \|\| null/);
     assert.match(importer, /this\.gameKeyForSource\(saved\.code\)/);
+    assert.match(importer, /detail: \{key: 'bw-right-pane-hidden', value: '0'\}/);
     assert.match(importer, /BW_GAME_CONTROLS_CHANGED/);
     assert.match(gui, /<GameTouchControls gameKey=\{gameControlKey\} vm=\{vm\}/);
     assert.match(controls, /vm\.postIOData\('keyboard', \{key, isDown\}\)/);
