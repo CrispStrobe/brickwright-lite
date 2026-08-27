@@ -3059,9 +3059,10 @@ SPRITE SkyRoad:
       change color effect by speed
       wait 0.04 seconds`,
 
-    prism_spire: `# Prism Spire — stack a luminous tower while each floor sweeps faster.
-# Tap Space to drop. Only the overlap survives: off-centre landings narrow the next block,
-# perfect landings build a combo, and three misses end the construction.
+    prism_spire: `# Lumen Stack — a twelve-floor precision tower challenge.
+# GOAL: build twelve floors before three complete misses.
+# CONTROLS: Tap Space to drop the sweeping floor. Only its overlap survives.
+# Near-centre drops build a perfect combo; off-centre drops permanently narrow the tower.
 GLOBAL score
 GLOBAL misses
 GLOBAL level
@@ -3072,16 +3073,31 @@ GLOBAL sweep
 GLOBAL sweepDir
 GLOBAL perfect
 GLOBAL landingY
+GLOBAL dropReady
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art lumen-stack/intro
+  BACKDROP skyline art lumen-stack/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable misses
+    hide variable level
+    hide variable perfect
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to skyline
+      broadcast "start lumen stack"
 
 SPRITE CraneBlock:
-  SHAPE rect 100 20 #58e6ff
-  COSTUME hot rect 100 20 #ff61c7
+  SHAPE art lumen-stack/block
+  COSTUME hot art lumen-stack/hot
   SOUND land 620
   SOUND miss 150
   WHEN flag clicked:
-    show variable score
-    show variable misses
-    show variable level
     set score to 0
     set misses to 0
     set level to 0
@@ -3092,9 +3108,17 @@ SPRITE CraneBlock:
     set sweepDir to 1
     set perfect to 0
     set landingY to -135
+    set dropReady to 0
     go to x: blockX y: 120
+    hide
+  WHEN I receive "start lumen stack":
+    show variable score
+    show variable misses
+    show variable level
+    show variable perfect
     show
-  WHEN flag clicked:
+    wait 0.2 seconds
+    set dropReady to 1
     FOREVER:
       change blockX by sweep * sweepDir
       IF blockX > 190 THEN:
@@ -3108,11 +3132,15 @@ SPRITE CraneBlock:
       ELSE:
         switch costume to costume1
       IF misses > 2 THEN:
-        say ("Prism height: " join level) for 3 seconds
+        say ("TOWER LOST AT FLOOR " join level) for 4 seconds
+        stop all
+      IF level = 12 THEN:
+        say ("TWELVE FLOORS COMPLETE — SCORE " join score) for 4 seconds
         stop all
       wait 0.02 seconds
   WHEN space key pressed:
-    broadcast "drop floor" and wait
+    IF started = 1 and dropReady = 1 THEN:
+      broadcast "drop floor" and wait
   WHEN I receive "drop floor":
     IF (abs of (blockX - towerX)) < blockWidth THEN:
       IF (abs of (blockX - towerX)) < 8 THEN:
@@ -3137,7 +3165,7 @@ SPRITE CraneBlock:
     set blockX to -190
 
 SPRITE FrozenFloor:
-  SHAPE rect 100 20 #8b7cff
+  SHAPE art lumen-stack/floor
   WHEN flag clicked:
     hide
   WHEN I receive "freeze floor":
@@ -3149,16 +3177,20 @@ SPRITE FrozenFloor:
     show
 
 SPRITE Foundation:
-  SHAPE rect 150 22 #334168
+  SHAPE art lumen-stack/foundation
   WHEN flag clicked:
     go to x: 0 y: -145
+    hide
+  WHEN I receive "start lumen stack":
     show`,
 
-    shard_sheriff: `# Shard Sheriff — run beneath bouncing plasma bubbles and split them safely.
-# Left/Right moves; Space fires a vertical lance. A large orb splits into a fast shard,
-# then both must be popped. Never let either touch the sheriff.
+    shard_sheriff: `# Plasma Posse — a four-wave split-orb arena.
+# GOAL: clear four plasma waves before three collisions.
+# CONTROLS: Left/Right move. Space fires one vertical lance.
+# Each large orb must be reduced, then both the core and its fast gold shard must be popped.
 GLOBAL score
 GLOBAL hearts
+GLOBAL waves
 GLOBAL sheriffX
 GLOBAL orbX
 GLOBAL orbY
@@ -3171,20 +3203,44 @@ GLOBAL shardY
 GLOBAL shardVX
 GLOBAL shardVY
 GLOBAL lanceOn
+GLOBAL orbActive
+GLOBAL fireReady
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art plasma-posse/intro
+  BACKDROP arena art plasma-posse/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable hearts
+    hide variable waves
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to arena
+      broadcast "start plasma posse"
 
 SPRITE Sheriff:
-  SHAPE rect 34 48 #54d8ff
+  SHAPE art plasma-posse/sheriff
   WHEN flag clicked:
-    show variable score
-    show variable hearts
     set score to 0
     set hearts to 3
+    set waves to 0
     set sheriffX to 0
     set shardOn to 0
     set lanceOn to 0
+    set fireReady to 0
     go to x: sheriffX y: -135
+    hide
+  WHEN I receive "start plasma posse":
+    show variable score
+    show variable hearts
+    show variable waves
     show
-  WHEN flag clicked:
+    wait 0.2 seconds
+    set fireReady to 1
     FOREVER:
       IF key left arrow pressed? THEN:
         change sheriffX by -5
@@ -3196,16 +3252,19 @@ SPRITE Sheriff:
         set sheriffX to 215
       go to x: sheriffX y: -135
       IF hearts < 1 THEN:
-        say ("Shard Sheriff score: " join score) for 3 seconds
+        say ("POSSE LOST — SCORE " join score) for 4 seconds
+        stop all
+      IF waves = 4 THEN:
+        say ("FOUR WAVES CLEARED — SCORE " join score) for 4 seconds
         stop all
       wait 0.02 seconds
   WHEN space key pressed:
-    IF lanceOn = 0 THEN:
+    IF started = 1 and fireReady = 1 and lanceOn = 0 THEN:
       set lanceOn to 1
       broadcast "fire lance"
 
 SPRITE PlasmaOrb:
-  SHAPE circle 58 #ff4fa3
+  SHAPE art plasma-posse/orb
   SOUND split 780
   SOUND pop 1040
   WHEN flag clicked:
@@ -3214,49 +3273,64 @@ SPRITE PlasmaOrb:
     set orbVX to -3
     set orbVY to 4
     set orbTier to 3
+    set orbActive to 1
     go to x: orbX y: orbY
+    hide
+  WHEN I receive "start plasma posse":
     show
-  WHEN flag clicked:
     FOREVER:
-      change orbVY by -0.38
-      change orbX by orbVX
-      change orbY by orbVY
-      IF orbX > 220 or orbX < -220 THEN:
-        set orbVX to 0 - orbVX
-      IF orbY < -105 THEN:
-        set orbY to -105
-        set orbVY to 8 + orbTier
-      go to x: orbX y: orbY
-      set size to 35 + orbTier * 18 %
-      IF touching Lance and lanceOn = 1 THEN:
-        change score by 5
-        change orbTier by -1
-        IF orbTier = 2 THEN:
-          set shardOn to 1
-          set shardX to orbX
-          set shardY to orbY
-          set shardVX to 5
-          set shardVY to 7
-          play sound "split"
-        IF orbTier < 1 THEN:
-          change score by 15
-          set orbTier to 3
-          set orbX to pick random -170 to 170
-          set orbY to 140
-          play sound "pop"
-        set lanceOn to 0
-      IF touching Sheriff THEN:
-        change hearts by -1
-        set orbX to 150
-        set orbY to 100
-        set orbVY to 5
-        wait 0.7 seconds
+      IF orbActive = 1 THEN:
+        show
+        change orbVY by -0.38
+        change orbX by orbVX
+        change orbY by orbVY
+        IF orbX > 220 or orbX < -220 THEN:
+          set orbVX to 0 - orbVX
+        IF orbY < -105 THEN:
+          set orbY to -105
+          set orbVY to 8 + orbTier
+        go to x: orbX y: orbY
+        set size to 35 + orbTier * 18 %
+        IF touching Lance and lanceOn = 1 THEN:
+          change score by 5
+          change orbTier by -1
+          IF orbTier = 2 THEN:
+            set shardOn to 1
+            set shardX to orbX
+            set shardY to orbY
+            set shardVX to 5
+            set shardVY to 7
+            play sound "split"
+          IF orbTier < 1 THEN:
+            change score by 15
+            set orbActive to 0
+            hide
+            play sound "pop"
+          set lanceOn to 0
+        IF touching Sheriff THEN:
+          change hearts by -1
+          set orbX to 150
+          set orbY to 100
+          set orbVY to 5
+          wait 0.7 seconds
+      ELSE:
+        hide
+        IF shardOn = 0 and waves < 4 THEN:
+          change waves by 1
+          IF waves < 4 THEN:
+            set orbTier to 3
+            set orbX to pick random -170 to 170
+            set orbY to 140
+            set orbVX to pick random 3 to 5
+            set orbVY to 5
+            set orbActive to 1
       wait 0.02 seconds
 
 SPRITE Shard:
-  SHAPE circle 28 #ffd659
+  SHAPE art plasma-posse/shard
   WHEN flag clicked:
     hide
+  WHEN I receive "start plasma posse":
     FOREVER:
       IF shardOn = 1 THEN:
         show
@@ -3283,7 +3357,7 @@ SPRITE Shard:
       wait 0.02 seconds
 
 SPRITE Lance:
-  SHAPE rect 8 44 #b9fff5
+  SHAPE art plasma-posse/lance
   WHEN flag clicked:
     hide
   WHEN I receive "fire lance":

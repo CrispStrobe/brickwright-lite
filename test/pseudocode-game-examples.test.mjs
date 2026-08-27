@@ -51,7 +51,7 @@ test('only quality-approved new games are wired into the visible examples galler
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
-        'whisker_switch', 'spiral_circuit', 'lilyway_rescue', 'rotor_rogue'
+        'whisker_switch', 'spiral_circuit', 'lilyway_rescue', 'rotor_rogue', 'prism_spire', 'shard_sheriff'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -445,6 +445,40 @@ test('Crosswind Courier separates distance from stunt score and rewards level la
     assert.ok(svgs.some(svg => svg.includes('CROSSWIND COURIER')));
     assert.ok(svgs.some(svg => svg.includes('DELIVER 40 KM')));
     assert.ok(svgs.some(svg => svg.includes('LAND LEVEL FOR FUEL')));
+});
+
+test('Lumen Stack has a twelve-floor target and overlap-based permanent narrowing', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.prism_spire);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.prism_spire, /GOAL: build twelve floors before three complete misses/);
+    assert.match(games.prism_spire, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/);
+    assert.match(games.prism_spire, /IF level = 12 THEN:/);
+    assert.match(games.prism_spire, /IF started = 1 and dropReady = 1 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'skyline']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('LUMEN STACK')));
+    assert.ok(svgs.some(svg => svg.includes('BUILD 12 FLOORS')));
+    assert.ok(svgs.some(svg => svg.includes('ONLY THE OVERLAP SURVIVES')));
+});
+
+test('Plasma Posse requires both split pieces before advancing each of four waves', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.shard_sheriff);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.shard_sheriff, /GOAL: clear four plasma waves before three collisions/);
+    assert.match(games.shard_sheriff, /set orbActive to 0/);
+    assert.match(games.shard_sheriff, /IF shardOn = 0 and waves < 4 THEN:/);
+    assert.match(games.shard_sheriff, /IF waves = 4 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'arena']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('PLASMA POSSE')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR 4 SPLIT-ORB WAVES')));
+    assert.ok(svgs.some(svg => svg.includes('POP BOTH PIECES')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -925,6 +959,45 @@ test('grid hopping and throttle-jump controls work in the live Scratch VM', asyn
     } finally { courier.quit(); clearStrayTimers(); }
 });
 
+test('precision drop and single-lance controls work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator(); creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start(); vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        await new Promise(resolve => setTimeout(resolve, 240));
+        for (let i = 0; i < 10; i++) vm.runtime._step();
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const stack = await load(games.prism_spire);
+    try {
+        value(stack, 'blockX').value = Number(value(stack, 'towerX').value);
+        stack.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 8; i++) stack.runtime._step();
+        stack.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(stack, 'level').value), 1, 'Space did not place a centred floor');
+        assert.equal(Number(value(stack, 'perfect').value), 1, 'centred floor did not build perfect combo');
+    } finally { stack.quit(); clearStrayTimers(); }
+
+    const posse = await load(games.shard_sheriff);
+    try {
+        posse.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 4; i++) posse.runtime._step();
+        posse.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(posse, 'lanceOn').value), 1, 'Space did not fire the lance');
+        assert.ok(posse.runtime.targets.some(target => target.sprite.name === 'Lance' && target.visible),
+            'fired lance was not visible');
+        assert.equal(Number(value(posse, 'waves').value), 0, 'arena began with phantom waves');
+    } finally { posse.quit(); clearStrayTimers(); }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -974,8 +1047,8 @@ test('each new game keeps its signature playable mechanic', () => {
         spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /change sectors by 1/, /set lane to -2/],
         lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/, /IF crossings = 3/],
         rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/],
-        prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /change score by 5 \* perfect/],
-        shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /change orbTier by -1/],
+        prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /IF level = 12/],
+        shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /set orbActive to 0/, /change waves by 1/],
         halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/],
         corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/],
         thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/, /change rivalPoints by 1/, /touching ThunderNet/],

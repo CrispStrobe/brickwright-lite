@@ -305,7 +305,9 @@ const GROUPS = [
         ['whisker_switch', '🐭 Whisker Relay — polished'],
         ['spiral_circuit', '🌀 Helix Rush — polished'],
         ['lilyway_rescue', '🐸 Moonbank Hop — polished'],
-        ['rotor_rogue', '🏍️ Crosswind Courier — polished']
+        ['rotor_rogue', '🏍️ Crosswind Courier — polished'],
+        ['prism_spire', '🏗️ Lumen Stack — polished'],
+        ['shard_sheriff', '🩸 Plasma Posse — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],
