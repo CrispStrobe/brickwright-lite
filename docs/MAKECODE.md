@@ -46,7 +46,9 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `translate-base.js` | what both translators share: the walk, the "nothing is dropped in silence" rule, and the slot discipline |
 | `microbit-translate.js` | MakeCode micro:bit → BrickWright pseudocode → blocks, MicroPython, the simulator |
 | `arcade-translate.js` | MakeCode Arcade → a playable Scratch project: target selection, sprites, clones, `touching`, score, velocity loops |
-| `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), the 16-colour palette → SVG costumes |
+| `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), tilemaps painted whole, the 16-colour palette → SVG costumes |
+| `microbit-icons.js` | MakeCode's 40 icons and 8 arrows as our 5x5 patterns — the same bitmaps MicroPython has, so this is an identity |
+| `export.js` | the other direction: blocks → MakeCode TypeScript, and a .hex carrying only the source embed — which is all MakeCode's importer reads |
 | `index.js` | one `importArtefact(bytes)` door, wired into the Code tab's 📂 Open button |
 
 Evidence: `test/makecode-import.test.mjs` runs against **three real MakeCode
@@ -76,8 +78,9 @@ unsupported APIs remain visible in the import report.
 | 0b | MicroPython .hex → `.py` → runs in the simulator | **done** (extraction; the "flash it into the sim" button is next) |
 | 1 | MakeCode **micro:bit** TypeScript → our blocks | **done** |
 | 2 | MakeCode **Arcade** → a Scratch project, artwork included | **done** |
-| 3 | import from a share link (needs network; the file importer is what works offline and in the packaged app) | **done** (`share.js`) |
-| 4 | export: emit `main.ts` + `pxt.json` and compile a modified BrickWright project to board UF2 | **not done**; do not confuse import/play support with physical deployment |
+| 3 | import from a share link (needs network; the file importer is what works offline and in the packaged app) | **done** — 🔗 MakeCode… in the Code tab |
+| 4 | export: a Brickwright project opens *in* MakeCode | **done** — ⬆ To MakeCode writes a .hex whose only content is the source embed, which is what MakeCode's importer actually reads |
+| 4b | export: compile a modified project to a board `.uf2` | **not done**, and not the same thing — that needs pxt's own compiler. Opening in MakeCode is not physical deployment |
 | 5 | actually emulate a MakeCode hex | see below |
 
 ## What the grammar will and will not take
@@ -98,13 +101,21 @@ rather than by reading the grammar:
 - **condition-lowered** (`set pin P0 to 0|1`): only the two literals
   parse, so a computed level becomes the IF/ELSE it really is.
 
-Two spellings sb3-creator's *generator* emits have no rule in its
+Two spellings sb3-creator's *generator* emitted had no rule in its
 *parser*: `<gesture> happening` and `pin P touched`. Written out they
-compile to a comparison against an undefined variable — silence with the
-shape of success. The translator reports them instead. **Closing that
-round-trip belongs in `sb3-creator`, not here** (the compiler is
-vendored in by `npm run sync:sb3creator`), and it would also be the
-place to let `show text` take an expression.
+compiled to a comparison against an undefined variable — silence with
+the shape of success — so the translator refused them.
+
+**Fixed upstream and vendored in** (sb3-creator `b4a8129`, PR #3): both
+now parse, `show text` takes an expression, and the translator
+translates gestures and touch instead of reporting them.
+
+That PR also fixed something worse, found on the way: MicroPython's
+`accelerometer.is_gesture()` accepts the four tilts spelled WITHOUT the
+word "tilt", and the lowering passed the menu label through verbatim —
+so `tilt up` and its three neighbours raised
+`ValueError("invalid gesture")` the moment the block ran. Every project
+that used one, not only imported ones.
 
 ## What an Arcade import actually produces
 
@@ -119,30 +130,91 @@ parent's state at the moment it is made. `scene.setBackgroundImage` → a
 full-screen sprite sent to the back (the costume route deliberately
 skips the Stage).
 
-What does not survive: tilemaps, effects and particles, the physics
-engine's tile collisions, animations, music — and, structurally, any
-script that moves a sprite other than its own, which Scratch has no way
-to express. Each is named in the returned `unsupported` list and marked
+Tilemaps arrive as pictures: the level is painted tile by tile into one
+image and becomes a backdrop costume (the tiles live in the `.g.jres`,
+but the MAP is a hex literal inside a generated `switch` in
+`tilemap.g.ts`, so it has its own reader). A game with several levels
+gets the first four as costumes on one background sprite — a level
+renders to a few hundred kilobytes of SVG, and handing the paint editor
+eight of those helps nobody.
+
+What does not survive: effects and particles, the physics engine's tile
+COLLISIONS (the level is a picture, not terrain), animations, music —
+and, structurally, any script that moves a sprite other than its own,
+which Scratch has no way to express. Each is named in the returned `unsupported` list and marked
 `# unsupported` where it stood, and the status line says how many.
+
+## Icons are an identity, not an approximation
+
+`basic.showIcon(IconNames.Heart)` is in nearly every beginner MakeCode
+program. It maps exactly: our `show pattern` lowers to `display.show()`
+in MicroPython, and MakeCode's icon set and MicroPython's built-in images
+are the same bitmaps. `microbit-icons.js` carries all 40 icons and 8
+arrows, and the export direction reverses the lookup so a heart comes
+back out as `basic.showIcon(IconNames.Heart)` rather than a grid.
+
+The one real loss in that direction: our patterns carry brightness 0-9
+and MakeCode's display literals are on/off, so a dimmed pattern exports
+flattened — and says so.
+
+## The round trip is the test
+
+`test/makecode-export.test.mjs` takes each shipped micro:bit example,
+exports it to MakeCode TypeScript, imports it back through the
+translator, compiles that, and asserts no device block was lost. Six
+examples pass with nothing unsupported in either direction. A mapping
+added to one side of the table and forgotten on the other shows up there
+and nowhere else.
+
+The one legitimate difference: `show text` leaves as `basic.showString`
+and comes back as `scroll text`, because MakeCode has no non-scrolling
+string block.
 
 ## The labwired revision
 
 The claim in wall 2 — "no permissive JS ARMv7E-M core" — was true of this
 repo's *light* tier and is no longer true of its heavy tier. **labwired**
 (`lib/labwired-engine.js`, fetched by `npm run sync:labwiredwasm`) covers
-Cortex-M0+/M3/**M4**/M7/M33, RISC-V and Xtensa. That makes nRF52833 execution
-a **peripheral-modelling** problem rather than an instruction-set one:
+Cortex-M0+/M3/**M4**/M7/M33, RISC-V and Xtensa, and as of 2026-08-27 it
+demonstrably RUNS from the browser in this app — `verify-labwired-engine.mjs`
+drives an F030 program and insists the program counter moves.
 
-- what would still be needed: nRF52 GPIO/GPIOTE, TIMER/RTC, SPIM, and an
-  ST7735 model with a framebuffer the stage can show;
-- what it would buy: running an unmodified Arcade game — someone else's
-  binary — with no translation;
-- what it would not buy: any of the *editing* story. A running binary is not
-  a project you can open, read or change, which is what the import path gives.
+Reading its target contract (`debug-target-factory.js`, `createLabwiredTarget`)
+makes the Arcade path unusually concrete, because two of the three inputs
+already exist:
 
-So the order stands: import first, emulate later, and only if the demand is
-for playing other people's games rather than learning from them. The two are
-complementary, not alternatives — and neither needs the other to ship.
+| what labwired wants | what we would have to do |
+|---|---|
+| `firmware` — an **ELF** | nothing. MakeCode ships an `.elf` beside the `.hex`, and our importer already reads the embedded source out of one |
+| `chipYaml` — a chip **descriptor** | write an nRF52833 one: memory map plus GPIO/GPIOTE, TIMER/RTC, SPIM, CLOCK. A description, not an emulator |
+| `pins` + a `board` | the arcade shield's header map, and an ST7735 model with a framebuffer the stage can show |
+
+So the cost is a chip description and a display model, not a CPU. What it
+would buy is running an unmodified Arcade game — someone else's binary — with
+no translation. What it would NOT buy is any of the *editing* story: a running
+binary is not a project you can open, read or change, which is what the import
+path gives.
+
+The order therefore stands — import first, emulate later, and only if the
+demand is for playing other people's games rather than learning from them —
+but "later" is now a week of peripheral work rather than a rewrite.
+
+## Two things found on the way that are not built here
+
+**The pxteditor iframe protocol.** MakeCode editors accept
+`?controller=1` and then talk `postMessage` in a documented shape
+(`{type: "pxteditor", action: "renderblocks" | "importproject" | …}`,
+answered with `{type: "pxthost"}`). That is how you would embed the real
+editor, or render a block image of a snippet, without any of the parsing
+above. It needs the network and a remote origin, which is exactly what
+this fork exists to avoid — but it is the right tool if we ever want
+"edit this in MakeCode, come back with the result".
+
+**The Arcade block vocabulary as an extension.** We ship a 5x5 `arcade`
+extension (sprites on the LED matrix). Growing it into a stage-backed
+sprite/tilemap/scene extension would let people *write* Arcade-shaped
+programs here, which is the mirror of importing them. Separate feature,
+not interop.
 
 ## Licensing (this matters more here than elsewhere)
 
@@ -151,8 +223,14 @@ Checked via the GitHub API on 2026-08-27:
 - `microsoft/pxt`, `microsoft/pxt-arcade`, `microsoft/pxt-common-packages` —
   **MIT**. Format details and even runtime pieces are compatible with lite's
   fully-permissive rule.
-- `microsoft/pxt-microbit` — **NOASSERTION**. Read its `LICENSE.txt` before
-  taking anything from it.
+- `microsoft/pxt-microbit` — GitHub's detector says **NOASSERTION**, but its
+  `LICENSE.txt` was read: it is **plain MIT**, 25 lines, no extra clauses. The
+  detector is thrown by the "PXT - Programming Experience Toolkit" line above
+  the MIT header. So its tables are usable here — which is where two of the
+  icon patterns come from.
+- `bbcmicrobit/micropython` — **MIT**. 38 of the 40 icon patterns and all 8
+  arrows come from its `microbitconstimage.cpp`, which is also where MakeCode's
+  icons and MicroPython's built-in images both originate.
 - `microbit-foundation/microbit-fs`, `microbit-universal-hex` — **MIT** (the
   V1/V2 storage formats implemented in `micropython-hex.js` are documented
   there).

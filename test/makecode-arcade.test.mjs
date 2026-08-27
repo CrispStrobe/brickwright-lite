@@ -22,6 +22,8 @@ import {
     ARCADE_PALETTE,
     parseImageLiteral,
     parseJres,
+    parseTilemaps,
+    renderTilemap,
     decodeMkcdImage,
     imageToSvg
 } from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
@@ -184,4 +186,82 @@ test('the translation compiles into the sprites and blocks it names', {skip: can
         assert.ok(creator.applyCustomSVG(costume.sprite, costume.svg),
             `${costume.sprite} has no sprite to put its costume on`);
     }
+});
+
+test('a tilemap is read out of the generated factory, not the jres', async () => {
+    // The TILES are in the .g.jres; the MAP is a hex literal inside a
+    // generated switch in tilemap.g.ts, which is why it has its own
+    // reader. Header: u16 width, u16 height, then one byte per cell.
+    const files = await projectOf('arcade-tilemap.hex');
+    const maps = parseTilemaps(files['tilemap.g.ts']);
+    assert.ok(Object.keys(maps).length >= 2, 'a platformer has several levels');
+
+    const level = maps.level;
+    assert.equal(level.width, 32);
+    assert.equal(level.height, 8);
+    assert.equal(level.cells.length, 32 * 8);
+    assert.ok(level.tiles.length >= 4, 'and a tile set to index into');
+    // The bottom row is the ground: a level that parsed as all-empty
+    // would still have the right dimensions, so check it has content.
+    const bottom = [...level.cells.slice(7 * 32)];
+    assert.ok(bottom.every(c => c !== 0), 'the ground row is solid');
+    assert.ok([...level.cells.slice(0, 32)].every(c => c === 0), 'the sky is not');
+});
+
+test('the level is painted whole, tile by tile', async () => {
+    const files = await projectOf('arcade-tilemap.hex');
+    const maps = parseTilemaps(files['tilemap.g.ts']);
+    const tiles = parseJres(files['tilemap.g.jres']);
+    const image = renderTilemap(maps.level, tiles);
+    assert.equal(image.width, 32 * 16, '32 tiles of 16 pixels');
+    assert.equal(image.height, 8 * 16);
+    // The sky is transparent and the ground is not — the two together
+    // rule out both "nothing was drawn" and "everything was".
+    assert.ok([...image.pixels.slice(0, image.width)].every(p => p === 0));
+    assert.ok([...image.pixels.slice((image.height - 1) * image.width)].some(p => p !== 0));
+});
+
+test('a platformer imports with its level as the backdrop', async () => {
+    const files = await projectOf('arcade-tilemap.hex');
+    const out = arcadeToPseudocode(files, {name: 'jumpy platformer'});
+    assert.ok(out.sprites.includes('background'));
+    const backdrop = out.costumes.find(c => c.sprite === 'background');
+    assert.ok(backdrop, 'the level became a costume');
+    assert.match(backdrop.name, /^level-/);
+    assert.ok(backdrop.svg.length > 10000, 'a whole level, not a placeholder');
+    // And the difference it cannot hide: a picture is not terrain.
+    assert.ok(out.unsupported.some(u => /not as terrain/.test(u)));
+    // Eight levels at a few hundred kilobytes each is more than the paint
+    // editor should be handed, so the extras are named, not dropped.
+    assert.equal(out.costumes.filter(c => c.sprite === 'background').length, 4);
+    assert.ok(out.unsupported.some(u => /only the first 4 backdrops/.test(u)));
+});
+
+test('sprite kinds are numbers, not refusals', () => {
+    // Every Arcade game defines a few kinds; reporting them would bury
+    // the real refusals under noise.
+    const out = arcadeToPseudocode(`
+        namespace SpriteKind { export const Coin = SpriteKind.create() }
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+    `);
+    assert.ok(!out.unsupported.some(u => /SpriteKind/.test(u)));
+});
+
+test('the controller reads as the keyboard, both ways', () => {
+    // moveSprite becomes arrow-key motion; isPressed becomes the key
+    // sensing block. Between them they cover how nearly every Arcade
+    // game reads input.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let hero = sprites.create(img\`1\`, SpriteKind.Player)
+        controller.moveSprite(hero, 100, 0)
+        game.onUpdate(function () {
+            if (controller.left.isPressed()) { hero.x += -2 }
+            if (controller.A.isPressed()) { hero.y += -5 }
+        })
+    `);
+    assert.match(code, /IF key left arrow pressed\? THEN:/);
+    assert.match(code, /IF key space pressed\? THEN:/, 'the A button is the space bar');
+    assert.match(code, /change y by 15/, "Arcade's y grows downwards and the stage's grows up");
+    assert.match(code, /IF key right arrow pressed\? THEN:/, 'moveSprite drives the arrows');
+    assert.deepEqual(unsupported, []);
 });
