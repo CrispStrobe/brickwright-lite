@@ -211,6 +211,13 @@ Three real games pass, including the pong whose cross-sprite work is
 mostly refused — what is left still has to be a program, not a shell that
 throws.
 
+The micro:bit half asks for more (`makecode-microbit-runs.test.mjs`),
+because its blocks are lite's OWN bundled extension rather than core
+Scratch: a bundled extension method must actually be INVOKED. The
+imported pin-reading program calls `microbitplus_analogread` about 34 000
+times in 30 frames, which is the difference between blocks that exist and
+blocks that run.
+
 The device referee in `trace-oracle.js` cannot do this job: it models
 hardware programs and refuses motion/looks/sensing outright.
 
