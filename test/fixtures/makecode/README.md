@@ -10,6 +10,14 @@ what the editors wrote.
 | `microbit-blocks.hex` | makecode.microbit.org 0.14.x | "pins test 1" | a 570 KB .hex download |
 | `arcade-shield.hex` | arcade.makecode.com 4.0.x, micro:bit V2 + shield | "ping-pong" | a 1.0 MB .hex download |
 | `arcade-shield.uf2` | the same project, UF2 build | "ping-pong" | a 700 KB .uf2 download |
+| `arcade-assets.hex` | arcade.makecode.com, micro:bit V2 + shield | "Jonathans Ausweichspiel unterwasser" | a 1.0 MB .hex download |
+
+`arcade-assets.hex` earns its place by being the *friendly* Arcade case
+and by carrying a `.g.jres` asset gallery: one script per sprite, a
+160x120 background, spawn-by-clone. `arcade-shield.hex` is the hostile
+one — a pong whose single script drives three sprites — and the pair is
+what lets the tests assert both that a good translation happens and that
+an impossible one is refused rather than faked.
 
 **Why trimmed.** The parser scans for the source-embedding header and reads
 only the records that follow it, so the megabyte of compiled ARM around it

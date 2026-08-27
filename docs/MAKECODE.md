@@ -42,6 +42,11 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `png.js` | an 8-bit PNG decoder over `DecompressionStream`, so the cartridge path is testable in `node --test` rather than only in a browser |
 | `micropython-hex.js` | the *other* hex: a micro:bit MicroPython .hex from python.microbit.org or uflash, V1 appended script and V2 filesystem both |
 | `share.js` | `https://makecode.com/api/{id}/text` — the whole project as JSON, no binary parsing at all |
+| `ts-import.js` | a parser for the TypeScript subset MakeCode emits (annotations, `enum`, `namespace`, tagged template literals, function expressions) — needed because the translation has to walk *into* callbacks |
+| `translate-base.js` | what both translators share: the walk, the "nothing is dropped in silence" rule, and the slot discipline |
+| `microbit-translate.js` | MakeCode micro:bit → BrickWright pseudocode → blocks, MicroPython, the simulator |
+| `arcade-translate.js` | MakeCode Arcade → a Scratch project: sprites, clones, `touching`, score, velocity loops |
+| `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), the 16-colour palette → SVG costumes |
 | `index.js` | one `importArtefact(bytes)` door, wired into the Code tab's 📂 Open button |
 
 Evidence: `test/makecode-import.test.mjs` runs against **three real MakeCode
@@ -62,11 +67,56 @@ else.
 |---|---|---|
 | 0 | sniff + extract project source from .hex/.uf2/.elf/.png | **done** |
 | 0b | MicroPython .hex → `.py` → runs in the simulator | **done** (extraction; the "flash it into the sim" button is next) |
-| 1 | MakeCode **micro:bit** TypeScript → our blocks. `sb3-creator-javascript.js` is already a JS parser→pseudocode importer; this is a TS pre-pass (strip annotations, `enum`/`namespace`, `img\`\`` literals) plus an API map for `basic.*`, `input.*`, `led.*`, `music.*`, `pins.*`, `radio.*` | next |
-| 2 | MakeCode **Arcade** → a Scratch project. Arcade's model (sprite = image + vx/vy, `sprites.onOverlap`, tilemap, `info.score`, `game.over()`) is close to 1:1 with the Scratch stage. Plus assets: `img\`\`` literals and the fixed 16-colour palette → costumes; tilemaps → backdrops | planned |
+| 1 | MakeCode **micro:bit** TypeScript → our blocks | **done** |
+| 2 | MakeCode **Arcade** → a Scratch project, artwork included | **done** |
 | 3 | import from a share link (needs network; the file importer is what works offline and in the packaged app) | **done** (`share.js`) |
 | 4 | export: emit `main.ts` + `pxt.json` so a Brickwright project opens *in* MakeCode | planned |
 | 5 | actually emulate a MakeCode hex | see below |
+
+## What the grammar will and will not take
+
+Most of what the translators know is not about MakeCode at all — it is
+about which pseudocode spellings actually parse. Three slots behave
+differently, and every one of them was found by compiling the output
+rather than by reading the grammar:
+
+- **single-token** (`radio send number X`, `change score by X`, `set pin
+  P1 analog X %`): captured as `\S+`, so a variable fits and `i * 30`
+  does not. Computed arguments are hoisted into a temporary.
+- **literal-only** (`show text "..."`, `plot x 2 y 3`): the parser reads
+  the characters. `show text <expression>` PARSES and compiles to
+  nothing — so `basic.showNumber(x)` uses `display <expr>` instead,
+  which does take an expression, and `led.plot(x, y)` with variables is
+  refused.
+- **condition-lowered** (`set pin P0 to 0|1`): only the two literals
+  parse, so a computed level becomes the IF/ELSE it really is.
+
+Two spellings sb3-creator's *generator* emits have no rule in its
+*parser*: `<gesture> happening` and `pin P touched`. Written out they
+compile to a comparison against an undefined variable — silence with the
+shape of success. The translator reports them instead. **Closing that
+round-trip belongs in `sb3-creator`, not here** (the compiler is
+vendored in by `npm run sync:sb3creator`), and it would also be the
+place to let `show text` take an expression.
+
+## What an Arcade import actually produces
+
+`sprites.create` → a sprite with the real artwork as its costume;
+`img` literals and `.g.jres` entries both. `game.onUpdate` → `WHEN flag
+clicked` + `FOREVER`. `sprites.onOverlap` → `IF touching <other>`.
+`controller.moveSprite` → arrow keys. `info.changeScoreBy` → a `score`
+variable. `sprite.vx/vy` → a per-frame motion loop. A mid-game
+`sprites.create` → `create clone of <sprite>`, emitted *after* the
+positioning that precedes it, because a Scratch clone inherits the
+parent's state at the moment it is made. `scene.setBackgroundImage` → a
+full-screen sprite sent to the back (the costume route deliberately
+skips the Stage).
+
+What does not survive: tilemaps, effects and particles, the physics
+engine's tile collisions, animations, music — and, structurally, any
+script that moves a sprite other than its own, which Scratch has no way
+to express. Each is named in the returned `unsupported` list and marked
+`# unsupported` where it stood, and the status line says how many.
 
 ## The labwired revision
 

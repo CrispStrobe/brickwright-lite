@@ -30,6 +30,7 @@ import {
 import {decodePng} from './png.js';
 import {extractMicroPython} from './micropython-hex.js';
 import {microbitToPseudocode} from './microbit-translate.js';
+import {arcadeToPseudocode} from './arcade-translate.js';
 
 export {sniffFormat, unpackMakeCodeSource, describeProject} from './embedded-source.js';
 export {decodePng} from './png.js';
@@ -37,6 +38,8 @@ export {extractMicroPython} from './micropython-hex.js';
 export {lzmaDecode} from './lzma.js';
 export {parseShareId, fetchSharedProject} from './share.js';
 export {microbitToPseudocode} from './microbit-translate.js';
+export {arcadeToPseudocode} from './arcade-translate.js';
+export {parseImageLiteral, parseJres, imageToSvg, ARCADE_PALETTE} from './arcade-assets.js';
 export {parseMakeCodeTs} from './ts-import.js';
 
 export {IMPORT_ACCEPT, isImportableArtefact} from './accept.js';
@@ -55,6 +58,7 @@ export {IMPORT_ACCEPT, isImportableArtefact} from './accept.js';
  *   files: Object<string, string>,
  *   source: string,
  *   unsupported: Array<string>,
+ *   costumes: Array<{sprite: string, name: string, svg: string, mode: string}>,
  *   project: {target: string, name: string, version: string},
  *   note: string
  * }>}
@@ -101,9 +105,31 @@ export async function importArtefact (bytes, opts = {}) {
             code: translated.code,
             source: main,
             unsupported: translated.unsupported,
+            costumes: [],
             files,
             project: {target: project.target, name: project.name || name, version: project.version},
             note: 'microbit'
+        };
+    }
+
+    // An Arcade game becomes a Scratch project: its sprite model maps
+    // onto the stage's closely enough to be worth translating, and its
+    // artwork becomes costumes. What does not survive is listed, not
+    // dropped — see arcade-translate.js.
+    if (project.target === 'arcade' && files['main.ts']) {
+        const translated = arcadeToPseudocode(files, {name: project.name || name});
+        return {
+            kind: 'makecode',
+            format: res.format,
+            lang: 'pseudocode',
+            code: translated.code,
+            source: main,
+            unsupported: translated.unsupported,
+            costumes: translated.costumes,
+            sprites: translated.sprites,
+            files,
+            project: {target: project.target, name: project.name || name, version: project.version},
+            note: 'arcade'
         };
     }
 
@@ -114,9 +140,10 @@ export async function importArtefact (bytes, opts = {}) {
         code: main,
         source: main,
         unsupported: [],
+        costumes: [],
         files,
         project: {target: project.target, name: project.name || name, version: project.version},
-        note: project.target === 'arcade' ? 'arcade' : 'other'
+        note: 'other'
     };
 }
 

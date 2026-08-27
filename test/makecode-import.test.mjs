@@ -224,8 +224,10 @@ test('the router sends each artefact to the right outcome', async () => {
 
     const arcade = await importArtefact(fixture('arcade-shield.hex'), {name: 'arcade-shield.hex'});
     assert.equal(arcade.project.target, 'arcade');
-    assert.equal(arcade.lang, 'javascript', 'Arcade stops at its source — the machine is not one we have');
-    assert.equal(arcade.note, 'arcade', 'so the UI can say what it cannot do with it');
+    assert.equal(arcade.lang, 'pseudocode', 'an Arcade game becomes a Scratch project');
+    assert.equal(arcade.note, 'arcade');
+    assert.ok(arcade.costumes.length, 'with its artwork');
+    assert.ok(arcade.unsupported.length, 'and an honest account of what one pong script cannot become');
 });
 
 test('the accept list and the extension test agree with each other', () => {
