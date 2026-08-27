@@ -266,6 +266,27 @@ test('the controller reads as the keyboard, both ways', () => {
     assert.deepEqual(unsupported, []);
 });
 
+test('sprite dimensions and edges use the decoded image geometry', () => {
+    const {code, unsupported} = arcadeToPseudocode(`
+        let hero = sprites.create(img\`
+            1 1 1 1
+            1 1 1 1
+        \`, SpriteKind.Player)
+        game.onUpdate(function () {
+            if (hero.left < 0 || hero.right > 160) { hero.vx = 0 }
+            if (hero.top < 0 || hero.bottom > 120) { hero.vy = 0 }
+            if (hero.width == 4 && hero.height == 2) { info.changeScoreBy(1) }
+        })
+    `);
+
+    assert.match(code, /\(x position \/ 3 \+ 80\) - 2 < 0/);
+    assert.match(code, /\(x position \/ 3 \+ 80\) \+ 2 > 160/);
+    assert.match(code, /\(60 - y position \/ 3\) - 1 < 0/);
+    assert.match(code, /\(60 - y position \/ 3\) \+ 1 > 120/);
+    assert.match(code, /IF \(4 = 4\) and \(2 = 2\) THEN:/);
+    assert.deepEqual(unsupported, []);
+});
+
 test('animation frames arrive as costumes on the sprite they were attached to', async () => {
     // The shape a real game uses is the ACTION api, and until this landed
     // every frame was lost outright:
@@ -353,4 +374,44 @@ test('onLifeZero fires once, because lives do not come back', () => {
     // Without this the body would re-run every frame for the rest of the game.
     const body = code.slice(code.indexOf('IF lives2 = 0 THEN:'));
     assert.match(body, /stop all[\s\S]*stop this script/);
+});
+
+test('a sprite knows its own size, because we decoded the picture', () => {
+    // The game does bounds arithmetic with `paddle.width`. We built that
+    // costume from a decoded image, so the number is exact rather than a
+    // guess — and the edges follow from the centre and the size, in the
+    // Arcade units the surrounding arithmetic is written in.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let paddle = sprites.create(img\`
+            . . . .
+            1 1 1 1
+        \`, SpriteKind.Player)
+        game.onUpdate(function () {
+            if (paddle.x > paddle.width) { paddle.x = paddle.left }
+        })
+    `);
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /\(x position \/ 3 \+ 80\) > 4/, 'width is the literal 4');
+    assert.match(code, /- 2\b/, 'and left is the centre minus half of it');
+});
+
+test('a sprite held in a variable is refused, not turned into one', () => {
+    // `collisionPaddle.width`, where the variable holds whichever paddle
+    // was hit, used to become a variable literally named `width`: a
+    // program that reads as working and is not. This is the failure mode
+    // the whole translator is written against.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let ball = sprites.create(img\`1\`, SpriteKind.Player)
+        let paddle = sprites.create(img\`2\`, SpriteKind.Food)
+        let hit: Sprite = null
+        game.onUpdate(function () {
+            // `ball` first, so the script owns it and the WRITE is legal —
+            // otherwise the cross-sprite refusal fires and the right-hand
+            // side is never even evaluated.
+            ball.vx = hit.width
+            hit = paddle
+        })
+    `);
+    assert.ok(unsupported.some(u => /hit\.width — a sprite held in a variable/.test(u)));
+    assert.doesNotMatch(code, /\bto width\b/, 'never a variable named after the property');
 });
