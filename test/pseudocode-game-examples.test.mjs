@@ -50,7 +50,7 @@ test('only quality-approved new games are wired into the visible examples galler
     const approved = new Set([
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
-        'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor'
+        'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -342,6 +342,40 @@ test('Orbit Hoops separates rim collisions from clean-net scoring and has a time
     assert.ok(svgs.some(svg => svg.includes('ORBIT HOOPS')));
     assert.ok(svgs.some(svg => svg.includes('SCORE 15 BEFORE')));
     assert.ok(svgs.some(svg => svg.includes('CLEAN NETS BUILD MULTIPLIER')));
+});
+
+test('Comet Strikers has curve-shot agency, single-count goals, and a finite match', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.comet_cup);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.comet_cup, /GOAL: score four goals before the 45-second match clock ends/);
+    assert.match(games.comet_cup, /turn right runY \* -3 degrees/);
+    assert.match(games.comet_cup, /change goals by 1/);
+    assert.match(games.comet_cup, /IF goals = 4 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'pitch']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('COMET STRIKERS')));
+    assert.ok(svgs.some(svg => svg.includes('SCORE 4 GOALS')));
+    assert.ok(svgs.some(svg => svg.includes('CURVE THE SHOT')));
+});
+
+test('Echo Trench exposes its salvage target, rising threat, and cooldown-limited sonar defense', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.trench_signal);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.trench_signal, /GOAL: recover three cyan signal pearls/);
+    assert.match(games.trench_signal, /set pulseReady to 0/);
+    assert.match(games.trench_signal, /wait 0\.85 seconds/);
+    assert.match(games.trench_signal, /change mineSpeed by 0\.7/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'trench']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('ECHO TRENCH')));
+    assert.ok(svgs.some(svg => svg.includes('RECOVER 3 SIGNAL PEARLS')));
+    assert.ok(svgs.some(svg => svg.includes('1.2 SECOND RECHARGE')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -703,6 +737,44 @@ test('ice momentum and charge-release shooting work in the live Scratch VM', asy
     } finally { hoops.quit(); clearStrayTimers(); }
 });
 
+test('curve-run and sonar-cooldown controls work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator(); creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start(); vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const comet = await load(games.comet_cup);
+    try {
+        comet.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 10; i++) comet.runtime._step();
+        comet.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.equal(Number(value(comet, 'runY').value), 4, 'Up did not create shot-curving run input');
+        assert.ok(Number(value(comet, 'strikerY').value) > 0, 'Up did not move the striker');
+    } finally { comet.quit(); clearStrayTimers(); }
+
+    const trench = await load(games.trench_signal);
+    try {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        for (let i = 0; i < 10; i++) trench.runtime._step();
+        assert.equal(Number(value(trench, 'pulseReady').value), 1, 'sonar never became ready');
+        trench.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 5; i++) trench.runtime._step();
+        trench.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(trench, 'pulseReady').value), 0, 'Space did not begin sonar cooldown');
+        assert.ok(trench.runtime.targets.some(target => target.sprite.name === 'SonarRing' && target.visible),
+            'Space did not reveal the sonar ring');
+    } finally { trench.quit(); clearStrayTimers(); }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -746,8 +818,8 @@ test('each new game keeps its signature playable mechanic', () => {
         lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /change gates by 1/, /change score by 15/],
         rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/, /change goals by 1/],
         rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /touching Net/, /change score by 2 \* streak/],
-        comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by crowd/],
-        trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /touching SonarRing/, /change pearls by 1/],
+        comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by 1/, /change score by crowd \* 10/],
+        trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /touching SonarRing/, /set pulseReady to 0/, /change pearls by 1/],
         whisker_switch: [/set hidden to 1/, /change scent by 3/, /point towards Pip/, /change lives by -1/],
         spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /set lane to -2/],
         lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/],

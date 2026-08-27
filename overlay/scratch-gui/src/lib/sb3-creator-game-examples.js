@@ -2100,10 +2100,12 @@ SPRITE ChargeMeter:
       set size to 20 + charge * 4 %
       wait 0.03 seconds`,
 
-    comet_cup: `# Comet Cup — tiny tactical football with momentum instead of glued-to-foot dribbling.
-# Arrows move your striker. Tap Space near the ball to shoot; your movement bends the shot.
-# Beat the roaming keeper before the match clock ends. Fast goals grow the crowd multiplier.
+    comet_cup: `# Comet Strikers — curve-shot football with a roaming keeper.
+# GOAL: score four goals before the 45-second match clock ends.
+# CONTROLS: Arrows run. Touch the ball and tap Space to shoot; vertical movement curves it.
+# Quick goals grow the crowd multiplier and bonus score, but every goal still counts once.
 GLOBAL goals
+GLOBAL score
 GLOBAL matchTime
 GLOBAL strikerX
 GLOBAL strikerY
@@ -2112,23 +2114,43 @@ GLOBAL runY
 GLOBAL ballSpeed
 GLOBAL crowd
 GLOBAL keeperY
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art comet-strikers/intro
+  BACKDROP pitch art comet-strikers/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable goals
+    hide variable score
+    hide variable matchTime
+    hide variable crowd
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to pitch
+      broadcast "start comet match"
 
 SPRITE Striker:
-  SHAPE circle 36 #43c7ff
+  SHAPE art comet-strikers/striker
   WHEN flag clicked:
-    show variable goals
-    show variable matchTime
-    show variable crowd
     set goals to 0
-    set matchTime to 50
+    set score to 0
+    set matchTime to 45
     set crowd to 1
     set strikerX to -150
     set strikerY to 0
     set runX to 0
     set runY to 0
     go to x: strikerX y: strikerY
+    hide
+  WHEN I receive "start comet match":
+    show variable goals
+    show variable score
+    show variable matchTime
+    show variable crowd
     show
-  WHEN flag clicked:
     FOREVER:
       set runX to 0
       set runY to 0
@@ -2151,25 +2173,29 @@ SPRITE Striker:
       IF strikerY > 155 THEN:
         set strikerY to 155
       go to x: strikerX y: strikerY
+      IF goals = 4 THEN:
+        say ("FOUR GOALS — COMET SCORE " join score) for 4 seconds
+        stop all
       IF matchTime < 1 THEN:
-        say ("Comet Cup goals: " join goals) for 3 seconds
+        say ("FULL TIME — GOALS " join goals) for 4 seconds
         stop all
       wait 0.02 seconds
-  WHEN flag clicked:
+  WHEN I receive "start comet match":
     FOREVER:
       wait 1 seconds
       change matchTime by -1
 
 SPRITE Ball:
-  SHAPE circle 19 #fff4d6
+  SHAPE art comet-strikers/ball
   SOUND kick 520
   SOUND goal 920
   WHEN flag clicked:
     set ballSpeed to 0
     go to x: -50 y: 0
     point in direction 90
+    hide
+  WHEN I receive "start comet match":
     show
-  WHEN flag clicked:
     FOREVER:
       IF touching Striker and key space pressed? and ballSpeed < 2 THEN:
         point towards CometGoal
@@ -2188,9 +2214,10 @@ SPRITE Ball:
         set ballSpeed to 9
         set crowd to 1
       IF touching CometGoal THEN:
-        change goals by crowd
+        change goals by 1
+        change score by crowd * 10
         change crowd by 1
-        change matchTime by 5
+        change matchTime by 2
         play sound "goal"
         set ballSpeed to 0
         go to x: -50 y: pick random -80 to 80
@@ -2201,10 +2228,12 @@ SPRITE Ball:
       wait 0.02 seconds
 
 SPRITE Keeper:
-  SHAPE rect 18 74 #ff4f72
+  SHAPE art comet-strikers/keeper
   WHEN flag clicked:
     set keeperY to 0
     go to x: 182 y: keeperY
+    hide
+  WHEN I receive "start comet match":
     show
     FOREVER:
       IF Ball y position > keeperY THEN:
@@ -2219,14 +2248,17 @@ SPRITE Keeper:
       wait 0.03 seconds
 
 SPRITE CometGoal:
-  SHAPE rect 12 126 #7dffb2
+  SHAPE art comet-strikers/goal
   WHEN flag clicked:
     go to x: 220 y: 0
+    hide
+  WHEN I receive "start comet match":
     show`,
 
-    trench_signal: `# Trench Signal — pilot a research submarine through a living deep-sea trench.
-# Up adds buoyancy, Down dives, Left/Right steers. Recover three signal pearls, but sonar
-# pulses also wake the hunter mine. Space fires a short pulse that shoves the mine away.
+    trench_signal: `# Echo Trench — a submarine salvage run with a sonar-defense rhythm.
+# GOAL: recover three cyan signal pearls before oxygen, hull, or the hunter mine wins.
+# CONTROLS: Up adds buoyancy, Down dives, Left/Right steer. Space emits a sonar shove.
+# Sonar needs 1.2 seconds to recharge; each pearl restores oxygen but speeds up the mine.
 GLOBAL pearls
 GLOBAL hull
 GLOBAL oxygen
@@ -2236,15 +2268,30 @@ GLOBAL rise
 GLOBAL current
 GLOBAL mineSpeed
 GLOBAL pulseOn
+GLOBAL pulseReady
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art echo-trench/intro
+  BACKDROP trench art echo-trench/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable pearls
+    hide variable hull
+    hide variable oxygen
+    hide variable pulseReady
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to trench
+      broadcast "start echo trench"
 
 SPRITE Sub:
-  SHAPE rect 62 28 #ffd34e
-  COSTUME dive rect 62 28 #ff8b3d
+  SHAPE art echo-trench/sub
+  COSTUME dive art echo-trench/sub-dive
   SOUND sonar 680
   WHEN flag clicked:
-    show variable pearls
-    show variable hull
-    show variable oxygen
     set pearls to 0
     set hull to 3
     set oxygen to 40
@@ -2254,9 +2301,17 @@ SPRITE Sub:
     set current to 0
     set mineSpeed to 2
     set pulseOn to 0
+    set pulseReady to 0
     go to x: subX y: subY
+    hide
+  WHEN I receive "start echo trench":
+    show variable pearls
+    show variable hull
+    show variable oxygen
+    show variable pulseReady
     show
-  WHEN flag clicked:
+    wait 0.25 seconds
+    set pulseReady to 1
     FOREVER:
       change rise by 0.08
       IF key up arrow pressed? THEN:
@@ -2293,22 +2348,28 @@ SPRITE Sub:
         say "The trench keeps its secret." for 3 seconds
         stop all
       wait 0.02 seconds
-  WHEN flag clicked:
+  WHEN I receive "start echo trench":
     FOREVER:
       wait 1 seconds
       change oxygen by -1
   WHEN space key pressed:
-    set pulseOn to 1
-    play sound "sonar"
-    broadcast "sonar pulse"
-    wait 0.35 seconds
-    set pulseOn to 0
+    IF started = 1 and pulseReady = 1 THEN:
+      set pulseReady to 0
+      set pulseOn to 1
+      play sound "sonar"
+      broadcast "sonar pulse"
+      wait 0.35 seconds
+      set pulseOn to 0
+      wait 0.85 seconds
+      set pulseReady to 1
 
 SPRITE SignalPearl:
-  SHAPE circle 24 #64f5ff
+  SHAPE art echo-trench/pearl
   SOUND found 980
   WHEN flag clicked:
     go to x: pick random -170 to 190 y: pick random -125 to 125
+    hide
+  WHEN I receive "start echo trench":
     show
     FOREVER:
       change y by sin of oxygen * 0.4
@@ -2321,9 +2382,11 @@ SPRITE SignalPearl:
       wait 0.03 seconds
 
 SPRITE HunterMine:
-  SHAPE circle 34 #f34f65
+  SHAPE art echo-trench/mine
   WHEN flag clicked:
     go to x: 190 y: -110
+    hide
+  WHEN I receive "start echo trench":
     show
     FOREVER:
       point towards Sub
@@ -2338,7 +2401,7 @@ SPRITE HunterMine:
       wait 0.03 seconds
 
 SPRITE SonarRing:
-  SHAPE circle 28 #9c8cff
+  SHAPE art echo-trench/ring
   WHEN flag clicked:
     hide
   WHEN I receive "sonar pulse":

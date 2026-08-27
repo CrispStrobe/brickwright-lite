@@ -299,7 +299,9 @@ const GROUPS = [
         ['ember_dojo', '⚔️ Ember Parry — polished'],
         ['lockstep_lagoon', '🌊 Tidegate Rush — polished'],
         ['rink_riot', '🏒 Blue-Line Breaker — polished'],
-        ['rim_reactor', '🏀 Orbit Hoops — polished']
+        ['rim_reactor', '🏀 Orbit Hoops — polished'],
+        ['comet_cup', '☄️ Comet Strikers — polished'],
+        ['trench_signal', '🛸 Echo Trench — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],
