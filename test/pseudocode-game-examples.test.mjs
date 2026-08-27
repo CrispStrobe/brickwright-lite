@@ -66,6 +66,47 @@ test('only quality-approved new games are wired into the visible examples galler
     assert.match(importer, /\.\.\.gameExamples/, 'game module is not merged into the gallery examples');
 });
 
+test('green flag crosses every title gate in the ordinary right-hand stage', () => {
+    for (const [name, source] of Object.entries(games)) {
+        if (name === 'g2048') {
+            assert.match(source, /wait 0\.6 seconds\n    IF started = 0 THEN:/,
+                `${name}: its native green-flag start was lost`);
+            continue;
+        }
+        assert.match(source, /WHEN flag clicked:\n    wait 0\.6 seconds\n    broadcast "__brickwright_start_from_flag"/,
+            `${name}: green flag still leaves the title screen waiting for a keyboard`);
+        assert.match(source, /WHEN I receive "__brickwright_start_from_flag":/,
+            `${name}: delayed green-flag start has no receiver`);
+    }
+});
+
+test('green flag actually starts every game in the real Scratch VM without Space', async () => {
+    for (const [name, source] of Object.entries(games)) {
+        const startVariable = name === 'g2048' ? 'started' :
+            source.match(/WHEN space key pressed:\n    IF ([A-Za-z][A-Za-z0-9]*) = 0 THEN:/)?.[1];
+        assert.ok(startVariable, `${name}: cannot identify the title-gate state variable`);
+
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const vm = new VM();
+        try {
+            await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+            vm.start();
+            vm.greenFlag();
+            for (let i = 0; i < 20; i++) vm.runtime._step();
+            await new Promise(resolve => setTimeout(resolve, 700));
+            for (let i = 0; i < 35; i++) vm.runtime._step();
+            const state = Object.values(vm.runtime.getTargetForStage().variables)
+                .find(variable => variable.name === startVariable);
+            assert.equal(Number(state?.value), 1,
+                `${name}: green flag left the game on its title screen`);
+        } finally {
+            vm.quit();
+            clearStrayTimers();
+        }
+    }
+});
+
 test('Nova Grid replaces the bare 2048 prototype with a complete reactor puzzle', () => {
     const creator = new SB3Creator();
     const project = creator.parse(games.g2048);

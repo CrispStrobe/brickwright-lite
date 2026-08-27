@@ -1,7 +1,7 @@
 // Original, playable game examples for the pseudocode gallery. Kept in a separate
 // module so the language examples remain readable. Every game uses only commands
 // accepted by SB3Creator and is compiled to ordinary Scratch blocks.
-const gameExamples = {
+const rawGameExamples = {
     g2048: `# Nova Grid — a complete slide-and-fuse strategy game.
 # GOAL: forge the 2048 Nova tile before the four-by-four reactor locks.
 # CONTROLS: Arrow keys slide every tile. Equal neighbours fuse once per move.
@@ -4814,5 +4814,50 @@ SPRITE EmberRing:
         play sound "ring"
       wait 0.02 seconds`
 };
+
+// A keyboard-only title gate makes a project appear broken in the editor's
+// normal right-hand stage on tablets: the green flag resets the game, but an
+// on-screen keyboard never appears to deliver the second, Space-key event.
+// Keep each authored Space handler for desktop play and clone only its first
+// (title/start) script behind a delayed green-flag broadcast. This is done in
+// the exported pseudocode rather than in the GUI or VM, so downloaded projects
+// remain self-contained and behave the same outside BrickWright.
+const addRightPaneGreenFlagStart = source => {
+    if (source.includes('__brickwright_start_from_flag') || !source.includes('  WHEN space key pressed:')) {
+        return source;
+    }
+
+    const lines = source.split('\n');
+    const spaceHat = lines.findIndex(line => line === '  WHEN space key pressed:');
+    if (spaceHat < 0) return source;
+
+    let endOfHandler = spaceHat + 1;
+    while (endOfHandler < lines.length &&
+        (lines[endOfHandler].trim() === '' || lines[endOfHandler].startsWith('    '))) {
+        endOfHandler++;
+    }
+    const startBody = lines.slice(spaceHat + 1, endOfHandler);
+    if (startBody.length === 0) return source;
+
+    lines.splice(endOfHandler, 0,
+        '  WHEN I receive "__brickwright_start_from_flag":',
+        ...startBody
+    );
+
+    const firstSprite = lines.findIndex(line => line.startsWith('SPRITE '));
+    if (firstSprite < 0) return source;
+    lines.splice(firstSprite, 0,
+        '  WHEN flag clicked:',
+        '    wait 0.6 seconds',
+        '    broadcast "__brickwright_start_from_flag"',
+        ''
+    );
+    return lines.join('\n');
+};
+
+const gameExamples = Object.fromEntries(Object.entries(rawGameExamples).map(([name, source]) => [
+    name,
+    name === 'g2048' ? source : addRightPaneGreenFlagStart(source)
+]));
 
 export default gameExamples;
