@@ -199,6 +199,86 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.12 en-US
+
+A small, targeted follow-up to 0.1.11. If you already installed 0.1.11 and the
+Scratch Link option did nothing for you, please try that same sequence again
+here first — this build contains a fix that produces exactly that symptom.
+
+What was found:
+- **Switching connection type while already connected did nothing at all.** The
+  connect block checked whether it was connected, and if so returned
+  immediately — without noticing that you had asked for a *different* kind of
+  connection. So the usual sequence — connect over "Web Bluetooth (Direct)",
+  then switch to "Scratch Link" and press connect — silently did nothing, and
+  said so only to a log no phone displays. It now notices the change, drops the
+  old connection and reconnects the way you asked. Fixed for both **LEGO Boost**
+  and **Powered Up**, which had the identical fault.
+
+To be clear about what is not yet known: this is *a* cause of the reported
+symptom, not proven to be *the* cause. Everything else about that path checks
+out — the address, the local service, the permissions — so if it still does
+nothing, the connection log now has enough in it to say why.
+
+Also fixed:
+- **"Set PC" and "Wipe" in the debugger no longer break the panel.** They only
+  ever worked on the 8051 simulator; on every other one they were still offered
+  and failed when pressed. They are now greyed out with a sentence explaining
+  that this engine does not support them.
+
+Please test:
+1. **Connect a LEGO Boost or Powered Up hub over "Web Bluetooth (Direct)"** and
+   drive a motor, so you know it is working.
+2. **Then switch the same extension to "Scratch Link" and press connect again.**
+   In 0.1.11 this did nothing. Here it should disconnect and reconnect over the
+   other route. Please tell us which of the two happened.
+3. **If it still does nothing**, open **Settings › Connection diagnostics…**,
+   press **Copy**, and send us the text. That log now records the whole
+   conversation with the connection service, and should contain the answer.
+4. Everything else should be unchanged from 0.1.11.
+
+## What to Test — 0.1.12 de-DE
+
+Ein kleiner, gezielter Nachtrag zu 0.1.11. Falls du 0.1.11 installiert hast und
+die Scratch-Link-Option bei dir nichts getan hat: bitte probiere genau dieselbe
+Abfolge zuerst hier noch einmal — dieser Build enthält eine Korrektur, die genau
+dieses Verhalten erzeugt.
+
+Was gefunden wurde:
+- **Das Umschalten der Verbindungsart bei bestehender Verbindung tat gar
+  nichts.** Der Verbinden-Block prüfte, ob bereits verbunden war, und kehrte in
+  dem Fall sofort zurück — ohne zu bemerken, dass du eine *andere* Art von
+  Verbindung angefordert hattest. Die übliche Abfolge — über „Web Bluetooth
+  (Direct)" verbinden, dann auf „Scratch Link" umstellen und verbinden drücken —
+  tat also stillschweigend nichts und meldete das nur an ein Protokoll, das kein
+  Telefon anzeigt. Jetzt wird der Wechsel erkannt, die alte Verbindung getrennt
+  und wie gewünscht neu verbunden. Behoben für **LEGO Boost** und **Powered Up**,
+  die denselben Fehler hatten.
+
+Damit klar ist, was noch nicht bekannt ist: das ist *eine* Ursache des
+gemeldeten Verhaltens, nicht bewiesen *die* Ursache. Alles andere auf diesem Weg
+ist geprüft und korrekt — Adresse, lokaler Dienst, Berechtigungen. Falls also
+weiterhin nichts passiert, enthält das Verbindungsprotokoll jetzt genug, um zu
+sagen warum.
+
+Ebenfalls behoben:
+- **„PC setzen" und „Löschen" im Debugger zerlegen das Panel nicht mehr.** Sie
+  funktionierten nur im 8051-Simulator; in allen anderen wurden sie trotzdem
+  angeboten und schlugen beim Drücken fehl. Sie sind jetzt ausgegraut, mit einem
+  Hinweis, dass diese Engine sie nicht unterstützt.
+
+Bitte testen:
+1. **Einen LEGO-Boost- oder Powered-Up-Hub über „Web Bluetooth (Direct)"
+   verbinden** und einen Motor ansteuern, damit klar ist, dass es funktioniert.
+2. **Dann dieselbe Erweiterung auf „Scratch Link" umstellen und erneut verbinden
+   drücken.** In 0.1.11 passierte hier nichts. Jetzt sollte getrennt und über den
+   anderen Weg neu verbunden werden. Bitte melde, welches von beidem eintrat.
+3. **Falls weiterhin nichts passiert**, öffne **Einstellungen ›
+   Verbindungsdiagnose…**, drücke **Copy** und schicke uns den Text. Das
+   Protokoll zeichnet jetzt den gesamten Austausch mit dem Verbindungsdienst auf
+   und sollte die Antwort enthalten.
+4. Alles andere sollte gegenüber 0.1.11 unverändert sein.
+
 ## What to Test — 0.1.11 en-US
 
 A follow-up to 0.1.10's Bluetooth work, and the honest summary is that one half
