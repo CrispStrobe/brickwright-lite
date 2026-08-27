@@ -22,10 +22,15 @@ distinct from mainline **Brickwright** (a TurboWarp fork, GPL-3.0 editor chrome)
     in parallel, on a clean tree — and a clean tree is the point, because a
     suite run in a shared checkout is measuring other people's in-flight edits
     (that is where a mystery "6 failures" came from once).
-  - Merge when it goes green. Auto-merge is currently OFF at the repo level
-    (`allow_auto_merge: false`) and `main` has no branch protection, so there is
-    nothing for auto-merge to wait on; until that changes, merge the PR yourself
-    once the checks pass.
+  - Merge when it goes green. **Do NOT use `gh pr merge --auto` here.** With no
+    branch protection nothing blocks the PR, so `--auto` does not arm anything —
+    it merges IMMEDIATELY, while the checks are still queued. It did exactly
+    that on PR #29 (harmless: docs only, but it would not have been on code).
+    Poll `gh pr checks <n>` and merge once they pass.
+  - Auto-merge would need TWO changes: `allow_auto_merge: true` on the repo, and
+    branch protection on `main` with required checks for auto-merge to gate on.
+    The second **breaks every lane still pushing straight to `main`**, so it is a
+    decision to make deliberately, not a convenience to switch on.
 - **Local:** this repo (moved off /tmp 2026-07-07; `packages/`
   + `node_modules` + `build/` preserved). Siblings: `code/lego/brickwright` (mainline, GPL — source of
   robot/soundfx/default-project assets), `code/lego/brickwright-ios`, `.../brickwright-android`.
