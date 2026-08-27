@@ -66,7 +66,7 @@ const L10N = {
         mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
         mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
         mcPartial: (f, n, k) => `Imported "${n}" from ${f}. ${k} thing(s) from MakeCode have no equivalent here; each is marked "# unsupported" in the code.`,
-        mcArcade: (f, n) => `Recovered "${n}" from ${f}: a MakeCode Arcade game. Its source is here — Arcade's sprite blocks have no equivalent on the 5x5 display, so this is source, not a runnable project.`,
+        mcArcade: (f, n, s, c) => `Imported the Arcade game "${n}" from ${f}: ${s} sprite(s), ${c} costume(s). Press ${'\u21D2'} To blocks to build it.`,
         mcNoSource: (f, k) => `${f} is a ${k} file with no project source embedded in it — nothing to import.`,
         mcFailed: (f, e) => `Could not read ${f}: ${e}`,
         saveEmpty: 'Nothing to save — this tab is empty.',
@@ -176,7 +176,7 @@ const L10N = {
         mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
         mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
         mcPartial: (f, n, k) => `„${n}" aus ${f} importiert. Für ${k} Sache(n) aus MakeCode gibt es hier keine Entsprechung; jede ist im Code mit „# unsupported" markiert.`,
-        mcArcade: (f, n) => `„${n}" aus ${f} wiederhergestellt: ein MakeCode-Arcade-Spiel. Der Quelltext ist hier — Arcades Sprite-Blöcke haben auf der 5x5-Anzeige keine Entsprechung, das ist also Quelltext, kein lauffähiges Projekt.`,
+        mcArcade: (f, n, s, c) => `Arcade-Spiel „${n}" aus ${f} importiert: ${s} Sprite(s), ${c} Kostüm(e). Mit ${'\u21D2'} Zu Blöcken bauen.`,
         mcNoSource: (f, k) => `${f} ist eine ${k}-Datei ohne eingebetteten Projekt-Quelltext — nichts zu importieren.`,
         mcFailed: (f, e) => `${f} konnte nicht gelesen werden: ${e}`,
         saveEmpty: 'Nichts zu speichern — dieser Tab ist leer.',
@@ -812,19 +812,33 @@ class PseudocodeImporter extends React.Component {
                 return;
             }
             const unsupported = (res.unsupported || []).length;
-            const status = res.kind === 'micropython' ?
-                this.L.mcPython(file.name, Object.keys(res.files).join(', ')) :
-                (res.project.target === 'arcade' ?
-                    this.L.mcArcade(file.name, res.project.name) :
-                    (unsupported ?
-                        this.L.mcPartial(file.name, res.project.name, unsupported) :
-                        this.L.mcMicrobit(file.name, res.project.name)));
+            const arcade = res.project.target === 'arcade';
+            let status;
+            if (res.kind === 'micropython') {
+                status = this.L.mcPython(file.name, Object.keys(res.files).join(', '));
+            } else if (arcade) {
+                status = this.L.mcArcade(file.name, res.project.name,
+                    (res.sprites || []).length, (res.costumes || []).length);
+            } else {
+                status = unsupported ?
+                    this.L.mcPartial(file.name, res.project.name, unsupported) :
+                    this.L.mcMicrobit(file.name, res.project.name);
+            }
             this.setState({
                 lang: res.lang,
                 // Same exclusivity openCodeFile keeps: one authored buffer, so
                 // no stale translation of a previous source can masquerade.
                 buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
                     asm: '', micropython: '', [res.lang]: res.code},
+                // The game's artwork rides the same route as an SVG the user
+                // drops in themselves: compile() applies `uploads` to the
+                // sprites it just parsed, so the costumes land with the code.
+                uploads: (res.costumes || []).map(costume => ({
+                    sprite: costume.sprite,
+                    filename: `${costume.name}.svg`,
+                    svg: costume.svg,
+                    mode: costume.mode || 'replace'
+                })),
                 output: null,
                 status
             });

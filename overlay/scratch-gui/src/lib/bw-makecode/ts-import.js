@@ -151,6 +151,19 @@ const BINARY_PRECEDENCE = {
     '*': 6, '/': 6, '%': 6
 };
 
+/** The dotted name of a template literal's tag, for `img` / `assets.image`. */
+function taggedName (node) {
+    const parts = [];
+    let cur = node;
+    while (cur && cur.type === 'Member') {
+        parts.unshift(cur.name);
+        cur = cur.object;
+    }
+    if (!cur || cur.type !== 'Identifier') return null;
+    parts.unshift(cur.name);
+    return parts.join('.');
+}
+
 class Parser {
     constructor (tokens) {
         this.toks = tokens;
@@ -443,6 +456,14 @@ class Parser {
             }
             if (this.at('punct', '(')) {
                 node = {type: 'Call', callee: node, args: this.parseArguments()};
+                continue;
+            }
+            if (this.at('template')) {
+                // A TAGGED template: `img`…`` and `assets.image`name``.
+                // The tag decides what the text means, so it travels with
+                // it — this is how the artwork is found later.
+                const tok = this.next();
+                node = {type: 'Template', value: tok.value, tag: taggedName(node)};
                 continue;
             }
             if (this.eat('punct', '[')) {
