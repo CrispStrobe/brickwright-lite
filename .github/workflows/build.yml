@@ -305,6 +305,15 @@ jobs:
           # the question, and exits 2 if a revert failed.
           node scripts/prove-fetch-pinning.mjs
 
+      # Three checks that read example JSON off disk — no browser, no server,
+      # no built app. They were sitting unrun with the browser gates purely
+      # because of their filename, and they cost about a second each.
+      - name: Content gates — faceplates, hub faces, retro console
+        run: |
+          node scripts/verify-faceplate-blinkenrocket.mjs
+          node scripts/verify-lego-hub-faces.mjs
+          node scripts/verify-retro-console.mjs
+
       - name: Run unit tests
         run: |
           if ! grep -q '"test"' package.json; then

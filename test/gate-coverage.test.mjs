@@ -36,11 +36,10 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    // Passing, but unwatched — these will rot next unless wired in.
-    // (verify-bluetooth.mjs was here and is now in build.yml.)
-    'verify-faceplate-blinkenrocket.mjs': 'passes (2026-08-27)',
-    'verify-lego-hub-faces.mjs': 'passes (2026-08-27)',
-    'verify-retro-console.mjs': 'passes (2026-08-27)',
+    // All four gates that still passed have now been adopted into build.yml
+    // (bluetooth, blinkenrocket, hub faces, retro console) — a passing gate
+    // nothing runs is the most dangerous kind, since "it passes" stays true
+    // only until the day it quietly does not.
     // Already broken. Each needs its assumptions rechecked against the app as
     // it is now, not its selectors patched until it goes quiet.
     'verify-about-dialog.mjs': 'FAILS (2026-08-27)',
