@@ -485,10 +485,30 @@ class ArcadeTranslator extends BaseTranslator {
                     const isX = property === 'x';
                     if (expr.op === '=') {
                         push(`set ${isX ? 'x' : 'y'} to ${isX ? this.stageX(expr.right) : this.stageY(expr.right)}`);
-                    } else {
-                        const negate = !isX && expr.op === '+=';
-                        push(`change ${isX ? 'x' : 'y'} by ${this.stageLength(expr.right, {negate: negate})}`);
+                        return;
                     }
+                    if (expr.op === '+=' || expr.op === '-=') {
+                        // Two sign flips, and they compose: `-=` reverses the
+                        // move, and Arcade's y grows DOWNWARD while the stage's
+                        // grows up. Treating every compound operator as `+=`
+                        // sent a sprite the wrong way on `x -= n` and was right
+                        // on `y -= n` only by accident.
+                        const negate = isX ? expr.op === '-=' : expr.op === '+=';
+                        push(`change ${isX ? 'x' : 'y'} by ${this.stageLength(expr.right, {negate})}`);
+                        return;
+                    }
+                    // `*=` and `/=` scale the ARCADE coordinate, which is not
+                    // the stage one — the stage's origin is elsewhere. So read
+                    // back into Arcade units, apply the operator there, and
+                    // transform the result, rather than scaling a number that
+                    // means something different.
+                    const arcade = isX ?
+                        `(x position / ${SCALE} + ${HALF_WIDTH})` :
+                        `(${HALF_HEIGHT} - y position / ${SCALE})`;
+                    const applied = `((${arcade}) ${expr.op[0]} ${this.expr(expr.right)})`;
+                    push(isX ?
+                        `set x to (${applied} - ${HALF_WIDTH}) * ${SCALE}` :
+                        `set y to (${HALF_HEIGHT} - ${applied}) * ${SCALE}`);
                     return;
                 }
                 push(this.note(`sprite.${property} = …`));
