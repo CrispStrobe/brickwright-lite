@@ -55,8 +55,6 @@ const CONTROLLER_KEYS = {
     A: 'space', B: 'z', menu: 'm'
 };
 
-const quoted = text => `"${String(text).replace(/"/g, '')}"`;
-
 class ArcadeTranslator extends BaseTranslator {
     constructor (assets) {
         super();
@@ -618,5 +616,4 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
 }
 
-export {quoted as _quoted};
 export default arcadeToPseudocode;
