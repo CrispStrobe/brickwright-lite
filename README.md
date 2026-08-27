@@ -81,6 +81,19 @@ npx tauri dev                 # desktop
 npx tauri android build --apk # or:  npx tauri ios build
 ```
 
+For an installable physical-iPad development package, use the production asset
+pipeline even when signing with an Apple Development profile:
+
+```bash
+cd apps/tauri
+npm run ios:device-build
+```
+
+Do not package a device app with `tauri ios dev --no-dev-server`. That command
+still compiles Tauri in development mode, where `tauri://localhost` expects a
+live development endpoint instead of serving the embedded web build. The
+result installs successfully but cannot open its start page offline.
+
 CI does this for all platforms: `.github/workflows/release.yml` (desktop) and
 `mobile.yml` (Android APK + iOS simulator).
 
