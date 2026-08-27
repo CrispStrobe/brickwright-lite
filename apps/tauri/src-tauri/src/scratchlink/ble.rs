@@ -102,7 +102,11 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
     match method {
         // Returns immediately; discovered devices stream back as notifications.
         "discover" => {
-            start_discover(params, out.clone());
+            // Validate BEFORE scanning, as the reference does: a malformed
+            // request must be an error, not fifteen seconds of offering the
+            // user every device in the building.
+            let specs = parse_filters(params)?;
+            start_discover(specs, out.clone());
             Ok(Value::Null)
         }
         "connect" => {
@@ -209,8 +213,12 @@ async fn subscribe(uuid: Uuid, params: &Value, out: Outbound) -> Result<(), Stri
 
 /// Kick off a scan and stream `didDiscoverPeripheral` notifications as devices
 /// appear. Runs for a fixed window matching the VM's 15s discovery timeout.
-fn start_discover(params: &Value, out: Outbound) {
-    let filter = build_scan_filter(params);
+fn start_discover(specs: Vec<ScanFilterSpec>, out: Outbound) {
+    // Scan for EVERYTHING and match in software, exactly as the reference does
+    // (`central.scanForPeripherals(withServices: nil)`). An adapter-level
+    // service filter would be cheaper but wrong the moment a filter selects by
+    // name or manufacturer data instead — which two shipped extensions do.
+    let filter = ScanFilter::None;
     tokio::spawn(async move {
         let h = match tauri_plugin_blec::get_handler() {
             Ok(h) => h,
@@ -245,6 +253,9 @@ fn start_discover(params: &Value, out: Outbound) {
         let mut seen = std::collections::HashSet::new();
         while let Some(batch) = drx.recv().await {
             for d in batch {
+                if !device_matches(&specs, &d) {
+                    continue;
+                }
                 if !seen.insert(d.address.clone()) {
                     continue;
                 }
@@ -300,24 +311,162 @@ async fn scan_failed(out: &Outbound, why: &str) {
 /// Build a blec scan filter from the VM's `{filters:[{services:[…]}]}`. LEGO
 /// hubs advertise their primary service, so an any-service filter is both
 /// selective and reliable; manufacturer-data filters are left for a later pass.
-fn build_scan_filter(params: &Value) -> ScanFilter {
-    let mut services = Vec::new();
-    if let Some(filters) = params.get("filters").and_then(Value::as_array) {
-        for f in filters {
-            if let Some(svcs) = f.get("services").and_then(Value::as_array) {
-                for s in svcs {
-                    if let Ok(u) = parse_uuid(Some(s)) {
-                        services.push(u);
-                    }
-                }
+/// One entry of a `discover` request's `filters` array, with Web Bluetooth's
+/// matching rules.
+///
+/// Ported from the reference implementation's `BLEScanFilter`
+/// (scratch-link macOS/Sources/scratch-link/BLESession.swift). Until
+/// 2026-08-28 we honoured only `services` and ignored the rest, which is not a
+/// cosmetic gap:
+///
+///   * `scratch3_gdx_for` filters on `namePrefix: "GDX-FOR"` and nothing else,
+///     so every BLE device in range was offered as a force sensor.
+///   * `scratch3_boost` filters on the LEGO service AND
+///     `manufacturerData {0x0397: dataPrefix 00 40, mask 00 FF}`. The service
+///     alone does not distinguish a Boost hub from a WeDo 2.0 or Powered Up
+///     hub, so we offered those as Boost hubs — the user connects, and every
+///     block afterwards is plausible and wrong.
+#[derive(Debug, Default, Clone)]
+pub struct ScanFilterSpec {
+    name: Option<String>,
+    name_prefix: Option<String>,
+    services: Vec<Uuid>,
+    /// company id → (dataPrefix, mask), both the same length.
+    manufacturer_data: Vec<(u16, Vec<u8>, Vec<u8>)>,
+}
+
+impl ScanFilterSpec {
+    /// Parse one filter, rejecting what the reference rejects.
+    fn parse(json: &Value) -> Result<Self, String> {
+        let mut spec = ScanFilterSpec::default();
+        if let Some(n) = json.get("name").and_then(Value::as_str) {
+            spec.name = Some(n.to_string());
+        }
+        if let Some(p) = json.get("namePrefix").and_then(Value::as_str) {
+            spec.name_prefix = Some(p.to_string());
+        }
+        if let Some(svcs) = json.get("services").and_then(Value::as_array) {
+            for s in svcs {
+                spec.services.push(parse_uuid(Some(s))?);
             }
         }
+        if let Some(md) = json.get("manufacturerData").and_then(Value::as_object) {
+            for (k, v) in md {
+                // JavaScript object keys are strings even when the extension
+                // wrote a number, which is why the reference parses them too.
+                let id: u16 = k
+                    .parse()
+                    .map_err(|_| format!("could not parse manufacturer id: {k}"))?;
+                let prefix = byte_array(v.get("dataPrefix"))
+                    .ok_or_else(|| "no data prefix specified".to_string())?;
+                // An absent mask means "match every byte of the prefix".
+                let mask = match byte_array(v.get("mask")) {
+                    Some(m) => m,
+                    None => vec![0xFF; prefix.len()],
+                };
+                if prefix.len() != mask.len() {
+                    return Err("length of data prefix does not match length of mask".into());
+                }
+                spec.manufacturer_data.push((id, prefix, mask));
+            }
+        }
+        Ok(spec)
     }
-    if services.is_empty() {
-        ScanFilter::None
-    } else {
-        ScanFilter::AnyService(services)
+
+    /// A filter that constrains nothing. The reference refuses these rather
+    /// than letting a malformed request quietly offer every device in range.
+    fn is_empty(&self) -> bool {
+        self.name.as_deref().unwrap_or("").is_empty()
+            && self.name_prefix.as_deref().unwrap_or("").is_empty()
+            && self.services.is_empty()
+            && self.manufacturer_data.is_empty()
     }
+
+    /// Web Bluetooth's "matches a filter", against what blec reports.
+    fn matches(&self, d: &BleDevice) -> bool {
+        let has_name = !d.name.is_empty();
+        if has_name {
+            if let Some(n) = self.name.as_deref() {
+                if !n.is_empty() && d.name != n {
+                    return false;
+                }
+            }
+            if let Some(p) = self.name_prefix.as_deref() {
+                if !p.is_empty() && !d.name.starts_with(p) {
+                    return false;
+                }
+            }
+        } else if !self.name.as_deref().unwrap_or("").is_empty()
+            || !self.name_prefix.as_deref().unwrap_or("").is_empty()
+        {
+            // Asked for a name, device has none.
+            return false;
+        }
+
+        // Required services must be a SUBSET of what the device offers — not
+        // an intersection. A filter naming two services wants both.
+        if !self.services.is_empty() && !self.services.iter().all(|s| d.services.contains(s)) {
+            return false;
+        }
+
+        for (id, prefix, mask) in &self.manufacturer_data {
+            // blec has already split the company id out of the advertisement,
+            // so the map key IS the id the reference decodes from the first two
+            // bytes; the value is what it calls devicePrefix.
+            let Some(data) = d.manufacturer_data.get(id) else {
+                return false;
+            };
+            if data.len() < mask.len() {
+                return false;
+            }
+            // Iterator rather than an index range: clippy runs with -D warnings
+            // in CI and needless_range_loop would fail the build. zip stops at
+            // the shortest, and prefix.len() == mask.len() <= data.len() here.
+            let ok = data
+                .iter()
+                .zip(prefix.iter().zip(mask.iter()))
+                .all(|(d, (p, m))| (d & m) == (p & m));
+            if !ok {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+/// A JSON array of byte values, as the extensions write dataPrefix and mask.
+fn byte_array(v: Option<&Value>) -> Option<Vec<u8>> {
+    let arr = v?.as_array()?;
+    arr.iter()
+        .map(|n| n.as_u64().and_then(|x| u8::try_from(x).ok()))
+        .collect()
+}
+
+/// Parse and validate every filter in a `discover` request.
+///
+/// The reference throws on a missing `filters`, an empty array, or any filter
+/// that constrains nothing; we returned `ScanFilter::None` for all three, which
+/// silently offered the user every BLE device in range instead of an error.
+pub fn parse_filters(params: &Value) -> Result<Vec<ScanFilterSpec>, String> {
+    let Some(arr) = params.get("filters").and_then(Value::as_array) else {
+        return Err("could not parse filters in discovery request".into());
+    };
+    if arr.is_empty() {
+        return Err("discovery request must include filters".into());
+    }
+    let specs: Vec<ScanFilterSpec> = arr
+        .iter()
+        .map(ScanFilterSpec::parse)
+        .collect::<Result<_, _>>()?;
+    if specs.iter().any(ScanFilterSpec::is_empty) {
+        return Err("discovery request includes empty filter".into());
+    }
+    Ok(specs)
+}
+
+/// Web Bluetooth: a device matches if it matches ANY filter.
+pub fn device_matches(specs: &[ScanFilterSpec], d: &BleDevice) -> bool {
+    specs.iter().any(|f| f.matches(d))
 }
 
 fn decode_message(params: &Value) -> Result<Vec<u8>, String> {
@@ -385,6 +534,130 @@ mod tests {
     use serde_json::json;
 
     const BASE: &str = "-0000-1000-8000-00805f9b34fb";
+
+    /// A discovered device, as blec reports one.
+    fn device(name: &str, services: &[&str], mfr: &[(u16, &[u8])]) -> BleDevice {
+        BleDevice {
+            address: "AA:BB:CC:DD:EE:FF".into(),
+            name: name.into(),
+            is_connected: false,
+            manufacturer_data: mfr
+                .iter()
+                .map(|(id, d)| (*id, d.to_vec()))
+                .collect(),
+            service_data: Default::default(),
+            services: services.iter().map(|s| Uuid::parse_str(s).unwrap()).collect(),
+            rssi: Some(-55),
+        }
+    }
+
+    const LEGO_SERVICE: &str = "00001623-1212-efde-1623-785feabcd123";
+
+    // ── the two shipped extensions that our old filter got wrong ──────────
+
+    #[test]
+    fn gdx_for_name_prefix_excludes_everything_else() {
+        // scratch3_gdx_for filters on namePrefix alone. We honoured only
+        // `services`, so with none given we scanned unfiltered and offered
+        // every BLE device in range as a force sensor.
+        let specs = parse_filters(&json!({"filters": [{"namePrefix": "GDX-FOR"}]})).unwrap();
+        assert!(device_matches(&specs, &device("GDX-FOR 07100456", &[], &[])));
+        assert!(!device_matches(&specs, &device("LEGO Move Hub", &[], &[])));
+        assert!(!device_matches(&specs, &device("", &[], &[])), "a nameless device cannot match a name filter");
+    }
+
+    #[test]
+    fn boost_manufacturer_data_distinguishes_lego_hubs() {
+        // scratch3_boost filters on the LEGO service AND manufacturer data.
+        // The service alone is shared with WeDo 2.0 and Powered Up, so honouring
+        // only the service offered those as Boost hubs — connect, and every
+        // block afterwards is plausible and wrong.
+        let specs = parse_filters(&json!({"filters": [{
+            "services": [LEGO_SERVICE],
+            "manufacturerData": {"919": {"dataPrefix": [0x00, 0x40], "mask": [0x00, 0xFF]}}
+        }]}))
+        .unwrap();
+        // 0x40 in the masked byte: a Boost Move Hub.
+        assert!(device_matches(&specs, &device("LEGO Move Hub", &[LEGO_SERVICE], &[(919, &[0x00, 0x40, 0x01])])));
+        // Same service, different hub type — must NOT match.
+        assert!(!device_matches(&specs, &device("LEGO Hub", &[LEGO_SERVICE], &[(919, &[0x00, 0x41, 0x01])])));
+        // Right service, no manufacturer data at all.
+        assert!(!device_matches(&specs, &device("LEGO Hub", &[LEGO_SERVICE], &[])));
+    }
+
+    #[test]
+    fn the_mask_selects_which_bytes_matter() {
+        // mask 00 FF means byte 0 is ignored entirely and byte 1 must match.
+        let specs = parse_filters(&json!({"filters": [{
+            "manufacturerData": {"919": {"dataPrefix": [0x00, 0x40], "mask": [0x00, 0xFF]}}
+        }]}))
+        .unwrap();
+        assert!(device_matches(&specs, &device("x", &[], &[(919, &[0xFF, 0x40])])), "byte 0 is masked out");
+        assert!(!device_matches(&specs, &device("x", &[], &[(919, &[0x00, 0x00])])));
+    }
+
+    #[test]
+    fn an_absent_mask_matches_every_prefix_byte() {
+        let specs = parse_filters(&json!({"filters": [{
+            "manufacturerData": {"919": {"dataPrefix": [0x00, 0x40]}}
+        }]}))
+        .unwrap();
+        assert!(device_matches(&specs, &device("x", &[], &[(919, &[0x00, 0x40])])));
+        assert!(!device_matches(&specs, &device("x", &[], &[(919, &[0x01, 0x40])])));
+    }
+
+    // ── the reference's own validation, which we did not have ─────────────
+
+    #[test]
+    fn filters_are_required_and_must_constrain_something() {
+        assert!(parse_filters(&json!({})).is_err(), "missing filters");
+        assert!(parse_filters(&json!({"filters": []})).is_err(), "empty filters array");
+        assert!(parse_filters(&json!({"filters": [{}]})).is_err(), "a filter that constrains nothing");
+        // Returning Ok here is what made a malformed request scan unfiltered.
+    }
+
+    #[test]
+    fn a_mask_of_the_wrong_length_is_refused() {
+        let r = parse_filters(&json!({"filters": [{
+            "manufacturerData": {"919": {"dataPrefix": [0x00, 0x40], "mask": [0xFF]}}
+        }]}));
+        assert!(r.is_err(), "prefix and mask lengths must match");
+    }
+
+    #[test]
+    fn manufacturer_data_needs_a_prefix() {
+        let r = parse_filters(&json!({"filters": [{"manufacturerData": {"919": {}}}]}));
+        assert!(r.is_err());
+    }
+
+    // ── general Web Bluetooth semantics ───────────────────────────────────
+
+    #[test]
+    fn required_services_must_all_be_present_not_merely_one() {
+        let other = "0000180f-0000-1000-8000-00805f9b34fb";
+        let specs = parse_filters(&json!({"filters": [{"services": [LEGO_SERVICE, other]}]})).unwrap();
+        assert!(device_matches(&specs, &device("hub", &[LEGO_SERVICE, other], &[])));
+        assert!(!device_matches(&specs, &device("hub", &[LEGO_SERVICE], &[])), "subset, not intersection");
+    }
+
+    #[test]
+    fn a_device_matches_if_any_filter_matches() {
+        let specs = parse_filters(&json!({"filters": [
+            {"namePrefix": "GDX-FOR"},
+            {"services": [LEGO_SERVICE]}
+        ]}))
+        .unwrap();
+        assert!(device_matches(&specs, &device("GDX-FOR 1", &[], &[])));
+        assert!(device_matches(&specs, &device("LEGO Move Hub", &[LEGO_SERVICE], &[])));
+        assert!(!device_matches(&specs, &device("Some Speaker", &[], &[])));
+    }
+
+    #[test]
+    fn an_exact_name_must_match_exactly() {
+        let specs = parse_filters(&json!({"filters": [{"name": "LEGO Move Hub"}]})).unwrap();
+        assert!(device_matches(&specs, &device("LEGO Move Hub", &[], &[])));
+        assert!(!device_matches(&specs, &device("LEGO Move Hub 2", &[], &[])), "name is equality, not prefix");
+    }
 
     #[test]
     fn parse_full_uuid() {

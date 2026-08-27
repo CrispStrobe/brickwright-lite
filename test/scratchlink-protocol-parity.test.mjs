@@ -85,3 +85,35 @@ test('the notifications the VM listens for are all emitted somewhere', () => {
         assert.match(BT, new RegExp(`"${n}"`), `no BT backend emits ${n}`);
     }
 });
+
+test('the discover filter honours every criterion the reference supports', () => {
+    // Web Bluetooth filters may select by name, namePrefix, services or
+    // manufacturerData. We honoured only `services` until 2026-08-28, and two
+    // SHIPPED extensions depend on the rest:
+    //   scratch3_gdx_for  → namePrefix "GDX-FOR", no services at all
+    //   scratch3_boost    → the LEGO service AND manufacturerData, because the
+    //                       service alone does not tell a Boost hub from a
+    //                       WeDo 2.0 or Powered Up one
+    for (const key of ['name', 'namePrefix', 'services', 'manufacturerData']) {
+        assert.match(BLE, new RegExp(`"${key}"`), `the discover filter ignores ${key}`);
+    }
+    assert.match(BLE, /dataPrefix/, 'manufacturerData needs its dataPrefix');
+    assert.match(BLE, /"mask"/, 'and its mask, or every byte is compared');
+});
+
+test('a malformed discover request is refused, not scanned unfiltered', () => {
+    // The reference throws on missing filters, an empty array, and a filter
+    // that constrains nothing. Returning "no filter" for those means offering
+    // the user every BLE device in the building and calling it success.
+    assert.match(BLE, /could not parse filters in discovery request/);
+    assert.match(BLE, /discovery request must include filters/);
+    assert.match(BLE, /discovery request includes empty filter/);
+});
+
+test('discovery scans unfiltered at the adapter and matches in software', () => {
+    // The reference passes nil to scanForPeripherals and matches in software.
+    // An adapter-level service filter is cheaper and wrong the moment a filter
+    // selects by name or manufacturer data instead.
+    assert.match(BLE, /ScanFilter::None/,
+        'an adapter-level service filter would hide devices a name filter wants');
+});
