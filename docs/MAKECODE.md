@@ -46,7 +46,8 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `translate-base.js` | what both translators share: the walk, the "nothing is dropped in silence" rule, and the slot discipline |
 | `microbit-translate.js` | MakeCode micro:bit → BrickWright pseudocode → blocks, MicroPython, the simulator |
 | `arcade-translate.js` | MakeCode Arcade → a playable Scratch project: target selection, sprites, clones, `touching`, score, velocity loops |
-| `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), the 16-colour palette → SVG costumes |
+| `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), tilemaps painted whole, the 16-colour palette → SVG costumes |
+| `microbit-icons.js` | MakeCode's 40 icons and 8 arrows as our 5x5 patterns — the same bitmaps MicroPython has, so this is an identity |
 | `export.js` | the other direction: blocks → MakeCode TypeScript, and a .hex carrying only the source embed — which is all MakeCode's importer reads |
 | `index.js` | one `importArtefact(bytes)` door, wired into the Code tab's 📂 Open button |
 
@@ -121,10 +122,18 @@ parent's state at the moment it is made. `scene.setBackgroundImage` → a
 full-screen sprite sent to the back (the costume route deliberately
 skips the Stage).
 
-What does not survive: tilemaps, effects and particles, the physics
-engine's tile collisions, animations, music — and, structurally, any
-script that moves a sprite other than its own, which Scratch has no way
-to express. Each is named in the returned `unsupported` list and marked
+Tilemaps arrive as pictures: the level is painted tile by tile into one
+image and becomes a backdrop costume (the tiles live in the `.g.jres`,
+but the MAP is a hex literal inside a generated `switch` in
+`tilemap.g.ts`, so it has its own reader). A game with several levels
+gets the first four as costumes on one background sprite — a level
+renders to a few hundred kilobytes of SVG, and handing the paint editor
+eight of those helps nobody.
+
+What does not survive: effects and particles, the physics engine's tile
+COLLISIONS (the level is a picture, not terrain), animations, music —
+and, structurally, any script that moves a sprite other than its own,
+which Scratch has no way to express. Each is named in the returned `unsupported` list and marked
 `# unsupported` where it stood, and the status line says how many.
 
 ## Icons are an identity, not an approximation

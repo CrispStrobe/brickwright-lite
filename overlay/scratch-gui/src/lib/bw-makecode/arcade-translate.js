@@ -35,7 +35,13 @@
 
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num} from './translate-base.js';
-import {parseImageLiteral, parseJres, imageToSvg} from './arcade-assets.js';
+import {
+    parseImageLiteral,
+    parseJres,
+    parseTilemaps,
+    renderTilemap,
+    imageToSvg
+} from './arcade-assets.js';
 
 /** Arcade pixels → stage units. 160x120 scaled by 3 is 480x360 exactly. */
 const SCALE = 3;
@@ -49,6 +55,14 @@ const HALF_HEIGHT = 60;
  */
 const VELOCITY_DIVISOR = 10;
 
+/**
+ * How many backdrops to carry over. A level renders to a few hundred
+ * kilobytes of SVG; a platformer with eight of them would hand the paint
+ * editor several megabytes of rectangles. The ones past the cap are
+ * named in the unsupported list rather than dropped in silence.
+ */
+const MAX_BACKDROPS = 4;
+
 /** MakeCode's controller buttons → the Scratch key names. */
 const CONTROLLER_KEYS = {
     up: 'up arrow', down: 'down arrow', left: 'left arrow', right: 'right arrow',
@@ -56,13 +70,15 @@ const CONTROLLER_KEYS = {
 };
 
 class ArcadeTranslator extends BaseTranslator {
-    constructor (assets) {
+    constructor (assets, tilemaps) {
         super();
         this.assets = assets || {};      // jres images by name
+        this.tilemaps = tilemaps || {};  // level name → grid of tile indexes
         this.sprites = [];               // {name, image, kind, velocity}
         this.self = null;                // the sprite the current script is on
         this.aliases = new Map();        // handler parameter → sprite name
         this.pendingClone = null;        // a sprite spawned in this block
+        this.kinds = 0;                  // SpriteKind.create() hands out ids
     }
 
     /**
@@ -152,6 +168,10 @@ class ArcadeTranslator extends BaseTranslator {
         case 'scene.screenHeight': return String(HALF_HEIGHT * 2);
         case 'randint': return `pick random ${this.expr(a[0])} to ${this.expr(a[1])}`;
         case 'game.runtime': return 'timer * 1000';
+        // A sprite KIND is a compile-time label; every Arcade game defines
+        // a few, and reporting them as unsupported would bury the real
+        // refusals under noise. A number is exactly what they are.
+        case 'SpriteKind.create': return String(100 + (++this.kinds));
         default: {
             // `ball.overlapsWith(paddle)` is `touching paddle` — the one
             // sprite method that reports rather than acts.
@@ -359,12 +379,14 @@ export function arcadeToPseudocode (files, opts = {}) {
     const source = map['main.ts'] || '';
 
     const assets = {};
+    const tilemaps = {};
     for (const [filename, text] of Object.entries(map)) {
         if (/\.jres$/.test(filename)) Object.assign(assets, parseJres(text));
+        if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
 
     const ast = parseMakeCodeTs(source);
-    const t = new ArcadeTranslator(assets);
+    const t = new ArcadeTranslator(assets, tilemaps);
     const costumes = [];
 
     // ── pass 1: find the sprites, because everything else refers to them
@@ -382,23 +404,84 @@ export function arcadeToPseudocode (files, opts = {}) {
      * Stage, and a full-screen sprite sent to the back looks the same
      * and actually arrives.
      */
+    /**
+     * Backdrop art: the first one becomes the sprite's costume, and every
+     * one after it is added beside it.
+     *
+     * A game usually has both a background image and one or more levels,
+     * and Scratch sprites hold many costumes — so they all arrive and the
+     * user can switch between them, rather than the second one being
+     * refused for having come second.
+     */
+    const backdropArt = (label, svg) => {
+        if (!t.sprite('background')) {
+            t.sprites.unshift({name: 'background', kind: 'Background', velocity: false, backdrop: true});
+        }
+        const existing = costumes.filter(c => c.sprite === 'background').length;
+        if (existing >= MAX_BACKDROPS) {
+            t.unsupported.push(`${label} — only the first ${MAX_BACKDROPS} backdrops are carried over`);
+            return;
+        }
+        costumes.push({sprite: 'background', name: label, svg, mode: existing ? 'add' : 'replace'});
+    };
+
+    /**
+     * A level becomes a picture of itself, painted tile by tile.
+     *
+     * Scratch has no scrolling tilemap, so what arrives is the level as an
+     * image rather than terrain a sprite can collide with. Said once, in
+     * the unsupported list, because it is the difference that matters.
+     */
+    const registerTilemap = node => {
+        const name = node && node.type === 'Template' ? node.value.trim() : '';
+        const tilemap = t.tilemaps[name];
+        if (!tilemap) {
+            t.unsupported.push(`tiles.setTilemap(${name || '…'}) — no such tilemap in this project`);
+            return;
+        }
+        const image = renderTilemap(tilemap, t.assets);
+        if (!image) {
+            t.unsupported.push(`tiles.setTilemap(${name}) — the level's tiles could not be read`);
+            return;
+        }
+        backdropArt(`level-${name}`, imageToSvg(image, {scale: 1}));
+        t.unsupported.push('tiles.* — the level arrives as a picture, not as terrain a sprite collides with');
+    };
+
     const registerBackground = node => {
         const art = t.artOf(node);
         if (!art) {
             t.unsupported.push('scene.setBackgroundImage() with art we could not read');
             return;
         }
-        if (t.sprite('background')) return;
-        t.sprites.unshift({name: 'background', kind: 'Background', velocity: false, backdrop: true});
-        costumes.push({sprite: 'background', name: 'background', svg: art, mode: 'replace'});
+        backdropArt('background', art);
+    };
+
+    /**
+     * Backdrops are declared wherever the game happens to declare them —
+     * a level is usually set inside a `setLevel()` function, not at the
+     * top level — so this scan goes all the way down. Sprite creation
+     * does NOT: one inside a body is a spawn, and pass 2 turns it into a
+     * clone.
+     */
+    const visitCalls = (node, seen = new Set()) => {
+        if (!node || typeof node !== 'object' || seen.has(node)) return;
+        seen.add(node);
+        if (node.type === 'Call') {
+            const called = t.path(node.callee);
+            if (called === 'scene.setBackgroundImage') registerBackground(node.args[0]);
+            if (called === 'tiles.setTilemap' || called === 'scene.setTileMapLevel') {
+                registerTilemap(node.args[0]);
+            }
+        }
+        for (const value of Object.values(node)) {
+            if (Array.isArray(value)) value.forEach(v => visitCalls(v, seen));
+            else if (value && typeof value === 'object') visitCalls(value, seen);
+        }
     };
 
     const walkForSprites = body => {
         for (const st of body) {
-            if (st.type === 'ExpressionStatement' && st.expr.type === 'Call' &&
-                t.path(st.expr.callee) === 'scene.setBackgroundImage') {
-                registerBackground(st.expr.args[0]);
-            }
             if (st.type === 'Declaration') {
                 for (const d of st.decls) {
                     if (d.init && d.init.type === 'Call' && t.path(d.init.callee) === 'sprites.create') {
@@ -417,6 +500,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
     };
     walkForSprites(ast.body);
+    ast.body.forEach(st => visitCalls(st));
     for (const st of ast.body) {
         if (st.type === 'ExpressionStatement' && st.expr.type === 'Call') {
             for (const arg of st.expr.args || []) {
@@ -534,6 +618,7 @@ export function arcadeToPseudocode (files, opts = {}) {
             continue;
         }
         if (name === 'scene.setBackgroundImage') continue;    // handled in pass 1
+        if (name === 'tiles.setTilemap' || name === 'scene.setTileMapLevel') continue;
         if (name && /^(tiles|scene)\.(set|place)/.test(name)) {
             t.unsupported.push(`${name}() — tilemaps have no stage equivalent`);
             continue;

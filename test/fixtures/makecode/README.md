@@ -11,6 +11,11 @@ what the editors wrote.
 | `arcade-shield.hex` | arcade.makecode.com 4.0.x, micro:bit V2 + shield | "ping-pong" | a 1.0 MB .hex download |
 | `arcade-shield.uf2` | the same project, UF2 build | "ping-pong" | a 700 KB .uf2 download |
 | `arcade-assets.hex` | arcade.makecode.com, micro:bit V2 + shield | "Jonathans Ausweichspiel unterwasser" | a 1.0 MB .hex download |
+| `arcade-tilemap.hex` | arcade.makecode.com, micro:bit V2 + shield | "jumpy platformer" | a 1.0 MB .hex download |
+
+`arcade-tilemap.hex` is the only fixture with tilemaps — eight levels, a
+`tilemap.g.ts` factory and a `tilemap.g.jres` tile set — and it is what
+keeps the level renderer honest.
 
 `arcade-assets.hex` earns its place by being the *friendly* Arcade case
 and by carrying a `.g.jres` asset gallery: one script per sprite, a
