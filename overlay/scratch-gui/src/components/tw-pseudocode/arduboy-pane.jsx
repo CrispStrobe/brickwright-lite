@@ -77,7 +77,8 @@ const tx = key => T[key][isGerman() ? 1 : 0];
 class ArduboyPane extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {name: null, running: false, error: null, held: {}, muted: false};
+        this.state = {name: null, running: false, error: null, held: {}, muted: false,
+            led: {r: 0, g: 0, b: 0}};
         this.canvasRef = React.createRef();
         this.console = null;
         this.pixels = new Uint8Array(SCREEN_WIDTH * SCREEN_HEIGHT);
@@ -150,6 +151,21 @@ class ArduboyPane extends React.Component {
         if (audible) audio.osc.frequency.setTargetAtTime(hz, now, 0.005);
         // Ramp rather than switch, or every note starts and ends with a click.
         audio.gain.gain.setTargetAtTime(audible ? 0.06 : 0, now, 0.01);
+    }
+
+    /**
+     * The RGB LED, as the eye would see it.
+     *
+     * The duty cycles are small — a game asking for level 16 of 255 gives
+     * 0.06 — so showing them raw would be a black dot. The gamma-ish curve
+     * here is for looking at, not for measuring; anything that wants the
+     * number reads takeLed().
+     */
+    updateLed () {
+        const led = this.console.takeLed();
+        const previous = this.state.led;
+        const changed = ['r', 'g', 'b'].some(k => Math.abs(led[k] - previous[k]) > 0.004);
+        if (changed) this.setState({led});
     }
 
     toggleMute () {
@@ -225,6 +241,7 @@ class ArduboyPane extends React.Component {
             this.console.advance(elapsed);
             this.paint();
             this.updateAudio();
+            this.updateLed();
         } catch (e) {
             this.setState({error: String(e && e.message || e), running: false});
             return;
@@ -350,6 +367,23 @@ class ArduboyPane extends React.Component {
             >
                 <div style={{fontWeight: 700, fontSize: 13, letterSpacing: '.04em'}}>
                     {'ARDUBOY'}{this.state.name ? ` — ${this.state.name}` : ''}
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
+                    <div
+                        aria-label="RGB LED"
+                        data-testid="bw-arduboy-led"
+                        style={{
+                            width: 16, height: 16, borderRadius: '50%',
+                            border: '2px solid #334155',
+                            background: `rgb(${
+                                [this.state.led.r, this.state.led.g, this.state.led.b]
+                                    .map(v => Math.round(255 * Math.min(1, Math.pow(v, 0.45))))
+                                    .join(', ')})`,
+                            boxShadow: (this.state.led.r + this.state.led.g + this.state.led.b) > 0.01 ?
+                                '0 0 10px rgba(255,255,255,.5)' : 'none'
+                        }}
+                    />
+                    <span style={{fontSize: 11, color: '#64748b'}}>{'LED'}</span>
                 </div>
                 <canvas
                     data-testid="bw-arduboy-screen"

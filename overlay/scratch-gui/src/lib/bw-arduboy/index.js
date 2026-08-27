@@ -97,6 +97,21 @@ export function createArduboy (hexText, opts = {}) {
     const pins = {dc: false, cs: true, reset: true, speaker1: false, speaker2: false};
     let speakerEdges = 0;
 
+    // Time-weighted duty cycle per LED channel. A PWM pin is only ever
+    // fully on or fully off; the colour is in how long it stays each way.
+    const led = {
+        r: {lit: false, since: 0, litNs: 0},
+        g: {lit: false, since: 0, litNs: 0},
+        b: {lit: false, since: 0, litNs: 0}
+    };
+    const integrate = (channel, lit) => {
+        const ch = led[channel];
+        const now = adapter.timeNs ? Number(adapter.timeNs()) : 0;
+        if (ch.lit) ch.litNs += now - ch.since;
+        ch.lit = lit;
+        ch.since = now;
+    };
+
     // The board is the adapter's own boundary: it answers reads on pins the
     // MCU has left as inputs, and is told about every pin the MCU drives.
     adapter.attachBoard({
@@ -124,6 +139,13 @@ export function createArduboy (hexText, opts = {}) {
                 pins.speaker1 = !!driveHigh;
                 break;
             case 'SPEAKER_2': pins.speaker2 = !!driveHigh; break;
+            // The RGB LED is common-anode: the pin is pulled LOW to light
+            // it, and brightness is PWM, so the level at any instant says
+            // almost nothing. What means something is the fraction of the
+            // window the pin spent low, which is what gets integrated.
+            case 'RGB_RED': integrate('r', !driveHigh); break;
+            case 'RGB_GREEN': integrate('g', !driveHigh); break;
+            case 'RGB_BLUE': integrate('b', !driveHigh); break;
             default: break;
             }
         },
@@ -146,6 +168,7 @@ export function createArduboy (hexText, opts = {}) {
 
     let nanos = 0;
     let speakerSince = 0;
+    let ledSince = 0;
 
     return {
         display,
@@ -154,6 +177,27 @@ export function createArduboy (hexText, opts = {}) {
         get bytesToDisplay () { return bytesToDisplay; },
         /** Speaker pin states, for a caller that wants to make a noise. */
         get speaker () { return {a: pins.speaker1, b: pins.speaker2}; },
+
+        /**
+         * The RGB LED as three 0..1 duty cycles over the window since this
+         * was last called, which resets it for the same reason the speaker
+         * does. A channel that never changed is reported at its current
+         * level, or a pin held steadily on would read as off.
+         */
+        takeLed () {
+            const now = adapter.timeNs ? Number(adapter.timeNs()) : 0;
+            const out = {};
+            for (const key of ['r', 'g', 'b']) {
+                const ch = led[key];
+                if (ch.lit) ch.litNs += now - ch.since;
+                ch.since = now;
+                const span = now - ledSince;
+                out[key] = span > 0 ? Math.min(1, ch.litNs / span) : 0;
+                ch.litNs = 0;
+            }
+            ledSince = now;
+            return out;
+        },
 
         /**
          * Edges on the speaker pin since this was last called, and the

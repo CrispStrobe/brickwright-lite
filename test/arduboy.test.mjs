@@ -203,3 +203,41 @@ test('reading the speaker resets it, because it is a rate', {skip: SKIP}, () => 
     assert.ok(first.edges > 0);
     assert.equal(second.edges, 0, 'a total that is never cleared only ever goes up');
 });
+
+test('the RGB LED is a duty cycle, not a pin level', {skip: SKIP}, () => {
+    // The LED is common-anode and driven by PWM: the pin is only ever fully
+    // low or fully high, and the colour is entirely in how long it stays
+    // each way. Reading the level at any instant would report a game's dim
+    // red as either full red or nothing, depending when you looked.
+    const game = arduboy.createArduboy(hex());
+    game.advance(600);
+    for (let i = 0; i < 6; i++) {
+        game.press('a');
+        game.advance(150);
+        game.release('a');
+        game.advance(400);
+    }
+    game.takeLed();
+
+    const seen = [];
+    for (let i = 0; i < 6; i++) {
+        game.press('right');
+        game.advance(200);
+        game.release('right');
+        game.advance(300);
+        const led = game.takeLed();
+        if (led.r + led.g + led.b > 0.01) seen.push(led);
+    }
+    assert.ok(seen.length > 0, 'the LED was never lit during play');
+    // The game asks for level 16 of 255, which is a duty of about 0.063 —
+    // so a channel that is on should land near there and nowhere near 1.
+    for (const led of seen) {
+        for (const channel of ['r', 'g', 'b']) {
+            assert.ok(led[channel] >= 0 && led[channel] <= 1,
+                `${channel} duty ${led[channel]} is not a fraction`);
+        }
+    }
+    const brightest = Math.max(...seen.flatMap(l => [l.r, l.g, l.b]));
+    assert.ok(brightest > 0.02 && brightest < 0.5,
+        `brightest channel ${brightest.toFixed(3)} — expected a dim PWM level, not full on`);
+});

@@ -110,10 +110,22 @@ RYSK answers a button press with a tone that measures ~370 Hz — F#4,
 which is a real note and the best evidence available that the mechanism
 is right rather than merely producing numbers.
 
-## What is not here
+## The RGB LED
 
-**The RGB LED.** Pins are already routed through the board object,
-nothing renders them.
+Common-anode — the pin is pulled **low** to light it — and driven by PWM,
+so the level at any instant says almost nothing: read it at the wrong
+moment and a game's dim red is either full red or off. What means
+something is the fraction of the window the pin spent low, so `takeLed()`
+integrates time-weighted duty per channel and resets, exactly as the
+speaker does.
+
+RYSK drives it during play, and the measured duty lands at **~0.063** —
+which is level 16 of 255, and `LED_LEVEL_START 16` is what its source
+asks for. That number matching is the evidence the integration is right;
+the pane's dot applies a gamma-ish curve on top purely so a 6% duty is
+visible to an eye rather than a black circle.
+
+## What is not here
 
 **Anything to do with source.** Arduboy games *are* published with source —
 ArduboyWorks is MIT — but that source is C++ using immediate-mode drawing
