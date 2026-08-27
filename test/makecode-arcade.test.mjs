@@ -437,6 +437,22 @@ test('another script may set velocity, because velocity is a variable', () => {
     assert.deepEqual(unsupported, []);
 });
 
+test('velocity compound assignments preserve their operator', () => {
+    const {code, unsupported} = arcadeToPseudocode(`
+        let ball = sprites.create(img\`1\`, SpriteKind.Player)
+        game.onUpdate(function () {
+            ball.vx += 3
+            ball.vx -= 2
+            ball.vy *= -1
+        })
+    `);
+
+    assert.match(code, /change ball_vx by 3/);
+    assert.match(code, /change ball_vx by \(0 - 2\)/);
+    assert.match(code, /set ball_vy to ball_vy \* \(0 - 1\)/);
+    assert.deepEqual(unsupported, []);
+});
+
 test('trigonometry converts radians to degrees, and binds correctly', {skip: canCompile ? false :
     'packages/scratch-gui not integrated'}, () => {
     // MakeCode's Math.cos takes RADIANS; the block takes DEGREES. Reading

@@ -472,7 +472,9 @@ class ArcadeTranslator extends BaseTranslator {
                     const variable = `${owner.name}_${property}`;
                     this.declared.add(variable);
                     if (expr.op === '=') push(`set ${variable} to ${this.expr(expr.right)}`);
-                    else push(`change ${variable} by ${this.expr(expr.right)}`);
+                    else if (expr.op === '+=') push(`change ${variable} by ${this.expr(expr.right)}`);
+                    else if (expr.op === '-=') push(`change ${variable} by (0 - ${this.expr(expr.right)})`);
+                    else push(`set ${variable} to ${variable} ${expr.op[0]} ${this.expr(expr.right)}`);
                     return;
                 }
                 if (owner !== this.self) {
@@ -487,14 +489,6 @@ class ArcadeTranslator extends BaseTranslator {
                         const negate = !isX && expr.op === '+=';
                         push(`change ${isX ? 'x' : 'y'} by ${this.stageLength(expr.right, {negate: negate})}`);
                     }
-                    return;
-                }
-                if (property === 'vx' || property === 'vy') {
-                    owner.velocity = true;
-                    const variable = `${owner.name}_${property}`;
-                    this.declared.add(variable);
-                    if (expr.op === '=') push(`set ${variable} to ${this.expr(expr.right)}`);
-                    else push(`change ${variable} by ${this.expr(expr.right)}`);
                     return;
                 }
                 push(this.note(`sprite.${property} = …`));
