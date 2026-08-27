@@ -24,7 +24,20 @@
  * @module
  */
 
+import {MICROBIT_ICONS, MICROBIT_ARROWS} from './microbit-icons.js';
+
 const MAGIC = [0x41, 0x14, 0x0E, 0x2F, 0xB8, 0x2F, 0xA2, 0xBB];
+
+/**
+ * Pattern digits → the icon that draws them, so an exported program says
+ * `basic.showIcon(IconNames.Heart)` rather than spelling out a grid the
+ * reader has to decode. The lookup is exact, which keeps the round trip
+ * stable: showIcon imports to those digits and exports back to showIcon.
+ */
+const ICON_BY_PATTERN = new Map([
+    ...Object.entries(MICROBIT_ICONS).map(([name, pattern]) => [pattern, `IconNames.${name}`]),
+    ...Object.entries(MICROBIT_ARROWS).map(([name, pattern]) => [pattern, `ArrowNames.${name}`])
+]);
 
 /** Where the embed sits in flash. Any page MakeCode does not use will do. */
 const EMBED_ADDRESS = 0x3B400;
@@ -195,9 +208,21 @@ class Emitter {
             push(`${this.variableName(f('VARIABLE'))} += ${v('VALUE')}`);
             return;
 
-        case 'microbitplus_showmatrix':
+        case 'microbitplus_showmatrix': {
+            const digits = String(f('MATRIX')).replace(/[^0-9]/g, '');
+            const named = ICON_BY_PATTERN.get((digits.match(/.{5}/g) || []).join(':'));
+            if (named) {
+                push(`basic.${named.startsWith('Arrow') ? 'showArrow' : 'showIcon'}(${named})`);
+                return;
+            }
+            // MakeCode's LED literals are on/off; ours carry brightness.
+            // Flattening 1..8 to "lit" is a real loss and gets said.
+            if (/[1-8]/.test(digits)) {
+                this.unsupported.push('LED brightness levels — MakeCode\'s display literals are on/off');
+            }
             push(`basic.showLeds(\`${ledsOf(f('MATRIX'))}\n${pad}    \`)`);
             return;
+        }
         case 'microbitplus_showtext':
             push(`basic.showString(${v('TEXT', '""')})`);
             return;

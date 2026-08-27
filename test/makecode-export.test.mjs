@@ -132,3 +132,24 @@ test('a block MakeCode has no word for is reported, not emitted as nonsense', {s
     assert.match(ts, /\/\/ unsupported: looks_say/);
     assert.match(ts, /basic\.clearScreen\(\)/, 'the rest still exports');
 });
+
+test('an exported icon reads as an icon, and brightness loss is reported', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    const withIcon = new SB3Creator().parse([
+        'DEVICE MICROBIT', '', 'WHEN flag clicked:',
+        '  show pattern 09090:99999:99999:09990:00900'
+    ].join('\n'));
+    const named = projectToMakeCodeTs(withIcon);
+    assert.match(named.ts, /basic\.showIcon\(IconNames\.Heart\)/,
+        'a grid the reader would have to decode is worse than the name for it');
+    assert.deepEqual(named.unsupported, []);
+
+    const withBrightness = new SB3Creator().parse([
+        'DEVICE MICROBIT', '', 'WHEN flag clicked:',
+        '  show pattern 12345:00000:00000:00000:00000'
+    ].join('\n'));
+    const dimmed = projectToMakeCodeTs(withBrightness);
+    assert.match(dimmed.ts, /basic\.showLeds/);
+    assert.ok(dimmed.unsupported.some(u => /brightness/.test(u)),
+        'MakeCode\'s display literals are on/off, and flattening 1..8 is a real loss');
+});

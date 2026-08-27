@@ -24,6 +24,7 @@ import {
     ledPattern
 } from '../overlay/scratch-gui/src/lib/bw-makecode/microbit-translate.js';
 import {unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
+import {MICROBIT_ICONS, MICROBIT_ARROWS} from '../overlay/scratch-gui/src/lib/bw-makecode/microbit-icons.js';
 
 const COMPILER = join(INTEGRATED, 'src', 'lib', 'sb3-creator.js');
 const canCompile = existsSync(COMPILER);
@@ -213,4 +214,31 @@ test('the two reporters the pseudocode round-trip cannot read are reported, not 
     assert.match(touch.code, /# unsupported: input\.pinIsPressed\(\)/,
         'the reason appears beside the statement it broke, not only in the list');
     assert.ok(touch.unsupported.some(u => /touch reporter/.test(u)));
+});
+
+test('icons are the same bitmaps on both sides, not an approximation', () => {
+    // MakeCode's IconNames and MicroPython's built-in images trace to one
+    // table, and `show pattern` lowers to display.show() — so this is an
+    // identity, and showIcon must never be refused.
+    const out = microbitToPseudocode(
+        'basic.showIcon(IconNames.Heart)\nbasic.showArrow(ArrowNames.North)');
+    assert.deepEqual(out.unsupported, []);
+    assert.match(out.code, /show pattern 09090:99999:99999:09990:00900/, 'the heart');
+    assert.match(out.code, /show pattern 00900:09990:90909:00900:00900/, 'the north arrow');
+
+    // An icon we have no pattern for is named, not silently blanked.
+    const unknown = microbitToPseudocode('basic.showIcon(IconNames.Nonexistent)');
+    assert.match(unknown.code, /# unsupported: basic\.showIcon\(Nonexistent\)/);
+});
+
+test('every icon in the table is a well-formed 5x5 pattern', () => {
+    const all = {...MICROBIT_ICONS, ...MICROBIT_ARROWS};
+    assert.equal(Object.keys(MICROBIT_ICONS).length, 40, "MakeCode's icon set");
+    assert.equal(Object.keys(MICROBIT_ARROWS).length, 8);
+    for (const [name, pattern] of Object.entries(all)) {
+        assert.match(pattern, /^[0-9]{5}(:[0-9]{5}){4}$/, `${name} is not a 5x5 grid`);
+    }
+    // A blank icon would import as a program that shows nothing at all.
+    const blank = Object.entries(all).filter(([, p]) => !/[1-9]/.test(p));
+    assert.deepEqual(blank, [], 'no icon should be empty');
 });

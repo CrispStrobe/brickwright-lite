@@ -127,6 +127,19 @@ script that moves a sprite other than its own, which Scratch has no way
 to express. Each is named in the returned `unsupported` list and marked
 `# unsupported` where it stood, and the status line says how many.
 
+## Icons are an identity, not an approximation
+
+`basic.showIcon(IconNames.Heart)` is in nearly every beginner MakeCode
+program. It maps exactly: our `show pattern` lowers to `display.show()`
+in MicroPython, and MakeCode's icon set and MicroPython's built-in images
+are the same bitmaps. `microbit-icons.js` carries all 40 icons and 8
+arrows, and the export direction reverses the lookup so a heart comes
+back out as `basic.showIcon(IconNames.Heart)` rather than a grid.
+
+The one real loss in that direction: our patterns carry brightness 0-9
+and MakeCode's display literals are on/off, so a dimmed pattern exports
+flattened — and says so.
+
 ## The round trip is the test
 
 `test/makecode-export.test.mjs` takes each shipped micro:bit example,
@@ -183,8 +196,14 @@ Checked via the GitHub API on 2026-08-27:
 - `microsoft/pxt`, `microsoft/pxt-arcade`, `microsoft/pxt-common-packages` —
   **MIT**. Format details and even runtime pieces are compatible with lite's
   fully-permissive rule.
-- `microsoft/pxt-microbit` — **NOASSERTION**. Read its `LICENSE.txt` before
-  taking anything from it.
+- `microsoft/pxt-microbit` — GitHub's detector says **NOASSERTION**, but its
+  `LICENSE.txt` was read: it is **plain MIT**, 25 lines, no extra clauses. The
+  detector is thrown by the "PXT - Programming Experience Toolkit" line above
+  the MIT header. So its tables are usable here — which is where two of the
+  icon patterns come from.
+- `bbcmicrobit/micropython` — **MIT**. 38 of the 40 icon patterns and all 8
+  arrows come from its `microbitconstimage.cpp`, which is also where MakeCode's
+  icons and MicroPython's built-in images both originate.
 - `microbit-foundation/microbit-fs`, `microbit-universal-hex` — **MIT** (the
   V1/V2 storage formats implemented in `micropython-hex.js` are documented
   there).
