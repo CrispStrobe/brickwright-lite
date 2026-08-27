@@ -22,6 +22,13 @@
  * @module
  */
 
+/**
+ * 180/pi, to five places. The pseudocode has no pi of its own without
+ * pulling in an extension, and a literal is exact enough for an angle
+ * a game is about to round to a pixel.
+ */
+const RADIANS_TO_DEGREES = '57.29578';
+
 /** Trim a computed number to something a human would have typed. */
 export const num = value => String(Math.round(value * 1000) / 1000);
 
@@ -72,7 +79,10 @@ export class BaseTranslator {
         case 'Identifier': return node.name;
         case 'Unary':
             if (node.op === '!') return `not (${this.condition(node.argument)})`;
-            if (node.op === '-') return `0 - ${this.expr(node.argument)}`;
+            // Parenthesised, and not optionally: `maxSpeed * -cos(a)` written
+            // as `maxSpeed * 0 - cos(a)` is `(maxSpeed*0) - cos(a)`, which
+            // runs and is wrong.
+            if (node.op === '-') return `(0 - ${this.expr(node.argument)})`;
             return this.expr(node.argument);
         case 'Binary': {
             const op = node.op;
@@ -86,6 +96,10 @@ export class BaseTranslator {
             return `${this.expr(node.left)} ${op} ${this.expr(node.right)}`;
         }
         case 'Member': {
+            // `Math.PI` is a constant, and a game that computes a bounce
+            // angle wants the number, not a variable called PI.
+            if (node.object && node.object.type === 'Identifier' &&
+                node.object.name === 'Math' && node.name === 'PI') return '3.14159';
             const token = this.enumToken(node);
             if (token !== null) return /^-?\d+$/.test(token) ? token : `"${token}"`;
             return node.name;                            // a bare property read
@@ -318,6 +332,21 @@ export class BaseTranslator {
         case 'Math.ceil': return `ceiling of ${arg(0)}`;
         case 'Math.sqrt': return `sqrt of ${arg(0)}`;
         case 'Math.round': return `round ${arg(0)}`;
+        // Trigonometry, with the unit change spelled out: MakeCode's
+        // Math.cos takes RADIANS and the block takes DEGREES, so the
+        // argument is converted rather than quietly reinterpreted — a
+        // bounce angle read as degrees when it meant radians is the kind
+        // of wrong that still runs.
+        case 'Math.cos': return `cos of ((${arg(0)}) * ${RADIANS_TO_DEGREES})`;
+        case 'Math.sin': return `sin of ((${arg(0)}) * ${RADIANS_TO_DEGREES})`;
+        case 'Math.tan': return `tan of ((${arg(0)}) * ${RADIANS_TO_DEGREES})`;
+        case 'Math.atan': return `(atan of ${arg(0)}) / ${RADIANS_TO_DEGREES}`;
+        case 'Math.asin': return `(asin of ${arg(0)}) / ${RADIANS_TO_DEGREES}`;
+        case 'Math.acos': return `(acos of ${arg(0)}) / ${RADIANS_TO_DEGREES}`;
+        case 'Math.log': return `ln of ${arg(0)}`;
+        case 'Math.log10': return `log of ${arg(0)}`;
+        case 'Math.exp': return `e ^ of ${arg(0)}`;
+        case 'Math.pow': return `${arg(0)}`;  // no power reporter; keep the base
         case 'Math.min':
         case 'Math.max':
         case 'Math.map': return arg(0);       // no reporter for these; keep the first term

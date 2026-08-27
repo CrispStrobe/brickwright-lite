@@ -415,3 +415,48 @@ test('a sprite held in a variable is refused, not turned into one', () => {
     assert.ok(unsupported.some(u => /hit\.width — a sprite held in a variable/.test(u)));
     assert.doesNotMatch(code, /\bto width\b/, 'never a variable named after the property');
 });
+
+test('another script may set velocity, because velocity is a variable', () => {
+    // Position needs the sprite itself; velocity does not. vx and vy live
+    // in a shared variable the owning sprite's motion loop reads every
+    // frame, so a cross-sprite write is exact and immediate — no
+    // broadcast, no frame of lag.
+    const {code, unsupported} = arcadeToPseudocode(`
+        let ball = sprites.create(img\`1\`, SpriteKind.Player)
+        let paddle = sprites.create(img\`2\`, SpriteKind.Food)
+        game.onUpdate(function () {
+            paddle.x = 10
+            ball.vy = -50
+        })
+    `);
+    assert.match(code, /set ball_vy to \(0 - 50\)/, "the ball's velocity, set from the paddle's script");
+    assert.ok(!unsupported.some(u => /ball\.vy/.test(u)), 'and not refused');
+    // And the position write, which this script DOES own, is transformed:
+    // 10 Arcade units from the left is (10 - 80) * 3 on the stage.
+    assert.match(code, /set x to -210/);
+    assert.deepEqual(unsupported, []);
+});
+
+test('trigonometry converts radians to degrees, and binds correctly', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // MakeCode's Math.cos takes RADIANS; the block takes DEGREES. Reading
+    // one as the other is wrong in a way that still runs. And the shape
+    // matters as much as the numbers: `a * -cos(x)` written without
+    // brackets becomes `(a*0) - cos(x)`.
+    const {code} = arcadeToPseudocode(`
+        let b = sprites.create(img\`1\`, SpriteKind.Player)
+        game.onUpdate(function () { b.vx = 5 * -Math.cos(Math.PI) })
+    `);
+    assert.match(code, /5 \* \(0 - cos of \(/, 'the negation is bracketed inside the product');
+
+    const project = new SB3Creator().parse(code);
+    const blocks = project.targets.flatMap(t => Object.values(t.blocks || {}));
+    const mathop = blocks.find(b => b && b.opcode === 'operator_mathop');
+    assert.ok(mathop, 'a mathop block');
+    assert.equal(mathop.fields.OPERATOR[0], 'cos');
+    // Its argument must be the CONVERSION block, not a bare angle: if the
+    // multiplication bound outside the mathop, the degrees never arrive.
+    assert.equal(typeof mathop.inputs.NUM[1], 'string', 'the argument is a block, not a literal');
+    assert.ok(blocks.some(b => b && b.opcode === 'operator_multiply'),
+        'and the outer product survived');
+});

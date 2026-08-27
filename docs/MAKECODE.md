@@ -169,6 +169,21 @@ The one real loss in that direction: our patterns carry brightness 0-9
 and MakeCode's display literals are on/off, so a dimmed pattern exports
 flattened — and says so.
 
+A sprite's `width`/`height` are constants: the importer decoded the
+picture to build the costume, so the bounds arithmetic a game writes is
+exact rather than estimated, and `left`/`right`/`top`/`bottom` follow.
+Trigonometry converts units — MakeCode's `Math.cos` takes radians and the
+block takes degrees, and reading one as the other is wrong in a way that
+still runs.
+
+**Velocity is the one cross-sprite write that lands.** `vx`/`vy` already
+live in a shared variable that the owning sprite's motion loop reads, so
+another script setting it is exact and immediate. Position is not so
+lucky: only a sprite can move itself. Scratch's idiom for the rest would
+be a shared variable plus a broadcast — which works, one frame later, and
+that difference is why it is a refusal here rather than a silent
+approximation.
+
 ## The round trip is the test
 
 `test/makecode-export.test.mjs` takes each shipped micro:bit example,
