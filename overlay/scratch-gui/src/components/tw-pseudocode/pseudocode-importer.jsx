@@ -64,7 +64,8 @@ const L10N = {
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
         mcReading: f => `Reading ${f}…`,
         mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
-        mcMicrobit: (f, n) => `Recovered "${n}" from ${f}: MakeCode micro:bit source. The TypeScript is in this tab.`,
+        mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
+        mcPartial: (f, n, k) => `Imported "${n}" from ${f}. ${k} thing(s) from MakeCode have no equivalent here; each is marked "# unsupported" in the code.`,
         mcArcade: (f, n) => `Recovered "${n}" from ${f}: a MakeCode Arcade game. Its source is here — Arcade's sprite blocks have no equivalent on the 5x5 display, so this is source, not a runnable project.`,
         mcNoSource: (f, k) => `${f} is a ${k} file with no project source embedded in it — nothing to import.`,
         mcFailed: (f, e) => `Could not read ${f}: ${e}`,
@@ -173,7 +174,8 @@ const L10N = {
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
         mcReading: f => `${f} wird gelesen…`,
         mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
-        mcMicrobit: (f, n) => `„${n}" aus ${f} wiederhergestellt: MakeCode-micro:bit-Quelltext. Das TypeScript steht in diesem Tab.`,
+        mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
+        mcPartial: (f, n, k) => `„${n}" aus ${f} importiert. Für ${k} Sache(n) aus MakeCode gibt es hier keine Entsprechung; jede ist im Code mit „# unsupported" markiert.`,
         mcArcade: (f, n) => `„${n}" aus ${f} wiederhergestellt: ein MakeCode-Arcade-Spiel. Der Quelltext ist hier — Arcades Sprite-Blöcke haben auf der 5x5-Anzeige keine Entsprechung, das ist also Quelltext, kein lauffähiges Projekt.`,
         mcNoSource: (f, k) => `${f} ist eine ${k}-Datei ohne eingebetteten Projekt-Quelltext — nichts zu importieren.`,
         mcFailed: (f, e) => `${f} konnte nicht gelesen werden: ${e}`,
@@ -809,11 +811,14 @@ class PseudocodeImporter extends React.Component {
                     this.L.mcFailed(file.name, (err && err.message) || String(err))});
                 return;
             }
+            const unsupported = (res.unsupported || []).length;
             const status = res.kind === 'micropython' ?
                 this.L.mcPython(file.name, Object.keys(res.files).join(', ')) :
                 (res.project.target === 'arcade' ?
                     this.L.mcArcade(file.name, res.project.name) :
-                    this.L.mcMicrobit(file.name, res.project.name));
+                    (unsupported ?
+                        this.L.mcPartial(file.name, res.project.name, unsupported) :
+                        this.L.mcMicrobit(file.name, res.project.name)));
             this.setState({
                 lang: res.lang,
                 // Same exclusivity openCodeFile keeps: one authored buffer, so
