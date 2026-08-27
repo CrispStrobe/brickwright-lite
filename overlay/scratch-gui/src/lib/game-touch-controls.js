@@ -54,4 +54,21 @@ export const gameTouchProfileFor = gameKey => {
     return {...profile, keys: profile.keys ? {...profile.keys} : null};
 };
 
+export const setTouchControl = (vm, profile, heldControls, control, isDown) => {
+    const key = profile?.keys?.[control];
+    if (!key || heldControls.has(control) === isDown) return false;
+    if (isDown) heldControls.add(control); else heldControls.delete(control);
+    vm.postIOData('keyboard', {key, isDown});
+    return true;
+};
+
+export const releaseTouchControls = (vm, profile, heldControls) => {
+    if (!profile?.keys) return;
+    heldControls.forEach(control => {
+        const key = profile.keys[control];
+        if (key) vm.postIOData('keyboard', {key, isDown: false});
+    });
+    heldControls.clear();
+};
+
 export default gameTouchProfileFor;

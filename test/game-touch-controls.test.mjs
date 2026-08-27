@@ -2,7 +2,11 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-import {gameTouchProfileFor} from '../overlay/scratch-gui/src/lib/game-touch-controls.js';
+import {
+    gameTouchProfileFor,
+    releaseTouchControls,
+    setTouchControl
+} from '../overlay/scratch-gui/src/lib/game-touch-controls.js';
 
 const read = path => readFileSync(new URL(`../overlay/scratch-gui/src/${path}`, import.meta.url), 'utf8');
 
@@ -31,8 +35,30 @@ test('game selection publishes controls and the right pane mounts them beside th
     assert.match(importer, /detail: \{key: 'bw-right-pane-hidden', value: '0'\}/);
     assert.match(importer, /BW_GAME_CONTROLS_CHANGED/);
     assert.match(gui, /<GameTouchControls gameKey=\{gameControlKey\} vm=\{vm\}/);
-    assert.match(controls, /vm\.postIOData\('keyboard', \{key, isDown\}\)/);
+    assert.match(controls, /setTouchControl\(vm, profile, heldRef\.current, control, isDown\)/);
     assert.match(controls, /onPointerCancel=\{\(\) => onUp\(control\)\}/);
     assert.match(controls, /window\.addEventListener\('blur', releaseAll\)/);
     assert.match(controls, /navigator\.maxTouchPoints > 0/);
+});
+
+test('touch presses use Scratch keyboard IO and cannot leave duplicate or stuck keys', () => {
+    const events = [];
+    const vm = {postIOData: (device, data) => events.push({device, ...data})};
+    const held = new Set();
+    const profile = gameTouchProfileFor('cloud_court');
+
+    assert.equal(setTouchControl(vm, profile, held, 'left', true), true);
+    assert.equal(setTouchControl(vm, profile, held, 'left', true), false);
+    assert.equal(setTouchControl(vm, profile, held, 'up', true), true);
+    assert.deepEqual(events, [
+        {device: 'keyboard', key: 'a', isDown: true},
+        {device: 'keyboard', key: 'w', isDown: true}
+    ]);
+
+    releaseTouchControls(vm, profile, held);
+    assert.deepEqual(events.slice(2), [
+        {device: 'keyboard', key: 'a', isDown: false},
+        {device: 'keyboard', key: 'w', isDown: false}
+    ]);
+    assert.equal(held.size, 0);
 });

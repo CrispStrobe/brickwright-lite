@@ -2,7 +2,11 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import VM from 'scratch-vm';
 
-import {gameTouchProfileFor} from '../../lib/game-touch-controls.js';
+import {
+    gameTouchProfileFor,
+    releaseTouchControls,
+    setTouchControl
+} from '../../lib/game-touch-controls.js';
 
 const LABELS = {
     up: '▲', down: '▼', left: '◀', right: '▶', action: 'ACTION',
@@ -54,12 +58,7 @@ const GameTouchControls = ({gameKey, vm}) => {
     const [held, setHeld] = React.useState({});
 
     const releaseAll = React.useCallback(() => {
-        if (!profile?.keys) return;
-        heldRef.current.forEach(control => {
-            const key = profile.keys[control];
-            if (key) vm.postIOData('keyboard', {key, isDown: false});
-        });
-        heldRef.current.clear();
+        releaseTouchControls(vm, profile, heldRef.current);
         setHeld({});
     }, [profile, vm]);
 
@@ -77,11 +76,8 @@ const GameTouchControls = ({gameKey, vm}) => {
     }, [releaseAll]);
 
     const setControl = React.useCallback((control, isDown) => {
-        const key = profile?.keys?.[control];
-        if (!key || heldRef.current.has(control) === isDown) return;
-        if (isDown) heldRef.current.add(control); else heldRef.current.delete(control);
+        if (!setTouchControl(vm, profile, heldRef.current, control, isDown)) return;
         setHeld(Object.fromEntries([...heldRef.current].map(name => [name, true])));
-        vm.postIOData('keyboard', {key, isDown});
     }, [profile, vm]);
 
     if (!profile || !touchCapable) return null;
