@@ -132,20 +132,31 @@ block carries the pattern as a **field**, and a field cannot hold a reporter at
 all. That is a limit of the block, not a gap in the grammar.
 
 **What is refused, and named.** `basic.setLedColor` is the single most common
-unsupported call in the corpus (18 of 53 reports). It is the Calliope's RGB LED,
+unsupported call in the corpus (18 of 48 reports). It is the Calliope's RGB LED,
 and the micro:bit display we model is single-colour. The report says that rather
 than printing `basic.setLedColor()`, because the reports ARE the product for
 everything we cannot translate. Same for the on-board motor driver and the
 microphone.
 
-**One grammar gap went upstream.** `led.plot(x, y)` with variable coordinates is
-the ordinary way these programmes write to the display, and it was the third most
-common refusal — not because the block cannot do it (X and Y are *inputs*, so they
-can hold reporters) but because only `plot x <digits> y <digits>` parsed;
-`plot x col y row on` matched no rule and produced no block. Fixed in
-sb3-creator [#4](https://github.com/CrispStrobe/sb3-creator/pull/4), the same
-shape as the `show text <reporter>` gap fixed in #3. The translator keeps refusing
-computed coordinates until that lands here through `npm run sync:sb3creator`.
+**Three gaps went upstream and have landed.** All three were found by this
+corpus and fixed in sb3-creator
+[#4](https://github.com/CrispStrobe/sb3-creator/pull/4), now vendored at pin
+`4c714d3`:
+
+- `led.plot(x, y)` with variable coordinates — the ordinary way these
+  programmes write to the display, and the third most common refusal. Not
+  because the block cannot do it (X and Y are *inputs*) but because only
+  `plot x <digits> y <digits>` parsed; `plot x col y row on` matched no rule
+  and produced no block. Same shape as the `show text <reporter>` gap fixed
+  in #3. **The refusal is gone: 53 → 48.**
+- Arrays never reached the device. The reporters emitted `_arrays.length(…)`
+  with nothing defining `_arrays` — a `NameError` at the first array read,
+  reported as `ok` — and the array *commands* lowered to `pass`. Both halves
+  mattered: a program that pushed to an array then read its length got the
+  length of an array nothing had written to.
+- `timer` on a device was always **0**. It became `scratch.timer()`, which the
+  generator's guard turns into 0. The micro:bit has `running_time()`. Found in
+  a Calliope stopwatch whose elapsed time was permanently zero.
 
 **A variable named `x` was not a variable.** `set x to 7` compiles to
 `motion_setx` — the Scratch *motion* block — and `change x by 1` to
@@ -282,6 +293,34 @@ and nowhere else.
 The one legitimate difference: `show text` leaves as `basic.showString`
 and comes back as `scroll text`, because MakeCode has no non-scrolling
 string block.
+
+**Everything the Calliope corpus needed now has a way back**: all 24 make
+the whole loop — import, compile, export to MakeCode — with nothing refused
+at either end. Getting there closed four gaps, and three of them were
+asymmetries only the round trip could show.
+
+*Arguments to a user-defined function were dropped on the way IN.*
+`zeigen(3, n + 1)` translated to the bare word `zeigen`, so the function ran
+on whatever its parameters happened to hold. It emitted a line, so the
+anti-silence gate below saw nothing wrong; `procedures_call` being the most
+common thing the export could not render is what pointed at it. A call is
+matched token by token against the `DEFINE`'s template, so each argument has
+to be a single token — the same slot discipline, and `single()` already
+existed for it.
+
+*Procedures, gestures and touch had no export at all.* For procedures the
+`proccode` is the only place the argument ORDER lives (`inputs` is keyed by
+argument id, and its key order is not the call's), so the proccode is what
+gets walked; definitions are emitted above the body because MakeCode is
+TypeScript. The definition's input key is `custom_block`, lowercase, not the
+`CUSTOM_BLOCK` that Scratch's own files use. Gesture and touch reporters were
+added to the importer in sb3-creator#3 and never to the export table.
+
+*A boolean was being compared to a string.* The compiler puts a boolean
+reporter into a boolean slot as `equals(reporter, "true")`. Rendered
+literally that is `input.isGesture(…) == "true"`, and Static TypeScript will
+not compare a boolean to a string — the export would not have built in
+MakeCode. A real `n == 3` is left alone.
 
 **Arrays and bitwise had to be given a way back.** They arrive through
 *extensions* — the pseudocode has neither an array nor a bitwise operator

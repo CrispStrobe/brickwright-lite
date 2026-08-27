@@ -48,7 +48,29 @@ const PIN = field => String(field || 'P0').toUpperCase();
 
 /** MakeCode's enum spellings for the values our fields hold. */
 const BUTTON = {a: 'Button.A', b: 'Button.B', ab: 'Button.AB'};
+/** Reporters that already ARE a boolean, so comparing them to "true" is noise. */
+const BOOLEAN_REPORTERS = new Set([
+    'microbitplus_isgesture', 'microbitplus_istouch', 'microbitplus_isbutton',
+    'microbitplus_ispinhigh', 'operator_and', 'operator_or', 'operator_not',
+    'operator_gt', 'operator_lt', 'operator_equals', 'operator_contains',
+    'sensing_keypressed', 'sensing_touchingobject'
+]);
+
 const AXIS = {x: 'Dimension.X', y: 'Dimension.Y', z: 'Dimension.Z', strength: 'Dimension.Strength'};
+
+/**
+ * The block menu's gesture label → MakeCode's enum member. The exact
+ * inverse of the importer's `Gesture` table: MakeCode names the two
+ * logo gestures after the logo (`LogoUp`) where the menu names them
+ * after the tilt, and the two mean the same motion.
+ */
+const GESTURE = {
+    'shake': 'Gesture.Shake', 'tilt up': 'Gesture.LogoUp', 'tilt down': 'Gesture.LogoDown',
+    'face up': 'Gesture.ScreenUp', 'face down': 'Gesture.ScreenDown',
+    'tilt left': 'Gesture.TiltLeft', 'tilt right': 'Gesture.TiltRight',
+    'freefall': 'Gesture.FreeFall', '3g': 'Gesture.ThreeG',
+    '6g': 'Gesture.SixG', '8g': 'Gesture.EightG'
+};
 const PULL = {up: 'PinPullMode.PullUp', down: 'PinPullMode.PullDown', none: 'PinPullMode.PullNone'};
 
 class Emitter {
@@ -99,6 +121,68 @@ class Emitter {
         return name;
     }
 
+    /**
+     * If this `operator_equals` is really "is this boolean reporter true",
+     * the reporter's own TypeScript; otherwise null.
+     */
+    booleanOperand (b) {
+        const other = b.inputs && b.inputs.OPERAND2;
+        const literal = Array.isArray(other) && Array.isArray(other[1]) ? String(other[1][1]) : null;
+        if (literal !== 'true') return null;
+        const left = b.inputs.OPERAND1;
+        const id = Array.isArray(left) ? left.find(part => typeof part === 'string') : null;
+        const reporter = id ? this.block(id) : null;
+        if (!reporter || !BOOLEAN_REPORTERS.has(reporter.opcode)) return null;
+        return this.reporter(reporter);
+    }
+
+    /**
+     * A `procedures_call` or `procedures_prototype` as {name, args}.
+     *
+     * `proccode` is `zeigen %s %s`: the literal words are the name and each
+     * `%s`/`%b` is one argument, in call order. `argumentids` lines up with
+     * it positionally, and `inputs` is keyed by those ids — so the proccode
+     * is what has to be walked, not the inputs.
+     */
+    procedure (b) {
+        const mutation = b.mutation || {};
+        const proccode = String(mutation.proccode || '');
+        let ids = [];
+        try {
+            ids = JSON.parse(mutation.argumentids || '[]');
+        } catch (e) { ids = []; }
+        let i = 0;
+        const args = [];
+        const words = proccode.replace(/%[sbn]/g, token => {
+            const input = b.inputs && b.inputs[ids[i++]];
+            args.push(token === '%b' ?
+                (input ? this.reporter(this.block(input[1])) : 'false') :
+                (input ? this.value(b, ids[i - 1], '0') : '0'));
+            return '';
+        });
+        return {name: this.variableName(words.trim().replace(/\s+/g, '_')), args};
+    }
+
+    /** The `procedures_prototype` inside a definition's custom-block input. */
+    prototypeOf (definition) {
+        // The key is `custom_block` here, lowercase — Scratch's own files
+        // use CUSTOM_BLOCK, and reading only that found nothing.
+        const inputs = definition.inputs || {};
+        const input = inputs.custom_block || inputs.CUSTOM_BLOCK;
+        const id = Array.isArray(input) ? input.find(part => typeof part === 'string') : null;
+        return id ? this.block(id) : null;
+    }
+
+    /** A prototype's parameter names, in declaration order. */
+    parameterNames (prototype) {
+        try {
+            return JSON.parse((prototype.mutation || {}).argumentnames || '[]')
+                .map(n => this.variableName(n));
+        } catch (e) {
+            return [];
+        }
+    }
+
     /** A boolean input. */
     condition (block, name) {
         const input = block.inputs && block.inputs[name];
@@ -124,7 +208,16 @@ class Emitter {
         case 'operator_join': return `("" + ${v('STRING1')} + ${v('STRING2')})`;
         case 'operator_gt': return `(${v('OPERAND1')} > ${v('OPERAND2')})`;
         case 'operator_lt': return `(${v('OPERAND1')} < ${v('OPERAND2')})`;
-        case 'operator_equals': return `(${v('OPERAND1')} == ${v('OPERAND2')})`;
+        case 'operator_equals': {
+            // `equals(<boolean reporter>, "true")` is how the compiler puts a
+            // boolean reporter into a Scratch boolean slot. Rendering it
+            // literally hands MakeCode `input.isGesture(…) == "true"`, and
+            // Static TypeScript will not compare a boolean to a string. The
+            // reporter alone says the same thing and typechecks.
+            const bare = this.booleanOperand(b);
+            if (bare !== null) return bare;
+            return `(${v('OPERAND1')} == ${v('OPERAND2')})`;
+        }
         case 'operator_and': return `(${this.condition(b, 'OPERAND1')} && ${this.condition(b, 'OPERAND2')})`;
         case 'operator_or': return `(${this.condition(b, 'OPERAND1')} || ${this.condition(b, 'OPERAND2')})`;
         case 'operator_not': return `(!(${this.condition(b, 'OPERAND')}))`;
@@ -149,6 +242,16 @@ class Emitter {
         case 'microbitplus_radiolastnum': return 'receivedNumber';
         case 'microbitplus_radiolaststr': return 'receivedString';
         case 'sensing_timer': return '(input.runningTime() / 1000)';
+        // Inside a DEFINE, a parameter is read through one of these.
+        case 'argument_reporter_string_number':
+        case 'argument_reporter_boolean': return this.variableName(f('VALUE'));
+        // Added to the importer in sb3-creator#3 and never to this table,
+        // which is exactly the asymmetry the round-trip gate exists to
+        // catch — twelve of them in the Calliope corpus.
+        case 'microbitplus_isgesture':
+            return `input.isGesture(${GESTURE[String(f('GESTURE')).toLowerCase()] || 'Gesture.Shake'})`;
+        case 'microbitplus_istouch':
+            return `input.pinIsPressed(TouchPin.${PIN(f('PIN'))})`;
 
         // The `arrays` extension holds NAMED arrays in a registry, and it
         // indexes from 0 — which is why the importer chose it over Scratch
@@ -234,6 +337,16 @@ class Emitter {
         case 'control_stop':
             push('control.reset()');
             return;
+
+        // A user-defined function. MakeCode has these natively, so the whole
+        // shape survives — but the proccode is the only place the argument
+        // ORDER lives, so the arguments are read out of it rather than out
+        // of `inputs`, whose key order is not the call's.
+        case 'procedures_call': {
+            const {name, args} = this.procedure(b);
+            push(`${name}(${args.join(', ')})`);
+            return;
+        }
 
         case 'data_setvariableto':
             push(`${this.variableName(f('VARIABLE'))} = ${v('VALUE')}`);
@@ -382,9 +495,25 @@ export function projectToMakeCodeTs (project) {
         // The body is emitted first because an array's name is only met
         // while emitting — it is an input on the block, not a Scratch
         // variable — and TypeScript wants the declaration above the use.
+        // Definitions go ABOVE the code that calls them, so they are
+        // collected separately — and a DEFINE is a top-level block like a
+        // hat, not something the walk reaches from the green flag.
+        const definitions = [];
         const body = [];
         for (const [id, block] of Object.entries(blocks)) {
             if (!block || !block.topLevel) continue;
+            if (block.opcode === 'procedures_definition') {
+                const proto = emitter.prototypeOf(block);
+                if (!proto) continue;
+                const {name, args} = emitter.procedure(proto);
+                const names = emitter.parameterNames(proto);
+                definitions.push(
+                    `function ${name}(${names.map(n => `${n}: number`).join(', ')}) {`,
+                    ...emitter.stack(block.next, 1),
+                    '}');
+                void args;
+                continue;
+            }
             if (block.opcode !== 'event_whenflagclicked') {
                 if (/^event_|^control_start_as_clone/.test(block.opcode)) {
                     unsupported.push(`${block.opcode} — MakeCode has no equivalent hat`);
@@ -394,6 +523,7 @@ export function projectToMakeCodeTs (project) {
             body.push(...emitter.stack(block.next, 0));
             void id;
         }
+        lines.push(...definitions);
         for (const name of emitter.arrays) {
             if (declared.has(name)) continue;
             declared.add(name);
