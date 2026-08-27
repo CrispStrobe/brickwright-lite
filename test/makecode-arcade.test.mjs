@@ -405,9 +405,9 @@ test('a sprite held in a variable is refused, not turned into one', () => {
         let paddle = sprites.create(img\`2\`, SpriteKind.Food)
         let hit: Sprite = null
         game.onUpdate(function () {
-            // `ball` first, so the script owns it and the WRITE is legal —
-            // otherwise the cross-sprite refusal fires and the right-hand
-            // side is never even evaluated.
+            // ball is mentioned first, so the script owns it and the write
+            // is legal — otherwise the cross-sprite refusal fires and the
+            // right-hand side is never even evaluated.
             ball.vx = hit.width
             hit = paddle
         })

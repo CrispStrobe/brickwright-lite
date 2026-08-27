@@ -78,6 +78,17 @@ const MAX_ANIMATION_FRAMES = 24;
  * suffix. A game that mixes both — and the pong here does — then reads
  * and writes one set of variables rather than two that drift apart.
  */
+/**
+ * Properties that only make sense on a sprite. A read of one of these on
+ * something we cannot resolve is reported rather than turned into a
+ * variable of that name — see the note in expr().
+ */
+const SPRITE_PROPERTIES = new Set([
+    'x', 'y', 'vx', 'vy', 'ax', 'ay',
+    'width', 'height', 'left', 'right', 'top', 'bottom',
+    'image', 'kind', 'lifespan', 'z'
+]);
+
 const playerVar = (base, player) => (player > 1 ? `${base}${player}` : base);
 
 /** `info.player3` → 3; `info` → 1. */
@@ -286,6 +297,17 @@ class ArcadeTranslator extends BaseTranslator {
                 this.unsupported.push(`${owner.name}.${node.name} — no stage equivalent`);
                 return '0';
             }
+        }
+        // A sprite property on something we could NOT resolve to a sprite —
+        // `collisionPaddle.width`, where the variable holds whichever paddle
+        // was hit — used to fall through to the base and become a variable
+        // literally named `width`. That reads as a working program and is
+        // not one.
+        if (node && node.type === 'Member' && SPRITE_PROPERTIES.has(node.name)) {
+            const owner = node.object.type === 'Identifier' ? node.object.name : 'a value';
+            this.unsupported.push(
+                `${owner}.${node.name} — a sprite held in a variable, which the stage cannot follow`);
+            return '0';
         }
         return super.expr(node);
     }
