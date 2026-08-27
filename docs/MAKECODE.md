@@ -43,7 +43,7 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `micropython-hex.js` | the *other* hex: a micro:bit MicroPython .hex from python.microbit.org or uflash, V1 appended script and V2 filesystem both |
 | `share.js` | `https://makecode.com/api/{id}/text` — the whole project as JSON, no binary parsing at all |
 | `ts-import.js` | a parser for the TypeScript subset MakeCode emits (annotations, `enum`, `namespace`, tagged template literals, function expressions) — needed because the translation has to walk *into* callbacks |
-| `translate-base.js` | what both translators share: the walk, the "nothing is dropped in silence" rule, and the slot discipline |
+| `translate-base.js` | what both translators share: the walk, the "nothing is dropped in silence" rule (which `test/makecode-nothing-vanishes.test.mjs` holds it to), the slot discipline, and the two bundled extensions the pseudocode borrows — `arrays` and `bitops` |
 | `microbit-translate.js` | MakeCode micro:bit → BrickWright pseudocode → blocks, MicroPython, the simulator |
 | `arcade-translate.js` | MakeCode Arcade → a playable Scratch project: target selection, sprites, clones, `touching`, score, velocity loops |
 | `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), tilemaps painted whole, the 16-colour palette → SVG costumes |
@@ -51,9 +51,10 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `export.js` | the other direction: blocks → MakeCode TypeScript, and a .hex carrying only the source embed — which is all MakeCode's importer reads |
 | `index.js` | one `importArtefact(bytes)` door, wired into the Code tab's 📂 Open button |
 
-Evidence: `test/makecode-import.test.mjs` runs against **three real MakeCode
-downloads** (see `test/fixtures/makecode/README.md`) plus round-trips for the
-two containers we have no committed sample of.
+Evidence: `test/makecode-import.test.mjs` runs against **eight real MakeCode
+downloads** — micro:bit, Arcade and Calliope, in .hex and .uf2 (see
+`test/fixtures/makecode/README.md`) — plus round-trips for the two containers
+we have no committed sample of.
 
 ### What actually runs
 
@@ -264,6 +265,50 @@ and nowhere else.
 The one legitimate difference: `show text` leaves as `basic.showString`
 and comes back as `scroll text`, because MakeCode has no non-scrolling
 string block.
+
+**Arrays and bitwise had to be given a way back.** They arrive through
+*extensions* — the pseudocode has neither an array nor a bitwise operator
+of its own — so making them importable opened a hole at the far end: a
+Calliope project brought in and exported again came back with
+`// unsupported: arrays_push` where its array had been. Reported, so
+nothing vanished, but a round trip that drops the arrays is not one.
+MakeCode's TypeScript has both natively, so the inverse is exact, and
+`a[i]` survives **unshifted** — the 0-based indexing that made the
+`arrays` extension the right target on the way in paying for itself in
+the other direction. The declaration needs a hoist of its own: an array's
+name is an *input* on the block rather than a Scratch variable, so it is
+only met while emitting and nothing in `target.variables` declares it.
+
+## Counting refusals cannot catch a silent drop
+
+The number this work is steered by is the refusal count, and it has one
+blind spot that matters more than everything it sees: **a silent drop
+lowers it**. A statement that produces neither a block nor a report makes
+the corpus look like it improved.
+
+Four defects in this file's history were exactly that, and all four
+compiled:
+
+| written | became | not caught by |
+|---|---|---|
+| `wert & 255` | a string literal whose text is `wert & 255` | compiling — it parses |
+| `let liste: number[] = []` | `set liste to 0` | compiling, and the refusal count went *down* |
+| `a.filter(f).length` | a variable named `length`, the call unevaluated | either |
+| `led.plot(x, y)` | no block at all (upstream) | either |
+
+So `test/makecode-nothing-vanishes.test.mjs` counts nothing. It wraps the
+walk and asserts every statement either emits a line, files a report, or
+hoists a definition, over every committed fixture on both sides. Two
+categories legitimately emit nothing *where they stand*, and they are
+listed at exact spellings rather than by pattern, because a broad
+exemption is how the next silent drop gets back out of reach: an `enum`
+(read into the substitution table, its members substituted at each use)
+and the Arcade animation API (gathered in pass 1 and turned into
+costumes, since Scratch has no named animation with its own timer).
+
+A third test breaks the walk on purpose and checks the instrument notices
+it — a gate that cannot fail is decoration, and a refactor that stopped
+calling `statement()` would otherwise turn the file green.
 
 ## The imported game RUNS
 
