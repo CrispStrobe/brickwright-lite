@@ -302,6 +302,64 @@ test('Core Cascade shows its next piece, fusion ladder, and concrete Nova goal',
     assert.ok(svgs.some(svg => svg.includes('CREATE THE WHITE NOVA')));
 });
 
+test('Prism Lock and Core Cascade reach their victory states in the real Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const stageValue = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const prism = await load(games.chroma_code);
+    try {
+        stageValue(prism, 'secret').value = [1, 2, 3, 4];
+        stageValue(prism, 'guess').value = [1, 2, 3, 4];
+        stageValue(prism, 'accepting').value = 1;
+        prism.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'gem chosen'});
+        for (let i = 0; i < 45; i++) prism.runtime._step();
+
+        assert.equal(Number(stageValue(prism, 'exact').value), 4, 'perfect code was not scored');
+        assert.equal(Number(stageValue(prism, 'near').value), 0, 'exact gems were also counted as near');
+        assert.equal(Number(stageValue(prism, 'won').value), 1, 'perfect code did not unseal the lock');
+    } finally {
+        prism.quit();
+        clearStrayTimers();
+    }
+
+    const cascade = await load(games.fusion_foundry);
+    try {
+        const foundry = cascade.runtime.targets.find(target => target.sprite.name === 'Foundry');
+        const grid = Object.values(foundry.variables).find(variable => variable.name === 'grid');
+        grid.value = Array(42).fill(0);
+        // A level-four core at the bottom of the selected shaft makes the
+        // next level-four drop fuse into the promised white level-five Nova.
+        grid.value[39] = 4;
+        stageValue(cascade, 'column').value = 3;
+        stageValue(cascade, 'nextLevel').value = 4;
+        stageValue(cascade, 'score').value = 0;
+        cascade.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'drop core'});
+        for (let i = 0; i < 70; i++) cascade.runtime._step();
+
+        assert.equal(Number(grid.value[39]), 5, 'matching level-four cores did not forge a Nova');
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 1,
+            'the consumed precursor core remained on the board');
+        assert.equal(Number(stageValue(cascade, 'score').value), 550,
+            'Nova fusion did not award its merge and victory score');
+    } finally {
+        cascade.quit();
+        clearStrayTimers();
+    }
+});
+
 test('Neon Relay teaches distinct jump and slide hazards and gates the run', () => {
     const creator = new SB3Creator();
     const project = creator.parse(games.rooftop_relay);
