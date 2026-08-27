@@ -788,6 +788,7 @@ class PseudocodeImporter extends React.Component {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
         if (!file) return;
+        this.publishGameControls(null);
         this._makeCodeProject = null;
         // A compiled artefact from ANOTHER editor — a MakeCode .hex/.uf2/.png
         // cartridge, or a MicroPython .hex — is not source we can read as
@@ -861,6 +862,7 @@ class PseudocodeImporter extends React.Component {
      * the part worth having in one place.
      */
     applyMakeCodeImport (res, label) {
+        this.publishGameControls(null);
         // What the "MakeCode source" download hands back: the recovered
         // files themselves, untouched by any translation.
         this._makeCodeProject = res.kind === 'makecode' ? {
@@ -2017,6 +2019,7 @@ class PseudocodeImporter extends React.Component {
     // SB3Creator.retargetPseudocode; a refusal shows its reasons in the status
     // line (the tab's existing warning surface) and loads nothing.
     async loadCatalogExample (ex, deviceOverride) {
+        this.publishGameControls(null);
         this._lastCatalogExample = ex;
         // A row's device chip passes its device explicitly; a plain row
         // click keeps the buffer's DEVICE. Before the chips existed the
@@ -2145,6 +2148,7 @@ class PseudocodeImporter extends React.Component {
     async loadExample (key) {
         const src = key && examples[key];
         if (!src) return;
+        this.publishGameControls(Object.prototype.hasOwnProperty.call(gameExamples, key) ? key : null);
         const device = this.currentDevice();
         const exampleDevice = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
         // Retarget hardware examples when the selected device differs.
@@ -2165,6 +2169,13 @@ class PseudocodeImporter extends React.Component {
         }
         this.setState({lang: 'pseudocode', output: null, status: '',
             buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
+    }
+
+    publishGameControls (gameKey) {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (!runtime) return;
+        runtime.bwGameControlKey = gameKey || null;
+        runtime.emit('BW_GAME_CONTROLS_CHANGED', runtime.bwGameControlKey);
     }
     // Sprite names declared in the current pseudocode — used to populate the
     // "associate SVG → sprite" dropdowns so you pick a real sprite, not guess a name.

@@ -14,6 +14,9 @@ const MicrobitSimPane = React.lazy(() =>
 const ArcadeDevicePane = React.lazy(() =>
     import(/* webpackChunkName: "bw-arcade-device" */ '../tw-pseudocode/arcade-device-pane.jsx')
 );
+const GameTouchControls = React.lazy(() =>
+    import(/* webpackChunkName: "bw-game-touch-controls" */ '../tw-pseudocode/game-touch-controls.jsx')
+);
 const ControllerPanelView = React.lazy(() =>
     import(/* webpackChunkName: "bw-controller-panel" */ '../tw-pseudocode/controller-panel-view.jsx')
 );
@@ -222,6 +225,15 @@ const GUIComponent = props => {
             return dock;
         } catch { return 'top'; }
     });
+    const [gameControlKey, setGameControlKey] = React.useState(() =>
+        props.vm?.runtime?.bwGameControlKey || null);
+    React.useEffect(() => {
+        const runtime = props.vm && props.vm.runtime;
+        if (!runtime || !runtime.on) return undefined;
+        const changed = key => setGameControlKey(key || null);
+        runtime.on('BW_GAME_CONTROLS_CHANGED', changed);
+        return () => runtime.removeListener('BW_GAME_CONTROLS_CHANGED', changed);
+    }, [props.vm]);
     React.useEffect(() => {
         const sync = event => {
             const detail = event.detail || {};
@@ -805,6 +817,11 @@ const GUIComponent = props => {
                                     vm={vm}
                                 />
                             </div>
+                            {gameControlKey && dockMode !== 'microbit' && dockMode !== 'arcade' && dockMode !== 'controller' ? (
+                                <React.Suspense fallback={null}>
+                                    <GameTouchControls gameKey={gameControlKey} vm={vm} />
+                                </React.Suspense>
+                            ) : null}
                             {dockMode === 'microbit' ? (
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'micro:bit-Simulator wird geladen…' : 'Loading micro:bit simulator…'}</div>
