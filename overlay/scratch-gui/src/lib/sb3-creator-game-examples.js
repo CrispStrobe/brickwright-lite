@@ -1496,7 +1496,7 @@ SPRITE Diver:
   WHEN I start as a clone:
     show
     REPEAT UNTIL x position < -250 or touching Sub:
-      change ghost effect by 3
+      set ghost effect to pick random 0 to 12
       change x by (0 - scroll)
       wait 0.02 seconds
     IF touching Sub THEN:
@@ -1594,7 +1594,7 @@ SPRITE Ghost:
     REPEAT UNTIL touching Hunter or touching Orb:
       point towards Hunter
       move 1.8 steps
-      change ghost effect by 4
+      set ghost effect to pick random 0 to 25
       wait 0.03 seconds
     IF touching Orb THEN:
       change score by 1

@@ -494,6 +494,9 @@ test('Abyss Lift has a finite rescue objective and reliable clone-to-sub rescue 
     assert.match(games.abyss_rescue, /CONTROLS: hold Space to rise/);
     assert.match(games.abyss_rescue, /broadcast "diver rescued"/);
     assert.match(games.abyss_rescue, /IF rescued = 6 THEN:/);
+    assert.match(games.abyss_rescue, /set ghost effect to pick random 0 to 12/);
+    assert.doesNotMatch(games.abyss_rescue, /change ghost effect by 3/,
+        'divers still fade completely before reaching the submarine');
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'trench']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -512,6 +515,9 @@ test('Wardlight makes the defense target clear and keeps ricochet orbs alive for
     assert.match(games.specter_sweep, /REPEAT UNTIL life < 1:/);
     assert.match(games.specter_sweep, /if on edge bounce/);
     assert.doesNotMatch(games.specter_sweep, /behind the pillars/);
+    assert.match(games.specter_sweep, /set ghost effect to pick random 0 to 25/);
+    assert.doesNotMatch(games.specter_sweep, /change ghost effect by 4/,
+        'specters still become invisible while approaching the ward');
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'manor']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
