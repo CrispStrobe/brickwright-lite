@@ -178,6 +178,84 @@ export function imageToSvg (image, opts = {}) {
         `viewBox="0 0 ${width * scale} ${height * scale}" shape-rendering="crispEdges">${rects.join('')}</svg>`;
 }
 
+
+/**
+ * Read the tilemaps out of a project's generated `tilemap.g.ts`.
+ *
+ * A tilemap is not in the .g.jres with the images — only its TILES are.
+ * The map itself lives in a generated factory function:
+ *
+ *   case "level": return tiles.createTilemap(
+ *       hex`2000 0800 00000000…`,   // u16 width, u16 height, one byte per cell
+ *       img`…`,                     // the wall layer, one pixel per cell
+ *       [myTiles.tile0, myTiles.tile1, …],
+ *       TileScale.Sixteen)
+ *
+ * Each cell byte indexes that array directly, and index 0 is the empty
+ * tile. Regexes rather than the TS parser on purpose: this file is
+ * machine-generated, its shape is fixed, and it is one long `switch`,
+ * which is the statement the parser next door deliberately does not
+ * model.
+ *
+ * @param {string} generatedTs the contents of tilemap.g.ts
+ * @returns {Object<string, {width: number, height: number, cells: Uint8Array, tiles: Array<string>}>}
+ */
+export function parseTilemaps (generatedTs) {
+    const out = {};
+    const pattern = /case\s+"([^"]+)"\s*:\s*return\s+tiles\.createTilemap\(\s*hex`([0-9a-fA-F\s]*)`\s*,\s*img`[\s\S]*?`\s*,\s*\[([^\]]*)\]/g;
+    let match;
+    while ((match = pattern.exec(generatedTs)) !== null) {
+        const [, name, hexText, tileList] = match;
+        const bytes = (hexText.replace(/\s+/g, '').match(/../g) || []).map(b => parseInt(b, 16));
+        if (bytes.length < 4) continue;
+        const width = bytes[0] | (bytes[1] << 8);
+        const height = bytes[2] | (bytes[3] << 8);
+        if (!width || !height || bytes.length < 4 + (width * height)) continue;
+        out[name] = {
+            width,
+            height,
+            cells: new Uint8Array(bytes.slice(4, 4 + (width * height))),
+            tiles: tileList.split(',').map(t => t.trim().replace(/^.*\./, '')).filter(Boolean)
+        };
+    }
+    return out;
+}
+
+/**
+ * Paint a tilemap into one image: the whole level, tile by tile.
+ *
+ * Scratch has no scrolling backdrop, so a level arrives as a single wide
+ * picture rather than as terrain. That is a real difference and the
+ * caller says so — but a level you can SEE is worth much more than a
+ * level that silently did not import.
+ *
+ * @param {{width: number, height: number, cells: Uint8Array, tiles: Array<string>}} tilemap
+ * @param {Object<string, {width: number, height: number, pixels: Uint8Array}>} tileImages by jres id
+ * @returns {{width: number, height: number, pixels: Uint8Array}|null}
+ */
+export function renderTilemap (tilemap, tileImages) {
+    const first = tilemap.tiles.map(name => tileImages[name]).find(Boolean);
+    if (!first) return null;
+    const size = first.width;                            // tiles are square, 8 or 16
+    const width = tilemap.width * size;
+    const height = tilemap.height * size;
+    if (width * height > 4 * 1024 * 1024) return null;   // a level nobody wants as one costume
+    const pixels = new Uint8Array(width * height);
+    for (let ty = 0; ty < tilemap.height; ty++) {
+        for (let tx = 0; tx < tilemap.width; tx++) {
+            const tile = tileImages[tilemap.tiles[tilemap.cells[(ty * tilemap.width) + tx]]];
+            if (!tile || tile.width !== size || tile.height !== size) continue;
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    pixels[(((ty * size) + y) * width) + (tx * size) + x] =
+                        tile.pixels[(y * size) + x];
+                }
+            }
+        }
+    }
+    return {width, height, pixels};
+}
+
 /** A 1x1 transparent stand-in, for a sprite whose art we could not read. */
 export const EMPTY_SVG =
     '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"></svg>';
