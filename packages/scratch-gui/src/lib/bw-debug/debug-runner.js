@@ -1025,10 +1025,28 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             });
         }
 
-        const session = createDebugSession(lwTarget);
-        // No symbols: a raw image carries none, so the block/yield machinery
-        // the other tiers use has nothing to work from. Said in the status
-        // line rather than left for the user to infer from a greyed button.
+        // `target` and `session` are the RUNNER's, not locals. Declaring them
+        // with const here shadowed the outer pair, so attach() returned a live
+        // session while the runner's stayed null and start() died on
+        // `session.start()` — the one thing no unit test could catch, because
+        // the target itself was fine. Every other attach path assigns these.
+        target = lwTarget;
+        // A raw image carries no symbols. Clearing them matters: left over from
+        // a previous stm32f0 run they would populate the variables pane with
+        // names this run cannot resolve — readings that look right and are not.
+        symbols = null;
+        variableTable = [];
+        pinTable = stc.pins || [];
+        if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
+
+        session = createDebugSession(target, {
+            // No symbols means no glow and no variable trace — the block/yield
+            // machinery the other tiers use has nothing to work from. The panel
+            // still has to follow the target, so emit on every change.
+            onChange: () => emit()
+        });
+        // Said in the status line rather than left for the user to infer from a
+        // greyed-out button.
         setStatus('ready', `${program.length} bytes on labwired — instruction stepping only (no symbols)`);
         return session;
     }
