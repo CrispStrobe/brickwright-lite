@@ -28,6 +28,13 @@ const PROFILES = Object.freeze({
         keys: {action: 'f'},
         actionLabel: 'FLAG'
     },
+    sky_skim: {
+        layout: 'vertical',
+        hint: 'Hold Dive into a hill; release to launch. Flap only when needed.',
+        keys: {up: 'ArrowUp', down: 'ArrowDown'},
+        upLabel: 'FLAP',
+        downLabel: 'DIVE'
+    },
     g2048: {layout: 'stage', hint: 'Swipe the stage to slide the reactor.'},
     chroma_code: {layout: 'stage', hint: 'Tap the coloured gems on the stage.'},
     missile_ballet: {layout: 'stage', hint: 'Drag on the stage to steer the jet.'},

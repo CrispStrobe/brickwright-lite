@@ -298,8 +298,8 @@ SPRITE TouchGrid:
 `,
 
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
-# GOAL: skim the green hilltops to turn a dive into a launch. Each clean launch
-# grows your combo. Survive on three hearts and set the highest distance score.
+# GOAL: complete twelve clean hill launches before three crashes. Diving into a
+# green crest converts speed into height; consecutive launches grow the score combo.
 # CONTROLS: Down dives; release it as you touch a hill to launch; Up flaps.
 GLOBAL score
 GLOBAL lives
@@ -310,6 +310,7 @@ GLOBAL diving
 GLOBAL hillx
 GLOBAL hilly
 GLOBAL combo
+GLOBAL launches
 GLOBAL alive
 GLOBAL started
 
@@ -321,6 +322,7 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable lives
+    hide variable launches
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -339,6 +341,7 @@ SPRITE Skimmer:
     set birdy to 40
     set vy to 0
     set combo to 1
+    set launches to 0
     set alive to 1
     set rotation style all around
     go to x: -120 y: birdy
@@ -346,6 +349,7 @@ SPRITE Skimmer:
   WHEN I receive "take off":
     show variable score
     show variable lives
+    show variable launches
     show
     FOREVER:
       IF alive = 1 THEN:
@@ -372,9 +376,7 @@ SPRITE Skimmer:
         IF touching Hill THEN:
           IF diving = 1 and vy < -1 THEN:
             set vy to (abs of vy) + 5
-            change combo by 1
-            change score by combo
-            play sound "boost"
+            broadcast "clean skyline launch"
             wait 0.18 seconds
           ELSE:
             change lives by -1
@@ -385,13 +387,22 @@ SPRITE Skimmer:
             wait 0.7 seconds
             IF lives < 1 THEN:
               set alive to 0
-              say ("Flight score: " join score) for 3 seconds
+              say ("THREE CRASHES — FLIGHT SCORE " join score) for 3 seconds
               stop all
         IF score > 9 THEN:
           set speed to 5
         IF score > 29 THEN:
           set speed to 6
       wait 0.02 seconds
+  WHEN I receive "clean skyline launch":
+    change launches by 1
+    change combo by 1
+    change score by combo * 5
+    play sound "boost"
+    IF launches = 12 THEN:
+      set alive to 0
+      say ("SKYLINE MASTERED — SCORE " join score) for 4 seconds
+      stop all
 
 SPRITE Hill:
   SHAPE art skyline-swoop/hill

@@ -148,13 +148,47 @@ test('quality-approved game has authored SVG art and explicit onboarding', () =>
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'flight']);
     assert.equal(bird.costumes.length, 2);
     assert.equal(hill.costumes.length, 1);
-    assert.match(games.sky_skim, /GOAL:/);
+    assert.match(games.sky_skim, /GOAL: complete twelve clean hill launches before three crashes/);
     assert.match(games.sky_skim, /CONTROLS:/);
     assert.match(games.sky_skim, /WHEN space key pressed:/);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('SKYLINE SWOOP')));
-    assert.ok(svgs.some(svg => svg.includes('PRESS SPACE TO FLY')));
-    assert.ok(svgs.some(svg => svg.includes('CLEAN DIVE = LAUNCH + COMBO')));
+    assert.ok(svgs.some(svg => svg.includes('12 CLEAN LAUNCHES WIN')));
+    assert.ok(svgs.some(svg => svg.includes('GREEN FLAG STARTS FLIGHT')));
+    assert.match(games.sky_skim, /change launches by 1/);
+    assert.match(games.sky_skim, /IF launches = 12 THEN:/);
+    assert.match(games.sky_skim, /SKYLINE MASTERED/);
+});
+
+test('Skyline Swoop clean launches build combo and the twelfth wins in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.sky_skim);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 25; i++) vm.runtime._step();
+        const values = Object.values(vm.runtime.getTargetForStage().variables);
+        const value = name => values.find(variable => variable.name === name);
+        value('launches').value = 11;
+        value('combo').value = 3;
+        value('score').value = 50;
+        value('alive').value = 1;
+
+        vm.runtime.startHats('event_whenbroadcastreceived', {
+            BROADCAST_OPTION: 'clean skyline launch'
+        });
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+
+        assert.equal(Number(value('launches').value), 12);
+        assert.equal(Number(value('combo').value), 4);
+        assert.equal(Number(value('score').value), 70);
+        assert.equal(Number(value('alive').value), 0, 'the twelfth launch did not finish the flight');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
 });
 
 test('second quality-approved game explains and renders its collision strategy', () => {
@@ -1397,7 +1431,8 @@ test('new pseudocode games compile cleanly into substantial Scratch projects', (
 test('each new game keeps its signature playable mechanic', () => {
     const contracts = {
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
-            /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/],
+            /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
+            /change launches by 1/, /IF launches = 12 THEN:/],
         chroma_code: [/GLOBAL LIST secret/, /set exact to 0/, /set near to 0/,
             /WHEN sprite clicked:/, /add gemValue to guess/],
         fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/],

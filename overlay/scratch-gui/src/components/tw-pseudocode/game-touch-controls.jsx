@@ -85,7 +85,7 @@ const GameTouchControls = ({gameKey, vm}) => {
         control={control}
         down={Boolean(held[control])}
         key={control}
-        label={control === 'action' ? profile.actionLabel : null}
+        label={profile[`${control}Label`] || null}
         onDown={name => setControl(name, true)}
         onUp={name => setControl(name, false)}
     />;

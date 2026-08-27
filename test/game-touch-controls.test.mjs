@@ -23,6 +23,8 @@ test('touch profiles expose the controls each unusual game actually uses', () =>
     assert.equal(gameTouchProfileFor('pong_ai').keys.up, 'w');
     assert.equal(gameTouchProfileFor('flappy').actionLabel, 'FLAP');
     assert.equal(gameTouchProfileFor('minesweeper').keys.action, 'f');
+    assert.equal(gameTouchProfileFor('sky_skim').downLabel, 'DIVE');
+    assert.equal(gameTouchProfileFor('sky_skim').keys.up, 'ArrowUp');
     assert.equal(gameTouchProfileFor(null), null);
 });
 
