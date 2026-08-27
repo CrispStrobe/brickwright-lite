@@ -301,7 +301,9 @@ const GROUPS = [
         ['rink_riot', '🏒 Blue-Line Breaker — polished'],
         ['rim_reactor', '🏀 Orbit Hoops — polished'],
         ['comet_cup', '☄️ Comet Strikers — polished'],
-        ['trench_signal', '🛸 Echo Trench — polished']
+        ['trench_signal', '🛸 Echo Trench — polished'],
+        ['whisker_switch', '🐭 Whisker Relay — polished'],
+        ['spiral_circuit', '🌀 Helix Rush — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

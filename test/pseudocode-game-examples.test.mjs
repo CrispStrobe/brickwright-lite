@@ -50,7 +50,8 @@ test('only quality-approved new games are wired into the visible examples galler
     const approved = new Set([
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
-        'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal'
+        'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
+        'whisker_switch', 'spiral_circuit'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -376,6 +377,40 @@ test('Echo Trench exposes its salvage target, rising threat, and cooldown-limite
     assert.ok(svgs.some(svg => svg.includes('ECHO TRENCH')));
     assert.ok(svgs.some(svg => svg.includes('RECOVER 3 SIGNAL PEARLS')));
     assert.ok(svgs.some(svg => svg.includes('1.2 SECOND RECHARGE')));
+});
+
+test('Whisker Relay is an alternating courier game with a directional cargo tradeoff', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.whisker_switch);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.whisker_switch, /GOAL: bank six moon-cheeses/);
+    assert.match(games.whisker_switch, /change banked by cargo/);
+    assert.match(games.whisker_switch, /set targetHole to -1/);
+    assert.match(games.whisker_switch, /change mouseX by dashX \* 55/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'pantry']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('WHISKER RELAY')));
+    assert.ok(svgs.some(svg => svg.includes('BANK 6 MOON-CHEESES')));
+    assert.ok(svgs.some(svg => svg.includes('GOLD HOLE = DELIVERY TARGET')));
+});
+
+test('Helix Rush has a thirty-sector finish and readable charge-phase-jackpot loop', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.spiral_circuit);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.spiral_circuit, /GOAL: survive thirty sectors/);
+    assert.match(games.spiral_circuit, /change sectors by 1/);
+    assert.match(games.spiral_circuit, /IF sectors = 30 THEN:/);
+    assert.match(games.spiral_circuit, /IF started = 1 and charge > 4 and boosting = 0 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'tube']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('HELIX RUSH')));
+    assert.ok(svgs.some(svg => svg.includes('SURVIVE 30 SECTORS')));
+    assert.ok(svgs.some(svg => svg.includes('MAGENTA GATE')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -775,6 +810,46 @@ test('curve-run and sonar-cooldown controls work in the live Scratch VM', async 
     } finally { trench.quit(); clearStrayTimers(); }
 });
 
+test('directional cargo dash and charged tube boost work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator(); creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start(); vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const relay = await load(games.whisker_switch);
+    try {
+        relay.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 6; i++) relay.runtime._step();
+        relay.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        value(relay, 'cargo').value = 1;
+        const beforeY = Number(value(relay, 'mouseY').value);
+        relay.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 4; i++) relay.runtime._step();
+        relay.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.ok(Number(value(relay, 'mouseY').value) >= beforeY + 50, 'dash ignored the last movement direction');
+        assert.equal(Number(value(relay, 'cargo').value), 0, 'dash did not spend one cargo');
+    } finally { relay.quit(); clearStrayTimers(); }
+
+    const helix = await load(games.spiral_circuit);
+    try {
+        value(helix, 'charge').value = 6;
+        helix.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 4; i++) helix.runtime._step();
+        helix.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(helix, 'boosting').value), 1, 'charged Space did not begin phase boost');
+        assert.equal(Number(value(helix, 'sectors').value), 0, 'the run began with phantom sectors');
+    } finally { helix.quit(); clearStrayTimers(); }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -820,8 +895,8 @@ test('each new game keeps its signature playable mechanic', () => {
         rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /touching Net/, /change score by 2 \* streak/],
         comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by 1/, /change score by crowd \* 10/],
         trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /touching SonarRing/, /set pulseReady to 0/, /change pearls by 1/],
-        whisker_switch: [/set hidden to 1/, /change scent by 3/, /point towards Pip/, /change lives by -1/],
-        spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /set lane to -2/],
+        whisker_switch: [/set hidden to 1/, /change scent by 3/, /change banked by cargo/, /set targetHole to -1/, /point towards Pip/],
+        spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /change sectors by 1/, /set lane to -2/],
         lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/],
         rotor_rogue: [/set wind to sin of score \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/],
         prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /change score by 5 \* perfect/],

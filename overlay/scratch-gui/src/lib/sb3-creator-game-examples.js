@@ -2415,55 +2415,85 @@ SPRITE SonarRing:
     clear graphic effects
     hide`,
 
-    whisker_switch: `# Whisker Switch — a stealthy cat-and-mice chase across a moonlit pantry.
-# Arrows guide Pip the mouse. Cheese raises score and scent; Space spends one cheese on
-# a silent dash. Duck into either mouse hole to break the cat's lock before it pounces.
-GLOBAL cheese
+    whisker_switch: `# Whisker Relay — a risky pantry courier run, distinct from Pantry Prowl.
+# GOAL: bank six moon-cheeses by carrying them to the highlighted opposite mouse hole.
+# CONTROLS: Arrows move. Space spends one carried cheese on a fast horizontal dash.
+# Cheese creates scent, safe holes clear it, and each delivery swaps the destination.
+GLOBAL cargo
+GLOBAL banked
 GLOBAL lives
 GLOBAL scent
 GLOBAL mouseX
 GLOBAL mouseY
 GLOBAL catSpeed
 GLOBAL hidden
+GLOBAL targetHole
+GLOBAL dashX
+GLOBAL dashY
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art whisker-relay/intro
+  BACKDROP pantry art whisker-relay/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable cargo
+    hide variable banked
+    hide variable lives
+    hide variable scent
+    hide variable targetHole
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to pantry
+      broadcast "start whisker relay"
 
 SPRITE Pip:
-  SHAPE circle 30 #d7d9e8
-  COSTUME dash circle 26 #fff3a6
+  SHAPE art whisker-relay/mouse
+  COSTUME dash art whisker-relay/dash
   SOUND squeak 760
   WHEN flag clicked:
-    show variable cheese
-    show variable lives
-    show variable scent
-    set cheese to 0
+    set cargo to 0
+    set banked to 0
     set lives to 3
     set scent to 0
     set catSpeed to 2
     set hidden to 0
+    set targetHole to 1
+    set dashX to 1
+    set dashY to 0
     set mouseX to -160
     set mouseY to -100
     go to x: mouseX y: mouseY
+    hide
+  WHEN I receive "start whisker relay":
+    show variable cargo
+    show variable banked
+    show variable lives
+    show variable scent
     show
-  WHEN flag clicked:
     FOREVER:
       IF key left arrow pressed? THEN:
         change mouseX by -4
+        set dashX to -1
+        set dashY to 0
         change scent by 0.12
       IF key right arrow pressed? THEN:
         change mouseX by 4
+        set dashX to 1
+        set dashY to 0
         change scent by 0.12
       IF key up arrow pressed? THEN:
         change mouseY by 4
+        set dashX to 0
+        set dashY to 1
         change scent by 0.12
       IF key down arrow pressed? THEN:
         change mouseY by -4
+        set dashX to 0
+        set dashY to -1
         change scent by 0.12
-      IF key space pressed? and cheese > 0 THEN:
-        switch costume to dash
-        change mouseX by 8
-        change cheese by -1
-        set scent to 0
-      ELSE:
-        switch costume to costume1
       IF mouseX < -220 THEN:
         set mouseX to -220
       IF mouseX > 220 THEN:
@@ -2477,23 +2507,45 @@ SPRITE Pip:
       IF touching LeftHole or touching RightHole THEN:
         set hidden to 1
         set scent to 0
+      IF touching RightHole and targetHole = 1 and cargo > 0 THEN:
+        change banked by cargo
+        set cargo to 0
+        set targetHole to -1
+      IF touching LeftHole and targetHole = -1 and cargo > 0 THEN:
+        change banked by cargo
+        set cargo to 0
+        set targetHole to 1
       IF scent > 0 THEN:
         change scent by -0.03
+      IF banked > 5 THEN:
+        say "SIX CHEESES BANKED — RELAY COMPLETE!" for 4 seconds
+        stop all
       IF lives < 1 THEN:
-        say ("Pantry score: " join cheese) for 3 seconds
+        say ("CAT CAUGHT THE RELAY — BANKED " join banked) for 4 seconds
         stop all
       wait 0.02 seconds
+  WHEN space key pressed:
+    IF started = 1 and cargo > 0 THEN:
+      change mouseX by dashX * 55
+      change mouseY by dashY * 55
+      change cargo by -1
+      set scent to 0
+      switch costume to dash
+      wait 0.15 seconds
+      switch costume to costume1
 
 SPRITE CheeseMoon:
-  SHAPE triangle 32 #ffd85a
+  SHAPE art whisker-relay/cheese
   SOUND crumb 1040
   WHEN flag clicked:
     go to x: pick random -180 to 180 y: pick random -130 to 130
+    hide
+  WHEN I receive "start whisker relay":
     show
     FOREVER:
       turn right 4 degrees
       IF touching Pip THEN:
-        change cheese by 2
+        change cargo by 1
         change scent by 3
         change catSpeed by 0.18
         play sound "crumb"
@@ -2501,10 +2553,12 @@ SPRITE CheeseMoon:
       wait 0.03 seconds
 
 SPRITE Marmalade:
-  SHAPE triangle 52 #ff854f
+  SHAPE art whisker-relay/cat
   SOUND pounce 180
   WHEN flag clicked:
     go to x: 170 y: 110
+    hide
+  WHEN I receive "start whisker relay":
     show
     FOREVER:
       IF hidden = 0 and scent > 0.8 THEN:
@@ -2516,6 +2570,7 @@ SPRITE Marmalade:
         if on edge bounce
       IF touching Pip and hidden = 0 THEN:
         change lives by -1
+        set cargo to 0
         set scent to 0
         set mouseX to -160
         set mouseY to -100
@@ -2525,21 +2580,41 @@ SPRITE Marmalade:
       wait 0.03 seconds
 
 SPRITE LeftHole:
-  SHAPE circle 48 #403651
+  SHAPE art whisker-relay/hole-left
+  COSTUME active art whisker-relay/hole-active
   WHEN flag clicked:
     go to x: -205 y: 125
+    hide
+  WHEN I receive "start whisker relay":
     show
+    FOREVER:
+      IF targetHole = -1 THEN:
+        switch costume to active
+      ELSE:
+        switch costume to costume1
+      wait 0.05 seconds
 
 SPRITE RightHole:
-  SHAPE circle 48 #403651
+  SHAPE art whisker-relay/hole-right
+  COSTUME active art whisker-relay/hole-active
   WHEN flag clicked:
     go to x: 205 y: -125
-    show`,
+    hide
+  WHEN I receive "start whisker relay":
+    show
+    FOREVER:
+      IF targetHole = 1 THEN:
+        switch costume to active
+      ELSE:
+        switch costume to costume1
+      wait 0.05 seconds`,
 
-    spiral_circuit: `# Spiral Circuit — race down the inside of a five-lane energy tube.
-# Left/Right rotates the tube under you. Catch yellow cells to charge boost, then tap
-# Space to phase through hazards. Hit a magenta launch gate while boosting for a jackpot.
+    spiral_circuit: `# Helix Rush — a finite five-lane tube sprint with phase-boost decisions.
+# GOAL: survive thirty sectors with at least one life remaining.
+# CONTROLS: Left/Right wraps around five lanes. Space spends charge to phase-boost.
+# Yellow cells charge boost; magenta gates pay a jackpot only while boosting.
 GLOBAL score
+GLOBAL sectors
 GLOBAL lives
 GLOBAL lane
 GLOBAL speed
@@ -2548,24 +2623,44 @@ GLOBAL boosting
 GLOBAL obstacleLane
 GLOBAL obstacleY
 GLOBAL obstacleKind
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art helix-rush/intro
+  BACKDROP tube art helix-rush/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable sectors
+    hide variable lives
+    hide variable charge
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to tube
+      broadcast "start helix rush"
 
 SPRITE Runner:
-  SHAPE triangle 38 #74f7ff
-  COSTUME phase triangle 46 #fff06a
+  SHAPE art helix-rush/runner
+  COSTUME phase art helix-rush/phase
   SOUND boost 760
   WHEN flag clicked:
-    show variable score
-    show variable lives
-    show variable charge
     set score to 0
+    set sectors to 0
     set lives to 3
     set lane to 0
     set speed to 5
     set charge to 0
     set boosting to 0
     go to x: 0 y: -125
+    hide
+  WHEN I receive "start helix rush":
+    show variable score
+    show variable sectors
+    show variable lives
+    show variable charge
     show
-  WHEN flag clicked:
     FOREVER:
       IF key left arrow pressed? THEN:
         change lane by -1
@@ -2589,22 +2684,26 @@ SPRITE Runner:
         switch costume to costume1
         set speed to 5
       IF lives < 1 THEN:
-        say ("Spiral score: " join score) for 3 seconds
+        say ("TUBE FAILURE — SECTOR " join sectors) for 4 seconds
+        stop all
+      IF sectors = 30 THEN:
+        say ("THIRTY SECTORS CLEARED — SCORE " join score) for 4 seconds
         stop all
       wait 0.02 seconds
   WHEN space key pressed:
-    IF charge > 4 and boosting = 0 THEN:
+    IF started = 1 and charge > 4 and boosting = 0 THEN:
       set boosting to 1
       play sound "boost"
 
 SPRITE TubeHazard:
-  SHAPE rect 58 28 #ff4d6d
-  COSTUME cell circle 26 #ffe85c
-  COSTUME gate rect 66 16 #ed63ff
+  SHAPE art helix-rush/hazard
+  COSTUME cell art helix-rush/cell
+  COSTUME gate art helix-rush/gate
   SOUND hit 170
   SOUND jackpot 1020
   WHEN flag clicked:
     hide
+  WHEN I receive "start helix rush":
     FOREVER:
       set obstacleLane to pick random -2 to 2
       set obstacleY to 190
@@ -2643,14 +2742,17 @@ SPRITE TubeHazard:
           set y to -220
         wait 0.02 seconds
       hide
+      change sectors by 1
       change score by 1
       wait 0.15 seconds
 
 SPRITE TubeCore:
-  SHAPE circle 90 #342a66
+  SHAPE art helix-rush/core
   WHEN flag clicked:
     go to x: 0 y: 0
     set ghost effect to 70
+    hide
+  WHEN I receive "start helix rush":
     show
     FOREVER:
       turn right speed degrees
