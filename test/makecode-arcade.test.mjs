@@ -476,3 +476,86 @@ test('trigonometry converts radians to degrees, and binds correctly', {skip: can
     assert.ok(blocks.some(b => b && b.opcode === 'operator_multiply'),
         'and the outer product survived');
 });
+
+test('position compound assignments keep their sign and their operator', () => {
+    // Two sign flips that compose: `-=` reverses the move, and Arcade's y
+    // grows DOWNWARD while the stage's grows up. Treating every compound
+    // operator as `+=` sent a sprite the wrong way on `x -= n`, and was
+    // right on `y -= n` only by accident.
+    const {code} = arcadeToPseudocode(`
+        let b = sprites.create(img\`1\`, SpriteKind.Player)
+        game.onUpdate(function () {
+            b.x += 5
+            b.x -= 5
+            b.y += 5
+            b.y -= 5
+        })
+    `);
+    const moves = code.split('\n').map(l => l.trim()).filter(l => /^change [xy] by/.test(l));
+    assert.deepEqual(moves, [
+        'change x by 15',
+        'change x by -15',
+        'change y by -15',
+        'change y by 15'
+    ]);
+});
+
+test('scaling a position scales the Arcade coordinate, not the stage one', () => {
+    // `x *= 2` doubles the ARCADE x. The stage's origin is elsewhere, so
+    // doubling the stage number is a different move entirely — and
+    // `change x by 6` (which is what an add-shaped fallback produced) is
+    // not even the same kind of operation.
+    const {code} = arcadeToPseudocode(`
+        let b = sprites.create(img\`1\`, SpriteKind.Player)
+        game.onUpdate(function () { b.x *= 2 })
+    `);
+    assert.match(code, /set x to /, 'a scale is a set, never a change-by');
+    assert.match(code, /x position \/ 3 \+ 80/, 'read back into Arcade units first');
+    assert.doesNotMatch(code, /change x by 6/);
+});
+
+test('every compound operator survives on every kind of target', () => {
+    // Three separate bugs of one class have now been fixed here — the
+    // unary-minus precedence one, the velocity one, and the position one —
+    // and each was an operator quietly becoming a different operator, in
+    // code that compiled and ran. A substring assertion passes on all
+    // three, so this is the whole matrix, spelled out.
+    //
+    // The y rows carry TWO sign flips that compose: `-=` reverses the
+    // move, and Arcade's y grows downward while the stage's grows up.
+    // `vx`/`vy` stay in Arcade units — the motion loop applies the flip
+    // where it is used — which is why they do not mirror the y rows.
+    const EXPECTED = {
+        'v +=': 'change v by 4',
+        'v -=': 'change v by 0 - 4',
+        'v *=': 'set v to v * 4',
+        'v /=': 'set v to v / 4',
+        'b.x +=': 'change x by 12',
+        'b.x -=': 'change x by -12',
+        'b.x *=': 'set x to ((((x position / 3 + 80)) * 4) - 80) * 3',
+        'b.x /=': 'set x to ((((x position / 3 + 80)) / 4) - 80) * 3',
+        'b.y +=': 'change y by -12',
+        'b.y -=': 'change y by 12',
+        'b.y *=': 'set y to (60 - (((60 - y position / 3)) * 4)) * 3',
+        'b.y /=': 'set y to (60 - (((60 - y position / 3)) / 4)) * 3',
+        'b.vx +=': 'change b_vx by 4',
+        'b.vx -=': 'change b_vx by (0 - 4)',
+        'b.vx *=': 'set b_vx to b_vx * 4',
+        'b.vx /=': 'set b_vx to b_vx / 4',
+        'b.vy +=': 'change b_vy by 4',
+        'b.vy -=': 'change b_vy by (0 - 4)',
+        'b.vy *=': 'set b_vy to b_vy * 4',
+        'b.vy /=': 'set b_vy to b_vy / 4'
+    };
+
+    for (const [key, expected] of Object.entries(EXPECTED)) {
+        const {code} = arcadeToPseudocode(`
+            let b = sprites.create(img\`1\`, SpriteKind.Player)
+            let v = 0
+            game.onUpdate(function () { ${key} 4 })
+        `);
+        const lines = code.split('\n');
+        const loop = lines.findIndex(line => /FOREVER:/.test(line));
+        assert.equal((lines[loop + 1] || '').trim(), expected, `${key} 4`);
+    }
+});
