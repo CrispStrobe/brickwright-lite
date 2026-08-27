@@ -714,7 +714,6 @@ export const ATTINY13 = {
 };
 
 /** Lookup by name string, case-insensitive. */
-
 // ─── ATmega32U4 (Arduboy / Leonardo / Micro) ───────────────────────────────
 //
 // Register addresses and the 43-entry vector table are from doc7766 (32U4
