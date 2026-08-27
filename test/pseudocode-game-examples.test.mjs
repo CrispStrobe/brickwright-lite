@@ -7,6 +7,7 @@ import games from '../overlay/scratch-gui/src/lib/sb3-creator-game-examples.js';
 import {VM, clearStrayTimers, runProgram, quitStrandedVMs} from './helpers/bw-vm.mjs';
 
 const EXPECTED = [
+    'g2048',
     'sky_skim',
     'chroma_code',
     'fusion_foundry',
@@ -48,6 +49,7 @@ test('only quality-approved new games are wired into the visible examples galler
         assert.ok(source.length > 0, `${name}: empty game source`);
     }
     const approved = new Set([
+        'g2048',
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
@@ -62,6 +64,69 @@ test('only quality-approved new games are wired into the visible examples galler
         assert.doesNotMatch(importer, new RegExp(`\\['${name}',`), `${name}: unaudited prototype is public`);
     }
     assert.match(importer, /\.\.\.gameExamples/, 'game module is not merged into the gallery examples');
+});
+
+test('green flag crosses every title gate in the ordinary right-hand stage', () => {
+    for (const [name, source] of Object.entries(games)) {
+        if (name === 'g2048') {
+            assert.match(source, /wait 0\.6 seconds\n    IF started = 0 THEN:/,
+                `${name}: its native green-flag start was lost`);
+            continue;
+        }
+        assert.match(source, /WHEN flag clicked:\n    wait 0\.6 seconds\n    broadcast "__brickwright_start_from_flag"/,
+            `${name}: green flag still leaves the title screen waiting for a keyboard`);
+        assert.match(source, /WHEN I receive "__brickwright_start_from_flag":/,
+            `${name}: delayed green-flag start has no receiver`);
+    }
+});
+
+test('green flag actually starts every game in the real Scratch VM without Space', async () => {
+    for (const [name, source] of Object.entries(games)) {
+        const startVariable = name === 'g2048' ? 'started' :
+            source.match(/WHEN space key pressed:\n    IF ([A-Za-z][A-Za-z0-9]*) = 0 THEN:/)?.[1];
+        assert.ok(startVariable, `${name}: cannot identify the title-gate state variable`);
+
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const vm = new VM();
+        try {
+            await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+            vm.start();
+            vm.greenFlag();
+            for (let i = 0; i < 20; i++) vm.runtime._step();
+            await new Promise(resolve => setTimeout(resolve, 700));
+            for (let i = 0; i < 35; i++) vm.runtime._step();
+            const state = Object.values(vm.runtime.getTargetForStage().variables)
+                .find(variable => variable.name === startVariable);
+            assert.equal(Number(state?.value), 1,
+                `${name}: green flag left the game on its title screen`);
+        } finally {
+            vm.quit();
+            clearStrayTimers();
+        }
+    }
+});
+
+test('Nova Grid replaces the bare 2048 prototype with a complete reactor puzzle', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.g2048);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.g2048, /GOAL: forge the 2048 Nova tile/);
+    assert.match(games.g2048, /CONTROLS: Arrow keys slide every tile/);
+    assert.match(games.g2048, /broadcast "ignite nova grid"/);
+    assert.match(games.g2048, /wait 0\.6 seconds/);
+    assert.match(games.g2048, /started = 0 and mouse down\?/);
+    assert.match(games.g2048, /broadcast "move nova left"/);
+    assert.match(games.g2048, /change score by \(item p of linebuf\) \* chain/);
+    assert.match(games.g2048, /IF empties = 0 and possible = 0 THEN:/);
+    assert.match(games.g2048, /broadcast "nova forged"/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'reactor']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('NOVA GRID')));
+    assert.ok(svgs.some(svg => svg.includes('FUSE EQUAL TILES')));
+    assert.ok(svgs.some(svg => svg.includes('FORGE 2048')));
 });
 
 test('quality-approved game has authored SVG art and explicit onboarding', () => {
@@ -660,7 +725,7 @@ test('new click and orbit controls advance in the real Scratch VM', async () => 
 });
 
 test('new merge and runner controls change live Scratch VM state', async () => {
-    const load = async source => {
+    const load = async (source, pressSpace = true) => {
         const creator = new SB3Creator();
         creator.parse(source);
         const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
@@ -669,13 +734,38 @@ test('new merge and runner controls change live Scratch VM state', async () => {
         vm.start();
         vm.greenFlag();
         for (let i = 0; i < 20; i++) vm.runtime._step();
-        vm.postIOData('keyboard', {key: ' ', isDown: true});
-        for (let i = 0; i < 30; i++) vm.runtime._step();
-        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        if (pressSpace) {
+            vm.postIOData('keyboard', {key: ' ', isDown: true});
+            for (let i = 0; i < 30; i++) vm.runtime._step();
+            vm.postIOData('keyboard', {key: ' ', isDown: false});
+        }
         return vm;
     };
     const stageValue = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
         .find(variable => variable.name === name);
+
+    const nova = await load(games.g2048, false);
+    try {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 30; i++) nova.runtime._step();
+        assert.equal(Number(stageValue(nova, 'started').value), 1,
+            'the ordinary green flag left the game parked behind a Space/fullscreen gate');
+        const board = nova.runtime.targets.find(target => target.sprite.name === 'Board');
+        const grid = Object.values(board.variables).find(variable => variable.name === 'grid');
+        grid.value = [2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        nova.postIOData('mouse', {x: 320, y: 180, canvasWidth: 480, canvasHeight: 360, isDown: true});
+        for (let i = 0; i < 12; i++) nova.runtime._step();
+        nova.postIOData('mouse', {x: 120, y: 180, canvasWidth: 480, canvasHeight: 360, isDown: false});
+        for (let i = 0; i < 35; i++) nova.runtime._step();
+        assert.equal(Number(grid.value[0]), 4, 'left swipe did not fuse equal tiles toward its edge');
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 2,
+            'a successful move did not leave the fused tile plus one new tile');
+        assert.equal(Number(stageValue(nova, 'score').value), 4, 'fusion score was not awarded');
+        assert.equal(Number(stageValue(nova, 'chain').value), 1, 'first fusion did not start the chain');
+    } finally {
+        nova.quit();
+        clearStrayTimers();
+    }
 
     const cascade = await load(games.fusion_foundry);
     try {

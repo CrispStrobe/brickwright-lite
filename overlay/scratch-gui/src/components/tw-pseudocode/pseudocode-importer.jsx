@@ -327,7 +327,7 @@ const GROUPS = [
         ['pong_2p', '🏓 Pong (2 players)'], ['pong_ai', '🤖 Pong (vs AI)'], ['tetris', '🟦 Tetris'],
         ['sokoban', '📦 Sokoban'], ['bomberman', '💣 Bomberman'], ['invaders', '👾 Space Invaders'],
         ['flappy', '🐤 Flappy'], ['tictactoe', '⭕ Tic-Tac-Toe (2 players)'], ['tictactoe_ai', '⭕ Tic-Tac-Toe (vs AI)'],
-        ['g2048', '🔢 2048'], ['maze', '👻 Maze Chase'], ['connect4', '🔴 Connect Four (vs AI)'], ['minesweeper', '💥 Minesweeper'],
+        ['g2048', '✨ Nova Grid — polished'], ['maze', '👻 Maze Chase'], ['connect4', '🔴 Connect Four (vs AI)'], ['minesweeper', '💥 Minesweeper'],
         // New examples enter the public gallery only after the same visual/play
         // audit as Skyline Swoop: authored art, an in-stage goal/control screen,
         // a legible HUD, and screenshots of both onboarding and live play.
@@ -675,6 +675,7 @@ class PseudocodeImporter extends React.Component {
             this._onProjectChanged = () => {
                 const src = vm.runtime.bwPseudocodeSource;
                 if (src && src !== this.state.buffers.pseudocode) {
+                    this.publishGameControls(this.gameKeyForSource(src));
                     this.setState(s => ({
                         lang: 'pseudocode',
                         buffers: {...s.buffers, pseudocode: src}
@@ -690,6 +691,7 @@ class PseudocodeImporter extends React.Component {
         if (!Object.values(this.state.buffers).some(b => b && b.trim())) {
             const saved = this.readAutosave();
             if (saved) {
+                this.publishGameControls(this.gameKeyForSource(saved.code));
                 this.setState(st => ({
                     lang: saved.lang,
                     buffers: {...st.buffers, [saved.lang]: saved.code},
@@ -720,6 +722,7 @@ class PseudocodeImporter extends React.Component {
         this._onBundleLoaded = () => {
             const saved = this.readAutosave();
             if (saved) {
+                this.publishGameControls(this.gameKeyForSource(saved.code));
                 this.setState(st => ({
                     lang: saved.lang,
                     buffers: {...st.buffers, [saved.lang]: saved.code},
@@ -788,6 +791,7 @@ class PseudocodeImporter extends React.Component {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
         if (!file) return;
+        this.publishGameControls(null);
         this._makeCodeProject = null;
         // A compiled artefact from ANOTHER editor — a MakeCode .hex/.uf2/.png
         // cartridge, or a MicroPython .hex — is not source we can read as
@@ -861,6 +865,7 @@ class PseudocodeImporter extends React.Component {
      * the part worth having in one place.
      */
     applyMakeCodeImport (res, label) {
+        this.publishGameControls(null);
         // What the "MakeCode source" download hands back: the recovered
         // files themselves, untouched by any translation.
         this._makeCodeProject = res.kind === 'makecode' ? {
@@ -2017,6 +2022,7 @@ class PseudocodeImporter extends React.Component {
     // SB3Creator.retargetPseudocode; a refusal shows its reasons in the status
     // line (the tab's existing warning surface) and loads nothing.
     async loadCatalogExample (ex, deviceOverride) {
+        this.publishGameControls(null);
         this._lastCatalogExample = ex;
         // A row's device chip passes its device explicitly; a plain row
         // click keeps the buffer's DEVICE. Before the chips existed the
@@ -2145,6 +2151,7 @@ class PseudocodeImporter extends React.Component {
     async loadExample (key) {
         const src = key && examples[key];
         if (!src) return;
+        this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
         const device = this.currentDevice();
         const exampleDevice = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
         // Retarget hardware examples when the selected device differs.
@@ -2165,6 +2172,21 @@ class PseudocodeImporter extends React.Component {
         }
         this.setState({lang: 'pseudocode', output: null, status: '',
             buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
+    }
+
+    publishGameControls (gameKey) {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        if (!runtime) return;
+        runtime.bwGameControlKey = gameKey || null;
+        runtime.emit('BW_GAME_CONTROLS_CHANGED', runtime.bwGameControlKey);
+    }
+
+    gameKeyForSource (source) {
+        if (!source) return null;
+        const firstLine = String(source).split('\n', 1)[0].trim();
+        const match = GROUPS[0].items.find(([key]) =>
+            String(examples[key] || '').split('\n', 1)[0].trim() === firstLine);
+        return match ? match[0] : null;
     }
     // Sprite names declared in the current pseudocode — used to populate the
     // "associate SVG → sprite" dropdowns so you pick a real sprite, not guess a name.
