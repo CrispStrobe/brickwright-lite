@@ -294,6 +294,34 @@ The one legitimate difference: `show text` leaves as `basic.showString`
 and comes back as `scroll text`, because MakeCode has no non-scrolling
 string block.
 
+**Everything the Calliope corpus needed now has a way back**: all 24 make
+the whole loop — import, compile, export to MakeCode — with nothing refused
+at either end. Getting there closed four gaps, and three of them were
+asymmetries only the round trip could show.
+
+*Arguments to a user-defined function were dropped on the way IN.*
+`zeigen(3, n + 1)` translated to the bare word `zeigen`, so the function ran
+on whatever its parameters happened to hold. It emitted a line, so the
+anti-silence gate below saw nothing wrong; `procedures_call` being the most
+common thing the export could not render is what pointed at it. A call is
+matched token by token against the `DEFINE`'s template, so each argument has
+to be a single token — the same slot discipline, and `single()` already
+existed for it.
+
+*Procedures, gestures and touch had no export at all.* For procedures the
+`proccode` is the only place the argument ORDER lives (`inputs` is keyed by
+argument id, and its key order is not the call's), so the proccode is what
+gets walked; definitions are emitted above the body because MakeCode is
+TypeScript. The definition's input key is `custom_block`, lowercase, not the
+`CUSTOM_BLOCK` that Scratch's own files use. Gesture and touch reporters were
+added to the importer in sb3-creator#3 and never to the export table.
+
+*A boolean was being compared to a string.* The compiler puts a boolean
+reporter into a boolean slot as `equals(reporter, "true")`. Rendered
+literally that is `input.isGesture(…) == "true"`, and Static TypeScript will
+not compare a boolean to a string — the export would not have built in
+MakeCode. A real `n == 3` is left alone.
+
 **Arrays and bitwise had to be given a way back.** They arrive through
 *extensions* — the pseudocode has neither an array nor a bitwise operator
 of its own — so making them importable opened a hole at the far end: a
