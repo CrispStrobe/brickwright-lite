@@ -82,7 +82,74 @@ unsupported APIs remain visible in the import report.
 | 4 | export: a Brickwright project opens *in* MakeCode | **done** — ⬆ To MakeCode writes a .hex whose only content is the source embed, which is what MakeCode's importer actually reads |
 | 4b | export: compile a modified project to a board `.uf2` | **not done**, and not the same thing — that needs pxt's own compiler. Opening in MakeCode is not physical deployment |
 | 5 | actually emulate a MakeCode hex | see below |
-| 6 | **Calliope mini** (`makecode.calliope.cc`) | **not done, and not attempted blind.** The target is already recognised, but such a project currently lands in the JavaScript tab. Its core API is micro:bit's, so routing it through that translator would mostly work — with the Calliope-only calls (RGB LED, motors) refused, and `DEVICE MICROBIT` being an approximation of the board. Worth doing the moment one real `.hex` from that editor exists to test against; everything else here was built against real downloads and this should be too |
+| 6 | **Calliope mini** | **done**, both halves. The **Arcade** editor targeting a Calliope (GameKit shield) always worked — the board changes the binary, not the source, and the fixtures here ARE such builds. `makecode.calliope.cc`, the micro:bit-shaped editor, now routes through the micro:bit translator: **24 of the 25 example programmes on calliope.cc translate and compile**, and the 25th carries no embedded source at all. See below for what that cost |
+
+## Calliope mini: what 25 real programmes changed
+
+`makecode.calliope.cc` writes the micro:bit's API onto different hardware, so a
+Calliope hex goes through `microbit-translate.js` with a `board` note saying which
+board it came from. Routing it there was three lines. Everything else in this
+section is what the [25 example programmes](https://calliope.cc/calliope-mini/25programme)
+found once they could be run through it — the corpus went **0 → 24 of 24**
+(the 25th has no embedded source), and it found bugs on the Arcade side too,
+because the fixes are in the shared base.
+
+**The parser could not read the language they are written in.** German variable
+names (`ausgewählt`, `größe`) failed on an ASCII `IDENT_START`, and two programmes
+destructure their radio handler's argument —
+`radio.onDataPacketReceived(({receivedString: name}) => …)` — which was rejected
+outright, taking the whole file with it. Identifiers are now `\p{L}`-based and the
+parameter parser reads object patterns.
+
+**Two things compiled to something plausible and wrong**, which is the failure this
+translator exists to prevent:
+
+| written | was becoming | now |
+|---|---|---|
+| `wert = wert & 255` | `set wert to wert & 255`, which parses as a **string literal** — the variable ends up holding the ten characters `wert & 255` | `bitops` blocks: `bitand`, `bitor`, `bitxor`, `shiftleft`, `shiftright`, `bitnot` |
+| `let liste: number[] = []` | `set liste to 0` — and every later `liste[i]` read that number | the `arrays` extension |
+
+Arrays map to the **`arrays` extension rather than to Scratch lists**, and the
+reason is indexing: the extension indexes from 0, exactly as TypeScript does.
+A Scratch list indexes from 1, so every `a[i]` would need a `+1` that is invisible
+in the resulting blocks, and any index the program computed would be silently off
+by one. `push`, `pop`, `insertAt`, `removeAt`, `indexOf`, `length` and `a[i] = v`
+all map; the methods that take a callback (`filter`, `map`, `some`) are reported,
+because inlining an arrow would invent a function name the project does not have.
+
+**`.length` on a call result was dropping the call.** `a.filter(f).length` read the
+property and never evaluated `a.filter(f)`, so the refusal never fired and the
+program silently got a variable named `length`. Found by a test written for the
+callback case, not by the corpus.
+
+**Images are values.** These programmes build arrays of pictures —
+`uhrbilder = [images.createImage(…), …]` then `uhrbilder[i].showImage(0)` — so
+`images.createImage` and `images.iconImage` now return a pattern string, which
+survives being stored in an array. A **literal** pattern reaches
+`show pattern`; a runtime-chosen one is refused, and the refusal says why: the
+block carries the pattern as a **field**, and a field cannot hold a reporter at
+all. That is a limit of the block, not a gap in the grammar.
+
+**What is refused, and named.** `basic.setLedColor` is the single most common
+unsupported call in the corpus (18 of 53 reports). It is the Calliope's RGB LED,
+and the micro:bit display we model is single-colour. The report says that rather
+than printing `basic.setLedColor()`, because the reports ARE the product for
+everything we cannot translate. Same for the on-board motor driver and the
+microphone.
+
+**One grammar gap went upstream.** `led.plot(x, y)` with variable coordinates is
+the ordinary way these programmes write to the display, and it was the third most
+common refusal — not because the block cannot do it (X and Y are *inputs*, so they
+can hold reporters) but because only `plot x <digits> y <digits>` parsed;
+`plot x col y row on` matched no rule and produced no block. Fixed in
+sb3-creator [#4](https://github.com/CrispStrobe/sb3-creator/pull/4), the same
+shape as the `show text <reporter>` gap fixed in #3. The translator keeps refusing
+computed coordinates until that lands here through `npm run sync:sb3creator`.
+
+**A trap worth writing down**: a MakeCode variable named `x` or `y` compiles to
+`motion_setx` / `motion_sety`, the Scratch *motion* blocks, not to a variable.
+It cost an hour of misreading a bitwise bug that was really a name collision.
+
 
 ## What the grammar will and will not take
 

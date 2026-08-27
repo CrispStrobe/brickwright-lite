@@ -86,8 +86,14 @@ export function importProjectFiles (files = {}, opts = {}) {
     const name = opts.name || '';
     const main = files['main.ts'] || files['main.py'] || '';
 
-    if (target === 'microbit' && files['main.ts']) {
-        const translated = microbitToPseudocode(files['main.ts'], {name});
+    // A Calliope mini goes through the micro:bit translator on purpose:
+    // makecode.calliope.cc is a pxt-microbit derivative, and `basic.*`,
+    // `input.*`, `led.*`, `music.*`, `pins.*` and `radio.*` are the same
+    // API. What is genuinely Calliope's own — the RGB LED, the image
+    // helpers, the LED-sprite game library — is refused by name, so the
+    // shared 90% arrives and the rest is visible rather than invented.
+    if ((target === 'microbit' || target === 'calliopemini') && files['main.ts']) {
+        const translated = microbitToPseudocode(files['main.ts'], {name, board: target});
         return {
             kind: 'makecode',
             lang: 'pseudocode',
