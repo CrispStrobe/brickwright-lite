@@ -155,6 +155,33 @@ permission + power state (`scratchlink/ble_state.rs` → `ble_apple.m`). There i
 on iOS; assume any future BLE report comes from this panel. Gates: `test/native-bluetooth.test.mjs`
 and `npm run verify:bluetooth`.
 
+## MakeCode interop (2026-08-27) — read docs/MAKECODE.md first
+
+`overlay/scratch-gui/src/lib/bw-makecode/` imports MakeCode projects and exports back to them.
+The Code tab's 📂 Open takes `.hex/.uf2/.elf/.png`; 🔗 MakeCode… takes a share link; ⬆ To MakeCode
+writes a .hex makecode.microbit.org opens.
+
+**A MakeCode .hex cannot RUN on our micro:bit simulator** — the simulator interprets MicroPython,
+the arcade-shield build is Cortex-M4 on a 128x160 SPI screen, our ARM core is ARMv6-M. But MakeCode
+embeds the project SOURCE in every artefact, so importing is a parsing problem, not an emulation one.
+
+- micro:bit projects → pseudocode → blocks / MicroPython / the simulator.
+- Arcade games → a Scratch project: sprites with their real artwork (`img` literals + the `.g.jres`
+  gallery, whose 4bpp buffer is COLUMN-major), overlaps → `touching`, `vx/vy` → a motion loop,
+  mid-game spawns → clones (emitted AFTER the positioning, since a clone inherits parent state).
+- A MicroPython `.hex` (python.microbit.org / uflash) needs no translation: the simulator runs it.
+
+**The trap, and it is not MakeCode's:** the pseudocode grammar is not uniformly permissive.
+`show text <expression>`, `plot x <var>` and `set pin P0 to <var>` all PARSE and compile to NOTHING.
+Slot rules in `translate-base.js` handle that (hoist to a temp / lower to IF-ELSE / use `display
+<expr>`), and anything left says `# unsupported` rather than vanishing. Two spellings sb3-creator's
+generator emits have no parser rule at all (`<gesture> happening`, `pin P touched`) — closing that
+belongs in `../../sb3-creator`, not here.
+
+Gates: `test/makecode-{import,translate,arcade,export}.test.mjs`, against four real MakeCode
+downloads. The export gate round-trips every shipped micro:bit example out to MakeCode TypeScript
+and back, and fails if a device block is lost.
+
 ## Planned: on-device TTS (replace cloud AWS text2speech)
 See memory `brickwright-ondevice-tts`. `../../CrispASR` (MIT) has 23 TTS
 engines compiling to WASM (~4.3MB, client-side) → offline TTS. Needs COOP/COEP (SharedArrayBuffer);
