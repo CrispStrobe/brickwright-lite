@@ -233,6 +233,90 @@ export const getNativeStatus = async () => {
  * Everything the diagnostics panel needs, in one call, with each step's failure
  * reported rather than collapsed into "it didn't work".
  */
+/** LEGO Boost's GATT service — the filter the extension actually scans with. */
+const BOOST_SERVICE = '00001623-1212-efde-1623-785feabcd123';
+
+/**
+ * Walk the SCRATCH LINK route the way the extension does, on its OWN socket.
+ *
+ * This is the half the rest of the self-test cannot see. Everything above runs
+ * on the shim's shared session; the extension opens an INDEPENDENT WebSocket to
+ * the same service and speaks JSON-RPC to it directly. If a second concurrent
+ * client is refused, or its `discover` is never answered, that is invisible to
+ * a test that reuses the one socket already open — and it is exactly the shape
+ * of "set connection to Scratch Link, press connect, nothing happens".
+ *
+ * Deliberately stops before `connect`: this must be safe to run with no hub
+ * present and must not seize a hub the user already has connected.
+ * @returns {Promise<object>} one key per step, each saying what happened.
+ */
+export const scratchLinkRouteReport = () => new Promise(resolve => {
+    const out = {};
+    const url = bleEndpoint();
+    let ws;
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        try { ws && ws.close(); } catch (e) { /* already gone */ }
+        resolve(out);
+    };
+    // Whole-probe cap. A step that never answers is the finding, so the timer
+    // must report rather than hang: an unresolved promise here would freeze the
+    // diagnostics panel, which is the one thing that must keep working.
+    const overall = setTimeout(() => {
+        out['second socket'] = out['second socket'] || 'TIMED OUT before it opened';
+        finish();
+    }, 15000);
+
+    try {
+        ws = new WebSocket(url);
+    } catch (e) {
+        out['second socket'] = `constructor threw — ${e.message}`;
+        clearTimeout(overall);
+        return finish();
+    }
+
+    ws.onerror = () => { out['second socket'] = out['second socket'] || 'ERROR before open'; };
+    ws.onclose = event => {
+        if (!out['second socket']) out['second socket'] = `closed before open (code ${event.code})`;
+        clearTimeout(overall);
+        finish();
+    };
+    ws.onopen = () => {
+        out['second socket'] = 'open — a concurrent client is accepted';
+        ws.send(JSON.stringify({
+            jsonrpc: '2.0', id: 1, method: 'discover',
+            params: {filters: [{services: [BOOST_SERVICE]}]}
+        }));
+        out['discover request'] = 'sent';
+        // The extension waits for didDiscoverPeripheral notifications, not for
+        // discover's reply — which is null by design. Both are reported, because
+        // "which of the two never arrived" is the whole diagnosis.
+        setTimeout(() => {
+            out['discover reply'] = out['discover reply'] || 'NO REPLY within 8s';
+            out['devices seen'] = out['devices seen'] || 'none (a hub may simply be absent or off)';
+            clearTimeout(overall);
+            finish();
+        }, 8000);
+    };
+    ws.onmessage = event => {
+        let msg;
+        try { msg = JSON.parse(event.data); } catch (e) { return; }
+        if (msg.id === 1) {
+            out['discover reply'] = msg.error
+                ? `ERROR — ${msg.error.message || JSON.stringify(msg.error)}`
+                : 'accepted (result is null by design)';
+        } else if (msg.method === 'didDiscoverPeripheral') {
+            const n = (msg.params && msg.params.name) || 'unnamed';
+            out['devices seen'] = out['devices seen'] === undefined || String(out['devices seen']).startsWith('none')
+                ? n : `${out['devices seen']}, ${n}`;
+        } else if (msg.method === 'discoverDidFinish') {
+            out['scan finished'] = `${(msg.params && msg.params.count) || 0} device(s)`;
+        }
+    };
+});
+
 export const selfTestReport = async () => {
     const report = {};
     report['native app'] = isNativeApp() ? 'yes' : 'no — Bluetooth needs the installed app';
@@ -266,6 +350,14 @@ export const selfTestReport = async () => {
         }
     } catch (e) {
         report.adapter = `FAILED — ${e.message}`;
+    }
+    // The extension's own route, on its own socket. Last, because it takes up
+    // to 8 seconds and everything above should already be on screen if it hangs.
+    try {
+        const route = await scratchLinkRouteReport();
+        for (const k of Object.keys(route)) report[`Scratch Link · ${k}`] = route[k];
+    } catch (e) {
+        report['Scratch Link route'] = `FAILED — ${e.message}`;
     }
     return report;
 };

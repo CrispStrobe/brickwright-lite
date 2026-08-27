@@ -235,7 +235,7 @@ define('WebSocket', FakeWebSocket);
 
 const {default: installNativeWebBluetooth, canonicalUuid} =
     await import(`${LIB}/native-web-bluetooth.js`);
-const {selfTestReport, getSession} = await import(`${LIB}/native-ble.js`);
+const {selfTestReport, getSession, scratchLinkRouteReport} = await import(`${LIB}/native-ble.js`);
 
 /* ------------------------------------------------------------------ tests */
 
@@ -499,4 +499,35 @@ describe('switching transport while connected is not a silent no-op', () => {
                 `${id}: a changed transport has to drop the old connection before reconnecting`);
         });
     }
+});
+
+
+describe('the Scratch Link route reports itself, on its own socket', () => {
+    test('a second concurrent client walks discover and sees the hub', async () => {
+        // The extension does NOT reuse the shim's session — it opens its own
+        // socket. A self-test that reuses the shared one cannot see a server
+        // that refuses a second client, or a discover that is never answered,
+        // which is precisely the shape of "press connect, nothing happens".
+        const route = await scratchLinkRouteReport();
+        assert.match(route['second socket'], /open/,
+            'a concurrent client must be accepted — the extension always is one');
+        assert.equal(route['discover request'], 'sent');
+        assert.match(route['discover reply'], /accepted/,
+            'discover resolves with null by design; "no reply" is the failure');
+        assert.match(String(route['devices seen']), /LEGO Move Hub/,
+            'didDiscoverPeripheral notifications must reach this socket, not just the shared one');
+    });
+
+    test('it stops before connect, so it is safe with a hub already in use', async () => {
+        // Running the self-test must never seize a hub or disturb a live
+        // session — a diagnostic that changes what it measures is worse than
+        // none. Measured over THIS probe's frames only: asserting on the whole
+        // of native.sent passes or fails depending on which tests ran first,
+        // since the end-to-end test above legitimately connects.
+        const before = native.sent.length;
+        await scratchLinkRouteReport();
+        const mine = native.sent.slice(before).map(m => m.method);
+        assert.deepEqual(mine, ['discover'],
+            `the route probe must send discover and nothing else; it sent: ${mine.join(', ')}`);
+    });
 });
