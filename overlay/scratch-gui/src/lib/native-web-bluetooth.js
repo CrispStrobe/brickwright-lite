@@ -245,6 +245,18 @@ const chooseDevice = ({onCancel}) => {
                 settle.reject(err);
             });
         },
+        /**
+         * Take the chooser down without anyone having chosen. Used when the
+         * CALLER is unwinding — a failed scan leaves this dialog on screen with
+         * a promise nobody is awaiting, so it has to be closed from outside.
+         */
+        dismiss (message) {
+            finish(() => {
+                const err = new Error(message || 'The Bluetooth chooser was dismissed.');
+                err.name = 'NotFoundError';
+                settle.reject(err);
+            });
+        },
         get settled () {
             return settled;
         }
@@ -498,6 +510,13 @@ const requestDevice = async (options = {}) => {
     const picker = chooseDevice({
         onCancel: () => bleLog('info', 'ble', 'chooser cancelled')
     });
+    // Mark the chooser's promise handled the moment it exists. `await
+    // picker.promise` is several lines below, but the user can hit Cancel
+    // before the scan request has even resolved — and a promise that rejects
+    // with no handler attached YET is reported as unhandled, which on a phone
+    // means a spurious error in the very log we use to diagnose this path.
+    // The real rejection is still delivered to the await below.
+    picker.promise.catch(() => {});
     const offDiscover = session.on('didDiscoverPeripheral', params => {
         const device = {id: params.peripheralId, name: params.name, rssi: params.rssi};
         if (matchesFilters(device, filters)) picker.add(device);
@@ -521,6 +540,12 @@ const requestDevice = async (options = {}) => {
         offDiscover();
         offFail();
         offDone();
+        // If we are unwinding because the scan itself failed, the chooser is
+        // still on screen — `await picker.promise` is below the line that
+        // threw. Left alone it is a dialog that outlives the call: it can
+        // never find anything, and closing it does nothing useful. Its
+        // rejection is already spoken for by the catch attached at creation.
+        if (!picker.settled) picker.dismiss('The Bluetooth scan could not be started.');
     }
 };
 

@@ -122,6 +122,13 @@ class FakeNative {
         case 'getStatus':
             return reply(this.status);
         case 'discover':
+            if (this.refuse.has('discover')) {
+                return socket.deliver({
+                    jsonrpc: '2.0',
+                    id: msg.id,
+                    error: {code: -32000, message: 'the radio refused the scan'}
+                });
+            }
             reply(null);
             this.peripherals.forEach(p => socket.deliver(
                 {jsonrpc: '2.0', method: 'didDiscoverPeripheral', params: p}));
@@ -406,23 +413,27 @@ describe('the chooser speaks the app\'s language', () => {
         // Attach the rejection handler NOW, not after the click: cancelling
         // rejects synchronously inside the handler, and a promise that is only
         // caught afterwards has already been seen as unhandled.
+        const before = body.children.length;
         const promise = navigator.bluetooth.requestDevice({filters: [{services: [BOOST_SERVICE]}]});
         const settled = promise.catch(() => 'cancelled');
         // The heading is the first element carrying text in the overlay.
-        // Take the LAST match, not the first: earlier tests in this file leave
-        // their overlays in the body, and cancelling a stale chooser rejects a
-        // promise nobody is holding — which surfaces as this test failing for
-        // a reason that has nothing to do with language.
-        const newest = re => walk(body).filter(n => re.test(n.deepText || '')).pop();
-        let heading = null;
-        for (let i = 0; i < 50 && !heading; i++) {
-            heading = newest(/Bluetooth-Gerät auswählen|Choose a Bluetooth device/);
-            if (!heading) await new Promise(r => setTimeout(r, 5));
+        // Look ONLY inside the overlay this call appends. Earlier tests leave
+        // their choosers open in the same body, and matching on text alone
+        // finds one of those instead — then cancelling it rejects a promise
+        // nobody is holding, and the test fails as an unhandled rejection for
+        // a reason that has nothing to do with language. Text matching was
+        // enough locally and not in CI, which is the usual shape of this bug.
+        let mine = null;
+        for (let i = 0; i < 100 && !mine; i++) {
+            if (body.children.length > before) mine = body.children[body.children.length - 1];
+            else await new Promise(r => setTimeout(r, 5));
         }
+        const inMine = pred => (mine ? walk(mine).filter(pred) : []);
+        const heading = inMine(n => /Bluetooth-Gerät auswählen|Choose a Bluetooth device/
+            .test(n.deepText || ''))[0];
         const text = heading ? heading.deepText : '(no chooser appeared)';
-        const cancel = walk(body)
-            .filter(n => n.tagName === 'button' && /^(Abbrechen|Cancel)$/.test(n.deepText))
-            .pop();
+        const cancel = inMine(n => n.tagName === 'button' &&
+            /^(Abbrechen|Cancel)$/.test(n.deepText))[0];
         if (cancel) cancel.click();
         await settled;                   // cancelling rejects with NotFoundError, by design
         delete window.__brickwrightStore;
@@ -443,5 +454,27 @@ describe('the chooser speaks the app\'s language', () => {
         // The chooser can open before the GUI has finished mounting, and
         // reading through a missing store must not throw inside the dialog.
         assert.match(await headingWithLocale(null), /Choose a Bluetooth device/);
+    });
+});
+
+describe('a scan that cannot start does not leave a dialog behind', () => {
+    test('the chooser is taken down when discover fails', async () => {
+        // requestDevice opens the chooser BEFORE it asks for the scan, and
+        // `await picker.promise` sits below the line that throws. So a failed
+        // scan used to leave the dialog on screen attached to a promise nobody
+        // was awaiting: the user got a chooser that never finds anything and
+        // whose Cancel raises an unhandled rejection instead of closing it.
+        const before = body.children.length;
+        native.refuse.add('discover');
+        try {
+            await assert.rejects(
+                navigator.bluetooth.requestDevice({filters: [{services: [BOOST_SERVICE]}]}),
+                /refused the scan|could not be started/
+            );
+            assert.equal(body.children.length, before,
+                'the chooser must be removed from the document, not merely rejected');
+        } finally {
+            native.refuse.delete('discover');
+        }
     });
 });
