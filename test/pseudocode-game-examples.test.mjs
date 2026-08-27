@@ -1239,11 +1239,21 @@ test('lunar dash and rocket thrust consume resources in the live Scratch VM', as
         for (let i = 0; i < 4; i++) coil.runtime._step();
         coil.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
         const beforeY = Number(value(coil, 'headY').value);
+        const beforeOxygen = Number(value(coil, 'oxygen').value);
         coil.postIOData('keyboard', {key: ' ', isDown: true});
-        for (let i = 0; i < 4; i++) coil.runtime._step();
+        // vm.start() also owns a real-time stepping interval. Four immediate
+        // manual steps raced that interval on a loaded CI runner and could
+        // inspect oxygen before the key hat had run. Observe the authored
+        // transition with a hard bound; still require exactly one unit, so a
+        // repeated or missing dash cannot make this test green.
+        for (let i = 0; i < 20 && Number(value(coil, 'oxygen').value) === beforeOxygen; i++) {
+            coil.runtime._step();
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
         coil.postIOData('keyboard', {key: ' ', isDown: false});
         assert.equal(Number(value(coil, 'dirY').value), 1, 'Up did not turn the coil north');
-        assert.equal(Number(value(coil, 'oxygen').value), 4, 'dash did not spend exactly one oxygen');
+        assert.equal(Number(value(coil, 'oxygen').value), beforeOxygen - 1,
+            'dash did not spend exactly one oxygen');
         assert.ok(Number(value(coil, 'headY').value) > beforeY, 'dash did not advance an extra grid cell');
         assert.ok(value(coil, 'trailX').value.length > 0, 'movement did not record a renderable trail');
     } finally { coil.quit(); clearStrayTimers(); }
