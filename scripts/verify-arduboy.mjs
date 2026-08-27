@@ -141,25 +141,27 @@ try {
         `${lit} lit pixels of 8192`);
     check('and it is a picture, not a filled screen', lit > 0 && lit < 7000, `${lit} lit`);
 
-    // The screen has to keep changing: one frame then a freeze is exactly
-    // what a stalled boot looks like, and it would pass the check above.
-    const first = await page.evaluate(() => {
+    // Liveness, done properly. "The image changed on its own" is NOT the
+    // test: this game's title screen is legitimately static until you press
+    // something, so that check failed on a console that was running fine.
+    // What distinguishes alive from frozen is that INPUT reaches the
+    // program and the picture answers — which also makes the buttons a real
+    // check rather than "clicking did not throw".
+    const screen = () => page.evaluate(() => {
         const c = document.querySelector('[data-testid="bw-arduboy-screen"]');
-        return c.toDataURL().length;
+        return c ? c.toDataURL() : '';
     });
-    await page.waitForTimeout(1500);
-    const moved = await page.evaluate(prev => {
-        const c = document.querySelector('[data-testid="bw-arduboy-screen"]');
-        return c.toDataURL().length !== prev;
-    }, first);
-    check('the console keeps running, not one frame and a freeze', moved,
-        moved ? '' : 'the canvas never changed again');
-
-    // Buttons: the pane must hand them to the program.
+    const before = await screen();
     const button = page.locator('[data-testid="bw-arduboy-a"]');
     check('the A button is on screen', await button.count() > 0);
+
     await button.click();
-    check('pressing a button does not throw', true);
+    await page.waitForTimeout(200);
+    await button.click();
+    const after = await waitFor(screen, image => image !== before, 15000);
+    check('a button press reaches the running program and the screen answers',
+        after !== before,
+        after === before ? 'the picture never changed — a frozen console looks like this' : '');
 
     check('pause stops the console', await page.locator('[data-testid="bw-arduboy-pause"]').count() > 0);
 } catch (e) {

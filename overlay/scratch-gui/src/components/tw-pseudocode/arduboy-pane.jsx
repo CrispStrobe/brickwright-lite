@@ -32,6 +32,18 @@ const LABEL = {up: '▲', down: '▼', left: '◀', right: '▶', a: 'A', b: 'B'
  */
 const MAX_STEP_MS = 50;
 
+/**
+ * How long a press is held for, at minimum.
+ *
+ * The game polls its buttons once a frame. A finger on real hardware is
+ * down for a tenth of a second and cannot be missed; a mouse click is
+ * about ten milliseconds and falls between two polls, so a quick tap does
+ * nothing at all. Releases are deferred to this floor — which is not a
+ * fudge for the tests, it is the difference between the buttons working
+ * and only working if you hold them.
+ */
+const MIN_PRESS_MS = 120;
+
 const isGerman = () => /^de/i.test(
     (typeof navigator === 'undefined' ? '' : navigator.language) || '');
 
@@ -60,6 +72,8 @@ class ArduboyPane extends React.Component {
         this.imageData = null;
         this.rafHandle = null;
         this.lastTime = 0;
+        this.pressedAt = Object.create(null);
+        this.releaseTimers = Object.create(null);
 
         this.onLoadEvent = this.onLoadEvent.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -86,6 +100,8 @@ class ArduboyPane extends React.Component {
         window.removeEventListener('bw-arduboy-load', this.onLoadEvent);
         window.removeEventListener('keydown', this.onKeyDown);
         window.removeEventListener('keyup', this.onKeyUp);
+        for (const timer of Object.values(this.releaseTimers)) clearTimeout(timer);
+        this.releaseTimers = Object.create(null);
         this.stop();
     }
 
@@ -166,6 +182,30 @@ class ArduboyPane extends React.Component {
     }
 
     setButton (button, down) {
+        if (!this.console) return;
+        if (down) {
+            this.pressedAt[button] = Date.now();
+            if (this.releaseTimers[button]) {
+                clearTimeout(this.releaseTimers[button]);
+                delete this.releaseTimers[button];
+            }
+        } else {
+            const heldFor = Date.now() - (this.pressedAt[button] || 0);
+            if (heldFor < MIN_PRESS_MS) {
+                // Let go later, so the game gets a chance to look.
+                this.releaseTimers[button] = setTimeout(
+                    () => {
+                        delete this.releaseTimers[button];
+                        this.applyButton(button, false);
+                    },
+                    MIN_PRESS_MS - heldFor);
+                return;
+            }
+        }
+        this.applyButton(button, down);
+    }
+
+    applyButton (button, down) {
         if (!this.console) return;
         this.console.setButton(button, down);
         this.setState(prev => ({held: {...prev.held, [button]: down}}));
