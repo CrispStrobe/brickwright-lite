@@ -169,6 +169,21 @@ The one real loss in that direction: our patterns carry brightness 0-9
 and MakeCode's display literals are on/off, so a dimmed pattern exports
 flattened — and says so.
 
+A sprite's `width`/`height` are constants: the importer decoded the
+picture to build the costume, so the bounds arithmetic a game writes is
+exact rather than estimated, and `left`/`right`/`top`/`bottom` follow.
+Trigonometry converts units — MakeCode's `Math.cos` takes radians and the
+block takes degrees, and reading one as the other is wrong in a way that
+still runs.
+
+**Velocity is the one cross-sprite write that lands.** `vx`/`vy` already
+live in a shared variable that the owning sprite's motion loop reads, so
+another script setting it is exact and immediate. Position is not so
+lucky: only a sprite can move itself. Scratch's idiom for the rest would
+be a shared variable plus a broadcast — which works, one frame later, and
+that difference is why it is a refusal here rather than a silent
+approximation.
+
 ## The round trip is the test
 
 `test/makecode-export.test.mjs` takes each shipped micro:bit example,
@@ -181,6 +196,23 @@ and nowhere else.
 The one legitimate difference: `show text` leaves as `basic.showString`
 and comes back as `scroll text`, because MakeCode has no non-scrolling
 string block.
+
+## The imported game RUNS
+
+Compiling is a parse-level claim, and this repo's bar is higher — a
+project can compile into blocks that start no thread and change nothing.
+`test/makecode-arcade-runs.test.mjs` packages each translated game as a
+real `.sb3`, loads it into the real Scratch VM with lite's real
+extensions, pulls the green flag and steps it: threads must start, blocks
+must survive packaging, something must change, and the VM must report no
+block errors.
+
+Three real games pass, including the pong whose cross-sprite work is
+mostly refused — what is left still has to be a program, not a shell that
+throws.
+
+The device referee in `trace-oracle.js` cannot do this job: it models
+hardware programs and refuses motion/looks/sensing outright.
 
 ## The labwired revision
 

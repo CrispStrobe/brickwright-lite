@@ -460,6 +460,23 @@ class ArcadeTranslator extends BaseTranslator {
             const owner = this.resolveSprite(expr.left.object);
             if (owner) {
                 const property = expr.left.name;
+                // Velocity is the exception, and it costs nothing: vx and vy
+                // already live in a shared variable that the owning sprite's
+                // motion loop reads every frame, so ANOTHER script setting it
+                // is exact and immediate — no broadcast, no frame of lag, and
+                // it is what the game meant. Position is not so lucky: only
+                // the sprite itself can be moved, which is why that stays a
+                // refusal rather than becoming a broadcast behind your back.
+                if (property === 'vx' || property === 'vy') {
+                    owner.velocity = true;
+                    const variable = `${owner.name}_${property}`;
+                    this.declared.add(variable);
+                    if (expr.op === '=') push(`set ${variable} to ${this.expr(expr.right)}`);
+                    else if (expr.op === '+=') push(`change ${variable} by ${this.expr(expr.right)}`);
+                    else if (expr.op === '-=') push(`change ${variable} by (0 - ${this.expr(expr.right)})`);
+                    else push(`set ${variable} to ${variable} ${expr.op[0]} ${this.expr(expr.right)}`);
+                    return;
+                }
                 if (owner !== this.self) {
                     push(this.note(`${owner.name}.${property} = … — a script can only change its own sprite`));
                     return;
@@ -472,14 +489,6 @@ class ArcadeTranslator extends BaseTranslator {
                         const negate = !isX && expr.op === '+=';
                         push(`change ${isX ? 'x' : 'y'} by ${this.stageLength(expr.right, {negate: negate})}`);
                     }
-                    return;
-                }
-                if (property === 'vx' || property === 'vy') {
-                    owner.velocity = true;
-                    const variable = `${owner.name}_${property}`;
-                    this.declared.add(variable);
-                    if (expr.op === '=') push(`set ${variable} to ${this.expr(expr.right)}`);
-                    else push(`change ${variable} by ${this.expr(expr.right)}`);
                     return;
                 }
                 push(this.note(`sprite.${property} = …`));
