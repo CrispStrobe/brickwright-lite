@@ -63,6 +63,14 @@ test('only quality-approved new games are wired into the visible examples galler
     for (const name of EXPECTED.filter(name => !approved.has(name))) {
         assert.doesNotMatch(importer, new RegExp(`\\['${name}',`), `${name}: unaudited prototype is public`);
     }
+    const archivedPrototypes = [
+        'snake', 'snake_pro', 'breakout', 'pong_2p', 'pong_ai', 'tetris', 'sokoban', 'bomberman',
+        'invaders', 'flappy', 'tictactoe', 'tictactoe_ai', 'maze', 'connect4', 'minesweeper'
+    ];
+    for (const name of archivedPrototypes) {
+        assert.doesNotMatch(importer, new RegExp(`\\['${name}',`),
+            `${name}: archived mechanics prototype leaked into the finished Games gallery`);
+    }
     assert.match(importer, /\.\.\.gameExamples/, 'game module is not merged into the gallery examples');
 });
 
