@@ -648,6 +648,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachStm32F0Target(built);
         }
 
+        // The heavy tier. Only offered when its engine actually loaded (the
+        // picker probes first), and it runs the SAME flash image as the light
+        // tier above — only the engine underneath differs.
+        if (selectedTargetKind === 'labwired') {
+            return attachLabwiredTarget(built);
+        }
+
         if (selectedTargetKind === 'rp2040js') {
             return attachRp2040js(built);
         }
@@ -949,6 +956,80 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         });
 
         setStatus('ready', `${built.bytes} bytes (Pico), ${blockOf.size} yield points`);
+        return session;
+    }
+
+    /** STM32F030 on the HEAVY tier (labwired-wasm).
+     *
+     *  Same board and the same raw flash image as attachStm32F0Target — the
+     *  program is identical, only the engine underneath differs. That is the
+     *  point of the two-tier split in STM32-PATH.md: the light tier is the
+     *  hand-rolled CortexM0Machine with its peripheral set capped at what our
+     *  codegen emits, and this is what a project runs on when it needs more.
+     *
+     *  Two things this path does that the light one does not:
+     *
+     *  1. It fetches a 20 MB engine on first use. `loadLabwired()` returns null
+     *     rather than throwing when the artifact was never deployed, so the
+     *     failure here is a clear message, not a broken panel — and the picker
+     *     should not have offered the kind at all in that case.
+     *  2. It wraps the flash image in an ELF. labwired's ARM path ends in
+     *     `load_elf_bytes` and takes nothing else, while everything we compile
+     *     is a raw image; the adapter does the wrapping. The cost is symbols:
+     *     there are none in a .bin, so no source lines and no yield points.
+     */
+    async function attachLabwiredTarget (built) {
+        setStatus('attaching', 'starting the labwired engine…');
+        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist, STM32F0 } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+        const { loadLabwired } = await import(
+            /* webpackChunkName: "labwired-probe" */ '../labwired-engine.js');
+
+        const wasm = await loadLabwired();
+        if (!wasm) {
+            throw new Error('the labwired engine is not available in this build' +
+                (loadLabwired.lastError ? ` (${loadLabwired.lastError})` : '') +
+                '. Run `npm run sync:labwiredwasm` and rebuild, or pick another engine.');
+        }
+
+        const stc = projectStc(null);
+        const clockHz = built.f_cpu || built.clockHz || STM32F0.clockHz;
+
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
+        board = new BoardImpl(3.3);
+        board.setNetlist(netlist.parts, netlist.nets);
+        board.setPower(true);
+        if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
+
+        const program = built.image instanceof Uint8Array ? built.image : null;
+        if (!program) throw new Error('the STM32F030 build produced no flash image');
+
+        const { target: lwTarget, adapter: lwAdapter } = await createDebugTarget('labwired', {
+            wasm, board, firmware: program,
+            chipYaml: STM32F0.chipYaml, pins: STM32F0.pins, clockHz,
+        });
+
+        if (lwAdapter && lwAdapter.onSerial) {
+            let lineBuf = '';
+            serialLines = [];
+            lwAdapter.onSerial((byte) => {
+                const ch = String.fromCharCode(byte);
+                if (ch === '\n') {
+                    serialLines.push(lineBuf);
+                    lineBuf = '';
+                    if (serialLines.length > 200) serialLines.shift();
+                } else if (ch !== '\r') {
+                    lineBuf += ch;
+                }
+            });
+        }
+
+        const session = createDebugSession(lwTarget);
+        // No symbols: a raw image carries none, so the block/yield machinery
+        // the other tiers use has nothing to work from. Said in the status
+        // line rather than left for the user to infer from a greyed button.
+        setStatus('ready', `${program.length} bytes on labwired — instruction stepping only (no symbols)`);
         return session;
     }
 
