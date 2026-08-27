@@ -3713,9 +3713,9 @@ SPRITE EnergyCell:
         wait 0.5 seconds
       wait 0.02 seconds`,
 
-    thunder_volley: `# Thunder Volley — jump, block, and spike against a reactive storm rival.
-# Left/Right move, Up jumps, Space spikes when the ball is close. The first side to seven
-# wins; long rallies accelerate the ball and make the rival anticipate earlier.
+    thunder_volley: `# Skycourt Surge — an aerial volleyball duel against a storm rival.
+# GOAL: score seven points before Nimbus does; the ball accelerates through long rallies.
+# CONTROLS: Left/Right move, Up jumps, Space spikes when the ball is within reach.
 GLOBAL playerPoints
 GLOBAL rivalPoints
 GLOBAL rally
@@ -3729,14 +3729,27 @@ GLOBAL ballX
 GLOBAL ballY
 GLOBAL ballVX
 GLOBAL ballVY
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art skycourt-surge/intro
+  BACKDROP court art skycourt-surge/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable playerPoints
+    hide variable rivalPoints
+    hide variable rally
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to court
+      broadcast "serve skycourt"
 
 SPRITE Volt:
-  SHAPE circle 38 #4edcff
+  SHAPE art skycourt-surge/volt
   SOUND spike 720
   WHEN flag clicked:
-    show variable playerPoints
-    show variable rivalPoints
-    show variable rally
     set playerPoints to 0
     set rivalPoints to 0
     set rally to 0
@@ -3744,8 +3757,12 @@ SPRITE Volt:
     set playerY to -125
     set playerVY to 0
     go to x: playerX y: playerY
+    hide
+  WHEN I receive "serve skycourt":
+    show variable playerPoints
+    show variable rivalPoints
+    show variable rally
     show
-  WHEN flag clicked:
     FOREVER:
       IF key left arrow pressed? THEN:
         change playerX by -5
@@ -3762,29 +3779,31 @@ SPRITE Volt:
         set playerVY to 0
       go to x: playerX y: playerY
       IF playerPoints > 6 THEN:
-        say "Thunder court champion!" for 3 seconds
+        say "SKYCOURT CHAMPION — SEVEN POINTS!" for 4 seconds
         stop all
       IF rivalPoints > 6 THEN:
-        say "The storm rival wins." for 3 seconds
+        say "NIMBUS TAKES THE COURT" for 4 seconds
         stop all
       wait 0.02 seconds
   WHEN up arrow key pressed:
-    IF playerY = -125 THEN:
+    IF started = 1 and playerY = -125 THEN:
       set playerVY to 12
   WHEN space key pressed:
-    IF touching StormBall THEN:
+    IF started = 1 and touching StormBall THEN:
       set ballVX to 8 + rally / 3
       set ballVY to -3
       change rally by 1
       play sound "spike"
 
 SPRITE Nimbus:
-  SHAPE circle 40 #ff5b8f
+  SHAPE art skycourt-surge/nimbus
   WHEN flag clicked:
     set rivalX to 135
     set rivalY to -125
     set rivalVY to 0
     go to x: rivalX y: rivalY
+    hide
+  WHEN I receive "serve skycourt":
     show
     FOREVER:
       IF ballX > 15 THEN:
@@ -3807,7 +3826,7 @@ SPRITE Nimbus:
       wait 0.02 seconds
 
 SPRITE StormBall:
-  SHAPE circle 24 #fff277
+  SHAPE art skycourt-surge/ball
   SOUND point 960
   WHEN flag clicked:
     set ballX to -80
@@ -3815,6 +3834,8 @@ SPRITE StormBall:
     set ballVX to 5
     set ballVY to 5
     go to x: ballX y: ballY
+    hide
+  WHEN I receive "serve skycourt":
     show
     FOREVER:
       change ballVY by -0.38
@@ -3849,49 +3870,92 @@ SPRITE StormBall:
       wait 0.02 seconds
 
 SPRITE ThunderNet:
-  SHAPE rect 14 110 #a9b7d8
+  SHAPE art skycourt-surge/net
   WHEN flag clicked:
     go to x: 0 y: -90
+    hide
+  WHEN I receive "serve skycourt":
     show`,
 
-    cascade_pair: `# Cascade Pair — steer falling color pairs into four reactor columns.
-# Left/Right selects a column, Up swaps the pair, Space drops. Four equal colors on top
-# clear together; consecutive clears raise the combo. Overflow any column and the reactor melts.
+    cascade_pair: `# Chromafall Reactor — a visible four-column color fusion puzzle.
+# GOAL: ignite six four-color fusions before any reactor column reaches ten cells.
+# CONTROLS: Left/Right choose a column, Up swaps the pair, Space locks both cells.
+# Match four equal colors at a column's top; consecutive fusions multiply the score.
 GLOBAL score
 GLOBAL combo
+GLOBAL clears
 GLOBAL column
 GLOBAL colorA
 GLOBAL colorB
 GLOBAL overflow
 GLOBAL falls
+GLOBAL started
+GLOBAL dropReady
+GLOBAL i
+GLOBAL topA
+GLOBAL topB
+GLOBAL topC
+GLOBAL topD
+GLOBAL runA
+GLOBAL runB
+GLOBAL runC
+GLOBAL runD
 LIST colA
 LIST colB
 LIST colC
 LIST colD
 
+STAGE:
+  BACKDROP intro art chromafall-reactor/intro
+  BACKDROP board art chromafall-reactor/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable combo
+    hide variable clears
+    hide variable column
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to board
+      broadcast "ignite chromafall"
+
 SPRITE PairPilot:
-  SHAPE rect 42 22 #55ddff
-  COSTUME second rect 42 22 #ff66b3
+  SHAPE art chromafall-reactor/selector
   SOUND clear 980
   SOUND drop 420
   WHEN flag clicked:
-    show variable score
-    show variable combo
-    show variable column
     set score to 0
     set combo to 1
+    set clears to 0
     set column to 2
     set colorA to pick random 1 to 4
     set colorB to pick random 1 to 4
     set overflow to 0
     set falls to 0
+    set dropReady to 0
+    set topA to 0
+    set topB to 0
+    set topC to 0
+    set topD to 0
+    set runA to 0
+    set runB to 0
+    set runC to 0
+    set runD to 0
     delete all of colA
     delete all of colB
     delete all of colC
     delete all of colD
     go to x: -180 + column * 72 y: 130
+    hide
+  WHEN I receive "ignite chromafall":
+    show variable score
+    show variable combo
+    show variable clears
+    show variable column
     show
-  WHEN flag clicked:
+    set dropReady to 1
     FOREVER:
       IF key left arrow pressed? THEN:
         change column by -1
@@ -3904,116 +3968,199 @@ SPRITE PairPilot:
       IF column > 4 THEN:
         set column to 4
       go to x: -180 + column * 72 y: 130
-      set color effect to colorA * 35
       IF overflow = 1 THEN:
-        say ("Cascade score: " join score) for 3 seconds
+        say ("REACTOR OVERLOAD — SCORE " join score) for 4 seconds
+        stop all
+      IF clears = 6 THEN:
+        say ("SIX FUSIONS STABLE — SCORE " join score) for 4 seconds
         stop all
       wait 0.02 seconds
   WHEN up arrow key pressed:
-    set falls to colorA
-    set colorA to colorB
-    set colorB to falls
+    IF started = 1 THEN:
+      set falls to colorA
+      set colorA to colorB
+      set colorB to falls
   WHEN space key pressed:
-    broadcast "drop pair" and wait
-    set colorA to pick random 1 to 4
-    set colorB to pick random 1 to 4
+    IF started = 1 and dropReady = 1 THEN:
+      set dropReady to 0
+      broadcast "drop pair" and wait
+      set colorA to pick random 1 to 4
+      set colorB to pick random 1 to 4
+      set dropReady to 1
 
-SPRITE ReactorLogic:
-  SHAPE circle 8 #20263f
-  SOUND clear 980
-  SOUND drop 420
+SPRITE PreviewA:
+  SHAPE art chromafall-reactor/block1
+  COSTUME block1 art chromafall-reactor/block1
+  COSTUME block2 art chromafall-reactor/block2
+  COSTUME block3 art chromafall-reactor/block3
+  COSTUME block4 art chromafall-reactor/block4
   WHEN flag clicked:
     hide
+  WHEN I receive "ignite chromafall":
+    show
+    FOREVER:
+      switch costume to ("block" join colorA)
+      go to x: -180 + column * 72 y: 105
+      wait 0.03 seconds
+
+SPRITE PreviewB:
+  SHAPE art chromafall-reactor/block1
+  COSTUME block1 art chromafall-reactor/block1
+  COSTUME block2 art chromafall-reactor/block2
+  COSTUME block3 art chromafall-reactor/block3
+  COSTUME block4 art chromafall-reactor/block4
+  WHEN flag clicked:
+    hide
+  WHEN I receive "ignite chromafall":
+    show
+    FOREVER:
+      switch costume to ("block" join colorB)
+      go to x: -180 + column * 72 y: 75
+      wait 0.03 seconds
+
+SPRITE ReactorLogic:
+  SHAPE art chromafall-reactor/block1
+  COSTUME block1 art chromafall-reactor/block1
+  COSTUME block2 art chromafall-reactor/block2
+  COSTUME block3 art chromafall-reactor/block3
+  COSTUME block4 art chromafall-reactor/block4
+  SOUND clear 980
+  SOUND drop 420
+
+  DEFINE FAST render reactor:
+    clear
+    set i to 1
+    REPEAT length of colA:
+      switch costume to ("block" join item i of colA)
+      go to x: -108 y: -140 + i * 25
+      stamp
+      change i by 1
+    set i to 1
+    REPEAT length of colB:
+      switch costume to ("block" join item i of colB)
+      go to x: -36 y: -140 + i * 25
+      stamp
+      change i by 1
+    set i to 1
+    REPEAT length of colC:
+      switch costume to ("block" join item i of colC)
+      go to x: 36 y: -140 + i * 25
+      stamp
+      change i by 1
+    set i to 1
+    REPEAT length of colD:
+      switch costume to ("block" join item i of colD)
+      go to x: 108 y: -140 + i * 25
+      stamp
+      change i by 1
+
+  WHEN flag clicked:
+    hide
+    clear
   WHEN I receive "drop pair":
     IF column = 1 THEN:
       add colorA to colA
+      IF colorA = topA THEN:
+        change runA by 1
+      ELSE:
+        set topA to colorA
+        set runA to 1
       add colorB to colA
-      IF length of colA > 3 and item (length of colA) of colA = item ((length of colA) - 1) of colA and item (length of colA) of colA = item ((length of colA) - 2) of colA and item (length of colA) of colA = item ((length of colA) - 3) of colA THEN:
+      IF colorB = topA THEN:
+        change runA by 1
+      ELSE:
+        set topA to colorB
+        set runA to 1
+      IF runA > 3 THEN:
         set falls to length of colA
         REPEAT 4:
           delete falls of colA
           change falls by -1
+        set topA to 0
+        set runA to 0
         broadcast "pair clear"
       IF length of colA > 9 THEN:
         set overflow to 1
     IF column = 2 THEN:
       add colorA to colB
+      IF colorA = topB THEN:
+        change runB by 1
+      ELSE:
+        set topB to colorA
+        set runB to 1
       add colorB to colB
-      IF length of colB > 3 and item (length of colB) of colB = item ((length of colB) - 1) of colB and item (length of colB) of colB = item ((length of colB) - 2) of colB and item (length of colB) of colB = item ((length of colB) - 3) of colB THEN:
+      IF colorB = topB THEN:
+        change runB by 1
+      ELSE:
+        set topB to colorB
+        set runB to 1
+      IF runB > 3 THEN:
         set falls to length of colB
         REPEAT 4:
           delete falls of colB
           change falls by -1
+        set topB to 0
+        set runB to 0
         broadcast "pair clear"
       IF length of colB > 9 THEN:
         set overflow to 1
     IF column = 3 THEN:
       add colorA to colC
+      IF colorA = topC THEN:
+        change runC by 1
+      ELSE:
+        set topC to colorA
+        set runC to 1
       add colorB to colC
-      IF length of colC > 3 and item (length of colC) of colC = item ((length of colC) - 1) of colC and item (length of colC) of colC = item ((length of colC) - 2) of colC and item (length of colC) of colC = item ((length of colC) - 3) of colC THEN:
+      IF colorB = topC THEN:
+        change runC by 1
+      ELSE:
+        set topC to colorB
+        set runC to 1
+      IF runC > 3 THEN:
         set falls to length of colC
         REPEAT 4:
           delete falls of colC
           change falls by -1
+        set topC to 0
+        set runC to 0
         broadcast "pair clear"
       IF length of colC > 9 THEN:
         set overflow to 1
     IF column = 4 THEN:
       add colorA to colD
+      IF colorA = topD THEN:
+        change runD by 1
+      ELSE:
+        set topD to colorA
+        set runD to 1
       add colorB to colD
-      IF length of colD > 3 and item (length of colD) of colD = item ((length of colD) - 1) of colD and item (length of colD) of colD = item ((length of colD) - 2) of colD and item (length of colD) of colD = item ((length of colD) - 3) of colD THEN:
+      IF colorB = topD THEN:
+        change runD by 1
+      ELSE:
+        set topD to colorB
+        set runD to 1
+      IF runD > 3 THEN:
         set falls to length of colD
         REPEAT 4:
           delete falls of colD
           change falls by -1
+        set topD to 0
+        set runD to 0
         broadcast "pair clear"
       IF length of colD > 9 THEN:
         set overflow to 1
     change falls by 1
     play sound "drop"
-    IF falls > 2 THEN:
+    render reactor
+    IF falls > 1 THEN:
       set combo to 1
   WHEN I receive "pair clear":
     change score by 40 * combo
     change combo by 1
+    change clears by 1
     set falls to 0
-    play sound "clear"
-
-SPRITE ColumnA:
-  SHAPE rect 36 18 #5be3ff
-  WHEN flag clicked:
-    go to x: -108 y: -120
-    show
-    FOREVER:
-      set size to 30 + length of colA * 10 %
-      wait 0.03 seconds
-
-SPRITE ColumnB:
-  SHAPE rect 36 18 #ff5fbd
-  WHEN flag clicked:
-    go to x: -36 y: -120
-    show
-    FOREVER:
-      set size to 30 + length of colB * 10 %
-      wait 0.03 seconds
-
-SPRITE ColumnC:
-  SHAPE rect 36 18 #ffe05c
-  WHEN flag clicked:
-    go to x: 36 y: -120
-    show
-    FOREVER:
-      set size to 30 + length of colC * 10 %
-      wait 0.03 seconds
-
-SPRITE ColumnD:
-  SHAPE rect 36 18 #7cff71
-  WHEN flag clicked:
-    go to x: 108 y: -120
-    show
-    FOREVER:
-      set size to 30 + length of colD * 10 %
-      wait 0.03 seconds`,
+    play sound "clear"`,
 
     mooncoil_odyssey: `# Mooncoil Odyssey — grow a rover-snake across a cratered lunar grid.
 # Arrow keys steer. Collect moonfruit to lengthen the list-backed trail; avoid the roaming

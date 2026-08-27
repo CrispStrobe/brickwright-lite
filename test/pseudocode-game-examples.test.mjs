@@ -52,7 +52,7 @@ test('only quality-approved new games are wired into the visible examples galler
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
         'whisker_switch', 'spiral_circuit', 'lilyway_rescue', 'rotor_rogue', 'prism_spire', 'shard_sheriff',
-        'halo_foundry', 'corridor_kestrel'
+        'halo_foundry', 'corridor_kestrel', 'thunder_volley', 'cascade_pair'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -518,6 +518,43 @@ test('Carrier Kestrel has inertial flight, finite shields, and a fifteen-gate fi
     assert.ok(svgs.some(svg => svg.includes('CARRIER KESTREL')));
     assert.ok(svgs.some(svg => svg.includes('CLEAR 15 MOVING APERTURES')));
     assert.ok(svgs.some(svg => svg.includes('ARROWS ADD DRIFT')));
+});
+
+test('Skycourt Surge teaches its seven-point aerial duel and accelerates long rallies', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.thunder_volley);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.thunder_volley, /GOAL: score seven points before Nimbus does/);
+    assert.match(games.thunder_volley, /CONTROLS: Left\/Right move, Up jumps, Space spikes/);
+    assert.match(games.thunder_volley, /set ballVX to 8 \+ rally \/ 3/);
+    assert.match(games.thunder_volley, /IF playerPoints > 6 THEN:/);
+    assert.match(games.thunder_volley, /IF rivalPoints > 6 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('SKYCOURT SURGE')));
+    assert.ok(svgs.some(svg => svg.includes('SCORE 7 BEFORE THE STORM RIVAL')));
+    assert.ok(svgs.some(svg => svg.includes('SPACE SPIKES IN REACH')));
+});
+
+test('Chromafall Reactor renders every list cell and has a deterministic six-fusion goal', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.cascade_pair);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.cascade_pair, /GOAL: ignite six four-color fusions before any reactor column reaches ten cells/);
+    assert.match(games.cascade_pair, /DEFINE FAST render reactor:/);
+    assert.match(games.cascade_pair, /switch costume to \("block" join item i of colA\)/);
+    assert.match(games.cascade_pair, /IF runB > 3 THEN:/);
+    assert.match(games.cascade_pair, /change clears by 1/);
+    assert.match(games.cascade_pair, /IF clears = 6 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'board']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('CHROMAFALL REACTOR')));
+    assert.ok(svgs.some(svg => svg.includes('MAKE 6 FUSIONS')));
+    assert.ok(svgs.some(svg => svg.includes('MATCH 4 EQUAL COLORS')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -1083,6 +1120,53 @@ test('orbital shield and inertial drone controls work in the live Scratch VM', a
         assert.equal(Number(value(kestrel, 'shield').value), 1, 'Space did not engage the battery shield');
         assert.equal(Number(value(kestrel, 'gates').value), 0, 'run began with phantom gates');
     } finally { kestrel.quit(); clearStrayTimers(); }
+});
+
+test('aerial movement and deterministic color fusion work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator(); creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start(); vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        await new Promise(resolve => setTimeout(resolve, 250));
+        for (let i = 0; i < 10; i++) vm.runtime._step();
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const skycourt = await load(games.thunder_volley);
+    try {
+        skycourt.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
+        skycourt.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 8; i++) skycourt.runtime._step();
+        skycourt.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
+        skycourt.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.ok(Number(value(skycourt, 'playerX').value) > -130, 'Right did not move Volt');
+        assert.ok(Number(value(skycourt, 'playerY').value) > -125, 'Up did not launch Volt');
+        assert.equal(Number(value(skycourt, 'playerPoints').value), 0, 'court began with phantom points');
+    } finally { skycourt.quit(); clearStrayTimers(); }
+
+    const reactor = await load(games.cascade_pair);
+    try {
+        for (let drop = 0; drop < 2; drop++) {
+            value(reactor, 'colorA').value = 1;
+            value(reactor, 'colorB').value = 1;
+            reactor.postIOData('keyboard', {key: ' ', isDown: true});
+            for (let i = 0; i < 15; i++) reactor.runtime._step();
+            reactor.postIOData('keyboard', {key: ' ', isDown: false});
+            await new Promise(resolve => setTimeout(resolve, 140));
+            for (let i = 0; i < 15; i++) reactor.runtime._step();
+        }
+        assert.deepEqual(value(reactor, 'colB').value, [], 'four matching cells did not leave the lane');
+        assert.equal(Number(value(reactor, 'clears').value), 1, 'four matching cells did not count as a fusion');
+        assert.equal(Number(value(reactor, 'score').value), 40, 'first fusion did not score its base value');
+        assert.equal(Number(value(reactor, 'combo').value), 2, 'fusion did not grow the combo multiplier');
+    } finally { reactor.quit(); clearStrayTimers(); }
 });
 
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
