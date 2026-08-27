@@ -709,7 +709,8 @@ SPRITE Foundry:
     drop core`,
 
     missile_ballet: `# Contrail Panic — a mouse-steering survival game.
-# GOAL: cross the paths of homing missiles so they crash into each other.
+# GOAL: force the homing missiles across each other's paths and destroy twenty-four
+# of them before your emergency shield is exhausted.
 # CONTROLS: move the mouse to steer. Collect a gold beacon to restore your shield.
 GLOBAL score
 GLOBAL shield
@@ -718,6 +719,7 @@ GLOBAL spawnx
 GLOBAL spawny
 GLOBAL alive
 GLOBAL scrambleStarted
+GLOBAL missiles
 
 STAGE:
   BACKDROP intro art contrail-panic/intro
@@ -727,11 +729,19 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable shield
+    hide variable missiles
   WHEN space key pressed:
     IF scrambleStarted = 0 THEN:
       set scrambleStarted to 1
       switch backdrop to scramble
       broadcast "scramble"
+  WHEN I receive "missile destroyed":
+    change missiles by 1
+    change score by 5
+    IF missiles > 23 THEN:
+      set alive to 0
+      say ("AIRSPACE CLEARED — SCORE " join score) for 4 seconds
+      stop all
 
 SPRITE Jet:
   SHAPE art contrail-panic/jet
@@ -741,11 +751,13 @@ SPRITE Jet:
     set shield to 1
     set tempo to 1.5
     set alive to 1
+    set missiles to 0
     go to x: 0 y: 0
     hide
   WHEN I receive "scramble":
     show variable score
     show variable shield
+    show variable missiles
     show
     FOREVER:
       IF alive = 1 THEN:
@@ -757,7 +769,7 @@ SPRITE Jet:
           wait 0.6 seconds
           IF shield < 0 THEN:
             set alive to 0
-            say ("Final dance: " join score) for 3 seconds
+            say ("SHIELD LOST — SCORE " join score) for 3 seconds
             stop all
       wait 0.02 seconds
 
@@ -783,7 +795,7 @@ SPRITE Rocket:
       turn right pick random -5 to 5 degrees
       move 4 steps
       IF touching Rocket THEN:
-        change score by 2
+        broadcast "missile destroyed"
         play sound "boom"
         delete this clone
       wait 0.025 seconds

@@ -196,15 +196,47 @@ test('second quality-approved game explains and renders its collision strategy',
     const project = creator.parse(games.missile_ballet);
     assert.deepEqual(creator.errors, []);
     assert.deepEqual(creator.warnings, []);
-    assert.match(games.missile_ballet, /GOAL: cross the paths of homing missiles/);
+    assert.match(games.missile_ballet, /GOAL: force the homing missiles across each other's paths/);
     assert.match(games.missile_ballet, /CONTROLS: move the mouse to steer/);
     assert.match(games.missile_ballet, /WHEN space key pressed:/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'scramble']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('CONTRAIL PANIC')));
-    assert.ok(svgs.some(svg => svg.includes('MAKE THE HOMING MISSILES HIT EACH OTHER')));
+    assert.ok(svgs.some(svg => svg.includes('DESTROY 24 HOMING MISSILES')));
     assert.ok(svgs.some(svg => svg.includes('CROSS THEIR PATHS')));
+    assert.match(games.missile_ballet, /change missiles by 1/);
+    assert.match(games.missile_ballet, /IF missiles > 23 THEN:/);
+    assert.match(games.missile_ballet, /AIRSPACE CLEARED/);
+});
+
+test('Contrail Panic ends when the final missile is destroyed in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.missile_ballet);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 25; i++) vm.runtime._step();
+        const values = Object.values(vm.runtime.getTargetForStage().variables);
+        const value = name => values.find(variable => variable.name === name);
+        value('missiles').value = 23;
+        value('score').value = 80;
+        value('alive').value = 1;
+
+        vm.runtime.startHats('event_whenbroadcastreceived', {
+            BROADCAST_OPTION: 'missile destroyed'
+        });
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+
+        assert.equal(Number(value('missiles').value), 24);
+        assert.equal(Number(value('score').value), 85);
+        assert.equal(Number(value('alive').value), 0, 'the extraction target did not end the run');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
 });
 
 test('Aegis Arc makes its circular defense state visible and start-gated', () => {
@@ -1436,7 +1468,8 @@ test('each new game keeps its signature playable mechanic', () => {
         chroma_code: [/GLOBAL LIST secret/, /set exact to 0/, /set near to 0/,
             /WHEN sprite clicked:/, /add gemValue to guess/],
         fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/],
-        missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/],
+        missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/,
+            /change missiles by 1/, /IF missiles > 23 THEN:/],
         orbit_ward: [/sin of angle/, /cos of angle/, /REPEAT 8/, /IF touching Shield/],
         rooftop_relay: [/set vy to 12/, /switch costume to slide/, /set overdrive to 0/],
         twinwall: [/SPRITE LeftWall/, /SPRITE RightWall/, /set bricks to 24/, /change score by rally/],
