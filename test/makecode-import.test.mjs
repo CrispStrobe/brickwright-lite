@@ -218,10 +218,13 @@ test('the router sends each artefact to the right outcome', async () => {
     const mb = await importArtefact(fixture('microbit-blocks.hex'), {name: 'microbit-blocks.hex'});
     assert.equal(mb.kind, 'makecode');
     assert.equal(mb.project.target, 'microbit');
-    assert.equal(mb.lang, 'javascript');
+    assert.equal(mb.lang, 'pseudocode', 'a micro:bit project goes all the way to blocks');
+    assert.match(mb.code, /^DEVICE MICROBIT/);
+    assert.match(mb.source, /basic\.forever/, 'the TypeScript is kept beside the translation');
 
     const arcade = await importArtefact(fixture('arcade-shield.hex'), {name: 'arcade-shield.hex'});
     assert.equal(arcade.project.target, 'arcade');
+    assert.equal(arcade.lang, 'javascript', 'Arcade stops at its source — the machine is not one we have');
     assert.equal(arcade.note, 'arcade', 'so the UI can say what it cannot do with it');
 });
 

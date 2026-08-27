@@ -29,12 +29,15 @@ import {
 } from './embedded-source.js';
 import {decodePng} from './png.js';
 import {extractMicroPython} from './micropython-hex.js';
+import {microbitToPseudocode} from './microbit-translate.js';
 
 export {sniffFormat, unpackMakeCodeSource, describeProject} from './embedded-source.js';
 export {decodePng} from './png.js';
 export {extractMicroPython} from './micropython-hex.js';
 export {lzmaDecode} from './lzma.js';
 export {parseShareId, fetchSharedProject} from './share.js';
+export {microbitToPseudocode} from './microbit-translate.js';
+export {parseMakeCodeTs} from './ts-import.js';
 
 export {IMPORT_ACCEPT, isImportableArtefact} from './accept.js';
 
@@ -50,6 +53,8 @@ export {IMPORT_ACCEPT, isImportableArtefact} from './accept.js';
  *   lang: string,
  *   code: string,
  *   files: Object<string, string>,
+ *   source: string,
+ *   unsupported: Array<string>,
  *   project: {target: string, name: string, version: string},
  *   note: string
  * }>}
@@ -82,16 +87,36 @@ export async function importArtefact (bytes, opts = {}) {
     const project = describeProject(res.meta);
     const files = res.files || {};
     const main = files['main.ts'] || files['main.py'] || res.source;
-    const lang = files['main.ts'] ? 'javascript' : (files['main.py'] ? 'micropython' : 'javascript');
+
+    // A micro:bit project goes the whole way: its TypeScript becomes
+    // pseudocode, which the rest of the app already turns into blocks,
+    // MicroPython and a simulator run. An Arcade project stops at its
+    // source, because the machine it describes is not one we have.
+    if (project.target === 'microbit' && files['main.ts']) {
+        const translated = microbitToPseudocode(files['main.ts'], {name: project.name || name});
+        return {
+            kind: 'makecode',
+            format: res.format,
+            lang: 'pseudocode',
+            code: translated.code,
+            source: main,
+            unsupported: translated.unsupported,
+            files,
+            project: {target: project.target, name: project.name || name, version: project.version},
+            note: 'microbit'
+        };
+    }
 
     return {
         kind: 'makecode',
         format: res.format,
-        lang,
+        lang: files['main.py'] ? 'micropython' : 'javascript',
         code: main,
+        source: main,
+        unsupported: [],
         files,
         project: {target: project.target, name: project.name || name, version: project.version},
-        note: project.target === 'arcade' ? 'arcade' : 'microbit'
+        note: project.target === 'arcade' ? 'arcade' : 'other'
     };
 }
 
