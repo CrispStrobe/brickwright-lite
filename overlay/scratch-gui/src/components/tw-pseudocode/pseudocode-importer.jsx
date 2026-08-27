@@ -874,8 +874,12 @@ class PseudocodeImporter extends React.Component {
         if (res.kind === 'micropython') {
             status = this.L.mcPython(label, Object.keys(res.files).join(', '));
         } else if (arcade) {
+            // The button's own label, not a copy of it: a glyph typed here
+            // drifts the moment the button changes — and this call went out
+            // one argument short, which is how "Press undefined to build"
+            // reached a green build.
             status = this.L.mcArcade(label, res.project.name,
-                (res.sprites || []).length, (res.costumes || []).length);
+                (res.sprites || []).length, (res.costumes || []).length, this.L.toBlocks);
         } else {
             status = unsupported ?
                 this.L.mcPartial(label, res.project.name, unsupported) :
