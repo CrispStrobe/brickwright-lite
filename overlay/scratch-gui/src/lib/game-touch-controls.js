@@ -7,6 +7,27 @@ const ARROWS = Object.freeze({
 });
 
 const PROFILES = Object.freeze({
+    breakout: {layout: 'stage', hint: 'Drag on the stage to move the paddle.'},
+    pong_2p: {
+        layout: 'dual',
+        hint: 'Two players: left pad and right pad.',
+        keys: {leftUp: 'w', leftDown: 's', rightUp: 'ArrowUp', rightDown: 'ArrowDown'}
+    },
+    pong_ai: {
+        layout: 'vertical',
+        hint: 'Move your paddle up and down.',
+        keys: {up: 'w', down: 's'}
+    },
+    flappy: {layout: 'action', hint: 'Tap FLAP to climb.', keys: {action: ' '}, actionLabel: 'FLAP'},
+    tictactoe: {layout: 'stage', hint: 'Tap a square on the stage.'},
+    tictactoe_ai: {layout: 'stage', hint: 'Tap a square on the stage.'},
+    connect4: {layout: 'stage', hint: 'Tap a column on the stage.'},
+    minesweeper: {
+        layout: 'stage-action',
+        hint: 'Tap to reveal; hold FLAG while tapping to mark.',
+        keys: {action: 'f'},
+        actionLabel: 'FLAG'
+    },
     g2048: {layout: 'stage', hint: 'Swipe the stage to slide the reactor.'},
     chroma_code: {layout: 'stage', hint: 'Tap the coloured gems on the stage.'},
     missile_ballet: {layout: 'stage', hint: 'Drag on the stage to steer the jet.'},

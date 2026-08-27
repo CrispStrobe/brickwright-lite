@@ -14,6 +14,11 @@ test('touch profiles expose the controls each unusual game actually uses', () =>
     assert.equal(gameTouchProfileFor('fusion_foundry').keys.action, ' ');
     assert.equal(gameTouchProfileFor('g2048').layout, 'stage');
     assert.equal(gameTouchProfileFor('missile_ballet').layout, 'stage');
+    assert.equal(gameTouchProfileFor('breakout').layout, 'stage');
+    assert.equal(gameTouchProfileFor('pong_2p').layout, 'dual');
+    assert.equal(gameTouchProfileFor('pong_ai').keys.up, 'w');
+    assert.equal(gameTouchProfileFor('flappy').actionLabel, 'FLAP');
+    assert.equal(gameTouchProfileFor('minesweeper').keys.action, 'f');
     assert.equal(gameTouchProfileFor(null), null);
 });
 
@@ -22,6 +27,7 @@ test('game selection publishes controls and the right pane mounts them beside th
     const gui = read('components/gui/gui.jsx');
     const controls = read('components/tw-pseudocode/game-touch-controls.jsx');
     assert.match(importer, /runtime\.bwGameControlKey = gameKey \|\| null/);
+    assert.match(importer, /this\.gameKeyForSource\(saved\.code\)/);
     assert.match(importer, /BW_GAME_CONTROLS_CHANGED/);
     assert.match(gui, /<GameTouchControls gameKey=\{gameControlKey\} vm=\{vm\}/);
     assert.match(controls, /vm\.postIOData\('keyboard', \{key, isDown\}\)/);

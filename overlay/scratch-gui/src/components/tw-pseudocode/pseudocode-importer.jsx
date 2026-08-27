@@ -675,6 +675,7 @@ class PseudocodeImporter extends React.Component {
             this._onProjectChanged = () => {
                 const src = vm.runtime.bwPseudocodeSource;
                 if (src && src !== this.state.buffers.pseudocode) {
+                    this.publishGameControls(this.gameKeyForSource(src));
                     this.setState(s => ({
                         lang: 'pseudocode',
                         buffers: {...s.buffers, pseudocode: src}
@@ -690,6 +691,7 @@ class PseudocodeImporter extends React.Component {
         if (!Object.values(this.state.buffers).some(b => b && b.trim())) {
             const saved = this.readAutosave();
             if (saved) {
+                this.publishGameControls(this.gameKeyForSource(saved.code));
                 this.setState(st => ({
                     lang: saved.lang,
                     buffers: {...st.buffers, [saved.lang]: saved.code},
@@ -720,6 +722,7 @@ class PseudocodeImporter extends React.Component {
         this._onBundleLoaded = () => {
             const saved = this.readAutosave();
             if (saved) {
+                this.publishGameControls(this.gameKeyForSource(saved.code));
                 this.setState(st => ({
                     lang: saved.lang,
                     buffers: {...st.buffers, [saved.lang]: saved.code},
@@ -2148,7 +2151,7 @@ class PseudocodeImporter extends React.Component {
     async loadExample (key) {
         const src = key && examples[key];
         if (!src) return;
-        this.publishGameControls(Object.prototype.hasOwnProperty.call(gameExamples, key) ? key : null);
+        this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
         const device = this.currentDevice();
         const exampleDevice = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
         // Retarget hardware examples when the selected device differs.
@@ -2176,6 +2179,14 @@ class PseudocodeImporter extends React.Component {
         if (!runtime) return;
         runtime.bwGameControlKey = gameKey || null;
         runtime.emit('BW_GAME_CONTROLS_CHANGED', runtime.bwGameControlKey);
+    }
+
+    gameKeyForSource (source) {
+        if (!source) return null;
+        const firstLine = String(source).split('\n', 1)[0].trim();
+        const match = GROUPS[0].items.find(([key]) =>
+            String(examples[key] || '').split('\n', 1)[0].trim() === firstLine);
+        return match ? match[0] : null;
     }
     // Sprite names declared in the current pseudocode — used to populate the
     // "associate SVG → sprite" dropdowns so you pick a real sprite, not guess a name.

@@ -9,7 +9,7 @@ const LABELS = {
     leftUp: '▲', leftDown: '▼', rightUp: '▲', rightDown: '▼'
 };
 
-const TouchButton = ({control, down, onDown, onUp}) => (
+const TouchButton = ({control, down, label, onDown, onUp}) => (
     <button
         aria-label={`Game ${control}`}
         data-testid={`bw-game-control-${control}`}
@@ -34,12 +34,13 @@ const TouchButton = ({control, down, onDown, onUp}) => (
             transform: down ? 'translateY(2px)' : 'none'
         }}
         type="button"
-    >{LABELS[control]}</button>
+    >{label || LABELS[control]}</button>
 );
 
 TouchButton.propTypes = {
     control: PropTypes.oneOf(Object.keys(LABELS)).isRequired,
     down: PropTypes.bool.isRequired,
+    label: PropTypes.string,
     onDown: PropTypes.func.isRequired,
     onUp: PropTypes.func.isRequired
 };
@@ -88,6 +89,7 @@ const GameTouchControls = ({gameKey, vm}) => {
         control={control}
         down={Boolean(held[control])}
         key={control}
+        label={control === 'action' ? profile.actionLabel : null}
         onDown={name => setControl(name, true)}
         onUp={name => setControl(name, false)}
     />;
@@ -118,6 +120,14 @@ const GameTouchControls = ({gameKey, vm}) => {
                     <div style={{display: 'flex', gap: 6, alignItems: 'center'}}><strong style={{fontSize: 10}}>CYAN</strong>{button('leftUp')}{button('leftDown')}</div>
                     <div style={{display: 'flex', gap: 6, alignItems: 'center'}}>{button('rightUp')}{button('rightDown')}<strong style={{fontSize: 10}}>GOLD</strong></div>
                 </div>
+            ) : null}
+            {profile.layout === 'vertical' ? (
+                <div style={{display: 'flex', justifyContent: 'center', gap: 8}}>
+                    {button('up')}{button('down')}
+                </div>
+            ) : null}
+            {profile.layout === 'action' || profile.layout === 'stage-action' ? (
+                <div style={{display: 'flex', justifyContent: 'center'}}>{button('action')}</div>
             ) : null}
         </div>
     );
