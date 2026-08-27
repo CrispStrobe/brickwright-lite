@@ -113,8 +113,11 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             let addr = params
                 .get("peripheralId")
                 .and_then(Value::as_str)
-                .ok_or("missing peripheralId")?
+                .ok_or("missing or invalid peripheralId")?
                 .to_string();
+            if !was_reported(&addr) {
+                return Err(format!("invalid peripheralId: {addr}"));
+            }
             let on_disconnect: tauri_plugin_blec::OnDisconnectHandler =
                 (move || log::info!("[scratchlink/ble] peripheral disconnected")).into();
             h.connect(&addr, on_disconnect)
@@ -215,6 +218,9 @@ async fn subscribe(uuid: Uuid, params: &Value, out: Outbound) -> Result<(), Stri
 /// Kick off a scan and stream `didDiscoverPeripheral` notifications as devices
 /// appear. Runs for a fixed window matching the VM's 15s discovery timeout.
 fn start_discover(specs: Vec<ScanFilterSpec>, out: Outbound) {
+    // A new discovery invalidates the last one's results, exactly as the
+    // reference clears reportedPeripherals here.
+    reset_reported();
     // Scan for EVERYTHING and match in software, exactly as the reference does
     // (`central.scanForPeripherals(withServices: nil)`). An adapter-level
     // service filter would be cheaper but wrong the moment a filter selects by
@@ -261,6 +267,7 @@ fn start_discover(specs: Vec<ScanFilterSpec>, out: Outbound) {
                     continue;
                 }
                 log::info!("[scratchlink/ble] discovered {} ({})", d.name, d.address);
+                remember_reported(&d.address);
                 let note = json!({
                     "jsonrpc": "2.0",
                     "method": "didDiscoverPeripheral",
@@ -644,6 +651,48 @@ async fn reply(out: &Outbound, id: Value, result: Value) {
 
 /// The prefix `handle` uses for a method it does not implement. Shared with
 /// `reply_err` so the two cannot drift: it is what turns into -32601.
+/// Addresses reported by the CURRENT discovery, and the only ones `connect`
+/// will accept.
+///
+/// The reference keeps `reportedPeripherals`, clears it at the start of every
+/// discover, and refuses a connect to anything not in it. We accepted any
+/// address at all — which quietly makes the discovery filter decorative: an
+/// extension that knows a MAC can connect to hardware the user never chose and
+/// no filter ever matched. The filter and the blocklist are only a boundary if
+/// connect respects them.
+static REPORTED: std::sync::Mutex<Option<std::collections::HashSet<String>>> =
+    std::sync::Mutex::new(None);
+
+/// Begin a discovery: forget what the last one found, as the reference does.
+fn reset_reported() {
+    if let Ok(mut g) = REPORTED.lock() {
+        *g = Some(std::collections::HashSet::new());
+    }
+}
+
+/// Remember a peripheral we are about to report to the client.
+fn remember_reported(addr: &str) {
+    if let Ok(mut g) = REPORTED.lock() {
+        g.get_or_insert_with(Default::default).insert(addr.to_string());
+    }
+}
+
+/// Has this address been offered to the client by the current discovery?
+///
+/// Answers TRUE when no discovery has run in this process yet, so that a
+/// reconnect after a restart — or a client that stored a peripheral id — is not
+/// broken by a boundary meant for something else. Once a discovery HAS run, the
+/// set is authoritative.
+fn was_reported(addr: &str) -> bool {
+    match REPORTED.lock() {
+        Ok(g) => match g.as_ref() {
+            Some(set) => set.contains(addr),
+            None => true,
+        },
+        Err(_) => true,
+    }
+}
+
 pub const UNKNOWN_METHOD: &str = "unknown method: ";
 
 /// A JSON-RPC error, with the standard code where we can tell which it is.
@@ -706,6 +755,34 @@ mod tests {
     const LEGO_SERVICE: &str = "00001623-1212-efde-1623-785feabcd123";
 
     // ── the two shipped extensions that our old filter got wrong ──────────
+
+    // ── connect is bounded by what discovery reported ────────────────────
+
+    #[test]
+    fn connect_is_bounded_by_the_current_discovery() {
+        // ONE test rather than three, because REPORTED is process-global and
+        // cargo runs tests in parallel: three tests asserting different phases
+        // of the same global would race each other and fail at random.
+        //
+        // Before any discovery the set is absent and connect stays open, so a
+        // client reconnecting after a restart is not broken by a boundary meant
+        // for something else.
+        *REPORTED.lock().unwrap() = None;
+        assert!(was_reported("AA:BB:CC:DD:EE:FF"));
+
+        // Once a discovery has run the set is authoritative. The reference
+        // refuses a connect to anything not in reportedPeripherals; we accepted
+        // any address, which makes the discovery filter decorative — knowing a
+        // MAC was enough to reach hardware the user never chose.
+        reset_reported();
+        remember_reported("AA:BB:CC:DD:EE:FF");
+        assert!(was_reported("AA:BB:CC:DD:EE:FF"));
+        assert!(!was_reported("11:22:33:44:55:66"), "an unreported address must be refused");
+
+        // A fresh scan invalidates the previous results.
+        reset_reported();
+        assert!(!was_reported("AA:BB:CC:DD:EE:FF"));
+    }
 
     // ── message encoding, where our default was INVERTED ─────────────────
 

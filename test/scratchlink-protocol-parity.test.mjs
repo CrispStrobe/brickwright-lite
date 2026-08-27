@@ -183,3 +183,17 @@ test('BT discovery filters by the device class the client asked for', () => {
     assert.match(ANDROID, /FAILS OPEN/i,
         'the fallback direction is the whole safety argument — keep it documented');
 });
+
+test('connect is bounded by what discovery actually reported', () => {
+    // The reference keeps reportedPeripherals, clears it on each discover, and
+    // refuses a connect to anything not in it. Accepting any address makes the
+    // discovery filter — and the GATT blocklist behind it — decorative: an
+    // extension that knows a MAC reaches hardware the user never chose.
+    assert.match(BLE, /static REPORTED/, 'nothing tracks what was reported');
+    assert.match(BLE, /invalid peripheralId/, 'an unreported id must be refused by name');
+    assert.match(BLE, /fn reset_reported/, 'a new discovery must invalidate the old set');
+    // Open before the first discovery: a reconnect after a restart must still
+    // work, so the boundary starts permissive and closes once a scan has run.
+    assert.match(BLE, /None => true/,
+        'with no discovery yet the set must not refuse everything');
+});
