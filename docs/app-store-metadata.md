@@ -199,6 +199,104 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.11 en-US
+
+A follow-up to 0.1.10's Bluetooth work, and the honest summary is that one half
+is fixed and the other half is now *diagnosable* rather than fixed.
+
+Where things stand:
+- **"Web Bluetooth (Direct)" reaches the device chooser on iPhone and iPad.** In
+  0.1.10 nothing happened at all; now the chooser opens and searches. Whether it
+  finds and drives your hub is exactly what this build needs testing for.
+- **"Scratch Link" still appears to do nothing, and we could not find out why by
+  reading the code.** Everything checkable is correct — the address, the local
+  service, the permissions. So this build makes that path *visible* instead of
+  guessing: the connection log now records the address dialled, whether it
+  opened, and the messages exchanged in both directions.
+
+New:
+- **The Bluetooth chooser speaks German** when the app is in German.
+- **The connection log now covers the Scratch Link route.** Previously that route
+  was the one thing it could not see, which is why "nothing happens" stayed
+  unexplained.
+- **A simulator that runs firmware instruction by instruction.** Where an STM32
+  project offers a choice of engine, there is a new "full fidelity" one. It
+  steps single instructions and shows registers; it does not show your blocks
+  lighting up, because it runs the compiled program rather than the source.
+
+Also fixed:
+- A Bluetooth search that could not start used to leave a chooser on screen that
+  searched forever and would not close.
+- Cancelling the chooser very quickly — before the search had really begun —
+  logged an error of its own, cluttering the log needed to diagnose the rest.
+
+Please test, in this order:
+1. **Add the LEGO Boost extension, leave the connection on "Web Bluetooth
+   (Direct)", press connect.** Tell us whether your hub appears in the list,
+   whether tapping it connects, and whether a motor then turns.
+2. **Then switch the same extension to "Scratch Link" and press connect.** It
+   will most likely do nothing — that is the bug. Immediately afterwards open
+   **Settings › Connection diagnostics…**, press **Copy**, and send us that text.
+   That log is the point of this build; with it the cause should be findable, and
+   without it we are guessing.
+3. Everything else should be unchanged — the lessons, the Code tab, the
+   simulator and older projects must open and run exactly as in 0.1.10.
+
+Please report your device and iOS version, which hub you tried, and the
+diagnostics log. The log usually contains the answer even when the screen does
+not.
+
+## What to Test — 0.1.11 de-DE
+
+Eine Fortsetzung der Bluetooth-Arbeit aus 0.1.10. Ehrlich zusammengefasst: die
+eine Hälfte ist repariert, die andere ist jetzt *diagnostizierbar* — noch nicht
+repariert.
+
+Der Stand:
+- **„Web Bluetooth (Direct)" erreicht auf iPhone und iPad die Geräteauswahl.** In
+  0.1.10 passierte gar nichts; jetzt öffnet sich die Auswahl und sucht. Ob dein
+  Hub gefunden und gesteuert wird, ist genau das, was dieser Build braucht.
+- **„Scratch Link" tut weiterhin scheinbar nichts, und wir konnten den Grund im
+  Code nicht finden.** Alles Prüfbare ist korrekt — die Adresse, der lokale
+  Dienst, die Berechtigungen. Deshalb macht dieser Build diesen Weg *sichtbar*,
+  statt zu raten: das Verbindungsprotokoll zeichnet jetzt auf, welche Adresse
+  gewählt wurde, ob sie sich öffnete, und welche Nachrichten in beide Richtungen
+  liefen.
+
+Neu:
+- **Die Bluetooth-Geräteauswahl ist auf Deutsch**, wenn die App auf Deutsch steht.
+- **Das Verbindungsprotokoll erfasst jetzt auch den Scratch-Link-Weg.** Genau
+  dieser Weg war zuvor der einzige, den es nicht sehen konnte — deshalb blieb
+  „es passiert nichts" unerklärt.
+- **Ein Simulator, der Firmware Befehl für Befehl ausführt.** Wo ein
+  STM32-Projekt eine Auswahl der Engine anbietet, gibt es eine neue mit voller
+  Genauigkeit. Sie führt einzelne Befehle aus und zeigt Register; sie zeigt keine
+  aufleuchtenden Blöcke, weil sie das kompilierte Programm ausführt und nicht den
+  Quelltext.
+
+Ebenfalls behoben:
+- Eine Bluetooth-Suche, die nicht starten konnte, ließ eine Geräteauswahl stehen,
+  die endlos suchte und sich nicht schließen ließ.
+- Sehr schnelles Abbrechen der Auswahl — bevor die Suche wirklich begonnen hatte
+  — erzeugte einen eigenen Fehlereintrag und verstopfte damit das Protokoll, das
+  für die Fehlersuche gebraucht wird.
+
+Bitte in dieser Reihenfolge testen:
+1. **LEGO-Boost-Erweiterung hinzufügen, Verbindung auf „Web Bluetooth (Direct)"
+   lassen, verbinden drücken.** Bitte melde, ob dein Hub in der Liste erscheint,
+   ob das Antippen verbindet und ob sich danach ein Motor dreht.
+2. **Dann dieselbe Erweiterung auf „Scratch Link" umstellen und verbinden
+   drücken.** Vermutlich passiert nichts — das ist der Fehler. Öffne direkt
+   danach **Einstellungen › Verbindungsdiagnose…**, drücke **Copy** und schicke
+   uns diesen Text. Dieses Protokoll ist der Sinn dieses Builds; damit sollte die
+   Ursache auffindbar sein, ohne es raten wir.
+3. Alles andere sollte unverändert sein — die Lektionen, der Code-Tab, der
+   Simulator und ältere Projekte müssen genau wie in 0.1.10 öffnen und laufen.
+
+Bitte melde Gerät und iOS-Version, welchen Hub du probiert hast, und das
+Diagnoseprotokoll. Das Protokoll enthält meist die Antwort, auch wenn der
+Bildschirm sie nicht zeigt.
+
 ## What to Test — 0.1.10 en-US
 
 Bluetooth. This build is almost entirely about getting LEGO hubs to connect from
