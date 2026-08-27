@@ -34,6 +34,9 @@
 
 mod ble;
 mod ble_state;
+// The same JSON-RPC, reachable without a socket. See bridge.rs for why a
+// localhost WebSocket is not always available to a webview.
+pub mod bridge;
 #[cfg(target_os = "macos")]
 mod bt_macos;
 #[cfg(target_os = "linux")]
