@@ -5,8 +5,27 @@ stack that can be **bundled and shipped on any app store** (no GPL/AGPL, no remo
 carrying the Brickwright "Code" tab + SoundFX + LEGO/utility extensions. The "own every part" track,
 distinct from mainline **Brickwright** (a TurboWarp fork, GPL-3.0 editor chrome).
 
-- **Repo:** `CrispStrobe/brickwright-lite` (PUBLIC → free unlimited Actions). Push directly to `main`,
-  **no PRs**. Auto-deploys to **https://brickwright-lite.vercel.app** (Vercel) + GH Pages CI.
+- **Repo:** `CrispStrobe/brickwright-lite` (PUBLIC → free unlimited Actions).
+  Auto-deploys to **https://brickwright-lite.vercel.app** (Vercel) + GH Pages CI.
+- **Work in your OWN worktree, and ship via PR** (ruling 2026-08-27; this line
+  used to say "push directly to `main`, no PRs", which is why sessions kept
+  doing exactly that):
+  - `git worktree add -b lane/<topic> ../brickwright-lite-<lane> origin/main`.
+    Several lanes run at once — five worktrees existed the day this was written
+    — and the shared checkout is not yours. Working in it means your
+    `integrate.mjs` runs `cpSync(overlay/scratch-gui → packages/scratch-gui)`
+    over somebody's uncommitted edits, and your `rebase --autostash` cycles
+    their work in and out. Both happened; the second resurrected a stale stash
+    over newer committed work, and it was only harmless because main was ahead.
+  - **Open a PR and let CI answer it. Do not sit on local builds.** A full local
+    build plus suite is ~25 minutes of blocking; CI runs the same gates,
+    in parallel, on a clean tree — and a clean tree is the point, because a
+    suite run in a shared checkout is measuring other people's in-flight edits
+    (that is where a mystery "6 failures" came from once).
+  - Merge when it goes green. Auto-merge is currently OFF at the repo level
+    (`allow_auto_merge: false`) and `main` has no branch protection, so there is
+    nothing for auto-merge to wait on; until that changes, merge the PR yourself
+    once the checks pass.
 - **Local:** this repo (moved off /tmp 2026-07-07; `packages/`
   + `node_modules` + `build/` preserved). Siblings: `code/lego/brickwright` (mainline, GPL — source of
   robot/soundfx/default-project assets), `code/lego/brickwright-ios`, `.../brickwright-android`.
