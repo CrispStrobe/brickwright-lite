@@ -4,10 +4,10 @@ The question that started this: *can we support .hex files from MakeCode
 Arcade in our micro:bit emulator, and what else from MakeCode Arcade can we
 cover?*
 
-The short answer to the first half is **not by executing them** — and the
-reason is structural, not a missing feature. The long answer is that the .hex
-is not opaque at all, and almost everything worth having is reachable by
-reading it rather than running it.
+We do **not execute the foreign machine code**. We recover its embedded source,
+translate the game model to ordinary Scratch sprites and run that project on a
+real 160x120 console surface. The distinction matters: imported games play,
+but unsupported engine features are reported instead of being emulated badly.
 
 ## Why an Arcade .hex cannot run on our micro:bit simulator
 
@@ -45,7 +45,7 @@ Implemented in `overlay/scratch-gui/src/lib/bw-makecode/`:
 | `ts-import.js` | a parser for the TypeScript subset MakeCode emits (annotations, `enum`, `namespace`, tagged template literals, function expressions) — needed because the translation has to walk *into* callbacks |
 | `translate-base.js` | what both translators share: the walk, the "nothing is dropped in silence" rule, and the slot discipline |
 | `microbit-translate.js` | MakeCode micro:bit → BrickWright pseudocode → blocks, MicroPython, the simulator |
-| `arcade-translate.js` | MakeCode Arcade → a Scratch project: sprites, clones, `touching`, score, velocity loops |
+| `arcade-translate.js` | MakeCode Arcade → a playable Scratch project: target selection, sprites, clones, `touching`, score, velocity loops |
 | `arcade-assets.js` | the artwork: `img` literals, the `.g.jres` gallery (column-major 4bpp), the 16-colour palette → SVG costumes |
 | `index.js` | one `importArtefact(bytes)` door, wired into the Code tab's 📂 Open button |
 
@@ -53,13 +53,20 @@ Evidence: `test/makecode-import.test.mjs` runs against **three real MakeCode
 downloads** (see `test/fixtures/makecode/README.md`) plus round-trips for the
 two containers we have no committed sample of.
 
-### The one that actually runs
+### What actually runs
 
 A **MicroPython .hex** needs no translation at all: our simulator *is* a
 MicroPython interpreter, so the extracted `main.py` can be flashed straight
 into it. That is the cheapest win in the whole story and it is why
 `micropython-hex.js` exists next to the MakeCode reader rather than somewhere
 else.
+
+A translated **MakeCode Arcade** game also runs. `DEVICE ARCADE` selects the
+game-console pane; its 160x120 viewport mirrors the Scratch renderer and its
+eight controls post through Scratch keyboard IO. The same state backs the
+Arcade extension's buttons, light, tilt, score and PyBadge NeoPixels. This is
+a source-level port, not binary emulation, which is why tilemaps and other
+unsupported APIs remain visible in the import report.
 
 ## The ladder, and where we are on it
 
@@ -70,7 +77,7 @@ else.
 | 1 | MakeCode **micro:bit** TypeScript → our blocks | **done** |
 | 2 | MakeCode **Arcade** → a Scratch project, artwork included | **done** |
 | 3 | import from a share link (needs network; the file importer is what works offline and in the packaged app) | **done** (`share.js`) |
-| 4 | export: emit `main.ts` + `pxt.json` so a Brickwright project opens *in* MakeCode | planned |
+| 4 | export: emit `main.ts` + `pxt.json` and compile a modified BrickWright project to board UF2 | **not done**; do not confuse import/play support with physical deployment |
 | 5 | actually emulate a MakeCode hex | see below |
 
 ## What the grammar will and will not take

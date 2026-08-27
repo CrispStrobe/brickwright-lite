@@ -66,6 +66,8 @@ const L10N = {
         loadExample: '📚 Load example…', loadExampleTitle: 'Load a built-in example',
         openFile: '📂 Open', openFileTitle: t => `Open a source file (${t})`,
         saveFile: '💾 Save', saveFileTitle: n => `Save this tab as ${n}`,
+        exportMakeCode: '📦 MakeCode source',
+        exportMakeCodeTitle: 'Download the original recovered MakeCode project files for the official editor or PXT CLI',
         openBad: e => `Don't know that file type (${e}).`,
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
         mcReading: f => `Reading ${f}…`,
@@ -176,6 +178,8 @@ const L10N = {
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
         openFile: '📂 Öffnen', openFileTitle: t => `Eine Quelldatei öffnen (${t})`,
         saveFile: '💾 Speichern', saveFileTitle: n => `Diesen Tab als ${n} speichern`,
+        exportMakeCode: '📦 MakeCode-Quellcode',
+        exportMakeCodeTitle: 'Die unveränderten, wiederhergestellten MakeCode-Projektdateien für den offiziellen Editor oder die PXT-CLI laden',
         openBad: e => `Unbekannter Dateityp (${e}).`,
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
         mcReading: f => `${f} wird gelesen…`,
@@ -759,6 +763,7 @@ class PseudocodeImporter extends React.Component {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
         if (!file) return;
+        this._makeCodeProject = null;
         // A compiled artefact from ANOTHER editor — a MakeCode .hex/.uf2/.png
         // cartridge, or a MicroPython .hex — is not source we can read as
         // text, but it is not opaque either: both formats carry the project
@@ -818,6 +823,9 @@ class PseudocodeImporter extends React.Component {
             }
             const unsupported = (res.unsupported || []).length;
             const arcade = res.project.target === 'arcade';
+            this._makeCodeProject = res.kind === 'makecode' ? {
+                files: res.files, name: res.project.name || file.name.replace(/\.[^.]+$/, ''), target: res.project.target
+            } : null;
             let status;
             if (res.kind === 'micropython') {
                 status = this.L.mcPython(file.name, Object.keys(res.files).join(', '));
@@ -877,6 +885,29 @@ class PseudocodeImporter extends React.Component {
         a.href = url;
         a.download = name;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+
+    // Export the exact source recovered from an imported MakeCode artefact.
+    // This is deliberately not labelled as a BrickWright->UF2 compiler: edits
+    // made after translation are not reverse-translated into these files.
+    async exportMakeCodeSource () {
+        const project = this._makeCodeProject;
+        if (!project || !project.files) return;
+        const imported = await import(/* webpackChunkName: "jszip" */ 'jszip');
+        const JSZip = imported.default || imported;
+        const zip = new JSZip();
+        Object.entries(project.files).forEach(([name, source]) => zip.file(name, source));
+        zip.file('BRICKWRIGHT-IMPORT.txt',
+            `Recovered ${project.target} source from an imported MakeCode artefact.\n` +
+            'These are the original files, not a reverse translation of later BrickWright edits.\n' +
+            'Open the folder with the MakeCode Asset Explorer/PXT toolchain and compile for your exact board.\n');
+        const blob = await zip.generateAsync({type: 'blob'});
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${String(project.name || 'makecode-project').replace(/[^a-z0-9_-]+/gi, '-')}.zip`;
+        anchor.click();
         setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
 
@@ -2441,6 +2472,11 @@ class PseudocodeImporter extends React.Component {
                                 data-testid="bw-save-file">
                                 {this.L.saveFile}
                             </button>
+                            {this._makeCodeProject ? <button type="button" onClick={() => this.exportMakeCodeSource()}
+                                style={{...csel, alignSelf: 'center', cursor: 'pointer', border: '1px solid #cbd5e1', background: '#f1f5f9'}}
+                                title={this.L.exportMakeCodeTitle} data-testid="bw-export-makecode-source">
+                                {this.L.exportMakeCode}
+                            </button> : null}
                             {this.currentDevice() ? this.renderCatalogControl(csel) : (
                                 <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
                                     style={{...csel, alignSelf: 'center'}} title={this.L.loadExampleTitle}

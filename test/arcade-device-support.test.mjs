@@ -33,3 +33,10 @@ test('PyBadge is a code-drawn circuit board, while LC is not given fake headers'
     assert.match(palette, /kind: 'pybadge'/);
     assert.doesNotMatch(palette, /kind: 'pybadge-lc'/);
 });
+
+test('recovered MakeCode source can leave through an honestly labelled project ZIP', () => {
+    const importer = readFileSync(`${gui}/components/tw-pseudocode/pseudocode-importer.jsx`, 'utf8');
+    assert.match(importer, /bw-export-makecode-source/);
+    assert.match(importer, /Object\.entries\(project\.files\)/);
+    assert.match(importer, /original files, not a reverse translation/i);
+});
