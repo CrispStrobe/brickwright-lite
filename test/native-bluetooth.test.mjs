@@ -394,3 +394,54 @@ describe('the extensions can reach the app\'s own Scratch Link', () => {
         });
     }
 });
+
+/* ------------------------------------------------------------------ i18n */
+
+describe('the chooser speaks the app\'s language', () => {
+    /** Open the chooser, read its heading, then cancel so nothing leaks. */
+    const headingWithLocale = async locale => {
+        if (locale === null) delete window.__brickwrightStore;
+        else window.__brickwrightStore = {getState: () => ({locales: {locale}})};
+
+        // Attach the rejection handler NOW, not after the click: cancelling
+        // rejects synchronously inside the handler, and a promise that is only
+        // caught afterwards has already been seen as unhandled.
+        const promise = navigator.bluetooth.requestDevice({filters: [{services: [BOOST_SERVICE]}]});
+        const settled = promise.catch(() => 'cancelled');
+        // The heading is the first element carrying text in the overlay.
+        // Take the LAST match, not the first: earlier tests in this file leave
+        // their overlays in the body, and cancelling a stale chooser rejects a
+        // promise nobody is holding — which surfaces as this test failing for
+        // a reason that has nothing to do with language.
+        const newest = re => walk(body).filter(n => re.test(n.deepText || '')).pop();
+        let heading = null;
+        for (let i = 0; i < 50 && !heading; i++) {
+            heading = newest(/Bluetooth-Gerät auswählen|Choose a Bluetooth device/);
+            if (!heading) await new Promise(r => setTimeout(r, 5));
+        }
+        const text = heading ? heading.deepText : '(no chooser appeared)';
+        const cancel = walk(body)
+            .filter(n => n.tagName === 'button' && /^(Abbrechen|Cancel)$/.test(n.deepText))
+            .pop();
+        if (cancel) cancel.click();
+        await settled;                   // cancelling rejects with NotFoundError, by design
+        delete window.__brickwrightStore;
+        return text;
+    };
+
+    test('German when the app is in German', async () => {
+        assert.match(await headingWithLocale('de'), /Bluetooth-Gerät auswählen/);
+    });
+
+    test('English for a locale we have no table for', async () => {
+        // Falling back is the whole contract: an untranslated locale must not
+        // produce an empty heading.
+        assert.match(await headingWithLocale('fr'), /Choose a Bluetooth device/);
+    });
+
+    test('English when the store is not mounted yet', async () => {
+        // The chooser can open before the GUI has finished mounting, and
+        // reading through a missing store must not throw inside the dialog.
+        assert.match(await headingWithLocale(null), /Choose a Bluetooth device/);
+    });
+});

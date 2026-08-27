@@ -91,6 +91,60 @@ const fromBase64 = b64 => {
     return new DataView(bytes.buffer);
 };
 
+/* ------------------------------------------------------------------ i18n */
+
+/**
+ * Our own strings, the way every other component of ours does it: a per-module
+ * table with an English fallback. This one cannot use redux connect — it is a
+ * navigator shim, not a React tree — so it reads the same store the rest of the
+ * non-React libs read, and falls back to the browser's own language when the
+ * store is not up yet (the chooser can open before the GUI has mounted).
+ */
+const L10N = {
+    de: {
+        title: 'Bluetooth-Gerät auswählen',
+        searching: 'Suche läuft…',
+        tap: 'Tippe auf ein Gerät, um zu verbinden.',
+        cancel: 'Abbrechen',
+        unnamed: 'Gerät ohne Namen',
+        finished: 'Suche beendet. Tippe auf ein Gerät, um zu verbinden.',
+        none: 'Keine Bluetooth-Geräte gefunden. Prüfe, ob der Hub eingeschaltet und in der Nähe ist.',
+        scanFailed: 'Der Bluetooth-Scan konnte nicht gestartet werden.'
+    }
+};
+
+const EN = {
+    title: 'Choose a Bluetooth device',
+    searching: 'Searching…',
+    tap: 'Tap a device to connect.',
+    cancel: 'Cancel',
+    unnamed: 'Unnamed device',
+    finished: 'Search finished. Tap a device to connect.',
+    none: 'No Bluetooth devices found. Make sure the hub is switched on and nearby.',
+    scanFailed: 'The Bluetooth scan could not start.'
+};
+
+const currentLocale = () => {
+    try {
+        const l = window.__brickwrightStore.getState().locales.locale;
+        if (l) return String(l);
+    } catch (e) { /* store not mounted yet — fall through */ }
+    try {
+        return String(navigator.language || '');
+    } catch (e) {
+        return '';
+    }
+};
+
+/**
+ * @param {string} key one of the keys in EN.
+ * @returns {string} the translation, or the English original.
+ */
+const tx = key => {
+    const table = L10N[currentLocale().slice(0, 2).toLowerCase()];
+    return (table && table[key]) || EN[key];
+};
+
 /* ----------------------------------------------------------------- picker */
 
 const el = (tag, style, text) => {
@@ -119,16 +173,16 @@ const chooseDevice = ({onCancel}) => {
     const card = el('div', 'background:#fff;color:#1b2129;border-radius:14px;width:min(420px,100%);' +
         'max-height:min(70vh,560px);display:flex;flex-direction:column;overflow:hidden;' +
         'box-shadow:0 18px 48px rgba(0,0,0,.35);');
-    const statusLine = el('div', 'padding:0 18px 10px;color:#5a6673;font-size:13px;', 'Searching…');
+    const statusLine = el('div', 'padding:0 18px 10px;color:#5a6673;font-size:13px;', tx('searching'));
     const list = el('div', 'flex:1 1 auto;overflow:auto;border-top:1px solid #e6eaee;' +
         '-webkit-overflow-scrolling:touch;');
     const footer = el('div', 'padding:12px 18px;display:flex;gap:10px;justify-content:flex-end;' +
         'border-top:1px solid #e6eaee;');
     const cancel = el('button', 'background:#e9edf1;border:0;border-radius:8px;padding:9px 16px;' +
-        'font:inherit;cursor:pointer;', 'Cancel');
+        'font:inherit;cursor:pointer;', tx('cancel'));
 
     card.appendChild(el('div', 'padding:16px 18px 8px;font-weight:600;font-size:16px;',
-        'Choose a Bluetooth device'));
+        tx('title')));
     card.appendChild(statusLine);
     card.appendChild(list);
     footer.appendChild(cancel);
@@ -163,10 +217,10 @@ const chooseDevice = ({onCancel}) => {
         add (device) {
             if (settled || seen.has(device.id)) return;
             seen.set(device.id, device);
-            statusLine.textContent = 'Tap a device to connect.';
+            statusLine.textContent = tx('tap');
             const row = el('button', 'display:block;width:100%;text-align:left;background:none;' +
                 'border:0;border-bottom:1px solid #f0f3f6;padding:13px 18px;font:inherit;cursor:pointer;');
-            row.appendChild(el('div', 'font-weight:600;', device.name || 'Unnamed device'));
+            row.appendChild(el('div', 'font-weight:600;', device.name || tx('unnamed')));
             row.appendChild(el('div', 'color:#6b7785;font-size:12px;',
                 `${device.id}${typeof device.rssi === 'number' ? ` · ${device.rssi} dBm` : ''}`));
             row.addEventListener('click', () => finish(() => settle.resolve(device)));
@@ -449,12 +503,12 @@ const requestDevice = async (options = {}) => {
         if (matchesFilters(device, filters)) picker.add(device);
     });
     const offFail = session.on('discoverDidFail', params =>
-        picker.fail((params && params.message) || 'The Bluetooth scan could not start.'));
+        picker.fail((params && params.message) || tx('scanFailed')));
     const offDone = session.on('discoverDidFinish', params => {
         if (params && params.count === 0) {
-            picker.fail('No Bluetooth devices found. Make sure the hub is switched on and nearby.');
+            picker.fail(tx('none'));
         } else {
-            picker.setStatus('Search finished. Tap a device to connect.');
+            picker.setStatus(tx('finished'));
         }
     });
 

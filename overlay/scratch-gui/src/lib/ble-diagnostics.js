@@ -290,6 +290,69 @@ export default function initBleDiagnostics () {
         };
     });
 
+    // The Scratch Link path was a blind spot: scratch-vm's ScratchLinkWebSocket
+    // opens RAW WebSockets (ws://127.0.0.1:20111 and the wss:// cloud one, both
+    // at once) and reports failure only as a generic extension error. On a phone
+    // with no devtools that is indistinguishable from "the button did nothing" —
+    // which is exactly how it was reported. Wrapping the constructor says which
+    // URL was dialled and what became of it.
+    //
+    // Only scratch-link endpoints are logged; every other socket passes through
+    // untouched. The wrapper never swallows: it adds listeners rather than
+    // replacing on* handlers, so the VM's own handlers still fire.
+    const NativeWebSocket = window.WebSocket;
+    if (typeof NativeWebSocket === 'function' && !NativeWebSocket.__bwWrapped) {
+        const isLink = url => /:(20110|20111)\//.test(String(url));
+        const Wrapped = function WebSocket (url, protocols) {
+            const ws = protocols === undefined
+                ? new NativeWebSocket(url)
+                : new NativeWebSocket(url, protocols);
+            if (isLink(url)) {
+                const started = Date.now();
+                const since = () => `${Date.now() - started}ms`;
+                bleLog('info', 'scratchlink', 'dialling', String(url));
+                ws.addEventListener('open', () =>
+                    bleLog('info', 'scratchlink', 'OPEN', String(url), since()));
+                // An error event on a WebSocket carries no reason by design, so
+                // saying which URL failed and how long it took is the whole of
+                // what can honestly be reported here.
+                ws.addEventListener('error', () =>
+                    bleLog('error', 'scratchlink', 'ERROR', String(url), since()));
+                ws.addEventListener('close', event =>
+                    bleLog('warn', 'scratchlink', 'CLOSE', String(url),
+                        `code=${event.code}`, `clean=${event.wasClean}`, since()));
+
+                // The frames, not just the lifecycle. A socket that opens and
+                // then goes quiet is the failure that looks like "the button
+                // did nothing", and the only thing that distinguishes its
+                // causes is WHICH request got no reply. Truncated so a chatty
+                // notify stream cannot flush the ring buffer.
+                const brief = data => {
+                    if (typeof data !== 'string') return `<${(data && data.byteLength) || '?'} bytes>`;
+                    return data.length > 300 ? `${data.slice(0, 300)}…` : data;
+                };
+                const nativeSend = ws.send.bind(ws);
+                ws.send = data => {
+                    bleLog('debug', 'scratchlink', '→', brief(data));
+                    return nativeSend(data);
+                };
+                ws.addEventListener('message', event =>
+                    bleLog('debug', 'scratchlink', '←', brief(event.data)));
+            }
+            return ws;
+        };
+        Wrapped.prototype = NativeWebSocket.prototype;
+        ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'].forEach(k => {
+            Wrapped[k] = NativeWebSocket[k];
+        });
+        Wrapped.__bwWrapped = true;
+        try {
+            window.WebSocket = Wrapped;
+        } catch (e) {
+            bleLog('warn', 'diag', 'could not wrap WebSocket', e && e.message);
+        }
+    }
+
     window.addEventListener('error', event => {
         bleLog('error', 'uncaught', event.message,
             `${event.filename || '?'}:${event.lineno || 0}`);
