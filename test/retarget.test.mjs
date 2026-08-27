@@ -51,3 +51,43 @@ test('RETARGET_POOLS covers all compilable devices', () => {
         assert.ok(Array.isArray(pools[dev].digital), `${dev} should have digital pins`);
     }
 });
+
+const trafficLight = `DEVICE ARDUINO-UNO
+CLOCK 16000000
+PIN red = D13 OUTPUT
+PIN yellow = D12 OUTPUT
+PIN green = D8 OUTPUT
+
+WHEN flag clicked:
+  FOREVER:
+    turn on red
+    turn off yellow
+    turn off green
+    wait 3 seconds`;
+
+for (const [device, pins] of [
+    ['microbit', ['P0', 'P1', 'P2']],
+    ['arcade', ['D0', 'D1', 'D2']],
+    ['pybadge', ['D13', 'D12', 'D11']],
+    ['pybadge-lc', ['D0', 'D1', 'D2']],
+    ['samd51', ['PA8', 'PA9', 'PA10']]
+]) {
+    test(`traffic light retargets to selectable ${device}`, () => {
+        const result = SB3Creator.retargetPseudocode(trafficLight, device);
+        assert.equal(result.ok, true, `should succeed: ${result.reasons}`);
+        assert.match(result.pseudocode, new RegExp(`^DEVICE ${device.toUpperCase()}$`, 'm'));
+        for (const pin of pins) assert.match(result.pseudocode, new RegExp(`= ${pin} OUTPUT`));
+    });
+}
+
+test('PyBadge I2C roles land on its real SDA/SCL header pins', () => {
+    const source = `DEVICE ARDUINO-UNO
+PIN sda = A4 OUTPUT
+PIN scl = A5 OUTPUT
+WHEN flag clicked:
+  wait 1 seconds`;
+    const result = SB3Creator.retargetPseudocode(source, 'pybadge');
+    assert.equal(result.ok, true, `should succeed: ${result.reasons}`);
+    assert.match(result.pseudocode, /^PIN sda = SDA OUTPUT$/m);
+    assert.match(result.pseudocode, /^PIN scl = SCL OUTPUT$/m);
+});
