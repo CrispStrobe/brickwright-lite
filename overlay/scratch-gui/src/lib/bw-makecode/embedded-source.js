@@ -260,8 +260,17 @@ function unwrap (embed) {
         throw new Error(`MakeCode: compression "${outer.compression}" is not supported`);
     }
     const headerSize = outer.headerSize || outer.metaSize || 0;
-    const expectedSize = outer.textSize != null ? headerSize + outer.textSize : undefined;
-    const plain = utf8(lzmaDecode(embed.text, {expectedSize}));
+
+    // The LZMA stream carries its own uncompressed size, and it is the
+    // one to trust. `headerSize + textSize` looks like the same number
+    // and is not: on a project with a non-ASCII character — a German
+    // game name is enough — the sum is short of the byte count, and
+    // capping the decoder at it silently truncates the tail. That looked
+    // like "unterminated JSON", ten thousand lines from the cause.
+    const plain = utf8(lzmaDecode(embed.text));
+
+    // The split, however, IS in characters: headerSize counts the inner
+    // header's CHARACTERS, which is how pxt's own reader slices it.
     const meta = Object.assign({}, outer);
     if (headerSize) {
         try {

@@ -12,6 +12,13 @@ what the editors wrote.
 | `arcade-shield.uf2` | the same project, UF2 build | "ping-pong" | a 700 KB .uf2 download |
 | `arcade-assets.hex` | arcade.makecode.com, micro:bit V2 + shield | "Jonathans Ausweichspiel unterwasser" | a 1.0 MB .hex download |
 | `arcade-tilemap.hex` | arcade.makecode.com, micro:bit V2 + shield | "jumpy platformer" | a 1.0 MB .hex download |
+| `arcade-umlaut.hex` | arcade.makecode.com, micro:bit V2 + shield | "SpriteBewegungHöhle1 - Copy" | a 1.0 MB .hex download |
+
+`arcade-umlaut.hex` is here for its NAME. A single non-ASCII character
+makes the container's `headerSize + textSize` shorter than the byte count
+of the text it describes, and a decoder capped at that sum silently loses
+the tail — which surfaces as "unterminated JSON" a long way from the
+cause. It is the only fixture that catches it.
 
 `arcade-tilemap.hex` is the only fixture with tilemaps — eight levels, a
 `tilemap.g.ts` factory and a `tilemap.g.jres` tile set — and it is what
