@@ -439,6 +439,21 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
 
+      # Both of these were on the KNOWN_UNWIRED list as FAILING, and both
+      # failed for one reason: the starter-journeys backdrop swallowed every
+      # click, so each spent its whole timeout retrying the first one. That
+      # is what a gate nothing runs decays into — the app grew a first-visit
+      # overlay and the gates that CI does run were taught to dismiss it.
+      # The MicroPython tab and the simulator are the far end of the MakeCode
+      # importer, so they belong next to the gate above.
+      - name: Browser gate — micro:bit MicroPython tab and simulator
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit.mjs
+
+      - name: Browser gate — micro:bit debugger, block and line stepping
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-debug-toggle.mjs
+
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with: { path: packages/scratch-gui/build }
 
