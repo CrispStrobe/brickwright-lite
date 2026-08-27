@@ -148,6 +148,12 @@ try {
     // Both locales, because the browser's language decides which string
     // the status line uses and a CI runner is not necessarily English.
     text = await waitFor(paneText, t => /sprite\(s\)/i.test(t), 30000);
+    // The general form of the bug this file already caught once: a
+    // message template that grew a parameter its call site did not pass
+    // renders the word "undefined" into the status line, and every other
+    // check still passes.
+    check('no status line leaks an undefined interpolation',
+        !/\bundefined\b/.test(text), (text.match(/.{0,60}undefined.{0,30}/) || [''])[0].replace(/\s+/g, ' '));
     check('an Arcade game imports as sprites and costumes',
         /4 sprite\(s\)/i.test(text) && /4 (costume\(s\)|Kostüm\(e\))/i.test(text),
         (text.match(/.{0,40}sprite\(s\).{0,40}/i) || [''])[0].replace(/\s+/g, ' '));

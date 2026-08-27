@@ -91,6 +91,29 @@ test('the micro:bit tab appears for an imported .py, which has no DEVICE line', 
     assert.match(source, /importedPython: res\.kind === 'micropython'/);
 });
 
+test('a status message gets every argument its template names', () => {
+    // `mcArcade` grew a `button` parameter and the call site did not, so
+    // the status line said "Press undefined to build" — through a green
+    // build, because no unit test reads that text. The browser gate
+    // printed it; this keeps it printed-once.
+    const template = /mcArcade: \((.*?)\) =>/.exec(source);
+    assert.ok(template, 'the English template');
+    const parameters = template[1].split(',').length;
+    const call = /this\.L\.mcArcade\(([\s\S]*?)\);/.exec(source);
+    assert.ok(call, 'the call site');
+    // Arguments, counted at depth zero so `(res.sprites || []).length`
+    // is one argument and not two.
+    let depth = 0;
+    let args = 1;
+    for (const c of call[1]) {
+        if ('([{'.includes(c)) depth++;
+        else if (')]}'.includes(c)) depth--;
+        else if (c === ',' && depth === 0) args++;
+    }
+    assert.equal(args, parameters, 'the call passes as many arguments as the message takes');
+    assert.match(call[1], /this\.L\.toBlocks/, 'and the button label comes from the button');
+});
+
 test('every buffer set carries every language', () => {
     // A `buffers:` literal that spells out the set and omits one leaves
     // that key undefined, and the next render to read it dies. That is
