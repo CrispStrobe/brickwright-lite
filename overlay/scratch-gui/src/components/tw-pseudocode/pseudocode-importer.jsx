@@ -6,6 +6,7 @@ import gameExamples from '../../lib/sb3-creator-game-examples.js';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
+import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.js';
 
 // Keep locally-authored games outside the upstream-synchronized examples file.
 const examples = {...upstreamExamples, ...gameExamples};
@@ -61,6 +62,12 @@ const L10N = {
         saveFile: '💾 Save', saveFileTitle: n => `Save this tab as ${n}`,
         openBad: e => `Don't know that file type (${e}).`,
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
+        mcReading: f => `Reading ${f}…`,
+        mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
+        mcMicrobit: (f, n) => `Recovered "${n}" from ${f}: MakeCode micro:bit source. The TypeScript is in this tab.`,
+        mcArcade: (f, n) => `Recovered "${n}" from ${f}: a MakeCode Arcade game. Its source is here — Arcade's sprite blocks have no equivalent on the 5x5 display, so this is source, not a runnable project.`,
+        mcNoSource: (f, k) => `${f} is a ${k} file with no project source embedded in it — nothing to import.`,
+        mcFailed: (f, e) => `Could not read ${f}: ${e}`,
         saveEmpty: 'Nothing to save — this tab is empty.',
         restored: t => `Restored your unsaved ${t}.`,
         loadCatalogTitle: 'Load a catalog example for this device',
@@ -164,6 +171,12 @@ const L10N = {
         saveFile: '💾 Speichern', saveFileTitle: n => `Diesen Tab als ${n} speichern`,
         openBad: e => `Unbekannter Dateityp (${e}).`,
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
+        mcReading: f => `${f} wird gelesen…`,
+        mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
+        mcMicrobit: (f, n) => `„${n}" aus ${f} wiederhergestellt: MakeCode-micro:bit-Quelltext. Das TypeScript steht in diesem Tab.`,
+        mcArcade: (f, n) => `„${n}" aus ${f} wiederhergestellt: ein MakeCode-Arcade-Spiel. Der Quelltext ist hier — Arcades Sprite-Blöcke haben auf der 5x5-Anzeige keine Entsprechung, das ist also Quelltext, kein lauffähiges Projekt.`,
+        mcNoSource: (f, k) => `${f} ist eine ${k}-Datei ohne eingebetteten Projekt-Quelltext — nichts zu importieren.`,
+        mcFailed: (f, e) => `${f} konnte nicht gelesen werden: ${e}`,
         saveEmpty: 'Nichts zu speichern — dieser Tab ist leer.',
         restored: t => `Nicht gespeicherter ${t} wiederhergestellt.`,
         loadCatalogTitle: 'Ein Katalog-Beispiel für dieses Gerät laden',
@@ -738,6 +751,14 @@ class PseudocodeImporter extends React.Component {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
         if (!file) return;
+        // A compiled artefact from ANOTHER editor — a MakeCode .hex/.uf2/.png
+        // cartridge, or a MicroPython .hex — is not source we can read as
+        // text, but it is not opaque either: both formats carry the project
+        // inside them. That import is its own path.
+        if (isImportableArtefact(file.name)) {
+            this.openArtefactFile(file);
+            return;
+        }
         const lang = this.langForFile(file.name);
         if (!lang) {
             this.setState({status: this.L.openBad(file.name)});
@@ -756,6 +777,55 @@ class PseudocodeImporter extends React.Component {
             status: this.L.openDone(file.name, LANG_LABEL[lang] || lang)
         }));
         reader.readAsText(file);
+    }
+
+    /**
+     * Import a compiled artefact from another editor.
+     *
+     * Three outcomes, and the status line tells the user which one they
+     * got, because the difference matters to what they can do next:
+     * a MicroPython hex is a program our simulator RUNS; a MakeCode
+     * micro:bit project is source we can read and translate; a MakeCode
+     * Arcade game is source for a machine we do not have — a 160x128
+     * screen driven by a Cortex-M4 — so it arrives as text, honestly
+     * labelled, rather than as a project that would not work.
+     *
+     * The importer is loaded on demand: it carries an LZMA decoder and a
+     * PNG decoder that no other part of the app needs, and nobody should
+     * pay for them until they open a .hex.
+     */
+    openArtefactFile (file) {
+        this.setState({status: this.L.mcReading(file.name)});
+        const reader = new FileReader();
+        reader.onload = async () => {
+            let res;
+            try {
+                const {importArtefact} = await import(
+                    /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+                res = await importArtefact(new Uint8Array(reader.result), {name: file.name});
+            } catch (err) {
+                this.setState({status: err && err.code === 'NO_EMBEDDED_SOURCE' ?
+                    this.L.mcNoSource(file.name, err.format) :
+                    this.L.mcFailed(file.name, (err && err.message) || String(err))});
+                return;
+            }
+            const status = res.kind === 'micropython' ?
+                this.L.mcPython(file.name, Object.keys(res.files).join(', ')) :
+                (res.project.target === 'arcade' ?
+                    this.L.mcArcade(file.name, res.project.name) :
+                    this.L.mcMicrobit(file.name, res.project.name));
+            this.setState({
+                lang: res.lang,
+                // Same exclusivity openCodeFile keeps: one authored buffer, so
+                // no stale translation of a previous source can masquerade.
+                buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
+                    asm: '', micropython: '', [res.lang]: res.code},
+                output: null,
+                status
+            });
+        };
+        reader.onerror = () => this.setState({status: this.L.mcFailed(file.name, 'read error')});
+        reader.readAsArrayBuffer(file);
     }
 
     /** What `Save` would call this tab's file. */
@@ -2335,9 +2405,9 @@ class PseudocodeImporter extends React.Component {
                                 it; Save writes whichever tab you are looking at. */}
                             <label style={{...csel, alignSelf: 'center', cursor: 'pointer',
                                 border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.openFileTitle(CODE_ACCEPT)} data-testid="bw-open-file">
+                                title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)} data-testid="bw-open-file">
                                 {this.L.openFile}
-                                <input type="file" accept={CODE_ACCEPT} style={{display: 'none'}}
+                                <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
                                     onChange={this.openCodeFile} />
                             </label>
                             <button type="button" onClick={this.saveCodeFile}
