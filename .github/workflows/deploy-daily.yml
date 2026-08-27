@@ -1,15 +1,18 @@
-# The Vercel free tier allows a limited number of deploys per day, and
-# agent push volume exhausted it (2026-08-23) — after which every later
-# push silently served a stale site. scripts/vercel-ignore.sh therefore
-# gates Vercel on a [deploy] commit-message marker; this workflow is the
-# other half: once a day (or on demand), IF web-affecting files moved
-# since the last deployed commit, it pushes one empty "[deploy]" commit
-# so the site catches up. Net deploy budget: at most one scheduled
-# deploy per day plus explicit release deploys.
+# MANUAL ONLY since 2026-08-27. This used to run on a cron and push an empty
+# "[deploy]" commit whenever the site was behind — which meant the public URL
+# tracked whatever happened to be on main at 04:23, a state nobody chose.
+#
+# The owner ruling is now that the site tracks CHECKPOINTS: a version tag, or
+# the `release:` commit carrying it (see scripts/vercel-ignore.sh). A timed
+# refresh is by definition not a checkpoint, so the schedule is gone.
+#
+# It is kept as workflow_dispatch because a deliberate "publish current main"
+# is occasionally the right call — running it by hand IS a checkpoint decision,
+# which is the part that was missing. The deploy cap is real: six lanes on one
+# repo exhausted it twice (2026-08-23, and 2026-08-27, when every push for
+# hours returned "Deployment rate limited" and the site served a stale build).
 name: deploy-daily
 on:
-  schedule:
-    - cron: '23 4 * * *'
   workflow_dispatch:
 permissions:
   contents: write
