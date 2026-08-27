@@ -51,7 +51,7 @@ test('only quality-approved new games are wired into the visible examples galler
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
-        'whisker_switch', 'spiral_circuit'
+        'whisker_switch', 'spiral_circuit', 'lilyway_rescue', 'rotor_rogue'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -411,6 +411,40 @@ test('Helix Rush has a thirty-sector finish and readable charge-phase-jackpot lo
     assert.ok(svgs.some(svg => svg.includes('HELIX RUSH')));
     assert.ok(svgs.some(svg => svg.includes('SURVIVE 30 SECTORS')));
     assert.ok(svgs.some(svg => svg.includes('MAGENTA GATE')));
+});
+
+test('Moonbank Hop presents distinct road and river rules with a three-crossing finish', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.lilyway_rescue);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.lilyway_rescue, /GOAL: reach the moon bank three times/);
+    assert.match(games.lilyway_rescue, /touching CarA or touching CarB/);
+    assert.match(games.lilyway_rescue, /touching LilyA or touching LilyB/);
+    assert.match(games.lilyway_rescue, /IF crossings = 3 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'route']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('MOONBANK HOP')));
+    assert.ok(svgs.some(svg => svg.includes('REACH THE MOON BANK 3 TIMES')));
+    assert.ok(svgs.some(svg => svg.includes('LAND ONLY ON A MOVING LILY')));
+});
+
+test('Crosswind Courier separates distance from stunt score and rewards level landings', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.rotor_rogue);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.rotor_rogue, /GOAL: reach distance forty before three crashes/);
+    assert.match(games.rotor_rogue, /set wind to sin of distance \* speed \/ 8/);
+    assert.match(games.rotor_rogue, /IF abs of tilt < 14 THEN:/);
+    assert.match(games.rotor_rogue, /IF distance > 39 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'skyroad']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('CROSSWIND COURIER')));
+    assert.ok(svgs.some(svg => svg.includes('DELIVER 40 KM')));
+    assert.ok(svgs.some(svg => svg.includes('LAND LEVEL FOR FUEL')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -850,6 +884,47 @@ test('directional cargo dash and charged tube boost work in the live Scratch VM'
     } finally { helix.quit(); clearStrayTimers(); }
 });
 
+test('grid hopping and throttle-jump controls work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator(); creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start(); vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const moonbank = await load(games.lilyway_rescue);
+    try {
+        const beforeY = Number(value(moonbank, 'frogY').value);
+        moonbank.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 4; i++) moonbank.runtime._step();
+        moonbank.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.equal(Number(value(moonbank, 'frogY').value), beforeY + 45, 'Up did not hop exactly one grid row');
+        assert.equal(Number(value(moonbank, 'crossings').value), 0, 'the route began with phantom crossings');
+    } finally { moonbank.quit(); clearStrayTimers(); }
+
+    const courier = await load(games.rotor_rogue);
+    try {
+        await new Promise(resolve => setTimeout(resolve, 240));
+        for (let i = 0; i < 10; i++) courier.runtime._step();
+        const beforeSpeed = Number(value(courier, 'speed').value);
+        courier.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 10; i++) courier.runtime._step();
+        courier.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.ok(Number(value(courier, 'speed').value) > beforeSpeed, 'Up did not accelerate the bike');
+        courier.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 4; i++) courier.runtime._step();
+        courier.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(courier, 'airborne').value), 1, 'Space did not launch the bike');
+    } finally { courier.quit(); clearStrayTimers(); }
+});
+
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
     assert.deepEqual(Object.keys(games), EXPECTED);
     for (const [name, source] of Object.entries(games)) {
@@ -897,8 +972,8 @@ test('each new game keeps its signature playable mechanic', () => {
         trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /touching SonarRing/, /set pulseReady to 0/, /change pearls by 1/],
         whisker_switch: [/set hidden to 1/, /change scent by 3/, /change banked by cargo/, /set targetHole to -1/, /point towards Pip/],
         spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /change sectors by 1/, /set lane to -2/],
-        lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/],
-        rotor_rogue: [/set wind to sin of score \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/],
+        lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/, /IF crossings = 3/],
+        rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/],
         prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /change score by 5 \* perfect/],
         shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /change orbTier by -1/],
         halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/],

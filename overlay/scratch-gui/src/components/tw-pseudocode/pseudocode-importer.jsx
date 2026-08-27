@@ -303,7 +303,9 @@ const GROUPS = [
         ['comet_cup', '☄️ Comet Strikers — polished'],
         ['trench_signal', '🛸 Echo Trench — polished'],
         ['whisker_switch', '🐭 Whisker Relay — polished'],
-        ['spiral_circuit', '🌀 Helix Rush — polished']
+        ['spiral_circuit', '🌀 Helix Rush — polished'],
+        ['lilyway_rescue', '🐸 Moonbank Hop — polished'],
+        ['rotor_rogue', '🏍️ Crosswind Courier — polished']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

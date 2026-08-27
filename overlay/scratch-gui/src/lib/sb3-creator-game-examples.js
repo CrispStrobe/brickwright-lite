@@ -2758,23 +2758,37 @@ SPRITE TubeCore:
       turn right speed degrees
       wait 0.03 seconds`,
 
-    lilyway_rescue: `# Lilyway Rescue — cross traffic, then ride drifting lily pads across the river.
-# Arrow keys hop one square at a time. Cars cost a heart; water is safe only while a
-# lily is beneath you. Reach the moon bank repeatedly as traffic accelerates.
+    lilyway_rescue: `# Moonbank Hop — a finite road-and-river crossing challenge.
+# GOAL: reach the moon bank three times before three crashes or splashes.
+# CONTROLS: Arrow keys hop one square. Cars hurt; river squares require a lily beneath you.
+# Each successful crossing makes traffic faster, then returns the frog to the start.
 GLOBAL crossings
 GLOBAL hearts
 GLOBAL frogX
 GLOBAL frogY
 GLOBAL traffic
 GLOBAL riding
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art moonbank-hop/intro
+  BACKDROP route art moonbank-hop/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable crossings
+    hide variable hearts
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to route
+      broadcast "start moonbank hop"
 
 SPRITE Juniper:
-  SHAPE circle 34 #67e35f
+  SHAPE art moonbank-hop/frog
   SOUND hop 620
   SOUND splash 190
   WHEN flag clicked:
-    show variable crossings
-    show variable hearts
     set crossings to 0
     set hearts to 3
     set traffic to 4
@@ -2782,20 +2796,28 @@ SPRITE Juniper:
     set frogY to -150
     set riding to 0
     go to x: frogX y: frogY
+    hide
+  WHEN I receive "start moonbank hop":
+    show variable crossings
+    show variable hearts
     show
   WHEN left arrow key pressed:
-    change frogX by -45
-    play sound "hop"
+    IF started = 1 THEN:
+      change frogX by -45
+      play sound "hop"
   WHEN right arrow key pressed:
-    change frogX by 45
-    play sound "hop"
+    IF started = 1 THEN:
+      change frogX by 45
+      play sound "hop"
   WHEN up arrow key pressed:
-    change frogY by 45
-    play sound "hop"
+    IF started = 1 THEN:
+      change frogY by 45
+      play sound "hop"
   WHEN down arrow key pressed:
-    change frogY by -45
-    play sound "hop"
-  WHEN flag clicked:
+    IF started = 1 THEN:
+      change frogY by -45
+      play sound "hop"
+  WHEN I receive "start moonbank hop":
     FOREVER:
       IF frogX < -215 THEN:
         set frogX to -215
@@ -2820,6 +2842,9 @@ SPRITE Juniper:
         change crossings by 1
         change traffic by 0.7
         broadcast "frog reset"
+      IF crossings = 3 THEN:
+        say "THREE MOONBANK RUNS — ALL FROGS HOME!" for 4 seconds
+        stop all
       IF hearts < 1 THEN:
         say ("Moon-bank crossings: " join crossings) for 3 seconds
         stop all
@@ -2831,9 +2856,11 @@ SPRITE Juniper:
     wait 0.45 seconds
 
 SPRITE CarA:
-  SHAPE rect 62 28 #ff556f
+  SHAPE art moonbank-hop/car-red
   WHEN flag clicked:
     go to x: -230 y: -25
+    hide
+  WHEN I receive "start moonbank hop":
     show
     FOREVER:
       change x by traffic
@@ -2842,9 +2869,11 @@ SPRITE CarA:
       wait 0.02 seconds
 
 SPRITE CarB:
-  SHAPE rect 72 30 #ffc34d
+  SHAPE art moonbank-hop/car-gold
   WHEN flag clicked:
     go to x: 230 y: -65
+    hide
+  WHEN I receive "start moonbank hop":
     show
     FOREVER:
       change x by 0 - traffic - 1
@@ -2853,9 +2882,11 @@ SPRITE CarB:
       wait 0.02 seconds
 
 SPRITE LilyA:
-  SHAPE circle 58 #43b86a
+  SHAPE art moonbank-hop/lily-a
   WHEN flag clicked:
     go to x: -180 y: 75
+    hide
+  WHEN I receive "start moonbank hop":
     show
     FOREVER:
       change x by 2.4
@@ -2866,9 +2897,11 @@ SPRITE LilyA:
       wait 0.02 seconds
 
 SPRITE LilyB:
-  SHAPE circle 64 #328f62
+  SHAPE art moonbank-hop/lily-b
   WHEN flag clicked:
     go to x: 180 y: 120
+    hide
+  WHEN I receive "start moonbank hop":
     show
     FOREVER:
       change x by -2
@@ -2878,10 +2911,12 @@ SPRITE LilyB:
         set x to 240
       wait 0.02 seconds`,
 
-    rotor_rogue: `# Rotor Rogue — balance a gyro-bike along a road suspended over the clouds.
-# Up accelerates, Down brakes, Left/Right counter-steer against the changing crosswind.
-# Space jumps barriers. Land with the bike level to bank airtime and refill boost fuel.
+    rotor_rogue: `# Crosswind Courier — balance a rotor-bike across forty cloud-road kilometres.
+# GOAL: reach distance forty before three crashes.
+# CONTROLS: Up spends fuel to accelerate, Down brakes, Left/Right counter-steer, Space jumps.
+# Level landings add stunt score and refill fuel; wind strengthens with speed.
 GLOBAL score
+GLOBAL distance
 GLOBAL lives
 GLOBAL speed
 GLOBAL tilt
@@ -2890,18 +2925,34 @@ GLOBAL bikeY
 GLOBAL lift
 GLOBAL airborne
 GLOBAL fuel
+GLOBAL jumpReady
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art crosswind-courier/intro
+  BACKDROP skyroad art crosswind-courier/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable distance
+    hide variable lives
+    hide variable speed
+    hide variable fuel
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to skyroad
+      broadcast "start crosswind courier"
 
 SPRITE GyroBike:
-  SHAPE rect 58 24 #43e6c7
-  COSTUME jump rect 58 24 #ffe56b
+  SHAPE art crosswind-courier/bike
+  COSTUME jump art crosswind-courier/jump
   SOUND rev 440
   SOUND crash 150
   WHEN flag clicked:
-    show variable score
-    show variable lives
-    show variable speed
-    show variable fuel
     set score to 0
+    set distance to 0
     set lives to 3
     set speed to 4
     set tilt to 0
@@ -2910,9 +2961,18 @@ SPRITE GyroBike:
     set lift to 0
     set airborne to 0
     set fuel to 12
+    set jumpReady to 0
     go to x: 0 y: bikeY
+    hide
+  WHEN I receive "start crosswind courier":
+    show variable score
+    show variable distance
+    show variable lives
+    show variable speed
+    show variable fuel
     show
-  WHEN flag clicked:
+    wait 0.2 seconds
+    set jumpReady to 1
     FOREVER:
       IF key up arrow pressed? and fuel > 0 THEN:
         change speed by 0.08
@@ -2923,7 +2983,7 @@ SPRITE GyroBike:
         set speed to 3
       IF speed > 11 THEN:
         set speed to 11
-      set wind to sin of score * speed / 8
+      set wind to sin of distance * speed / 8
       change tilt by wind
       IF key left arrow pressed? THEN:
         change tilt by -1.8
@@ -2955,21 +3015,25 @@ SPRITE GyroBike:
         set speed to 4
         play sound "crash"
         wait 0.7 seconds
-      change score by speed / 180
+      change distance by speed / 180
+      IF distance > 39 THEN:
+        say ("FORTY KILOMETRES DELIVERED — STUNT SCORE " join score) for 4 seconds
+        stop all
       IF lives < 1 THEN:
-        say ("Rotor distance: " join score) for 3 seconds
+        say ("COURIER LOST AT KM " join distance) for 4 seconds
         stop all
       wait 0.02 seconds
   WHEN space key pressed:
-    IF airborne = 0 THEN:
+    IF started = 1 and jumpReady = 1 and airborne = 0 THEN:
       set airborne to 1
       set lift to 11
       play sound "rev"
 
 SPRITE Barrier:
-  SHAPE rect 52 42 #fb4968
+  SHAPE art crosswind-courier/barrier
   WHEN flag clicked:
     hide
+  WHEN I receive "start crosswind courier":
     FOREVER:
       go to x: 220 y: -120
       show
@@ -2985,9 +3049,11 @@ SPRITE Barrier:
       wait pick random 1 to 3 seconds
 
 SPRITE SkyRoad:
-  SHAPE rect 420 16 #6d70a8
+  SHAPE art crosswind-courier/road
   WHEN flag clicked:
     go to x: 0 y: -145
+    hide
+  WHEN I receive "start crosswind courier":
     show
     FOREVER:
       change color effect by speed
