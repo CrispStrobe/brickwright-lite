@@ -23,6 +23,8 @@
     "sync:examples:check": "node scripts/sync-examples.mjs --check",
     "sync:flasher": "node scripts/sync-flasher.mjs",
     "sync:flasher:check": "node scripts/sync-flasher.mjs --check",
+    "sync:labwiredwasm": "node scripts/sync-labwired-wasm.mjs",
+    "sync:labwiredwasm:check": "node scripts/sync-labwired-wasm.mjs --check",
     "sync:microbitsim": "node scripts/sync-microbit-sim.mjs",
     "sync:microbitsim:check": "node scripts/sync-microbit-sim.mjs --check",
     "smoke:debugger": "node scripts/smoke-debugger.mjs",
