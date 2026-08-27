@@ -27,6 +27,18 @@ try {
     });
     await page.goto(url, {waitUntil: 'networkidle', timeout: 60000});
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
+    // The packaged GUI keeps the VM in Redux rather than exporting a global.
+    // Expose the same object the other browser gates use so this journey can
+    // prove that selection changes both the editor text and the live runtime.
+    await page.waitForFunction(() => {
+        const store = window.__brickwrightStore;
+        const vm = store?.getState?.()?.scratchGui?.vm;
+        if (vm?.runtime) {
+            window.__vm = vm;
+            return true;
+        }
+        return false;
+    }, null, {timeout: 60000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
 
     const device = page.locator('[data-testid="bw-device-select"]');
@@ -67,6 +79,43 @@ try {
     const filtered = await catalogItems.allTextContents();
     check('catalog search narrows to matching examples',
         after > 0 && after < before && filtered.every(label => /blink/i.test(label)), `${before} -> ${after}`);
+
+    // Reproduce the target-family regression with a real pin-bearing program.
+    // A controlled <select> used to snap straight back to Arduino here because
+    // retargetPseudocode had no pools for micro:bit/Arcade/SAMD51. Testing only
+    // an empty project cannot see that failure.
+    await search.fill('traffic light');
+    const trafficLight = page.locator('[data-testid="bw-catalog-item"][title="14-traffic-light"]');
+    await trafficLight.waitFor({timeout: 10000});
+    await trafficLight.click();
+    await page.waitForFunction(() => /PIN\s+red\s*=/.test(document.querySelector('.cm-content')?.textContent || ''),
+        null, {timeout: 10000});
+
+    const targetCases = [
+        ['microbit', ['P0', 'P1', 'P2']],
+        ['arcade', ['D0', 'D1', 'D2']],
+        ['pybadge', ['D13', 'D12', 'D11']],
+        ['pybadge-lc', ['D0', 'D1', 'D2']],
+        ['samd51', ['PA8', 'PA9', 'PA10']]
+    ];
+    for (const [target, pins] of targetCases) {
+        await device.selectOption(target);
+        await page.waitForFunction(({target, pins}) => {
+            const select = document.querySelector('[data-testid="bw-device-select"]');
+            const source = document.querySelector('.cm-content')?.textContent || '';
+            return select?.value === target && source.includes(`DEVICE ${target.toUpperCase()}`) &&
+                pins.every(pin => source.includes(`= ${pin} OUTPUT`));
+        }, {target, pins}, {timeout: 15000});
+        const runtimeDevice = await page.evaluate(() => window.__vm?.runtime?.bwDeviceId);
+        const status = await page.locator('[role="status"]').last().textContent().catch(() => '');
+        check(`pin-bearing program selects ${target}`,
+            await device.inputValue() === target && runtimeDevice === target && !/Cannot retarget/i.test(status || ''),
+            `select=${await device.inputValue()} runtime=${runtimeDevice}`);
+        if (target === 'microbit') {
+            check('micro:bit target reveals its generated-code tab',
+                await page.getByRole('button', {name: /micro:bit/i}).count() > 0);
+        }
+    }
 } catch (error) {
     check('example-selector browser journey completes', false, String(error).slice(0, 300));
 } finally {
