@@ -50,7 +50,7 @@ test('only quality-approved new games are wired into the visible examples galler
     const approved = new Set([
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
-        'ember_dojo', 'lockstep_lagoon'
+        'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
@@ -308,6 +308,40 @@ test('Tidegate Rush has a finish line, boost resource, hazards, and three-gate s
     assert.ok(svgs.some(svg => svg.includes('TIDEGATE RUSH')));
     assert.ok(svgs.some(svg => svg.includes('CLEAR 8 BLUE GATES')));
     assert.ok(svgs.some(svg => svg.includes('VIOLET LOCK')));
+});
+
+test('Blue-Line Breaker teaches momentum bank shots and ends after five goals', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.rink_riot);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.rink_riot, /GOAL: score five goals before the 40-second horn/);
+    assert.match(games.rink_riot, /CONTROLS: Arrows skate with inertia/);
+    assert.match(games.rink_riot, /point in direction 90 - vy \* 5/);
+    assert.match(games.rink_riot, /IF goals = 5 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'rink']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('BLUE-LINE BREAKER')));
+    assert.ok(svgs.some(svg => svg.includes('SCORE 5 BEFORE')));
+    assert.ok(svgs.some(svg => svg.includes('BEND A BANK SHOT')));
+});
+
+test('Orbit Hoops separates rim collisions from clean-net scoring and has a timed target', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.rim_reactor);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.rim_reactor, /GOAL: reach fifteen points before the 45-second reactor cycle ends/);
+    assert.match(games.rim_reactor, /IF touching Net and ballVY < 0 THEN:/);
+    assert.match(games.rim_reactor, /IF touching Rim THEN:/);
+    assert.match(games.rim_reactor, /IF score > 14 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('ORBIT HOOPS')));
+    assert.ok(svgs.some(svg => svg.includes('SCORE 15 BEFORE')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAN NETS BUILD MULTIPLIER')));
 });
 
 test('new click and orbit controls advance in the real Scratch VM', async () => {
@@ -614,12 +648,15 @@ test('parry timing and hydrofoil lane-boost controls work in the live Scratch VM
 
     const tidegate = await load(games.lockstep_lagoon);
     try {
+        await new Promise(resolve => setTimeout(resolve, 180));
+        for (let i = 0; i < 12; i++) tidegate.runtime._step();
         tidegate.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
-        for (let i = 0; i < 5; i++) tidegate.runtime._step();
+        for (let i = 0; i < 12; i++) tidegate.runtime._step();
         tidegate.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
         assert.equal(Number(value(tidegate, 'lane').value), 1, 'Right did not select the next channel');
         await new Promise(resolve => setTimeout(resolve, 120));
         tidegate.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        await new Promise(resolve => setTimeout(resolve, 100));
         for (let i = 0; i < 12; i++) tidegate.runtime._step();
         tidegate.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
         assert.ok(Number(value(tidegate, 'charge').value) < 100, 'Up did not spend boost charge');
@@ -628,6 +665,42 @@ test('parry timing and hydrofoil lane-boost controls work in the live Scratch VM
         tidegate.quit();
         clearStrayTimers();
     }
+});
+
+test('ice momentum and charge-release shooting work in the live Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator(); creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start(); vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const value = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+    const rink = await load(games.rink_riot);
+    try {
+        rink.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
+        for (let i = 0; i < 10; i++) rink.runtime._step();
+        rink.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
+        assert.ok(Number(value(rink, 'vy').value) > 0, 'Up did not create skating momentum');
+        assert.ok(Number(value(rink, 'skaterY').value) > 0, 'momentum did not move the skater');
+    } finally { rink.quit(); clearStrayTimers(); }
+
+    const hoops = await load(games.rim_reactor);
+    try {
+        await new Promise(resolve => setTimeout(resolve, 450));
+        for (let i = 0; i < 20; i++) hoops.runtime._step();
+        hoops.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 16; i++) hoops.runtime._step();
+        assert.ok(Number(value(hoops, 'charge').value) > 2, 'holding Space did not charge the shot');
+        hoops.postIOData('keyboard', {key: ' ', isDown: false});
+        for (let i = 0; i < 5; i++) hoops.runtime._step();
+        assert.equal(Number(value(hoops, 'flying').value), 1, 'releasing Space did not launch the ball');
+    } finally { hoops.quit(); clearStrayTimers(); }
 });
 
 test('new pseudocode games compile cleanly into substantial Scratch projects', () => {
@@ -671,8 +744,8 @@ test('each new game keeps its signature playable mechanic', () => {
         cloud_court: [/set rally to 1/, /touching Net/, /SPRITE CloudBot/],
         ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/, /change dragonHP by -1/],
         lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /change gates by 1/, /change score by 15/],
-        rink_riot: [/set vx to vx \* 0\.94/, /key space pressed\?/, /touching Keeper/, /change goals by 1/],
-        rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /change score by 2 \* streak/],
+        rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/, /change goals by 1/],
+        rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /touching Net/, /change score by 2 \* streak/],
         comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by crowd/],
         trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /touching SonarRing/, /change pearls by 1/],
         whisker_switch: [/set hidden to 1/, /change scent by 3/, /point towards Pip/, /change lives by -1/],

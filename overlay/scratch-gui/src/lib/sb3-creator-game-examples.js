@@ -1817,9 +1817,10 @@ SPRITE SurgeLock:
         wait 0.02 seconds
       hide`,
 
-    rink_riot: `# Rink Riot — compact ice hockey with slippery momentum. Arrows skate, Space
-# slap-shoots when the puck is close. Bank shots off the boards, beat the moving keeper,
-# and chain quick goals before the shot clock expires.
+    rink_riot: `# Blue-Line Breaker — momentum hockey built around deliberate bank shots.
+# GOAL: score five goals before the 40-second horn.
+# CONTROLS: Arrows skate with inertia. Touch the puck and tap Space to shoot;
+# your vertical skating speed bends the shot, so moving bank shots beat the keeper.
 GLOBAL goals
 GLOBAL clock
 GLOBAL skaterX
@@ -1828,21 +1829,37 @@ GLOBAL vx
 GLOBAL vy
 GLOBAL puckLive
 GLOBAL keeperY
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art blue-line-breaker/intro
+  BACKDROP rink art blue-line-breaker/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable goals
+    hide variable clock
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to rink
+      broadcast "start blue line"
 
 SPRITE Skater:
-  SHAPE circle 38 #55aaff
+  SHAPE art blue-line-breaker/skater
   WHEN flag clicked:
-    show variable goals
-    show variable clock
     set goals to 0
-    set clock to 30
+    set clock to 40
     set skaterX to -150
     set skaterY to 0
     set vx to 0
     set vy to 0
     go to x: skaterX y: skaterY
+    hide
+  WHEN I receive "start blue line":
+    show variable goals
+    show variable clock
     show
-  WHEN flag clicked:
     FOREVER:
       IF key left arrow pressed? THEN:
         change vx by -0.7
@@ -1865,28 +1882,31 @@ SPRITE Skater:
       IF skaterY > 150 THEN:
         set skaterY to 150
       go to x: skaterX y: skaterY
+      IF goals = 5 THEN:
+        say "FIVE GOALS — BLUE LINE BROKEN!" for 4 seconds
+        stop all
       IF clock < 1 THEN:
-        say ("Rink Riot goals: " join goals) for 3 seconds
+        say ("HORN — GOALS " join goals) for 4 seconds
         stop all
       wait 0.02 seconds
-  WHEN flag clicked:
+  WHEN I receive "start blue line":
     FOREVER:
       wait 1 seconds
       change clock by -1
 
 SPRITE Puck:
-  SHAPE circle 18 #202936
+  SHAPE art blue-line-breaker/puck
   SOUND goal 880
   WHEN flag clicked:
     set puckLive to 0
     go to x: -30 y: 0
+    hide
+  WHEN I receive "start blue line":
     show
-  WHEN flag clicked:
     FOREVER:
       IF puckLive = 0 and touching Skater and key space pressed? THEN:
         set puckLive to 1
-        point towards Goal
-        turn right pick random -18 to 18 degrees
+        point in direction 90 - vy * 5
       IF puckLive = 1 THEN:
         move 11 steps
         IF y position > 165 or y position < -165 THEN:
@@ -1896,7 +1916,7 @@ SPRITE Puck:
           move 14 steps
         IF touching Goal THEN:
           change goals by 1
-          change clock by 4
+          change clock by 2
           play sound "goal"
           set puckLive to 0
           go to x: -30 y: pick random -80 to 80
@@ -1906,54 +1926,89 @@ SPRITE Puck:
       wait 0.02 seconds
 
 SPRITE Keeper:
-  SHAPE rect 18 70 #ff5b6e
+  SHAPE art blue-line-breaker/keeper
   WHEN flag clicked:
     set keeperY to 0
     go to x: 185 y: keeperY
+    hide
+  WHEN I receive "start blue line":
     show
     FOREVER:
-      change keeperY by pick random -12 to 12
+      IF puckLive = 1 THEN:
+        IF y position of Puck > keeperY THEN:
+          change keeperY by 5
+        IF y position of Puck < keeperY THEN:
+          change keeperY by -5
+      ELSE:
+        change keeperY by pick random -5 to 5
       IF keeperY > 115 THEN:
         set keeperY to 115
       IF keeperY < -115 THEN:
         set keeperY to -115
-      glide 0.12 secs to x: 185 y: keeperY
+      go to x: 185 y: keeperY
+      wait 0.03 seconds
 
 SPRITE Goal:
-  SHAPE rect 12 120 #a8ffdf
+  SHAPE art blue-line-breaker/goal
   WHEN flag clicked:
     go to x: 220 y: 0
+    hide
+  WHEN I receive "start blue line":
     show`,
 
-    rim_reactor: `# Rim Reactor — an arcade basketball laboratory. Hold Space to charge, release
-# to launch. Left/Right changes the angle while airborne. The hoop slides faster after
-# every score; swishes build a reactor multiplier, rim hits reset it.
+    rim_reactor: `# Orbit Hoops — a moving-basket charge-shot challenge.
+# GOAL: reach fifteen points before the 45-second reactor cycle ends.
+# CONTROLS: Hold Space to charge and release to launch. Left/Right adds air control.
+# Clean shots through the cyan net grow the multiplier; touching the red rim resets it.
 GLOBAL score
 GLOBAL streak
 GLOBAL charge
+GLOBAL timeLeft
 GLOBAL ballX
 GLOBAL ballY
 GLOBAL ballVX
 GLOBAL ballVY
 GLOBAL flying
 GLOBAL hoopX
+GLOBAL started
+
+STAGE:
+  BACKDROP intro art orbit-hoops/intro
+  BACKDROP court art orbit-hoops/play
+  WHEN flag clicked:
+    set started to 0
+    switch backdrop to intro
+    hide variable score
+    hide variable streak
+    hide variable charge
+    hide variable timeLeft
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to court
+      broadcast "start orbit hoops"
 
 SPRITE Ball:
-  SHAPE circle 28 #ff8c32
+  SHAPE art orbit-hoops/ball
   SOUND swish 900
   SOUND clang 190
   WHEN flag clicked:
-    show variable score
-    show variable streak
     set score to 0
     set streak to 1
     set charge to 0
+    set timeLeft to 45
     set flying to 0
     set ballX to -150
     set ballY to -125
     go to x: ballX y: ballY
+    hide
+  WHEN I receive "start orbit hoops":
+    show variable score
+    show variable streak
+    show variable charge
+    show variable timeLeft
     show
-  WHEN flag clicked:
+    wait 0.25 seconds
     FOREVER:
       IF flying = 0 THEN:
         IF key space pressed? THEN:
@@ -1976,16 +2031,16 @@ SPRITE Ball:
         change ballY by ballVY
         go to x: ballX y: ballY
         turn right 12 degrees
-        IF touching Rim THEN:
-          IF ballVY < 0 and ballY > 35 THEN:
-            change score by 2 * streak
-            change streak by 1
-            play sound "swish"
-            set flying to 0
-            set ballX to -150
-            set ballY to -125
-            go to x: ballX y: ballY
-          ELSE:
+        IF touching Net and ballVY < 0 THEN:
+          change score by 2 * streak
+          change streak by 1
+          play sound "swish"
+          set flying to 0
+          set ballX to -150
+          set ballY to -125
+          go to x: ballX y: ballY
+        ELSE:
+          IF touching Rim THEN:
             set streak to 1
             set ballVX to 0 - ballVX
             set ballVY to abs of ballVY * 0.65
@@ -1996,13 +2051,25 @@ SPRITE Ball:
           set ballX to -150
           set ballY to -125
           go to x: ballX y: ballY
+      IF score > 14 THEN:
+        say "FIFTEEN POINTS — REACTOR ONLINE!" for 4 seconds
+        stop all
+      IF timeLeft < 1 THEN:
+        say ("CYCLE OVER — SCORE " join score) for 4 seconds
+        stop all
       wait 0.02 seconds
+  WHEN I receive "start orbit hoops":
+    FOREVER:
+      wait 1 seconds
+      change timeLeft by -1
 
 SPRITE Rim:
-  SHAPE rect 68 12 #ff476f
+  SHAPE art orbit-hoops/rim
   WHEN flag clicked:
     set hoopX to 110
     go to x: hoopX y: 55
+    hide
+  WHEN I receive "start orbit hoops":
     show
     FOREVER:
       change hoopX by 3 + score / 8
@@ -2011,10 +2078,23 @@ SPRITE Rim:
       go to x: hoopX y: 55
       wait 0.03 seconds
 
+SPRITE Net:
+  SHAPE art orbit-hoops/net
+  WHEN flag clicked:
+    go to x: hoopX y: 38
+    hide
+  WHEN I receive "start orbit hoops":
+    show
+    FOREVER:
+      go to x: hoopX y: 38
+      wait 0.03 seconds
+
 SPRITE ChargeMeter:
-  SHAPE rect 12 100 #55e6a5
+  SHAPE art orbit-hoops/meter
   WHEN flag clicked:
     go to x: -220 y: -80
+    hide
+  WHEN I receive "start orbit hoops":
     show
     FOREVER:
       set size to 20 + charge * 4 %
