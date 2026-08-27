@@ -151,6 +151,23 @@ So the order stands: import first, emulate later, and only if the demand is
 for playing other people's games rather than learning from them. The two are
 complementary, not alternatives — and neither needs the other to ship.
 
+## Two things found on the way that are not built here
+
+**The pxteditor iframe protocol.** MakeCode editors accept
+`?controller=1` and then talk `postMessage` in a documented shape
+(`{type: "pxteditor", action: "renderblocks" | "importproject" | …}`,
+answered with `{type: "pxthost"}`). That is how you would embed the real
+editor, or render a block image of a snippet, without any of the parsing
+above. It needs the network and a remote origin, which is exactly what
+this fork exists to avoid — but it is the right tool if we ever want
+"edit this in MakeCode, come back with the result".
+
+**The Arcade block vocabulary as an extension.** We ship a 5x5 `arcade`
+extension (sprites on the LED matrix). Growing it into a stage-backed
+sprite/tilemap/scene extension would let people *write* Arcade-shaped
+programs here, which is the mirror of importing them. Separate feature,
+not interop.
+
 ## Licensing (this matters more here than elsewhere)
 
 Checked via the GitHub API on 2026-08-27:
