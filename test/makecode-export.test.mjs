@@ -168,7 +168,7 @@ test('arrays and bitwise go back to MakeCode as themselves', {skip: canCompile ?
         '  set item 0 of array "liste" to 9',
         '  set wert to (wert bitand 255)',
         '  set wert to item 1 of array "liste"',
-        '  show text (length of array "liste")'
+        '  display length of array "liste"'
     ].join('\n'));
     const {ts, unsupported} = projectToMakeCodeTs(project);
 
@@ -180,6 +180,7 @@ test('arrays and bitwise go back to MakeCode as themselves', {skip: canCompile ?
     assert.match(ts, /liste\[0\] = 9/, ts);
     assert.match(ts, /liste\[1\]/, ts);
     assert.match(ts, /liste\.length/, ts);
+    assert.match(ts, /basic\.showNumber\(liste\.length\)/, ts);
     assert.match(ts, /wert & 255/, ts);
     assert.doesNotMatch(ts, /unsupported/, ts);
 });
