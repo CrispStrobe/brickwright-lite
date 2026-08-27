@@ -117,3 +117,34 @@ test('discovery scans unfiltered at the adapter and matches in software', () => 
     assert.match(BLE, /ScanFilter::None/,
         'an adapter-level service filter would hide devices a name filter wants');
 });
+
+test('the Web Bluetooth GATT blocklist is present and enforced', () => {
+    // The reference refuses these for security and privacy — HID because
+    // "direct access to HID devices would let web pages become keyloggers",
+    // the serial number because it is a tracking id, firmware-update and
+    // bootloader services because they can replace a device's software. We had
+    // no blocklist at all, so any extension could reach all of them through us.
+    const BLOCKED = [
+        '00001812-0000-1000-8000-00805f9b34fb', // HID
+        '00001530-1212-efde-1523-785feabcd123', // unsigned firmware update
+        'f000ffc0-0451-4000-b000-000000000000', // TI OAD
+        '00060000-0000-1000-8000-00805f9b34fb', // Cypress bootloader
+        '0000fffd-0000-1000-8000-00805f9b34fb', // FIDO U2F
+        '00002a02-0000-1000-8000-00805f9b34fb', // privacy flag (writes)
+        '00002a03-0000-1000-8000-00805f9b34fb', // reconnection address
+        '00002a25-0000-1000-8000-00805f9b34fb', // serial number
+        '00002902-0000-1000-8000-00805f9b34fb', // CCCD (writes)
+        '00002903-0000-1000-8000-00805f9b34fb', // SCCD (writes)
+    ];
+    for (const uuid of BLOCKED) {
+        assert.match(BLE, new RegExp(uuid), `${uuid} is missing from the blocklist`);
+    }
+    // Enforced where the reference enforces it: read, write, and both
+    // notification calls. A list nothing consults is decoration.
+    // Count CALL SITES only. Matching `check_blocklist(params` also matched the
+    // function's own definition, so removing a call still left four and the
+    // test passed — it was counting the thing it was supposed to be measuring.
+    const checks = BLE.match(/check_blocklist\(params,\s*(?:true|false)\)/g) || [];
+    assert.equal(checks.length, 4,
+        `the blocklist is consulted at ${checks.length} call sites; the reference checks read, write, startNotifications and stopNotifications`);
+});

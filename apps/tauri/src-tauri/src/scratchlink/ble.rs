@@ -127,6 +127,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             Ok(Value::Null)
         }
         "write" => {
+            check_blocklist(params, true)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             let data = decode_message(params)?;
             let write_type = if params.get("withResponse").and_then(Value::as_bool).unwrap_or(false)
@@ -142,6 +143,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             Ok(json!(n))
         }
         "read" => {
+            check_blocklist(params, false)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             let data = h.recv_data(uuid).await.map_err(|e| e.to_string())?;
             if params
@@ -154,6 +156,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             Ok(json!({ "message": B64.encode(&data), "encoding": "base64" }))
         }
         "startNotifications" => {
+            check_blocklist(params, false)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             subscribe(uuid, params, out.clone()).await?;
             Ok(Value::Null)
@@ -164,6 +167,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
         // treat a legitimate request as an error. Notifications then kept
         // arriving for a characteristic nobody was reading any more.
         "stopNotifications" => {
+            check_blocklist(params, false)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             h.unsubscribe(uuid).await.map_err(|e| e.to_string())?;
             Ok(Value::Null)
@@ -434,6 +438,78 @@ impl ScanFilterSpec {
     }
 }
 
+/// What a blocked UUID may still be used for.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum BlockedFor {
+    /// Neither reads nor writes.
+    All,
+    /// Writes only; reading is allowed.
+    Writes,
+}
+
+/// GATT services, characteristics and descriptors that Web Bluetooth forbids
+/// for security or privacy reasons.
+///
+/// Ported from the reference implementation's `GATTHelpers.BlockList`, itself
+/// collected from the Web Bluetooth Registries
+/// (<https://github.com/WebBluetoothCG/registries> @ 693db2fe). We had no
+/// blocklist at all, which meant an extension — ours, a gallery one, or a URL a
+/// child was talked into pasting — could read or write any of these through us.
+/// The comments are upstream's own reasons, kept because they are the argument
+/// for each entry.
+const BLOCK_LIST: &[(&str, BlockedFor)] = &[
+    // Services
+    // org.bluetooth.service.human_interface_device
+    // Direct access to HID devices would let a page become a keylogger.
+    ("00001812-0000-1000-8000-00805f9b34fb", BlockedFor::All),
+    // Firmware update services that do not check the update's signature: a
+    // route to replacing a device's software outright.
+    ("00001530-1212-efde-1523-785feabcd123", BlockedFor::All),
+    // TI's Over-the-Air Download service.
+    ("f000ffc0-0451-4000-b000-000000000000", BlockedFor::All),
+    // Cypress's Bootloader service.
+    ("00060000-0000-1000-8000-00805f9b34fb", BlockedFor::All),
+    // FIDO U2F — a security key is not something a project should reach.
+    ("0000fffd-0000-1000-8000-00805f9b34fb", BlockedFor::All),
+    // Characteristics
+    // gap.peripheral_privacy_flag — do not let a page turn privacy off.
+    ("00002a02-0000-1000-8000-00805f9b34fb", BlockedFor::Writes),
+    // gap.reconnection_address — connection parameters are not ours to change.
+    ("00002a03-0000-1000-8000-00805f9b34fb", BlockedFor::All),
+    // serial_number_string — a standardised unique identifier, i.e. tracking.
+    ("00002a25-0000-1000-8000-00805f9b34fb", BlockedFor::All),
+    // Descriptors
+    // gatt.client_characteristic_configuration — writing it would let a page
+    // subscribe or unsubscribe behind the client's back.
+    ("00002902-0000-1000-8000-00805f9b34fb", BlockedFor::Writes),
+    // gatt.server_characteristic_configuration
+    ("00002903-0000-1000-8000-00805f9b34fb", BlockedFor::Writes),
+];
+
+/// Refuse a blocked endpoint. `writing` distinguishes the write-only entries.
+///
+/// Checked on the service AND the characteristic, as the reference does: a
+/// blocked characteristic inside an allowed service must still be refused.
+pub fn check_blocklist(params: &Value, writing: bool) -> Result<(), String> {
+    for key in ["serviceId", "characteristicId"] {
+        let Ok(uuid) = parse_uuid(params.get(key)) else {
+            continue;
+        };
+        for (blocked, how) in BLOCK_LIST {
+            if Uuid::parse_str(blocked).ok() != Some(uuid) {
+                continue;
+            }
+            if *how == BlockedFor::All || writing {
+                return Err(format!(
+                    "{uuid} is blocked for security or privacy reasons \
+                     (see the Web Bluetooth registries)"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// A JSON array of byte values, as the extensions write dataPrefix and mask.
 fn byte_array(v: Option<&Value>) -> Option<Vec<u8>> {
     let arr = v?.as_array()?;
@@ -554,6 +630,67 @@ mod tests {
     const LEGO_SERVICE: &str = "00001623-1212-efde-1623-785feabcd123";
 
     // ── the two shipped extensions that our old filter got wrong ──────────
+
+    // ── the GATT blocklist we did not have at all ────────────────────────
+
+    const HID: &str = "00001812-0000-1000-8000-00805f9b34fb";
+    const SERIAL_NUMBER: &str = "00002a25-0000-1000-8000-00805f9b34fb";
+    const PRIVACY_FLAG: &str = "00002a02-0000-1000-8000-00805f9b34fb";
+    const CCCD: &str = "00002902-0000-1000-8000-00805f9b34fb";
+
+    #[test]
+    fn hid_is_refused_for_reads_and_writes() {
+        // Upstream's reason, verbatim: direct access to HID devices would let a
+        // page become a keylogger. We had no blocklist, so this went through.
+        let p = json!({"serviceId": HID, "characteristicId": "1234"});
+        assert!(check_blocklist(&p, false).is_err(), "reading HID must be refused");
+        assert!(check_blocklist(&p, true).is_err(), "writing HID must be refused");
+    }
+
+    #[test]
+    fn the_serial_number_is_refused_because_it_is_a_tracking_id() {
+        let p = json!({"characteristicId": SERIAL_NUMBER});
+        assert!(check_blocklist(&p, false).is_err());
+    }
+
+    #[test]
+    fn write_only_entries_still_allow_reading() {
+        // The privacy flag and the CCCD are ExcludeWrites, not Exclude.
+        // Blocking their reads too would break legitimate use — the blocklist
+        // is meant to be exactly as wide as it needs to be.
+        for uuid in [PRIVACY_FLAG, CCCD] {
+            let p = json!({"characteristicId": uuid});
+            assert!(check_blocklist(&p, false).is_ok(), "{uuid} should be readable");
+            assert!(check_blocklist(&p, true).is_err(), "{uuid} must not be writable");
+        }
+    }
+
+    #[test]
+    fn a_blocked_characteristic_inside_an_allowed_service_is_still_refused() {
+        // The reference checks BOTH ids. Checking only the service would let a
+        // blocked characteristic through whenever its service is innocuous.
+        let p = json!({"serviceId": "00001623-1212-efde-1623-785feabcd123",
+                       "characteristicId": SERIAL_NUMBER});
+        assert!(check_blocklist(&p, false).is_err());
+    }
+
+    #[test]
+    fn ordinary_lego_endpoints_are_untouched() {
+        // The blocklist must not cost us the hardware it exists to protect.
+        let p = json!({"serviceId": "00001623-1212-efde-1623-785feabcd123",
+                       "characteristicId": "00001624-1212-efde-1623-785feabcd123"});
+        assert!(check_blocklist(&p, false).is_ok());
+        assert!(check_blocklist(&p, true).is_ok());
+    }
+
+    #[test]
+    fn a_short_uuid_form_is_blocked_too() {
+        // Extensions may send "2a25" rather than the full form; parse_uuid
+        // expands it, so the blocklist must catch it after expansion or the
+        // block is trivially bypassed by writing the id differently.
+        let p = json!({"characteristicId": "2a25"});
+        assert!(check_blocklist(&p, false).is_err());
+    }
 
     #[test]
     fn gdx_for_name_prefix_excludes_everything_else() {
