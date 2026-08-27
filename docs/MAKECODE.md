@@ -75,13 +75,14 @@ unsupported APIs remain visible in the import report.
 | | what | state |
 |---|---|---|
 | 0 | sniff + extract project source from .hex/.uf2/.elf/.png | **done** |
-| 0b | MicroPython .hex → `.py` → runs in the simulator | **done** (extraction; the "flash it into the sim" button is next) |
+| 0b | MicroPython .hex → `.py` → runs in the simulator | **done**, end to end: the extracted script lands in the micro:bit tab (which appears whenever there IS MicroPython to show, not only when a DEVICE line says so) and that tab's **▶ Run on simulator** flashes it |
 | 1 | MakeCode **micro:bit** TypeScript → our blocks | **done** |
 | 2 | MakeCode **Arcade** → a Scratch project, artwork included | **done** |
 | 3 | import from a share link (needs network; the file importer is what works offline and in the packaged app) | **done** — 🔗 MakeCode… in the Code tab |
 | 4 | export: a Brickwright project opens *in* MakeCode | **done** — ⬆ To MakeCode writes a .hex whose only content is the source embed, which is what MakeCode's importer actually reads |
 | 4b | export: compile a modified project to a board `.uf2` | **not done**, and not the same thing — that needs pxt's own compiler. Opening in MakeCode is not physical deployment |
 | 5 | actually emulate a MakeCode hex | see below |
+| 6 | **Calliope mini** (`makecode.calliope.cc`) | **not done, and not attempted blind.** The target is already recognised, but such a project currently lands in the JavaScript tab. Its core API is micro:bit's, so routing it through that translator would mostly work — with the Calliope-only calls (RGB LED, motors) refused, and `DEVICE MICROBIT` being an approximation of the board. Worth doing the moment one real `.hex` from that editor exists to test against; everything else here was built against real downloads and this should be too |
 
 ## What the grammar will and will not take
 
