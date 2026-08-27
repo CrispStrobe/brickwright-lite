@@ -37,13 +37,15 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     const {setEngine} = await import(path.join(cui, 'engine.js'));
     const {BoardImpl} = await import(path.join(bwb, 'board.js'));
     const {inferNetlist, checkWiring} = await import(path.join(bwb, 'infer-netlist.js'));
-    const {hasDevice} = await import(path.join(bwb, 'devices.js'));
+    const {hasDevice, getDevice} = await import(path.join(bwb, 'devices.js'));
     (await import(path.join(bwb, 'register-all.js'))).registerAllDevices();
+    const getCircuitDevice = kind => kind === 'stc_mcu' ? null : getDevice(kind);
     setEngine({
         BoardImpl,
         inferNetlist,
         checkWiring,
-        hasDevice
+        hasDevice,
+        getDevice: getCircuitDevice
     });
     const {registerSidecar} = await import(path.join(cui, 'model/parts-registry.js'));
     for (const name of readdirSync(path.join(cui, 'parts-data'))) {
@@ -100,7 +102,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
             const part = loadedParts.get(ep.part);
             const terminal = part ? resolveTerminal(part.kind, ep.terminal, part.terminals || []) : ep.terminal;
             const resolved = nets.some(net => net.terminals.some(item =>
-                item.part === ep.part && item.terminal === terminal));
+                item.part === ep.part && String(item.terminal).toLowerCase() === String(terminal).toLowerCase()));
             if (!resolved) failures.push(`${rel}: ${side} ends in nowhere at ${ep.part}.${ep.terminal}`);
         }
 

@@ -14,6 +14,17 @@ test('Circuit Designer has a view toggle (realistic / schematic) and a mode attr
     assert.match(source, /Schematic view/);
 });
 
+test('the production circuit host injects the device model accessor the designer consumes', () => {
+    const host = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
+    const contract = read('overlay/scratch-gui/src/lib/bw-circuit-ui/engine.js');
+    assert.match(contract, /_engine\.getDevice/,
+        'the vendored designer no longer consumes getDevice; update this host-contract gate');
+    assert.match(host, /const getCircuitDevice = kind => kind === 'stc_mcu' \? null : engine\.getDevice\(kind\)/,
+        'the legacy STC surface must retain its larger sidecar terminal set');
+    assert.match(host, /getDevice:\s*getCircuitDevice/,
+        'without getDevice, registered PS\/2 and VGA parts collapse to generic MCU state in the built app');
+});
+
 test('part editor uses focused, native numeric controls', () => {
     const editor = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/InlineEditor.jsx');
     assert.match(editor, /data-inline-editor/);
