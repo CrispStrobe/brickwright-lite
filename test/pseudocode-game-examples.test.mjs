@@ -725,7 +725,12 @@ test('new click and orbit controls advance in the real Scratch VM', async () => 
 });
 
 test('new merge and runner controls change live Scratch VM state', async () => {
-    const load = async (source, pressSpace = true) => {
+    // Since #34 the green flag starts every game through
+    // `__brickwright_start_from_flag`, so a Space press here no longer
+    // crosses a title gate — it reaches the game as a MOVE. Fusion
+    // Foundry dropped a core on it and then a second on the one this test
+    // sends, which is what "2 !== 1" was.
+    const load = async source => {
         const creator = new SB3Creator();
         creator.parse(source);
         const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
@@ -734,20 +739,22 @@ test('new merge and runner controls change live Scratch VM state', async () => {
         vm.start();
         vm.greenFlag();
         for (let i = 0; i < 20; i++) vm.runtime._step();
-        if (pressSpace) {
-            vm.postIOData('keyboard', {key: ' ', isDown: true});
-            for (let i = 0; i < 30; i++) vm.runtime._step();
-            vm.postIOData('keyboard', {key: ' ', isDown: false});
-        }
+        // Since #34 the green flag starts every game itself, through
+        // `__brickwright_start_from_flag` — but the hat waits 0.6 s first,
+        // so the start has to be waited FOR rather than stepped to. This
+        // used to press Space instead, which crossed a title gate that no
+        // longer exists; the press now reaches the game as a MOVE, and
+        // Fusion Foundry dropped a core on it and a second on the one the
+        // test sends. That was "2 !== 1".
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 30; i++) vm.runtime._step();
         return vm;
     };
     const stageValue = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
         .find(variable => variable.name === name);
 
-    const nova = await load(games.g2048, false);
+    const nova = await load(games.g2048);
     try {
-        await new Promise(resolve => setTimeout(resolve, 700));
-        for (let i = 0; i < 30; i++) nova.runtime._step();
         assert.equal(Number(stageValue(nova, 'started').value), 1,
             'the ordinary green flag left the game parked behind a Space/fullscreen gate');
         const board = nova.runtime.targets.find(target => target.sprite.name === 'Board');
