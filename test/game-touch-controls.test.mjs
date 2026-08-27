@@ -7,6 +7,10 @@ import {
     releaseTouchControls,
     setTouchControl
 } from '../overlay/scratch-gui/src/lib/game-touch-controls.js';
+import {
+    getVectorArt,
+    vectorArtNames
+} from '../overlay/scratch-gui/src/lib/sb3-creator-vector-art.js';
 
 const read = path => readFileSync(new URL(`../overlay/scratch-gui/src/${path}`, import.meta.url), 'utf8');
 
@@ -65,4 +69,16 @@ test('touch presses use Scratch keyboard IO and cannot leave duplicate or stuck 
         {device: 'keyboard', key: 'w', isDown: false}
     ]);
     assert.equal(held.size, 0);
+});
+
+test('authored SVGs do not claim Space-only startup or mouse-only pointer input', () => {
+    const assets = vectorArtNames.map(name => getVectorArt(name));
+
+    for (const svg of assets) {
+        assert.doesNotMatch(svg, /PRESS SPACE TO/);
+        assert.doesNotMatch(svg, /\bMOUSE\b/);
+    }
+
+    assert.ok(assets.some(svg => svg.includes('FLAG / SPACE: DEFEND')));
+    assert.ok(assets.some(svg => svg.includes('POINTER = AIM')));
 });

@@ -223,6 +223,15 @@ const art = {
     'magma-lift/ring': `<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52"><circle cx="26" cy="26" r="19" fill="none" stroke="#ff6552" stroke-width="9"/><circle cx="26" cy="26" r="12" fill="none" stroke="#ffc05a" stroke-width="3"/><path d="M26 1v8M26 43v8M1 26h8M43 26h8" stroke="#ffe18a" stroke-width="3"/></svg>`
 };
 
+// Intro cards are also shown on touch-only devices. Keep Space as a desktop
+// shortcut, while making it clear that the ordinary green flag starts a game,
+// and use device-neutral wording for pointer input.
+for (const name of Object.keys(art)) {
+    art[name] = art[name]
+        .replace(/PRESS SPACE TO ([^<]+)/g, 'FLAG / SPACE: $1')
+        .replace(/\bMOUSE\b/g, 'POINTER');
+}
+
 export const getVectorArt = name => art[String(name || '').toLowerCase()] || null;
 export const vectorArtNames = Object.freeze(Object.keys(art));
 
