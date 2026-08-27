@@ -88,6 +88,14 @@ test('green flag crosses every title gate in the ordinary right-hand stage', () 
     }
 });
 
+test('approved games state attainable goals instead of endless survival non-goals', () => {
+    for (const [name, source] of Object.entries(games)) {
+        assert.match(source, /^# GOAL:/m, `${name}: no player-facing goal`);
+        assert.doesNotMatch(source, /survive as long as possible/i,
+            `${name}: endless survival is not an attainable finish`);
+    }
+});
+
 test('green flag actually starts every game in the real Scratch VM without Space', async () => {
     for (const [name, source] of Object.entries(games)) {
         const startVariable = name === 'g2048' ? 'started' :
@@ -299,10 +307,12 @@ test('Neon Relay teaches distinct jump and slide hazards and gates the run', () 
     const project = creator.parse(games.rooftop_relay);
     assert.deepEqual(creator.errors, []);
     assert.deepEqual(creator.warnings, []);
-    assert.match(games.rooftop_relay, /GOAL: survive as long as possible/);
+    assert.match(games.rooftop_relay, /GOAL: clear thirty rooftop hazards/);
     assert.match(games.rooftop_relay, /CONTROLS: Up jumps, Down slides/);
     assert.match(games.rooftop_relay, /broadcast "start neon relay"/);
     assert.match(games.rooftop_relay, /go to x: 250 y: -96/);
+    assert.match(games.rooftop_relay, /change rooftops by 1/);
+    assert.match(games.rooftop_relay, /IF rooftops = 30 THEN:/);
     const stage = project.targets.find(target => target.isStage);
     const runner = project.targets.find(target => target.name === 'Runner');
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'skyline']);
@@ -310,7 +320,34 @@ test('Neon Relay teaches distinct jump and slide hazards and gates the run', () 
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('NEON RELAY')));
     assert.ok(svgs.some(svg => svg.includes('JUMP OVER RED VENTS')));
-    assert.ok(svgs.some(svg => svg.includes('ORANGE DRONE = SLIDE')));
+    assert.ok(svgs.some(svg => svg.includes('SLIDE UNDER ORANGE DRONES')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR 30 HAZARDS')));
+});
+
+test('Neon Relay delivers on rooftop thirty in the real Scratch VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.rooftop_relay);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 25; i++) vm.runtime._step();
+        const values = Object.values(vm.runtime.getTargetForStage().variables);
+        const value = name => values.find(variable => variable.name === name);
+        value('rooftops').value = 29;
+        value('score').value = 41;
+
+        vm.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'rooftop cleared'});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+
+        assert.equal(Number(value('rooftops').value), 30);
+        assert.equal(Number(value('score').value), 42);
+        assert.equal(Number(value('delivered').value), 1, 'the finish line did not complete the delivery');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
 });
 
 test('Rift Rally exposes its dual controls, crystals, and three-escape loss condition', () => {
@@ -1471,7 +1508,8 @@ test('each new game keeps its signature playable mechanic', () => {
         missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/,
             /change missiles by 1/, /IF missiles > 23 THEN:/],
         orbit_ward: [/sin of angle/, /cos of angle/, /REPEAT 8/, /IF touching Shield/],
-        rooftop_relay: [/set vy to 12/, /switch costume to slide/, /set overdrive to 0/],
+        rooftop_relay: [/set vy to 12/, /switch costume to slide/, /set overdrive to 0/,
+            /change rooftops by 1/, /IF rooftops = 30 THEN:/],
         twinwall: [/SPRITE LeftWall/, /SPRITE RightWall/, /set bricks to 24/, /change score by rally/],
         turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /change checkpoints by 1/],
         abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/],

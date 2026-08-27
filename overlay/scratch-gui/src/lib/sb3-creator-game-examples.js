@@ -920,7 +920,8 @@ SPRITE Seal:
       wait 0.02 seconds`,
 
     rooftop_relay: `# Neon Relay — a readable two-action rooftop runner.
-# GOAL: survive as long as possible; red vents require a jump, orange drones a slide.
+# GOAL: clear thirty rooftop hazards to deliver the relay cell. Red vents require
+# a jump, orange drones a slide, and one collision ends the run.
 # CONTROLS: Up jumps, Down slides. Batteries grant a short obstacle-smashing boost.
 GLOBAL score
 GLOBAL speed
@@ -932,6 +933,8 @@ GLOBAL spawnKind
 GLOBAL overdrive
 GLOBAL hurtLock
 GLOBAL started
+GLOBAL rooftops
+GLOBAL delivered
 
 STAGE:
   BACKDROP intro art neon-relay/intro
@@ -941,11 +944,19 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable overdrive
+    hide variable rooftops
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
       switch backdrop to skyline
       broadcast "start neon relay"
+  WHEN I receive "rooftop cleared":
+    change rooftops by 1
+    change score by 1
+    IF rooftops = 30 THEN:
+      set delivered to 1
+      say ("RELAY DELIVERED — SCORE " join score) for 4 seconds
+      stop all
 
 SPRITE Runner:
   SHAPE art neon-relay/run
@@ -962,11 +973,14 @@ SPRITE Runner:
     set sliding to 0
     set overdrive to 0
     set hurtLock to 0
+    set rooftops to 0
+    set delivered to 0
     go to x: -120 y: runy
     hide
   WHEN I receive "start neon relay":
     show variable score
     show variable overdrive
+    show variable rooftops
     show
   WHEN up arrow key pressed:
     IF started = 1 and grounded = 1 THEN:
@@ -998,7 +1012,7 @@ SPRITE Runner:
           play sound "boost"
           say "BOOST SMASH +10" for 0.5 seconds
         ELSE:
-          say ("Relay ended: " join score) for 3 seconds
+          say (("RELAY DROPPED AT ROOFTOP " join rooftops) join " OF 30") for 3 seconds
           stop all
       IF touching Battery THEN:
         set overdrive to 120
@@ -1038,7 +1052,7 @@ SPRITE Hazard:
     REPEAT UNTIL x position < -250:
       change x by (0 - speed)
       wait 0.02 seconds
-    change score by 1
+    broadcast "rooftop cleared"
     delete this clone
 
 SPRITE Battery:

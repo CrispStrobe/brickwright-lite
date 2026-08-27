@@ -35,6 +35,13 @@ const PROFILES = Object.freeze({
         upLabel: 'FLAP',
         downLabel: 'DIVE'
     },
+    rooftop_relay: {
+        layout: 'vertical',
+        hint: 'Jump red vents. Hold Slide under orange drones.',
+        keys: {up: 'ArrowUp', down: 'ArrowDown'},
+        upLabel: 'JUMP',
+        downLabel: 'SLIDE'
+    },
     g2048: {layout: 'stage', hint: 'Swipe the stage to slide the reactor.'},
     chroma_code: {layout: 'stage', hint: 'Tap the coloured gems on the stage.'},
     missile_ballet: {layout: 'stage', hint: 'Drag on the stage to steer the jet.'},
