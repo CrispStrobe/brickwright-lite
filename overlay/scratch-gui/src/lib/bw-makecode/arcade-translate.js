@@ -168,13 +168,24 @@ class ArcadeTranslator extends BaseTranslator {
      * in the project's .g.jres gallery.
      */
     artOf (node) {
+        const image = this.imageOf(node);
+        return image ? imageToSvg(image) : null;
+    }
+
+    /**
+     * The decoded image behind an art argument, not its SVG.
+     *
+     * Kept separate because the SIZE is worth knowing on its own: a game
+     * asks a sprite for its `width` to do bounds arithmetic, and since we
+     * decoded the picture to make the costume, that number is exact
+     * rather than a guess.
+     */
+    imageOf (node) {
         if (!node || node.type !== 'Template') return null;
         if (node.tag && /^assets\./.test(node.tag)) {
-            const named = this.assets[node.value.trim()];
-            return named ? imageToSvg(named) : null;
+            return this.assets[node.value.trim()] || null;
         }
-        const image = parseImageLiteral(node.value);
-        return image ? imageToSvg(image) : null;
+        return parseImageLiteral(node.value);
     }
 
     isBooleanValue (value) {
@@ -255,6 +266,23 @@ class ArcadeTranslator extends BaseTranslator {
                 if (node.name === 'x') return `(x position${suffix} / ${SCALE} + ${HALF_WIDTH})`;
                 if (node.name === 'y') return `(${HALF_HEIGHT} - y position${suffix} / ${SCALE})`;
                 if (node.name === 'vx' || node.name === 'vy') return `${owner.name}_${node.name}`;
+                // A sprite's size is a CONSTANT here: we decoded its
+                // picture to build the costume, so the number the game
+                // wants for its bounds arithmetic is exactly known.
+                if (node.name === 'width' && owner.width) return String(owner.width);
+                if (node.name === 'height' && owner.height) return String(owner.height);
+                // The edges follow from the centre and the size, in the
+                // Arcade units the surrounding arithmetic is written in.
+                if (owner.width && owner.height) {
+                    const x = mine ? `(x position / ${SCALE} + ${HALF_WIDTH})` :
+                        `(x position of ${owner.name} / ${SCALE} + ${HALF_WIDTH})`;
+                    const y = mine ? `(${HALF_HEIGHT} - y position / ${SCALE})` :
+                        `(${HALF_HEIGHT} - y position of ${owner.name} / ${SCALE})`;
+                    if (node.name === 'left') return `${x} - ${owner.width / 2}`;
+                    if (node.name === 'right') return `${x} + ${owner.width / 2}`;
+                    if (node.name === 'top') return `${y} - ${owner.height / 2}`;
+                    if (node.name === 'bottom') return `${y} + ${owner.height / 2}`;
+                }
                 this.unsupported.push(`${owner.name}.${node.name} — no stage equivalent`);
                 return '0';
             }
@@ -478,8 +506,15 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     // ── pass 1: find the sprites, because everything else refers to them
     const registerSprite = (name, createCall) => {
-        const art = t.artOf(createCall.args[0]);
-        const sprite = {name, kind: kindOf(createCall.args[1]), velocity: false};
+        const image = t.imageOf(createCall.args[0]);
+        const art = image ? imageToSvg(image) : null;
+        const sprite = {
+            name,
+            kind: kindOf(createCall.args[1]),
+            velocity: false,
+            width: image ? image.width : null,
+            height: image ? image.height : null
+        };
         t.sprites.push(sprite);
         if (art) costumes.push({sprite: name, name: `${name}-art`, svg: art, mode: 'replace'});
         return sprite;
@@ -650,7 +685,8 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     // Frames become costumes on the sprite they were attached to. An
     // animation nothing attached has no home here, so it is reported.
-    let framesTaken = 0;
+    const framesTaken = new Map();
+    let hasAnimationFrames = false;
     for (const [variable, animation] of animations) {
         if (!animation.frames.length) continue;
         if (!animation.sprite) {
@@ -658,12 +694,15 @@ export function arcadeToPseudocode (files, opts = {}) {
             continue;
         }
         for (const [index, svg] of animation.frames.entries()) {
-            if (framesTaken >= MAX_ANIMATION_FRAMES) {
+            const taken = framesTaken.get(animation.sprite) || 0;
+            if (taken >= MAX_ANIMATION_FRAMES) {
                 t.unsupported.push(
-                    `animation frames past ${MAX_ANIMATION_FRAMES} — the rest are not carried over`);
+                    `animation frames for ${animation.sprite} past ${MAX_ANIMATION_FRAMES} — ` +
+                    'the rest are not carried over');
                 break;
             }
-            framesTaken++;
+            framesTaken.set(animation.sprite, taken + 1);
+            hasAnimationFrames = true;
             costumes.push({
                 sprite: animation.sprite,
                 name: `${variable}-${index + 1}`,
@@ -672,7 +711,7 @@ export function arcadeToPseudocode (files, opts = {}) {
             });
         }
     }
-    if (framesTaken) {
+    if (hasAnimationFrames) {
         t.unsupported.push(
             'animation.setAction() — the frames arrive as costumes, but Scratch has no named ' +
             'animation with its own timer, and one ActionKind here covers several animations');

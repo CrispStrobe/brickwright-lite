@@ -302,20 +302,24 @@ test('what the frames cannot bring with them is said once', async () => {
     assert.equal(out.unsupported.filter(u => /attachAnimation\(\)/.test(u)).length, 0);
 });
 
-test('a frame cap keeps a platformer out of the paint editor', () => {
-    const frame = n => `walk${n}.addAnimationFrame(img\`1\`)`;
-    const many = Array.from({length: 40}, (_, i) => [
-        `let walk${i} = animation.createAnimation(ActionKind.Walking, 100)`,
-        `animation.attachAnimation(hero, walk${i})`,
-        frame(i)
+test('the frame cap is per sprite, so one actor cannot consume another actor\'s costumes', () => {
+    const many = sprite => Array.from({length: 40}, (_, i) => [
+        `let ${sprite}Walk${i} = animation.createAnimation(ActionKind.Walking, 100)`,
+        `animation.attachAnimation(${sprite}, ${sprite}Walk${i})`,
+        `${sprite}Walk${i}.addAnimationFrame(img\`1\`)`
     ].join('\n')).join('\n');
     const out = arcadeToPseudocode(`
         let hero = sprites.create(img\`1\`, SpriteKind.Player)
-        ${many}
+        let rival = sprites.create(img\`1\`, SpriteKind.Enemy)
+        ${many('hero')}
+        ${many('rival')}
     `);
     const heroCostumes = out.costumes.filter(c => c.sprite === 'hero');
-    assert.ok(heroCostumes.length <= 25, `capped; got ${heroCostumes.length}`);
-    assert.ok(out.unsupported.some(u => /past 24/.test(u)), 'and the rest are named');
+    const rivalCostumes = out.costumes.filter(c => c.sprite === 'rival');
+    assert.equal(heroCostumes.length, 25, 'hero art plus 24 animation frames');
+    assert.equal(rivalCostumes.length, 25, 'rival gets its own independent frame budget');
+    assert.equal(out.unsupported.filter(u => /past 24/.test(u)).length, 2,
+        'the omitted frames are reported once for each capped sprite');
 });
 
 test('the per-player info API writes the same variables the plain one does', () => {
