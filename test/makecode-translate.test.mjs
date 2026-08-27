@@ -175,8 +175,8 @@ test('every mapped API reaches a block — the anti-silence gate', {skip: canCom
             if (input.buttonIsPressed(Button.A) && input.acceleration(Dimension.X) > 100) {
                 basic.showNumber(input.compassHeading())
             }
-            basic.showNumber(input.soundLevel())
-            basic.showNumber(pins.digitalReadPin(DigitalPin.P2))
+            if (input.isGesture(Gesture.Shake)) { basic.showNumber(input.soundLevel()) }
+            if (input.pinIsPressed(TouchPin.P1)) { basic.showNumber(pins.digitalReadPin(DigitalPin.P2)) }
             basic.showNumber(input.rotation(Rotation.Pitch))
             basic.showNumber(input.magneticForce(Dimension.Z))
             basic.showNumber(Math.randomRange(1, 6))
@@ -192,7 +192,7 @@ test('every mapped API reaches a block — the anti-silence gate', {skip: canCom
         'microbitplus_setpull', 'microbitplus_playtone', 'microbitplus_stoptone',
         'microbitplus_radioon', 'microbitplus_radiosendnum', 'microbitplus_radiosendstr',
         'microbitplus_isbutton', 'microbitplus_accel', 'microbitplus_compass',
-        'microbitplus_digitalread',
+        'microbitplus_isgesture', 'microbitplus_istouch', 'microbitplus_digitalread',
         'microbitplus_pitch', 'microbitplus_magforce', 'microbitplus_light',
         'microbitplus_temp', 'microbitplus_sound', 'operator_random'
     ]) {
@@ -200,20 +200,26 @@ test('every mapped API reaches a block — the anti-silence gate', {skip: canCom
     }
 });
 
-test('the two reporters the pseudocode round-trip cannot read are reported, not faked', () => {
-    // `<gesture> happening` and `pin P touched` are emitted by sb3-creator's
-    // block→pseudocode generator but have no rule in its parser: written
-    // out, they compile to a comparison against an undefined variable —
-    // silence with the shape of success. Until that gap closes upstream,
-    // the translator refuses them out loud.
-    const gesture = microbitToPseudocode('input.onGesture(Gesture.Shake, function () { basic.clearScreen() })');
-    assert.match(gesture.code, /# unsupported: input\.onGesture\(\)/);
-    assert.ok(gesture.unsupported.some(u => /gesture reporter/.test(u)));
+test('gestures and touch translate, now that the round trip reads them', () => {
+    // These two were REFUSED until sb3-creator b4a8129: `<gesture> happening`
+    // and `pin P touched` came out of its decompiler and had no rule going
+    // back in, so writing them compiled to a comparison against an
+    // undefined name. The compiler fix is what turned these into blocks.
+    const gesture = microbitToPseudocode(
+        'input.onGesture(Gesture.Shake, function () { basic.clearScreen() })');
+    assert.deepEqual(gesture.unsupported, []);
+    assert.match(gesture.code, /IF shake happening THEN:/);
 
-    const touch = microbitToPseudocode('basic.forever(function () { if (input.pinIsPressed(TouchPin.P1)) { basic.clearScreen() } })');
-    assert.match(touch.code, /# unsupported: input\.pinIsPressed\(\)/,
-        'the reason appears beside the statement it broke, not only in the list');
-    assert.ok(touch.unsupported.some(u => /touch reporter/.test(u)));
+    const tilt = microbitToPseudocode(
+        'basic.forever(function () { if (input.isGesture(Gesture.TiltLeft)) { basic.clearScreen() } })');
+    assert.deepEqual(tilt.unsupported, []);
+    // MakeCode names the gesture for the LOGO, the block menu for the tilt.
+    assert.match(tilt.code, /IF tilt left happening THEN:/);
+
+    const touch = microbitToPseudocode(
+        'basic.forever(function () { if (input.pinIsPressed(TouchPin.P1)) { basic.clearScreen() } })');
+    assert.deepEqual(touch.unsupported, []);
+    assert.match(touch.code, /IF pin P1 touched THEN:/);
 });
 
 test('icons are the same bitmaps on both sides, not an approximation', () => {

@@ -175,8 +175,9 @@ embeds the project SOURCE in every artefact, so importing is a parsing problem, 
 `show text <expression>`, `plot x <var>` and `set pin P0 to <var>` all PARSE and compile to NOTHING.
 Slot rules in `translate-base.js` handle that (hoist to a temp / lower to IF-ELSE / use `display
 <expr>`), and anything left says `# unsupported` rather than vanishing. Two spellings sb3-creator's
-generator emits have no parser rule at all (`<gesture> happening`, `pin P touched`) — closing that
-belongs in `../../sb3-creator`, not here.
+generator emitted had no parser rule at all (`<gesture> happening`, `pin P touched`); fixed upstream
+in sb3-creator PR #3 and vendored at pin `b4a8129`, along with four gesture labels that lowered to
+`ValueError("invalid gesture")` on the device.
 
 Gates: `test/makecode-{import,translate,arcade,export}.test.mjs`, against four real MakeCode
 downloads. The export gate round-trips every shipped micro:bit example out to MakeCode TypeScript

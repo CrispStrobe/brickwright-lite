@@ -101,13 +101,21 @@ rather than by reading the grammar:
 - **condition-lowered** (`set pin P0 to 0|1`): only the two literals
   parse, so a computed level becomes the IF/ELSE it really is.
 
-Two spellings sb3-creator's *generator* emits have no rule in its
+Two spellings sb3-creator's *generator* emitted had no rule in its
 *parser*: `<gesture> happening` and `pin P touched`. Written out they
-compile to a comparison against an undefined variable — silence with the
-shape of success. The translator reports them instead. **Closing that
-round-trip belongs in `sb3-creator`, not here** (the compiler is
-vendored in by `npm run sync:sb3creator`), and it would also be the
-place to let `show text` take an expression.
+compiled to a comparison against an undefined variable — silence with
+the shape of success — so the translator refused them.
+
+**Fixed upstream and vendored in** (sb3-creator `b4a8129`, PR #3): both
+now parse, `show text` takes an expression, and the translator
+translates gestures and touch instead of reporting them.
+
+That PR also fixed something worse, found on the way: MicroPython's
+`accelerometer.is_gesture()` accepts the four tilts spelled WITHOUT the
+word "tilt", and the lowering passed the menu label through verbatim —
+so `tilt up` and its three neighbours raised
+`ValueError("invalid gesture")` the moment the block ran. Every project
+that used one, not only imported ones.
 
 ## What an Arcade import actually produces
 

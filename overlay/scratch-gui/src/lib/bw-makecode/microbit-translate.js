@@ -34,10 +34,14 @@ const ENUM_VALUES = {
     Button: {A: 'a', B: 'b', AB: 'ab'},
     Dimension: {X: 'x', Y: 'y', Z: 'z', Strength: 'strength'},
     Rotation: {Pitch: 'pitch', Roll: 'roll'},
+    // MakeCode names these for the LOGO; the block menu names them for the
+    // tilt, and the two mean the same motion. `LogoUp` is the logo pointing
+    // up, which the menu calls "tilt up" and MicroPython calls "up".
     Gesture: {
-        Shake: 'shake', LogoUp: 'up', LogoDown: 'down',
+        Shake: 'shake', LogoUp: 'tilt up', LogoDown: 'tilt down',
         ScreenUp: 'face up', ScreenDown: 'face down',
-        TiltLeft: 'left', TiltRight: 'right', FreeFall: 'freefall'
+        TiltLeft: 'tilt left', TiltRight: 'tilt right', FreeFall: 'freefall',
+        ThreeG: '3g', SixG: '6g', EightG: '8g'
     },
     PinPullMode: {PullUp: 'up', PullDown: 'down', PullNone: 'none'}
 };
@@ -75,7 +79,11 @@ class MicrobitTranslator extends BaseTranslator {
      * 0))` — correct, and unreadable.
      */
     isBooleanValue (value) {
-        return super.isBooleanValue(value) || /^read button_/.test(value) || value === 'false';
+        return super.isBooleanValue(value) ||
+            /^read button_/.test(value) ||
+            / happening$/.test(value) ||
+            / touched$/.test(value) ||
+            value === 'false';
     }
 
     /** Reporter calls: MakeCode's sensors and maths in our spelling. */
@@ -93,16 +101,11 @@ class MicrobitTranslator extends BaseTranslator {
         case 'input.temperature': return 'read temperature';
         case 'input.soundLevel': return 'read sound';
         case 'input.runningTime': return 'timer * 1000';
-        // `<gesture> happening` and `pin P touched` are spellings the
-        // pseudocode GENERATOR emits but its parser does not read: written
-        // out, they compile to a comparison against an undefined variable.
-        // Until that round-trip closes in sb3-creator, they are reported.
-        case 'input.isGesture':
-            this.unsupported.push(`input.isGesture(${this.enumToken(a[0]) || 'Shake'}) — no gesture reporter in pseudocode`);
-            return 'false';
-        case 'input.pinIsPressed':
-            this.unsupported.push('input.pinIsPressed() — no touch reporter in pseudocode');
-            return 'false';
+        // Readable since sb3-creator b4a8129 closed the round trip: these
+        // two spellings came out of the decompiler and had no rule going
+        // back in, so writing them used to compile to silence.
+        case 'input.isGesture': return `${this.enumToken(a[0]) || 'shake'} happening`;
+        case 'input.pinIsPressed': return `pin ${this.pin(a[0]) || 'P0'} touched`;
         case 'pins.digitalReadPin': return `pin ${this.pin(a[0]) || 'P0'} digital`;
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
@@ -318,6 +321,19 @@ const HANDLERS = {
     'input.onButtonPressed': translator => a => {
         const button = translator.enumToken(a[0]) || 'a';
         return {test: `read button_${button}`, release: `read button_${button}`};
+    },
+    'input.onGesture': translator => a => {
+        const gesture = translator.enumToken(a[0]) || 'shake';
+        // A gesture is momentary; waiting for it to stop would hang.
+        return {test: `${gesture} happening`, release: null};
+    },
+    'input.onPinPressed': translator => a => {
+        const pin = translator.pin(a[0]) || 'P0';
+        return {test: `pin ${pin} touched`, release: `pin ${pin} touched`};
+    },
+    'input.onPinReleased': translator => a => {
+        const pin = translator.pin(a[0]) || 'P0';
+        return {test: `not (pin ${pin} touched)`, release: null};
     }
 };
 
@@ -327,9 +343,6 @@ const HANDLERS = {
  * worse than one the user is told about.
  */
 const UNPOLLABLE_HANDLERS = {
-    'input.onGesture': 'no gesture reporter in pseudocode',
-    'input.onPinPressed': 'no touch reporter in pseudocode',
-    'input.onPinReleased': 'no touch reporter in pseudocode',
     'input.onSound': 'no sound-event reporter in pseudocode'
 };
 

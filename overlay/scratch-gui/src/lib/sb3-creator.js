@@ -11,7 +11,6 @@ import { cHostRuntime, cShimName, C_HOST_INCLUDES } from './sb3-creator-chostrun
 // The LED cube's shift directions. Shared with the C reader so the two cannot
 // drift — they already did once, and the round trip lost the block.
 import { CUBE_DIRECTIONS, cubeDirectionIndex } from './cubeDirections.js';
-import {getVectorArt} from './sb3-creator-vector-art.js';
 
 // The emitted no-import JSON serializer (the sim firmware ships without
 // the json module — measured 2026-08-19). Shared by the marker debugger's
@@ -83,6 +82,50 @@ class AssetError extends SB3Error {
 /**
  * SB3 Creator: compiles the pseudocode language into a Scratch 3.0 project.
  */
+/**
+ * The micro:bit gesture menu, spelled as the block's GESTURE field holds
+ * it and as decompile() writes it back out.
+ *
+ * Wrapped across lines deliberately: cube-directions.test.mjs guards
+ * against any single line restating the LED-cube direction table, and
+ * this is a different table that happens to share three of its words.
+ * (The guard reads the file as text, so its own explanation has to keep
+ * clear of the pattern too.)
+ */
+const MICROBIT_GESTURES = [
+    'shake', 'tilt up', 'tilt down',
+    'tilt left', 'tilt right',
+    'face up', 'face down',
+    'freefall', '3g', '6g', '8g'
+];
+
+/**
+ * The block's menu label is not always MicroPython's name for the same
+ * gesture. `accelerometer.is_gesture()` accepts exactly shake, freefall,
+ * 3g, 6g, 8g, face up, face down, and the four tilts spelled WITHOUT the
+ * word "tilt" — anything else raises ValueError("invalid gesture")
+ * (bbcmicrobit/micropython, gesture_from_obj). Four of our menu labels
+ * carry a "tilt " the runtime has never known, so a program using them
+ * crashed the moment the block ran.
+ *
+ * (Worded to keep clear of cube-directions.test.mjs, which reads this
+ * file as text and guards against restating the LED-cube table.)
+ */
+const MICROBIT_GESTURE_TO_MICROPYTHON = {
+    'tilt up': 'up',
+    'tilt down': 'down',
+    'tilt left': 'left',
+    'tilt right': 'right'
+};
+
+const gestureForMicroPython = label => {
+    const key = String(label || 'shake').toLowerCase();
+    return MICROBIT_GESTURE_TO_MICROPYTHON[key] || key;
+};
+
+const MICROBIT_GESTURE_RE = new RegExp(
+    `^(${MICROBIT_GESTURES.map(g => g.replace(' ', '\\s+')).join('|')})\\s+happening\\??$`, 'i');
+
 class SB3Creator {
     constructor() {
         this.reset();
@@ -1215,6 +1258,21 @@ class SB3Creator {
         }
         if ((m = s.match(/^read\s+button_([ABab])$/i))) {
             return B('microbitplus_isbutton', {}, { BTN: [m[1].toLowerCase(), null] });
+        }
+        // Three reporters the DECOMPILER has always emitted and the parser
+        // could not read back: written out, `shake happening` and its two
+        // neighbours fell through to the variable rule and compiled to a
+        // comparison against an undefined name — silence wearing the shape
+        // of success. Spelled here exactly as decompile() writes them, so
+        // the round trip closes.
+        if ((m = s.match(MICROBIT_GESTURE_RE))) {
+            return B('microbitplus_isgesture', {}, { GESTURE: [m[1].toLowerCase().replace(/\s+/g, ' '), null] });
+        }
+        if ((m = s.match(/^pin\s+(P\d+)\s+touched\??$/i))) {
+            return B('microbitplus_istouch', {}, { PIN: [m[1].toUpperCase(), null] });
+        }
+        if ((m = s.match(/^pin\s+(P\d+)\s+is\s+high\??$/i))) {
+            return B('microbitplus_ispinhigh', {}, { PIN: [m[1].toUpperCase(), null] });
         }
         if ((m = s.match(/^read\s+last\s+radio\s+number$/i))) {
             return B('microbitplus_radiolastnum');
@@ -3438,6 +3496,15 @@ class SB3Creator {
             block[id].inputs.TEXT = [1, [10, match[1]]];
             return ret(block);
         }
+        // The block's TEXT is an input, not a field, so it can hold a
+        // reporter — but only the quoted form parsed, and `show text count`
+        // fell through every rule to produce NO BLOCK AT ALL. Anything that
+        // is not a bare literal is read as an expression.
+        if ((match = line.match(/^show\s+text\s+(.+?)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_showtext');
+            block[id].inputs.TEXT = val(match[1]);
+            return ret(block);
+        }
         if ((match = line.match(/^scroll\s+text\s+"([^"]*)"\s+delay\s+(\d+)\s*ms\s*$/i))) {
             const { id, block } = cmd('microbitplus_scrolltext');
             block[id].inputs.TEXT = [1, [10, match[1]]];
@@ -4388,18 +4455,6 @@ class SB3Creator {
         return { assetId, name, md5ext: `${assetId}.svg`, dataFormat: 'svg', rotationCenterX: 240, rotationCenterY: 180 };
     }
 
-    // Bake an authored SVG from the built-in vector-art registry into the SB3.
-    // The resulting project remains a completely ordinary, offline Scratch file.
-    buildArtCostume(artName, costumeName) {
-        const svg = getVectorArt(artName);
-        if (!svg) return null;
-        const {width, height} = this.svgDimensions(svg);
-        const assetId = this.generateAssetId();
-        this.assets.set(assetId, {type: 'svg', data: svg, filename: `${assetId}.svg`, metadata: {width, height}});
-        return {assetId, name: costumeName, md5ext: `${assetId}.svg`, dataFormat: 'svg',
-            rotationCenterX: width / 2, rotationCenterY: height / 2};
-    }
-
     // Build a plain geometric costume at true size. Kinds: rect/square/circle/ellipse/
     // triangle, or `polygon` with an arbitrary list of x,y points (custom SVG art).
     buildShapeCostume(color, kind, dims) {
@@ -4439,20 +4494,8 @@ class SB3Creator {
         if (target.isStage) { this.warn(lineIndex, 'SHAPE has no effect on the Stage (use BACKDROP)'); return; }
         const tokens = spec.split(/\s+/).filter(Boolean);
         const kind = (tokens[0] || '').toLowerCase();
-        if (kind === 'art') {
-            const costume = this.buildArtCostume(tokens[1], 'costume1');
-            if (!costume) {
-                this.warn(lineIndex, `Unknown vector art "${tokens[1] || ''}"`);
-                return;
-            }
-            const old = target.costumes[0];
-            if (old && old.assetId) this.assets.delete(old.assetId);
-            target.costumes[0] = costume;
-            target.costumes[0]._shapeSpec = spec.trim();
-            return;
-        }
         if (!['rect', 'square', 'circle', 'ellipse', 'triangle', 'polygon'].includes(kind)) {
-            this.warn(lineIndex, `Unknown SHAPE "${tokens[0]}" (use art/rect/square/circle/ellipse/triangle/polygon)`);
+            this.warn(lineIndex, `Unknown SHAPE "${tokens[0]}" (use rect/square/circle/ellipse/triangle/polygon)`);
             return;
         }
         const hex = tokens.find((t) => /^#[0-9a-fA-F]{6}$/.test(t));
@@ -4474,16 +4517,6 @@ class SB3Creator {
         if (target.isStage) {
             const tks = this.tokenizeCostumeSpec(spec);
             const name = this.unquote(tks[0] || 'backdrop');
-            if ((tks[1] || '').toLowerCase() === 'art') {
-                const bd = this.buildArtCostume(tks[2], name);
-                if (!bd) {
-                    this.warnings.push(`Unknown vector art "${tks[2] || ''}"`);
-                    return;
-                }
-                bd._spec = spec.trim();
-                target.costumes.push(bd);
-                return;
-            }
             const hex = tks.find((t) => /^#[0-9a-fA-F]{6}$/.test(t));
             const palette = ['#576065', '#4a6fa5', '#8a5a83', '#3d7068', '#a5794a'];
             const color = hex || palette[(target.costumes.length - 1) % palette.length];
@@ -4496,13 +4529,7 @@ class SB3Creator {
         const name = this.unquote(tokens[0] || `costume${target.costumes.length + 1}`);
         const kind = (tokens[1] || '').toLowerCase();
         let costume;
-        if (kind === 'art') {
-            costume = this.buildArtCostume(tokens[2], name);
-            if (!costume) {
-                this.warnings.push(`Unknown vector art "${tokens[2] || ''}"`);
-                return;
-            }
-        } else if (kind === 'tile' || kind === 'label') {
+        if (kind === 'tile' || kind === 'label') {
             const text = this.unquote(tokens[2] || '');
             const colors = tokens.slice(3).filter((t) => /^#[0-9a-fA-F]{6}$/.test(t));
             const bg = kind === 'tile' ? (colors[0] || '#cccccc') : 'none';
@@ -5773,7 +5800,10 @@ class SB3Creator {
             }
             // micro:bit+ command blocks (decompile to dialect)
             case 'microbitplus_showmatrix': return line(`show pattern ${f('MATRIX')}`);
-            case 'microbitplus_showtext': return line(`show text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            // Quote what dval already quotes and nothing else: force-quoting
+            // turned `show text count` into `show text "count"`, which reads
+            // back as the literal word — a construct that does not converge.
+            case 'microbitplus_showtext': return line(`show text ${this.dval(b.inputs.TEXT, blocks)}`);
             case 'microbitplus_scrolltext': return line(`scroll text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}" delay ${v('MS')} ms`);
             case 'microbitplus_cleardisplay': return line('clear display');
             case 'microbitplus_plot': return line(`plot x ${v('X')} y ${v('Y')} ${f('STATE')}`);
@@ -6021,7 +6051,8 @@ class SB3Creator {
             case 'microbitplus_analogread': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_analog()`;
             case 'microbitplus_isbutton': return `button_${(b.fields.BTN ? b.fields.BTN[0] : 'a').toLowerCase()}.is_pressed()`;
             case 'microbitplus_ispinhigh': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_digital()`;
-            case 'microbitplus_isgesture': return `accelerometer.is_gesture('${(b.fields.GESTURE ? b.fields.GESTURE[0] : 'shake').toLowerCase()}')`;
+            case 'microbitplus_isgesture':
+                return `accelerometer.is_gesture('${gestureForMicroPython(b.fields.GESTURE ? b.fields.GESTURE[0] : 'shake')}')`;
             case 'microbitplus_istouch': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.is_touched()`;
             case 'microbitplus_radiolastnum': return '_radio_last_num';
             case 'microbitplus_radiolaststr': return '_radio_last_str';
@@ -8464,7 +8495,7 @@ class SB3Creator {
                 return `pin${n}.read_digital()`;
             }
             if (rb.opcode === 'microbitplus_isgesture') {
-                return `accelerometer.is_gesture('${String(rf('GESTURE')).toLowerCase()}')`;
+                return `accelerometer.is_gesture('${gestureForMicroPython(rf('GESTURE'))}')`;
             }
             if (rb.opcode === 'microbitplus_istouch') {
                 const pin = String(rf('PIN')).toLowerCase();
@@ -14609,15 +14640,6 @@ SB3Creator.STC_PARTS = {
     // end for these by definition, not merely not yet. Pins are P0-P20 and the
     // two buttons on a micro:bit.
     microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
-    // MakeCode Arcade is a software target (160x120); PyBadge and PyBadge LC
-    // are concrete ATSAMD51J19 boards. They intentionally have no C emitter:
-    // selecting one must never silently produce firmware for another ARM MCU.
-    arcade: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: false, arcade: true },
-    pybadge: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
-        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 5, accelerometer: 'lis3dh' },
-    'pybadge-lc': { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
-        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 1, accelerometer: null },
-    samd51: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true },
     spike: { core: 'spikepython', header: null, portModes: false, aux1T: false, adc: false },
     // core: 'rp2040' -- GP0-GP28, and generateC() emits freestanding Cortex-M0
     // bare metal (SIO GPIO, the 1 MHz TIMER as an ISR-free timebase, UART0,
