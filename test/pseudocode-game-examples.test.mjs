@@ -85,6 +85,11 @@ test('green flag crosses every title gate in the ordinary right-hand stage', () 
             `${name}: green flag still leaves the title screen waiting for a keyboard`);
         assert.match(source, /WHEN I receive "__brickwright_start_from_flag":/,
             `${name}: delayed green-flag start has no receiver`);
+        const bridge = source.match(/WHEN I receive "__brickwright_start_from_flag":\n((?:    .*\n?)*)/)?.[1] || '';
+        assert.match(bridge, /^    IF [A-Za-z][A-Za-z0-9]* = 0 THEN:/,
+            `${name}: delayed green-flag start is not guarded by the title state`);
+        assert.doesNotMatch(bridge, /^    ELSE:/m,
+            `${name}: delayed green-flag start copied a gameplay action`);
     }
 });
 
@@ -120,6 +125,40 @@ test('green flag actually starts every game in the real Scratch VM without Space
             vm.quit();
             clearStrayTimers();
         }
+    }
+});
+
+test('an early desktop Space start is not replayed as a gameplay action', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.fusion_foundry);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+
+        const foundry = vm.runtime.targets.find(target => target.sprite.name === 'Foundry');
+        const grid = Object.values(foundry.variables).find(variable => variable.name === 'grid');
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 0,
+            'the title-start key press also dropped a core');
+
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 35; i++) vm.runtime._step();
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 0,
+            'the delayed green-flag bridge replayed the Space-key action');
+
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 35; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 1,
+            'the first deliberate gameplay press did not drop exactly one core');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
     }
 });
 

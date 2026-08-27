@@ -4875,10 +4875,12 @@ const addRightPaneGreenFlagStart = source => {
     }
     const startBody = lines.slice(spaceHat + 1, endOfHandler);
     if (startBody.length === 0) return source;
+    const actionElse = startBody.findIndex(line => line === '    ELSE:');
+    const greenFlagStartBody = actionElse < 0 ? startBody : startBody.slice(0, actionElse);
 
     lines.splice(endOfHandler, 0,
         '  WHEN I receive "__brickwright_start_from_flag":',
-        ...startBody
+        ...greenFlagStartBody
     );
 
     const firstSprite = lines.findIndex(line => line.startsWith('SPRITE '));
