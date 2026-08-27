@@ -1283,7 +1283,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         const db = designerBoard();
-        if (db.board) targetOpts.board = db.board;
+        if (db.board) {
+            targetOpts.board = db.board;
+            // Machine targets drive the designer's real board rather than a
+            // private BoardImpl, but it is still the runner's active board.
+            // Keep the shared runner.board() contract so CircuitTab can bind
+            // its displays, keyboard and diagnostic hook to that instance.
+            board = db.board;
+        }
         readyMsg += ` — ${db.why}`;
         const result = await createDebugTarget('eater6502', targetOpts);
         wireMachineBench(result, createDebugSession);
@@ -1327,7 +1334,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         const db = designerBoard();
-        if (db.board) targetOpts.board = db.board;
+        if (db.board) {
+            targetOpts.board = db.board;
+            board = db.board;
+        }
         readyMsg += ` — ${db.why}`;
         const result = await createDebugTarget('z80', targetOpts);
         wireMachineBench(result, createDebugSession);

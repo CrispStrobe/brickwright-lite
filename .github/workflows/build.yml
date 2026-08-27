@@ -383,6 +383,9 @@ jobs:
       - name: Browser gate — game gallery and hardware examples
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs
+      - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-aurora65-workstation.mjs
       # The debugger dock has now regressed to a blank pane twice, and the
       # serial console was output-only for as long as it existed. Both are
       # invisible to every unit suite: one is a chunk that was never
