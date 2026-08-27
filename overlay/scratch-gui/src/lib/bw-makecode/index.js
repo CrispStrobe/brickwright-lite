@@ -31,7 +31,7 @@ import {decodePng} from './png.js';
 import {extractMicroPython} from './micropython-hex.js';
 import {microbitToPseudocode} from './microbit-translate.js';
 import {arcadeToPseudocode} from './arcade-translate.js';
-import {fetchSharedProject, parseShareId} from './share.js';
+import {fetchSharedProject} from './share.js';
 
 export {sniffFormat, unpackMakeCodeSource, describeProject} from './embedded-source.js';
 export {decodePng} from './png.js';

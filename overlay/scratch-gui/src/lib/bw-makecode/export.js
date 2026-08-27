@@ -39,9 +39,8 @@ const AXIS = {x: 'Dimension.X', y: 'Dimension.Y', z: 'Dimension.Z', strength: 'D
 const PULL = {up: 'PinPullMode.PullUp', down: 'PinPullMode.PullDown', none: 'PinPullMode.PullNone'};
 
 class Emitter {
-    constructor (blocks, variables) {
+    constructor (blocks) {
         this.blocks = blocks;
-        this.variables = variables;
         this.unsupported = [];
     }
 
@@ -61,7 +60,7 @@ class Emitter {
         if (Array.isArray(slot)) {
             const [type, text] = slot;
             if (type === 10 || type === 11) return JSON.stringify(String(text));
-            if (type === 12 || type === 13) return this.variableName(text, input);
+            if (type === 12 || type === 13) return this.variableName(text);
             return String(text);
         }
         if (typeof slot === 'string') return this.reporter(this.block(slot));
@@ -280,7 +279,7 @@ export function projectToMakeCodeTs (project) {
 
     for (const target of targets) {
         const blocks = target.blocks || {};
-        const emitter = new Emitter(blocks, target.variables || {});
+        const emitter = new Emitter(blocks);
 
         // Variables first: MakeCode is TypeScript, and TypeScript wants
         // them declared before the code that assigns them.
