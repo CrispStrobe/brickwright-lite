@@ -394,6 +394,13 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
 
+      # The MakeCode importer lives behind a dynamic import(), so a webpack
+      # misconfiguration would show up in a browser and in no unit test —
+      # and the routing from the Open button is JSX that nothing else runs.
+      - name: Browser gate — MakeCode import
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
+
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with: { path: packages/scratch-gui/build }
 
