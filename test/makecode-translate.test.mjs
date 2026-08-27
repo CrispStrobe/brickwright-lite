@@ -121,10 +121,21 @@ test('slot rules: a computed pin level becomes the choice it really is', () => {
     assert.match(code, /set pin P0 to 0/);
 });
 
-test('slot rules: plot takes literal coordinates, and says so otherwise', () => {
+test('slot rules: plot takes a computed coordinate, since sb3-creator#4', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // This slot USED to be literal-only, and a computed coordinate was
+    // refused — not because the block cannot hold one (X and Y are inputs)
+    // but because only `plot x <digits> y <digits>` had a parse rule, so
+    // `plot x spalte y 2 on` matched nothing and produced NO BLOCK. Fixed
+    // upstream; the refusal went with it. `led.plot(x, y)` with variable
+    // coordinates is the ordinary way a Calliope programme draws.
     assert.match(translate('led.plot(2, 3)'), /plot x 2 y 3 on/);
-    const computed = microbitToPseudocode('led.plot(x, 3)');
-    assert.match(computed.code, /# unsupported: led\.plot\(\)/);
+
+    const computed = microbitToPseudocode('let spalte = 0\nled.plot(spalte, 3)');
+    assert.deepEqual(computed.unsupported, []);
+    assert.match(computed.code, /plot x spalte_? y 3 on/);
+    assert.ok(opcodesOf(computed.code).has('microbitplus_plot'),
+        'the computed coordinate has to reach a real block, not just parse');
 });
 
 test('MakeCode analog values are rescaled to our percentage slot', () => {
