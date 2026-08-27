@@ -68,3 +68,45 @@ test('a translated gesture and touch program reaches its blocks', {skip: SKIP}, 
     assert.ok(run.loadedOpcodes.has('microbitplus_istouch'), 'and the touch block');
     assert.ok(run.extensionCalls > 0, 'and the extension was actually reached');
 });
+
+test('an imported Calliope program drives the arrays extension', {skip: SKIP}, async () => {
+    // The Calliope half of the same bar. This fixture builds an array of
+    // pictures and reads it by index, and arrays were the construct that
+    // used to collapse to `set liste to 0` — so "it compiled" proves
+    // nothing here. The array blocks have to be loaded AND called.
+    const {importArtefact} = await import(
+        '../overlay/scratch-gui/src/lib/bw-makecode/index.js');
+    const result = await importArtefact(
+        new Uint8Array(readFileSync(join(REPO, 'test', 'fixtures', 'makecode', 'calliope-images.hex'))),
+        {name: 'calliope-images.hex'});
+    assert.equal(result.lang, 'pseudocode');
+
+    const run = await runProgram(result.code, {frames: 30});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    assert.ok(run.threadsStarted > 0, 'the green flag started nothing');
+    assert.ok(run.loadedExtensions.has('arrays'),
+        `arrays was not loaded; got ${[...run.loadedExtensions].join(', ') || 'nothing'}`);
+    assert.ok(run.loadedOpcodes.has('arrays_create1D') || run.loadedOpcodes.has('arrays_createEmpty'),
+        'no array was ever created — the declaration collapsed again');
+    assert.ok(run.extensionCalls > 0, 'blocks that exist but never run');
+});
+
+test('a translated bitwise program reaches the bitops extension', {skip: SKIP}, async () => {
+    // `x & 255` used to compile to a string literal whose text was
+    // `x & 255`. Compiling is not the proof; being CALLED is.
+    const {code, unsupported} = microbitToPseudocode(`
+        let maske = 0
+        basic.forever(function () {
+            maske = (maske << 1) & 255
+            basic.showNumber(maske)
+        })
+    `);
+    assert.deepEqual(unsupported, []);
+
+    const run = await runProgram(code, {frames: 20});
+    assert.deepEqual(run.errors, []);
+    assert.ok(run.loadedExtensions.has('bitops'),
+        `bitops was not loaded; got ${[...run.loadedExtensions].join(', ') || 'nothing'}`);
+    assert.ok(run.calls.get('bitops_and') > 0, 'the mask never reached the extension');
+    assert.ok(run.calls.get('bitops_shl') > 0, 'the shift never reached the extension');
+});
