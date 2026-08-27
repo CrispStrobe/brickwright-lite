@@ -171,3 +171,35 @@ test('the importer routes a compiled game to the console, not the translator',
         {name: 'microbit-blocks.hex'});
     assert.equal(makecode.kind, 'makecode');
 });
+
+test('the speaker reports a real note, not a pin state', {skip: SKIP}, () => {
+    // There is no frequency register worth reading — a game is free to make
+    // noise however it likes — so what gets measured is the thing that is
+    // actually true of a tone: the pin toggles, and at some rate. RYSK
+    // answers a button press with one.
+    const game = arduboy.createArduboy(hex());
+    game.advance(400);
+    const quiet = game.takeSpeaker();
+    assert.equal(quiet.edges, 0, 'the title screen should be silent');
+
+    game.press('a');
+    game.advance(300);
+    game.release('a');
+    game.advance(300);
+    const sound = game.takeSpeaker();
+    assert.ok(sound.edges > 100, `only ${sound.edges} speaker edges — no tone was played`);
+    // Averaged across the silence either side, so this is a floor on the
+    // real note rather than the note itself; the point is that it lands in
+    // the band a piezo is asked for and not at DC or ultrasound.
+    assert.ok(sound.hz > 100 && sound.hz < 4000, `${sound.hz.toFixed(0)} Hz is not a note`);
+});
+
+test('reading the speaker resets it, because it is a rate', {skip: SKIP}, () => {
+    const game = arduboy.createArduboy(hex());
+    game.press('a');
+    game.advance(500);
+    const first = game.takeSpeaker();
+    const second = game.takeSpeaker();
+    assert.ok(first.edges > 0);
+    assert.equal(second.edges, 0, 'a total that is never cleared only ever goes up');
+});

@@ -95,6 +95,7 @@ export function createArduboy (hexText, opts = {}) {
 
     const held = Object.create(null);
     const pins = {dc: false, cs: true, reset: true, speaker1: false, speaker2: false};
+    let speakerEdges = 0;
 
     // The board is the adapter's own boundary: it answers reads on pins the
     // MCU has left as inputs, and is told about every pin the MCU drives.
@@ -113,7 +114,15 @@ export function createArduboy (hexText, opts = {}) {
                 if (pins.reset && !driveHigh) display.reset();
                 pins.reset = !!driveHigh;
                 break;
-            case 'SPEAKER_1': pins.speaker1 = !!driveHigh; break;
+            // The speaker is a piezo across two pins, driven by Timer3's
+            // compare output. There is no frequency register to read that
+            // would survive a game changing how it makes noise, so what
+            // gets counted is the thing that is actually true of a tone:
+            // the pin is toggling, and how often.
+            case 'SPEAKER_1':
+                if (pins.speaker1 !== !!driveHigh) speakerEdges++;
+                pins.speaker1 = !!driveHigh;
+                break;
             case 'SPEAKER_2': pins.speaker2 = !!driveHigh; break;
             default: break;
             }
@@ -136,6 +145,7 @@ export function createArduboy (hexText, opts = {}) {
     };
 
     let nanos = 0;
+    let speakerSince = 0;
 
     return {
         display,
@@ -144,6 +154,22 @@ export function createArduboy (hexText, opts = {}) {
         get bytesToDisplay () { return bytesToDisplay; },
         /** Speaker pin states, for a caller that wants to make a noise. */
         get speaker () { return {a: pins.speaker1, b: pins.speaker2}; },
+
+        /**
+         * Edges on the speaker pin since this was last called, and the
+         * simulated milliseconds they happened over. A full cycle is two
+         * edges, so the tone is `edges / 2 / seconds`.
+         *
+         * Reading resets the count, because the caller is sampling a rate
+         * and a total it never clears would only ever go up.
+         */
+        takeSpeaker () {
+            const edges = speakerEdges;
+            const ms = (nanos - speakerSince) / 1e6;
+            speakerEdges = 0;
+            speakerSince = nanos;
+            return {edges, ms, hz: ms > 0 ? (edges / 2) / (ms / 1000) : 0};
+        },
 
         press (button) { held[button] = true; },
         release (button) { held[button] = false; },

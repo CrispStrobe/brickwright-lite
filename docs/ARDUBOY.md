@@ -89,15 +89,31 @@ what the tests and `scripts/verify-arduboy.mjs` do — the gate reads pixels
 back off the canvas and checks they keep changing, because one frame and a
 freeze is exactly what a stalled boot looks like.
 
+## Sound
+
+There is no frequency register worth reading — a game is free to make
+noise however it likes, and `MyArduboy2` in the corpus does not use stock
+`ArduboyTones` — so what gets measured is the thing that is actually true
+of a tone: **the speaker pin toggles, and at some rate**. `takeSpeaker()`
+returns the edges since it was last called and the simulated milliseconds
+they happened over; a cycle is two edges. Reading resets, because the
+caller is sampling a rate and a total that is never cleared only ever
+goes up.
+
+The pane follows that with one square-wave oscillator, ramped rather than
+switched so a note does not start and end with a click. The audio context
+is created on the **first button press and not before**: browsers refuse
+to start audio without a gesture, and one made at mount would be
+suspended for ever with nothing on screen to say why.
+
+RYSK answers a button press with a tone that measures ~370 Hz — F#4,
+which is a real note and the best evidence available that the mechanism
+is right rather than merely producing numbers.
+
 ## What is not here
 
-**Sound.** The speaker pins are tracked and exposed (`console.speaker`);
-nothing turns them into audio yet. Arduboy tones are a square wave on a
-differential pair driven by Timer3, so this is a Web Audio oscillator
-following the pin state, not a synthesis problem.
-
-**The RGB LED and the rest of the board.** Same shape of work: pins are
-already routed through the board object, nothing renders them.
+**The RGB LED.** Pins are already routed through the board object,
+nothing renders them.
 
 **Anything to do with source.** Arduboy games *are* published with source —
 ArduboyWorks is MIT — but that source is C++ using immediate-mode drawing

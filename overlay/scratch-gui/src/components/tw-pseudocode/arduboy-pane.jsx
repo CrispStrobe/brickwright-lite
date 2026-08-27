@@ -44,6 +44,16 @@ const MAX_STEP_MS = 50;
  */
 const MIN_PRESS_MS = 120;
 
+/**
+ * The band a speaker toggle is treated as a note in.
+ *
+ * Below this the pin is doing something that is not a tone; above it, the
+ * measurement is noise from a handful of edges in one frame. A piezo on
+ * this hardware is not asked for anything outside it.
+ */
+const MIN_HZ = 40;
+const MAX_HZ = 8000;
+
 const isGerman = () => /^de/i.test(
     (typeof navigator === 'undefined' ? '' : navigator.language) || '');
 
@@ -55,6 +65,8 @@ const T = {
     pause: ['Pause', 'Pause'],
     resume: ['Resume', 'Fortsetzen'],
     reset: ['Reset', 'Zurücksetzen'],
+    mute: ['Mute', 'Ton aus'],
+    unmute: ['Sound', 'Ton an'],
     keys: [
         'Arrow keys move, Z is A, X is B.',
         'Pfeiltasten bewegen, Z ist A, X ist B.'
@@ -65,7 +77,7 @@ const tx = key => T[key][isGerman() ? 1 : 0];
 class ArduboyPane extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {name: null, running: false, error: null, held: {}};
+        this.state = {name: null, running: false, error: null, held: {}, muted: false};
         this.canvasRef = React.createRef();
         this.console = null;
         this.pixels = new Uint8Array(SCREEN_WIDTH * SCREEN_HEIGHT);
@@ -74,6 +86,8 @@ class ArduboyPane extends React.Component {
         this.lastTime = 0;
         this.pressedAt = Object.create(null);
         this.releaseTimers = Object.create(null);
+        this.audio = null;
+        this.toggleMute = this.toggleMute.bind(this);
 
         this.onLoadEvent = this.onLoadEvent.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -96,12 +110,67 @@ class ArduboyPane extends React.Component {
         }
     }
 
+    /**
+     * The oscillator, made on the first gesture and not before.
+     *
+     * Browsers refuse to start audio without one, so this cannot live in
+     * componentDidMount: it would be created suspended, and every tone
+     * after that would be silent with nothing to show why.
+     */
+    ensureAudio () {
+        if (this.audio || this.muted) return null;
+        const Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return null;
+        try {
+            const ctx = new Ctor();
+            const gain = ctx.createGain();
+            gain.gain.value = 0;
+            gain.connect(ctx.destination);
+            const osc = ctx.createOscillator();
+            // A piezo across two pins is a square wave and sounds like one.
+            osc.type = 'square';
+            osc.frequency.value = 440;
+            osc.connect(gain);
+            osc.start();
+            this.audio = {ctx, gain, osc};
+        } catch (e) {
+            this.audio = null;
+        }
+        return this.audio;
+    }
+
+    /** Follow the speaker pin for one frame's worth of toggling. */
+    updateAudio () {
+        const audio = this.audio;
+        if (!audio || !this.console) return;
+        if (audio.ctx.state === 'suspended') audio.ctx.resume().catch(() => {});
+        const {hz} = this.console.takeSpeaker();
+        const audible = hz >= MIN_HZ && hz <= MAX_HZ && !this.state.muted;
+        const now = audio.ctx.currentTime;
+        if (audible) audio.osc.frequency.setTargetAtTime(hz, now, 0.005);
+        // Ramp rather than switch, or every note starts and ends with a click.
+        audio.gain.gain.setTargetAtTime(audible ? 0.06 : 0, now, 0.01);
+    }
+
+    toggleMute () {
+        const muted = !this.state.muted;
+        this.setState({muted});
+        if (muted && this.audio) this.audio.gain.gain.value = 0;
+    }
+
     componentWillUnmount () {
         window.removeEventListener('bw-arduboy-load', this.onLoadEvent);
         window.removeEventListener('keydown', this.onKeyDown);
         window.removeEventListener('keyup', this.onKeyUp);
         for (const timer of Object.values(this.releaseTimers)) clearTimeout(timer);
         this.releaseTimers = Object.create(null);
+        if (this.audio) {
+            try {
+                this.audio.osc.stop();
+                this.audio.ctx.close();
+            } catch (e) { /* already gone */ }
+            this.audio = null;
+        }
         this.stop();
     }
 
@@ -155,6 +224,7 @@ class ArduboyPane extends React.Component {
         try {
             this.console.advance(elapsed);
             this.paint();
+            this.updateAudio();
         } catch (e) {
             this.setState({error: String(e && e.message || e), running: false});
             return;
@@ -184,6 +254,7 @@ class ArduboyPane extends React.Component {
     setButton (button, down) {
         if (!this.console) return;
         if (down) {
+            this.ensureAudio();
             this.pressedAt[button] = Date.now();
             if (this.releaseTimers[button]) {
                 clearTimeout(this.releaseTimers[button]);
@@ -328,6 +399,12 @@ class ArduboyPane extends React.Component {
                         style={{padding: '6px 14px', borderRadius: 6, cursor: 'pointer'}}
                         type="button"
                     >{tx('reset')}</button>
+                    <button
+                        data-testid="bw-arduboy-mute"
+                        onClick={this.toggleMute}
+                        style={{padding: '6px 14px', borderRadius: 6, cursor: 'pointer'}}
+                        type="button"
+                    >{this.state.muted ? tx('unmute') : tx('mute')}</button>
                 </div>
                 <div style={{color: '#64748b', fontSize: 11}}>{tx('keys')}</div>
             </div>
