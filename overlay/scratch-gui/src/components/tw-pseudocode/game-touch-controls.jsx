@@ -15,7 +15,7 @@ const LABELS = {
 
 const TouchButton = ({control, down, label, onDown, onUp}) => (
     <button
-        aria-label={`Game ${control}`}
+        aria-label={`Game ${label || LABELS[control]}`}
         data-testid={`bw-game-control-${control}`}
         onContextMenu={event => event.preventDefault()}
         onPointerCancel={() => onUp(control)}
@@ -105,10 +105,17 @@ const GameTouchControls = ({gameKey, vm}) => {
             {profile.layout === 'dpad' ? (
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8}}>
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(3,44px)', gridTemplateRows: 'repeat(2,44px)', gap: 4}}>
-                        <span />{button('up')}<span />
-                        {button('left')}{button('down')}{button('right')}
+                        <span />{profile.keys.up ? button('up') : <span />}<span />
+                        {profile.keys.left ? button('left') : <span />}
+                        {profile.keys.down ? button('down') : <span />}
+                        {profile.keys.right ? button('right') : <span />}
                     </div>
-                    {button('action')}
+                    {profile.keys.action ? button('action') : null}
+                </div>
+            ) : null}
+            {profile.layout === 'horizontal' ? (
+                <div style={{display: 'flex', justifyContent: 'center', gap: 8}}>
+                    {button('left')}{button('right')}{profile.keys.action ? button('action') : null}
                 </div>
             ) : null}
             {profile.layout === 'dual' ? (
