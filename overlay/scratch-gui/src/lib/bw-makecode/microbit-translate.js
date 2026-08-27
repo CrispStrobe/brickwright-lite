@@ -27,6 +27,7 @@
 
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num} from './translate-base.js';
+import {MICROBIT_ICONS, MICROBIT_ARROWS} from './microbit-icons.js';
 
 /** MakeCode enum member → the token our vocabulary uses. */
 const ENUM_VALUES = {
@@ -150,8 +151,20 @@ class MicrobitTranslator extends BaseTranslator {
             return;
         }
         case 'basic.showIcon':
-            push(this.note(`basic.showIcon() — MakeCode's icon set has no equivalent here`));
+        case 'basic.showArrow': {
+            // The icons are not an approximation: MakeCode's set and
+            // MicroPython's built-in images are the same bitmaps, and
+            // `show pattern` lowers to display.show().
+            const table = name === 'basic.showArrow' ? MICROBIT_ARROWS : MICROBIT_ICONS;
+            const member = a[0] && a[0].type === 'Member' ? a[0].name : null;
+            const pattern = member ? table[member] : null;
+            if (!pattern) {
+                push(this.note(`${name}(${member || '…'}) — not an icon we have a pattern for`));
+                return;
+            }
+            push(`show pattern ${pattern}`);
             return;
+        }
         case 'basic.showLeds':
             push(`show pattern ${ledPattern(a[0])}`);
             return;
