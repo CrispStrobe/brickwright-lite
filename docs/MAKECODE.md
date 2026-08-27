@@ -167,19 +167,29 @@ string block.
 The claim in wall 2 — "no permissive JS ARMv7E-M core" — was true of this
 repo's *light* tier and is no longer true of its heavy tier. **labwired**
 (`lib/labwired-engine.js`, fetched by `npm run sync:labwiredwasm`) covers
-Cortex-M0+/M3/**M4**/M7/M33, RISC-V and Xtensa. That makes nRF52833 execution
-a **peripheral-modelling** problem rather than an instruction-set one:
+Cortex-M0+/M3/**M4**/M7/M33, RISC-V and Xtensa, and as of 2026-08-27 it
+demonstrably RUNS from the browser in this app — `verify-labwired-engine.mjs`
+drives an F030 program and insists the program counter moves.
 
-- what would still be needed: nRF52 GPIO/GPIOTE, TIMER/RTC, SPIM, and an
-  ST7735 model with a framebuffer the stage can show;
-- what it would buy: running an unmodified Arcade game — someone else's
-  binary — with no translation;
-- what it would not buy: any of the *editing* story. A running binary is not
-  a project you can open, read or change, which is what the import path gives.
+Reading its target contract (`debug-target-factory.js`, `createLabwiredTarget`)
+makes the Arcade path unusually concrete, because two of the three inputs
+already exist:
 
-So the order stands: import first, emulate later, and only if the demand is
-for playing other people's games rather than learning from them. The two are
-complementary, not alternatives — and neither needs the other to ship.
+| what labwired wants | what we would have to do |
+|---|---|
+| `firmware` — an **ELF** | nothing. MakeCode ships an `.elf` beside the `.hex`, and our importer already reads the embedded source out of one |
+| `chipYaml` — a chip **descriptor** | write an nRF52833 one: memory map plus GPIO/GPIOTE, TIMER/RTC, SPIM, CLOCK. A description, not an emulator |
+| `pins` + a `board` | the arcade shield's header map, and an ST7735 model with a framebuffer the stage can show |
+
+So the cost is a chip description and a display model, not a CPU. What it
+would buy is running an unmodified Arcade game — someone else's binary — with
+no translation. What it would NOT buy is any of the *editing* story: a running
+binary is not a project you can open, read or change, which is what the import
+path gives.
+
+The order therefore stands — import first, emulate later, and only if the
+demand is for playing other people's games rather than learning from them —
+but "later" is now a week of peripheral work rather than a rewrite.
 
 ## Two things found on the way that are not built here
 
