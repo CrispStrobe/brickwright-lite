@@ -935,6 +935,11 @@ test('Abyss Lift has a finite rescue objective and reliable clone-to-sub rescue 
     assert.match(games.abyss_rescue, /CONTROLS: hold Space to rise/);
     assert.match(games.abyss_rescue, /broadcast "diver rescued"/);
     assert.match(games.abyss_rescue, /IF rescued = 6 THEN:/);
+    assert.match(games.abyss_rescue, /broadcast "abyss lift over"/);
+    assert.match(games.abyss_rescue, /change diveRun by 1/);
+    assert.match(games.abyss_rescue, /mineRun != diveRun/);
+    assert.match(games.abyss_rescue, /diverRun != diveRun/);
+    assert.match(games.abyss_rescue, /ALL SIX DIVERS SAFE • GREEN FLAG FOR ANOTHER DIVE/);
     assert.match(games.abyss_rescue, /set ghost effect to pick random 0 to 12/);
     assert.doesNotMatch(games.abyss_rescue, /change ghost effect by 3/,
         'divers still fade completely before reaching the submarine');
@@ -1668,6 +1673,34 @@ test('buoyancy and mouse-cast controls work in the live Scratch VM', async () =>
         abyss.postIOData('keyboard', {key: ' ', isDown: false});
         assert.ok(Number(value(abyss, 'suby').value) > beforeY, 'holding Space did not add buoyancy');
         assert.equal(Number(value(abyss, 'hull').value), 3, 'the rescue began with the wrong hull count');
+        assert.equal(Number(value(abyss, 'active').value), 1, 'the dive was not active before its final rescue');
+        value(abyss, 'rescued').value = 5;
+        value(abyss, 'score').value = 0;
+        const sub = abyss.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Sub');
+        abyss.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'diver rescued'}, sub);
+        for (let i = 0; i < 35; i++) abyss.runtime._step();
+        assert.equal(Number(value(abyss, 'rescued').value), 6,
+            `the sixth diver was not counted (active=${value(abyss, 'active').value}, ` +
+            `winner=${value(abyss, 'winner').value}, started=${value(abyss, 'started').value})`);
+        assert.equal(Number(value(abyss, 'score').value), 10, 'the rescue reward was not applied exactly once');
+        assert.equal(Number(value(abyss, 'winner').value), 1, 'six rescues did not win the mission');
+        assert.equal(Number(value(abyss, 'active').value), 0, 'the completed dive remained active');
+        assert.equal(Number(value(abyss, 'started').value), 1,
+            'the held Rise key could immediately and invisibly restart the completed dive');
+        const result = abyss.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'AbyssResult');
+        assert.equal(result.visible, true, 'the rescue result was not shown on the stage');
+        const completedRun = Number(value(abyss, 'diveRun').value);
+        abyss.greenFlag();
+        for (let i = 0; i < 20; i++) abyss.runtime._step();
+        abyss.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) abyss.runtime._step();
+        abyss.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(abyss, 'active').value), 1, 'green flag plus Rise did not start another dive');
+        assert.equal(Number(value(abyss, 'rescued').value), 0, 'the replay kept divers from the completed dive');
+        assert.equal(Number(value(abyss, 'diveRun').value), completedRun + 1,
+            'the replay did not get a distinct clone generation');
+        assert.equal(result.visible, false, 'the old result remained over the replay');
     } finally {
         abyss.quit();
         clearStrayTimers();
@@ -2309,7 +2342,8 @@ test('each new game keeps its signature playable mechanic', () => {
         turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /broadcast "circuit checkpoint"/,
             /change checkpoints by 1/, /broadcast "slipstream over"/,
             /REPEAT UNTIL y position < -190 or active = 0/],
-        abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/],
+        abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/,
+            /broadcast "abyss lift over"/, /change diveRun by 1/, /mineRun != diveRun/, /diverRun != diveRun/],
         specter_sweep: [/if on edge bounce/, /touching Orb/, /set ward to 3/,
             /broadcast "specter banished"/, /broadcast "wardlight over"/],
         moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/,

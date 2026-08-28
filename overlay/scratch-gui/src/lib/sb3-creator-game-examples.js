@@ -2779,6 +2779,9 @@ GLOBAL current
 GLOBAL scroll
 GLOBAL invulnerable
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL diveRun
 
 STAGE:
   BACKDROP intro art abyss-lift/intro
@@ -2789,9 +2792,20 @@ STAGE:
     hide variable score
     hide variable hull
     hide variable rescued
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set hull to 3
+      set rescued to 0
+      set suby to 20
+      set vy to 0
+      set scroll to 4
+      set invulnerable to 0
+      set winner to 0
+      set active to 1
+      change diveRun by 1
       switch backdrop to trench
       broadcast "start abyss lift"
 
@@ -2807,6 +2821,8 @@ SPRITE Sub:
     set vy to 0
     set scroll to 4
     set invulnerable to 0
+    set active to 0
+    set winner to 0
     go to x: -130 y: suby
     hide
   WHEN I receive "start abyss lift":
@@ -2814,7 +2830,7 @@ SPRITE Sub:
     show variable hull
     show variable rescued
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key space pressed? THEN:
         change vy by 0.65
       change vy by -0.28
@@ -2830,55 +2846,84 @@ SPRITE Sub:
         set vy to 0
         play sound "hullHit"
         IF hull < 1 THEN:
-          say (("HULL LOST — " join rescued) join " DIVERS RESCUED") for 3 seconds
-          stop all
+          set winner to 0
+          set active to 0
+          broadcast "abyss lift over"
       IF rescued > 3 THEN:
         set scroll to 5
       wait 0.02 seconds
+    hide
   WHEN I receive "diver rescued":
-    change rescued by 1
-    change score by 10
-    play sound "sonar"
-    IF rescued = 6 THEN:
-      say ("ALL SIX SAFE! SCORE " join score) for 4 seconds
-      stop all
+    IF active = 1 THEN:
+      change rescued by 1
+      change score by 10
+      play sound "sonar"
+      IF rescued = 6 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "abyss lift over"
 
 SPRITE Mine:
+  LOCAL mineRun
   SHAPE art abyss-lift/mine
   WHEN flag clicked:
     hide
-  WHEN I receive "start abyss lift":
     FOREVER:
-      go to x: 250 y: pick random -145 to 145
-      create clone of myself
-      wait pick random 1 to 3 seconds
+      IF active = 1 THEN:
+        set mineRun to diveRun
+        go to x: 250 y: pick random -145 to 145
+        create clone of myself
+        wait pick random 1 to 3 seconds
+      ELSE:
+        wait 0.1 seconds
   WHEN I start as a clone:
     show
-    REPEAT UNTIL x position < -250:
+    REPEAT UNTIL x position < -250 or active = 0 or mineRun != diveRun:
       turn right 4 degrees
       change x by (0 - scroll)
       wait 0.02 seconds
-    change score by 1
+    IF active = 1 THEN:
+      change score by 1
     delete this clone
 
 SPRITE Diver:
+  LOCAL diverRun
   SHAPE art abyss-lift/diver
   WHEN flag clicked:
     hide
-  WHEN I receive "start abyss lift":
     FOREVER:
-      wait pick random 2 to 4 seconds
-      go to x: 250 y: pick random -120 to 120
-      create clone of myself
+      IF active = 1 THEN:
+        wait pick random 2 to 4 seconds
+      IF active = 1 THEN:
+        set diverRun to diveRun
+        go to x: 250 y: pick random -120 to 120
+        create clone of myself
+      ELSE:
+        wait 0.1 seconds
   WHEN I start as a clone:
     show
-    REPEAT UNTIL x position < -250 or touching Sub:
+    REPEAT UNTIL x position < -250 or touching Sub or active = 0 or diverRun != diveRun:
       set ghost effect to pick random 0 to 12
       change x by (0 - scroll)
       wait 0.02 seconds
-    IF touching Sub THEN:
+    IF touching Sub and active = 1 THEN:
       broadcast "diver rescued"
-    delete this clone`,
+    delete this clone
+
+SPRITE AbyssResult:
+  COSTUME win label "ALL SIX DIVERS SAFE • GREEN FLAG FOR ANOTHER DIVE" #ffe66d
+  COSTUME lose label "HULL LOST • GREEN FLAG TO RETRY" #ff8ca8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start abyss lift":
+    hide
+  WHEN I receive "abyss lift over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     specter_sweep: `# Wardlight — a ricochet defense game.
 # GOAL: banish twelve specters before three of them reach the central ward.
