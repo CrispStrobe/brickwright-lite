@@ -6802,6 +6802,9 @@ GLOBAL oxygen
 GLOBAL i
 GLOBAL hitTail
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL crashLock
 LIST trailX
 LIST trailY
 
@@ -6810,6 +6813,8 @@ STAGE:
   BACKDROP moon art cratercoil/play
   WHEN flag clicked:
     set started to 0
+    set active to 0
+    set winner to 0
     switch backdrop to intro
     hide variable score
     hide variable lives
@@ -6818,6 +6823,7 @@ STAGE:
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set active to 1
       switch backdrop to moon
       broadcast "start cratercoil"
 
@@ -6827,6 +6833,40 @@ SPRITE Mooncoil:
   COSTUME tail art cratercoil/tail
   SOUND fruit 960
   SOUND boom 120
+
+  DEFINE FAST wrap coil:
+    IF headX > 9 THEN:
+      set headX to -9
+    IF headX < -9 THEN:
+      set headX to 9
+    IF headY > 6 THEN:
+      set headY to -6
+    IF headY < -6 THEN:
+      set headY to 6
+
+  DEFINE inspect coil cell:
+    set hitTail to 0
+    set i to 1
+    REPEAT UNTIL i > length of trailX:
+      IF headX = item i of trailX and headY = item i of trailY THEN:
+        set hitTail to 1
+      change i by 1
+    IF hitTail = 1 and crashLock = 0 THEN:
+      broadcast "coil crash" and wait
+    IF active = 1 and headX = foodX and headY = foodY THEN:
+      change score by snakeLength
+      change snakeLength by 1
+      change blooms by 1
+      change oxygen by 1
+      play sound "fruit"
+      broadcast "new moonfruit"
+      IF blooms > 11 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "cratercoil over"
+    IF active = 1 and headX = bombX and headY = bombY and crashLock = 0 THEN:
+      broadcast "coil crash" and wait
+
   WHEN flag clicked:
     set score to 0
     set lives to 3
@@ -6838,12 +6878,16 @@ SPRITE Mooncoil:
     set dirY to 0
     set snakeLength to 5
     set hitTail to 0
+    set active to 0
+    set winner to 0
+    set crashLock to 0
     delete all of trailX
     delete all of trailY
     go to x: headX * 24 y: headY * 24
     hide
     clear
   WHEN I receive "start cratercoil":
+    set active to 1
     show variable score
     show variable lives
     show variable blooms
@@ -6851,23 +6895,23 @@ SPRITE Mooncoil:
     switch costume to costume1
     show
   WHEN left arrow key pressed:
-    IF dirX = 0 THEN:
+    IF active = 1 and dirX = 0 THEN:
       set dirX to -1
       set dirY to 0
   WHEN right arrow key pressed:
-    IF dirX = 0 THEN:
+    IF active = 1 and dirX = 0 THEN:
       set dirX to 1
       set dirY to 0
   WHEN up arrow key pressed:
-    IF dirY = 0 THEN:
+    IF active = 1 and dirY = 0 THEN:
       set dirX to 0
       set dirY to 1
   WHEN down arrow key pressed:
-    IF dirY = 0 THEN:
+    IF active = 1 and dirY = 0 THEN:
       set dirX to 0
       set dirY to -1
   WHEN I receive "start cratercoil":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       add headX to trailX
       add headY to trailY
       IF length of trailX > snakeLength THEN:
@@ -6875,34 +6919,8 @@ SPRITE Mooncoil:
         delete 1 of trailY
       change headX by dirX
       change headY by dirY
-      IF headX > 9 THEN:
-        set headX to -9
-      IF headX < -9 THEN:
-        set headX to 9
-      IF headY > 6 THEN:
-        set headY to -6
-      IF headY < -6 THEN:
-        set headY to 6
-      set hitTail to 0
-      set i to 1
-      REPEAT UNTIL i > length of trailX:
-        IF headX = item i of trailX and headY = item i of trailY THEN:
-          set hitTail to 1
-        change i by 1
-      IF hitTail = 1 THEN:
-        change lives by -1
-        broadcast "coil reset"
-      IF headX = foodX and headY = foodY THEN:
-        change score by snakeLength
-        change snakeLength by 1
-        change blooms by 1
-        change oxygen by 1
-        play sound "fruit"
-        broadcast "new moonfruit"
-      IF headX = bombX and headY = bombY THEN:
-        change lives by -1
-        play sound "boom"
-        broadcast "coil reset"
+      wrap coil
+      inspect coil cell
       clear
       switch costume to tail
       set i to 1
@@ -6912,21 +6930,30 @@ SPRITE Mooncoil:
         change i by 1
       switch costume to costume1
       go to x: headX * 24 y: headY * 24
-      IF lives < 1 THEN:
-        say ("CRATERCOIL LOST — BLOOMS " join blooms) for 4 seconds
-        stop all
-      IF blooms = 12 THEN:
-        say ("TWELVE MOONBLOOMS SECURED — SCORE " join score) for 4 seconds
-        stop all
       wait 0.16 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and oxygen > 0 THEN:
+    IF active = 1 and oxygen > 0 THEN:
       switch costume to dash
       change headX by dirX
       change headY by dirY
       change oxygen by -1
+      wrap coil
+      inspect coil cell
       wait 0.12 seconds
       switch costume to costume1
+  WHEN I receive "coil crash":
+    IF active = 1 and crashLock = 0 THEN:
+      set crashLock to 1
+      change lives by -1
+      play sound "boom"
+      IF lives < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "cratercoil over"
+      ELSE:
+        broadcast "coil reset" and wait
+        set crashLock to 0
   WHEN I receive "coil reset":
     set headX to 0
     set headY to 0
@@ -6944,6 +6971,8 @@ SPRITE Moonfruit:
     hide
   WHEN I receive "start cratercoil":
     show
+  WHEN I receive "cratercoil over":
+    hide
   WHEN I receive "new moonfruit":
     set foodX to pick random -8 to 8
     set foodY to pick random -5 to 5
@@ -6958,7 +6987,7 @@ SPRITE RoverBomb:
     hide
   WHEN I receive "start cratercoil":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1.2 seconds
       change bombX by pick random -1 to 1
       change bombY by pick random -1 to 1
@@ -6971,6 +7000,22 @@ SPRITE RoverBomb:
       IF bombY < -5 THEN:
         set bombY to -5
       go to x: bombX * 24 y: bombY * 24
+    hide
+
+SPRITE CratercoilResult:
+  COSTUME win label "TWELVE MOONBLOOMS SECURED • GREEN FLAG TO COIL AGAIN" #ffe66d
+  COSTUME lose label "ROVER HAZARDS WON • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start cratercoil":
+    hide
+  WHEN I receive "cratercoil over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show
 `,
 
     cinder_thrust: `# Magma Lift — a ten-ring rocket-boot run through a moving volcanic cave.

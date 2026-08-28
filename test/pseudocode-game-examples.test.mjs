@@ -1424,8 +1424,11 @@ test('Cratercoil paints its full list-backed trail and ends after twelve moonblo
     assert.match(games.mooncoil_odyssey, /REPEAT length of trailX:/);
     assert.match(games.mooncoil_odyssey, /go to x: item i of trailX \* 24 y: item i of trailY \* 24/);
     assert.match(games.mooncoil_odyssey, /stamp/);
-    assert.match(games.mooncoil_odyssey, /IF blooms = 12 THEN:/);
-    assert.match(games.mooncoil_odyssey, /started = 1 and oxygen > 0/);
+    assert.match(games.mooncoil_odyssey, /DEFINE inspect coil cell:/);
+    assert.match(games.mooncoil_odyssey, /IF blooms > 11 THEN:/);
+    assert.match(games.mooncoil_odyssey, /active = 1 and oxygen > 0/);
+    assert.match(games.mooncoil_odyssey, /broadcast "coil crash" and wait/);
+    assert.match(games.mooncoil_odyssey, /TWELVE MOONBLOOMS SECURED • GREEN FLAG TO COIL AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'moon']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2458,6 +2461,18 @@ test('lunar dash and rocket thrust consume resources in the live Scratch VM', as
             'dash did not spend exactly one oxygen');
         assert.ok(Number(value(coil, 'headY').value) > beforeY, 'dash did not advance an extra grid cell');
         assert.ok(value(coil, 'trailX').value.length > 0, 'movement did not record a renderable trail');
+        value(coil, 'lives').value = 1;
+        const mooncoil = coil.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'Mooncoil');
+        coil.runtime.startHats('event_whenbroadcastreceived', {
+            BROADCAST_OPTION: 'coil crash'
+        }, mooncoil);
+        for (let i = 0; i < 35; i++) coil.runtime._step();
+        assert.equal(Number(value(coil, 'lives').value), 0, 'final crash did not consume the last life');
+        assert.equal(Number(value(coil, 'active').value), 0, 'crashed run remained active');
+        const result = coil.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'CratercoilResult');
+        assert.equal(result.visible, true, 'crash result was not shown on the stage');
     } finally { coil.quit(); clearStrayTimers(); }
 
     const lift = await load(games.cinder_thrust);
@@ -2581,7 +2596,9 @@ test('each new game keeps its signature playable mechanic', () => {
         cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/,
             /delete falls of colA/, /change score by 40 \* combo/, /set clearedDrop to 1/,
             /broadcast "chromafall over"/],
-        mooncoil_odyssey: [/LIST trailX/, /add headX to trailX/, /headX = item i of trailX/, /delete 1 of trailX/, /change snakeLength by 1/],
+        mooncoil_odyssey: [/LIST trailX/, /add headX to trailX/, /headX = item i of trailX/,
+            /delete 1 of trailX/, /change snakeLength by 1/, /DEFINE inspect coil cell:/,
+            /broadcast "cratercoil over"/],
         cinder_thrust: [/change flyerVY by -0\.42/, /key up arrow pressed\? and fuel > 0/, /touching ChargeLedge/, /change caveSpeed by 0\.12/]
     };
     for (const [name, patterns] of Object.entries(contracts)) {
