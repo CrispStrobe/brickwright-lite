@@ -230,9 +230,10 @@ class ExtensionManager {
 
     /**
      * Whether a URL names exact reviewed gallery content (loads without a user prompt). A hostname
-     * alone is not trust: new entries, query variants, and changed bytes use the custom-URL path.
+     * alone is not trust: new entries and URL variants use the custom-URL path; changed pinned bytes
+     * are refused after fetch and before evaluation.
      * @param {string} extensionURL - candidate URL
-     * @returns {boolean} true for our gallery host
+     * @returns {boolean} true only for an exact URL in the shipped pin map
      */
     isTrustedExtensionURL (extensionURL) {
         return Boolean(pinForURL(extensionURL));
