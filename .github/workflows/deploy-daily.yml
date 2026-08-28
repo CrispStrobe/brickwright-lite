@@ -1,42 +1,61 @@
-# MANUAL ONLY since 2026-08-27. This used to run on a cron and push an empty
-# "[deploy]" commit whenever the site was behind — which meant the public URL
-# tracked whatever happened to be on main at 04:23, a state nobody chose.
-#
-# The owner ruling is now that the site tracks CHECKPOINTS: a version tag, or
-# the `release:` commit carrying it (see scripts/vercel-ignore.sh). A timed
-# refresh is by definition not a checkpoint, so the schedule is gone.
-#
-# It is kept as workflow_dispatch because a deliberate "publish current main"
-# is occasionally the right call — running it by hand IS a checkpoint decision,
-# which is the part that was missing. The deploy cap is real: six lanes on one
-# repo exhausted it twice (2026-08-23, and 2026-08-27, when every push for
-# hours returned "Deployment rate limited" and the site served a stale build).
-name: deploy-daily
+name: Vercel production deploy
+
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+      timezone: Europe/Berlin
+
+# A manual run and the nightly run must never race to assign the production
+# domains. Keep the earlier deployment running and queue the later request.
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
 permissions:
-  contents: write
+  contents: read
+
 jobs:
-  refresh:
+  deploy:
+    name: Deploy current BrickWright Lite
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          fetch-depth: 0
-      - name: Push a [deploy] refresh commit when the site is behind
+          # workflow_dispatch allows choosing a ref in the UI. Production does
+          # not: both trigger types always publish the canonical current main.
+          ref: main
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Check deployment credentials
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          last_deploy=$(git log --format=%H --grep='\[deploy\]' -1)
-          if [ -z "$last_deploy" ]; then
-            range="HEAD~1..HEAD"   # never deployed under this scheme: refresh once
-          elif [ "$last_deploy" = "$(git rev-parse HEAD)" ]; then
-            echo "head already carries [deploy] — nothing to do"; exit 0
-          else
-            range="$last_deploy..HEAD"
-          fi
-          if ! git diff --name-only "$range" | grep -qE '^(overlay/|packages/|scripts/|static/|vercel\.json|package\.json|package-lock\.json)'; then
-            echo "no web-affecting changes since the last deploy — nothing to do"; exit 0
-          fi
-          # Author must be the Vercel-authorized identity (see CLAUDE.md).
-          git -c user.name=CrispStrobe -c user.email=cze+github@mailbox.org \
-            commit --allow-empty -m "site: [deploy] daily refresh"
-          git push origin HEAD:main
+          : "${VERCEL_TOKEN:?VERCEL_TOKEN is not configured}"
+          : "${VERCEL_ORG_ID:?VERCEL_ORG_ID is not configured}"
+          : "${VERCEL_PROJECT_ID:?VERCEL_PROJECT_ID is not configured}"
+
+      - name: Install the pinned Vercel CLI
+        run: npm install --global vercel@50.1.3 --no-audit --no-fund
+
+      - name: Pull production settings
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build the current checkout
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy and assign production domains
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
