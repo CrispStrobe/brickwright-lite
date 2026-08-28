@@ -59,6 +59,14 @@
  * CLOCKS and TIMER accesses just before it are what any SDK init does on
  * the way past.
  *
+ * And one thing NOT to chase: `"Hard assert"` is the SDK's GENERIC
+ * message. `hard_assertion_failure()` in pico/assert.h calls
+ * `panic("Hard assert")` for every failed `hard_assert()` in the tree, so
+ * the string identifies the mechanism and not the site. Searching for it
+ * finds the handler and nothing else. The next step is a call-stack walk
+ * from the LR chain, not more message reading — and r0 = 0xf is worth a
+ * look, because PICO_SPINLOCK_ID_OS2 is 15.
+ *
  * Checked and excluded, so nobody re-checks them: rp2040js's spinlock
  * model is correct (reading an unlocked lock acquires it and returns the
  * mask, reading a locked one returns 0), `RESET_DONE` reports every
