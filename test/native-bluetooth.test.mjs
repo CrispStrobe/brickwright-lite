@@ -571,3 +571,17 @@ describe('JSON-RPC errors carry a code, not just prose', () => {
         );
     });
 });
+
+
+describe('the self-test stays fast enough to watch', () => {
+    test('the whole report lands well inside the time a person waits', async () => {
+        // The route probe is awaited by selfTestReport, so its timeouts are the
+        // self-test's timeouts. A 15s cap here stopped the report rendering
+        // within the 15s the CI gate — and any user staring at the button —
+        // waits for it. A diagnostic nobody sees finish diagnoses nothing.
+        const started = Date.now();
+        await selfTestReport();
+        const elapsed = Date.now() - started;
+        assert.ok(elapsed < 8000, `the self-test took ${elapsed}ms; it must stay watchable`);
+    });
+});
