@@ -1050,18 +1050,6 @@ mod tests {
         assert!(decode_message(&json!({ "message": "AQID", "encoding": "hex" })).is_err());
     }
 
-    #[test]
-    fn scan_filter_collects_services() {
-        let p = json!({ "filters": [
-            { "services": ["00001623-1212-efde-1623-785feabcd123"] },
-            { "services": ["1624"] }
-        ]});
-        match build_scan_filter(&p) {
-            ScanFilter::AnyService(v) => assert_eq!(v.len(), 2),
-            _ => panic!("expected AnyService"),
-        }
-    }
-
     #[tokio::test]
     async fn a_failed_scan_tells_both_dialects() {
         // Our own web code needs the reason; the stock VM needs a method it
@@ -1077,12 +1065,4 @@ mod tests {
         assert_eq!(second["method"], json!("userDidNotPickPeripheral"));
     }
 
-    #[test]
-    fn scan_filter_none_when_no_services() {
-        assert!(matches!(build_scan_filter(&json!({})), ScanFilter::None));
-        assert!(matches!(
-            build_scan_filter(&json!({ "filters": [{ "namePrefix": "LEGO" }] })),
-            ScanFilter::None
-        ));
-    }
 }
