@@ -1047,6 +1047,10 @@ test('Tidegate Rush has a finish line, boost resource, hazards, and three-gate s
     assert.match(games.lockstep_lagoon, /CONTROLS: Left\/Right change lanes/);
     assert.match(games.lockstep_lagoon, /IF gates = 8 THEN:/);
     assert.match(games.lockstep_lagoon, /set surge to 3/);
+    assert.match(games.lockstep_lagoon, /broadcast "blue gate cleared"/);
+    assert.match(games.lockstep_lagoon, /broadcast "buoy struck"/);
+    assert.match(games.lockstep_lagoon, /broadcast "tidegate over"/);
+    assert.match(games.lockstep_lagoon, /EIGHT GATES CLEARED • GREEN FLAG FOR ANOTHER RUN/);
     assert.match(games.lockstep_lagoon, /change charge by -1/);
     assert.equal((games.lockstep_lagoon.match(/\(pick random -1 to 1\) \* 110/g) || []).length, 2,
         'a gate spawner is not constrained to the three taught lanes');
@@ -1896,6 +1900,19 @@ test('parry timing and hydrofoil lane-boost controls work in the live Scratch VM
         tidegate.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
         assert.ok(Number(value(tidegate, 'charge').value) < 100, 'Up did not spend boost charge');
         assert.equal(Number(value(tidegate, 'gates').value), 0, 'the race began with phantom cleared gates');
+        value(tidegate, 'gates').value = 7;
+        value(tidegate, 'score').value = 0;
+        const foil = tidegate.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Foil');
+        tidegate.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'blue gate cleared'}, foil);
+        for (let i = 0; i < 35; i++) tidegate.runtime._step();
+        assert.equal(Number(value(tidegate, 'gates').value), 8, 'the eighth gate was not counted');
+        assert.equal(Number(value(tidegate, 'score').value), 5,
+            'the ordinary finish gate did not award exactly five points');
+        assert.equal(Number(value(tidegate, 'winner').value), 1, 'eight gates did not win the race');
+        assert.equal(Number(value(tidegate, 'active').value), 0, 'the completed race remained active');
+        const result = tidegate.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'TidegateResult');
+        assert.equal(result.visible, true, 'the race result was not shown on the stage');
     } finally {
         tidegate.quit();
         clearStrayTimers();
@@ -2378,7 +2395,8 @@ test('each new game keeps its signature playable mechanic', () => {
             /SPRITE CloudBot/, /broadcast "nimbus match over"/],
         ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/,
             /broadcast "ember reflected"/, /change dragonHP by -1/, /broadcast "ember duel over"/],
-        lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /change gates by 1/, /change score by 15/],
+        lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /broadcast "blue gate cleared"/,
+            /change gates by 1/, /change score by 15/, /broadcast "tidegate over"/],
         rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/,
             /x position > 235/, /broadcast "blue line miss"/, /broadcast "blue line goal"/,
             /change goals by 1/, /broadcast "blue line over"/],

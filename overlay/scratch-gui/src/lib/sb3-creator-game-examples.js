@@ -3631,6 +3631,8 @@ GLOBAL speed
 GLOBAL surge
 GLOBAL charge
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art tidegate-rush/intro
@@ -3643,9 +3645,20 @@ STAGE:
     hide variable hull
     hide variable timeLeft
     hide variable charge
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set gates to 0
+      set hull to 3
+      set timeLeft to 35
+      set lane to 0
+      set speed to 5
+      set surge to 0
+      set charge to 100
+      set winner to 0
+      set active to 1
       switch backdrop to course
       broadcast "start tidegate rush"
 
@@ -3662,6 +3675,8 @@ SPRITE Foil:
     set speed to 5
     set surge to 0
     set charge to 100
+    set active to 0
+    set winner to 0
     point in direction 0
     go to x: 0 y: -125
     hide
@@ -3672,7 +3687,7 @@ SPRITE Foil:
     show variable timeLeft
     show variable charge
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change lane by -1
         wait 0.12 seconds
@@ -3693,17 +3708,37 @@ SPRITE Foil:
         switch costume to costume1
         IF charge < 100 THEN:
           change charge by 0.25
-      IF gates = 8 THEN:
-        say ("EIGHT GATES CLEARED — HARBOUR SCORE " join score) for 4 seconds
-        stop all
-      IF hull < 1 or timeLeft < 1 THEN:
-        say ("TIDE CLOSED — " join gates) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN I receive "start tidegate rush":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
-      change timeLeft by -1
+      IF active = 1 THEN:
+        change timeLeft by -1
+        IF timeLeft < 1 THEN:
+          set winner to 0
+          set active to 0
+          broadcast "tidegate over"
+  WHEN I receive "blue gate cleared":
+    IF active = 1 THEN:
+      change gates by 1
+      IF surge > 0 THEN:
+        change score by 15
+        change surge by -1
+      ELSE:
+        change score by 5
+      change timeLeft by 1
+      IF gates = 8 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "tidegate over"
+  WHEN I receive "buoy struck":
+    IF active = 1 THEN:
+      change hull by -1
+      IF hull < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "tidegate over"
 
 SPRITE LockGate:
   SHAPE art tidegate-rush/gate
@@ -3712,27 +3747,21 @@ SPRITE LockGate:
   WHEN flag clicked:
     hide
   WHEN I receive "start tidegate rush":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: (pick random -1 to 1) * 110 y: 210
       IF pick random 1 to 4 = 1 THEN:
         switch costume to buoy
       ELSE:
         switch costume to costume1
       show
-      REPEAT UNTIL y position < -190:
+      REPEAT UNTIL y position < -190 or active = 0:
         change y by 0 - speed
         IF touching Foil THEN:
           IF costume name = buoy THEN:
-            change hull by -1
+            broadcast "buoy struck"
             play sound "splash"
           ELSE:
-            change gates by 1
-            IF surge > 0 THEN:
-              change score by 15
-              change surge by -1
-            ELSE:
-              change score by 5
-            change timeLeft by 1
+            broadcast "blue gate cleared"
             play sound "lock"
           hide
           set y to -220
@@ -3745,21 +3774,37 @@ SPRITE SurgeLock:
   WHEN flag clicked:
     hide
   WHEN I receive "start tidegate rush":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait pick random 4 to 7 seconds
-      go to x: (pick random -1 to 1) * 110 y: 210
-      show
-      REPEAT UNTIL y position < -190:
-        change y by 0 - speed
-        IF touching Foil THEN:
-          set surge to 3
-          change charge by 25
-          IF charge > 100 THEN:
-            set charge to 100
-          hide
-          set y to -220
-        wait 0.02 seconds
-      hide`,
+      IF active = 1 THEN:
+        go to x: (pick random -1 to 1) * 110 y: 210
+        show
+        REPEAT UNTIL y position < -190 or active = 0:
+          change y by 0 - speed
+          IF touching Foil THEN:
+            set surge to 3
+            change charge by 25
+            IF charge > 100 THEN:
+              set charge to 100
+            hide
+            set y to -220
+          wait 0.02 seconds
+        hide
+
+SPRITE TidegateResult:
+  COSTUME win label "EIGHT GATES CLEARED • GREEN FLAG FOR ANOTHER RUN" #70efff
+  COSTUME lose label "TIDE CLOSED OR HULL LOST • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start tidegate rush":
+    hide
+  WHEN I receive "tidegate over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     rink_riot: `# Blue-Line Breaker — momentum hockey built around deliberate bank shots.
 # GOAL: score five goals before the 40-second horn.
