@@ -1,5 +1,13 @@
 # Every wait in the browser gates: what bounds it, and what nobody counted
 
+> Ratchet integration note (2026-08-28): the measurements below preserve the
+> original five-gate sweep. By the time its gate reached `main`, CI ran eleven
+> browser-gate scripts: Arduboy, labwired, debugger-only, example-selection and
+> both micro:bit gates had been added. The current zero-headroom baseline is
+> therefore 153 bounds and 261 fixed sleeps repository-wide; CI-run scripts own
+> 106 of those sleeps (116.880 s). `test/wait-census.test.mjs` records these
+> exact values so any further increase must be explained.
+
 2026-08-24, branch `probe/lite-timeout-thresholds`, from `main` at `c552d9332`.
 
 The lite half of the campaign in `sb3-creator/docs/MEASURED-THRESHOLDS.md`. That sweep asks,

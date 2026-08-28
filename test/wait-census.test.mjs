@@ -7,7 +7,7 @@
  * who measured it. `waitForTimeout(N)` is not such a number — it bounds
  * nothing, decides nothing, and a threshold inventory is right to skip it.
  * Which is exactly why nobody has ever had to justify one, and why there are
- * now 249 of them against 119 bounds.
+ * now 261 of them against 153 bounds.
  *
  * A fixed sleep is a guess about how long the app needs, and it is the one kind
  * of guess that cannot be checked by watching: it costs exactly what it was
@@ -40,28 +40,27 @@ const censusJson = () => JSON.parse(execFileSync('node',
     [path.join(ROOT, 'scripts', 'aggregate-timeouts.mjs'), '--census', '--json'],
     {cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26}));
 
-// MEASURED 2026-08-24 on branch probe/lite-timeout-thresholds, by
+// BASELINE RE-MEASURED 2026-08-28 after this branch was integrated into the
+// expanded browser-gate workflow, by
 // scripts/aggregate-timeouts.mjs --census. Every ceiling here is the observed
 // value with ZERO headroom, which is the correct state for a ratchet: nothing
 // can be added without this going red.
 //
-//   run by CI            26 bounds   64 sleeps   61.9 s
-//   runnable, not in CI  53 bounds  130 sleeps  192.2 s
-//   _tmp- scratch        40 bounds   55 sleeps  155.5 s
-//   TOTAL               119 bounds  249 sleeps  409.6 s
+//   run by CI           106 sleeps  116.880 s across 11 browser-gate scripts
+//   TOTAL               153 bounds  261 sleeps  426.640 s
 //
-// The 119 agrees exactly with sb3-creator's independently written
-// scripts/threshold-inventory.mjs, which is what makes the 249 — a population
-// that inventory does not collect at all — worth believing.
+// The historical 2026-08-24 measurement remains in docs/WAIT-CENSUS.md. The
+// increase is the explicit cost of six gates added since that sweep: Arduboy,
+// labwired, debugger-only, example selection, micro:bit and micro:bit debug.
 //
 // EXACT values below, not the report's rounded ones. Setting `ciSleepMs` from the
 // table's "61.9 s" made the ratchet red on the tree it was measured against:
 // the true total is 61,930 ms. A ceiling read off a rounded display is a
 // threshold whose evidence is a formatting decision.
 const CEILING = {
-    ciSleepMs: 61_930,      // 64 sleeps across the five CI browser gates
-    ciSleeps: 64,
-    totalSleeps: 249,       // 409,590 ms repository-wide
+    ciSleepMs: 116_880,     // 106 sleeps across 11 CI browser-gate scripts
+    ciSleeps: 106,
+    totalSleeps: 261,       // 426,640 ms repository-wide
     scratchFiles: 10        // _tmp- scripts that contain waits
 };
 
@@ -86,7 +85,7 @@ describe('the wait census: fixed sleeps are counted, and may only shrink', () =>
             + 'gates or the CI_GATES resolution broke; both make the ratchet below vacuous.');
     });
 
-    test('the five CI browser gates sleep no longer than the day this was measured', () => {
+    test('the CI browser gates sleep no longer than the current measured baseline', () => {
         const total = ciSleeps.reduce((a, s) => a + s.value, 0);
         assert.ok(total <= CEILING.ciSleepMs,
             `the scripts CI runs now spend ${(total / 1000).toFixed(1)} s in waitForTimeout() per run, `
