@@ -49,6 +49,12 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
 tauri-plugin-share = "2"
 
+# Apple-only: the REFERENCE Scratch Link (BSD-3, Scratch Foundation) as a fifth
+# connection path. Swift/CoreBluetooth, so iOS only — Android keeps using
+# scratchlink/ble.rs and bt_android.rs.
+[target.'cfg(target_os = "ios")'.dependencies]
+tauri-plugin-scratchlink-original = { path = "plugins/scratchlink-original" }
+
 # Desktop-only: USB-CDC serial to a MicroPython Pico (src/pico.rs). Phones
 # have no USB host serial we can reach, and the crate does not build there.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]

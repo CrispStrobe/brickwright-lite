@@ -69,17 +69,13 @@ describe('choosing one', () => {
 });
 
 describe('a choice that cannot run here', () => {
-    test('the Apple-only carrier is NOT offered until it is wired up', () => {
-        // The Swift is vendored and licence-gated, but nothing calls it yet:
-        // build.rs compiles Objective-C through cc::Build and Swift needs a
-        // different toolchain path. A selectable entry that does nothing is the
-        // worst state a connection option can be in — it looks like a working
-        // choice and fails silently, which is exactly how the Scratch Link path
-        // burned a day.
+    test('the Apple-only carrier is offered now that it is wired', () => {
+        // It spent one commit greyed out with "vendored, not wired up yet",
+        // which was the honest state while the Swift had no caller. It has one
+        // now (plugins/scratchlink-original), so it is selectable again — and
+        // the coupling gate below is what forced this line to move with it.
         assert.ok(isNativeApp() && isApple(), 'the environment here is Apple + app');
-        const original = TRANSPORTS.find(t => t.id === 'original');
-        assert.equal(original.available(), false, 'it must not be offered while it is a stub');
-        assert.match(original.why, /not wired|not yet/i, 'and must say why, not just vanish');
+        assert.equal(TRANSPORTS.find(t => t.id === 'original').available(), true);
     });
 
     test('the flag must be flipped in the commit that lands the bridge', () => {
@@ -88,7 +84,10 @@ describe('a choice that cannot run here', () => {
         // working transport nobody can select is as useless as a dead one that
         // everyone can.
         const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-        const wired = ['scratchlink_original_open', 'scratchlink_original_send']
+        // The marker is the PLUGIN REGISTRATION, not a command name: the
+        // commands live in Swift, so lib.rs never mentions them. Watching for
+        // names that can never appear is a gate that can never fire.
+        const wired = ['tauri_plugin_scratchlink_original']
             .some(cmd => {
                 try {
                     return readFileSync(resolve(root, 'apps/tauri/src-tauri/src/lib.rs'), 'utf8').includes(cmd);

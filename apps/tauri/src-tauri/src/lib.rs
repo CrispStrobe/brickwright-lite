@@ -27,6 +27,12 @@ pub fn run() {
     #[cfg(mobile)]
     let builder = builder.plugin(tauri_plugin_share::init());
 
+    // The reference Scratch Link, as a selectable connection path. iOS only:
+    // it is Swift/CoreBluetooth. Registering it does not change any existing
+    // route — nothing reaches it until the user picks that transport.
+    #[cfg(target_os = "ios")]
+    let builder = builder.plugin(tauri_plugin_scratchlink_original::init());
+
     // Pico USB serial state — desktop only (the mobile pico commands are stubs).
     #[cfg(desktop)]
     let builder = builder.manage(pico::PicoSerial(std::sync::Mutex::new(None)));

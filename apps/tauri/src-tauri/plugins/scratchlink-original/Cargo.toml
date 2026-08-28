@@ -1,0 +1,12 @@
+[package]
+name = "tauri-plugin-scratchlink-original"
+version = "0.1.0"
+edition = "2021"
+description = "The reference Scratch Link (BSD-3, Scratch Foundation) as an in-app connection path on Apple platforms."
+license = "BSD-3-Clause"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
