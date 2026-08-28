@@ -4609,6 +4609,8 @@ GLOBAL targetHole
 GLOBAL dashX
 GLOBAL dashY
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art whisker-relay/intro
@@ -4621,9 +4623,23 @@ STAGE:
     hide variable lives
     hide variable scent
     hide variable targetHole
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set cargo to 0
+      set banked to 0
+      set lives to 3
+      set scent to 0
+      set catSpeed to 2
+      set hidden to 0
+      set targetHole to 1
+      set dashX to 1
+      set dashY to 0
+      set mouseX to -160
+      set mouseY to -100
+      set winner to 0
+      set active to 1
       switch backdrop to pantry
       broadcast "start whisker relay"
 
@@ -4643,6 +4659,8 @@ SPRITE Pip:
     set dashY to 0
     set mouseX to -160
     set mouseY to -100
+    set active to 0
+    set winner to 0
     go to x: mouseX y: mouseY
     hide
   WHEN I receive "start whisker relay":
@@ -4651,7 +4669,7 @@ SPRITE Pip:
     show variable lives
     show variable scent
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change mouseX by -4
         set dashX to -1
@@ -4686,24 +4704,15 @@ SPRITE Pip:
         set hidden to 1
         set scent to 0
       IF touching RightHole and targetHole = 1 and cargo > 0 THEN:
-        change banked by cargo
-        set cargo to 0
-        set targetHole to -1
+        broadcast "relay delivery"
       IF touching LeftHole and targetHole = -1 and cargo > 0 THEN:
-        change banked by cargo
-        set cargo to 0
-        set targetHole to 1
+        broadcast "relay delivery"
       IF scent > 0 THEN:
         change scent by -0.03
-      IF banked > 5 THEN:
-        say "SIX CHEESES BANKED — RELAY COMPLETE!" for 4 seconds
-        stop all
-      IF lives < 1 THEN:
-        say ("CAT CAUGHT THE RELAY — BANKED " join banked) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and cargo > 0 THEN:
+    IF active = 1 and cargo > 0 THEN:
       change mouseX by dashX * 55
       change mouseY by dashY * 55
       change cargo by -1
@@ -4711,6 +4720,29 @@ SPRITE Pip:
       switch costume to dash
       wait 0.15 seconds
       switch costume to costume1
+  WHEN I receive "relay delivery":
+    IF active = 1 THEN:
+      change banked by cargo
+      set cargo to 0
+      IF targetHole = 1 THEN:
+        set targetHole to -1
+      ELSE:
+        set targetHole to 1
+      IF banked > 5 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "whisker relay over"
+  WHEN I receive "relay caught":
+    IF active = 1 THEN:
+      change lives by -1
+      set cargo to 0
+      set scent to 0
+      set mouseX to -160
+      set mouseY to -100
+      IF lives < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "whisker relay over"
 
 SPRITE CheeseMoon:
   SHAPE art whisker-relay/cheese
@@ -4720,7 +4752,7 @@ SPRITE CheeseMoon:
     hide
   WHEN I receive "start whisker relay":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       turn right 4 degrees
       IF touching Pip THEN:
         change cargo by 1
@@ -4729,6 +4761,7 @@ SPRITE CheeseMoon:
         play sound "crumb"
         go to x: pick random -190 to 190 y: pick random -135 to 135
       wait 0.03 seconds
+    hide
 
 SPRITE Marmalade:
   SHAPE art whisker-relay/cat
@@ -4738,7 +4771,7 @@ SPRITE Marmalade:
     hide
   WHEN I receive "start whisker relay":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF hidden = 0 and scent > 0.8 THEN:
         point towards Pip
         move catSpeed + scent / 5 steps
@@ -4747,15 +4780,12 @@ SPRITE Marmalade:
         move 1.5 steps
         if on edge bounce
       IF touching Pip and hidden = 0 THEN:
-        change lives by -1
-        set cargo to 0
-        set scent to 0
-        set mouseX to -160
-        set mouseY to -100
+        broadcast "relay caught"
         go to x: 170 y: 110
         play sound "pounce"
         wait 1 seconds
       wait 0.03 seconds
+    hide
 
 SPRITE LeftHole:
   SHAPE art whisker-relay/hole-left
@@ -4765,12 +4795,13 @@ SPRITE LeftHole:
     hide
   WHEN I receive "start whisker relay":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF targetHole = -1 THEN:
         switch costume to active
       ELSE:
         switch costume to costume1
       wait 0.05 seconds
+    hide
 
 SPRITE RightHole:
   SHAPE art whisker-relay/hole-right
@@ -4780,12 +4811,28 @@ SPRITE RightHole:
     hide
   WHEN I receive "start whisker relay":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF targetHole = 1 THEN:
         switch costume to active
       ELSE:
         switch costume to costume1
-      wait 0.05 seconds`,
+      wait 0.05 seconds
+    hide
+
+SPRITE WhiskerResult:
+  COSTUME win label "SIX CHEESES BANKED • GREEN FLAG FOR ANOTHER RELAY" #ffe66d
+  COSTUME lose label "MARMALADE CAUGHT PIP THREE TIMES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start whisker relay":
+    hide
+  WHEN I receive "whisker relay over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     spiral_circuit: `# Helix Rush — a finite five-lane tube sprint with phase-boost decisions.
 # GOAL: survive thirty sectors with at least one life remaining.

@@ -1209,6 +1209,10 @@ test('Whisker Relay is an alternating courier game with a directional cargo trad
     assert.match(games.whisker_switch, /change banked by cargo/);
     assert.match(games.whisker_switch, /set targetHole to -1/);
     assert.match(games.whisker_switch, /change mouseX by dashX \* 55/);
+    assert.match(games.whisker_switch, /broadcast "relay delivery"/);
+    assert.match(games.whisker_switch, /broadcast "relay caught"/);
+    assert.match(games.whisker_switch, /broadcast "whisker relay over"/);
+    assert.match(games.whisker_switch, /SIX CHEESES BANKED • GREEN FLAG FOR ANOTHER RELAY/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'pantry']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2082,6 +2086,17 @@ test('directional cargo dash and charged tube boost work in the live Scratch VM'
         relay.postIOData('keyboard', {key: ' ', isDown: false});
         assert.ok(Number(value(relay, 'mouseY').value) >= beforeY + 50, 'dash ignored the last movement direction');
         assert.equal(Number(value(relay, 'cargo').value), 0, 'dash did not spend one cargo');
+        value(relay, 'banked').value = 5;
+        value(relay, 'cargo').value = 1;
+        const pip = relay.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Pip');
+        relay.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'relay delivery'}, pip);
+        for (let i = 0; i < 35; i++) relay.runtime._step();
+        assert.equal(Number(value(relay, 'banked').value), 6, 'the sixth delivery was not banked');
+        assert.equal(Number(value(relay, 'winner').value), 1, 'six banked cheeses did not win the relay');
+        assert.equal(Number(value(relay, 'active').value), 0, 'the completed relay remained active');
+        const result = relay.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'WhiskerResult');
+        assert.equal(result.visible, true, 'the courier result was not shown on the stage');
     } finally { relay.quit(); clearStrayTimers(); }
 
     const helix = await load(games.spiral_circuit);
@@ -2406,7 +2421,8 @@ test('each new game keeps its signature playable mechanic', () => {
             /x position > 235/, /broadcast "comet miss"/, /broadcast "comet goal"/, /change goals by 1/,
             /change score by crowd \* 10/, /broadcast "comet match over"/],
         trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /distance to Sub < 150/, /set mineStun to 0\.7/, /change pearls by 1/],
-        whisker_switch: [/set hidden to 1/, /change scent by 3/, /change banked by cargo/, /set targetHole to -1/, /point towards Pip/],
+        whisker_switch: [/set hidden to 1/, /change scent by 3/, /broadcast "relay delivery"/,
+            /change banked by cargo/, /set targetHole to -1/, /point towards Pip/, /broadcast "whisker relay over"/],
         spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /change sectors by 1/, /set lane to -2/],
         lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/, /IF crossings = 3/],
         rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/],
