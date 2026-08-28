@@ -94,6 +94,21 @@ how a `.hex` from python.microbit.org gets imported); `appendScript()` now
 writes it, and the round-trip test is our own reader accepting our own
 writer byte for byte.
 
+The button is **⬇ .hex for the board**, beside *Run on simulator* in the
+micro:bit tab. It needs the MicroPython runtime, which is 1.8 MB — too
+big to bundle into an app whose whole first paint is 3.8 MB, and not ours
+to fetch by name at click time. So it is asked for once and kept for the
+session, and there are two ways to supply it:
+
+- pick a MicroPython `.hex` (python.microbit.org, `uflash`, or the one
+  that came with the board); or
+- **import one first and it never asks** — a downloaded MicroPython hex
+  is runtime *plus* script, so opening one to read its Python already
+  hands us the runtime.
+
+That second path is why this is not a nuisance: the import you would do
+anyway is also the setup.
+
 **CircuitPython is interpreted too**, and does not even want a hex — a
 board mounts as a USB drive and you copy `code.py` onto it. There is
 nothing to build.

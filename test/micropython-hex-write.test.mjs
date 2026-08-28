@@ -16,6 +16,7 @@
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 
 import {
     appendScript, scriptOnlyHex, extractMicroPython
@@ -89,4 +90,47 @@ test('non-ASCII survives, because the length is in BYTES', () => {
     const program = 'display.scroll("Grüße, Welt — ✓")\n';
     const recovered = extractMicroPython(bytes(scriptOnlyHex(program)));
     assert.equal(recovered.files['main.py'], program);
+});
+
+// ── the button that uses it ─────────────────────────────────────────────
+
+test('the flash button exists, is disabled when there is nothing to flash, and asks for firmware once', async () => {
+    // A UI contract rather than a render test: this button is the only
+    // path from "my program runs in the simulator" to "my program runs on
+    // the board", and each piece of it is in a different place.
+    const {readFileSync} = await import('node:fs');
+    const {join} = await import('node:path');
+    const {REPO} = await import('./helpers/bw-integrated.mjs');
+    const src = readFileSync(
+        join(REPO, 'overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx'),
+        'utf8');
+
+    assert.match(src, /data-testid="bw-microbit-download-hex"/, 'no flash button');
+    assert.match(src, /onClick=\{\(\) => this\.downloadMicrobitHex\(\)\}/);
+    // Same disabled rule as the simulator buttons beside it: an empty or
+    // placeholder buffer must not produce a hex that flashes nothing.
+    const button = src.slice(src.indexOf('bw-microbit-download-hex') - 700,
+        src.indexOf('bw-microbit-download-hex'));
+    assert.match(button, /disabled=\{this\.state\.busy \|\| !this\.state\.buffers\.micropython\.trim\(\)/);
+
+    // The runtime is 1.8 MB, so it is asked for rather than bundled — but
+    // importing a MicroPython hex supplies it for free, and that path has
+    // to be wired or the button nags on every use.
+    assert.match(src, /res\.kind === 'micropython'/);
+    assert.match(src, /_microbitFirmwareHex = new TextDecoder\(\)/,
+        'an imported hex does not become the firmware, so the button will always ask');
+    assert.match(src, /appendScript/, 'the button does not use the writer');
+});
+
+test('both locales carry the flash strings', () => {
+    // A missing string renders as `undefined` in the UI, which is how
+    // "Press undefined to build" once reached a green build.
+    const src = readFileSync(new URL(
+        '../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx',
+        import.meta.url), 'utf8');
+    for (const key of ['downloadHex', 'microbitNeedFirmware', 'microbitFirmwareBad',
+        'microbitHexReady']) {
+        const hits = src.split(`${key}:`).length - 1;
+        assert.equal(hits, 2, `${key} appears ${hits} times; expected en and de`);
+    }
 });

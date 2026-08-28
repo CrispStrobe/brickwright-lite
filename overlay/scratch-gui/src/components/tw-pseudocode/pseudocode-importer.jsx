@@ -83,6 +83,10 @@ const L10N = {
         openBad: e => `Don't know that file type (${e}).`,
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
         mcReading: f => `Reading ${f}…`,
+        downloadHex: '⬇ .hex for the board',
+        microbitNeedFirmware: 'Pick a MicroPython .hex once (from python.microbit.org, or the one that came with the board) — it is kept for this session.',
+        microbitFirmwareBad: f => `${f} is not an Intel HEX file.`,
+        microbitHexReady: f => `${f} saved. Copy it onto the MICROBIT drive.`,
         arduboyRunning: f => `Running ${f} on the Arduboy console. Arrow keys move, Z is A, X is B.`,
         mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
         mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
@@ -207,6 +211,10 @@ const L10N = {
         openBad: e => `Unbekannter Dateityp (${e}).`,
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
         mcReading: f => `${f} wird gelesen…`,
+        downloadHex: '⬇ .hex für das Board',
+        microbitNeedFirmware: 'Einmal eine MicroPython-.hex wählen (von python.microbit.org oder die vom Board) — sie bleibt für diese Sitzung gespeichert.',
+        microbitFirmwareBad: f => `${f} ist keine Intel-HEX-Datei.`,
+        microbitHexReady: f => `${f} gespeichert. Auf das MICROBIT-Laufwerk kopieren.`,
         arduboyRunning: f => `${f} läuft auf der Arduboy-Konsole. Pfeiltasten bewegen, Z ist A, X ist B.`,
         mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
         mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
@@ -880,6 +888,92 @@ class PseudocodeImporter extends React.Component {
         }
     }
 
+    /**
+     * Build a .hex a real micro:bit or Calliope will run, and download it.
+     *
+     * MicroPython is interpreted, so there is nothing to compile and no
+     * server to ask: a flashable image is the RUNTIME with the script
+     * appended at 0x3E000. The only thing we do not have is the runtime,
+     * and it is 1.8 MB — too big to bundle into an app whose whole first
+     * paint is 3.8 MB, and not ours to fetch by name at click time.
+     *
+     * So it is asked for once and kept for the session. Two ways to
+     * supply it, and the second is why this is not a nuisance:
+     *
+     *   - pick a MicroPython .hex (python.microbit.org, uflash, or the
+     *     one that came with the board), or
+     *   - simply IMPORT one first — a downloaded MicroPython hex is
+     *     runtime + script, so opening one to read its Python already
+     *     hands us the runtime, and this button then needs nothing.
+     */
+    async downloadMicrobitHex () {
+        const script = this.state.buffers.micropython || '';
+        if (!script.trim()) {
+            this.setState({status: this.L.mcExportEmpty});
+            return;
+        }
+        let firmware = this._microbitFirmwareHex;
+        if (!firmware) {
+            firmware = await this._askForFirmware();
+            if (!firmware) return;                 // cancelled; status already set
+            this._microbitFirmwareHex = firmware;
+        }
+        try {
+            const {appendScript} = await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/micropython-hex.js');
+            const hex = appendScript(firmware, script);
+            const name = `${(this.currentStc()?.device || 'microbit').toLowerCase()}-program.hex`;
+            this._download(name, hex, 'application/octet-stream');
+            this.setState({status: this.L.microbitHexReady(name)});
+        } catch (e) {
+            this.setState({status: this.L.mcFailed('hex', (e && e.message) || String(e))});
+        }
+    }
+
+    /** One file prompt for the MicroPython runtime. Resolves null if cancelled. */
+    _askForFirmware () {
+        return new Promise(resolve => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.hex';
+            input.onchange = () => {
+                const file = input.files && input.files[0];
+                if (!file) { resolve(null); return; }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const text = String(reader.result || '');
+                    // Refuse anything that is not a hex here rather than
+                    // letting appendScript emit a file the board rejects.
+                    if (!/^\s*:[0-9A-Fa-f]{8}/.test(text)) {
+                        this.setState({status: this.L.microbitFirmwareBad(file.name)});
+                        resolve(null);
+                        return;
+                    }
+                    resolve(text);
+                };
+                reader.onerror = () => resolve(null);
+                reader.readAsText(file);
+            };
+            // A cancelled picker fires no event at all, so nothing is
+            // pending afterwards — the promise simply never settles, which
+            // is correct: no download, no status change, no error.
+            input.click();
+            this.setState({status: this.L.microbitNeedFirmware});
+        });
+    }
+
+    /** Hand the browser a file. */
+    _download (name, text, type) {
+        const url = URL.createObjectURL(new Blob([text], {type: type || 'text/plain'}));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     openArtefactFile (file) {
         this.setState({status: this.L.mcReading(file.name)});
         const reader = new FileReader();
@@ -894,6 +988,16 @@ class PseudocodeImporter extends React.Component {
                     this.L.mcNoSource(file.name, err.format) :
                     this.L.mcFailed(file.name, (err && err.message) || String(err))});
                 return;
+            }
+            // A downloaded MicroPython hex is runtime + script, so importing
+            // one to read its Python also hands us the runtime the flash
+            // button needs. Keeping it here means that button never has to
+            // ask.
+            if (res && res.kind === 'micropython') {
+                try {
+                    this._microbitFirmwareHex = new TextDecoder().decode(
+                        new Uint8Array(reader.result));
+                } catch (e) { /* not text; the button will ask instead */ }
             }
             this.applyMakeCodeImport(res, file.name);
         };
@@ -2890,6 +2994,16 @@ class PseudocodeImporter extends React.Component {
                                 background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff'}}
                             data-testid="bw-microbit-flash">
                             {this.L.runOnSimulator}
+                        </button>
+                        <button type="button"
+                            onClick={() => this.downloadMicrobitHex()}
+                            disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
+                            title={this.L.microbitNeedFirmware}
+                            style={{padding: '4px 12px', borderRadius: 6, border: '1px solid #0ea5e9',
+                                cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                background: '#f0f9ff', color: '#0369a1'}}
+                            data-testid="bw-microbit-download-hex">
+                            {this.L.downloadHex}
                         </button>
                     </div>
                 )}
