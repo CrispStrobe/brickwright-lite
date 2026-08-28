@@ -16,7 +16,7 @@ import games from '../overlay/scratch-gui/src/lib/sb3-creator-game-examples.js';
 const read = path => readFileSync(new URL(`../overlay/scratch-gui/src/${path}`, import.meta.url), 'utf8');
 
 const PUBLIC_GAMES = [
-    'g2048', 'sigil_grid', 'vector_seven', 'reactor_ricochet', 'flux_vault', 'sky_skim', 'chroma_code', 'fusion_foundry', 'missile_ballet', 'orbit_ward',
+    'g2048', 'sigil_grid', 'vector_seven', 'reactor_ricochet', 'flux_vault', 'neon_circuit', 'sky_skim', 'chroma_code', 'fusion_foundry', 'missile_ballet', 'orbit_ward',
     'rooftop_relay', 'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep',
     'moonlight_heist', 'cloud_court', 'ember_dojo', 'lockstep_lagoon', 'rink_riot',
     'rim_reactor', 'comet_cup', 'trench_signal', 'whisker_switch', 'spiral_circuit',
@@ -35,6 +35,7 @@ test('touch profiles expose the controls each unusual game actually uses', () =>
     assert.equal(gameTouchProfileFor('vector_seven').layout, 'stage');
     assert.equal(gameTouchProfileFor('reactor_ricochet').layout, 'stage');
     assert.equal(gameTouchProfileFor('flux_vault').actionLabel, 'RESET');
+    assert.equal(gameTouchProfileFor('neon_circuit').layout, 'stage');
     assert.equal(gameTouchProfileFor('missile_ballet').layout, 'stage');
     assert.equal(gameTouchProfileFor('breakout').layout, 'stage');
     assert.equal(gameTouchProfileFor('pong_2p').layout, 'dual');
