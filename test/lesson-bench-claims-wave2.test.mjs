@@ -167,7 +167,7 @@ test('measurement-continuity: connected and open pairs are both available', asyn
         'rail to rail is a low-resistance path');
     assert.ok(board.resistance(netId(board, 'btn1', 'a'), netId(board, 'btn1', 'b')) > 1e8,
         'the released MODE button is open');
-    assert.ok(board.resistance(netId(board, 'mcu1', 'p0.0'), netId(board, 'mcu1', 'p0.1')) > 1e8,
+    assert.ok(board.resistance(netId(board, 'stc151', 'p0.0'), netId(board, 'stc151', 'p0.1')) > 1e8,
         'two unrelated MCU pins are open');
 });
 
@@ -178,7 +178,7 @@ test('measurement-range-error: the volts divider is exactly the documented /4', 
     for (const position of [0.2, 0.6, 0.9]) {
         circuit.setControl('vsrc1', position);
         board.advanceTo(t += 20n * MS);
-        near(volts(board, 'vsrc1', 'wiper') / volts(board, 'mcu1', 'p1.0'), 4, 0.001,
+        near(volts(board, 'vsrc1', 'wiper') / volts(board, 'stc151', 'p1.0'), 4, 0.001,
             `divider ratio at pot ${position}`);
     }
 });
