@@ -631,8 +631,9 @@ test('quality-approved game has authored SVG art and explicit onboarding', () =>
     assert.ok(svgs.some(svg => svg.includes('12 CLEAN LAUNCHES WIN')));
     assert.ok(svgs.some(svg => svg.includes('GREEN FLAG STARTS FLIGHT')));
     assert.match(games.sky_skim, /change launches by 1/);
-    assert.match(games.sky_skim, /IF launches = 12 THEN:/);
-    assert.match(games.sky_skim, /SKYLINE MASTERED/);
+    assert.match(games.sky_skim, /IF launches > 11 THEN:/);
+    assert.match(games.sky_skim, /broadcast "skyline over"/);
+    assert.match(games.sky_skim, /TWELVE CLEAN LAUNCHES • GREEN FLAG TO FLY AGAIN/);
 });
 
 test('Skyline Swoop clean launches build combo and the twelfth wins in the real VM', async () => {
@@ -660,6 +661,10 @@ test('Skyline Swoop clean launches build combo and the twelfth wins in the real 
         assert.equal(Number(value('combo').value), 4);
         assert.equal(Number(value('score').value), 70);
         assert.equal(Number(value('alive').value), 0, 'the twelfth launch did not finish the flight');
+        assert.equal(Number(value('winner').value), 1, 'the twelfth launch did not record a win');
+        const result = vm.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'SkylineResult');
+        assert.equal(result.visible, true, 'the flight result was not shown on the stage');
     } finally {
         vm.quit();
         clearStrayTimers();
@@ -2551,7 +2556,7 @@ test('each new game keeps its signature playable mechanic', () => {
             /broadcast "canal command won"/],
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
-            /change launches by 1/, /IF launches = 12 THEN:/],
+            /change launches by 1/, /IF launches > 11 THEN:/, /broadcast "skyline over"/],
         chroma_code: [/GLOBAL LIST secret/, /set exact to 0/, /set near to 0/,
             /WHEN sprite clicked:/, /add gemValue to guess/],
         fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/],

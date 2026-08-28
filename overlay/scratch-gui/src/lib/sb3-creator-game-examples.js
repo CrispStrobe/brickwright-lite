@@ -1648,12 +1648,14 @@ GLOBAL combo
 GLOBAL launches
 GLOBAL alive
 GLOBAL started
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art skyline-swoop/intro
   BACKDROP flight art skyline-swoop/play
   WHEN flag clicked:
     set started to 0
+    set winner to 0
     switch backdrop to intro
     hide variable score
     hide variable lives
@@ -1678,6 +1680,7 @@ SPRITE Skimmer:
     set combo to 1
     set launches to 0
     set alive to 1
+    set winner to 0
     set rotation style all around
     go to x: -120 y: birdy
     hide
@@ -1686,58 +1689,58 @@ SPRITE Skimmer:
     show variable lives
     show variable launches
     show
-    FOREVER:
-      IF alive = 1 THEN:
-        set diving to 0
-        IF key down arrow pressed? THEN:
-          set diving to 1
-          change vy by -0.8
+    REPEAT UNTIL alive = 0:
+      set diving to 0
+      IF key down arrow pressed? THEN:
+        set diving to 1
+        change vy by -0.8
+      ELSE:
+        change vy by -0.28
+      IF key up arrow pressed? THEN:
+        change vy by 0.45
+      change birdy by vy
+      IF birdy > 165 THEN:
+        set birdy to 165
+        set vy to -2
+      IF birdy < -155 THEN:
+        set birdy to -155
+      point in direction (90 - (vy * 5))
+      go to x: -120 y: birdy
+      IF birdy < -105 and vy < 0 THEN:
+        switch costume to charged
+      ELSE:
+        switch costume to costume1
+      IF touching Hill THEN:
+        IF diving = 1 and vy < -1 THEN:
+          set vy to (abs of vy) + 5
+          broadcast "clean skyline launch"
+          wait 0.18 seconds
         ELSE:
-          change vy by -0.28
-        IF key up arrow pressed? THEN:
-          change vy by 0.45
-        change birdy by vy
-        IF birdy > 165 THEN:
-          set birdy to 165
-          set vy to -2
-        IF birdy < -155 THEN:
-          set birdy to -155
-        point in direction (90 - (vy * 5))
-        go to x: -120 y: birdy
-        IF birdy < -105 and vy < 0 THEN:
-          switch costume to charged
-        ELSE:
-          switch costume to costume1
-        IF touching Hill THEN:
-          IF diving = 1 and vy < -1 THEN:
-            set vy to (abs of vy) + 5
-            broadcast "clean skyline launch"
-            wait 0.18 seconds
-          ELSE:
-            change lives by -1
-            set combo to 1
-            set birdy to 20
-            set vy to 4
-            play sound "crash"
-            wait 0.7 seconds
-            IF lives < 1 THEN:
-              set alive to 0
-              say ("THREE CRASHES — FLIGHT SCORE " join score) for 3 seconds
-              stop all
-        IF score > 9 THEN:
-          set speed to 5
-        IF score > 29 THEN:
-          set speed to 6
+          change lives by -1
+          set combo to 1
+          set birdy to 20
+          set vy to 4
+          play sound "crash"
+          wait 0.7 seconds
+          IF lives < 1 THEN:
+            set winner to 0
+            set alive to 0
+            broadcast "skyline over"
+      IF score > 9 THEN:
+        set speed to 5
+      IF score > 29 THEN:
+        set speed to 6
       wait 0.02 seconds
+    hide
   WHEN I receive "clean skyline launch":
     change launches by 1
     change combo by 1
     change score by combo * 5
     play sound "boost"
-    IF launches = 12 THEN:
+    IF launches > 11 THEN:
+      set winner to 1
       set alive to 0
-      say ("SKYLINE MASTERED — SCORE " join score) for 4 seconds
-      stop all
+      broadcast "skyline over"
 
 SPRITE Hill:
   SHAPE art skyline-swoop/hill
@@ -1752,13 +1755,29 @@ SPRITE Hill:
       change hillx by 170
   WHEN I start as a clone:
     show
-    FOREVER:
+    REPEAT UNTIL alive = 0:
       change x by (0 - speed)
       IF x position < -330 THEN:
         change x by 680
         set y to pick random -194 to -170
         change score by 1
-      wait 0.02 seconds`,
+      wait 0.02 seconds
+    delete this clone
+
+SPRITE SkylineResult:
+  COSTUME win label "TWELVE CLEAN LAUNCHES • GREEN FLAG TO FLY AGAIN" #ffe66d
+  COSTUME lose label "THREE CRASHES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "take off":
+    hide
+  WHEN I receive "skyline over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     chroma_code: `# Prism Lock — a clickable four-gem deduction game.
 # GOAL: discover the secret sequence within eight attempts.
