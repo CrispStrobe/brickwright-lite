@@ -2948,6 +2948,9 @@ GLOBAL px
 GLOBAL py
 GLOBAL moving
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL cheeseReady
 
 STAGE:
   BACKDROP intro art pantry-prowl/intro
@@ -2957,6 +2960,7 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable alert
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -2970,13 +2974,22 @@ SPRITE Mouse:
     set alert to 0
     set px to -180
     set py to -120
+    set active to 0
+    set winner to 0
     go to x: px y: py
     hide
   WHEN I receive "start pantry prowl":
+    set score to 0
+    set alert to 0
+    set px to -180
+    set py to -120
+    set winner to 0
+    set active to 1
+    go to x: px y: py
     show variable score
     show variable alert
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set moving to 0
       IF key left arrow pressed? THEN:
         change px by -5
@@ -3007,17 +3020,30 @@ SPRITE Mouse:
         ELSE:
           IF alert > 0 THEN:
             change alert by -0.02
-      IF alert > 1 and touching Cat THEN:
-        say ("Caught with " join score) for 3 seconds
-        stop all
-      IF touching Cheese THEN:
+      IF alert > 5 THEN:
+        set alert to 5
+      IF touching Cat THEN:
+        broadcast "pantry caught"
+      IF cheeseReady = 1 and touching Cheese THEN:
+        set cheeseReady to 0
         change score by 1
         broadcast "new cheese"
-        wait 0.2 seconds
       IF score > 4 and touching Tunnel THEN:
-        say "FIVE CHEESES SAFE — PERFECT HEIST!" for 4 seconds
-        stop all
+        broadcast "pantry won"
       wait 0.02 seconds
+    hide
+  WHEN I receive "pantry caught":
+    IF active = 1 THEN:
+      set winner to 0
+      set active to 0
+      set started to 0
+      broadcast "pantry over"
+  WHEN I receive "pantry won":
+    IF active = 1 THEN:
+      set winner to 1
+      set active to 0
+      set started to 0
+      broadcast "pantry over"
 
 SPRITE Cat:
   SHAPE art pantry-prowl/cat
@@ -3025,9 +3051,10 @@ SPRITE Cat:
     go to x: 170 y: 110
     hide
   WHEN I receive "start pantry prowl":
+    go to x: 170 y: 110
     show
-    FOREVER:
-      IF alert > 1 THEN:
+    REPEAT UNTIL active = 0:
+      IF alert > 0.75 THEN:
         point towards Mouse
         move 1 + (score * 0.12) steps
       ELSE:
@@ -3041,16 +3068,24 @@ SPRITE Cat:
           change y by -2
         turn right 1 degrees
       wait 0.03 seconds
+    hide
 
 SPRITE Cheese:
   SHAPE art pantry-prowl/cheese
   WHEN flag clicked:
     go to x: 0 y: 0
+    set cheeseReady to 0
     hide
   WHEN I receive "start pantry prowl":
     show
+    broadcast "new cheese"
   WHEN I receive "new cheese":
-    go to x: pick random -200 to 200 y: pick random -140 to 140
+    set cheeseReady to 0
+    REPEAT UNTIL distance to Tunnel > 80 and distance to Cat > 70:
+      go to x: pick random -200 to 200 y: pick random -140 to 140
+    set cheeseReady to 1
+  WHEN I receive "pantry over":
+    hide
 
 SPRITE Tunnel:
   SHAPE art pantry-prowl/tunnel
@@ -3058,6 +3093,23 @@ SPRITE Tunnel:
     go to x: -40 y: 100
     hide
   WHEN I receive "start pantry prowl":
+    show
+  WHEN I receive "pantry over":
+    hide
+
+SPRITE PantryResult:
+  COSTUME win label "FIVE CHEESES SAFE • GREEN FLAG FOR ANOTHER HEIST" #8fffea
+  COSTUME lose label "THE CAT CAUGHT YOU • GREEN FLAG TO SNEAK AGAIN" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start pantry prowl":
+    hide
+  WHEN I receive "pantry over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     cloud_court: `# Nimbus Volley — a one-player cloud-court match.

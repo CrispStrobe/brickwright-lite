@@ -968,6 +968,10 @@ test('Pantry Prowl communicates a finite stealth loop and uses motion-driven ale
     assert.match(games.moonlight_heist, /CONTROLS: Arrow keys move/);
     assert.match(games.moonlight_heist, /set moving to 1/);
     assert.match(games.moonlight_heist, /IF score > 4 and touching Tunnel THEN:/);
+    assert.match(games.moonlight_heist, /distance to Tunnel > 80 and distance to Cat > 70/);
+    assert.match(games.moonlight_heist, /IF alert > 0\.75 THEN:/);
+    assert.match(games.moonlight_heist, /broadcast "pantry over"/);
+    assert.match(games.moonlight_heist, /FIVE CHEESES SAFE • GREEN FLAG FOR ANOTHER HEIST/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'pantry']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1667,6 +1671,23 @@ test('stealth movement and aerial-spike controls work in the live Scratch VM', a
         pantry.postIOData('keyboard', {key: 'ArrowRight', isDown: false});
         assert.ok(Number(value(pantry, 'px').value) > beforeX, 'Right did not move the mouse');
         assert.ok(Number(value(pantry, 'alert').value) > 0, 'moving in the open did not raise alert');
+        const target = name => pantry.runtime.targets.find(candidate =>
+            candidate.isOriginal && candidate.sprite && candidate.sprite.name === name);
+        const cheese = target('Cheese');
+        const tunnel = target('Tunnel');
+        const cat = target('Cat');
+        const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+        assert.equal(Number(value(pantry, 'cheeseReady').value), 1, 'cheese spawn never armed');
+        assert.ok(distance(cheese, tunnel) > 80, 'cheese spawned inside the safe hideout');
+        assert.ok(distance(cheese, cat) > 70, 'cheese spawned on the cat patrol');
+
+        value(pantry, 'score').value = 5;
+        pantry.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'pantry won'});
+        for (let i = 0; i < 30; i++) pantry.runtime._step();
+        assert.equal(Number(value(pantry, 'winner').value), 1, 'safe return did not win the heist');
+        assert.equal(Number(value(pantry, 'active').value), 0, 'won heist remained active');
+        assert.equal(Number(value(pantry, 'started').value), 0, 'won heist was not replayable');
+        assert.equal(target('PantryResult').visible, true, 'heist result was not shown');
     } finally {
         pantry.quit();
         clearStrayTimers();
@@ -2174,7 +2195,8 @@ test('each new game keeps its signature playable mechanic', () => {
         turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /change checkpoints by 1/],
         abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/],
         specter_sweep: [/if on edge bounce/, /touching Orb/, /set ward to 3/, /change score by 1/],
-        moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/],
+        moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/,
+            /distance to Tunnel > 80/, /broadcast "pantry over"/],
         cloud_court: [/set rally to 1/, /touching Net/, /set bx to 226/, /abs of \(bx - px\)/,
             /SPRITE CloudBot/, /broadcast "nimbus match over"/],
         ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/, /change dragonHP by -1/],
