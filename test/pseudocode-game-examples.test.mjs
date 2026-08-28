@@ -12,6 +12,7 @@ const EXPECTED = [
     'vector_seven',
     'reactor_ricochet',
     'flux_vault',
+    'neon_circuit',
     'sky_skim',
     'chroma_code',
     'fusion_foundry',
@@ -58,6 +59,7 @@ test('only quality-approved new games are wired into the visible examples galler
         'vector_seven',
         'reactor_ricochet',
         'flux_vault',
+        'neon_circuit',
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
@@ -493,6 +495,66 @@ test('Flux Vault has a playable solution for all three chambers in the real VM',
         assert.equal(Number(value('active').value), 0, 'vault remained active after chamber three');
         assert.equal(Number(value('started').value), 0, 'solved vault was not replayable');
         assert.ok(Number(value('pushes').value) >= 9, 'solutions did not register their core pushes');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
+});
+
+test('Neon Circuit has three finite cross-flip boards with authored node art', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.neon_circuit);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.neon_circuit, /GOAL: extinguish all 25 nodes on each of 3 boards/);
+    assert.match(games.neon_circuit, /DEFINE FAST flip cross \(index\):/);
+    assert.match(games.neon_circuit, /flip one \(index - 5\)/);
+    assert.match(games.neon_circuit, /flip one \(index \+ 5\)/);
+    assert.match(games.neon_circuit, /IF lit = 0 THEN:/);
+    assert.match(games.neon_circuit, /IF level = 4 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'board']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('NEON CIRCUIT')));
+    assert.ok(svgs.some(svg => svg.includes('DARKEN ALL 25')));
+});
+
+test('Neon Circuit starts by green flag and all three known solutions finish in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.neon_circuit);
+    const vm = new VM();
+    const value = name => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+    const step = count => { for (let i = 0; i < count; i++) vm.runtime._step(); };
+    const tap = index => {
+        const row = Math.floor((index - 1) / 5);
+        const col = (index - 1) % 5;
+        vm.postIOData('mouse', {x: 116 + (col * 62), y: 56 + (row * 62),
+            canvasWidth: 480, canvasHeight: 360, isDown: true});
+        step(10);
+        vm.postIOData('mouse', {x: 116 + (col * 62), y: 56 + (row * 62),
+            canvasWidth: 480, canvasHeight: 360, isDown: false});
+        step(10);
+    };
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        step(20);
+        await new Promise(resolve => setTimeout(resolve, 700));
+        step(45);
+        const solutions = [[7, 9, 13, 17, 19], [1, 5, 7, 9, 13, 17, 19, 21, 25],
+            [2, 4, 6, 8, 12, 14, 18, 20, 22, 24]];
+        for (let level = 1; level <= 3; level++) {
+            assert.equal(Number(value('level').value), level, `board ${level} did not load`);
+            for (const cell of solutions[level - 1]) tap(cell);
+            await new Promise(resolve => setTimeout(resolve, 700));
+            step(35);
+            assert.equal(Number(value('level').value), level + 1, `board ${level} solution did not advance`);
+        }
+        assert.equal(Number(value('lit').value), 0, 'solved circuit retained a lit node');
+        assert.equal(Number(value('active').value), 0, 'circuit remained active after board three');
+        assert.equal(Number(value('started').value), 0, 'solved circuit was not replayable');
     } finally {
         vm.quit();
         clearStrayTimers();
@@ -1981,6 +2043,9 @@ test('each new game keeps its signature playable mechanic', () => {
         flux_vault: [/LIST terrain/, /LIST crates/, /DEFINE FAST try move \(step\):/,
             /item beyondCell of terrain = 2\) and occupied = 0/, /replace item crateAt of crates/,
             /IF docked = 3/, /IF level = 4/, /broadcast "flux vault solved"/],
+        neon_circuit: [/LIST nodes/, /DEFINE FAST flip cross \(index\):/, /flip one \(index - 5\)/,
+            /flip one \(index \+ 5\)/, /IF lit = 0/, /IF level = 4/,
+            /broadcast "neon circuit solved"/],
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
             /change launches by 1/, /IF launches = 12 THEN:/],

@@ -1274,6 +1274,179 @@ SPRITE Result:
     show
 `,
 
+    neon_circuit: `# Neon Circuit — three finite light-flipping logic boards.
+# GOAL: extinguish all 25 nodes on each of 3 boards. A tap flips that node and
+# its orthogonal neighbours, so every move changes the surrounding circuit.
+# CONTROLS: tap a node. Tap RESET if you want the current board back.
+# Desktop players can also press Space to reset.
+GLOBAL started
+GLOBAL active
+GLOBAL level
+GLOBAL presses
+GLOBAL lit
+GLOBAL cell
+GLOBAL row
+GLOBAL col
+GLOBAL i
+
+STAGE:
+  BACKDROP intro art neon-circuit/intro
+  BACKDROP board art neon-circuit/play
+  WHEN flag clicked:
+    set started to 0
+    set active to 0
+    switch backdrop to intro
+    hide variable level
+    hide variable presses
+    hide variable lit
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      set level to 1
+      set presses to 0
+      switch backdrop to board
+      broadcast "load neon circuit"
+    ELSE:
+      IF active = 1 THEN:
+        broadcast "reset neon circuit"
+
+SPRITE Grid:
+  LIST nodes
+  SHAPE art neon-circuit/off
+  COSTUME on art neon-circuit/on
+  SOUND flip 640
+  SOUND clear 1060
+
+  DEFINE FAST flip one (index):
+    replace item index of nodes with 1 - (item index of nodes)
+
+  DEFINE FAST flip cross (index):
+    set row to floor of ((index - 1) / 5)
+    set col to (index - 1) mod 5
+    flip one index
+    IF row > 0 THEN:
+      flip one (index - 5)
+    IF row < 4 THEN:
+      flip one (index + 5)
+    IF col > 0 THEN:
+      flip one (index - 1)
+    IF col < 4 THEN:
+      flip one (index + 1)
+
+  DEFINE FAST build circuit:
+    delete all of nodes
+    REPEAT 25:
+      add 0 to nodes
+    IF level = 1 THEN:
+      flip cross 7
+      flip cross 9
+      flip cross 13
+      flip cross 17
+      flip cross 19
+    IF level = 2 THEN:
+      flip cross 1
+      flip cross 5
+      flip cross 7
+      flip cross 9
+      flip cross 13
+      flip cross 17
+      flip cross 19
+      flip cross 21
+      flip cross 25
+    IF level = 3 THEN:
+      flip cross 2
+      flip cross 4
+      flip cross 6
+      flip cross 8
+      flip cross 12
+      flip cross 14
+      flip cross 18
+      flip cross 20
+      flip cross 22
+      flip cross 24
+
+  DEFINE FAST paint circuit:
+    clear
+    set lit to 0
+    set i to 1
+    REPEAT 25:
+      set row to floor of ((i - 1) / 5)
+      set col to (i - 1) mod 5
+      IF item i of nodes = 1 THEN:
+        switch costume to on
+        change lit by 1
+      ELSE:
+        switch costume to costume1
+      go to x: (-124 + (col * 62)) y: (124 - (row * 62))
+      stamp
+      change i by 1
+
+  DEFINE press node (index):
+    IF active = 1 THEN:
+      flip cross index
+      change presses by 1
+      play sound "flip"
+      paint circuit
+      IF lit = 0 THEN:
+        set active to 0
+        play sound "clear"
+        wait 0.6 seconds
+        change level by 1
+        IF level = 4 THEN:
+          set started to 0
+          broadcast "neon circuit solved"
+        ELSE:
+          broadcast "load neon circuit"
+
+  WHEN flag clicked:
+    hide
+    clear
+    FOREVER:
+      IF active = 1 and mouse down? THEN:
+        set col to floor of ((mouse x + 155) / 62)
+        set row to floor of ((155 - mouse y) / 62)
+        IF col > -1 and col < 5 and row > -1 and row < 5 THEN:
+          set cell to (row * 5) + col + 1
+          press node cell
+        wait until not mouse down?
+      wait 0.02 seconds
+  WHEN I receive "load neon circuit":
+    build circuit
+    paint circuit
+    set active to 1
+    show variable level
+    show variable presses
+    show variable lit
+  WHEN I receive "reset neon circuit":
+    build circuit
+    paint circuit
+  WHEN I receive "neon circuit solved":
+    clear
+
+SPRITE Reset:
+  COSTUME reset art neon-circuit/reset
+  WHEN flag clicked:
+    go to x: 180 y: -160
+    hide
+  WHEN I receive "load neon circuit":
+    show
+  WHEN sprite clicked:
+    IF active = 1 THEN:
+      broadcast "reset neon circuit"
+  WHEN I receive "neon circuit solved":
+    hide
+
+SPRITE Result:
+  COSTUME solved label "ALL 3 CIRCUITS DARK • GREEN FLAG TO REPLAY" #8fffea
+  WHEN flag clicked:
+    hide
+    go to x: 0 y: 0
+  WHEN I receive "load neon circuit":
+    hide
+  WHEN I receive "neon circuit solved":
+    show
+`,
+
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: complete twelve clean hill launches before three crashes. Diving into a
 # green crest converts speed into height; consecutive launches grow the score combo.

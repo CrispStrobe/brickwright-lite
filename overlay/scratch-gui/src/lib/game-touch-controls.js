@@ -15,6 +15,7 @@ const PROFILES = Object.freeze({
         layout: 'dpad', hint: 'Push every cyan core onto a gold dock. Reset if a core is trapped.',
         keys: {...ARROWS}, actionLabel: 'RESET'
     },
+    neon_circuit: {layout: 'stage', hint: 'Tap nodes to flip a cross; make all 25 nodes dark.'},
     sky_skim: {
         layout: 'vertical',
         hint: 'Hold Dive into a hill; release to launch. Flap only when needed.',

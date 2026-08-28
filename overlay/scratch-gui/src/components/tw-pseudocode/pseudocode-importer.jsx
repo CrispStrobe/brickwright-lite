@@ -365,6 +365,7 @@ const GROUPS = [
         ['vector_seven', '🏓 Vector Seven — first to 7'],
         ['reactor_ricochet', '⚡ Reactor Ricochet — clear 20 cells'],
         ['flux_vault', '🔷 Flux Vault — 3 puzzle chambers'],
+        ['neon_circuit', '💡 Neon Circuit — darken 3 boards'],
         ['sky_skim', '🪽 Skyline Swoop — polished'],
         ['missile_ballet', '✈️ Contrail Panic — polished'],
         ['orbit_ward', '🛡️ Aegis Arc — polished'],
