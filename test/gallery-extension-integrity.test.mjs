@@ -13,6 +13,19 @@ const pins = JSON.parse(readFileSync(path.join(import.meta.dirname, '..',
 const managerSource = readFileSync(path.join(import.meta.dirname, '..', 'overlay', 'scratch-vm',
     'src', 'extension-support', 'extension-manager.js'), 'utf8');
 
+test('the UI can tell a new gallery entry from a URL disguised as one', () => {
+    const slug = Object.keys(pins.extensions)[0];
+    const exact = `${pins.base}${slug}.js`;
+    // Both prompt. They must not prompt with the same sentence: "newer than this app" is
+    // reassuring, and reassurance is exactly wrong for `…/pinned.js?x=1`.
+    assert.equal(integrity.pinStatusFor(exact), 'pinned');
+    assert.equal(integrity.pinStatusFor(`${pins.base}not-reviewed/new.js`), 'unpinned');
+    for (const disguise of [`${exact}?changed=1`, `${exact}#fragment`, `${pins.base}x/../${slug}.js`,
+        'https://crispstrobe.github.io/other/code.js', 'https://elsewhere.example/x.js']) {
+        assert.equal(integrity.pinStatusFor(disguise), 'foreign', disguise);
+    }
+});
+
 test('only exact, pinned gallery URLs skip the warning', () => {
     const slug = Object.keys(pins.extensions)[0];
     assert.ok(slug, 'the shipped pin map is empty');
@@ -66,6 +79,16 @@ test('the gallery transform audit accepts only checked insertions and replacemen
     const dependency = Buffer.from('start\n/* generated dependency -- Scratch.external.eval("dep") */' +
         'library();/* end generated dependency */\nend\n');
     assert.equal(explainDifference(source, dependency).ok, true);
+
+    // THE CASE THE QUOTE CHECK EXISTS FOR. A dependency block REPLACES code, and this one is
+    // perfectly well formed — it just claims to be replacing a call the reviewed file does not
+    // make. An audit that skipped marked regions instead of checking what each claims to replace
+    // would accept arbitrary code substituted for any call, which is the whole attack.
+    const forged = Buffer.from('start\n/* generated dependency -- Scratch.external.eval("OTHER") */' +
+        'exfiltrate();/* end generated dependency */\nend\n');
+    const verdict = explainDifference(source, forged);
+    assert.equal(verdict.ok, false, 'a dependency must be checked against the call it claims to replace');
+    assert.match(verdict.reason, /claims to replace/);
 
     const edited = Buffer.from('start\nchanged\nend\n');
     assert.equal(explainDifference(source, edited).ok, false);

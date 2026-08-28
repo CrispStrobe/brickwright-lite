@@ -3,7 +3,7 @@ const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
-const {pinForURL, verifyGallerySource} = require('./gallery-integrity');
+const {pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integrity');
 
 // HTTP(S) URLs are candidates for the content-pinned compatibility path. Unpinned URLs are always
 // sent to the extension worker; see isTrustedExtensionURL / loadExtensionURL.
@@ -243,6 +243,15 @@ class ExtensionManager {
      */
     isTrustedExtensionURL (extensionURL) {
         return Boolean(pinForURL(extensionURL));
+    }
+
+    /**
+     * Why a URL is or is not trusted, for the UI to word its warning with.
+     * @param {string} extensionURL - candidate URL
+     * @returns {string} 'pinned', 'unpinned' (a plain gallery URL we have no pin for) or 'foreign'
+     */
+    pinStatusFor (extensionURL) {
+        return pinStatusFor(extensionURL);
     }
 
     /**
