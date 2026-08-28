@@ -50,8 +50,10 @@ permissions:
   pages: write
   id-token: write
 concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: false
+  group: pages-${{ github.event.pull_request.number || github.ref }}
+  # A newer commit makes an older PR build obsolete. Main remains fail-safe:
+  # its post-merge validation is never cancelled by a subsequent push.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
     runs-on: ubuntu-latest

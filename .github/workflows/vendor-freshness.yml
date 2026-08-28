@@ -49,6 +49,12 @@ on:
     - cron: '17 4 * * *'
   workflow_dispatch:
 
+# Do not leave one full upstream checkout/sweep queued for every superseded PR
+# commit. Push, nightly, and manual runs remain distinct and non-cancelling.
+concurrency:
+  group: vendor-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
