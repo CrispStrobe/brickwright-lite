@@ -10,6 +10,7 @@ const PROFILES = Object.freeze({
     g2048: {layout: 'stage', hint: 'Swipe the reactor to slide every tile.'},
     sigil_grid: {layout: 'stage', hint: 'Tap SOLO or DUO, then tap an empty sigil cell.'},
     vector_seven: {layout: 'stage', hint: 'Drag the gold paddle; tap the court to serve.'},
+    reactor_ricochet: {layout: 'stage', hint: 'Drag the paddle; tap to launch and catch cyan power cells.'},
     sky_skim: {
         layout: 'vertical',
         hint: 'Hold Dive into a hill; release to launch. Flap only when needed.',
