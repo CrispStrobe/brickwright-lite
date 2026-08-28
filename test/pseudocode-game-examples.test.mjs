@@ -1093,6 +1093,12 @@ test('Comet Strikers has curve-shot agency, single-count goals, and a finite mat
     assert.match(games.comet_cup, /turn right runY \* -3 degrees/);
     assert.match(games.comet_cup, /change goals by 1/);
     assert.match(games.comet_cup, /IF goals = 4 THEN:/);
+    assert.match(games.comet_cup, /x position < -235 or x position > 235/);
+    assert.match(games.comet_cup, /broadcast "comet miss"/);
+    assert.match(games.comet_cup, /WHEN I receive "comet miss":[\s\S]*go to x: -50 y: 0/);
+    assert.match(games.comet_cup, /broadcast "comet goal"/);
+    assert.match(games.comet_cup, /broadcast "comet match over"/);
+    assert.match(games.comet_cup, /FOUR GOALS • GREEN FLAG FOR ANOTHER MATCH/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'pitch']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1875,11 +1881,42 @@ test('curve-run and sonar-cooldown controls work in the live Scratch VM', async 
 
     const comet = await load(games.comet_cup);
     try {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 30; i++) comet.runtime._step();
+        assert.equal(Number(value(comet, 'active').value), 1, 'green flag did not begin the soccer match');
+        assert.equal(Number(value(comet, 'started').value), 1, 'soccer title gate remained armed');
+        assert.equal(Number(value(comet, 'goals').value), 0, 'soccer match began with a goal');
+        assert.ok(Number(value(comet, 'matchTime').value) >= 43, 'soccer clock began nearly expired');
+        assert.equal(Number(value(comet, 'winner').value), 0, 'soccer match began already won');
         comet.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
         for (let i = 0; i < 10; i++) comet.runtime._step();
         comet.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
         assert.equal(Number(value(comet, 'runY').value), 4, 'Up did not create shot-curving run input');
         assert.ok(Number(value(comet, 'strikerY').value) > 0, 'Up did not move the striker');
+        const target = name => comet.runtime.targets.find(candidate =>
+            candidate.isOriginal && candidate.sprite && candidate.sprite.name === name);
+        const ball = target('Ball');
+        ball.setXY(240, 0);
+        value(comet, 'ballSpeed').value = 5;
+        value(comet, 'crowd').value = 4;
+        comet.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'comet miss'}, ball);
+        for (let i = 0; i < 8; i++) comet.runtime._step();
+        assert.equal(Number(value(comet, 'ballSpeed').value), 0,
+            'a shot missing beyond the right post kept moving');
+        assert.equal(Number(value(comet, 'crowd').value), 1,
+            'a missed shot did not reset the quick-goal multiplier');
+
+        value(comet, 'goals').value = 3;
+        value(comet, 'score').value = 10;
+        value(comet, 'crowd').value = 2;
+        comet.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'comet goal'}, ball);
+        for (let i = 0; i < 35; i++) comet.runtime._step();
+        assert.equal(Number(value(comet, 'goals').value), 4, 'the fourth goal was not counted once');
+        assert.equal(Number(value(comet, 'score').value), 30, 'crowd multiplier was not applied');
+        assert.equal(Number(value(comet, 'winner').value), 1, 'four goals did not win the match');
+        assert.equal(Number(value(comet, 'active').value), 0, 'won match remained active');
+        assert.equal(Number(value(comet, 'started').value), 0, 'won match was not replayable');
+        assert.equal(target('CometResult').visible, true, 'soccer result was not shown');
     } finally { comet.quit(); clearStrayTimers(); }
 
     const trench = await load(games.trench_signal);
@@ -2236,7 +2273,9 @@ test('each new game keeps its signature playable mechanic', () => {
         rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/, /change goals by 1/],
         rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /touching Net/,
             /broadcast "orbit swish"/, /change score by 2 \* streak/, /broadcast "orbit hoops over"/],
-        comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by 1/, /change score by crowd \* 10/],
+        comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/,
+            /x position > 235/, /broadcast "comet miss"/, /broadcast "comet goal"/, /change goals by 1/,
+            /change score by crowd \* 10/, /broadcast "comet match over"/],
         trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /distance to Sub < 150/, /set mineStun to 0\.7/, /change pearls by 1/],
         whisker_switch: [/set hidden to 1/, /change scent by 3/, /change banked by cargo/, /set targetHole to -1/, /point towards Pip/],
         spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /change sectors by 1/, /set lane to -2/],

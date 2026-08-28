@@ -3973,6 +3973,8 @@ GLOBAL ballSpeed
 GLOBAL crowd
 GLOBAL keeperY
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art comet-strikers/intro
@@ -3984,6 +3986,7 @@ STAGE:
     hide variable score
     hide variable matchTime
     hide variable crowd
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -4001,15 +4004,26 @@ SPRITE Striker:
     set strikerY to 0
     set runX to 0
     set runY to 0
+    set active to 0
+    set winner to 0
     go to x: strikerX y: strikerY
     hide
   WHEN I receive "start comet match":
+    set goals to 0
+    set score to 0
+    set matchTime to 45
+    set crowd to 1
+    set strikerX to -150
+    set strikerY to 0
+    set winner to 0
+    set active to 1
+    go to x: strikerX y: strikerY
     show variable goals
     show variable score
     show variable matchTime
     show variable crowd
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set runX to 0
       set runY to 0
       IF key left arrow pressed? THEN:
@@ -4032,14 +4046,19 @@ SPRITE Striker:
         set strikerY to 155
       go to x: strikerX y: strikerY
       IF goals = 4 THEN:
-        say ("FOUR GOALS — COMET SCORE " join score) for 4 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "comet match over"
       IF matchTime < 1 THEN:
-        say ("FULL TIME — GOALS " join goals) for 4 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "comet match over"
       wait 0.02 seconds
+    hide
   WHEN I receive "start comet match":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
       change matchTime by -1
 
@@ -4053,8 +4072,11 @@ SPRITE Ball:
     point in direction 90
     hide
   WHEN I receive "start comet match":
+    set ballSpeed to 0
+    go to x: -50 y: 0
+    point in direction 90
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Striker and key space pressed? and ballSpeed < 2 THEN:
         point towards CometGoal
         turn right runY * -3 degrees
@@ -4072,18 +4094,25 @@ SPRITE Ball:
         set ballSpeed to 9
         set crowd to 1
       IF touching CometGoal THEN:
-        change goals by 1
-        change score by crowd * 10
-        change crowd by 1
-        change matchTime by 2
-        play sound "goal"
+        broadcast "comet goal"
         set ballSpeed to 0
         go to x: -50 y: pick random -80 to 80
-      IF x position < -235 THEN:
-        set ballSpeed to 0
-        set crowd to 1
-        go to x: -50 y: 0
+      IF x position < -235 or x position > 235 THEN:
+        broadcast "comet miss"
       wait 0.02 seconds
+    hide
+  WHEN I receive "comet miss":
+    IF active = 1 THEN:
+      set ballSpeed to 0
+      set crowd to 1
+      go to x: -50 y: 0
+  WHEN I receive "comet goal":
+    IF active = 1 THEN:
+      change goals by 1
+      change score by crowd * 10
+      change crowd by 1
+      change matchTime by 2
+      play sound "goal"
 
 SPRITE Keeper:
   SHAPE art comet-strikers/keeper
@@ -4092,8 +4121,9 @@ SPRITE Keeper:
     go to x: 182 y: keeperY
     hide
   WHEN I receive "start comet match":
+    set keeperY to 0
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF Ball y position > keeperY THEN:
         change keeperY by 3 + goals / 3
       ELSE:
@@ -4104,6 +4134,7 @@ SPRITE Keeper:
         set keeperY to -118
       go to x: 182 y: keeperY
       wait 0.03 seconds
+    hide
 
 SPRITE CometGoal:
   SHAPE art comet-strikers/goal
@@ -4111,6 +4142,23 @@ SPRITE CometGoal:
     go to x: 220 y: 0
     hide
   WHEN I receive "start comet match":
+    show
+  WHEN I receive "comet match over":
+    hide
+
+SPRITE CometResult:
+  COSTUME win label "FOUR GOALS • GREEN FLAG FOR ANOTHER MATCH" #8fffea
+  COSTUME lose label "FULL TIME • GREEN FLAG FOR A REMATCH" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start comet match":
+    hide
+  WHEN I receive "comet match over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     trench_signal: `# Echo Trench — a submarine salvage run with a sonar-defense rhythm.
