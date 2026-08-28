@@ -157,6 +157,11 @@ class FakeNative {
                     error: {code: -32000, message: 'unknown method: getServices'}
                 });
             }
+            if (this.plainServices) {
+                // How the REAL Scratch Link answers: canonical UUID strings,
+                // not objects (BLESession maps through getCanonicalUUIDString).
+                return reply([BOOST_SERVICE]);
+            }
             return reply([{
                 uuid: BOOST_SERVICE,
                 characteristics: [{
@@ -583,5 +588,32 @@ describe('the self-test stays fast enough to watch', () => {
         await selfTestReport();
         const elapsed = Date.now() - started;
         assert.ok(elapsed < 8000, `the self-test took ${elapsed}ms; it must stay watchable`);
+    });
+});
+
+
+describe('getServices answers in two shapes, and both are read', () => {
+    test('the reference\'s plain UUID strings are understood', async () => {
+        // BLESession returns canonical UUID STRINGS. Our own server returns
+        // {uuid, characteristics} objects to save a round trip. Reading only
+        // `s.uuid` yielded undefined against the genuine Scratch Link — the
+        // very peer the fifth connection path exists to talk to.
+        native.plainServices = true;
+        try {
+            const promise = navigator.bluetooth.requestDevice({filters: [{services: [BOOST_SERVICE]}]});
+            for (let i = 0; i < 50; i++) {
+                const row = rowFor(body, 'LEGO Move Hub');
+                if (row) { row.click(); break; }
+                await new Promise(r => setTimeout(r, 5));
+            }
+            const device = await promise;
+            const server = await device.gatt.connect();
+            const services = await server.getPrimaryServices();
+            assert.equal(services.length, 1);
+            assert.equal(services[0].uuid, BOOST_SERVICE,
+                'a string answer must still yield a usable service');
+        } finally {
+            native.plainServices = false;
+        }
     });
 });

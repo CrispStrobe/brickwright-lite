@@ -271,7 +271,16 @@ fn start_discover(specs: Vec<ScanFilterSpec>, out: Outbound) {
                 let note = json!({
                     "jsonrpc": "2.0",
                     "method": "didDiscoverPeripheral",
-                    "params": { "peripheralId": d.address, "name": d.name, "rssi": d.rssi }
+                    // rssi is always a NUMBER, never null. The reference sends
+                    // 127 for "unknown" (RSSI.swift) and the connection modal
+                    // declares rssi: PropTypes.number and compares it with
+                    // `rssi > -80` to draw signal bars — a null violates the
+                    // prop type and silently coerces to 0 in those comparisons.
+                    "params": {
+                        "peripheralId": d.address,
+                        "name": d.name,
+                        "rssi": d.rssi.map(i64::from).unwrap_or(127)
+                    }
                 });
                 let _ = out.try_send(Message::Text(note.to_string()));
             }
