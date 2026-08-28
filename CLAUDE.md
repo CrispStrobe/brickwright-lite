@@ -182,6 +182,28 @@ Scratch Link host and misread `discover`'s null reply; both are fixed in
 This was **never** an iOS entitlement problem — `Info.ios.plist` has always carried the
 Bluetooth usage strings, and mobile.yml fails the build if they go missing.
 
+**Four carriers, not one** (2026-08-28). Settings › "How Scratch Link connects…"
+(`scratchlink-transport.js`) chooses HOW the Scratch Link protocol reaches the radio:
+`socket` (our Rust over ws://127.0.0.1:20111), `native` (our Rust over Tauri IPC, no
+socket), `auto` (socket then native), and `original` — **the Scratch Foundation's own
+Swift**, vendored BSD-3 and running in-process on Apple platforms via
+`plugins/scratchlink-original`. This is NOT the extension's own connection menu, which
+picks which PROTOCOL to speak; both exist and neither replaces the other. More carriers
+is the point: any one may be the only one that works somewhere nobody has tested.
+
+**Auditing our Rust against that vendored reference found eight defects**, including a
+missing GATT blocklist, a `connect` that accepted any address (making the discovery
+filter decorative), an inverted message-encoding default, and a discover filter that
+ignored `manufacturerData` — which is what tells a Boost hub from a WeDo 2.0. All fixed
+and pinned by `test/scratchlink-protocol-parity.test.mjs`. Full table in docs/BLUETOOTH.md;
+read it before changing `scratchlink/ble.rs`.
+
+The vendored Swift needs **ten patches** to build (CoreBluetooth optionals since iOS 15,
+plus `uint16`/`uint32` Darwin aliases that exist on macOS and not iOS) and its
+`BTSession.swift` is macOS-only. `scripts/gen-scratchlink-swift.mjs` generates the
+buildable copy; `vendor/scratch-link-swift/Sources` stays byte-identical and hash-gated,
+because a reference we have quietly "improved" is worth nothing to audit against.
+
 **Settings › Connection diagnostics…** (`lib/ble-diagnostics.js`) is the on-device console:
 mirrored `console.*`, every JSON-RPC frame, and a self-test that reports CoreBluetooth's
 permission + power state (`scratchlink/ble_state.rs` → `ble_apple.m`). There is no devtools
@@ -304,9 +326,22 @@ pick en/de from a per-component string table (English fallback). Done: `pseudoco
 add a column. Untranslated on purpose: code-example placeholders, preset names.
 
 ## Invariants
-Every push must keep CI **and** Vercel green. Verify features are actually in the bundle
+Every push must keep CI green. Verify features are actually in the bundle
 (grep `build/gui.*.js` for distinctive strings — the filename is now `gui.[contenthash].js`)
 — a green build doesn't prove an extension loads (see the dist-vs-src gotcha).
+
+Vercel is NO LONGER part of that: it deploys checkpoints only (see the deploy rule at the
+top), so an ordinary push shows "Canceled by Ignored Build Step" and a red Vercel status
+during a rate-limit window means the quota, not your change.
+
+**A browser gate nobody runs stops working, silently.** Swept 2026-08-27: of the 17
+`scripts/verify-*.mjs` no workflow ran, FOUR passed and THIRTEEN did not — stale selectors,
+a button that no longer exists, assertions about a UI that had moved on. Each had been
+written to catch a regression its author had just been bitten by, and each had quietly
+stopped being able to. `test/gate-coverage.test.mjs` is the ratchet: a new gate must be
+wired into a workflow or listed in `KNOWN_UNWIRED` with its state, and the list can only
+shrink — a second test fails if an entry is actually wired. Eleven entries remain, every
+one a gate that fails today. That is a backlog with dates on it, not a mystery.
 
 ## Planned: `stc12live` — the STC12/8051 hardware extension (NOT started)
 
@@ -369,6 +404,29 @@ Both are additive to the Scratch stage, not replacements for it.
    ucsim, QEMU and unicorn are all GPL-2 and can never be bundled here; Renode reports
    `NOASSERTION` and needs its LICENSE read; Verilator is dual LGPL-3/Artistic-2 and is
    the wrong tool anyway.
+
+### The heavy tier is wired and runs (2026-08-27)
+
+The two-tier plan is real now for STM32F030: the light tier is our own
+`CortexM0Machine`, the heavy one is **labwired-wasm**, offered as
+"Simulated (labwired — full fidelity)" in the debug panel's engine picker.
+Same project, same flash image, different engine underneath.
+
+- The ~20 MB engine is **fetched on demand**, not bundled: `sync-labwired-wasm.mjs`
+  puts it in `static/`, `lib/labwired-engine.js` loads it only when that engine is
+  picked, and answers `null` (never throws) when a build does not have it — so the
+  picker simply does not offer it. It IS bundled in the mobile IPA, because
+  `vercel-build.sh` syncs it.
+- **A raw flash image carries no symbols**, so this tier gets instruction stepping
+  and no block glow, and the status line says so rather than leaving a greyed
+  button to be interpreted. `disasm()` answers for the CURRENT PC only — the
+  engine's `get_disassembly()` takes no address — and returns '' for anything
+  else rather than labelling the PC's instruction as another address.
+- `scripts/verify-labwired-engine.mjs` (in CI) drives the whole path in a browser
+  and insists it reaches a running session with nothing thrown. Written after two
+  bugs that every unit test passed through: a `const session` shadowing the
+  runner's own binding, and a missing `timeNs` delegation. Both lived in the
+  wiring between runner and target, which is exactly what unit tests do not see.
 
 **The peripheral model is written down once** in `stc/docs/STC12-PERIPHERAL-MODEL.md`, so the
 two emulator forks and the simulator's board layer cannot drift into different answers. The
