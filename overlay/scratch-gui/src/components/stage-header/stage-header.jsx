@@ -66,6 +66,11 @@ const messages = defineMessages({
         description: 'Button to show the micro:bit simulator in the right pane',
         id: 'gui.stageHeader.microbitSim'
     },
+    arduboyConsole: {
+        defaultMessage: 'Arduboy Console',
+        description: 'Button to show the Arduboy console in the right pane',
+        id: 'gui.stageHeader.arduboyConsole'
+    },
     arcadeConsole: {
         defaultMessage: 'Game Console',
         description: 'Button to show the MakeCode Arcade or PyBadge console',
@@ -110,6 +115,7 @@ const viewForDock = dock => {
     if (dock === 'solo' || dock === 'right') return 'solo';
     if (dock === 'microbit') return 'microbit';
     if (dock === 'arcade') return 'arcade';
+    if (dock === 'arduboy') return 'arduboy';
     if (dock === 'controller') return 'controller';
     // 'top' and any other value default to scratch stage
     return 'scratch';
@@ -130,8 +136,14 @@ const readCircuitView = () => {
 
 const StageViewButtons = ({intl, vm}) => {
     const [view, setView] = useState(readCircuitView);
+    // The Calliope runs the same MicroPython on the same simulator, so the
+    // button that opens it is the same button — a separate one would be two
+    // controls for one pane.
+    const MICROPYTHON_DEVICES = ['microbit', 'calliopemini'];
     const [deviceIsMicrobit, setDeviceIsMicrobit] = useState(() =>
-        (vm.runtime.bwDeviceId || vm.runtime.stc?.device) === 'microbit');
+        MICROPYTHON_DEVICES.includes(vm.runtime.bwDeviceId || vm.runtime.stc?.device));
+    const [deviceIsArduboy, setDeviceIsArduboy] = useState(() =>
+        (vm.runtime.bwDeviceId || vm.runtime.stc?.device) === 'arduboy');
     const [deviceIsArcade, setDeviceIsArcade] = useState(() => ['arcade', 'pybadge', 'pybadge-lc', 'samd51']
         .includes(vm.runtime.bwDeviceId || vm.runtime.stc?.device));
     useEffect(() => {
@@ -142,7 +154,8 @@ const StageViewButtons = ({intl, vm}) => {
             } else if (key === 'bw-debug-dock') {
                 setView(localStorage.getItem('bw-stage-circuit') === '0' ? 'scratch' : viewForDock(value));
             } else if (key === 'bw-device-id') {
-                setDeviceIsMicrobit(value === 'microbit');
+                setDeviceIsMicrobit(MICROPYTHON_DEVICES.includes(value));
+                setDeviceIsArduboy(value === 'arduboy');
                 setDeviceIsArcade(['arcade', 'pybadge', 'pybadge-lc', 'samd51'].includes(value));
             }
         };
@@ -191,6 +204,13 @@ const StageViewButtons = ({intl, vm}) => {
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'arcade',
                         title: intl.formatMessage(messages.arcadeConsole)
+                    }] : []),
+                    ...(deviceIsArduboy ? [{
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'arduboy'}); setView('arduboy'); },
+                        icon: arcadeIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'arduboy',
+                        title: intl.formatMessage(messages.arduboyConsole)
                     }] : []),
                     {
                         handleClick: () => { setCircuitView({fullWidth: true, dock: 'controller'}); setView('controller'); },

@@ -125,6 +125,19 @@ asks for. That number matching is the evidence the integration is right;
 the pane's dot applies a gamma-ish curve on top purely so a 6% duty is
 visible to an eye rather than a black circle.
 
+## Where it sits in the GUI
+
+`Arduboy (run .hex)` in the Code tab's device dropdown, `compile: false` —
+see [CHOOSING-HARDWARE.md](CHOOSING-HARDWARE.md) for why that flag is the
+important half. Choosing it puts an **Arduboy Console** button in the
+stage header, which opens the pane; opening a compiled `.hex` from 📂 Open
+goes straight there without choosing anything first.
+
+It is **not** a Circuits surface. The console has its own display and
+buttons; the circuit solver is a different pane with a different job. What
+they share is `board.setPin`, so wiring an emulated Arduboy into a drawn
+circuit is possible on that contract — nothing does it yet.
+
 ## What is not here
 
 **Anything to do with source.** Arduboy games *are* published with source —

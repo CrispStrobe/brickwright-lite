@@ -32,6 +32,12 @@ const DEVICE_GROUPS = [
         { id: 'atmega168p', label: 'ATmega168P (bare)', compile: false, emulator: 'avr8js' },
         { id: 'attiny88', label: 'ATtiny88 (bare)', compile: false, emulator: 'attiny88' },
         { id: 'attiny85', label: 'ATtiny85', compile: false, emulator: 'attiny85' },
+        // An ATmega32U4 console. `compile: false` is the important half:
+        // there is no path from blocks to an Arduboy binary — that needs
+        // avr-gcc, which is GPL and cannot ship here — so choosing this
+        // offers to RUN a .hex, not to build one. Listing it as compilable
+        // would promise something the licence forbids.
+        { id: 'arduboy', label: 'Arduboy (run .hex)', compile: false, emulator: 'arduboy' },
     ]},
     { label: 'Raspberry Pi', core: 'rp2040', devices: [
         { id: 'pico', label: 'Raspberry Pi Pico', compile: true, emulator: 'rp2040js' },
@@ -47,6 +53,12 @@ const DEVICE_GROUPS = [
     ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
+        // The Calliope runs the micro:bit's API on different hardware, so it
+        // shares the vocabulary, the simulator and the whole MicroPython
+        // path. It is listed separately because a program written for one
+        // says so — a Calliope import that claimed DEVICE MICROBIT told the
+        // reader their board was a micro:bit.
+        { id: 'calliopemini', label: 'Calliope mini', compile: false, emulator: null },
     ]},
     { label: 'Arcade & SAMD51', core: 'samd51', devices: [
         { id: 'arcade', label: 'MakeCode Arcade (160×120)', compile: false, emulator: 'arcade' },
