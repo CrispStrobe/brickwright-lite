@@ -252,13 +252,37 @@ log's oddity has an explanation.
 
 ---
 
-## 5. Cross-repo gates that cannot fire in CI — OPEN, highest priority
+## 5. Cross-repo gates that cannot fire in CI — **CLOSED 2026-08-28**, re-measured
+
+Both defects below are fixed. Re-measured on 2026-08-28 by comparing lite's own emitter
+against lite's own extensions — no second checkout, which is the point of the fix §5.1a made.
+**The numbers, so nobody has to derive them again:**
+
+```
+stc12    emitter names 31 opcodes, extension defines 30, emitted-but-undefined: 0
+devices  emitter CREATES 36,      extension defines 48, emitted-but-undefined: 0
+         all eleven devices_oled*/devices_tft* opcodes are present
+gate     test/example-vm-execution.test.mjs — 290 pass, 0 fail, 0 skipped
+```
+
+The one apparent survivor is instructive and is NOT a gap: `stc12_readpin` is named by the
+emitter but defined nowhere. Every one of its four references is a **read** —
+`b.opcode === 'stc12_readpin'` in a lowering path — and nothing constructs a block with it.
+The extension defines `stc12_read`, which is the opcode actually produced. That is this
+section's own rule (*check what is emitted, never what is mentioned*) applied back to itself;
+a grep for the name alone would have reported a defect that does not exist.
+
+The history below is kept because the METHOD is worth more than the verdict, and because
+§5.1a's "gate it inside one repo so it cannot skip" is the pattern to reach for the next time
+a check needs two checkouts.
+
+### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 
 A gate that needs two checkouts side by side runs on a developer machine and **skips in CI**, where
 only its own repo is cloned. It then reports as a pass forever. This is the `SKIP`-reads-as-success
 failure from §"Working rules", promoted here because it is currently hiding a shipped defect.
 
-### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — LIVE DEFECT
+
 
 Measured 2026-08-22 on a machine with both checkouts:
 
@@ -294,7 +318,7 @@ shipped extension rather than rely on an error surfacing.
 
 **FIXED** — the bundled extension now defines all 28 emitted opcodes (20 blocks -> 30).
 
-### 5.1a AMENDED 2026-08-23 — the count above is wrong, and the gap is wider than stc12
+### 5.1a AMENDED 2026-08-23 — the count above is wrong, and the gap is wider than stc12 (both halves now FIXED)
 
 Now measured by a gate that runs in lite's own CI on every push
 (`test/example-vm-execution.test.mjs`), so this no longer depends on a second checkout being

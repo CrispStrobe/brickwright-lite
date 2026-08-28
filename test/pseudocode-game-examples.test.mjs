@@ -63,6 +63,14 @@ test('only quality-approved new games are wired into the visible examples galler
     for (const name of EXPECTED.filter(name => !approved.has(name))) {
         assert.doesNotMatch(importer, new RegExp(`\\['${name}',`), `${name}: unaudited prototype is public`);
     }
+    const archivedPrototypes = [
+        'snake', 'snake_pro', 'breakout', 'pong_2p', 'pong_ai', 'tetris', 'sokoban', 'bomberman',
+        'invaders', 'flappy', 'tictactoe', 'tictactoe_ai', 'maze', 'connect4', 'minesweeper'
+    ];
+    for (const name of archivedPrototypes) {
+        assert.doesNotMatch(importer, new RegExp(`\\['${name}',`),
+            `${name}: archived mechanics prototype leaked into the finished Games gallery`);
+    }
     assert.match(importer, /\.\.\.gameExamples/, 'game module is not merged into the gallery examples');
 });
 
@@ -77,6 +85,19 @@ test('green flag crosses every title gate in the ordinary right-hand stage', () 
             `${name}: green flag still leaves the title screen waiting for a keyboard`);
         assert.match(source, /WHEN I receive "__brickwright_start_from_flag":/,
             `${name}: delayed green-flag start has no receiver`);
+        const bridge = source.match(/WHEN I receive "__brickwright_start_from_flag":\n((?:    .*\n?)*)/)?.[1] || '';
+        assert.match(bridge, /^    IF [A-Za-z][A-Za-z0-9]* = 0 THEN:/,
+            `${name}: delayed green-flag start is not guarded by the title state`);
+        assert.doesNotMatch(bridge, /^    ELSE:/m,
+            `${name}: delayed green-flag start copied a gameplay action`);
+    }
+});
+
+test('approved games state attainable goals instead of endless survival non-goals', () => {
+    for (const [name, source] of Object.entries(games)) {
+        assert.match(source, /^# GOAL:/m, `${name}: no player-facing goal`);
+        assert.doesNotMatch(source, /survive as long as possible/i,
+            `${name}: endless survival is not an attainable finish`);
     }
 });
 
@@ -104,6 +125,40 @@ test('green flag actually starts every game in the real Scratch VM without Space
             vm.quit();
             clearStrayTimers();
         }
+    }
+});
+
+test('an early desktop Space start is not replayed as a gameplay action', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.fusion_foundry);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+
+        const foundry = vm.runtime.targets.find(target => target.sprite.name === 'Foundry');
+        const grid = Object.values(foundry.variables).find(variable => variable.name === 'grid');
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 0,
+            'the title-start key press also dropped a core');
+
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 35; i++) vm.runtime._step();
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 0,
+            'the delayed green-flag bridge replayed the Space-key action');
+
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 35; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 1,
+            'the first deliberate gameplay press did not drop exactly one core');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
     }
 });
 
@@ -140,13 +195,47 @@ test('quality-approved game has authored SVG art and explicit onboarding', () =>
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'flight']);
     assert.equal(bird.costumes.length, 2);
     assert.equal(hill.costumes.length, 1);
-    assert.match(games.sky_skim, /GOAL:/);
+    assert.match(games.sky_skim, /GOAL: complete twelve clean hill launches before three crashes/);
     assert.match(games.sky_skim, /CONTROLS:/);
     assert.match(games.sky_skim, /WHEN space key pressed:/);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('SKYLINE SWOOP')));
-    assert.ok(svgs.some(svg => svg.includes('PRESS SPACE TO FLY')));
-    assert.ok(svgs.some(svg => svg.includes('CLEAN DIVE = LAUNCH + COMBO')));
+    assert.ok(svgs.some(svg => svg.includes('12 CLEAN LAUNCHES WIN')));
+    assert.ok(svgs.some(svg => svg.includes('GREEN FLAG STARTS FLIGHT')));
+    assert.match(games.sky_skim, /change launches by 1/);
+    assert.match(games.sky_skim, /IF launches = 12 THEN:/);
+    assert.match(games.sky_skim, /SKYLINE MASTERED/);
+});
+
+test('Skyline Swoop clean launches build combo and the twelfth wins in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.sky_skim);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 25; i++) vm.runtime._step();
+        const values = Object.values(vm.runtime.getTargetForStage().variables);
+        const value = name => values.find(variable => variable.name === name);
+        value('launches').value = 11;
+        value('combo').value = 3;
+        value('score').value = 50;
+        value('alive').value = 1;
+
+        vm.runtime.startHats('event_whenbroadcastreceived', {
+            BROADCAST_OPTION: 'clean skyline launch'
+        });
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+
+        assert.equal(Number(value('launches').value), 12);
+        assert.equal(Number(value('combo').value), 4);
+        assert.equal(Number(value('score').value), 70);
+        assert.equal(Number(value('alive').value), 0, 'the twelfth launch did not finish the flight');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
 });
 
 test('second quality-approved game explains and renders its collision strategy', () => {
@@ -154,15 +243,47 @@ test('second quality-approved game explains and renders its collision strategy',
     const project = creator.parse(games.missile_ballet);
     assert.deepEqual(creator.errors, []);
     assert.deepEqual(creator.warnings, []);
-    assert.match(games.missile_ballet, /GOAL: cross the paths of homing missiles/);
+    assert.match(games.missile_ballet, /GOAL: force the homing missiles across each other's paths/);
     assert.match(games.missile_ballet, /CONTROLS: move the mouse to steer/);
     assert.match(games.missile_ballet, /WHEN space key pressed:/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'scramble']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('CONTRAIL PANIC')));
-    assert.ok(svgs.some(svg => svg.includes('MAKE THE HOMING MISSILES HIT EACH OTHER')));
+    assert.ok(svgs.some(svg => svg.includes('DESTROY 24 HOMING MISSILES')));
     assert.ok(svgs.some(svg => svg.includes('CROSS THEIR PATHS')));
+    assert.match(games.missile_ballet, /change missiles by 1/);
+    assert.match(games.missile_ballet, /IF missiles > 23 THEN:/);
+    assert.match(games.missile_ballet, /AIRSPACE CLEARED/);
+});
+
+test('Contrail Panic ends when the final missile is destroyed in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.missile_ballet);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 25; i++) vm.runtime._step();
+        const values = Object.values(vm.runtime.getTargetForStage().variables);
+        const value = name => values.find(variable => variable.name === name);
+        value('missiles').value = 23;
+        value('score').value = 80;
+        value('alive').value = 1;
+
+        vm.runtime.startHats('event_whenbroadcastreceived', {
+            BROADCAST_OPTION: 'missile destroyed'
+        });
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+
+        assert.equal(Number(value('missiles').value), 24);
+        assert.equal(Number(value('score').value), 85);
+        assert.equal(Number(value('alive').value), 0, 'the extraction target did not end the run');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
 });
 
 test('Aegis Arc makes its circular defense state visible and start-gated', () => {
@@ -220,15 +341,79 @@ test('Core Cascade shows its next piece, fusion ladder, and concrete Nova goal',
     assert.ok(svgs.some(svg => svg.includes('CREATE THE WHITE NOVA')));
 });
 
+test('Prism Lock and Core Cascade reach their victory states in the real Scratch VM', async () => {
+    const load = async source => {
+        const creator = new SB3Creator();
+        creator.parse(source);
+        const vm = new VM();
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        return vm;
+    };
+    const stageValue = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+
+    const prism = await load(games.chroma_code);
+    try {
+        stageValue(prism, 'secret').value = [1, 2, 3, 4];
+        stageValue(prism, 'guess').value = [1, 2, 3, 4];
+        stageValue(prism, 'accepting').value = 1;
+        prism.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'gem chosen'});
+        for (let i = 0; i < 45; i++) prism.runtime._step();
+
+        assert.equal(Number(stageValue(prism, 'exact').value), 4, 'perfect code was not scored');
+        assert.equal(Number(stageValue(prism, 'near').value), 0, 'exact gems were also counted as near');
+        assert.equal(Number(stageValue(prism, 'won').value), 1, 'perfect code did not unseal the lock');
+    } finally {
+        prism.quit();
+        clearStrayTimers();
+    }
+
+    const cascade = await load(games.fusion_foundry);
+    try {
+        const foundry = cascade.runtime.targets.find(target => target.sprite.name === 'Foundry');
+        const grid = Object.values(foundry.variables).find(variable => variable.name === 'grid');
+        grid.value = Array(42).fill(0);
+        // A level-four core at the bottom of the selected shaft makes the
+        // next level-four drop fuse into the promised white level-five Nova.
+        grid.value[39] = 4;
+        stageValue(cascade, 'column').value = 3;
+        stageValue(cascade, 'nextLevel').value = 4;
+        stageValue(cascade, 'score').value = 0;
+        cascade.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'drop core'});
+        for (let i = 0; i < 70; i++) cascade.runtime._step();
+
+        assert.equal(Number(grid.value[39]), 5, 'matching level-four cores did not forge a Nova');
+        assert.equal(grid.value.filter(value => Number(value) > 0).length, 1,
+            'the consumed precursor core remained on the board');
+        assert.equal(Number(stageValue(cascade, 'score').value), 550,
+            'Nova fusion did not award its merge and victory score');
+    } finally {
+        cascade.quit();
+        clearStrayTimers();
+    }
+});
+
 test('Neon Relay teaches distinct jump and slide hazards and gates the run', () => {
     const creator = new SB3Creator();
     const project = creator.parse(games.rooftop_relay);
     assert.deepEqual(creator.errors, []);
     assert.deepEqual(creator.warnings, []);
-    assert.match(games.rooftop_relay, /GOAL: survive as long as possible/);
+    assert.match(games.rooftop_relay, /GOAL: clear thirty rooftop hazards/);
     assert.match(games.rooftop_relay, /CONTROLS: Up jumps, Down slides/);
     assert.match(games.rooftop_relay, /broadcast "start neon relay"/);
     assert.match(games.rooftop_relay, /go to x: 250 y: -96/);
+    assert.match(games.rooftop_relay, /change rooftops by 1/);
+    assert.match(games.rooftop_relay, /IF rooftops = 30 THEN:/);
+    assert.match(games.rooftop_relay, /IF touching Runner THEN:\n      broadcast "battery collected"\n    delete this clone/);
+    assert.match(games.rooftop_relay, /WHEN I receive "battery collected":\n    set overdrive to 120/);
+    assert.doesNotMatch(games.rooftop_relay, /IF touching Battery THEN:/,
+        'battery pickup still depends on the runner winning a scheduler race');
     const stage = project.targets.find(target => target.isStage);
     const runner = project.targets.find(target => target.name === 'Runner');
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'skyline']);
@@ -236,7 +421,34 @@ test('Neon Relay teaches distinct jump and slide hazards and gates the run', () 
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('NEON RELAY')));
     assert.ok(svgs.some(svg => svg.includes('JUMP OVER RED VENTS')));
-    assert.ok(svgs.some(svg => svg.includes('ORANGE DRONE = SLIDE')));
+    assert.ok(svgs.some(svg => svg.includes('SLIDE UNDER ORANGE DRONES')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR 30 HAZARDS')));
+});
+
+test('Neon Relay delivers on rooftop thirty in the real Scratch VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.rooftop_relay);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 25; i++) vm.runtime._step();
+        const values = Object.values(vm.runtime.getTargetForStage().variables);
+        const value = name => values.find(variable => variable.name === name);
+        value('rooftops').value = 29;
+        value('score').value = 41;
+
+        vm.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'rooftop cleared'});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+
+        assert.equal(Number(value('rooftops').value), 30);
+        assert.equal(Number(value('score').value), 42);
+        assert.equal(Number(value('delivered').value), 1, 'the finish line did not complete the delivery');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
 });
 
 test('Rift Rally exposes its dual controls, crystals, and three-escape loss condition', () => {
@@ -248,7 +460,15 @@ test('Rift Rally exposes its dual controls, crystals, and three-escape loss cond
     assert.match(games.twinwall, /CONTROLS: W\/S move the cyan left paddle/);
     assert.match(games.twinwall, /change lives by -1/);
     assert.match(games.twinwall, /set vx to vx \* -1/);
+    assert.match(games.twinwall, /WHEN flag clicked:\n    set score to 0\n    set lives to 3\n    set bricks to 24/);
+    assert.doesNotMatch(games.twinwall, /WHEN I receive "serve rift":\n    set bricks to 24/,
+        'parallel start receiver still owns the win-counter reset');
     const stage = project.targets.find(target => target.isStage);
+    const shifter = project.targets.find(target => target.name === 'Shifter');
+    assert.ok(Object.values(shifter.variables).some(variable => variable[0] === 'drift'),
+        'crystal drift is not clone-local');
+    assert.ok(!Object.values(stage.variables).some(variable => variable[0] === 'drift'),
+        'all crystal clones still share one global drift direction');
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'arena']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('RIFT RALLY')));
@@ -283,6 +503,9 @@ test('Abyss Lift has a finite rescue objective and reliable clone-to-sub rescue 
     assert.match(games.abyss_rescue, /CONTROLS: hold Space to rise/);
     assert.match(games.abyss_rescue, /broadcast "diver rescued"/);
     assert.match(games.abyss_rescue, /IF rescued = 6 THEN:/);
+    assert.match(games.abyss_rescue, /set ghost effect to pick random 0 to 12/);
+    assert.doesNotMatch(games.abyss_rescue, /change ghost effect by 3/,
+        'divers still fade completely before reaching the submarine');
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'trench']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -301,6 +524,9 @@ test('Wardlight makes the defense target clear and keeps ricochet orbs alive for
     assert.match(games.specter_sweep, /REPEAT UNTIL life < 1:/);
     assert.match(games.specter_sweep, /if on edge bounce/);
     assert.doesNotMatch(games.specter_sweep, /behind the pillars/);
+    assert.match(games.specter_sweep, /set ghost effect to pick random 0 to 25/);
+    assert.doesNotMatch(games.specter_sweep, /change ghost effect by 4/,
+        'specters still become invisible while approaching the ward');
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'manor']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -335,6 +561,8 @@ test('Nimbus Volley explains its scoring and implements an airborne spike', () =
     assert.match(games.cloud_court, /CONTROLS: A\/D move, W jumps, and S while airborne/);
     assert.match(games.cloud_court, /set spiking to 1/);
     assert.match(games.cloud_court, /change playerScore by 1/);
+    assert.match(games.cloud_court, /STORM COURT WON! FINAL/);
+    assert.match(games.cloud_court, /NIMBUS WINS — FINAL/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -370,6 +598,10 @@ test('Tidegate Rush has a finish line, boost resource, hazards, and three-gate s
     assert.match(games.lockstep_lagoon, /IF gates = 8 THEN:/);
     assert.match(games.lockstep_lagoon, /set surge to 3/);
     assert.match(games.lockstep_lagoon, /change charge by -1/);
+    assert.equal((games.lockstep_lagoon.match(/\(pick random -1 to 1\) \* 110/g) || []).length, 2,
+        'a gate spawner is not constrained to the three taught lanes');
+    assert.doesNotMatch(games.lockstep_lagoon, /pick random -1 to 1 \* 110/,
+        'lane multiplication is still inside the random upper bound');
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'course']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -725,7 +957,12 @@ test('new click and orbit controls advance in the real Scratch VM', async () => 
 });
 
 test('new merge and runner controls change live Scratch VM state', async () => {
-    const load = async (source, pressSpace = true) => {
+    // Since #34 the green flag starts every game through
+    // `__brickwright_start_from_flag`, so a Space press here no longer
+    // crosses a title gate — it reaches the game as a MOVE. Fusion
+    // Foundry dropped a core on it and then a second on the one this test
+    // sends, which is what "2 !== 1" was.
+    const load = async source => {
         const creator = new SB3Creator();
         creator.parse(source);
         const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
@@ -734,20 +971,22 @@ test('new merge and runner controls change live Scratch VM state', async () => {
         vm.start();
         vm.greenFlag();
         for (let i = 0; i < 20; i++) vm.runtime._step();
-        if (pressSpace) {
-            vm.postIOData('keyboard', {key: ' ', isDown: true});
-            for (let i = 0; i < 30; i++) vm.runtime._step();
-            vm.postIOData('keyboard', {key: ' ', isDown: false});
-        }
+        // Since #34 the green flag starts every game itself, through
+        // `__brickwright_start_from_flag` — but the hat waits 0.6 s first,
+        // so the start has to be waited FOR rather than stepped to. This
+        // used to press Space instead, which crossed a title gate that no
+        // longer exists; the press now reaches the game as a MOVE, and
+        // Fusion Foundry dropped a core on it and a second on the one the
+        // test sends. That was "2 !== 1".
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 30; i++) vm.runtime._step();
         return vm;
     };
     const stageValue = (vm, name) => Object.values(vm.runtime.getTargetForStage().variables)
         .find(variable => variable.name === name);
 
-    const nova = await load(games.g2048, false);
+    const nova = await load(games.g2048);
     try {
-        await new Promise(resolve => setTimeout(resolve, 700));
-        for (let i = 0; i < 30; i++) nova.runtime._step();
         assert.equal(Number(stageValue(nova, 'started').value), 1,
             'the ordinary green flag left the game parked behind a Space/fullscreen gate');
         const board = nova.runtime.targets.find(target => target.sprite.name === 'Board');
@@ -790,6 +1029,13 @@ test('new merge and runner controls change live Scratch VM state', async () => {
 
     const relay = await load(games.rooftop_relay);
     try {
+        const scoreBeforeBattery = Number(stageValue(relay, 'score').value);
+        relay.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'battery collected'});
+        for (let i = 0; i < 8; i++) relay.runtime._step();
+        assert.equal(Number(stageValue(relay, 'score').value), scoreBeforeBattery + 5,
+            'battery pickup did not award exactly five points');
+        assert.ok(Number(stageValue(relay, 'overdrive').value) > 0,
+            'battery pickup did not activate overdrive');
         const beforeY = Number(stageValue(relay, 'runy').value);
         relay.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
         for (let i = 0; i < 12; i++) relay.runtime._step();
@@ -828,6 +1074,15 @@ test('dual-paddle defense and slipstream race respond in the live Scratch VM', a
         assert.equal(rift.runtime.targets.filter(target =>
             !target.isOriginal && target.sprite.name === 'Shifter').length, 24,
         'the 24-crystal field was not created');
+        const crystals = rift.runtime.targets.filter(target =>
+            !target.isOriginal && target.sprite.name === 'Shifter');
+        const firstDrift = Object.values(crystals[0].variables).find(variable => variable.name === 'drift');
+        const secondDrift = Object.values(crystals[1].variables).find(variable => variable.name === 'drift');
+        assert.notEqual(firstDrift, secondDrift, 'crystal clones share the same drift variable object');
+        firstDrift.value = 1;
+        secondDrift.value = -1;
+        assert.equal(Number(firstDrift.value), 1);
+        assert.equal(Number(secondDrift.value), -1, 'one crystal changed another crystal’s direction');
         rift.postIOData('keyboard', {key: 'w', isDown: true});
         rift.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
         for (let i = 0; i < 12; i++) rift.runtime._step();
@@ -948,6 +1203,14 @@ test('stealth movement and aerial-spike controls work in the live Scratch VM', a
         for (let i = 0; i < 4; i++) nimbus.runtime._step();
         assert.equal(Number(value(nimbus, 'spiking').value), 1, 'S in the air did not arm the spike');
         nimbus.postIOData('keyboard', {key: 's', isDown: false});
+        value(nimbus, 'playerScore').value = 6;
+        value(nimbus, 'bx').value = 100;
+        value(nimbus, 'by').value = -170;
+        value(nimbus, 'vx').value = 0;
+        value(nimbus, 'vy').value = -1;
+        for (let i = 0; i < 12; i++) nimbus.runtime._step();
+        assert.equal(Number(value(nimbus, 'playerScore').value), 7,
+            'landing the seventh ball on the rival court did not win the match');
     } finally {
         nimbus.quit();
         clearStrayTimers();
@@ -990,6 +1253,9 @@ test('parry timing and hydrofoil lane-boost controls work in the live Scratch VM
 
     const tidegate = await load(games.lockstep_lagoon);
     try {
+        const lockGate = tidegate.runtime.targets.find(target => target.sprite.name === 'LockGate');
+        assert.ok([-110, 0, 110].includes(Math.round(lockGate.x)),
+            `first gate spawned between lanes at x=${lockGate.x}`);
         await new Promise(resolve => setTimeout(resolve, 180));
         for (let i = 0; i < 12; i++) tidegate.runtime._step();
         tidegate.postIOData('keyboard', {key: 'ArrowRight', isDown: true});
@@ -1389,13 +1655,16 @@ test('new pseudocode games compile cleanly into substantial Scratch projects', (
 test('each new game keeps its signature playable mechanic', () => {
     const contracts = {
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
-            /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/],
+            /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
+            /change launches by 1/, /IF launches = 12 THEN:/],
         chroma_code: [/GLOBAL LIST secret/, /set exact to 0/, /set near to 0/,
             /WHEN sprite clicked:/, /add gemValue to guess/],
         fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/],
-        missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/],
+        missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/,
+            /change missiles by 1/, /IF missiles > 23 THEN:/],
         orbit_ward: [/sin of angle/, /cos of angle/, /REPEAT 8/, /IF touching Shield/],
-        rooftop_relay: [/set vy to 12/, /switch costume to slide/, /set overdrive to 0/],
+        rooftop_relay: [/set vy to 12/, /switch costume to slide/, /set overdrive to 0/,
+            /change rooftops by 1/, /IF rooftops = 30 THEN:/],
         twinwall: [/SPRITE LeftWall/, /SPRITE RightWall/, /set bricks to 24/, /change score by rally/],
         turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /change checkpoints by 1/],
         abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/],

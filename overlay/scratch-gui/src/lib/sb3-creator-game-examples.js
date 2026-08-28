@@ -298,8 +298,8 @@ SPRITE TouchGrid:
 `,
 
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
-# GOAL: skim the green hilltops to turn a dive into a launch. Each clean launch
-# grows your combo. Survive on three hearts and set the highest distance score.
+# GOAL: complete twelve clean hill launches before three crashes. Diving into a
+# green crest converts speed into height; consecutive launches grow the score combo.
 # CONTROLS: Down dives; release it as you touch a hill to launch; Up flaps.
 GLOBAL score
 GLOBAL lives
@@ -310,6 +310,7 @@ GLOBAL diving
 GLOBAL hillx
 GLOBAL hilly
 GLOBAL combo
+GLOBAL launches
 GLOBAL alive
 GLOBAL started
 
@@ -321,6 +322,7 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable lives
+    hide variable launches
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -339,6 +341,7 @@ SPRITE Skimmer:
     set birdy to 40
     set vy to 0
     set combo to 1
+    set launches to 0
     set alive to 1
     set rotation style all around
     go to x: -120 y: birdy
@@ -346,6 +349,7 @@ SPRITE Skimmer:
   WHEN I receive "take off":
     show variable score
     show variable lives
+    show variable launches
     show
     FOREVER:
       IF alive = 1 THEN:
@@ -372,9 +376,7 @@ SPRITE Skimmer:
         IF touching Hill THEN:
           IF diving = 1 and vy < -1 THEN:
             set vy to (abs of vy) + 5
-            change combo by 1
-            change score by combo
-            play sound "boost"
+            broadcast "clean skyline launch"
             wait 0.18 seconds
           ELSE:
             change lives by -1
@@ -385,13 +387,22 @@ SPRITE Skimmer:
             wait 0.7 seconds
             IF lives < 1 THEN:
               set alive to 0
-              say ("Flight score: " join score) for 3 seconds
+              say ("THREE CRASHES — FLIGHT SCORE " join score) for 3 seconds
               stop all
         IF score > 9 THEN:
           set speed to 5
         IF score > 29 THEN:
           set speed to 6
       wait 0.02 seconds
+  WHEN I receive "clean skyline launch":
+    change launches by 1
+    change combo by 1
+    change score by combo * 5
+    play sound "boost"
+    IF launches = 12 THEN:
+      set alive to 0
+      say ("SKYLINE MASTERED — SCORE " join score) for 4 seconds
+      stop all
 
 SPRITE Hill:
   SHAPE art skyline-swoop/hill
@@ -698,7 +709,8 @@ SPRITE Foundry:
     drop core`,
 
     missile_ballet: `# Contrail Panic — a mouse-steering survival game.
-# GOAL: cross the paths of homing missiles so they crash into each other.
+# GOAL: force the homing missiles across each other's paths and destroy twenty-four
+# of them before your emergency shield is exhausted.
 # CONTROLS: move the mouse to steer. Collect a gold beacon to restore your shield.
 GLOBAL score
 GLOBAL shield
@@ -707,6 +719,7 @@ GLOBAL spawnx
 GLOBAL spawny
 GLOBAL alive
 GLOBAL scrambleStarted
+GLOBAL missiles
 
 STAGE:
   BACKDROP intro art contrail-panic/intro
@@ -716,11 +729,19 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable shield
+    hide variable missiles
   WHEN space key pressed:
     IF scrambleStarted = 0 THEN:
       set scrambleStarted to 1
       switch backdrop to scramble
       broadcast "scramble"
+  WHEN I receive "missile destroyed":
+    change missiles by 1
+    change score by 5
+    IF missiles > 23 THEN:
+      set alive to 0
+      say ("AIRSPACE CLEARED — SCORE " join score) for 4 seconds
+      stop all
 
 SPRITE Jet:
   SHAPE art contrail-panic/jet
@@ -730,11 +751,13 @@ SPRITE Jet:
     set shield to 1
     set tempo to 1.5
     set alive to 1
+    set missiles to 0
     go to x: 0 y: 0
     hide
   WHEN I receive "scramble":
     show variable score
     show variable shield
+    show variable missiles
     show
     FOREVER:
       IF alive = 1 THEN:
@@ -746,7 +769,7 @@ SPRITE Jet:
           wait 0.6 seconds
           IF shield < 0 THEN:
             set alive to 0
-            say ("Final dance: " join score) for 3 seconds
+            say ("SHIELD LOST — SCORE " join score) for 3 seconds
             stop all
       wait 0.02 seconds
 
@@ -772,7 +795,7 @@ SPRITE Rocket:
       turn right pick random -5 to 5 degrees
       move 4 steps
       IF touching Rocket THEN:
-        change score by 2
+        broadcast "missile destroyed"
         play sound "boom"
         delete this clone
       wait 0.025 seconds
@@ -897,7 +920,8 @@ SPRITE Seal:
       wait 0.02 seconds`,
 
     rooftop_relay: `# Neon Relay — a readable two-action rooftop runner.
-# GOAL: survive as long as possible; red vents require a jump, orange drones a slide.
+# GOAL: clear thirty rooftop hazards to deliver the relay cell. Red vents require
+# a jump, orange drones a slide, and one collision ends the run.
 # CONTROLS: Up jumps, Down slides. Batteries grant a short obstacle-smashing boost.
 GLOBAL score
 GLOBAL speed
@@ -909,6 +933,8 @@ GLOBAL spawnKind
 GLOBAL overdrive
 GLOBAL hurtLock
 GLOBAL started
+GLOBAL rooftops
+GLOBAL delivered
 
 STAGE:
   BACKDROP intro art neon-relay/intro
@@ -918,11 +944,19 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable overdrive
+    hide variable rooftops
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
       switch backdrop to skyline
       broadcast "start neon relay"
+  WHEN I receive "rooftop cleared":
+    change rooftops by 1
+    change score by 1
+    IF rooftops = 30 THEN:
+      set delivered to 1
+      say ("RELAY DELIVERED — SCORE " join score) for 4 seconds
+      stop all
 
 SPRITE Runner:
   SHAPE art neon-relay/run
@@ -939,11 +973,14 @@ SPRITE Runner:
     set sliding to 0
     set overdrive to 0
     set hurtLock to 0
+    set rooftops to 0
+    set delivered to 0
     go to x: -120 y: runy
     hide
   WHEN I receive "start neon relay":
     show variable score
     show variable overdrive
+    show variable rooftops
     show
   WHEN up arrow key pressed:
     IF started = 1 and grounded = 1 THEN:
@@ -975,13 +1012,8 @@ SPRITE Runner:
           play sound "boost"
           say "BOOST SMASH +10" for 0.5 seconds
         ELSE:
-          say ("Relay ended: " join score) for 3 seconds
+          say (("RELAY DROPPED AT ROOFTOP " join rooftops) join " OF 30") for 3 seconds
           stop all
-      IF touching Battery THEN:
-        set overdrive to 120
-        change score by 5
-        play sound "boost"
-        wait 0.12 seconds
       IF overdrive > 0 THEN:
         change overdrive by -1
         change color effect by 10
@@ -992,6 +1024,10 @@ SPRITE Runner:
       IF score > 39 THEN:
         set speed to 8
       wait 0.02 seconds
+  WHEN I receive "battery collected":
+    set overdrive to 120
+    change score by 5
+    play sound "boost"
 
 SPRITE Hazard:
   SHAPE art neon-relay/vent
@@ -1015,7 +1051,7 @@ SPRITE Hazard:
     REPEAT UNTIL x position < -250:
       change x by (0 - speed)
       wait 0.02 seconds
-    change score by 1
+    broadcast "rooftop cleared"
     delete this clone
 
 SPRITE Battery:
@@ -1033,6 +1069,8 @@ SPRITE Battery:
       turn right 12 degrees
       change x by (0 - speed)
       wait 0.02 seconds
+    IF touching Runner THEN:
+      broadcast "battery collected"
     delete this clone`,
 
     twinwall: `# Rift Rally — a two-paddle crystal clear.
@@ -1050,7 +1088,6 @@ GLOBAL ly
 GLOBAL ry
 GLOBAL gx
 GLOBAL gy
-GLOBAL drift
 GLOBAL started
 
 STAGE:
@@ -1111,6 +1148,7 @@ SPRITE Comet:
   WHEN flag clicked:
     set score to 0
     set lives to 3
+    set bricks to 24
     set rally to 1
     set bx to 0
     set by to -120
@@ -1154,12 +1192,12 @@ SPRITE Comet:
       wait 0.015 seconds
 
 SPRITE Shifter:
+  LOCAL drift
   SHAPE art rift-rally/crystal
   SOUND break 1040
   WHEN flag clicked:
     hide
   WHEN I receive "serve rift":
-    set bricks to 24
     set gy to -90
     REPEAT 6:
       set gx to -60
@@ -1459,7 +1497,7 @@ SPRITE Diver:
   WHEN I start as a clone:
     show
     REPEAT UNTIL x position < -250 or touching Sub:
-      change ghost effect by 3
+      set ghost effect to pick random 0 to 12
       change x by (0 - scroll)
       wait 0.02 seconds
     IF touching Sub THEN:
@@ -1557,7 +1595,7 @@ SPRITE Ghost:
     REPEAT UNTIL touching Hunter or touching Orb:
       point towards Hunter
       move 1.8 steps
-      change ghost effect by 4
+      set ghost effect to pick random 0 to 25
       wait 0.03 seconds
     IF touching Orb THEN:
       change score by 1
@@ -1836,8 +1874,11 @@ SPRITE Ball:
         set bx to 0
         set by to 100
         set vy to 3
-      IF playerScore = 7 or cpuScore = 7 THEN:
-        say (("Final " join playerScore) join (" - " join cpuScore)) for 3 seconds
+      IF playerScore = 7 THEN:
+        say (("STORM COURT WON! FINAL " join playerScore) join (" - " join cpuScore)) for 3 seconds
+        stop all
+      IF cpuScore = 7 THEN:
+        say (("NIMBUS WINS — FINAL " join playerScore) join (" - " join cpuScore)) for 3 seconds
         stop all
       wait 0.02 seconds
 
@@ -2064,7 +2105,7 @@ SPRITE LockGate:
     hide
   WHEN I receive "start tidegate rush":
     FOREVER:
-      go to x: pick random -1 to 1 * 110 y: 210
+      go to x: (pick random -1 to 1) * 110 y: 210
       IF pick random 1 to 4 = 1 THEN:
         switch costume to buoy
       ELSE:
@@ -2098,7 +2139,7 @@ SPRITE SurgeLock:
   WHEN I receive "start tidegate rush":
     FOREVER:
       wait pick random 4 to 7 seconds
-      go to x: pick random -1 to 1 * 110 y: 210
+      go to x: (pick random -1 to 1) * 110 y: 210
       show
       REPEAT UNTIL y position < -190:
         change y by 0 - speed
@@ -4838,10 +4879,12 @@ const addRightPaneGreenFlagStart = source => {
     }
     const startBody = lines.slice(spaceHat + 1, endOfHandler);
     if (startBody.length === 0) return source;
+    const actionElse = startBody.findIndex(line => line === '    ELSE:');
+    const greenFlagStartBody = actionElse < 0 ? startBody : startBody.slice(0, actionElse);
 
     lines.splice(endOfHandler, 0,
         '  WHEN I receive "__brickwright_start_from_flag":',
-        ...startBody
+        ...greenFlagStartBody
     );
 
     const firstSprite = lines.findIndex(line => line.startsWith('SPRITE '));

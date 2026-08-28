@@ -200,7 +200,36 @@ export async function importArtefact (bytes, opts = {}) {
         }
     }
 
-    const res = await unpackMakeCodeSource(bytes, {decodePng});
+    // A plain AVR hex has no embedded source and never will — it is
+    // compiled C++. That is not a failed import, though: if we can RUN it,
+    // that is a better answer than "no MakeCode source found". The unpack
+    // is tried FIRST so a MakeCode hex is never mistaken for one, and this
+    // only ever answers the case where the unpack found nothing.
+    let res;
+    try {
+        res = await unpackMakeCodeSource(bytes, {decodePng});
+    } catch (noMakeCodeSource) {
+        if (format === 'hex') {
+            const text = new TextDecoder().decode(bytes);
+            const {looksLikeAvrHex} = await import(
+                /* webpackChunkName: "bw-arduboy" */ '../bw-arduboy/index.js');
+            if (looksLikeAvrHex(text)) {
+                return {
+                    kind: 'avr-hex',
+                    format,
+                    lang: 'avr',
+                    hex: text,
+                    unsupported: [],
+                    project: {
+                        target: 'arduboy',
+                        name: name.replace(/\.[^.]+$/, ''),
+                        version: ''
+                    }
+                };
+            }
+        }
+        throw noMakeCodeSource;
+    }
     const project = describeProject(res.meta);
     const files = res.files || {};
     const shaped = importProjectFiles(files, {
