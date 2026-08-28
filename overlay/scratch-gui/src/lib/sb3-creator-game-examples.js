@@ -5425,6 +5425,8 @@ GLOBAL perfect
 GLOBAL landingY
 GLOBAL dropReady
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art lumen-stack/intro
@@ -5436,9 +5438,23 @@ STAGE:
     hide variable misses
     hide variable level
     hide variable perfect
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set misses to 0
+      set level to 0
+      set blockX to -170
+      set towerX to 0
+      set blockWidth to 100
+      set sweep to 4
+      set sweepDir to 1
+      set perfect to 0
+      set landingY to -135
+      set dropReady to 0
+      set winner to 0
+      set active to 1
       switch backdrop to skyline
       broadcast "start lumen stack"
 
@@ -5459,6 +5475,8 @@ SPRITE CraneBlock:
     set perfect to 0
     set landingY to -135
     set dropReady to 0
+    set active to 0
+    set winner to 0
     go to x: blockX y: 120
     hide
   WHEN I receive "start lumen stack":
@@ -5469,7 +5487,7 @@ SPRITE CraneBlock:
     show
     wait 0.2 seconds
     set dropReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change blockX by sweep * sweepDir
       IF blockX > 190 THEN:
         set sweepDir to -1
@@ -5481,18 +5499,13 @@ SPRITE CraneBlock:
         switch costume to hot
       ELSE:
         switch costume to costume1
-      IF misses > 2 THEN:
-        say ("TOWER LOST AT FLOOR " join level) for 4 seconds
-        stop all
-      IF level = 12 THEN:
-        say ("TWELVE FLOORS COMPLETE — SCORE " join score) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and dropReady = 1 THEN:
+    IF active = 1 and dropReady = 1 THEN:
       broadcast "drop floor" and wait
   WHEN I receive "drop floor":
-    IF (abs of (blockX - towerX)) < blockWidth THEN:
+    IF active = 1 and (abs of (blockX - towerX)) < blockWidth THEN:
       IF (abs of (blockX - towerX)) < 8 THEN:
         change perfect by 1
         change score by 5 * perfect
@@ -5508,10 +5521,18 @@ SPRITE CraneBlock:
       broadcast "freeze floor"
       play sound "land"
       change sweep by 0.25
+      IF level = 12 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "lumen stack over"
     ELSE:
       change misses by 1
       set perfect to 0
       play sound "miss"
+      IF misses > 2 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "lumen stack over"
     set blockX to -190
 
 SPRITE FrozenFloor:
@@ -5532,6 +5553,23 @@ SPRITE Foundation:
     go to x: 0 y: -145
     hide
   WHEN I receive "start lumen stack":
+    show
+  WHEN I receive "lumen stack over":
+    hide
+
+SPRITE LumenResult:
+  COSTUME win label "TWELVE FLOORS COMPLETE • GREEN FLAG TO BUILD AGAIN" #ffe66d
+  COSTUME lose label "THREE MISSES • GREEN FLAG TO REBUILD" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start lumen stack":
+    hide
+  WHEN I receive "lumen stack over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     shard_sheriff: `# Plasma Posse — a four-wave split-orb arena.

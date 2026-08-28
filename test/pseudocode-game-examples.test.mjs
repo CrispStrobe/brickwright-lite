@@ -1292,7 +1292,9 @@ test('Lumen Stack has a twelve-floor target and overlap-based permanent narrowin
     assert.match(games.prism_spire, /GOAL: build twelve floors before three complete misses/);
     assert.match(games.prism_spire, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/);
     assert.match(games.prism_spire, /IF level = 12 THEN:/);
-    assert.match(games.prism_spire, /IF started = 1 and dropReady = 1 THEN:/);
+    assert.match(games.prism_spire, /IF active = 1 and dropReady = 1 THEN:/);
+    assert.match(games.prism_spire, /broadcast "lumen stack over"/);
+    assert.match(games.prism_spire, /TWELVE FLOORS COMPLETE • GREEN FLAG TO BUILD AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'skyline']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2219,6 +2221,17 @@ test('precision drop and single-lance controls work in the live Scratch VM', asy
         stack.postIOData('keyboard', {key: ' ', isDown: false});
         assert.equal(Number(value(stack, 'level').value), 1, 'Space did not place a centred floor');
         assert.equal(Number(value(stack, 'perfect').value), 1, 'centred floor did not build perfect combo');
+        value(stack, 'level').value = 11;
+        value(stack, 'blockX').value = Number(value(stack, 'towerX').value);
+        const crane = stack.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'CraneBlock');
+        stack.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'drop floor'}, crane);
+        for (let i = 0; i < 35; i++) stack.runtime._step();
+        assert.equal(Number(value(stack, 'level').value), 12, 'the twelfth floor was not placed');
+        assert.equal(Number(value(stack, 'winner').value), 1, 'twelve floors did not complete the tower');
+        assert.equal(Number(value(stack, 'active').value), 0, 'the completed tower remained active');
+        const result = stack.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'LumenResult');
+        assert.equal(result.visible, true, 'the tower result was not shown on the stage');
     } finally { stack.quit(); clearStrayTimers(); }
 
     const posse = await load(games.shard_sheriff);
@@ -2474,7 +2487,9 @@ test('each new game keeps its signature playable mechanic', () => {
         rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/,
             /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/,
             /broadcast "crosswind delivered"/, /broadcast "crosswind over"/],
-        prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /IF level = 12/],
+        prism_spire: [/IF active = 1 and \(abs of \(blockX - towerX\)\) < blockWidth/,
+            /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/,
+            /IF level = 12/, /broadcast "lumen stack over"/],
         shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /set orbActive to 0/, /change waves by 1/],
         halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/, /IF round = 3/],
         corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/, /change gates by 1/],
