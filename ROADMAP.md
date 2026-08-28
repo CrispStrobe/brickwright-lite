@@ -37,19 +37,30 @@ backing store stays 480px wide throughout, and clicking the strip restores 28px 
 
 Retired `pane-column.jsx` from the ratchet in the same commit (§4).
 
-### 1.2 Properties rail reserves width globally — OPEN
-The rail reserves 15rem (11rem narrow). The number that matters is downstream of that: **opening
-the rail raises the editor column's `min-content` to 776px**, and because the tabs render with
-`forceRenderTabPanel` every panel stays mounted once visited, so that floor **persists on the
-blocks tab and everywhere else**. A flex item cannot shrink below its min-content whatever its
-flex-basis says, so this caps the pane divider at ~90px of travel and constrains the whole row.
+### 1.2 Properties rail reserves width globally — NOT REPRODUCIBLE (measured 2026-08-28)
+Measured before touching anything, which is the only reason the CSS was not rewritten for nothing.
+`npm run probe:layout -- --report`, editor column `min-content`:
 
-Options: overlay the rail instead of reserving for it, or move sections into a flyout. Measure
-again after either — `npm run probe:layout -- --report`.
+| when | min-content |
+| --- | --- |
+| blocks tab, before the costume tab is ever opened | 250px |
+| costume tab, rail **closed** | 776px |
+| costume tab, rail **open** | 776px |
+| back on the blocks tab | 250px |
 
-This is also a trap for anyone testing layout: run drag measurements **before** the costume tab is
-ever opened, or they measure the rail's floor and it looks exactly like a flex-grow dilution bug.
-`scripts/probe-layout.mjs` enforces the ordering and says why.
+Both halves of the original claim are wrong. **The rail costs nothing** — 776px is identical open
+and shut, so it is what the paint editor's own controls need, not what the rail reserves. And the
+floor **does not persist**: an unselected tab panel is `display: none` (`gui.css` `.tab-panel`),
+and a `display: none` subtree contributes no min-content at all. `forceRenderTabPanel` keeps panels
+MOUNTED, which is not the same as keeping them LAID OUT — that conflation is where the claim came
+from.
+
+So the proposed fixes (overlay the rail, or move sections into a flyout) would have solved nothing.
+`.rail` is already `position: absolute`; only `.rail-spacer` is in flow, and it is inside the paint
+editor's own 776px either way.
+
+Nothing to do. The numbers are printed by `--report` rather than asserted, because 776px is a
+property of today's paint toolbar and a threshold would just freeze it.
 
 ### 1.3 Grey band at the robot's feet — RESOLVED (155fc7f + 333fae8)
 Was not a viewport bug: paper's view measured 521x606 against a 521x606 element at dpr 1, an exact
