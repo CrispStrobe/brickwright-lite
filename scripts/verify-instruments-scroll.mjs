@@ -17,9 +17,18 @@ const server = createServer(async (req, res) => {
         if (path.endsWith('/')) path += 'index.html';
         const file = join(build, normalize(path));
         if (!file.startsWith(build)) throw new Error('escape');
+        // Read BEFORE the head goes out. Writing 200 and then failing to
+        // read leaves the catch unable to send a 404 — writeHead throws
+        // once headers are sent, and that throw escapes the handler and
+        // kills the gate. A missing asset is one 404 line, not a crash.
+        const body = await readFile(file);
         res.writeHead(200, {'content-type': types[extname(file)] || 'application/octet-stream'});
-        res.end(await readFile(file));
-    } catch { res.writeHead(404); res.end('not found'); }
+        res.end(body);
+    } catch {
+        console.log(`404 ${req.url}`);
+        if (!res.headersSent) res.writeHead(404);
+        res.end('not found');
+    }
 });
 await new Promise(done => server.listen(8099, done));
 
