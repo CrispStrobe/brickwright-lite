@@ -13,6 +13,8 @@ const central = readFileSync(path.join(root, 'overlay/scratch-vm/src/dispatch/ce
 const shared = readFileSync(path.join(root, 'packages/scratch-vm/src/dispatch/shared-dispatch.js'), 'utf8');
 const picker = readFileSync(path.join(root, 'overlay/scratch-gui/src/containers/extension-library.jsx'), 'utf8');
 const urlLoader = readFileSync(path.join(root, 'overlay/scratch-gui/src/lib/url-extensions.js'), 'utf8');
+const guiWebpack = readFileSync(path.join(root, 'overlay/scratch-gui/webpack.config.js'), 'utf8');
+const applyVmOverlay = readFileSync(path.join(root, 'scripts/apply-vm-overlay.mjs'), 'utf8');
 
 test('only a content-pinned remote URL reaches the in-process adapter', () => {
     assert.match(manager,
@@ -38,6 +40,16 @@ test('the worker API contains compatibility helpers but no page or native bridge
     assert.match(worker, /unsandboxed: false/);
     assert.doesNotMatch(worker,
         /__TAURI__|__TAURI_INTERNALS__|global\.(?:window|document)|Scratch\.(?:vm|runtime|renderer)/);
+});
+
+test('the shipped worker bundle is rebuilt from the overlaid sandbox source', () => {
+    assert.match(guiWebpack, /node_modules\/scratch-vm\/dist\/web/);
+    assert.match(guiWebpack, /extension-worker\.\{js,js\.map\}/);
+    assert.match(applyVmOverlay,
+        /entry: path\.join\(DEST, 'src', 'extension-support', 'extension-worker\.js'\)/);
+    assert.match(applyVmOverlay, /target: 'webworker'/);
+    assert.match(applyVmOverlay, /filename: 'extension-worker\.js'/);
+    assert.match(applyVmOverlay, /Brickwright sandboxed extension worker/);
 });
 
 test('forged worker dispatch calls cannot reach arbitrary main-thread services', () => {

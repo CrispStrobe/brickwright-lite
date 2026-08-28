@@ -8,6 +8,7 @@
 // scratch-gui/node_modules; we then overlay our src changes in place. overlay/scratch-vm/ is the
 // editable source of truth — edit there and rebuild.
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const ROOT = process.cwd();
@@ -275,6 +276,43 @@ if (vm2.includes('setStc (stc)')) {
 // en + de. Extract those two at build-prep time so webpack aliases to a 81 KiB file instead.
 // This runs here (post-install) because node_modules/scratch-l10n is needed.
 const GUI = path.join(ROOT, 'packages', 'scratch-gui');
+
+// scratch-gui's webpack config copies extension-worker.js from scratch-vm's prebuilt dist tree.
+// Rebuild that one entry after applying our source overlay; otherwise the main VM contains our
+// broker while the shipped worker silently remains the upstream package's old implementation.
+// Use the GUI's installed webpack rather than adding another root dependency.
+const guiRequire = createRequire(path.join(GUI, 'package.json'));
+const webpack = guiRequire('webpack');
+const workerOutputDir = path.join(DEST, 'dist', 'web');
+await new Promise((resolve, reject) => {
+    webpack({
+        mode: 'production',
+        target: 'webworker',
+        devtool: false,
+        entry: path.join(DEST, 'src', 'extension-support', 'extension-worker.js'),
+        output: {
+            path: workerOutputDir,
+            filename: 'extension-worker.js'
+        },
+        plugins: [new webpack.BannerPlugin('Brickwright sandboxed extension worker')]
+    }, (error, stats) => {
+        if (error) {
+            reject(error);
+            return;
+        }
+        if (stats.hasErrors()) {
+            reject(new Error(stats.toString({all: false, errors: true, errorDetails: true})));
+            return;
+        }
+        resolve();
+    });
+});
+const workerBundle = readFileSync(path.join(workerOutputDir, 'extension-worker.js'), 'utf8');
+if (!workerBundle.includes('Brickwright sandboxed extension worker')) {
+    throw new Error('built extension-worker.js is missing the Brickwright sandbox marker');
+}
+console.log('  rebuilt dist/web/extension-worker.js from the overlaid sandbox source');
+
 const editorMsgsPath = path.join(GUI, 'node_modules', 'scratch-l10n', 'locales', 'editor-msgs.js');
 if (existsSync(editorMsgsPath)) {
     const src = readFileSync(editorMsgsPath, 'utf8');
