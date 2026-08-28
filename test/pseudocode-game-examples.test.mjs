@@ -1025,7 +1025,11 @@ test('Ember Parry makes its short timing window and finite duel explicit', () =>
     assert.match(games.ember_dojo, /GOAL: reflect eight fireballs into the dragon/);
     assert.match(games.ember_dojo, /CONTROLS: Left\/Right line up with each shot/);
     assert.match(games.ember_dojo, /wait 0\.18 seconds/);
-    assert.match(games.ember_dojo, /IF touching Ronin THEN:\n      IF parrying = 1 THEN:/);
+    assert.match(games.ember_dojo, /IF touching Ronin and active = 1 THEN:\n      IF parrying = 1 THEN:/);
+    assert.match(games.ember_dojo, /broadcast "ember reflected"/);
+    assert.match(games.ember_dojo, /broadcast "ember struck"/);
+    assert.match(games.ember_dojo, /broadcast "ember duel over"/);
+    assert.match(games.ember_dojo, /EIGHT PERFECT RETURNS • GREEN FLAG FOR A REMATCH/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'dojo']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1839,6 +1843,28 @@ test('parry timing and hydrofoil lane-boost controls work in the live Scratch VM
         for (let i = 0; i < 3; i++) ember.runtime._step();
         assert.equal(Number(value(ember, 'parrying').value), 1, 'Space did not open the parry window');
         ember.postIOData('keyboard', {key: ' ', isDown: false});
+        value(ember, 'dragonHP').value = 1;
+        value(ember, 'streak').value = 7;
+        const ronin = ember.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Ronin');
+        ember.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'ember reflected'}, ronin);
+        for (let i = 0; i < 35; i++) ember.runtime._step();
+        assert.equal(Number(value(ember, 'dragonHP').value), 0, 'the eighth reflection was not counted');
+        assert.equal(Number(value(ember, 'streak').value), 8, 'the perfect-return streak did not finish');
+        assert.equal(Number(value(ember, 'winner').value), 1, 'eight reflections did not defeat the dragon');
+        assert.equal(Number(value(ember, 'active').value), 0, 'the won duel remained active');
+        assert.equal(Number(value(ember, 'started').value), 1,
+            'the held Parry key could immediately erase the duel result');
+        const result = ember.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'EmberResult');
+        assert.equal(result.visible, true, 'the duel result was not shown on the stage');
+        ember.greenFlag();
+        for (let i = 0; i < 20; i++) ember.runtime._step();
+        ember.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) ember.runtime._step();
+        ember.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.equal(Number(value(ember, 'active').value), 1, 'green flag plus Parry did not start a rematch');
+        assert.equal(Number(value(ember, 'dragonHP').value), 8, 'the rematch kept damage from the won duel');
+        assert.equal(result.visible, false, 'the old result remained over the rematch');
     } finally {
         ember.quit();
         clearStrayTimers();
@@ -2350,7 +2376,8 @@ test('each new game keeps its signature playable mechanic', () => {
             /distance to Tunnel > 80/, /broadcast "pantry over"/],
         cloud_court: [/set rally to 1/, /touching Net/, /set bx to 226/, /abs of \(bx - px\)/,
             /SPRITE CloudBot/, /broadcast "nimbus match over"/],
-        ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/, /change dragonHP by -1/],
+        ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/,
+            /broadcast "ember reflected"/, /change dragonHP by -1/, /broadcast "ember duel over"/],
         lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /change gates by 1/, /change score by 15/],
         rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/,
             /x position > 235/, /broadcast "blue line miss"/, /broadcast "blue line goal"/,

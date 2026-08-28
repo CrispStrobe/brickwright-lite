@@ -3466,6 +3466,8 @@ GLOBAL parrying
 GLOBAL fireSpeed
 GLOBAL streak
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art ember-parry/intro
@@ -3476,9 +3478,18 @@ STAGE:
     hide variable hearts
     hide variable dragonHP
     hide variable streak
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set hearts to 3
+      set dragonHP to 8
+      set streak to 0
+      set heroX to -120
+      set parrying to 0
+      set fireSpeed to 5
+      set winner to 0
+      set active to 1
       switch backdrop to dojo
       broadcast "start ember parry"
 
@@ -3491,6 +3502,8 @@ SPRITE Ronin:
     set heroX to -120
     set parrying to 0
     set fireSpeed to 5
+    set active to 0
+    set winner to 0
     go to x: heroX y: -125
     hide
   WHEN I receive "start ember parry":
@@ -3498,7 +3511,7 @@ SPRITE Ronin:
     show variable dragonHP
     show variable streak
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change heroX by -7
       IF key right arrow pressed? THEN:
@@ -3510,19 +3523,30 @@ SPRITE Ronin:
       go to x: heroX y: -125
       IF dragonHP < 5 THEN:
         set fireSpeed to 7
-      IF dragonHP < 1 THEN:
-        say "EIGHT PERFECT RETURNS — THE DRAGON YIELDS!" for 4 seconds
-        stop all
-      IF hearts < 1 THEN:
-        say "THREE EMBERS LANDED — TRY THE RHYTHM AGAIN." for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and parrying = 0 THEN:
+    IF active = 1 and parrying = 0 THEN:
       set parrying to 1
       broadcast "moon parry"
       wait 0.18 seconds
       set parrying to 0
+  WHEN I receive "ember reflected":
+    IF active = 1 THEN:
+      change dragonHP by -1
+      change streak by 1
+      IF dragonHP < 1 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "ember duel over"
+  WHEN I receive "ember struck":
+    IF active = 1 THEN:
+      change hearts by -1
+      set streak to 0
+      IF hearts < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "ember duel over"
 
 SPRITE Blade:
   SHAPE art ember-parry/blade
@@ -3533,6 +3557,8 @@ SPRITE Blade:
     show
     wait 0.18 seconds
     hide
+  WHEN I receive "ember duel over":
+    hide
 
 SPRITE Dragon:
   SHAPE art ember-parry/dragon
@@ -3541,13 +3567,15 @@ SPRITE Dragon:
     hide
   WHEN I receive "start ember parry":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       glide 0.7 secs to x: pick random -175 to 175 y: pick random 65 to 125
-      broadcast "dragon fire"
-      IF dragonHP < 5 THEN:
-        wait 0.45 seconds
-      ELSE:
-        wait 0.8 seconds
+      IF active = 1 THEN:
+        broadcast "dragon fire"
+        IF dragonHP < 5 THEN:
+          wait 0.45 seconds
+        ELSE:
+          wait 0.8 seconds
+    hide
 
 SPRITE Fireball:
   SHAPE art ember-parry/fireball
@@ -3556,25 +3584,39 @@ SPRITE Fireball:
   WHEN flag clicked:
     hide
   WHEN I receive "dragon fire":
-    go to Dragon
-    point towards Ronin
-    create clone of myself
+    IF active = 1 THEN:
+      go to Dragon
+      point towards Ronin
+      create clone of myself
   WHEN I start as a clone:
     show
-    REPEAT UNTIL touching Ronin or touching edge:
+    REPEAT UNTIL touching Ronin or touching edge or active = 0:
       move fireSpeed steps
       wait 0.02 seconds
-    IF touching Ronin THEN:
+    IF touching Ronin and active = 1 THEN:
       IF parrying = 1 THEN:
-        change dragonHP by -1
-        change streak by 1
+        broadcast "ember reflected"
         play sound "clash"
         say "REFLECT!" for 0.25 seconds
       ELSE:
-        change hearts by -1
-        set streak to 0
+        broadcast "ember struck"
         play sound "hit"
-    delete this clone`,
+    delete this clone
+
+SPRITE EmberResult:
+  COSTUME win label "EIGHT PERFECT RETURNS • GREEN FLAG FOR A REMATCH" #ffe66d
+  COSTUME lose label "THREE EMBERS LANDED • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start ember parry":
+    hide
+  WHEN I receive "ember duel over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     lockstep_lagoon: `# Tidegate Rush — a finite three-lane hydrofoil sprint.
 # GOAL: clear eight blue gates before the 35-second tide closes; three buoy hits sink you.
