@@ -1335,7 +1335,10 @@ test('Halo Lockdown turns circular defense into a legible three-round lock hunt'
     assert.match(games.halo_foundry, /IF round = 3 THEN:/);
     assert.match(games.halo_foundry, /set shieldX to sin of shieldAngle \* 205/);
     assert.match(games.halo_foundry, /set shieldY to cos of shieldAngle \* 150/);
-    assert.match(games.halo_foundry, /IF touching edge THEN:\n        change lives by -1/);
+    assert.match(games.halo_foundry, /IF touching edge THEN:\n        broadcast "halo escape"/);
+    assert.match(games.halo_foundry, /broadcast "halo lock broken"/);
+    assert.match(games.halo_foundry, /broadcast "halo lockdown over"/);
+    assert.match(games.halo_foundry, /THREE REACTOR RINGS CLEARED • GREEN FLAG TO DEFEND AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'reactor']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2288,6 +2291,17 @@ test('orbital shield and inertial drone controls work in the live Scratch VM', a
         assert.notEqual(Number(value(halo, 'shieldX').value), beforeX, 'shield did not follow its ellipse');
         assert.equal(Number(value(halo, 'locks').value), 4, 'ring began with the wrong lock count');
         assert.equal(Number(value(halo, 'round').value), 1, 'ring began in the wrong round');
+        value(halo, 'round').value = 3;
+        value(halo, 'locks').value = 1;
+        const shield = halo.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'HaloShield');
+        halo.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'halo lock broken'}, shield);
+        for (let i = 0; i < 35; i++) halo.runtime._step();
+        assert.equal(Number(value(halo, 'locks').value), 0, 'the final reactor lock was not removed');
+        assert.equal(Number(value(halo, 'winner').value), 1, 'the third cleared ring did not win');
+        assert.equal(Number(value(halo, 'active').value), 0, 'the cleared reactor remained active');
+        const result = halo.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'HaloResult');
+        assert.equal(result.visible, true, 'the reactor result was not shown on the stage');
     } finally { halo.quit(); clearStrayTimers(); }
 
     const kestrel = await load(games.corridor_kestrel);
@@ -2508,7 +2522,9 @@ test('each new game keeps its signature playable mechanic', () => {
         shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/,
             /set orbActive to 0/, /set orbActive to -1/, /broadcast "plasma wave cleared"/,
             /change waves by 1/, /broadcast "plasma posse over"/],
-        halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/, /IF round = 3/],
+        halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/,
+            /broadcast "halo lock broken"/, /change locks by -1/, /broadcast "restore locks"/,
+            /IF round = 3/, /broadcast "halo lockdown over"/],
         corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/, /change gates by 1/],
         thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/, /change rivalPoints by 1/, /touching ThunderNet/],
         cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/, /delete falls of colA/, /change score by 40 \* combo/],

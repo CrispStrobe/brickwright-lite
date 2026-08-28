@@ -5817,6 +5817,8 @@ GLOBAL shieldY
 GLOBAL coreSpeed
 GLOBAL locks
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art halo-lockdown/intro
@@ -5828,9 +5830,18 @@ STAGE:
     hide variable lives
     hide variable round
     hide variable locks
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set lives to 3
+      set round to 1
+      set locks to 4
+      set shieldAngle to 0
+      set coreSpeed to 5
+      set winner to 0
+      set active to 1
       switch backdrop to reactor
       broadcast "start halo lockdown"
 
@@ -5843,6 +5854,8 @@ SPRITE HaloShield:
     set locks to 4
     set shieldAngle to 0
     set coreSpeed to 5
+    set active to 0
+    set winner to 0
     hide
   WHEN I receive "start halo lockdown":
     show variable score
@@ -5850,7 +5863,7 @@ SPRITE HaloShield:
     show variable round
     show variable locks
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change shieldAngle by -4
       IF key right arrow pressed? THEN:
@@ -5859,19 +5872,29 @@ SPRITE HaloShield:
       set shieldY to cos of shieldAngle * 150
       go to x: shieldX y: shieldY
       point in direction shieldAngle
+      wait 0.02 seconds
+    hide
+  WHEN I receive "halo lock broken":
+    IF active = 1 THEN:
+      change locks by -1
+      change score by round * 4
       IF locks < 1 THEN:
         IF round = 3 THEN:
-          say ("THREE RINGS CLEARED — SCORE " join score) for 4 seconds
-          stop all
+          set winner to 1
+          set active to 0
+          broadcast "halo lockdown over"
         ELSE:
           change round by 1
           change coreSpeed by 0.8
           set locks to 4
           broadcast "restore locks"
+  WHEN I receive "halo escape":
+    IF active = 1 THEN:
+      change lives by -1
       IF lives < 1 THEN:
-        say ("LOCKDOWN FAILED — SCORE " join score) for 3 seconds
-        stop all
-      wait 0.02 seconds
+        set winner to 0
+        set active to 0
+        broadcast "halo lockdown over"
 
 SPRITE Core:
   SHAPE art halo-lockdown/core
@@ -5883,7 +5906,7 @@ SPRITE Core:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       move coreSpeed steps
       IF touching HaloShield THEN:
         point towards Reactor
@@ -5891,12 +5914,13 @@ SPRITE Core:
         move 12 steps
         play sound "rebound"
       IF touching edge THEN:
-        change lives by -1
+        broadcast "halo escape"
         play sound "escape"
         go to x: 0 y: 0
         point in direction pick random 20 to 160
         wait 0.6 seconds
       wait 0.02 seconds
+    hide
 
 SPRITE LockNorth:
   SHAPE art halo-lockdown/lock-north
@@ -5905,14 +5929,16 @@ SPRITE LockNorth:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Core THEN:
         hide
-        change locks by -1
-        change score by round * 4
-        wait until locks = 4
-        show
+        broadcast "halo lock broken"
+        REPEAT UNTIL locks = 4 or active = 0:
+          wait 0.03 seconds
+        IF active = 1 THEN:
+          show
       wait 0.03 seconds
+    hide
   WHEN I receive "restore locks":
     show
 
@@ -5923,14 +5949,16 @@ SPRITE LockSouth:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Core THEN:
         hide
-        change locks by -1
-        change score by round * 4
-        wait until locks = 4
-        show
+        broadcast "halo lock broken"
+        REPEAT UNTIL locks = 4 or active = 0:
+          wait 0.03 seconds
+        IF active = 1 THEN:
+          show
       wait 0.03 seconds
+    hide
   WHEN I receive "restore locks":
     show
 
@@ -5941,14 +5969,16 @@ SPRITE LockEast:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Core THEN:
         hide
-        change locks by -1
-        change score by round * 4
-        wait until locks = 4
-        show
+        broadcast "halo lock broken"
+        REPEAT UNTIL locks = 4 or active = 0:
+          wait 0.03 seconds
+        IF active = 1 THEN:
+          show
       wait 0.03 seconds
+    hide
   WHEN I receive "restore locks":
     show
 
@@ -5959,14 +5989,16 @@ SPRITE LockWest:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Core THEN:
         hide
-        change locks by -1
-        change score by round * 4
-        wait until locks = 4
-        show
+        broadcast "halo lock broken"
+        REPEAT UNTIL locks = 4 or active = 0:
+          wait 0.03 seconds
+        IF active = 1 THEN:
+          show
       wait 0.03 seconds
+    hide
   WHEN I receive "restore locks":
     show
 
@@ -5976,6 +6008,23 @@ SPRITE Reactor:
     go to x: 0 y: 0
     hide
   WHEN I receive "start halo lockdown":
+    show
+  WHEN I receive "halo lockdown over":
+    hide
+
+SPRITE HaloResult:
+  COSTUME win label "THREE REACTOR RINGS CLEARED • GREEN FLAG TO DEFEND AGAIN" #ffe66d
+  COSTUME lose label "THREE CORE ESCAPES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start halo lockdown":
+    hide
+  WHEN I receive "halo lockdown over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     corridor_kestrel: `# Carrier Kestrel — an inertial drone run through fifteen moving apertures.
