@@ -150,13 +150,62 @@ an emulated MCU's pins into a drawn circuit is possible on that contract
 — the Arduboy adapter already speaks it — but nothing does it yet, and
 saying otherwise would be describing a plan as a feature.
 
+## How a device drives pins — there are two paths, and which one a board
+## gets is not a choice
+
+Worth stating because "add pins to the PyBadge" sounds like one job and is
+two different ones depending on the board.
+
+**Path 1 — the emulator adapter.** A binary runs on an emulated core and
+the adapter calls `board.setPin` per pad edge. This is how the STC12,
+Arduino, Pico and STM32 reach a circuit, and it is why they need no pin
+blocks at all: the *firmware* moves the pins. `emu8051-adapter.js`,
+`avr8js-adapter.js`, `rp2040js-adapter.js` and `stm32-adapter.js` all
+speak the same boundary A.
+
+**Path 2 — extension blocks.** No binary is involved; a block calls
+`board.setPin` directly. This is the micro:bit and Calliope path, added
+2026-08-28, and it exists because their code runs as MicroPython in a
+separate simulator rather than as a binary on a core the board can watch.
+
+A board gets whichever path its execution model gives it. That decides
+the PyBadge:
+
+- Path 1 needs a **SAMD51 instruction emulator**, which does not exist.
+- Path 2 needs pin blocks, and the `arcade` extension has none — it is a
+  game API (sprites, score, buttons, NeoPixels), not a GPIO vocabulary.
+
+So "a PyBadge with pins you can wire" is blocked on the emulator, not on
+plumbing.
+
+## labwired will not shortcut SAMD51, and it looks like it should
+
+labwired is the heavy tier for cores beyond Cortex-M0 — the obvious home
+for a SAMD51's M4 — and it takes a **chip YAML**, which makes a new part
+look like the data-file job the ATmega32U4 was for avr8js.
+
+It is not. Every peripheral type labwired offers is STM32-specific:
+
+```
+stm32_crc  stm32_gpioport  stm32_timer  stm32f0_adc  stm32f4_rtc
+stm32f7_i2c  stm32f7_usart  stm32spi  stmcan       (+ pythonperipheral)
+```
+
+A SAMD51 has PORT, SERCOM and TC/TCC, and none of them can be expressed
+in those. Writing `samd51.yaml` would produce a chip whose pads never
+move — the same silent failure the STM32F0 hit when its GPIO ports were
+given the F1 register map, where the firmware runs, the UART talks, and
+every pad reads low for ever. So SAMD51 is **upstream work in labwired**,
+in Rust, not a descriptor here. `pythonperipheral` is the only escape
+hatch and whether the wasm build carries it is unverified.
+
 ## What is missing, said plainly
 
 - **Calliope has no circuit part.** `microbit.json` exists;
   `calliope.json` does not. Same shape of work: terminals plus a
   footprint.
-- **SAMD51 has no circuit part either**, though `stm32f030` and
-  `pi_pico` do.
+- **SAMD51 has no circuit part and no emulator**, and the second is the
+  one that matters — see the two sections above.
 - **No emulated MCU drives a drawn circuit yet.** The contract is there
   (`board.setPin` / `board.readPin`) and both halves exist separately;
   nothing joins them.
