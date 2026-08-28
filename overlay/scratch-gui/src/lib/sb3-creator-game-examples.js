@@ -524,6 +524,232 @@ SPRITE Result:
     show
 `,
 
+    vector_seven: `# Vector Seven — a finite neon paddle match with an adaptive rival.
+# GOAL: score 7 points before the rival. Every fourth return becomes a charged
+# return: it leaves a bright trail, accelerates the ball, and is worth 2 points.
+# CONTROLS: drag or tap across the stage to move and serve; Left/Right also move;
+# Space serves on desktop. Strike with different parts of the paddle to aim.
+GLOBAL started
+GLOBAL playing
+GLOBAL serve
+GLOBAL playerScore
+GLOBAL rivalScore
+GLOBAL playerX
+GLOBAL rivalX
+GLOBAL ballX
+GLOBAL ballY
+GLOBAL ballVX
+GLOBAL ballVY
+GLOBAL rally
+GLOBAL charged
+GLOBAL hitOffset
+GLOBAL winner
+
+STAGE:
+  BACKDROP intro art vector-seven/intro
+  BACKDROP court art vector-seven/play
+  WHEN flag clicked:
+    set started to 0
+    set playing to 0
+    set serve to 0
+    switch backdrop to intro
+    hide variable playerScore
+    hide variable rivalScore
+    hide variable rally
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to court
+      broadcast "begin vector match"
+    ELSE:
+      IF serve = 1 THEN:
+        broadcast "launch vector"
+
+SPRITE Player:
+  SHAPE art vector-seven/player
+  WHEN flag clicked:
+    set playerX to 0
+    go to x: playerX y: -143
+    hide
+    FOREVER:
+      IF playing = 1 THEN:
+        IF key left arrow pressed? THEN:
+          change playerX by -9
+        IF key right arrow pressed? THEN:
+          change playerX by 9
+        IF mouse down? THEN:
+          set playerX to mouse x
+          IF serve = 1 THEN:
+            broadcast "launch vector"
+        IF playerX < -184 THEN:
+          set playerX to -184
+        IF playerX > 184 THEN:
+          set playerX to 184
+        go to x: playerX y: -143
+      wait 0.02 seconds
+  WHEN I receive "begin vector match":
+    set playerScore to 0
+    set rivalScore to 0
+    set playerX to 0
+    set winner to 0
+    set playing to 1
+    show variable playerScore
+    show variable rivalScore
+    show variable rally
+    show
+    broadcast "prepare vector serve"
+  WHEN I receive "vector match over":
+    hide
+
+SPRITE Rival:
+  SHAPE art vector-seven/rival
+  WHEN flag clicked:
+    set rivalX to 0
+    go to x: rivalX y: 143
+    hide
+    FOREVER:
+      IF playing = 1 THEN:
+        IF ballY > -20 and serve = 0 THEN:
+          IF ballX > rivalX + 10 THEN:
+            change rivalX by 3 + (playerScore / 2)
+          IF ballX < rivalX - 10 THEN:
+            change rivalX by -3 - (playerScore / 2)
+        ELSE:
+          IF rivalX > 4 THEN:
+            change rivalX by -2
+          IF rivalX < -4 THEN:
+            change rivalX by 2
+        IF rivalX < -184 THEN:
+          set rivalX to -184
+        IF rivalX > 184 THEN:
+          set rivalX to 184
+        go to x: rivalX y: 143
+      wait 0.02 seconds
+  WHEN I receive "begin vector match":
+    show
+  WHEN I receive "vector match over":
+    hide
+
+SPRITE Pulse:
+  SHAPE art vector-seven/pulse
+  COSTUME charged art vector-seven/charged
+  SOUND strike 720
+  SOUND charge 1080
+  SOUND point 480
+
+  DEFINE FAST draw pulse:
+    go to x: ballX y: ballY
+
+  DEFINE prepare next serve:
+    set serve to 1
+    set rally to 0
+    set charged to 0
+    switch costume to costume1
+    set ballX to playerX
+    set ballY to -121
+    set ballVX to 0
+    set ballVY to 0
+    draw pulse
+    say "TAP TO SERVE" for 0.6 seconds
+
+  DEFINE award point to (side):
+    IF side = 1 THEN:
+      IF charged = 1 THEN:
+        change playerScore by 2
+      ELSE:
+        change playerScore by 1
+      IF playerScore > 7 THEN:
+        set playerScore to 7
+    ELSE:
+      change rivalScore by 1
+    play sound "point"
+    IF playerScore = 7 THEN:
+      set winner to 1
+      set playing to 0
+      set started to 0
+      broadcast "vector match over"
+    ELSE:
+      IF rivalScore = 7 THEN:
+        set winner to 2
+        set playing to 0
+        set started to 0
+        broadcast "vector match over"
+      ELSE:
+        prepare next serve
+
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      IF playing = 1 THEN:
+        IF serve = 1 THEN:
+          set ballX to playerX
+          set ballY to -121
+          draw pulse
+        ELSE:
+          change ballX by ballVX
+          change ballY by ballVY
+          IF ballX > 228 THEN:
+            set ballX to 228
+            set ballVX to 0 - (abs of ballVX)
+          IF ballX < -228 THEN:
+            set ballX to -228
+            set ballVX to abs of ballVX
+          IF ballVY < 0 and ballY < -125 and ballY > -157 and abs of (ballX - playerX) < 57 THEN:
+            set ballY to -124
+            set hitOffset to (ballX - playerX) / 11
+            set ballVX to hitOffset
+            set ballVY to (abs of ballVY) + 0.18
+            change rally by 1
+            play sound "strike"
+            IF (rally mod 4) = 0 THEN:
+              set charged to 1
+              switch costume to charged
+              set ballVY to ballVY * 1.25
+              play sound "charge"
+            ELSE:
+              set charged to 0
+              switch costume to costume1
+          IF ballVY > 0 and ballY > 125 and ballY < 157 and abs of (ballX - rivalX) < 52 THEN:
+            set ballY to 124
+            set ballVX to ((ballX - rivalX) / 13) + (pick random -1 to 1)
+            set ballVY to 0 - ((abs of ballVY) + 0.12)
+            play sound "strike"
+          IF ballY > 178 THEN:
+            award point to 1
+          IF ballY < -178 THEN:
+            award point to 2
+          draw pulse
+      wait 0.02 seconds
+  WHEN I receive "begin vector match":
+    show
+  WHEN I receive "prepare vector serve":
+    prepare next serve
+  WHEN I receive "launch vector":
+    IF playing = 1 and serve = 1 THEN:
+      set serve to 0
+      set ballVX to pick random -4 to 4
+      IF abs of ballVX < 2 THEN:
+        set ballVX to 2
+      set ballVY to 5.5
+  WHEN I receive "vector match over":
+    hide
+
+SPRITE Result:
+  COSTUME win label "YOU REACHED SEVEN • TAP GREEN FLAG FOR A REMATCH" #8fffea
+  COSTUME lose label "RIVAL REACHED SEVEN • TAP GREEN FLAG FOR A REMATCH" #ff8ea6
+  WHEN flag clicked:
+    hide
+    go to x: 0 y: 0
+  WHEN I receive "begin vector match":
+    hide
+  WHEN I receive "vector match over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show
+`,
+
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: complete twelve clean hill launches before three crashes. Diving into a
 # green crest converts speed into height; consecutive launches grow the score combo.
