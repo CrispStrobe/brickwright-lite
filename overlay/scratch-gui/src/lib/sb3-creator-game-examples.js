@@ -3787,6 +3787,8 @@ GLOBAL ballVY
 GLOBAL flying
 GLOBAL hoopX
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art orbit-hoops/intro
@@ -3798,6 +3800,7 @@ STAGE:
     hide variable streak
     hide variable charge
     hide variable timeLeft
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -3816,16 +3819,28 @@ SPRITE Ball:
     set flying to 0
     set ballX to -150
     set ballY to -125
+    set active to 0
+    set winner to 0
     go to x: ballX y: ballY
     hide
   WHEN I receive "start orbit hoops":
+    set score to 0
+    set streak to 1
+    set charge to 0
+    set timeLeft to 45
+    set flying to 0
+    set ballX to -150
+    set ballY to -125
+    set winner to 0
+    set active to 1
+    go to x: ballX y: ballY
     show variable score
     show variable streak
     show variable charge
     show variable timeLeft
     show
     wait 0.25 seconds
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF flying = 0 THEN:
         IF key space pressed? THEN:
           change charge by 0.7
@@ -3848,9 +3863,7 @@ SPRITE Ball:
         go to x: ballX y: ballY
         turn right 12 degrees
         IF touching Net and ballVY < 0 THEN:
-          change score by 2 * streak
-          change streak by 1
-          play sound "swish"
+          broadcast "orbit swish"
           set flying to 0
           set ballX to -150
           set ballY to -125
@@ -3868,16 +3881,26 @@ SPRITE Ball:
           set ballY to -125
           go to x: ballX y: ballY
       IF score > 14 THEN:
-        say "FIFTEEN POINTS — REACTOR ONLINE!" for 4 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "orbit hoops over"
       IF timeLeft < 1 THEN:
-        say ("CYCLE OVER — SCORE " join score) for 4 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "orbit hoops over"
       wait 0.02 seconds
+    hide
   WHEN I receive "start orbit hoops":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
       change timeLeft by -1
+  WHEN I receive "orbit swish":
+    IF active = 1 THEN:
+      change score by 2 * streak
+      change streak by 1
+      play sound "swish"
 
 SPRITE Rim:
   SHAPE art orbit-hoops/rim
@@ -3886,13 +3909,15 @@ SPRITE Rim:
     go to x: hoopX y: 55
     hide
   WHEN I receive "start orbit hoops":
+    set hoopX to 110
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change hoopX by 3 + score / 8
       IF hoopX > 190 THEN:
         set hoopX to 40
       go to x: hoopX y: 55
       wait 0.03 seconds
+    hide
 
 SPRITE Net:
   SHAPE art orbit-hoops/net
@@ -3901,9 +3926,10 @@ SPRITE Net:
     hide
   WHEN I receive "start orbit hoops":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: hoopX y: 38
       wait 0.03 seconds
+    hide
 
 SPRITE ChargeMeter:
   SHAPE art orbit-hoops/meter
@@ -3912,9 +3938,25 @@ SPRITE ChargeMeter:
     hide
   WHEN I receive "start orbit hoops":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set size to 20 + charge * 4 %
-      wait 0.03 seconds`,
+      wait 0.03 seconds
+    hide
+
+SPRITE HoopsResult:
+  COSTUME win label "REACTOR ONLINE • GREEN FLAG TO SHOOT AGAIN" #8fffea
+  COSTUME lose label "CYCLE ENDED • GREEN FLAG FOR ANOTHER RUN" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start orbit hoops":
+    hide
+  WHEN I receive "orbit hoops over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     comet_cup: `# Comet Strikers — curve-shot football with a roaming keeper.
 # GOAL: score four goals before the 45-second match clock ends.

@@ -1073,6 +1073,9 @@ test('Orbit Hoops separates rim collisions from clean-net scoring and has a time
     assert.match(games.rim_reactor, /IF touching Net and ballVY < 0 THEN:/);
     assert.match(games.rim_reactor, /IF touching Rim THEN:/);
     assert.match(games.rim_reactor, /IF score > 14 THEN:/);
+    assert.match(games.rim_reactor, /broadcast "orbit swish"/);
+    assert.match(games.rim_reactor, /broadcast "orbit hoops over"/);
+    assert.match(games.rim_reactor, /REACTOR ONLINE • GREEN FLAG TO SHOOT AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1841,6 +1844,17 @@ test('ice momentum and charge-release shooting work in the live Scratch VM', asy
         hoops.postIOData('keyboard', {key: ' ', isDown: false});
         for (let i = 0; i < 5; i++) hoops.runtime._step();
         assert.equal(Number(value(hoops, 'flying').value), 1, 'releasing Space did not launch the ball');
+        value(hoops, 'score').value = 14;
+        value(hoops, 'streak').value = 1;
+        hoops.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'orbit swish'});
+        for (let i = 0; i < 35; i++) hoops.runtime._step();
+        const result = hoops.runtime.targets.find(target =>
+            target.isOriginal && target.sprite && target.sprite.name === 'HoopsResult');
+        assert.equal(Number(value(hoops, 'score').value), 16, 'clean net did not apply streak scoring');
+        assert.equal(Number(value(hoops, 'winner').value), 1, 'target score did not win the cycle');
+        assert.equal(Number(value(hoops, 'active').value), 0, 'won cycle remained active');
+        assert.equal(Number(value(hoops, 'started').value), 0, 'won cycle was not replayable');
+        assert.equal(result.visible, true, 'hoops victory result was not shown');
     } finally { hoops.quit(); clearStrayTimers(); }
 });
 
@@ -2220,7 +2234,8 @@ test('each new game keeps its signature playable mechanic', () => {
         ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/, /change dragonHP by -1/],
         lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /change gates by 1/, /change score by 15/],
         rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/, /change goals by 1/],
-        rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /touching Net/, /change score by 2 \* streak/],
+        rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /touching Net/,
+            /broadcast "orbit swish"/, /change score by 2 \* streak/, /broadcast "orbit hoops over"/],
         comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by 1/, /change score by crowd \* 10/],
         trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /distance to Sub < 150/, /set mineStun to 0\.7/, /change pearls by 1/],
         whisker_switch: [/set hidden to 1/, /change scent by 3/, /change banked by cargo/, /set targetHole to -1/, /point towards Pip/],
