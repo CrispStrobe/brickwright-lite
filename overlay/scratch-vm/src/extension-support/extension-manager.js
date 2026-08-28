@@ -3,7 +3,7 @@ const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
-const {pinForURL, verifyGallerySource} = require('./gallery-integrity');
+const {pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integrity');
 
 // Any http(s) URL is loadable in-process via the adapter (gallery or user-entered). The UI gates
 // untrusted hosts with a confirmation; see isTrustedExtensionURL / loadExtensionURL.
@@ -237,6 +237,15 @@ class ExtensionManager {
      */
     isTrustedExtensionURL (extensionURL) {
         return Boolean(pinForURL(extensionURL));
+    }
+
+    /**
+     * Why a URL is or is not trusted, for the UI to word its warning with.
+     * @param {string} extensionURL - candidate URL
+     * @returns {string} 'pinned', 'unpinned' (a plain gallery URL we have no pin for) or 'foreign'
+     */
+    pinStatusFor (extensionURL) {
+        return pinStatusFor(extensionURL);
     }
 
     /**

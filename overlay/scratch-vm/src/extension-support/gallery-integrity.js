@@ -4,13 +4,14 @@ const BASE = pins.base;
 const SHA256 = /^[0-9a-f]{64}$/;
 
 /**
- * Return the reviewed pin for an exact gallery extension URL.
- * Query strings, fragments, encoded traversal, sibling Pages paths, and new
- * unindexed gallery entries are deliberately untrusted and therefore prompt.
+ * The slug a URL names, if it is an ordinary gallery extension URL at all.
+ * Query strings, fragments, encoded traversal and sibling Pages paths are not
+ * ordinary: they are ways to name one thing while looking like another, so
+ * they get no slug and are treated as any other stranger's URL.
  * @param {string} value candidate URL
- * @returns {{slug: string, served: string, repo: string}|null} pin or null
+ * @returns {string|null} the slug, or null if this is not a plain gallery URL
  */
-const pinForURL = value => {
+const gallerySlugForURL = value => {
     if (typeof value !== 'string' || !value.startsWith(BASE)) return null;
     let parsed;
     try {
@@ -24,9 +25,38 @@ const pinForURL = value => {
     if (!parsed.pathname.startsWith(base.pathname) || !parsed.pathname.endsWith('.js')) return null;
     const relative = parsed.pathname.slice(base.pathname.length, -3);
     if (!relative || relative.includes('%') || relative.split('/').includes('..')) return null;
-    const pin = pins.extensions[relative];
+    return relative;
+};
+
+/**
+ * Return the reviewed pin for an exact gallery extension URL.
+ * New unindexed gallery entries are deliberately untrusted and therefore prompt.
+ * @param {string} value candidate URL
+ * @returns {{slug: string, served: string, repo: string}|null} pin or null
+ */
+const pinForURL = value => {
+    const slug = gallerySlugForURL(value);
+    if (slug === null) return null;
+    const pin = pins.extensions[slug];
     if (!pin || !SHA256.test(pin.served) || !SHA256.test(pin.repo)) return null;
-    return {slug: relative, served: pin.served, repo: pin.repo};
+    return {slug, served: pin.served, repo: pin.repo};
+};
+
+/**
+ * Why a URL is or is not trusted, so the UI can word its warning accordingly.
+ *
+ * The distinction earns its keep: a gallery entry published after this app was
+ * built is a routine "we have not checked this one yet", while a URL crafted to
+ * look like a gallery entry (`…/foo.js?x=1`, `…/a/../b.js`) is not routine at
+ * all. Both must prompt, but telling a teacher "newer than this app" about a
+ * disguised URL would be reassuring them about the wrong thing — so anything
+ * that is not a plain gallery URL reports as foreign and keeps the stern text.
+ * @param {string} value candidate URL
+ * @returns {string} 'pinned', 'unpinned' or 'foreign'
+ */
+const gallerypinStatusFor = value => {
+    if (pinForURL(value)) return 'pinned';
+    return gallerySlugForURL(value) === null ? 'foreign' : 'unpinned';
 };
 
 const sha256Hex = async bytes => {
@@ -56,4 +86,4 @@ const verifyGallerySource = async (url, bytes) => {
     return true;
 };
 
-module.exports = {pinForURL, sha256Hex, verifyGallerySource};
+module.exports = {pinForURL, pinStatusFor: gallerypinStatusFor, sha256Hex, verifyGallerySource};

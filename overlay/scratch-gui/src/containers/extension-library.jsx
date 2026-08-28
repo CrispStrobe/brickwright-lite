@@ -97,6 +97,11 @@ const messages = defineMessages({
         defaultMessage: 'Could not load the extension from {url}\n\n{error}',
         description: 'Alert shown when a custom extension URL fails to load',
         id: 'gui.extensionLibrary.loadFailed'
+    },
+    unpinned: {
+        defaultMessage: 'This extension is newer than this app, so its code has not been checked here yet:\n\n{url}\n\nIt runs with full access to this page. Load it anyway?',
+        description: 'Confirmation for a gallery extension published since this build was pinned',
+        id: 'gui.extensionLibrary.unpinned'
     }
 });
 
@@ -107,7 +112,8 @@ const DE_MESSAGES = {
     'gui.extensionLibrary.customName': '➕ Erweiterung per URL',
     'gui.extensionLibrary.customDescription': 'Lade eine beliebige TurboWarp- oder Xcratch-Erweiterung direkt von einer URL.',
     'gui.extensionLibrary.untrusted': 'Code laden und ausführen von:\n\n{url}\n\nNur fortfahren, wenn du der Quelle vertraust — die Erweiterung läuft mit vollem Zugriff auf diese Seite.',
-    'gui.extensionLibrary.loadFailed': 'Erweiterung von {url} konnte nicht geladen werden\n\n{error}'
+    'gui.extensionLibrary.loadFailed': 'Erweiterung von {url} konnte nicht geladen werden\n\n{error}',
+    'gui.extensionLibrary.unpinned': 'Diese Erweiterung ist neuer als diese App, ihr Code wurde hier also noch nicht geprüft:\n\n{url}\n\nSie läuft mit vollem Zugriff auf diese Seite. Trotzdem laden?'
 };
 
 class ExtensionLibrary extends React.PureComponent {
@@ -145,10 +151,15 @@ class ExtensionLibrary extends React.PureComponent {
             url = url.trim();
         }
         if (!url) return;
-        // A URL from an untrusted host runs remote code in-process with full page access — confirm.
+        // Remote code runs in-process with full page access, so anything unpinned is confirmed
+        // first — but "the gallery published this after your app was built" and "someone handed
+        // you a URL" are different news, and since the pin landed the first case is now common.
+        // Telling a teacher to consider whether they trust the source, about the source they
+        // already chose from our own picker, teaches them to click through warnings.
         if (/^https?:\/\//.test(url) && !em.isTrustedExtensionURL(url)) {
+            const newEntry = typeof em.pinStatusFor === 'function' && em.pinStatusFor(url) === 'unpinned';
             // eslint-disable-next-line no-alert
-            if (!confirm(this.msg(messages.untrusted, {url}))) return;
+            if (!confirm(this.msg(newEntry ? messages.unpinned : messages.untrusted, {url}))) return;
         }
         const done = () => (id ? this.props.onCategorySelected(id) : this.props.onRequestClose());
         if (em.isExtensionLoaded(url)) { done(); return; }
