@@ -3941,6 +3941,9 @@ GLOBAL mineSpeed
 GLOBAL pulseOn
 GLOBAL pulseReady
 GLOBAL started
+GLOBAL active
+GLOBAL mineStun
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art echo-trench/intro
@@ -3952,6 +3955,7 @@ STAGE:
     hide variable hull
     hide variable oxygen
     hide variable pulseReady
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -3973,9 +3977,22 @@ SPRITE Sub:
     set mineSpeed to 2
     set pulseOn to 0
     set pulseReady to 0
+    set mineStun to 0
+    set winner to 0
+    set active to 0
     go to x: subX y: subY
     hide
   WHEN I receive "start echo trench":
+    set pearls to 0
+    set hull to 3
+    set oxygen to 40
+    set subX to -150
+    set subY to 60
+    set rise to 0
+    set mineSpeed to 2
+    set mineStun to 0
+    set winner to 0
+    set active to 1
     show variable pearls
     show variable hull
     show variable oxygen
@@ -3983,7 +4000,7 @@ SPRITE Sub:
     show
     wait 0.25 seconds
     set pulseReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change rise by 0.08
       IF key up arrow pressed? THEN:
         change rise by 0.35
@@ -4012,15 +4029,20 @@ SPRITE Sub:
         set rise to 2
         change hull by -1
       go to x: subX y: subY
-      IF pearls > 2 THEN:
-        say "Signal restored — ascent complete!" for 3 seconds
-        stop all
-      IF hull < 1 or oxygen < 1 THEN:
-        say "The trench keeps its secret." for 3 seconds
-        stop all
+      IF active = 1 and pearls > 2 THEN:
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "echo trench over"
+      IF active = 1 and (hull < 1 or oxygen < 1) THEN:
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "echo trench over"
       wait 0.02 seconds
+    hide
   WHEN I receive "start echo trench":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
       change oxygen by -1
   WHEN space key pressed:
@@ -4042,15 +4064,20 @@ SPRITE SignalPearl:
     hide
   WHEN I receive "start echo trench":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change y by sin of oxygen * 0.4
       IF touching Sub THEN:
-        change pearls by 1
-        change oxygen by 7
-        change mineSpeed by 0.7
-        play sound "found"
-        go to x: pick random -190 to 190 y: pick random -130 to 130
+        broadcast "signal pearl recovered"
+        wait until not touching Sub
       wait 0.03 seconds
+    hide
+  WHEN I receive "signal pearl recovered":
+    IF active = 1 THEN:
+      change pearls by 1
+      change oxygen by 7
+      change mineSpeed by 0.7
+      play sound "found"
+      go to x: pick random -190 to 190 y: pick random -130 to 130
 
 SPRITE HunterMine:
   SHAPE art echo-trench/mine
@@ -4058,18 +4085,28 @@ SPRITE HunterMine:
     go to x: 190 y: -110
     hide
   WHEN I receive "start echo trench":
+    set mineStun to 0
+    go to x: 190 y: -110
     show
-    FOREVER:
-      point towards Sub
-      move mineSpeed steps
+    REPEAT UNTIL active = 0:
+      IF mineStun > 0 THEN:
+        change mineStun by -0.03
+        turn right 12 degrees
+      ELSE:
+        point towards Sub
+        move mineSpeed steps
       IF touching Sub THEN:
         change hull by -1
         go to x: pick random 130 to 210 y: pick random -130 to 130
         wait 0.8 seconds
-      IF touching SonarRing THEN:
-        point in direction 180 - direction
-        move 35 steps
       wait 0.03 seconds
+    hide
+  WHEN I receive "sonar pulse":
+    IF active = 1 and distance to Sub < 150 THEN:
+      point towards Sub
+      turn right 180 degrees
+      move 90 steps
+      set mineStun to 0.7
 
 SPRITE SonarRing:
   SHAPE art echo-trench/ring
@@ -4084,7 +4121,22 @@ SPRITE SonarRing:
       change ghost effect by 10
       wait 0.03 seconds
     clear graphic effects
-    hide`,
+    hide
+
+SPRITE TrenchResult:
+  COSTUME win label "3 SIGNAL PEARLS RECOVERED • GREEN FLAG TO DIVE AGAIN" #7ff6ff
+  COSTUME lose label "OXYGEN OR HULL FAILED • GREEN FLAG TO RETRY" #ff8fa5
+  WHEN flag clicked:
+    go to x: 0 y: -20
+    hide
+  WHEN I receive "start echo trench":
+    hide
+  WHEN I receive "echo trench over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     whisker_switch: `# Whisker Relay — a risky pantry courier run, distinct from Pantry Prowl.
 # GOAL: bank six moon-cheeses by carrying them to the highlighted opposite mouse hole.
