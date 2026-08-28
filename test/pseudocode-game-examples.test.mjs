@@ -13,6 +13,7 @@ const EXPECTED = [
     'reactor_ricochet',
     'flux_vault',
     'neon_circuit',
+    'canal_command',
     'sky_skim',
     'chroma_code',
     'fusion_foundry',
@@ -60,6 +61,7 @@ test('only quality-approved new games are wired into the visible examples galler
         'reactor_ricochet',
         'flux_vault',
         'neon_circuit',
+        'canal_command',
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
@@ -555,6 +557,51 @@ test('Neon Circuit starts by green flag and all three known solutions finish in 
         assert.equal(Number(value('lit').value), 0, 'solved circuit retained a lit node');
         assert.equal(Number(value('active').value), 0, 'circuit remained active after board three');
         assert.equal(Number(value('started').value), 0, 'solved circuit was not replayable');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
+});
+
+test('Canal Command enforces the lock sequence and lifts four boats in the real VM', async () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.canal_command);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.canal_command, /GOAL: lift 4 boats from the low canal to the high canal/);
+    assert.match(games.canal_command, /lowerGate = 0 and upperGate = 0/);
+    assert.match(games.canal_command, /IF faults = 3 THEN:/);
+    assert.match(games.canal_command, /IF boats = 4 THEN:/);
+    assert.deepEqual(project.targets.find(target => target.isStage).costumes.map(costume => costume.name),
+        ['backdrop1', 'intro', 'lock']);
+    const vm = new VM();
+    const value = name => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+    const step = count => { for (let i = 0; i < count; i++) vm.runtime._step(); };
+    const click = async (name, delay = 0) => {
+        const target = vm.runtime.targets.find(item => item.sprite.name === name);
+        vm.runtime.startHats('event_whenthisspriteclicked', {}, target);
+        step(35);
+        if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+        step(35);
+    };
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        step(20);
+        await new Promise(resolve => setTimeout(resolve, 700));
+        step(40);
+        for (let boat = 1; boat <= 4; boat++) {
+            if (boat > 1) await click('PumpButton');
+            await click('LowerButton', 650);
+            await click('PumpButton');
+            await click('UpperButton', 1200);
+            assert.equal(Number(value('boats').value), boat, `boat ${boat} did not clear the upper gate`);
+        }
+        assert.equal(Number(value('faults').value), 0, 'legal lock sequence triggered an interlock fault');
+        assert.equal(Number(value('active').value), 0, 'lock remained active after four boats');
+        assert.equal(Number(value('started').value), 0, 'completed lock was not replayable');
     } finally {
         vm.quit();
         clearStrayTimers();
@@ -2046,6 +2093,9 @@ test('each new game keeps its signature playable mechanic', () => {
         neon_circuit: [/LIST nodes/, /DEFINE FAST flip cross \(index\):/, /flip one \(index - 5\)/,
             /flip one \(index \+ 5\)/, /IF lit = 0/, /IF level = 4/,
             /broadcast "neon circuit solved"/],
+        canal_command: [/IF faults = 3/, /lowerGate = 0 and upperGate = 0/,
+            /IF water = 1 and lowerGate = 0 and boatZone = 1/, /IF boats = 4/,
+            /broadcast "canal command won"/],
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
             /change launches by 1/, /IF launches = 12 THEN:/],
