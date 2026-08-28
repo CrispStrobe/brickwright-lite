@@ -6045,6 +6045,9 @@ GLOBAL gateSpeed
 GLOBAL shield
 GLOBAL shieldReady
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL breachLock
 
 STAGE:
   BACKDROP intro art carrier-kestrel/intro
@@ -6056,9 +6059,26 @@ STAGE:
     hide variable gates
     hide variable hull
     hide variable battery
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set distance to 0
+      set gates to 0
+      set hull to 3
+      set battery to 12
+      set droneX to -150
+      set droneY to 0
+      set driftX to 0
+      set driftY to 0
+      set gateX to 240
+      set gapY to 0
+      set gateSpeed to 5
+      set shield to 0
+      set shieldReady to 0
+      set breachLock to 0
+      set winner to 0
+      set active to 1
       switch backdrop to corridor
       broadcast "start carrier kestrel"
 
@@ -6079,6 +6099,9 @@ SPRITE Kestrel:
     set gateSpeed to 5
     set shield to 0
     set shieldReady to 0
+    set breachLock to 0
+    set active to 0
+    set winner to 0
     go to x: droneX y: droneY
     hide
   WHEN I receive "start carrier kestrel":
@@ -6089,7 +6112,7 @@ SPRITE Kestrel:
     show
     wait 0.2 seconds
     set shieldReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change driftX by -0.35
       IF key right arrow pressed? THEN:
@@ -6118,30 +6141,46 @@ SPRITE Kestrel:
           set shield to 0
       ELSE:
         switch costume to costume1
-      IF touching UpperGate or touching LowerGate THEN:
+      IF (touching UpperGate or touching LowerGate) and breachLock = 0 THEN:
+        set breachLock to 1
         IF shield = 0 THEN:
-          change hull by -1
-          set droneX to -150
-          set droneY to 0
-          set driftX to 0
-          set driftY to 0
-          play sound "scrape"
-          wait 0.6 seconds
+          broadcast "kestrel breach"
         ELSE:
           change distance by 3
-      IF hull < 1 THEN:
-        say ("DRONE LOST AFTER " join gates) for 4 seconds
-        stop all
-      IF gates = 15 THEN:
-        say ("FIFTEEN GATES CLEARED — DISTANCE " join distance) for 4 seconds
-        stop all
+          wait 0.25 seconds
+          set breachLock to 0
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and shieldReady = 1 and battery > 3 and shield = 0 THEN:
+    IF active = 1 and shieldReady = 1 and battery > 3 and shield = 0 THEN:
       set shield to 1
       play sound "pulse"
       wait 0.8 seconds
       set shield to 0
+  WHEN I receive "kestrel breach":
+    IF active = 1 THEN:
+      change hull by -1
+      set droneX to -150
+      set droneY to 0
+      set driftX to 0
+      set driftY to 0
+      play sound "scrape"
+      IF hull < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "carrier kestrel over"
+      ELSE:
+        wait 0.6 seconds
+        set breachLock to 0
+  WHEN I receive "carrier gate cleared":
+    IF active = 1 THEN:
+      change gates by 1
+      change distance by 1
+      change gateSpeed by 0.12
+      IF gates = 15 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "carrier kestrel over"
 
 SPRITE GateClock:
   SHAPE art carrier-kestrel/clock
@@ -6150,14 +6189,12 @@ SPRITE GateClock:
     set gateX to 240
     set gapY to 0
   WHEN I receive "start carrier kestrel":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change gateX by 0 - gateSpeed
       IF gateX < -250 THEN:
         set gateX to 250
         set gapY to pick random -75 to 75
-        change gates by 1
-        change distance by 1
-        change gateSpeed by 0.12
+        broadcast "carrier gate cleared"
       wait 0.02 seconds
 
 SPRITE UpperGate:
@@ -6166,9 +6203,10 @@ SPRITE UpperGate:
     hide
   WHEN I receive "start carrier kestrel":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: gateX y: gapY + 135
       wait 0.02 seconds
+    hide
 
 SPRITE LowerGate:
   SHAPE art carrier-kestrel/gate-lower
@@ -6176,9 +6214,10 @@ SPRITE LowerGate:
     hide
   WHEN I receive "start carrier kestrel":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: gateX y: gapY - 135
       wait 0.02 seconds
+    hide
 
 SPRITE EnergyCell:
   SHAPE art carrier-kestrel/cell
@@ -6187,7 +6226,7 @@ SPRITE EnergyCell:
     hide
   WHEN I receive "start carrier kestrel":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: gateX y: gapY
       IF touching Kestrel THEN:
         change battery by 4
@@ -6195,7 +6234,23 @@ SPRITE EnergyCell:
         set x to -260
         play sound "charge"
         wait 0.5 seconds
-      wait 0.02 seconds`,
+      wait 0.02 seconds
+    hide
+
+SPRITE KestrelResult:
+  COSTUME win label "FIFTEEN APERTURES CLEARED • GREEN FLAG TO FLY AGAIN" #ffe66d
+  COSTUME lose label "THREE HULL BREACHES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start carrier kestrel":
+    hide
+  WHEN I receive "carrier kestrel over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     thunder_volley: `# Skycourt Surge — an aerial volleyball duel against a storm rival.
 # GOAL: score seven points before Nimbus does; the ball accelerates through long rallies.

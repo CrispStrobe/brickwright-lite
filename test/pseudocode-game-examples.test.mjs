@@ -1358,6 +1358,11 @@ test('Carrier Kestrel has inertial flight, finite shields, and a fifteen-gate fi
     assert.match(games.corridor_kestrel, /change gates by 1/);
     assert.match(games.corridor_kestrel, /IF gates = 15 THEN:/);
     assert.match(games.corridor_kestrel, /shieldReady = 1 and battery > 3 and shield = 0/);
+    assert.match(games.corridor_kestrel, /breachLock = 0/);
+    assert.match(games.corridor_kestrel, /broadcast "kestrel breach"/);
+    assert.match(games.corridor_kestrel, /broadcast "carrier gate cleared"/);
+    assert.match(games.corridor_kestrel, /broadcast "carrier kestrel over"/);
+    assert.match(games.corridor_kestrel, /FIFTEEN APERTURES CLEARED • GREEN FLAG TO FLY AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'corridor']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2320,6 +2325,16 @@ test('orbital shield and inertial drone controls work in the live Scratch VM', a
         kestrel.postIOData('keyboard', {key: ' ', isDown: false});
         assert.equal(Number(value(kestrel, 'shield').value), 1, 'Space did not engage the battery shield');
         assert.equal(Number(value(kestrel, 'gates').value), 0, 'run began with phantom gates');
+        value(kestrel, 'gates').value = 14;
+        const drone = kestrel.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Kestrel');
+        kestrel.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'carrier gate cleared'}, drone);
+        for (let i = 0; i < 35; i++) kestrel.runtime._step();
+        assert.equal(Number(value(kestrel, 'gates').value), 15, 'the fifteenth aperture was not counted');
+        assert.equal(Number(value(kestrel, 'winner').value), 1, 'fifteen apertures did not finish the flight');
+        assert.equal(Number(value(kestrel, 'active').value), 0, 'the completed flight remained active');
+        const result = kestrel.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'KestrelResult');
+        assert.equal(result.visible, true, 'the flight result was not shown on the stage');
     } finally { kestrel.quit(); clearStrayTimers(); }
 });
 
@@ -2525,7 +2540,9 @@ test('each new game keeps its signature playable mechanic', () => {
         halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/,
             /broadcast "halo lock broken"/, /change locks by -1/, /broadcast "restore locks"/,
             /IF round = 3/, /broadcast "halo lockdown over"/],
-        corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/, /change gates by 1/],
+        corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/,
+            /breachLock = 0/, /change battery by 4/, /set shield to 1/,
+            /broadcast "carrier gate cleared"/, /change gates by 1/, /broadcast "carrier kestrel over"/],
         thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/, /change rivalPoints by 1/, /touching ThunderNet/],
         cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/, /delete falls of colA/, /change score by 40 \* combo/],
         mooncoil_odyssey: [/LIST trailX/, /add headX to trailX/, /headX = item i of trailX/, /delete 1 of trailX/, /change snakeLength by 1/],
