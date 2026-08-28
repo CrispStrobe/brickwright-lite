@@ -1381,6 +1381,10 @@ test('Skycourt Surge teaches its seven-point aerial duel and accelerates long ra
     assert.match(games.thunder_volley, /set ballVX to 8 \+ rally \/ 3/);
     assert.match(games.thunder_volley, /IF playerPoints > 6 THEN:/);
     assert.match(games.thunder_volley, /IF rivalPoints > 6 THEN:/);
+    assert.match(games.thunder_volley, /broadcast "skycourt player point"/);
+    assert.match(games.thunder_volley, /broadcast "skycourt rival point"/);
+    assert.match(games.thunder_volley, /broadcast "skycourt over"/);
+    assert.match(games.thunder_volley, /SEVEN STORM POINTS • GREEN FLAG FOR A REMATCH/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2365,6 +2369,19 @@ test('aerial movement and deterministic color fusion work in the live Scratch VM
         assert.ok(Number(value(skycourt, 'playerX').value) > -130, 'Right did not move Volt');
         assert.ok(Number(value(skycourt, 'playerY').value) > -125, 'Up did not launch Volt');
         assert.equal(Number(value(skycourt, 'playerPoints').value), 0, 'court began with phantom points');
+        value(skycourt, 'playerPoints').value = 6;
+        const volt = skycourt.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'Volt');
+        skycourt.runtime.startHats('event_whenbroadcastreceived', {
+            BROADCAST_OPTION: 'skycourt player point'
+        }, volt);
+        for (let i = 0; i < 35; i++) skycourt.runtime._step();
+        assert.equal(Number(value(skycourt, 'playerPoints').value), 7, 'winning point was not awarded');
+        assert.equal(Number(value(skycourt, 'winner').value), 1, 'player win was not recorded');
+        assert.equal(Number(value(skycourt, 'active').value), 0, 'finished match remained active');
+        const result = skycourt.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'SkycourtResult');
+        assert.equal(result.visible, true, 'match result was not shown on the stage');
     } finally { skycourt.quit(); clearStrayTimers(); }
 
     const reactor = await load(games.cascade_pair);
@@ -2543,7 +2560,8 @@ test('each new game keeps its signature playable mechanic', () => {
         corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/,
             /breachLock = 0/, /change battery by 4/, /set shield to 1/,
             /broadcast "carrier gate cleared"/, /change gates by 1/, /broadcast "carrier kestrel over"/],
-        thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/, /change rivalPoints by 1/, /touching ThunderNet/],
+        thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/,
+            /broadcast "skycourt rival point"/, /touching ThunderNet/, /broadcast "skycourt over"/],
         cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/, /delete falls of colA/, /change score by 40 \* combo/],
         mooncoil_odyssey: [/LIST trailX/, /add headX to trailX/, /headX = item i of trailX/, /delete 1 of trailX/, /change snakeLength by 1/],
         cinder_thrust: [/change flyerVY by -0\.42/, /key up arrow pressed\? and fuel > 0/, /touching ChargeLedge/, /change caveSpeed by 0\.12/]

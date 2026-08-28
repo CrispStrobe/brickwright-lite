@@ -6269,12 +6269,16 @@ GLOBAL ballY
 GLOBAL ballVX
 GLOBAL ballVY
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art skycourt-surge/intro
   BACKDROP court art skycourt-surge/play
   WHEN flag clicked:
     set started to 0
+    set active to 0
+    set winner to 0
     switch backdrop to intro
     hide variable playerPoints
     hide variable rivalPoints
@@ -6282,6 +6286,21 @@ STAGE:
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set playerPoints to 0
+      set rivalPoints to 0
+      set rally to 0
+      set playerX to -130
+      set playerY to -125
+      set playerVY to 0
+      set rivalX to 135
+      set rivalY to -125
+      set rivalVY to 0
+      set ballX to -80
+      set ballY to 70
+      set ballVX to 5
+      set ballVY to 5
+      set winner to 0
+      set active to 1
       switch backdrop to court
       broadcast "serve skycourt"
 
@@ -6302,7 +6321,7 @@ SPRITE Volt:
     show variable rivalPoints
     show variable rally
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change playerX by -5
       IF key right arrow pressed? THEN:
@@ -6317,22 +6336,31 @@ SPRITE Volt:
         set playerY to -125
         set playerVY to 0
       go to x: playerX y: playerY
-      IF playerPoints > 6 THEN:
-        say "SKYCOURT CHAMPION — SEVEN POINTS!" for 4 seconds
-        stop all
-      IF rivalPoints > 6 THEN:
-        say "NIMBUS TAKES THE COURT" for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN up arrow key pressed:
-    IF started = 1 and playerY = -125 THEN:
+    IF active = 1 and playerY = -125 THEN:
       set playerVY to 12
   WHEN space key pressed:
-    IF started = 1 and touching StormBall THEN:
+    IF active = 1 and touching StormBall THEN:
       set ballVX to 8 + rally / 3
       set ballVY to -3
       change rally by 1
       play sound "spike"
+  WHEN I receive "skycourt player point":
+    IF active = 1 THEN:
+      change playerPoints by 1
+      IF playerPoints > 6 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "skycourt over"
+  WHEN I receive "skycourt rival point":
+    IF active = 1 THEN:
+      change rivalPoints by 1
+      IF rivalPoints > 6 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "skycourt over"
 
 SPRITE Nimbus:
   SHAPE art skycourt-surge/nimbus
@@ -6344,7 +6372,7 @@ SPRITE Nimbus:
     hide
   WHEN I receive "serve skycourt":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF ballX > 15 THEN:
         IF ballX > rivalX THEN:
           change rivalX by 3.5
@@ -6363,6 +6391,7 @@ SPRITE Nimbus:
         set rivalX to 220
       go to x: rivalX y: rivalY
       wait 0.02 seconds
+    hide
 
 SPRITE StormBall:
   SHAPE art skycourt-surge/ball
@@ -6376,7 +6405,7 @@ SPRITE StormBall:
     hide
   WHEN I receive "serve skycourt":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change ballVY by -0.38
       change ballX by ballVX
       change ballY by ballVY
@@ -6395,18 +6424,20 @@ SPRITE StormBall:
         set ballVX to 0 - ballVX
       IF ballY < -145 THEN:
         IF ballX < 0 THEN:
-          change rivalPoints by 1
+          broadcast "skycourt rival point"
         ELSE:
-          change playerPoints by 1
+          broadcast "skycourt player point"
         play sound "point"
-        set rally to 0
-        set ballX to 0
-        set ballY to 100
-        set ballVX to pick random -5 to 5
-        set ballVY to 5
-        wait 0.8 seconds
+        IF active = 1 THEN:
+          set rally to 0
+          set ballX to 0
+          set ballY to 100
+          set ballVX to pick random -5 to 5
+          set ballVY to 5
+          wait 0.8 seconds
       go to x: ballX y: ballY
       wait 0.02 seconds
+    hide
 
 SPRITE ThunderNet:
   SHAPE art skycourt-surge/net
@@ -6414,6 +6445,23 @@ SPRITE ThunderNet:
     go to x: 0 y: -90
     hide
   WHEN I receive "serve skycourt":
+    show
+  WHEN I receive "skycourt over":
+    hide
+
+SPRITE SkycourtResult:
+  COSTUME win label "SEVEN STORM POINTS • GREEN FLAG FOR A REMATCH" #ffe66d
+  COSTUME lose label "NIMBUS REACHED SEVEN • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "serve skycourt":
+    hide
+  WHEN I receive "skycourt over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     cascade_pair: `# Chromafall Reactor — a visible four-column color fusion puzzle.
