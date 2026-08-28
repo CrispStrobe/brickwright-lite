@@ -2212,6 +2212,7 @@ class SB3Creator {
                 'arduino-nano': [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A7'],
                 atmega328p: [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A5'],
                 microbit: [/^(P\d+|BUTTON_[AB])$/i, 'P0-P20, BUTTON_A or BUTTON_B'],
+                calliopemini: [/^(P\d+|BUTTON_[AB])$/i, 'P0-P20, BUTTON_A or BUTTON_B'],
                 // ARCADE is Brickwright's software console. D0-D31 are
                 // deliberately virtual GPIO: they keep pin-based Scratch
                 // examples runnable without pretending the console has a
@@ -2243,7 +2244,7 @@ class SB3Creator {
             // place and not the other.
             const LAST = { 'arduino-uno': { D: 13, A: 5 }, 'arduino-nano': { D: 13, A: 7 },
                 'atmega168p': { D: 13, A: 5 }, 'arduino-mega': { D: 53, A: 15 },
-                atmega328p: { D: 13, A: 5 }, microbit: { P: 20 },
+                atmega328p: { D: 13, A: 5 }, microbit: { P: 20 }, calliopemini: { P: 20 },
                 arcade: { D: 31 }, pybadge: { D: 13, A: 5 }, 'pybadge-lc': { D: 31 },
                 samd51: { PA: 31, PB: 31 }, pico: { GP: 28 },
                 eater6502: { PA: 7, PB: 7 } };  // PB7: plain I/O while ACR7=0, same as the SPOKEN gate
@@ -2601,6 +2602,7 @@ class SB3Creator {
             // Validate each pin token against the device's vocabulary
             const SPOKEN = {
                 microbit: [/^P\d+$/i, 'P0-P20'],
+                calliopemini: [/^P\d+$/i, 'P0-P20'],
                 pico: [/^GP\d+$/i, 'GP0-GP28']
             };
             const spoken = SPOKEN[cfg.device];
@@ -14370,6 +14372,13 @@ SB3Creator.RETARGET_POOLS = (() => {
             analog: ['P0', 'P1', 'P2', 'P3', 'P4', 'P10'],
             input: ['P0', 'P1', 'P2', 'P5', 'P8', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
             pwm: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16'], ledActiveLow: false },
+        // Calliope's MicroPython route intentionally uses the same P0-P20
+        // vocabulary. It still needs its own target entry: the device picker
+        // passes this exact id to retargetPseudocode.
+        calliopemini: { digital: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
+            analog: ['P0', 'P1', 'P2', 'P3', 'P4', 'P10'],
+            input: ['P0', 'P1', 'P2', 'P5', 'P8', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
+            pwm: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16'], ledActiveLow: false },
         // The abstract Arcade console has no header. Its D pins are virtual
         // Scratch-runtime GPIO, useful when moving a pin-based lesson into
         // the playable 160x120 console. Concrete wiring belongs to a board.
@@ -14445,6 +14454,7 @@ SB3Creator.I2C_PINS = {
     atmega168p: { sda: 'A4', scl: 'A5' },
     'arduino-mega': { sda: 'D20', scl: 'D21' },
     microbit: { sda: 'P20', scl: 'P19' },
+    calliopemini: { sda: 'P20', scl: 'P19' },
     pybadge: { sda: 'SDA', scl: 'SCL' },
     pico: { sda: 'GP4', scl: 'GP5' },       // I2C0 default pair
     attiny85: { sda: 'PB0', scl: 'PB2' },   // USI
@@ -14773,6 +14783,7 @@ SB3Creator.STC_PARTS = {
     // end for these by definition, not merely not yet. Pins are P0-P20 and the
     // two buttons on a micro:bit.
     microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
+    calliopemini: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
     // MakeCode Arcade is a software target (160x120); PyBadge and PyBadge LC
     // are concrete ATSAMD51J19 boards. They intentionally have no C emitter:
     // selecting one must never silently produce firmware for another ARM MCU.

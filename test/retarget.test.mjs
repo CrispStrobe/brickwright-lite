@@ -67,6 +67,7 @@ WHEN flag clicked:
 
 for (const [device, pins] of [
     ['microbit', ['P0', 'P1', 'P2']],
+    ['calliopemini', ['P0', 'P1', 'P2']],
     ['arcade', ['D0', 'D1', 'D2']],
     ['pybadge', ['D13', 'D12', 'D11']],
     ['pybadge-lc', ['D0', 'D1', 'D2']],
