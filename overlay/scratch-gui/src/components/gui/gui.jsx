@@ -17,6 +17,8 @@ const ArcadeDevicePane = React.lazy(() =>
 const GameTouchControls = React.lazy(() =>
     import(/* webpackChunkName: "bw-game-touch-controls" */ '../tw-pseudocode/game-touch-controls.jsx')
 );
+const ArduboyPane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-arduboy" */ '../tw-pseudocode/arduboy-pane.jsx'));
 const ControllerPanelView = React.lazy(() =>
     import(/* webpackChunkName: "bw-controller-panel" */ '../tw-pseudocode/controller-panel-view.jsx')
 );
@@ -491,7 +493,8 @@ const GUIComponent = props => {
         // all render in the RIGHT pane, so for every right-pane mode EXCEPT
         // controller/micro:bit (which paint their own 100vw overlay), hide the
         // editor and let the right pane fill the window.
-        const stageFullScreen = isFullScreen && dockMode !== 'controller' && dockMode !== 'microbit' && dockMode !== 'arcade';
+        const stageFullScreen = isFullScreen && dockMode !== 'controller' && dockMode !== 'microbit' &&
+            dockMode !== 'arcade' && dockMode !== 'arduboy';
 
         return isPlayerOnly ? (
             <StageWrapper
@@ -808,7 +811,7 @@ const GUIComponent = props => {
                                 toggle buttons) stays reachable in every mode.
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
-                            <div style={dockMode === 'controller' || dockMode === 'arcade' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
+                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
@@ -831,6 +834,12 @@ const GUIComponent = props => {
                                     ) : (
                                         <MicrobitSimPane />
                                     )}
+                                </React.Suspense>
+                            ) : dockMode === 'arduboy' ? (
+                                <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading Arduboy…</div>}>
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
+                                        <ArduboyPane vm={vm} />
+                                    </div>
                                 </React.Suspense>
                             ) : dockMode === 'arcade' ? (
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading game console…</div>}>

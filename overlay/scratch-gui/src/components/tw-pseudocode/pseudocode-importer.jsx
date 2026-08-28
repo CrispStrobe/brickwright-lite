@@ -71,6 +71,7 @@ const L10N = {
         openBad: e => `Don't know that file type (${e}).`,
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
         mcReading: f => `Reading ${f}…`,
+        arduboyRunning: f => `Running ${f} on the Arduboy console. Arrow keys move, Z is A, X is B.`,
         mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
         mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
         mcPartial: (f, n, k) => `Imported "${n}" from ${f}. ${k} thing(s) from MakeCode have no equivalent here; each is marked "# unsupported" in the code.`,
@@ -194,6 +195,7 @@ const L10N = {
         openBad: e => `Unbekannter Dateityp (${e}).`,
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
         mcReading: f => `${f} wird gelesen…`,
+        arduboyRunning: f => `${f} läuft auf der Arduboy-Konsole. Pfeiltasten bewegen, Z ist A, X ist B.`,
         mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
         mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
         mcPartial: (f, n, k) => `„${n}" aus ${f} importiert. Für ${k} Element(e) aus MakeCode gibt es hier keine Entsprechung; jede ist im Code mit „# unsupported" markiert.`,
@@ -835,6 +837,36 @@ class PseudocodeImporter extends React.Component {
      * PNG decoder that no other part of the app needs, and nobody should
      * pay for them until they open a .hex.
      */
+    /**
+     * Hand a compiled AVR program to the Arduboy pane and show it.
+     *
+     * The pane may not be mounted yet — switching the dock and loading the
+     * program are one gesture — so the program is parked on the window for
+     * the pane to collect on mount, as well as announced for a pane that
+     * is already there.
+     */
+    runArduboyProgram (hex, label) {
+        try {
+            window.__bwArduboyPending = {hex, name: label};
+            localStorage.setItem('bw-stage-circuit', '1');
+            localStorage.setItem('bw-debug-dock', 'arduboy');
+            // The right pane must be OPEN, not merely mounted, or the
+            // console is in the DOM and invisible — the same trap the
+            // controller dock documents.
+            localStorage.setItem('bw-right-pane-hidden', '0');
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-right-pane-hidden', value: '0'}
+            }));
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-debug-dock', value: 'arduboy'}
+            }));
+            window.dispatchEvent(new CustomEvent('bw-arduboy-load', {detail: {hex, name: label}}));
+            this.setState({status: this.L.arduboyRunning(label)});
+        } catch (e) {
+            this.setState({status: this.L.mcFailed(label, (e && e.message) || String(e))});
+        }
+    }
+
     openArtefactFile (file) {
         this.setState({status: this.L.mcReading(file.name)});
         const reader = new FileReader();
@@ -865,7 +897,18 @@ class PseudocodeImporter extends React.Component {
      * the part worth having in one place.
      */
     applyMakeCodeImport (res, label) {
+        // Whatever arrived, the previous project's touch controls are gone.
         this.publishGameControls(null);
+
+        // An AVR hex is not a project to translate — it is a program to
+        // RUN. Nothing in it can become blocks (it is compiled C++), so it
+        // goes straight to the console pane rather than through any of the
+        // machinery below.
+        if (res.kind === 'avr-hex') {
+            this.runArduboyProgram(res.hex, label);
+            return;
+        }
+
         // What the "MakeCode source" download hands back: the recovered
         // files themselves, untouched by any translation.
         this._makeCodeProject = res.kind === 'makecode' ? {

@@ -453,6 +453,14 @@ jobs:
       - name: Browser gate — micro:bit debugger, block and line stepping
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-debug-toggle.mjs
+      # The Arduboy console is the only thing in the app that RUNS a
+      # compiled binary rather than translating source, so "the unit tests
+      # pass" says nothing about whether a game reaches the screen. This
+      # reads pixels back off the canvas, and checks they keep changing —
+      # one frame and a freeze is exactly what a stalled boot looks like.
+      - name: Browser gate — Arduboy console runs a compiled game
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-arduboy.mjs
 
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with: { path: packages/scratch-gui/build }
