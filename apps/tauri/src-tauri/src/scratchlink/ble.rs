@@ -1039,9 +1039,15 @@ mod tests {
     }
 
     #[test]
-    fn decode_defaults_to_base64_when_encoding_absent() {
+    fn decode_treats_an_absent_encoding_as_a_plain_string() {
+        // This test used to assert the OPPOSITE — that an absent encoding
+        // meant base64 — and cargo caught it the moment the behaviour was
+        // corrected. It was pinning the bug: EncodingHelpers.decodeBuffer
+        // treats no `encoding` as "the message is a Unicode string", and only
+        // "base64" as base64. Keeping the old assertion would have made the
+        // suite defend the defect against its own fix.
         let p = json!({ "message": "AQID" });
-        assert_eq!(decode_message(&p).unwrap(), vec![1u8, 2, 3]);
+        assert_eq!(decode_message(&p).unwrap(), b"AQID".to_vec());
     }
 
     #[test]
