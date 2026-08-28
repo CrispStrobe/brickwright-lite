@@ -133,7 +133,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             check_blocklist(params, true)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             let data = decode_message(params)?;
-            let write_type = choose_write_type(&h, uuid, params).await;
+            let write_type = choose_write_type(h, uuid, params).await;
             let n = data.len();
             h.send_data(uuid, &data, write_type)
                 .await
@@ -271,7 +271,16 @@ fn start_discover(specs: Vec<ScanFilterSpec>, out: Outbound) {
                 let note = json!({
                     "jsonrpc": "2.0",
                     "method": "didDiscoverPeripheral",
-                    "params": { "peripheralId": d.address, "name": d.name, "rssi": d.rssi }
+                    // rssi is always a NUMBER, never null. The reference sends
+                    // 127 for "unknown" (RSSI.swift) and the connection modal
+                    // declares rssi: PropTypes.number and compares it with
+                    // `rssi > -80` to draw signal bars — a null violates the
+                    // prop type and silently coerces to 0 in those comparisons.
+                    "params": {
+                        "peripheralId": d.address,
+                        "name": d.name,
+                        "rssi": d.rssi.map(i64::from).unwrap_or(127)
+                    }
                 });
                 let _ = out.try_send(Message::Text(note.to_string()));
             }
@@ -1039,9 +1048,15 @@ mod tests {
     }
 
     #[test]
-    fn decode_defaults_to_base64_when_encoding_absent() {
+    fn decode_treats_an_absent_encoding_as_a_plain_string() {
+        // This test used to assert the OPPOSITE — that an absent encoding
+        // meant base64 — and cargo caught it the moment the behaviour was
+        // corrected. It was pinning the bug: EncodingHelpers.decodeBuffer
+        // treats no `encoding` as "the message is a Unicode string", and only
+        // "base64" as base64. Keeping the old assertion would have made the
+        // suite defend the defect against its own fix.
         let p = json!({ "message": "AQID" });
-        assert_eq!(decode_message(&p).unwrap(), vec![1u8, 2, 3]);
+        assert_eq!(decode_message(&p).unwrap(), b"AQID".to_vec());
     }
 
     #[test]

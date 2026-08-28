@@ -430,13 +430,21 @@ class BluetoothRemoteGATTServer {
         if (this._services) return this._services;
         try {
             const raw = await getSession().request('getServices', {peripheralId: this.device.id});
-            this._services = (raw || []).map(s => ({
-                uuid: canonicalUuid(s.uuid),
-                characteristics: s.characteristics || []
-            }));
+            // TWO shapes, because two peers answer this. The REAL Scratch Link
+            // returns plain canonical UUID strings (BLESession.swift maps its
+            // services through getCanonicalUUIDString); our own server returns
+            // {uuid, characteristics} objects, which saves a round trip. Reading
+            // only `s.uuid` gave `undefined` against the genuine article — the
+            // one peer this comment previously claimed could not enumerate.
+            this._services = (raw || []).map(s => (
+                typeof s === 'string'
+                    ? {uuid: canonicalUuid(s), characteristics: []}
+                    : {uuid: canonicalUuid(s.uuid), characteristics: s.characteristics || []}
+            ));
         } catch (e) {
-            // A stock Scratch Link cannot enumerate. That only costs us
-            // getPrimaryServices(); named lookups still work.
+            // Enumeration genuinely unavailable (an older peer with no
+            // getServices at all). That only costs us getPrimaryServices();
+            // named lookups still work.
             bleLog('warn', 'ble', 'service enumeration unavailable', e.message);
             this._services = null;
         }

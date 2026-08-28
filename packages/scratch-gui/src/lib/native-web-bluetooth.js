@@ -430,13 +430,21 @@ class BluetoothRemoteGATTServer {
         if (this._services) return this._services;
         try {
             const raw = await getSession().request('getServices', {peripheralId: this.device.id});
-            this._services = (raw || []).map(s => ({
-                uuid: canonicalUuid(s.uuid),
-                characteristics: s.characteristics || []
-            }));
+            // TWO shapes, because two peers answer this. The REAL Scratch Link
+            // returns plain canonical UUID strings (BLESession.swift maps its
+            // services through getCanonicalUUIDString); our own server returns
+            // {uuid, characteristics} objects, which saves a round trip. Reading
+            // only `s.uuid` gave `undefined` against the genuine article — the
+            // one peer this comment previously claimed could not enumerate.
+            this._services = (raw || []).map(s => (
+                typeof s === 'string'
+                    ? {uuid: canonicalUuid(s), characteristics: []}
+                    : {uuid: canonicalUuid(s.uuid), characteristics: s.characteristics || []}
+            ));
         } catch (e) {
-            // A stock Scratch Link cannot enumerate. That only costs us
-            // getPrimaryServices(); named lookups still work.
+            // Enumeration genuinely unavailable (an older peer with no
+            // getServices at all). That only costs us getPrimaryServices();
+            // named lookups still work.
             bleLog('warn', 'ble', 'service enumeration unavailable', e.message);
             this._services = null;
         }
@@ -510,13 +518,16 @@ const requestDevice = async (options = {}) => {
     const picker = chooseDevice({
         onCancel: () => bleLog('info', 'ble', 'chooser cancelled')
     });
-    // Mark the chooser's promise handled the moment it exists. `await
-    // picker.promise` is several lines below, but the user can hit Cancel
-    // before the scan request has even resolved — and a promise that rejects
-    // with no handler attached YET is reported as unhandled, which on a phone
-    // means a spurious error in the very log we use to diagnose this path.
-    // The real rejection is still delivered to the await below.
-    picker.promise.catch(() => {});
+    // Handle the picker's rejection immediately. `discover` is awaited below,
+    // so without this wrapper a fast Cancel can reject picker.promise before
+    // requestDevice reaches its `await`. Node 24 correctly reports that gap as
+    // an unhandled rejection; in a webview it becomes a noisy console error.
+    // Turn both outcomes into values now, then restore the Web Bluetooth
+    // rejection at the public requestDevice boundary.
+    const pickerResult = picker.promise.then(
+        value => ({value}),
+        error => ({error})
+    );
     const offDiscover = session.on('didDiscoverPeripheral', params => {
         const device = {id: params.peripheralId, name: params.name, rssi: params.rssi};
         if (matchesFilters(device, filters)) picker.add(device);
@@ -533,7 +544,9 @@ const requestDevice = async (options = {}) => {
 
     try {
         await session.request('discover', {filters: services.length ? [{services}] : []});
-        const chosen = await picker.promise;
+        const result = await pickerResult;
+        if (result.error) throw result.error;
+        const chosen = result.value;
         bleLog('info', 'ble', 'chose', `${chosen.name} (${chosen.id})`);
         return new BluetoothDevice(chosen.id, chosen.name);
     } finally {

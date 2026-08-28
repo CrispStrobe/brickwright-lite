@@ -33,9 +33,18 @@ if (!url) {
             if (path.endsWith('/')) path += 'index.html';
             const file = join(build, normalize(path));
             if (!file.startsWith(build)) throw new Error('escape');
+            // Read BEFORE the head goes out. Writing 200 and then failing to
+            // read leaves the catch unable to send a 404 — writeHead throws
+            // once headers are sent, and that throw escapes the handler and
+            // kills the gate. A missing asset is one 404 line, not a crash.
+            const body = await readFile(file);
             res.writeHead(200, {'content-type': types[extname(file)] || 'application/octet-stream'});
-            res.end(await readFile(file));
-        } catch { res.writeHead(404); res.end('not found'); }
+            res.end(body);
+        } catch {
+            console.log(`404 ${req.url}`);
+            if (!res.headersSent) res.writeHead(404);
+            res.end('not found');
+        }
     });
     const first = Number(process.env.BW_PORT || 8171);
     let port = null;
@@ -135,6 +144,12 @@ const report = await page.evaluate(async () => {
     window.__brickwrightDiagnostics.open();
     const button = [...document.querySelectorAll('button')].find(b => b.textContent === 'Run Bluetooth self-test');
     button.click();
+    // Wait for the REPORT, not for the word "self-test" — the button is
+    // labelled "Run Bluetooth self-test", so that string is on screen before
+    // anything has run and this returned on the first poll every time. It only
+    // ever passed because the self-test used to finish inside 250ms; the moment
+    // it took longer, the gate asserted against a page with no report on it and
+    // blamed Bluetooth.
     for (let i = 0; i < 60; i++) {
         await new Promise(r => setTimeout(r, 250));
         // The button itself says "self-test" before and after the run. Wait

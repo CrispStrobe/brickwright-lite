@@ -277,10 +277,18 @@ export const scratchLinkRouteReport = () => new Promise(resolve => {
     // Whole-probe cap. A step that never answers is the finding, so the timer
     // must report rather than hang: an unresolved promise here would freeze the
     // diagnostics panel, which is the one thing that must keep working.
+    // SHORT on purpose. This runs inside the self-test, which a person is
+    // watching a button for — and the CI gate waits on that report too, which
+    // is how a 15s cap here was caught: the whole self-test stopped rendering
+    // within the time anyone waits for it.
+    //
+    // The diagnosis needs "did the socket open and was discover answered",
+    // which a local service answers in milliseconds. Finding a hub is a bonus,
+    // and the chooser is where someone actually looks for one.
     const overall = setTimeout(() => {
         out['second socket'] = out['second socket'] || 'TIMED OUT before it opened';
         finish();
-    }, 15000);
+    }, 5000);
 
     try {
         ws = new WebSocket(url);
@@ -307,11 +315,12 @@ export const scratchLinkRouteReport = () => new Promise(resolve => {
         // discover's reply — which is null by design. Both are reported, because
         // "which of the two never arrived" is the whole diagnosis.
         setTimeout(() => {
-            out['discover reply'] = out['discover reply'] || 'NO REPLY within 8s';
-            out['devices seen'] = out['devices seen'] || 'none (a hub may simply be absent or off)';
+            out['discover reply'] = out['discover reply'] || 'NO REPLY within 3s';
+            out['devices seen'] = out['devices seen'] ||
+                'none yet (3s is long enough to prove the route works, not to find a hub)';
             clearTimeout(overall);
             finish();
-        }, 8000);
+        }, 3000);
     };
     ws.onmessage = event => {
         let msg;
