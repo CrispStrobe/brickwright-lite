@@ -1272,6 +1272,10 @@ test('Crosswind Courier separates distance from stunt score and rewards level la
     assert.match(games.rotor_rogue, /set wind to sin of distance \* speed \/ 8/);
     assert.match(games.rotor_rogue, /IF abs of tilt < 14 THEN:/);
     assert.match(games.rotor_rogue, /IF distance > 39 THEN:/);
+    assert.match(games.rotor_rogue, /broadcast "crosswind delivered"/);
+    assert.match(games.rotor_rogue, /broadcast "crosswind failed"/);
+    assert.match(games.rotor_rogue, /broadcast "crosswind over"/);
+    assert.match(games.rotor_rogue, /FORTY KILOMETRES DELIVERED • GREEN FLAG TO RIDE AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'skyroad']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2179,6 +2183,14 @@ test('grid hopping and throttle-jump controls work in the live Scratch VM', asyn
         for (let i = 0; i < 4; i++) courier.runtime._step();
         courier.postIOData('keyboard', {key: ' ', isDown: false});
         assert.equal(Number(value(courier, 'airborne').value), 1, 'Space did not launch the bike');
+        const bike = courier.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'GyroBike');
+        courier.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'crosswind delivered'}, bike);
+        for (let i = 0; i < 35; i++) courier.runtime._step();
+        assert.equal(Number(value(courier, 'winner').value), 1, 'the 40 km delivery did not win');
+        assert.equal(Number(value(courier, 'active').value), 0, 'the delivered run remained active');
+        const result = courier.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'CrosswindResult');
+        assert.equal(result.visible, true, 'the delivery result was not shown on the stage');
     } finally { courier.quit(); clearStrayTimers(); }
 });
 
@@ -2459,7 +2471,9 @@ test('each new game keeps its signature playable mechanic', () => {
             /broadcast "helix rush over"/],
         lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/,
             /broadcast "moonbank crossed"/, /change crossings by 1/, /IF crossings = 3/, /broadcast "moonbank over"/],
-        rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/],
+        rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/,
+            /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/,
+            /broadcast "crosswind delivered"/, /broadcast "crosswind over"/],
         prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /IF level = 12/],
         shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /set orbActive to 0/, /change waves by 1/],
         halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/, /IF round = 3/],

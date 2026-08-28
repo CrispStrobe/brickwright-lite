@@ -5234,6 +5234,8 @@ GLOBAL airborne
 GLOBAL fuel
 GLOBAL jumpReady
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art crosswind-courier/intro
@@ -5246,9 +5248,23 @@ STAGE:
     hide variable lives
     hide variable speed
     hide variable fuel
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set distance to 0
+      set lives to 3
+      set speed to 4
+      set tilt to 0
+      set wind to 0
+      set bikeY to -120
+      set lift to 0
+      set airborne to 0
+      set fuel to 12
+      set jumpReady to 0
+      set winner to 0
+      set active to 1
       switch backdrop to skyroad
       broadcast "start crosswind courier"
 
@@ -5269,6 +5285,8 @@ SPRITE GyroBike:
     set airborne to 0
     set fuel to 12
     set jumpReady to 0
+    set active to 0
+    set winner to 0
     go to x: 0 y: bikeY
     hide
   WHEN I receive "start crosswind courier":
@@ -5280,7 +5298,7 @@ SPRITE GyroBike:
     show
     wait 0.2 seconds
     set jumpReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key up arrow pressed? and fuel > 0 THEN:
         change speed by 0.08
         change fuel by -0.025
@@ -5324,27 +5342,36 @@ SPRITE GyroBike:
         wait 0.7 seconds
       change distance by speed / 180
       IF distance > 39 THEN:
-        say ("FORTY KILOMETRES DELIVERED — STUNT SCORE " join score) for 4 seconds
-        stop all
+        broadcast "crosswind delivered"
       IF lives < 1 THEN:
-        say ("COURIER LOST AT KM " join distance) for 4 seconds
-        stop all
+        broadcast "crosswind failed"
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and jumpReady = 1 and airborne = 0 THEN:
+    IF active = 1 and jumpReady = 1 and airborne = 0 THEN:
       set airborne to 1
       set lift to 11
       play sound "rev"
+  WHEN I receive "crosswind delivered":
+    IF active = 1 THEN:
+      set winner to 1
+      set active to 0
+      broadcast "crosswind over"
+  WHEN I receive "crosswind failed":
+    IF active = 1 THEN:
+      set winner to 0
+      set active to 0
+      broadcast "crosswind over"
 
 SPRITE Barrier:
   SHAPE art crosswind-courier/barrier
   WHEN flag clicked:
     hide
   WHEN I receive "start crosswind courier":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: 220 y: -120
       show
-      REPEAT UNTIL x position < -240:
+      REPEAT UNTIL x position < -240 or active = 0:
         change x by 0 - speed
         IF touching GyroBike and airborne = 0 THEN:
           change lives by -1
@@ -5362,9 +5389,25 @@ SPRITE SkyRoad:
     hide
   WHEN I receive "start crosswind courier":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change color effect by speed
-      wait 0.04 seconds`,
+      wait 0.04 seconds
+    hide
+
+SPRITE CrosswindResult:
+  COSTUME win label "FORTY KILOMETRES DELIVERED • GREEN FLAG TO RIDE AGAIN" #ffe66d
+  COSTUME lose label "THREE CRASHES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start crosswind courier":
+    hide
+  WHEN I receive "crosswind over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     prism_spire: `# Lumen Stack — a twelve-floor precision tower challenge.
 # GOAL: build twelve floors before three complete misses.
