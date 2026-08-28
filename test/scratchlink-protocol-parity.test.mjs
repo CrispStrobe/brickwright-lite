@@ -197,3 +197,12 @@ test('connect is bounded by what discovery actually reported', () => {
     assert.match(BLE, /None => true/,
         'with no discovery yet the set must not refuse everything');
 });
+
+test('a discovered peripheral always reports a numeric rssi', () => {
+    // RSSI.swift: 127 means "unknown", 0 means "unsupported" — the reference
+    // never sends null. scratch-gui's connection modal declares
+    // rssi: PropTypes.number and draws signal bars with `rssi > -80`, where a
+    // null violates the prop type and coerces to 0 inside the comparison.
+    assert.match(BLE, /unwrap_or\(127\)/,
+        'an absent rssi must become the reference\'s "unknown" value, not null');
+});
