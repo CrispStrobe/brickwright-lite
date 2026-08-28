@@ -12,7 +12,9 @@ the remaining tasks are deliberately independent checkpoints.
   in-process. A changed known URL is refused.
 - Every other HTTP(S), relative, `data:` or `blob:` URL runs in the Scratch VM
   extension worker. HTTP(S) entry points still ask first and explain that the
-  worker has network access, but no DOM, editor runtime or Tauri native bridge.
+  worker retains HTTP(S) fetch/import, but no DOM, editor runtime or Tauri
+  native bridge. Direct WebSockets are blocked: otherwise code could dial the
+  app's loopback Scratch-Link server and regain native Bluetooth.
   Extensions which demand `Scratch.extensions.unsandboxed` fail explicitly.
 
 Worker isolation alone was insufficient: downloaded code still owns
@@ -124,7 +126,9 @@ a capability that silently does nothing is indistinguishable from a bug.
 
 **Status: implemented 2026-08-28 for every unpinned URL.** This directly buys
 the boundary Tasks 1–3 did not: code chosen by URL cannot reach the DOM, editor
-runtime or native bridge. Network access remains and is stated in the prompt.
+runtime or native bridge. HTTP(S) access remains and is stated in the prompt;
+WebSockets are unavailable because Scratch Link itself is a native-capable
+loopback WebSocket service.
 
 The content-pinned gallery remains on the in-process adapter for compatibility.
 Moving that reviewed set into the worker is a separate compatibility project,

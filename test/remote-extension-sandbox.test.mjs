@@ -38,6 +38,9 @@ test('the worker API contains compatibility helpers but no page or native bridge
         assert.match(worker, new RegExp(`\\b${name}\\b`));
     }
     assert.match(worker, /unsandboxed: false/);
+    assert.match(worker, /blockWebSockets\(\)/);
+    assert.match(worker, /configurable: false/);
+    assert.match(worker, /writable: false/);
     assert.doesNotMatch(worker,
         /__TAURI__|__TAURI_INTERNALS__|global\.(?:window|document)|Scratch\.(?:vm|runtime|renderer)/);
 });
@@ -207,7 +210,8 @@ test('the broker rejects privileged calls and cross-worker response forgery at r
 test('both URL entry points tell the user what the sandbox does and does not contain', () => {
     for (const source of [picker, urlLoader]) {
         assert.match(source, /isolated worker/i);
-        assert.match(source, /network/i);
+        assert.match(source, /HTTP\(S\)/i);
+        assert.match(source, /WebSockets are blocked/i);
         assert.doesNotMatch(source, /full access to (?:this page|the editor)/i);
     }
 });

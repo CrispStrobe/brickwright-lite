@@ -276,8 +276,9 @@ missing a security track that exists only in another file.
 bytes match the app's reviewed pin. Every unpinned URL runs in a worker without
 DOM, editor-runtime or Tauri-bridge access; its dispatch channel accepts only
 that worker's extension registration lifecycle and replies to calls actually
-sent to it. Unknown HTTP(S) URLs still require confirmation and retain network
-access; changed pinned URLs are refused.
+sent to it. Unknown HTTP(S) URLs still require confirmation and retain HTTP(S)
+fetch/import; direct WebSockets are blocked so they cannot dial the native
+loopback Scratch-Link service. Changed pinned URLs are refused.
 
 The remaining ambient native surface belongs only to reviewed, content-pinned
 compatibility extensions. A JavaScript wrapper cannot attribute calls made in a

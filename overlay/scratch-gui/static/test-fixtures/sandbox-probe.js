@@ -19,7 +19,15 @@
                 unsandboxed: Scratch.extensions.unsandboxed,
                 document: typeof document,
                 editor: typeof Scratch.vm,
-                nativeBridge: typeof self.__TAURI_INTERNALS__
+                nativeBridge: typeof self.__TAURI_INTERNALS__,
+                webSocket: (() => {
+                    try {
+                        new WebSocket('ws://127.0.0.1:20111/scratch/ble');
+                        return 'opened';
+                    } catch (e) {
+                        return 'blocked';
+                    }
+                })()
             });
         }
     }

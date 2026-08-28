@@ -57,7 +57,8 @@ export default function initUrlExtensions () {
                         const ok = typeof window.confirm === 'function' && window.confirm(
                             `Load the extension from:\n\n${url}\n\n` +
                             'It will run in an isolated worker without editor or native-device access. ' +
-                            'It can still make network requests; extensions requiring unsandboxed mode will fail.'
+                            'HTTP(S) requests remain available; direct WebSockets are blocked. ' +
+                            'Extensions requiring unsandboxed mode will fail.'
                         );
                         if (!ok) continue;
                     }
