@@ -1447,6 +1447,191 @@ SPRITE Result:
     show
 `,
 
+    canal_command: `# Canal Command — operate a real three-control lock sequence.
+# GOAL: lift 4 boats from the low canal to the high canal before 3 unsafe commands.
+# CONTROLS: tap LOWER GATE, PUMP, and UPPER GATE. Gates only open at matching water level.
+GLOBAL started
+GLOBAL active
+GLOBAL water
+GLOBAL lowerGate
+GLOBAL upperGate
+GLOBAL boatZone
+GLOBAL boats
+GLOBAL faults
+GLOBAL status
+
+STAGE:
+  BACKDROP intro art canal-command/intro
+  BACKDROP lock art canal-command/play
+  WHEN flag clicked:
+    set started to 0
+    set active to 0
+    switch backdrop to intro
+    hide variable boats
+    hide variable faults
+    hide variable status
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to lock
+      broadcast "start canal command"
+
+SPRITE Controller:
+  SHAPE art canal-command/marker
+  SOUND ok 820
+  SOUND alarm 140
+  DEFINE unsafe (message):
+    change faults by 1
+    set status to message
+    play sound "alarm"
+    IF faults = 3 THEN:
+      set active to 0
+      set started to 0
+      broadcast "canal command lost"
+  WHEN flag clicked:
+    hide
+  WHEN I receive "start canal command":
+    set water to 0
+    set lowerGate to 0
+    set upperGate to 0
+    set boatZone to 0
+    set boats to 0
+    set faults to 0
+    set status to "OPEN LOWER GATE"
+    set active to 1
+    show variable boats
+    show variable faults
+    show variable status
+  WHEN I receive "lower gate command":
+    IF active = 1 THEN:
+      IF water = 0 and upperGate = 0 and boatZone = 0 THEN:
+        set lowerGate to 1
+        set status to "BOAT ENTERING"
+        play sound "ok"
+        wait 0.6 seconds
+        set boatZone to 1
+        set lowerGate to 0
+        set status to "PUMP WATER UP"
+      ELSE:
+        unsafe "LOWER GATE INTERLOCK"
+  WHEN I receive "pump command":
+    IF active = 1 THEN:
+      IF lowerGate = 0 and upperGate = 0 THEN:
+        IF water = 0 THEN:
+          set water to 1
+          IF boatZone = 1 THEN:
+            set status to "OPEN UPPER GATE"
+          ELSE:
+            set status to "WATER HIGH — PUMP DOWN"
+        ELSE:
+          set water to 0
+          set status to "OPEN LOWER GATE"
+        play sound "ok"
+      ELSE:
+        unsafe "CLOSE BOTH GATES BEFORE PUMPING"
+  WHEN I receive "upper gate command":
+    IF active = 1 THEN:
+      IF water = 1 and lowerGate = 0 and boatZone = 1 THEN:
+        set upperGate to 1
+        set status to "BOAT LEAVING"
+        play sound "ok"
+        wait 0.6 seconds
+        set boatZone to 2
+        change boats by 1
+        wait 0.5 seconds
+        set upperGate to 0
+        IF boats = 4 THEN:
+          set active to 0
+          set started to 0
+          broadcast "canal command won"
+        ELSE:
+          set boatZone to 0
+          set status to "PUMP DOWN FOR NEXT BOAT"
+      ELSE:
+        unsafe "UPPER GATE INTERLOCK"
+
+SPRITE Boat:
+  SHAPE art canal-command/boat
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      IF active = 1 THEN:
+        IF boatZone = 0 THEN:
+          go to x: -174 y: -68
+        IF boatZone = 1 THEN:
+          IF water = 0 THEN:
+            go to x: 0 y: -68
+          ELSE:
+            go to x: 0 y: 42
+        IF boatZone = 2 THEN:
+          go to x: 174 y: 42
+        show
+      ELSE:
+        hide
+      wait 0.03 seconds
+
+SPRITE LowerGate:
+  SHAPE art canal-command/gate-closed
+  COSTUME open art canal-command/gate-open
+  WHEN flag clicked:
+    go to x: -91 y: -12
+    FOREVER:
+      IF lowerGate = 1 THEN:
+        switch costume to open
+      ELSE:
+        switch costume to costume1
+      wait 0.03 seconds
+
+SPRITE UpperGate:
+  SHAPE art canal-command/gate-closed
+  COSTUME open art canal-command/gate-open
+  WHEN flag clicked:
+    go to x: 91 y: 43
+    FOREVER:
+      IF upperGate = 1 THEN:
+        switch costume to open
+      ELSE:
+        switch costume to costume1
+      wait 0.03 seconds
+
+SPRITE LowerButton:
+  COSTUME lower art canal-command/lower-button
+  WHEN flag clicked:
+    go to x: -142 y: -153
+    show
+  WHEN sprite clicked:
+    broadcast "lower gate command"
+SPRITE PumpButton:
+  COSTUME pump art canal-command/pump-button
+  WHEN flag clicked:
+    go to x: 0 y: -153
+    show
+  WHEN sprite clicked:
+    broadcast "pump command"
+SPRITE UpperButton:
+  COSTUME upper art canal-command/upper-button
+  WHEN flag clicked:
+    go to x: 142 y: -153
+    show
+  WHEN sprite clicked:
+    broadcast "upper gate command"
+
+SPRITE Result:
+  COSTUME win label "4 BOATS LIFTED • GREEN FLAG TO REPLAY" #8fffea
+  COSTUME lose label "LOCK SHUT DOWN AFTER 3 UNSAFE COMMANDS" #ff91a8
+  WHEN flag clicked:
+    hide
+    go to x: 0 y: 0
+  WHEN I receive "start canal command":
+    hide
+  WHEN I receive "canal command won":
+    switch costume to win
+    show
+  WHEN I receive "canal command lost":
+    switch costume to lose
+    show
+`,
+
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: complete twelve clean hill launches before three crashes. Diving into a
 # green crest converts speed into height; consecutive launches grow the score combo.

@@ -336,6 +336,7 @@ const GROUPS = [
         ['reactor_ricochet', '⚡ Reactor Ricochet — clear 20 cells'],
         ['flux_vault', '🔷 Flux Vault — 3 puzzle chambers'],
         ['neon_circuit', '💡 Neon Circuit — darken 3 boards'],
+        ['canal_command', '🚢 Canal Command — lift 4 boats'],
         ['sky_skim', '🪽 Skyline Swoop — polished'],
         ['missile_ballet', '✈️ Contrail Panic — polished'],
         ['orbit_ward', '🛡️ Aegis Arc — polished'],
