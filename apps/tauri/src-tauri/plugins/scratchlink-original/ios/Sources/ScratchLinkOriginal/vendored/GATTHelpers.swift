@@ -33,7 +33,7 @@ class GATTHelpers {
         return resolveUUID(fromName: characteristic, withTable: AssignedCharacteristics)
     }
 
-    typealias AssignedNumbersTable = [String: uint16]
+    typealias AssignedNumbersTable = [String: UInt16]
 
     /// Resolve a Web Bluetooth GATT "name" to a canonical UUID, using an assigned numbers table if necessary.
     /// See [here](https://webbluetoothcg.github.io/web-bluetooth/#resolveuuidname) for more info.
@@ -44,7 +44,7 @@ class GATTHelpers {
     /// - returns: a UUID on success or nil on failure
     /// - throws: a JSONRpcError on failure
     public static func resolveUUID(fromName name: Any, withTable assignedNumbers: AssignedNumbersTable) -> CBUUID? {
-        if let shortServiceNum = name as? uint32 {
+        if let shortServiceNum = name as? UInt32 {
             return canonicalUUID(fromAlias: shortServiceNum)
         }
 
@@ -62,7 +62,7 @@ class GATTHelpers {
             }
 
             if let assignedNumber = assignedNumbers[nameString] {
-                return canonicalUUID(fromAlias: uint32(assignedNumber))
+                return canonicalUUID(fromAlias: UInt32(assignedNumber))
             }
         }
 
@@ -75,12 +75,12 @@ class GATTHelpers {
     /// - parameters:
     ///   - alias: A 16- or 32-bit UUID alias
     /// - returns: The associated canonical UUID
-    public static func canonicalUUID(fromAlias alias: uint32) -> CBUUID {
-        let uuidBytes: [uint8] = [
-                uint8((alias >> 24) & 0xff),
-                uint8((alias >> 16) & 0xff),
-                uint8((alias >> 8) & 0xff),
-                uint8(alias & 0xff),
+    public static func canonicalUUID(fromAlias alias: UInt32) -> CBUUID {
+        let uuidBytes: [UInt8] = [
+                UInt8((alias >> 24) & 0xff),
+                UInt8((alias >> 16) & 0xff),
+                UInt8((alias >> 8) & 0xff),
+                UInt8(alias & 0xff),
                 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb
         ]
         return CBUUID(data: Data(uuidBytes))

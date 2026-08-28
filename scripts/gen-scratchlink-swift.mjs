@@ -44,12 +44,42 @@ const EDITS = [{
     why: 'CBCharacteristic.service and CBService.peripheral are weak optionals since iOS 15',
 }];
 
+/**
+ * Whole-file rewrites, for changes too repetitive to list line by line.
+ *
+ * `uint16`/`uint32` are Darwin's lowercase C typealiases. They resolve when
+ * building for macOS and NOT for iOS — which is why a clean local macOS build
+ * said "one line to patch" and the iOS job then found nine more. The lesson is
+ * in the asymmetry: verifying on the platform you have is not verifying.
+ *
+ * The knock-on was worse than the aliases. With the element type of
+ * `AssignedNumbersTable` unresolved, the 250-entry dictionary literal below it
+ * made the type checker give up entirely — "unable to type-check this
+ * expression in reasonable time" — which reads like a code-size problem and is
+ * really just the unresolved alias.
+ */
+const REWRITES = [{
+    file: 'GATTHelpers.swift',
+    pattern: /\buint(8|16|32|64)\b/g,
+    replace: (_, bits) => `UInt${bits}`,
+    why: 'lowercase Darwin uint aliases do not exist on iOS',
+}];
+
 const check = process.argv.includes('--check');
 const generated = new Map();
 
 for (const name of readdirSync(SRC).filter(f => f.endsWith('.swift')).sort()) {
     if (SKIP.has(name)) continue;
     let text = readFileSync(join(SRC, name), 'utf8');
+    for (const rw of REWRITES.filter(r => r.file === name)) {
+        const before = text;
+        text = text.replace(rw.pattern, rw.replace);
+        if (text === before) {
+            console.error(`\n${name}: nothing matched ${rw.pattern} — ${rw.why}\n` +
+                'Upstream moved; re-check whether this rewrite is still needed.');
+            process.exit(2);
+        }
+    }
     for (const edit of EDITS.filter(e => e.file === name)) {
         if (!text.includes(edit.from)) {
             console.error(`\n${name}: the line this patch targets is gone.\n` +

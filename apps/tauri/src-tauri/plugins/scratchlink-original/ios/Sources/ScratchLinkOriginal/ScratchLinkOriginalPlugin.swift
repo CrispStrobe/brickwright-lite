@@ -15,6 +15,10 @@
 // definition.
 import Foundation
 import Tauri
+// WebSocket lives here, not in Foundation: it is the shim standing in for the
+// type the vendored sources import. Without this the plugin cannot name the
+// very object it hands to BLESession.
+import PerfectWebSockets
 
 /// `kind` picks the session type, mirroring the socket route's URL path
 /// (`/scratch/ble` vs `/scratch/bt`).
