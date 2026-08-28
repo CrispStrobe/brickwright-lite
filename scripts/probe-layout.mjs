@@ -111,7 +111,13 @@ try {
         check('the right-pane toggle is present', false, `no ${paneToggle}`);
     } else if ((await toggle.getAttribute('aria-pressed')) !== 'true') {
         await toggle.click();
-        await page.waitForTimeout(1200);
+        // Wait for the CONDITION, not a guess at how long it takes: the stage
+        // column is what every invariant below measures, so the thing worth
+        // waiting for is that column having a width at all.
+        await page.waitForFunction(() => {
+            const col = document.querySelector('[class*="stage-and-target-wrapper"]');
+            return !!col && col.getBoundingClientRect().width > 200;
+        }, null, {timeout: 15000}).catch(() => console.log('note: the right pane did not open'));
     }
     await page.waitForTimeout(3000);
 
