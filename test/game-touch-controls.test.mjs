@@ -16,7 +16,7 @@ import games from '../overlay/scratch-gui/src/lib/sb3-creator-game-examples.js';
 const read = path => readFileSync(new URL(`../overlay/scratch-gui/src/${path}`, import.meta.url), 'utf8');
 
 const PUBLIC_GAMES = [
-    'g2048', 'sky_skim', 'chroma_code', 'fusion_foundry', 'missile_ballet', 'orbit_ward',
+    'g2048', 'sigil_grid', 'sky_skim', 'chroma_code', 'fusion_foundry', 'missile_ballet', 'orbit_ward',
     'rooftop_relay', 'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep',
     'moonlight_heist', 'cloud_court', 'ember_dojo', 'lockstep_lagoon', 'rink_riot',
     'rim_reactor', 'comet_cup', 'trench_signal', 'whisker_switch', 'spiral_circuit',
@@ -31,6 +31,7 @@ test('touch profiles expose the controls each unusual game actually uses', () =>
     assert.equal(gameTouchProfileFor('twinwall').keys.rightUp, 'ArrowUp');
     assert.equal(gameTouchProfileFor('fusion_foundry').keys.action, ' ');
     assert.equal(gameTouchProfileFor('g2048').layout, 'stage');
+    assert.equal(gameTouchProfileFor('sigil_grid').layout, 'stage');
     assert.equal(gameTouchProfileFor('missile_ballet').layout, 'stage');
     assert.equal(gameTouchProfileFor('breakout').layout, 'stage');
     assert.equal(gameTouchProfileFor('pong_2p').layout, 'dual');

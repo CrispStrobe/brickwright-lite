@@ -8,6 +8,7 @@ import {VM, clearStrayTimers, runProgram, quitStrandedVMs} from './helpers/bw-vm
 
 const EXPECTED = [
     'g2048',
+    'sigil_grid',
     'sky_skim',
     'chroma_code',
     'fusion_foundry',
@@ -50,6 +51,7 @@ test('only quality-approved new games are wired into the visible examples galler
     }
     const approved = new Set([
         'g2048',
+        'sigil_grid',
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
@@ -182,6 +184,79 @@ test('Nova Grid replaces the bare 2048 prototype with a complete reactor puzzle'
     assert.ok(svgs.some(svg => svg.includes('NOVA GRID')));
     assert.ok(svgs.some(svg => svg.includes('FUSE EQUAL TILES')));
     assert.ok(svgs.some(svg => svg.includes('FORGE 2048')));
+});
+
+test('Sigil Grid is a complete solo or local-duo tactics game', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.sigil_grid);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.sigil_grid, /GOAL: claim three aligned sigils before your rival/);
+    assert.match(games.sigil_grid, /CONTROLS: tap an empty cell/);
+    assert.match(games.sigil_grid, /set mode to 1/);
+    assert.match(games.sigil_grid, /set mode to 2/);
+    assert.match(games.sigil_grid, /DEFINE find tactic for \(mark\):/);
+    assert.match(games.sigil_grid, /find tactic for 2[\s\S]*find tactic for 1/);
+    assert.match(games.sigil_grid, /item 5 of board = 0/);
+    assert.match(games.sigil_grid, /check line 1 5 9/);
+    assert.match(games.sigil_grid, /check line 3 5 7/);
+    assert.match(games.sigil_grid, /broadcast "sigil duel finished"/);
+    const stage = project.targets.find(target => target.isStage);
+    const board = project.targets.find(target => target.name === 'Board');
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'arena']);
+    assert.deepEqual(board.costumes.map(costume => costume.name), ['costume1', 'blank', 'sun', 'moon']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('SIGIL GRID')));
+    assert.ok(svgs.some(svg => svg.includes('THREE IN A LINE WINS')));
+    assert.ok(svgs.some(svg => svg.includes('TACTICAL RIVAL')));
+});
+
+test('Sigil Grid accepts stage taps and its solo rival blocks a forced win in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.sigil_grid);
+    const vm = new VM();
+    const stageValue = name => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+    const tap = async (x, y) => {
+        vm.postIOData('mouse', {x, y, canvasWidth: 480, canvasHeight: 360, isDown: true});
+        for (let i = 0; i < 14; i++) vm.runtime._step();
+        vm.postIOData('mouse', {x, y, canvasWidth: 480, canvasHeight: 360, isDown: false});
+        for (let i = 0; i < 18; i++) vm.runtime._step();
+        // The rival deliberately pauses to telegraph its move, then names the
+        // next turn. Wait through both speech bubbles before the next tap.
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        for (let i = 0; i < 45; i++) vm.runtime._step();
+    };
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        for (let i = 0; i < 20; i++) vm.runtime._step();
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 40; i++) vm.runtime._step();
+
+        const boardTarget = vm.runtime.targets.find(target => target.sprite.name === 'Board');
+        const board = Object.values(boardTarget.variables).find(variable => variable.name === 'board');
+        assert.equal(Number(stageValue('started').value), 1, 'green flag did not select solo play');
+        assert.equal(Number(stageValue('active').value), 1, 'green flag did not open the board');
+        assert.deepEqual(board.value.map(Number), [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+        await tap(154, 89); // Scratch (-86, 91): upper-left cell.
+        assert.equal(Number(board.value[0]), 1, 'stage tap did not place the player sun');
+        assert.equal(Number(board.value[4]), 2, 'rival did not answer with the open centre');
+
+        board.value = [1, 1, 0, 0, 2, 0, 0, 0, 0];
+        stageValue('moves').value = 3;
+        stageValue('winner').value = 0;
+        stageValue('turn').value = 1;
+        stageValue('active').value = 1;
+        await tap(154, 261); // Give the player cell 7; cells 1-2 now threaten cell 3.
+        assert.equal(Number(board.value[6]), 1, 'second stage tap did not reach the intended cell');
+        assert.equal(Number(board.value[2]), 2, 'rival failed to block the immediate row win');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
 });
 
 test('quality-approved game has authored SVG art and explicit onboarding', () => {
@@ -1654,6 +1729,9 @@ test('new pseudocode games compile cleanly into substantial Scratch projects', (
 
 test('each new game keeps its signature playable mechanic', () => {
     const contracts = {
+        sigil_grid: [/LIST board/, /DEFINE find tactic for \(mark\):/, /find tactic for 2/,
+            /find tactic for 1/, /item 5 of board = 0/, /DEFINE place at \(r\) \(c\):/,
+            /broadcast "sigil duel finished"/],
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
             /change launches by 1/, /IF launches = 12 THEN:/],

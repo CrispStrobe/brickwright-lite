@@ -137,7 +137,10 @@ const report = await page.evaluate(async () => {
     button.click();
     for (let i = 0; i < 60; i++) {
         await new Promise(r => setTimeout(r, 250));
-        if (document.body.innerText.includes('self-test')) return document.body.innerText;
+        // The button itself says "self-test" before and after the run. Wait
+        // for the actual diagnostic field, or a fast failure can be mistaken
+        // for a completed report and the useful error line is lost.
+        if (document.body.innerText.includes('local Bluetooth service:')) return document.body.innerText;
     }
     return document.body.innerText;
 });
