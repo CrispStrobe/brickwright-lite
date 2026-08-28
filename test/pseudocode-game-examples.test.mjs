@@ -1403,7 +1403,10 @@ test('Chromafall Reactor renders every list cell and has a deterministic six-fus
     assert.match(games.cascade_pair, /switch costume to \("block" join item i of colA\)/);
     assert.match(games.cascade_pair, /IF runB > 3 THEN:/);
     assert.match(games.cascade_pair, /change clears by 1/);
-    assert.match(games.cascade_pair, /IF clears = 6 THEN:/);
+    assert.match(games.cascade_pair, /set clearedDrop to 1/);
+    assert.match(games.cascade_pair, /IF clearedDrop = 0 THEN:/);
+    assert.match(games.cascade_pair, /broadcast "chromafall over"/);
+    assert.match(games.cascade_pair, /SIX FUSIONS STABLE • GREEN FLAG TO REIGNITE/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'board']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2399,6 +2402,19 @@ test('aerial movement and deterministic color fusion work in the live Scratch VM
         assert.equal(Number(value(reactor, 'clears').value), 1, 'four matching cells did not count as a fusion');
         assert.equal(Number(value(reactor, 'score').value), 40, 'first fusion did not score its base value');
         assert.equal(Number(value(reactor, 'combo').value), 2, 'fusion did not grow the combo multiplier');
+        value(reactor, 'clears').value = 5;
+        const logic = reactor.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'ReactorLogic');
+        reactor.runtime.startHats('event_whenbroadcastreceived', {
+            BROADCAST_OPTION: 'pair clear'
+        }, logic);
+        for (let i = 0; i < 35; i++) reactor.runtime._step();
+        assert.equal(Number(value(reactor, 'clears').value), 6, 'sixth fusion was not recorded');
+        assert.equal(Number(value(reactor, 'winner').value), 1, 'stable reactor win was not recorded');
+        assert.equal(Number(value(reactor, 'active').value), 0, 'stable reactor remained active');
+        const result = reactor.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'ChromafallResult');
+        assert.equal(result.visible, true, 'reactor result was not shown on the stage');
     } finally { reactor.quit(); clearStrayTimers(); }
 });
 
@@ -2562,7 +2578,9 @@ test('each new game keeps its signature playable mechanic', () => {
             /broadcast "carrier gate cleared"/, /change gates by 1/, /broadcast "carrier kestrel over"/],
         thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/,
             /broadcast "skycourt rival point"/, /touching ThunderNet/, /broadcast "skycourt over"/],
-        cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/, /delete falls of colA/, /change score by 40 \* combo/],
+        cascade_pair: [/LIST colA/, /add colorA to colA/, /set falls to length of colA/,
+            /delete falls of colA/, /change score by 40 \* combo/, /set clearedDrop to 1/,
+            /broadcast "chromafall over"/],
         mooncoil_odyssey: [/LIST trailX/, /add headX to trailX/, /headX = item i of trailX/, /delete 1 of trailX/, /change snakeLength by 1/],
         cinder_thrust: [/change flyerVY by -0\.42/, /key up arrow pressed\? and fuel > 0/, /touching ChargeLedge/, /change caveSpeed by 0\.12/]
     };

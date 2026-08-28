@@ -6478,6 +6478,9 @@ GLOBAL overflow
 GLOBAL falls
 GLOBAL started
 GLOBAL dropReady
+GLOBAL clearedDrop
+GLOBAL active
+GLOBAL winner
 GLOBAL i
 GLOBAL topA
 GLOBAL topB
@@ -6497,6 +6500,8 @@ STAGE:
   BACKDROP board art chromafall-reactor/play
   WHEN flag clicked:
     set started to 0
+    set active to 0
+    set winner to 0
     switch backdrop to intro
     hide variable score
     hide variable combo
@@ -6505,6 +6510,7 @@ STAGE:
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set active to 1
       switch backdrop to board
       broadcast "ignite chromafall"
 
@@ -6522,6 +6528,9 @@ SPRITE PairPilot:
     set overflow to 0
     set falls to 0
     set dropReady to 0
+    set clearedDrop to 0
+    set active to 0
+    set winner to 0
     set topA to 0
     set topB to 0
     set topC to 0
@@ -6537,13 +6546,14 @@ SPRITE PairPilot:
     go to x: -180 + column * 72 y: 130
     hide
   WHEN I receive "ignite chromafall":
+    set active to 1
     show variable score
     show variable combo
     show variable clears
     show variable column
     show
     set dropReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change column by -1
         wait 0.12 seconds
@@ -6555,25 +6565,21 @@ SPRITE PairPilot:
       IF column > 4 THEN:
         set column to 4
       go to x: -180 + column * 72 y: 130
-      IF overflow = 1 THEN:
-        say ("REACTOR OVERLOAD — SCORE " join score) for 4 seconds
-        stop all
-      IF clears = 6 THEN:
-        say ("SIX FUSIONS STABLE — SCORE " join score) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN up arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       set falls to colorA
       set colorA to colorB
       set colorB to falls
   WHEN space key pressed:
-    IF started = 1 and dropReady = 1 THEN:
+    IF active = 1 and dropReady = 1 THEN:
       set dropReady to 0
       broadcast "drop pair" and wait
-      set colorA to pick random 1 to 4
-      set colorB to pick random 1 to 4
-      set dropReady to 1
+      IF active = 1 THEN:
+        set colorA to pick random 1 to 4
+        set colorB to pick random 1 to 4
+        set dropReady to 1
 
 SPRITE PreviewA:
   SHAPE art chromafall-reactor/block1
@@ -6585,10 +6591,11 @@ SPRITE PreviewA:
     hide
   WHEN I receive "ignite chromafall":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       switch costume to ("block" join colorA)
       go to x: -180 + column * 72 y: 105
       wait 0.03 seconds
+    hide
 
 SPRITE PreviewB:
   SHAPE art chromafall-reactor/block1
@@ -6600,10 +6607,11 @@ SPRITE PreviewB:
     hide
   WHEN I receive "ignite chromafall":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       switch costume to ("block" join colorB)
       go to x: -180 + column * 72 y: 75
       wait 0.03 seconds
+    hide
 
 SPRITE ReactorLogic:
   SHAPE art chromafall-reactor/block1
@@ -6645,6 +6653,7 @@ SPRITE ReactorLogic:
     hide
     clear
   WHEN I receive "drop pair":
+    set clearedDrop to 0
     IF column = 1 THEN:
       add colorA to colA
       IF colorA = topA THEN:
@@ -6665,6 +6674,7 @@ SPRITE ReactorLogic:
           change falls by -1
         set topA to 0
         set runA to 0
+        set clearedDrop to 1
         broadcast "pair clear"
       IF length of colA > 9 THEN:
         set overflow to 1
@@ -6688,6 +6698,7 @@ SPRITE ReactorLogic:
           change falls by -1
         set topB to 0
         set runB to 0
+        set clearedDrop to 1
         broadcast "pair clear"
       IF length of colB > 9 THEN:
         set overflow to 1
@@ -6711,6 +6722,7 @@ SPRITE ReactorLogic:
           change falls by -1
         set topC to 0
         set runC to 0
+        set clearedDrop to 1
         broadcast "pair clear"
       IF length of colC > 9 THEN:
         set overflow to 1
@@ -6734,20 +6746,42 @@ SPRITE ReactorLogic:
           change falls by -1
         set topD to 0
         set runD to 0
+        set clearedDrop to 1
         broadcast "pair clear"
       IF length of colD > 9 THEN:
         set overflow to 1
-    change falls by 1
     play sound "drop"
     render reactor
-    IF falls > 1 THEN:
+    IF clearedDrop = 0 THEN:
       set combo to 1
+    IF overflow = 1 THEN:
+      set winner to 0
+      set active to 0
+      broadcast "chromafall over"
   WHEN I receive "pair clear":
     change score by 40 * combo
     change combo by 1
     change clears by 1
-    set falls to 0
-    play sound "clear"`,
+    play sound "clear"
+    IF clears > 5 THEN:
+      set winner to 1
+      set active to 0
+      broadcast "chromafall over"
+
+SPRITE ChromafallResult:
+  COSTUME win label "SIX FUSIONS STABLE • GREEN FLAG TO REIGNITE" #ffe66d
+  COSTUME lose label "REACTOR OVERLOAD • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "ignite chromafall":
+    hide
+  WHEN I receive "chromafall over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     mooncoil_odyssey: `# Cratercoil — a lunar grid snake with oxygen-powered dashes.
 # GOAL: collect twelve moonblooms before three crashes into your trail or the rover bomb.
