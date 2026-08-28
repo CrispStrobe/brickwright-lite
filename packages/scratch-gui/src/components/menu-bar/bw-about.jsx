@@ -49,6 +49,14 @@ const L10N = {
         components: 'Components and licences',
         licenseNote: 'Open-source under BSD-3-Clause, Apache-2.0, MIT, and MPL-2.0. Brickwright ' +
             'uses the last BSD Scratch stack plus its own editors and engines; it is not a TurboWarp fork.',
+        // Named here, not only in the linked file: these ship INSIDE the binary,
+        // and BSD-3 clause 2 asks for the notice to travel with it.
+        thanks: 'Carried in this app',
+        thanksText: 'Scratch Link (c) Scratch Foundation, BSD-3-Clause — the reference Bluetooth ' +
+            'implementation, vendored unmodified. Its PerfectWebSockets shim follows Scrub, ' +
+            '(c) Shinichiro Oba, BSD-3-Clause. labwired-core (MIT) is the full-fidelity ' +
+            'simulator; avr8js and rp2040js (MIT, Wokwi) are the AVR and Cortex-M0 cores; ' +
+            'emu8051 (MIT) is the 8051. Full list and licence texts below.',
         notices: 'Full third-party notices',
         affil: 'Affiliation',
         affilText: 'Not affiliated with or endorsed by Scratch / MIT, LEGO, STC, Arduino, or ' +
@@ -83,6 +91,12 @@ const L10N = {
             'echter Hardware Polung, Spannungen und Stromgrenzen prufen; alles ohne Nachweis ' +
             'auf echtem Chip gilt als unverifiziert.',
         components: 'Komponenten und Lizenzen',
+        thanks: 'In dieser App enthalten',
+        thanksText: 'Scratch Link (c) Scratch Foundation, BSD-3-Clause — die Referenz-Bluetooth-' +
+            'Implementierung, unveraendert uebernommen. Der PerfectWebSockets-Shim folgt Scrub, ' +
+            '(c) Shinichiro Oba, BSD-3-Clause. labwired-core (MIT) ist der Simulator mit voller ' +
+            'Genauigkeit; avr8js und rp2040js (MIT, Wokwi) sind die AVR- und Cortex-M0-Kerne; ' +
+            'emu8051 (MIT) der 8051. Vollstaendige Liste und Lizenztexte unten.',
         licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT und MPL-2.0. Brickwright nutzt ' +
             'den letzten BSD-Scratch-Stack sowie eigene Editoren und Engines; es ist kein TurboWarp-Fork.',
         notices: 'Vollstandige Third-Party-Hinweise',
@@ -278,6 +292,10 @@ class BwAbout extends React.Component {
                                     ))}
                                 </div>
 
+                                {/* Named IN the app, not only behind a link: these ship inside
+                                    the binary, and the link needs a network and a browser. */}
+                                <div className={styles.heading}>{t('thanks')}</div>
+                                <p className={styles.body}>{t('thanksText')}</p>
                                 <p className={styles.body}>
                                     <a href={NOTICES_URL} rel="noopener noreferrer" target="_blank">{t('notices')}</a>
                                 </p>
