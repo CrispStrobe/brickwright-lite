@@ -96,6 +96,27 @@ there too.
 
 ## 2. Deploy and CI
 
+### 2.0 Vercel deploys manually and nightly — LANDED 2026-08-28, know the rule
+
+Vercel's Git integration is disabled for this repository
+(`vercel.json`: `git.deploymentEnabled: false`). A push, pull request, tag, or
+commit-message marker therefore does **not** create a Vercel deployment.
+
+`.github/workflows/deploy-daily.yml` is the only deployment path. It runs:
+
+- manually through `workflow_dispatch`; and
+- nightly at **02:00 Europe/Berlin**, always checking out the current `main`.
+
+The workflow performs `vercel pull`, `vercel build --prod`, and a prebuilt
+production deploy. It is serialized so a manual run and the nightly run cannot
+publish over one another. The obsolete `scripts/vercel-ignore.sh` checkpoint
+filter was deleted when this policy landed.
+
+**CI still runs on every push.** Vercel does not. A PR badge therefore reports
+the build and vendor gates without consuming the account-wide deployment quota.
+If the public Vercel site is stale, inspect the scheduled/manual deployment
+workflow rather than looking for a missing per-push deployment.
+
 ### 2.1 Deploy starvation with two agents pushing — OPEN, do not redo naively
 Workflow is on stock `concurrency: {group: pages, cancel-in-progress: false}`. With two sessions
 pushing, runs are cancelled while queued and the site lags several commits, arriving out of order.
@@ -244,6 +265,40 @@ Lite-side items (ours, this repo):
    net-coalesce warnings).
 
 ---
+
+## 3b. What an extension can reach — **PLANNED, none built** (2026-08-28)
+
+Full reasoning, and the verification behind each claim, in
+`docs/EXTENSION-SECURITY.md`. Summary and evidence here so the roadmap is not
+missing a security track that exists only in another file.
+
+**The measurement.** `extension-manager.js` `_loadRemoteExtension` does
+`fetch(url)` → `makeCrispExtension(source)` → `_registerInternalExtension`.
+Every remote extension — our gallery AND a user-entered URL — runs
+**unsandboxed, in-process, with full page access and no integrity check**. The
+only difference between the two is a `confirm()`. There is no sandbox path for
+remote extensions: the vanilla worker fallback resolves built-in IDs only. The
+file's own header comment claimed otherwise ("anything else falls through to the
+vanilla sandbox worker") and is corrected in the same commit as this entry.
+
+What makes this unlike TurboWarp's problem is not the DOM but the **native
+bridge**: an in-process extension can invoke Tauri commands — Bluetooth, file
+writes, serial flashing.
+
+| # | Task | Why this order |
+|---|---|---|
+| 1 | **Pin the gallery by content, not host** | The *quiet* path: ~117 extensions, no prompt, so the largest blast radius. `docs/FETCH-PINNING.md` already established the doctrine for every build-time fetch after a CDN served a stale commit; runtime loads are the one place it was never extended to. |
+| 2 | **`allowedServices`** | An extension may only touch GATT services it declared. The reference enforces this BEFORE the blocklist; we shipped only the blocklist. Observe-only first, then default-on with a confirmed override. |
+| 3 | **Native capabilities declared, not ambient** | Bluetooth/serial/file asked for rather than assumed. Cheaper than a sandbox and aimed where our exposure differs from a browser's. |
+| 4 | **A real sandbox** | Only against a written case that 1–3 left something open. Large change; every extension using the in-process `Scratch` shim would need a new contract. |
+
+**Not an App Store item.** Guideline 2.5.2 permits code run by
+WebKit/JavaScriptCore, and Scrub — a Scratch *web browser* that also bridges
+arbitrary pages to Bluetooth — has shipped since 2021 (id1569777095). An earlier
+worry in this session that review might object was overstated. Do this because
+it is right.
+
+Each task is independently shippable and none blocks the next.
 
 ## 4. Standing debt
 
