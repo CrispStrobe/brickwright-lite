@@ -47,7 +47,23 @@
  * at clock-tree configuration rather than at anything in this file: the
  * SDK asks how fast clk_sys is running and does not like the answer.
  *
- * So the next step is rp2040js's CLOCKS peripheral, not more ROM.
+ * NAMED, so the next session starts where this one stopped. The SDK's
+ * panic takes its message in a register, and the string is sitting in
+ * flash, so it can simply be read at the moment the panic region is
+ * entered (step ~26,270):
+ *
+ *     r0 = 0xf   r1 = 0   r2 = 0xd0000150   r3 -> "Hard assert"
+ *
+ * `0xd0000150` is SIO + 0x150, which is **spinlock 20**. So a
+ * `hard_assert` involving a hardware spinlock, not a clock read — the
+ * CLOCKS and TIMER accesses just before it are what any SDK init does on
+ * the way past.
+ *
+ * Checked and excluded, so nobody re-checks them: rp2040js's spinlock
+ * model is correct (reading an unlocked lock acquires it and returns the
+ * mask, reading a locked one returns 0), `RESET_DONE` reports every
+ * peripheral out of reset (0x1ffffff), `CPUID` correctly reports core 0,
+ * and CLOCKS is fully modelled. None of those is the fault.
  *
  * @module
  */
