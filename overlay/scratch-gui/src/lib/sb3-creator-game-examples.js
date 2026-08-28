@@ -7033,12 +7033,17 @@ GLOBAL caveSpeed
 GLOBAL grounded
 GLOBAL invulnerable
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL chargeLock
 
 STAGE:
   BACKDROP intro art magma-lift/intro
   BACKDROP cave art magma-lift/play
   WHEN flag clicked:
     set started to 0
+    set active to 0
+    set winner to 0
     switch backdrop to intro
     hide variable score
     hide variable hearts
@@ -7047,6 +7052,7 @@ STAGE:
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set active to 1
       switch backdrop to cave
       broadcast "launch magma lift"
 
@@ -7055,6 +7061,7 @@ SPRITE Cinder:
   COSTUME thrust art magma-lift/thrust
   SOUND jet 540
   SOUND hit 140
+  SOUND ring 1080
   WHEN flag clicked:
     set score to 0
     set hearts to 3
@@ -7067,15 +7074,19 @@ SPRITE Cinder:
     set caveSpeed to 5
     set grounded to 0
     set invulnerable to 0
+    set active to 0
+    set winner to 0
+    set chargeLock to 0
     go to x: flyerX y: flyerY
     hide
   WHEN I receive "launch magma lift":
+    set active to 1
     show variable score
     show variable hearts
     show variable rings
     show variable fuel
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change flyerVY by -0.42
       IF key up arrow pressed? and fuel > 0 THEN:
         change flyerVY by 0.9
@@ -7099,8 +7110,7 @@ SPRITE Cinder:
         set flyerY to 155
         set flyerVY to -2
       IF flyerY < -155 and invulnerable = 0 THEN:
-        change hearts by -1
-        broadcast "cinder reset"
+        broadcast "cinder crash" and wait
       go to x: flyerX y: flyerY
       set grounded to 0
       IF touching ChargeLedge and flyerVY < 1 THEN:
@@ -7110,25 +7120,39 @@ SPRITE Cinder:
         IF fuel > 20 THEN:
           set fuel to 20
       IF touching BasaltTooth and invulnerable = 0 THEN:
-        change hearts by -1
-        play sound "hit"
-        broadcast "cinder reset"
-      IF hearts < 1 THEN:
-        say ("MAGMA CLAIMED THE RUN — RINGS " join rings) for 4 seconds
-        stop all
-      IF rings = 10 THEN:
-        say ("TEN EMBER RINGS CLEARED — SCORE " join score) for 4 seconds
-        stop all
+        broadcast "cinder crash" and wait
       change score by caveSpeed / 220
       wait 0.02 seconds
-  WHEN I receive "cinder reset":
-    set invulnerable to 1
-    set flyerX to -150
-    set flyerY to 20
-    set flyerVX to 0
-    set flyerVY to 0
-    wait 0.6 seconds
-    set invulnerable to 0
+    hide
+  WHEN I receive "cinder crash":
+    IF active = 1 and invulnerable = 0 THEN:
+      set invulnerable to 1
+      change hearts by -1
+      play sound "hit"
+      IF hearts < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "magma lift over"
+      ELSE:
+        set flyerX to -150
+        set flyerY to 20
+        set flyerVX to 0
+        set flyerVY to 0
+        wait 0.6 seconds
+        set invulnerable to 0
+  WHEN I receive "ember ring collected":
+    IF active = 1 THEN:
+      change rings by 1
+      change score by 12
+      change fuel by 2
+      IF fuel > 20 THEN:
+        set fuel to 20
+      change caveSpeed by 0.1
+      play sound "ring"
+      IF rings > 9 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "magma lift over"
 
 SPRITE BasaltTooth:
   SHAPE art magma-lift/tooth
@@ -7137,7 +7161,7 @@ SPRITE BasaltTooth:
     hide
   WHEN I receive "launch magma lift":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 0 - caveSpeed
       turn right 2 degrees
       IF x position < -250 THEN:
@@ -7145,6 +7169,7 @@ SPRITE BasaltTooth:
         set y to pick random -110 to 125
         change caveSpeed by 0.12
       wait 0.02 seconds
+    hide
 
 SPRITE ChargeLedge:
   SHAPE art magma-lift/ledge
@@ -7154,14 +7179,19 @@ SPRITE ChargeLedge:
     hide
   WHEN I receive "launch magma lift":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 0 - caveSpeed * 0.6
       IF x position < -250 THEN:
         set x to 250
         set y to pick random -125 to 10
       IF touching Cinder THEN:
-        play sound "charge"
+        IF chargeLock = 0 THEN:
+          play sound "charge"
+          set chargeLock to 1
+      ELSE:
+        set chargeLock to 0
       wait 0.03 seconds
+    hide
 
 SPRITE EmberRing:
   SHAPE art magma-lift/ring
@@ -7171,19 +7201,31 @@ SPRITE EmberRing:
     hide
   WHEN I receive "launch magma lift":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 0 - caveSpeed
       IF x position < -250 THEN:
         set x to 250
         set y to pick random -80 to 130
       IF touching Cinder THEN:
-        change rings by 1
-        change score by 12
-        change fuel by 2
-        change caveSpeed by 0.1
         set x to 260
-        play sound "ring"
-      wait 0.02 seconds`
+        broadcast "ember ring collected" and wait
+      wait 0.02 seconds
+    hide
+
+SPRITE MagmaLiftResult:
+  COSTUME win label "TEN EMBER RINGS CLEARED • GREEN FLAG TO FLY AGAIN" #ffe66d
+  COSTUME lose label "THE MAGMA CLAIMED THE RUN • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "launch magma lift":
+    hide
+  WHEN I receive "magma lift over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`
 };
 
 // A keyboard-only title gate makes a project appear broken in the editor's

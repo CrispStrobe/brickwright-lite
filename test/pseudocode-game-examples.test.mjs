@@ -1447,7 +1447,10 @@ test('Magma Lift has a ten-ring finish, fuel economy, and guarded crash recovery
     assert.match(games.cinder_thrust, /touching ChargeLedge and flyerVY < 1/);
     assert.match(games.cinder_thrust, /touching BasaltTooth and invulnerable = 0/);
     assert.match(games.cinder_thrust, /change rings by 1/);
-    assert.match(games.cinder_thrust, /IF rings = 10 THEN:/);
+    assert.match(games.cinder_thrust, /broadcast "cinder crash" and wait/);
+    assert.match(games.cinder_thrust, /broadcast "ember ring collected" and wait/);
+    assert.match(games.cinder_thrust, /IF rings > 9 THEN:/);
+    assert.match(games.cinder_thrust, /TEN EMBER RINGS CLEARED • GREEN FLAG TO FLY AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'cave']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2487,6 +2490,19 @@ test('lunar dash and rocket thrust consume resources in the live Scratch VM', as
         assert.ok(Number(value(lift, 'fuel').value) < beforeFuel, 'thrust did not consume fuel');
         assert.equal(Number(value(lift, 'rings').value), 0, 'run began with phantom rings');
         assert.equal(Number(value(lift, 'hearts').value), 3, 'run began with damaged health');
+        value(lift, 'rings').value = 9;
+        const cinder = lift.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'Cinder');
+        lift.runtime.startHats('event_whenbroadcastreceived', {
+            BROADCAST_OPTION: 'ember ring collected'
+        }, cinder);
+        for (let i = 0; i < 35; i++) lift.runtime._step();
+        assert.equal(Number(value(lift, 'rings').value), 10, 'tenth ring was not awarded');
+        assert.equal(Number(value(lift, 'winner').value), 1, 'ten-ring win was not recorded');
+        assert.equal(Number(value(lift, 'active').value), 0, 'completed flight remained active');
+        const result = lift.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'MagmaLiftResult');
+        assert.equal(result.visible, true, 'flight result was not shown on the stage');
     } finally { lift.quit(); clearStrayTimers(); }
 });
 
@@ -2599,7 +2615,9 @@ test('each new game keeps its signature playable mechanic', () => {
         mooncoil_odyssey: [/LIST trailX/, /add headX to trailX/, /headX = item i of trailX/,
             /delete 1 of trailX/, /change snakeLength by 1/, /DEFINE inspect coil cell:/,
             /broadcast "cratercoil over"/],
-        cinder_thrust: [/change flyerVY by -0\.42/, /key up arrow pressed\? and fuel > 0/, /touching ChargeLedge/, /change caveSpeed by 0\.12/]
+        cinder_thrust: [/change flyerVY by -0\.42/, /key up arrow pressed\? and fuel > 0/,
+            /touching ChargeLedge/, /change caveSpeed by 0\.12/, /broadcast "cinder crash" and wait/,
+            /broadcast "magma lift over"/]
     };
     for (const [name, patterns] of Object.entries(contracts)) {
         for (const pattern of patterns) assert.match(games[name], pattern, `${name}: missing ${pattern}`);
