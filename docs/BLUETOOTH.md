@@ -23,6 +23,26 @@ range" produced byte-identical behaviour: a 15-second wait and then "no device f
 
 ## What the transport looks like now
 
+Two separate choices, and confusing them wastes days — I did it twice.
+
+**WHICH PROTOCOL** an extension speaks is the extension's own menu: Web
+Bluetooth direct, Scratch Link, or a user-run bridge server. Untouched by
+anything below.
+
+**HOW the Scratch Link protocol reaches the radio** is ours, and there are four
+carriers (Settings › "How Scratch Link connects…", `scratchlink-transport.js`):
+
+| carrier | what answers | where |
+|---|---|---|
+| `socket` | our Rust, over `ws://127.0.0.1:20111` | everywhere; the only one in a browser, where it reaches a desktop Scratch Link |
+| `native` | our Rust, over Tauri IPC — no socket at all | the installed app |
+| `auto` (default) | socket first, `native` if it never opens | everywhere |
+| `original` | **the Scratch Foundation's own Swift**, in-process | iPhone, iPad, Mac |
+
+They exist because each has failed somewhere, and any one may be the only one
+that works on a machine nobody has tested. A carrier that cannot run where you
+are is greyed out WITH a reason rather than hidden.
+
 ```
   extension (navigator.bluetooth)          extension ("scratchlink")      stock Scratch ext
             │                                       │                        (io/ble.js)
@@ -30,10 +50,20 @@ range" produced byte-identical behaviour: a 15-second wait and then "no device f
             │                    │                  │                            │
    native-ble.js  ──────────►  ws://127.0.0.1:20111/scratch/ble  ◄────────────────┘
                                        │
-                          scratchlink/ble.rs  →  tauri-plugin-blec  →  btleplug
-                                       │                                    │
-                          scratchlink/ble_state.rs  →  ble_apple.m  →  CoreBluetooth
+                     ┌─────────────────┴────────────────────┐
+                     │                                      │
+        scratchlink/ble.rs                    plugins/scratchlink-original
+        → tauri-plugin-blec → btleplug        → vendored Swift BLESession
+                     │                        → CoreBluetooth        (Apple only)
+        scratchlink/ble_state.rs
+        → ble_apple.m → CoreBluetooth
 ```
+
+`native-scratch-link-bridge.js` is the seam: it wraps `window.WebSocket` and
+intercepts ONLY scratch-link URLs, so a project's own sockets and the user-run
+bridge path are never touched. That is CodePM's design — it and Scrub both
+carry the same JSON-RPC over a native channel because they load
+`https://scratch.mit.edu`, where WebKit blocks `ws://` as mixed content.
 
 - **`overlay/scratch-gui/src/lib/native-web-bluetooth.js`** implements the slice of Web
   Bluetooth the extensions use (`requestDevice` + a device chooser, GATT server/service/
@@ -148,6 +178,55 @@ So the next report should not need guessing. In the log:
   never answered, and the frame names the method;
 - frames both ways then nothing → the failure is above the transport, in the
   extension's own chain.
+
+## Our Rust vs the reference, line by line (2026-08-28)
+
+The vendored Swift (`apps/tauri/src-tauri/vendor/scratch-link-swift`) is the
+Scratch Foundation's own implementation, BSD-3, pinned at a 2022 commit that
+predates their AGPL relicence. Reading our `scratchlink/ble.rs` against it found
+**eight** defects. None of them announced itself; every one produced plausible
+behaviour.
+
+| what was wrong | what it did |
+|---|---|
+| `stopNotifications` missing | a client unsubscribing got "unknown method"; notifications kept arriving |
+| `getVersion`, `pingMe` missing | we implemented no base session at all |
+| discover filter honoured only `services` | **GDX-FOR offered every BLE device in range; Boost offered WeDo/Powered Up hubs as Boost hubs** |
+| no discover validation | a malformed request scanned unfiltered instead of erroring |
+| **no GATT blocklist** | HID, FIDO U2F, bootloaders and the serial number were all reachable |
+| encoding default INVERTED | absent `encoding` means a plain string upstream; we assumed base64, so a string write became garbage bytes |
+| write type hardcoded | writes vanish on characteristics lacking write-without-response |
+| **`connect` accepted any address** | knowing a MAC bypassed the filter AND the blocklist |
+| Android BT ignored the device class | every bonded device listed as an EV3 |
+
+Two are worth dwelling on. The **Boost** filter needs `manufacturerData`
+(`0x0397`, prefix `00 40`, mask `00 FF`) because the LEGO service alone does not
+distinguish a Boost hub from WeDo 2.0 or Powered Up — so the user connected to
+the wrong hub and every block afterwards was confidently wrong. And **`connect`**
+is what makes the other two boundaries real: filtering discovery and blocking
+GATT endpoints constrain nothing if connect will dial anything it is handed.
+
+`test/scratchlink-protocol-parity.test.mjs` pins the surface against that list.
+It reads the Rust rather than running it, because the server needs a real radio
+and a parity check that only runs where hardware exists never runs.
+
+## The reference does not compile as-is, and that is documented
+
+Two things a reader will otherwise rediscover the hard way:
+
+- **Ten patches, not one.** `CBCharacteristic.service` and `CBService.peripheral`
+  became weak optionals in iOS 15; `uint16`/`uint32` are Darwin aliases that
+  resolve on macOS and DO NOT EXIST on iOS. A clean local macOS build said "one
+  line" and the iOS job found nine more — verifying on the platform you have is
+  not verifying.
+- **`BTSession.swift` is unusable here.** It is macOS-only (IOBluetooth). iOS
+  reaches Bluetooth Classic through MFi ExternalAccessory, which `bt_ios.rs`
+  already implements, so the `original` carrier answers BLE only and refuses
+  `bt` with that sentence.
+
+`scripts/gen-scratchlink-swift.mjs` produces the buildable copy and exits
+non-zero if any patch rule stops matching — a patch that silently applies to
+nothing is worse than one that fails.
 
 ## Still unverified, and only a device can settle it
 
