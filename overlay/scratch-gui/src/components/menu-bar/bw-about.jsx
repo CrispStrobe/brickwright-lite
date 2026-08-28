@@ -11,6 +11,18 @@ const BUILD_TIME = (typeof process.env.BW_BUILD_TIME === 'string' && process.env
 
 const REPO_URL = 'https://github.com/CrispStrobe/brickwright-lite';
 const NOTICES_URL = `${REPO_URL}/blob/main/THIRD-PARTY-NOTICES.md`;
+
+/**
+ * Full licence texts that SHIP WITH THE APP, served from static/ so they open
+ * with no network. BSD-3 clause 2 and MIT both require the notice — conditions
+ * and disclaimer included — to accompany a binary distribution; a link to
+ * GitHub does not accompany anything.
+ */
+const BUNDLED_LICENCES = [
+    ['Scratch Link (BSD-3-Clause)', 'static/licenses/scratch-link.BSD-3-Clause.txt'],
+    ['Scrub (BSD-3-Clause)', 'static/licenses/scrub.BSD-3-Clause.txt'],
+    ['labwired-core (MIT)', 'static/licenses/labwired-core.MIT.txt'],
+];
 const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
 const COMPILER_HEALTH_URL = 'https://stc-compiler.vercel.app/health';
 
@@ -52,11 +64,13 @@ const L10N = {
         // Named here, not only in the linked file: these ship INSIDE the binary,
         // and BSD-3 clause 2 asks for the notice to travel with it.
         thanks: 'Carried in this app',
-        thanksText: 'Scratch Link (c) Scratch Foundation, BSD-3-Clause — the reference Bluetooth ' +
-            'implementation, vendored unmodified. Its PerfectWebSockets shim follows Scrub, ' +
-            '(c) Shinichiro Oba, BSD-3-Clause. labwired-core (MIT) is the full-fidelity ' +
-            'simulator; avr8js and rp2040js (MIT, Wokwi) are the AVR and Cortex-M0 cores; ' +
-            'emu8051 (MIT) is the 8051. Full list and licence texts below.',
+        thanksText: 'Scratch Link, Copyright (c) 2019 Scratch Foundation, BSD-3-Clause — the ' +
+            'reference Bluetooth implementation, vendored unmodified. Its PerfectWebSockets shim ' +
+            'follows Scrub, Copyright (c) 2021 Shinichiro Oba, BSD-3-Clause. labwired-core, ' +
+            'Copyright (c) 2026 Andrii Shylenko, MIT — the full-fidelity simulator. ' +
+            'avr8js and rp2040js (MIT, Wokwi) are the AVR and Cortex-M0 cores; emu8051 (MIT) ' +
+            'the 8051.',
+        thanksTexts: 'Licence texts (offline):',
         notices: 'Full third-party notices',
         affil: 'Affiliation',
         affilText: 'Not affiliated with or endorsed by Scratch / MIT, LEGO, STC, Arduino, or ' +
@@ -92,11 +106,13 @@ const L10N = {
             'auf echtem Chip gilt als unverifiziert.',
         components: 'Komponenten und Lizenzen',
         thanks: 'In dieser App enthalten',
-        thanksText: 'Scratch Link (c) Scratch Foundation, BSD-3-Clause — die Referenz-Bluetooth-' +
-            'Implementierung, unveraendert uebernommen. Der PerfectWebSockets-Shim folgt Scrub, ' +
-            '(c) Shinichiro Oba, BSD-3-Clause. labwired-core (MIT) ist der Simulator mit voller ' +
-            'Genauigkeit; avr8js und rp2040js (MIT, Wokwi) sind die AVR- und Cortex-M0-Kerne; ' +
-            'emu8051 (MIT) der 8051. Vollstaendige Liste und Lizenztexte unten.',
+        thanksText: 'Scratch Link, Copyright (c) 2019 Scratch Foundation, BSD-3-Clause — die ' +
+            'Referenz-Bluetooth-Implementierung, unveraendert uebernommen. Der ' +
+            'PerfectWebSockets-Shim folgt Scrub, Copyright (c) 2021 Shinichiro Oba, ' +
+            'BSD-3-Clause. labwired-core, Copyright (c) 2026 Andrii Shylenko, MIT — der ' +
+            'Simulator mit voller Genauigkeit. avr8js und rp2040js (MIT, Wokwi) sind die AVR- ' +
+            'und Cortex-M0-Kerne; emu8051 (MIT) der 8051.',
+        thanksTexts: 'Lizenztexte (offline):',
         licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT und MPL-2.0. Brickwright nutzt ' +
             'den letzten BSD-Scratch-Stack sowie eigene Editoren und Engines; es ist kein TurboWarp-Fork.',
         notices: 'Vollstandige Third-Party-Hinweise',
@@ -296,6 +312,15 @@ class BwAbout extends React.Component {
                                     the binary, and the link needs a network and a browser. */}
                                 <div className={styles.heading}>{t('thanks')}</div>
                                 <p className={styles.body}>{t('thanksText')}</p>
+                                <p className={styles.body}>
+                                    {t('thanksTexts')}{' '}
+                                    {BUNDLED_LICENCES.map(([label, href], i) => (
+                                        <span key={href}>
+                                            {i > 0 ? ' · ' : ''}
+                                            <a href={href} rel="noopener noreferrer" target="_blank">{label}</a>
+                                        </span>
+                                    ))}
+                                </p>
                                 <p className={styles.body}>
                                     <a href={NOTICES_URL} rel="noopener noreferrer" target="_blank">{t('notices')}</a>
                                 </p>
