@@ -308,6 +308,32 @@ Every push must keep CI **and** Vercel green. Verify features are actually in th
 (grep `build/gui.*.js` for distinctive strings — the filename is now `gui.[contenthash].js`)
 — a green build doesn't prove an extension loads (see the dist-vs-src gotcha).
 
+## Browser verification: two tools, and they do NOT overlap (2026-08-28)
+
+- **`verify-gui`** drives **Chromium** against the **deployed** site. It is CI's check.
+- **`npm run probe:layout -- --report`** drives **Firefox** against a **local production
+  build** in `packages/scratch-gui/build`. It is **not in any workflow** — it only ever runs
+  by hand, so a layout regression is invisible until someone runs it. Needs
+  `npm i --no-save playwright && npx playwright install firefox` (kept out of `package.json`
+  so CI's install stays lean).
+
+**One browser passing proves nothing about the other**, and that is not theoretical: the
+deployed app booted in Chromium and hung forever in Firefox for as long as CI had been green.
+**Firefox does not settle `decodeAudioData` while the AudioContext is suspended** — neither
+resolve nor reject — and project load awaits its sounds, so `vm.loadProject` never returned
+and the app sat on "Loading Project …". `lib/audio-context-unblock.js` resumes the context
+and bounds every decode; scratch-audio already degrades a REJECTED decode to `_emptySound()`,
+so a bounded decode costs at worst silence. Gate: `test/audio-context-unblock.test.mjs`.
+The wrapper must declare exactly ONE parameter — AudioEngine picks promise-form over
+callback-form by reading `decodeAudioData.length`.
+
+**Before `probe:layout` can measure anything it must get past two things that make every box
+report 0x0** — it now does both, but any new UI probe needs the same: the **starter-journeys
+modal** (Escape closes it) and the **right pane, which starts SHUT** (`[data-right-pane-toggle]`,
+press only when `aria-pressed` is not `true`). Also, `[class*="gui_tab"]` matches
+`gui_tab-panel` too; the editor's tabs are `[class*="gui_tab_"]`, with the trailing underscore,
+and `getByRole('tab')` alone also finds the debugger solo pane's tabs.
+
 ## Planned: `stc12live` — the STC12/8051 hardware extension (NOT started)
 
 The 8051 work has a finished compile side and an unstarted extension side. **The extension
