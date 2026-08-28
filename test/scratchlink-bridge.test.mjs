@@ -132,12 +132,17 @@ describe('the transport is selectable, so it is a path and not just a net', () =
         assert.equal(invoked.length, 0, 'picking socket-only must never fall back');
     });
 
-    test('"bridge" goes straight to the native path, no socket attempted', async () => {
-        store.set('bw-scratchlink-transport', 'bridge');
+    test('"native" goes straight to the native path, no socket attempted', async () => {
+        store.set('bw-scratchlink-transport', 'native');
         new window.WebSocket(LINK);
         await new Promise(r => setTimeout(r, 10));
         assert.equal(built.length, 0, 'bridge-only must not dial a socket at all');
         assert.ok(invoked.some(i => i.cmd === 'scratchlink_bridge_open'));
+    });
+
+    test('the old internal "bridge" value migrates to the named native carrier', () => {
+        store.set('bw-scratchlink-transport', 'bridge');
+        assert.equal(transportPreference(), 'native');
     });
 
     test('an unknown value falls back to auto rather than breaking', () => {
@@ -170,7 +175,7 @@ describe('BLE and Bluetooth Classic are different backends, and stay so', () => 
     });
 
     test('a bt URL opens the bridge as bt, not as ble', async () => {
-        store.set('bw-scratchlink-transport', 'bridge');
+        store.set('bw-scratchlink-transport', 'native');
         new window.WebSocket('ws://127.0.0.1:20111/scratch/bt');
         await new Promise(r => setTimeout(r, 10));
         const open = invoked.find(i => i.cmd === 'scratchlink_bridge_open');
@@ -180,7 +185,7 @@ describe('BLE and Bluetooth Classic are different backends, and stay so', () => 
     });
 
     test('a ble URL still opens as ble', async () => {
-        store.set('bw-scratchlink-transport', 'bridge');
+        store.set('bw-scratchlink-transport', 'native');
         new window.WebSocket(LINK);
         await new Promise(r => setTimeout(r, 10));
         const open = invoked.find(i => i.cmd === 'scratchlink_bridge_open');
