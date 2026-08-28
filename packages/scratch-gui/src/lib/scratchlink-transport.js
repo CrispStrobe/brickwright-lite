@@ -45,6 +45,9 @@ export const TRANSPORTS = [
         label: 'Original Scratch Link (Apple)',
         detail: 'The reference implementation from the Scratch Foundation, vendored unmodified. ' +
             'Where the others and this disagree, this one is right.',
+        // Wired now, through a Tauri plugin carrying the vendored Swift
+        // (plugins/scratchlink-original). Apple-only because the reference is
+        // Swift/CoreBluetooth; Android keeps our Rust routes.
         available: () => isNativeApp() && isApple(),
         why: 'only on iPhone, iPad and Mac',
     },

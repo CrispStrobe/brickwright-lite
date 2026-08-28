@@ -235,10 +235,16 @@ export default function installScratchLinkBridge () {
                 ? new NativeWebSocket(url)
                 : new NativeWebSocket(url, protocols);
         }
-        if (pref === 'native') {
-            // Explicitly the native path, socket never attempted — useful both
+        if (pref === 'native' || pref === 'original') {
+            // Explicitly a native path, socket never attempted — useful both
             // for testing it and for a platform where the socket is known bad.
-            const facade = new BridgedSocket(transportOf(url));
+            //
+            // 'original' differs only in WHICH program answers: the vendored
+            // reference Scratch Link, in-process, instead of our Rust
+            // dispatcher. Same JSON-RPC, same seam, same everything above this
+            // line — which is what makes it a useful second opinion rather
+            // than a second codebase.
+            const facade = new BridgedSocket(transportOf(url), pref);
             facade._start();
             return facade;
         }

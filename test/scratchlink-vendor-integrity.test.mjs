@@ -74,3 +74,36 @@ test('the licence and its obligations are shipped with the code', () => {
     assert.match(readme, /f78273b9003bc0272dbcfb8a39a5a1358de89007/, 'the pin must be recorded');
     assert.match(readme, /2024-11-25|AGPL/, 'the relicence date is why this snapshot is pinned');
 });
+
+test('the patch that makes it compile is recorded, not silently applied', () => {
+    // Sources/ stays byte-identical so it can be audited against. But the
+    // snapshot is from 2022 and does NOT build against a modern SDK: Apple made
+    // CBCharacteristic.service and CBService.peripheral weak optionals in
+    // iOS 15 / macOS 12, and BLESession.swift:431 dereferences both. Compiled
+    // under Swift 6.2 it is the ONE line that fails.
+    //
+    // So the fix lives in patches/ and is applied to a build copy. If someone
+    // later "fixes" Sources/ directly, the integrity test above catches it; if
+    // someone drops the patch, this one does.
+    const patch = readFileSync(path.join(DIR, 'patches/0001-modern-corebluetooth-optionals.patch'), 'utf8');
+    assert.match(patch, /BLESession\.swift/);
+    assert.match(patch, /service\?\.peripheral\?/, 'the fix is optional-chaining');
+    assert.match(patch, /iOS 15|macOS 12/, 'and must say WHY, or it reads as a style change');
+
+    const readme = readFileSync(path.join(DIR, 'README.md'), 'utf8');
+    assert.match(readme, /SerializationError/,
+        'the two stub modules are load-bearing — without them the imports do not resolve');
+    assert.match(readme, /IOBluetooth/,
+        'BTSession is macOS-only and cannot ship on iOS; that must not be rediscovered');
+});
+
+test('the build recipe records what was verified, not what was assumed', () => {
+    // Each of these cost a real experiment. Losing them means the next attempt
+    // re-derives them through 20-minute CI iOS jobs, which is what this whole
+    // exercise was trying to avoid.
+    const readme = readFileSync(path.join(DIR, 'README.md'), 'utf8');
+    assert.match(readme, /symlink/i, 'SwiftPM following a symlink is why no copy of the tree is needed');
+    assert.match(readme, /BTSession\.swift/, 'excluding the macOS-only session is required');
+    assert.match(readme, /tauri-plugin-share/, 'the working plugin template is in this repo');
+    assert.match(readme, /didReceiveText/, 'the inbound seam must be named, or it gets reimplemented');
+});

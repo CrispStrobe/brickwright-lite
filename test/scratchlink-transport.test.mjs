@@ -11,6 +11,7 @@
 import {test, describe, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {resolve, dirname} from 'node:path';
+import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 const LIB = resolve(dirname(fileURLToPath(import.meta.url)), '../overlay/scratch-gui/src/lib');
@@ -68,9 +69,40 @@ describe('choosing one', () => {
 });
 
 describe('a choice that cannot run here', () => {
-    test('the Apple-only carrier is offered on an Apple device in the app', () => {
-        assert.ok(isNativeApp() && isApple());
-        assert.ok(TRANSPORTS.find(t => t.id === 'original').available());
+    test('the Apple-only carrier is offered now that it is wired', () => {
+        // It spent one commit greyed out with "vendored, not wired up yet",
+        // which was the honest state while the Swift had no caller. It has one
+        // now (plugins/scratchlink-original), so it is selectable again — and
+        // the coupling gate below is what forced this line to move with it.
+        assert.ok(isNativeApp() && isApple(), 'the environment here is Apple + app');
+        assert.equal(TRANSPORTS.find(t => t.id === 'original').available(), true);
+    });
+
+    test('the flag must be flipped in the commit that lands the bridge', () => {
+        // A coupling gate. The day someone adds the Swift entry points, this
+        // fails and points at the one line they will otherwise forget — a
+        // working transport nobody can select is as useless as a dead one that
+        // everyone can.
+        const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+        // The marker is the PLUGIN REGISTRATION, not a command name: the
+        // commands live in Swift, so lib.rs never mentions them. Watching for
+        // names that can never appear is a gate that can never fire.
+        const wired = ['tauri_plugin_scratchlink_original']
+            .some(cmd => {
+                try {
+                    return readFileSync(resolve(root, 'apps/tauri/src-tauri/src/lib.rs'), 'utf8').includes(cmd);
+                } catch (e) {
+                    return false;
+                }
+            });
+        const original = TRANSPORTS.find(t => t.id === 'original');
+        if (wired) {
+            assert.notEqual(original.available(), false,
+                'the bridge exists now — make the transport selectable');
+        } else {
+            assert.equal(original.available(), false,
+                'no bridge yet, so the transport must stay unavailable');
+        }
     });
 
     test('and falls back to auto where it cannot run', () => {
