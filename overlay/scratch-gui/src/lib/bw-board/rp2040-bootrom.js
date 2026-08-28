@@ -59,6 +59,23 @@
  * CLOCKS and TIMER accesses just before it are what any SDK init does on
  * the way past.
  *
+ * THE CALL CHAIN, walked by recording every BL/BLX taken. This is the
+ * handoff: the assert has an address, and an address survives being
+ * looked up in a symbol table where a generic string does not.
+ *
+ *     0x1002e1a8 -> 0x1002e838
+ *     0x1002e864 -> 0x1002dcbc      ; called before the assert
+ *     0x1002e872 -> 0x1002dccc      ; the function that asserts
+ *     0x1002dce6 -> 0x1002dcbc      ; same helper again
+ *     0x1002dcf4 -> 0x10030f04      ; hard_assertion_failure
+ *     0x10030f08 -> 0x10030ed4      ; panic
+ *
+ * So the failing `hard_assert` is the call at **0x1002dcf4**, inside the
+ * function beginning at or before **0x1002dccc**, reached from
+ * **0x1002e838**. Registers there: r0 = 0xf, r2 = 0xd0000150 (SIO
+ * spinlock 20). Anyone with a MicroPython build carrying symbols can
+ * resolve those three addresses in one `addr2line`.
+ *
  * And one thing NOT to chase: `"Hard assert"` is the SDK's GENERIC
  * message. `hard_assertion_failure()` in pico/assert.h calls
  * `panic("Hard assert")` for every failed `hard_assert()` in the tree, so
