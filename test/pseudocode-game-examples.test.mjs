@@ -1251,6 +1251,10 @@ test('Moonbank Hop presents distinct road and river rules with a three-crossing 
     assert.match(games.lilyway_rescue, /touching CarA or touching CarB/);
     assert.match(games.lilyway_rescue, /touching LilyA or touching LilyB/);
     assert.match(games.lilyway_rescue, /IF crossings = 3 THEN:/);
+    assert.match(games.lilyway_rescue, /broadcast "moonbank crossed"/);
+    assert.match(games.lilyway_rescue, /broadcast "frog hurt"/);
+    assert.match(games.lilyway_rescue, /broadcast "moonbank over"/);
+    assert.match(games.lilyway_rescue, /THREE MOONBANK RUNS • GREEN FLAG TO CROSS AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'route']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2150,6 +2154,16 @@ test('grid hopping and throttle-jump controls work in the live Scratch VM', asyn
         moonbank.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
         assert.equal(Number(value(moonbank, 'frogY').value), beforeY + 45, 'Up did not hop exactly one grid row');
         assert.equal(Number(value(moonbank, 'crossings').value), 0, 'the route began with phantom crossings');
+        value(moonbank, 'crossings').value = 2;
+        const frog = moonbank.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Juniper');
+        moonbank.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'moonbank crossed'}, frog);
+        for (let i = 0; i < 35; i++) moonbank.runtime._step();
+        assert.equal(Number(value(moonbank, 'crossings').value), 3, 'the third crossing was not counted');
+        assert.equal(Number(value(moonbank, 'winner').value), 1, 'three crossings did not finish the rescue');
+        assert.equal(Number(value(moonbank, 'active').value), 0, 'the completed crossing remained active');
+        const result = moonbank.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'MoonbankResult');
+        assert.equal(result.visible, true, 'the crossing result was not shown on the stage');
     } finally { moonbank.quit(); clearStrayTimers(); }
 
     const courier = await load(games.rotor_rogue);
@@ -2443,7 +2457,8 @@ test('each new game keeps its signature playable mechanic', () => {
         spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/,
             /broadcast "helix sector cleared"/, /change sectors by 1/, /set lane to -2/,
             /broadcast "helix rush over"/],
-        lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/, /IF crossings = 3/],
+        lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/,
+            /broadcast "moonbank crossed"/, /change crossings by 1/, /IF crossings = 3/, /broadcast "moonbank over"/],
         rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/],
         prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /IF level = 12/],
         shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /set orbActive to 0/, /change waves by 1/],

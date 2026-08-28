@@ -5034,6 +5034,8 @@ GLOBAL frogY
 GLOBAL traffic
 GLOBAL riding
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art moonbank-hop/intro
@@ -5043,9 +5045,18 @@ STAGE:
     switch backdrop to intro
     hide variable crossings
     hide variable hearts
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set crossings to 0
+      set hearts to 3
+      set traffic to 4
+      set frogX to 0
+      set frogY to -150
+      set riding to 0
+      set winner to 0
+      set active to 1
       switch backdrop to route
       broadcast "start moonbank hop"
 
@@ -5060,6 +5071,8 @@ SPRITE Juniper:
     set frogX to 0
     set frogY to -150
     set riding to 0
+    set active to 0
+    set winner to 0
     go to x: frogX y: frogY
     hide
   WHEN I receive "start moonbank hop":
@@ -5067,23 +5080,23 @@ SPRITE Juniper:
     show variable hearts
     show
   WHEN left arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       change frogX by -45
       play sound "hop"
   WHEN right arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       change frogX by 45
       play sound "hop"
   WHEN up arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       change frogY by 45
       play sound "hop"
   WHEN down arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       change frogY by -45
       play sound "hop"
   WHEN I receive "start moonbank hop":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF frogX < -215 THEN:
         set frogX to -215
       IF frogX > 215 THEN:
@@ -5093,27 +5106,37 @@ SPRITE Juniper:
       go to x: frogX y: frogY
       IF frogY > -70 and frogY < 45 THEN:
         IF touching CarA or touching CarB THEN:
-          change hearts by -1
-          broadcast "frog reset"
+          broadcast "frog hurt"
       IF frogY > 45 and frogY < 140 THEN:
         set riding to 0
         IF touching LilyA or touching LilyB THEN:
           set riding to 1
         IF riding = 0 THEN:
-          change hearts by -1
           play sound "splash"
-          broadcast "frog reset"
+          broadcast "frog hurt"
       IF frogY > 145 THEN:
-        change crossings by 1
-        change traffic by 0.7
-        broadcast "frog reset"
-      IF crossings = 3 THEN:
-        say "THREE MOONBANK RUNS — ALL FROGS HOME!" for 4 seconds
-        stop all
-      IF hearts < 1 THEN:
-        say ("Moon-bank crossings: " join crossings) for 3 seconds
-        stop all
+        broadcast "moonbank crossed"
       wait 0.03 seconds
+    hide
+  WHEN I receive "moonbank crossed":
+    IF active = 1 THEN:
+      change crossings by 1
+      change traffic by 0.7
+      IF crossings = 3 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "moonbank over"
+      ELSE:
+        broadcast "frog reset"
+  WHEN I receive "frog hurt":
+    IF active = 1 THEN:
+      change hearts by -1
+      IF hearts < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "moonbank over"
+      ELSE:
+        broadcast "frog reset"
   WHEN I receive "frog reset":
     set frogX to 0
     set frogY to -150
@@ -5127,11 +5150,12 @@ SPRITE CarA:
     hide
   WHEN I receive "start moonbank hop":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by traffic
       IF x position > 240 THEN:
         set x to -240
       wait 0.02 seconds
+    hide
 
 SPRITE CarB:
   SHAPE art moonbank-hop/car-gold
@@ -5140,11 +5164,12 @@ SPRITE CarB:
     hide
   WHEN I receive "start moonbank hop":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 0 - traffic - 1
       IF x position < -240 THEN:
         set x to 240
       wait 0.02 seconds
+    hide
 
 SPRITE LilyA:
   SHAPE art moonbank-hop/lily-a
@@ -5153,13 +5178,14 @@ SPRITE LilyA:
     hide
   WHEN I receive "start moonbank hop":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 2.4
       IF touching Juniper THEN:
         change frogX by 2.4
       IF x position > 240 THEN:
         set x to -240
       wait 0.02 seconds
+    hide
 
 SPRITE LilyB:
   SHAPE art moonbank-hop/lily-b
@@ -5168,13 +5194,29 @@ SPRITE LilyB:
     hide
   WHEN I receive "start moonbank hop":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by -2
       IF touching Juniper THEN:
         change frogX by -2
       IF x position < -240 THEN:
         set x to 240
-      wait 0.02 seconds`,
+      wait 0.02 seconds
+    hide
+
+SPRITE MoonbankResult:
+  COSTUME win label "THREE MOONBANK RUNS • GREEN FLAG TO CROSS AGAIN" #b8ff79
+  COSTUME lose label "THREE CRASHES OR SPLASHES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start moonbank hop":
+    hide
+  WHEN I receive "moonbank over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     rotor_rogue: `# Crosswind Courier — balance a rotor-bike across forty cloud-road kilometres.
 # GOAL: reach distance forty before three crashes.
