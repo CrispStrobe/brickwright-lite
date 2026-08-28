@@ -249,3 +249,68 @@ export function extractMicroPython (hex) {
 }
 
 export default extractMicroPython;
+
+// ─── writing ───────────────────────────────────────────────────────────
+//
+// MicroPython is INTERPRETED. There is no compiler to run and no server to
+// ask: putting a script on a micro:bit means appending it to a firmware
+// image that already exists. That is why this half needs nothing that the
+// reading half above did not already need — the same 0x3E000 address, the
+// same `MP` + u16 header, written instead of read.
+//
+// This is what `uflash` does, and it is the whole of "flash a real
+// micro:bit from the browser".
+
+/** One Intel HEX record: `:LLAAAATT[DD…]CC`. */
+function hexRecord (addr, type, bytes) {
+    const all = [bytes.length, (addr >> 8) & 0xFF, addr & 0xFF, type, ...bytes];
+    const checksum = ((~all.reduce((a, b) => a + b, 0)) + 1) & 0xFF;
+    return `:${[...all, checksum].map(b => b.toString(16).toUpperCase().padStart(2, '0')).join('')}`;
+}
+
+/**
+ * Append a Python script to a micro:bit MicroPython firmware hex.
+ *
+ * @param {string} firmwareHex - the MicroPython runtime hex, as text
+ * @param {string} script - the program
+ * @returns {string} a hex a micro:bit will run
+ */
+export function appendScript (firmwareHex, script) {
+    const body = new TextEncoder().encode(String(script));
+    // The header carries a 16-bit length, so the ceiling is a property of
+    // the format rather than a limit we chose — say which it is.
+    if (body.length > 0xFFFF) {
+        throw new Error(`script is ${body.length} bytes; the appended-script header ` +
+            'carries a 16-bit length, so 65535 is the format\'s ceiling');
+    }
+    const payload = [APPENDED_MAGIC_0, APPENDED_MAGIC_1,
+        body.length & 0xFF, (body.length >> 8) & 0xFF, ...body];
+
+    const lines = String(firmwareHex).split(/\r?\n/).filter(Boolean);
+    // Drop the EOF record; everything appended has to precede it.
+    const end = lines.findIndex(l => /^:00000001FF$/i.test(l.trim()));
+    const head = end >= 0 ? lines.slice(0, end) : lines;
+
+    const out = [...head];
+    // 0x3E000 needs an extended-linear-address record: Intel HEX addresses
+    // are 16-bit, and everything above 64K is reached through one.
+    const upper = (APPENDED_SCRIPT_ADDR >> 16) & 0xFFFF;
+    out.push(hexRecord(0, 0x04, [(upper >> 8) & 0xFF, upper & 0xFF]));
+    for (let i = 0; i < payload.length; i += 16) {
+        const chunk = payload.slice(i, i + 16);
+        out.push(hexRecord((APPENDED_SCRIPT_ADDR + i) & 0xFFFF, 0x00, chunk));
+    }
+    out.push(':00000001FF');
+    return `${out.join('\n')}\n`;
+}
+
+/**
+ * The smallest hex that carries a script and nothing else.
+ *
+ * Not flashable on its own — there is no runtime in it — but it is what
+ * the reader above accepts, so it is what a round-trip test can use
+ * without shipping 1.8 MB of MicroPython firmware as a fixture.
+ */
+export function scriptOnlyHex (script) {
+    return appendScript(':00000001FF\n', script);
+}

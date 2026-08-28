@@ -31,7 +31,11 @@ Not every board offers the same thing, and the difference is worth being
 plain about rather than discovering by clicking.
 
 **Compile targets** (`compile: true`) — STC12/8051, Pico, STM32F030.
-Blocks become C, and there is a real path to a binary.
+Blocks become C, and there is a real path to a binary through
+**stc-compiler.vercel.app**, which runs the GPL toolchains (SDCC,
+avr-gcc, ca65, sdasz80) that cannot be bundled into a permissive app.
+That server is the answer to "how can this be a compile target at all",
+and it is why `compile: false` elsewhere is rarely about licensing.
 
 **Simulated boards** (`compile: false`, `emulator: <engine>`) — Arduino
 (avr8js), Arcade/PyBadge, ATtiny. Blocks drive a simulation; there is no
@@ -46,18 +50,62 @@ MICROBIT` was telling the reader their board was a micro:bit.
 
 **Consoles you run rather than program** — **Arduboy**. See below.
 
-## The Arduboy is deliberately not a compile target
+## The Arduboy is not a compile target — but not for the reason you would guess
 
-`compile: false` on the Arduboy is the important half. There is **no path
-from blocks to an Arduboy binary**: that needs avr-gcc, which is GPL and
-cannot ship in a repo whose whole premise is a fully-permissive base — the
-same constraint that keeps SDCC server-side for the STC12. Listing it as
-compilable would promise something the licence forbids, and the failure
-would surface as a build button that never works.
+An earlier version of this page said the blocker was **licensing**: avr-gcc
+is GPL, so it cannot ship here. That is true and irrelevant. The GPL
+constrains *bundling*, and this repo settled that question long ago — the
+STC12 compiles through **stc-compiler.vercel.app**, and lite already POSTs
+to three of its endpoints (`/compile`, `/assemble`, `/translate`).
+
+**avr-gcc is already running there.** `/compile` accepts `atmega328p`,
+`atmega168p` and `atmega2560` today; the Code tab's C tab uses it.
+
+So the real blocker for the Arduboy is smaller and more specific:
+
+1. **`atmega32u4` is not a `/compile` target** — a change in stc-compiler,
+   not here.
+2. **Nothing emits Arduboy C.** `generateC()` targets the 8051's scheduling
+   model. An Arduboy game is C++ against the Arduboy2 library —
+   `drawBitmap`, `display()`, an immediate-mode frame loop — which is a
+   whole emitter, not a target flag.
+
+(2) is the real work, and it is worth being honest that it is large. What
+is cheap and already true is the other direction: **compile server-side,
+run client-side.** avr8js is here, so a C program compiled by
+stc-compiler for an AVR could boot in the browser with no hardware at
+all — the loop already closes for `atmega328p`.
 
 So choosing Arduboy offers to **run a `.hex`**, not to build one. Open a
 compiled game from the Code tab's 📂 Open and it goes straight to the
 console. Full detail: [ARDUBOY.md](ARDUBOY.md).
+
+## MicroPython and CircuitPython need no compiler at all
+
+Worth separating from the compile question, because the instinct after
+stc-compiler is to reach for a server for everything.
+
+**MicroPython is interpreted.** Putting a program on a micro:bit or a
+Calliope means appending it to a firmware image at `0x3E000` behind a
+four-byte `MP` + u16-length header — which is exactly what `uflash` does.
+No toolchain, so no GPL question, and nothing has to be online.
+`micropython-hex.js` has read that format since the MakeCode work (it is
+how a `.hex` from python.microbit.org gets imported); `appendScript()` now
+writes it, and the round-trip test is our own reader accepting our own
+writer byte for byte.
+
+**CircuitPython is interpreted too**, and does not even want a hex — a
+board mounts as a USB drive and you copy `code.py` onto it. There is
+nothing to build.
+
+So the ladder is not "everything needs the server". It is:
+
+| target | how a binary is made |
+|---|---|
+| STC12, Pico, STM32F030, AVR | **stc-compiler**, because the toolchain is GPL |
+| micro:bit, Calliope | **in the browser** — append the script, no compiler exists |
+| CircuitPython boards | **nothing to make** — copy the `.py` |
+| Arduboy | run a `.hex` someone else built; see above for what building one would take |
 
 ## Circuits is a different axis, not a fourth kind
 
