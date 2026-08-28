@@ -81,8 +81,16 @@ class CentralDispatch extends SharedDispatch {
             const utilIndex = args.findIndex(value => value && typeof value.yield === 'function');
             if (utilIndex !== -1) args.splice(utilIndex, 1);
             const message = {service, method, responseId, args};
-            if (transfer) provider.postMessage(message, transfer);
-            else provider.postMessage(message);
+            try {
+                if (transfer) provider.postMessage(message, transfer);
+                else provider.postMessage(message);
+            } catch (error) {
+                // Structured-clone and terminated-worker failures happen synchronously. Do not
+                // retain callbacks which can never receive a response.
+                delete this.callbacks[responseId];
+                delete this.callbackWorkers[responseId];
+                reject(error);
+            }
         });
     }
 

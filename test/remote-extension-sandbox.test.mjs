@@ -187,6 +187,17 @@ test('the broker rejects privileged calls and cross-worker response forgery at r
 
         second.receive({responseId: outbound.responseId, result: 'legitimate'});
         assert.equal(await legitimateCall, 'legitimate');
+
+        const terminated = new FakeWorker();
+        terminated.postMessage = () => {
+            throw new Error('worker is terminated');
+        };
+        broker.addWorker(terminated);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(broker.callbacks.filter(Boolean).length, 0,
+            'a synchronous postMessage failure must not leak callback registrations');
+        assert.equal(broker.callbackWorkers.filter(Boolean).length, 0,
+            'a synchronous postMessage failure must not leak worker bindings');
     } finally {
         if (typeof previousWorker === 'undefined') delete globalThis.Worker;
         else globalThis.Worker = previousWorker;
