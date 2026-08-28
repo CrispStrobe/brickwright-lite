@@ -6381,7 +6381,7 @@ const addRightPaneGreenFlagStart = source => {
     // for this green-flag run. Several finite games intentionally reset their
     // public `started` variable when they finish; using that variable alone
     // lets the stale 0.6 s timer start a fresh round over the result screen.
-    lines.splice(spaceHat + 1, 0, '    set brickwrightFlagPending to 0');
+    lines.splice(spaceHat + 2, 0, '      set brickwrightFlagPending to 0');
     endOfHandler++;
     lines.splice(endOfHandler, 0,
         '  WHEN I receive "__brickwright_start_from_flag":',

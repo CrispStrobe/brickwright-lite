@@ -97,7 +97,7 @@ test('green flag crosses every title gate in the ordinary right-hand stage', () 
             `${name}: delayed green-flag start has no cancellation state`);
         assert.match(source, /WHEN flag clicked:\n    set brickwrightFlagPending to 1\n    wait 0\.6 seconds\n    IF brickwrightFlagPending = 1 THEN:\n      set brickwrightFlagPending to 0\n      broadcast "__brickwright_start_from_flag"/,
             `${name}: green flag still leaves the title screen waiting for a keyboard`);
-        assert.match(source, /WHEN space key pressed:\n    set brickwrightFlagPending to 0/,
+        assert.match(source, /WHEN space key pressed:\n    IF [A-Za-z][A-Za-z0-9]* = 0 THEN:\n      set brickwrightFlagPending to 0/,
             `${name}: a real Space start does not cancel the delayed fallback`);
         assert.match(source, /WHEN I receive "__brickwright_start_from_flag":/,
             `${name}: delayed green-flag start has no receiver`);
