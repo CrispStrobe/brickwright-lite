@@ -294,7 +294,13 @@ await new Promise((resolve, reject) => {
             path: workerOutputDir,
             filename: 'extension-worker.js'
         },
-        plugins: [new webpack.BannerPlugin('Brickwright sandboxed extension worker')]
+        // Keep an executable provenance marker in the minified asset. A comment banner is
+        // not reliable here: production minimizers are allowed to discard comments.
+        plugins: [new webpack.BannerPlugin({
+            banner: "self.__BRICKWRIGHT_SANDBOX_WORKER__='v1';",
+            raw: true,
+            entryOnly: true
+        })]
     }, (error, stats) => {
         if (error) {
             reject(error);
@@ -308,7 +314,7 @@ await new Promise((resolve, reject) => {
     });
 });
 const workerBundle = readFileSync(path.join(workerOutputDir, 'extension-worker.js'), 'utf8');
-if (!workerBundle.includes('Brickwright sandboxed extension worker')) {
+if (!workerBundle.includes('__BRICKWRIGHT_SANDBOX_WORKER__')) {
     throw new Error('built extension-worker.js is missing the Brickwright sandbox marker');
 }
 console.log('  rebuilt dist/web/extension-worker.js from the overlaid sandbox source');

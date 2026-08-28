@@ -54,7 +54,7 @@ test('the shipped worker bundle is rebuilt from the overlaid sandbox source', ()
         /entry: path\.join\(DEST, 'src', 'extension-support', 'extension-worker\.js'\)/);
     assert.match(applyVmOverlay, /target: 'webworker'/);
     assert.match(applyVmOverlay, /filename: 'extension-worker\.js'/);
-    assert.match(applyVmOverlay, /Brickwright sandboxed extension worker/);
+    assert.match(applyVmOverlay, /__BRICKWRIGHT_SANDBOX_WORKER__/);
 });
 
 test('forged worker dispatch calls cannot reach arbitrary main-thread services', () => {
