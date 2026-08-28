@@ -645,6 +645,9 @@ test('Skyline Swoop clean launches build combo and the twelfth wins in the real 
         vm.start();
         vm.greenFlag();
         for (let i = 0; i < 25; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 30; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
         const values = Object.values(vm.runtime.getTargetForStage().variables);
         const value = name => values.find(variable => variable.name === name);
         value('launches').value = 11;
