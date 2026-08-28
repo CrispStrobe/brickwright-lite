@@ -985,8 +985,10 @@ test('Nimbus Volley explains its scoring and implements an airborne spike', () =
     assert.match(games.cloud_court, /CONTROLS: A\/D move, W jumps, and S while airborne/);
     assert.match(games.cloud_court, /set spiking to 1/);
     assert.match(games.cloud_court, /change playerScore by 1/);
-    assert.match(games.cloud_court, /STORM COURT WON! FINAL/);
-    assert.match(games.cloud_court, /NIMBUS WINS — FINAL/);
+    assert.match(games.cloud_court, /set vx to 3\.8 \+ \(abs of \(bx - px\) \/ 16\)/);
+    assert.match(games.cloud_court, /set bx to 226/);
+    assert.match(games.cloud_court, /broadcast "nimbus match over"/);
+    assert.match(games.cloud_court, /STORM COURT WON • GREEN FLAG FOR A REMATCH/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1689,6 +1691,13 @@ test('stealth movement and aerial-spike controls work in the live Scratch VM', a
         for (let i = 0; i < 12; i++) nimbus.runtime._step();
         assert.equal(Number(value(nimbus, 'playerScore').value), 7,
             'landing the seventh ball on the rival court did not win the match');
+        await new Promise(resolve => setTimeout(resolve, 650));
+        for (let i = 0; i < 20; i++) nimbus.runtime._step();
+        assert.equal(Number(value(nimbus, 'active').value), 0, 'the seventh point did not end the match');
+        assert.equal(Number(value(nimbus, 'started').value), 0, 'the finished match was not replayable');
+        assert.ok(nimbus.runtime.targets.some(target =>
+            target.sprite && target.sprite.name === 'NimbusResult' && target.visible),
+        'the match result was not shown');
     } finally {
         nimbus.quit();
         clearStrayTimers();
@@ -2166,7 +2175,8 @@ test('each new game keeps its signature playable mechanic', () => {
         abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/],
         specter_sweep: [/if on edge bounce/, /touching Orb/, /set ward to 3/, /change score by 1/],
         moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/],
-        cloud_court: [/set rally to 1/, /touching Net/, /SPRITE CloudBot/],
+        cloud_court: [/set rally to 1/, /touching Net/, /set bx to 226/, /abs of \(bx - px\)/,
+            /SPRITE CloudBot/, /broadcast "nimbus match over"/],
         ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/, /change dragonHP by -1/],
         lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /change gates by 1/, /change score by 15/],
         rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/, /change goals by 1/],

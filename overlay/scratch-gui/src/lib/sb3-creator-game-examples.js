@@ -3078,6 +3078,8 @@ GLOBAL cvy
 GLOBAL target
 GLOBAL spiking
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art nimbus-volley/intro
@@ -3088,6 +3090,7 @@ STAGE:
     hide variable playerScore
     hide variable cpuScore
     hide variable rally
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -3104,8 +3107,13 @@ SPRITE Player:
     go to x: px y: py
     hide
   WHEN I receive "start nimbus volley":
+    set px to -150
+    set py to -125
+    set pvy to 0
+    set spiking to 0
+    set active to 1
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set spiking to 0
       IF key a pressed? THEN:
         change px by -7
@@ -3126,6 +3134,7 @@ SPRITE Player:
         set px to -35
       go to x: px y: py
       wait 0.02 seconds
+    hide
 
 SPRITE CloudBot:
   SHAPE art nimbus-volley/bot
@@ -3135,8 +3144,11 @@ SPRITE CloudBot:
     go to x: 150 y: cy
     hide
   WHEN I receive "start nimbus volley":
+    set cy to -125
+    set cvy to 0
+    go to x: 150 y: cy
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set target to x position of Ball
       IF target > x position + 5 THEN:
         change x by 5
@@ -3146,7 +3158,7 @@ SPRITE CloudBot:
         set x to 35
       IF x position > 220 THEN:
         set x to 220
-      IF y position of Ball > -45 and cy = -125 THEN:
+      IF x position of Ball > 20 and y position of Ball > -45 and cy = -125 THEN:
         set cvy to 9
       change cvy by -0.7
       change cy by cvy
@@ -3155,6 +3167,7 @@ SPRITE CloudBot:
         set cvy to 0
       set y to cy
       wait 0.02 seconds
+    hide
 
 SPRITE Ball:
   SHAPE art nimbus-volley/ball
@@ -3167,31 +3180,51 @@ SPRITE Ball:
     set by to 80
     set vx to -4
     set vy to 4
+    set active to 0
+    set winner to 0
     go to x: bx y: by
     hide
   WHEN I receive "start nimbus volley":
+    set playerScore to 0
+    set cpuScore to 0
+    set rally to 1
+    set bx to 0
+    set by to 100
+    set vx to -4
+    set vy to 4
+    set winner to 0
+    set active to 1
     show variable playerScore
     show variable cpuScore
     show variable rally
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change vy by -0.32
       change bx by vx
       change by by vy
+      IF bx > 226 THEN:
+        set bx to 226
+        set vx to 0 - (abs of vx)
+      IF bx < -226 THEN:
+        set bx to -226
+        set vx to abs of vx
+      IF by > 166 THEN:
+        set by to 166
+        set vy to 0 - (abs of vy)
       go to x: bx y: by
       IF touching Player THEN:
         IF spiking = 1 and py > -110 THEN:
-          set vx to (abs of vx) + 2
-          set vy to -5
+          set vx to 5 + (abs of (bx - px) / 14)
+          set vy to -6
         ELSE:
-          set vx to (abs of vx) + 0.2
-          set vy to 8
+          set vx to 3.8 + (abs of (bx - px) / 16)
+          set vy to 7 + (pvy * 0.35)
         change rally by 1
         play sound "bump"
         wait 0.06 seconds
       IF touching CloudBot THEN:
-        set vx to 0 - ((abs of vx) + 0.2)
-        set vy to 8
+        set vx to 0 - (3.8 + (abs of (bx - x position of CloudBot) / 16))
+        set vy to 7 + (cvy * 0.3)
         change rally by 1
         play sound "bump"
         wait 0.06 seconds
@@ -3209,13 +3242,19 @@ SPRITE Ball:
         set bx to 0
         set by to 100
         set vy to 3
+        wait 0.55 seconds
       IF playerScore = 7 THEN:
-        say (("STORM COURT WON! FINAL " join playerScore) join (" - " join cpuScore)) for 3 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "nimbus match over"
       IF cpuScore = 7 THEN:
-        say (("NIMBUS WINS — FINAL " join playerScore) join (" - " join cpuScore)) for 3 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "nimbus match over"
       wait 0.02 seconds
+    hide
 
 SPRITE Net:
   SHAPE art nimbus-volley/net
@@ -3223,6 +3262,23 @@ SPRITE Net:
     go to x: 0 y: -115
     hide
   WHEN I receive "start nimbus volley":
+    show
+  WHEN I receive "nimbus match over":
+    hide
+
+SPRITE NimbusResult:
+  COSTUME win label "STORM COURT WON • GREEN FLAG FOR A REMATCH" #7ff6ff
+  COSTUME lose label "NIMBUS WINS • GREEN FLAG FOR A REMATCH" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start nimbus volley":
+    hide
+  WHEN I receive "nimbus match over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     ember_dojo: `# Ember Parry — a compact timing duel against a sky dragon.
