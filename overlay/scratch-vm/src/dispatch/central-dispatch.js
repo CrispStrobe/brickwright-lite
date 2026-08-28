@@ -75,10 +75,11 @@ class CentralDispatch extends SharedDispatch {
         return new Promise((resolve, reject) => {
             const responseId = this._storeCallbacks(resolve, reject);
             this.callbackWorkers[responseId] = provider;
-            if ((args.length > 0) && args[args.length - 1] &&
-                typeof args[args.length - 1].yield === 'function') {
-                args.pop();
-            }
+            // Runtime util contains functions and cannot cross structured clone. Newer VM call
+            // sites append realBlockInfo after util, so the historical "last argument" test no
+            // longer finds it. Remove the util wherever it occurs while preserving block info.
+            const utilIndex = args.findIndex(value => value && typeof value.yield === 'function');
+            if (utilIndex !== -1) args.splice(utilIndex, 1);
             const message = {service, method, responseId, args};
             if (transfer) provider.postMessage(message, transfer);
             else provider.postMessage(message);

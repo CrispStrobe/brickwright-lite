@@ -413,6 +413,9 @@ jobs:
       - name: Browser gate — editor
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor.mjs
+      - name: Browser gate — unpinned extension sandbox
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-extension-sandbox.mjs
       - name: Browser gate — game gallery and hardware examples
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs

@@ -169,6 +169,13 @@ test('the broker rejects privileged calls and cross-worker response forgery at r
         assert.match(first.messages.pop().error.message, /not allowed/);
 
         broker.setServiceSync('extension.2.0', second);
+        const opcodeCall = broker.call('extension.2.0', 'probe', {value: 7}, {yield: () => {}}, {opcode: 'probe'});
+        const opcodeOutbound = second.messages.shift();
+        assert.deepEqual(opcodeOutbound.args, [{value: 7}, {opcode: 'probe'}],
+            'non-cloneable runtime util is removed even when realBlockInfo follows it');
+        second.receive({responseId: opcodeOutbound.responseId, result: 42});
+        assert.equal(await opcodeCall, 42);
+
         const legitimateCall = broker.call('extension.2.0', 'getInfo');
         const outbound = second.messages.shift();
         first.receive({responseId: outbound.responseId, result: 'forged'});
