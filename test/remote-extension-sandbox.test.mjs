@@ -15,6 +15,7 @@ const picker = readFileSync(path.join(root, 'overlay/scratch-gui/src/containers/
 const urlLoader = readFileSync(path.join(root, 'overlay/scratch-gui/src/lib/url-extensions.js'), 'utf8');
 const guiWebpack = readFileSync(path.join(root, 'overlay/scratch-gui/webpack.config.js'), 'utf8');
 const applyVmOverlay = readFileSync(path.join(root, 'scripts/apply-vm-overlay.mjs'), 'utf8');
+const browserProof = readFileSync(path.join(root, 'scripts/verify-extension-sandbox.mjs'), 'utf8');
 
 test('only a content-pinned remote URL reaches the in-process adapter', () => {
     assert.match(manager,
@@ -55,6 +56,12 @@ test('the shipped worker bundle is rebuilt from the overlaid sandbox source', ()
     assert.match(applyVmOverlay, /target: 'webworker'/);
     assert.match(applyVmOverlay, /filename: 'extension-worker\.js'/);
     assert.match(applyVmOverlay, /__BRICKWRIGHT_SANDBOX_WORKER__/);
+});
+
+test('the browser proof preserves the global URL constructor', () => {
+    assert.match(browserProof, /const proofURL =/);
+    assert.match(browserProof, /new URL\('static\/test-fixtures\/sandbox-probe\.js', proofURL\)/);
+    assert.doesNotMatch(browserProof, /const URL =/);
 });
 
 test('forged worker dispatch calls cannot reach arbitrary main-thread services', () => {

@@ -4,14 +4,14 @@
  */
 import {chromium} from 'playwright';
 
-const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
-const fixtureURL = new URL('static/test-fixtures/sandbox-probe.js', URL).href;
+const proofURL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
+const fixtureURL = new URL('static/test-fixtures/sandbox-probe.js', proofURL).href;
 
 const browser = await chromium.launch({headless: true});
 try {
     const page = await browser.newPage();
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
-    await page.goto(URL, {waitUntil: 'domcontentloaded', timeout: 60000});
+    await page.goto(proofURL, {waitUntil: 'domcontentloaded', timeout: 60000});
 
     const result = await page.evaluate(async extensionURL => {
         const deadline = Date.now() + 20000;
