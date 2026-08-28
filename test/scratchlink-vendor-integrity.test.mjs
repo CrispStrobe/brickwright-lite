@@ -96,3 +96,14 @@ test('the patch that makes it compile is recorded, not silently applied', () => 
     assert.match(readme, /IOBluetooth/,
         'BTSession is macOS-only and cannot ship on iOS; that must not be rediscovered');
 });
+
+test('the build recipe records what was verified, not what was assumed', () => {
+    // Each of these cost a real experiment. Losing them means the next attempt
+    // re-derives them through 20-minute CI iOS jobs, which is what this whole
+    // exercise was trying to avoid.
+    const readme = readFileSync(path.join(DIR, 'README.md'), 'utf8');
+    assert.match(readme, /symlink/i, 'SwiftPM following a symlink is why no copy of the tree is needed');
+    assert.match(readme, /BTSession\.swift/, 'excluding the macOS-only session is required');
+    assert.match(readme, /tauri-plugin-share/, 'the working plugin template is in this repo');
+    assert.match(readme, /didReceiveText/, 'the inbound seam must be named, or it gets reimplemented');
+});
