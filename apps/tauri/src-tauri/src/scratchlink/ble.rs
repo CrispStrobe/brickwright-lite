@@ -133,7 +133,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             check_blocklist(params, true)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             let data = decode_message(params)?;
-            let write_type = choose_write_type(&h, uuid, params).await;
+            let write_type = choose_write_type(h, uuid, params).await;
             let n = data.len();
             h.send_data(uuid, &data, write_type)
                 .await
