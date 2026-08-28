@@ -266,20 +266,19 @@ Lite-side items (ours, this repo):
 
 ---
 
-## 3b. What an extension can reach — **PLANNED, none built** (2026-08-28)
+## 3b. What an extension can reach — **TASK 1 SHIPPED** (2026-08-28)
 
 Full reasoning, and the verification behind each claim, in
 `docs/EXTENSION-SECURITY.md`. Summary and evidence here so the roadmap is not
 missing a security track that exists only in another file.
 
-**The measurement.** `extension-manager.js` `_loadRemoteExtension` does
-`fetch(url)` → `makeCrispExtension(source)` → `_registerInternalExtension`.
-Every remote extension — our gallery AND a user-entered URL — runs
-**unsandboxed, in-process, with full page access and no integrity check**. The
-only difference between the two is a `confirm()`. There is no sandbox path for
-remote extensions: the vanilla worker fallback resolves built-in IDs only. The
-file's own header comment claimed otherwise ("anything else falls through to the
-vanilla sandbox worker") and is corrected in the same commit as this entry.
+**The measurement.** Every remote extension — our gallery AND a user-entered
+URL — still runs **unsandboxed, in-process, with full page access**. There is no
+sandbox path for remote extensions: the vanilla worker fallback resolves
+built-in IDs only. Task 1 now makes the quiet gallery path content-addressed:
+the fetched bytes must match the app's reviewed pin before decoding or
+evaluation. Unknown URLs still require confirmation; changed pinned URLs are
+refused.
 
 What makes this unlike TurboWarp's problem is not the DOM but the **native
 bridge**: an in-process extension can invoke Tauri commands — Bluetooth, file
@@ -287,7 +286,7 @@ writes, serial flashing.
 
 | # | Task | Why this order |
 |---|---|---|
-| 1 | **Pin the gallery by content, not host** | The *quiet* path: ~117 extensions, no prompt, so the largest blast radius. `docs/FETCH-PINNING.md` already established the doctrine for every build-time fetch after a CDN served a stale commit; runtime loads are the one place it was never extended to. |
+| 1 | **Pin the gallery by content, not host — SHIPPED** | All 120 current entries have exact served-byte hashes tied to an immutable reviewed repository commit. The VM verifies before evaluation; only exact pinned URLs skip confirmation. |
 | 2 | **`allowedServices`** | An extension may only touch GATT services it declared. The reference enforces this BEFORE the blocklist; we shipped only the blocklist. Observe-only first, then default-on with a confirmed override. |
 | 3 | **Native capabilities declared, not ambient** | Bluetooth/serial/file asked for rather than assumed. Cheaper than a sandbox and aimed where our exposure differs from a browser's. |
 | 4 | **A real sandbox** | Only against a written case that 1–3 left something open. Large change; every extension using the in-process `Scratch` shim would need a new contract. |

@@ -118,3 +118,6 @@ jobs:
       - name: parts-data sidecars (bw-circuit-ui -> overlay)
         run: node brickwright-lite/scripts/sync-parts-data.mjs --check --dir bw-circuit-ui --allow-stale
         if: always()
+      - name: runtime extension gallery content pins
+        run: node brickwright-lite/scripts/sync-gallery-pins.mjs --check
+        if: always()
