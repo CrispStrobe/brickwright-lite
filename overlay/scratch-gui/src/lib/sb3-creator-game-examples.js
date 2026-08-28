@@ -4849,6 +4849,8 @@ GLOBAL obstacleLane
 GLOBAL obstacleY
 GLOBAL obstacleKind
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art helix-rush/intro
@@ -4860,9 +4862,19 @@ STAGE:
     hide variable sectors
     hide variable lives
     hide variable charge
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set sectors to 0
+      set lives to 3
+      set lane to 0
+      set speed to 5
+      set charge to 0
+      set boosting to 0
+      set winner to 0
+      set active to 1
       switch backdrop to tube
       broadcast "start helix rush"
 
@@ -4878,6 +4890,8 @@ SPRITE Runner:
     set speed to 5
     set charge to 0
     set boosting to 0
+    set active to 0
+    set winner to 0
     go to x: 0 y: -125
     hide
   WHEN I receive "start helix rush":
@@ -4886,7 +4900,7 @@ SPRITE Runner:
     show variable lives
     show variable charge
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change lane by -1
         wait 0.1 seconds
@@ -4908,17 +4922,27 @@ SPRITE Runner:
       ELSE:
         switch costume to costume1
         set speed to 5
-      IF lives < 1 THEN:
-        say ("TUBE FAILURE — SECTOR " join sectors) for 4 seconds
-        stop all
-      IF sectors = 30 THEN:
-        say ("THIRTY SECTORS CLEARED — SCORE " join score) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and charge > 4 and boosting = 0 THEN:
+    IF active = 1 and charge > 4 and boosting = 0 THEN:
       set boosting to 1
       play sound "boost"
+  WHEN I receive "helix hit":
+    IF active = 1 THEN:
+      change lives by -1
+      IF lives < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "helix rush over"
+  WHEN I receive "helix sector cleared":
+    IF active = 1 THEN:
+      change sectors by 1
+      change score by 1
+      IF sectors = 30 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "helix rush over"
 
 SPRITE TubeHazard:
   SHAPE art helix-rush/hazard
@@ -4929,7 +4953,7 @@ SPRITE TubeHazard:
   WHEN flag clicked:
     hide
   WHEN I receive "start helix rush":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set obstacleLane to pick random -2 to 2
       set obstacleY to 190
       set obstacleKind to pick random 1 to 7
@@ -4942,13 +4966,13 @@ SPRITE TubeHazard:
           switch costume to gate
       go to x: obstacleLane * 82 y: obstacleY
       show
-      REPEAT UNTIL y position < -190:
+      REPEAT UNTIL y position < -190 or active = 0:
         change y by 0 - speed
         turn right 5 degrees
         IF touching Runner THEN:
           IF obstacleKind < 5 THEN:
             IF boosting = 0 THEN:
-              change lives by -1
+              broadcast "helix hit"
               play sound "hit"
             ELSE:
               change score by 3
@@ -4967,9 +4991,9 @@ SPRITE TubeHazard:
           set y to -220
         wait 0.02 seconds
       hide
-      change sectors by 1
-      change score by 1
-      wait 0.15 seconds
+      IF active = 1 THEN:
+        broadcast "helix sector cleared"
+        wait 0.15 seconds
 
 SPRITE TubeCore:
   SHAPE art helix-rush/core
@@ -4979,9 +5003,25 @@ SPRITE TubeCore:
     hide
   WHEN I receive "start helix rush":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       turn right speed degrees
-      wait 0.03 seconds`,
+      wait 0.03 seconds
+    hide
+
+SPRITE HelixResult:
+  COSTUME win label "THIRTY SECTORS CLEARED • GREEN FLAG FOR ANOTHER RUN" #ffe66d
+  COSTUME lose label "TUBE FAILURE • GREEN FLAG TO RESTART" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start helix rush":
+    hide
+  WHEN I receive "helix rush over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     lilyway_rescue: `# Moonbank Hop — a finite road-and-river crossing challenge.
 # GOAL: reach the moon bank three times before three crashes or splashes.

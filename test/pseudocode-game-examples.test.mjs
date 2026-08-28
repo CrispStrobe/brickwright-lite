@@ -1229,7 +1229,11 @@ test('Helix Rush has a thirty-sector finish and readable charge-phase-jackpot lo
     assert.match(games.spiral_circuit, /GOAL: survive thirty sectors/);
     assert.match(games.spiral_circuit, /change sectors by 1/);
     assert.match(games.spiral_circuit, /IF sectors = 30 THEN:/);
-    assert.match(games.spiral_circuit, /IF started = 1 and charge > 4 and boosting = 0 THEN:/);
+    assert.match(games.spiral_circuit, /IF active = 1 and charge > 4 and boosting = 0 THEN:/);
+    assert.match(games.spiral_circuit, /broadcast "helix hit"/);
+    assert.match(games.spiral_circuit, /broadcast "helix sector cleared"/);
+    assert.match(games.spiral_circuit, /broadcast "helix rush over"/);
+    assert.match(games.spiral_circuit, /THIRTY SECTORS CLEARED • GREEN FLAG FOR ANOTHER RUN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'tube']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2107,6 +2111,19 @@ test('directional cargo dash and charged tube boost work in the live Scratch VM'
         helix.postIOData('keyboard', {key: ' ', isDown: false});
         assert.equal(Number(value(helix, 'boosting').value), 1, 'charged Space did not begin phase boost');
         assert.equal(Number(value(helix, 'sectors').value), 0, 'the run began with phantom sectors');
+        value(helix, 'sectors').value = 29;
+        value(helix, 'boosting').value = 0;
+        value(helix, 'score').value = 0;
+        const runner = helix.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Runner');
+        helix.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'helix sector cleared'}, runner);
+        for (let i = 0; i < 35; i++) helix.runtime._step();
+        assert.equal(Number(value(helix, 'sectors').value), 30, 'the thirtieth sector was not counted');
+        assert.equal(Number(value(helix, 'score').value), 1, 'the finish sector reward was not applied exactly once');
+        assert.equal(Number(value(helix, 'winner').value), 1, 'thirty sectors did not win the run');
+        assert.equal(Number(value(helix, 'active').value), 0, 'the completed tube run remained active');
+        const result = helix.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'HelixResult');
+        assert.equal(result.visible, true, 'the helix result was not shown on the stage');
     } finally { helix.quit(); clearStrayTimers(); }
 });
 
@@ -2423,7 +2440,9 @@ test('each new game keeps its signature playable mechanic', () => {
         trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /distance to Sub < 150/, /set mineStun to 0\.7/, /change pearls by 1/],
         whisker_switch: [/set hidden to 1/, /change scent by 3/, /broadcast "relay delivery"/,
             /change banked by cargo/, /set targetHole to -1/, /point towards Pip/, /broadcast "whisker relay over"/],
-        spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /change sectors by 1/, /set lane to -2/],
+        spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/,
+            /broadcast "helix sector cleared"/, /change sectors by 1/, /set lane to -2/,
+            /broadcast "helix rush over"/],
         lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/, /IF crossings = 3/],
         rotor_rogue: [/set wind to sin of distance \* speed \/ 8/, /change lift by -0\.7/, /IF abs of tilt > 48/, /change fuel by 3/, /change distance by speed \/ 180/],
         prism_spire: [/IF \(abs of \(blockX - towerX\)\) < blockWidth/, /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/, /IF level = 12/],
