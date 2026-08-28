@@ -82,7 +82,8 @@ const sha256 = buf => createHash('sha256').update(buf).digest('hex');
 // which is what lets the walk below check the swap rather than trust it.
 const L10N = '/* generated l10n code */';
 // Helper bodies the build appends or splices in, from the repo's build-snippets/.
-const SNIPPET = '/* snippet ';
+const SNIPPET_PREFIX = '/* snippet prefix */(function(){var __internal={};' +
+    '__internal_setup();/* end snippet prefix */';
 const DEP_OPEN = '/* generated dependency -- ';
 const DEP_CLOSE = '/* end generated dependency */';
 // Enough bytes for "where does the repo file resume" to be unambiguous after
@@ -108,8 +109,9 @@ const PROBE = 96;
  * having: without the quote check, `/* generated dependency ... *\/` would be
  * a free pass to substitute any code at all for any call.
  */
-export function explainDifference (repo, served) {
+export function explainDifference (repo, served, options = {}) {
     const inserts = [];
+    const allowedSuffixes = options.allowedSuffixes || [];
     let r = 0;
     let s = 0;
     const at = (buf, i, str) => buf.toString('utf8', i, i + str.length) === str;
@@ -142,26 +144,72 @@ export function explainDifference (repo, served) {
             continue;
         }
 
-        if (at(served, s, L10N) || at(served, s, SNIPPET)) {
-            const probe = repo.subarray(r, Math.min(r + PROBE, repo.length));
-            const resume = served.indexOf(probe, s);
-            if (resume < 0) {
-                return {ok: false, reason: `after a generated block the repo file never resumes ` +
-                    `(looking for ${JSON.stringify(probe.toString('utf8', 0, 40))})`};
+        if (at(served, s, L10N)) {
+            const setup = 'Scratch.translate.setup(';
+            const bodyStart = s + L10N.length;
+            const closeMarker = ');/* end generated l10n code */';
+            const bodyEnd = served.indexOf(closeMarker, bodyStart);
+            if (bodyEnd < 0 || !at(served, bodyStart, setup)) {
+                return {ok: false, reason: 'malformed generated l10n block'};
             }
-            inserts.push({marker: at(served, s, L10N) ? 'l10n' : 'snippet', bytes: resume - s});
-            s = resume;
+            try {
+                JSON.parse(served.toString('utf8', bodyStart + setup.length, bodyEnd));
+            } catch (e) {
+                return {ok: false, reason: `generated l10n payload is not JSON: ${e.message}`};
+            }
+            const end = bodyEnd + closeMarker.length;
+            inserts.push({marker: 'l10n', bytes: end - s});
+            s = end;
+            continue;
+        }
+
+        if (at(served, s, SNIPPET_PREFIX)) {
+            inserts.push({marker: 'snippet-prefix', bytes: SNIPPET_PREFIX.length});
+            s += SNIPPET_PREFIX.length;
             continue;
         }
 
         return {ok: false, reason: `served byte ${s} is not a generated block: ` +
             `${JSON.stringify(served.toString('utf8', s, s + 48))}`};
     }
-    if (s < served.length && ![L10N, DEP_OPEN, SNIPPET].some(m => at(served, s, m))) {
-        return {ok: false, reason: `${served.length - s} trailing served bytes are not a generated block`};
+    if (s !== served.length) {
+        const remaining = served.subarray(s);
+        const suffix = allowedSuffixes.find(candidate => remaining.equals(candidate));
+        if (suffix) {
+            inserts.push({marker: 'snippet-suffix', bytes: suffix.length});
+            s = served.length;
+        }
+    }
+    if (s !== served.length) {
+        // Once every reviewed byte has been consumed there is nowhere valid
+        // for executable output to resume. Merely beginning with a familiar
+        // marker is not evidence that the remaining bytes came from the
+        // gallery builder; accepting it would turn a marker into a free-form
+        // executable suffix.
+        return {ok: false, reason: `${served.length - s} trailing served bytes remain after the repo file`};
     }
     return {ok: true, identical: inserts.length === 0, inserts};
 }
+
+const snippetSuffix = (names, sources) => {
+    let suffix = '/* snippet suffix */function __internal_setup() {';
+    for (const name of names) {
+        suffix += `/* snippet ${name} */${sources[name]}/* end snippet ${name} */`;
+    }
+    return Buffer.from(`${suffix}}}({}));/* end snippet suffix */`);
+};
+
+const loadAllowedSuffixes = async commit => {
+    const names = ['base85decode', 'fzstd'];
+    const sources = Object.fromEntries(await Promise.all(names.map(async name => [name,
+        (await bytesOf(`https://raw.githubusercontent.com/${REPO}/${commit}/build-snippets/${name}.js`))
+            .toString('utf8')])));
+    return [
+        snippetSuffix(['base85decode'], sources),
+        snippetSuffix(['fzstd'], sources),
+        snippetSuffix(['base85decode', 'fzstd'], sources)
+    ];
+};
 
 const args = process.argv.slice(2);
 const has = f => args.includes(f);
@@ -196,7 +244,17 @@ async function main () {
     console.log(`${REPO}@${REF} -> ${commit}`);
 
     const index = JSON.parse((await bytesOf(INDEX)).toString('utf8'));
+    const allowedSuffixes = await loadAllowedSuffixes(commit);
     const slugs = index.extensions.map(e => e.slug).filter(Boolean).sort();
+    const invalidSlugs = slugs.filter(slug =>
+        typeof slug !== 'string' || !/^[A-Za-z0-9._/-]+$/.test(slug) ||
+        slug.startsWith('/') || slug.split('/').includes('..'));
+    if (invalidSlugs.length) {
+        throw new Error(`gallery index contains unsafe slug(s): ${invalidSlugs.join(', ')}`);
+    }
+    if (new Set(slugs).size !== slugs.length) {
+        throw new Error('gallery index contains duplicate slugs');
+    }
     console.log(`gallery index lists ${slugs.length} extensions`);
 
     const rows = await pool(slugs, async slug => {
@@ -204,7 +262,8 @@ async function main () {
         const live = `${BASE}${slug}.js`;
         try {
             const [a, b] = await Promise.all([bytesOf(raw), bytesOf(live)]);
-            return {slug, repo: sha256(a), served: sha256(b), diff: explainDifference(a, b)};
+            return {slug, repo: sha256(a), served: sha256(b),
+                diff: explainDifference(a, b, {allowedSuffixes})};
         } catch (e) {
             return {slug, error: e.message};
         }
@@ -219,26 +278,25 @@ async function main () {
         console.log(`  UNEXPLAINED  ${r.slug}: ${r.diff.reason}`);
     }
 
-    // Refusing to pin what we cannot explain is the whole point. An extension
-    // whose served bytes are not "the reviewed file plus translations" is
-    // exactly the case this file exists to catch, so it stays unpinned — which
-    // means the loader will ask before running it, not that it disappears.
-    if (unexplained.length && !has('--allow-unexplained')) {
-        throw new Error(`${unexplained.length} extension(s) are served with changes this script cannot ` +
-            `account for (listed above). Look at one before deciding: --allow-unexplained pins them anyway.`);
+    // A partial result must never replace a complete pin map. An unreachable
+    // file and an unexplained transformation both mean this run cannot attest
+    // to the gallery snapshot. Keep the previous file untouched and fail.
+    if (failed.length || unexplained.length) {
+        throw new Error(`cannot attest gallery snapshot: ${failed.length} unreachable, ` +
+            `${unexplained.length} unexplained (listed above)`);
     }
 
-    const pinned = [...good, ...(has('--allow-unexplained') ? unexplained : [])]
-        .sort((a, b) => a.slug.localeCompare(b.slug));
+    const pinned = good.sort((a, b) => a.slug.localeCompare(b.slug));
     const next = {
         _comment: 'Generated by scripts/sync-gallery-pins.mjs — see docs/EXTENSION-SECURITY.md task 1. Do not hand-edit.',
         repo: REPO,
         commit,
         base: BASE,
         // served: what the loader hashes. repo: what a human reviewed at `commit`.
-        // l10n: true when the two differ only by the site's injected translations.
+        // transformed: true when the reviewed source passed through one or
+        // more explicitly checked gallery-builder transformations.
         extensions: Object.fromEntries(pinned.map(r =>
-            [r.slug, {served: r.served, repo: r.repo, l10n: !r.diff.identical}]))
+            [r.slug, {served: r.served, repo: r.repo, transformed: !r.diff.identical}]))
     };
 
     const prev = JSON.parse(await readFile(OUT, 'utf8').catch(() => '{"extensions":{}}'));
@@ -268,12 +326,12 @@ async function main () {
     console.log(`  ${identical} byte-identical to the repo, ${pinned.length - identical} with generated blocks ` +
         `(${Object.entries(blocks).map(([m, n]) => `${n} ${m}`).join(', ') || 'none'})`);
     console.log(`wrote ${path.relative(path.join(here, '..'), OUT)}: ${pinned.length} pinned at ${commit.slice(0, 12)}` +
-        `${failed.length ? `, ${failed.length} unreachable and therefore NOT pinned` : ''}`);
+        '.');
 }
 
 // Importable without running: test/gallery-pins.test.mjs exercises
 // explainDifference directly, and must not kick off 240 network fetches.
-if (process.argv[1] && process.argv[1].endsWith('sync-gallery-pins.mjs')) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     main().catch(e => {
         console.error(`sync-gallery-pins failed: ${e.message}`);
         process.exit(1);

@@ -3,12 +3,8 @@ const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
+const {pinForURL, verifyGallerySource} = require('./gallery-integrity');
 
-// Brickwright: the only host allowed to run an extension unsandboxed, in-process (our own gallery).
-// Anything else falls through to the vanilla sandbox worker. See loadExtensionURL below.
-const CRISP_EXTENSION_HOST = 'https://crispstrobe.github.io/';
-const isCrispExtensionURL = url =>
-    typeof url === 'string' && url.startsWith(CRISP_EXTENSION_HOST) && url.endsWith('.js');
 // Any http(s) URL is loadable in-process via the adapter (gallery or user-entered). The UI gates
 // untrusted hosts with a confirmation; see isTrustedExtensionURL / loadExtensionURL.
 const isRemoteExtensionURL = url =>
@@ -233,13 +229,13 @@ class ExtensionManager {
     }
 
     /**
-     * Whether a URL points at our own trusted extension gallery (loads without a user prompt). The
-     * extension-library UI uses this to decide whether to warn before loading a custom URL.
+     * Whether a URL names exact reviewed gallery content (loads without a user prompt). A hostname
+     * alone is not trust: new entries, query variants, and changed bytes use the custom-URL path.
      * @param {string} extensionURL - candidate URL
      * @returns {boolean} true for our gallery host
      */
     isTrustedExtensionURL (extensionURL) {
-        return isCrispExtensionURL(extensionURL);
+        return Boolean(pinForURL(extensionURL));
     }
 
     /**
@@ -257,9 +253,11 @@ class ExtensionManager {
         return fetch(extensionURL)
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status} loading ${extensionURL}`);
-                return res.text();
+                return res.arrayBuffer();
             })
-            .then(source => {
+            .then(async bytes => {
+                await verifyGallerySource(extensionURL, bytes);
+                const source = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
                 const Extension = makeCrispExtension(source);
                 const extensionInstance = new Extension(this.runtime);
                 const serviceName = this._registerInternalExtension(extensionInstance);

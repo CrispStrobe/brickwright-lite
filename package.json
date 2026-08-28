@@ -25,6 +25,8 @@
     "sync:flasher:check": "node scripts/sync-flasher.mjs --check",
     "sync:labwiredwasm": "node scripts/sync-labwired-wasm.mjs",
     "sync:labwiredwasm:check": "node scripts/sync-labwired-wasm.mjs --check",
+    "sync:gallery-pins": "node scripts/sync-gallery-pins.mjs",
+    "sync:gallery-pins:check": "node scripts/sync-gallery-pins.mjs --check",
     "sync:microbitsim": "node scripts/sync-microbit-sim.mjs",
     "sync:microbitsim:check": "node scripts/sync-microbit-sim.mjs --check",
     "smoke:debugger": "node scripts/smoke-debugger.mjs",
