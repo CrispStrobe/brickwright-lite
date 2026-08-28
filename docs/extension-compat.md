@@ -44,7 +44,8 @@ surface in a VM worker: metadata enums, `Cast`, translation, `fetch`, and
 `extensions.register`, with `unsandboxed: false`. HTTP(S) fetch/import remains
 available, while WebSockets and nested workers are blocked so code cannot dial
 the app's native loopback Scratch-Link service or create a fresh realm which
-can. The central dispatcher accepts
+can. WorkerNavigator Bluetooth, serial, USB and HID entry points are removed as
+well. The central dispatcher accepts
 only that worker's registration lifecycle, so raw `postMessage` cannot be used
 to reach editor or native-facing services.
 

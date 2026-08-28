@@ -40,6 +40,7 @@ test('the worker API contains compatibility helpers but no page or native bridge
     assert.match(worker, /unsandboxed: false/);
     assert.match(worker, /blockNetworkEscapeHatches\(\)/);
     assert.match(worker, /\['Worker', 'SharedWorker'\]/);
+    assert.match(worker, /\['bluetooth', 'serial', 'usb', 'hid'\]/);
     assert.match(worker, /configurable: false/);
     assert.match(worker, /writable: false/);
     assert.doesNotMatch(worker,

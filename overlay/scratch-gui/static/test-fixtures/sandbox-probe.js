@@ -35,7 +35,9 @@
                     } catch (e) {
                         return 'blocked';
                     }
-                })()
+                })(),
+                hardwareApis: ['bluetooth', 'serial', 'usb', 'hid']
+                    .filter(name => typeof navigator[name] !== 'undefined')
             });
         }
     }

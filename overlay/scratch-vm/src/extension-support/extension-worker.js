@@ -27,6 +27,23 @@ const lockConstructor = (name, replacement) => {
     if (global[name] !== replacement) throw new Error(`Could not lock the worker ${name} constructor`);
 };
 
+const removeNavigatorCapability = name => {
+    if (!global.navigator || typeof global.navigator[name] === 'undefined') return;
+    let owner = global.navigator;
+    while (owner && !Object.prototype.hasOwnProperty.call(owner, name)) {
+        owner = Object.getPrototypeOf(owner);
+    }
+    if (!owner) throw new Error(`Could not locate worker navigator.${name}`);
+    Object.defineProperty(owner, name, {
+        value: undefined,
+        configurable: false,
+        writable: false
+    });
+    if (typeof global.navigator[name] !== 'undefined') {
+        throw new Error(`Could not lock worker navigator.${name}`);
+    }
+};
+
 const blockNetworkEscapeHatches = () => {
     const NativeWebSocket = global.WebSocket;
     const BlockedWebSocket = function WebSocket () {
@@ -44,6 +61,9 @@ const blockNetworkEscapeHatches = () => {
             throw new Error(`${name} is unavailable in sandboxed extensions`);
         };
         lockConstructor(name, BlockedWorker);
+    }
+    for (const capability of ['bluetooth', 'serial', 'usb', 'hid']) {
+        removeNavigatorCapability(capability);
     }
 };
 

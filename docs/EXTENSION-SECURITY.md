@@ -16,7 +16,8 @@ the remaining tasks are deliberately independent checkpoints.
   native bridge. Direct WebSockets are blocked: otherwise code could dial the
   app's loopback Scratch-Link server and regain native Bluetooth. Nested worker
   constructors are blocked as well, so code cannot create a fresh socket-capable
-  realm.
+  realm. WorkerNavigator hardware entry points (Bluetooth, serial, USB and HID)
+  are removed when the host browser exposes them.
   Extensions which demand `Scratch.extensions.unsandboxed` fail explicitly.
 
 Worker isolation alone was insufficient: downloaded code still owns
