@@ -476,6 +476,26 @@ const BW_AUTOSAVE_MAX = 512 * 1024;   // localStorage is ~5MB total; don't hog i
 
 const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit'};
 
+const DEVICE_HELP = {
+    microbit: 'Run MicroPython in the right-hand micro:bit simulator, use its A/B buttons and sensor sliders, or download a .hex for a real board.',
+    calliopemini: 'Uses the micro:bit-compatible MicroPython editor and simulator. P0–P20 programs retarget directly; MakeCode Calliope imports keep the Calliope device identity.',
+    arcade: 'Runs games on the 160×120 console in the right pane. Arrow keys and the on-screen pad move; Space/Z are A/B.',
+    pybadge: 'Runs the Arcade game on a PyBadge-shaped 160×128 console with A/B, D-pad, NeoPixels, light and tilt controls.',
+    'pybadge-lc': 'Runs the Arcade game on the compact PyBadge LC console. Its virtual GPIO keeps code runnable without inventing physical breakout pins.',
+    samd51: 'Targets the generic ATSAMD51J19 pin vocabulary. It has no invented board peripherals; choose PyBadge for its screen, controls and sensors.',
+    arduboy: 'Loads and runs an existing ATmega32U4 .hex in the Arduboy console. Brickwright does not claim to compile Arduboy firmware.',
+    pico: 'Compiles bare-metal RP2040 code for the emulator, or deploys MicroPython main.py to a mounted Pico.',
+    eater6502: 'Builds for the breadboard 6502 workstation: W65C22 VIA, ACIA serial, keyboard, OLED or VGA circuits and debugger.',
+    z80: 'Builds for the Z80 bench with OUT0–OUT7 and IN0–IN7 latch/buffer pins and its machine debugger.',
+    stm32f030: 'Compiles and emulates the light-tier STM32F030 target. Serial bootloader and SWD flashing actions appear for pseudocode.',
+    default: 'Choose examples written for this exact board, edit code, convert supported constructs to Blocks, then run, emulate or flash using the actions shown for the target.'
+};
+
+const deviceHelp = id => DEVICE_HELP[id] || (/^(arduino|atmega|attiny)/.test(id || '') ?
+    'Uses the AVR pin vocabulary and emulator. Open an example for this exact board; serial-bootloader targets also offer Flash to board.' :
+    (/^stc/.test(id || '') ?
+        'Compiles 8051/STC pseudocode, runs it in the chip emulator and offers the STC serial ISP flashing path.' : DEVICE_HELP.default));
+
 // Languages you can compile back INTO blocks. C joined them once cToPseudocode landed:
 // it reads both our own emitted C (which carries an `@bw` marker header, so the round-trip
 // is exact) and hand-written firmware (pins from `#define LED1 P1_0`, polarity from the
@@ -659,7 +679,8 @@ class PseudocodeImporter extends React.Component {
         this.state = {lang: 'pseudocode', importedPython: false,
             buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
-            uploads: [], status: '', conversionReport: null, busy: false, showRef: false, showInfo: false,
+            uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false,
+            showRepresentation: true,
             showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
@@ -2211,10 +2232,13 @@ class PseudocodeImporter extends React.Component {
     catalogForDevice (device) {
         const dev = this._normDevice(device);
         return (this.state.catalog || []).map(ex => {
-            const devices = ex.devices || [];
+            // Older catalog rows use singular `device`; treating its absence
+            // from `devices` as "works everywhere" exposed Nano/Mega examples
+            // under micro:bit and every other unrelated board.
+            const devices = ex.devices || (ex.device ? [ex.device] : []);
             const compatible = devices.length === 0 || devices.some(d => this._normDevice(d) === dev);
-            return { ...ex, _compatible: compatible };
-        });
+            return { ...ex, devices, _compatible: compatible };
+        }).filter(ex => ex._compatible);
     }
 
     // Load a catalog example's program.bw into the pseudocode editor. If the
@@ -2731,6 +2755,68 @@ class PseudocodeImporter extends React.Component {
                     </div>
                 )}
             </span>
+        );
+    }
+
+    renderActionMenu (csel) {
+        const item = {...csel, display: 'block', width: '100%', boxSizing: 'border-box',
+            textAlign: 'left', cursor: 'pointer', border: 'none', background: 'transparent'};
+        return (
+            <details style={{position: 'relative', alignSelf: 'center'}} data-testid="bw-code-actions">
+                <summary style={{...csel, cursor: 'pointer', listStyle: 'none', border: '1px solid #cbd5e1',
+                    background: '#f1f5f9', whiteSpace: 'nowrap'}} title="Open, save, import, examples and reference">
+                    ⋯
+                </summary>
+                <div style={{position: 'absolute', top: '100%', right: 0, zIndex: 70, marginTop: 4,
+                    width: 220, padding: 6, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
+                    boxShadow: '0 8px 24px rgba(15,23,42,.2)', display: 'flex', flexDirection: 'column', gap: 2}}>
+                    <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
+                        data-testid="bw-open-file">
+                        {this.L.openFile}
+                        <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
+                            onChange={this.openCodeFile} />
+                    </label>
+                    <button type="button" onClick={this.saveCodeFile} style={item}
+                        title={this.L.saveFileTitle(this.saveFileName())} data-testid="bw-save-file">
+                        {this.L.saveFile}
+                    </button>
+                    <button type="button" onClick={this.openMakeCodeShare} style={item}
+                        title={this.L.mcShareTitle} data-testid="bw-makecode-share">
+                        {this.L.mcShare}
+                    </button>
+                    {['microbit', 'calliopemini'].includes(this.currentDevice()) ? (
+                        <button type="button" onClick={this.exportMakeCode} style={item}
+                            title={this.L.mcExportTitle} disabled={this.state.busy}
+                            data-testid="bw-makecode-export">{this.L.mcExport}</button>
+                    ) : null}
+                    {this._makeCodeProject ? (
+                        <button type="button" onClick={() => this.exportMakeCodeSource()} style={item}
+                            title={this.L.exportMakeCodeTitle} data-testid="bw-export-makecode-source">
+                            {this.L.exportMakeCode}
+                        </button>
+                    ) : null}
+                    <div style={{borderTop: '1px solid #e2e8f0', margin: '3px 0'}} />
+                    {this.currentDevice() ? this.renderCatalogControl(item) : (
+                        <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
+                            style={{...item, border: 'none'}} title={this.L.loadExampleTitle}
+                            data-testid="bw-load-example">
+                            <option value="" disabled>{this.L.loadExample}</option>
+                            {GROUPS.map(g => (
+                                <optgroup key={g.label} label={g.label}>
+                                    {g.items.filter(([k]) => examples[k]).map(([k, label]) =>
+                                        <option key={k} value={k}>{label}</option>)}
+                                </optgroup>
+                            ))}
+                        </select>
+                    )}
+                    <button type="button" onClick={() => this.setState(s => ({showRef: !s.showRef}))}
+                        style={item} title={this.L.referenceTitle(this.state.lang)}>📝 {this.L.reference}</button>
+                    <button type="button" onClick={() => this.setState(s => ({showArt: !s.showArt}))}
+                        style={item} title={this.L.customArtTitle}>
+                        🖼️ {this.L.customArt}{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
+                    </button>
+                </div>
+            </details>
         );
     }
 
