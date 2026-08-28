@@ -5694,6 +5694,25 @@
   "kind": "circuit"
  },
  {
+  "id": "aurora65-workstation",
+  "title": {
+   "en": "Aurora-65 Display Workstation",
+   "de": "Aurora-65 Display-Workstation"
+  },
+  "category": "digital",
+  "difficulty": 3,
+  "files": {
+   "program": "aurora65-workstation/program.bw",
+   "circuit": "aurora65-workstation/circuit.json",
+   "intro": "aurora65-workstation/intro.md",
+   "introDE": "aurora65-workstation/intro.de.md",
+   "expected": "aurora65-workstation/EXPECTED.md",
+   "rom": "aurora65-workstation/rom.bin",
+   "controller": "aurora65-workstation/controller.json"
+  },
+  "kind": "circuit"
+ },
+ {
   "id": "eater6502-full-build",
   "title": {
    "en": "6502 Computer with LCD",
@@ -6374,9 +6393,30 @@
    "circuit": "71-calculator-pcb/circuit.json",
    "expected": "71-calculator-pcb/EXPECTED.md",
    "intro": "71-calculator-pcb/intro.md",
-   "introDE": "71-calculator-pcb/intro.de.md"
+   "introDE": "71-calculator-pcb/intro.de.md",
+   "pcb": "71-calculator-pcb/board.pcb.json"
   },
   "kind": "program"
+ },
+ {
+  "id": "72-soldered-key",
+  "title": {
+   "en": "The soldered key (find the board fault)",
+   "de": "Die festgelötete Taste (finde den Platinenfehler)"
+  },
+  "category": "pure-circuit",
+  "difficulty": 2,
+  "kind": "circuit",
+  "files": {
+   "circuit": "72-soldered-key/circuit.json",
+   "pcb": "72-soldered-key/board.pcb.json",
+   "expected": "72-soldered-key/EXPECTED.md",
+   "intro": "72-soldered-key/intro.md",
+   "introDE": "72-soldered-key/intro.de.md"
+  },
+  "pcbExpectedFindings": {
+   "terminal-short/danger": 1
+  }
  },
  {
   "id": "72-pico-oled-hello",
@@ -7444,6 +7484,438 @@
    "atmega168p": "disp-bargraph/circuit.atmega168p.json",
    "pico": "disp-bargraph/circuit.pico.json",
    "stm32f030": "disp-bargraph/circuit.stm32f030.json"
+  }
+ },
+ {
+  "id": "pc90-74hc08-and-gate",
+  "title": {
+   "en": "AND gate on a breadboard (74HC08)",
+   "de": "UND-Gatter auf dem Steckbrett (74HC08)"
+  },
+  "category": "pure-circuit",
+  "difficulty": 1,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc90-74hc08-and-gate/circuit.json",
+   "expected": "pc90-74hc08-and-gate/EXPECTED.md",
+   "intro": "pc90-74hc08-and-gate/intro.md",
+   "introDE": "pc90-74hc08-and-gate/intro.de.md"
+  }
+ },
+ {
+  "id": "pc91-74hc04-inverter",
+  "title": {
+   "en": "NOT gate: the inverter (74HC04)",
+   "de": "NICHT-Gatter: der Inverter (74HC04)"
+  },
+  "category": "pure-circuit",
+  "difficulty": 1,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc91-74hc04-inverter/circuit.json",
+   "expected": "pc91-74hc04-inverter/EXPECTED.md",
+   "intro": "pc91-74hc04-inverter/intro.md",
+   "introDE": "pc91-74hc04-inverter/intro.de.md"
+  }
+ },
+ {
+  "id": "pc92-and-or-xor-compared",
+  "title": {
+   "en": "AND, OR and XOR side by side",
+   "de": "UND, ODER und XOR im Vergleich"
+  },
+  "category": "pure-circuit",
+  "difficulty": 2,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc92-and-or-xor-compared/circuit.json",
+   "expected": "pc92-and-or-xor-compared/EXPECTED.md",
+   "intro": "pc92-and-or-xor-compared/intro.md",
+   "introDE": "pc92-and-or-xor-compared/intro.de.md"
+  }
+ },
+ {
+  "id": "pc93-nand-is-universal",
+  "title": {
+   "en": "NAND is universal",
+   "de": "NAND genügt für alles"
+  },
+  "category": "pure-circuit",
+  "difficulty": 3,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc93-nand-is-universal/circuit.json",
+   "expected": "pc93-nand-is-universal/EXPECTED.md",
+   "intro": "pc93-nand-is-universal/intro.md",
+   "introDE": "pc93-nand-is-universal/intro.de.md"
+  }
+ },
+ {
+  "id": "pc94-half-adder",
+  "title": {
+   "en": "The half adder (XOR + AND)",
+   "de": "Der Halbaddierer (XOR + UND)"
+  },
+  "category": "pure-circuit",
+  "difficulty": 3,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc94-half-adder/circuit.json",
+   "expected": "pc94-half-adder/EXPECTED.md",
+   "intro": "pc94-half-adder/intro.md",
+   "introDE": "pc94-half-adder/intro.de.md"
+  }
+ },
+ {
+  "id": "pc95-full-adder",
+  "title": {
+   "en": "The full adder (carry in, carry out)",
+   "de": "Der Volladdierer (Übertrag rein, Übertrag raus)"
+  },
+  "category": "pure-circuit",
+  "difficulty": 4,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc95-full-adder/circuit.json",
+   "expected": "pc95-full-adder/EXPECTED.md",
+   "intro": "pc95-full-adder/intro.md",
+   "introDE": "pc95-full-adder/intro.de.md"
+  }
+ },
+ {
+  "id": "pc96-four-bit-adder-74hc283",
+  "title": {
+   "en": "4-bit adder on one chip (74HC283)",
+   "de": "4-Bit-Addierer auf einem Chip (74HC283)"
+  },
+  "category": "pure-circuit",
+  "difficulty": 4,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc96-four-bit-adder-74hc283/circuit.json",
+   "expected": "pc96-four-bit-adder-74hc283/EXPECTED.md",
+   "intro": "pc96-four-bit-adder-74hc283/intro.md",
+   "introDE": "pc96-four-bit-adder-74hc283/intro.de.md"
+  }
+ },
+ {
+  "id": "pc97-logic-calculator",
+  "title": {
+   "en": "A calculator with no computer in it",
+   "de": "Ein Rechner ohne Computer darin"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc97-logic-calculator/circuit.json",
+   "expected": "pc97-logic-calculator/EXPECTED.md",
+   "intro": "pc97-logic-calculator/intro.md",
+   "introDE": "pc97-logic-calculator/intro.de.md"
+  }
+ },
+ {
+  "id": "pc98-adder-subtractor",
+  "title": {
+   "en": "Subtraction is the same circuit",
+   "de": "Subtraktion ist dieselbe Schaltung"
+  },
+  "category": "pure-circuit",
+  "difficulty": 4,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc98-adder-subtractor/circuit.json",
+   "expected": "pc98-adder-subtractor/EXPECTED.md",
+   "intro": "pc98-adder-subtractor/intro.md",
+   "introDE": "pc98-adder-subtractor/intro.de.md"
+  }
+ },
+ {
+  "id": "pc99-bcd-two-digit-calculator",
+  "title": {
+   "en": "Two digits: the calculator that does not give up at nine",
+   "de": "Zwei Ziffern: der Rechner, der bei neun nicht aufgibt"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc99-bcd-two-digit-calculator/circuit.json",
+   "expected": "pc99-bcd-two-digit-calculator/EXPECTED.md",
+   "intro": "pc99-bcd-two-digit-calculator/intro.md",
+   "introDE": "pc99-bcd-two-digit-calculator/intro.de.md"
+  }
+ },
+ {
+  "id": "pc100-555-clock",
+  "title": {
+   "en": "The clock — a machine needs a heartbeat",
+   "de": "Der Takt — eine Maschine braucht einen Herzschlag"
+  },
+  "category": "pure-circuit",
+  "difficulty": 2,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc100-555-clock/circuit.json",
+   "expected": "pc100-555-clock/EXPECTED.md",
+   "intro": "pc100-555-clock/intro.md",
+   "introDE": "pc100-555-clock/intro.de.md"
+  }
+ },
+ {
+  "id": "pc101-program-counter",
+  "title": {
+   "en": "The program counter — where the machine is looking",
+   "de": "Der Programmzähler — wohin die Maschine schaut"
+  },
+  "category": "pure-circuit",
+  "difficulty": 3,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc101-program-counter/circuit.json",
+   "expected": "pc101-program-counter/EXPECTED.md",
+   "intro": "pc101-program-counter/intro.md",
+   "introDE": "pc101-program-counter/intro.de.md"
+  }
+ },
+ {
+  "id": "pc102-ram-16x4",
+  "title": {
+   "en": "Memory — sixteen places to put a number",
+   "de": "Speicher — sechzehn Plätze für eine Zahl"
+  },
+  "category": "pure-circuit",
+  "difficulty": 4,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc102-ram-16x4/circuit.json",
+   "expected": "pc102-ram-16x4/EXPECTED.md",
+   "intro": "pc102-ram-16x4/intro.md",
+   "introDE": "pc102-ram-16x4/intro.de.md"
+  }
+ },
+ {
+  "id": "pc103-accumulator",
+  "title": {
+   "en": "The accumulator — a circuit with a past",
+   "de": "Der Akkumulator — eine Schaltung mit Vergangenheit"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc103-accumulator/circuit.json",
+   "expected": "pc103-accumulator/EXPECTED.md",
+   "intro": "pc103-accumulator/intro.md",
+   "introDE": "pc103-accumulator/intro.de.md"
+  }
+ },
+ {
+  "id": "pc104-ring-counter",
+  "title": {
+   "en": "The ring counter — six beats to every instruction",
+   "de": "Der Ringzähler — sechs Takte für jeden Befehl"
+  },
+  "category": "pure-circuit",
+  "difficulty": 4,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc104-ring-counter/circuit.json",
+   "expected": "pc104-ring-counter/EXPECTED.md",
+   "intro": "pc104-ring-counter/intro.md",
+   "introDE": "pc104-ring-counter/intro.de.md"
+  }
+ },
+ {
+  "id": "pc105-instruction-decoder",
+  "title": {
+   "en": "The instruction decoder — a number becomes a meaning",
+   "de": "Der Befehlsdekoder — aus einer Zahl wird eine Bedeutung"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc105-instruction-decoder/circuit.json",
+   "expected": "pc105-instruction-decoder/EXPECTED.md",
+   "intro": "pc105-instruction-decoder/intro.md",
+   "introDE": "pc105-instruction-decoder/intro.de.md"
+  }
+ },
+ {
+  "id": "pc106-control-matrix",
+  "title": {
+   "en": "The control matrix — the part that decides",
+   "de": "Die Steuermatrix — der Teil, der entscheidet"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc106-control-matrix/circuit.json",
+   "expected": "pc106-control-matrix/EXPECTED.md",
+   "intro": "pc106-control-matrix/intro.md",
+   "introDE": "pc106-control-matrix/intro.de.md"
+  }
+ },
+ {
+  "id": "pc107-the-bus",
+  "title": {
+   "en": "The bus — one set of wires, many talkers",
+   "de": "Der Bus — eine Leitung, viele Sprecher"
+  },
+  "category": "pure-circuit",
+  "difficulty": 4,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc107-the-bus/circuit.json",
+   "expected": "pc107-the-bus/EXPECTED.md",
+   "intro": "pc107-the-bus/intro.md",
+   "introDE": "pc107-the-bus/intro.de.md"
+  }
+ },
+ {
+  "id": "pc108-memory-walker",
+  "title": {
+   "en": "The machine reads its own memory",
+   "de": "Die Maschine liest ihren eigenen Speicher"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc108-memory-walker/circuit.json",
+   "expected": "pc108-memory-walker/EXPECTED.md",
+   "intro": "pc108-memory-walker/intro.md",
+   "introDE": "pc108-memory-walker/intro.de.md"
+  }
+ },
+ {
+  "id": "pc109-fetch-cycle",
+  "title": {
+   "en": "The fetch cycle — reading an instruction, and knowing what it says",
+   "de": "Der Holzyklus — einen Befehl lesen und verstehen"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc109-fetch-cycle/circuit.json",
+   "expected": "pc109-fetch-cycle/EXPECTED.md",
+   "intro": "pc109-fetch-cycle/intro.md",
+   "introDE": "pc109-fetch-cycle/intro.de.md"
+  }
+ },
+ {
+  "id": "pc110-the-machine",
+  "title": {
+   "en": "The whole machine — it runs a program",
+   "de": "Die ganze Maschine — sie führt ein Programm aus"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc110-the-machine/circuit.json",
+   "expected": "pc110-the-machine/EXPECTED.md",
+   "intro": "pc110-the-machine/intro.md",
+   "introDE": "pc110-the-machine/intro.de.md"
+  }
+ },
+ {
+  "id": "pc111-diode-keypad",
+  "title": {
+   "en": "A decimal keypad made of diodes",
+   "de": "Eine Dezimaltastatur aus Dioden"
+  },
+  "category": "pure-circuit",
+  "difficulty": 4,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc111-diode-keypad/circuit.json",
+   "expected": "pc111-diode-keypad/EXPECTED.md",
+   "intro": "pc111-diode-keypad/intro.md",
+   "introDE": "pc111-diode-keypad/intro.de.md"
+  }
+ },
+ {
+  "id": "pc112-control-rom",
+  "title": {
+   "en": "The control ROM — a control word you can program",
+   "de": "Das Steuer-ROM — ein Steuerwort, das man programmieren kann"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc112-control-rom/circuit.json",
+   "expected": "pc112-control-rom/EXPECTED.md",
+   "intro": "pc112-control-rom/intro.md",
+   "introDE": "pc112-control-rom/intro.de.md"
+  }
+ },
+ {
+  "id": "pc113-conditional-jump",
+  "title": {
+   "en": "Flags — the same ROM, now with an opinion",
+   "de": "Flags — dasselbe ROM, jetzt mit einer Meinung"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc113-conditional-jump/circuit.json",
+   "expected": "pc113-conditional-jump/EXPECTED.md",
+   "intro": "pc113-conditional-jump/intro.md",
+   "introDE": "pc113-conditional-jump/intro.de.md"
+  }
+ },
+ {
+  "id": "pc114-alu-flags",
+  "title": {
+   "en": "Eight bits, and flags the machine works out for itself",
+   "de": "Acht Bit, und Flags, die die Maschine selbst ermittelt"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc114-alu-flags/circuit.json",
+   "expected": "pc114-alu-flags/EXPECTED.md",
+   "intro": "pc114-alu-flags/intro.md",
+   "introDE": "pc114-alu-flags/intro.de.md"
+  }
+ },
+ {
+  "id": "pc117-microcoded-machine",
+  "title": {
+   "en": "The machine again, with a ROM where the matrix was",
+   "de": "Dieselbe Maschine, nur mit einem ROM statt der Matrix"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc117-microcoded-machine/circuit.json",
+   "expected": "pc117-microcoded-machine/EXPECTED.md",
+   "intro": "pc117-microcoded-machine/intro.md",
+   "introDE": "pc117-microcoded-machine/intro.de.md"
+  }
+ },
+ {
+  "id": "pc118-eight-bit-machine",
+  "title": {
+   "en": "Eight bits wide, and it holds a number the last one cannot",
+   "de": "Acht Bit breit — und es hält eine Zahl, die vorher nicht passte"
+  },
+  "category": "pure-circuit",
+  "difficulty": 5,
+  "kind": "circuit",
+  "files": {
+   "circuit": "pc118-eight-bit-machine/circuit.json",
+   "expected": "pc118-eight-bit-machine/EXPECTED.md",
+   "intro": "pc118-eight-bit-machine/intro.md",
+   "introDE": "pc118-eight-bit-machine/intro.de.md"
   }
  }
 ]

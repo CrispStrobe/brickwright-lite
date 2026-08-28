@@ -126,12 +126,19 @@ class DebugPanel extends React.Component {
         const detail = e.detail || {};
         if (!detail.config) return;
         this._teardownRunner();
-        this._bootMedia = null;
+        // Build Machine can happen AFTER an example has already delivered its
+        // ROM. Extraction changes the wiring/config, not the disk/ROM sitting
+        // in the loader; dropping _bootMedia here made the visible Sim control
+        // run an all-zero image. Keep the media and recreate the runner so the
+        // newly extracted machine and the already loaded image boot together.
+        const hasBootMedia = !!this._bootMedia;
         const kind = detail.kind === 'z80' ? 'z80'
             : detail.kind === 'eater6502' || detail.kind === '6502' ? 'eater6502'
                 : this.state.kind;
         this.setState({machineConfig: detail.config, kind, runner: null,
-            ui: {phase: 'idle', message: 'machine extracted — load a program (presets, file, or ASM tab)'}});
+            ui: {phase: 'idle', message: hasBootMedia ?
+                'machine extracted — loaded program ready' :
+                'machine extracted — load a program (presets, file, or ASM tab)'}});
     }
 
     /** Machine Loader (presets / file picker) delivered an image. The

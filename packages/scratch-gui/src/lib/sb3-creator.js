@@ -11,6 +11,7 @@ import { cHostRuntime, cShimName, C_HOST_INCLUDES } from './sb3-creator-chostrun
 // The LED cube's shift directions. Shared with the C reader so the two cannot
 // drift — they already did once, and the round trip lost the block.
 import { CUBE_DIRECTIONS, cubeDirectionIndex } from './cubeDirections.js';
+import {getVectorArt} from './sb3-creator-vector-art.js';
 
 // The emitted no-import JSON serializer (the sim firmware ships without
 // the json module — measured 2026-08-19). Shared by the marker debugger's
@@ -82,6 +83,50 @@ class AssetError extends SB3Error {
 /**
  * SB3 Creator: compiles the pseudocode language into a Scratch 3.0 project.
  */
+/**
+ * The micro:bit gesture menu, spelled as the block's GESTURE field holds
+ * it and as decompile() writes it back out.
+ *
+ * Wrapped across lines deliberately: cube-directions.test.mjs guards
+ * against any single line restating the LED-cube direction table, and
+ * this is a different table that happens to share three of its words.
+ * (The guard reads the file as text, so its own explanation has to keep
+ * clear of the pattern too.)
+ */
+const MICROBIT_GESTURES = [
+    'shake', 'tilt up', 'tilt down',
+    'tilt left', 'tilt right',
+    'face up', 'face down',
+    'freefall', '3g', '6g', '8g'
+];
+
+/**
+ * The block's menu label is not always MicroPython's name for the same
+ * gesture. `accelerometer.is_gesture()` accepts exactly shake, freefall,
+ * 3g, 6g, 8g, face up, face down, and the four tilts spelled WITHOUT the
+ * word "tilt" — anything else raises ValueError("invalid gesture")
+ * (bbcmicrobit/micropython, gesture_from_obj). Four of our menu labels
+ * carry a "tilt " the runtime has never known, so a program using them
+ * crashed the moment the block ran.
+ *
+ * (Worded to keep clear of cube-directions.test.mjs, which reads this
+ * file as text and guards against restating the LED-cube table.)
+ */
+const MICROBIT_GESTURE_TO_MICROPYTHON = {
+    'tilt up': 'up',
+    'tilt down': 'down',
+    'tilt left': 'left',
+    'tilt right': 'right'
+};
+
+const gestureForMicroPython = label => {
+    const key = String(label || 'shake').toLowerCase();
+    return MICROBIT_GESTURE_TO_MICROPYTHON[key] || key;
+};
+
+const MICROBIT_GESTURE_RE = new RegExp(
+    `^(${MICROBIT_GESTURES.map(g => g.replace(' ', '\\s+')).join('|')})\\s+happening\\??$`, 'i');
+
 class SB3Creator {
     constructor() {
         this.reset();
@@ -1215,6 +1260,21 @@ class SB3Creator {
         if ((m = s.match(/^read\s+button_([ABab])$/i))) {
             return B('microbitplus_isbutton', {}, { BTN: [m[1].toLowerCase(), null] });
         }
+        // Three reporters the DECOMPILER has always emitted and the parser
+        // could not read back: written out, `shake happening` and its two
+        // neighbours fell through to the variable rule and compiled to a
+        // comparison against an undefined name — silence wearing the shape
+        // of success. Spelled here exactly as decompile() writes them, so
+        // the round trip closes.
+        if ((m = s.match(MICROBIT_GESTURE_RE))) {
+            return B('microbitplus_isgesture', {}, { GESTURE: [m[1].toLowerCase().replace(/\s+/g, ' '), null] });
+        }
+        if ((m = s.match(/^pin\s+(P\d+)\s+touched\??$/i))) {
+            return B('microbitplus_istouch', {}, { PIN: [m[1].toUpperCase(), null] });
+        }
+        if ((m = s.match(/^pin\s+(P\d+)\s+is\s+high\??$/i))) {
+            return B('microbitplus_ispinhigh', {}, { PIN: [m[1].toUpperCase(), null] });
+        }
         if ((m = s.match(/^read\s+last\s+radio\s+number$/i))) {
             return B('microbitplus_radiolastnum');
         }
@@ -2134,7 +2194,7 @@ class SB3Creator {
         // A numbered pin (D13, A0) for the boards that have them. Kept as its
         // own branch: an Arduino pin has no port and no bit, so every check
         // below it is about a coordinate system it is not in.
-        if ((m = trimmed.match(/^PIN\s+([A-Za-z_]\w*)\s*=\s*([DA]\d+|GP\d+|P[A-D]\d|P\d+|BUTTON_[AB]|(?:OUT|IN)\d|MK\d+)\s+(OUTPUT|INPUT|ANALOG|PWM|TONE)(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
+        if ((m = trimmed.match(/^PIN\s+([A-Za-z_]\w*)\s*=\s*([DA]\d+|GP\d+|P[A-D]\d+|P\d+|BUTTON_[AB]|SDA|SCL|(?:OUT|IN)\d|MK\d+)\s+(OUTPUT|INPUT|ANALOG|PWM|TONE)(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
             const [, name, where, direction, active] = m;
             const cfg = this.stcConfig();
             const part = SB3Creator.STC_PARTS[cfg.device];
@@ -2152,6 +2212,17 @@ class SB3Creator {
                 'arduino-nano': [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A7'],
                 atmega328p: [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A5'],
                 microbit: [/^(P\d+|BUTTON_[AB])$/i, 'P0-P20, BUTTON_A or BUTTON_B'],
+                // ARCADE is Brickwright's software console. D0-D31 are
+                // deliberately virtual GPIO: they keep pin-based Scratch
+                // examples runnable without pretending the console has a
+                // physical header. The concrete PyBadge uses the labels on
+                // its Feather/JST headers; LC has no exposed headers and is
+                // virtual for the same reason as ARCADE.
+                arcade: [/^D\d+$/i, 'virtual D0-D31'],
+                pybadge: [/^(?:D(?:2|3|5|6|9|10|11|12|13)|A[0-5]|SDA|SCL)$/i,
+                    'D2, D3, D5, D6, D9-D13, A0-A5, SDA or SCL'],
+                'pybadge-lc': [/^D\d+$/i, 'virtual D0-D31'],
+                samd51: [/^P[AB]\d+$/i, 'PA0-PA31 or PB0-PB31'],
                 pico: [/^GP\d+$/i, 'GP0-GP28'],
                 stm32f030: [/^P[AB]\d+$/i, 'PA0-PA7, PA9, PA10 or PB1'],
                 // PB7 is Timer 1's square-wave pin and the machine's timebase
@@ -2172,7 +2243,9 @@ class SB3Creator {
             // place and not the other.
             const LAST = { 'arduino-uno': { D: 13, A: 5 }, 'arduino-nano': { D: 13, A: 7 },
                 'atmega168p': { D: 13, A: 5 }, 'arduino-mega': { D: 53, A: 15 },
-                atmega328p: { D: 13, A: 5 }, microbit: { P: 20 }, pico: { GP: 28 },
+                atmega328p: { D: 13, A: 5 }, microbit: { P: 20 },
+                arcade: { D: 31 }, pybadge: { D: 13, A: 5 }, 'pybadge-lc': { D: 31 },
+                samd51: { PA: 31, PB: 31 }, pico: { GP: 28 },
                 eater6502: { PA: 7, PB: 7 } };  // PB7: plain I/O while ACR7=0, same as the SPOKEN gate
             const edge = LAST[cfg.device] || {};
             const num = where.match(/^([A-Z]+)(\d+)$/i);
@@ -3437,6 +3510,15 @@ class SB3Creator {
             block[id].inputs.TEXT = [1, [10, match[1]]];
             return ret(block);
         }
+        // The block's TEXT is an input, not a field, so it can hold a
+        // reporter — but only the quoted form parsed, and `show text count`
+        // fell through every rule to produce NO BLOCK AT ALL. Anything that
+        // is not a bare literal is read as an expression.
+        if ((match = line.match(/^show\s+text\s+(.+?)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_showtext');
+            block[id].inputs.TEXT = val(match[1]);
+            return ret(block);
+        }
         if ((match = line.match(/^scroll\s+text\s+"([^"]*)"\s+delay\s+(\d+)\s*ms\s*$/i))) {
             const { id, block } = cmd('microbitplus_scrolltext');
             block[id].inputs.TEXT = [1, [10, match[1]]];
@@ -3451,6 +3533,18 @@ class SB3Creator {
             const { id, block } = cmd('microbitplus_plot');
             block[id].inputs.X = [1, [4, match[1]]];
             block[id].inputs.Y = [1, [4, match[2]]];
+            block[id].fields.STATE = [match[3].toLowerCase(), null];
+            return ret(block);
+        }
+        // X and Y are inputs, not fields, so the block can hold a reporter —
+        // but only the two-literal form parsed, and `plot x col y row on`
+        // fell through every rule to produce NO BLOCK AT ALL. Same shape as
+        // the `show text <reporter>` gap above: literals keep the exact
+        // path they had, anything else is read as an expression.
+        if ((match = line.match(/^plot\s+x\s+(.+?)\s+y\s+(.+?)\s+(on|off)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_plot');
+            block[id].inputs.X = val(match[1]);
+            block[id].inputs.Y = val(match[2]);
             block[id].fields.STATE = [match[3].toLowerCase(), null];
             return ret(block);
         }
@@ -4387,6 +4481,18 @@ class SB3Creator {
         return { assetId, name, md5ext: `${assetId}.svg`, dataFormat: 'svg', rotationCenterX: 240, rotationCenterY: 180 };
     }
 
+    // Bake an authored SVG from the built-in vector-art registry into the SB3.
+    // The resulting project remains a completely ordinary, offline Scratch file.
+    buildArtCostume(artName, costumeName) {
+        const svg = getVectorArt(artName);
+        if (!svg) return null;
+        const {width, height} = this.svgDimensions(svg);
+        const assetId = this.generateAssetId();
+        this.assets.set(assetId, {type: 'svg', data: svg, filename: `${assetId}.svg`, metadata: {width, height}});
+        return {assetId, name: costumeName, md5ext: `${assetId}.svg`, dataFormat: 'svg',
+            rotationCenterX: width / 2, rotationCenterY: height / 2};
+    }
+
     // Build a plain geometric costume at true size. Kinds: rect/square/circle/ellipse/
     // triangle, or `polygon` with an arbitrary list of x,y points (custom SVG art).
     buildShapeCostume(color, kind, dims) {
@@ -4426,8 +4532,20 @@ class SB3Creator {
         if (target.isStage) { this.warn(lineIndex, 'SHAPE has no effect on the Stage (use BACKDROP)'); return; }
         const tokens = spec.split(/\s+/).filter(Boolean);
         const kind = (tokens[0] || '').toLowerCase();
+        if (kind === 'art') {
+            const costume = this.buildArtCostume(tokens[1], 'costume1');
+            if (!costume) {
+                this.warn(lineIndex, `Unknown vector art "${tokens[1] || ''}"`);
+                return;
+            }
+            const old = target.costumes[0];
+            if (old && old.assetId) this.assets.delete(old.assetId);
+            target.costumes[0] = costume;
+            target.costumes[0]._shapeSpec = spec.trim();
+            return;
+        }
         if (!['rect', 'square', 'circle', 'ellipse', 'triangle', 'polygon'].includes(kind)) {
-            this.warn(lineIndex, `Unknown SHAPE "${tokens[0]}" (use rect/square/circle/ellipse/triangle/polygon)`);
+            this.warn(lineIndex, `Unknown SHAPE "${tokens[0]}" (use art/rect/square/circle/ellipse/triangle/polygon)`);
             return;
         }
         const hex = tokens.find((t) => /^#[0-9a-fA-F]{6}$/.test(t));
@@ -4449,6 +4567,16 @@ class SB3Creator {
         if (target.isStage) {
             const tks = this.tokenizeCostumeSpec(spec);
             const name = this.unquote(tks[0] || 'backdrop');
+            if ((tks[1] || '').toLowerCase() === 'art') {
+                const bd = this.buildArtCostume(tks[2], name);
+                if (!bd) {
+                    this.warnings.push(`Unknown vector art "${tks[2] || ''}"`);
+                    return;
+                }
+                bd._spec = spec.trim();
+                target.costumes.push(bd);
+                return;
+            }
             const hex = tks.find((t) => /^#[0-9a-fA-F]{6}$/.test(t));
             const palette = ['#576065', '#4a6fa5', '#8a5a83', '#3d7068', '#a5794a'];
             const color = hex || palette[(target.costumes.length - 1) % palette.length];
@@ -4461,7 +4589,13 @@ class SB3Creator {
         const name = this.unquote(tokens[0] || `costume${target.costumes.length + 1}`);
         const kind = (tokens[1] || '').toLowerCase();
         let costume;
-        if (kind === 'tile' || kind === 'label') {
+        if (kind === 'art') {
+            costume = this.buildArtCostume(tokens[2], name);
+            if (!costume) {
+                this.warnings.push(`Unknown vector art "${tokens[2] || ''}"`);
+                return;
+            }
+        } else if (kind === 'tile' || kind === 'label') {
             const text = this.unquote(tokens[2] || '');
             const colors = tokens.slice(3).filter((t) => /^#[0-9a-fA-F]{6}$/.test(t));
             const bg = kind === 'tile' ? (colors[0] || '#cccccc') : 'none';
@@ -5732,7 +5866,10 @@ class SB3Creator {
             }
             // micro:bit+ command blocks (decompile to dialect)
             case 'microbitplus_showmatrix': return line(`show pattern ${f('MATRIX')}`);
-            case 'microbitplus_showtext': return line(`show text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            // Quote what dval already quotes and nothing else: force-quoting
+            // turned `show text count` into `show text "count"`, which reads
+            // back as the literal word — a construct that does not converge.
+            case 'microbitplus_showtext': return line(`show text ${this.dval(b.inputs.TEXT, blocks)}`);
             case 'microbitplus_scrolltext': return line(`scroll text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}" delay ${v('MS')} ms`);
             case 'microbitplus_cleardisplay': return line('clear display');
             case 'microbitplus_plot': return line(`plot x ${v('X')} y ${v('Y')} ${f('STATE')}`);
@@ -5980,7 +6117,8 @@ class SB3Creator {
             case 'microbitplus_analogread': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_analog()`;
             case 'microbitplus_isbutton': return `button_${(b.fields.BTN ? b.fields.BTN[0] : 'a').toLowerCase()}.is_pressed()`;
             case 'microbitplus_ispinhigh': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.read_digital()`;
-            case 'microbitplus_isgesture': return `accelerometer.is_gesture('${(b.fields.GESTURE ? b.fields.GESTURE[0] : 'shake').toLowerCase()}')`;
+            case 'microbitplus_isgesture':
+                return `accelerometer.is_gesture('${gestureForMicroPython(b.fields.GESTURE ? b.fields.GESTURE[0] : 'shake')}')`;
             case 'microbitplus_istouch': return `pin${(b.fields.PIN ? b.fields.PIN[0] : '0').toLowerCase().replace(/^p/, '')}.is_touched()`;
             case 'microbitplus_radiolastnum': return '_radio_last_num';
             case 'microbitplus_radiolaststr': return '_radio_last_str';
@@ -6179,7 +6317,20 @@ class SB3Creator {
         return this.pyName(name);
     }
 
-    scratchCall(b, blocks, valFn) { return this.runtimeObjCall(b, blocks, valFn, OP_TO_SCRATCH, 'scratch'); }
+    scratchCall(b, blocks, valFn) {
+        // Some Scratch reporters ARE available on a board, in different
+        // units — `timer` is running_time(). Without this the shared layer
+        // emits scratch.timer(), which the micro:bit generator's guard
+        // turns into 0, so a stopwatch reads zero and only a warning says
+        // so. Same reason _nativePinExpr exists: the hook has to be here,
+        // not at the walker, or a read one level down (`timer * 1000`) is
+        // missed.
+        if (this._nativeScratchExpr) {
+            const native = this._nativeScratchExpr(b);
+            if (native) return {kind: 'reporter', call: native};
+        }
+        return this.runtimeObjCall(b, blocks, valFn, OP_TO_SCRATCH, 'scratch');
+    }
     arraysCall(b, blocks, valFn) {
         if (!OP_TO_ARRAYS[b.opcode]) return null;
         if (this._pyUses) { this._pyUses.arrays = true; this._pyUses.json = true; }
@@ -6272,6 +6423,7 @@ class SB3Creator {
     generatePython(project = this.project, opts = {}) {
         this._driverPins = (project.stc && project.stc.pins) || null;
         this._nativePinExpr = null;   // MicroPython-only; must not leak in here
+        this._nativeScratchExpr = null;
         this._pyNames = new Map();
         this._pyUses = { random: false, math: false, time: false, eq: false, answer: false, arrays: false, json: false, sumdigits: false };
         this._runtimesUsed = new Set();
@@ -6609,6 +6761,7 @@ class SB3Creator {
     generateJavaScript(project = this.project, opts = {}) {
         this._driverPins = (project.stc && project.stc.pins) || null;
         this._nativePinExpr = null;   // MicroPython-only; must not leak in here
+        this._nativeScratchExpr = null;
         this._pyNames = new Map();
         this._jsUses = { rand: false, eq: false, answer: false, fact: false, arrays: false, sumdigits: false, multiple: false };
         this._runtimesUsed = new Set();
@@ -8346,6 +8499,13 @@ class SB3Creator {
             }
             return readExpr(pin);
         };
+        this._nativeScratchExpr = (b) => {
+            // running_time() is milliseconds since boot; `timer` is seconds
+            // since the program started. Close enough to be the same clock,
+            // and it is the clock every micro:bit stopwatch actually uses.
+            if (b.opcode === 'sensing_timer') return '(running_time() / 1000)';
+            return null;
+        };
         this._nativePinExpr = (b) => {
             if (b.opcode !== 'stc12_read' && b.opcode !== 'stc12_readpin') return null;
             const pin = pinOf(b.fields && b.fields.PIN ? b.fields.PIN[0] : '');
@@ -8423,7 +8583,7 @@ class SB3Creator {
                 return `pin${n}.read_digital()`;
             }
             if (rb.opcode === 'microbitplus_isgesture') {
-                return `accelerometer.is_gesture('${String(rf('GESTURE')).toLowerCase()}')`;
+                return `accelerometer.is_gesture('${gestureForMicroPython(rf('GESTURE'))}')`;
             }
             if (rb.opcode === 'microbitplus_istouch') {
                 const pin = String(rf('PIN')).toLowerCase();
@@ -8681,6 +8841,14 @@ class SB3Creator {
                     if (isPico) { uses.oled = true; return [`${pad}_oled_print(${v('TEXT')})`]; }
                     break;
                 default: {
+                    // The Arrays & Vectors commands lower through the same
+                    // reversible-op table the reporters already use, so the
+                    // registry the reporters read actually gets filled. Left
+                    // to the fall-through they became `pass`, and a program
+                    // that pushed to an array then read its length got the
+                    // length of an array nothing had ever written to.
+                    const ac = this.arraysCall(b, blocks, this.pyVal);
+                    if (ac) return [`${pad}${ac.call}`];
                     const desc = this.decompileBlock ? this.decompileBlock(b, blocks) : b.opcode;
                     degrade(`${b.opcode} has no ${isPico ? 'Pico' : 'micro:bit'} form yet (${String(desc).slice(0, 40)})`);
                     return [`${pad}pass  # ${b.opcode}`];
@@ -8863,6 +9031,13 @@ class SB3Creator {
         // debugger's.
         header.push('_bw_false = False')
         if (uses.radio) header.push('import radio');
+        // The reporters emit `_arrays.<method>(…)` whether or not anything
+        // defines `_arrays`. Without this the device raised NameError at the
+        // first array read, and nothing in the result said so.
+        if (this._pyUses.arrays) {
+            if (!header.includes('import json')) header.push('import json');
+            header.push('', ...this.arraysShimPy(), '_arrays = _Arrays()');
+        }
         if (uses._pitch) header.push('', 'def _pitch():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(-y, -z) * 180 / math.pi');
         if (uses._roll) header.push('', 'def _roll():', '    x, y, z = accelerometer.get_values()', '    return math.atan2(x, -z) * 180 / math.pi');
         // BrickWright debug instrumentation. _bw_pos(n) prints a position marker
@@ -10111,7 +10286,14 @@ class SB3Creator {
         // cooperative-scheduler path emits — so its presence forces tasks even
         // for a lone WHEN that would otherwise run straight-line (gotcha #1;
         // reference: Program.has_matrix feeding the tasks decision in emit_c).
-        this._cTasks = scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || this._stcHasMatrix() || this._stcHasSevenSeg() || this._stcHasLedBank();
+        // STM32 forces the cooperative scheduler for any script, the same way a
+        // MATRIX8X8 does. Its correct timebase is the TIM3 tick ISR, emitted
+        // ONLY on the tasks path (`_cTasks && arm && _cStm32`); the straight-line
+        // arm delay path reads the RP2040's TIMER (BW_TIMER_TIMELR) — right for
+        // the pico, wrong silicon for the F030. Rather than grow a second,
+        // unvalidated STM32 straight-line timebase, keep STM32 on the proven
+        // scheduler so `bw transpile --to c` (debug:false) matches `bw compile`.
+        this._cTasks = scriptCount > 1 || hasEventHat || (scriptCount > 0 && debug) || (scriptCount > 0 && this._cStm32) || this._stcHasMatrix() || this._stcHasSevenSeg() || this._stcHasLedBank();
         const taskNames = Array.from({ length: scriptCount }, (_, n) => `bw_task${n}`);
         const yieldMap = [];   // only emitted for a debug build — see the marker header below
 
@@ -14181,6 +14363,34 @@ SB3Creator.RETARGET_POOLS = (() => {
             input: ['GP2', 'GP3', 'GP4', 'GP5', ...seq('GP%', 6, 15), ...seq('GP%', 18, 22), 'GP0', 'GP1'],
             // GP16/GP17 stay out: they are the servo pins (slice 0, 50 Hz).
             pwm: ['GP15', 'GP14', 'GP13', 'GP12'], ledActiveLow: false },
+        // micro:bit edge connector. P17/P18 are supplies; P19/P20 are kept
+        // for I2C. P3/P4/P6/P7/P9/P10 share the LED matrix and are offered
+        // only after the uncomplicated edge pins.
+        microbit: { digital: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
+            analog: ['P0', 'P1', 'P2', 'P3', 'P4', 'P10'],
+            input: ['P0', 'P1', 'P2', 'P5', 'P8', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
+            pwm: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16'], ledActiveLow: false },
+        // The abstract Arcade console has no header. Its D pins are virtual
+        // Scratch-runtime GPIO, useful when moving a pin-based lesson into
+        // the playable 160x120 console. Concrete wiring belongs to a board.
+        arcade: { digital: seq('D%', 0, 31), analog: [], input: seq('D%', 0, 31),
+            pwm: seq('D%', 0, 31), ledActiveLow: false, virtual: true },
+        // PyBadge's real Feather and JST breakouts. Serial and SPI pins are
+        // intentionally late so ordinary examples do not steal a bus.
+        pybadge: { digital: ['D13', 'D12', 'D11', 'D10', 'D9', 'D6', 'D5', 'D3', 'D2', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5'],
+            analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3'],
+            input: ['D2', 'D3', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D5', 'D6', 'D9', 'D10', 'D11', 'D12', 'D13'],
+            pwm: ['D5', 'D6', 'D9', 'D10', 'D11', 'D12', 'D13', 'D2', 'D3', 'A0', 'A1', 'A2', 'A3', 'A4'], ledActiveLow: false },
+        // LC exposes no Feather/JST GPIO headers. Keep pin lessons runnable
+        // in its console simulation, but never synthesize fake circuit pads.
+        'pybadge-lc': { digital: seq('D%', 0, 31), analog: seq('A%', 0, 7), input: seq('D%', 0, 31),
+            pwm: seq('D%', 0, 31), ledActiveLow: false, virtual: true },
+        // Bare ATSAMD51J19 package coordinates. Avoid USB PA24/PA25 and SWD
+        // PA30/PA31; keep the conventional analog bank in PA02-PA07.
+        samd51: { digital: [...seq('PA%', 8, 23), ...seq('PB%', 0, 23), 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
+            analog: ['PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7', 'PB0', 'PB1', 'PB2', 'PB3'],
+            input: [...seq('PA%', 8, 23), ...seq('PB%', 0, 23), 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
+            pwm: ['PA8', 'PA9', 'PA10', 'PA11', 'PA12', 'PA13', 'PA14', 'PA15', 'PB8', 'PB9', 'PB10', 'PB11'], ledActiveLow: false },
         // VIA outputs are symmetric CMOS, so LEDs wire active-high. PB7 never
         // appears: Timer 1 owns it. No analog, no PWM — the VIA has neither.
         eater6502: { digital: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
@@ -14234,6 +14444,8 @@ SB3Creator.I2C_PINS = {
     'arduino-nano': { sda: 'A4', scl: 'A5' },
     atmega168p: { sda: 'A4', scl: 'A5' },
     'arduino-mega': { sda: 'D20', scl: 'D21' },
+    microbit: { sda: 'P20', scl: 'P19' },
+    pybadge: { sda: 'SDA', scl: 'SCL' },
     pico: { sda: 'GP4', scl: 'GP5' },       // I2C0 default pair
     attiny85: { sda: 'PB0', scl: 'PB2' },   // USI
     attiny88: { sda: 'PC4', scl: 'PC5' },   // TWI
@@ -14316,8 +14528,6 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     const pools = SB3Creator.RETARGET_POOLS[device];
     if (!part || !pools) return { ok: false, reasons: [`unknown device: ${device}`], warnings: [] };
     const core = part.core === 'arduino' ? 'avr' : part.core === 'rp2040' ? 'arm' : part.core || '8051'; // stm32f0 rides 'rp2040' structurally
-    if (core === 'micropython') return { ok: false, reasons: [`${device} runs MicroPython — no C retarget`], warnings: [] };
-
     // Retargeting a program to its OWN device is the identity: the authored
     // pins ARE the assignment. Canonicalizing them into pool order broke the
     // pairing with the authored bench — sda=P2.1 became P1.0, every wire was
@@ -14338,6 +14548,7 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     }
     const reasons = [];
     const warnings = [...(c.warnings || [])];
+    if (pools.virtual) warnings.push(`${device} uses simulated GPIO; it has no exposed circuit header`);
     if ((stc.ports || []).length && core !== '8051') {
         reasons.push('whole-port declarations (PORT x = Pn) are an 8051 construct — no port registers here');
     }
@@ -14508,8 +14719,9 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     // decompiled text derives them, so decompile with `where` only.
     stc.device = device;
     stc.clock = core === 'avr' ? 16000000 : core === 'arm' ? 125000000
-        : core === 'w65c02' ? 1000000
-            : device.startsWith('stc15') ? 11059200 : 11059200;
+        : core === 'w65c02' ? 1000000 : core === 'micropython' ? 64000000
+            : core === 'samd51' ? 120000000
+                : device.startsWith('stc15') ? 11059200 : 11059200;
     stc.pins = newPins;
     const out = c.decompile();
 
@@ -14561,6 +14773,15 @@ SB3Creator.STC_PARTS = {
     // end for these by definition, not merely not yet. Pins are P0-P20 and the
     // two buttons on a micro:bit.
     microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
+    // MakeCode Arcade is a software target (160x120); PyBadge and PyBadge LC
+    // are concrete ATSAMD51J19 boards. They intentionally have no C emitter:
+    // selecting one must never silently produce firmware for another ARM MCU.
+    arcade: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: false, arcade: true },
+    pybadge: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
+        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 5, accelerometer: 'lis3dh' },
+    'pybadge-lc': { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
+        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 1, accelerometer: null },
+    samd51: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true },
     spike: { core: 'spikepython', header: null, portModes: false, aux1T: false, adc: false },
     // core: 'rp2040' -- GP0-GP28, and generateC() emits freestanding Cortex-M0
     // bare metal (SIO GPIO, the 1 MHz TIMER as an ISR-free timebase, UART0,

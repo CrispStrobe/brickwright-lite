@@ -209,14 +209,29 @@ export const openPanel = () => {
         selfTest.textContent = 'Testing…';
         try {
             // Imported lazily so the panel keeps working even if the native
-            // module is what is broken.
-            const {selfTestReport} = await import('./native-ble.js');
-            const report = await selfTestReport();
+            // module is what is broken. Bound the WHOLE operation, including
+            // loading its webpack chunk: a failed dynamic import has hung
+            // indefinitely in WKWebView and headless Chromium without ever
+            // reaching native-ble's own socket timeout.
+            const report = await Promise.race([
+                import('./native-ble.js').then(({selfTestReport}) => selfTestReport()),
+                new Promise(resolve => setTimeout(() => resolve({
+                    'local Bluetooth service':
+                        'UNREACHABLE — diagnostic timed out before the local service could answer'
+                }), 10000))
+            ]);
             paintEnv(['', '— self-test —'].concat(
                 Object.keys(report).map(k => `${k}: ${report[k]}`)
             ));
         } catch (e) {
-            paintEnv(['', `— self-test failed: ${e && e.message ? e.message : e} —`]);
+            const message = e && e.message ? e.message : e;
+            // Loading the transport is itself part of reaching the bundled
+            // service. Preserve the stable, user-searchable field name even
+            // when webpack/chunk loading fails before native-ble can return
+            // its normal report; a bare "self-test failed" hid which service
+            // was unavailable in CI and in screenshots from iPad users.
+            paintEnv(['', '— self-test —',
+                `local Bluetooth service: UNREACHABLE — self-test could not load: ${message}`]);
         }
         selfTest.disabled = false;
         selfTest.textContent = 'Run Bluetooth self-test';

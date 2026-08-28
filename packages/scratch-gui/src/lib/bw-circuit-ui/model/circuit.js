@@ -33,7 +33,7 @@ function genId(prefix) { return `${prefix}_${_nextId++}`; }
 const PASSTHROUGH_KINDS = new Set([
   // MCU boards
   'stc_mcu', 'stc15_mcu', 'at89c2051', 'arduino_nano', 'arduino_uno', 'arduino_mega',
-  'pi_pico', 'attiny85', 'attiny88', 'attiny13', 'attiny2313', 'microbit', 'stm32f030',
+  'pi_pico', 'pybadge', 'attiny85', 'attiny88', 'attiny13', 'attiny2313', 'microbit', 'stm32f030',
   // Retro DIPs (6502 family)
   'w65c02', 'w65c22', 'w65c51',
   // Machine-layer peripherals (bw-board implements them chip-level; the
@@ -62,9 +62,17 @@ function engineKindFor(kind) {
   // gpioFollowsPinStates drives its GPIO, and readPin works through it.
   // Kinds the engine does not know (older engine builds, machine-class
   // DIPs) keep collapsing to 'mcu' exactly as before.
+  // getDevice, not hasDevice: the engine has never exported a hasDevice, so
+  // `typeof eng.hasDevice === 'function'` was false on every call and EVERY
+  // passthrough kind collapsed to 'mcu' — the exact opposite of what the
+  // paragraph above describes. A 28c256 reached the solver as a generic MCU
+  // surface with no memory behaviour, so its data pins never drove: a control
+  // ROM read back nothing, silently. The discrimination the comment wants is
+  // real and still applies — stc_mcu and attiny13 have no registered model and
+  // still collapse.
   try {
     const eng = getEngine();
-    if (eng && typeof eng.hasDevice === 'function' && eng.hasDevice(kind)) return kind;
+    if (eng && typeof eng.getDevice === 'function' && eng.getDevice(kind)) return kind;
   } catch { /* engine not injected yet — construction-time default below */ }
   return 'mcu';
 }
@@ -90,6 +98,34 @@ export function resetIds() { _nextId = 1; }
  * @property {{part: string, terminal: string}} to
  */
 
+/**
+ * Carry a stored terminal list forward to what the engine calls those pins now.
+ *
+ * A saved `terminals` array is a snapshot of the naming at write time, and
+ * bw-board renames pins — attiny88's `pa0` became `gnd2` when the PDIP-28's
+ * second ground needed a name. TERMINAL_ALIASES exists to migrate those files,
+ * but nothing consulted it here: the stored list was taken verbatim, so the old
+ * name reached validateNetlist and the ENTIRE circuit was rejected. It also
+ * disabled the wire-alias pass below, whose guard is
+ * `!p.terminals.includes(e.terminal)` — with the stale name still in the list
+ * that test is false and the endpoint is never rewritten either. 57 shipped
+ * attiny88 circuits loaded to an empty board this way.
+ *
+ * Conservative on purpose: rewrite only a name the engine no longer has AND an
+ * alias resolves to one it does. Anything else is left exactly as stored, so a
+ * kind the engine does not model keeps its list untouched.
+ */
+function migrateTerminals (kind, stored, params) {
+  const live = terminalsForKind(kind, params);
+  if (!Array.isArray(stored)) return live;
+  if (!Array.isArray(live) || live.length === 0) return stored;
+  return stored.map((t) => {
+    if (live.includes(t)) return t;
+    const resolved = resolveTerminal(kind, t, live);
+    return live.includes(resolved) ? resolved : t;
+  });
+}
+
 export class Circuit {
   /**
    * @param {number} [vcc=5.0]
@@ -97,6 +133,10 @@ export class Circuit {
   constructor(vcc = 5.0) {
     /** @type {number} */
     this.vcc = vcc;
+    // Board overrides (docs/PCB-SUPPORT-PLAN.md phase 6): per-part
+    // {x, y, rotation, package}. Placement only -- the netlist always
+    // wins; nothing in here may say what touches what.
+    this.pcb = null;
 
     /** @type {Function} — the BoardImpl constructor, from the injected engine */
     this._BoardImpl = getEngine().BoardImpl;
@@ -911,6 +951,7 @@ export class Circuit {
       // silently vanished from saves and the restored board stopped
       // conducting through its rails.
       holeWires: this.holeWires(),
+      ...(this.pcb ? { pcb: this.pcb } : {}),
     };
   }
 
@@ -921,6 +962,7 @@ export class Circuit {
    */
   static fromJSON(data) {
     const c = new Circuit(data.vcc);
+    c.pcb = data.pcb ?? null;
     // Legacy files also predate parts carrying their terminal list — every
     // renderer maps over part.terminals, so a missing list was the SECOND
     // way a gallery file crashed the GUI (pure-circuit examples, same day
@@ -941,7 +983,7 @@ export class Circuit {
         // shares, so no downstream reader needs to re-learn this.
         params: (p.params && typeof p.params === 'object') ? p.params : {},
         rotation: p.rotation ?? 0,
-        terminals: Array.isArray(p.terminals) ? p.terminals : terminalsForKind(kind, p.params || {}),
+        terminals: migrateTerminals(kind, p.terminals, p.params || {}),
       };
     });
     // Wires arrive in two dialects. Current saves carry endpoint objects
@@ -1018,6 +1060,51 @@ export class Circuit {
       if (!p.seat) continue;
       const bb = c.breadboards.get(p.seat.boardId);
       if (!bb) { delete p.seat; continue; }
+      // A kind with NO FOOTPRINT cannot be seated, and a seat claiming
+      // otherwise is stale data rather than a layout. Uno and Mega have
+      // female headers and standoff feet — they float beside the board and
+      // connect by explicit wires — so their builtin stubs were deleted
+      // (see footprints.js, "Development boards: NO builtin entries").
+      // 61 shipped circuit-flat.json files kept the seats those stubs had
+      // stamped, with the stubs' uppercase D0..D13 legs.
+      //
+      // The stale seat was NOT inert, which is why it had to be migrated
+      // and not merely ignored: bb.occupy SUCCEEDS whenever the holes are
+      // free, so fourteen legs belonging to no terminal occupied a3..a16
+      // and the strips conducted through them — the same silent failure the
+      // attiny88 note below describes, plus the holes were denied to real
+      // parts. Visually it also tripped BOTH of the renderer's
+      // seat-conditioned suppressions at once (a Wokwi face draws its own
+      // headers so the pin rects are skipped; seated legs go into holes so
+      // the lead stubs are skipped), leaving wire ends floating over the
+      // artwork with nothing joining them — the owner's screenshot.
+      if (!BB_FOOTPRINTS_FOR_ROTATE[p.kind]) { delete p.seat; continue; }
+      // A leadMap key is a TERMINAL NAME, so a rename is a data migration
+      // here exactly as it is for a wire endpoint above — and this path was
+      // missing it. When attiny88's pin 22 went from `pa0` to `gnd2` (the
+      // PDIP-28 bonds out no port A; it is a second GND — bw-board e1bda3f),
+      // 135 shipped circuits carried `pa0` in seat.leadMap. Without this they
+      // would keep seating a lead the part no longer declares: the hole is
+      // occupied, the strip conducts, and the terminal belongs to nothing.
+      // Silent, and invisible to the wire-side alias resolution.
+      // Resolve against the PACKAGE's full terminal list, not the part's
+      // DECLARED one. A seated MCU commonly declares only the terminals an
+      // explicit wire names — `01-blink/circuit.attiny88.json` declares
+      // ["pb0"] while its leadMap drops 28 legs into holes — and
+      // resolveTerminal only accepts an alias whose target is in the list it
+      // is given. Passing the declared list left 20 of the 70 seated attiny88
+      // circuits still holding `pa0`, silently, because `gnd2` was not in
+      // their one-entry declaration. A leadMap key names a LEG, so the
+      // package's terminals are its namespace.
+      const seatTerms = terminalsForKind(p.kind, p.params || {}) || p.terminals || [];
+      for (const term of Object.keys(p.seat.leadMap)) {
+        if (seatTerms.includes(term)) continue;
+        const resolved = resolveTerminal(p.kind, term, seatTerms);
+        if (resolved !== term) {
+          p.seat.leadMap[resolved] = p.seat.leadMap[term];
+          delete p.seat.leadMap[term];
+        }
+      }
       try { bb.occupy(p.id, p.seat.leadMap); } catch { delete p.seat; }
     }
     for (const jw of data.holeWires || []) {
@@ -1070,7 +1157,7 @@ const ENGINE_AUTHORITY_EXEMPT = new Set(['header']);
 /** @internal Exported for the contract test only. */
 export function terminalsForKind(kind, params) {
   if (!ENGINE_AUTHORITY_EXEMPT.has(kind)) {
-    const fromEngine = engineTerminals(kind);
+    const fromEngine = engineTerminals(kind, params);
     if (fromEngine) return fromEngine;
   }
   // Sidecar-first: a parts-data JSON with measured terminal positions is the
@@ -1082,7 +1169,7 @@ export function terminalsForKind(kind, params) {
   // Dynamic-terminal kinds (mcu, led_cube, breadboard) still need the switch.
   const DYNAMIC_SWITCH_KINDS = new Set([
     'vcc', 'gnd', 'mcu', 'led_cube', 'breadboard',
-    'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico',
+    'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge',
     'stc_mcu', 'stc15_mcu', 'microbit', 'microbit_breakout',
   ]);
   if (!DYNAMIC_SWITCH_KINDS.has(kind)) {
@@ -1194,6 +1281,8 @@ export function terminalsForKind(kind, params) {
     // designer board stayed empty and the machine drove a phantom
     // ('designer board empty', owner: LCD Hello shows nothing).
     case 'ps2': return ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'da'];
+    case 'simplevga_card': return ['vcc', 'gnd', 'bus', 'bank'];
+    case 'tilevga': case 'vga_prop_card': return ['vcc', 'gnd', 'bus'];
     case 'led_matrix': return ['a', 'b'];
     case 'led_cube': return [
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),

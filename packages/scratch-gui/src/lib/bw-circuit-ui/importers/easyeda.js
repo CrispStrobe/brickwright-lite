@@ -52,6 +52,7 @@
 
 import { NetSolver, wiresFromNets, makeId, terminalFor, classifyPower, ptKey } from './kicad-common.js';
 import { parseEagleValue } from './eagle.js';
+import { dist } from '../model/exact-hypot.js';
 
 // ── the shape DSL ──────────────────────────────────────────────────
 
@@ -162,6 +163,16 @@ const PINS_74HC138 = {
   Y4: 'y4b', Y5: 'y5b', Y6: 'y6b', Y7: 'y7b',
   VCC: 'vcc', GND: 'gnd',
 };
+// ...and the ENGINE spelling too, because OUR OWN writer emits it. A byName
+// pin carries the engine terminal uppercased, so a document this app exported
+// says `Y0B`/`G2AB` where a vendor library says `Y0`/`G2A`. Accepting only the
+// vendor spelling made every wire to an active-low '138 pin resolve to nothing
+// and vanish on re-import — the export drew it, the geometry was correct, and
+// the connection was simply not there afterwards. Round-tripping our own
+// output is the least a reader owes its writer.
+for (const engineName of Object.values(PINS_74HC138)) {
+  PINS_74HC138[engineName.toUpperCase()] = engineName;
+}
 
 /**
  * Part-number rules, matched against a component's DESCRIPTOR.
@@ -316,7 +327,7 @@ export const EASYEDA_RULES = [
 const LOGIC_74HC = new Set(['00', '02', '04', '08', '10', '11', '125', '132', '138', '14',
   '165', '20', '21', '244', '245', '27', '283', '32', '34', '373', '374', '4050', '595', '688',
   '73', '74', '75', '86', '93', '95']);
-const LOGIC_74LS = new Set(['04', '107', '157', '161', '173', '189', '32', '373']);
+const LOGIC_74LS = new Set(['04', '107', '157', '161', '173', '189', '193', '32', '373']);
 
 /**
  * A 74-series number to an engine kind, or null.
@@ -392,8 +403,12 @@ function mapSpicePre(pre, value, pinCount, pkg) {
       // The giveaway that this was a typo rather than a decision is the map on
       // the button branch itself — `{1:'a', 2:'b', 3:'a', 4:'b'}` describes the
       // four-pin part exactly, and was unreachable.
+      // The pins map is the fallback when the symbol's pin NAMES say
+      // nothing: an SS-12D10 drawn with bare numeric pins otherwise leaks
+      // its raw pin number as a terminal ("SW18.2"), which no other layer
+      // can name. Pin 2 is the pole on every 1P2T slide part.
       return n === 3
-        ? { kind: 'slide_switch', byName: true }
+        ? { kind: 'slide_switch', byName: true, pins: { 1: 'a', 2: 'com', 3: 'b' } }
         : { kind: 'button', pins: { 1: 'a', 2: 'b', 3: 'a', 4: 'b' } };
     case 'X':
       if (FREQ.test(v)) return { kind: 'crystal', pins: PASSIVE2 };
@@ -581,8 +596,9 @@ export function importEasyEda(text) {
   if (dt === '3' || dt === '4') {
     return { parts, wires: [], unmapped, ignored,
       warnings: ['This is an EasyEDA PCB/footprint document (docType ' + dt + '). '
-        + 'Export the SCHEMATIC (docType 5) -- a board carries copper and footprints, '
-        + 'the schematic carries the netlist.'] };
+        + 'Open it as a BOARD (the easyeda-pcb importer reads it), or export the '
+        + 'SCHEMATIC (docType 5) for the circuit -- a board carries copper and '
+        + 'footprints, the schematic carries the netlist.'] };
   }
 
   const sheets = easyEdaSheets(doc);
@@ -1020,7 +1036,7 @@ export function easyEdaNearMisses(text, opts = {}) {
       const target = net.netOfName(scope(a.name));
       let best = null;
       for (const [vx, vy] of verts) {
-        const d = Math.hypot(vx - a.x, vy - a.y);
+        const d = dist(vx - a.x, vy - a.y);
         if (d === 0 || d > tol) continue;
         if (net.netAt(vx, vy) === target) continue;
         if (!best || d < best.dist) best = { dist: d, x: vx, y: vy };

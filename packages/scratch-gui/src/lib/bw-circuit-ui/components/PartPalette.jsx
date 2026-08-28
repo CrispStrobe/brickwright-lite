@@ -32,6 +32,9 @@ const CATEGORIES = [
       { kind: 'pi_pico', label: 'Raspberry Pi Pico', params: {}, color: '#7b2cbf',
         capability: 'RP2040 simulation',
         tooltip: 'RP2040 board — 3.3 V logic, GPIO simulation; do not connect 5 V signals' },
+      { kind: 'pybadge', label: 'Adafruit PyBadge', params: {}, color: '#512da8',
+        capability: 'Arcade controls + wiring',
+        tooltip: 'ATSAMD51J19 game board — 160×128 TFT, controls, Feather and STEMMA connections; 3.3 V only' },
     ],
   },
   {
@@ -180,6 +183,8 @@ const CATEGORIES = [
         tooltip: '10-segment LED bar — 20 pins (a0-a9 anodes, k0-k9 cathodes), DIP straddle' },
       { kind: 'simplevga_card', label: 'SimpleVGA Card', params: {}, color: '#6a5acd',
         tooltip: 'gfoot SimpleVGA6502 VGA card — machine-level video (vcc, gnd, bus)' },
+      { kind: 'ps2', label: 'PS/2 Keyboard', params: {}, color: '#4338ca',
+        tooltip: 'Clickable 74-key Code Set 2 keyboard — d0-d7 parallel capture + DA strobe' },
     ],
   },
   {

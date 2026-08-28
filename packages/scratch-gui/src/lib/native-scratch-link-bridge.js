@@ -34,7 +34,7 @@
  *
  *   'auto'   (default) socket first, native bridge if it never opens
  *   'socket' socket only — the behaviour before this module existed
- *   'bridge' native bridge only, chosen deliberately
+ *   'native' native bridge only, chosen deliberately
  *
  * Nothing is ever removed by picking one: 'socket' restores exactly the old
  * path, and the extension's own three menu entries are untouched throughout.
@@ -43,7 +43,10 @@
 export const transportPreference = () => {
     try {
         const v = localStorage.getItem('bw-scratchlink-transport');
-        if (v === 'socket' || v === 'bridge' || v === 'auto') return v;
+        // `bridge` was the internal name before the Settings chooser shipped.
+        // Keep reading it so a development build cannot strand a stored choice.
+        if (v === 'bridge') return 'native';
+        if (v === 'socket' || v === 'native' || v === 'auto') return v;
     } catch (e) { /* private mode — fall through to the default */ }
     return 'auto';
 };
@@ -232,7 +235,7 @@ export default function installScratchLinkBridge () {
                 ? new NativeWebSocket(url)
                 : new NativeWebSocket(url, protocols);
         }
-        if (pref === 'bridge') {
+        if (pref === 'native') {
             // Explicitly the native path, socket never attempted — useful both
             // for testing it and for a platform where the socket is known bad.
             const facade = new BridgedSocket(transportOf(url));

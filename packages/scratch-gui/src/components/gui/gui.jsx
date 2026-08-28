@@ -11,6 +11,14 @@ import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
 const MicrobitSimPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-microbit-sim" */ '../tw-pseudocode/microbit-sim-pane.jsx')
 );
+const ArcadeDevicePane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-arcade-device" */ '../tw-pseudocode/arcade-device-pane.jsx')
+);
+const GameTouchControls = React.lazy(() =>
+    import(/* webpackChunkName: "bw-game-touch-controls" */ '../tw-pseudocode/game-touch-controls.jsx')
+);
+const ArduboyPane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-arduboy" */ '../tw-pseudocode/arduboy-pane.jsx'));
 const ControllerPanelView = React.lazy(() =>
     import(/* webpackChunkName: "bw-controller-panel" */ '../tw-pseudocode/controller-panel-view.jsx')
 );
@@ -206,7 +214,7 @@ const GUIComponent = props => {
             const dock = localStorage.getItem('bw-debug-dock') || 'top';
             const circuit = localStorage.getItem('bw-stage-circuit');
             // Only honour 'microbit' if the circuit-pane flag is also set
-            if (dock === 'microbit' && circuit !== '1') return 'top';
+            if ((dock === 'microbit' || dock === 'arcade') && circuit !== '1') return 'top';
             // A restored 'microbit' pane must also match the PROJECT: a
             // pure-circuit or STC/AVR project reopening after a micro:bit
             // session was showing the sim for no reason (owner report).
@@ -214,9 +222,20 @@ const GUIComponent = props => {
             // restore is gated on the device actually being a micro:bit.
             if (dock === 'microbit'
                 && props.vm?.runtime?.stc?.device !== 'microbit') return 'top';
+            if (dock === 'arcade' && !['arcade', 'pybadge', 'pybadge-lc', 'samd51']
+                .includes(props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device)) return 'top';
             return dock;
         } catch { return 'top'; }
     });
+    const [gameControlKey, setGameControlKey] = React.useState(() =>
+        props.vm?.runtime?.bwGameControlKey || null);
+    React.useEffect(() => {
+        const runtime = props.vm && props.vm.runtime;
+        if (!runtime || !runtime.on) return undefined;
+        const changed = key => setGameControlKey(key || null);
+        runtime.on('BW_GAME_CONTROLS_CHANGED', changed);
+        return () => runtime.removeListener('BW_GAME_CONTROLS_CHANGED', changed);
+    }, [props.vm]);
     React.useEffect(() => {
         const sync = event => {
             const detail = event.detail || {};
@@ -474,7 +493,8 @@ const GUIComponent = props => {
         // all render in the RIGHT pane, so for every right-pane mode EXCEPT
         // controller/micro:bit (which paint their own 100vw overlay), hide the
         // editor and let the right pane fill the window.
-        const stageFullScreen = isFullScreen && dockMode !== 'controller' && dockMode !== 'microbit';
+        const stageFullScreen = isFullScreen && dockMode !== 'controller' && dockMode !== 'microbit' &&
+            dockMode !== 'arcade' && dockMode !== 'arduboy';
 
         return isPlayerOnly ? (
             <StageWrapper
@@ -791,7 +811,7 @@ const GUIComponent = props => {
                                 toggle buttons) stays reachable in every mode.
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
-                            <div style={dockMode === 'controller' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
+                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
@@ -800,6 +820,11 @@ const GUIComponent = props => {
                                     vm={vm}
                                 />
                             </div>
+                            {gameControlKey && dockMode !== 'microbit' && dockMode !== 'arcade' && dockMode !== 'controller' ? (
+                                <React.Suspense fallback={null}>
+                                    <GameTouchControls gameKey={gameControlKey} vm={vm} />
+                                </React.Suspense>
+                            ) : null}
                             {dockMode === 'microbit' ? (
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'micro:bit-Simulator wird geladen…' : 'Loading micro:bit simulator…'}</div>
@@ -809,6 +834,18 @@ const GUIComponent = props => {
                                     ) : (
                                         <MicrobitSimPane />
                                     )}
+                                </React.Suspense>
+                            ) : dockMode === 'arduboy' ? (
+                                <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading Arduboy…</div>}>
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
+                                        <ArduboyPane vm={vm} />
+                                    </div>
+                                </React.Suspense>
+                            ) : dockMode === 'arcade' ? (
+                                <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading game console…</div>}>
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
+                                        <ArcadeDevicePane vm={vm} />
+                                    </div>
                                 </React.Suspense>
                             ) : dockMode === 'controller' ? (
                                 <React.Suspense fallback={

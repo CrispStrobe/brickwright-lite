@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from '../../lib/bw-board/controller.js';
 import { bindPanelToBoard } from '../../lib/bw-board/controller-binding.js';
 
@@ -1028,6 +1028,29 @@ function ImageWidget({ widget }) {
     );
 }
 
+function SimpleVgaWidget({widget}) {
+    const ref = useRef(null);
+    useEffect(() => {
+        const canvas = ref.current;
+        const rgba = widget.state.rgba;
+        if (!canvas || !rgba) return;
+        const width = widget.config.width;
+        const height = widget.config.height;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), width, height), 0, 0);
+    }, [widget.state.rgba, widget.state.frame, widget.config.width, widget.config.height]);
+    return (
+        <div data-testid={'bw-ctl-simplevga-' + widget.name}
+            style={{position: 'relative', background: '#000', borderRadius: 2, overflow: 'hidden'}}>
+            <canvas ref={ref} style={{display: 'block', width: '100%', height: '100%', imageRendering: 'pixelated'}} />
+            {!widget.state.signal && <span style={{position: 'absolute', inset: 0, display: 'grid',
+                placeItems: 'center', color: '#0f0', fontSize: 10, fontFamily: 'monospace'}}>NO SIGNAL</span>}
+        </div>
+    );
+}
+
 // ─── Widget card (edit mode wrapper) ──────────────────────────────────────
 
 function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
@@ -1245,15 +1268,7 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
             )}
 
             {widget.type === 'simplevga' && (
-                <div data-testid={'bw-ctl-simplevga-' + widget.name}
-                    style={{ width: Math.min(widget.config.width, 200),
-                        height: Math.min(widget.config.height, 150),
-                        background: '#000', display: 'flex', alignItems: 'center',
-                        justifyContent: 'center', borderRadius: 2 }}>
-                    <span style={{ color: '#0f0', fontSize: 10, fontFamily: 'monospace' }}>
-                        VGA {widget.config.width}x{widget.config.height}
-                    </span>
-                </div>
+                <SimpleVgaWidget widget={widget} />
             )}
 
             {widget.type === 'mono_lcd' && (
