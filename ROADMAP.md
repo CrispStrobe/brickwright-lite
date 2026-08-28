@@ -96,6 +96,31 @@ there too.
 
 ## 2. Deploy and CI
 
+### 2.0 Vercel deploys CHECKPOINTS, not pushes — LANDED 2026-08-27, know the rule
+
+The live site updates on a **version tag**, on the `release: X.Y.Z …` commit that
+carries it, or on an explicit `[deploy]` marker — nothing else
+(`scripts/vercel-ignore.sh`). `deploy-daily.yml` is `workflow_dispatch`-only; its
+cron used to push an empty refresh commit each morning, which published whatever
+happened to be on main at 04:23, chosen by nobody.
+
+**CI still runs on every push.** Only the public URL is gated, so an ordinary
+push showing "Canceled by Ignored Build Step" is correct, not a failure.
+
+Two consequences worth knowing before diagnosing anything:
+
+- **"Every push must keep CI *and* Vercel green" is no longer the rule**, and
+  reading it that way costs an afternoon. A red Vercel during a rate-limit
+  window means the account quota, not your change.
+- The cap is real and has been exhausted twice by push volume (2026-08-23, and
+  again 2026-08-27, when every push for hours returned `Deployment rate limited
+  — retry in 24 hours` and the site quietly served a stale build).
+
+A release commit is deliberately NOT filtered by the web-affecting-files rule: a
+release moves `tauri.conf.json`, `Cargo.toml` and the tester notes, none of
+which match that filter, so applying it would skip exactly the deploy being
+asked for.
+
 ### 2.1 Deploy starvation with two agents pushing — OPEN, do not redo naively
 Workflow is on stock `concurrency: {group: pages, cancel-in-progress: false}`. With two sessions
 pushing, runs are cancelled while queued and the site lags several commits, arriving out of order.
@@ -244,6 +269,40 @@ Lite-side items (ours, this repo):
    net-coalesce warnings).
 
 ---
+
+## 3b. What an extension can reach — **PLANNED, none built** (2026-08-28)
+
+Full reasoning, and the verification behind each claim, in
+`docs/EXTENSION-SECURITY.md`. Summary and evidence here so the roadmap is not
+missing a security track that exists only in another file.
+
+**The measurement.** `extension-manager.js` `_loadRemoteExtension` does
+`fetch(url)` → `makeCrispExtension(source)` → `_registerInternalExtension`.
+Every remote extension — our gallery AND a user-entered URL — runs
+**unsandboxed, in-process, with full page access and no integrity check**. The
+only difference between the two is a `confirm()`. There is no sandbox path for
+remote extensions: the vanilla worker fallback resolves built-in IDs only. The
+file's own header comment claimed otherwise ("anything else falls through to the
+vanilla sandbox worker") and is corrected in the same commit as this entry.
+
+What makes this unlike TurboWarp's problem is not the DOM but the **native
+bridge**: an in-process extension can invoke Tauri commands — Bluetooth, file
+writes, serial flashing.
+
+| # | Task | Why this order |
+|---|---|---|
+| 1 | **Pin the gallery by content, not host** | The *quiet* path: ~117 extensions, no prompt, so the largest blast radius. `docs/FETCH-PINNING.md` already established the doctrine for every build-time fetch after a CDN served a stale commit; runtime loads are the one place it was never extended to. |
+| 2 | **`allowedServices`** | An extension may only touch GATT services it declared. The reference enforces this BEFORE the blocklist; we shipped only the blocklist. Observe-only first, then default-on with a confirmed override. |
+| 3 | **Native capabilities declared, not ambient** | Bluetooth/serial/file asked for rather than assumed. Cheaper than a sandbox and aimed where our exposure differs from a browser's. |
+| 4 | **A real sandbox** | Only against a written case that 1–3 left something open. Large change; every extension using the in-process `Scratch` shim would need a new contract. |
+
+**Not an App Store item.** Guideline 2.5.2 permits code run by
+WebKit/JavaScriptCore, and Scrub — a Scratch *web browser* that also bridges
+arbitrary pages to Bluetooth — has shipped since 2021 (id1569777095). An earlier
+worry in this session that review might object was overstated. Do this because
+it is right.
+
+Each task is independently shippable and none blocks the next.
 
 ## 4. Standing debt
 

@@ -4,8 +4,13 @@ const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
 
-// Brickwright: the only host allowed to run an extension unsandboxed, in-process (our own gallery).
-// Anything else falls through to the vanilla sandbox worker. See loadExtensionURL below.
+// Brickwright: the host whose extensions load WITHOUT a confirmation prompt (our own gallery).
+//
+// This used to say "anything else falls through to the vanilla sandbox worker", which reads as
+// though an unknown URL is contained. It is not: EVERY http(s) URL is run unsandboxed and
+// in-process by loadExtensionURL below, gallery or not, and the worker fallback only ever
+// resolves built-in IDs. Trusted here means "no prompt", not "sandboxed" — the difference
+// matters enough that docs/EXTENSION-SECURITY.md is about closing it.
 const CRISP_EXTENSION_HOST = 'https://crispstrobe.github.io/';
 const isCrispExtensionURL = url =>
     typeof url === 'string' && url.startsWith(CRISP_EXTENSION_HOST) && url.endsWith('.js');
