@@ -746,6 +746,8 @@ test('Prism Lock uses clickable authored gems instead of modal number prompts', 
     assert.doesNotMatch(games.chroma_code, /ask .* and wait/);
     assert.match(games.chroma_code, /CONTROLS: click four gems/);
     assert.match(games.chroma_code, /WHEN sprite clicked:/);
+    assert.match(games.chroma_code, /broadcast "prism lock over"/);
+    assert.match(games.chroma_code, /PRISM UNSEALED • GREEN FLAG FOR A NEW CODE/);
     const stage = project.targets.find(target => target.isStage);
     const buttons = project.targets.find(target => target.name === 'GemButton');
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'sealed', 'board']);
@@ -805,6 +807,10 @@ test('Prism Lock and Core Cascade reach their victory states in the real Scratch
         assert.equal(Number(stageValue(prism, 'exact').value), 4, 'perfect code was not scored');
         assert.equal(Number(stageValue(prism, 'near').value), 0, 'exact gems were also counted as near');
         assert.equal(Number(stageValue(prism, 'won').value), 1, 'perfect code did not unseal the lock');
+        assert.equal(Number(stageValue(prism, 'accepting').value), 0, 'lock still accepted gems after winning');
+        const result = prism.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'PrismResult');
+        assert.equal(result.visible, true, 'lock result was not shown on the stage');
     } finally {
         prism.quit();
         clearStrayTimers();
@@ -2561,7 +2567,7 @@ test('each new game keeps its signature playable mechanic', () => {
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
             /change launches by 1/, /IF launches > 11 THEN:/, /broadcast "skyline over"/],
         chroma_code: [/GLOBAL LIST secret/, /set exact to 0/, /set near to 0/,
-            /WHEN sprite clicked:/, /add gemValue to guess/],
+            /WHEN sprite clicked:/, /add gemValue to guess/, /broadcast "prism lock over"/],
         fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/],
         missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/,
             /change missiles by 1/, /IF missiles > 23 THEN:/],

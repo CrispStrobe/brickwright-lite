@@ -1897,14 +1897,13 @@ SPRITE Vault:
       paint row
       IF exact = 4 THEN:
         set won to 1
-        say (("PRISM UNSEALED IN " join turn) join " ATTEMPTS!") for 4 seconds
-        stop all
+        broadcast "prism lock over"
       ELSE:
         say ((("EXACT " join exact) join "   NEAR ") join near) for 1.8 seconds
         change turn by 1
         IF turn > 8 THEN:
-          say ((((((("LOCKED — CODE WAS " join item 1 of secret) join "-") join item 2 of secret) join "-") join item 3 of secret) join "-") join item 4 of secret) for 5 seconds
-          stop all
+          set won to 0
+          broadcast "prism lock over"
         ELSE:
           delete all of guess
           set accepting to 1
@@ -1937,7 +1936,24 @@ SPRITE GemButton:
       set size to 116
       broadcast "gem chosen"
       wait 0.08 seconds
-      set size to 100`,
+      set size to 100
+  WHEN I receive "prism lock over":
+    hide
+
+SPRITE PrismResult:
+  COSTUME win label "PRISM UNSEALED • GREEN FLAG FOR A NEW CODE" #ffe66d
+  COSTUME lose label "EIGHT ATTEMPTS USED • GREEN FLAG TO TRY A NEW CODE" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "open prism lock":
+    hide
+  WHEN I receive "prism lock over":
+    IF won = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     fusion_foundry: `# Core Cascade — a tactical drop-and-merge puzzle.
 # GOAL: fuse identical cores vertically until you create the white Nova core.
