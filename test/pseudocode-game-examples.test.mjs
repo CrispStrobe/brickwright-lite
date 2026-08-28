@@ -949,8 +949,11 @@ test('Wardlight makes the defense target clear and keeps ricochet orbs alive for
     assert.deepEqual(creator.warnings, []);
     assert.match(games.specter_sweep, /GOAL: banish twelve specters/);
     assert.match(games.specter_sweep, /CONTROLS: aim with the mouse and click to cast/);
-    assert.match(games.specter_sweep, /REPEAT UNTIL life < 1:/);
+    assert.match(games.specter_sweep, /REPEAT UNTIL life < 1 or active = 0:/);
     assert.match(games.specter_sweep, /if on edge bounce/);
+    assert.match(games.specter_sweep, /broadcast "specter banished"/);
+    assert.match(games.specter_sweep, /broadcast "wardlight over"/);
+    assert.match(games.specter_sweep, /TWELVE SPECTERS BANISHED • GREEN FLAG TO RELIGHT/);
     assert.doesNotMatch(games.specter_sweep, /behind the pillars/);
     assert.match(games.specter_sweep, /set ghost effect to pick random 0 to 25/);
     assert.doesNotMatch(games.specter_sweep, /change ghost effect by 4/,
@@ -1643,6 +1646,16 @@ test('buoyancy and mouse-cast controls work in the live Scratch VM', async () =>
         assert.ok(wardlight.runtime.targets.some(target => !target.isOriginal && target.sprite.name === 'Orb'),
             'mouse click did not create a ricochet orb');
         assert.equal(Number(value(wardlight, 'ward').value), 3, 'the central ward began damaged');
+        value(wardlight, 'score').value = 11;
+        wardlight.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'specter banished'});
+        for (let i = 0; i < 35; i++) wardlight.runtime._step();
+        const result = wardlight.runtime.targets.find(target =>
+            target.isOriginal && target.sprite && target.sprite.name === 'WardResult');
+        assert.equal(Number(value(wardlight, 'score').value), 12, 'final banishment was not counted');
+        assert.equal(Number(value(wardlight, 'winner').value), 1, 'twelve banishments did not win');
+        assert.equal(Number(value(wardlight, 'active').value), 0, 'won defense remained active');
+        assert.equal(Number(value(wardlight, 'started').value), 0, 'won defense was not replayable');
+        assert.equal(result.visible, true, 'ward victory result was not shown');
     } finally {
         wardlight.quit();
         clearStrayTimers();
@@ -2198,7 +2211,8 @@ test('each new game keeps its signature playable mechanic', () => {
         twinwall: [/SPRITE LeftWall/, /SPRITE RightWall/, /set bricks to 24/, /change score by rally/],
         turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /change checkpoints by 1/],
         abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/],
-        specter_sweep: [/if on edge bounce/, /touching Orb/, /set ward to 3/, /change score by 1/],
+        specter_sweep: [/if on edge bounce/, /touching Orb/, /set ward to 3/,
+            /broadcast "specter banished"/, /broadcast "wardlight over"/],
         moonlight_heist: [/touching Tunnel/, /point towards Mouse/, /broadcast "new cheese"/,
             /distance to Tunnel > 80/, /broadcast "pantry over"/],
         cloud_court: [/set rally to 1/, /touching Net/, /set bx to 226/, /abs of \(bx - px\)/,

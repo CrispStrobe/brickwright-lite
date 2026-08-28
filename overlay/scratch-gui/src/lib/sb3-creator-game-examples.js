@@ -2846,6 +2846,8 @@ GLOBAL score
 GLOBAL ward
 GLOBAL edgeSide
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art wardlight/intro
@@ -2855,6 +2857,7 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable ward
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -2866,27 +2869,44 @@ SPRITE Hunter:
   WHEN flag clicked:
     set score to 0
     set ward to 3
+    set active to 0
+    set winner to 0
     go to x: 0 y: 0
     hide
   WHEN I receive "light the ward":
+    set score to 0
+    set ward to 3
+    set winner to 0
+    set active to 1
     show variable score
     show variable ward
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       point towards mouse-pointer
       IF score > 11 THEN:
-        say "The manor is clear!" for 3 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "wardlight over"
       IF ward < 1 THEN:
-        say "The ward has fallen!" for 3 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "wardlight over"
       wait 0.02 seconds
+    hide
   WHEN I receive "light the ward":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF mouse down? THEN:
         broadcast "cast"
         wait until not mouse down?
       wait 0.02 seconds
+  WHEN I receive "specter banished":
+    IF active = 1 THEN:
+      change score by 1
+  WHEN I receive "ward struck":
+    IF active = 1 THEN:
+      change ward by -1
 
 SPRITE Orb:
   SHAPE art wardlight/orb
@@ -2894,13 +2914,14 @@ SPRITE Orb:
   WHEN flag clicked:
     hide
   WHEN I receive "cast":
-    go to x: 0 y: 0
-    point towards mouse-pointer
-    create clone of myself
+    IF active = 1 THEN:
+      go to x: 0 y: 0
+      point towards mouse-pointer
+      create clone of myself
   WHEN I start as a clone:
     show
     set life to 180
-    REPEAT UNTIL life < 1:
+    REPEAT UNTIL life < 1 or active = 0:
       move 10 steps
       if on edge bounce
       change life by -1
@@ -2913,7 +2934,7 @@ SPRITE Ghost:
   WHEN flag clicked:
     hide
   WHEN I receive "light the ward":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set edgeSide to pick random 1 to 4
       IF edgeSide = 1 THEN:
         go to x: -220 y: pick random -150 to 150
@@ -2927,17 +2948,33 @@ SPRITE Ghost:
       wait 1.3 seconds
   WHEN I start as a clone:
     show
-    REPEAT UNTIL touching Hunter or touching Orb:
+    REPEAT UNTIL active = 0 or touching Hunter or touching Orb:
       point towards Hunter
       move 1.8 steps
       set ghost effect to pick random 0 to 25
       wait 0.03 seconds
-    IF touching Orb THEN:
-      change score by 1
+    IF active = 1 and touching Orb THEN:
+      broadcast "specter banished"
       play sound "zap"
     ELSE:
-      change ward by -1
-    delete this clone`,
+      IF active = 1 THEN:
+        broadcast "ward struck"
+    delete this clone
+
+SPRITE WardResult:
+  COSTUME win label "TWELVE SPECTERS BANISHED • GREEN FLAG TO RELIGHT" #8fffea
+  COSTUME lose label "THE CENTRAL WARD FELL • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "light the ward":
+    hide
+  WHEN I receive "wardlight over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     moonlight_heist: `# Pantry Prowl — a compact stealth chase.
 # GOAL: steal five cheeses and return to the blue hideout without being caught.
