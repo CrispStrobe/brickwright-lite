@@ -266,7 +266,7 @@ Lite-side items (ours, this repo):
 
 ---
 
-## 3b. What an extension can reach — **CONTENT PINNING + URL SANDBOX SHIPPED** (2026-08-28)
+## 3b. What an extension can reach — **TASKS 1, 2 + URL SANDBOX SHIPPED** (2026-08-28)
 
 Full reasoning, and the verification behind each claim, in
 `docs/EXTENSION-SECURITY.md`. Summary and evidence here so the roadmap is not
@@ -287,7 +287,7 @@ broker or unforgeable session tokens checked in Rust.
 | # | Task | Why this order |
 |---|---|---|
 | 1 | **Pin the gallery by content, not host — SHIPPED** | All 120 current entries have exact served-byte hashes tied to an immutable reviewed repository commit. The VM verifies before evaluation; only exact pinned URLs skip confirmation. |
-| 2 | **`allowedServices`** | An extension may only touch GATT services it declared. The reference enforces this BEFORE the blocklist; we shipped only the blocklist. Observe-only first, then default-on with a confirmed override. |
+| 2 | **`allowedServices` — SHIPPED** | Each Scratch-Link client may reach only the union of required and optional services declared by its latest discovery. All four bundled Web-Bluetooth extensions were audited before enforcement; no exception was needed. |
 | 3 | **Native capabilities declared, not ambient** | Remaining least privilege for reviewed pinned code; requires caller attribution at a real broker/Rust boundary, not a mutable page-global wrapper. |
 | 4 | **Sandbox unpinned URLs — SHIPPED** | Arbitrary URL code runs in a restricted worker; the central dispatch broker blocks forged main-service calls and cross-worker replies. |
 

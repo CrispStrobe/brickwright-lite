@@ -23,6 +23,8 @@
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use serde_json::{json, Value};
+use std::collections::HashSet;
+use std::sync::Mutex;
 use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Message;
 use uuid::Uuid;
@@ -31,8 +33,73 @@ use tauri_plugin_blec::models::{BleDevice, ScanFilter, WriteType};
 
 use super::Outbound;
 
+/// Security state owned by one Scratch-Link client.
+///
+/// Keeping this beside the WebSocket/bridge session matters: a second client
+/// must not inherit the services declared by the first one. The radio backend
+/// is process-wide, but permission to address a GATT service is not.
+#[derive(Default)]
+pub struct SessionState {
+    allowed_services: Mutex<Option<HashSet<Uuid>>>,
+}
+
+impl SessionState {
+    /// Replace the allowance at the start of each discovery, exactly as the
+    /// reference BLESession replaces `allowedServices` rather than growing it.
+    fn begin_discovery(&self, params: &Value, specs: &[ScanFilterSpec]) -> Result<(), String> {
+        let mut allowed: HashSet<Uuid> = specs
+            .iter()
+            .flat_map(|filter| filter.services.iter().copied())
+            .collect();
+        if let Some(optional) = params.get("optionalServices") {
+            let optional = optional
+                .as_array()
+                .ok_or("optionalServices must be an array")?;
+            for service in optional {
+                allowed.insert(parse_uuid(Some(service))?);
+            }
+        }
+        *self.allowed_services.lock().map_err(|e| e.to_string())? = Some(allowed);
+        Ok(())
+    }
+
+    /// Refuse a service which was not named by the discovery filters or its
+    /// optionalServices. This deliberately runs before the blocklist: an
+    /// undeclared endpoint is not made acceptable merely because it is absent
+    /// from a list of universally dangerous UUIDs.
+    fn check_allowed_service(&self, params: &Value) -> Result<(), String> {
+        let service = parse_uuid(params.get("serviceId"))?;
+        let allowed = self.allowed_services.lock().map_err(|e| e.to_string())?;
+        if allowed.as_ref().is_some_and(|set| set.contains(&service)) {
+            Ok(())
+        } else {
+            Err(format!("attempt to access unexpected service: {service}"))
+        }
+    }
+
+    /// The non-standard enumeration helper must not reveal services which Web
+    /// Bluetooth would not make available to this requestDevice session.
+    fn retain_allowed_services(&self, services: Value) -> Result<Value, String> {
+        let allowed = self.allowed_services.lock().map_err(|e| e.to_string())?;
+        let Some(allowed) = allowed.as_ref() else {
+            return Ok(json!([]));
+        };
+        let Value::Array(rows) = services else {
+            return Err("getServices returned a non-array result".into());
+        };
+        Ok(Value::Array(
+            rows.into_iter()
+                .filter(|row| {
+                    let uuid = row.get("uuid").or_else(|| row.as_str().map(|_| row));
+                    parse_uuid(uuid).is_ok_and(|uuid| allowed.contains(&uuid))
+                })
+                .collect(),
+        ))
+    }
+}
+
 /// Handle one text frame on a `/scratch/ble` socket.
-pub async fn dispatch(txt: &str, out: &Outbound) {
+pub async fn dispatch(txt: &str, out: &Outbound, session: &SessionState) {
     let req: Value = match serde_json::from_str(txt) {
         Ok(v) => v,
         Err(e) => {
@@ -45,7 +112,7 @@ pub async fn dispatch(txt: &str, out: &Outbound) {
     let params = req.get("params").cloned().unwrap_or(Value::Null);
     log::info!("[scratchlink/ble] ◀ {method}");
 
-    let result = handle(method, &params, out).await;
+    let result = handle(method, &params, out, session).await;
     if let Some(id) = id {
         match result {
             Ok(v) => reply(out, id, v).await,
@@ -57,7 +124,12 @@ pub async fn dispatch(txt: &str, out: &Outbound) {
     }
 }
 
-async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, String> {
+async fn handle(
+    method: &str,
+    params: &Value,
+    out: &Outbound,
+    session: &SessionState,
+) -> Result<Value, String> {
     // `ping` needs no BLE adapter — answer before touching the handler.
     if method == "ping" {
         return Ok(json!(42));
@@ -106,6 +178,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             // request must be an error, not fifteen seconds of offering the
             // user every device in the building.
             let specs = parse_filters(params)?;
+            session.begin_discovery(params, &specs)?;
             start_discover(specs, out.clone());
             Ok(Value::Null)
         }
@@ -130,6 +203,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             Ok(Value::Null)
         }
         "write" => {
+            session.check_allowed_service(params)?;
             check_blocklist(params, true)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             let data = decode_message(params)?;
@@ -141,6 +215,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             Ok(json!(n))
         }
         "read" => {
+            session.check_allowed_service(params)?;
             check_blocklist(params, false)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             let data = h.recv_data(uuid).await.map_err(|e| e.to_string())?;
@@ -156,6 +231,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
             encode_message(&data, params.get("encoding").and_then(Value::as_str))
         }
         "startNotifications" => {
+            session.check_allowed_service(params)?;
             check_blocklist(params, false)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             subscribe(uuid, params, out.clone()).await?;
@@ -167,6 +243,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
         // treat a legitimate request as an error. Notifications then kept
         // arriving for a characteristic nobody was reading any more.
         "stopNotifications" => {
+            session.check_allowed_service(params)?;
             check_blocklist(params, false)?;
             let uuid = parse_uuid(params.get("characteristicId"))?;
             h.unsubscribe(uuid).await.map_err(|e| e.to_string())?;
@@ -184,7 +261,7 @@ async fn handle(method: &str, params: &Value, out: &Outbound) -> Result<Value, S
                     .address,
             };
             let services = h.discover_services(&addr).await.map_err(|e| e.to_string())?;
-            Ok(json!(services))
+            session.retain_allowed_services(json!(services))
         }
         other => Err(format!("{UNKNOWN_METHOD}{other}")),
     }
@@ -893,6 +970,69 @@ mod tests {
                        "characteristicId": "00001624-1212-efde-1623-785feabcd123"});
         assert!(check_blocklist(&p, false).is_ok());
         assert!(check_blocklist(&p, true).is_ok());
+    }
+
+    #[test]
+    fn service_allowance_is_the_union_of_filters_and_optional_services() {
+        let battery = "0000180f-0000-1000-8000-00805f9b34fb";
+        let session = SessionState::default();
+        let params = json!({
+            "filters": [{"services": [LEGO_SERVICE]}],
+            "optionalServices": [battery]
+        });
+        let specs = parse_filters(&params).unwrap();
+        session.begin_discovery(&params, &specs).unwrap();
+
+        assert!(session
+            .check_allowed_service(&json!({"serviceId": LEGO_SERVICE}))
+            .is_ok());
+        assert!(session
+            .check_allowed_service(&json!({"serviceId": battery}))
+            .is_ok());
+        assert!(session
+            .check_allowed_service(&json!({"serviceId": "0000180a-0000-1000-8000-00805f9b34fb"}))
+            .is_err());
+    }
+
+    #[test]
+    fn a_new_discovery_replaces_instead_of_growing_the_allowance() {
+        let session = SessionState::default();
+        let first = json!({"filters": [{"services": [LEGO_SERVICE]}]});
+        session
+            .begin_discovery(&first, &parse_filters(&first).unwrap())
+            .unwrap();
+        assert!(session
+            .check_allowed_service(&json!({"serviceId": LEGO_SERVICE}))
+            .is_ok());
+
+        let battery = "0000180f-0000-1000-8000-00805f9b34fb";
+        let second = json!({"filters": [{"services": [battery]}]});
+        session
+            .begin_discovery(&second, &parse_filters(&second).unwrap())
+            .unwrap();
+        assert!(session
+            .check_allowed_service(&json!({"serviceId": LEGO_SERVICE}))
+            .is_err());
+        assert!(session
+            .check_allowed_service(&json!({"serviceId": battery}))
+            .is_ok());
+    }
+
+    #[test]
+    fn service_enumeration_contains_only_declared_services() {
+        let session = SessionState::default();
+        let params = json!({"filters": [{"services": [LEGO_SERVICE]}]});
+        session
+            .begin_discovery(&params, &parse_filters(&params).unwrap())
+            .unwrap();
+        let filtered = session
+            .retain_allowed_services(json!([
+                {"uuid": LEGO_SERVICE, "characteristics": []},
+                {"uuid": "0000180f-0000-1000-8000-00805f9b34fb", "characteristics": []}
+            ]))
+            .unwrap();
+        assert_eq!(filtered.as_array().unwrap().len(), 1);
+        assert_eq!(filtered[0]["uuid"], LEGO_SERVICE);
     }
 
     #[test]

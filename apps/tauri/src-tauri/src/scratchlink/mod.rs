@@ -123,6 +123,7 @@ async fn handle_conn(stream: TcpStream) -> Result<(), tokio_tungstenite::tungste
     log::info!("[scratchlink] client connected ({transport:?})");
 
     let (mut ws_write, mut ws_read) = ws.split();
+    let ble_session = ble::SessionState::default();
 
     // Single writer task owns the sink; everything else sends via `out`.
     let (out, mut out_rx) = mpsc::channel::<Message>(64);
@@ -137,7 +138,7 @@ async fn handle_conn(stream: TcpStream) -> Result<(), tokio_tungstenite::tungste
     while let Some(msg) = ws_read.next().await {
         match msg? {
             Message::Text(txt) => match transport {
-                Transport::Ble => ble::dispatch(&txt, &out).await,
+                Transport::Ble => ble::dispatch(&txt, &out, &ble_session).await,
                 Transport::Bt => bt_dispatch(&txt, &out).await,
                 Transport::Unknown => log::warn!("[scratchlink] frame on unknown path: {txt}"),
             },

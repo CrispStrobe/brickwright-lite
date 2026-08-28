@@ -77,25 +77,29 @@ never extended to, purely because they happen later.
 
 ## Task 2 — `allowedServices`: an extension may only touch GATT services it declared
 
-**Status: the reference already does this and we do not.** `BLESession.swift`
-builds `allowedServices` from the discover request's filters ∪ `optionalServices`
-and refuses anything else with "attempt to access unexpected service" — checked
-BEFORE the blocklist. We implemented only the blocklist (the narrower, second
-check) and none of this.
+**Status: implemented 2026-08-28.** `BLESession.swift` already built
+`allowedServices` from the discover request's filters ∪ `optionalServices` and
+refused anything else before the blocklist. BrickWright's Rust Scratch-Link
+server now matches it.
 
 This is the whitelist, and it is the one that scales: the blocklist can only
 ever name endpoints that are dangerous for everyone, while this one is exactly
 as wide as each extension asked for.
 
-- **Observe-only first.** Log what *would* be refused, run the whole extension
-  corpus, read the log. The alternative is finding out which gallery extension
-  reaches for an undeclared service by breaking it in front of a child.
-- Then default-on, with an override in Settings behind an explicit warning the
-  user confirms — same pattern as the transport chooser, which greys out what
-  cannot run and says why.
-- The override should be as narrow as it can be. "Allow this extension, this
-  session" beats a global switch that stays on for a year because someone
-  flipped it once.
+- The allowance is per WebSocket or native-bridge client; one extension cannot
+  inherit another client's declaration. A new discovery replaces rather than
+  expands the old set.
+- The Web Bluetooth shim now forwards canonical `optionalServices` instead of
+  dropping them. Required and optional services form the exact allowance.
+- Read, write, start-notifications and stop-notifications check the allowance
+  before the universal Web Bluetooth blocklist. Service enumeration is filtered
+  to the same set.
+- The four bundled Web-Bluetooth extensions were audited before enforcement:
+  Boost and Powered Up use their filtered service; SPIKE declares its one
+  service; WeDo declares its advertised, I/O and battery services. No exception
+  or global override was required.
+- Node protocol tests exercise the forwarding and the four enforcement sites;
+  Rust unit tests cover union, replacement, refusal and filtered enumeration.
 
 ## Task 3 — Native capabilities are declared, not ambient
 
@@ -132,8 +136,8 @@ not a prerequisite for containing arbitrary URLs.
 
 1. **Gallery integrity** — the quiet path, the biggest blast radius, and the
    doctrine already exists in this repo.
-2. **`allowedServices`** — matches the reference, scales with each extension,
-   observe-only before enforcing.
+2. **`allowedServices` — shipped** — matches the reference and scales with each
+   extension; the shipped corpus was audited before enforcement.
 3. **Native capability declarations** — remaining least privilege for reviewed,
    pinned in-process code; requires real caller attribution.
 4. **Unpinned-extension sandbox — shipped** — isolates arbitrary URL code and
