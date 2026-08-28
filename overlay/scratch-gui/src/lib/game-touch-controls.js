@@ -11,6 +11,10 @@ const PROFILES = Object.freeze({
     sigil_grid: {layout: 'stage', hint: 'Tap SOLO or DUO, then tap an empty sigil cell.'},
     vector_seven: {layout: 'stage', hint: 'Drag the gold paddle; tap the court to serve.'},
     reactor_ricochet: {layout: 'stage', hint: 'Drag the paddle; tap to launch and catch cyan power cells.'},
+    flux_vault: {
+        layout: 'dpad', hint: 'Push every cyan core onto a gold dock. Reset if a core is trapped.',
+        keys: {...ARROWS}, actionLabel: 'RESET'
+    },
     sky_skim: {
         layout: 'vertical',
         hint: 'Hold Dive into a hill; release to launch. Flap only when needed.',

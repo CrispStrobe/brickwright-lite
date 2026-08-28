@@ -1044,6 +1044,236 @@ SPRITE Result:
     show
 `,
 
+    flux_vault: `# Flux Vault — a three-chamber push puzzle with exact grid rules.
+# GOAL: push all three cyan cores onto gold docks in each chamber; clear all 3 chambers.
+# A core can be pushed but never pulled. If one is trapped, press Space or RESET to retry.
+# CONTROLS: Arrow keys move one tile. Space resets the current chamber.
+GLOBAL started
+GLOBAL active
+GLOBAL level
+GLOBAL pushes
+GLOBAL playerCell
+GLOBAL targetCell
+GLOBAL beyondCell
+GLOBAL delta
+GLOBAL crateAt
+GLOBAL occupied
+GLOBAL docked
+GLOBAL i
+GLOBAL j
+GLOBAL row
+GLOBAL col
+GLOBAL tile
+
+STAGE:
+  BACKDROP intro art flux-vault/intro
+  BACKDROP vault art flux-vault/play
+  WHEN flag clicked:
+    set started to 0
+    set active to 0
+    switch backdrop to intro
+    hide variable level
+    hide variable pushes
+    hide variable docked
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      set level to 1
+      set pushes to 0
+      switch backdrop to vault
+      broadcast "open flux chamber"
+    ELSE:
+      IF active = 1 THEN:
+        broadcast "reset flux chamber"
+
+SPRITE Vault:
+  LIST terrain
+  LIST crates
+  SHAPE art flux-vault/floor
+  COSTUME wall art flux-vault/wall
+  COSTUME dock art flux-vault/dock
+  COSTUME core art flux-vault/core
+  COSTUME charged art flux-vault/core-docked
+  COSTUME keeper art flux-vault/keeper
+  SOUND push 520
+  SOUND lock 920
+
+  DEFINE FAST set terrain tile (cell) (kind):
+    replace item cell of terrain with kind
+
+  DEFINE FAST build chamber:
+    delete all of terrain
+    delete all of crates
+    REPEAT 48:
+      add 0 to terrain
+    set i to 1
+    REPEAT 48:
+      set row to floor of ((i - 1) / 8)
+      set col to (i - 1) mod 8
+      IF row = 0 or row = 5 or col = 0 or col = 7 THEN:
+        set terrain tile i 1
+      change i by 1
+    IF level = 1 THEN:
+      set playerCell to 34
+      add 12 to crates
+      add 20 to crates
+      add 28 to crates
+      set terrain tile 14 2
+      set terrain tile 22 2
+      set terrain tile 30 2
+    IF level = 2 THEN:
+      set playerCell to 34
+      add 19 to crates
+      add 21 to crates
+      add 23 to crates
+      set terrain tile 11 2
+      set terrain tile 13 2
+      set terrain tile 15 2
+      set terrain tile 26 1
+      set terrain tile 30 1
+    IF level = 3 THEN:
+      set playerCell to 10
+      add 19 to crates
+      add 29 to crates
+      add 28 to crates
+      set terrain tile 22 2
+      set terrain tile 26 2
+      set terrain tile 36 2
+      set terrain tile 12 1
+      set terrain tile 31 1
+    set docked to 0
+
+  DEFINE FAST place tile at (cell):
+    set row to floor of ((cell - 1) / 8)
+    set col to (cell - 1) mod 8
+    go to x: (-196 + (col * 56)) y: (140 - (row * 56))
+
+  DEFINE FAST paint chamber:
+    clear
+    set i to 1
+    REPEAT 48:
+      set tile to item i of terrain
+      IF tile = 0 THEN:
+        switch costume to costume1
+      IF tile = 1 THEN:
+        switch costume to wall
+      IF tile = 2 THEN:
+        switch costume to dock
+      place tile at i
+      stamp
+      change i by 1
+    set i to 1
+    REPEAT length of crates:
+      set tile to item i of crates
+      IF item tile of terrain = 2 THEN:
+        switch costume to charged
+      ELSE:
+        switch costume to core
+      place tile at tile
+      stamp
+      change i by 1
+    switch costume to keeper
+    place tile at playerCell
+    stamp
+
+  DEFINE FAST count docked cores:
+    set docked to 0
+    set i to 1
+    REPEAT length of crates:
+      set tile to item i of crates
+      IF item tile of terrain = 2 THEN:
+        change docked by 1
+      change i by 1
+
+  DEFINE FAST try move (step):
+    set targetCell to playerCell + step
+    IF item targetCell of terrain = 0 or item targetCell of terrain = 2 THEN:
+      set crateAt to 0
+      set i to 1
+      REPEAT length of crates:
+        IF item i of crates = targetCell THEN:
+          set crateAt to i
+        change i by 1
+      IF crateAt = 0 THEN:
+        set playerCell to targetCell
+      ELSE:
+        set beyondCell to targetCell + step
+        set occupied to 0
+        set j to 1
+        REPEAT length of crates:
+          IF item j of crates = beyondCell THEN:
+            set occupied to 1
+          change j by 1
+        IF (item beyondCell of terrain = 0 or item beyondCell of terrain = 2) and occupied = 0 THEN:
+          replace item crateAt of crates with beyondCell
+          set playerCell to targetCell
+          change pushes by 1
+          play sound "push"
+      count docked cores
+      paint chamber
+      IF docked = 3 THEN:
+        set active to 0
+        play sound "lock"
+        wait 0.7 seconds
+        change level by 1
+        IF level = 4 THEN:
+          set started to 0
+          broadcast "flux vault solved"
+        ELSE:
+          broadcast "open flux chamber"
+
+  WHEN flag clicked:
+    hide
+    clear
+  WHEN I receive "open flux chamber":
+    build chamber
+    paint chamber
+    set active to 1
+    show variable level
+    show variable pushes
+    show variable docked
+  WHEN I receive "reset flux chamber":
+    build chamber
+    paint chamber
+  WHEN up arrow key pressed:
+    IF active = 1 THEN:
+      try move -8
+  WHEN down arrow key pressed:
+    IF active = 1 THEN:
+      try move 8
+  WHEN left arrow key pressed:
+    IF active = 1 THEN:
+      try move -1
+  WHEN right arrow key pressed:
+    IF active = 1 THEN:
+      try move 1
+  WHEN I receive "flux vault solved":
+    clear
+
+SPRITE Reset:
+  COSTUME reset art flux-vault/reset
+  WHEN flag clicked:
+    go to x: 171 y: -157
+    hide
+  WHEN I receive "open flux chamber":
+    show
+  WHEN sprite clicked:
+    IF active = 1 THEN:
+      broadcast "reset flux chamber"
+  WHEN I receive "flux vault solved":
+    hide
+
+SPRITE Result:
+  COSTUME solved label "ALL 3 CHAMBERS LOCKED • GREEN FLAG TO REPLAY" #8fffea
+  WHEN flag clicked:
+    hide
+    go to x: 0 y: 0
+  WHEN I receive "open flux chamber":
+    hide
+  WHEN I receive "flux vault solved":
+    show
+`,
+
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: complete twelve clean hill launches before three crashes. Diving into a
 # green crest converts speed into height; consecutive launches grow the score combo.
