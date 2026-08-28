@@ -29,6 +29,66 @@ rest of its package.json) are pulled in transitively at vendor time
 itself only depends on permissively-licensed packages as of the pinned
 snapshot.
 
+## Vendored sources that no package manager tracks
+
+These are copied into the repository and SHIP INSIDE THE BINARY, so their
+notices cannot be generated from a lockfile and are recorded by hand. BSD-3
+clause 2 requires the copyright notice to be reproduced in materials
+distributed with a binary — this section is that reproduction.
+
+### scratch-link (Swift) -- BSD-3-Clause
+
+The Scratch Foundation's own Scratch Link BLE session, carried so the app can
+offer the REFERENCE implementation as a connection path on Apple platforms
+(Settings > "How Scratch Link connects..." > "Original Scratch Link").
+
+- Copyright (c) 2019, Scratch Foundation. All rights reserved.
+- BSD-3-Clause -- full text, INCLUDING all three conditions and the warranty
+  disclaimer, in `apps/tauri/src-tauri/vendor/scratch-link-swift/LICENSE` and
+  shipped with the app at
+  `overlay/scratch-gui/static/licenses/scratch-link.BSD-3-Clause.txt`.
+  Clause 2 requires the notice, the conditions and the disclaimer to be
+  reproduced in the materials distributed with a binary — an SPDX identifier
+  and a hyperlink are neither.
+- Source: https://github.com/bricklife/scratch-link @
+  f78273b9003bc0272dbcfb8a39a5a1358de89007 (2022-02-18), path
+  `macOS/Sources/scratch-link`
+- The 2022 pin is deliberate: the Scratch Foundation relicensed to AGPL-3.0 on
+  2024-11-25, and a later snapshot could not ship here.
+- `TRADEMARK` is vendored beside it. The Scratch name, logo and characters may
+  not be used to endorse a derived product; this app carries the code and none
+  of that branding.
+- Unmodified in `Sources/`, hash-gated by
+  `test/scratchlink-vendor-integrity.test.mjs`. The buildable copy is generated
+  by `scripts/gen-scratchlink-swift.mjs` with the ten patches that a modern
+  SDK requires (CoreBluetooth optionals since iOS 15; `uint16`/`uint32` Darwin
+  aliases that do not exist on iOS).
+
+### WebSocket / PerfectWebSockets shim -- BSD-3-Clause
+
+The vendored sources `import PerfectWebSockets` for two types. Rather than take
+the Perfect web server as a dependency, an empty module of that name supplies
+them. The approach, and the shape of the shim, are from Scrub:
+
+- Copyright (c) 2021, Shinichiro Oba. BSD-3-Clause -- full text shipped at
+  `overlay/scratch-gui/static/licenses/scrub.BSD-3-Clause.txt`.
+- Source: https://github.com/bricklife/Scrub (`ScratchLinkKit`)
+
+### labwired-core (WebAssembly) -- MIT
+
+The heavy simulation tier's engine. Fetched at build time into `static/` by
+`scripts/sync-labwired-wasm.mjs` and served on demand in the web build; it is
+BUNDLED in the mobile app, because the mobile build runs `vercel-build.sh`.
+
+- Copyright (c) 2026 Andrii Shylenko. MIT.
+  Full text: `overlay/scratch-gui/static/licenses/labwired-core.MIT.txt`,
+  shipped with the app -- MIT requires the copyright AND permission notice to
+  accompany substantial portions, and a compiled 20 MB engine is substantial.
+- https://github.com/w1ne/labwired-core
+- Built from pin `41119903ced44a221a49aa0e8090ab012fbdba68`, published as
+  release `labwired-wasm-41119903-r2` with both artefacts' sha256 pinned in the
+  sync script and gated by `test/fetch-pinning.test.mjs`.
+
 ## Our own code living in this repo
 
 Some files were copied in from the CrispStrobe/brickwright mainline repo
@@ -813,11 +873,27 @@ circuit simulator. Imported as `avr8js` via the bw-board adapter
 (`overlay/scratch-gui/src/lib/bw-board/avr8js-adapter.js`).
 
 - **Version:** 0.21.0
-- **Licence:** MIT
+- **Licence:** MIT — Copyright (c) 2019-2025 Uri Shaked
 - **Source:** https://github.com/wokwi/avr8js
 - **Usage:** AVR CPU simulation, I/O port + timer + ADC peripherals.
   No source code from avr8js is modified; the package is consumed as
   a published npm dependency.
+
+## rp2040js — MIT
+
+**rp2040js** (MIT License, https://github.com/wokwi/rp2040js) provides the
+Cortex-M0+ core used by the Raspberry Pi Pico target AND — through the
+STM32F030 adapter's facade — by the LIGHT simulation tier for STM32. The
+heavy tier for the same chip is labwired-core; both run the same flash
+image, which is the point of having two.
+
+- **Version:** 1.3.3
+- **Licence:** MIT — Copyright (c) 2021 Uri Shaked
+- **Source:** https://github.com/wokwi/rp2040js
+- **Usage:** ARM Cortex-M0+ instruction execution and the RP2040 memory map.
+  Consumed as a published npm dependency, unmodified. The STM32 side supplies
+  its own peripherals (`cortex-m0-machine.js`, `stm32f0-board.js`) rather than
+  patching rp2040js.
 
 ## wokwi-elements — MIT
 
