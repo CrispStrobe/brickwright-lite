@@ -769,6 +769,10 @@ test('Core Cascade shows its next piece, fusion ladder, and concrete Nova goal',
     assert.match(games.fusion_foundry, /CONTROLS: Left and Right choose a shaft/);
     assert.match(games.fusion_foundry, /set nextLevel to pick random 1 to 2/);
     assert.match(games.fusion_foundry, /IF level = 5 THEN:/);
+    assert.match(games.fusion_foundry, /IF openShafts = 0 THEN:/);
+    assert.match(games.fusion_foundry, /THAT SHAFT IS FULL — CHOOSE ANOTHER/);
+    assert.match(games.fusion_foundry, /broadcast "core cascade over"/);
+    assert.match(games.fusion_foundry, /WHITE NOVA FORGED • GREEN FLAG FOR A NEW REACTOR/);
     const stage = project.targets.find(target => target.isStage);
     const foundry = project.targets.find(target => target.name === 'Foundry');
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'reactor']);
@@ -835,6 +839,11 @@ test('Prism Lock and Core Cascade reach their victory states in the real Scratch
             'the consumed precursor core remained on the board');
         assert.equal(Number(stageValue(cascade, 'score').value), 550,
             'Nova fusion did not award its merge and victory score');
+        assert.equal(Number(stageValue(cascade, 'winner').value), 1, 'Nova did not record a win');
+        assert.equal(Number(stageValue(cascade, 'over').value), 1, 'Nova left the foundry accepting drops');
+        const result = cascade.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'CoreCascadeResult');
+        assert.equal(result.visible, true, 'Nova result was not shown on the stage');
     } finally {
         cascade.quit();
         clearStrayTimers();
@@ -2568,7 +2577,8 @@ test('each new game keeps its signature playable mechanic', () => {
             /change launches by 1/, /IF launches > 11 THEN:/, /broadcast "skyline over"/],
         chroma_code: [/GLOBAL LIST secret/, /set exact to 0/, /set near to 0/,
             /WHEN sprite clicked:/, /add gemValue to guess/, /broadcast "prism lock over"/],
-        fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/],
+        fusion_foundry: [/LIST grid/, /change level by 1/, /change score by level \* chain \* 10/,
+            /IF openShafts = 0 THEN:/, /broadcast "core cascade over"/],
         missile_ballet: [/point towards Jet/, /IF touching Rocket/, /set shield to 1/,
             /change missiles by 1/, /IF missiles > 23 THEN:/],
         orbit_ward: [/sin of angle/, /cos of angle/, /REPEAT 8/, /IF touching Shield/],

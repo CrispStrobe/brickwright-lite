@@ -1970,6 +1970,8 @@ GLOBAL c
 GLOBAL v
 GLOBAL nextLevel
 GLOBAL started
+GLOBAL winner
+GLOBAL openShafts
 
 STAGE:
   BACKDROP intro art core-cascade/intro
@@ -2005,6 +2007,8 @@ SPRITE Foundry:
     set score to 0
     set column to 3
     set over to 0
+    set winner to 0
+    set openShafts to 6
     set nextLevel to pick random 1 to 2
 
   DEFINE FAST render:
@@ -2032,9 +2036,18 @@ SPRITE Foundry:
       REPEAT UNTIL row < 0 or item ((row * 6) + column) + 1 of grid = 0:
         change row by -1
       IF row < 0 THEN:
-        set over to 1
-        say ("Foundry sealed! Score " join score) for 3 seconds
-        stop all
+        set openShafts to 0
+        set c to 0
+        REPEAT 6:
+          IF item (c + 1) of grid = 0 THEN:
+            change openShafts by 1
+          change c by 1
+        IF openShafts = 0 THEN:
+          set winner to 0
+          set over to 1
+          broadcast "core cascade over"
+        ELSE:
+          say "THAT SHAFT IS FULL — CHOOSE ANOTHER" for 1 seconds
       ELSE:
         set level to nextLevel
         set nextLevel to 1
@@ -2057,8 +2070,9 @@ SPRITE Foundry:
         IF level = 5 THEN:
           play sound "nova"
           change score by 500
-          say ("NOVA FORGED! SCORE " join score) for 4 seconds
-          stop all
+          set winner to 1
+          set over to 1
+          broadcast "core cascade over"
 
   WHEN flag clicked:
     hide
@@ -2068,15 +2082,30 @@ SPRITE Foundry:
     show variable score
     render
   WHEN left arrow key pressed:
-    IF started = 1 and column > 0 THEN:
+    IF started = 1 and over = 0 and column > 0 THEN:
       change column by -1
       render
   WHEN right arrow key pressed:
-    IF started = 1 and column < 5 THEN:
+    IF started = 1 and over = 0 and column < 5 THEN:
       change column by 1
       render
   WHEN I receive "drop core":
-    drop core`,
+    drop core
+
+SPRITE CoreCascadeResult:
+  COSTUME win label "WHITE NOVA FORGED • GREEN FLAG FOR A NEW REACTOR" #ffe66d
+  COSTUME lose label "ALL SIX SHAFTS SEALED • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "ignite cascade":
+    hide
+  WHEN I receive "core cascade over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     missile_ballet: `# Contrail Panic — a mouse-steering survival game.
 # GOAL: force the homing missiles across each other's paths and destroy twenty-four
