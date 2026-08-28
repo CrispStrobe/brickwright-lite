@@ -40,6 +40,13 @@ const KNOWN_UNWIRED = {
     // (bluetooth, blinkenrocket, hub faces, retro console) — a passing gate
     // nothing runs is the most dangerous kind, since "it passes" stays true
     // only until the day it quietly does not.
+    //
+    // verify-microbit.mjs and verify-microbit-debug-toggle.mjs were adopted
+    // out of the FAILING list below, and both failed for one reason: the
+    // starter-journeys backdrop covers a first visit and swallowed every
+    // click, so each spent its whole timeout retrying the first one. One
+    // addInitScript each. Worth trying on the four still listed as timing
+    // out before anyone rewrites a selector.
     // Already broken. Each needs its assumptions rechecked against the app as
     // it is now, not its selectors patched until it goes quiet.
     'verify-about-dialog.mjs': 'FAILS (2026-08-27)',
@@ -50,8 +57,6 @@ const KNOWN_UNWIRED = {
     'verify-instruments-scroll.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-interaction.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-intro.mjs': 'FAILS (2026-08-27)',
-    'verify-microbit-debug-toggle.mjs': 'FAILS — timeout (2026-08-27)',
-    'verify-microbit.mjs': 'FAILS (2026-08-27)',
     'verify-schematic.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-ssd1306-face.mjs': 'FAILS — 0 ssd1306 case handlers in the built chunk (2026-08-27)',
     'verify-starter-journeys.mjs': 'FAILS — lesson search finds no Wave 1 topic (2026-08-27)',

@@ -83,7 +83,13 @@ function i2cUpdate(state, read, vcc) {
 
 function registerBMP280() {
     registerDevice('bmp280', {
-        terminals: ['vcc', 'gnd', 'sda', 'scl'],
+        // SDO is the ADDRESS SELECT, not decoration: low gives 0x76, high
+        // 0x77, and that is how two BMP280s share a bus. CSB selects the
+        // interface — high is I2C, and pulling it low would put a real part
+        // into SPI, which this model does not speak. Both pins exist on the
+        // breakout and the terminal cross-check has counted them unreachable
+        // since the sidecar was written.
+        terminals: ['vcc', 'gnd', 'sda', 'scl', 'csb', 'sdo'],
 
         init(part) {
             const regs = new Uint8Array(256);
@@ -110,7 +116,11 @@ function registerBMP280() {
 
             state._i2c = createI2CSlave({
                 onAddress: (a7, rw) => {
-                    const addr = part.params?.addr ?? 0x76;
+                    // params.addr WINS when set, so benches that chose an
+                    // address before the pin existed keep it. Otherwise SDO
+                    // decides, which is what the hardware does. An unwired
+                    // SDO reads low and gives 0x76 — the previous default.
+                    const addr = part.params?.addr ?? (state._addrFromSdo ?? 0x76);
                     const mine = a7 === addr;
                     if (mine && rw === 0) state._first = true;
                     return mine;
@@ -136,13 +146,19 @@ function registerBMP280() {
 
         stamp(ctx) {
             ctx.conductance('scl', null, 1 / R_INPUT);
+            ctx.conductance('csb', null, 1 / R_INPUT);
+            ctx.conductance('sdo', null, 1 / R_INPUT);
         },
 
         update(part, state, read) {
             // Refresh readable state from params
             state.temperature = part.params?.temperature ?? 25;
             state.pressure = part.params?.pressure ?? 101325;
-            return i2cUpdate(state, read, read('vcc'));
+            // Sample the strap BEFORE the decoder runs: onAddress fires from
+            // inside i2cUpdate and reads this, and it has no `read` of its own.
+            const vcc = read('vcc') || 3.3;
+            state._addrFromSdo = read('sdo') > vcc * 0.5 ? 0x77 : 0x76;
+            return i2cUpdate(state, read, vcc);
         },
     });
 }
@@ -226,10 +242,15 @@ function registerTCS34725() {
             regs[0x12] = 0x44;              // ID: TCS34725
 
             const state = {
-                drives: { sda: { vTh: 0, rTh: R_OFF } },
+                // INT is an open-drain output: asserted means pulled LOW, and
+                // idle means RELEASED so the board's pull-up decides. Driving
+                // it high would fight a second device on a shared interrupt
+                // line, which is a normal way to wire these.
+                drives: { sda: { vTh: 0, rTh: R_OFF }, int: { vTh: 0, rTh: R_OFF } },
                 regs,
                 ptr: 0,
                 _first: true,
+                _aint: false,
                 // Readable state for faces
                 red: 0, green: 0, blue: 0, clear: 0,
             };
@@ -242,9 +263,19 @@ function registerTCS34725() {
                 },
                 onWriteByte: (b) => {
                     if (state._first) {
-                        // Command byte: register = bits 4:0
-                        state.ptr = b & 0x1f;
                         state._first = false;
+                        // Command byte: bits 6:5 are the TYPE, and they were
+                        // being discarded. Type 0b11 is SPECIAL FUNCTION, not
+                        // a register address — so "clear the interrupt"
+                        // (0xE6) masked down to 0x06 and overwrote AIHTL, the
+                        // high threshold, instead. Silent: the driver's
+                        // acknowledge quietly moved the threshold it was
+                        // acknowledging.
+                        if (((b >> 5) & 0x03) === 0x03) {
+                            if ((b & 0x1f) === 0x06) state._aint = false;
+                            return true;
+                        }
+                        state.ptr = b & 0x1f;
                         return true;
                     }
                     writeTcsReg(state, state.ptr, b);
@@ -272,9 +303,50 @@ function registerTCS34725() {
             state.green = part.params?.green ?? 0;
             state.blue = part.params?.blue ?? 0;
             state.clear = part.params?.clear ?? (state.red + state.green + state.blue);
-            return i2cUpdate(state, read, read('vcc'));
+            const intChanged = tcsInterrupt(state);
+            return i2cUpdate(state, read, read('vcc')) || intChanged;
         },
     });
+}
+
+/**
+ * Evaluate the clear-channel threshold interrupt and drive the INT pin.
+ *
+ * The whole reason a colour sensor has a pin: instead of polling over I2C,
+ * you set a window (AILT..AIHT) and the part tells you when the light leaves
+ * it. AINT LATCHES — once set it stays set until the driver clears it with
+ * the special-function command, which is what makes it usable as an edge.
+ *
+ * STATED DIVERGENCE: APERS (0x0C) is not applied. Persistence counts
+ * CONSECUTIVE integration cycles out of range, and this model has no
+ * integration cycles — RGBC comes straight from params — so there is nothing
+ * to count. Every out-of-range reading asserts, i.e. the model behaves as
+ * APERS=0 ("every cycle"), which is the setting that generates an interrupt
+ * soonest. A driver relying on persistence to debounce would see the
+ * interrupt earlier here than on silicon, and that is the honest direction
+ * to be wrong in: it cannot hide an interrupt that a real part would raise.
+ *
+ * @returns {boolean} whether the pin's drive changed
+ */
+function tcsInterrupt(state) {
+    const regs = state.regs;
+    const enabled = !!(regs[0x00] & 0x03);          // PON + AEN
+    const aien = !!(regs[0x00] & 0x10);             // ENABLE.AIEN
+    if (!enabled || !aien) {
+        state._aint = false;
+    } else {
+        const low = regs[0x04] | (regs[0x05] << 8);
+        const high = regs[0x06] | (regs[0x07] << 8);
+        const c = Math.max(0, Math.min(65535, Math.round(state.clear)));
+        // Latching: only ever SET here. Clearing is the driver's job, via the
+        // special-function command — a flag that cleared itself as soon as
+        // the light came back could be missed entirely between two polls.
+        if (c < low || c > high) state._aint = true;
+    }
+    const want = state._aint ? R_OUT : R_OFF;
+    if (state.drives.int.rTh === want) return false;
+    state.drives.int = { vTh: 0, rTh: want };
+    return true;
 }
 
 function readTcsReg(part, state, reg) {
@@ -282,7 +354,13 @@ function readTcsReg(part, state, reg) {
 
     switch (reg) {
         case 0x12: return 0x44;                     // ID
-        case 0x13: return enabled ? 0x11 : 0x00;   // STATUS: AVALID + AINT when enabled
+        // STATUS: AVALID[0] is "a conversion finished", AINT[4] is "the clear
+        // channel is outside the threshold window". This used to return 0x11
+        // whenever the part was on — AINT hardcoded SET, so a driver that
+        // polls STATUS for its interrupt saw one pending forever, and one
+        // that waits for it to clear waited forever. AINT now means what it
+        // says; see tcsInterrupt().
+        case 0x13: return (enabled ? 0x01 : 0x00) | (state._aint ? 0x10 : 0x00);
         // RGBC data: 16-bit unsigned LE pairs
         // Clear
         case 0x14: case 0x15: {
@@ -591,17 +669,27 @@ function registerVL53L0X() {
             regs[0x8a] = part.params?.addr ?? 0x29;
 
             const state = {
-                drives: { sda: { vTh: 0, rTh: R_OFF } },
+                // GPIO1 is open-drain: asserted pulls low, idle RELEASES so
+                // the board's pull-up decides and several sensors can share
+                // one interrupt line.
+                drives: { sda: { vTh: 0, rTh: R_OFF }, gpio1: { vTh: 0, rTh: R_OFF } },
                 regs,
                 ptr: 0,
                 _first: true,
                 _ranging: false,
+                _shutdown: false,
                 // Readable state for faces
                 distance_mm: part.params?.distance_mm ?? 200,
             };
 
             state._i2c = createI2CSlave({
                 onAddress: (a7, rw) => {
+                    // No _shutdown check here on purpose. A first cut had one
+                    // and it was DEAD: update() returns before feeding the
+                    // slave engine while XSHUT is low, so the handlers are
+                    // never reached and removing the guard failed no test.
+                    // The silence comes from driving nothing, which is also
+                    // the physical truth — see update().
                     const addr = state.regs[0x8a];
                     const mine = a7 === addr;
                     if (mine && rw === 0) state._first = true;
@@ -626,15 +714,63 @@ function registerVL53L0X() {
             return state;
         },
 
-        stamp(ctx) {
+        stamp(ctx, part, state) {
             ctx.conductance('scl', null, 1 / R_INPUT);
             ctx.conductance('xshut', null, 1 / R_INPUT);
-            ctx.conductance('gpio1', null, 1 / R_INPUT);
+            // Whether XSHUT is WIRED decides how an unwired one is read. A
+            // breakout leaves it pulled up on the carrier, so a bench that
+            // never mentions the pin must get a running sensor — the same
+            // question ctx.netFor answers for the DS1302's crystal, and for
+            // the same reason: read() alone cannot tell "not connected" from
+            // "held at 0 V".
+            state._xshutWired = Boolean(ctx.netFor('xshut'));
         },
 
         update(part, state, read) {
             state.distance_mm = part.params?.distance_mm ?? 200;
-            return i2cUpdate(state, read, read('vcc'));
+            const vcc = read('vcc') || 3.3;
+            const th = vcc * 0.5;
+
+            // XSHUT is active LOW and it is a RESET, not a pause: the
+            // datasheet's shutdown drops the device to its boot state, which
+            // is why re-addressing after release works at all. Coming back up
+            // must therefore forget the assigned address, or the multi-sensor
+            // procedure would appear to work while doing nothing.
+            const down = state._xshutWired ? read('xshut') <= th : false;
+            if (down !== state._shutdown) {
+                state._shutdown = down;
+                if (!down) {
+                    state.regs[0x8a] = part.params?.addr ?? 0x29;
+                    state._ranging = false;
+                }
+            }
+
+            // GPIO1: the ranging-complete interrupt. RESULT_INTERRUPT_STATUS
+            // already reported "new data ready"; the PIN that saves the host
+            // from polling for it was declared, stamped and never driven.
+            const assert = !down && state._ranging;
+            const want = assert ? R_OUT : R_OFF;
+            let changed = false;
+            if (state.drives.gpio1.rTh !== want) {
+                state.drives.gpio1 = { vTh: 0, rTh: want };
+                changed = true;
+            }
+            if (down) {
+                // A shut-down sensor drives NOTHING — SDA included — and this
+                // early return is what actually takes it off the bus: the
+                // slave engine is not fed, so nothing ACKs and no byte comes
+                // back. That is the whole point of the pin. Every VL53L0X
+                // boots at 0x29, so the only way to run two is to hold both
+                // down, release one, re-address it, then release the next,
+                // and a model that answers regardless cannot express the
+                // procedure at all.
+                if (state.drives.sda.rTh !== R_OFF) {
+                    state.drives.sda = { vTh: 0, rTh: R_OFF };
+                    changed = true;
+                }
+                return changed;
+            }
+            return i2cUpdate(state, read, vcc) || changed;
         },
     });
 }
@@ -663,6 +799,13 @@ function writeVl53Reg(state, reg, v) {
         case 0x00:                                   // SYSRANGE_START
             if (v & 0x01) state._ranging = true;     // single-shot or continuous
             if (v === 0x00) state._ranging = false;   // stop
+            state.regs[reg] = v;
+            break;
+        case 0x0b:                                   // SYSTEM_INTERRUPT_CLEAR
+            // How the host acknowledges GPIO1. Without it the pin, once
+            // asserted, would stay low for the rest of the bench and the
+            // second measurement would be indistinguishable from the first.
+            state._ranging = false;
             state.regs[reg] = v;
             break;
         case 0xc0: case 0xc1: case 0xc2:            // read-only IDs

@@ -27,6 +27,16 @@ async function verify () {
     const fail = msg => { ok = false; console.error(`  FAIL: ${msg}`); };
     const pass = msg => console.log(`  ok: ${msg}`);
 
+    // The starter-journeys overlay covers the page on a first visit and
+    // intercepts every click — this gate spent its whole timeout retrying a
+    // click the backdrop was swallowing. Every gate CI actually runs sets
+    // this; the ones it does not run are where the rot collected.
+    await page.addInitScript(() => {
+        try {
+            localStorage.setItem('bw-starter-v1-complete', '1');
+        } catch (e) { /* private mode: the overlay is the least of it */ }
+    });
+
     try {
         console.log(`Opening ${URL} ...`);
         await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
