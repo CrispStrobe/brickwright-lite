@@ -106,9 +106,8 @@ class CentralDispatch extends SharedDispatch {
         if (message.service === 'dispatch' && message.method === 'setService') {
             const service = message.args && message.args[0];
             const match = /^extension\.(\d+)\.(\d+)$/.exec(service);
-            if (!state.allocated || !match) return false;
+            if (!state.allocated || state.workerId === null || !match) return false;
             const workerId = Number(match[1]);
-            if (state.workerId === null) state.workerId = workerId;
             if (state.workerId !== workerId) return false;
             const owner = this.services[service];
             return !owner || owner === worker;
@@ -127,7 +126,6 @@ class CentralDispatch extends SharedDispatch {
         if (message.method === 'onWorkerInit') {
             const id = args[0];
             if (!state.allocated || state.initialized || !Number.isInteger(id)) return false;
-            if (state.workerId === null) state.workerId = id;
             if (state.workerId !== id) return false;
             state.initialized = true;
             return true;
@@ -148,6 +146,23 @@ class CentralDispatch extends SharedDispatch {
         if (!this._allowWorkerMessage(worker, message)) {
             this._rejectWorkerMessage(worker, message || {},
                 `${message && message.service || 'unknown service'}.${message && message.method || 'unknown method'}`);
+            return;
+        }
+        if (message.service === 'extensions' && message.method === 'allocateWorker') {
+            // Bind identity from the manager-controlled allocation result, not from a service name
+            // chosen later by downloaded code. The promise microtask completes before another
+            // worker message can run, so the namespace is fixed before importScripts starts.
+            this.call('extensions', 'allocateWorker').then(result => {
+                const state = this.workerState.get(worker);
+                if (!state || !Array.isArray(result) || !Number.isInteger(result[0])) {
+                    throw new Error('Extension worker allocation returned an invalid worker ID');
+                }
+                state.workerId = result[0];
+                return result;
+            }).then(
+                result => worker.postMessage({responseId: message.responseId, result}),
+                error => worker.postMessage({responseId: message.responseId, error})
+            );
             return;
         }
         super._onMessage(worker, event);

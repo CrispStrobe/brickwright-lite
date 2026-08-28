@@ -142,6 +142,10 @@ test('the broker rejects privileged calls and cross-worker response forgery at r
         await new Promise(resolve => setImmediate(resolve));
         assert.deepEqual(first.messages.pop().result, [1, 'https://example.invalid/extension.js']);
 
+        first.receive({service: 'dispatch', method: 'setService', responseId: 79, args: ['extension.2.0']});
+        assert.match(first.messages.pop().error.message, /not allowed/,
+            'a worker cannot pre-claim another allocated worker namespace');
+
         first.receive({service: 'dispatch', method: 'setService', responseId: 81, args: ['extension.1.0']});
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(broker.services['extension.1.0'], first);
