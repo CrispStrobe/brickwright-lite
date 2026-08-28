@@ -78,8 +78,20 @@ class CentralDispatch extends SharedDispatch {
             // Runtime util contains functions and cannot cross structured clone. Newer VM call
             // sites append realBlockInfo after util, so the historical "last argument" test no
             // longer finds it. Remove the util wherever it occurs while preserving block info.
+            // `_prepareBlockInfo` installs its main-thread wrapper as realBlockInfo.func; that
+            // wrapper is transport machinery, not extension metadata, and is equally
+            // non-cloneable. Copy the following block-info object without that one field.
             const utilIndex = args.findIndex(value => value && typeof value.yield === 'function');
-            if (utilIndex !== -1) args.splice(utilIndex, 1);
+            if (utilIndex !== -1) {
+                const realBlockInfo = args[utilIndex + 1];
+                args.splice(utilIndex, 1);
+                if (realBlockInfo && typeof realBlockInfo === 'object' &&
+                    typeof realBlockInfo.func === 'function') {
+                    const cloneableBlockInfo = Object.assign({}, realBlockInfo);
+                    delete cloneableBlockInfo.func;
+                    args[utilIndex] = cloneableBlockInfo;
+                }
+            }
             const message = {service, method, responseId, args};
             try {
                 if (transfer) provider.postMessage(message, transfer);
