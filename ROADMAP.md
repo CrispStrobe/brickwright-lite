@@ -131,12 +131,25 @@ Scratch's `<Tabs>` apart). See `BLOCKED.md`. The `PaneColumn` renderer written f
 (§1.1) — it was ~40 lines of flex divs and cheap to write again if this is ever revived; what
 would be expensive is the `<Tabs>` decomposition, and that was never started.
 
-### 3.3 ASM tab examples — OPEN
+### 3.3 ASM tab examples — RESOLVED 2026-08-28 (`lib/bw-asm/examples.js`)
 The ASM tab has a reference panel and a working assemble path but no examples, and an empty
 assembly editor is a wall for anyone who has not written 8051/6502 assembly before (owner,
 2026-08-14: "To make it more intuitive, we need a couple of examples in the end"). A small
 per-device set — blink, button poll, a delay loop — selectable like the code-tab examples, each
 one assembling green against the hosted `/assemble` before it ships.
+
+
+Five programs, three shapes: drive a pin, read one, waste a measured amount of time. 8051 gets
+blink / button / count, the 6502 bench and the Z80 bench get a blink each; a device with no
+`/assemble` path is offered none, because a picker that loads something the ▶ button cannot
+build is worse than an empty editor.
+
+**They are gated by assembling, not by review.** `test/asm-examples.test.mjs` posts each one to
+the same hosted assembler the ▶ button uses. An example that does not build leaves the reader
+unable to tell whether they mistyped it or it was always wrong. The gate skips when the network
+is unreachable rather than reporting a pass it did not earn, and its structural checks (both
+locales, unique ids, a comment at the top, no examples for devices without a toolchain) always
+run.
 
 ### 3.4 Long-horizon tracks — NOT STARTED
 All specified in `CLAUDE.md`; not repeated here.

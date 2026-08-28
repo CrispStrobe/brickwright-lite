@@ -7,6 +7,10 @@ import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
 import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.js';
+// Static, not lazy: `_asmExamples()` is read during render, so it has to be
+// synchronous — and the module is a few KB of strings, not a chunk worth
+// splitting.
+import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 
 // Keep locally-authored games outside the upstream-synchronized examples file.
 const examples = {...upstreamExamples, ...gameExamples};
@@ -174,6 +178,9 @@ const L10N = {
         // BASIC / ASM mode bar
         profile: 'Profile:', lineNumbers: 'Line numbers', alwaysOn6502: '(always on for 6502)',
         asmModeLabel: 'Mode:', asmSource: 'Source (editable)', asmListing: 'Listing (from compiler)',
+        asmExampleLabel: 'Example:', asmExamplePick: 'choose…',
+        asmExampleReplace: 'Replace what is in the assembly editor?',
+        asmExampleLoaded: n => `Loaded "${n}". Press Assemble & Run to build it.`,
         assembleAndRun: '🔩 Assemble & Run',
         basicInfoTitle: 'BASIC info', asmInfoTitle: 'ASM info',
         // micro:bit bar
@@ -302,6 +309,9 @@ const L10N = {
         // BASIC / ASM mode bar
         profile: 'Profil:', lineNumbers: 'Zeilennummern', alwaysOn6502: '(immer an bei 6502)',
         asmModeLabel: 'Modus:', asmSource: 'Source (editierbar)', asmListing: 'Listing (vom Compiler)',
+        asmExampleLabel: 'Beispiel:', asmExamplePick: 'wählen…',
+        asmExampleReplace: 'Inhalt des Assembler-Editors ersetzen?',
+        asmExampleLoaded: n => `„${n}" geladen. Mit Assemblieren & Ausführen bauen.`,
         assembleAndRun: '🔩 Assemblieren & Ausführen',
         basicInfoTitle: 'BASIC-Info', asmInfoTitle: 'ASM-Info',
         // micro:bit bar
@@ -972,6 +982,33 @@ class PseudocodeImporter extends React.Component {
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /** Starter programs for the selected device, or none. */
+    _asmExamples () {
+        const stc = this.currentStc();
+        return asmExamplesFor((stc && stc.device) || '');
+    }
+
+    /**
+     * Load a starter program into the ASM editor.
+     *
+     * It replaces the buffer rather than appending, and asks first when
+     * there is work there — an example that silently eats what someone
+     * typed is worse than no example.
+     */
+    loadAsmExample (id) {
+        if (!id) return;
+        const example = this._asmExamples().find(e => e.id === id);
+        if (!example) return;
+        const current = (this.state.buffers.asm || '').trim();
+        if (current && !window.confirm(this.L.asmExampleReplace)) return;
+        this.setState(state => ({
+            buffers: {...state.buffers, asm: example.source},
+            asmMode: 'source',
+            status: this.L.asmExampleLoaded(
+                pickLocale(this.props.locale) === 'de' ? example.labelDe : example.label)
+        }));
     }
 
     openArtefactFile (file) {
@@ -2941,6 +2978,24 @@ class PseudocodeImporter extends React.Component {
                                 <option value="listing">{this.L.asmListing}</option>
                             </select>
                         </label>
+                        {this.state.asmMode === 'source' && this._asmExamples().length > 0 && (
+                            <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                                {this.L.asmExampleLabel}
+                                <select
+                                    data-testid="bw-asm-examples"
+                                    onChange={e => this.loadAsmExample(e.target.value)}
+                                    style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}
+                                    value=""
+                                >
+                                    <option value="">{this.L.asmExamplePick}</option>
+                                    {this._asmExamples().map(ex => (
+                                        <option key={ex.id} value={ex.id}>
+                                            {pickLocale(this.props.locale) === 'de' ? ex.labelDe : ex.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        )}
                         {this.state.asmMode === 'source' && (
                             <button type="button"
                                 onClick={() => this.assembleAndRun()}
