@@ -37,9 +37,40 @@ none of the branding — Brickwright ships its own robot, not the cat.
 
 ## Modifications
 
-**None.** These files are byte-identical to upstream, which is the point: a
-divergence would make "the reference implementation" a claim rather than a
-fact. `test/scratchlink-vendor-integrity.test.mjs` gates that.
+**None in `Sources/`** — those files stay byte-identical to upstream, gated by
+`test/scratchlink-vendor-integrity.test.mjs`, because a silent divergence would
+make "the reference implementation" a claim rather than a fact.
+
+But **byte-identical and "it builds" are not both achievable**, and pretending
+otherwise was the first thing that had to go. Compiled against Swift 6.2 and the
+macOS 26 SDK, exactly one line fails:
+
+    BLESession.swift:431
+    endpoint.service.peripheral.setNotifyValue(false, for: endpoint)
+
+Apple made `CBCharacteristic.service` and `CBService.peripheral` weak OPTIONALS
+in iOS 15 / macOS 12 (2021); this snapshot is from 2022 but was built against an
+older SDK. So `patches/` holds the one-line optional-chaining fix, applied to a
+build copy rather than to `Sources/`. The pristine tree stays the reference for
+auditing our Rust against; the patched copy is what compiles.
+
+Verified, not assumed: with the two stub modules below plus that patch, all nine
+files build clean — `Build complete`.
+
+## Building it needs two stub modules
+
+`Session.swift` and `BLESession.swift` `import PerfectWebSockets` / `PerfectHTTP`
+for exactly ONE type: `SerializationError`. Rather than take the Perfect web
+server as a dependency for an error enum, declare two EMPTY targets with that
+name and put the enum in them — which is what Scrub does (BSD-3, © 2021
+Shinichiro Oba), and why its approach was worth copying rather than inventing.
+
+## What cannot be used from here on iOS
+
+`BTSession.swift` is macOS-only: it uses IOBluetooth, which iOS does not have.
+Scrub excludes it and writes its own. Bluetooth Classic on iOS goes through MFi
+ExternalAccessory instead — which is what `bt_ios.rs` already implements, so the
+vendored BT session is reference material here, not shippable code.
 
 The sources `import PerfectWebSockets` for one small type. Rather than pull in a
 web-server dependency we never use, `../scratch-link-shim/WebSocket.swift`
