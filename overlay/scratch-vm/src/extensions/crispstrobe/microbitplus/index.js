@@ -33,6 +33,32 @@ module.exports = makeExt(`// Name: micro:bit+
       this._runtime = runtime;
     }
 
+    // ---- the circuit board, if one is open ---------------------------
+    //
+    // These blocks began as a VOCABULARY: something for the emitter to
+    // lower to MicroPython or C, with empty methods because the code was
+    // going to run on real hardware, not here. That left \`set pin P0 to 1\`
+    // doing literally nothing in the editor, so a micro:bit program could
+    // not light an LED in a Circuit even with the \`microbit\` part — which
+    // has terminals p0/p1/p2/3v/gnd — sitting on the canvas.
+    //
+    // Read lazily per call, exactly as the circuit extension does: the
+    // host rebuilds the Board whenever the netlist changes, so anything
+    // captured once goes stale. No board simply means no circuit is open,
+    // which is the ordinary case and not an error.
+    get board() {
+      const rt = this._runtime ||
+        (typeof Scratch !== 'undefined' && Scratch.vm ? Scratch.vm.runtime : null);
+      return (rt && rt.circuitBoard) || null;
+    }
+
+    // The menu says '0'; the part's terminal is 'p0'. Accept either, and
+    // whatever a reporter dropped in, so \`set pin (chosen) to 1\` works.
+    _pinId(value) {
+      const raw = String(value == null ? '' : value).trim().toLowerCase();
+      return /^\\d+$/.test(raw) ? 'p' + raw : raw;
+    }
+
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
@@ -228,12 +254,56 @@ module.exports = makeExt(`// Name: micro:bit+
     sound() { return 0; }
 
     // ── Pins / GPIO ──────────────────────────────────────────
-    digitalwrite() {}
-    digitalread() { return 0; }
-    ispinhigh() { return false; }
-    analogread() { return 0; }
-    analogwrite() {}
-    setpull() {}
+    digitalwrite(args) {
+      const board = this.board;
+      if (!board) return;
+      board.setPin(this._pinId(args.PIN), 'pushpull', String(args.LEVEL) === '1');
+    }
+
+    digitalread(args) {
+      const board = this.board;
+      if (!board) return 0;
+      // A pin being read is an input, and saying so matters: left as
+      // whatever it was, the solver sees a terminal nothing declared.
+      const pin = this._pinId(args.PIN);
+      board.setPin(pin, 'input', false);
+      return Number(board.readPin(pin)) > 0 ? 1 : 0;
+    }
+
+    ispinhigh(args) { return this.digitalread(args) === 1; }
+
+    analogread(args) {
+      const board = this.board;
+      if (!board) return 0;
+      const pin = this._pinId(args.PIN);
+      board.setPin(pin, 'input', false);
+      // The block reports the micro:bit's own 0..1023 and the board works
+      // in volts against a 3.3 V rail, so the conversion belongs here —
+      // leaking the simulator's units through a documented block range is
+      // how a lesson's numbers stop matching its text.
+      const volts = Number(board.readPinVoltage ? board.readPinVoltage(pin) : 0);
+      if (!isFinite(volts)) return 0;
+      return Math.max(0, Math.min(1023, Math.round((volts / 3.3) * 1023)));
+    }
+
+    analogwrite(args) {
+      const board = this.board;
+      if (!board) return;
+      // There is no PWM in the solver: a duty cycle is a time average and
+      // the board is solved per instant. So this drives high above half
+      // and low below it — right at both ends of the range and wrong in
+      // the middle, which is stated here rather than presented as dimming.
+      const pct = Number(args.PCT);
+      board.setPin(this._pinId(args.PIN), 'pushpull', isFinite(pct) && pct >= 50);
+    }
+
+    setpull(args) {
+      const board = this.board;
+      if (!board) return;
+      const mode = String(args.MODE) === 'up' ? 'input-pullup' :
+        (String(args.MODE) === 'down' ? 'input-pulldown' : 'input');
+      board.setPin(this._pinId(args.PIN), mode, mode === 'input-pullup');
+    }
     whentouch() { return false; }
     istouch() { return false; }
 
