@@ -216,6 +216,26 @@ Gates: `test/makecode-{import,translate,arcade,export}.test.mjs`, against four r
 downloads. The export gate round-trips every shipped micro:bit example out to MakeCode TypeScript
 and back, and fails if a device block is lost.
 
+## Choosing hardware in the GUI — read docs/CHOOSING-HARDWARE.md first
+
+The device dropdown lives in `DEVICE_GROUPS` (pseudocode-importer.jsx). Adding a board means
+THREE files agreeing — the list, `stage-header.jsx` (which console button shows) and `gui.jsx`
+(which `dockMode` pane it opens). A device added to the list alone is selectable and does
+nothing, which reads as a broken simulator. Gate: `test/device-choice-contract.test.mjs`.
+
+**Calliope mini** is listed beside micro:bit and shares its vocabulary, simulator and button —
+separate only so a program records which board it was written for. **Arduboy** is
+`compile: false` on purpose: there is no blocks→binary path (avr-gcc is GPL), so choosing it
+offers to RUN a `.hex`, not build one.
+
+**Pins reach the circuit solver (2026-08-28).** `microbitplus`'s pin blocks were a VOCABULARY
+for the emitter with `digitalwrite() {}` behind them, so `set pin P0 to 1` did nothing in the
+editor and a micro:bit could not light an LED even with the part on the canvas. They now call
+`board.setPin` — the board's documented Boundary A (McuToBoard), the same entry the Arduboy
+adapter uses. The board is read PER CALL because circuit-tab rebuilds it. `analogwrite` is a
+THRESHOLD, not PWM: the solver is per-instant, so it is right at both ends and wrong in the
+middle, and that is written down rather than presented as dimming.
+
 ## Arduboy (2026-08-28) — read docs/ARDUBOY.md first
 
 Every other importer here is a PARSING problem: MakeCode embeds the project source in every

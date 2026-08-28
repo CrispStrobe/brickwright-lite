@@ -220,8 +220,13 @@ const GUIComponent = props => {
             // session was showing the sim for no reason (owner report).
             // The button still switches explicitly; only the silent
             // restore is gated on the device actually being a micro:bit.
-            if (dock === 'microbit'
-                && props.vm?.runtime?.stc?.device !== 'microbit') return 'top';
+            if (dock === 'microbit' &&
+                !['microbit', 'calliopemini'].includes(props.vm?.runtime?.stc?.device)) return 'top';
+            // Same rule for the console: a restored 'arduboy' dock with no
+            // program is a blank screen someone has to work out how to
+            // leave, so it opens only when the device says so.
+            if (dock === 'arduboy' && props.vm?.runtime?.bwDeviceId !== 'arduboy' &&
+                !window.__bwArduboyPending) return 'top';
             if (dock === 'arcade' && !['arcade', 'pybadge', 'pybadge-lc', 'samd51']
                 .includes(props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device)) return 'top';
             return dock;

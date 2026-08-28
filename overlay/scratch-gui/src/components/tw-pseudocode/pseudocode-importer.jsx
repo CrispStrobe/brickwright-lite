@@ -7,6 +7,10 @@ import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
 import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.js';
+// Static, not lazy: `_asmExamples()` is read during render, so it has to be
+// synchronous — and the module is a few KB of strings, not a chunk worth
+// splitting.
+import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 
 // Keep locally-authored games outside the upstream-synchronized examples file.
 const examples = {...upstreamExamples, ...gameExamples};
@@ -32,6 +36,12 @@ const DEVICE_GROUPS = [
         { id: 'atmega168p', label: 'ATmega168P (bare)', compile: false, emulator: 'avr8js' },
         { id: 'attiny88', label: 'ATtiny88 (bare)', compile: false, emulator: 'attiny88' },
         { id: 'attiny85', label: 'ATtiny85', compile: false, emulator: 'attiny85' },
+        // An ATmega32U4 console. `compile: false` is the important half:
+        // there is no path from blocks to an Arduboy binary — that needs
+        // avr-gcc, which is GPL and cannot ship here — so choosing this
+        // offers to RUN a .hex, not to build one. Listing it as compilable
+        // would promise something the licence forbids.
+        { id: 'arduboy', label: 'Arduboy (run .hex)', compile: false, emulator: 'arduboy' },
     ]},
     { label: 'Raspberry Pi', core: 'rp2040', devices: [
         { id: 'pico', label: 'Raspberry Pi Pico', compile: true, emulator: 'rp2040js' },
@@ -47,6 +57,12 @@ const DEVICE_GROUPS = [
     ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
+        // The Calliope runs the micro:bit's API on different hardware, so it
+        // shares the vocabulary, the simulator and the whole MicroPython
+        // path. It is listed separately because a program written for one
+        // says so — a Calliope import that claimed DEVICE MICROBIT told the
+        // reader their board was a micro:bit.
+        { id: 'calliopemini', label: 'Calliope mini', compile: false, emulator: null },
     ]},
     { label: 'Arcade & SAMD51', core: 'samd51', devices: [
         { id: 'arcade', label: 'MakeCode Arcade (160×120)', compile: false, emulator: 'arcade' },
@@ -71,6 +87,10 @@ const L10N = {
         openBad: e => `Don't know that file type (${e}).`,
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
         mcReading: f => `Reading ${f}…`,
+        downloadHex: '⬇ .hex for the board',
+        microbitNeedFirmware: 'Pick a MicroPython .hex once (from python.microbit.org, or the one that came with the board) — it is kept for this session.',
+        microbitFirmwareBad: f => `${f} is not an Intel HEX file.`,
+        microbitHexReady: f => `${f} saved. Copy it onto the MICROBIT drive.`,
         arduboyRunning: f => `Running ${f} on the Arduboy console. Arrow keys move, Z is A, X is B.`,
         mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
         mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
@@ -158,6 +178,9 @@ const L10N = {
         // BASIC / ASM mode bar
         profile: 'Profile:', lineNumbers: 'Line numbers', alwaysOn6502: '(always on for 6502)',
         asmModeLabel: 'Mode:', asmSource: 'Source (editable)', asmListing: 'Listing (from compiler)',
+        asmExampleLabel: 'Example:', asmExamplePick: 'choose…',
+        asmExampleReplace: 'Replace what is in the assembly editor?',
+        asmExampleLoaded: n => `Loaded "${n}". Press Assemble & Run to build it.`,
         assembleAndRun: '🔩 Assemble & Run',
         basicInfoTitle: 'BASIC info', asmInfoTitle: 'ASM info',
         // micro:bit bar
@@ -195,6 +218,10 @@ const L10N = {
         openBad: e => `Unbekannter Dateityp (${e}).`,
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
         mcReading: f => `${f} wird gelesen…`,
+        downloadHex: '⬇ .hex für das Board',
+        microbitNeedFirmware: 'Einmal eine MicroPython-.hex wählen (von python.microbit.org oder die vom Board) — sie bleibt für diese Sitzung gespeichert.',
+        microbitFirmwareBad: f => `${f} ist keine Intel-HEX-Datei.`,
+        microbitHexReady: f => `${f} gespeichert. Auf das MICROBIT-Laufwerk kopieren.`,
         arduboyRunning: f => `${f} läuft auf der Arduboy-Konsole. Pfeiltasten bewegen, Z ist A, X ist B.`,
         mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
         mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
@@ -282,6 +309,9 @@ const L10N = {
         // BASIC / ASM mode bar
         profile: 'Profil:', lineNumbers: 'Zeilennummern', alwaysOn6502: '(immer an bei 6502)',
         asmModeLabel: 'Modus:', asmSource: 'Source (editierbar)', asmListing: 'Listing (vom Compiler)',
+        asmExampleLabel: 'Beispiel:', asmExamplePick: 'wählen…',
+        asmExampleReplace: 'Inhalt des Assembler-Editors ersetzen?',
+        asmExampleLoaded: n => `„${n}" geladen. Mit Assemblieren & Ausführen bauen.`,
         assembleAndRun: '🔩 Assemblieren & Ausführen',
         basicInfoTitle: 'BASIC-Info', asmInfoTitle: 'ASM-Info',
         // micro:bit bar
@@ -869,6 +899,119 @@ class PseudocodeImporter extends React.Component {
         }
     }
 
+    /**
+     * Build a .hex a real micro:bit or Calliope will run, and download it.
+     *
+     * MicroPython is interpreted, so there is nothing to compile and no
+     * server to ask: a flashable image is the RUNTIME with the script
+     * appended at 0x3E000. The only thing we do not have is the runtime,
+     * and it is 1.8 MB — too big to bundle into an app whose whole first
+     * paint is 3.8 MB, and not ours to fetch by name at click time.
+     *
+     * So it is asked for once and kept for the session. Two ways to
+     * supply it, and the second is why this is not a nuisance:
+     *
+     *   - pick a MicroPython .hex (python.microbit.org, uflash, or the
+     *     one that came with the board), or
+     *   - simply IMPORT one first — a downloaded MicroPython hex is
+     *     runtime + script, so opening one to read its Python already
+     *     hands us the runtime, and this button then needs nothing.
+     */
+    async downloadMicrobitHex () {
+        const script = this.state.buffers.micropython || '';
+        if (!script.trim()) {
+            this.setState({status: this.L.mcExportEmpty});
+            return;
+        }
+        let firmware = this._microbitFirmwareHex;
+        if (!firmware) {
+            firmware = await this._askForFirmware();
+            if (!firmware) return;                 // cancelled; status already set
+            this._microbitFirmwareHex = firmware;
+        }
+        try {
+            const {appendScript} = await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/micropython-hex.js');
+            const hex = appendScript(firmware, script);
+            const name = `${(this.currentStc()?.device || 'microbit').toLowerCase()}-program.hex`;
+            this._download(name, hex, 'application/octet-stream');
+            this.setState({status: this.L.microbitHexReady(name)});
+        } catch (e) {
+            this.setState({status: this.L.mcFailed('hex', (e && e.message) || String(e))});
+        }
+    }
+
+    /** One file prompt for the MicroPython runtime. Resolves null if cancelled. */
+    _askForFirmware () {
+        return new Promise(resolve => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.hex';
+            input.onchange = () => {
+                const file = input.files && input.files[0];
+                if (!file) { resolve(null); return; }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const text = String(reader.result || '');
+                    // Refuse anything that is not a hex here rather than
+                    // letting appendScript emit a file the board rejects.
+                    if (!/^\s*:[0-9A-Fa-f]{8}/.test(text)) {
+                        this.setState({status: this.L.microbitFirmwareBad(file.name)});
+                        resolve(null);
+                        return;
+                    }
+                    resolve(text);
+                };
+                reader.onerror = () => resolve(null);
+                reader.readAsText(file);
+            };
+            // A cancelled picker fires no event at all, so nothing is
+            // pending afterwards — the promise simply never settles, which
+            // is correct: no download, no status change, no error.
+            input.click();
+            this.setState({status: this.L.microbitNeedFirmware});
+        });
+    }
+
+    /** Hand the browser a file. */
+    _download (name, text, type) {
+        const url = URL.createObjectURL(new Blob([text], {type: type || 'text/plain'}));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /** Starter programs for the selected device, or none. */
+    _asmExamples () {
+        const stc = this.currentStc();
+        return asmExamplesFor((stc && stc.device) || '');
+    }
+
+    /**
+     * Load a starter program into the ASM editor.
+     *
+     * It replaces the buffer rather than appending, and asks first when
+     * there is work there — an example that silently eats what someone
+     * typed is worse than no example.
+     */
+    loadAsmExample (id) {
+        if (!id) return;
+        const example = this._asmExamples().find(e => e.id === id);
+        if (!example) return;
+        const current = (this.state.buffers.asm || '').trim();
+        if (current && !window.confirm(this.L.asmExampleReplace)) return;
+        this.setState(state => ({
+            buffers: {...state.buffers, asm: example.source},
+            asmMode: 'source',
+            status: this.L.asmExampleLoaded(
+                pickLocale(this.props.locale) === 'de' ? example.labelDe : example.label)
+        }));
+    }
+
     openArtefactFile (file) {
         this.setState({status: this.L.mcReading(file.name)});
         const reader = new FileReader();
@@ -883,6 +1026,16 @@ class PseudocodeImporter extends React.Component {
                     this.L.mcNoSource(file.name, err.format) :
                     this.L.mcFailed(file.name, (err && err.message) || String(err))});
                 return;
+            }
+            // A downloaded MicroPython hex is runtime + script, so importing
+            // one to read its Python also hands us the runtime the flash
+            // button needs. Keeping it here means that button never has to
+            // ask.
+            if (res && res.kind === 'micropython') {
+                try {
+                    this._microbitFirmwareHex = new TextDecoder().decode(
+                        new Uint8Array(reader.result));
+                } catch (e) { /* not text; the button will ask instead */ }
             }
             this.applyMakeCodeImport(res, file.name);
         };
@@ -2826,6 +2979,24 @@ class PseudocodeImporter extends React.Component {
                                 <option value="listing">{this.L.asmListing}</option>
                             </select>
                         </label>
+                        {this.state.asmMode === 'source' && this._asmExamples().length > 0 && (
+                            <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                                {this.L.asmExampleLabel}
+                                <select
+                                    data-testid="bw-asm-examples"
+                                    onChange={e => this.loadAsmExample(e.target.value)}
+                                    style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}
+                                    value=""
+                                >
+                                    <option value="">{this.L.asmExamplePick}</option>
+                                    {this._asmExamples().map(ex => (
+                                        <option key={ex.id} value={ex.id}>
+                                            {pickLocale(this.props.locale) === 'de' ? ex.labelDe : ex.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        )}
                         {this.state.asmMode === 'source' && (
                             <button type="button"
                                 onClick={() => this.assembleAndRun()}
@@ -2879,6 +3050,16 @@ class PseudocodeImporter extends React.Component {
                                 background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff'}}
                             data-testid="bw-microbit-flash">
                             {this.L.runOnSimulator}
+                        </button>
+                        <button type="button"
+                            onClick={() => this.downloadMicrobitHex()}
+                            disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
+                            title={this.L.microbitNeedFirmware}
+                            style={{padding: '4px 12px', borderRadius: 6, border: '1px solid #0ea5e9',
+                                cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                background: '#f0f9ff', color: '#0369a1'}}
+                            data-testid="bw-microbit-download-hex">
+                            {this.L.downloadHex}
                         </button>
                     </div>
                 )}
