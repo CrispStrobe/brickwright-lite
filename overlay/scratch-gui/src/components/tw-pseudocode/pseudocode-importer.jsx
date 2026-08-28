@@ -333,6 +333,7 @@ const GROUPS = [
         ['g2048', '✨ Nova Grid — polished'],
         ['sigil_grid', '☀️ Sigil Grid — solo / duo'],
         ['vector_seven', '🏓 Vector Seven — first to 7'],
+        ['reactor_ricochet', '⚡ Reactor Ricochet — clear 20 cells'],
         ['sky_skim', '🪽 Skyline Swoop — polished'],
         ['missile_ballet', '✈️ Contrail Panic — polished'],
         ['orbit_ward', '🛡️ Aegis Arc — polished'],

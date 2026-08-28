@@ -10,6 +10,7 @@ const EXPECTED = [
     'g2048',
     'sigil_grid',
     'vector_seven',
+    'reactor_ricochet',
     'sky_skim',
     'chroma_code',
     'fusion_foundry',
@@ -54,6 +55,7 @@ test('only quality-approved new games are wired into the visible examples galler
         'g2048',
         'sigil_grid',
         'vector_seven',
+        'reactor_ricochet',
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
@@ -338,6 +340,79 @@ test('Vector Seven serves, aims, charges, and reaches seven in the real VM', asy
         assert.equal(Number(value('playerScore').value), 7, 'charged winner was not worth two points');
         assert.equal(Number(value('winner').value), 1, 'reaching seven did not declare the player');
         assert.equal(Number(value('playing').value), 0, 'match continued after its attainable finish');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
+});
+
+test('Reactor Ricochet is a finite brick field with armour and collectible power cells', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.reactor_ricochet);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.reactor_ricochet, /GOAL: break all 20 reactor cells before three pulses escape/);
+    assert.match(games.reactor_ricochet, /REPEAT 4:[\s\S]*REPEAT 5:/);
+    assert.match(games.reactor_ricochet, /IF armour = 2 THEN:/);
+    assert.match(games.reactor_ricochet, /broadcast "drop capacitor"/);
+    assert.match(games.reactor_ricochet, /set wideTime to 8/);
+    assert.match(games.reactor_ricochet, /broadcast "split reactor pulse"/);
+    assert.match(games.reactor_ricochet, /IF cells = 0 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    const cell = project.targets.find(target => target.name === 'Cell');
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'chamber']);
+    assert.deepEqual(cell.costumes.map(costume => costume.name),
+        ['costume1', 'armour', 'capacitor']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('REACTOR RICOCHET')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR 20 CELLS')));
+    assert.ok(svgs.some(svg => svg.includes('CYAN = POWER CELL')));
+});
+
+test('Reactor Ricochet builds its field, launches, splits, and consumes three lives in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.reactor_ricochet);
+    const vm = new VM();
+    const value = name => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+    const step = count => { for (let i = 0; i < count; i++) vm.runtime._step(); };
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        step(20);
+        await new Promise(resolve => setTimeout(resolve, 700));
+        step(70);
+        assert.equal(Number(value('active').value), 1, 'green flag did not ignite the chamber');
+        assert.equal(Number(value('cells').value), 20, 'field did not expose its finite objective');
+        assert.equal(Number(value('lives').value), 3, 'match did not begin with three pulses');
+        assert.equal(vm.runtime.targets.filter(target => target.sprite.name === 'Cell').length, 21,
+            'the original Cell sprite did not build exactly 20 playable clones');
+
+        vm.postIOData('mouse', {x: 320, y: 310, canvasWidth: 480, canvasHeight: 360, isDown: true});
+        step(16);
+        vm.postIOData('mouse', {x: 320, y: 310, canvasWidth: 480, canvasHeight: 360, isDown: false});
+        step(20);
+        assert.equal(Number(value('serve').value), 0, 'stage tap did not launch the reactor pulse');
+        assert.ok(Number(value('ballVY').value) > 0, 'launched pulse had no upward velocity');
+
+        const pulsesBefore = vm.runtime.targets.filter(target => target.sprite.name === 'Pulse').length;
+        vm.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'split reactor pulse'});
+        step(12);
+        assert.ok(vm.runtime.targets.filter(target => target.sprite.name === 'Pulse').length > pulsesBefore,
+            'capacitor broadcast did not create a second live pulse');
+
+        for (const remaining of [2, 1, 0]) {
+            value('serve').value = 0;
+            value('ballY').value = -182;
+            value('ballVY').value = -5;
+            step(6);
+            assert.equal(Number(value('lives').value), remaining, 'escaped pulse did not consume one life');
+            await new Promise(resolve => setTimeout(resolve, 650));
+            step(20);
+        }
+        assert.equal(Number(value('active').value), 0, 'game continued after all three pulses escaped');
+        assert.equal(Number(value('started').value), 0, 'finished game did not become replayable');
     } finally {
         vm.quit();
         clearStrayTimers();
@@ -1820,6 +1895,9 @@ test('each new game keeps its signature playable mechanic', () => {
         vector_seven: [/set playerX to mouse x/, /set hitOffset to \(ballX - playerX\) \/ 11/,
             /IF \(rally mod 4\) = 0/, /change playerScore by 2/, /IF playerScore = 7/,
             /IF rivalScore = 7/, /broadcast "vector match over"/],
+        reactor_ricochet: [/set cells to 20/, /LOCAL armour/, /IF armour = 2/,
+            /broadcast "drop capacitor"/, /set wideTime to 8/, /broadcast "split reactor pulse"/,
+            /IF cells = 0/, /change lives by -1/],
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
             /change launches by 1/, /IF launches = 12 THEN:/],

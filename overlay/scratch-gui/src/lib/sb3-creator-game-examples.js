@@ -750,6 +750,300 @@ SPRITE Result:
     show
 `,
 
+    reactor_ricochet: `# Reactor Ricochet — a finite brick field with real power-cell drops.
+# GOAL: break all 20 reactor cells before three pulses escape below the paddle.
+# Armoured hex cells take two hits. Cyan capacitors drop a wide-paddle and split-pulse power-up.
+# CONTROLS: drag the paddle or use Left/Right. Tap the stage (or use the desktop serve key) to launch.
+GLOBAL started
+GLOBAL active
+GLOBAL serve
+GLOBAL lives
+GLOBAL cells
+GLOBAL score
+GLOBAL paddleX
+GLOBAL paddleWidth
+GLOBAL wideTime
+GLOBAL ballX
+GLOBAL ballY
+GLOBAL ballVX
+GLOBAL ballVY
+GLOBAL hitOffset
+GLOBAL gridX
+GLOBAL gridY
+GLOBAL gridRow
+GLOBAL gridCol
+GLOBAL dropX
+GLOBAL dropY
+GLOBAL winner
+
+STAGE:
+  BACKDROP intro art reactor-ricochet/intro
+  BACKDROP chamber art reactor-ricochet/play
+  WHEN flag clicked:
+    set started to 0
+    set active to 0
+    switch backdrop to intro
+    hide variable lives
+    hide variable cells
+    hide variable score
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to chamber
+      broadcast "ignite ricochet"
+    ELSE:
+      IF serve = 1 THEN:
+        broadcast "launch reactor pulse"
+
+SPRITE Paddle:
+  SHAPE art reactor-ricochet/paddle
+  COSTUME wide art reactor-ricochet/paddle-wide
+  WHEN flag clicked:
+    set paddleX to 0
+    set paddleWidth to 55
+    set wideTime to 0
+    go to x: paddleX y: -151
+    hide
+    FOREVER:
+      IF active = 1 THEN:
+        IF key left arrow pressed? THEN:
+          change paddleX by -10
+        IF key right arrow pressed? THEN:
+          change paddleX by 10
+        IF mouse down? THEN:
+          set paddleX to mouse x
+          IF serve = 1 THEN:
+            broadcast "launch reactor pulse"
+        IF paddleX < -180 THEN:
+          set paddleX to -180
+        IF paddleX > 180 THEN:
+          set paddleX to 180
+        IF wideTime > 0 THEN:
+          change wideTime by -0.02
+          set paddleWidth to 82
+          switch costume to wide
+        ELSE:
+          set paddleWidth to 55
+          switch costume to costume1
+        go to x: paddleX y: -151
+      wait 0.02 seconds
+  WHEN I receive "ignite ricochet":
+    show
+  WHEN I receive "ricochet over":
+    hide
+
+SPRITE Pulse:
+  LOCAL splitX
+  LOCAL splitY
+  LOCAL splitVX
+  LOCAL splitVY
+  SHAPE art reactor-ricochet/pulse
+  COSTUME split art reactor-ricochet/pulse-split
+  SOUND rebound 760
+  SOUND lost 130
+
+  DEFINE prepare reactor serve:
+    set serve to 1
+    set ballX to paddleX
+    set ballY to -129
+    set ballVX to 0
+    set ballVY to 0
+    go to x: ballX y: ballY
+    say "TAP TO LAUNCH" for 0.55 seconds
+
+  DEFINE lose pulse:
+    change lives by -1
+    play sound "lost"
+    IF lives = 0 THEN:
+      set winner to 0
+      set active to 0
+      set started to 0
+      broadcast "ricochet over"
+    ELSE:
+      prepare reactor serve
+
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      IF active = 1 THEN:
+        IF serve = 1 THEN:
+          set ballX to paddleX
+          set ballY to -129
+        ELSE:
+          change ballX by ballVX
+          change ballY by ballVY
+          IF ballX > 229 THEN:
+            set ballX to 229
+            set ballVX to 0 - (abs of ballVX)
+          IF ballX < -229 THEN:
+            set ballX to -229
+            set ballVX to abs of ballVX
+          IF ballY > 170 THEN:
+            set ballY to 170
+            set ballVY to 0 - (abs of ballVY)
+          IF ballVY < 0 and ballY < -134 and ballY > -167 and abs of (ballX - paddleX) < paddleWidth THEN:
+            set ballY to -133
+            set hitOffset to (ballX - paddleX) / 10
+            set ballVX to hitOffset
+            set ballVY to (abs of ballVY) + 0.15
+            play sound "rebound"
+          IF touching Cell THEN:
+            set ballVY to ballVY * -1
+            wait 0.05 seconds
+          IF ballY < -181 THEN:
+            lose pulse
+        go to x: ballX y: ballY
+      wait 0.015 seconds
+  WHEN I receive "ignite ricochet":
+    set lives to 3
+    set cells to 20
+    set score to 0
+    set winner to 0
+    set active to 1
+    show variable lives
+    show variable cells
+    show variable score
+    show
+    prepare reactor serve
+  WHEN I receive "launch reactor pulse":
+    IF active = 1 and serve = 1 THEN:
+      set serve to 0
+      set ballVX to pick random -4 to 4
+      IF abs of ballVX < 2 THEN:
+        set ballVX to 2
+      set ballVY to 5.5
+  WHEN I receive "split reactor pulse":
+    set splitX to ballX
+    set splitY to ballY
+    set splitVX to 0 - ballVX
+    set splitVY to ballVY
+    create clone of myself
+  WHEN I start as a clone:
+    switch costume to split
+    go to x: splitX y: splitY
+    show
+    REPEAT UNTIL splitY < -182 or active = 0:
+      change splitX by splitVX
+      change splitY by splitVY
+      IF splitX > 229 THEN:
+        set splitX to 229
+        set splitVX to 0 - (abs of splitVX)
+      IF splitX < -229 THEN:
+        set splitX to -229
+        set splitVX to abs of splitVX
+      IF splitY > 170 THEN:
+        set splitY to 170
+        set splitVY to 0 - (abs of splitVY)
+      IF splitVY < 0 and splitY < -134 and splitY > -167 and abs of (splitX - paddleX) < paddleWidth THEN:
+        set splitY to -133
+        set splitVX to (splitX - paddleX) / 10
+        set splitVY to abs of splitVY
+      IF touching Cell THEN:
+        set splitVY to splitVY * -1
+        wait 0.05 seconds
+      go to x: splitX y: splitY
+      wait 0.015 seconds
+    delete this clone
+  WHEN I receive "ricochet over":
+    hide
+
+SPRITE Cell:
+  LOCAL armour
+  LOCAL kind
+  SHAPE art reactor-ricochet/cell
+  COSTUME armour art reactor-ricochet/cell-armour
+  COSTUME capacitor art reactor-ricochet/capacitor
+  SOUND crack 1040
+  WHEN flag clicked:
+    hide
+  WHEN I receive "ignite ricochet":
+    set gridRow to 0
+    REPEAT 4:
+      set gridCol to 0
+      REPEAT 5:
+        set gridX to -176 + (gridCol * 88)
+        set gridY to 122 - (gridRow * 43)
+        set kind to ((gridRow * 5) + gridCol) mod 7
+        go to x: gridX y: gridY
+        create clone of myself
+        change gridCol by 1
+      change gridRow by 1
+  WHEN I start as a clone:
+    set armour to 1
+    IF kind = 0 THEN:
+      set armour to 2
+      switch costume to armour
+    ELSE:
+      IF kind = 6 THEN:
+        switch costume to capacitor
+      ELSE:
+        switch costume to costume1
+    show
+    REPEAT UNTIL active = 0:
+      IF touching Pulse THEN:
+        IF armour = 2 THEN:
+          set armour to 1
+          switch costume to costume1
+          play sound "crack"
+          wait until not touching Pulse
+        ELSE:
+          change cells by -1
+          change score by 10
+          play sound "crack"
+          IF kind = 6 THEN:
+            set dropX to x position
+            set dropY to y position
+            broadcast "drop capacitor"
+          IF cells = 0 THEN:
+            set winner to 1
+            set active to 0
+            set started to 0
+            broadcast "ricochet over"
+          delete this clone
+      wait 0.015 seconds
+    delete this clone
+
+SPRITE Capacitor:
+  LOCAL fallX
+  LOCAL fallY
+  SHAPE art reactor-ricochet/power
+  SOUND power 1180
+  WHEN flag clicked:
+    hide
+  WHEN I receive "drop capacitor":
+    set fallX to dropX
+    set fallY to dropY
+    create clone of myself
+  WHEN I start as a clone:
+    go to x: fallX y: fallY
+    show
+    REPEAT UNTIL touching Paddle or fallY < -180 or active = 0:
+      change fallY by -4
+      turn right 12 degrees
+      go to x: fallX y: fallY
+      wait 0.025 seconds
+    IF touching Paddle THEN:
+      set wideTime to 8
+      play sound "power"
+      broadcast "split reactor pulse"
+    delete this clone
+
+SPRITE Result:
+  COSTUME win label "REACTOR CLEARED • GREEN FLAG REBUILDS THE FIELD" #8fffea
+  COSTUME lose label "THREE PULSES LOST • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    hide
+    go to x: 0 y: -20
+  WHEN I receive "ignite ricochet":
+    hide
+  WHEN I receive "ricochet over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show
+`,
+
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: complete twelve clean hill launches before three crashes. Diving into a
 # green crest converts speed into height; consecutive launches grow the score combo.
