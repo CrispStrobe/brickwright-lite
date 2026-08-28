@@ -11,6 +11,7 @@ const EXPECTED = [
     'sigil_grid',
     'vector_seven',
     'reactor_ricochet',
+    'flux_vault',
     'sky_skim',
     'chroma_code',
     'fusion_foundry',
@@ -56,6 +57,7 @@ test('only quality-approved new games are wired into the visible examples galler
         'sigil_grid',
         'vector_seven',
         'reactor_ricochet',
+        'flux_vault',
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
@@ -413,6 +415,84 @@ test('Reactor Ricochet builds its field, launches, splits, and consumes three li
         }
         assert.equal(Number(value('active').value), 0, 'game continued after all three pulses escaped');
         assert.equal(Number(value('started').value), 0, 'finished game did not become replayable');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
+});
+
+test('Flux Vault is a three-chamber push puzzle with exact occupancy rules', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.flux_vault);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.flux_vault, /GOAL: push all three cyan cores onto gold docks in each chamber/);
+    assert.match(games.flux_vault, /LIST terrain/);
+    assert.match(games.flux_vault, /LIST crates/);
+    assert.match(games.flux_vault,
+        /IF \(item beyondCell of terrain = 0 or item beyondCell of terrain = 2\) and occupied = 0 THEN:/);
+    assert.match(games.flux_vault, /replace item crateAt of crates with beyondCell/);
+    assert.match(games.flux_vault, /IF docked = 3 THEN:/);
+    assert.match(games.flux_vault, /IF level = 4 THEN:/);
+    assert.match(games.flux_vault, /broadcast "reset flux chamber"/);
+    const stage = project.targets.find(target => target.isStage);
+    const vault = project.targets.find(target => target.name === 'Vault');
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'vault']);
+    assert.deepEqual(vault.costumes.map(costume => costume.name),
+        ['costume1', 'wall', 'dock', 'core', 'charged', 'keeper']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('FLUX VAULT')));
+    assert.ok(svgs.some(svg => svg.includes('CLEAR 3 CHAMBERS')));
+    assert.ok(svgs.some(svg => svg.includes('CORES CANNOT BE PULLED')));
+});
+
+test('Flux Vault has a playable solution for all three chambers in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.flux_vault);
+    const vm = new VM();
+    const value = name => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+    const step = count => { for (let i = 0; i < count; i++) vm.runtime._step(); };
+    const keys = {U: 'ArrowUp', D: 'ArrowDown', L: 'ArrowLeft', R: 'ArrowRight'};
+    const play = sequence => {
+        for (const move of sequence) {
+            vm.postIOData('keyboard', {key: keys[move], isDown: true});
+            step(8);
+            vm.postIOData('keyboard', {key: keys[move], isDown: false});
+            step(8);
+        }
+    };
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        step(20);
+        await new Promise(resolve => setTimeout(resolve, 700));
+        step(50);
+        assert.equal(Number(value('level').value), 1, 'green flag did not open chamber one');
+        assert.equal(Number(value('active').value), 1, 'chamber one was not playable');
+
+        play('U');
+        assert.equal(Number(value('playerCell').value), 26, 'arrow input did not move exactly one grid tile');
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        step(20);
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        step(25);
+        const vaultTarget = vm.runtime.targets.find(target => target.sprite.name === 'Vault');
+        const crates = Object.values(vaultTarget.variables).find(variable => variable.name === 'crates');
+        assert.equal(Number(value('playerCell').value), 34, 'RESET did not restore the keeper start');
+        assert.deepEqual(crates.value.map(Number), [12, 20, 28], 'RESET did not restore all three cores');
+
+        const solutions = ['URRRLLURRLLURR', 'RUUDRRUDDRRUU', 'RDRDLRRDRU'];
+        for (let level = 1; level <= 3; level++) {
+            play(solutions[level - 1]);
+            await new Promise(resolve => setTimeout(resolve, 800));
+            step(40);
+            assert.equal(Number(value('level').value), level + 1, `chamber ${level} did not advance`);
+        }
+        assert.equal(Number(value('active').value), 0, 'vault remained active after chamber three');
+        assert.equal(Number(value('started').value), 0, 'solved vault was not replayable');
+        assert.ok(Number(value('pushes').value) >= 9, 'solutions did not register their core pushes');
     } finally {
         vm.quit();
         clearStrayTimers();
@@ -1898,6 +1978,9 @@ test('each new game keeps its signature playable mechanic', () => {
         reactor_ricochet: [/set cells to 20/, /LOCAL armour/, /IF armour = 2/,
             /broadcast "drop capacitor"/, /set wideTime to 8/, /broadcast "split reactor pulse"/,
             /IF cells = 0/, /change lives by -1/],
+        flux_vault: [/LIST terrain/, /LIST crates/, /DEFINE FAST try move \(step\):/,
+            /item beyondCell of terrain = 2\) and occupied = 0/, /replace item crateAt of crates/,
+            /IF docked = 3/, /IF level = 4/, /broadcast "flux vault solved"/],
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
             /change launches by 1/, /IF launches = 12 THEN:/],
