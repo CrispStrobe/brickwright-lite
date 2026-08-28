@@ -266,30 +266,30 @@ Lite-side items (ours, this repo):
 
 ---
 
-## 3b. What an extension can reach — **TASK 1 SHIPPED** (2026-08-28)
+## 3b. What an extension can reach — **CONTENT PINNING + URL SANDBOX SHIPPED** (2026-08-28)
 
 Full reasoning, and the verification behind each claim, in
 `docs/EXTENSION-SECURITY.md`. Summary and evidence here so the roadmap is not
 missing a security track that exists only in another file.
 
-**The measurement.** Every remote extension — our gallery AND a user-entered
-URL — still runs **unsandboxed, in-process, with full page access**. There is no
-sandbox path for remote extensions: the vanilla worker fallback resolves
-built-in IDs only. Task 1 now makes the quiet gallery path content-addressed:
-the fetched bytes must match the app's reviewed pin before decoding or
-evaluation. Unknown URLs still require confirmation; changed pinned URLs are
-refused.
+**The boundary.** Exact gallery URLs run in-process only after their fetched
+bytes match the app's reviewed pin. Every unpinned URL runs in a worker without
+DOM, editor-runtime or Tauri-bridge access; its dispatch channel accepts only
+that worker's extension registration lifecycle and replies to calls actually
+sent to it. Unknown HTTP(S) URLs still require confirmation and retain network
+access; changed pinned URLs are refused.
 
-What makes this unlike TurboWarp's problem is not the DOM but the **native
-bridge**: an in-process extension can invoke Tauri commands — Bluetooth, file
-writes, serial flashing.
+The remaining ambient native surface belongs only to reviewed, content-pinned
+compatibility extensions. A JavaScript wrapper cannot attribute calls made in a
+shared page realm; real per-extension Tauri capabilities need an identity-bearing
+broker or unforgeable session tokens checked in Rust.
 
 | # | Task | Why this order |
 |---|---|---|
 | 1 | **Pin the gallery by content, not host — SHIPPED** | All 120 current entries have exact served-byte hashes tied to an immutable reviewed repository commit. The VM verifies before evaluation; only exact pinned URLs skip confirmation. |
 | 2 | **`allowedServices`** | An extension may only touch GATT services it declared. The reference enforces this BEFORE the blocklist; we shipped only the blocklist. Observe-only first, then default-on with a confirmed override. |
-| 3 | **Native capabilities declared, not ambient** | Bluetooth/serial/file asked for rather than assumed. Cheaper than a sandbox and aimed where our exposure differs from a browser's. |
-| 4 | **A real sandbox** | Only against a written case that 1–3 left something open. Large change; every extension using the in-process `Scratch` shim would need a new contract. |
+| 3 | **Native capabilities declared, not ambient** | Remaining least privilege for reviewed pinned code; requires caller attribution at a real broker/Rust boundary, not a mutable page-global wrapper. |
+| 4 | **Sandbox unpinned URLs — SHIPPED** | Arbitrary URL code runs in a restricted worker; the central dispatch broker blocks forged main-service calls and cross-worker replies. |
 
 **Not an App Store item.** Guideline 2.5.2 permits code run by
 WebKit/JavaScriptCore, and Scrub — a Scratch *web browser* that also bridges

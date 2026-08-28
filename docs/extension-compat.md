@@ -36,7 +36,15 @@ TurboWarp/Xcratch extensions call `Scratch.Cast.*`. Provide a minimal permissive
 (toNumber/toString/toBoolean/compare/toListIndex) — the same shim already used headlessly in
 sb3-creator's `scripts/gen-runtime-registry.mjs` and `test/vm.test.mjs`.
 
-## Not needed now
+## Remote loading
 
-The unsandboxed *URL loader* + security-manager (TurboWarp MPL/GPL) — we bundle, so skip it.
-If remote loading is wanted later, add it permissively (or as a separate, clearly-licensed layer).
+Exact content-pinned gallery sources use the in-process compatibility adapter
+above. Every unpinned URL instead receives a deliberately smaller `Scratch`
+surface in a VM worker: metadata enums, `Cast`, translation, `fetch`, and
+`extensions.register`, with `unsandboxed: false`. The central dispatcher accepts
+only that worker's registration lifecycle, so raw `postMessage` cannot be used
+to reach editor or native-facing services.
+
+This supports sandbox-compatible Scratch/TurboWarp extensions. An extension
+which requires unsandboxed page access is intentionally incompatible with the
+unpinned URL path; it must be reviewed and shipped as pinned or bundled code.

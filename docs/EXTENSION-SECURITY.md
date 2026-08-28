@@ -5,28 +5,28 @@ the remaining tasks are deliberately independent checkpoints.
 
 ## What is true today (verified 2026-08-28, not remembered)
 
-`extension-manager.js` still runs every remote extension in-process. For an
-exact URL in the shipped gallery pin map it now does `fetch(url)` → hash the
-response bytes → compare with the pin → `makeCrispExtension(source)` →
-`_registerInternalExtension`. For other URLs the UI confirmation remains. That
-means:
+`extension-manager.js` now has two deliberately different remote paths:
 
-- **Every extension which is allowed to run is still UNSANDBOXED, in-process,
-  with full page access** — our gallery and a user-entered URL alike. A pinned
-  gallery URL skips the confirmation only when its fetched bytes match the
-  reviewed snapshot; an unknown URL prompts; a changed known URL is refused.
-- **There is no sandbox path for remote extensions.** The vanilla
-  `extension-worker.js` fallback below that branch only ever resolves built-in
-  IDs. The comment at the top of the file said "anything else falls through to
-  the vanilla sandbox worker", which reads as though unknown URLs are contained.
-  They are not, and that line is corrected in the same commit as this file.
-- **Task 1 now integrity-checks the silent gallery path.** Arbitrary confirmed
-  URLs are intentionally not content-pinned because the user supplied the URL.
+- An exact URL in the shipped gallery pin map is fetched, hashed and compared
+  with the reviewed snapshot before the compatibility adapter evaluates it
+  in-process. A changed known URL is refused.
+- Every other HTTP(S), relative, `data:` or `blob:` URL runs in the Scratch VM
+  extension worker. HTTP(S) entry points still ask first and explain that the
+  worker has network access, but no DOM, editor runtime or Tauri native bridge.
+  Extensions which demand `Scratch.extensions.unsandboxed` fail explicitly.
 
-So we have TurboWarp's *unsandboxed mode* without its *sandbox*, and the thing
-that makes our situation different from TurboWarp's is not the DOM: it is the
-**native bridge**. An in-process extension can invoke Tauri commands —
-Bluetooth, file writes, serial flashing. That is the exposure worth spending on.
+Worker isolation alone was insufficient: downloaded code still owns
+`postMessage` and could forge Scratch dispatch frames. The central broker now
+accepts only the allocation/registration lifecycle, confines service names to
+that worker's `extension.<worker>.<id>` namespace, and binds replies to the
+worker which received the corresponding call. Calls into `runtime`, `gui`, or
+another worker are refused. A runtime test exercises both the permitted
+lifecycle and the forged-call/forged-reply cases.
+
+The remaining in-process surface is therefore the content-pinned compatibility
+set, not arbitrary confirmed code. Those reviewed bytes can still invoke Tauri
+commands — Bluetooth, file writes and serial flashing — which is the remaining
+least-privilege question.
 
 None of this is an App Store problem, and the earlier worry that it might be was
 overstated: Guideline 2.5.2 explicitly permits code run by WebKit/JavaScriptCore,
@@ -99,27 +99,32 @@ as wide as each extension asked for.
 
 ## Task 3 — Native capabilities are declared, not ambient
 
-Today an in-process extension can call any Tauri command that exists. It should
-declare what it needs — Bluetooth, serial/flashing, file writes, downloads —
-and get nothing else.
+**Status: narrowed, but not implemented as a declaration system.** Unpinned
+extensions have no native bridge at all after Task 4. Content-pinned gallery
+extensions still share the page realm and can call any Tauri command exposed to
+the main window.
 
-- Same shape as Task 2, one layer out: declaration, then refusal with a reason.
-- Cheaper than a JS sandbox and aimed at where our real exposure is. A sandbox
-  that still hands out the native bridge has solved the smaller half.
-- Refusals belong in the diagnostics panel, for the same reason the Bluetooth
-  ones do: a capability that silently does nothing is indistinguishable from a
-  bug, and we have already spent a day on exactly that confusion.
+A wrapper around `window.__TAURI__` is not an enforcement boundary: trusted and
+extension code occupy the same JavaScript global, and Rust sees only the main
+Tauri window, not which script initiated an invocation. Genuine per-extension
+capabilities would require native calls to cross an identity-bearing broker or
+use unforgeable session tokens checked in Rust. Do not claim this is enforced
+until that attribution exists.
 
-## Task 4 — A real sandbox, only if something still demands it
+The sandbox changes the priority: this work would now provide least privilege
+between already reviewed, hash-pinned extensions, rather than protecting the
+app from an arbitrary URL. If implemented, refusals still belong in diagnostics;
+a capability that silently does nothing is indistinguishable from a bug.
 
-TurboWarp sandboxes because its risk is DOM, network and page access in a
-browser. After Tasks 2 and 3 the native bridge is gated, which is the part
-TurboWarp does not have to worry about.
+## Task 4 — Sandbox unpinned extensions
 
-A genuine sandbox is a large change — every extension relying on the in-process
-`Scratch` shim would need a different contract — and it should not be started
-on the theory that it sounds safer. **Write down what it would buy that Tasks
-1–3 do not, and if that list is short, do not build it.**
+**Status: implemented 2026-08-28 for every unpinned URL.** This directly buys
+the boundary Tasks 1–3 did not: code chosen by URL cannot reach the DOM, editor
+runtime or native bridge. Network access remains and is stated in the prompt.
+
+The content-pinned gallery remains on the in-process adapter for compatibility.
+Moving that reviewed set into the worker is a separate compatibility project,
+not a prerequisite for containing arbitrary URLs.
 
 ---
 
@@ -129,9 +134,10 @@ on the theory that it sounds safer. **Write down what it would buy that Tasks
    doctrine already exists in this repo.
 2. **`allowedServices`** — matches the reference, scales with each extension,
    observe-only before enforcing.
-3. **Native capability declarations** — where our exposure actually differs
-   from a browser's.
-4. **Sandbox** — only against a written case that 1–3 left something open.
+3. **Native capability declarations** — remaining least privilege for reviewed,
+   pinned in-process code; requires real caller attribution.
+4. **Unpinned-extension sandbox — shipped** — isolates arbitrary URL code and
+   guards the dispatch channel as well as the worker globals.
 
 Each is independently shippable. Do them one at a time; none depends on the
 next being finished.
