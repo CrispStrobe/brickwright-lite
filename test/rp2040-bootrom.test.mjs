@@ -189,3 +189,32 @@ test('reverse32 reverses bit order', {skip: SKIP}, async () => {
         [0x12345678, 0x1E6A2C48]
     ]);
 });
+
+/**
+ * Built is not installed. rp2040js constructs its bootrom as an all-zero
+ * Uint32Array, and zeros disassemble to `movs r0, r0` — so a core that
+ * reaches ROM slides silently instead of faulting, and the failure surfaces
+ * far from the jump that caused it. This asserts the ROM the adapter builds
+ * is the ROM the core reads, through the emulator's own bus.
+ */
+test('the adapter installs the ROM where the core reads it', {skip: SKIP}, async () => {
+    const {createRp2040jsAdapter} = await import(
+        '../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js');
+    const {rp2040} = createRp2040jsAdapter();
+    const rom = buildBootrom();
+    const view = new DataView(rom.buffer);
+
+    // Word 4 covers 0x10..0x13: 'M', 'u', version, pad.
+    assert.equal(rp2040.readUint32(0x10), view.getUint32(0x10, true),
+        'the §2.8.2 header is not what the core sees at 0x10');
+    assert.equal(String.fromCharCode(rp2040.readUint32(0x10) & 0xff,
+        (rp2040.readUint32(0x10) >>> 8) & 0xff), 'Mu');
+
+    // The lookup pointer at 0x18 must point at code, and that code must not
+    // be zeros — the exact thing an uninstalled ROM would still satisfy if
+    // we only checked the pointer.
+    const lookup = view.getUint16(0x18, true);
+    assert.ok(lookup > 0x100, 'lookup pointer does not reach the routines');
+    assert.notEqual(rp2040.readUint32(lookup & ~3), 0,
+        'the lookup routine reads as zeros: the ROM was not installed');
+});
