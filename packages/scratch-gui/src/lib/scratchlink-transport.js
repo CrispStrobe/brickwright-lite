@@ -45,8 +45,18 @@ export const TRANSPORTS = [
         label: 'Original Scratch Link (Apple)',
         detail: 'The reference implementation from the Scratch Foundation, vendored unmodified. ' +
             'Where the others and this disagree, this one is right.',
-        available: () => isNativeApp() && isApple(),
-        why: 'only on iPhone, iPad and Mac',
+        // The Swift sources are vendored and licence-gated, but nothing calls
+        // them yet: build.rs compiles Objective-C through cc::Build, and Swift
+        // needs a different toolchain path. Until that bridge exists this entry
+        // would be selectable and do NOTHING — a dead transport that looks like
+        // a working one, which is the single worst state for a connection
+        // option to be in. Offering it and failing silently is how the Scratch
+        // Link path wasted a day already.
+        //
+        // Flip this to `isNativeApp() && isApple()` in the same commit that
+        // lands the bridge, not before.
+        available: () => false,
+        why: 'vendored, not wired up yet',
     },
 ];
 

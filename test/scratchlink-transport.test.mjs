@@ -11,6 +11,7 @@
 import {test, describe, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {resolve, dirname} from 'node:path';
+import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 const LIB = resolve(dirname(fileURLToPath(import.meta.url)), '../overlay/scratch-gui/src/lib');
@@ -68,9 +69,41 @@ describe('choosing one', () => {
 });
 
 describe('a choice that cannot run here', () => {
-    test('the Apple-only carrier is offered on an Apple device in the app', () => {
-        assert.ok(isNativeApp() && isApple());
-        assert.ok(TRANSPORTS.find(t => t.id === 'original').available());
+    test('the Apple-only carrier is NOT offered until it is wired up', () => {
+        // The Swift is vendored and licence-gated, but nothing calls it yet:
+        // build.rs compiles Objective-C through cc::Build and Swift needs a
+        // different toolchain path. A selectable entry that does nothing is the
+        // worst state a connection option can be in — it looks like a working
+        // choice and fails silently, which is exactly how the Scratch Link path
+        // burned a day.
+        assert.ok(isNativeApp() && isApple(), 'the environment here is Apple + app');
+        const original = TRANSPORTS.find(t => t.id === 'original');
+        assert.equal(original.available(), false, 'it must not be offered while it is a stub');
+        assert.match(original.why, /not wired|not yet/i, 'and must say why, not just vanish');
+    });
+
+    test('the flag must be flipped in the commit that lands the bridge', () => {
+        // A coupling gate. The day someone adds the Swift entry points, this
+        // fails and points at the one line they will otherwise forget — a
+        // working transport nobody can select is as useless as a dead one that
+        // everyone can.
+        const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+        const wired = ['scratchlink_original_open', 'scratchlink_original_send']
+            .some(cmd => {
+                try {
+                    return readFileSync(resolve(root, 'apps/tauri/src-tauri/src/lib.rs'), 'utf8').includes(cmd);
+                } catch (e) {
+                    return false;
+                }
+            });
+        const original = TRANSPORTS.find(t => t.id === 'original');
+        if (wired) {
+            assert.notEqual(original.available(), false,
+                'the bridge exists now — make the transport selectable');
+        } else {
+            assert.equal(original.available(), false,
+                'no bridge yet, so the transport must stay unavailable');
+        }
     });
 
     test('and falls back to auto where it cannot run', () => {
