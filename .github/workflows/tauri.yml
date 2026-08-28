@@ -2,6 +2,7 @@ name: tauri
 
 on:
   push:
+    branches: [main]
     paths:
       - 'apps/tauri/**'
       - '.github/workflows/tauri.yml'
@@ -9,6 +10,13 @@ on:
     paths:
       - 'apps/tauri/**'
       - '.github/workflows/tauri.yml'
+
+# A PR branch is already tested by pull_request; running the same job again for
+# its push doubles the Rust queue without producing a second verdict. Keep the
+# post-merge main run, and cancel an obsolete run when that same PR is updated.
+concurrency:
+  group: tauri-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:

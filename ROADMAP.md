@@ -266,7 +266,7 @@ Lite-side items (ours, this repo):
 
 ---
 
-## 3b. What an extension can reach — **TASK 1 SHIPPED** (2026-08-28)
+## 3b. What an extension can reach — **TASKS 1–2 SHIPPED** (2026-08-28)
 
 Full reasoning, and the verification behind each claim, in
 `docs/EXTENSION-SECURITY.md`. Summary and evidence here so the roadmap is not
@@ -287,7 +287,7 @@ writes, serial flashing.
 | # | Task | Why this order |
 |---|---|---|
 | 1 | **Pin the gallery by content, not host — SHIPPED** | All 120 current entries have exact served-byte hashes tied to an immutable reviewed repository commit. The VM verifies before evaluation; only exact pinned URLs skip confirmation. |
-| 2 | **`allowedServices`** | An extension may only touch GATT services it declared. The reference enforces this BEFORE the blocklist; we shipped only the blocklist. Observe-only first, then default-on with a confirmed override. |
+| 2 | **`allowedServices` — SHIPPED** | Each Scratch-Link client may reach only the union of required and optional services declared by its latest discovery. All four bundled Web-Bluetooth extensions were audited before enforcement; no exception was needed. |
 | 3 | **Native capabilities declared, not ambient** | Bluetooth/serial/file asked for rather than assumed. Cheaper than a sandbox and aimed where our exposure differs from a browser's. |
 | 4 | **A real sandbox** | Only against a written case that 1–3 left something open. Large change; every extension using the in-process `Scratch` shim would need a new contract. |
 

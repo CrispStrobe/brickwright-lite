@@ -149,6 +149,23 @@ test('the Web Bluetooth GATT blocklist is present and enforced', () => {
         `the blocklist is consulted at ${checks.length} call sites; the reference checks read, write, startNotifications and stopNotifications`);
 });
 
+test('GATT access is bounded by the services declared during discovery', () => {
+    assert.match(BLE, /struct SessionState[\s\S]*allowed_services/,
+        'allowed services must belong to a client session, not a process-global list');
+    assert.match(BLE, /optionalServices/,
+        'the allowance must include Web Bluetooth optionalServices');
+    const checks = BLE.match(/session\.check_allowed_service\(params\)\?/g) || [];
+    assert.equal(checks.length, 4,
+        `allowedServices is consulted at ${checks.length} call sites; read, write and both notification calls need it`);
+    for (const operation of ['"write"', '"read"', '"startNotifications"', '"stopNotifications"']) {
+        const start = BLE.indexOf(operation);
+        const allowed = BLE.indexOf('session.check_allowed_service(params)?', start);
+        const blocked = BLE.indexOf('check_blocklist(params,', start);
+        assert.ok(start >= 0 && allowed > start && blocked > allowed,
+            `${operation} must check the session allowance before the universal blocklist`);
+    }
+});
+
 test('message encoding follows the reference, including the default', () => {
     // EncodingHelpers: an ABSENT encoding means "plain Unicode string", and
     // only "base64" means base64. We defaulted to base64, which is the
