@@ -1,0 +1,17 @@
+# micro:bit Hello World
+# Licensed under MIT
+# Provenance: Created for Brickwright Lite
+
+DEVICE microbit
+
+WHEN flag clicked:
+  say "HELLO"
+  FOREVER:
+    IF key a pressed? THEN:
+      switch costume to "happy"
+    ELSE:
+      IF key b pressed? THEN:
+        switch costume to "sad"
+      ELSE:
+        clear
+    wait 0.1 seconds

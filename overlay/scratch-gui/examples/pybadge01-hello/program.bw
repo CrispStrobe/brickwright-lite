@@ -1,0 +1,30 @@
+# PyBadge/Arcade Hello World
+# Licensed under MIT
+# Provenance: Created for Brickwright Lite
+
+DEVICE pybadge
+
+STAGE:
+  WHEN flag clicked:
+    clear
+    go to x: 0 y: 0
+    say "HELLO, PYBADGE!" for 2 seconds
+    say "USE D-PAD, A (SPACE) OR B (Z)"
+
+  WHEN space key pressed:
+    say "A BUTTON PRESSED!" for 1 seconds
+
+  WHEN z key pressed:
+    say "B BUTTON PRESSED!" for 1 seconds
+
+  WHEN up arrow key pressed:
+    change y by 10
+
+  WHEN down arrow key pressed:
+    change y by -10
+
+  WHEN left arrow key pressed:
+    change x by -10
+
+  WHEN right arrow key pressed:
+    change x by 10

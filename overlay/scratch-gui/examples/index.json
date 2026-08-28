@@ -1,5 +1,41 @@
 [
  {
+  "id": "microbit01-hello",
+  "title": {
+   "en": "Hello micro:bit",
+   "de": "Hallo micro:bit"
+  },
+  "category": "basics",
+  "difficulty": 1,
+  "devices": [
+   "microbit",
+   "calliopemini"
+  ],
+  "files": {
+   "program": "microbit01-hello/program.bw"
+  },
+  "kind": "program"
+ },
+ {
+  "id": "pybadge01-hello",
+  "title": {
+   "en": "Hello PyBadge (Arcade)",
+   "de": "Hallo PyBadge (Arcade)"
+  },
+  "category": "basics",
+  "difficulty": 1,
+  "devices": [
+   "arcade",
+   "pybadge",
+   "pybadge-lc",
+   "samd51"
+  ],
+  "files": {
+   "program": "pybadge01-hello/program.bw"
+  },
+  "kind": "program"
+ },
+ {
   "id": "eater6502-contention-bug",
   "title": {
    "en": "6502 Debug Lesson: Bus Contention",

@@ -2859,102 +2859,28 @@ class PseudocodeImporter extends React.Component {
                         );
                     })}
                     <span style={{flex: 1, minWidth: 4}} />
-                    {/* Compact controls — hidden in maximize mode */}
-                    {!max && (
-                        <React.Fragment>
-                            <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
-                                aria-label={this.L.infoAria} title={this.L.infoTitle}
-                                style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20,
-                                    padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
-                                    color: this.state.showInfo ? '#fff' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                                    fontStyle: 'italic', alignSelf: 'center'}}>
-                                i
-                            </button>
-                            <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
-                                style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}
-                                data-testid="bw-device-select">
-                                <option value="">{this.L.noChips}</option>
-                                {DEVICE_GROUPS.map(g => (
-                                    <optgroup key={g.label} label={g.label}>
-                                        {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                                    </optgroup>
-                                ))}
-                            </select>
-                            {/* Your own files, beside the built-in catalog: the examples
-                                are read-only, and code you write yourself had nowhere
-                                to live. Open routes by extension to the tab that owns
-                                it; Save writes whichever tab you are looking at. */}
-                            <label style={{...csel, alignSelf: 'center', cursor: 'pointer',
-                                border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)} data-testid="bw-open-file">
-                                {this.L.openFile}
-                                <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
-                                    onChange={this.openCodeFile} />
-                            </label>
-                            {this.currentDevice() === 'microbit' && (
-                                <button type="button" onClick={this.exportMakeCode}
-                                    style={{...csel, alignSelf: 'center', cursor: 'pointer',
-                                        border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                    title={this.L.mcExportTitle}
-                                    disabled={this.state.busy}
-                                    data-testid="bw-makecode-export">
-                                    {this.L.mcExport}
-                                </button>
-                            )}
-                            <button type="button" onClick={this.openMakeCodeShare}
-                                style={{...csel, alignSelf: 'center', cursor: 'pointer',
-                                    border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.mcShareTitle}
-                                data-testid="bw-makecode-share">
-                                {this.L.mcShare}
-                            </button>
-                            <button type="button" onClick={this.saveCodeFile}
-                                style={{...csel, alignSelf: 'center', cursor: 'pointer',
-                                    border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.saveFileTitle(this.saveFileName())}
-                                data-testid="bw-save-file">
-                                {this.L.saveFile}
-                            </button>
-                            {this._makeCodeProject ? <button type="button" onClick={() => this.exportMakeCodeSource()}
-                                style={{...csel, alignSelf: 'center', cursor: 'pointer', border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.exportMakeCodeTitle} data-testid="bw-export-makecode-source">
-                                {this.L.exportMakeCode}
-                            </button> : null}
-                            {this.currentDevice() ? this.renderCatalogControl(csel) : (
-                                <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
-                                    style={{...csel, alignSelf: 'center'}} title={this.L.loadExampleTitle}
-                                    data-testid="bw-load-example">
-                                    <option value="" disabled>{this.L.loadExample}</option>
-                                    {GROUPS.map(g => (
-                                        <optgroup key={g.label} label={g.label}>
-                                            {g.items.filter(([k]) => examples[k]).map(([k, label]) => {
-                                                const compat = this.exampleCompat(k);
-                                                const blocked = compat && !compat.ok;
-                                                return (
-                                                    <option key={k} value={k} disabled={blocked}
-                                                        title={blocked ? compat.reasons.join('; ') : ''}>
-                                                        {blocked ? `${label} ⛔` : label}
-                                                    </option>
-                                                );
-                                            })}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                            )}
-                            <button onClick={() => this.setState(s => ({showRef: !s.showRef}))}
-                                style={{...csel, cursor: 'pointer', background: this.state.showRef ? '#e2e8f0' : '#f1f5f9',
-                                    border: '1px solid #cbd5e1', alignSelf: 'center'}}
-                                title={this.L.referenceTitle(this.state.lang)}>
-                                📝 {this.L.reference}
-                            </button>
-                            <button type="button" onClick={() => this.setState(s => ({showArt: !s.showArt}))}
-                                title={this.L.customArtTitle}
-                                style={{...csel, cursor: 'pointer', border: '1px solid #cbd5e1',
-                                    background: this.state.showArt ? '#e2e8f0' : '#f1f5f9', alignSelf: 'center'}}>
-                                🖼️{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
-                            </button>
-                        </React.Fragment>
-                    )}
+                    {/* Compact controls */}
+                    <React.Fragment>
+                        <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
+                            aria-label={this.L.infoAria} title={this.L.infoTitle}
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20,
+                                padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
+                                color: this.state.showInfo ? '#fff' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                                fontStyle: 'italic', alignSelf: 'center'}}>
+                            i
+                        </button>
+                        <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
+                            style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}
+                            data-testid="bw-device-select">
+                            <option value="">{this.L.noChips}</option>
+                            {DEVICE_GROUPS.map(g => (
+                                <optgroup key={g.label} label={g.label}>
+                                    {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                                </optgroup>
+                            ))}
+                        </select>
+                        {this.renderActionMenu(csel)}
+                    </React.Fragment>
                     {/* In maximize mode: compact To/From-blocks in the tab row */}
                     {max && (
                         <React.Fragment>
@@ -2982,16 +2908,22 @@ class PseudocodeImporter extends React.Component {
                     </button>
                 </div>
 
-                <div data-testid="bw-representation-status" role="status"
-                    style={{padding: '5px 10px', background: '#fff8e1', border: '1px solid #f0c36d',
-                        borderRadius: '0 0 6px 6px', color: '#5d4300', fontSize: 11, lineHeight: 1.35,
-                        flexShrink: 0}}>
-                    {representationNotice(this.state.lang, this.state.asmMode, this.props.locale)}
-                </div>
+                {this.state.showRepresentation && !max && (
+                    <div data-testid="bw-representation-status" role="status"
+                        style={{padding: '5px 10px', background: '#fff8e1', border: '1px solid #f0c36d',
+                            borderRadius: '0 0 6px 6px', color: '#5d4300', fontSize: 11, lineHeight: 1.35,
+                            flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <span>{representationNotice(this.state.lang, this.state.asmMode, this.props.locale)}</span>
+                        <button onClick={() => this.setState({showRepresentation: false})} style={{background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontSize: 14}}>✕</button>
+                    </div>
+                )}
 
                 {this.state.showInfo && !max && (
-                    <div style={{padding: '6px 10px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                    <div style={{padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: '0 0 8px 8px', fontSize: 12, color: '#334155', flexShrink: 0}}>
+                        <div style={{fontWeight: 'bold', marginBottom: 6, color: '#1e3a8a'}}>
+                            {this.currentDevice() ? deviceHelp(this.currentDevice()) : deviceHelp('default')}
+                        </div>
                         {pickLocale(this.props.locale) === 'de' ? (
                             <React.Fragment>
                                 Schreibe dein Projekt als Code in jedem Tab. <strong>Pseudocode</strong>, <strong>Python</strong>,{' '}
@@ -3380,26 +3312,43 @@ class PseudocodeImporter extends React.Component {
                 {this.state.conversionReport ? (() => {
                     const report = this.state.conversionReport;
                     const de = pickLocale(this.props.locale) === 'de';
+                    const exp = this.state.reportExpanded;
                     return (
                         <div data-testid="bw-conversion-report" role="status"
-                            style={{marginTop: 4, padding: '7px 10px', border: '1px solid #cbd5e1',
+                            style={{marginTop: 4, border: '1px solid #cbd5e1',
                                 borderRadius: 6, background: '#f8fafc', fontSize: 12, color: '#334155',
                                 flexShrink: 0}}>
-                            <strong>{de ? 'Umwandlungsbericht' : 'Conversion report'}: {report.direction}</strong>
-                            <div data-testid="bw-conversion-preserved" style={{color: report.preserved ? '#166534' : '#991b1b'}}>
-                                {de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
-                                    (de ? 'Projektstruktur erzeugt und geladen' : 'project structure generated and loaded') :
-                                    (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}
+                            <div style={{display: 'flex', alignItems: 'center', padding: exp ? '7px 10px 4px' : '4px 8px', cursor: 'pointer', fontWeight: 600}}
+                                onClick={() => this.setState(s => ({reportExpanded: !s.reportExpanded}))}>
+                                <span style={{width: 16, display: 'inline-block', fontSize: 10}}>{exp ? '▼' : '▶'}</span>
+                                {de ? 'Umwandlungsbericht' : 'Conversion report'}: {report.direction}
+                                {!exp && (
+                                    <span style={{marginLeft: 'auto', display: 'flex', gap: 6, fontSize: 11}}>
+                                        {report.preserved ? null : <span style={{color: '#991b1b'}}>❌</span>}
+                                        {report.changed.length > 0 && <span style={{color: '#0284c7'}}>{report.changed.length} {de ? 'geändert' : 'changed'}</span>}
+                                        {report.unsupported.length > 0 && <span style={{color: '#92400e'}}>{report.unsupported.length} {de ? 'nicht unterstützt' : 'unsupported'}</span>}
+                                        {report.preserved && report.changed.length === 0 && report.unsupported.length === 0 && <span style={{color: '#166534'}}>✓ OK</span>}
+                                    </span>
+                                )}
                             </div>
-                            <div data-testid="bw-conversion-changed">
-                                {de ? 'Geändert' : 'Changed'}: {report.changed.length ? report.changed.join(' · ') :
-                                    (de ? 'keine gemeldeten Änderungen' : 'no reported changes')}
-                            </div>
-                            <div data-testid="bw-conversion-unsupported"
-                                style={{color: report.unsupported.length ? '#92400e' : '#334155'}}>
-                                {de ? 'Nicht unterstützt' : 'Unsupported'}: {report.unsupported.length ?
-                                    report.unsupported.join(' · ') : (de ? 'nichts gemeldet' : 'nothing reported')}
-                            </div>
+                            {exp && (
+                                <div style={{padding: '0 10px 7px 26px'}}>
+                                    <div data-testid="bw-conversion-preserved" style={{color: report.preserved ? '#166534' : '#991b1b'}}>
+                                        {de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
+                                            (de ? 'Projektstruktur erzeugt und geladen' : 'project structure generated and loaded') :
+                                            (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}
+                                    </div>
+                                    <div data-testid="bw-conversion-changed">
+                                        {de ? 'Geändert' : 'Changed'}: {report.changed.length ? report.changed.join(' · ') :
+                                            (de ? 'keine gemeldeten Änderungen' : 'no reported changes')}
+                                    </div>
+                                    <div data-testid="bw-conversion-unsupported"
+                                        style={{color: report.unsupported.length ? '#92400e' : '#334155'}}>
+                                        {de ? 'Nicht unterstützt' : 'Unsupported'}: {report.unsupported.length ?
+                                            report.unsupported.join(' · ') : (de ? 'nichts gemeldet' : 'nothing reported')}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     );
                 })() : null}

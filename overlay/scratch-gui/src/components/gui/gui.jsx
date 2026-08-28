@@ -257,7 +257,7 @@ const GUIComponent = props => {
                 // collapsed pane is indistinguishable from nothing loading
                 // (measured: the calculator's shipped layout, present in
                 // the DOM, invisible on screen).
-                if (detail.value === 'right' || detail.value === 'controller') {
+                if (detail.value === 'right' || detail.value === 'controller' || detail.value === 'microbit' || detail.value === 'arcade') {
                     setStagePaneVisible(true);
                     try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
                 }
@@ -834,11 +834,9 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'micro:bit-Simulator wird geladen…' : 'Loading micro:bit simulator…'}</div>
                                 }>
-                                    {dockFullScreenStyle ? (
-                                        <div style={dockFullScreenStyle}><MicrobitSimPane /></div>
-                                    ) : (
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
                                         <MicrobitSimPane />
-                                    )}
+                                    </div>
                                 </React.Suspense>
                             ) : dockMode === 'arduboy' ? (
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading Arduboy…</div>}>
