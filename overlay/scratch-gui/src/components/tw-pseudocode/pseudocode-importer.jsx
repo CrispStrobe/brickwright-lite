@@ -325,14 +325,12 @@ const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).sl
 // Grouped catalogue of built-in examples (mirrors the standalone app).
 const GROUPS = [
     {label: 'Games', items: [
-        ['snake', '🐍 Snake'], ['snake_pro', '🐍 Snake (growing tail)'], ['breakout', '🧱 Breakout'],
-        ['pong_2p', '🏓 Pong (2 players)'], ['pong_ai', '🤖 Pong (vs AI)'], ['tetris', '🟦 Tetris'],
-        ['sokoban', '📦 Sokoban'], ['bomberman', '💣 Bomberman'], ['invaders', '👾 Space Invaders'],
-        ['flappy', '🐤 Flappy'], ['tictactoe', '⭕ Tic-Tac-Toe (2 players)'], ['tictactoe_ai', '⭕ Tic-Tac-Toe (vs AI)'],
-        ['g2048', '✨ Nova Grid — polished'], ['maze', '👻 Maze Chase'], ['connect4', '🔴 Connect Four (vs AI)'], ['minesweeper', '💥 Minesweeper'],
-        // New examples enter the public gallery only after the same visual/play
-        // audit as Skyline Swoop: authored art, an in-stage goal/control screen,
-        // a legible HUD, and screenshots of both onboarding and live play.
+        // The old shape-only Snake/Pong/Tetris/etc. mechanics remain available
+        // in sb3-creator-examples.js for compiler regression coverage, but they
+        // are not finished games and therefore do not belong in this gallery.
+        // A game enters here only after an authored-art, onboarding, objective,
+        // feedback, touch-control and live-VM audit.
+        ['g2048', '✨ Nova Grid — polished'],
         ['sky_skim', '🪽 Skyline Swoop — polished'],
         ['missile_ballet', '✈️ Contrail Panic — polished'],
         ['orbit_ward', '🛡️ Aegis Arc — polished'],
@@ -2222,6 +2220,12 @@ class PseudocodeImporter extends React.Component {
         if (!runtime) return;
         runtime.bwGameControlKey = gameKey || null;
         runtime.emit('BW_GAME_CONTROLS_CHANGED', runtime.bwGameControlKey);
+        if (gameKey && typeof window !== 'undefined') {
+            try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-right-pane-hidden', value: '0'}
+            }));
+        }
     }
 
     gameKeyForSource (source) {
