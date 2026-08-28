@@ -6377,6 +6377,12 @@ const addRightPaneGreenFlagStart = source => {
     const actionElse = startBody.findIndex(line => line === '    ELSE:');
     const greenFlagStartBody = actionElse < 0 ? startBody : startBody.slice(0, actionElse);
 
+    // A real Space start must cancel the delayed tablet fallback permanently
+    // for this green-flag run. Several finite games intentionally reset their
+    // public `started` variable when they finish; using that variable alone
+    // lets the stale 0.6 s timer start a fresh round over the result screen.
+    lines.splice(spaceHat + 1, 0, '    set brickwrightFlagPending to 0');
+    endOfHandler++;
     lines.splice(endOfHandler, 0,
         '  WHEN I receive "__brickwright_start_from_flag":',
         ...greenFlagStartBody
@@ -6386,10 +6392,16 @@ const addRightPaneGreenFlagStart = source => {
     if (firstSprite < 0) return source;
     lines.splice(firstSprite, 0,
         '  WHEN flag clicked:',
+        '    set brickwrightFlagPending to 1',
         '    wait 0.6 seconds',
-        '    broadcast "__brickwright_start_from_flag"',
+        '    IF brickwrightFlagPending = 1 THEN:',
+        '      set brickwrightFlagPending to 0',
+        '      broadcast "__brickwright_start_from_flag"',
         ''
     );
+    const stage = lines.findIndex(line => line === 'STAGE:');
+    if (stage < 0) return source;
+    lines.splice(stage, 0, 'GLOBAL brickwrightFlagPending', '');
     return lines.join('\n');
 };
 
