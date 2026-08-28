@@ -84,13 +84,15 @@ const messages = defineMessages({
         id: 'gui.extensionLibrary.customName'
     },
     customDescription: {
-        defaultMessage: 'Load any TurboWarp- or Xcratch-style extension directly from a URL.',
+        defaultMessage: 'Load a sandbox-compatible TurboWarp or Scratch extension from a URL.',
         description: 'Description of the custom-extension-from-URL tile',
         id: 'gui.extensionLibrary.customDescription'
     },
     untrusted: {
-        defaultMessage: 'Load and run code from:\n\n{url}\n\nOnly continue if you trust the source — the extension runs with full access to this page.',
-        description: 'Confirmation before running a custom extension from an untrusted URL',
+        defaultMessage: 'Load code from:\n\n{url}\n\nIt will run in an isolated worker without access to the ' +
+            'editor or native device bridge. It can still make network requests. Extensions which require ' +
+            'unsandboxed mode will be refused.',
+        description: 'Confirmation before running a custom extension in the worker sandbox',
         id: 'gui.extensionLibrary.untrusted'
     },
     loadFailed: {
@@ -105,8 +107,11 @@ const messages = defineMessages({
 const DE_MESSAGES = {
     'gui.extensionLibrary.extensionUrl': 'URL der Erweiterung eingeben',
     'gui.extensionLibrary.customName': '➕ Erweiterung per URL',
-    'gui.extensionLibrary.customDescription': 'Lade eine beliebige TurboWarp- oder Xcratch-Erweiterung direkt von einer URL.',
-    'gui.extensionLibrary.untrusted': 'Code laden und ausführen von:\n\n{url}\n\nNur fortfahren, wenn du der Quelle vertraust — die Erweiterung läuft mit vollem Zugriff auf diese Seite.',
+    'gui.extensionLibrary.customDescription':
+        'Lade eine sandbox-kompatible TurboWarp- oder Scratch-Erweiterung von einer URL.',
+    'gui.extensionLibrary.untrusted': 'Code laden von:\n\n{url}\n\nEr läuft in einem isolierten Worker ohne ' +
+        'Zugriff auf den Editor oder die native Gerätebrücke. Netzwerkzugriffe sind weiterhin möglich. ' +
+        'Erweiterungen, die den unsicheren Modus benötigen, werden abgelehnt.',
     'gui.extensionLibrary.loadFailed': 'Erweiterung von {url} konnte nicht geladen werden\n\n{error}'
 };
 
@@ -145,7 +150,8 @@ class ExtensionLibrary extends React.PureComponent {
             url = url.trim();
         }
         if (!url) return;
-        // A URL from an untrusted host runs remote code in-process with full page access — confirm.
+        // Unpinned URLs run in the worker sandbox, but still execute downloaded code with network
+        // access. Keep a user decision at the URL boundary and describe the actual containment.
         if (/^https?:\/\//.test(url) && !em.isTrustedExtensionURL(url)) {
             // eslint-disable-next-line no-alert
             if (!confirm(this.msg(messages.untrusted, {url}))) return;

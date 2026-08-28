@@ -5,8 +5,8 @@ const maybeFormatMessage = require('../util/maybe-format-message');
 const BlockType = require('./block-type');
 const {pinForURL, verifyGallerySource} = require('./gallery-integrity');
 
-// Any http(s) URL is loadable in-process via the adapter (gallery or user-entered). The UI gates
-// untrusted hosts with a confirmation; see isTrustedExtensionURL / loadExtensionURL.
+// HTTP(S) URLs are candidates for the content-pinned compatibility path. Unpinned URLs are always
+// sent to the extension worker; see isTrustedExtensionURL / loadExtensionURL.
 const isRemoteExtensionURL = url =>
     typeof url === 'string' && /^https?:\/\//.test(url);
 
@@ -208,17 +208,23 @@ class ExtensionManager {
             return Promise.resolve();
         }
 
-        // Brickwright: load a remote extension unsandboxed, in-process, from a URL — like TurboWarp
-        // and Xcratch (gallery entries AND user-entered custom URLs). Clean-room BSD path (NOT
-        // TurboWarp's MPL loader): fetch the source, run it through the same crispstrobe adapter our
-        // built-ins use, and register the captured instance. Our own gallery host is "trusted" (no
-        // confirmation); any other URL is loaded only after the UI has confirmed with the user, since
-        // running remote code in-process grants it full page access. The vanilla sandbox worker
-        // fallback below only resolves built-in IDs, so it never handles real remote URLs.
-        if (isRemoteExtensionURL(extensionURL)) {
-            return this._loadRemoteExtension(extensionURL);
+        // Only exact, content-pinned gallery URLs retain the in-process compatibility adapter.
+        // Everything else — including a new file on the same Pages host — is imported by the VM's
+        // worker and therefore cannot see the DOM or Tauri IPC. Hostname and a confirm dialog are
+        // not isolation boundaries.
+        if (isRemoteExtensionURL(extensionURL) && pinForURL(extensionURL)) {
+            return this._loadTrustedRemoteExtension(extensionURL);
         }
 
+        return this._loadSandboxedExtension(extensionURL);
+    }
+
+    /**
+     * Load an unpinned extension in the Scratch VM worker.
+     * @param {string} extensionURL - URL imported inside the worker
+     * @returns {Promise} resolved once the worker has registered its extension
+     */
+    _loadSandboxedExtension (extensionURL) {
         return new Promise((resolve, reject) => {
             // If we `require` this at the global level it breaks non-webpack targets, including tests
             const worker = new Worker('./extension-worker.js');
@@ -240,11 +246,11 @@ class ExtensionManager {
     }
 
     /**
-     * Fetch a remote extension's source and load it unsandboxed via the adapter.
+     * Fetch content-pinned gallery source and load it unsandboxed via the compatibility adapter.
      * @param {string} extensionURL - an https URL to the extension's .js source
      * @returns {Promise} resolved once the extension is registered
      */
-    _loadRemoteExtension (extensionURL) {
+    _loadTrustedRemoteExtension (extensionURL) {
         if (this.isExtensionLoaded(extensionURL)) {
             log.warn(`Rejecting attempt to load a second extension with URL ${extensionURL}`);
             return Promise.resolve();

@@ -1,0 +1,179 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import Module from 'node:module';
+import path from 'node:path';
+
+const root = path.join(import.meta.dirname, '..');
+const manager = readFileSync(path.join(root, 'overlay/scratch-vm/src/extension-support/extension-manager.js'),
+    'utf8');
+const worker = readFileSync(path.join(root, 'overlay/scratch-vm/src/extension-support/extension-worker.js'),
+    'utf8');
+const central = readFileSync(path.join(root, 'overlay/scratch-vm/src/dispatch/central-dispatch.js'), 'utf8');
+const shared = readFileSync(path.join(root, 'packages/scratch-vm/src/dispatch/shared-dispatch.js'), 'utf8');
+const picker = readFileSync(path.join(root, 'overlay/scratch-gui/src/containers/extension-library.jsx'), 'utf8');
+const urlLoader = readFileSync(path.join(root, 'overlay/scratch-gui/src/lib/url-extensions.js'), 'utf8');
+
+test('only a content-pinned remote URL reaches the in-process adapter', () => {
+    assert.match(manager,
+        new RegExp('if \\(isRemoteExtensionURL\\(extensionURL\\) && pinForURL\\(extensionURL\\)\\) \\{' +
+            '\\s*return this\\._loadTrustedRemoteExtension'));
+    assert.match(manager, /return this\._loadSandboxedExtension\(extensionURL\)/);
+    assert.doesNotMatch(manager, /if \(isRemoteExtensionURL\(extensionURL\)\) \{\s*return this\._load/,
+        'remote by itself must never imply in-process execution');
+});
+
+test('the trusted path still verifies bytes before adapting or registering', () => {
+    const bytes = manager.indexOf('return res.arrayBuffer()');
+    const verified = manager.indexOf('await verifyGallerySource(extensionURL, bytes)');
+    const adapted = manager.indexOf('makeCrispExtension(source)');
+    const registered = manager.indexOf('this._registerInternalExtension(extensionInstance)', adapted);
+    assert.ok(bytes >= 0 && bytes < verified && verified < adapted && adapted < registered);
+});
+
+test('the worker API contains compatibility helpers but no page or native bridge', () => {
+    for (const name of ['ArgumentType', 'BlockType', 'TargetType', 'Cast', 'translate', 'fetch']) {
+        assert.match(worker, new RegExp(`\\b${name}\\b`));
+    }
+    assert.match(worker, /unsandboxed: false/);
+    assert.doesNotMatch(worker,
+        /__TAURI__|__TAURI_INTERNALS__|global\.(?:window|document)|Scratch\.(?:vm|runtime|renderer)/);
+});
+
+test('forged worker dispatch calls cannot reach arbitrary main-thread services', () => {
+    assert.match(central, /if \(message\.service !== 'extensions'\) return false/);
+    for (const method of ['allocateWorker', 'registerExtensionService', 'onWorkerInit']) {
+        assert.match(central, new RegExp(`message\\.method === '${method}'`));
+    }
+    assert.match(central, /Blocked extension-worker dispatch frame/);
+    assert.doesNotMatch(central, /message\.service === '(?:runtime|gui)'/,
+        'runtime or GUI must never be an allowed worker destination');
+    assert.match(central, /this\.services\[args\[0\]\] === worker/,
+        'a worker may register only a service it owns');
+    assert.match(central, /this\.callbackWorkers\[responseId\] = provider/);
+    assert.match(central, /expected !== worker/,
+        'a worker must not answer a call which was sent to another worker');
+});
+
+test('the broker rejects privileged calls and cross-worker response forgery at runtime', async () => {
+    class FakeWorker {
+        constructor () {
+            this.messages = [];
+        }
+
+        postMessage (message) {
+            this.messages.push(message);
+        }
+
+        receive (message) {
+            this.onmessage({data: message});
+        }
+    }
+
+    const previousWorker = globalThis.Worker;
+    globalThis.Worker = FakeWorker;
+    try {
+        // Compile the overlay with a packages/ filename so its relative imports
+        // resolve exactly as they will after the integration step in CI.
+        const log = {error: () => {}, warn: () => {}};
+        const sharedFilename = path.join(root, 'packages/scratch-vm/src/dispatch/shared-dispatch.sandbox-test.js');
+        const sharedModule = new Module(sharedFilename);
+        sharedModule.filename = sharedFilename;
+        sharedModule.paths = Module._nodeModulePaths(path.dirname(sharedFilename));
+        sharedModule.require = request => {
+            if (request === '../util/log') return log;
+            return Module.prototype.require.call(sharedModule, request);
+        };
+        sharedModule._compile(shared, sharedFilename);
+
+        const filename = path.join(root, 'packages/scratch-vm/src/dispatch/central-dispatch.sandbox-test.js');
+        const brokerModule = new Module(filename);
+        brokerModule.filename = filename;
+        brokerModule.paths = Module._nodeModulePaths(path.dirname(filename));
+        brokerModule.require = request => {
+            if (request === './shared-dispatch') return sharedModule.exports;
+            if (request === '../util/log') return log;
+            return Module.prototype.require.call(brokerModule, request);
+        };
+        brokerModule._compile(central, filename);
+        const broker = brokerModule.exports;
+
+        let privilegedCalls = 0;
+        broker.setServiceSync('runtime', {
+            eraseEverything: () => {
+                privilegedCalls++;
+            }
+        });
+        let registeredService = null;
+        let initializedWorker = null;
+        broker.setServiceSync('extensions', {
+            allocateWorker: () => [1, 'https://example.invalid/extension.js'],
+            registerExtensionService: service => {
+                registeredService = service;
+            },
+            onWorkerInit: id => {
+                initializedWorker = id;
+            }
+        });
+
+        const first = new FakeWorker();
+        const second = new FakeWorker();
+        broker.addWorker(first);
+        broker.addWorker(second);
+
+        const firstHandshake = first.messages.shift();
+        const secondHandshake = second.messages.shift();
+        first.receive({responseId: firstHandshake.responseId, result: true});
+        second.receive({responseId: secondHandshake.responseId, result: true});
+
+        first.receive({service: 'extensions', method: 'allocateWorker', responseId: 80, args: []});
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(first.messages.pop().result, [1, 'https://example.invalid/extension.js']);
+
+        first.receive({service: 'dispatch', method: 'setService', responseId: 81, args: ['extension.1.0']});
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(broker.services['extension.1.0'], first);
+
+        first.receive({
+            service: 'extensions',
+            method: 'registerExtensionService',
+            responseId: 82,
+            args: ['extension.1.0']
+        });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(registeredService, 'extension.1.0');
+
+        first.receive({service: 'extensions', method: 'onWorkerInit', responseId: 83, args: [1]});
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(initializedWorker, 1);
+
+        first.receive({
+            service: 'runtime',
+            method: 'eraseEverything',
+            responseId: 90,
+            args: []
+        });
+        assert.equal(privilegedCalls, 0);
+        assert.match(first.messages.pop().error.message, /not allowed/);
+
+        broker.setServiceSync('extension.2.0', second);
+        const legitimateCall = broker.call('extension.2.0', 'getInfo');
+        const outbound = second.messages.shift();
+        first.receive({responseId: outbound.responseId, result: 'forged'});
+        assert.match(first.messages.pop().error.message, /another worker/);
+
+        second.receive({responseId: outbound.responseId, result: 'legitimate'});
+        assert.equal(await legitimateCall, 'legitimate');
+    } finally {
+        if (typeof previousWorker === 'undefined') delete globalThis.Worker;
+        else globalThis.Worker = previousWorker;
+    }
+});
+
+test('both URL entry points tell the user what the sandbox does and does not contain', () => {
+    for (const source of [picker, urlLoader]) {
+        assert.match(source, /isolated worker/i);
+        assert.match(source, /network/i);
+        assert.doesNotMatch(source, /full access to (?:this page|the editor)/i);
+    }
+});
