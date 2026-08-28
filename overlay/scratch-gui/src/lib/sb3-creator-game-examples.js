@@ -3646,6 +3646,8 @@ GLOBAL vy
 GLOBAL puckLive
 GLOBAL keeperY
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art blue-line-breaker/intro
@@ -3655,6 +3657,7 @@ STAGE:
     switch backdrop to intro
     hide variable goals
     hide variable clock
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -3670,13 +3673,24 @@ SPRITE Skater:
     set skaterY to 0
     set vx to 0
     set vy to 0
+    set active to 0
+    set winner to 0
     go to x: skaterX y: skaterY
     hide
   WHEN I receive "start blue line":
+    set goals to 0
+    set clock to 40
+    set skaterX to -150
+    set skaterY to 0
+    set vx to 0
+    set vy to 0
+    set winner to 0
+    set active to 1
+    go to x: skaterX y: skaterY
     show variable goals
     show variable clock
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change vx by -0.7
       IF key right arrow pressed? THEN:
@@ -3699,14 +3713,19 @@ SPRITE Skater:
         set skaterY to 150
       go to x: skaterX y: skaterY
       IF goals = 5 THEN:
-        say "FIVE GOALS — BLUE LINE BROKEN!" for 4 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "blue line over"
       IF clock < 1 THEN:
-        say ("HORN — GOALS " join goals) for 4 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "blue line over"
       wait 0.02 seconds
+    hide
   WHEN I receive "start blue line":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
       change clock by -1
 
@@ -3718,8 +3737,10 @@ SPRITE Puck:
     go to x: -30 y: 0
     hide
   WHEN I receive "start blue line":
+    set puckLive to 0
+    go to x: -30 y: 0
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF puckLive = 0 and touching Skater and key space pressed? THEN:
         set puckLive to 1
         point in direction 90 - vy * 5
@@ -3731,15 +3752,22 @@ SPRITE Puck:
           point in direction 180 - direction
           move 14 steps
         IF touching Goal THEN:
-          change goals by 1
-          change clock by 2
-          play sound "goal"
+          broadcast "blue line goal"
           set puckLive to 0
           go to x: -30 y: pick random -80 to 80
-        IF x position < -235 THEN:
-          set puckLive to 0
-          go to x: -30 y: 0
+        IF x position < -235 or x position > 235 THEN:
+          broadcast "blue line miss"
       wait 0.02 seconds
+    hide
+  WHEN I receive "blue line miss":
+    IF active = 1 THEN:
+      set puckLive to 0
+      go to x: -30 y: 0
+  WHEN I receive "blue line goal":
+    IF active = 1 THEN:
+      change goals by 1
+      change clock by 2
+      play sound "goal"
 
 SPRITE Keeper:
   SHAPE art blue-line-breaker/keeper
@@ -3748,8 +3776,9 @@ SPRITE Keeper:
     go to x: 185 y: keeperY
     hide
   WHEN I receive "start blue line":
+    set keeperY to 0
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF puckLive = 1 THEN:
         IF y position of Puck > keeperY THEN:
           change keeperY by 5
@@ -3763,6 +3792,7 @@ SPRITE Keeper:
         set keeperY to -115
       go to x: 185 y: keeperY
       wait 0.03 seconds
+    hide
 
 SPRITE Goal:
   SHAPE art blue-line-breaker/goal
@@ -3770,6 +3800,23 @@ SPRITE Goal:
     go to x: 220 y: 0
     hide
   WHEN I receive "start blue line":
+    show
+  WHEN I receive "blue line over":
+    hide
+
+SPRITE RinkResult:
+  COSTUME win label "FIVE GOALS • GREEN FLAG FOR ANOTHER SHIFT" #8fffea
+  COSTUME lose label "HORN SOUNDED • GREEN FLAG TO TRY AGAIN" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start blue line":
+    hide
+  WHEN I receive "blue line over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     rim_reactor: `# Orbit Hoops — a moving-basket charge-shot challenge.

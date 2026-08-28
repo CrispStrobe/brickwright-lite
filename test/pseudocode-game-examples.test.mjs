@@ -1056,6 +1056,11 @@ test('Blue-Line Breaker teaches momentum bank shots and ends after five goals', 
     assert.match(games.rink_riot, /CONTROLS: Arrows skate with inertia/);
     assert.match(games.rink_riot, /point in direction 90 - vy \* 5/);
     assert.match(games.rink_riot, /IF goals = 5 THEN:/);
+    assert.match(games.rink_riot, /x position < -235 or x position > 235/);
+    assert.match(games.rink_riot, /broadcast "blue line miss"/);
+    assert.match(games.rink_riot, /broadcast "blue line goal"/);
+    assert.match(games.rink_riot, /broadcast "blue line over"/);
+    assert.match(games.rink_riot, /FIVE GOALS • GREEN FLAG FOR ANOTHER SHIFT/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'rink']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1833,11 +1838,31 @@ test('ice momentum and charge-release shooting work in the live Scratch VM', asy
         .find(variable => variable.name === name);
     const rink = await load(games.rink_riot);
     try {
+        await new Promise(resolve => setTimeout(resolve, 700));
+        for (let i = 0; i < 30; i++) rink.runtime._step();
+        assert.equal(Number(value(rink, 'active').value), 1, 'green flag did not start hockey');
         rink.postIOData('keyboard', {key: 'ArrowUp', isDown: true});
         for (let i = 0; i < 10; i++) rink.runtime._step();
         rink.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
         assert.ok(Number(value(rink, 'vy').value) > 0, 'Up did not create skating momentum');
         assert.ok(Number(value(rink, 'skaterY').value) > 0, 'momentum did not move the skater');
+        const target = name => rink.runtime.targets.find(candidate =>
+            candidate.isOriginal && candidate.sprite && candidate.sprite.name === name);
+        const puck = target('Puck');
+        value(rink, 'puckLive').value = 1;
+        rink.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'blue line miss'}, puck);
+        for (let i = 0; i < 8; i++) rink.runtime._step();
+        assert.equal(Number(value(rink, 'puckLive').value), 0, 'escaped puck did not reset');
+
+        value(rink, 'goals').value = 4;
+        rink.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'blue line goal'}, puck);
+        await new Promise(resolve => setTimeout(resolve, 40));
+        for (let i = 0; i < 35; i++) rink.runtime._step();
+        assert.equal(Number(value(rink, 'goals').value), 5, 'fifth goal was not counted once');
+        assert.equal(Number(value(rink, 'winner').value), 1, 'five goals did not win hockey');
+        assert.equal(Number(value(rink, 'active').value), 0, 'won hockey shift remained active');
+        assert.equal(Number(value(rink, 'started').value), 0, 'won hockey shift was not replayable');
+        assert.equal(target('RinkResult').visible, true, 'hockey result was not shown');
     } finally { rink.quit(); clearStrayTimers(); }
 
     const hoops = await load(games.rim_reactor);
@@ -2270,7 +2295,9 @@ test('each new game keeps its signature playable mechanic', () => {
             /SPRITE CloudBot/, /broadcast "nimbus match over"/],
         ember_dojo: [/broadcast "moon parry"/, /touching Ronin/, /set parrying to 1/, /change dragonHP by -1/],
         lockstep_lagoon: [/set surge to 3/, /change charge by 25/, /change gates by 1/, /change score by 15/],
-        rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/, /change goals by 1/],
+        rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/,
+            /x position > 235/, /broadcast "blue line miss"/, /broadcast "blue line goal"/,
+            /change goals by 1/, /broadcast "blue line over"/],
         rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /touching Net/,
             /broadcast "orbit swish"/, /change score by 2 \* streak/, /broadcast "orbit hoops over"/],
         comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/,
