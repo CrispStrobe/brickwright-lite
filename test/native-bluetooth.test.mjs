@@ -120,6 +120,15 @@ class FakeNative {
         case 'ping':
             return reply(42);
         case 'getStatus':
+            if (this.refuse.has('getStatus')) {
+                // How the REAL Scratch Link answers a method it does not have:
+                // the spec's code, the category in `message`, detail in `data`.
+                return socket.deliver({
+                    jsonrpc: '2.0',
+                    id: msg.id,
+                    error: {code: -32601, message: 'Method Not Found', data: 'getStatus'}
+                });
+            }
             return reply(this.status);
         case 'discover':
             if (this.refuse.has('discover')) {
@@ -235,7 +244,7 @@ define('WebSocket', FakeWebSocket);
 
 const {default: installNativeWebBluetooth, canonicalUuid} =
     await import(`${LIB}/native-web-bluetooth.js`);
-const {selfTestReport, getSession} = await import(`${LIB}/native-ble.js`);
+const {selfTestReport, getSession, scratchLinkRouteReport} = await import(`${LIB}/native-ble.js`);
 
 /* ------------------------------------------------------------------ tests */
 
@@ -499,4 +508,66 @@ describe('switching transport while connected is not a silent no-op', () => {
                 `${id}: a changed transport has to drop the old connection before reconnecting`);
         });
     }
+});
+
+
+describe('the Scratch Link route reports itself, on its own socket', () => {
+    test('a second concurrent client walks discover and sees the hub', async () => {
+        // The extension does NOT reuse the shim's session — it opens its own
+        // socket. A self-test that reuses the shared one cannot see a server
+        // that refuses a second client, or a discover that is never answered,
+        // which is precisely the shape of "press connect, nothing happens".
+        const route = await scratchLinkRouteReport();
+        assert.match(route['second socket'], /open/,
+            'a concurrent client must be accepted — the extension always is one');
+        assert.equal(route['discover request'], 'sent');
+        assert.match(route['discover reply'], /accepted/,
+            'discover resolves with null by design; "no reply" is the failure');
+        assert.match(String(route['devices seen']), /LEGO Move Hub/,
+            'didDiscoverPeripheral notifications must reach this socket, not just the shared one');
+    });
+
+    test('it stops before connect, so it is safe with a hub already in use', async () => {
+        // Running the self-test must never seize a hub or disturb a live
+        // session — a diagnostic that changes what it measures is worse than
+        // none. Measured over THIS probe's frames only: asserting on the whole
+        // of native.sent passes or fails depending on which tests ran first,
+        // since the end-to-end test above legitimately connects.
+        const before = native.sent.length;
+        await scratchLinkRouteReport();
+        const mine = native.sent.slice(before).map(m => m.method);
+        assert.deepEqual(mine, ['discover'],
+            `the route probe must send discover and nothing else; it sent: ${mine.join(', ')}`);
+    });
+});
+
+
+describe('JSON-RPC errors carry a code, not just prose', () => {
+    test('an unsupported method is detected by its code', async () => {
+        // getStatus is OURS, not Scratch Link's, so the stock implementation
+        // answers "method not found" — which means "this peer is the real
+        // thing", not "something went wrong". We detected that by string-
+        // matching our own wording, which only worked against ourselves.
+        native.refuse.add('getStatus');
+        try {
+            const {getNativeStatus} = await import(`${LIB}/native-ble.js`);
+            assert.equal(await getNativeStatus(), null,
+                'a method-not-found must read as "not supported", not as a failure');
+        } finally {
+            native.refuse.delete('getStatus');
+        }
+    });
+
+    test('the human-readable detail survives, not just the category', async () => {
+        // JSON-RPC puts the category in `message` and the detail in `data`.
+        // Rejecting with `message` alone would show a user "Server Error"
+        // where a sentence belongs.
+        const s = getSession();
+        await s.open();
+        await assert.rejects(
+            s.request('explode', {}),
+            err => /unknown method|explode/i.test(err.message),
+            'the error must carry the detail, not the bare category'
+        );
+    });
 });

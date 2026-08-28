@@ -46,8 +46,12 @@ pub fn run() {
             pico::pico_serial_read,
             pico::pico_serial_close,
             pico::pico_bootsel_volume,
-            pico::pico_flash_uf2
+            pico::pico_flash_uf2,
+            scratchlink::bridge::scratchlink_bridge_open,
+            scratchlink::bridge::scratchlink_bridge_send,
+            scratchlink::bridge::scratchlink_bridge_close
         ])
+        .manage(scratchlink::bridge::BridgeState::default())
         .setup(|app| {
             // Bring up the local ScratchLink WS server the web VM dials.
             scratchlink::start();
