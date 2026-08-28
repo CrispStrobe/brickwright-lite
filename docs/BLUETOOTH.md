@@ -73,6 +73,11 @@ carry the same JSON-RPC over a native channel because they load
   Every gallery extension written against Web Bluetooth gains the app for free.
 - **`native-ble.js`** is the one shared JSON-RPC session. One radio, one connected
   peripheral on the native side; a second session would only fight the first.
+- **GATT access is declaration-bounded.** Each WebSocket or native-bridge client gets its
+  own `allowedServices` set from the latest discovery's required services ∪
+  `optionalServices`. Reads, writes and notification changes outside that set are refused
+  before the universal blocklist, and `getServices` exposes only the allowed subset. A
+  second extension cannot inherit the first extension's allowance.
 - **`ble.rs`** gained two methods that are **not** Scratch Link's: `getStatus` (adapter
   permission + power) and `getServices` (enumeration, for `getPrimaryServices()`). A stock
   Scratch Link answers both with method-not-found, which the web side treats as a missing
@@ -108,15 +113,15 @@ Also reachable as `#ble-debug` in the URL and as `window.__brickwrightDiagnostic
 
 - `test/native-bluetooth.test.mjs` — drives the shim against a fake native server through
   the whole chain (requestDevice → connect → service → characteristic → notify → write),
-  plus the powered-off refusal, plus assertions that both extensions dial the local service
-  first and take their peripheral from `didDiscoverPeripheral`. Both halves were checked
-  red by mutation.
+  plus the powered-off refusal, `optionalServices` forwarding, and assertions that both
+  extensions dial the local service first and take their peripheral from
+  `didDiscoverPeripheral`. Both halves were checked red by mutation.
 - `npm run verify:bluetooth` — the production bundle in Chromium with Web Bluetooth deleted
   and `__TAURI__` faked: the shim installs, the panel opens **from the Settings menu**, its
   Close button is on-screen and finger-sized, and the self-test names the unreachable
   service.
-- `cargo test` in `apps/tauri/src-tauri` covers the advice table and the two-dialect scan
-  failure.
+- `cargo test` in `apps/tauri/src-tauri` covers the advice table, the two-dialect scan
+  failure, and the per-session service union/replacement/refusal/enumeration rules.
 
 ## What the first device report established (2026-08-27)
 

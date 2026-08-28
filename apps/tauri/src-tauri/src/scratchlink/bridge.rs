@@ -18,7 +18,7 @@
 //! supplies a sink that emits Tauri events instead of writing WebSocket frames.
 //! One implementation, two ways in; a divergence between them is impossible
 //! rather than merely unlikely.
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::mpsc;
@@ -38,8 +38,15 @@ const EVENT: &str = "scratchlink://message";
 /// bridge that sent everything to `ble::dispatch` would work for the BLE hubs
 /// and silently break EV3 and NXT, which are exactly the devices that have no
 /// other route on iOS.
+#[derive(Clone)]
+struct BridgeSession {
+    out: Outbound,
+    transport: Transport,
+    ble: Arc<ble::SessionState>,
+}
+
 #[derive(Default)]
-pub struct BridgeState(pub Mutex<Option<(Outbound, Transport)>>);
+pub struct BridgeState(Mutex<Option<BridgeSession>>);
 
 /// Which backend a bridge session talks to. Mirrors the socket route's own
 /// path-based choice rather than inventing a second vocabulary.
@@ -74,7 +81,11 @@ pub fn scratchlink_bridge_open(
             }
         }
     });
-    *state.0.lock().map_err(|e| e.to_string())? = Some((tx, transport));
+    *state.0.lock().map_err(|e| e.to_string())? = Some(BridgeSession {
+        out: tx,
+        transport,
+        ble: Arc::new(ble::SessionState::default()),
+    });
     log::info!("[scratchlink/bridge] open ({transport:?})");
     Ok(())
 }
@@ -92,12 +103,12 @@ pub async fn scratchlink_bridge_send(
         let guard = state.0.lock().map_err(|e| e.to_string())?;
         guard.clone()
     };
-    let Some((out, transport)) = session else {
+    let Some(session) = session else {
         return Err("the Scratch Link bridge is not open".into());
     };
-    match transport {
-        Transport::Ble => ble::dispatch(&frame, &out).await,
-        Transport::Bt => bt_dispatch(&frame, &out).await,
+    match session.transport {
+        Transport::Ble => ble::dispatch(&frame, &session.out, &session.ble).await,
+        Transport::Bt => bt_dispatch(&frame, &session.out).await,
     }
     Ok(())
 }
@@ -112,7 +123,10 @@ pub async fn scratchlink_bridge_close(state: State<'_, BridgeState>) -> Result<(
     // Only the BLE backend keeps global state to release; the BT backends own
     // their connection per dispatch. Calling ble::cleanup() after a BT session
     // would drop a BLE hub the user still has connected.
-    if matches!(was, Some((_, Transport::Ble)) | None) {
+    if was
+        .as_ref()
+        .map_or(true, |session| session.transport == Transport::Ble)
+    {
         ble::cleanup().await;
     }
     log::info!("[scratchlink/bridge] closed");

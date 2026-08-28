@@ -308,6 +308,18 @@ describe('a hub connection, end to end', () => {
         assert.ok(discover, 'no scan was requested');
         assert.deepEqual(discover.params.filters, [{services: [BOOST_SERVICE]}],
             'the service filter must reach the native scan, or every BLE device in the room is offered');
+        assert.deepEqual(discover.params.optionalServices, [],
+            'the native boundary must receive the complete service declaration');
+    });
+
+    test('optionalServices reaches the native session allowance', async () => {
+        const battery = '0000180f-0000-1000-8000-00805f9b34fb';
+        await pick(navigator.bluetooth.requestDevice({
+            filters: [{services: [BOOST_SERVICE]}],
+            optionalServices: ['battery_service']
+        }), 'LEGO Move Hub');
+        const discover = native.sent.find(m => m.method === 'discover');
+        assert.deepEqual(discover.params.optionalServices, [battery]);
     });
 
     test('connect → service → characteristic → notify → write all reach the radio', async () => {

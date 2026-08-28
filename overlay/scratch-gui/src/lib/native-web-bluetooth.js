@@ -500,7 +500,9 @@ const requestDevice = async (options = {}) => {
     const filters = options.acceptAllDevices ? [] : (options.filters || []);
     const services = [];
     filters.forEach(f => (f.services || []).forEach(s => services.push(canonicalUuid(s))));
-    bleLog('info', 'ble', 'requestDevice', JSON.stringify({services, filters: filters.length}));
+    const optionalServices = (options.optionalServices || []).map(canonicalUuid);
+    bleLog('info', 'ble', 'requestDevice', JSON.stringify({services, optionalServices,
+        filters: filters.length}));
 
     // Ask the radio's state BEFORE scanning. On Apple platforms a scan issued
     // against a central that is not powered on is a silent no-op, so without
@@ -543,7 +545,10 @@ const requestDevice = async (options = {}) => {
     });
 
     try {
-        await session.request('discover', {filters: services.length ? [{services}] : []});
+        await session.request('discover', {
+            filters: services.length ? [{services}] : [],
+            optionalServices
+        });
         const result = await pickerResult;
         if (result.error) throw result.error;
         const chosen = result.value;
