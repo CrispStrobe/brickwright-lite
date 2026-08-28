@@ -1447,6 +1447,191 @@ SPRITE Result:
     show
 `,
 
+    canal_command: `# Canal Command — operate a real three-control lock sequence.
+# GOAL: lift 4 boats from the low canal to the high canal before 3 unsafe commands.
+# CONTROLS: tap LOWER GATE, PUMP, and UPPER GATE. Gates only open at matching water level.
+GLOBAL started
+GLOBAL active
+GLOBAL water
+GLOBAL lowerGate
+GLOBAL upperGate
+GLOBAL boatZone
+GLOBAL boats
+GLOBAL faults
+GLOBAL status
+
+STAGE:
+  BACKDROP intro art canal-command/intro
+  BACKDROP lock art canal-command/play
+  WHEN flag clicked:
+    set started to 0
+    set active to 0
+    switch backdrop to intro
+    hide variable boats
+    hide variable faults
+    hide variable status
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      switch backdrop to lock
+      broadcast "start canal command"
+
+SPRITE Controller:
+  SHAPE art canal-command/marker
+  SOUND ok 820
+  SOUND alarm 140
+  DEFINE unsafe (message):
+    change faults by 1
+    set status to message
+    play sound "alarm"
+    IF faults = 3 THEN:
+      set active to 0
+      set started to 0
+      broadcast "canal command lost"
+  WHEN flag clicked:
+    hide
+  WHEN I receive "start canal command":
+    set water to 0
+    set lowerGate to 0
+    set upperGate to 0
+    set boatZone to 0
+    set boats to 0
+    set faults to 0
+    set status to "OPEN LOWER GATE"
+    set active to 1
+    show variable boats
+    show variable faults
+    show variable status
+  WHEN I receive "lower gate command":
+    IF active = 1 THEN:
+      IF water = 0 and upperGate = 0 and boatZone = 0 THEN:
+        set lowerGate to 1
+        set status to "BOAT ENTERING"
+        play sound "ok"
+        wait 0.6 seconds
+        set boatZone to 1
+        set lowerGate to 0
+        set status to "PUMP WATER UP"
+      ELSE:
+        unsafe "LOWER GATE INTERLOCK"
+  WHEN I receive "pump command":
+    IF active = 1 THEN:
+      IF lowerGate = 0 and upperGate = 0 THEN:
+        IF water = 0 THEN:
+          set water to 1
+          IF boatZone = 1 THEN:
+            set status to "OPEN UPPER GATE"
+          ELSE:
+            set status to "WATER HIGH — PUMP DOWN"
+        ELSE:
+          set water to 0
+          set status to "OPEN LOWER GATE"
+        play sound "ok"
+      ELSE:
+        unsafe "CLOSE BOTH GATES BEFORE PUMPING"
+  WHEN I receive "upper gate command":
+    IF active = 1 THEN:
+      IF water = 1 and lowerGate = 0 and boatZone = 1 THEN:
+        set upperGate to 1
+        set status to "BOAT LEAVING"
+        play sound "ok"
+        wait 0.6 seconds
+        set boatZone to 2
+        change boats by 1
+        wait 0.5 seconds
+        set upperGate to 0
+        IF boats = 4 THEN:
+          set active to 0
+          set started to 0
+          broadcast "canal command won"
+        ELSE:
+          set boatZone to 0
+          set status to "PUMP DOWN FOR NEXT BOAT"
+      ELSE:
+        unsafe "UPPER GATE INTERLOCK"
+
+SPRITE Boat:
+  SHAPE art canal-command/boat
+  WHEN flag clicked:
+    hide
+    FOREVER:
+      IF active = 1 THEN:
+        IF boatZone = 0 THEN:
+          go to x: -174 y: -68
+        IF boatZone = 1 THEN:
+          IF water = 0 THEN:
+            go to x: 0 y: -68
+          ELSE:
+            go to x: 0 y: 42
+        IF boatZone = 2 THEN:
+          go to x: 174 y: 42
+        show
+      ELSE:
+        hide
+      wait 0.03 seconds
+
+SPRITE LowerGate:
+  SHAPE art canal-command/gate-closed
+  COSTUME open art canal-command/gate-open
+  WHEN flag clicked:
+    go to x: -91 y: -12
+    FOREVER:
+      IF lowerGate = 1 THEN:
+        switch costume to open
+      ELSE:
+        switch costume to costume1
+      wait 0.03 seconds
+
+SPRITE UpperGate:
+  SHAPE art canal-command/gate-closed
+  COSTUME open art canal-command/gate-open
+  WHEN flag clicked:
+    go to x: 91 y: 43
+    FOREVER:
+      IF upperGate = 1 THEN:
+        switch costume to open
+      ELSE:
+        switch costume to costume1
+      wait 0.03 seconds
+
+SPRITE LowerButton:
+  COSTUME lower art canal-command/lower-button
+  WHEN flag clicked:
+    go to x: -142 y: -153
+    show
+  WHEN sprite clicked:
+    broadcast "lower gate command"
+SPRITE PumpButton:
+  COSTUME pump art canal-command/pump-button
+  WHEN flag clicked:
+    go to x: 0 y: -153
+    show
+  WHEN sprite clicked:
+    broadcast "pump command"
+SPRITE UpperButton:
+  COSTUME upper art canal-command/upper-button
+  WHEN flag clicked:
+    go to x: 142 y: -153
+    show
+  WHEN sprite clicked:
+    broadcast "upper gate command"
+
+SPRITE Result:
+  COSTUME win label "4 BOATS LIFTED • GREEN FLAG TO REPLAY" #8fffea
+  COSTUME lose label "LOCK SHUT DOWN AFTER 3 UNSAFE COMMANDS" #ff91a8
+  WHEN flag clicked:
+    hide
+    go to x: 0 y: 0
+  WHEN I receive "start canal command":
+    hide
+  WHEN I receive "canal command won":
+    switch costume to win
+    show
+  WHEN I receive "canal command lost":
+    switch costume to lose
+    show
+`,
+
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: complete twelve clean hill launches before three crashes. Diving into a
 # green crest converts speed into height; consecutive launches grow the score combo.
@@ -1463,12 +1648,14 @@ GLOBAL combo
 GLOBAL launches
 GLOBAL alive
 GLOBAL started
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art skyline-swoop/intro
   BACKDROP flight art skyline-swoop/play
   WHEN flag clicked:
     set started to 0
+    set winner to 0
     switch backdrop to intro
     hide variable score
     hide variable lives
@@ -1493,6 +1680,7 @@ SPRITE Skimmer:
     set combo to 1
     set launches to 0
     set alive to 1
+    set winner to 0
     set rotation style all around
     go to x: -120 y: birdy
     hide
@@ -1501,58 +1689,58 @@ SPRITE Skimmer:
     show variable lives
     show variable launches
     show
-    FOREVER:
-      IF alive = 1 THEN:
-        set diving to 0
-        IF key down arrow pressed? THEN:
-          set diving to 1
-          change vy by -0.8
+    REPEAT UNTIL alive = 0:
+      set diving to 0
+      IF key down arrow pressed? THEN:
+        set diving to 1
+        change vy by -0.8
+      ELSE:
+        change vy by -0.28
+      IF key up arrow pressed? THEN:
+        change vy by 0.45
+      change birdy by vy
+      IF birdy > 165 THEN:
+        set birdy to 165
+        set vy to -2
+      IF birdy < -155 THEN:
+        set birdy to -155
+      point in direction (90 - (vy * 5))
+      go to x: -120 y: birdy
+      IF birdy < -105 and vy < 0 THEN:
+        switch costume to charged
+      ELSE:
+        switch costume to costume1
+      IF touching Hill THEN:
+        IF diving = 1 and vy < -1 THEN:
+          set vy to (abs of vy) + 5
+          broadcast "clean skyline launch"
+          wait 0.18 seconds
         ELSE:
-          change vy by -0.28
-        IF key up arrow pressed? THEN:
-          change vy by 0.45
-        change birdy by vy
-        IF birdy > 165 THEN:
-          set birdy to 165
-          set vy to -2
-        IF birdy < -155 THEN:
-          set birdy to -155
-        point in direction (90 - (vy * 5))
-        go to x: -120 y: birdy
-        IF birdy < -105 and vy < 0 THEN:
-          switch costume to charged
-        ELSE:
-          switch costume to costume1
-        IF touching Hill THEN:
-          IF diving = 1 and vy < -1 THEN:
-            set vy to (abs of vy) + 5
-            broadcast "clean skyline launch"
-            wait 0.18 seconds
-          ELSE:
-            change lives by -1
-            set combo to 1
-            set birdy to 20
-            set vy to 4
-            play sound "crash"
-            wait 0.7 seconds
-            IF lives < 1 THEN:
-              set alive to 0
-              say ("THREE CRASHES — FLIGHT SCORE " join score) for 3 seconds
-              stop all
-        IF score > 9 THEN:
-          set speed to 5
-        IF score > 29 THEN:
-          set speed to 6
+          change lives by -1
+          set combo to 1
+          set birdy to 20
+          set vy to 4
+          play sound "crash"
+          wait 0.7 seconds
+          IF lives < 1 THEN:
+            set winner to 0
+            set alive to 0
+            broadcast "skyline over"
+      IF score > 9 THEN:
+        set speed to 5
+      IF score > 29 THEN:
+        set speed to 6
       wait 0.02 seconds
+    hide
   WHEN I receive "clean skyline launch":
     change launches by 1
     change combo by 1
     change score by combo * 5
     play sound "boost"
-    IF launches = 12 THEN:
+    IF launches > 11 THEN:
+      set winner to 1
       set alive to 0
-      say ("SKYLINE MASTERED — SCORE " join score) for 4 seconds
-      stop all
+      broadcast "skyline over"
 
 SPRITE Hill:
   SHAPE art skyline-swoop/hill
@@ -1567,13 +1755,29 @@ SPRITE Hill:
       change hillx by 170
   WHEN I start as a clone:
     show
-    FOREVER:
+    REPEAT UNTIL alive = 0:
       change x by (0 - speed)
       IF x position < -330 THEN:
         change x by 680
         set y to pick random -194 to -170
         change score by 1
-      wait 0.02 seconds`,
+      wait 0.02 seconds
+    delete this clone
+
+SPRITE SkylineResult:
+  COSTUME win label "TWELVE CLEAN LAUNCHES • GREEN FLAG TO FLY AGAIN" #ffe66d
+  COSTUME lose label "THREE CRASHES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "take off":
+    hide
+  WHEN I receive "skyline over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     chroma_code: `# Prism Lock — a clickable four-gem deduction game.
 # GOAL: discover the secret sequence within eight attempts.
@@ -1693,14 +1897,13 @@ SPRITE Vault:
       paint row
       IF exact = 4 THEN:
         set won to 1
-        say (("PRISM UNSEALED IN " join turn) join " ATTEMPTS!") for 4 seconds
-        stop all
+        broadcast "prism lock over"
       ELSE:
         say ((("EXACT " join exact) join "   NEAR ") join near) for 1.8 seconds
         change turn by 1
         IF turn > 8 THEN:
-          say ((((((("LOCKED — CODE WAS " join item 1 of secret) join "-") join item 2 of secret) join "-") join item 3 of secret) join "-") join item 4 of secret) for 5 seconds
-          stop all
+          set won to 0
+          broadcast "prism lock over"
         ELSE:
           delete all of guess
           set accepting to 1
@@ -1733,7 +1936,24 @@ SPRITE GemButton:
       set size to 116
       broadcast "gem chosen"
       wait 0.08 seconds
-      set size to 100`,
+      set size to 100
+  WHEN I receive "prism lock over":
+    hide
+
+SPRITE PrismResult:
+  COSTUME win label "PRISM UNSEALED • GREEN FLAG FOR A NEW CODE" #ffe66d
+  COSTUME lose label "EIGHT ATTEMPTS USED • GREEN FLAG TO TRY A NEW CODE" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "open prism lock":
+    hide
+  WHEN I receive "prism lock over":
+    IF won = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     fusion_foundry: `# Core Cascade — a tactical drop-and-merge puzzle.
 # GOAL: fuse identical cores vertically until you create the white Nova core.
@@ -1750,6 +1970,8 @@ GLOBAL c
 GLOBAL v
 GLOBAL nextLevel
 GLOBAL started
+GLOBAL winner
+GLOBAL openShafts
 
 STAGE:
   BACKDROP intro art core-cascade/intro
@@ -1785,6 +2007,8 @@ SPRITE Foundry:
     set score to 0
     set column to 3
     set over to 0
+    set winner to 0
+    set openShafts to 6
     set nextLevel to pick random 1 to 2
 
   DEFINE FAST render:
@@ -1812,9 +2036,18 @@ SPRITE Foundry:
       REPEAT UNTIL row < 0 or item ((row * 6) + column) + 1 of grid = 0:
         change row by -1
       IF row < 0 THEN:
-        set over to 1
-        say ("Foundry sealed! Score " join score) for 3 seconds
-        stop all
+        set openShafts to 0
+        set c to 0
+        REPEAT 6:
+          IF item (c + 1) of grid = 0 THEN:
+            change openShafts by 1
+          change c by 1
+        IF openShafts = 0 THEN:
+          set winner to 0
+          set over to 1
+          broadcast "core cascade over"
+        ELSE:
+          say "THAT SHAFT IS FULL — CHOOSE ANOTHER" for 1 seconds
       ELSE:
         set level to nextLevel
         set nextLevel to 1
@@ -1837,8 +2070,9 @@ SPRITE Foundry:
         IF level = 5 THEN:
           play sound "nova"
           change score by 500
-          say ("NOVA FORGED! SCORE " join score) for 4 seconds
-          stop all
+          set winner to 1
+          set over to 1
+          broadcast "core cascade over"
 
   WHEN flag clicked:
     hide
@@ -1848,15 +2082,30 @@ SPRITE Foundry:
     show variable score
     render
   WHEN left arrow key pressed:
-    IF started = 1 and column > 0 THEN:
+    IF started = 1 and over = 0 and column > 0 THEN:
       change column by -1
       render
   WHEN right arrow key pressed:
-    IF started = 1 and column < 5 THEN:
+    IF started = 1 and over = 0 and column < 5 THEN:
       change column by 1
       render
   WHEN I receive "drop core":
-    drop core`,
+    drop core
+
+SPRITE CoreCascadeResult:
+  COSTUME win label "WHITE NOVA FORGED • GREEN FLAG FOR A NEW REACTOR" #ffe66d
+  COSTUME lose label "ALL SIX SHAFTS SEALED • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "ignite cascade":
+    hide
+  WHEN I receive "core cascade over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     missile_ballet: `# Contrail Panic — a mouse-steering survival game.
 # GOAL: force the homing missiles across each other's paths and destroy twenty-four
@@ -2385,6 +2634,8 @@ GLOBAL spawnLane
 GLOBAL draftLock
 GLOBAL crashLock
 GLOBAL gateActive
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art slipstream/intro
@@ -2396,9 +2647,21 @@ STAGE:
     hide variable fuel
     hide variable boost
     hide variable checkpoints
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set fuel to 100
+      set boost to 0
+      set checkpoints to 0
+      set roadSpeed to 6
+      set lane to 0
+      set draftLock to 0
+      set crashLock to 0
+      set gateActive to 0
+      set winner to 0
+      set active to 1
       switch backdrop to circuit
       broadcast "start slipstream"
 
@@ -2415,6 +2678,8 @@ SPRITE Racer:
     set lane to 0
     set draftLock to 0
     set crashLock to 0
+    set active to 0
+    set winner to 0
     go to x: 0 y: -125
     hide
   WHEN I receive "start slipstream":
@@ -2423,7 +2688,7 @@ SPRITE Racer:
     show variable boost
     show variable checkpoints
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change lane by -8
       IF key right arrow pressed? THEN:
@@ -2461,24 +2726,31 @@ SPRITE Racer:
         play sound "crash"
       IF touching Gate and gateActive = 1 THEN:
         set gateActive to 0
-        change checkpoints by 1
-        change score by 15
-        change fuel by 22
-        say ("CHECKPOINT " join checkpoints) for 0.7 seconds
-        IF checkpoints = 3 THEN:
-          say ("CIRCUIT CLEARED! SCORE " join score) for 4 seconds
-          stop all
+        broadcast "circuit checkpoint"
       IF fuel < 1 THEN:
-        say ("ENERGY EMPTY — SCORE " join score) for 3 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "slipstream over"
       wait 0.02 seconds
+    hide
+  WHEN I receive "circuit checkpoint":
+    IF active = 1 THEN:
+      change checkpoints by 1
+      change score by 15
+      change fuel by 22
+      IF checkpoints = 3 THEN:
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "slipstream over"
 
 SPRITE Rival:
   SHAPE art slipstream/rival
   WHEN flag clicked:
     hide
   WHEN I receive "start slipstream":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set spawnLane to pick random -125 to 125
       go to x: spawnLane y: 190
       create clone of myself
@@ -2486,10 +2758,11 @@ SPRITE Rival:
       wait pick random 1 to 2 seconds
   WHEN I start as a clone:
     show
-    REPEAT UNTIL y position < -190:
+    REPEAT UNTIL y position < -190 or active = 0:
       change y by (0 - roadSpeed)
       wait 0.02 seconds
-    change score by 2
+    IF active = 1 THEN:
+      change score by 2
     delete this clone
 
 SPRITE Draft:
@@ -2501,7 +2774,7 @@ SPRITE Draft:
     create clone of myself
   WHEN I start as a clone:
     show
-    REPEAT UNTIL y position < -220:
+    REPEAT UNTIL y position < -220 or active = 0:
       change y by (0 - roadSpeed)
       wait 0.02 seconds
     delete this clone
@@ -2511,13 +2784,14 @@ SPRITE Oil:
   WHEN flag clicked:
     hide
   WHEN I receive "start slipstream":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait pick random 2 to 4 seconds
-      go to x: pick random -140 to 140 y: 190
-      create clone of myself
+      IF active = 1 THEN:
+        go to x: pick random -140 to 140 y: 190
+        create clone of myself
   WHEN I start as a clone:
     show
-    REPEAT UNTIL y position < -190:
+    REPEAT UNTIL y position < -190 or active = 0:
       change y by (0 - roadSpeed)
       wait 0.02 seconds
     delete this clone
@@ -2528,18 +2802,34 @@ SPRITE Gate:
     hide
     set gateActive to 0
   WHEN I receive "start slipstream":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 6 seconds
-      set gateActive to 1
-      go to x: pick random -120 to 120 y: 190
-      show
-      REPEAT UNTIL y position < -190 or gateActive = 0:
-        change y by (0 - roadSpeed)
-        wait 0.02 seconds
-      IF gateActive = 1 THEN:
-        change fuel by -18
-        set gateActive to 0
-      hide`,
+      IF active = 1 THEN:
+        set gateActive to 1
+        go to x: pick random -120 to 120 y: 190
+        show
+        REPEAT UNTIL y position < -190 or gateActive = 0 or active = 0:
+          change y by (0 - roadSpeed)
+          wait 0.02 seconds
+        IF gateActive = 1 and active = 1 THEN:
+          change fuel by -18
+          set gateActive to 0
+        hide
+
+SPRITE CircuitResult:
+  COSTUME win label "THREE CHECKPOINTS • PRESS SPACE OR TAP START TO RACE AGAIN" #8fffea
+  COSTUME lose label "ENERGY EMPTY • PRESS SPACE OR TAP START TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start slipstream":
+    hide
+  WHEN I receive "slipstream over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     abyss_rescue: `# Abyss Lift — a buoyancy-driven rescue run.
 # GOAL: rescue six gold divers before mines or cave walls consume three hull points.
@@ -2553,6 +2843,9 @@ GLOBAL current
 GLOBAL scroll
 GLOBAL invulnerable
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL diveRun
 
 STAGE:
   BACKDROP intro art abyss-lift/intro
@@ -2563,9 +2856,20 @@ STAGE:
     hide variable score
     hide variable hull
     hide variable rescued
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set hull to 3
+      set rescued to 0
+      set suby to 20
+      set vy to 0
+      set scroll to 4
+      set invulnerable to 0
+      set winner to 0
+      set active to 1
+      change diveRun by 1
       switch backdrop to trench
       broadcast "start abyss lift"
 
@@ -2581,6 +2885,8 @@ SPRITE Sub:
     set vy to 0
     set scroll to 4
     set invulnerable to 0
+    set active to 0
+    set winner to 0
     go to x: -130 y: suby
     hide
   WHEN I receive "start abyss lift":
@@ -2588,7 +2894,7 @@ SPRITE Sub:
     show variable hull
     show variable rescued
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key space pressed? THEN:
         change vy by 0.65
       change vy by -0.28
@@ -2604,55 +2910,84 @@ SPRITE Sub:
         set vy to 0
         play sound "hullHit"
         IF hull < 1 THEN:
-          say (("HULL LOST — " join rescued) join " DIVERS RESCUED") for 3 seconds
-          stop all
+          set winner to 0
+          set active to 0
+          broadcast "abyss lift over"
       IF rescued > 3 THEN:
         set scroll to 5
       wait 0.02 seconds
+    hide
   WHEN I receive "diver rescued":
-    change rescued by 1
-    change score by 10
-    play sound "sonar"
-    IF rescued = 6 THEN:
-      say ("ALL SIX SAFE! SCORE " join score) for 4 seconds
-      stop all
+    IF active = 1 THEN:
+      change rescued by 1
+      change score by 10
+      play sound "sonar"
+      IF rescued = 6 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "abyss lift over"
 
 SPRITE Mine:
+  LOCAL mineRun
   SHAPE art abyss-lift/mine
   WHEN flag clicked:
     hide
-  WHEN I receive "start abyss lift":
     FOREVER:
-      go to x: 250 y: pick random -145 to 145
-      create clone of myself
-      wait pick random 1 to 3 seconds
+      IF active = 1 THEN:
+        set mineRun to diveRun
+        go to x: 250 y: pick random -145 to 145
+        create clone of myself
+        wait pick random 1 to 3 seconds
+      ELSE:
+        wait 0.1 seconds
   WHEN I start as a clone:
     show
-    REPEAT UNTIL x position < -250:
+    REPEAT UNTIL x position < -250 or active = 0 or mineRun != diveRun:
       turn right 4 degrees
       change x by (0 - scroll)
       wait 0.02 seconds
-    change score by 1
+    IF active = 1 THEN:
+      change score by 1
     delete this clone
 
 SPRITE Diver:
+  LOCAL diverRun
   SHAPE art abyss-lift/diver
   WHEN flag clicked:
     hide
-  WHEN I receive "start abyss lift":
     FOREVER:
-      wait pick random 2 to 4 seconds
-      go to x: 250 y: pick random -120 to 120
-      create clone of myself
+      IF active = 1 THEN:
+        wait pick random 2 to 4 seconds
+      IF active = 1 THEN:
+        set diverRun to diveRun
+        go to x: 250 y: pick random -120 to 120
+        create clone of myself
+      ELSE:
+        wait 0.1 seconds
   WHEN I start as a clone:
     show
-    REPEAT UNTIL x position < -250 or touching Sub:
+    REPEAT UNTIL x position < -250 or touching Sub or active = 0 or diverRun != diveRun:
       set ghost effect to pick random 0 to 12
       change x by (0 - scroll)
       wait 0.02 seconds
-    IF touching Sub THEN:
+    IF touching Sub and active = 1 THEN:
       broadcast "diver rescued"
-    delete this clone`,
+    delete this clone
+
+SPRITE AbyssResult:
+  COSTUME win label "ALL SIX DIVERS SAFE • GREEN FLAG FOR ANOTHER DIVE" #ffe66d
+  COSTUME lose label "HULL LOST • GREEN FLAG TO RETRY" #ff8ca8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start abyss lift":
+    hide
+  WHEN I receive "abyss lift over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     specter_sweep: `# Wardlight — a ricochet defense game.
 # GOAL: banish twelve specters before three of them reach the central ward.
@@ -2661,6 +2996,8 @@ GLOBAL score
 GLOBAL ward
 GLOBAL edgeSide
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art wardlight/intro
@@ -2670,6 +3007,7 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable ward
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -2681,27 +3019,44 @@ SPRITE Hunter:
   WHEN flag clicked:
     set score to 0
     set ward to 3
+    set active to 0
+    set winner to 0
     go to x: 0 y: 0
     hide
   WHEN I receive "light the ward":
+    set score to 0
+    set ward to 3
+    set winner to 0
+    set active to 1
     show variable score
     show variable ward
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       point towards mouse-pointer
       IF score > 11 THEN:
-        say "The manor is clear!" for 3 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "wardlight over"
       IF ward < 1 THEN:
-        say "The ward has fallen!" for 3 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "wardlight over"
       wait 0.02 seconds
+    hide
   WHEN I receive "light the ward":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF mouse down? THEN:
         broadcast "cast"
         wait until not mouse down?
       wait 0.02 seconds
+  WHEN I receive "specter banished":
+    IF active = 1 THEN:
+      change score by 1
+  WHEN I receive "ward struck":
+    IF active = 1 THEN:
+      change ward by -1
 
 SPRITE Orb:
   SHAPE art wardlight/orb
@@ -2709,13 +3064,14 @@ SPRITE Orb:
   WHEN flag clicked:
     hide
   WHEN I receive "cast":
-    go to x: 0 y: 0
-    point towards mouse-pointer
-    create clone of myself
+    IF active = 1 THEN:
+      go to x: 0 y: 0
+      point towards mouse-pointer
+      create clone of myself
   WHEN I start as a clone:
     show
     set life to 180
-    REPEAT UNTIL life < 1:
+    REPEAT UNTIL life < 1 or active = 0:
       move 10 steps
       if on edge bounce
       change life by -1
@@ -2728,7 +3084,7 @@ SPRITE Ghost:
   WHEN flag clicked:
     hide
   WHEN I receive "light the ward":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set edgeSide to pick random 1 to 4
       IF edgeSide = 1 THEN:
         go to x: -220 y: pick random -150 to 150
@@ -2742,17 +3098,33 @@ SPRITE Ghost:
       wait 1.3 seconds
   WHEN I start as a clone:
     show
-    REPEAT UNTIL touching Hunter or touching Orb:
+    REPEAT UNTIL active = 0 or touching Hunter or touching Orb:
       point towards Hunter
       move 1.8 steps
       set ghost effect to pick random 0 to 25
       wait 0.03 seconds
-    IF touching Orb THEN:
-      change score by 1
+    IF active = 1 and touching Orb THEN:
+      broadcast "specter banished"
       play sound "zap"
     ELSE:
-      change ward by -1
-    delete this clone`,
+      IF active = 1 THEN:
+        broadcast "ward struck"
+    delete this clone
+
+SPRITE WardResult:
+  COSTUME win label "TWELVE SPECTERS BANISHED • GREEN FLAG TO RELIGHT" #8fffea
+  COSTUME lose label "THE CENTRAL WARD FELL • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "light the ward":
+    hide
+  WHEN I receive "wardlight over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     moonlight_heist: `# Pantry Prowl — a compact stealth chase.
 # GOAL: steal five cheeses and return to the blue hideout without being caught.
@@ -2763,6 +3135,9 @@ GLOBAL px
 GLOBAL py
 GLOBAL moving
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL cheeseReady
 
 STAGE:
   BACKDROP intro art pantry-prowl/intro
@@ -2772,6 +3147,7 @@ STAGE:
     switch backdrop to intro
     hide variable score
     hide variable alert
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -2785,13 +3161,22 @@ SPRITE Mouse:
     set alert to 0
     set px to -180
     set py to -120
+    set active to 0
+    set winner to 0
     go to x: px y: py
     hide
   WHEN I receive "start pantry prowl":
+    set score to 0
+    set alert to 0
+    set px to -180
+    set py to -120
+    set winner to 0
+    set active to 1
+    go to x: px y: py
     show variable score
     show variable alert
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set moving to 0
       IF key left arrow pressed? THEN:
         change px by -5
@@ -2822,17 +3207,30 @@ SPRITE Mouse:
         ELSE:
           IF alert > 0 THEN:
             change alert by -0.02
-      IF alert > 1 and touching Cat THEN:
-        say ("Caught with " join score) for 3 seconds
-        stop all
-      IF touching Cheese THEN:
+      IF alert > 5 THEN:
+        set alert to 5
+      IF touching Cat THEN:
+        broadcast "pantry caught"
+      IF cheeseReady = 1 and touching Cheese THEN:
+        set cheeseReady to 0
         change score by 1
         broadcast "new cheese"
-        wait 0.2 seconds
       IF score > 4 and touching Tunnel THEN:
-        say "FIVE CHEESES SAFE — PERFECT HEIST!" for 4 seconds
-        stop all
+        broadcast "pantry won"
       wait 0.02 seconds
+    hide
+  WHEN I receive "pantry caught":
+    IF active = 1 THEN:
+      set winner to 0
+      set active to 0
+      set started to 0
+      broadcast "pantry over"
+  WHEN I receive "pantry won":
+    IF active = 1 THEN:
+      set winner to 1
+      set active to 0
+      set started to 0
+      broadcast "pantry over"
 
 SPRITE Cat:
   SHAPE art pantry-prowl/cat
@@ -2840,9 +3238,10 @@ SPRITE Cat:
     go to x: 170 y: 110
     hide
   WHEN I receive "start pantry prowl":
+    go to x: 170 y: 110
     show
-    FOREVER:
-      IF alert > 1 THEN:
+    REPEAT UNTIL active = 0:
+      IF alert > 0.75 THEN:
         point towards Mouse
         move 1 + (score * 0.12) steps
       ELSE:
@@ -2856,16 +3255,24 @@ SPRITE Cat:
           change y by -2
         turn right 1 degrees
       wait 0.03 seconds
+    hide
 
 SPRITE Cheese:
   SHAPE art pantry-prowl/cheese
   WHEN flag clicked:
     go to x: 0 y: 0
+    set cheeseReady to 0
     hide
   WHEN I receive "start pantry prowl":
     show
+    broadcast "new cheese"
   WHEN I receive "new cheese":
-    go to x: pick random -200 to 200 y: pick random -140 to 140
+    set cheeseReady to 0
+    REPEAT UNTIL distance to Tunnel > 80 and distance to Cat > 70:
+      go to x: pick random -200 to 200 y: pick random -140 to 140
+    set cheeseReady to 1
+  WHEN I receive "pantry over":
+    hide
 
 SPRITE Tunnel:
   SHAPE art pantry-prowl/tunnel
@@ -2873,6 +3280,23 @@ SPRITE Tunnel:
     go to x: -40 y: 100
     hide
   WHEN I receive "start pantry prowl":
+    show
+  WHEN I receive "pantry over":
+    hide
+
+SPRITE PantryResult:
+  COSTUME win label "FIVE CHEESES SAFE • GREEN FLAG FOR ANOTHER HEIST" #8fffea
+  COSTUME lose label "THE CAT CAUGHT YOU • GREEN FLAG TO SNEAK AGAIN" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start pantry prowl":
+    hide
+  WHEN I receive "pantry over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     cloud_court: `# Nimbus Volley — a one-player cloud-court match.
@@ -2893,6 +3317,8 @@ GLOBAL cvy
 GLOBAL target
 GLOBAL spiking
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art nimbus-volley/intro
@@ -2903,6 +3329,7 @@ STAGE:
     hide variable playerScore
     hide variable cpuScore
     hide variable rally
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -2919,8 +3346,13 @@ SPRITE Player:
     go to x: px y: py
     hide
   WHEN I receive "start nimbus volley":
+    set px to -150
+    set py to -125
+    set pvy to 0
+    set spiking to 0
+    set active to 1
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set spiking to 0
       IF key a pressed? THEN:
         change px by -7
@@ -2941,6 +3373,7 @@ SPRITE Player:
         set px to -35
       go to x: px y: py
       wait 0.02 seconds
+    hide
 
 SPRITE CloudBot:
   SHAPE art nimbus-volley/bot
@@ -2950,8 +3383,11 @@ SPRITE CloudBot:
     go to x: 150 y: cy
     hide
   WHEN I receive "start nimbus volley":
+    set cy to -125
+    set cvy to 0
+    go to x: 150 y: cy
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set target to x position of Ball
       IF target > x position + 5 THEN:
         change x by 5
@@ -2961,7 +3397,7 @@ SPRITE CloudBot:
         set x to 35
       IF x position > 220 THEN:
         set x to 220
-      IF y position of Ball > -45 and cy = -125 THEN:
+      IF x position of Ball > 20 and y position of Ball > -45 and cy = -125 THEN:
         set cvy to 9
       change cvy by -0.7
       change cy by cvy
@@ -2970,6 +3406,7 @@ SPRITE CloudBot:
         set cvy to 0
       set y to cy
       wait 0.02 seconds
+    hide
 
 SPRITE Ball:
   SHAPE art nimbus-volley/ball
@@ -2982,31 +3419,51 @@ SPRITE Ball:
     set by to 80
     set vx to -4
     set vy to 4
+    set active to 0
+    set winner to 0
     go to x: bx y: by
     hide
   WHEN I receive "start nimbus volley":
+    set playerScore to 0
+    set cpuScore to 0
+    set rally to 1
+    set bx to 0
+    set by to 100
+    set vx to -4
+    set vy to 4
+    set winner to 0
+    set active to 1
     show variable playerScore
     show variable cpuScore
     show variable rally
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change vy by -0.32
       change bx by vx
       change by by vy
+      IF bx > 226 THEN:
+        set bx to 226
+        set vx to 0 - (abs of vx)
+      IF bx < -226 THEN:
+        set bx to -226
+        set vx to abs of vx
+      IF by > 166 THEN:
+        set by to 166
+        set vy to 0 - (abs of vy)
       go to x: bx y: by
       IF touching Player THEN:
         IF spiking = 1 and py > -110 THEN:
-          set vx to (abs of vx) + 2
-          set vy to -5
+          set vx to 5 + (abs of (bx - px) / 14)
+          set vy to -6
         ELSE:
-          set vx to (abs of vx) + 0.2
-          set vy to 8
+          set vx to 3.8 + (abs of (bx - px) / 16)
+          set vy to 7 + (pvy * 0.35)
         change rally by 1
         play sound "bump"
         wait 0.06 seconds
       IF touching CloudBot THEN:
-        set vx to 0 - ((abs of vx) + 0.2)
-        set vy to 8
+        set vx to 0 - (3.8 + (abs of (bx - x position of CloudBot) / 16))
+        set vy to 7 + (cvy * 0.3)
         change rally by 1
         play sound "bump"
         wait 0.06 seconds
@@ -3024,13 +3481,19 @@ SPRITE Ball:
         set bx to 0
         set by to 100
         set vy to 3
+        wait 0.55 seconds
       IF playerScore = 7 THEN:
-        say (("STORM COURT WON! FINAL " join playerScore) join (" - " join cpuScore)) for 3 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "nimbus match over"
       IF cpuScore = 7 THEN:
-        say (("NIMBUS WINS — FINAL " join playerScore) join (" - " join cpuScore)) for 3 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "nimbus match over"
       wait 0.02 seconds
+    hide
 
 SPRITE Net:
   SHAPE art nimbus-volley/net
@@ -3038,6 +3501,23 @@ SPRITE Net:
     go to x: 0 y: -115
     hide
   WHEN I receive "start nimbus volley":
+    show
+  WHEN I receive "nimbus match over":
+    hide
+
+SPRITE NimbusResult:
+  COSTUME win label "STORM COURT WON • GREEN FLAG FOR A REMATCH" #7ff6ff
+  COSTUME lose label "NIMBUS WINS • GREEN FLAG FOR A REMATCH" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start nimbus volley":
+    hide
+  WHEN I receive "nimbus match over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     ember_dojo: `# Ember Parry — a compact timing duel against a sky dragon.
@@ -3050,6 +3530,8 @@ GLOBAL parrying
 GLOBAL fireSpeed
 GLOBAL streak
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art ember-parry/intro
@@ -3060,9 +3542,18 @@ STAGE:
     hide variable hearts
     hide variable dragonHP
     hide variable streak
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set hearts to 3
+      set dragonHP to 8
+      set streak to 0
+      set heroX to -120
+      set parrying to 0
+      set fireSpeed to 5
+      set winner to 0
+      set active to 1
       switch backdrop to dojo
       broadcast "start ember parry"
 
@@ -3075,6 +3566,8 @@ SPRITE Ronin:
     set heroX to -120
     set parrying to 0
     set fireSpeed to 5
+    set active to 0
+    set winner to 0
     go to x: heroX y: -125
     hide
   WHEN I receive "start ember parry":
@@ -3082,7 +3575,7 @@ SPRITE Ronin:
     show variable dragonHP
     show variable streak
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change heroX by -7
       IF key right arrow pressed? THEN:
@@ -3094,19 +3587,30 @@ SPRITE Ronin:
       go to x: heroX y: -125
       IF dragonHP < 5 THEN:
         set fireSpeed to 7
-      IF dragonHP < 1 THEN:
-        say "EIGHT PERFECT RETURNS — THE DRAGON YIELDS!" for 4 seconds
-        stop all
-      IF hearts < 1 THEN:
-        say "THREE EMBERS LANDED — TRY THE RHYTHM AGAIN." for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and parrying = 0 THEN:
+    IF active = 1 and parrying = 0 THEN:
       set parrying to 1
       broadcast "moon parry"
       wait 0.18 seconds
       set parrying to 0
+  WHEN I receive "ember reflected":
+    IF active = 1 THEN:
+      change dragonHP by -1
+      change streak by 1
+      IF dragonHP < 1 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "ember duel over"
+  WHEN I receive "ember struck":
+    IF active = 1 THEN:
+      change hearts by -1
+      set streak to 0
+      IF hearts < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "ember duel over"
 
 SPRITE Blade:
   SHAPE art ember-parry/blade
@@ -3117,6 +3621,8 @@ SPRITE Blade:
     show
     wait 0.18 seconds
     hide
+  WHEN I receive "ember duel over":
+    hide
 
 SPRITE Dragon:
   SHAPE art ember-parry/dragon
@@ -3125,13 +3631,15 @@ SPRITE Dragon:
     hide
   WHEN I receive "start ember parry":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       glide 0.7 secs to x: pick random -175 to 175 y: pick random 65 to 125
-      broadcast "dragon fire"
-      IF dragonHP < 5 THEN:
-        wait 0.45 seconds
-      ELSE:
-        wait 0.8 seconds
+      IF active = 1 THEN:
+        broadcast "dragon fire"
+        IF dragonHP < 5 THEN:
+          wait 0.45 seconds
+        ELSE:
+          wait 0.8 seconds
+    hide
 
 SPRITE Fireball:
   SHAPE art ember-parry/fireball
@@ -3140,25 +3648,39 @@ SPRITE Fireball:
   WHEN flag clicked:
     hide
   WHEN I receive "dragon fire":
-    go to Dragon
-    point towards Ronin
-    create clone of myself
+    IF active = 1 THEN:
+      go to Dragon
+      point towards Ronin
+      create clone of myself
   WHEN I start as a clone:
     show
-    REPEAT UNTIL touching Ronin or touching edge:
+    REPEAT UNTIL touching Ronin or touching edge or active = 0:
       move fireSpeed steps
       wait 0.02 seconds
-    IF touching Ronin THEN:
+    IF touching Ronin and active = 1 THEN:
       IF parrying = 1 THEN:
-        change dragonHP by -1
-        change streak by 1
+        broadcast "ember reflected"
         play sound "clash"
         say "REFLECT!" for 0.25 seconds
       ELSE:
-        change hearts by -1
-        set streak to 0
+        broadcast "ember struck"
         play sound "hit"
-    delete this clone`,
+    delete this clone
+
+SPRITE EmberResult:
+  COSTUME win label "EIGHT PERFECT RETURNS • GREEN FLAG FOR A REMATCH" #ffe66d
+  COSTUME lose label "THREE EMBERS LANDED • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start ember parry":
+    hide
+  WHEN I receive "ember duel over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     lockstep_lagoon: `# Tidegate Rush — a finite three-lane hydrofoil sprint.
 # GOAL: clear eight blue gates before the 35-second tide closes; three buoy hits sink you.
@@ -3173,6 +3695,8 @@ GLOBAL speed
 GLOBAL surge
 GLOBAL charge
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art tidegate-rush/intro
@@ -3185,9 +3709,20 @@ STAGE:
     hide variable hull
     hide variable timeLeft
     hide variable charge
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set gates to 0
+      set hull to 3
+      set timeLeft to 35
+      set lane to 0
+      set speed to 5
+      set surge to 0
+      set charge to 100
+      set winner to 0
+      set active to 1
       switch backdrop to course
       broadcast "start tidegate rush"
 
@@ -3204,6 +3739,8 @@ SPRITE Foil:
     set speed to 5
     set surge to 0
     set charge to 100
+    set active to 0
+    set winner to 0
     point in direction 0
     go to x: 0 y: -125
     hide
@@ -3214,7 +3751,7 @@ SPRITE Foil:
     show variable timeLeft
     show variable charge
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change lane by -1
         wait 0.12 seconds
@@ -3235,17 +3772,37 @@ SPRITE Foil:
         switch costume to costume1
         IF charge < 100 THEN:
           change charge by 0.25
-      IF gates = 8 THEN:
-        say ("EIGHT GATES CLEARED — HARBOUR SCORE " join score) for 4 seconds
-        stop all
-      IF hull < 1 or timeLeft < 1 THEN:
-        say ("TIDE CLOSED — " join gates) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN I receive "start tidegate rush":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
-      change timeLeft by -1
+      IF active = 1 THEN:
+        change timeLeft by -1
+        IF timeLeft < 1 THEN:
+          set winner to 0
+          set active to 0
+          broadcast "tidegate over"
+  WHEN I receive "blue gate cleared":
+    IF active = 1 THEN:
+      change gates by 1
+      IF surge > 0 THEN:
+        change score by 15
+        change surge by -1
+      ELSE:
+        change score by 5
+      change timeLeft by 1
+      IF gates = 8 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "tidegate over"
+  WHEN I receive "buoy struck":
+    IF active = 1 THEN:
+      change hull by -1
+      IF hull < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "tidegate over"
 
 SPRITE LockGate:
   SHAPE art tidegate-rush/gate
@@ -3254,27 +3811,21 @@ SPRITE LockGate:
   WHEN flag clicked:
     hide
   WHEN I receive "start tidegate rush":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: (pick random -1 to 1) * 110 y: 210
       IF pick random 1 to 4 = 1 THEN:
         switch costume to buoy
       ELSE:
         switch costume to costume1
       show
-      REPEAT UNTIL y position < -190:
+      REPEAT UNTIL y position < -190 or active = 0:
         change y by 0 - speed
         IF touching Foil THEN:
           IF costume name = buoy THEN:
-            change hull by -1
+            broadcast "buoy struck"
             play sound "splash"
           ELSE:
-            change gates by 1
-            IF surge > 0 THEN:
-              change score by 15
-              change surge by -1
-            ELSE:
-              change score by 5
-            change timeLeft by 1
+            broadcast "blue gate cleared"
             play sound "lock"
           hide
           set y to -220
@@ -3287,21 +3838,37 @@ SPRITE SurgeLock:
   WHEN flag clicked:
     hide
   WHEN I receive "start tidegate rush":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait pick random 4 to 7 seconds
-      go to x: (pick random -1 to 1) * 110 y: 210
-      show
-      REPEAT UNTIL y position < -190:
-        change y by 0 - speed
-        IF touching Foil THEN:
-          set surge to 3
-          change charge by 25
-          IF charge > 100 THEN:
-            set charge to 100
-          hide
-          set y to -220
-        wait 0.02 seconds
-      hide`,
+      IF active = 1 THEN:
+        go to x: (pick random -1 to 1) * 110 y: 210
+        show
+        REPEAT UNTIL y position < -190 or active = 0:
+          change y by 0 - speed
+          IF touching Foil THEN:
+            set surge to 3
+            change charge by 25
+            IF charge > 100 THEN:
+              set charge to 100
+            hide
+            set y to -220
+          wait 0.02 seconds
+        hide
+
+SPRITE TidegateResult:
+  COSTUME win label "EIGHT GATES CLEARED • GREEN FLAG FOR ANOTHER RUN" #70efff
+  COSTUME lose label "TIDE CLOSED OR HULL LOST • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start tidegate rush":
+    hide
+  WHEN I receive "tidegate over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     rink_riot: `# Blue-Line Breaker — momentum hockey built around deliberate bank shots.
 # GOAL: score five goals before the 40-second horn.
@@ -3316,6 +3883,8 @@ GLOBAL vy
 GLOBAL puckLive
 GLOBAL keeperY
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art blue-line-breaker/intro
@@ -3325,6 +3894,7 @@ STAGE:
     switch backdrop to intro
     hide variable goals
     hide variable clock
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -3340,13 +3910,24 @@ SPRITE Skater:
     set skaterY to 0
     set vx to 0
     set vy to 0
+    set active to 0
+    set winner to 0
     go to x: skaterX y: skaterY
     hide
   WHEN I receive "start blue line":
+    set goals to 0
+    set clock to 40
+    set skaterX to -150
+    set skaterY to 0
+    set vx to 0
+    set vy to 0
+    set winner to 0
+    set active to 1
+    go to x: skaterX y: skaterY
     show variable goals
     show variable clock
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change vx by -0.7
       IF key right arrow pressed? THEN:
@@ -3369,14 +3950,19 @@ SPRITE Skater:
         set skaterY to 150
       go to x: skaterX y: skaterY
       IF goals = 5 THEN:
-        say "FIVE GOALS — BLUE LINE BROKEN!" for 4 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "blue line over"
       IF clock < 1 THEN:
-        say ("HORN — GOALS " join goals) for 4 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "blue line over"
       wait 0.02 seconds
+    hide
   WHEN I receive "start blue line":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
       change clock by -1
 
@@ -3388,8 +3974,10 @@ SPRITE Puck:
     go to x: -30 y: 0
     hide
   WHEN I receive "start blue line":
+    set puckLive to 0
+    go to x: -30 y: 0
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF puckLive = 0 and touching Skater and key space pressed? THEN:
         set puckLive to 1
         point in direction 90 - vy * 5
@@ -3401,15 +3989,22 @@ SPRITE Puck:
           point in direction 180 - direction
           move 14 steps
         IF touching Goal THEN:
-          change goals by 1
-          change clock by 2
-          play sound "goal"
+          broadcast "blue line goal"
           set puckLive to 0
           go to x: -30 y: pick random -80 to 80
-        IF x position < -235 THEN:
-          set puckLive to 0
-          go to x: -30 y: 0
+        IF x position < -235 or x position > 235 THEN:
+          broadcast "blue line miss"
       wait 0.02 seconds
+    hide
+  WHEN I receive "blue line miss":
+    IF active = 1 THEN:
+      set puckLive to 0
+      go to x: -30 y: 0
+  WHEN I receive "blue line goal":
+    IF active = 1 THEN:
+      change goals by 1
+      change clock by 2
+      play sound "goal"
 
 SPRITE Keeper:
   SHAPE art blue-line-breaker/keeper
@@ -3418,8 +4013,9 @@ SPRITE Keeper:
     go to x: 185 y: keeperY
     hide
   WHEN I receive "start blue line":
+    set keeperY to 0
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF puckLive = 1 THEN:
         IF y position of Puck > keeperY THEN:
           change keeperY by 5
@@ -3433,6 +4029,7 @@ SPRITE Keeper:
         set keeperY to -115
       go to x: 185 y: keeperY
       wait 0.03 seconds
+    hide
 
 SPRITE Goal:
   SHAPE art blue-line-breaker/goal
@@ -3440,6 +4037,23 @@ SPRITE Goal:
     go to x: 220 y: 0
     hide
   WHEN I receive "start blue line":
+    show
+  WHEN I receive "blue line over":
+    hide
+
+SPRITE RinkResult:
+  COSTUME win label "FIVE GOALS • GREEN FLAG FOR ANOTHER SHIFT" #8fffea
+  COSTUME lose label "HORN SOUNDED • GREEN FLAG TO TRY AGAIN" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start blue line":
+    hide
+  WHEN I receive "blue line over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     rim_reactor: `# Orbit Hoops — a moving-basket charge-shot challenge.
@@ -3457,6 +4071,8 @@ GLOBAL ballVY
 GLOBAL flying
 GLOBAL hoopX
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art orbit-hoops/intro
@@ -3468,6 +4084,7 @@ STAGE:
     hide variable streak
     hide variable charge
     hide variable timeLeft
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -3486,16 +4103,28 @@ SPRITE Ball:
     set flying to 0
     set ballX to -150
     set ballY to -125
+    set active to 0
+    set winner to 0
     go to x: ballX y: ballY
     hide
   WHEN I receive "start orbit hoops":
+    set score to 0
+    set streak to 1
+    set charge to 0
+    set timeLeft to 45
+    set flying to 0
+    set ballX to -150
+    set ballY to -125
+    set winner to 0
+    set active to 1
+    go to x: ballX y: ballY
     show variable score
     show variable streak
     show variable charge
     show variable timeLeft
     show
     wait 0.25 seconds
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF flying = 0 THEN:
         IF key space pressed? THEN:
           change charge by 0.7
@@ -3518,9 +4147,7 @@ SPRITE Ball:
         go to x: ballX y: ballY
         turn right 12 degrees
         IF touching Net and ballVY < 0 THEN:
-          change score by 2 * streak
-          change streak by 1
-          play sound "swish"
+          broadcast "orbit swish"
           set flying to 0
           set ballX to -150
           set ballY to -125
@@ -3538,16 +4165,26 @@ SPRITE Ball:
           set ballY to -125
           go to x: ballX y: ballY
       IF score > 14 THEN:
-        say "FIFTEEN POINTS — REACTOR ONLINE!" for 4 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "orbit hoops over"
       IF timeLeft < 1 THEN:
-        say ("CYCLE OVER — SCORE " join score) for 4 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "orbit hoops over"
       wait 0.02 seconds
+    hide
   WHEN I receive "start orbit hoops":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
       change timeLeft by -1
+  WHEN I receive "orbit swish":
+    IF active = 1 THEN:
+      change score by 2 * streak
+      change streak by 1
+      play sound "swish"
 
 SPRITE Rim:
   SHAPE art orbit-hoops/rim
@@ -3556,13 +4193,15 @@ SPRITE Rim:
     go to x: hoopX y: 55
     hide
   WHEN I receive "start orbit hoops":
+    set hoopX to 110
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change hoopX by 3 + score / 8
       IF hoopX > 190 THEN:
         set hoopX to 40
       go to x: hoopX y: 55
       wait 0.03 seconds
+    hide
 
 SPRITE Net:
   SHAPE art orbit-hoops/net
@@ -3571,9 +4210,10 @@ SPRITE Net:
     hide
   WHEN I receive "start orbit hoops":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: hoopX y: 38
       wait 0.03 seconds
+    hide
 
 SPRITE ChargeMeter:
   SHAPE art orbit-hoops/meter
@@ -3582,9 +4222,25 @@ SPRITE ChargeMeter:
     hide
   WHEN I receive "start orbit hoops":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set size to 20 + charge * 4 %
-      wait 0.03 seconds`,
+      wait 0.03 seconds
+    hide
+
+SPRITE HoopsResult:
+  COSTUME win label "REACTOR ONLINE • GREEN FLAG TO SHOOT AGAIN" #8fffea
+  COSTUME lose label "CYCLE ENDED • GREEN FLAG FOR ANOTHER RUN" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start orbit hoops":
+    hide
+  WHEN I receive "orbit hoops over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     comet_cup: `# Comet Strikers — curve-shot football with a roaming keeper.
 # GOAL: score four goals before the 45-second match clock ends.
@@ -3601,6 +4257,8 @@ GLOBAL ballSpeed
 GLOBAL crowd
 GLOBAL keeperY
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art comet-strikers/intro
@@ -3612,6 +4270,7 @@ STAGE:
     hide variable score
     hide variable matchTime
     hide variable crowd
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -3629,15 +4288,26 @@ SPRITE Striker:
     set strikerY to 0
     set runX to 0
     set runY to 0
+    set active to 0
+    set winner to 0
     go to x: strikerX y: strikerY
     hide
   WHEN I receive "start comet match":
+    set goals to 0
+    set score to 0
+    set matchTime to 45
+    set crowd to 1
+    set strikerX to -150
+    set strikerY to 0
+    set winner to 0
+    set active to 1
+    go to x: strikerX y: strikerY
     show variable goals
     show variable score
     show variable matchTime
     show variable crowd
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set runX to 0
       set runY to 0
       IF key left arrow pressed? THEN:
@@ -3660,14 +4330,19 @@ SPRITE Striker:
         set strikerY to 155
       go to x: strikerX y: strikerY
       IF goals = 4 THEN:
-        say ("FOUR GOALS — COMET SCORE " join score) for 4 seconds
-        stop all
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "comet match over"
       IF matchTime < 1 THEN:
-        say ("FULL TIME — GOALS " join goals) for 4 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "comet match over"
       wait 0.02 seconds
+    hide
   WHEN I receive "start comet match":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
       change matchTime by -1
 
@@ -3681,8 +4356,11 @@ SPRITE Ball:
     point in direction 90
     hide
   WHEN I receive "start comet match":
+    set ballSpeed to 0
+    go to x: -50 y: 0
+    point in direction 90
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Striker and key space pressed? and ballSpeed < 2 THEN:
         point towards CometGoal
         turn right runY * -3 degrees
@@ -3700,18 +4378,25 @@ SPRITE Ball:
         set ballSpeed to 9
         set crowd to 1
       IF touching CometGoal THEN:
-        change goals by 1
-        change score by crowd * 10
-        change crowd by 1
-        change matchTime by 2
-        play sound "goal"
+        broadcast "comet goal"
         set ballSpeed to 0
         go to x: -50 y: pick random -80 to 80
-      IF x position < -235 THEN:
-        set ballSpeed to 0
-        set crowd to 1
-        go to x: -50 y: 0
+      IF x position < -235 or x position > 235 THEN:
+        broadcast "comet miss"
       wait 0.02 seconds
+    hide
+  WHEN I receive "comet miss":
+    IF active = 1 THEN:
+      set ballSpeed to 0
+      set crowd to 1
+      go to x: -50 y: 0
+  WHEN I receive "comet goal":
+    IF active = 1 THEN:
+      change goals by 1
+      change score by crowd * 10
+      change crowd by 1
+      change matchTime by 2
+      play sound "goal"
 
 SPRITE Keeper:
   SHAPE art comet-strikers/keeper
@@ -3720,8 +4405,9 @@ SPRITE Keeper:
     go to x: 182 y: keeperY
     hide
   WHEN I receive "start comet match":
+    set keeperY to 0
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF Ball y position > keeperY THEN:
         change keeperY by 3 + goals / 3
       ELSE:
@@ -3732,6 +4418,7 @@ SPRITE Keeper:
         set keeperY to -118
       go to x: 182 y: keeperY
       wait 0.03 seconds
+    hide
 
 SPRITE CometGoal:
   SHAPE art comet-strikers/goal
@@ -3739,6 +4426,23 @@ SPRITE CometGoal:
     go to x: 220 y: 0
     hide
   WHEN I receive "start comet match":
+    show
+  WHEN I receive "comet match over":
+    hide
+
+SPRITE CometResult:
+  COSTUME win label "FOUR GOALS • GREEN FLAG FOR ANOTHER MATCH" #8fffea
+  COSTUME lose label "FULL TIME • GREEN FLAG FOR A REMATCH" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start comet match":
+    hide
+  WHEN I receive "comet match over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     trench_signal: `# Echo Trench — a submarine salvage run with a sonar-defense rhythm.
@@ -3756,6 +4460,9 @@ GLOBAL mineSpeed
 GLOBAL pulseOn
 GLOBAL pulseReady
 GLOBAL started
+GLOBAL active
+GLOBAL mineStun
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art echo-trench/intro
@@ -3767,6 +4474,7 @@ STAGE:
     hide variable hull
     hide variable oxygen
     hide variable pulseReady
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
@@ -3788,9 +4496,22 @@ SPRITE Sub:
     set mineSpeed to 2
     set pulseOn to 0
     set pulseReady to 0
+    set mineStun to 0
+    set winner to 0
+    set active to 0
     go to x: subX y: subY
     hide
   WHEN I receive "start echo trench":
+    set pearls to 0
+    set hull to 3
+    set oxygen to 40
+    set subX to -150
+    set subY to 60
+    set rise to 0
+    set mineSpeed to 2
+    set mineStun to 0
+    set winner to 0
+    set active to 1
     show variable pearls
     show variable hull
     show variable oxygen
@@ -3798,7 +4519,7 @@ SPRITE Sub:
     show
     wait 0.25 seconds
     set pulseReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change rise by 0.08
       IF key up arrow pressed? THEN:
         change rise by 0.35
@@ -3827,15 +4548,20 @@ SPRITE Sub:
         set rise to 2
         change hull by -1
       go to x: subX y: subY
-      IF pearls > 2 THEN:
-        say "Signal restored — ascent complete!" for 3 seconds
-        stop all
-      IF hull < 1 or oxygen < 1 THEN:
-        say "The trench keeps its secret." for 3 seconds
-        stop all
+      IF active = 1 and pearls > 2 THEN:
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "echo trench over"
+      IF active = 1 and (hull < 1 or oxygen < 1) THEN:
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "echo trench over"
       wait 0.02 seconds
+    hide
   WHEN I receive "start echo trench":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1 seconds
       change oxygen by -1
   WHEN space key pressed:
@@ -3857,15 +4583,20 @@ SPRITE SignalPearl:
     hide
   WHEN I receive "start echo trench":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change y by sin of oxygen * 0.4
       IF touching Sub THEN:
-        change pearls by 1
-        change oxygen by 7
-        change mineSpeed by 0.7
-        play sound "found"
-        go to x: pick random -190 to 190 y: pick random -130 to 130
+        broadcast "signal pearl recovered"
+        wait until not touching Sub
       wait 0.03 seconds
+    hide
+  WHEN I receive "signal pearl recovered":
+    IF active = 1 THEN:
+      change pearls by 1
+      change oxygen by 7
+      change mineSpeed by 0.7
+      play sound "found"
+      go to x: pick random -190 to 190 y: pick random -130 to 130
 
 SPRITE HunterMine:
   SHAPE art echo-trench/mine
@@ -3873,18 +4604,28 @@ SPRITE HunterMine:
     go to x: 190 y: -110
     hide
   WHEN I receive "start echo trench":
+    set mineStun to 0
+    go to x: 190 y: -110
     show
-    FOREVER:
-      point towards Sub
-      move mineSpeed steps
+    REPEAT UNTIL active = 0:
+      IF mineStun > 0 THEN:
+        change mineStun by -0.03
+        turn right 12 degrees
+      ELSE:
+        point towards Sub
+        move mineSpeed steps
       IF touching Sub THEN:
         change hull by -1
         go to x: pick random 130 to 210 y: pick random -130 to 130
         wait 0.8 seconds
-      IF touching SonarRing THEN:
-        point in direction 180 - direction
-        move 35 steps
       wait 0.03 seconds
+    hide
+  WHEN I receive "sonar pulse":
+    IF active = 1 and distance to Sub < 150 THEN:
+      point towards Sub
+      turn right 180 degrees
+      move 90 steps
+      set mineStun to 0.7
 
 SPRITE SonarRing:
   SHAPE art echo-trench/ring
@@ -3899,7 +4640,22 @@ SPRITE SonarRing:
       change ghost effect by 10
       wait 0.03 seconds
     clear graphic effects
-    hide`,
+    hide
+
+SPRITE TrenchResult:
+  COSTUME win label "3 SIGNAL PEARLS RECOVERED • GREEN FLAG TO DIVE AGAIN" #7ff6ff
+  COSTUME lose label "OXYGEN OR HULL FAILED • GREEN FLAG TO RETRY" #ff8fa5
+  WHEN flag clicked:
+    go to x: 0 y: -20
+    hide
+  WHEN I receive "start echo trench":
+    hide
+  WHEN I receive "echo trench over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     whisker_switch: `# Whisker Relay — a risky pantry courier run, distinct from Pantry Prowl.
 # GOAL: bank six moon-cheeses by carrying them to the highlighted opposite mouse hole.
@@ -3917,6 +4673,8 @@ GLOBAL targetHole
 GLOBAL dashX
 GLOBAL dashY
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art whisker-relay/intro
@@ -3929,9 +4687,23 @@ STAGE:
     hide variable lives
     hide variable scent
     hide variable targetHole
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set cargo to 0
+      set banked to 0
+      set lives to 3
+      set scent to 0
+      set catSpeed to 2
+      set hidden to 0
+      set targetHole to 1
+      set dashX to 1
+      set dashY to 0
+      set mouseX to -160
+      set mouseY to -100
+      set winner to 0
+      set active to 1
       switch backdrop to pantry
       broadcast "start whisker relay"
 
@@ -3951,6 +4723,8 @@ SPRITE Pip:
     set dashY to 0
     set mouseX to -160
     set mouseY to -100
+    set active to 0
+    set winner to 0
     go to x: mouseX y: mouseY
     hide
   WHEN I receive "start whisker relay":
@@ -3959,7 +4733,7 @@ SPRITE Pip:
     show variable lives
     show variable scent
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change mouseX by -4
         set dashX to -1
@@ -3994,24 +4768,15 @@ SPRITE Pip:
         set hidden to 1
         set scent to 0
       IF touching RightHole and targetHole = 1 and cargo > 0 THEN:
-        change banked by cargo
-        set cargo to 0
-        set targetHole to -1
+        broadcast "relay delivery"
       IF touching LeftHole and targetHole = -1 and cargo > 0 THEN:
-        change banked by cargo
-        set cargo to 0
-        set targetHole to 1
+        broadcast "relay delivery"
       IF scent > 0 THEN:
         change scent by -0.03
-      IF banked > 5 THEN:
-        say "SIX CHEESES BANKED — RELAY COMPLETE!" for 4 seconds
-        stop all
-      IF lives < 1 THEN:
-        say ("CAT CAUGHT THE RELAY — BANKED " join banked) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and cargo > 0 THEN:
+    IF active = 1 and cargo > 0 THEN:
       change mouseX by dashX * 55
       change mouseY by dashY * 55
       change cargo by -1
@@ -4019,6 +4784,29 @@ SPRITE Pip:
       switch costume to dash
       wait 0.15 seconds
       switch costume to costume1
+  WHEN I receive "relay delivery":
+    IF active = 1 THEN:
+      change banked by cargo
+      set cargo to 0
+      IF targetHole = 1 THEN:
+        set targetHole to -1
+      ELSE:
+        set targetHole to 1
+      IF banked > 5 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "whisker relay over"
+  WHEN I receive "relay caught":
+    IF active = 1 THEN:
+      change lives by -1
+      set cargo to 0
+      set scent to 0
+      set mouseX to -160
+      set mouseY to -100
+      IF lives < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "whisker relay over"
 
 SPRITE CheeseMoon:
   SHAPE art whisker-relay/cheese
@@ -4028,7 +4816,7 @@ SPRITE CheeseMoon:
     hide
   WHEN I receive "start whisker relay":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       turn right 4 degrees
       IF touching Pip THEN:
         change cargo by 1
@@ -4037,6 +4825,7 @@ SPRITE CheeseMoon:
         play sound "crumb"
         go to x: pick random -190 to 190 y: pick random -135 to 135
       wait 0.03 seconds
+    hide
 
 SPRITE Marmalade:
   SHAPE art whisker-relay/cat
@@ -4046,7 +4835,7 @@ SPRITE Marmalade:
     hide
   WHEN I receive "start whisker relay":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF hidden = 0 and scent > 0.8 THEN:
         point towards Pip
         move catSpeed + scent / 5 steps
@@ -4055,15 +4844,12 @@ SPRITE Marmalade:
         move 1.5 steps
         if on edge bounce
       IF touching Pip and hidden = 0 THEN:
-        change lives by -1
-        set cargo to 0
-        set scent to 0
-        set mouseX to -160
-        set mouseY to -100
+        broadcast "relay caught"
         go to x: 170 y: 110
         play sound "pounce"
         wait 1 seconds
       wait 0.03 seconds
+    hide
 
 SPRITE LeftHole:
   SHAPE art whisker-relay/hole-left
@@ -4073,12 +4859,13 @@ SPRITE LeftHole:
     hide
   WHEN I receive "start whisker relay":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF targetHole = -1 THEN:
         switch costume to active
       ELSE:
         switch costume to costume1
       wait 0.05 seconds
+    hide
 
 SPRITE RightHole:
   SHAPE art whisker-relay/hole-right
@@ -4088,12 +4875,28 @@ SPRITE RightHole:
     hide
   WHEN I receive "start whisker relay":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF targetHole = 1 THEN:
         switch costume to active
       ELSE:
         switch costume to costume1
-      wait 0.05 seconds`,
+      wait 0.05 seconds
+    hide
+
+SPRITE WhiskerResult:
+  COSTUME win label "SIX CHEESES BANKED • GREEN FLAG FOR ANOTHER RELAY" #ffe66d
+  COSTUME lose label "MARMALADE CAUGHT PIP THREE TIMES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start whisker relay":
+    hide
+  WHEN I receive "whisker relay over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     spiral_circuit: `# Helix Rush — a finite five-lane tube sprint with phase-boost decisions.
 # GOAL: survive thirty sectors with at least one life remaining.
@@ -4110,6 +4913,8 @@ GLOBAL obstacleLane
 GLOBAL obstacleY
 GLOBAL obstacleKind
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art helix-rush/intro
@@ -4121,9 +4926,19 @@ STAGE:
     hide variable sectors
     hide variable lives
     hide variable charge
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set sectors to 0
+      set lives to 3
+      set lane to 0
+      set speed to 5
+      set charge to 0
+      set boosting to 0
+      set winner to 0
+      set active to 1
       switch backdrop to tube
       broadcast "start helix rush"
 
@@ -4139,6 +4954,8 @@ SPRITE Runner:
     set speed to 5
     set charge to 0
     set boosting to 0
+    set active to 0
+    set winner to 0
     go to x: 0 y: -125
     hide
   WHEN I receive "start helix rush":
@@ -4147,7 +4964,7 @@ SPRITE Runner:
     show variable lives
     show variable charge
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change lane by -1
         wait 0.1 seconds
@@ -4169,17 +4986,27 @@ SPRITE Runner:
       ELSE:
         switch costume to costume1
         set speed to 5
-      IF lives < 1 THEN:
-        say ("TUBE FAILURE — SECTOR " join sectors) for 4 seconds
-        stop all
-      IF sectors = 30 THEN:
-        say ("THIRTY SECTORS CLEARED — SCORE " join score) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and charge > 4 and boosting = 0 THEN:
+    IF active = 1 and charge > 4 and boosting = 0 THEN:
       set boosting to 1
       play sound "boost"
+  WHEN I receive "helix hit":
+    IF active = 1 THEN:
+      change lives by -1
+      IF lives < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "helix rush over"
+  WHEN I receive "helix sector cleared":
+    IF active = 1 THEN:
+      change sectors by 1
+      change score by 1
+      IF sectors = 30 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "helix rush over"
 
 SPRITE TubeHazard:
   SHAPE art helix-rush/hazard
@@ -4190,7 +5017,7 @@ SPRITE TubeHazard:
   WHEN flag clicked:
     hide
   WHEN I receive "start helix rush":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set obstacleLane to pick random -2 to 2
       set obstacleY to 190
       set obstacleKind to pick random 1 to 7
@@ -4203,13 +5030,13 @@ SPRITE TubeHazard:
           switch costume to gate
       go to x: obstacleLane * 82 y: obstacleY
       show
-      REPEAT UNTIL y position < -190:
+      REPEAT UNTIL y position < -190 or active = 0:
         change y by 0 - speed
         turn right 5 degrees
         IF touching Runner THEN:
           IF obstacleKind < 5 THEN:
             IF boosting = 0 THEN:
-              change lives by -1
+              broadcast "helix hit"
               play sound "hit"
             ELSE:
               change score by 3
@@ -4228,9 +5055,9 @@ SPRITE TubeHazard:
           set y to -220
         wait 0.02 seconds
       hide
-      change sectors by 1
-      change score by 1
-      wait 0.15 seconds
+      IF active = 1 THEN:
+        broadcast "helix sector cleared"
+        wait 0.15 seconds
 
 SPRITE TubeCore:
   SHAPE art helix-rush/core
@@ -4240,9 +5067,25 @@ SPRITE TubeCore:
     hide
   WHEN I receive "start helix rush":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       turn right speed degrees
-      wait 0.03 seconds`,
+      wait 0.03 seconds
+    hide
+
+SPRITE HelixResult:
+  COSTUME win label "THIRTY SECTORS CLEARED • GREEN FLAG FOR ANOTHER RUN" #ffe66d
+  COSTUME lose label "TUBE FAILURE • GREEN FLAG TO RESTART" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start helix rush":
+    hide
+  WHEN I receive "helix rush over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     lilyway_rescue: `# Moonbank Hop — a finite road-and-river crossing challenge.
 # GOAL: reach the moon bank three times before three crashes or splashes.
@@ -4255,6 +5098,8 @@ GLOBAL frogY
 GLOBAL traffic
 GLOBAL riding
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art moonbank-hop/intro
@@ -4264,9 +5109,18 @@ STAGE:
     switch backdrop to intro
     hide variable crossings
     hide variable hearts
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set crossings to 0
+      set hearts to 3
+      set traffic to 4
+      set frogX to 0
+      set frogY to -150
+      set riding to 0
+      set winner to 0
+      set active to 1
       switch backdrop to route
       broadcast "start moonbank hop"
 
@@ -4281,6 +5135,8 @@ SPRITE Juniper:
     set frogX to 0
     set frogY to -150
     set riding to 0
+    set active to 0
+    set winner to 0
     go to x: frogX y: frogY
     hide
   WHEN I receive "start moonbank hop":
@@ -4288,23 +5144,23 @@ SPRITE Juniper:
     show variable hearts
     show
   WHEN left arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       change frogX by -45
       play sound "hop"
   WHEN right arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       change frogX by 45
       play sound "hop"
   WHEN up arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       change frogY by 45
       play sound "hop"
   WHEN down arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       change frogY by -45
       play sound "hop"
   WHEN I receive "start moonbank hop":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF frogX < -215 THEN:
         set frogX to -215
       IF frogX > 215 THEN:
@@ -4314,27 +5170,37 @@ SPRITE Juniper:
       go to x: frogX y: frogY
       IF frogY > -70 and frogY < 45 THEN:
         IF touching CarA or touching CarB THEN:
-          change hearts by -1
-          broadcast "frog reset"
+          broadcast "frog hurt"
       IF frogY > 45 and frogY < 140 THEN:
         set riding to 0
         IF touching LilyA or touching LilyB THEN:
           set riding to 1
         IF riding = 0 THEN:
-          change hearts by -1
           play sound "splash"
-          broadcast "frog reset"
+          broadcast "frog hurt"
       IF frogY > 145 THEN:
-        change crossings by 1
-        change traffic by 0.7
-        broadcast "frog reset"
-      IF crossings = 3 THEN:
-        say "THREE MOONBANK RUNS — ALL FROGS HOME!" for 4 seconds
-        stop all
-      IF hearts < 1 THEN:
-        say ("Moon-bank crossings: " join crossings) for 3 seconds
-        stop all
+        broadcast "moonbank crossed"
       wait 0.03 seconds
+    hide
+  WHEN I receive "moonbank crossed":
+    IF active = 1 THEN:
+      change crossings by 1
+      change traffic by 0.7
+      IF crossings = 3 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "moonbank over"
+      ELSE:
+        broadcast "frog reset"
+  WHEN I receive "frog hurt":
+    IF active = 1 THEN:
+      change hearts by -1
+      IF hearts < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "moonbank over"
+      ELSE:
+        broadcast "frog reset"
   WHEN I receive "frog reset":
     set frogX to 0
     set frogY to -150
@@ -4348,11 +5214,12 @@ SPRITE CarA:
     hide
   WHEN I receive "start moonbank hop":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by traffic
       IF x position > 240 THEN:
         set x to -240
       wait 0.02 seconds
+    hide
 
 SPRITE CarB:
   SHAPE art moonbank-hop/car-gold
@@ -4361,11 +5228,12 @@ SPRITE CarB:
     hide
   WHEN I receive "start moonbank hop":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 0 - traffic - 1
       IF x position < -240 THEN:
         set x to 240
       wait 0.02 seconds
+    hide
 
 SPRITE LilyA:
   SHAPE art moonbank-hop/lily-a
@@ -4374,13 +5242,14 @@ SPRITE LilyA:
     hide
   WHEN I receive "start moonbank hop":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 2.4
       IF touching Juniper THEN:
         change frogX by 2.4
       IF x position > 240 THEN:
         set x to -240
       wait 0.02 seconds
+    hide
 
 SPRITE LilyB:
   SHAPE art moonbank-hop/lily-b
@@ -4389,13 +5258,29 @@ SPRITE LilyB:
     hide
   WHEN I receive "start moonbank hop":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by -2
       IF touching Juniper THEN:
         change frogX by -2
       IF x position < -240 THEN:
         set x to 240
-      wait 0.02 seconds`,
+      wait 0.02 seconds
+    hide
+
+SPRITE MoonbankResult:
+  COSTUME win label "THREE MOONBANK RUNS • GREEN FLAG TO CROSS AGAIN" #b8ff79
+  COSTUME lose label "THREE CRASHES OR SPLASHES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start moonbank hop":
+    hide
+  WHEN I receive "moonbank over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     rotor_rogue: `# Crosswind Courier — balance a rotor-bike across forty cloud-road kilometres.
 # GOAL: reach distance forty before three crashes.
@@ -4413,6 +5298,8 @@ GLOBAL airborne
 GLOBAL fuel
 GLOBAL jumpReady
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art crosswind-courier/intro
@@ -4425,9 +5312,23 @@ STAGE:
     hide variable lives
     hide variable speed
     hide variable fuel
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set distance to 0
+      set lives to 3
+      set speed to 4
+      set tilt to 0
+      set wind to 0
+      set bikeY to -120
+      set lift to 0
+      set airborne to 0
+      set fuel to 12
+      set jumpReady to 0
+      set winner to 0
+      set active to 1
       switch backdrop to skyroad
       broadcast "start crosswind courier"
 
@@ -4448,6 +5349,8 @@ SPRITE GyroBike:
     set airborne to 0
     set fuel to 12
     set jumpReady to 0
+    set active to 0
+    set winner to 0
     go to x: 0 y: bikeY
     hide
   WHEN I receive "start crosswind courier":
@@ -4459,7 +5362,7 @@ SPRITE GyroBike:
     show
     wait 0.2 seconds
     set jumpReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key up arrow pressed? and fuel > 0 THEN:
         change speed by 0.08
         change fuel by -0.025
@@ -4503,27 +5406,36 @@ SPRITE GyroBike:
         wait 0.7 seconds
       change distance by speed / 180
       IF distance > 39 THEN:
-        say ("FORTY KILOMETRES DELIVERED — STUNT SCORE " join score) for 4 seconds
-        stop all
+        broadcast "crosswind delivered"
       IF lives < 1 THEN:
-        say ("COURIER LOST AT KM " join distance) for 4 seconds
-        stop all
+        broadcast "crosswind failed"
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and jumpReady = 1 and airborne = 0 THEN:
+    IF active = 1 and jumpReady = 1 and airborne = 0 THEN:
       set airborne to 1
       set lift to 11
       play sound "rev"
+  WHEN I receive "crosswind delivered":
+    IF active = 1 THEN:
+      set winner to 1
+      set active to 0
+      broadcast "crosswind over"
+  WHEN I receive "crosswind failed":
+    IF active = 1 THEN:
+      set winner to 0
+      set active to 0
+      broadcast "crosswind over"
 
 SPRITE Barrier:
   SHAPE art crosswind-courier/barrier
   WHEN flag clicked:
     hide
   WHEN I receive "start crosswind courier":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: 220 y: -120
       show
-      REPEAT UNTIL x position < -240:
+      REPEAT UNTIL x position < -240 or active = 0:
         change x by 0 - speed
         IF touching GyroBike and airborne = 0 THEN:
           change lives by -1
@@ -4541,9 +5453,25 @@ SPRITE SkyRoad:
     hide
   WHEN I receive "start crosswind courier":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change color effect by speed
-      wait 0.04 seconds`,
+      wait 0.04 seconds
+    hide
+
+SPRITE CrosswindResult:
+  COSTUME win label "FORTY KILOMETRES DELIVERED • GREEN FLAG TO RIDE AGAIN" #ffe66d
+  COSTUME lose label "THREE CRASHES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start crosswind courier":
+    hide
+  WHEN I receive "crosswind over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     prism_spire: `# Lumen Stack — a twelve-floor precision tower challenge.
 # GOAL: build twelve floors before three complete misses.
@@ -4561,6 +5489,8 @@ GLOBAL perfect
 GLOBAL landingY
 GLOBAL dropReady
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art lumen-stack/intro
@@ -4572,9 +5502,23 @@ STAGE:
     hide variable misses
     hide variable level
     hide variable perfect
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set misses to 0
+      set level to 0
+      set blockX to -170
+      set towerX to 0
+      set blockWidth to 100
+      set sweep to 4
+      set sweepDir to 1
+      set perfect to 0
+      set landingY to -135
+      set dropReady to 0
+      set winner to 0
+      set active to 1
       switch backdrop to skyline
       broadcast "start lumen stack"
 
@@ -4595,6 +5539,8 @@ SPRITE CraneBlock:
     set perfect to 0
     set landingY to -135
     set dropReady to 0
+    set active to 0
+    set winner to 0
     go to x: blockX y: 120
     hide
   WHEN I receive "start lumen stack":
@@ -4605,7 +5551,7 @@ SPRITE CraneBlock:
     show
     wait 0.2 seconds
     set dropReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change blockX by sweep * sweepDir
       IF blockX > 190 THEN:
         set sweepDir to -1
@@ -4617,18 +5563,13 @@ SPRITE CraneBlock:
         switch costume to hot
       ELSE:
         switch costume to costume1
-      IF misses > 2 THEN:
-        say ("TOWER LOST AT FLOOR " join level) for 4 seconds
-        stop all
-      IF level = 12 THEN:
-        say ("TWELVE FLOORS COMPLETE — SCORE " join score) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and dropReady = 1 THEN:
+    IF active = 1 and dropReady = 1 THEN:
       broadcast "drop floor" and wait
   WHEN I receive "drop floor":
-    IF (abs of (blockX - towerX)) < blockWidth THEN:
+    IF active = 1 and (abs of (blockX - towerX)) < blockWidth THEN:
       IF (abs of (blockX - towerX)) < 8 THEN:
         change perfect by 1
         change score by 5 * perfect
@@ -4644,10 +5585,18 @@ SPRITE CraneBlock:
       broadcast "freeze floor"
       play sound "land"
       change sweep by 0.25
+      IF level = 12 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "lumen stack over"
     ELSE:
       change misses by 1
       set perfect to 0
       play sound "miss"
+      IF misses > 2 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "lumen stack over"
     set blockX to -190
 
 SPRITE FrozenFloor:
@@ -4668,6 +5617,23 @@ SPRITE Foundation:
     go to x: 0 y: -145
     hide
   WHEN I receive "start lumen stack":
+    show
+  WHEN I receive "lumen stack over":
+    hide
+
+SPRITE LumenResult:
+  COSTUME win label "TWELVE FLOORS COMPLETE • GREEN FLAG TO BUILD AGAIN" #ffe66d
+  COSTUME lose label "THREE MISSES • GREEN FLAG TO REBUILD" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start lumen stack":
+    hide
+  WHEN I receive "lumen stack over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     shard_sheriff: `# Plasma Posse — a four-wave split-orb arena.
@@ -4692,6 +5658,8 @@ GLOBAL lanceOn
 GLOBAL orbActive
 GLOBAL fireReady
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art plasma-posse/intro
@@ -4702,9 +5670,25 @@ STAGE:
     hide variable score
     hide variable hearts
     hide variable waves
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set hearts to 3
+      set waves to 0
+      set sheriffX to 0
+      set shardOn to 0
+      set lanceOn to 0
+      set fireReady to 0
+      set orbX to 120
+      set orbY to 80
+      set orbVX to -3
+      set orbVY to 4
+      set orbTier to 3
+      set orbActive to 1
+      set winner to 0
+      set active to 1
       switch backdrop to arena
       broadcast "start plasma posse"
 
@@ -4718,6 +5702,8 @@ SPRITE Sheriff:
     set shardOn to 0
     set lanceOn to 0
     set fireReady to 0
+    set active to 0
+    set winner to 0
     go to x: sheriffX y: -135
     hide
   WHEN I receive "start plasma posse":
@@ -4727,7 +5713,7 @@ SPRITE Sheriff:
     show
     wait 0.2 seconds
     set fireReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change sheriffX by -5
       IF key right arrow pressed? THEN:
@@ -4737,17 +5723,33 @@ SPRITE Sheriff:
       IF sheriffX > 215 THEN:
         set sheriffX to 215
       go to x: sheriffX y: -135
-      IF hearts < 1 THEN:
-        say ("POSSE LOST — SCORE " join score) for 4 seconds
-        stop all
-      IF waves = 4 THEN:
-        say ("FOUR WAVES CLEARED — SCORE " join score) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and fireReady = 1 and lanceOn = 0 THEN:
+    IF active = 1 and fireReady = 1 and lanceOn = 0 THEN:
       set lanceOn to 1
       broadcast "fire lance"
+  WHEN I receive "posse hit":
+    IF active = 1 THEN:
+      change hearts by -1
+      IF hearts < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "plasma posse over"
+  WHEN I receive "plasma wave cleared":
+    IF active = 1 THEN:
+      change waves by 1
+      IF waves = 4 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "plasma posse over"
+      ELSE:
+        set orbTier to 3
+        set orbX to pick random -170 to 170
+        set orbY to 140
+        set orbVX to pick random 3 to 5
+        set orbVY to 5
+        set orbActive to 1
 
 SPRITE PlasmaOrb:
   SHAPE art plasma-posse/orb
@@ -4764,7 +5766,7 @@ SPRITE PlasmaOrb:
     hide
   WHEN I receive "start plasma posse":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF orbActive = 1 THEN:
         show
         change orbVY by -0.38
@@ -4794,7 +5796,7 @@ SPRITE PlasmaOrb:
             play sound "pop"
           set lanceOn to 0
         IF touching Sheriff THEN:
-          change hearts by -1
+          broadcast "posse hit"
           set orbX to 150
           set orbY to 100
           set orbVY to 5
@@ -4802,22 +5804,17 @@ SPRITE PlasmaOrb:
       ELSE:
         hide
         IF shardOn = 0 and waves < 4 THEN:
-          change waves by 1
-          IF waves < 4 THEN:
-            set orbTier to 3
-            set orbX to pick random -170 to 170
-            set orbY to 140
-            set orbVX to pick random 3 to 5
-            set orbVY to 5
-            set orbActive to 1
+          set orbActive to -1
+          broadcast "plasma wave cleared"
       wait 0.02 seconds
+    hide
 
 SPRITE Shard:
   SHAPE art plasma-posse/shard
   WHEN flag clicked:
     hide
   WHEN I receive "start plasma posse":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF shardOn = 1 THEN:
         show
         change shardVY by -0.5
@@ -4835,12 +5832,13 @@ SPRITE Shard:
           change score by 12
           hide
         IF touching Sheriff THEN:
-          change hearts by -1
+          broadcast "posse hit"
           set shardOn to 0
           hide
       ELSE:
         hide
       wait 0.02 seconds
+    hide
 
 SPRITE Lance:
   SHAPE art plasma-posse/lance
@@ -4849,11 +5847,26 @@ SPRITE Lance:
   WHEN I receive "fire lance":
     go to x: sheriffX y: -105
     show
-    REPEAT UNTIL y position > 180 or lanceOn = 0:
+    REPEAT UNTIL y position > 180 or lanceOn = 0 or active = 0:
       change y by 14
       wait 0.02 seconds
     hide
-    set lanceOn to 0`,
+    set lanceOn to 0
+
+SPRITE PlasmaResult:
+  COSTUME win label "FOUR SPLIT-ORB WAVES CLEARED • GREEN FLAG FOR ANOTHER POSSE" #ffe66d
+  COSTUME lose label "THREE COLLISIONS • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start plasma posse":
+    hide
+  WHEN I receive "plasma posse over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     halo_foundry: `# Halo Lockdown — circular paddle defense fused with a three-ring lock break.
 # GOAL: clear all four inner locks across three increasingly fast rings before three escapes.
@@ -4868,6 +5881,8 @@ GLOBAL shieldY
 GLOBAL coreSpeed
 GLOBAL locks
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art halo-lockdown/intro
@@ -4879,9 +5894,18 @@ STAGE:
     hide variable lives
     hide variable round
     hide variable locks
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set lives to 3
+      set round to 1
+      set locks to 4
+      set shieldAngle to 0
+      set coreSpeed to 5
+      set winner to 0
+      set active to 1
       switch backdrop to reactor
       broadcast "start halo lockdown"
 
@@ -4894,6 +5918,8 @@ SPRITE HaloShield:
     set locks to 4
     set shieldAngle to 0
     set coreSpeed to 5
+    set active to 0
+    set winner to 0
     hide
   WHEN I receive "start halo lockdown":
     show variable score
@@ -4901,7 +5927,7 @@ SPRITE HaloShield:
     show variable round
     show variable locks
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change shieldAngle by -4
       IF key right arrow pressed? THEN:
@@ -4910,19 +5936,29 @@ SPRITE HaloShield:
       set shieldY to cos of shieldAngle * 150
       go to x: shieldX y: shieldY
       point in direction shieldAngle
+      wait 0.02 seconds
+    hide
+  WHEN I receive "halo lock broken":
+    IF active = 1 THEN:
+      change locks by -1
+      change score by round * 4
       IF locks < 1 THEN:
         IF round = 3 THEN:
-          say ("THREE RINGS CLEARED — SCORE " join score) for 4 seconds
-          stop all
+          set winner to 1
+          set active to 0
+          broadcast "halo lockdown over"
         ELSE:
           change round by 1
           change coreSpeed by 0.8
           set locks to 4
           broadcast "restore locks"
+  WHEN I receive "halo escape":
+    IF active = 1 THEN:
+      change lives by -1
       IF lives < 1 THEN:
-        say ("LOCKDOWN FAILED — SCORE " join score) for 3 seconds
-        stop all
-      wait 0.02 seconds
+        set winner to 0
+        set active to 0
+        broadcast "halo lockdown over"
 
 SPRITE Core:
   SHAPE art halo-lockdown/core
@@ -4934,7 +5970,7 @@ SPRITE Core:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       move coreSpeed steps
       IF touching HaloShield THEN:
         point towards Reactor
@@ -4942,12 +5978,13 @@ SPRITE Core:
         move 12 steps
         play sound "rebound"
       IF touching edge THEN:
-        change lives by -1
+        broadcast "halo escape"
         play sound "escape"
         go to x: 0 y: 0
         point in direction pick random 20 to 160
         wait 0.6 seconds
       wait 0.02 seconds
+    hide
 
 SPRITE LockNorth:
   SHAPE art halo-lockdown/lock-north
@@ -4956,14 +5993,16 @@ SPRITE LockNorth:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Core THEN:
         hide
-        change locks by -1
-        change score by round * 4
-        wait until locks = 4
-        show
+        broadcast "halo lock broken"
+        REPEAT UNTIL locks = 4 or active = 0:
+          wait 0.03 seconds
+        IF active = 1 THEN:
+          show
       wait 0.03 seconds
+    hide
   WHEN I receive "restore locks":
     show
 
@@ -4974,14 +6013,16 @@ SPRITE LockSouth:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Core THEN:
         hide
-        change locks by -1
-        change score by round * 4
-        wait until locks = 4
-        show
+        broadcast "halo lock broken"
+        REPEAT UNTIL locks = 4 or active = 0:
+          wait 0.03 seconds
+        IF active = 1 THEN:
+          show
       wait 0.03 seconds
+    hide
   WHEN I receive "restore locks":
     show
 
@@ -4992,14 +6033,16 @@ SPRITE LockEast:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Core THEN:
         hide
-        change locks by -1
-        change score by round * 4
-        wait until locks = 4
-        show
+        broadcast "halo lock broken"
+        REPEAT UNTIL locks = 4 or active = 0:
+          wait 0.03 seconds
+        IF active = 1 THEN:
+          show
       wait 0.03 seconds
+    hide
   WHEN I receive "restore locks":
     show
 
@@ -5010,14 +6053,16 @@ SPRITE LockWest:
     hide
   WHEN I receive "start halo lockdown":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF touching Core THEN:
         hide
-        change locks by -1
-        change score by round * 4
-        wait until locks = 4
-        show
+        broadcast "halo lock broken"
+        REPEAT UNTIL locks = 4 or active = 0:
+          wait 0.03 seconds
+        IF active = 1 THEN:
+          show
       wait 0.03 seconds
+    hide
   WHEN I receive "restore locks":
     show
 
@@ -5027,6 +6072,23 @@ SPRITE Reactor:
     go to x: 0 y: 0
     hide
   WHEN I receive "start halo lockdown":
+    show
+  WHEN I receive "halo lockdown over":
+    hide
+
+SPRITE HaloResult:
+  COSTUME win label "THREE REACTOR RINGS CLEARED • GREEN FLAG TO DEFEND AGAIN" #ffe66d
+  COSTUME lose label "THREE CORE ESCAPES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start halo lockdown":
+    hide
+  WHEN I receive "halo lockdown over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     corridor_kestrel: `# Carrier Kestrel — an inertial drone run through fifteen moving apertures.
@@ -5047,6 +6109,9 @@ GLOBAL gateSpeed
 GLOBAL shield
 GLOBAL shieldReady
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL breachLock
 
 STAGE:
   BACKDROP intro art carrier-kestrel/intro
@@ -5058,9 +6123,26 @@ STAGE:
     hide variable gates
     hide variable hull
     hide variable battery
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set distance to 0
+      set gates to 0
+      set hull to 3
+      set battery to 12
+      set droneX to -150
+      set droneY to 0
+      set driftX to 0
+      set driftY to 0
+      set gateX to 240
+      set gapY to 0
+      set gateSpeed to 5
+      set shield to 0
+      set shieldReady to 0
+      set breachLock to 0
+      set winner to 0
+      set active to 1
       switch backdrop to corridor
       broadcast "start carrier kestrel"
 
@@ -5081,6 +6163,9 @@ SPRITE Kestrel:
     set gateSpeed to 5
     set shield to 0
     set shieldReady to 0
+    set breachLock to 0
+    set active to 0
+    set winner to 0
     go to x: droneX y: droneY
     hide
   WHEN I receive "start carrier kestrel":
@@ -5091,7 +6176,7 @@ SPRITE Kestrel:
     show
     wait 0.2 seconds
     set shieldReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change driftX by -0.35
       IF key right arrow pressed? THEN:
@@ -5120,30 +6205,46 @@ SPRITE Kestrel:
           set shield to 0
       ELSE:
         switch costume to costume1
-      IF touching UpperGate or touching LowerGate THEN:
+      IF (touching UpperGate or touching LowerGate) and breachLock = 0 THEN:
+        set breachLock to 1
         IF shield = 0 THEN:
-          change hull by -1
-          set droneX to -150
-          set droneY to 0
-          set driftX to 0
-          set driftY to 0
-          play sound "scrape"
-          wait 0.6 seconds
+          broadcast "kestrel breach"
         ELSE:
           change distance by 3
-      IF hull < 1 THEN:
-        say ("DRONE LOST AFTER " join gates) for 4 seconds
-        stop all
-      IF gates = 15 THEN:
-        say ("FIFTEEN GATES CLEARED — DISTANCE " join distance) for 4 seconds
-        stop all
+          wait 0.25 seconds
+          set breachLock to 0
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and shieldReady = 1 and battery > 3 and shield = 0 THEN:
+    IF active = 1 and shieldReady = 1 and battery > 3 and shield = 0 THEN:
       set shield to 1
       play sound "pulse"
       wait 0.8 seconds
       set shield to 0
+  WHEN I receive "kestrel breach":
+    IF active = 1 THEN:
+      change hull by -1
+      set droneX to -150
+      set droneY to 0
+      set driftX to 0
+      set driftY to 0
+      play sound "scrape"
+      IF hull < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "carrier kestrel over"
+      ELSE:
+        wait 0.6 seconds
+        set breachLock to 0
+  WHEN I receive "carrier gate cleared":
+    IF active = 1 THEN:
+      change gates by 1
+      change distance by 1
+      change gateSpeed by 0.12
+      IF gates = 15 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "carrier kestrel over"
 
 SPRITE GateClock:
   SHAPE art carrier-kestrel/clock
@@ -5152,14 +6253,12 @@ SPRITE GateClock:
     set gateX to 240
     set gapY to 0
   WHEN I receive "start carrier kestrel":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change gateX by 0 - gateSpeed
       IF gateX < -250 THEN:
         set gateX to 250
         set gapY to pick random -75 to 75
-        change gates by 1
-        change distance by 1
-        change gateSpeed by 0.12
+        broadcast "carrier gate cleared"
       wait 0.02 seconds
 
 SPRITE UpperGate:
@@ -5168,9 +6267,10 @@ SPRITE UpperGate:
     hide
   WHEN I receive "start carrier kestrel":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: gateX y: gapY + 135
       wait 0.02 seconds
+    hide
 
 SPRITE LowerGate:
   SHAPE art carrier-kestrel/gate-lower
@@ -5178,9 +6278,10 @@ SPRITE LowerGate:
     hide
   WHEN I receive "start carrier kestrel":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: gateX y: gapY - 135
       wait 0.02 seconds
+    hide
 
 SPRITE EnergyCell:
   SHAPE art carrier-kestrel/cell
@@ -5189,7 +6290,7 @@ SPRITE EnergyCell:
     hide
   WHEN I receive "start carrier kestrel":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       go to x: gateX y: gapY
       IF touching Kestrel THEN:
         change battery by 4
@@ -5197,7 +6298,23 @@ SPRITE EnergyCell:
         set x to -260
         play sound "charge"
         wait 0.5 seconds
-      wait 0.02 seconds`,
+      wait 0.02 seconds
+    hide
+
+SPRITE KestrelResult:
+  COSTUME win label "FIFTEEN APERTURES CLEARED • GREEN FLAG TO FLY AGAIN" #ffe66d
+  COSTUME lose label "THREE HULL BREACHES • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start carrier kestrel":
+    hide
+  WHEN I receive "carrier kestrel over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     thunder_volley: `# Skycourt Surge — an aerial volleyball duel against a storm rival.
 # GOAL: score seven points before Nimbus does; the ball accelerates through long rallies.
@@ -5216,12 +6333,16 @@ GLOBAL ballY
 GLOBAL ballVX
 GLOBAL ballVY
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art skycourt-surge/intro
   BACKDROP court art skycourt-surge/play
   WHEN flag clicked:
     set started to 0
+    set active to 0
+    set winner to 0
     switch backdrop to intro
     hide variable playerPoints
     hide variable rivalPoints
@@ -5229,6 +6350,21 @@ STAGE:
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set playerPoints to 0
+      set rivalPoints to 0
+      set rally to 0
+      set playerX to -130
+      set playerY to -125
+      set playerVY to 0
+      set rivalX to 135
+      set rivalY to -125
+      set rivalVY to 0
+      set ballX to -80
+      set ballY to 70
+      set ballVX to 5
+      set ballVY to 5
+      set winner to 0
+      set active to 1
       switch backdrop to court
       broadcast "serve skycourt"
 
@@ -5249,7 +6385,7 @@ SPRITE Volt:
     show variable rivalPoints
     show variable rally
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change playerX by -5
       IF key right arrow pressed? THEN:
@@ -5264,22 +6400,31 @@ SPRITE Volt:
         set playerY to -125
         set playerVY to 0
       go to x: playerX y: playerY
-      IF playerPoints > 6 THEN:
-        say "SKYCOURT CHAMPION — SEVEN POINTS!" for 4 seconds
-        stop all
-      IF rivalPoints > 6 THEN:
-        say "NIMBUS TAKES THE COURT" for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN up arrow key pressed:
-    IF started = 1 and playerY = -125 THEN:
+    IF active = 1 and playerY = -125 THEN:
       set playerVY to 12
   WHEN space key pressed:
-    IF started = 1 and touching StormBall THEN:
+    IF active = 1 and touching StormBall THEN:
       set ballVX to 8 + rally / 3
       set ballVY to -3
       change rally by 1
       play sound "spike"
+  WHEN I receive "skycourt player point":
+    IF active = 1 THEN:
+      change playerPoints by 1
+      IF playerPoints > 6 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "skycourt over"
+  WHEN I receive "skycourt rival point":
+    IF active = 1 THEN:
+      change rivalPoints by 1
+      IF rivalPoints > 6 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "skycourt over"
 
 SPRITE Nimbus:
   SHAPE art skycourt-surge/nimbus
@@ -5291,7 +6436,7 @@ SPRITE Nimbus:
     hide
   WHEN I receive "serve skycourt":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF ballX > 15 THEN:
         IF ballX > rivalX THEN:
           change rivalX by 3.5
@@ -5310,6 +6455,7 @@ SPRITE Nimbus:
         set rivalX to 220
       go to x: rivalX y: rivalY
       wait 0.02 seconds
+    hide
 
 SPRITE StormBall:
   SHAPE art skycourt-surge/ball
@@ -5323,7 +6469,7 @@ SPRITE StormBall:
     hide
   WHEN I receive "serve skycourt":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change ballVY by -0.38
       change ballX by ballVX
       change ballY by ballVY
@@ -5342,18 +6488,20 @@ SPRITE StormBall:
         set ballVX to 0 - ballVX
       IF ballY < -145 THEN:
         IF ballX < 0 THEN:
-          change rivalPoints by 1
+          broadcast "skycourt rival point"
         ELSE:
-          change playerPoints by 1
+          broadcast "skycourt player point"
         play sound "point"
-        set rally to 0
-        set ballX to 0
-        set ballY to 100
-        set ballVX to pick random -5 to 5
-        set ballVY to 5
-        wait 0.8 seconds
+        IF active = 1 THEN:
+          set rally to 0
+          set ballX to 0
+          set ballY to 100
+          set ballVX to pick random -5 to 5
+          set ballVY to 5
+          wait 0.8 seconds
       go to x: ballX y: ballY
       wait 0.02 seconds
+    hide
 
 SPRITE ThunderNet:
   SHAPE art skycourt-surge/net
@@ -5361,6 +6509,23 @@ SPRITE ThunderNet:
     go to x: 0 y: -90
     hide
   WHEN I receive "serve skycourt":
+    show
+  WHEN I receive "skycourt over":
+    hide
+
+SPRITE SkycourtResult:
+  COSTUME win label "SEVEN STORM POINTS • GREEN FLAG FOR A REMATCH" #ffe66d
+  COSTUME lose label "NIMBUS REACHED SEVEN • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "serve skycourt":
+    hide
+  WHEN I receive "skycourt over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
     show`,
 
     cascade_pair: `# Chromafall Reactor — a visible four-column color fusion puzzle.
@@ -5377,6 +6542,9 @@ GLOBAL overflow
 GLOBAL falls
 GLOBAL started
 GLOBAL dropReady
+GLOBAL clearedDrop
+GLOBAL active
+GLOBAL winner
 GLOBAL i
 GLOBAL topA
 GLOBAL topB
@@ -5396,6 +6564,8 @@ STAGE:
   BACKDROP board art chromafall-reactor/play
   WHEN flag clicked:
     set started to 0
+    set active to 0
+    set winner to 0
     switch backdrop to intro
     hide variable score
     hide variable combo
@@ -5404,6 +6574,7 @@ STAGE:
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set active to 1
       switch backdrop to board
       broadcast "ignite chromafall"
 
@@ -5421,6 +6592,9 @@ SPRITE PairPilot:
     set overflow to 0
     set falls to 0
     set dropReady to 0
+    set clearedDrop to 0
+    set active to 0
+    set winner to 0
     set topA to 0
     set topB to 0
     set topC to 0
@@ -5436,13 +6610,14 @@ SPRITE PairPilot:
     go to x: -180 + column * 72 y: 130
     hide
   WHEN I receive "ignite chromafall":
+    set active to 1
     show variable score
     show variable combo
     show variable clears
     show variable column
     show
     set dropReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change column by -1
         wait 0.12 seconds
@@ -5454,25 +6629,21 @@ SPRITE PairPilot:
       IF column > 4 THEN:
         set column to 4
       go to x: -180 + column * 72 y: 130
-      IF overflow = 1 THEN:
-        say ("REACTOR OVERLOAD — SCORE " join score) for 4 seconds
-        stop all
-      IF clears = 6 THEN:
-        say ("SIX FUSIONS STABLE — SCORE " join score) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN up arrow key pressed:
-    IF started = 1 THEN:
+    IF active = 1 THEN:
       set falls to colorA
       set colorA to colorB
       set colorB to falls
   WHEN space key pressed:
-    IF started = 1 and dropReady = 1 THEN:
+    IF active = 1 and dropReady = 1 THEN:
       set dropReady to 0
       broadcast "drop pair" and wait
-      set colorA to pick random 1 to 4
-      set colorB to pick random 1 to 4
-      set dropReady to 1
+      IF active = 1 THEN:
+        set colorA to pick random 1 to 4
+        set colorB to pick random 1 to 4
+        set dropReady to 1
 
 SPRITE PreviewA:
   SHAPE art chromafall-reactor/block1
@@ -5484,10 +6655,11 @@ SPRITE PreviewA:
     hide
   WHEN I receive "ignite chromafall":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       switch costume to ("block" join colorA)
       go to x: -180 + column * 72 y: 105
       wait 0.03 seconds
+    hide
 
 SPRITE PreviewB:
   SHAPE art chromafall-reactor/block1
@@ -5499,10 +6671,11 @@ SPRITE PreviewB:
     hide
   WHEN I receive "ignite chromafall":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       switch costume to ("block" join colorB)
       go to x: -180 + column * 72 y: 75
       wait 0.03 seconds
+    hide
 
 SPRITE ReactorLogic:
   SHAPE art chromafall-reactor/block1
@@ -5544,6 +6717,7 @@ SPRITE ReactorLogic:
     hide
     clear
   WHEN I receive "drop pair":
+    set clearedDrop to 0
     IF column = 1 THEN:
       add colorA to colA
       IF colorA = topA THEN:
@@ -5564,6 +6738,7 @@ SPRITE ReactorLogic:
           change falls by -1
         set topA to 0
         set runA to 0
+        set clearedDrop to 1
         broadcast "pair clear"
       IF length of colA > 9 THEN:
         set overflow to 1
@@ -5587,6 +6762,7 @@ SPRITE ReactorLogic:
           change falls by -1
         set topB to 0
         set runB to 0
+        set clearedDrop to 1
         broadcast "pair clear"
       IF length of colB > 9 THEN:
         set overflow to 1
@@ -5610,6 +6786,7 @@ SPRITE ReactorLogic:
           change falls by -1
         set topC to 0
         set runC to 0
+        set clearedDrop to 1
         broadcast "pair clear"
       IF length of colC > 9 THEN:
         set overflow to 1
@@ -5633,20 +6810,42 @@ SPRITE ReactorLogic:
           change falls by -1
         set topD to 0
         set runD to 0
+        set clearedDrop to 1
         broadcast "pair clear"
       IF length of colD > 9 THEN:
         set overflow to 1
-    change falls by 1
     play sound "drop"
     render reactor
-    IF falls > 1 THEN:
+    IF clearedDrop = 0 THEN:
       set combo to 1
+    IF overflow = 1 THEN:
+      set winner to 0
+      set active to 0
+      broadcast "chromafall over"
   WHEN I receive "pair clear":
     change score by 40 * combo
     change combo by 1
     change clears by 1
-    set falls to 0
-    play sound "clear"`,
+    play sound "clear"
+    IF clears > 5 THEN:
+      set winner to 1
+      set active to 0
+      broadcast "chromafall over"
+
+SPRITE ChromafallResult:
+  COSTUME win label "SIX FUSIONS STABLE • GREEN FLAG TO REIGNITE" #ffe66d
+  COSTUME lose label "REACTOR OVERLOAD • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "ignite chromafall":
+    hide
+  WHEN I receive "chromafall over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     mooncoil_odyssey: `# Cratercoil — a lunar grid snake with oxygen-powered dashes.
 # GOAL: collect twelve moonblooms before three crashes into your trail or the rover bomb.
@@ -5667,6 +6866,9 @@ GLOBAL oxygen
 GLOBAL i
 GLOBAL hitTail
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL crashLock
 LIST trailX
 LIST trailY
 
@@ -5675,6 +6877,8 @@ STAGE:
   BACKDROP moon art cratercoil/play
   WHEN flag clicked:
     set started to 0
+    set active to 0
+    set winner to 0
     switch backdrop to intro
     hide variable score
     hide variable lives
@@ -5683,6 +6887,7 @@ STAGE:
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set active to 1
       switch backdrop to moon
       broadcast "start cratercoil"
 
@@ -5692,6 +6897,40 @@ SPRITE Mooncoil:
   COSTUME tail art cratercoil/tail
   SOUND fruit 960
   SOUND boom 120
+
+  DEFINE FAST wrap coil:
+    IF headX > 9 THEN:
+      set headX to -9
+    IF headX < -9 THEN:
+      set headX to 9
+    IF headY > 6 THEN:
+      set headY to -6
+    IF headY < -6 THEN:
+      set headY to 6
+
+  DEFINE inspect coil cell:
+    set hitTail to 0
+    set i to 1
+    REPEAT UNTIL i > length of trailX:
+      IF headX = item i of trailX and headY = item i of trailY THEN:
+        set hitTail to 1
+      change i by 1
+    IF hitTail = 1 and crashLock = 0 THEN:
+      broadcast "coil crash" and wait
+    IF active = 1 and headX = foodX and headY = foodY THEN:
+      change score by snakeLength
+      change snakeLength by 1
+      change blooms by 1
+      change oxygen by 1
+      play sound "fruit"
+      broadcast "new moonfruit"
+      IF blooms > 11 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "cratercoil over"
+    IF active = 1 and headX = bombX and headY = bombY and crashLock = 0 THEN:
+      broadcast "coil crash" and wait
+
   WHEN flag clicked:
     set score to 0
     set lives to 3
@@ -5703,12 +6942,16 @@ SPRITE Mooncoil:
     set dirY to 0
     set snakeLength to 5
     set hitTail to 0
+    set active to 0
+    set winner to 0
+    set crashLock to 0
     delete all of trailX
     delete all of trailY
     go to x: headX * 24 y: headY * 24
     hide
     clear
   WHEN I receive "start cratercoil":
+    set active to 1
     show variable score
     show variable lives
     show variable blooms
@@ -5716,23 +6959,23 @@ SPRITE Mooncoil:
     switch costume to costume1
     show
   WHEN left arrow key pressed:
-    IF dirX = 0 THEN:
+    IF active = 1 and dirX = 0 THEN:
       set dirX to -1
       set dirY to 0
   WHEN right arrow key pressed:
-    IF dirX = 0 THEN:
+    IF active = 1 and dirX = 0 THEN:
       set dirX to 1
       set dirY to 0
   WHEN up arrow key pressed:
-    IF dirY = 0 THEN:
+    IF active = 1 and dirY = 0 THEN:
       set dirX to 0
       set dirY to 1
   WHEN down arrow key pressed:
-    IF dirY = 0 THEN:
+    IF active = 1 and dirY = 0 THEN:
       set dirX to 0
       set dirY to -1
   WHEN I receive "start cratercoil":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       add headX to trailX
       add headY to trailY
       IF length of trailX > snakeLength THEN:
@@ -5740,34 +6983,8 @@ SPRITE Mooncoil:
         delete 1 of trailY
       change headX by dirX
       change headY by dirY
-      IF headX > 9 THEN:
-        set headX to -9
-      IF headX < -9 THEN:
-        set headX to 9
-      IF headY > 6 THEN:
-        set headY to -6
-      IF headY < -6 THEN:
-        set headY to 6
-      set hitTail to 0
-      set i to 1
-      REPEAT UNTIL i > length of trailX:
-        IF headX = item i of trailX and headY = item i of trailY THEN:
-          set hitTail to 1
-        change i by 1
-      IF hitTail = 1 THEN:
-        change lives by -1
-        broadcast "coil reset"
-      IF headX = foodX and headY = foodY THEN:
-        change score by snakeLength
-        change snakeLength by 1
-        change blooms by 1
-        change oxygen by 1
-        play sound "fruit"
-        broadcast "new moonfruit"
-      IF headX = bombX and headY = bombY THEN:
-        change lives by -1
-        play sound "boom"
-        broadcast "coil reset"
+      wrap coil
+      inspect coil cell
       clear
       switch costume to tail
       set i to 1
@@ -5777,21 +6994,30 @@ SPRITE Mooncoil:
         change i by 1
       switch costume to costume1
       go to x: headX * 24 y: headY * 24
-      IF lives < 1 THEN:
-        say ("CRATERCOIL LOST — BLOOMS " join blooms) for 4 seconds
-        stop all
-      IF blooms = 12 THEN:
-        say ("TWELVE MOONBLOOMS SECURED — SCORE " join score) for 4 seconds
-        stop all
       wait 0.16 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and oxygen > 0 THEN:
+    IF active = 1 and oxygen > 0 THEN:
       switch costume to dash
       change headX by dirX
       change headY by dirY
       change oxygen by -1
+      wrap coil
+      inspect coil cell
       wait 0.12 seconds
       switch costume to costume1
+  WHEN I receive "coil crash":
+    IF active = 1 and crashLock = 0 THEN:
+      set crashLock to 1
+      change lives by -1
+      play sound "boom"
+      IF lives < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "cratercoil over"
+      ELSE:
+        broadcast "coil reset" and wait
+        set crashLock to 0
   WHEN I receive "coil reset":
     set headX to 0
     set headY to 0
@@ -5809,6 +7035,8 @@ SPRITE Moonfruit:
     hide
   WHEN I receive "start cratercoil":
     show
+  WHEN I receive "cratercoil over":
+    hide
   WHEN I receive "new moonfruit":
     set foodX to pick random -8 to 8
     set foodY to pick random -5 to 5
@@ -5823,7 +7051,7 @@ SPRITE RoverBomb:
     hide
   WHEN I receive "start cratercoil":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 1.2 seconds
       change bombX by pick random -1 to 1
       change bombY by pick random -1 to 1
@@ -5836,6 +7064,22 @@ SPRITE RoverBomb:
       IF bombY < -5 THEN:
         set bombY to -5
       go to x: bombX * 24 y: bombY * 24
+    hide
+
+SPRITE CratercoilResult:
+  COSTUME win label "TWELVE MOONBLOOMS SECURED • GREEN FLAG TO COIL AGAIN" #ffe66d
+  COSTUME lose label "ROVER HAZARDS WON • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start cratercoil":
+    hide
+  WHEN I receive "cratercoil over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show
 `,
 
     cinder_thrust: `# Magma Lift — a ten-ring rocket-boot run through a moving volcanic cave.
@@ -5853,12 +7097,17 @@ GLOBAL caveSpeed
 GLOBAL grounded
 GLOBAL invulnerable
 GLOBAL started
+GLOBAL active
+GLOBAL winner
+GLOBAL chargeLock
 
 STAGE:
   BACKDROP intro art magma-lift/intro
   BACKDROP cave art magma-lift/play
   WHEN flag clicked:
     set started to 0
+    set active to 0
+    set winner to 0
     switch backdrop to intro
     hide variable score
     hide variable hearts
@@ -5867,6 +7116,7 @@ STAGE:
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set active to 1
       switch backdrop to cave
       broadcast "launch magma lift"
 
@@ -5875,6 +7125,7 @@ SPRITE Cinder:
   COSTUME thrust art magma-lift/thrust
   SOUND jet 540
   SOUND hit 140
+  SOUND ring 1080
   WHEN flag clicked:
     set score to 0
     set hearts to 3
@@ -5887,15 +7138,19 @@ SPRITE Cinder:
     set caveSpeed to 5
     set grounded to 0
     set invulnerable to 0
+    set active to 0
+    set winner to 0
+    set chargeLock to 0
     go to x: flyerX y: flyerY
     hide
   WHEN I receive "launch magma lift":
+    set active to 1
     show variable score
     show variable hearts
     show variable rings
     show variable fuel
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change flyerVY by -0.42
       IF key up arrow pressed? and fuel > 0 THEN:
         change flyerVY by 0.9
@@ -5919,8 +7174,7 @@ SPRITE Cinder:
         set flyerY to 155
         set flyerVY to -2
       IF flyerY < -155 and invulnerable = 0 THEN:
-        change hearts by -1
-        broadcast "cinder reset"
+        broadcast "cinder crash" and wait
       go to x: flyerX y: flyerY
       set grounded to 0
       IF touching ChargeLedge and flyerVY < 1 THEN:
@@ -5930,25 +7184,39 @@ SPRITE Cinder:
         IF fuel > 20 THEN:
           set fuel to 20
       IF touching BasaltTooth and invulnerable = 0 THEN:
-        change hearts by -1
-        play sound "hit"
-        broadcast "cinder reset"
-      IF hearts < 1 THEN:
-        say ("MAGMA CLAIMED THE RUN — RINGS " join rings) for 4 seconds
-        stop all
-      IF rings = 10 THEN:
-        say ("TEN EMBER RINGS CLEARED — SCORE " join score) for 4 seconds
-        stop all
+        broadcast "cinder crash" and wait
       change score by caveSpeed / 220
       wait 0.02 seconds
-  WHEN I receive "cinder reset":
-    set invulnerable to 1
-    set flyerX to -150
-    set flyerY to 20
-    set flyerVX to 0
-    set flyerVY to 0
-    wait 0.6 seconds
-    set invulnerable to 0
+    hide
+  WHEN I receive "cinder crash":
+    IF active = 1 and invulnerable = 0 THEN:
+      set invulnerable to 1
+      change hearts by -1
+      play sound "hit"
+      IF hearts < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "magma lift over"
+      ELSE:
+        set flyerX to -150
+        set flyerY to 20
+        set flyerVX to 0
+        set flyerVY to 0
+        wait 0.6 seconds
+        set invulnerable to 0
+  WHEN I receive "ember ring collected":
+    IF active = 1 THEN:
+      change rings by 1
+      change score by 12
+      change fuel by 2
+      IF fuel > 20 THEN:
+        set fuel to 20
+      change caveSpeed by 0.1
+      play sound "ring"
+      IF rings > 9 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "magma lift over"
 
 SPRITE BasaltTooth:
   SHAPE art magma-lift/tooth
@@ -5957,7 +7225,7 @@ SPRITE BasaltTooth:
     hide
   WHEN I receive "launch magma lift":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 0 - caveSpeed
       turn right 2 degrees
       IF x position < -250 THEN:
@@ -5965,6 +7233,7 @@ SPRITE BasaltTooth:
         set y to pick random -110 to 125
         change caveSpeed by 0.12
       wait 0.02 seconds
+    hide
 
 SPRITE ChargeLedge:
   SHAPE art magma-lift/ledge
@@ -5974,14 +7243,19 @@ SPRITE ChargeLedge:
     hide
   WHEN I receive "launch magma lift":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 0 - caveSpeed * 0.6
       IF x position < -250 THEN:
         set x to 250
         set y to pick random -125 to 10
       IF touching Cinder THEN:
-        play sound "charge"
+        IF chargeLock = 0 THEN:
+          play sound "charge"
+          set chargeLock to 1
+      ELSE:
+        set chargeLock to 0
       wait 0.03 seconds
+    hide
 
 SPRITE EmberRing:
   SHAPE art magma-lift/ring
@@ -5991,19 +7265,31 @@ SPRITE EmberRing:
     hide
   WHEN I receive "launch magma lift":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       change x by 0 - caveSpeed
       IF x position < -250 THEN:
         set x to 250
         set y to pick random -80 to 130
       IF touching Cinder THEN:
-        change rings by 1
-        change score by 12
-        change fuel by 2
-        change caveSpeed by 0.1
         set x to 260
-        play sound "ring"
-      wait 0.02 seconds`
+        broadcast "ember ring collected" and wait
+      wait 0.02 seconds
+    hide
+
+SPRITE MagmaLiftResult:
+  COSTUME win label "TEN EMBER RINGS CLEARED • GREEN FLAG TO FLY AGAIN" #ffe66d
+  COSTUME lose label "THE MAGMA CLAIMED THE RUN • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "launch magma lift":
+    hide
+  WHEN I receive "magma lift over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`
 };
 
 // A keyboard-only title gate makes a project appear broken in the editor's
@@ -6032,6 +7318,12 @@ const addRightPaneGreenFlagStart = source => {
     const actionElse = startBody.findIndex(line => line === '    ELSE:');
     const greenFlagStartBody = actionElse < 0 ? startBody : startBody.slice(0, actionElse);
 
+    // A real Space start must cancel the delayed tablet fallback permanently
+    // for this green-flag run. Several finite games intentionally reset their
+    // public `started` variable when they finish; using that variable alone
+    // lets the stale 0.6 s timer start a fresh round over the result screen.
+    lines.splice(spaceHat + 2, 0, '      set brickwrightFlagPending to 0');
+    endOfHandler++;
     lines.splice(endOfHandler, 0,
         '  WHEN I receive "__brickwright_start_from_flag":',
         ...greenFlagStartBody
@@ -6041,10 +7333,16 @@ const addRightPaneGreenFlagStart = source => {
     if (firstSprite < 0) return source;
     lines.splice(firstSprite, 0,
         '  WHEN flag clicked:',
+        '    set brickwrightFlagPending to 1',
         '    wait 0.6 seconds',
-        '    broadcast "__brickwright_start_from_flag"',
+        '    IF brickwrightFlagPending = 1 THEN:',
+        '      set brickwrightFlagPending to 0',
+        '      broadcast "__brickwright_start_from_flag"',
         ''
     );
+    const stage = lines.findIndex(line => line === 'STAGE:');
+    if (stage < 0) return source;
+    lines.splice(stage, 0, 'GLOBAL brickwrightFlagPending', '');
     return lines.join('\n');
 };
 

@@ -16,6 +16,7 @@ const PROFILES = Object.freeze({
         keys: {...ARROWS}, actionLabel: 'RESET'
     },
     neon_circuit: {layout: 'stage', hint: 'Tap nodes to flip a cross; make all 25 nodes dark.'},
+    canal_command: {layout: 'stage', hint: 'Tap the three lock controls in a safe water-level sequence.'},
     sky_skim: {
         layout: 'vertical',
         hint: 'Hold Dive into a hill; release to launch. Flap only when needed.',
