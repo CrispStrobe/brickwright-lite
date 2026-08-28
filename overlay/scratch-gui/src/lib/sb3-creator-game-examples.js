@@ -2570,6 +2570,8 @@ GLOBAL spawnLane
 GLOBAL draftLock
 GLOBAL crashLock
 GLOBAL gateActive
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art slipstream/intro
@@ -2581,9 +2583,21 @@ STAGE:
     hide variable fuel
     hide variable boost
     hide variable checkpoints
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set fuel to 100
+      set boost to 0
+      set checkpoints to 0
+      set roadSpeed to 6
+      set lane to 0
+      set draftLock to 0
+      set crashLock to 0
+      set gateActive to 0
+      set winner to 0
+      set active to 1
       switch backdrop to circuit
       broadcast "start slipstream"
 
@@ -2600,6 +2614,8 @@ SPRITE Racer:
     set lane to 0
     set draftLock to 0
     set crashLock to 0
+    set active to 0
+    set winner to 0
     go to x: 0 y: -125
     hide
   WHEN I receive "start slipstream":
@@ -2608,7 +2624,7 @@ SPRITE Racer:
     show variable boost
     show variable checkpoints
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change lane by -8
       IF key right arrow pressed? THEN:
@@ -2646,24 +2662,31 @@ SPRITE Racer:
         play sound "crash"
       IF touching Gate and gateActive = 1 THEN:
         set gateActive to 0
-        change checkpoints by 1
-        change score by 15
-        change fuel by 22
-        say ("CHECKPOINT " join checkpoints) for 0.7 seconds
-        IF checkpoints = 3 THEN:
-          say ("CIRCUIT CLEARED! SCORE " join score) for 4 seconds
-          stop all
+        broadcast "circuit checkpoint"
       IF fuel < 1 THEN:
-        say ("ENERGY EMPTY — SCORE " join score) for 3 seconds
-        stop all
+        set winner to 0
+        set active to 0
+        set started to 0
+        broadcast "slipstream over"
       wait 0.02 seconds
+    hide
+  WHEN I receive "circuit checkpoint":
+    IF active = 1 THEN:
+      change checkpoints by 1
+      change score by 15
+      change fuel by 22
+      IF checkpoints = 3 THEN:
+        set winner to 1
+        set active to 0
+        set started to 0
+        broadcast "slipstream over"
 
 SPRITE Rival:
   SHAPE art slipstream/rival
   WHEN flag clicked:
     hide
   WHEN I receive "start slipstream":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       set spawnLane to pick random -125 to 125
       go to x: spawnLane y: 190
       create clone of myself
@@ -2671,10 +2694,11 @@ SPRITE Rival:
       wait pick random 1 to 2 seconds
   WHEN I start as a clone:
     show
-    REPEAT UNTIL y position < -190:
+    REPEAT UNTIL y position < -190 or active = 0:
       change y by (0 - roadSpeed)
       wait 0.02 seconds
-    change score by 2
+    IF active = 1 THEN:
+      change score by 2
     delete this clone
 
 SPRITE Draft:
@@ -2686,7 +2710,7 @@ SPRITE Draft:
     create clone of myself
   WHEN I start as a clone:
     show
-    REPEAT UNTIL y position < -220:
+    REPEAT UNTIL y position < -220 or active = 0:
       change y by (0 - roadSpeed)
       wait 0.02 seconds
     delete this clone
@@ -2696,13 +2720,14 @@ SPRITE Oil:
   WHEN flag clicked:
     hide
   WHEN I receive "start slipstream":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait pick random 2 to 4 seconds
-      go to x: pick random -140 to 140 y: 190
-      create clone of myself
+      IF active = 1 THEN:
+        go to x: pick random -140 to 140 y: 190
+        create clone of myself
   WHEN I start as a clone:
     show
-    REPEAT UNTIL y position < -190:
+    REPEAT UNTIL y position < -190 or active = 0:
       change y by (0 - roadSpeed)
       wait 0.02 seconds
     delete this clone
@@ -2713,18 +2738,34 @@ SPRITE Gate:
     hide
     set gateActive to 0
   WHEN I receive "start slipstream":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       wait 6 seconds
-      set gateActive to 1
-      go to x: pick random -120 to 120 y: 190
-      show
-      REPEAT UNTIL y position < -190 or gateActive = 0:
-        change y by (0 - roadSpeed)
-        wait 0.02 seconds
-      IF gateActive = 1 THEN:
-        change fuel by -18
-        set gateActive to 0
-      hide`,
+      IF active = 1 THEN:
+        set gateActive to 1
+        go to x: pick random -120 to 120 y: 190
+        show
+        REPEAT UNTIL y position < -190 or gateActive = 0 or active = 0:
+          change y by (0 - roadSpeed)
+          wait 0.02 seconds
+        IF gateActive = 1 and active = 1 THEN:
+          change fuel by -18
+          set gateActive to 0
+        hide
+
+SPRITE CircuitResult:
+  COSTUME win label "THREE CHECKPOINTS • PRESS SPACE OR TAP START TO RACE AGAIN" #8fffea
+  COSTUME lose label "ENERGY EMPTY • PRESS SPACE OR TAP START TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start slipstream":
+    hide
+  WHEN I receive "slipstream over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     abyss_rescue: `# Abyss Lift — a buoyancy-driven rescue run.
 # GOAL: rescue six gold divers before mines or cave walls consume three hull points.

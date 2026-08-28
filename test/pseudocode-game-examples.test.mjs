@@ -913,7 +913,11 @@ test('Slipstream Circuit separates drafting, collisions, and skill-based checkpo
     assert.match(games.turbo_chicane, /CONTROLS: Left\/Right steer/);
     assert.match(games.turbo_chicane, /SPRITE Draft:/);
     assert.match(games.turbo_chicane, /IF touching Gate and gateActive = 1 THEN:/);
+    assert.match(games.turbo_chicane, /broadcast "circuit checkpoint"/);
     assert.match(games.turbo_chicane, /IF checkpoints = 3 THEN:/);
+    assert.match(games.turbo_chicane, /broadcast "slipstream over"/);
+    assert.match(games.turbo_chicane, /REPEAT UNTIL y position < -190 or active = 0:/);
+    assert.match(games.turbo_chicane, /THREE CHECKPOINTS • PRESS SPACE OR TAP START TO RACE AGAIN/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'circuit']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -1605,16 +1609,33 @@ test('dual-paddle defense and slipstream race respond in the live Scratch VM', a
 
     const circuit = await load(games.turbo_chicane);
     try {
+        assert.equal(Number(value(circuit, 'active').value), 1, 'green flag plus Space did not start the race');
         circuit.postIOData('keyboard', {key: 'ArrowLeft', isDown: true});
         for (let i = 0; i < 12; i++) circuit.runtime._step();
         circuit.postIOData('keyboard', {key: 'ArrowLeft', isDown: false});
         assert.ok(Number(value(circuit, 'lane').value) < 0, 'Left did not steer the racer');
-        await new Promise(resolve => setTimeout(resolve, 2200));
-        for (let i = 0; i < 25; i++) circuit.runtime._step();
+        for (let i = 0; i < 10; i++) circuit.runtime._step();
         assert.ok(circuit.runtime.targets.some(target => !target.isOriginal && target.sprite.name === 'Rival'),
             'rival traffic did not start');
         assert.ok(circuit.runtime.targets.some(target => !target.isOriginal && target.sprite.name === 'Draft'),
             'the separate collectible slipstream did not spawn behind the rival');
+        value(circuit, 'checkpoints').value = 2;
+        value(circuit, 'score').value = 0;
+        value(circuit, 'fuel').value = 50;
+        const racer = circuit.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Racer');
+        circuit.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'circuit checkpoint'}, racer);
+        for (let i = 0; i < 35; i++) circuit.runtime._step();
+        assert.equal(Number(value(circuit, 'checkpoints').value), 3,
+            'the third checkpoint did not complete the race');
+        assert.equal(Number(value(circuit, 'score').value), 15,
+            'the checkpoint reward was applied more or less than once');
+        assert.ok(Number(value(circuit, 'fuel').value) > 70, 'the checkpoint did not restore energy');
+        assert.equal(Number(value(circuit, 'winner').value), 1, 'the circuit finish was not recorded as a win');
+        assert.equal(Number(value(circuit, 'active').value), 0, 'the finished race remained active');
+        assert.equal(Number(value(circuit, 'started').value), 0, 'the finished race could not be replayed');
+        const result = circuit.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'CircuitResult');
+        assert.equal(result.visible, true, 'the circuit result was not shown on the stage');
     } finally {
         circuit.quit();
         clearStrayTimers();
@@ -2285,7 +2306,9 @@ test('each new game keeps its signature playable mechanic', () => {
         rooftop_relay: [/set vy to 12/, /switch costume to slide/, /set overdrive to 0/,
             /change rooftops by 1/, /IF rooftops = 30 THEN:/],
         twinwall: [/SPRITE LeftWall/, /SPRITE RightWall/, /set bricks to 24/, /change score by rally/],
-        turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /change checkpoints by 1/],
+        turbo_chicane: [/touching Rival/, /touching Draft/, /touching Gate/, /broadcast "circuit checkpoint"/,
+            /change checkpoints by 1/, /broadcast "slipstream over"/,
+            /REPEAT UNTIL y position < -190 or active = 0/],
         abyss_rescue: [/change vy by 0.65/, /sin of timer/, /touching Sub/, /broadcast "diver rescued"/],
         specter_sweep: [/if on edge bounce/, /touching Orb/, /set ward to 3/,
             /broadcast "specter banished"/, /broadcast "wardlight over"/],
