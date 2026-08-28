@@ -60,9 +60,16 @@ const server = createServer(async (req, res) => {
         if (path.endsWith('/')) path += 'index.html';
         const file = join(BUILD, normalize(path));
         if (!file.startsWith(BUILD)) throw new Error('escape');
+        // Read BEFORE writing the head. With the 200 sent first, a missing
+        // file threw into a catch that could no longer set a status, and
+        // that second throw escaped the handler and killed the probe with
+        // ERR_HTTP_HEADERS_SENT — the app's own 404 for a lazy chunk was
+        // enough to do it.
+        const body = await readFile(file);
         res.writeHead(200, {'content-type': TYPES[extname(file)] || 'application/octet-stream'});
-        res.end(await readFile(file));
+        res.end(body);
     } catch {
+        if (res.headersSent) return res.end();
         res.writeHead(404);
         res.end('not found');
     }
@@ -80,6 +87,32 @@ const check = (name, ok, detail) => {
 try {
     await page.goto(`http://localhost:${PORT}/`, {waitUntil: 'load'});
     await page.waitForSelector('[class*="gui_tab"]', {timeout: 90000});
+
+    // The starter-journeys modal opens over a fresh session and every box below
+    // it measures 0x0 while it is up — which reads exactly like a broken layout
+    // rather than a covered one. Escape closes it; waiting for the backdrop to
+    // go is what makes the measurements real.
+    const backdrop = '[class*="starter-journeys_backdrop"]';
+    if (await page.$(backdrop)) {
+        await page.keyboard.press('Escape');
+        await page.waitForSelector(backdrop, {state: 'detached', timeout: 15000})
+            .catch(() => console.log('note: the starter-journeys backdrop did not close'));
+    }
+    // The right pane starts HIDDEN (localStorage 'bw-right-pane-hidden'), which
+    // collapses the stage column to `display: none; flex: 0 0 0px`. Every
+    // invariant below is about how that column and the editor share a row, so
+    // with the pane shut they all measure a 0x0 stage and read as a broken
+    // layout rather than a closed one. The toggle carries no class — it is
+    // styled inline — so address it by its data attribute, and press it only
+    // when it is actually shut.
+    const paneToggle = '[data-right-pane-toggle]';
+    const toggle = await page.$(paneToggle);
+    if (!toggle) {
+        check('the right-pane toggle is present', false, `no ${paneToggle}`);
+    } else if ((await toggle.getAttribute('aria-pressed')) !== 'true') {
+        await toggle.click();
+        await page.waitForTimeout(1200);
+    }
     await page.waitForTimeout(3000);
 
     /** @return {object} Widths and heights of the boxes the invariants care about. */
@@ -146,14 +179,25 @@ try {
     // shrink the other has not moved a boundary — it has resized a box, which is the exact
     // failure the stage-size buttons had.
     //
-    // THIS MUST RUN BEFORE THE COSTUME TAB IS EVER OPENED, and the ordering is not
-    // cosmetic. Tabs render with forceRenderTabPanel, so every panel stays mounted once
-    // visited; opening the properties rail raises the editor column's min-content width
-    // to ~776px, and a flex item cannot shrink below its min-content no matter what its
-    // flex-basis says. The floor then persists on the blocks tab. Run after the costume
-    // tab and a 220px drag measures 90px of movement — which is the rail's floor, not the
-    // divider, and looks exactly like the flex-grow dilution bug this invariant exists to
-    // catch. It cost a full diagnostic round to tell those two apart.
+    // Kept BEFORE the costume tab, but the reason recorded here for months was
+    // wrong in both halves, and measurement (2026-08-28, --report prints it)
+    // says so:
+    //
+    //   blocks tab, before costume is ever opened  250px
+    //   costume tab, rail CLOSED                   776px
+    //   costume tab, rail OPEN                     776px
+    //   back on the blocks tab                     250px
+    //
+    // The rail costs NOTHING — 776px is what the paint editor itself needs, open
+    // or shut — and the floor does NOT persist, because an unselected tab panel
+    // is `display: none` (gui.css) and a display:none subtree contributes no
+    // min-content at all. `forceRenderTabPanel` keeps panels MOUNTED, which is
+    // not the same as keeping them laid out. So there was never a rail floor to
+    // overlay away; ROADMAP 1.2 was written against a misreading.
+    //
+    // The ordering stays anyway: it costs nothing, and running the drag on the
+    // blocks tab keeps this invariant measuring the divider rather than the
+    // paint editor's own 776px.
     const start = await measure();
     if (!start.divider) {
         check('the pane divider is present', false, 'no [class*="pane-divider_divider"]');
@@ -255,9 +299,20 @@ try {
     // window. This is the bug that produced the grey band and the "broken" zoom, four times over.
     // Last, because opening the rail permanently raises the editor's min-content width (see
     // invariant 2) and every later measurement inherits that.
-    const costumeTab = await page.$('[class*="gui_tab"]:nth-child(2)');
-    if (costumeTab) {
-        await costumeTab.click();
+    // Not `[class*="gui_tab"]:nth-child(2)`: that fragment also matches
+    // `gui_tab-panel`, and nth-child counts among ALL siblings, so it selected
+    // something that was not a tab and the click silently did nothing — the
+    // paint editor never mounted and this invariant reported a missing rail
+    // for 20 seconds of waiting. Address the tab by what it IS.
+    // `getByRole('tab')` alone is not enough either: the debugger's solo pane
+    // carries tabs of its own, and its overlay then intercepts the click. The
+    // editor's own tabs are the ones whose CSS-module class is `gui_tab_` —
+    // note the trailing underscore, which is what separates them from
+    // `gui_tab-panel_`.
+    const costumeTab = page.locator('[class*="gui_tab_"]')
+        .filter({hasText: /costume|kostüm/i});
+    if (await costumeTab.count()) {
+        await costumeTab.first().click();
         await page.waitForTimeout(2500);
         const closed = await measure();
         const toggle = await page.$('[class*="bw-properties-panel_rail-collapsed"] button');
@@ -265,7 +320,23 @@ try {
             await toggle.click();
             await page.waitForTimeout(1500);
             const open = await measure();
-            if (REPORT) console.log('rail open:', JSON.stringify(open, null, 1), '\n');
+            if (REPORT) {
+                console.log('rail open:', JSON.stringify(open, null, 1), '\n');
+                // The number ROADMAP 1.2 was about. Printed rather than asserted:
+                // it is a property of the paint editor's own controls, and a
+                // threshold here would just encode today's toolbar.
+                const floors = await page.evaluate(() => {
+                    const col = document.querySelector('[class*="editor-wrapper"]');
+                    const saved = col.getAttribute('style') || '';
+                    col.style.flexBasis = 'min-content';
+                    col.style.flexGrow = '0';
+                    col.style.flexShrink = '0';
+                    const needed = Math.round(col.getBoundingClientRect().width);
+                    col.setAttribute('style', saved);
+                    return needed;
+                });
+                console.log(`editor min-content, costume tab with the rail open: ${floors}px\n`);
+            }
             check('opening the rail does not push the canvas past the window',
                 open.paintCanvas && open.paintCanvas.bottom <= open.viewportHeight + 2,
                 open.paintCanvas ? `canvas bottom ${open.paintCanvas.bottom} vs window ${open.viewportHeight}` : 'no canvas');

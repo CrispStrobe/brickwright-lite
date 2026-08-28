@@ -139,3 +139,40 @@ test('a corrupt stored size falls back instead of rendering nonsense', () => {
     assert.equal(resolveShare('nonsense'), PANE_SIZES.m);
     assert.equal(resolveShare(undefined), PANE_SIZES.m);
 });
+
+/**
+ * Every column must be a containing block in EVERY state.
+ *
+ * `position: relative` used to appear only in the collapsed branch. React
+ * removes an inline property the previous style object had and the next one
+ * does not, so collapsing a column and restoring it left it `position:
+ * static` — and the circuit tab's `position: absolute; inset: 0` stage host
+ * then resolved against the viewport, covered the whole editor at 1600x900,
+ * and swallowed every click on the tab strip.
+ */
+test('a column is a containing block in every size state', () => {
+    const states = ['xs', 's', 'm', 'l', 'xl', FIT, 0.4, 0.25];
+    for (const state of states) {
+        const style = computePaneStyles('m', 'l', state).right;
+        assert.equal(style.position, 'relative',
+            `right column at ${JSON.stringify(state)} is not a containing block`);
+    }
+});
+
+test('collapsing and restoring never drops the containing block', () => {
+    // The exact sequence that broke: collapse, then restore. React diffs these
+    // two objects, so a key present in the first and missing from the second
+    // is a key React REMOVES from the DOM node.
+    const collapsed = computePaneStyles('m', 'l', 'xs').right;
+    const restored = computePaneStyles('m', 'l', 'm').right;
+    assert.equal(collapsed.position, 'relative');
+    assert.equal(restored.position, 'relative',
+        'restoring drops position, so absolutely-positioned children escape the column');
+});
+
+test('all three columns agree, not just the right one', () => {
+    const styles = computePaneStyles('m', 'l', 'm');
+    for (const side of ['left', 'middle', 'right']) {
+        assert.equal(styles[side].position, 'relative', `${side} column is not positioned`);
+    }
+});
