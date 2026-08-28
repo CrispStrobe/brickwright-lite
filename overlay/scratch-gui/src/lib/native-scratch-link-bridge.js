@@ -123,6 +123,15 @@ class BridgedSocket {
             this._unlisten = await t.listen('scratchlink://message', event => {
                 this._emit('message', {data: event.payload});
             });
+            // A listen that did not hand back an unsubscribe function did not
+            // register. Without it the channel is one-way: `invoke` still
+            // succeeds, the socket reports itself OPEN, and then every single
+            // request hangs until its 20s timeout because no reply can ever
+            // arrive. Failing here turns a silent black hole into a normal
+            // "this transport is unavailable".
+            if (typeof this._unlisten !== 'function') {
+                throw new Error('the native event channel did not register');
+            }
             await t.invoke('scratchlink_bridge_open', {kind: this._kind});
             this.readyState = 1;             // OPEN
             this._emit('open', new Event('open'));
