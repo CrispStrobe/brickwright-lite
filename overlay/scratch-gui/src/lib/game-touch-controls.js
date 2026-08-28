@@ -8,6 +8,7 @@ const ARROWS = Object.freeze({
 
 const PROFILES = Object.freeze({
     g2048: {layout: 'stage', hint: 'Swipe the reactor to slide every tile.'},
+    sigil_grid: {layout: 'stage', hint: 'Tap SOLO or DUO, then tap an empty sigil cell.'},
     sky_skim: {
         layout: 'vertical',
         hint: 'Hold Dive into a hill; release to launch. Flap only when needed.',

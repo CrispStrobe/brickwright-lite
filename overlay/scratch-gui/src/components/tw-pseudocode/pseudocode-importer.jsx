@@ -331,6 +331,7 @@ const GROUPS = [
         // A game enters here only after an authored-art, onboarding, objective,
         // feedback, touch-control and live-VM audit.
         ['g2048', '✨ Nova Grid — polished'],
+        ['sigil_grid', '☀️ Sigil Grid — solo / duo'],
         ['sky_skim', '🪽 Skyline Swoop — polished'],
         ['missile_ballet', '✈️ Contrail Panic — polished'],
         ['orbit_ward', '🛡️ Aegis Arc — polished'],

@@ -297,6 +297,233 @@ SPRITE TouchGrid:
       wait 0.02 seconds
 `,
 
+    sigil_grid: `# Sigil Grid — a neon strategy duel with solo and two-player modes.
+# GOAL: claim three aligned sigils before your rival. After every round, tap SOLO
+# or DUO on the stage to play again without reloading the project.
+# CONTROLS: tap an empty cell. SOLO faces a rival that wins, blocks, then takes centre.
+GLOBAL started
+GLOBAL active
+GLOBAL mode
+GLOBAL turn
+GLOBAL winner
+GLOBAL moves
+GLOBAL row
+GLOBAL col
+GLOBAL i
+GLOBAL v
+GLOBAL va
+GLOBAL vb
+GLOBAL vc
+GLOBAL cand
+GLOBAL k
+GLOBAL result
+
+STAGE:
+  BACKDROP intro art sigil-grid/intro
+  BACKDROP arena art sigil-grid/play
+  WHEN flag clicked:
+    set started to 0
+    set active to 0
+    set mode to 1
+    switch backdrop to intro
+  WHEN space key pressed:
+    IF started = 0 THEN:
+      set started to 1
+      set mode to 1
+      switch backdrop to arena
+      broadcast "begin sigil duel"
+
+SPRITE Board:
+  LIST board
+  SHAPE art sigil-grid/blank
+  COSTUME blank art sigil-grid/blank
+  COSTUME sun art sigil-grid/sun
+  COSTUME moon art sigil-grid/moon
+  SOUND mark 620
+  SOUND victory 980
+
+  DEFINE FAST reset board:
+    delete all of board
+    REPEAT 9:
+      add 0 to board
+    set turn to 1
+    set winner to 0
+    set moves to 0
+    set result to 0
+
+  DEFINE check line (a) (b) (c):
+    set va to item a of board
+    set vb to item b of board
+    set vc to item c of board
+    IF va > 0 and va = vb and vb = vc THEN:
+      set winner to va
+
+  DEFINE check winner:
+    set winner to 0
+    check line 1 2 3
+    check line 4 5 6
+    check line 7 8 9
+    check line 1 4 7
+    check line 2 5 8
+    check line 3 6 9
+    check line 1 5 9
+    check line 3 5 7
+
+  DEFINE FAST paint board:
+    clear
+    set i to 0
+    REPEAT 9:
+      set v to item (i + 1) of board
+      IF v = 0 THEN:
+        switch costume to blank
+      IF v = 1 THEN:
+        switch costume to sun
+      IF v = 2 THEN:
+        switch costume to moon
+      go to x: (-86 + ((i mod 3) * 86)) y: (91 - ((floor of (i / 3)) * 86))
+      stamp
+      change i by 1
+
+  DEFINE finish round (outcome):
+    set result to outcome
+    set active to 0
+    set started to 0
+    play sound "victory"
+    broadcast "sigil duel finished"
+
+  DEFINE find tactic for (mark):
+    set cand to 0
+    set k to 1
+    REPEAT 9:
+      IF cand = 0 and item k of board = 0 THEN:
+        replace item k of board with mark
+        check winner
+        IF winner = mark THEN:
+          set cand to k
+        replace item k of board with 0
+        set winner to 0
+      change k by 1
+
+  DEFINE rival move:
+    find tactic for 2
+    IF cand = 0 THEN:
+      find tactic for 1
+    IF cand = 0 and item 5 of board = 0 THEN:
+      set cand to 5
+    IF cand = 0 THEN:
+      set cand to pick random 1 to 9
+      REPEAT UNTIL item cand of board = 0:
+        set cand to pick random 1 to 9
+    replace item cand of board with 2
+    change moves by 1
+    play sound "mark"
+    check winner
+    paint board
+    IF winner = 2 THEN:
+      finish round 2
+    ELSE:
+      IF moves = 9 THEN:
+        finish round 3
+      ELSE:
+        set turn to 1
+        say "YOUR SUN SIGIL" for 0.7 seconds
+
+  DEFINE place at (r) (c):
+    set i to (r * 3) + c + 1
+    IF active = 1 and item i of board = 0 THEN:
+      replace item i of board with turn
+      change moves by 1
+      play sound "mark"
+      check winner
+      paint board
+      IF winner > 0 THEN:
+        finish round winner
+      ELSE:
+        IF moves = 9 THEN:
+          finish round 3
+        ELSE:
+          IF mode = 1 THEN:
+            set turn to 2
+            say "RIVAL READING THE GRID…" for 0.35 seconds
+            rival move
+          ELSE:
+            IF turn = 1 THEN:
+              set turn to 2
+              say "MOON PLAYER" for 0.7 seconds
+            ELSE:
+              set turn to 1
+              say "SUN PLAYER" for 0.7 seconds
+
+  WHEN flag clicked:
+    hide
+    clear
+    FOREVER:
+      IF active = 1 and mouse down? THEN:
+        set col to floor of ((mouse x + 129) / 86)
+        set row to floor of ((134 - mouse y) / 86)
+        IF col > -1 and col < 3 and row > -1 and row < 3 THEN:
+          place at row col
+        wait until not mouse down?
+      wait 0.02 seconds
+  WHEN I receive "begin sigil duel":
+    reset board
+    paint board
+    set active to 1
+    say "YOUR SUN SIGIL" for 0.8 seconds
+
+SPRITE Solo:
+  COSTUME solo art sigil-grid/solo
+  WHEN flag clicked:
+    go to x: -72 y: -145
+    show
+  WHEN sprite clicked:
+    IF active = 0 THEN:
+      set mode to 1
+      set started to 1
+      switch backdrop to arena
+      broadcast "begin sigil duel"
+  WHEN I receive "begin sigil duel":
+    hide
+  WHEN I receive "sigil duel finished":
+    wait 1.4 seconds
+    show
+
+SPRITE Duo:
+  COSTUME duo art sigil-grid/duo
+  WHEN flag clicked:
+    go to x: 72 y: -145
+    show
+  WHEN sprite clicked:
+    IF active = 0 THEN:
+      set mode to 2
+      set started to 1
+      switch backdrop to arena
+      broadcast "begin sigil duel"
+  WHEN I receive "begin sigil duel":
+    hide
+  WHEN I receive "sigil duel finished":
+    wait 1.4 seconds
+    show
+
+SPRITE Result:
+  COSTUME sunwin label "SUN CLAIMS THE GRID • CHOOSE A REMATCH" #ffe36c
+  COSTUME moonwin label "MOON CLAIMS THE GRID • CHOOSE A REMATCH" #8fe8ff
+  COSTUME draw label "GRID LOCKED • CHOOSE A REMATCH" #ffffff
+  WHEN flag clicked:
+    hide
+    go to x: 0 y: 151
+  WHEN I receive "begin sigil duel":
+    hide
+  WHEN I receive "sigil duel finished":
+    IF result = 1 THEN:
+      switch costume to sunwin
+    IF result = 2 THEN:
+      switch costume to moonwin
+    IF result = 3 THEN:
+      switch costume to draw
+    show
+`,
+
     sky_skim: `# Skyline Swoop — an authored Scratch arcade game, not a shape demo.
 # GOAL: complete twelve clean hill launches before three crashes. Diving into a
 # green crest converts speed into height; consecutive launches grow the score combo.
