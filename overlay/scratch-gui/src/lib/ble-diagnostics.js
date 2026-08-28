@@ -209,9 +209,17 @@ export const openPanel = () => {
         selfTest.textContent = 'Testing…';
         try {
             // Imported lazily so the panel keeps working even if the native
-            // module is what is broken.
-            const {selfTestReport} = await import('./native-ble.js');
-            const report = await selfTestReport();
+            // module is what is broken. Bound the WHOLE operation, including
+            // loading its webpack chunk: a failed dynamic import has hung
+            // indefinitely in WKWebView and headless Chromium without ever
+            // reaching native-ble's own socket timeout.
+            const report = await Promise.race([
+                import('./native-ble.js').then(({selfTestReport}) => selfTestReport()),
+                new Promise(resolve => setTimeout(() => resolve({
+                    'local Bluetooth service':
+                        'UNREACHABLE — diagnostic timed out before the local service could answer'
+                }), 10000))
+            ]);
             paintEnv(['', '— self-test —'].concat(
                 Object.keys(report).map(k => `${k}: ${report[k]}`)
             ));
