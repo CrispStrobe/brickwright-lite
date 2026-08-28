@@ -42,8 +42,10 @@ pub async fn dispatch(txt: &str, out: &Outbound) {
 
     match method {
         "discover" => {
+            let major = params.get("majorDeviceClass").and_then(Value::as_i64);
+            let minor = params.get("minorDeviceClass").and_then(Value::as_i64);
             let out2 = out.clone();
-            let _ = tokio::task::spawn_blocking(move || discover_blocking(&out2)).await;
+            let _ = tokio::task::spawn_blocking(move || discover_blocking(&out2, major, minor)).await;
             reply(out, id, Value::Null).await;
         }
         "connect" => {
@@ -78,7 +80,54 @@ pub async fn dispatch(txt: &str, out: &Outbound) {
     }
 }
 
-fn discover_blocking(out: &Outbound) -> Result<(), String> {
+/// Does this bonded device match the class the client asked for?
+///
+/// The reference's BTSession REQUIRES majorDeviceClass and minorDeviceClass on
+/// a `discover`, and EV3 sends 8/1 (toy / robot). We ignored them here, so
+/// asking for EV3 bricks listed every bonded device — headphones, phones,
+/// keyboards — as candidates.
+///
+/// FAILS OPEN. If the class cannot be read for a device it is included, because
+/// the alternative is a JNI mistake silently hiding every EV3 on the system.
+/// Unfiltered is the behaviour this has always had; invisible is worse.
+///
+/// Android reports the major class pre-shifted (TOY is 0x0800) and packs the
+/// minor into bits 2..7 of getDeviceClass(), while Scratch sends the raw 5-bit
+/// major and the raw minor — hence the shifts.
+fn class_matches(
+    env: &mut jni::JNIEnv,
+    dev: &jni::objects::JObject,
+    want_major: Option<i64>,
+    want_minor: Option<i64>,
+) -> bool {
+    if want_major.is_none() && want_minor.is_none() {
+        return true;
+    }
+    let read = (|| -> jni::errors::Result<(i32, i32)> {
+        let class = env
+            .call_method(dev, "getBluetoothClass", "()Landroid/bluetooth/BluetoothClass;", &[])?
+            .l()?;
+        let major = env.call_method(&class, "getMajorDeviceClass", "()I", &[])?.i()?;
+        let device = env.call_method(&class, "getDeviceClass", "()I", &[])?.i()?;
+        Ok((major >> 8, (device >> 2) & 0x3F))
+    })();
+    let Ok((major, minor)) = read else {
+        return true;
+    };
+    if let Some(m) = want_major {
+        if i64::from(major) != m {
+            return false;
+        }
+    }
+    if let Some(m) = want_minor {
+        if i64::from(minor) != m {
+            return false;
+        }
+    }
+    true
+}
+
+fn discover_blocking(out: &Outbound, want_major: Option<i64>, want_minor: Option<i64>) -> Result<(), String> {
     let vm = vm()?;
     let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
     (|| -> jni::errors::Result<()> {
@@ -102,6 +151,9 @@ fn discover_blocking(out: &Outbound) -> Result<(), String> {
                 let s = env.call_method(&dev, "getName", "()Ljava/lang/String;", &[])?.l()?;
                 env.get_string(&s.into()).map(|s| s.into()).unwrap_or_default()
             };
+            if !class_matches(&mut env, &dev, want_major, want_minor) {
+                continue;
+            }
             let addr: String = {
                 let s = env.call_method(&dev, "getAddress", "()Ljava/lang/String;", &[])?.l()?;
                 env.get_string(&s.into()).map(|s| s.into()).unwrap_or_default()

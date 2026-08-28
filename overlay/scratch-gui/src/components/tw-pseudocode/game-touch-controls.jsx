@@ -2,7 +2,11 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import VM from 'scratch-vm';
 
-import {gameTouchProfileFor} from '../../lib/game-touch-controls.js';
+import {
+    gameTouchProfileFor,
+    releaseTouchControls,
+    setTouchControl
+} from '../../lib/game-touch-controls.js';
 
 const LABELS = {
     up: '▲', down: '▼', left: '◀', right: '▶', action: 'ACTION',
@@ -11,7 +15,7 @@ const LABELS = {
 
 const TouchButton = ({control, down, label, onDown, onUp}) => (
     <button
-        aria-label={`Game ${control}`}
+        aria-label={`Game ${label || LABELS[control]}`}
         data-testid={`bw-game-control-${control}`}
         onContextMenu={event => event.preventDefault()}
         onPointerCancel={() => onUp(control)}
@@ -54,12 +58,7 @@ const GameTouchControls = ({gameKey, vm}) => {
     const [held, setHeld] = React.useState({});
 
     const releaseAll = React.useCallback(() => {
-        if (!profile?.keys) return;
-        heldRef.current.forEach(control => {
-            const key = profile.keys[control];
-            if (key) vm.postIOData('keyboard', {key, isDown: false});
-        });
-        heldRef.current.clear();
+        releaseTouchControls(vm, profile, heldRef.current);
         setHeld({});
     }, [profile, vm]);
 
@@ -77,11 +76,8 @@ const GameTouchControls = ({gameKey, vm}) => {
     }, [releaseAll]);
 
     const setControl = React.useCallback((control, isDown) => {
-        const key = profile?.keys?.[control];
-        if (!key || heldRef.current.has(control) === isDown) return;
-        if (isDown) heldRef.current.add(control); else heldRef.current.delete(control);
+        if (!setTouchControl(vm, profile, heldRef.current, control, isDown)) return;
         setHeld(Object.fromEntries([...heldRef.current].map(name => [name, true])));
-        vm.postIOData('keyboard', {key, isDown});
     }, [profile, vm]);
 
     if (!profile || !touchCapable) return null;
@@ -89,7 +85,7 @@ const GameTouchControls = ({gameKey, vm}) => {
         control={control}
         down={Boolean(held[control])}
         key={control}
-        label={control === 'action' ? profile.actionLabel : null}
+        label={profile[`${control}Label`] || null}
         onDown={name => setControl(name, true)}
         onUp={name => setControl(name, false)}
     />;
@@ -109,10 +105,17 @@ const GameTouchControls = ({gameKey, vm}) => {
             {profile.layout === 'dpad' ? (
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8}}>
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(3,44px)', gridTemplateRows: 'repeat(2,44px)', gap: 4}}>
-                        <span />{button('up')}<span />
-                        {button('left')}{button('down')}{button('right')}
+                        <span />{profile.keys.up ? button('up') : <span />}<span />
+                        {profile.keys.left ? button('left') : <span />}
+                        {profile.keys.down ? button('down') : <span />}
+                        {profile.keys.right ? button('right') : <span />}
                     </div>
-                    {button('action')}
+                    {profile.keys.action ? button('action') : null}
+                </div>
+            ) : null}
+            {profile.layout === 'horizontal' ? (
+                <div style={{display: 'flex', justifyContent: 'center', gap: 8}}>
+                    {button('left')}{button('right')}{profile.keys.action ? button('action') : null}
                 </div>
             ) : null}
             {profile.layout === 'dual' ? (

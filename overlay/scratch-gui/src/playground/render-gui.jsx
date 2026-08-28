@@ -7,7 +7,9 @@ import GUI from '../containers/gui.jsx';
 import HashParserHOC from '../lib/hash-parser-hoc.jsx';
 import log from '../lib/log.js';
 import initBleDiagnostics from '../lib/ble-diagnostics.js';
+import initScratchLinkTransport from '../lib/scratchlink-transport.js';
 import installNativeWebBluetooth from '../lib/native-web-bluetooth.js';
+import installScratchLinkBridge from '../lib/native-scratch-link-bridge.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
 import initUrlExtensions from '../lib/url-extensions.js';
 import {applyStoredChrome} from '../components/gui/chrome-toggle.jsx';
@@ -41,11 +43,22 @@ export default appTarget => {
     // a device with no devtools. Settings › Connection diagnostics opens it.
     initBleDiagnostics();
 
+    // The Scratch Link carrier chooser (Settings › How Scratch Link connects…).
+    // Registered early so the preference is readable before anything dials.
+    initScratchLinkTransport();
+
     // Give the hardware extensions a `navigator.bluetooth` inside the app. No
     // webview we ship on implements Web Bluetooth, so without this every
     // extension whose default connection type is "ble" fails silently. No-op in
     // a browser that has the real thing, and in one that has neither.
     installNativeWebBluetooth();
+
+    // The Scratch Link route's fallback transport. Installed BEFORE the VM or
+    // any extension can dial, and additive by construction: it touches only
+    // scratch-link URLs, keeps the socket as the default, and adds a native
+    // path for the case where the socket never opens. Nothing it does can
+    // remove one of the extension's own three connection options.
+    installScratchLinkBridge();
 
     // Wire native file-open (Tauri) → web VM. No-op in a browser.
     initTauriBridge();
