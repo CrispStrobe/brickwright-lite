@@ -96,30 +96,26 @@ there too.
 
 ## 2. Deploy and CI
 
-### 2.0 Vercel deploys CHECKPOINTS, not pushes — LANDED 2026-08-27, know the rule
+### 2.0 Vercel deploys manually and nightly — LANDED 2026-08-28, know the rule
 
-The live site updates on a **version tag**, on the `release: X.Y.Z …` commit that
-carries it, or on an explicit `[deploy]` marker — nothing else
-(`scripts/vercel-ignore.sh`). `deploy-daily.yml` is `workflow_dispatch`-only; its
-cron used to push an empty refresh commit each morning, which published whatever
-happened to be on main at 04:23, chosen by nobody.
+Vercel's Git integration is disabled for this repository
+(`vercel.json`: `git.deploymentEnabled: false`). A push, pull request, tag, or
+commit-message marker therefore does **not** create a Vercel deployment.
 
-**CI still runs on every push.** Only the public URL is gated, so an ordinary
-push showing "Canceled by Ignored Build Step" is correct, not a failure.
+`.github/workflows/deploy-daily.yml` is the only deployment path. It runs:
 
-Two consequences worth knowing before diagnosing anything:
+- manually through `workflow_dispatch`; and
+- nightly at **02:00 Europe/Berlin**, always checking out the current `main`.
 
-- **"Every push must keep CI *and* Vercel green" is no longer the rule**, and
-  reading it that way costs an afternoon. A red Vercel during a rate-limit
-  window means the account quota, not your change.
-- The cap is real and has been exhausted twice by push volume (2026-08-23, and
-  again 2026-08-27, when every push for hours returned `Deployment rate limited
-  — retry in 24 hours` and the site quietly served a stale build).
+The workflow performs `vercel pull`, `vercel build --prod`, and a prebuilt
+production deploy. It is serialized so a manual run and the nightly run cannot
+publish over one another. The obsolete `scripts/vercel-ignore.sh` checkpoint
+filter was deleted when this policy landed.
 
-A release commit is deliberately NOT filtered by the web-affecting-files rule: a
-release moves `tauri.conf.json`, `Cargo.toml` and the tester notes, none of
-which match that filter, so applying it would skip exactly the deploy being
-asked for.
+**CI still runs on every push.** Vercel does not. A PR badge therefore reports
+the build and vendor gates without consuming the account-wide deployment quota.
+If the public Vercel site is stale, inspect the scheduled/manual deployment
+workflow rather than looking for a missing per-push deployment.
 
 ### 2.1 Deploy starvation with two agents pushing — OPEN, do not redo naively
 Workflow is on stock `concurrency: {group: pages, cancel-in-progress: false}`. With two sessions
