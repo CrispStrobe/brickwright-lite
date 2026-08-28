@@ -33,10 +33,21 @@
  * `'SF'`. Eight are answered. It then panics at step ~26,600, parked in
  * the SDK's `bkpt #0; b .` loop, entered from 0x10030efa.
  *
- * So the next question is whether that panic IS the missing float table,
- * and if it is, the work is a clean-room IEEE-754 soft-float library in
- * Thumb — a real project, and the honest reason the Pico REPL is not
- * running yet.
+ * THE PANIC IS NOT THE FLOAT TABLE, which is worth knowing because it is
+ * the obvious suspect and it is wrong. Answering `'SF'` with a non-null
+ * pointer moves the panic by TWO steps — the cost of the extra table
+ * walk — and nothing else. So the licence-blocked piece is not what stops
+ * MicroPython here, and a clean-room soft-float library would not fix it.
+ *
+ * What the firmware reads immediately before panicking is CLOCKS
+ * (0x40008048/4c/6c/70), RESETS' RESET_DONE (0x4000c008), and then the
+ * timer's TIMERAWH/TIMERAWL. Advancing the SimulationClock per
+ * instruction — which the raw probe was not doing, and which
+ * rp2040js-adapter.js does — does not move the panic either. That points
+ * at clock-tree configuration rather than at anything in this file: the
+ * SDK asks how fast clk_sys is running and does not like the answer.
+ *
+ * So the next step is rp2040js's CLOCKS peripheral, not more ROM.
  *
  * @module
  */
@@ -246,7 +257,12 @@ export function buildBootrom () {
     }
     view.setUint32(at, 0, true);            // terminator
     const dataTable = at + 4;
-    view.setUint32(dataTable, 0, true);     // an empty data table, terminated
+    // Empty, and deliberately so. The one data entry a firmware asks for
+    // is 'SF', mufplib's jump table, and answering it with a pointer to
+    // zeros would turn a clean lookup miss into a jump to address 0.
+    // Measured: answering it moves the panic by TWO steps, so the float
+    // table is not what stops MicroPython here.
+    view.setUint32(dataTable, 0, true);
 
     // ── the fixed header ───────────────────────────────────────────────
     view.setUint32(0x00, 0x20042000, true);         // initial SP: top of SRAM
