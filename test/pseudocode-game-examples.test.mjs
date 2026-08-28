@@ -9,6 +9,7 @@ import {VM, clearStrayTimers, runProgram, quitStrandedVMs} from './helpers/bw-vm
 const EXPECTED = [
     'g2048',
     'sigil_grid',
+    'vector_seven',
     'sky_skim',
     'chroma_code',
     'fusion_foundry',
@@ -52,6 +53,7 @@ test('only quality-approved new games are wired into the visible examples galler
     const approved = new Set([
         'g2048',
         'sigil_grid',
+        'vector_seven',
         'sky_skim', 'missile_ballet', 'orbit_ward', 'chroma_code', 'fusion_foundry', 'rooftop_relay',
         'twinwall', 'turbo_chicane', 'abyss_rescue', 'specter_sweep', 'moonlight_heist', 'cloud_court',
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
@@ -253,6 +255,89 @@ test('Sigil Grid accepts stage taps and its solo rival blocks a forced win in th
         await tap(154, 261); // Give the player cell 7; cells 1-2 now threaten cell 3.
         assert.equal(Number(board.value[6]), 1, 'second stage tap did not reach the intended cell');
         assert.equal(Number(board.value[2]), 2, 'rival failed to block the immediate row win');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
+});
+
+test('Vector Seven is a finite paddle match with aimable, charged returns', () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.vector_seven);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    assert.match(games.vector_seven, /GOAL: score 7 points before the rival/);
+    assert.match(games.vector_seven, /CONTROLS: drag or tap across the stage/);
+    assert.match(games.vector_seven, /set hitOffset to \(ballX - playerX\) \/ 11/);
+    assert.match(games.vector_seven, /IF \(rally mod 4\) = 0 THEN:/);
+    assert.match(games.vector_seven, /change playerScore by 2/);
+    assert.match(games.vector_seven, /IF playerScore = 7 THEN:/);
+    assert.match(games.vector_seven, /IF rivalScore = 7 THEN:/);
+    const stage = project.targets.find(target => target.isStage);
+    assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'court']);
+    const pulse = project.targets.find(target => target.name === 'Pulse');
+    assert.deepEqual(pulse.costumes.map(costume => costume.name), ['costume1', 'charged']);
+    const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
+    assert.ok(svgs.some(svg => svg.includes('VECTOR SEVEN')));
+    assert.ok(svgs.some(svg => svg.includes('FIRST TO 7 WINS')));
+    assert.ok(svgs.some(svg => svg.includes('4TH RETURN = CHARGED 2-POINT SHOT')));
+});
+
+test('Vector Seven serves, aims, charges, and reaches seven in the real VM', async () => {
+    const creator = new SB3Creator();
+    creator.parse(games.vector_seven);
+    const vm = new VM();
+    const value = name => Object.values(vm.runtime.getTargetForStage().variables)
+        .find(variable => variable.name === name);
+    const step = count => { for (let i = 0; i < count; i++) vm.runtime._step(); };
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        step(20);
+        await new Promise(resolve => setTimeout(resolve, 700));
+        step(45);
+        assert.equal(Number(value('playing').value), 1, 'green flag did not start the finite match');
+        assert.equal(Number(value('serve').value), 1, 'match did not wait in a visible serve state');
+
+        vm.postIOData('mouse', {x: 360, y: 300, canvasWidth: 480, canvasHeight: 360, isDown: true});
+        step(18);
+        vm.postIOData('mouse', {x: 360, y: 300, canvasWidth: 480, canvasHeight: 360, isDown: false});
+        step(20);
+        assert.equal(Number(value('playerX').value), 120, 'stage drag did not move the player paddle');
+        assert.equal(Number(value('serve').value), 0, 'stage tap did not launch the serve');
+        assert.ok(Number(value('ballVY').value) > 0, 'serve did not travel toward the rival');
+
+        value('ballX').value = 153;
+        value('ballY').value = -130;
+        value('ballVX').value = 0;
+        value('ballVY').value = -5;
+        value('rally').value = 0;
+        step(4);
+        assert.ok(Number(value('ballVX').value) > 2, 'off-centre strike did not aim the return');
+        assert.ok(Number(value('ballVY').value) > 0, 'player paddle did not return the pulse');
+        assert.equal(Number(value('rally').value), 1, 'return did not advance the charge counter');
+
+        value('ballX').value = 142;
+        value('ballY').value = -130;
+        value('ballVX').value = 0;
+        value('ballVY').value = -5;
+        value('rally').value = 3;
+        value('charged').value = 0;
+        step(4);
+        assert.equal(Number(value('rally').value), 4, 'fourth return was not counted');
+        assert.equal(Number(value('charged').value), 1, 'fourth return did not become charged');
+
+        value('playerScore').value = 5;
+        value('ballX').value = 200;
+        value('ballY').value = 179;
+        value('ballVX').value = 0;
+        value('ballVY').value = 5;
+        value('serve').value = 0;
+        step(5);
+        assert.equal(Number(value('playerScore').value), 7, 'charged winner was not worth two points');
+        assert.equal(Number(value('winner').value), 1, 'reaching seven did not declare the player');
+        assert.equal(Number(value('playing').value), 0, 'match continued after its attainable finish');
     } finally {
         vm.quit();
         clearStrayTimers();
@@ -1732,6 +1817,9 @@ test('each new game keeps its signature playable mechanic', () => {
         sigil_grid: [/LIST board/, /DEFINE find tactic for \(mark\):/, /find tactic for 2/,
             /find tactic for 1/, /item 5 of board = 0/, /DEFINE place at \(r\) \(c\):/,
             /broadcast "sigil duel finished"/],
+        vector_seven: [/set playerX to mouse x/, /set hitOffset to \(ballX - playerX\) \/ 11/,
+            /IF \(rally mod 4\) = 0/, /change playerScore by 2/, /IF playerScore = 7/,
+            /IF rivalScore = 7/, /broadcast "vector match over"/],
         sky_skim: [/SHAPE art skyline-swoop\/bird/, /BACKDROP intro art skyline-swoop\/intro/,
             /touching Hill/, /key down arrow pressed\?/, /set vy to \(abs of vy\) \+ 5/,
             /change launches by 1/, /IF launches = 12 THEN:/],
