@@ -216,7 +216,14 @@ export const openPanel = () => {
                 Object.keys(report).map(k => `${k}: ${report[k]}`)
             ));
         } catch (e) {
-            paintEnv(['', `— self-test failed: ${e && e.message ? e.message : e} —`]);
+            const message = e && e.message ? e.message : e;
+            // Loading the transport is itself part of reaching the bundled
+            // service. Preserve the stable, user-searchable field name even
+            // when webpack/chunk loading fails before native-ble can return
+            // its normal report; a bare "self-test failed" hid which service
+            // was unavailable in CI and in screenshots from iPad users.
+            paintEnv(['', '— self-test —',
+                `local Bluetooth service: UNREACHABLE — self-test could not load: ${message}`]);
         }
         selfTest.disabled = false;
         selfTest.textContent = 'Run Bluetooth self-test';
