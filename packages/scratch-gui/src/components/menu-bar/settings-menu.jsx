@@ -138,6 +138,13 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             onRequestClose={onRequestClose}
                         />
                     </MenuItem>}
+                    <MenuItem onClick={() => { emit('bw-open-scratchlink-transport'); onRequestClose(); }}>
+                        <FormattedMessage
+                            defaultMessage="How Scratch Link connects…"
+                            description="Settings action that chooses which carrier the Scratch Link protocol uses"
+                            id="gui.menuBar.scratchLinkTransport"
+                        />
+                    </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-ble-diagnostics'); onRequestClose(); }}>
                         <FormattedMessage
                             defaultMessage="Connection diagnostics…"
