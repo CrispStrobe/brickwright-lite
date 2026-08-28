@@ -145,3 +145,47 @@ test('memset fills, and returns', {skip: SKIP}, async () => {
     for (let i = 0; i < 12; i++) assert.equal(mcu.readUint8(dst + i), 0x5A, `byte ${i}`);
     assert.equal(mcu.readUint8(dst + 12), 0, 'memset ran past its count');
 });
+
+// ── the bit helpers ARMv6-M has no instructions for ─────────────────────
+
+const bitHelper = async (name, cases) => {
+    const {mcu, run} = await callRom();
+    const view = new DataView(buildBootrom().buffer);
+    const lookup = view.getUint16(0x18, true);
+    run(lookup, {0: view.getUint16(0x14, true), 1: ROM_FUNC[name]});
+    const fn = mcu.core.registers[0];
+    assert.ok(fn > 0x100, `${name} is not in the function table`);
+    for (const [input, expected] of cases) {
+        const steps = run(fn, {0: input >>> 0});
+        assert.ok(steps >= 0, `${name}(0x${(input >>> 0).toString(16)}) never returned`);
+        assert.equal(mcu.core.registers[0] >>> 0, expected >>> 0,
+            `${name}(0x${(input >>> 0).toString(16)})`);
+    }
+};
+
+test('clz32 counts leading zeros, including the all-zero case', {skip: SKIP}, async () => {
+    // MicroPython asks for this fifteen times during startup: ARMv6-M has
+    // no CLZ instruction, which is why the ROM carries one at all.
+    await bitHelper('CLZ32', [
+        [0x80000000, 0], [0x40000000, 1], [1, 31], [0, 32], [0x00FF0000, 8]
+    ]);
+});
+
+test('ctz32 counts trailing zeros, including the all-zero case', {skip: SKIP}, async () => {
+    await bitHelper('CTZ32', [
+        [1, 0], [2, 1], [0x80000000, 31], [0, 32], [0x00FF0000, 16]
+    ]);
+});
+
+test('popcount32 counts set bits', {skip: SKIP}, async () => {
+    await bitHelper('POPCOUNT32', [
+        [0, 0], [1, 1], [0xFFFFFFFF, 32], [0xF0F0F0F0, 16], [0x80000001, 2]
+    ]);
+});
+
+test('reverse32 reverses bit order', {skip: SKIP}, async () => {
+    await bitHelper('REVERSE32', [
+        [1, 0x80000000], [0x80000000, 1], [0, 0], [0xFFFFFFFF, 0xFFFFFFFF],
+        [0x12345678, 0x1E6A2C48]
+    ]);
+});

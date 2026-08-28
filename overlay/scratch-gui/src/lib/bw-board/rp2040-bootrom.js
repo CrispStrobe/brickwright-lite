@@ -21,9 +21,22 @@
  * copied; the datasheet describes an interface and this satisfies it.
  *
  * WHAT IT IS NOT. This is not the real bootrom. There is no USB mass
- * storage, no `reset_usb_boot`, no floating-point library (mufplib is
- * exactly the part that is not free, and a firmware that calls it will
- * not get it here). It is the minimum that lets a flash image start.
+ * storage, no `reset_usb_boot`, and — the one that currently matters — no
+ * SOFT-FLOAT TABLE. mufplib is exactly the part that is not free, so the
+ * `'SF'` lookup misses and returns 0.
+ *
+ * HOW FAR THAT GETS, measured against MicroPython 1.22.2 for the Pico:
+ * the image loads, boots from its vector table, runs in flash, copies
+ * itself into RAM through the memcpy here and runs there too, and asks
+ * this ROM for nine different functions — memcpy, memcpy44, memset,
+ * memset4, popcount32, clz32 (eighteen times), ctz32, reverse32, and
+ * `'SF'`. Eight are answered. It then panics at step ~26,600, parked in
+ * the SDK's `bkpt #0; b .` loop, entered from 0x10030efa.
+ *
+ * So the next question is whether that panic IS the missing float table,
+ * and if it is, the work is a clean-room IEEE-754 soft-float library in
+ * Thumb — a real project, and the honest reason the Pico REPL is not
+ * running yet.
  *
  * @module
  */
@@ -40,7 +53,15 @@ export const ROM_FUNC = {
     MEMCPY: code('M', 'C'),
     MEMCPY44: code('C', '4'),
     MEMSET: code('M', 'S'),
-    MEMSET4: code('S', '4')
+    MEMSET4: code('S', '4'),
+    // Bit helpers. ARMv6-M has no CLZ instruction, which is exactly why
+    // the ROM carries these — the SDK calls them rather than emitting a
+    // loop at every site. MicroPython asks for clz32 fifteen times during
+    // startup alone.
+    POPCOUNT32: code('P', '3'),
+    CLZ32: code('L', '3'),
+    CTZ32: code('T', '3'),
+    REVERSE32: code('R', '3')
 };
 
 /** Assemble 16-bit Thumb halfwords into the image at a byte offset. */
@@ -133,6 +154,69 @@ export function buildBootrom () {
         0xbd10              // pop  {r4, pc}
     ]);
 
+    // ── clz32(r0) → r0 = leading zeros ──────────────────────────────────
+    const clz32 = pc;
+    pc = emit(view, pc, [
+        0x2200,             // movs r2, #0
+        0x2800,             // cmp  r0, #0
+        0xd004,             // beq  .zero
+        0x0003,             // .loop: movs r3, r0     ; sets N from bit 31
+        0xd403,             // bmi  .done
+        0x0040,             // lsls r0, r0, #1
+        0x3201,             // adds r2, #1
+        0xe7fa,             // b    .loop
+        0x2220,             // .zero: movs r2, #32
+        0x0010,             // .done: movs r0, r2
+        0x4770              // bx   lr
+    ]);
+
+    // ── ctz32(r0) → r0 = trailing zeros ─────────────────────────────────
+    const ctz32 = pc;
+    pc = emit(view, pc, [
+        0x2200,             // movs r2, #0
+        0x2800,             // cmp  r0, #0
+        0xd004,             // beq  .zero
+        0x07c3,             // .loop: lsls r3, r0, #31 ; bit 0 into N
+        0xd403,             // bmi  .done
+        0x0840,             // lsrs r0, r0, #1
+        0x3201,             // adds r2, #1
+        0xe7fa,             // b    .loop
+        0x2220,             // .zero: movs r2, #32
+        0x0010,             // .done: movs r0, r2
+        0x4770              // bx   lr
+    ]);
+
+    // ── popcount32(r0) → r0 = set bits ──────────────────────────────────
+    const popcount32 = pc;
+    pc = emit(view, pc, [
+        0x2200,             // movs r2, #0
+        0x2800,             // .loop: cmp r0, #0
+        0xd004,             // beq  .done
+        0x07c3,             // lsls r3, r0, #31       ; bit 0 into N
+        0xd500,             // bpl  .skip
+        0x3201,             // adds r2, #1
+        0x0840,             // .skip: lsrs r0, r0, #1
+        0xe7f8,             // b    .loop
+        0x0010,             // .done: movs r0, r2
+        0x4770              // bx   lr
+    ]);
+
+    // ── reverse32(r0) → r0 = bits reversed ──────────────────────────────
+    const reverse32 = pc;
+    pc = emit(view, pc, [
+        0x2200,             // movs r2, #0            ; result
+        0x2320,             // movs r3, #32           ; counter
+        0x0052,             // .loop: lsls r2, r2, #1
+        0x07c1,             // lsls r1, r0, #31       ; isolate bit 0…
+        0x0fc9,             // lsrs r1, r1, #31       ; …as a value, not a flag
+        0x430a,             // orrs r2, r1
+        0x0840,             // lsrs r0, r0, #1
+        0x3b01,             // subs r3, #1
+        0xd1f8,             // bne  .loop
+        0x0010,             // movs r0, r2
+        0x4770              // bx   lr
+    ]);
+
     // A reset handler that goes nowhere: we boot from flash, and this
     // exists so the vector table is not a pointer to zero.
     const spin = pc;
@@ -148,7 +232,11 @@ export function buildBootrom () {
         [ROM_FUNC.MEMCPY, thumb(memcpy)],
         [ROM_FUNC.MEMCPY44, thumb(memcpy)],
         [ROM_FUNC.MEMSET, thumb(memset)],
-        [ROM_FUNC.MEMSET4, thumb(memset)]
+        [ROM_FUNC.MEMSET4, thumb(memset)],
+        [ROM_FUNC.POPCOUNT32, thumb(popcount32)],
+        [ROM_FUNC.CLZ32, thumb(clz32)],
+        [ROM_FUNC.CTZ32, thumb(ctz32)],
+        [ROM_FUNC.REVERSE32, thumb(reverse32)]
     ];
     let at = table;
     for (const [c, addr] of entries) {
