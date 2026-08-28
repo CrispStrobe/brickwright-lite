@@ -5594,6 +5594,8 @@ GLOBAL lanceOn
 GLOBAL orbActive
 GLOBAL fireReady
 GLOBAL started
+GLOBAL active
+GLOBAL winner
 
 STAGE:
   BACKDROP intro art plasma-posse/intro
@@ -5604,9 +5606,25 @@ STAGE:
     hide variable score
     hide variable hearts
     hide variable waves
+    set active to 0
   WHEN space key pressed:
     IF started = 0 THEN:
       set started to 1
+      set score to 0
+      set hearts to 3
+      set waves to 0
+      set sheriffX to 0
+      set shardOn to 0
+      set lanceOn to 0
+      set fireReady to 0
+      set orbX to 120
+      set orbY to 80
+      set orbVX to -3
+      set orbVY to 4
+      set orbTier to 3
+      set orbActive to 1
+      set winner to 0
+      set active to 1
       switch backdrop to arena
       broadcast "start plasma posse"
 
@@ -5620,6 +5638,8 @@ SPRITE Sheriff:
     set shardOn to 0
     set lanceOn to 0
     set fireReady to 0
+    set active to 0
+    set winner to 0
     go to x: sheriffX y: -135
     hide
   WHEN I receive "start plasma posse":
@@ -5629,7 +5649,7 @@ SPRITE Sheriff:
     show
     wait 0.2 seconds
     set fireReady to 1
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF key left arrow pressed? THEN:
         change sheriffX by -5
       IF key right arrow pressed? THEN:
@@ -5639,17 +5659,33 @@ SPRITE Sheriff:
       IF sheriffX > 215 THEN:
         set sheriffX to 215
       go to x: sheriffX y: -135
-      IF hearts < 1 THEN:
-        say ("POSSE LOST — SCORE " join score) for 4 seconds
-        stop all
-      IF waves = 4 THEN:
-        say ("FOUR WAVES CLEARED — SCORE " join score) for 4 seconds
-        stop all
       wait 0.02 seconds
+    hide
   WHEN space key pressed:
-    IF started = 1 and fireReady = 1 and lanceOn = 0 THEN:
+    IF active = 1 and fireReady = 1 and lanceOn = 0 THEN:
       set lanceOn to 1
       broadcast "fire lance"
+  WHEN I receive "posse hit":
+    IF active = 1 THEN:
+      change hearts by -1
+      IF hearts < 1 THEN:
+        set winner to 0
+        set active to 0
+        broadcast "plasma posse over"
+  WHEN I receive "plasma wave cleared":
+    IF active = 1 THEN:
+      change waves by 1
+      IF waves = 4 THEN:
+        set winner to 1
+        set active to 0
+        broadcast "plasma posse over"
+      ELSE:
+        set orbTier to 3
+        set orbX to pick random -170 to 170
+        set orbY to 140
+        set orbVX to pick random 3 to 5
+        set orbVY to 5
+        set orbActive to 1
 
 SPRITE PlasmaOrb:
   SHAPE art plasma-posse/orb
@@ -5666,7 +5702,7 @@ SPRITE PlasmaOrb:
     hide
   WHEN I receive "start plasma posse":
     show
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF orbActive = 1 THEN:
         show
         change orbVY by -0.38
@@ -5696,7 +5732,7 @@ SPRITE PlasmaOrb:
             play sound "pop"
           set lanceOn to 0
         IF touching Sheriff THEN:
-          change hearts by -1
+          broadcast "posse hit"
           set orbX to 150
           set orbY to 100
           set orbVY to 5
@@ -5704,22 +5740,17 @@ SPRITE PlasmaOrb:
       ELSE:
         hide
         IF shardOn = 0 and waves < 4 THEN:
-          change waves by 1
-          IF waves < 4 THEN:
-            set orbTier to 3
-            set orbX to pick random -170 to 170
-            set orbY to 140
-            set orbVX to pick random 3 to 5
-            set orbVY to 5
-            set orbActive to 1
+          set orbActive to -1
+          broadcast "plasma wave cleared"
       wait 0.02 seconds
+    hide
 
 SPRITE Shard:
   SHAPE art plasma-posse/shard
   WHEN flag clicked:
     hide
   WHEN I receive "start plasma posse":
-    FOREVER:
+    REPEAT UNTIL active = 0:
       IF shardOn = 1 THEN:
         show
         change shardVY by -0.5
@@ -5737,12 +5768,13 @@ SPRITE Shard:
           change score by 12
           hide
         IF touching Sheriff THEN:
-          change hearts by -1
+          broadcast "posse hit"
           set shardOn to 0
           hide
       ELSE:
         hide
       wait 0.02 seconds
+    hide
 
 SPRITE Lance:
   SHAPE art plasma-posse/lance
@@ -5751,11 +5783,26 @@ SPRITE Lance:
   WHEN I receive "fire lance":
     go to x: sheriffX y: -105
     show
-    REPEAT UNTIL y position > 180 or lanceOn = 0:
+    REPEAT UNTIL y position > 180 or lanceOn = 0 or active = 0:
       change y by 14
       wait 0.02 seconds
     hide
-    set lanceOn to 0`,
+    set lanceOn to 0
+
+SPRITE PlasmaResult:
+  COSTUME win label "FOUR SPLIT-ORB WAVES CLEARED • GREEN FLAG FOR ANOTHER POSSE" #ffe66d
+  COSTUME lose label "THREE COLLISIONS • GREEN FLAG TO RETRY" #ff91a8
+  WHEN flag clicked:
+    go to x: 0 y: -15
+    hide
+  WHEN I receive "start plasma posse":
+    hide
+  WHEN I receive "plasma posse over":
+    IF winner = 1 THEN:
+      switch costume to win
+    ELSE:
+      switch costume to lose
+    show`,
 
     halo_foundry: `# Halo Lockdown — circular paddle defense fused with a three-ring lock break.
 # GOAL: clear all four inner locks across three increasingly fast rings before three escapes.

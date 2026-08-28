@@ -1312,6 +1312,11 @@ test('Plasma Posse requires both split pieces before advancing each of four wave
     assert.match(games.shard_sheriff, /set orbActive to 0/);
     assert.match(games.shard_sheriff, /IF shardOn = 0 and waves < 4 THEN:/);
     assert.match(games.shard_sheriff, /IF waves = 4 THEN:/);
+    assert.match(games.shard_sheriff, /set orbActive to -1/);
+    assert.match(games.shard_sheriff, /broadcast "plasma wave cleared"/);
+    assert.match(games.shard_sheriff, /broadcast "posse hit"/);
+    assert.match(games.shard_sheriff, /broadcast "plasma posse over"/);
+    assert.match(games.shard_sheriff, /FOUR SPLIT-ORB WAVES CLEARED • GREEN FLAG FOR ANOTHER POSSE/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'arena']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
@@ -2243,6 +2248,16 @@ test('precision drop and single-lance controls work in the live Scratch VM', asy
         assert.ok(posse.runtime.targets.some(target => target.sprite.name === 'Lance' && target.visible),
             'fired lance was not visible');
         assert.equal(Number(value(posse, 'waves').value), 0, 'arena began with phantom waves');
+        value(posse, 'waves').value = 3;
+        const sheriff = posse.runtime.targets.find(target => target.isOriginal && target.sprite.name === 'Sheriff');
+        posse.runtime.startHats('event_whenbroadcastreceived', {BROADCAST_OPTION: 'plasma wave cleared'}, sheriff);
+        for (let i = 0; i < 35; i++) posse.runtime._step();
+        assert.equal(Number(value(posse, 'waves').value), 4, 'the fourth split-orb wave was not counted');
+        assert.equal(Number(value(posse, 'winner').value), 1, 'four waves did not win the arena');
+        assert.equal(Number(value(posse, 'active').value), 0, 'the cleared arena remained active');
+        const result = posse.runtime.targets.find(target =>
+            target.isOriginal && target.sprite.name === 'PlasmaResult');
+        assert.equal(result.visible, true, 'the arena result was not shown on the stage');
     } finally { posse.quit(); clearStrayTimers(); }
 });
 
@@ -2490,7 +2505,9 @@ test('each new game keeps its signature playable mechanic', () => {
         prism_spire: [/IF active = 1 and \(abs of \(blockX - towerX\)\) < blockWidth/,
             /change blockWidth by 0 - \(abs of \(blockX - towerX\)\)/, /create clone of myself/,
             /IF level = 12/, /broadcast "lumen stack over"/],
-        shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/, /set orbActive to 0/, /change waves by 1/],
+        shard_sheriff: [/set shardOn to 1/, /change shardVY by -0\.5/, /broadcast "fire lance"/,
+            /set orbActive to 0/, /set orbActive to -1/, /broadcast "plasma wave cleared"/,
+            /change waves by 1/, /broadcast "plasma posse over"/],
         halo_foundry: [/set shieldX to sin of shieldAngle \* 205/, /set shieldY to cos of shieldAngle \* 150/, /change locks by -1/, /broadcast "restore locks"/, /IF round = 3/],
         corridor_kestrel: [/set driftX to driftX \* 0\.92/, /touching UpperGate or touching LowerGate/, /change battery by 4/, /set shield to 1/, /change gates by 1/],
         thunder_volley: [/change playerVY by -0\.75/, /set ballVX to 8 \+ rally \/ 3/, /change rivalPoints by 1/, /touching ThunderNet/],
