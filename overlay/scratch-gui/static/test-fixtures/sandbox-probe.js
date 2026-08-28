@@ -27,6 +27,14 @@
                     } catch (e) {
                         return 'blocked';
                     }
+                })(),
+                nestedWorker: (() => {
+                    try {
+                        new Worker('data:text/javascript,');
+                        return 'opened';
+                    } catch (e) {
+                        return 'blocked';
+                    }
                 })()
             });
         }

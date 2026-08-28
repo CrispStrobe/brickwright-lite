@@ -40,7 +40,8 @@ try {
         document: 'undefined',
         editor: 'undefined',
         nativeBridge: 'undefined',
-        webSocket: 'blocked'
+        webSocket: 'blocked',
+        nestedWorker: 'blocked'
     };
     if (JSON.stringify(result) !== JSON.stringify(expected)) {
         throw new Error(`sandbox boundary mismatch: ${JSON.stringify(result)}`);

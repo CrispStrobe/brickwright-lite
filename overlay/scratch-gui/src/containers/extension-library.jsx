@@ -90,7 +90,8 @@ const messages = defineMessages({
     },
     untrusted: {
         defaultMessage: 'Load code from:\n\n{url}\n\nIt will run in an isolated worker without access to the ' +
-            'editor or native device bridge. HTTP(S) requests remain available; direct WebSockets are blocked. ' +
+            'editor or native device bridge. HTTP(S) requests remain available; direct WebSockets and nested ' +
+            'workers are blocked. ' +
             'Extensions which require unsandboxed mode will be refused.',
         description: 'Confirmation before running a custom extension in the worker sandbox',
         id: 'gui.extensionLibrary.untrusted'
@@ -103,7 +104,8 @@ const messages = defineMessages({
     unpinned: {
         defaultMessage: 'This gallery extension is newer than this app, so its code has not been pinned or ' +
             'reviewed here yet:\n\n{url}\n\nIt will run in an isolated worker without editor or ' +
-            'native-device access. HTTP(S) requests remain available; direct WebSockets are blocked. Load it?',
+            'native-device access. HTTP(S) requests remain available; direct WebSockets and nested workers are ' +
+            'blocked. Load it?',
         description: 'Confirmation for a gallery extension published since this build was pinned',
         id: 'gui.extensionLibrary.unpinned'
     }
@@ -118,13 +120,13 @@ const DE_MESSAGES = {
         'Lade eine sandbox-kompatible TurboWarp- oder Scratch-Erweiterung von einer URL.',
     'gui.extensionLibrary.untrusted': 'Code laden von:\n\n{url}\n\nEr läuft in einem isolierten Worker ohne ' +
         'Zugriff auf den Editor oder die native Gerätebrücke. HTTP(S)-Anfragen sind weiterhin möglich; ' +
-        'direkte WebSockets sind gesperrt. ' +
+        'direkte WebSockets und verschachtelte Worker sind gesperrt. ' +
         'Erweiterungen, die den unsicheren Modus benötigen, werden abgelehnt.',
     'gui.extensionLibrary.loadFailed': 'Erweiterung von {url} konnte nicht geladen werden\n\n{error}',
     'gui.extensionLibrary.unpinned': 'Diese Galerie-Erweiterung ist neuer als diese App; ihr Code wurde hier ' +
         'noch nicht festgeschrieben oder geprüft:\n\n{url}\n\nSie läuft in einem isolierten Worker ohne Zugriff ' +
         'auf den Editor oder die native Gerätebrücke. HTTP(S)-Anfragen sind weiterhin möglich; direkte ' +
-        'WebSockets sind gesperrt. Laden?'
+        'WebSockets und verschachtelte Worker sind gesperrt. Laden?'
 };
 
 class ExtensionLibrary extends React.PureComponent {

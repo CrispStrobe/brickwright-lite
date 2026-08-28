@@ -14,7 +14,9 @@ the remaining tasks are deliberately independent checkpoints.
   extension worker. HTTP(S) entry points still ask first and explain that the
   worker retains HTTP(S) fetch/import, but no DOM, editor runtime or Tauri
   native bridge. Direct WebSockets are blocked: otherwise code could dial the
-  app's loopback Scratch-Link server and regain native Bluetooth.
+  app's loopback Scratch-Link server and regain native Bluetooth. Nested worker
+  constructors are blocked as well, so code cannot create a fresh socket-capable
+  realm.
   Extensions which demand `Scratch.extensions.unsandboxed` fail explicitly.
 
 Worker isolation alone was insufficient: downloaded code still owns

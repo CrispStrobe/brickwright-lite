@@ -12,26 +12,38 @@ const dispatch = require('../dispatch/worker-dispatch');
 // caller identity on that socket, so remove the constructor at its actual prototype owner before
 // importing remote code. Patching only `global.WebSocket` would be bypassable through the global's
 // prototype chain.
-const blockWebSockets = () => {
-    if (typeof global.WebSocket !== 'function') return;
+const lockConstructor = (name, replacement) => {
+    if (typeof global[name] !== 'function') return;
     let owner = global;
-    while (owner && !Object.prototype.hasOwnProperty.call(owner, 'WebSocket')) {
+    while (owner && !Object.prototype.hasOwnProperty.call(owner, name)) {
         owner = Object.getPrototypeOf(owner);
     }
-    if (!owner) throw new Error('Could not locate the worker WebSocket constructor');
+    if (!owner) throw new Error(`Could not locate the worker ${name} constructor`);
+    Object.defineProperty(owner, name, {
+        value: replacement,
+        configurable: false,
+        writable: false
+    });
+    if (global[name] !== replacement) throw new Error(`Could not lock the worker ${name} constructor`);
+};
+
+const blockNetworkEscapeHatches = () => {
+    const NativeWebSocket = global.WebSocket;
     const BlockedWebSocket = function WebSocket () {
         throw new Error('WebSocket is unavailable in sandboxed extensions');
     };
     for (const state of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) {
-        Object.defineProperty(BlockedWebSocket, state, {value: global.WebSocket[state]});
+        Object.defineProperty(BlockedWebSocket, state, {value: NativeWebSocket && NativeWebSocket[state]});
     }
-    Object.defineProperty(owner, 'WebSocket', {
-        value: BlockedWebSocket,
-        configurable: false,
-        writable: false
-    });
-    if (global.WebSocket !== BlockedWebSocket) {
-        throw new Error('Could not lock the worker WebSocket constructor');
+    lockConstructor('WebSocket', BlockedWebSocket);
+
+    // A nested worker would receive a fresh global with an unmodified WebSocket constructor.
+    // Disable realm creation rather than pretending the socket lock survives across realms.
+    for (const name of ['Worker', 'SharedWorker']) {
+        const BlockedWorker = function () {
+            throw new Error(`${name} is unavailable in sandboxed extensions`);
+        };
+        lockConstructor(name, BlockedWorker);
     }
 };
 
@@ -44,7 +56,7 @@ class ExtensionWorker {
             dispatch.call('extensions', 'allocateWorker').then(([id, extension]) => {
                 this.workerId = id;
                 try {
-                    blockWebSockets();
+                    blockNetworkEscapeHatches();
                     importScripts(extension);
                     const initialRegistrations = this.initialRegistrations;
                     this.initialRegistrations = null;

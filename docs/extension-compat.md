@@ -42,8 +42,9 @@ Exact content-pinned gallery sources use the in-process compatibility adapter
 above. Every unpinned URL instead receives a deliberately smaller `Scratch`
 surface in a VM worker: metadata enums, `Cast`, translation, `fetch`, and
 `extensions.register`, with `unsandboxed: false`. HTTP(S) fetch/import remains
-available, while WebSockets are blocked so code cannot dial the app's native
-loopback Scratch-Link service. The central dispatcher accepts
+available, while WebSockets and nested workers are blocked so code cannot dial
+the app's native loopback Scratch-Link service or create a fresh realm which
+can. The central dispatcher accepts
 only that worker's registration lifecycle, so raw `postMessage` cannot be used
 to reach editor or native-facing services.
 

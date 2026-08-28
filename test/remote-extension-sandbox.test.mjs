@@ -38,7 +38,8 @@ test('the worker API contains compatibility helpers but no page or native bridge
         assert.match(worker, new RegExp(`\\b${name}\\b`));
     }
     assert.match(worker, /unsandboxed: false/);
-    assert.match(worker, /blockWebSockets\(\)/);
+    assert.match(worker, /blockNetworkEscapeHatches\(\)/);
+    assert.match(worker, /\['Worker', 'SharedWorker'\]/);
     assert.match(worker, /configurable: false/);
     assert.match(worker, /writable: false/);
     assert.doesNotMatch(worker,
@@ -211,7 +212,8 @@ test('both URL entry points tell the user what the sandbox does and does not con
     for (const source of [picker, urlLoader]) {
         assert.match(source, /isolated worker/i);
         assert.match(source, /HTTP\(S\)/i);
-        assert.match(source, /WebSockets are blocked/i);
+        assert.match(source, /WebSockets and nested/i);
+        assert.match(source, /workers are blocked/i);
         assert.doesNotMatch(source, /full access to (?:this page|the editor)/i);
     }
 });
