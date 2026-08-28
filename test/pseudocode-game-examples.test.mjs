@@ -1094,12 +1094,66 @@ test('Echo Trench exposes its salvage target, rising threat, and cooldown-limite
     assert.match(games.trench_signal, /set pulseReady to 0/);
     assert.match(games.trench_signal, /wait 0\.85 seconds/);
     assert.match(games.trench_signal, /change mineSpeed by 0\.7/);
+    assert.match(games.trench_signal, /distance to Sub < 150/);
+    assert.match(games.trench_signal, /set mineStun to 0\.7/);
+    assert.match(games.trench_signal, /broadcast "echo trench over"/);
+    assert.match(games.trench_signal, /3 SIGNAL PEARLS RECOVERED/);
     const stage = project.targets.find(target => target.isStage);
     assert.deepEqual(stage.costumes.map(costume => costume.name), ['backdrop1', 'intro', 'trench']);
     const svgs = [...creator.assets.values()].filter(asset => asset.type === 'svg').map(asset => asset.data);
     assert.ok(svgs.some(svg => svg.includes('ECHO TRENCH')));
     assert.ok(svgs.some(svg => svg.includes('RECOVER 3 SIGNAL PEARLS')));
     assert.ok(svgs.some(svg => svg.includes('1.2 SECOND RECHARGE')));
+});
+
+test('Echo Trench sonar repels the hunter and three pearl recoveries complete the dive', async () => {
+    const creator = new SB3Creator();
+    const project = creator.parse(games.trench_signal);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
+    const vm = new VM();
+    try {
+        await vm.loadProject(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+        vm.start();
+        vm.greenFlag();
+        await new Promise(resolve => setTimeout(resolve, 750));
+        for (let i = 0; i < 40; i++) vm.runtime._step();
+
+        const values = Object.values(vm.runtime.getTargetForStage().variables);
+        const value = name => values.find(variable => variable.name === name);
+        const target = name => vm.runtime.targets.find(candidate =>
+            candidate.isOriginal && candidate.sprite && candidate.sprite.name === name);
+        const sub = target('Sub');
+        const mine = target('HunterMine');
+
+        assert.equal(Number(value('active').value), 1, 'green flag did not begin the dive');
+        mine.setXY(sub.x + 100, sub.y);
+        const beforePulseX = mine.x;
+        vm.postIOData('keyboard', {key: ' ', isDown: true});
+        for (let i = 0; i < 12; i++) vm.runtime._step();
+        vm.postIOData('keyboard', {key: ' ', isDown: false});
+        assert.ok(Number(value('mineStun').value) > 0, 'in-range sonar did not stun the hunter');
+        assert.ok(Math.abs(mine.x - sub.x) > Math.abs(beforePulseX - sub.x),
+            'sonar did not push the hunter away from the submarine');
+
+        mine.setXY(210, -140);
+        for (let recovered = 1; recovered <= 3; recovered++) {
+            vm.runtime.startHats('event_whenbroadcastreceived', {
+                BROADCAST_OPTION: 'signal pearl recovered'
+            });
+            await new Promise(resolve => setTimeout(resolve, 80));
+            for (let i = 0; i < 25; i++) vm.runtime._step();
+            assert.equal(Number(value('pearls').value), recovered,
+                `pearl recovery ${recovered} was not counted`);
+        }
+        assert.equal(Number(value('winner').value), 1, 'three pearls did not win the dive');
+        assert.equal(Number(value('active').value), 0, 'completed dive remained active');
+        assert.equal(Number(value('started').value), 0, 'completed dive was not replayable');
+        assert.equal(target('TrenchResult').visible, true, 'victory feedback was not shown');
+    } finally {
+        vm.quit();
+        clearStrayTimers();
+    }
 });
 
 test('Whisker Relay is an alternating courier game with a directional cargo tradeoff', () => {
@@ -2118,7 +2172,7 @@ test('each new game keeps its signature playable mechanic', () => {
         rink_riot: [/set vx to vx \* 0\.94/, /point in direction 90 - vy \* 5/, /touching Keeper/, /change goals by 1/],
         rim_reactor: [/set ballVY to charge/, /change ballVY by -0\.55/, /touching Net/, /change score by 2 \* streak/],
         comet_cup: [/set ballSpeed to ballSpeed \* 0\.97/, /turn right runY \* -3 degrees/, /change goals by 1/, /change score by crowd \* 10/],
-        trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /touching SonarRing/, /set pulseReady to 0/, /change pearls by 1/],
+        trench_signal: [/change rise by 0\.08/, /broadcast "sonar pulse"/, /distance to Sub < 150/, /set mineStun to 0\.7/, /change pearls by 1/],
         whisker_switch: [/set hidden to 1/, /change scent by 3/, /change banked by cargo/, /set targetHole to -1/, /point towards Pip/],
         spiral_circuit: [/set boosting to 1/, /change charge by 4/, /change score by 25/, /change sectors by 1/, /set lane to -2/],
         lilyway_rescue: [/WHEN up arrow key pressed:/, /touching CarA or touching CarB/, /set riding to 1/, /change crossings by 1/, /IF crossings = 3/],
