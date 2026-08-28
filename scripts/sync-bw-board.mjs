@@ -27,6 +27,11 @@ const REF = process.env.BWBOARD_REF || 'master';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
 const check = process.argv.includes('--check');
+// Lite carries a few deliberate browser integrations on top of the shared
+// board engine (for example its distributable RP2040 boot ROM). Freshness CI
+// passes this flag so those reviewed downstream deltas are reported without
+// being mistaken for an accidental stale vendor tree.
+const allowStale = process.argv.includes('--allow-stale');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 if (dirIdx !== -1 && srcDir) guardSource(srcDir);
@@ -188,14 +193,17 @@ if (!check) {
     console.log(`  checked ${present.size} files: imports all resolve, no packages`);
 }
 
-if (check && stale) { console.error(`\n${stale} stale — run: npm run sync:bwboard`); process.exit(1); }
+if (check && stale && !allowStale) {
+    console.error(`\n${stale} stale — run: npm run sync:bwboard`);
+    process.exit(1);
+}
 
 // THIS LINE IS THE ONE THAT LIED. It said "synced from bw-board@master" while
 // the CDN had served the previous commit, and it would have said exactly that
 // however wrong the content was, because `master` is the one part of the
 // sentence guaranteed not to be about what arrived. Say the sha.
 const sourceSha = srcDir ? await localSha(srcDir) : remoteSha;
-console.log(check ? '\nvendored engine up to date.'
+console.log(check ? (stale ? `\n${stale} intentional downstream file delta(s) allowed.` : '\nvendored engine up to date.')
     : `\nsynced from ${REPO}@${sourceSha}${srcDir ? ` (local checkout ${srcDir})` : ` (resolved from ${REF})`}.`
       + ' Next: npm run integrate');
 
