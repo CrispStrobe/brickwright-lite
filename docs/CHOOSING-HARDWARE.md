@@ -178,6 +178,62 @@ the PyBadge:
 So "a PyBadge with pins you can wire" is blocked on the emulator, not on
 plumbing.
 
+## The heavy tier as it actually ships, and what it gets wrong
+
+STM32-PATH.md fixes **two tiers permanently**. The light tier is our own
+`CortexM0Machine`: a few hundred KB of JS, always present, peripheral set
+capped at what the codegen emits. The heavy tier is labwired — a firmware
+simulation engine (Cortex-M, RISC-V, Xtensa) compiled to wasm. Today it
+runs the STM32F030 alongside the light tier, which makes the two directly
+comparable; that is what the round trip in `bw-board/LABWIRED-BRIDGE.md`
+exploits, and it is how both defects below were measured rather than
+guessed.
+
+**The engine is optional, and the picker never lies about it.** The
+artifact is 20 MB (about 2 MB brotli), fetched by `npm run
+sync:labwiredwasm` into `static/labwired/` — sha256-verified against
+`EXPECT` in the sync script, so a moved release tag or a replaced asset
+fails closed rather than being trusted. `.gitignore` covers the
+destination, so it is never committed and a checkout that has not run the
+script still builds. `lib/labwired-engine.js` therefore answers a
+*runtime* question — "is the engine here?" — and returns `null` with a
+reason instead of throwing. The debug panel probes it before adding the
+picker entry: **no artifact, no entry**. Both branches are gated in CI
+(`verify-labwired-engine.mjs` and the same script with `--absent`, which
+withholds the artifact from the same build).
+
+**It is loaded lazily, and that is guarded.** Both call sites import the
+loader into a chunk called `labwired-probe`, and the loader's own import
+of the glue is `webpackIgnore`d. Two one-character edits undo either, with
+nothing else noticing — so `verify-labwired-lazy-bundle.mjs` runs after
+the build and fails if the loader's marker string appears in any eagerly
+loaded script.
+
+**Two caveats, both measured against the light tier as the control.**
+They are stated in the debug panel next to the engine picker, because
+both generate plausible wrong answers that a learner would blame on their
+own program:
+
+1. **Analog inputs are not injected.** `labwired-wasm` exports no
+   per-channel ADC entry point (`Adc::set_channel_input` exists in the
+   core and is simply not bound), so a pot or LDR reads the engine's own
+   incrementing counter rather than the voltage our board solves. The
+   bridge names each such pad in a refusal ledger instead of reporting a
+   mid-rail node as a boolean; lite surfaces that ledger in the panel.
+   One wasm binding upstream lifts all of it — 24 of the 85 shipped F030
+   benches are waiting on it.
+2. **Interrupt-counted time runs at double speed.** labwired's NVIC does
+   not drop a level-pended timer line when the peripheral deasserts
+   inside the handler, so the handler is entered **1.95** times per
+   update event where the light tier enters **0.97**. Our generated code
+   counts milliseconds in exactly that handler, so a 20 ms wait elapses in
+   about 10 ms. The control isolates it: the same grid polled off
+   `TIM3_SR` with the NVIC uninvolved measures 20.000 ms on the heavy tier
+   against 20.001 ms on the light one. The counter, prescaler and clock
+   are fine; the interrupt path is not, and the fix is upstream.
+
+For anything analog, or anything whose timing matters, use the light tier.
+
 ## labwired will not shortcut SAMD51, and it looks like it should
 
 labwired is the heavy tier for cores beyond Cortex-M0 — the obvious home

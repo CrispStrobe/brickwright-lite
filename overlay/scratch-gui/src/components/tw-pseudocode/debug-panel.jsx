@@ -43,6 +43,10 @@ const L10N = {
         serialHint: 'type a line, Enter sends it',
         serialSend: 'Send this line to the machine (ends with CR)',
         consumes: 'Debugging this board uses:',
+        lwCaveats: 'Heavy tier, two known limits: analog inputs are not injected (a pot or ' +
+            'LDR reads the engine’s own counter, not the voltage this board solves), and ' +
+            'interrupt-counted time runs at double speed (a 20 ms wait elapses in about ' +
+            '10 ms — the timer grid itself is exact). Use the light tier for either.',
         pausedAt: 'Paused at', afterMs: 'after',
         noPins: 'Declare pins in the Code tab to debug this project.',
         bps: 'Pause points', noBps: 'Right-click a block and choose “Pause here”.',
@@ -62,6 +66,11 @@ const L10N = {
         serialHint: 'Zeile eingeben, Enter sendet',
         serialSend: 'Diese Zeile an die Maschine senden (endet mit CR)',
         consumes: 'Das Debuggen dieser Platine belegt:',
+        lwCaveats: 'Schwere Stufe, zwei bekannte Grenzen: Analogeingänge werden nicht ' +
+            'eingespeist (ein Poti oder LDR liest den internen Zähler der Engine, nicht die ' +
+            'Spannung, die diese Platine löst), und per Interrupt gezählte Zeit läuft doppelt ' +
+            'so schnell (20 ms Warten vergehen in etwa 10 ms — das Timer-Raster selbst ist ' +
+            'exakt). Für beides die leichte Stufe verwenden.',
         pausedAt: 'Angehalten bei', afterMs: 'nach',
         noPins: 'Für das Debuggen im Code-Tab Pins deklarieren.',
         bps: 'Haltepunkte', noBps: 'Rechtsklick auf einen Block, dann „Hier anhalten“.',
@@ -591,6 +600,28 @@ class DebugPanel extends React.Component {
                 {caps && caps.consumes && caps.consumes.length ? (
                     <div style={{color: '#f39c12', fontSize: 11}}>
                         {`${this.tx('consumes')} ${caps.consumes.join(', ')}`}
+                    </div>
+                ) : null}
+
+                {/* THE HEAVY TIER'S CAVEATS, STATED WHERE THE ENGINE IS PICKED.
+                    Both are properties of the engine and both are measured (the
+                    light tier is the control in each case — bw-board
+                    LABWIRED-BRIDGE.md §4 and §4c), so they are true before the
+                    first Run and must be readable before it, not discovered
+                    afterwards from a blink that comes out at half the asked
+                    period. Once a session attaches, ui.engineNotes carries the
+                    same two plus this bench's own refusal ledger, so this static
+                    pair steps aside rather than being said twice. */}
+                {this.state.kind === 'labwired' && !(ui.engineNotes || []).length ? (
+                    <div style={{color: '#f39c12', fontSize: 11}}>
+                        {this.tx('lwCaveats')}
+                    </div>
+                ) : null}
+                {(ui.engineNotes || []).length ? (
+                    <div style={{color: '#f39c12', fontSize: 11}}>
+                        {ui.engineNotes.map((n, i) => (
+                            <div key={i}>{`• ${n}`}</div>
+                        ))}
                     </div>
                 ) : null}
 

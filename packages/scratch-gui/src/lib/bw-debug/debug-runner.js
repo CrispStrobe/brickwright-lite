@@ -349,6 +349,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let conditionErrors = {};
     /** Serial output buffer — bytes received from adapter.onSerial, decoded as UTF-8. */
     let serialLines = [];
+    /**
+     * What the ATTACHED engine cannot carry, in the user's words.
+     *
+     * bw-board's createDebugTarget returns a `refusals` ledger for exactly this:
+     * a pad the heavy tier cannot honestly drive is named, with a reason, so the
+     * panel can say WHY a knob is dead instead of showing a live-looking control
+     * that moves nothing. Dropping the ledger on the floor — which is what this
+     * runner did until now — is the failure the ledger exists to prevent.
+     */
+    let engineNotes = [];
     /** How many conditional hits were skipped, so the UI can show it happened. */
     let skipped = 0;
     /** Set by the halt handler when a stop should not be shown; read by pumpFrame. */
@@ -418,7 +428,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             glowing: [...glowing],
             yieldBlocks: [...yieldOf.keys()],
             /** Serial output lines from the AVR USART (print statements). */
-            serialOutput: serialLines.length ? [...serialLines] : undefined
+            serialOutput: serialLines.length ? [...serialLines] : undefined,
+            /**
+             * Named limits of the ATTACHED engine — the refusal ledger, plus any
+             * caveat that only becomes true once a particular engine is running.
+             * undefined when the engine carried everything, so a panel renders
+             * nothing rather than an empty warning box.
+             */
+            engineNotes: engineNotes.length ? [...engineNotes] : undefined
         };
     }
 
@@ -619,6 +636,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // ─── attach ──────────────────────────────────────────────────────────
 
     async function attach(built) {
+        // Per-engine, so it cannot outlive the engine that produced it: a
+        // labwired refusal still shown after the user switched back to the
+        // light tier would be a warning about a limit that no longer applies.
+        engineNotes = [];
         const device = String(projectStc(null)?.device || '').toLowerCase();
         const selectedTargetKind = selectDebugTargetKind(device, targetKind);
         // The picker offers two targets and only one of them can be honoured
@@ -1005,10 +1026,50 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const program = built.image instanceof Uint8Array ? built.image : null;
         if (!program) throw new Error('the STM32F030 build produced no flash image');
 
-        const { target: lwTarget, adapter: lwAdapter } = await createDebugTarget('labwired', {
-            wasm, board, firmware: program,
-            chipYaml: STM32F0.chipYaml, pins: STM32F0.pins, clockHz,
-        });
+        // NO `pins`, and NO `chipYaml`. This is the documented mistake, and it
+        // was made here: handing the factory a header map alongside the board
+        // means two descriptions of one bench, and nothing checks that they
+        // agree — the exact divergence one-board-one-truth forbids. Worse, it
+        // also SKIPS the derivation entirely, so `refusals` came back empty on
+        // every bench: a pot that the heavy tier cannot read looked carried.
+        // The factory derives all four from the board's own netlist when they
+        // are absent (LABWIRED-BRIDGE.md §0, "THE PAD IS THE BOUNDARY"), which
+        // is why `chipKind` — a fact the netlist genuinely cannot carry, since
+        // the canonical loader rewrites every controller to `mcu` — is the one
+        // thing still passed.
+        let lwTarget, lwAdapter, refusals;
+        try {
+            ({ target: lwTarget, adapter: lwAdapter, refusals } = await createDebugTarget('labwired', {
+                wasm, board, firmware: program, chipKind: 'stm32f030', clockHz,
+            }));
+        } catch (e) {
+            // The bridge throws with a `refusals` array when the bench cannot be
+            // carried at all (an unmapped pin, no MCU, two MCUs). Its message
+            // already names each one; re-raise it as-is rather than replacing it
+            // with a generic failure that loses the reasons.
+            if (e && e.refusals) {
+                engineNotes = e.refusals.map(r => `${r.subject}: ${r.reason}`);
+                emit();
+            }
+            throw e;
+        }
+
+        // The tier's two standing caveats, stated on every attach because both
+        // are properties of the ENGINE, not of this bench — see
+        // bw-board/LABWIRED-BRIDGE.md §4 and §4c, each measured against the
+        // light tier as its control.
+        engineNotes = [
+            'Analog inputs are not injected on this tier: labwired-wasm exports no '
+            + 'per-channel ADC entry point yet, so a pot or LDR reads the engine\'s own '
+            + 'counter instead of the voltage this board solves. Use the light tier '
+            + '(Simulated STM32F030) for analog work.',
+            'Interrupt-counted time runs at DOUBLE speed here: labwired re-enters a '
+            + 'level-pended timer handler twice per update event, and our generated code '
+            + 'counts milliseconds in exactly that handler, so a 20 ms wait elapses in '
+            + 'about 10 ms. The timer grid itself is exact — this is the NVIC, and the '
+            + 'fix is upstream.',
+            ...(refusals || []).map(r => `${r.subject}: ${r.reason}`)
+        ];
 
         if (lwAdapter && lwAdapter.onSerial) {
             let lineBuf = '';

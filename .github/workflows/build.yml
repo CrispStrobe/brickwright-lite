@@ -353,6 +353,17 @@ jobs:
       - name: Build the editor
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 
+      # The heavy tier is 20 MB and MUST stay out of the first load. That is a
+      # question about a real build, so it cannot be a unit test — `npm test`
+      # above runs before the build and would skip on every CI run. Two
+      # one-character edits (a lost `webpackChunkName`, a dynamic import turned
+      # static) put the loader in the entry bundle with nothing else noticing:
+      # the app still works, every suite still passes, the engine still runs.
+      # Deliberately NOT gated on the artifact fetch above — this inspects
+      # bundle contents, which exist whether or not the release download did.
+      - name: Guard — the labwired engine stays lazily loaded
+        run: node scripts/verify-labwired-lazy-bundle.mjs
+
       - name: Smoke-test the debugger
         run: |
           if ! grep -q '"smoke:debugger"' package.json; then
@@ -445,6 +456,16 @@ jobs:
       - name: Browser gate — the labwired heavy tier actually executes
         if: steps.playwright.outcome == 'success'
         run: node scripts/verify-labwired-engine.mjs
+
+      # The OTHER branch of the same honesty rule, and the one production
+      # actually ships when the release fetch above fails: the engine is absent,
+      # so the picker must not offer it and the failed probe must stay a caught
+      # answer rather than an uncaught rejection. Same build, artifact withheld
+      # by the gate's own server — proving it against a second, artifact-less
+      # build would leave open whether the two builds differed elsewhere.
+      - name: Browser gate — with no engine artifact, the tier is not offered
+        if: steps.playwright.outcome == 'success'
+        run: node scripts/verify-labwired-engine.mjs --absent
 
       # The debugger-only pane, which the note above says has regressed to a
       # blank pane twice. This gate existed for it and was never run by CI — so

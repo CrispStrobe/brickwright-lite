@@ -136,7 +136,21 @@ const ABOUT_GROUPS = [
                 url: 'https://github.com/w1ne/labwired-core',
                 license: 'MIT',
                 licenseUrl: 'https://github.com/w1ne/labwired-core/blob/main/LICENSE',
-                role: 'MNA solver reference by w1ne'
+                // NOT an MNA solver — that was this row's first, wrong wording,
+                // and it survived a rename of the whole heavy tier. labwired is
+                // a FIRMWARE SIMULATION ENGINE: Cortex-M/RISC-V/Xtensa cores
+                // with modelled peripherals, compiled to wasm and shipped as
+                // the optional heavy simulation tier (STM32-PATH.md's two-tier
+                // ruling). The circuit itself is still solved by our own MNA
+                // code — labwired never touches it; the pad is the boundary.
+                //
+                // The URL stays on w1ne/labwired-core deliberately. The fleet
+                // builds its artifact from CrispStrobe/labwired-core, but that
+                // is a mirror of this project and this is whose licence and
+                // authorship the notice is about.
+                role: 'Firmware simulation engine (Cortex-M / RISC-V / Xtensa cores and '
+                    + 'peripherals) — the optional heavy simulation tier, and the '
+                    + 'differential oracle our own STM32 core is checked against'
             },
             {
                 name: 'MAME 6522/6551 device models',

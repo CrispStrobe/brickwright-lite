@@ -14,7 +14,7 @@
  *  the remote stc-compiler. A missing engine or no network is not a regression
  *  in this code, and reporting it as one would train everyone to ignore the gate. */
 import {createServer} from 'node:http';
-import {readFile} from 'node:fs/promises';
+import {readFile, mkdir} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -24,17 +24,53 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
 const port = 8121;
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm'};
+
+/** THE OTHER BRANCH OF THE HONESTY RULE.
+ *
+ *  "labwired appears only when the artifact is present" is two claims, and the
+ *  interesting one is the negative: a deploy that never fetched the 20 MB engine
+ *  must not offer it. That branch was covered only by a Node-side unit test
+ *  proving the loader returns null OUTSIDE a browser — which is a different
+ *  failure (no document base) from the one that happens in production (the
+ *  module 404s). So this mode serves the SAME build with `static/labwired/`
+ *  withheld, which is byte-for-byte what a deploy without the artifact looks
+ *  like, and insists the picker stays quiet and nothing throws.
+ *
+ *  One build, both branches: running it against a second, artifact-less build
+ *  would leave open whether the two builds differed in some other way. */
+const ABSENT = process.argv.includes('--absent');
+const shot = process.env.LW_SHOT
+    || join(root, 'artifacts', ABSENT ? 'labwired-absent.png' : 'labwired-heavy-tier.png');
+
 if (!existsSync(join(build, 'index.html'))) throw new Error('Build first: packages/scratch-gui/build/index.html is missing');
 
-if (!existsSync(join(build, 'static', 'labwired', 'labwired_wasm.js'))) {
-    console.log('SKIP — build/static/labwired is absent; run `node scripts/sync-labwired-wasm.mjs` and rebuild.');
+if (!ABSENT && !existsSync(join(build, 'static', 'labwired', 'labwired_wasm.js'))) {
+    console.log('SKIP — verify-labwired-engine: build/static/labwired is absent; run '
+        + '`node scripts/sync-labwired-wasm.mjs` and rebuild. (The --absent branch of this '
+        + 'gate does not need the artifact and is the one to run in that situation.)');
+    process.exit(0);
+}
+// The artifact-less branch is only meaningful against a build that HAS the
+// artifact — otherwise it proves the picker hides an engine that was never
+// there, which is not the claim. Withholding it from a build that has it is.
+if (ABSENT && !existsSync(join(build, 'static', 'labwired', 'labwired_wasm.js'))) {
+    console.log('SKIP — verify-labwired-engine --absent: this build has no artifact to '
+        + 'withhold, so hiding the picker entry would prove nothing. Fetch it and rebuild.');
     process.exit(0);
 }
 
+/** Requests the artifact-less branch refused, so the run can say what it denied. */
+const withheld = [];
 const server = createServer(async (req, res) => {
     try {
         let path = decodeURIComponent(req.url.split('?')[0]);
         if (path.endsWith('/')) path += 'index.html';
+        if (ABSENT && /^\/static\/labwired\//.test(path)) {
+            withheld.push(path);
+            res.writeHead(404);
+            res.end('not found');
+            return;
+        }
         const file = join(build, normalize(path));
         if (!file.startsWith(build)) throw new Error('escape');
         // Read before the head goes out: writing 200 and then failing to read
@@ -160,10 +196,49 @@ try {
     for (let i = 0; i < 30; i++) {
         labels = await page.evaluate(() => [...document.querySelectorAll('select option')].map(o => o.textContent.trim()));
         if (labels.some(l => /labwired/i.test(l))) break;
+        // In the artifact-less branch the entry never arrives, and waiting the
+        // full 30 s for that is the point: an entry that appears late is still
+        // an entry, so the negative claim needs the same window the positive
+        // one gets. Nothing is short-circuited here.
         await page.waitForTimeout(1000);
     }
-    check('the picker offers the labwired tier', labels.some(l => /labwired/i.test(l)), labels.join(' | ').slice(0, 200));
-    if (!labels.some(l => /labwired/i.test(l))) throw new Error('no labwired option — nothing further to verify');
+    const offered = labels.some(l => /labwired/i.test(l));
+
+    if (ABSENT) {
+        // The whole negative branch, and then out. Three things have to be true
+        // together — an app that hid the entry by falling over would satisfy the
+        // first alone.
+        check('with the artifact withheld the picker does NOT offer labwired',
+            !offered, labels.join(' | ').slice(0, 200));
+        check('the server actually withheld it, so the branch was exercised',
+            withheld.length > 0, withheld.join(', ') || 'NOTHING was requested — the probe '
+            + 'never ran, so this proves nothing about hiding the entry');
+        check('the other engines are still offered', labels.length > 1, String(labels.length));
+        check('the light STM32 tier is still there to fall back to',
+            labels.some(l => /STM32F030|ARM/i.test(l)) || labels.length > 1,
+            labels.join(' | ').slice(0, 160));
+        // A caught 404 is the DESIGNED path — lib/labwired-engine.js turns the
+        // failed import into `null` and a reason. What must not happen is an
+        // uncaught rejection reaching the page, which is what a missing catch or
+        // a probe outside the try would produce.
+        check('nothing threw: the missing engine is an answer, not an exception',
+            pageErrors.length === 0, pageErrors.join(' // ').slice(0, 200));
+        await mkdir(dirname(shot), {recursive: true});
+        await page.screenshot({path: shot, fullPage: false});
+        console.log(`\nscreenshot: ${shot}`);
+        console.log(`withheld:   ${withheld.join(', ')}`);
+        await browser.close();
+        server.close();
+        if (failures.length) {
+            console.error(`\n${failures.length} check(s) failed: ${failures.join(', ')}`);
+            process.exit(1);
+        }
+        console.log('\nOK — no artifact, no entry, no error. The picker does not offer what it cannot load.');
+        process.exit(0);
+    }
+
+    check('the picker offers the labwired tier', offered, labels.join(' | ').slice(0, 200));
+    if (!offered) throw new Error('no labwired option — nothing further to verify');
 
     // Select it through Playwright, not by assigning .value: React tracks a
     // select's value internally and ignores a change event whose value it
@@ -246,6 +321,60 @@ try {
     check('it never lands in the error phase', !everSaid(/^error/i), trail);
     check('nothing threw while attaching the engine',
         pageErrors.length === 0, pageErrors.join(' // ').slice(0, 200));
+
+    // ─── the part that makes this a proof rather than a status reading ───
+    //
+    // "running" is the panel's word for its own intent. The firmware moving is
+    // a different claim, and it is the one the Map-instead-of-object trap
+    // falsified last time: every register read came back undefined, the CPU
+    // looked fine, and the pads sat at zero forever while the panel said
+    // running. So sample the BOARD — the same object `runner.pins()` renders
+    // the pin table from — and require PA0 to change. That level is only there
+    // if the firmware executed, the adapter read the pad through the correct
+    // register map, and boundary A published it to our circuit. Nothing else
+    // produces it.
+    const observed = await page.evaluate(async () => {
+        const rt = window.__vm && window.__vm.runtime;
+        const board = rt && rt.bwRunBoard;
+        if (!board) return {error: 'runtime.bwRunBoard is not set — the attach never built a board'};
+        const leds = typeof board.getLeds === 'function' ? board.getLeds() : [];
+        const levels = [];
+        const brights = [];
+        for (let i = 0; i < 70; i++) {
+            try { levels.push(board.readPin('pa0')); } catch { levels.push(null); }
+            try { if (leds.length) brights.push(Number(board.ledBrightness(leds[0]).toFixed(2))); } catch { brights.push(null); }
+            await new Promise(r => setTimeout(r, 100));
+        }
+        return {leds, levels, brights};
+    });
+    if (observed.error) {
+        check('the board the heavy tier drives is reachable', false, observed.error);
+    } else {
+        const distinct = [...new Set(observed.levels.filter(v => v !== null))];
+        const edges = observed.levels.reduce((n, v, i) =>
+            n + (i > 0 && v !== observed.levels[i - 1] ? 1 : 0), 0);
+        check('PA0 actually moves on the board while the heavy tier runs',
+            distinct.length > 1 && edges >= 2,
+            `${edges} level changes over 7 s, levels seen {${distinct.join(',')}}, `
+            + `led brightness {${[...new Set(observed.brights.filter(v => v !== null))].join(',')}}`);
+        console.log(`note  PA0 trace (100 ms/sample): ${observed.levels.join('')}`);
+        console.log(`note  LED parts on the inferred bench: ${observed.leds.join(', ') || '(none)'}`);
+    }
+
+    // The caveats have to be READABLE, not merely present in a source file.
+    // Both are properties of the engine and both are wrong-answer generators —
+    // a 20 ms wait that elapses in 10 ms is the kind of thing a learner blames
+    // on their own program.
+    const caveatText = await page.evaluate(() => document.body.innerText);
+    check('the tier caveats are stated in the panel',
+        /analog inputs are not injected/i.test(caveatText)
+        && /double speed/i.test(caveatText),
+        [/analog inputs are not injected/i.test(caveatText) ? 'analog: yes' : 'analog: MISSING',
+            /double speed/i.test(caveatText) ? 'timing: yes' : 'timing: MISSING'].join(', '));
+
+    await mkdir(dirname(shot), {recursive: true});
+    await page.screenshot({path: shot, fullPage: false});
+    console.log(`\nscreenshot: ${shot}`);
 } catch (e) {
     if (String(e.message) !== 'SKIP') {
         if (!failures.length) failures.push(String(e.message).slice(0, 160));
