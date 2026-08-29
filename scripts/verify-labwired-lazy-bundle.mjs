@@ -36,6 +36,22 @@
  *  same marker is REQUIRED to be present in the lazy chunk. If the marker ever
  *  stops being a discriminator, this fails on the positive half rather than
  *  going quietly green on the negative one.
+ *
+ *  MUTATION-PROVEN (2026-08-29, against the DEPLOYED production build —
+ *  `gui.ccff48e1.js`, the artifact CI run 33275956371 published to Pages, fetched
+ *  back and mutated in a scratch copy via BW_BUILD). Three mutations, three
+ *  DIFFERENT named checks red, exit 1 each time:
+ *
+ *    1. the probe chunk's own minified body appended to the entry bundle —
+ *       exactly what a static import or a lost webpackChunkName produces →
+ *       "no eagerly-loaded script carries the labwired loader" FAILED
+ *    2. chunks/labwired-probe.js deleted →
+ *       "the labwired-probe chunk exists" FAILED
+ *    3. the marker renamed in BOTH files — the state in which a
+ *       grep-for-absence gate reports a clean pass →
+ *       "the loader is in that chunk, so the marker still discriminates" FAILED
+ *
+ *  Baseline on the same unmutated build: 7/7 green.
  */
 import {readFileSync, existsSync, readdirSync, statSync} from 'node:fs';
 import {join, resolve, dirname, basename} from 'node:path';
