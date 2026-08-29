@@ -107,17 +107,18 @@ test('signals-rc-response: from 0.5 tau on, the bench is textbook to four decima
     }
 });
 
-test('OPEN DEFECT: the t = 0 sample reads the supply, not zero', async () => {
-    // The lesson asks for a reading "at 0". A freshly loaded board answers with
-    // its DC operating point, in which the capacitor is an open circuit, so the
-    // meter says 5 V on a capacitor the engine itself believes is at 0 V.
+// The OPEN DEFECT sentinel that stood here — "the t = 0 sample reads the supply,
+// not zero" — fired on 2026-08-29 at the bw-board `4ae89b5` vendor bump and was
+// retired per its own instruction. bw-board `f87adcc` makes the FIRST solve
+// honour the stored capacitor state instead of treating every capacitor as an
+// open circuit, so the reading at t = 0 is the one the lesson predicts.
+test('the t = 0 reading is zero, and the engine agrees with itself about it', async () => {
     const fresh = await load('43-rc-timing');
-    assert.equal(fmt(terminalVolts(fresh.board)['c1.a']), '5.0000',
-        'the first reading is no longer the DC operating point — re-measure Wave 6 ' +
-        'and soften the signals-rc-response hint');
+    assert.equal(fmt(terminalVolts(fresh.board)['c1.a']), '0.0000',
+        'the first solve is a DC operating point again — re-open D23 and re-measure Wave 6');
     assert.equal(fresh.board.getCapVoltage('c1'), 0,
-        'the engine no longer disagrees with itself about c1 — the defect is fixed');
-    // One nanosecond of simulation is enough to make it honest.
+        'the meter and getCapVoltage must report the same capacitor');
+    // Still true after a step, which is what makes it a state and not a coincidence.
     fresh.board.advanceTo(1n);
     assert.equal(fmt(terminalVolts(fresh.board)['c1.a']), '0.0000');
 });
@@ -166,8 +167,15 @@ test('the scope record is chosen, and a full RC step now fits in one', async () 
     const panel = readFileSync(path.join(CUI, 'components/ScopePanel.jsx'), 'utf8');
     assert.match(panel, /data-testid="bw-scope-record"/, 'the record control is rendered');
     const calls = [...panel.matchAll(/board\.addScopeChannel\(\{[\s\S]*?\}\)/g)].map(m => m[0]);
-    assert.equal(calls.length, 2, `expected two addScopeChannel call sites, found ${calls.length}`);
+    // Two time-domain sites (re-attach after a netlist edit, and add-channel) plus
+    // the spectrum tap the FFT view opens (D24, bw-circuit-ui `7696656`). The
+    // invariant that matters is not the count but that NO site takes the default:
+    // a rate the panel never sends is a control that moves a label and nothing else.
+    assert.equal(calls.length, 3, `expected three addScopeChannel call sites, found ${calls.length}`);
     for (const c of calls) assert.match(c, /sampleRateHz/, `a channel is created without a rate: ${c}`);
+    const spectrumTaps = calls.filter(c => /capture:\s*'sample'/.test(c));
+    assert.equal(spectrumTaps.length, 1,
+        'exactly one site is the spectrum tap, and it is the only one that asks for a sample series');
 });
 
 // ── signals-rl-response / pc52-inductor-filter ─────────────────────────────
@@ -611,25 +619,72 @@ test('signals-loading: the divider error the lesson teaches is measured, decade 
     near(unbuffered[1e2], 0.0962, 5e-4, 'unbuffered with 100 ohm');
 });
 
-test('OPEN DEFECT: the follower has no output limit and the probe has no input impedance', async () => {
-    // signals-loading asks the learner to "identify where follower output limits
-    // replace divider error", and to include "probe input impedance".
-    const {board} = await load('pc54-opamp-follower');
-    board.setPartParam('load', 'ohms', 1);
-    board.setControl('pot', 0.5);
-    board.advanceTo(50n * MS);
-    const v = terminalVolts(board)['amp.out'];
-    near(v, 2.5, 5e-4, 'the follower output into 1 ohm');
-    assert.ok(v / 1 > 2,
-        'the op-amp model now droops under load — restore the output-limit regime to ' +
-        'signals-loading and delete this test');
-    // The probe: a `meter` part is removed from the netlist before the solve,
-    // so it cannot load anything.
-    const circuitModel = readFileSync(path.join(CUI, 'model/circuit.js'), 'utf8');
-    const filters = circuitModel.match(/p\.kind !== 'meter'/g) || [];
-    assert.ok(filters.length >= 2,
-        'the meter is no longer filtered out of the engine netlist — probe loading may now be ' +
-        'observable, so restore it to signals-loading and delete this test');
+// The OPEN DEFECT sentinel that stood here — "the follower has no output limit
+// and the probe has no input impedance" — fired on 2026-08-29 at the vendor
+// bump. It was written as ONE test over two defects on the assumption they
+// would heal separately; both halves healed in the same wave (bw-board `18555e7`
+// for the output limit, bw-circuit-ui `3f1d194` for the meter), so it retires
+// whole rather than splitting. What replaces it is the measurement the lesson
+// asks the learner to make.
+test('signals-loading: both regimes the lesson names are now measurable', async () => {
+    // 1. The follower's output limit. `iShort` defaults to 40 mA (bw-board
+    //    spec-updates/opamp-output-limit.md), so the buffered output holds 2.5 V
+    //    while the load asks for less than that and current-limits below it.
+    const at = async ohms => {
+        const {board} = await load('pc54-opamp-follower');
+        board.setPartParam('load', 'ohms', ohms);
+        board.setControl('pot', 0.5);
+        board.advanceTo(50n * MS);
+        return terminalVolts(board)['amp.out'];
+    };
+    near(await at(100), 2.5, 5e-4, 'a 100 ohm load draws 25 mA and is still inside the limit');
+    near(await at(62.5), 2.5, 5e-4, 'and 62.5 ohm asks for exactly the 40 mA limit');
+    // Below that the output is the limit current times the load, to four decimals.
+    for (const [ohms, volts] of [[25, 1.0], [10, 0.4], [1, 0.04]]) {
+        near(await at(ohms), volts, 5e-4, `the limited output into ${ohms} ohm`);
+    }
+    // 2. Probe input impedance. A placed meter is a real 10 Mohm across its
+    //    probes now, and the hand-computed oracle is a 1 M / 1 M divider read by
+    //    one: 1M || 10M = 10/11 Mohm, so V = 5 * (10/11) / (1 + 10/11) = 50/21.
+    const {METER_INPUT_OHMS} = await import(path.join(CUI, 'model/meter-load.js'));
+    assert.equal(METER_INPUT_OHMS, 10e6, 'the datasheet figure the lesson quotes');
+    const {Circuit} = await boot();
+    const divider = withMeter => Circuit.fromJSON({
+        parts: [
+            {id: 'vcc', kind: 'vsource', params: {volts: 5}},
+            {id: 'gnd', kind: 'gnd'},
+            {id: 'rtop', kind: 'resistor', params: {ohms: 1e6}},
+            {id: 'rbot', kind: 'resistor', params: {ohms: 1e6}},
+            ...(withMeter ? [{id: 'm1', kind: 'meter', params: {mode: 'voltage'}}] : []),
+        ],
+        wires: [
+            {from: 'vcc', fromTerminal: 'pos', to: 'rtop', toTerminal: 'a'},
+            {from: 'rtop', fromTerminal: 'b', to: 'rbot', toTerminal: 'a'},
+            {from: 'rbot', fromTerminal: 'b', to: 'gnd', toTerminal: 'gnd'},
+            {from: 'vcc', fromTerminal: 'neg', to: 'gnd', toTerminal: 'gnd'},
+            ...(withMeter ? [
+                {from: 'm1', fromTerminal: 'probe_a', to: 'rbot', toTerminal: 'a'},
+                {from: 'm1', fromTerminal: 'probe_b', to: 'gnd', toTerminal: 'gnd'},
+            ] : []),
+        ],
+    });
+    const mid = circuit => {
+        assert.ok(!circuit.netlistError, `netlist rejected: ${circuit.netlistError}`);
+        circuit.board.advanceTo(50n * MS);
+        const net = circuit.board.nets.find(n =>
+            n.terminals.some(t => t.part === 'rbot' && t.terminal === 'a'));
+        return circuit.board.nodeVoltage(net.id);
+    };
+    const bare = divider(false);
+    const probed = divider(true);
+    assert.deepEqual(bare.loadingMeters, [], 'no meter, nothing loading');
+    assert.deepEqual(probed.loadingMeters, ['m1'], 'the placed meter is IN the netlist');
+    near(mid(bare), 2.5, 5e-5, 'the unprobed divider');
+    near(mid(probed), 50 / 21, 5e-5, 'the same divider with a 10 Mohm probe on it');
+    // And the whole board survives being probed — the defect underneath D21 was
+    // that wiring the instrument emptied the netlist it was pointed at.
+    assert.ok(probed.board.nets.length >= bare.board.nets.length,
+        'wiring the probe must not empty the board');
 });
 
 // ── signals-noise / arduino-03-smoothing ───────────────────────────────────
@@ -659,60 +714,99 @@ test('OPEN DEFECT: the noise lesson has no noise — the simulated sensor is bit
 
 // ── signals-aliasing-fft / 49-function-generator-sine ──────────────────────
 
-test('OPEN DEFECT: there is no FFT, and the samples an FFT would need are an envelope', async () => {
+// The OPEN DEFECT sentinel that stood here — "there is no FFT, and the samples
+// an FFT would need are an envelope" — fired on 2026-08-29 at the vendor bump
+// and was retired per its own instruction. BOTH of its halves healed:
+// bw-circuit-ui `7696656` added the spectrum view (model/fft.js + the panel's
+// second tap) and bw-board `9441e4f`+`2169d9b` added `capture: 'sample'`, the
+// true sample series a transform consumes. The envelope is still the DEFAULT,
+// deliberately — it is what keeps a narrow pulse visible at a coarse timebase —
+// so the fix is a second tap, not a change of storage, and the test says so.
+test('signals-aliasing-fft: the spectrum view exists, over a sample series and not an envelope', async () => {
     assert.equal(lesson('signals-aliasing-fft').exampleId, '49-function-generator-sine');
-    // No spectrum view anywhere in the circuit UI.
     const panel = readFileSync(path.join(CUI, 'components/ScopePanel.jsx'), 'utf8');
-    assert.ok(!/fft|fourier|spectrum|hann|hamming|blackman/i.test(panel.replace(/channel/gi, '')),
-        'the scope grew a spectrum view — restore the FFT half of signals-aliasing-fft ' +
-        'and delete this test');
-    // And what the scope stores is a min/max envelope, two numbers per bucket,
-    // not the raw series a transform consumes.
+    assert.match(panel, /data-testid="bw-scope-view"/, 'the view selector is rendered');
+    assert.match(panel, /\['time', 'spectrum'\]/, 'and spectrum is one of the two views it offers');
+    assert.match(panel, /data-testid="bw-scope-fft-window"/, 'the window is named on screen');
+    assert.match(panel, /from '\.\.\/model\/fft\.js'/, 'and it is the real transform');
+
     const {board} = await load('49-function-generator-sine');
     const netId = board.nets.find(n =>
         n.terminals.some(t => t.part === 'fg1' && t.terminal === 'pos')).id;
-    const handle = board.addScopeChannel({type: 'voltage', netId});
-    board.advanceTo(100n * MS);
-    const d = board.getScopeData(handle);
-    assert.equal(d.samples.length, 8192 * 2, 'interleaved (min, max) pairs, not a sample series');
-    const boardSrc = readFileSync(path.join(BWB, 'board.js'), 'utf8');
-    assert.match(boardSrc, /Ring buffer: interleaved \[min0, max0/);
-    // The two numbers the predict step needs, at the default rate.
-    assert.equal(1e9 / Number(d.sampleIntervalNs) / 2, 50_000, 'Nyquist');
-    assert.equal(1e9 / Number(d.sampleIntervalNs) / 8192, 12.20703125, 'bin spacing, Hz');
+    const {seriesFromScopeData, spectrum, peakBin, thd} =
+        await import(path.join(CUI, 'model/fft.js'));
+    const {SCOPE_DEPTH} = await import(path.join(CUI, 'model/scope-timebase.js'));
+
+    // The default is still the envelope, and an envelope is REFUSED BY NAME
+    // rather than transformed into a waveform that never existed.
+    const envelope = board.addScopeChannel({type: 'voltage', netId});
+    const spectrumTap = board.addScopeChannel({
+        type: 'voltage', netId, sampleRateHz: 10_000, depth: SCOPE_DEPTH, capture: 'sample'});
+    let t = 0n;
+    for (let k = 0; k < 20; k++) board.advanceTo(t += 50n * MS);
+
+    const env = board.getScopeData(envelope);
+    assert.equal(env.capture ?? 'envelope', 'envelope', 'the default capture did not change');
+    assert.equal(env.samples.length, 8192 * 2, 'interleaved (min, max) pairs');
+    const refused = seriesFromScopeData(env);
+    assert.equal(refused.ok, false);
+    assert.match(refused.reason, /envelope/, 'and it says why, rather than returning numbers');
+
+    // The second tap is a true series, and the transform over it finds the tone.
+    const d = board.getScopeData(spectrumTap);
+    assert.equal(d.capture, 'sample');
+    const series = seriesFromScopeData(d);
+    assert.equal(series.ok, true, series.reason);
+    assert.equal(series.sampleRateHz, 10_000);
+    assert.equal(series.values.length, 8192);
+    const spec = spectrum(series.values, series.sampleRateHz, {window: 'hann'});
+    assert.equal(spec.ok, true, spec.reason);
+    // The two numbers the predict step asks for, at the spectrum tap's own rate.
+    assert.equal(spec.sampleRateHz / 2, 5000, 'Nyquist');
+    assert.equal(spec.binHz, 10000 / 8192, 'bin spacing, Hz');
+    assert.equal(spec.binHz, 1.220703125);
+    assert.equal(spec.windowName, 'Hann');
+    // fg1 is a 1 kHz sine of amplitude 2.5 V on a 2.5 V offset.
+    const peak = peakBin(spec);
+    assert.equal(peak.index, 819, '1 kHz over 1.2207 Hz bins is bin 819.2, so the peak lands on 819');
+    near(peak.f, 999.7559, 1e-3, 'the bin centre');
+    near(peak.fInterp, 999.9466, 1e-3, 'and the parabolic interpolation, which is nearly the truth');
+    near(peak.amplitude, 2.4999, 1e-3, 'peak volts, free of scalloping loss');
+    // A pure sine has no harmonics, and the THD says so instead of saying null.
+    const distortion = thd(spec);
+    assert.ok(distortion, 'four harmonics fit under 5 kHz, so THD is a number');
+    assert.equal(distortion.harmonics, 4);
+    assert.ok(distortion.thdPercent < 0.01, `a sine's THD is ~0, measured ${distortion.thdPercent}`);
 });
 
-test('the predict step has its inputs on screen now, which the FFT half still lacks', () => {
-    // This test used to be the third assertion inside the one above, and it
-    // healed while the other two did not — so it is split out rather than
-    // deleted with them. The bundled version would have forced a choice between
-    // reporting a defect that no longer reproduces and dropping two that do.
-    //
-    // What healed (D4): the panel states its record length, so the learner can
-    // derive Nyquist and bin spacing, which is exactly what
-    // `signals-aliasing-fft`'s predict step asks for. What did NOT heal (D24):
-    // there is still no spectrum view, and the scope still stores a min/max
-    // envelope rather than the series a transform consumes — asserted above.
+test('the predict step has its inputs on screen, for the trace and for the transform', () => {
+    // What healed first (D4): the panel states its record length, so the learner
+    // can derive Nyquist and bin spacing, which is exactly what
+    // `signals-aliasing-fft`'s predict step asks for. What healed on 2026-08-29
+    // (D24): the spectrum view states its own rate and window, which are the
+    // same two inputs for the transform half.
     const panel = readFileSync(path.join(CUI, 'components/ScopePanel.jsx'), 'utf8');
     assert.match(panel, /data-testid="bw-scope-span"/,
         'the panel no longer states its record length — the predict step lost its inputs again');
     assert.match(panel, /recordSeconds\(sampleRateHz\)/,
         'the stated span is computed from the rate in force, not a constant');
+    assert.match(panel, /data-testid="bw-scope-fft-rate"/,
+        'the spectrum tap states the rate it captured at');
 });
 
 // ── The lesson copy this review wrote, in both languages ───────────────────
 
 test('the Wave 6 revisions are present, EN and DE, at the content version this review recorded', () => {
     assert.deepEqual(Object.fromEntries(WAVE.lessons.map(l => [l.id, l.version])), {
-        'signals-rc-response': 5,
+        'signals-rc-response': 6,
         'signals-rl-response': 3,
         'signals-complex-impedance': 3,
         'signals-cutoff-phase': 3,
         'signals-bode-sweep': 4,
         'signals-resonance': 2,
-        'signals-loading': 2,
+        'signals-loading': 3,
         'signals-noise': 2,
-        'signals-aliasing-fft': 3,
+        'signals-aliasing-fft': 4,
         'signals-model-measurement': 4
     }, 'a Wave 6 lesson changed content version — update docs/LESSON-REVIEW-WAVE-6.md with it');
 
@@ -721,7 +815,9 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
         assert.match(copy.en[field], en, `${id}/${cp}: the English ${field} lost its Wave 6 revision`);
         assert.match(copy.de[field], de, `${id}/${cp}: the German ${field} lost its Wave 6 revision`);
     };
-    says('signals-rc-response', 'measure', 'hint', /before the simulation has advanced|meter/i, /Messger(ä|ae)t|fortgeschritten/i);
+    // v6 (D23 closed): the t = 0 reading is honest now, so the hint stopped
+    // telling the learner not to take it.
+    says('signals-rc-response', 'measure', 'hint', /reading at t = 0 is now trustworthy/i, /Wert bei t = 0 ist jetzt verl(ä|ae)sslich/i);
     // v4: the bench grew a discharge switch (D11), so the predict hint stopped
     // saying it has no discharge path and started teaching the general form.
     says('signals-rc-response', 'predict', 'hint', /discharge switch/i, /Entladeschalter/i);
@@ -732,9 +828,14 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
     says('signals-complex-impedance', 'measure', 'hint', /record is selectable/i, /Aufzeichnungsl(ä|ae)nge ist jetzt w(ä|ae)hlbar/i);
     says('signals-bode-sweep', 'sweep', 'hint', /corner|ten cycles/i, /Eckfrequenz|Perioden/i);
     says('signals-resonance', 'sweep', 'action', /100 µF|100 uF/, /100 µF|100 uF/);
-    says('signals-loading', 'measure', 'hint', /no output limit|ideal/i, /ideal|keine? (Ausgangs)?begrenzung/i);
+    // v3 (D20 + D21 closed): both regimes are measurable, so the hint quotes
+    // the numbers instead of explaining why they cannot be taken.
+    says('signals-loading', 'measure', 'hint', /62\.5 \u03a9|40 mA/, /62,5 \u03a9|40-mA/);
+    says('signals-loading', 'predict', 'hint', /10 M\u03a9/, /10 M\u03a9/);
     says('signals-noise', 'measure', 'action', /no spread|identical|zero/i, /identisch|keine Streuung|null/i);
-    says('signals-aliasing-fft', 'measure', 'action', /no FFT|without an FFT/i, /kein(e)? FFT|ohne FFT/i);
+    // v4 (D24 closed): there IS a spectrum view, and it is a second tap.
+    says('signals-aliasing-fft', 'measure', 'action', /spectrum view/i, /Spektrumsansicht/i);
+    says('signals-aliasing-fft', 'measure', 'hint', /SECOND tap|1\.2207 Hz/, /ZWEITER Abgriff|1,2207 Hz/);
     // v4 (D3 closed): the hint stopped describing a plot with no numbers on it
     // and started telling the learner which of the two readouts to fit against.
     says('signals-model-measurement', 'compare', 'hint', /CSV/, /CSV/);

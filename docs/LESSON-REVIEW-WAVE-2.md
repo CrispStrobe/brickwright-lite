@@ -4,8 +4,13 @@ Reviewed 2026-08-23 against `3e87340f5`; re-measured the same day against
 `a3f30be6b` after lite main moved under the review. Ten lessons, thirty
 checkpoints.
 
-**5 defective of 10 · 6 lessons revised to content version 2 · 4 defects open,
-1 resolved upstream mid-review, none of them in a lesson.**
+**5 defective of 10 · 6 lessons revised to content version 2 · 4 defects open at
+review time, 1 resolved upstream mid-review, none of them in a lesson.**
+
+> **As of 2026-08-29 one of the four is still open** (the directional ohmmeter).
+> `char_lcd_i2c`'s missing control handler closed on 2026-08-24, `43-rc-timing`'s
+> unrepeatable step on 2026-08-25, and the LM358's unreachable gain on 2026-08-29
+> at the bw-board `4ae89b5` vendor bump.
 
 > **Every finding here is dated to a sha, and one of them expired in the hours it
 > took to write this.** `6f8d11c5c` (bw-board bump: sparse solver and
@@ -34,7 +39,7 @@ every run, and is mutation-proven: changing the ammeter's shunt from 10 Ω to
 | measurement-voltage | 73-voltmeter | 1→**2** | defect at `3e87340f5`, **resolved upstream** by `802fc1050`; copy restored |
 | measurement-current-burden | 74-ammeter | 1→2→**3** | defect, **FIXED 2026-08-24** — `char_lcd_i2c` gained the `control()` handler it was the only display kind to lack; copy restored |
 | measurement-resistance | 22-series-parallel | 1→**2** | **defect** — the parallel-resistor formula has nothing to apply to |
-| measurement-range-error | 76-multimeter | 1→**2** | **defect** — the amps gain is 31–39, not the documented 46.45 |
+| measurement-range-error | 76-multimeter | 1→2→**3** | defect, **FIXED 2026-08-29** — the amps gain is exactly 46.4545 now (bw-board `999eb66`+`187694f`); copy restored, with the top-of-travel saturation taught instead |
 | measurement-function-generator | 49-function-generator-sine | 1 | achievable (was not, before the `freq` fix) |
 | measurement-scope-probes-scale | 50-rc-scope | 1 | achievable, with one caveat below |
 | measurement-scope-timebase | 49-function-generator-sine | 1→**2** | minor — named three windows the scope does not offer |
@@ -213,14 +218,42 @@ Confirmed working, and worth recording because the lesson claims it: the
 ohmmeter returns `requires-power-off` while powered rather than inventing a
 value.
 
-### 3. measurement-range-error teaches a gain the bench does not deliver
+### 3. measurement-range-error taught a gain the bench did not deliver — FIXED 2026-08-29
+
+> **FIXED.** bw-board `999eb66` ("D18: the LM358 halts on the input error, not on
+> its own output step") and its follow-up `187694f` replaced the damped
+> integrator's own output-step halt with a secant solve on the *input* error.
+> Re-measured 2026-08-29 against the vendored engine at bw-board
+> `4ae89b5`:
+>
+> ```
+> load  25%   I  66.65 mA   Vshunt  1.333 mV   Vout   61.92 mV   gain 46.4545
+> load  50%   I  99.96 mA   Vshunt  1.999 mV   Vout   92.87 mV   gain 46.4545
+> load  75%   I 199.84 mA   Vshunt  3.997 mV   Vout  185.67 mV   gain 46.4545
+> load  90%   I 499.00 mA   Vshunt  9.980 mV   Vout  463.62 mV   gain 46.4545
+> load  95%   I 996.02 mA   Vshunt 19.920 mV   Vout  925.39 mV   gain 46.4545
+> load 100%   I   4.90  A   Vshunt 98.04  mV   Vout    3.4966 V  gain 35.6651
+> documented: 1 + 100000/2200 = 46.4545…   realised: 46.4545455545 at every
+> input where the output fits in the swing
+> ```
+>
+> **The 100 % row did not change and is not a defect.** ×46.4545 on a 98.04 mV
+> shunt asks for 4.5544 V, and `devices/analog-amps.js` holds the LM358's real
+> top swing at `vcc − 1.5 = 3.5 V`. The stage saturates, exactly as the part
+> does. That is now the *content* of the lesson's `test` checkpoint: the gain is
+> right to ten figures across the useful range, and the last click of the pot is
+> where a single-supply op-amp runs out of headroom. The version-2 wording —
+> "report the disagreement rather than the datasheet number" — described a
+> defect that no longer exists, so it is version 3.
+>
+> The finding below is kept as recorded. It is why the engine was fixed.
 
 The volts front end is exact. The 30 kΩ/10 kΩ divider measures a ratio of
 **4.0000** at three different source settings, so "use ÷4 for volts" is right to
 four figures.
 
-The amps front end is not. `EXPECTED.md` documents "LM358 non-inverting ×46.5
-(100 kΩ/2.2 kΩ)". Measured:
+The amps front end was not. `EXPECTED.md` documents "LM358 non-inverting ×46.5
+(100 kΩ/2.2 kΩ)". Measured at `3e87340f5`:
 
 ```
 load  25%   I  66.65 mA   Vshunt 1.333 mV   Vout  45.74 mV   gain 34.31
@@ -249,18 +282,23 @@ Two consequences worth writing down:
 
 - The example's own documentation is self-inconsistent: it states ×46.5 *and*
   records the observed display as `067` for a current that measures 99.96 mA. The
-  `067` is the bench being wrong, not the doc being stale.
+  `067` is the bench being wrong, not the doc being stale. *(2026-08-29: with the
+  gain fixed, `067` became stale as well — sb3-creator's `76-multimeter/EXPECTED.md`
+  line 32 now reads `097`, derived in bw-board `5803e0f`.)*
 - The model's source comment says "a follower (β = 1) lands within millivolts in
   ten rounds, resistor-gain stages faster". That is backwards. A gain stage has
   *small* β, so it converges *slower*: here β = 2.2k/102.2k = 0.0215, the
   contraction per round is |1 − 1.5 × 0.0215| = 0.9677, and closing 99% of the
   error would take 141 rounds against the ten the settle loop allows.
 
-**Fixed** in the lesson, version 2, by not asking for a prediction the bench
-cannot honour: the `predict` checkpoint now quantifies the volts path only and
-asks what the amps gain stage is *for*, and the `test` checkpoint turns the
+**Worked around** in the lesson, version 2, by not asking for a prediction the
+bench could not honour: the `predict` checkpoint quantified the volts path only
+and asked what the amps gain stage is *for*, and the `test` checkpoint turned the
 discrepancy into the exercise — "report the disagreement rather than the
-datasheet number". The engine defect is open and pinned.
+datasheet number". **Version 3 (2026-08-29) undoes that**: the engine defect is
+closed, so `predict` asks for the ×46.45 number again and `test` asks the learner
+to find where the stage stops delivering it (the 3.5 V top swing at full pot
+travel).
 
 ### 4. measurement-rc-cursors measures a step that happens once
 
@@ -435,9 +473,10 @@ sine.
   electrically from MCU pins rather than through the `devices` extension, so the
   `setDeviceControl` defect does not touch it. Its full chain needs sdcc plus the
   emu8051 WASM build, which its own `EXPECTED.md` says are env-gated.
-- **Whether the ×46.5 stage would be correct on hardware.** The finding is that
-  the simulated op-amp does not reach its closed-loop gain. The schematic itself
-  looks right.
+- **Whether the ×46.5 stage would be correct on hardware.** The finding was that
+  the simulated op-amp did not reach its closed-loop gain; it does now, to ten
+  figures. The schematic itself looks right, and nothing here bench-tests the
+  real part.
 
 ## Reproducing
 
@@ -445,15 +484,14 @@ sine.
 node --test test/lesson-bench-claims-wave2.test.mjs
 ```
 
-Four of its thirteen tests are named `OPEN DEFECT` and assert that a defect
-**still reproduces**; one is named `RESOLVED UPSTREAM` and guards a fix instead.
-The open four are meant to fail the day `char_lcd_i2c` gains a control handler,
-the op-amp reaches its gain, `43-rc-timing` grows a switch, or the ohmmeter stops
-being directional — and each failure message names the document and the lesson
-hint to update.
+One of its tests is named `OPEN DEFECT` and asserts that a defect **still
+reproduces**; one is named `RESOLVED UPSTREAM` and guards a fix instead. The
+remaining open one is meant to fail the day the ohmmeter stops being directional
+— and its failure message names the document and the lesson hint to update.
 
-Three of them already have. The OLED pair fired within hours of being written,
-which is the only reason this document is right, and the `char_lcd_i2c` sentinel
-fired on 2026-08-24 when the handler landed. All three were retired per their own
+Four already have. The OLED pair fired within hours of being written, which is
+the only reason this document is right; the `char_lcd_i2c` sentinel fired on
+2026-08-24 when the handler landed; and the LM358 sentinel fired on 2026-08-29
+at the bw-board `4ae89b5` vendor bump. All four were retired per their own
 instructions; the repairs are held by `test/wave-open-defects.test.mjs` here and
 by bw-board's gate of the same name.

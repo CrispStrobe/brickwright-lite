@@ -5,9 +5,20 @@ against `1d10902cb` after the `bw-board` vendor that landed mid-review
 (scheduled device events, gate tpd, controller floor fix — 640 changed lines
 across `board.js`, `mna.js` and `ac.js`). Ten lessons, twenty checkpoints.
 
-**9 defective of 10 · 10 revised (one at v5, two at v4, four at v3, three at
-v2) · 5 defects open, every one of them in an instrument or an engine, none in a
-lesson.**
+**9 defective of 10 · 10 revised · 5 defects open at review time, every one of
+them in an instrument or an engine, none in a lesson.**
+
+> **Updated 2026-08-29 (the wave-2 defect campaign's reconciliation).** Three of
+> the five closed in the engines and were re-measured here: **D23** (the t = 0
+> reading, defect 1), **D20 + D21** (the follower's output limit and the probe's
+> input impedance, defect 6 — both halves, which is why its sentinel retired
+> whole instead of splitting), and **D24** (the FFT and the sample series it
+> needs, defect 8). `signals-rc-response` → v6, `signals-loading` → v3,
+> `signals-aliasing-fft` → v4. **Two are still open**: `pc52` cannot be both an
+> RL bench and a resonant one, and `arduino-03-smoothing`'s simulated sensor is
+> still bit-exact so the noise lesson still has no noise. Every other number in
+> this document was re-derived against the vendored engines at bw-board
+> `4ae89b5` / bw-circuit-ui `60fd117` and is unchanged.
 
 > **Updated 2026-08-25.** `signals-resonance`'s observable was closed on
 > 2026-08-24 (D6), and **D10 and D11 are closed now**. D11: `43-rc-timing` grew
@@ -71,15 +82,15 @@ and it is a smaller and more fixable story than "nine broken lessons".
 
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
-| signals-rc-response | 43-rc-timing | 2→3→**4** | **defect, fixed** — the t = 0 reading the checkpoint asks for is the supply voltage, not zero |
+| signals-rc-response | 43-rc-timing | 2→3→4→5→**6** | defect, **ENGINE FIXED 2026-08-29** — the t = 0 reading was the supply voltage; bw-board `f87adcc` makes the first solve honour stored capacitor state, and it reads 0.0000 V |
 | signals-rl-response | **pc89-rl-step** (was pc52-inductor-filter) | 1→2→**3** | **defect, BENCH REPLACED 2026-08-25** — the old bench was an RLC; L/R held only in its first 300 µs, and the hint's "total series resistance" was the wrong R |
 | signals-complex-impedance | 50-rc-scope | 1→**2** | **defect, fixed** — the scope route it names cannot reach the below-cutoff point |
 | signals-cutoff-phase | 50-rc-scope | 1→2→**3** | achievable; **revised for disclosure**, then **READOUT FIXED 2026-08-25** — both criteria bracket the same cutoff, and the plot now has the frequency axis and the per-point table to read one off |
 | signals-bode-sweep | pc50-two-stage-rc | 1→2→3→**4** | defect, **BENCH FIXED 2026-08-25** — the corners were at 0.159 Hz, where one sweep point cost over ten minutes of simulated time; they are now at 159.155 Hz. **v4 (2026-08-24):** the hint still contrasted the new cost against "the ten minutes it cost while the stages were 100 µF" — a changelog note quoting a capacitance this bench no longer has. Dropped in both languages; check C now derives corner frequencies, which is what surfaced it |
 | signals-resonance | pc52-inductor-filter | 1→**2** | **defect ×2, fixed** — as shipped the network is overdamped and has no peak; and its observable cannot fire |
-| signals-loading | pc54-opamp-follower | 1→**2** | **defect, fixed** — the divider half is excellent; the follower-limit and probe-loading halves have no model behind them |
+| signals-loading | pc54-opamp-follower | 1→2→**3** | defect ×2, **BOTH ENGINE-FIXED 2026-08-29** — the divider half was always excellent; the follower limit landed in bw-board `18555e7` (40 mA) and probe loading in bw-circuit-ui `3f1d194` (10 MΩ), so all three regimes are measurable |
 | signals-noise | arduino-03-smoothing | 1→**2** | **defect, fixed** — the simulated sensor is bit-exact, so the standard deviation is exactly zero |
-| signals-aliasing-fft | 49-function-generator-sine | 1→**2** | **defect, fixed** — there is no FFT, and what the scope stores is an envelope, not a sample series |
+| signals-aliasing-fft | 49-function-generator-sine | 1→2→3→**4** | defect, **ENGINE FIXED 2026-08-29** — there was no FFT and the scope stored only an envelope; bw-circuit-ui `7696656` added the spectrum view and bw-board `9441e4f` added `capture: 'sample'`, so the transform runs over a real sample series |
 | signals-model-measurement | pc50-two-stage-rc | 1→2→3→**4** | **defect, fixed** — "report residuals with propagated uncertainty" from an instrument that reports no numbers; the range half is **BENCH FIXED 2026-08-25** and the readout half (D3) **the same day** — the sweep exports every point at full precision |
 
 `signals-cutoff-phase` is counted as achievable: both of its search criteria
@@ -142,11 +153,30 @@ second-order peak.
 
 ## The defects
 
-### 1. signals-rc-response/measure — the reading at t = 0 is the supply
+### 1. signals-rc-response/measure — the reading at t = 0 was the supply — FIXED 2026-08-29
+
+> **FIXED.** bw-board `f87adcc` ("D23: the first solve honours stored capacitor
+> state") makes the first solve of a fresh board use the capacitor's stored
+> voltage instead of treating it as an open circuit. Re-measured 2026-08-29
+> against the vendored engine at bw-board `4ae89b5`:
+>
+> ```
+> a freshly loaded board, never advanced   V(c1.a) = 0.0000 V
+> the engine's own getCapVoltage('c1')                  0 V
+> after advancing by ONE nanosecond        V(c1.a) = 0.0000 V
+> ```
+>
+> Everything else in this section is unchanged: 0.5τ through 3τ still measure
+> 1.9673 / 3.1606 / 4.3233 / 4.7511 V, to four decimals, so the only number that
+> moved is the one that was wrong. The lesson goes to version 6: the `measure`
+> hint stops telling the learner not to take the first reading and records what
+> the defect looked like instead, so a regression is recognisable.
+>
+> The finding below is kept as recorded.
 
 The checkpoint has the learner "calculate capacitor voltage at 0, 0.5τ, 1τ, 2τ
 and 3τ" and then measure all of them. Every point from 0.5τ on is textbook (see
-above). The first one is not:
+above). The first one was not — measured at the review sha:
 
 ```
 a freshly loaded board, never advanced   V(c1.a) = 5.0000 V
@@ -372,10 +402,41 @@ wires. The hint's "tick it manually" sentence is now belt-and-braces rather than
 a workaround, and is left as it is — a learner who mis-clicks still needs the
 button. `docs/WAVE-OPEN-DEFECTS.md` D6.
 
-### 6. signals-loading — two of its three regimes have no model behind them
+### 6. signals-loading — two of its three regimes had no model behind them — BOTH FIXED 2026-08-29
+
+> **FIXED, both halves, in the same wave.** Re-measured 2026-08-29 against the
+> vendored engine at bw-board `4ae89b5` / bw-circuit-ui `60fd117`:
+>
+> ```
+> follower output, pot at 50%          probe loading, 1 MΩ / 1 MΩ divider
+> load 1 MΩ   2.499975 V   0.0025 mA   no meter          2.4999988 V
+> load  10 kΩ 2.499975 V   0.2500 mA   10 MΩ meter on it 2.3809512 V
+> load   1 kΩ 2.499975 V   2.5000 mA   ideal 50/21       2.3809524 V
+> load  100 Ω 2.499975 V  24.9997 mA   loading error          4.76 %
+> load  62.5 Ω 2.499975 V 39.9996 mA
+> load   25 Ω 1.000000 V  40.0000 mA   <- the limit takes over here
+> load   10 Ω 0.400000 V  40.0000 mA
+> load    1 Ω 0.040000 V  40.0000 mA
+> ```
+>
+> - **The output limit** is bw-board `18555e7` (GATED: `spec-updates/opamp-output-limit.md`
+>   plus hand-computed oracles in the same commit). `iShort` defaults to 40 mA,
+>   so the follower holds 2.5 V down to 62.5 Ω and is a 40 mA current source
+>   below it. The numbers above reproduce fab-board's independent probe exactly.
+> - **Probe input impedance** is bw-circuit-ui `3f1d194`, and it was TWO defects
+>   rather than one. The meter did not load — and, unrecorded until that lane
+>   measured it, leaving the meter's probe terminals in the nets while filtering
+>   the meter out of `parts` made bw-board's validator reject the WHOLE netlist,
+>   so the board went empty and the meter read a fabricated 0 V off nothing.
+>   `model/meter-load.js` folds a voltage-mode meter in as a resistor carrying
+>   its own part id; resistance and current modes deliberately do not load, and
+>   each refusal is written down with its reason.
+>
+> Version 3 restores both demands to the lesson. The finding below is kept as
+> recorded.
 
 The divider half is the best-measured thing in the wave (table above). The other
-two demands are not on this bench:
+two demands were not on this bench:
 
 - **"identify where follower output limits replace divider error."** The op-amp
   model is ideal apart from its rails. Measured: with a **1 Ω** load it holds
@@ -386,9 +447,12 @@ two demands are not on this bench:
   its build paths. A probe therefore draws exactly zero current and cannot load
   anything.
 
-**Fixed**, version 2: the checkpoint now asks the learner to *say what a real
-follower would do* at the smallest load that this model does not, and the hint
-states both idealisations with the 2.5 A measurement behind the first.
+**Worked around**, version 2: the checkpoint asked the learner to *say what a
+real follower would do* at the smallest load that this model did not, and the
+hint stated both idealisations with the 2.5 A measurement behind the first.
+**Version 3 (2026-08-29) undoes that**: `measure` asks for the load at which
+output limiting replaces divider error, and the hint quotes the measured
+62.5 Ω / 40 mA knee and the 50/21 V probe-loading oracle.
 
 ### 7. signals-noise — there is no noise
 
@@ -413,7 +477,34 @@ up.
 **Fixed**, version 2: the checkpoint now has the learner record that the raw
 readings are identical to the count, and measure the delay instead.
 
-### 8. signals-aliasing-fft — there is no FFT
+### 8. signals-aliasing-fft — there was no FFT — FIXED 2026-08-29
+
+> **FIXED, both obstacles.** bw-circuit-ui `7696656` added `model/fft.js` and a
+> spectrum view to `ScopePanel`; bw-board `9441e4f`+`2169d9b` added
+> `addScopeChannel({capture: 'sample'})`, a true uniformly-spaced sample series
+> whose instants are solve points. Re-measured 2026-08-29 on this bench's own
+> 1 kHz, 2.5 V-amplitude sine, at the spectrum tap's default 10 kHz over 8192
+> points:
+>
+> ```
+> Nyquist        5000 Hz          bin spacing   1.220703125 Hz   window  Hann
+> peak bin       819 (999.7559 Hz)              interpolated     999.9466 Hz
+> amplitude      2.499976 V peak (lobe energy, so no scalloping loss)
+> THD            0.0000 % over the 4 harmonics that fit under Nyquist
+> the SAME net's envelope channel  ->  refused by name, not transformed
+> ```
+>
+> The two design decisions that matter to the lesson, and that the copy now
+> teaches: the envelope is still the **default** capture (it is what keeps a
+> narrow pulse visible at a coarse timebase), so the spectrum is a **second tap
+> on the same net** rather than a transform of the drawn trace; and asking for a
+> transform of an envelope is **refused with a reason** rather than answered.
+> The spectrum tap's default rate is 10 kHz and not the time view's 100 kHz
+> because a sample channel forces a solve point at every sample instant — at
+> 100 kHz that measured as a page that stopped responding to clicks for over
+> 30 s.
+>
+> Version 4 restores the FFT half. The finding below is kept as recorded.
 
 The checkpoint says "compare time trace and **FFT** with rectangular and tapered
 **windows**". Searching the whole circuit UI for a spectrum view finds nothing:
@@ -432,11 +523,16 @@ exact. But neither the 10 µs cadence nor the 8192-sample depth is displayed
 anywhere in the app, and neither is adjustable, so the learner has no way to
 obtain the inputs.
 
-**Fixed**, version 2: the checkpoint now makes the aliasing argument from the
+**Worked around**, version 2: the checkpoint made the aliasing argument from the
 time traces and the sample cadence — which is legitimate, since aliasing happens
 in the sampling and an above-Nyquist tone already *looks* like its alias on the
-trace — states the three fixed numbers, and says that windowing and leakage stay
-a paper exercise here.
+trace — stated the three fixed numbers, and said that windowing and leakage
+stayed a paper exercise. **Version 4 (2026-08-29) undoes the last part**:
+`measure` reads each tone on the spectrum view and compares it with the trace,
+and the hint quotes the measured 5 kHz Nyquist, 1.2207 Hz bins and bin-819 peak,
+explains why the spectrum is a second tap rather than a transform of the drawn
+envelope, and sends the learner to switch Hann for rectangular and watch the
+leakage arrive.
 
 ### 9. signals-model-measurement — residuals from an instrument that reports no numbers
 
@@ -488,7 +584,7 @@ repair's size.
 | checkpoint | settled by |
 | --- | --- |
 | signals-rc-response/predict | off-bench (calculate five points) |
-| signals-rc-response/measure | **defect 1**, measured |
+| signals-rc-response/measure | **defect 1**, measured; the t = 0 reading is honest since 2026-08-29 |
 | signals-rl-response/predict | **defect 2**, the wrong R named; measured |
 | signals-rl-response/measure | **defect 2**, measured over the first millisecond |
 | signals-complex-impedance/predict | off-bench (derive Z_C and H(jω)) |
@@ -500,11 +596,11 @@ repair's size.
 | signals-resonance/predict | off-bench (choose C, calculate f0 and Q) |
 | signals-resonance/sweep | **defect 5a + 5b**, measured and detector-confirmed |
 | signals-loading/predict | off-bench (predict three load cases) |
-| signals-loading/measure | **defect 6**, measured buffered and unbuffered |
+| signals-loading/measure | **defect 6**, measured buffered and unbuffered; both regimes measurable since 2026-08-29 |
 | signals-noise/predict | off-bench (predict mean, spread, delay) |
 | signals-noise/measure | **defect 7**, measured |
-| signals-aliasing-fft/predict | **defect 8**, the inputs are not displayed |
-| signals-aliasing-fft/measure | **defect 8**, no FFT exists |
+| signals-aliasing-fft/predict | **defect 8**, the inputs were not displayed; the record length and the spectrum rate both are now |
+| signals-aliasing-fft/measure | **defect 8**, no FFT existed; the spectrum view landed 2026-08-29 |
 | signals-model-measurement/predict | off-bench (pre-register two models) |
 | signals-model-measurement/compare | **defect 9**, panel labels enumerated |
 

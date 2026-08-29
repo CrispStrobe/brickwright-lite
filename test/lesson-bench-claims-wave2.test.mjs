@@ -183,31 +183,51 @@ test('measurement-range-error: the volts divider is exactly the documented /4', 
     }
 });
 
-test('OPEN DEFECT: the LM358 stage never reaches its documented x46.5', async () => {
-    // bw-board's lm358 is a damped integrator that halts once its per-round
-    // output step falls below 1 mV, leaving up to 1 mV / G_STEP = 0.667 mV of
-    // input error unamplified. On a 2 mV shunt signal that is a third of it, so
-    // the realised gain falls short AND depends on the input.
+// The OPEN DEFECT sentinel that stood here — "the LM358 stage never reaches its
+// documented x46.5" — fired on 2026-08-29 at the bw-board `4ae89b5` vendor bump
+// and was retired per its own instruction. bw-board `999eb66`+`187694f` replaced
+// the damped integrator's output-step halt with a secant solve on the INPUT
+// error. What replaces the sentinel is the measurement it was waiting for.
+test('measurement-range-error: the amps stage delivers its documented gain, and saturates where the part does', async () => {
     const {board, circuit} = await load('76-multimeter');
+    const documented = 1 + 100000 / 2200;   // 46.4545...
     let t = 0n;
-    const gains = [];
-    for (const position of [0.25, 0.5, 0.75]) {
+    const gainAt = position => {
         circuit.setControl('load1', position);
         board.advanceTo(t += 20n * MS);
-        gains.push(volts(board, 'amp1', '1_out') / volts(board, 'shunt1', 'a'));
+        return {
+            gain: volts(board, 'amp1', '1_out') / volts(board, 'shunt1', 'a'),
+            out: volts(board, 'amp1', '1_out'),
+            shunt: volts(board, 'shunt1', 'a')
+        };
+    };
+    // Everywhere the output fits inside the swing the gain is the arithmetic,
+    // to ten figures, and it does NOT depend on the input any more.
+    for (const position of [0.25, 0.5, 0.75, 0.9, 0.95]) {
+        const {gain} = gainAt(position);
+        near(gain, documented, 1e-6, `closed-loop gain at load ${position}`);
     }
-    const documented = 1 + 100000 / 2200;   // 46.45
-    for (const gain of gains) {
-        assert.ok(gain < documented - 5,
-            `the amps stage now reaches ${gain.toFixed(2)} against a documented ` +
-            `${documented.toFixed(2)}. If the op-amp was fixed, re-measure 76-multimeter, ` +
-            `update docs/LESSON-REVIEW-WAVE-2.md and the measurement-range-error ` +
-            `hints, then delete this test.`);
+    // The lesson's own numbers, which its `test` hint quotes.
+    near(gainAt(0.5).out * 1000, 92.87, 0.01, 'amplifier output at 100 mA, in mV');
+    near(gainAt(0.75).out * 1000, 185.67, 0.01, 'amplifier output at 200 mA, in mV');
+    // The last click of the pot is the exercise: x46.45 of 98.0 mV asks for
+    // 4.554 V, and analog-amps.js holds this part's top swing at vcc - 1.5.
+    const full = gainAt(1);
+    near(full.shunt * 1000, 98.04, 0.01, 'shunt drop at full pot travel, in mV');
+    assert.ok(full.shunt * documented > 4.5,
+        'full travel should ask for more than the amplifier can swing');
+    near(full.out, 3.4966, 0.001, 'the saturated output, one swing below the 5 V rail');
+    near(full.gain, 35.6651, 0.001, 'and the realised gain there');
+    // The hints were re-worded when this became true, so the content version moves.
+    assert.equal(lesson('measurement-range-error').version, 3,
+        'the measurement-range-error hints changed, so its content version must move with it');
+    for (const lang of ['en', 'de']) {
+        const test_ = lesson('measurement-range-error').checkpoints.find(c => c.id === 'test');
+        assert.ok(/46[.,]4545/.test(test_.copy[lang].hint),
+            `the ${lang} test hint must quote the gain the bench now delivers`);
+        assert.ok(!/46[.,]5 (predicts|93)|erreicht seine Verstärkung nicht/.test(test_.copy[lang].hint),
+            `the ${lang} test hint still describes the defect that was fixed`);
     }
-    // and it is not even a constant, which is why no single number can be taught
-    assert.ok(Math.max(...gains) - Math.min(...gains) > 2,
-        `the realised gain has become constant (${gains.map(g => g.toFixed(2))}) — ` +
-        `re-check whether a single figure can now be quoted`);
 });
 
 // ── measurement-function-generator / scope-* → 49, 50 ───────────────────────

@@ -19,7 +19,7 @@
 /** @typedef {import('./types.js').TheveninSource} TheveninSource */
 
 import { pinThevenin } from './pin-model.js';
-import { solveMNA } from './mna.js';
+import { solveMNA, OPAMP_ISHORT_DEFAULT } from './mna.js';
 import { acSweep } from './ac.js';
 import { validateNetlist } from './validate.js';
 import { getDevice, initDeviceState } from './devices.js';
@@ -388,7 +388,11 @@ export class BoardImpl {
         { id: ids.c1, kind: 'capacitor', params: { farads: cint }, terminals: ['a', 'b'] },
         { id: ids.rp, kind: 'resistor', params: { ohms: a0 / gm }, terminals: ['a', 'b'] },
         { id: ids.e1, kind: 'vcvs',
-          params: { gain: 1, railLow: P.railLow ?? 0, railHigh: P.railHigh ?? vcc },
+          // The buffer carries the macro op-amp's rails AND its output
+          // current limit, so `model: 'macro'` and the ideal row answer the
+          // same question the same way (spec-updates/opamp-output-limit.md).
+          params: { gain: 1, railLow: P.railLow ?? 0, railHigh: P.railHigh ?? vcc,
+            iShort: P.iShort ?? OPAMP_ISHORT_DEFAULT },
           terminals: ['outp', 'outn', 'inp', 'inn'] },
         { id: ids.ro, kind: 'resistor', params: { ohms: rout }, terminals: ['a', 'b'] },
       );
@@ -569,6 +573,13 @@ export class BoardImpl {
     this._solveParts = macroView.parts;
     this._solveNets = macroView.nets;
     this._macroFallbacks = macroView.notes;
+    // A new netlist is a new bench: every reactive part starts at rest.
+    // The clear has to come BEFORE the seeding below, not after it — it
+    // used to run after, which silently undid the whole seeding pass and
+    // left every HIDDEN reactive part (motor windings, macromodel poles)
+    // absent from capVoltages, because the public-parts loop further down
+    // re-seeded only what the user drew.
+    this.capVoltages.clear();
     for (const p of this._solveParts) {
       if (p.kind === 'inductor' && !this.inductorCurrents.has(p.id)) {
         this.inductorCurrents.set(p.id, 0);
@@ -582,7 +593,6 @@ export class BoardImpl {
     }
     this.ledHistory.clear();
     this.buzzerEdges.clear();
-    this.capVoltages.clear();
     this.nodeVoltages.clear();
     this.ledCurrents.clear();
 
@@ -1169,6 +1179,22 @@ export class BoardImpl {
     const sampleRateHz = opts.sampleRateHz ?? 100_000;
     const depth = opts.depth ?? 8192;
     const intervalNs = BigInt(Math.round(1e9 / sampleRateHz));
+    // 'envelope' (the default, unchanged) keeps the (min,max) of everything
+    // that happened inside the bucket — right for DRAWING, because it is what
+    // keeps a narrow pulse visible at a coarse timebase.
+    //
+    // 'sample' records the instantaneous value at the sample instant into both
+    // slots, i.e. a true uniformly-spaced sample series. A transform needs
+    // that and cannot use the other: an envelope's min and max are two
+    // different instants reported as one, so an FFT over it is a spectrum of a
+    // signal that never existed (bw-circuit-ui D24 / X2.2). The value stored is
+    // the solution at the FIRST solve point at or after the sample instant — a
+    // zero-order hold from above, within one solve step of the sample time, and
+    // with E4.1 every source edge is already a solve point.
+    // A current channel is written only by sampleCurrentChannels(), which
+    // stores one instantaneous reading into both slots — so it has always BEEN
+    // a sample series and now says so.
+    const capture = opts.capture === 'sample' || opts.type === 'current' ? 'sample' : 'envelope';
 
     const ch = {
       type: opts.type,
@@ -1177,6 +1203,7 @@ export class BoardImpl {
       terminal: opts.terminal ?? null,
       sampleRateHz,
       intervalNs,
+      capture,
       depth,
       // Ring buffer: interleaved [min0, max0, min1, max1, ...]
       // Unwritten regions are NaN, never flat 0 — per boundary-B v2.
@@ -1188,6 +1215,11 @@ export class BoardImpl {
       _bucketMin: Infinity,
       _bucketMax: -Infinity,
       _nextSampleNs: this.timeNs + intervalNs, // next sample point
+      // For 'sample' channels: the previous solve point, so the value AT the
+      // sample instant can be interpolated rather than held from whichever
+      // solve happened to land next. See _updateScopeChannels.
+      _prevTNs: this.timeNs,
+      _prevVal: null,
     };
 
     this._scopeChannels.set(handle, ch);
@@ -1233,6 +1265,9 @@ export class BoardImpl {
       writeIndex: ch.writeIndex,
       count: ch.count,
       channelType: ch.type,
+      // Which of the two things the pairs are. A consumer that transforms the
+      // buffer must be able to ASK, rather than assume — assuming was D24.
+      capture: ch.capture ?? 'envelope',
     };
   }
 
@@ -1281,6 +1316,11 @@ export class BoardImpl {
       const val = Number.isFinite(v) ? v : 0;
       if (val < ch._bucketMin) ch._bucketMin = val;
       if (val > ch._bucketMax) ch._bucketMax = val;
+      // A setPin/setControl edge is a DISCONTINUITY at this instant, not a
+      // ramp towards it: a sample channel's interpolation must start from the
+      // post-edge value, or the next sample would be drawn part-way up a step
+      // that took no time at all.
+      if (ch.capture === 'sample') { ch._prevTNs = this.timeNs; ch._prevVal = val; }
     }
   }
 
@@ -1319,16 +1359,33 @@ export class BoardImpl {
       // Flush completed buckets
       while (tNs >= ch._nextSampleNs) {
         const idx = ch.writeIndex * 2;
-        ch.samples[idx] = ch._bucketMin;
-        ch.samples[idx + 1] = ch._bucketMax;
+        // A 'sample' channel stores the value AT the sample instant, linearly
+        // interpolated between the two solve points that bracket it. Holding
+        // the later solve's value instead (the obvious implementation) is a
+        // zero-order hold whose time error is a whole solve step: measured on
+        // a 1 kHz sine at 100 kHz capture, 618 mV of a 2 V amplitude, because
+        // the transient controller was taking 50 µs steps. Interpolation
+        // brings the same bench to under 1 mV, and it costs no extra solves.
+        const s = ch.capture === 'sample' ? sampleAtInstant(ch, tNs, val) : 0;
+        ch.samples[idx] = ch.capture === 'sample' ? s : ch._bucketMin;
+        ch.samples[idx + 1] = ch.capture === 'sample' ? s : ch._bucketMax;
         ch.writeIndex = (ch.writeIndex + 1) % ch.depth;
         ch.count++;
 
-        // Update start time when buffer wraps
+        // Update start time when buffer wraps.
+        //
+        // An envelope pair is labelled by the START of the bucket it covers; a
+        // sample is labelled by the INSTANT it was taken, which is one interval
+        // later. Getting that wrong is not a rounding matter: the whole series
+        // reads one sample early, and on a 1 kHz sine at 100 kHz that is a
+        // 126 mV disagreement with the closed form that looks exactly like an
+        // amplitude error.
         if (ch.count > ch.depth) {
           ch.startTNs = ch._nextSampleNs - ch.intervalNs * BigInt(ch.depth - 1);
         } else if (ch.count === 1) {
-          ch.startTNs = ch._nextSampleNs - ch.intervalNs;
+          ch.startTNs = ch.capture === 'sample'
+            ? ch._nextSampleNs
+            : ch._nextSampleNs - ch.intervalNs;
         }
 
         ch._nextSampleNs += ch.intervalNs;
@@ -1336,6 +1393,7 @@ export class BoardImpl {
         ch._bucketMin = val;
         ch._bucketMax = val;
       }
+      if (ch.capture === 'sample') { ch._prevTNs = tNs; ch._prevVal = val; }
     }
   }
 
@@ -2467,6 +2525,21 @@ export class BoardImpl {
     this.controls = new Map(snap.controls);
     this.capVoltages = new Map(snap.capVoltages);
     this.inductorCurrents = new Map(snap.inductorCurrents ?? []);
+    // A snapshot older than a part carries no state for it, and the designer
+    // restores exactly such a snapshot after every edit: `Circuit._syncNetlist`
+    // snapshots, rebuilds the board, and restores — so a capacitor added since
+    // the snapshot came back UNSEEDED. That is what made a freshly loaded
+    // `43-rc-timing` read 5.0000 V on a capacitor getCapVoltage held at 0
+    // (D23). A reactive part the snapshot never saw starts where a new one
+    // does: uncharged, at rest.
+    for (const p of (this._solveParts ?? this.parts)) {
+      if (p.kind === 'capacitor' && !this.capVoltages.has(p.id)) {
+        this.capVoltages.set(p.id, 0);
+      }
+      if (p.kind === 'inductor' && !this.inductorCurrents.has(p.id)) {
+        this.inductorCurrents.set(p.id, 0);
+      }
+    }
     // Trapezoidal history is NOT snapshotted: _solve() below invalidates
     // it, so the first step after a restore re-seeds with BE — cleared
     // here only so stale values never look meaningful in a debugger.
@@ -2952,7 +3025,20 @@ export class BoardImpl {
     // Trace-fidelity floor (see doc above).
     const H_SAMPLE = 1e-4;
     const sampleCapped = this._scopeChannels.size > 0 || this._hasTimeVaryingSource();
-    const hMax = sampleCapped ? H_SAMPLE : dtSec;
+    // A 'sample'-capture channel asks for the value AT a grid of instants, so
+    // the step must not straddle more than one of them: with 100 µs steps and
+    // a 10 µs capture grid, nine samples in ten came off the same line segment
+    // and a 1 kHz sine reconstructed 128 mV wrong. Capping h at the finest
+    // sample-series interval brings that to under a millivolt. Only channels
+    // that OPT IN pay for it — an envelope channel's cost is unchanged, which
+    // matters because the envelope is what every existing bench uses.
+    let hSeries = Infinity;
+    for (const [, ch] of this._scopeChannels) {
+      if (ch.capture === 'sample' && ch.type === 'voltage') {
+        hSeries = Math.min(hSeries, Number(ch.intervalNs) / 1e9);
+      }
+    }
+    const hMax = Math.min(sampleCapped ? H_SAMPLE : dtSec, hSeries);
     // A runaway backstop far above any real circuit; hitting it is
     // reported, never silently absorbed (the old 200-step cap's honesty,
     // kept at the new scale).
@@ -3033,6 +3119,18 @@ export class BoardImpl {
       if (wake !== null && wake > t + 1e-15 && wake < t + hEff - 1e-15) {
         hEff = wake - t;
         atEdge = true; // a wake is a discontinuity: BE restart past it
+      }
+      // A 'sample'-capture channel's grid points are barriers too — and this
+      // is the difference between a sample series and an estimate of one. When
+      // the instant is a solve point the value stored is the solution AT it;
+      // otherwise it is interpolated between the solves either side, and on a
+      // 1 kHz sine with 100 µs steps that interpolation is 128 mV of a 2 V
+      // amplitude, i.e. ~6 % of distortion an FFT then reports as real.
+      // NOT a discontinuity: no `atEdge`, so the trapezoidal history survives
+      // and this costs one truncated step, never a BE restart.
+      const grid = this._nextSampleGridSec(t);
+      if (grid !== null && grid > t + 1e-15 && grid < t + hEff - 1e-15) {
+        hEff = grid - t;
       }
 
       // Only a genuine discontinuity takes the uncontrolled BE seed. A
@@ -3141,6 +3239,32 @@ export class BoardImpl {
    * @param {number} tSec
    * @returns {number | null}
    */
+  /**
+   * The next 'sample'-capture grid instant after tSec, in seconds, or null.
+   *
+   * Used as a step barrier so the value a sample channel stores is the
+   * solution AT its sample instant rather than an interpolation between the
+   * solves either side. Unlike a source edge this is not a discontinuity: the
+   * caller truncates the step and does NOT restart backward Euler.
+   *
+   * Only channels that asked for `capture: 'sample'` are considered, so an
+   * envelope channel — which is every channel any existing bench opens — adds
+   * no barriers and costs nothing.
+   *
+   * @param {number} tSec
+   * @returns {number | null}
+   */
+  _nextSampleGridSec(tSec) {
+    if (this._scopeChannels.size === 0) return null;
+    let next = null;
+    for (const [, ch] of this._scopeChannels) {
+      if (ch.capture !== 'sample' || ch.type !== 'voltage') continue;
+      const at = Number(ch._nextSampleNs) / 1e9;
+      if (at > tSec + 1e-15 && (next === null || at < next)) next = at;
+    }
+    return next;
+  }
+
   _nextSourceEdgeSec(tSec) {
     let next = null;
     for (const part of this.parts) {
@@ -3357,17 +3481,56 @@ export class BoardImpl {
       }
     }
 
-    // Override net voltages for capacitor nodes with their actual charge state.
-    // The static solve gives the long-term target voltage; the cap's current
-    // charge may be different (it hasn't reached steady state yet).
+    // Override net voltages for capacitor nodes with their actual charge
+    // state. The walker's answer above is the LONG-TERM one — it has no
+    // vocabulary for a capacitor, so it solved the network as if the part
+    // were an open circuit, which is the t = ∞ operating point. The stored
+    // charge is what the bench is at NOW.
+    //
+    // Three rules, and defect D20's sibling D23 is the reason all three are
+    // written out (docs/WAVE-OPEN-DEFECTS.md). Before, this loop skipped any
+    // capacitor with no entry in capVoltages and only ever moved the `a`
+    // side:
+    //
+    //  - An UNSEEDED capacitor is uncharged, not absent. `restore()` used to
+    //    replace capVoltages wholesale with a snapshot that predated the
+    //    part, and the walker then answered with the open-circuit operating
+    //    point: `43-rc-timing` read 5.0000 V on a capacitor the engine's own
+    //    getCapVoltage held at 0, on the very bench whose lesson asks for the
+    //    reading "at t = 0".
+    //  - An IDEAL source wins. A decoupling capacitor across VCC/GND has a
+    //    zero-impedance source on both sides, so it charges in τ = RC = 0 —
+    //    exactly the rule _integrateCapacitors already applies at every later
+    //    step, and exactly what the MNA path answers on the same bench. The
+    //    old blind override pinned the VCC RAIL ITSELF to the cap's 0 V at
+    //    the first solve, while every net resolved FROM that rail kept 5 V.
+    //  - The free side is the one that moves. If `a` is the rail and `b` is
+    //    the floating plate, `b` is what the charge determines.
+    const railHeld = (netId) => {
+      if (!netId) return false;
+      const net = this.netMap.get(netId);
+      if (!net) return false;
+      return net.terminals.some((t) => {
+        const p = this.partMap.get(t.part);
+        return p && (p.kind === 'vcc' || p.kind === 'gnd');
+      });
+    };
     for (const part of this.parts) {
       if (part.kind !== 'capacitor') continue;
-      const capV = this.capVoltages.get(part.id);
-      if (capV === undefined) continue;
       const netA = this._netForTerminal(part.id, 'a');
       const netB = this._netForTerminal(part.id, 'b');
-      if (netA) {
-        const vB = netB ? (this.nodeVoltages.get(netB) ?? 0) : 0;
+      if (!netA && !netB) continue;
+      const capV = this.capVoltages.get(part.id) ?? 0;
+      const vA = netA ? (this.nodeVoltages.get(netA) ?? 0) : 0;
+      const vB = netB ? (this.nodeVoltages.get(netB) ?? 0) : 0;
+      const aPinned = railHeld(netA);
+      const bPinned = railHeld(netB);
+      if (aPinned && bPinned) {
+        // Instant charge: the network decides, and the cap follows it.
+        this.capVoltages.set(part.id, vA - vB);
+      } else if (aPinned && netB) {
+        this.nodeVoltages.set(netB, vA - capV);
+      } else if (netA) {
         this.nodeVoltages.set(netA, vB + capV);
       }
     }
@@ -3577,7 +3740,16 @@ export class BoardImpl {
    * @param {Part} pot
    */
   _solvePot(pot) {
-    const position = this.controls.get(pot.id) ?? 0.5;
+    // The authored `params.position` is the fallback, NOT a bare 0.5 — the
+    // same rule stampPotentiometer states: "params.position is the AUTHORED
+    // default — where the example's trimmer was left. The user's control
+    // always wins once touched; mid-travel remains the fallback." The walker
+    // ignored it, so a bench with an authored position and an untouched
+    // control had TWO answers depending only on whether _needsMNA routed it
+    // to the other solver: measured 2.5000 V here against MNA's 1.2500 V on
+    // the same 0.25-position pot with an unloaded wiper.
+    const authored = Number.isFinite(pot.params?.position) ? pot.params.position : 0.5;
+    const position = this.controls.get(pot.id) ?? authored;
     // Find the nets connected to terminals a and b
     const netA = this._netForTerminal(pot.id, 'a');
     const netB = this._netForTerminal(pot.id, 'b');
@@ -3928,4 +4100,34 @@ export class BoardImpl {
       }
     }
   }
+}
+
+/**
+ * The value a 'sample'-capture scope channel records at its sample instant.
+ *
+ * The channel's `_nextSampleNs` is the instant being written; `tNs`/`val` are
+ * the solve point that has just been reached, and `ch._prevTNs`/`ch._prevVal`
+ * the one before it. The sample instant lies in between, so the honest answer
+ * is the straight line between the two solves evaluated there — the same
+ * assumption the trapezoidal integrator already makes about the interval it
+ * just crossed.
+ *
+ * Falls back to the current value when there is no previous solve to work
+ * from (the first sample of a channel), which is the only case where a hold
+ * is all the information that exists.
+ *
+ * @param {{_nextSampleNs: bigint, _prevTNs: bigint|null, _prevVal: number|null}} ch
+ * @param {bigint} tNs
+ * @param {number} val
+ * @returns {number}
+ */
+function sampleAtInstant(ch, tNs, val) {
+  const tPrev = ch._prevTNs;
+  const vPrev = ch._prevVal;
+  if (tPrev === null || vPrev === null || tNs <= tPrev) return val;
+  const ts = ch._nextSampleNs;
+  if (ts <= tPrev) return vPrev;
+  if (ts >= tNs) return val;
+  const f = Number(ts - tPrev) / Number(tNs - tPrev);
+  return vPrev + (val - vPrev) * f;
 }
