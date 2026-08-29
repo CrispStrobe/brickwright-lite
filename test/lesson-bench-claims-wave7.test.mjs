@@ -105,7 +105,7 @@ test('OPEN DEFECT: the active-high level the lesson quotes depends on the port m
 
 // ── machines-gates-registers / 20-shift-register-binary ────────────────────
 
-test('machines-gates-registers: all four signals move, and the prefix bitop form still does not', () => {
+test('machines-gates-registers: all four signals move, and the bitop dialect is one form now', () => {
     // Was an OPEN DEFECT: over 3 s of program time the example produced 208
     // clock edges, 26 latch edges and ZERO data edges, so every byte shifted in
     // was 0x00 and all eight LEDs stayed dark — while its lesson asks the
@@ -131,40 +131,67 @@ test('machines-gates-registers: all four signals move, and the prefix bitop form
     assert.ok(byPin.data > 10,
         `the data line must move, or the register is fed a constant zero again: ${byPin.data} edges`);
 
-    // The two forms have COMPLEMENTARY holes, which is sharper than either
-    // "it is the comparison" (Wave 7's reading) or "it is precedence". Measured:
+    // D26's shape changed on 2026-08-29, and the change is what the two halves
+    // of this assertion block record. Wave 7 read it as "a bitops reporter
+    // compared against a number"; the first re-measurement read it as two forms
+    // with COMPLEMENTARY holes (prefix worked bare and failed compared, infix
+    // the other way round). Both readings were downstream of a defect neither
+    // saw: the referee's own truth test was INVERTED — `num("true")` is 0 — so a
+    // bare value in condition position was answered four different ways by four
+    // backends and the disagreement was invisible. sb3-creator `32b1e1a`
+    // promoted one `boolishTruthTest` to all of them and REFUSED the prefix
+    // spelling by name rather than evaluating it to something.
     //
-    //   bitand val 128 > 0      prefix, compared   NO EDGE
-    //   (bitand val 128) > 0    prefix, compared   NO EDGE   <- parentheses do not help
-    //   bitand val 128          prefix, bare       fires
+    // Measured here against the vendored compiler and referee:
+    //
+    //   bitand val 128 > 0      prefix, compared   refused, with the naming warning
+    //   (bitand val 128) > 0    prefix, compared   refused, with the naming warning
+    //   bitand val 128          prefix, bare       refused, with the naming warning
     //   val bitand 128 > 0      infix,  compared   fires
     //   (val bitand 128) > 0    infix,  compared   fires     <- the shipped form
-    //   (val bitand 128)        infix,  bare       NO EDGE
+    //   (val bitand 128)        infix,  bare       fires     <- was the second hole
+    //   not (val bitand 128)    infix, negated     correctly does NOT fire (128 is truthy)
+    //   not (val bitand 1)      infix, negated     fires (0 is falsy)
     //
-    // So prefix works bare and fails compared; infix works compared and fails
-    // bare. Whether the fault is the emitted comparison or the referee's
-    // evaluation is STILL not isolated — the real device runs generated C —
-    // and that is why this is recorded rather than claimed.
+    // There is one dialect now, and the prefix spelling is a diagnosed typo
+    // rather than a silent zero. What is still open lives upstream and is a
+    // different shape: `not <cond>` in VALUE position is a phantom variable, and
+    // `cToPseudocode` emits that shape — pinned as an OPEN DEFECT test in
+    // sb3-creator, because it needs a dialect decision and not a patch.
     const probe = cond => {
         const c = new SB3Creator();
         c.parse(['DEVICE STC12C5A60S2', 'CLOCK 11059200', 'PIN data = P1.0 OUTPUT', '',
             'WHEN flag clicked:', '  set val to 128', `  IF ${cond} THEN:`,
             '    turn on data', '  ELSE:', '    turn off data', '  wait 0.2 seconds'].join('\n'));
-        return interpretTrace(c.project,
-            {horizonMs: 400, stimulus: [], adc: {bits: 10, vref: 5}, maxSteps: 400_000}).events;
+        return {
+            events: interpretTrace(c.project,
+                {horizonMs: 400, stimulus: [], adc: {bits: 10, vref: 5}, maxSteps: 400_000}).events,
+            warnings: c.warnings || [],
+        };
     };
-    const fires = cond => probe(cond).length > 0;
-    assert.equal(fires('bitand val 128 > 0'), false,
-        'the prefix form now composes with a comparison — the compiler defect is fixed, ' +
-        'update docs/LESSON-REVIEW-WAVE-7.md and docs/WAVE-OPEN-DEFECTS.md D26');
-    assert.equal(fires('(bitand val 128) > 0'), false,
-        'parentheses now fix the prefix form — it was a precedence defect after all; re-measure');
-    assert.equal(fires('bitand val 128'), true, 'the bare prefix bit test must still work');
+    const fires = cond => probe(cond).events.length > 0;
+    // The prefix spelling is refused, and the refusal SAYS what to write instead.
+    for (const cond of ['bitand val 128 > 0', '(bitand val 128) > 0', 'bitand val 128']) {
+        const r = probe(cond);
+        assert.equal(r.events.length, 0,
+            `the prefix form ${cond} now evaluates — the dialect gained a second spelling, ` +
+            'update docs/LESSON-REVIEW-WAVE-7.md and docs/WAVE-OPEN-DEFECTS.md D26');
+        const text = r.warnings.map(w => (typeof w === 'string' ? w : w.message || '')).join(' ');
+        assert.match(text, /reads as a VARIABLE NAME/,
+            `${cond} is silently false again instead of diagnosed — that silence WAS the defect`);
+        assert.match(text, /infix in this dialect/, `${cond}: the warning must name the fix`);
+    }
+    // The infix form works in all three positions now — bare included, which was
+    // the second of the two holes.
+    assert.equal(fires('val bitand 128 > 0'), true, 'infix, compared');
     assert.equal(fires('(val bitand 128) > 0'), true,
-        'the INFIX form the example now ships must work, or the example regresses');
-    assert.equal(fires('(val bitand 128)'), false,
-        'the bare infix form now works — the two forms no longer have complementary holes, ' +
-        'which changes the shape of D26');
+        'the INFIX form the example ships must work, or the example regresses');
+    assert.equal(fires('(val bitand 128)'), true,
+        'infix bare — this was the second hole and it is closed');
+    // And negation in CONDITION position is right in both directions, which is
+    // what distinguishes the remaining open half (value position) from this one.
+    assert.equal(fires('not (val bitand 128)'), false, '128 bitand 128 is truthy, so `not` is false');
+    assert.equal(fires('not (val bitand 1)'), true, '128 bitand 1 is 0, so `not` is true');
 });
 
 // ── machines-clocks / ttl-clock-module ─────────────────────────────────────
@@ -211,33 +238,63 @@ test('machines-clocks: the oscillator itself is measurable and tunable', async (
     assert.ok(mid.period < 81.92 && fast.period < 81.92);
 });
 
-test('OPEN DEFECT: the clock module has no downstream state and its step button drives nothing', async () => {
-    const {board} = await load('ttl-clock-module');
-    // Nothing on this bench stores state: no flip-flop, no counter, no register.
+// The OPEN DEFECT sentinel that stood here — "the clock module has no
+// downstream state and its step button drives nothing" — fired on 2026-08-29 at
+// the sb3-creator `86a5bab` vendor bump and was retired per its own
+// instruction. sb3-creator `56bd1ce` gave the bench a D flip-flop wired as a
+// divide-by-two and put the step button on its clock. Both halves of
+// machines-clocks are restored (v4), and EXPECTED.md's claim is now true rather
+// than aspirational.
+test('machines-clocks: the step button clocks state, and the state holds after the press', async () => {
+    const {board, circuit} = await load('ttl-clock-module');
     const kinds = new Set(board.parts.map(p => p.kind));
     assert.deepEqual([...kinds].sort(), [
-        '555', 'button', 'capacitor', 'gnd', 'led', 'potentiometer', 'resistor', 'vcc'
-    ], 'the clock module changed parts — re-measure Wave 7; if it grew a flip-flop, ' +
-       'restore the downstream-transition half of machines-clocks');
+        '555', 'button', 'capacitor', 'dff', 'gnd', 'led', 'potentiometer', 'resistor', 'vcc'
+    ], 'the clock module changed parts — re-measure Wave 7');
 
-    // The "manual step button" sits on a net with a pull resistor and nothing
-    // else: it cannot reach the timer or the LED. This is topology, not timing.
-    const btnNet = board.nets.find(n =>
-        n.terminals.some(t => t.part === 'btn1' && t.terminal === 'b'));
-    assert.deepEqual(btnNet.terminals.map(t => `${t.part}.${t.terminal}`).sort(),
-        ['btn1.b', 'r3.a'],
-        'the step button now reaches something — restore the single-step half of ' +
-        'machines-clocks and delete this test');
-    // And reset is strapped to the rail, so the button cannot halt the timer either.
-    const resetNet = board.nets.find(n =>
-        n.terminals.some(t => t.part === 'u1' && t.terminal === 'reset'));
-    assert.ok(resetNet.terminals.some(t => t.part === 'vcc1'),
+    // Topology first: the button reaches the flip-flop's clock, and the
+    // flip-flop is wired as a divide-by-two (D on its own Q-bar).
+    const net = (part, terminal) => board.nets.find(n =>
+        n.terminals.some(t => t.part === part && t.terminal === terminal));
+    assert.deepEqual(net('btn1', 'b').terminals.map(t => `${t.part}.${t.terminal}`).sort(),
+        ['btn1.b', 'ff1.clk', 'r3.a'],
+        'the step button no longer reaches the flip-flop clock — re-measure Wave 7');
+    assert.deepEqual(net('ff1', 'd').terminals.map(t => `${t.part}.${t.terminal}`).sort(),
+        ['ff1.d', 'ff1.q_bar'], 'D must be tied to Q-bar, or it is not a divide-by-two');
+    assert.ok(net('ff1', 'q').terminals.some(t => t.part === 'r4'),
+        'Q must reach the second LED, or the transition is not observable');
+    // The oscillator itself is still un-haltable, and the lesson says so.
+    assert.ok(net('u1', 'reset').terminals.some(t => t.part === 'vcc1'),
         'u1.reset is no longer strapped to VCC — re-measure Wave 7');
-    // EXPECTED.md still claims otherwise.
-    assert.match(readFileSync(path.join(EXAMPLES, 'ttl-clock-module/EXPECTED.md'), 'utf8'),
-        /manual step button injects a single\s+pulse/,
-        'ttl-clock-module/EXPECTED.md no longer claims the step button works — the example ' +
-        'was repaired or the claim withdrawn; re-measure Wave 7');
+
+    // Behaviour: one press is one edge is one state change, and the state HOLDS
+    // after the button is released. That holding is what makes it storage.
+    const MS_ = 1_000_000n;
+    let t = 0n;
+    const q = () => board.nodeVoltage(net('ff1', 'q').id);
+    board.advanceTo(t += 5n * MS_);
+    near(q(), 0, 5e-4, 'Q at rest');
+    const seen = [];
+    for (let i = 0; i < 4; i++) {
+        circuit.setControl('btn1', 1);
+        board.advanceTo(t += 5n * MS_);
+        const pressed = q();
+        circuit.setControl('btn1', 0);
+        board.advanceTo(t += 5n * MS_);
+        assert.ok(Math.abs(q() - pressed) < 5e-4,
+            `press ${i + 1}: Q moved when the button was RELEASED — it is following, not storing`);
+        seen.push(Number(q().toFixed(4)));
+    }
+    assert.deepEqual(seen, [4.4643, 0, 4.4643, 0],
+        'four presses must toggle Q twice — a divide-by-two is also a frequency divider');
+
+    // EXPECTED.md's claim is now the measured one.
+    const expected = readFileSync(path.join(EXAMPLES, 'ttl-clock-module/EXPECTED.md'), 'utf8');
+    assert.match(expected, /clocks a D flip-flop wired as a divide-by-two/,
+        'ttl-clock-module/EXPECTED.md no longer describes the repaired bench');
+    assert.match(expected, /4\.4643/, 'and it must carry the voltage this test measures');
+    assert.ok(!/manual step button injects a single\s+pulse/.test(expected),
+        'the old aspirational claim is back in EXPECTED.md');
 });
 
 // ── The 6502 / Z80 benches ─────────────────────────────────────────────────
@@ -502,7 +559,7 @@ test('the Wave 7 revisions are present, EN and DE, at the content version this r
     assert.deepEqual(Object.fromEntries(WAVE.lessons.map(l => [l.id, l.version])), {
         'machines-logic-levels': 3,
         'machines-gates-registers': 3,
-        'machines-clocks': 3,
+        'machines-clocks': 4,
         'machines-buses': 2,
         'machines-memory-maps': 1,
         'machines-address-decode': 1,
@@ -519,7 +576,11 @@ test('the Wave 7 revisions are present, EN and DE, at the content version this r
     };
     says('machines-logic-levels', 'measure', 'hint', /push-pull|quasi/i, /Push-Pull|quasi/i);
     says('machines-gates-registers', 'trace', 'action', /correlate data, clock, latch/i, /ordne Daten, Takt, Latch/i);
-    says('machines-clocks', 'measure', 'action', /no downstream|nothing downstream/i, /nichts.*nachgelagert|kein.*nachgelagert/i);
+    // v4 (D27 closed): the bench grew a divide-by-two, so both halves the
+    // checkpoint was worded around — single-step and downstream transition — are
+    // demands again instead of disclosures.
+    says('machines-clocks', 'measure', 'action', /step button/i, /Schritt-Taster/i);
+    says('machines-clocks', 'measure', 'hint', /divide-by-two|4\.4643/, /Zweiteiler|4,4643/);
     says('machines-buses', 'trace', 'action', /instruction|per-cycle|cycle-level/i, /Befehl|Zyklus/i);
     says('machines-6502-execution', 'step', 'action', /load a program|preset/i, /Programm laden|Preset/i);
     says('machines-source-asm', 'trace', 'hint', /preset|hosted/i, /Preset|gehostet/i);

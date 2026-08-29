@@ -11,7 +11,6 @@ import { cHostRuntime, cShimName, C_HOST_INCLUDES } from './sb3-creator-chostrun
 // The LED cube's shift directions. Shared with the C reader so the two cannot
 // drift — they already did once, and the round trip lost the block.
 import { CUBE_DIRECTIONS, cubeDirectionIndex } from './cubeDirections.js';
-import {getVectorArt} from './sb3-creator-vector-art.js';
 
 // The emitted no-import JSON serializer (the sim firmware ships without
 // the json module — measured 2026-08-19). Shared by the marker debugger's
@@ -163,6 +162,7 @@ class SB3Creator {
         // so it survives compile → From-blocks (decompile) round-trips.
         this._pendingComment = '';
         this._commentSeq = 0;
+        this._lineIndex = 0;
     }
 
     // Use Scratch's character set for IDs
@@ -196,6 +196,87 @@ class SB3Creator {
     // Push a warning tagged with its 1-based source line number.
     warn(lineIndex, message) {
         this.warnings.push(`Line ${lineIndex + 1}: ${message}`);
+    }
+
+    /**
+     * Is this `operator_equals` really a BARE VALUE used as a condition?
+     *
+     * `IF <value> THEN:` has no Scratch shape of its own — a round reporter
+     * cannot be dropped into a hexagonal slot — so `parseCondition`'s last
+     * resort builds `<value> = "true"`. That is the standard Scratch idiom and
+     * it round-trips, but it is not an equality: it is a request for the
+     * value's TRUTH, and every backend has to read it that way or the same
+     * program means different things in different places.
+     *
+     * It did. Measured 2026-08-29 on `IF (val bitand 128) THEN:` with val=128,
+     * i.e. plainly true:
+     *
+     *   device C   `if (((val & 128)))`             -> true   (this rule)
+     *   host C     `bw_cmp(x, "true") == 0`         -> false
+     *   JavaScript `_eq(x, "true")`                 -> false  (128 != "true")
+     *   Python     `_eq(x, "true")`                 -> false
+     *   referee    `num(x) === num("true")`         -> TRUE WHEN x IS ZERO,
+     *                                                  because num("true") is 0
+     *
+     * Three different answers and one of them exactly inverted — which is why
+     * the D26 row read "the INFIX form does not work bare": it was measured
+     * through the referee. The rule the device C emitter already had is the
+     * right one, so it lives here now and every backend asks for it.
+     *
+     * @returns {{key: 'OPERAND1'|'OPERAND2', negate: boolean}|null}
+     */
+    static boolishTruthTest(b) {
+        if (!b || b.opcode !== 'operator_equals' || !b.inputs) return null;
+        const lit = (k) => {
+            const inner = Array.isArray(b.inputs[k]) ? b.inputs[k][1] : null;
+            return Array.isArray(inner) && (inner[0] === 10 || inner[0] === 4) ? String(inner[1]) : null;
+        };
+        const l = lit('OPERAND1'), r = lit('OPERAND2');
+        // Right-hand literal wins, which is the order the device C emitter has
+        // used since this rule was written; the others now follow it exactly
+        // rather than each inventing one.
+        if (/^true$/i.test(r || '')) return { key: 'OPERAND1', negate: false };
+        if (/^false$/i.test(r || '')) return { key: 'OPERAND1', negate: true };
+        if (/^true$/i.test(l || '')) return { key: 'OPERAND2', negate: false };
+        if (/^false$/i.test(l || '')) return { key: 'OPERAND2', negate: true };
+        return null;
+    }
+
+    /**
+     * Scratch's own cast-to-boolean, for the backends that have strings.
+     * A number is true when it is not 0; a string is true unless it is empty,
+     * "0" or "false". The C targets do not need this — their values are `long`,
+     * so `(x)` already says it.
+     */
+    static get JS_TRUTHY_HELPER() {
+        return 'function _truthy(v) { if (typeof v === \'boolean\') return v; '
+            + 'if (v === undefined || v === null) return false; '
+            + 'const s = String(v); if (s.trim() === \'\') return false; '
+            + 'const n = Number(s); if (!Number.isNaN(n)) return n !== 0; '
+            + 'return s.toLowerCase() !== \'false\'; }';
+    }
+
+    /**
+     * A multi-word identifier one of whose words is a bit operator — i.e. the
+     * PREFIX spelling of an infix operator, swallowed as a variable name.
+     */
+    static get PREFIX_BITOP() {
+        return /(^|\s)(bitand|bitor|bitxor|bitnot|shiftleft|shiftright)(\s|$)/i;
+    }
+
+    /** The same rule in Python, as source lines. */
+    static pyTruthyHelper() {
+        return [
+            'def _truthy(v):  # Scratch-style cast to boolean',
+            '    if isinstance(v, bool): return v',
+            '    if v is None: return False',
+            '    s = str(v)',
+            '    if s.strip() == "": return False',
+            '    try:',
+            '        return float(s) != 0',
+            '    except (ValueError, TypeError):',
+            '        return s.strip().lower() != "false"',
+        ];
     }
 
     // Strip a trailing `// comment` that is outside any double-quoted string.
@@ -1206,11 +1287,37 @@ class SB3Creator {
                 const list = this.getOrCreateList(s, context.target);
                 return [3, [13, list.name, list.id], [10, ""]];
             }
+            // A NEW multi-word name containing a bit operator is not a name. It
+            // is the PREFIX spelling of an operator this dialect writes INFIX,
+            // and inventing a variable from it is silent: `20-shift-register-
+            // binary` shipped `IF bitand val 128 > 0` and counted to zero for
+            // 64 seconds with eight dark LEDs, zero warnings and valid C
+            // (`if ((bitand_val_128 > 0))`). Refusing to be quiet is the fix —
+            // accepting the prefix form would give the dialect two spellings
+            // for one operator while the decompiler emits only one.
+            if (SB3Creator.PREFIX_BITOP.test(s) && !this.variableExists(s, context.target)) {
+                this.warn(this._lineIndex,
+                    `"${s}" reads as a VARIABLE NAME, and nothing ever writes it. `
+                    + 'The bit operators are infix in this dialect — write '
+                    + `\`${s.trim().split(/\s+/).slice(1, 2)} ${s.trim().split(/\s+/)[0]} `
+                    + `${s.trim().split(/\s+/).slice(2).join(' ')}\` (\`a bitand b\`), not \`bitand a b\`.`);
+            }
             const variable = this.getOrCreateVariable(s, context.target);
             return [3, [12, variable.name, variable.id], [10, ""]];
         }
 
-        // Fallback: string literal
+        // Fallback: string literal — and say so when it plainly is not one.
+        // A comparison has no VALUE form in this dialect (`parseCondition` owns
+        // `<`, `>` and `=`), so `set flag to (val > 5)` lands here and is
+        // emitted as the constant string "val > 5" — `flag = 0 /* val > 5 */;`
+        // in C. Measured 2026-08-29, no warning anywhere.
+        if (!/^".*"$/.test(s) && this.splitBinary(s, ['<=', '>=', '<', '>', '='])) {
+            this.warn(this._lineIndex,
+                `"${s}" is a COMPARISON used where a value is expected, and it is emitted as `
+                + 'the literal text rather than evaluated. Comparisons belong in a condition '
+                + '(`IF …`, `wait until …`); to keep a truth value in a variable, branch on it '
+                + 'and assign 1 or 0.');
+        }
         return [1, [10, s]];
     }
 
@@ -2194,7 +2301,7 @@ class SB3Creator {
         // A numbered pin (D13, A0) for the boards that have them. Kept as its
         // own branch: an Arduino pin has no port and no bit, so every check
         // below it is about a coordinate system it is not in.
-        if ((m = trimmed.match(/^PIN\s+([A-Za-z_]\w*)\s*=\s*([DA]\d+|GP\d+|P[A-D]\d+|P\d+|BUTTON_[AB]|SDA|SCL|(?:OUT|IN)\d|MK\d+)\s+(OUTPUT|INPUT|ANALOG|PWM|TONE)(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
+        if ((m = trimmed.match(/^PIN\s+([A-Za-z_]\w*)\s*=\s*([DA]\d+|GP\d+|P[A-D]\d|P\d+|BUTTON_[AB]|(?:OUT|IN)\d|MK\d+)\s+(OUTPUT|INPUT|ANALOG|PWM|TONE)(?:\s+ACTIVE\s+(LOW|HIGH))?$/i))) {
             const [, name, where, direction, active] = m;
             const cfg = this.stcConfig();
             const part = SB3Creator.STC_PARTS[cfg.device];
@@ -2212,18 +2319,6 @@ class SB3Creator {
                 'arduino-nano': [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A7'],
                 atmega328p: [/^(D\d+|A\d+)$/i, 'D0-D13 or A0-A5'],
                 microbit: [/^(P\d+|BUTTON_[AB])$/i, 'P0-P20, BUTTON_A or BUTTON_B'],
-                calliopemini: [/^(P\d+|BUTTON_[AB])$/i, 'P0-P20, BUTTON_A or BUTTON_B'],
-                // ARCADE is Brickwright's software console. D0-D31 are
-                // deliberately virtual GPIO: they keep pin-based Scratch
-                // examples runnable without pretending the console has a
-                // physical header. The concrete PyBadge uses the labels on
-                // its Feather/JST headers; LC has no exposed headers and is
-                // virtual for the same reason as ARCADE.
-                arcade: [/^D\d+$/i, 'virtual D0-D31'],
-                pybadge: [/^(?:D(?:2|3|5|6|9|10|11|12|13)|A[0-5]|SDA|SCL)$/i,
-                    'D2, D3, D5, D6, D9-D13, A0-A5, SDA or SCL'],
-                'pybadge-lc': [/^D\d+$/i, 'virtual D0-D31'],
-                samd51: [/^P[AB]\d+$/i, 'PA0-PA31 or PB0-PB31'],
                 pico: [/^GP\d+$/i, 'GP0-GP28'],
                 stm32f030: [/^P[AB]\d+$/i, 'PA0-PA7, PA9, PA10 or PB1'],
                 // PB7 is Timer 1's square-wave pin and the machine's timebase
@@ -2244,9 +2339,7 @@ class SB3Creator {
             // place and not the other.
             const LAST = { 'arduino-uno': { D: 13, A: 5 }, 'arduino-nano': { D: 13, A: 7 },
                 'atmega168p': { D: 13, A: 5 }, 'arduino-mega': { D: 53, A: 15 },
-                atmega328p: { D: 13, A: 5 }, microbit: { P: 20 }, calliopemini: { P: 20 },
-                arcade: { D: 31 }, pybadge: { D: 13, A: 5 }, 'pybadge-lc': { D: 31 },
-                samd51: { PA: 31, PB: 31 }, pico: { GP: 28 },
+                atmega328p: { D: 13, A: 5 }, microbit: { P: 20 }, pico: { GP: 28 },
                 eater6502: { PA: 7, PB: 7 } };  // PB7: plain I/O while ACR7=0, same as the SPOKEN gate
             const edge = LAST[cfg.device] || {};
             const num = where.match(/^([A-Z]+)(\d+)$/i);
@@ -2602,7 +2695,6 @@ class SB3Creator {
             // Validate each pin token against the device's vocabulary
             const SPOKEN = {
                 microbit: [/^P\d+$/i, 'P0-P20'],
-                calliopemini: [/^P\d+$/i, 'P0-P20'],
                 pico: [/^GP\d+$/i, 'GP0-GP28']
             };
             const spoken = SPOKEN[cfg.device];
@@ -4483,18 +4575,6 @@ class SB3Creator {
         return { assetId, name, md5ext: `${assetId}.svg`, dataFormat: 'svg', rotationCenterX: 240, rotationCenterY: 180 };
     }
 
-    // Bake an authored SVG from the built-in vector-art registry into the SB3.
-    // The resulting project remains a completely ordinary, offline Scratch file.
-    buildArtCostume(artName, costumeName) {
-        const svg = getVectorArt(artName);
-        if (!svg) return null;
-        const {width, height} = this.svgDimensions(svg);
-        const assetId = this.generateAssetId();
-        this.assets.set(assetId, {type: 'svg', data: svg, filename: `${assetId}.svg`, metadata: {width, height}});
-        return {assetId, name: costumeName, md5ext: `${assetId}.svg`, dataFormat: 'svg',
-            rotationCenterX: width / 2, rotationCenterY: height / 2};
-    }
-
     // Build a plain geometric costume at true size. Kinds: rect/square/circle/ellipse/
     // triangle, or `polygon` with an arbitrary list of x,y points (custom SVG art).
     buildShapeCostume(color, kind, dims) {
@@ -4534,20 +4614,8 @@ class SB3Creator {
         if (target.isStage) { this.warn(lineIndex, 'SHAPE has no effect on the Stage (use BACKDROP)'); return; }
         const tokens = spec.split(/\s+/).filter(Boolean);
         const kind = (tokens[0] || '').toLowerCase();
-        if (kind === 'art') {
-            const costume = this.buildArtCostume(tokens[1], 'costume1');
-            if (!costume) {
-                this.warn(lineIndex, `Unknown vector art "${tokens[1] || ''}"`);
-                return;
-            }
-            const old = target.costumes[0];
-            if (old && old.assetId) this.assets.delete(old.assetId);
-            target.costumes[0] = costume;
-            target.costumes[0]._shapeSpec = spec.trim();
-            return;
-        }
         if (!['rect', 'square', 'circle', 'ellipse', 'triangle', 'polygon'].includes(kind)) {
-            this.warn(lineIndex, `Unknown SHAPE "${tokens[0]}" (use art/rect/square/circle/ellipse/triangle/polygon)`);
+            this.warn(lineIndex, `Unknown SHAPE "${tokens[0]}" (use rect/square/circle/ellipse/triangle/polygon)`);
             return;
         }
         const hex = tokens.find((t) => /^#[0-9a-fA-F]{6}$/.test(t));
@@ -4569,16 +4637,6 @@ class SB3Creator {
         if (target.isStage) {
             const tks = this.tokenizeCostumeSpec(spec);
             const name = this.unquote(tks[0] || 'backdrop');
-            if ((tks[1] || '').toLowerCase() === 'art') {
-                const bd = this.buildArtCostume(tks[2], name);
-                if (!bd) {
-                    this.warnings.push(`Unknown vector art "${tks[2] || ''}"`);
-                    return;
-                }
-                bd._spec = spec.trim();
-                target.costumes.push(bd);
-                return;
-            }
             const hex = tks.find((t) => /^#[0-9a-fA-F]{6}$/.test(t));
             const palette = ['#576065', '#4a6fa5', '#8a5a83', '#3d7068', '#a5794a'];
             const color = hex || palette[(target.costumes.length - 1) % palette.length];
@@ -4591,13 +4649,7 @@ class SB3Creator {
         const name = this.unquote(tokens[0] || `costume${target.costumes.length + 1}`);
         const kind = (tokens[1] || '').toLowerCase();
         let costume;
-        if (kind === 'art') {
-            costume = this.buildArtCostume(tokens[2], name);
-            if (!costume) {
-                this.warnings.push(`Unknown vector art "${tokens[2] || ''}"`);
-                return;
-            }
-        } else if (kind === 'tile' || kind === 'label') {
+        if (kind === 'tile' || kind === 'label') {
             const text = this.unquote(tokens[2] || '');
             const colors = tokens.slice(3).filter((t) => /^#[0-9a-fA-F]{6}$/.test(t));
             const bg = kind === 'tile' ? (colors[0] || '#cccccc') : 'none';
@@ -4753,6 +4805,10 @@ class SB3Creator {
                 }
 
                 const trimmed = line.trim();
+                // The line a statement-level warning is attributed to. Set here rather
+                // than threaded through parseCommand/parseValue, which take no index
+                // and are reached from a dozen call sites.
+                this._lineIndex = i;
 
                 if (trimmed.endsWith(':')) {
                     let newBlockData;
@@ -4864,6 +4920,7 @@ class SB3Creator {
         while (i < lines.length) {
             const line = lines[i];
             const trimmed = line.trim();
+            this._lineIndex = i;
 
             if (!trimmed) { i++; continue; }
             // A `# comment` before a hat (or sprite) buffers onto the next block created.
@@ -6145,7 +6202,17 @@ class SB3Creator {
         switch (b.opcode) {
             case 'operator_gt': return `(${v('OPERAND1')} > ${v('OPERAND2')})`;
             case 'operator_lt': return `(${v('OPERAND1')} < ${v('OPERAND2')})`;
-            case 'operator_equals': this._pyUses.eq = true; return `_eq(${v('OPERAND1')}, ${v('OPERAND2')})`;
+            case 'operator_equals': {
+                // A bare value used as a condition is a TRUTH test, not an
+                // equality against the string "true" — see boolishTruthTest.
+                const t = SB3Creator.boolishTruthTest(b);
+                if (t) {
+                    this._pyUses.truthy = true;
+                    return t.negate ? `(not _truthy(${v(t.key)}))` : `_truthy(${v(t.key)})`;
+                }
+                this._pyUses.eq = true;
+                return `_eq(${v('OPERAND1')}, ${v('OPERAND2')})`;
+            }
             case 'operator_and': return `(${c('OPERAND1')} and ${c('OPERAND2')})`;
             case 'operator_or': return `(${c('OPERAND1')} or ${c('OPERAND2')})`;
             case 'operator_not': return `(not ${c('OPERAND')})`;
@@ -6427,7 +6494,7 @@ class SB3Creator {
         this._nativePinExpr = null;   // MicroPython-only; must not leak in here
         this._nativeScratchExpr = null;
         this._pyNames = new Map();
-        this._pyUses = { random: false, math: false, time: false, eq: false, answer: false, arrays: false, json: false, sumdigits: false };
+        this._pyUses = { random: false, math: false, time: false, eq: false, truthy: false, answer: false, arrays: false, json: false, sumdigits: false, multiple: false };
         this._runtimesUsed = new Set();
         this._async = !!(opts && opts.async);
         this._events = !!(opts && opts.events);
@@ -6532,6 +6599,7 @@ class SB3Creator {
             out.push('        return str(a).lower() == str(b).lower()');
             out.push('');
         }
+        if (this._pyUses.truthy) { out.push(...SB3Creator.pyTruthyHelper()); out.push(''); }
         // Pluggable driver shim(s) for any runtime/hardware extensions used.
         for (const extId of this._runtimesUsed) { out.push(...this.runtimeShim(extId, 'py', opts.driver || 'shim')); out.push(''); }
         // module state
@@ -6666,7 +6734,17 @@ class SB3Creator {
         switch (b.opcode) {
             case 'operator_gt': return `(${v('OPERAND1')} > ${v('OPERAND2')})`;
             case 'operator_lt': return `(${v('OPERAND1')} < ${v('OPERAND2')})`;
-            case 'operator_equals': this._jsUses.eq = true; return `_eq(${v('OPERAND1')}, ${v('OPERAND2')})`;
+            case 'operator_equals': {
+                // A bare value used as a condition is a TRUTH test, not an
+                // equality against the string "true" — see boolishTruthTest.
+                const t = SB3Creator.boolishTruthTest(b);
+                if (t) {
+                    this._jsUses.truthy = true;
+                    return t.negate ? `(!_truthy(${v(t.key)}))` : `_truthy(${v(t.key)})`;
+                }
+                this._jsUses.eq = true;
+                return `_eq(${v('OPERAND1')}, ${v('OPERAND2')})`;
+            }
             case 'operator_and': return `(${c('OPERAND1')} && ${c('OPERAND2')})`;
             case 'operator_or': return `(${c('OPERAND1')} || ${c('OPERAND2')})`;
             case 'operator_not': return `(!${c('OPERAND')})`;
@@ -6765,7 +6843,7 @@ class SB3Creator {
         this._nativePinExpr = null;   // MicroPython-only; must not leak in here
         this._nativeScratchExpr = null;
         this._pyNames = new Map();
-        this._jsUses = { rand: false, eq: false, answer: false, fact: false, arrays: false, sumdigits: false, multiple: false };
+        this._jsUses = { rand: false, eq: false, truthy: false, answer: false, fact: false, arrays: false, sumdigits: false, multiple: false };
         this._runtimesUsed = new Set();
         this._async = !!(opts && opts.async);
         this._events = !!(opts && opts.events);
@@ -6844,10 +6922,11 @@ class SB3Creator {
         // block that means the same thing, and the way back cannot guess which.
         if (this._jsUses.multiple) out.push('function _multiple(a, b) { return Number(b) !== 0 && Number(a) % Number(b) === 0; }');
         if (this._jsUses.eq) out.push('function _eq(a, b) { const x = Number(a), y = Number(b); if (!Number.isNaN(x) && !Number.isNaN(y)) return x === y; return String(a).toLowerCase() === String(b).toLowerCase(); }');
+        if (this._jsUses.truthy) out.push(SB3Creator.JS_TRUTHY_HELPER);
         if (this._jsUses.rand) out.push('function _rand(a, b) { a = Number(a); b = Number(b); return Math.floor(Math.random() * (b - a + 1)) + a; }');
         if (this._jsUses.fact) out.push('function _fact(n) { n = Number(n); let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }');
         if (this._jsUses.sumdigits) out.push("function _sumdigits(n) { return String(n).split('').filter(d => d >= '0' && d <= '9').reduce((s, d) => s + Number(d), 0); }");
-        if (this._jsUses.eq || this._jsUses.rand || this._jsUses.fact || this._jsUses.sumdigits) out.push('');
+        if (this._jsUses.eq || this._jsUses.truthy || this._jsUses.rand || this._jsUses.fact || this._jsUses.sumdigits) out.push('');
         out.push(...this.scratchShimJs());
         out.push('');
         if (this._jsUses.arrays) { out.push(...this.arraysShimJs()); out.push(''); }
@@ -7379,15 +7458,8 @@ class SB3Creator {
             case 'operator_lt': return `(${v('OPERAND1')} < ${v('OPERAND2')})`;
             case 'operator_equals': {
                 // `IF <boolean-ish> THEN:` parses to `x = true`; on a chip that is just `x`.
-                const lit = (k) => {
-                    const inner = Array.isArray(b.inputs[k]) ? b.inputs[k][1] : null;
-                    return Array.isArray(inner) && (inner[0] === 10 || inner[0] === 4) ? String(inner[1]) : null;
-                };
-                const l = lit('OPERAND1'), r = lit('OPERAND2');
-                if (/^true$/i.test(r || '')) return `(${v('OPERAND1')})`;
-                if (/^false$/i.test(r || '')) return `(!(${v('OPERAND1')}))`;
-                if (/^true$/i.test(l || '')) return `(${v('OPERAND2')})`;
-                if (/^false$/i.test(l || '')) return `(!(${v('OPERAND2')}))`;
+                const t = SB3Creator.boolishTruthTest(b);
+                if (t) return t.negate ? `(!(${v(t.key)}))` : `(${v(t.key)})`;
                 return `(${v('OPERAND1')} == ${v('OPERAND2')})`;
             }
             case 'planetemaths_equals': return `(${v('NUM1')} == ${v('NUM2')})`;
@@ -8102,7 +8174,13 @@ class SB3Creator {
         switch (b.opcode) {
             case 'operator_gt': return `(bw_cmp(${v('OPERAND1')}, ${v('OPERAND2')}) > 0)`;
             case 'operator_lt': return `(bw_cmp(${v('OPERAND1')}, ${v('OPERAND2')}) < 0)`;
-            case 'operator_equals': return `(bw_cmp(${v('OPERAND1')}, ${v('OPERAND2')}) == 0)`;
+            case 'operator_equals': {
+                // A bare value used as a condition is a TRUTH test, not an
+                // equality against the string "true" — see boolishTruthTest.
+                const t = SB3Creator.boolishTruthTest(b);
+                if (t) return t.negate ? `(!${truthy(v(t.key))})` : truthy(v(t.key));
+                return `(bw_cmp(${v('OPERAND1')}, ${v('OPERAND2')}) == 0)`;
+            }
             case 'operator_and': return `(${c('OPERAND1')} && ${c('OPERAND2')})`;
             case 'operator_or': return `(${c('OPERAND1')} || ${c('OPERAND2')})`;
             case 'operator_not': return `(!${c('OPERAND')})`;
@@ -8420,7 +8498,7 @@ class SB3Creator {
         // The shared pure-Python expression layer (pyVal/pyCond/varRef)
         // reads the same context generatePython sets up.
         this._pyNames = new Map();
-        this._pyUses = { random: false, math: false, time: false, eq: false, answer: false, arrays: false, json: false, sumdigits: false };
+        this._pyUses = { random: false, math: false, time: false, eq: false, truthy: false, answer: false, arrays: false, json: false, sumdigits: false, multiple: false };
         this._runtimesUsed = new Set();
         this._async = false;
         this._emitComments = false;
@@ -9374,6 +9452,7 @@ class SB3Creator {
                 '        return str(a).lower() == str(b).lower()',
                 '');
         }
+        if (this._pyUses.truthy) helpers.push(...SB3Creator.pyTruthyHelper(), '');
         let py = [...header, '', ...helpers, ...stateDecls, '', ...taskDefs, ...driver].join('\n') + '\n';
         let lineMap = null;
         if (trc) {
@@ -14365,41 +14444,6 @@ SB3Creator.RETARGET_POOLS = (() => {
             input: ['GP2', 'GP3', 'GP4', 'GP5', ...seq('GP%', 6, 15), ...seq('GP%', 18, 22), 'GP0', 'GP1'],
             // GP16/GP17 stay out: they are the servo pins (slice 0, 50 Hz).
             pwm: ['GP15', 'GP14', 'GP13', 'GP12'], ledActiveLow: false },
-        // micro:bit edge connector. P17/P18 are supplies; P19/P20 are kept
-        // for I2C. P3/P4/P6/P7/P9/P10 share the LED matrix and are offered
-        // only after the uncomplicated edge pins.
-        microbit: { digital: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
-            analog: ['P0', 'P1', 'P2', 'P3', 'P4', 'P10'],
-            input: ['P0', 'P1', 'P2', 'P5', 'P8', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
-            pwm: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16'], ledActiveLow: false },
-        // Calliope's MicroPython route intentionally uses the same P0-P20
-        // vocabulary. It still needs its own target entry: the device picker
-        // passes this exact id to retargetPseudocode.
-        calliopemini: { digital: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
-            analog: ['P0', 'P1', 'P2', 'P3', 'P4', 'P10'],
-            input: ['P0', 'P1', 'P2', 'P5', 'P8', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P3', 'P4', 'P6', 'P7', 'P9', 'P10'],
-            pwm: ['P0', 'P1', 'P2', 'P8', 'P12', 'P13', 'P14', 'P15', 'P16'], ledActiveLow: false },
-        // The abstract Arcade console has no header. Its D pins are virtual
-        // Scratch-runtime GPIO, useful when moving a pin-based lesson into
-        // the playable 160x120 console. Concrete wiring belongs to a board.
-        arcade: { digital: seq('D%', 0, 31), analog: [], input: seq('D%', 0, 31),
-            pwm: seq('D%', 0, 31), ledActiveLow: false, virtual: true },
-        // PyBadge's real Feather and JST breakouts. Serial and SPI pins are
-        // intentionally late so ordinary examples do not steal a bus.
-        pybadge: { digital: ['D13', 'D12', 'D11', 'D10', 'D9', 'D6', 'D5', 'D3', 'D2', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5'],
-            analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D2', 'D3'],
-            input: ['D2', 'D3', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'D5', 'D6', 'D9', 'D10', 'D11', 'D12', 'D13'],
-            pwm: ['D5', 'D6', 'D9', 'D10', 'D11', 'D12', 'D13', 'D2', 'D3', 'A0', 'A1', 'A2', 'A3', 'A4'], ledActiveLow: false },
-        // LC exposes no Feather/JST GPIO headers. Keep pin lessons runnable
-        // in its console simulation, but never synthesize fake circuit pads.
-        'pybadge-lc': { digital: seq('D%', 0, 31), analog: seq('A%', 0, 7), input: seq('D%', 0, 31),
-            pwm: seq('D%', 0, 31), ledActiveLow: false, virtual: true },
-        // Bare ATSAMD51J19 package coordinates. Avoid USB PA24/PA25 and SWD
-        // PA30/PA31; keep the conventional analog bank in PA02-PA07.
-        samd51: { digital: [...seq('PA%', 8, 23), ...seq('PB%', 0, 23), 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
-            analog: ['PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7', 'PB0', 'PB1', 'PB2', 'PB3'],
-            input: [...seq('PA%', 8, 23), ...seq('PB%', 0, 23), 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
-            pwm: ['PA8', 'PA9', 'PA10', 'PA11', 'PA12', 'PA13', 'PA14', 'PA15', 'PB8', 'PB9', 'PB10', 'PB11'], ledActiveLow: false },
         // VIA outputs are symmetric CMOS, so LEDs wire active-high. PB7 never
         // appears: Timer 1 owns it. No analog, no PWM — the VIA has neither.
         eater6502: { digital: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
@@ -14453,9 +14497,6 @@ SB3Creator.I2C_PINS = {
     'arduino-nano': { sda: 'A4', scl: 'A5' },
     atmega168p: { sda: 'A4', scl: 'A5' },
     'arduino-mega': { sda: 'D20', scl: 'D21' },
-    microbit: { sda: 'P20', scl: 'P19' },
-    calliopemini: { sda: 'P20', scl: 'P19' },
-    pybadge: { sda: 'SDA', scl: 'SCL' },
     pico: { sda: 'GP4', scl: 'GP5' },       // I2C0 default pair
     attiny85: { sda: 'PB0', scl: 'PB2' },   // USI
     attiny88: { sda: 'PC4', scl: 'PC5' },   // TWI
@@ -14538,6 +14579,8 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     const pools = SB3Creator.RETARGET_POOLS[device];
     if (!part || !pools) return { ok: false, reasons: [`unknown device: ${device}`], warnings: [] };
     const core = part.core === 'arduino' ? 'avr' : part.core === 'rp2040' ? 'arm' : part.core || '8051'; // stm32f0 rides 'rp2040' structurally
+    if (core === 'micropython') return { ok: false, reasons: [`${device} runs MicroPython — no C retarget`], warnings: [] };
+
     // Retargeting a program to its OWN device is the identity: the authored
     // pins ARE the assignment. Canonicalizing them into pool order broke the
     // pairing with the authored bench — sda=P2.1 became P1.0, every wire was
@@ -14558,7 +14601,6 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     }
     const reasons = [];
     const warnings = [...(c.warnings || [])];
-    if (pools.virtual) warnings.push(`${device} uses simulated GPIO; it has no exposed circuit header`);
     if ((stc.ports || []).length && core !== '8051') {
         reasons.push('whole-port declarations (PORT x = Pn) are an 8051 construct — no port registers here');
     }
@@ -14636,6 +14678,22 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
             if (!where) reasons.push(`more analog pins than ${device}'s convention offers (${pools.analog.length})`);
         } else if (pin.direction === 'input') {
             where = take(pools.input);
+            // An INPUT's polarity is the BUTTON's wiring, and unlike an LED it
+            // has no per-device convention to follow: every generated bench in
+            // this corpus wires a button the same way on every device — pull-up
+            // to the rail, button to ground, the `R_PU_<name>` resistor the
+            // shipped circuit.<device>.json files all carry. So the source's
+            // declaration must SURVIVE the retarget, or the retargeted program
+            // reads its own button inverted.
+            //
+            // It did not. Measured 2026-08-29: `05-counter` declares
+            // `PIN button = P3.2 INPUT ACTIVE LOW` and keeps it only on its own
+            // device; on the other TEN it came out as plain `INPUT`, so
+            // `wait until read button` was satisfied at rest and the counter ran
+            // free without anyone pressing anything. Invisible until the referee
+            // learned to apply input polarity at all (same day), because until
+            // then the referee read every input raw and could not disagree.
+            activeLow = !!pin.activeLow;
             if (!where) reasons.push(`more input pins than ${device}'s convention offers (${pools.input.length})`);
         } else if (pin.direction === 'output' && used.pwmPins.has(String(pin.name).toLowerCase())) {
             where = take(pools.pwm);
@@ -14729,9 +14787,8 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     // decompiled text derives them, so decompile with `where` only.
     stc.device = device;
     stc.clock = core === 'avr' ? 16000000 : core === 'arm' ? 125000000
-        : core === 'w65c02' ? 1000000 : core === 'micropython' ? 64000000
-            : core === 'samd51' ? 120000000
-                : device.startsWith('stc15') ? 11059200 : 11059200;
+        : core === 'w65c02' ? 1000000
+            : device.startsWith('stc15') ? 11059200 : 11059200;
     stc.pins = newPins;
     const out = c.decompile();
 
@@ -14783,16 +14840,6 @@ SB3Creator.STC_PARTS = {
     // end for these by definition, not merely not yet. Pins are P0-P20 and the
     // two buttons on a micro:bit.
     microbit: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
-    calliopemini: { core: 'micropython', header: null, portModes: false, aux1T: false, adc: true },
-    // MakeCode Arcade is a software target (160x120); PyBadge and PyBadge LC
-    // are concrete ATSAMD51J19 boards. They intentionally have no C emitter:
-    // selecting one must never silently produce firmware for another ARM MCU.
-    arcade: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: false, arcade: true },
-    pybadge: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
-        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 5, accelerometer: 'lis3dh' },
-    'pybadge-lc': { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true, arcade: true,
-        display: 'st7735', displayWidth: 160, displayHeight: 128, neopixels: 1, accelerometer: null },
-    samd51: { core: 'samd51', header: null, portModes: false, aux1T: false, adc: true },
     spike: { core: 'spikepython', header: null, portModes: false, aux1T: false, adc: false },
     // core: 'rp2040' -- GP0-GP28, and generateC() emits freestanding Cortex-M0
     // bare metal (SIO GPIO, the 1 MHz TIMER as an ISR-free timebase, UART0,

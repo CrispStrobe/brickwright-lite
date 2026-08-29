@@ -94,8 +94,8 @@ you open.**
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
 | machines-logic-levels | 06-active-low-high | 2→**3** | **defect, fixed** — its measured 4.93 V holds only in push-pull; in the 8051's default mode the same pin reads 2.12 V |
-| machines-gates-registers | 20-shift-register-binary | 1→2→**3** | defect, **example FIXED upstream 2026-08-24** (prefix bit test → infix); the compiler defect under it survives, in a different shape than reported |
-| machines-clocks | ttl-clock-module | 1→**2** | **defect ×2, fixed** — the step button is wired to nothing, and there is no downstream state to advance |
+| machines-gates-registers | 20-shift-register-binary | 1→2→**3** | defect, **example FIXED upstream 2026-08-24** (prefix bit test → infix); the defect under it was **isolated and mostly closed 2026-08-29** — see defect 2 — and it was not in the compiler |
+| machines-clocks | ttl-clock-module | 1→2→3→**4** | defect ×2, **BENCH FIXED 2026-08-29** — the step button was wired to nothing and there was no downstream state to advance; sb3-creator `56bd1ce` gave it a D flip-flop as a divide-by-two on the button's own edge, so both halves are demands again |
 | machines-buses | eater6502-bench | 1→**2** | **defect, fixed** — "single-step the clock" has no cycle-level step, and the scope is ten times too slow for the bus |
 | machines-memory-maps | eater6502-full-build | 1 | achievable |
 | machines-address-decode | eater6502-bench | 1 | achievable |
@@ -203,18 +203,51 @@ wrong. Whether the fault is the emitted comparison or the referee's evaluation
 is still not isolated — the real device runs generated C — so that stays
 recorded rather than claimed, and all six lines are now pinned by the gate.
 
+> **ISOLATED AND MOSTLY CLOSED 2026-08-29** (sb3-creator `32b1e1a`), and the
+> answer was neither of the two readings above. **The referee's own truth test
+> was inverted** — `num("true")` is 0 — so a bare value in condition position was
+> answered four different ways by four backends, and the disagreement was
+> invisible because the referee, the thing every measurement above went through,
+> was one of the four. Both "it is the comparison" and "they are complementary
+> holes" were descriptions of that shadow. One `boolishTruthTest` is now promoted
+> to all four backends, and the PREFIX spelling is **refused by name** instead of
+> evaluated to something: it is a variable reference to a variable nothing ever
+> writes, and saying so is more useful than silently reading zero. Re-measured
+> here against the vendored compiler and referee:
+>
+> ```
+>   bitand val 128 > 0      prefix, compared    refused, with the naming warning
+>   (bitand val 128) > 0    prefix, compared    refused, with the naming warning
+>   bitand val 128          prefix, bare        refused, with the naming warning
+>   val bitand 128 > 0      infix,  compared    fires
+>   (val bitand 128) > 0    infix,  compared    fires       <- the form shipped
+>   (val bitand 128)        infix,  bare        fires       <- was the second hole
+>   not (val bitand 128)    infix,  negated     correctly does NOT fire
+>   not (val bitand 1)      infix,  negated     fires
+> ```
+>
+> The warning text is the repair's other half: *"`bitand val 128` reads as a
+> VARIABLE NAME, and nothing ever writes it. The bit operators are infix in this
+> dialect — write `val bitand 128`."* 0 false positives over 280 programs.
+>
+> **What is still open is a different shape and lives upstream**: `not <cond>` in
+> VALUE position (rather than condition position, which measures correct in both
+> directions above) is a phantom variable, and `cToPseudocode` EMITS that shape —
+> so it needs a dialect decision rather than a patch. It is pinned as an OPEN
+> DEFECT test in sb3-creator.
+
 ### 3. machines-clocks — nothing downstream, and a step button that reaches nothing
 
 Two faults on `ttl-clock-module`.
 
-**(a) There is no downstream state.** The board is a 555, three resistors, a
+**(a) There was no downstream state.** The board was a 555, three resistors, a
 potentiometer, two capacitors, one LED, one button, a supply and a ground —
 measured, that is the complete part list. No flip-flop, no counter, no register.
 The `predict` step asks "which edge advances downstream state" and the `measure`
 step asks the learner to "verify exactly one downstream transition". There is
 nothing downstream of the oscillator but an LED.
 
-**(b) The step button is electrically isolated.** This is topology, not timing:
+**(b) The step button was electrically isolated.** This was topology, not timing:
 the net carrying `btn1.b` carries exactly one other terminal, `r3.a`, and `r3`'s
 other end is ground. The button and its pull resistor form a divider whose
 midpoint connects to nothing. The timer's `reset` pin, meanwhile, sits on the
@@ -222,10 +255,32 @@ supply rail, so the button cannot halt the oscillator either.
 `ttl-clock-module/EXPECTED.md` nevertheless states "The manual step button
 injects a single pulse when pressed."
 
-**Fixed**, version 2: the checkpoint now measures period, high and low time at
-three potentiometer settings — which works, and works well — and asks the
+**Worked around**, version 2: the checkpoint measured period, high and low time
+at three potentiometer settings — which works, and works well — and asked the
 learner to say what a single-step control would have to reach, given that this
-board's button reaches nothing. The wiring is an example defect and is open.
+board's button reached nothing.
+
+> **BOTH FIXED 2026-08-29** (sb3-creator `56bd1ce`), and version 4 restores both
+> halves as demands. The bench grew a **D flip-flop wired as a divide-by-two** —
+> D tied to its own Q̄ — with the step button on its clock. Re-measured here
+> against the vendored engine:
+>
+> ```
+> btn1.b net    btn1.b, ff1.clk, r3.a      (was: btn1.b, r3.a, and nothing else)
+> ff1.d net     ff1.d, ff1.q_bar           (divide-by-two)
+> ff1.q  net    ff1.q, r4.a                (the second LED)
+> Q at rest     0.0000 V
+> press 1       4.4643 V   released 4.4643 V   <- it HOLDS
+> press 2       0.0000 V   released 0.0000 V
+> press 3       4.4643 V   press 4  0.0000 V
+> ```
+>
+> The holding is the point: it is what distinguishes stored state from a button
+> the LED merely follows. 4.4643 V is hand-computed in the example's own
+> EXPECTED.md from the drop across R_OUT, and the engine agrees to four decimals.
+> The timer's `reset` is still strapped to the supply, so the oscillator still
+> cannot be halted — and the lesson now says single-stepping happens *downstream*
+> of it rather than to it, which is true and is also the better idea.
 
 ### 4. machines-buses — "single-step the clock" is finer than any control offered
 

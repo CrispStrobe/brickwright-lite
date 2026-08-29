@@ -50,29 +50,34 @@ Two counting rules, so the numbers are comparable:
 | **D23** | The first solve of a fresh board is a DC operating point, in which a capacitor is an open circuit — so the meter reads 5.0000 V on a capacitor the engine's own `getCapVoltage` holds at 0 | bw-board / bw-circuit-ui | **1** | 6 | **FIXED 2026-08-29** — the first solve honours stored cap state |
 | **D24** | There is no FFT anywhere in the circuit UI, and the scope's ring buffer stores an interleaved (min, max) envelope rather than a sample series | bw-circuit-ui + bw-board | **1** | 6 | **FIXED 2026-08-29** — a spectrum view over a second, sample-series tap |
 | **D25** | No cycle-level step: the 6502 target steps by `insn`/`over`/`out`, the circuit step button advances 50 ms (50 000 cycles at 1 MHz) | lite (`bw-debug`) + bw-circuit-ui | **1** | 7 | open — see PLAN.md |
-| **D26** | The PREFIX bitop form does not compose with a comparison and the INFIX form does not work bare — complementary holes. `20-shift-register-binary` shifted a constant zero because of the first | sb3-creator (compiler or referee — not isolated) | **1** | 7 | example fixed; compiler defect open |
-| **D27** | `ttl-clock-module`'s step button is electrically isolated (its net carries only `r3.a`, and `r3` goes to ground), and the board has no downstream state at all | sb3-creator (example) | **1** | 7 | open — see PLAN.md |
+| **D26** | **RE-WORDED 2026-08-29 — the row was wrong.** It said the PREFIX bitop form does not compose with a comparison and the INFIX form does not work bare (complementary holes), and located the fault in "the compiler or the referee". Isolated: **the referee's own truth test was inverted** (`num("true")` is 0), which masked a FOUR-WAY backend disagreement on a bare value in condition position — and the referee was one of the four, so every earlier measurement of this defect was taken through it. `20-shift-register-binary` shifted a constant zero because of that, not because of a bitop hole | sb3-creator (referee, then all four backends) | **1** | 7 | **FIXED 2026-08-29** — one `boolishTruthTest` on all four backends, the prefix spelling REFUSED by name; the remaining open half is `not <cond>` in VALUE position, pinned upstream |
+| **D27** | `ttl-clock-module`'s step button is electrically isolated (its net carries only `r3.a`, and `r3` goes to ground), and the board has no downstream state at all | sb3-creator (example) | **1** | 7 | **FIXED 2026-08-29** — a D flip-flop as a divide-by-two on the button's own edge |
 | **D28** | There is no frames-or-locals view in the debug UI; `Step Out` is real, a call stack is not | lite (`bw-debug` UI) | **1** | 5 | open — see PLAN.md |
 | **D29** | Write watchpoints are feature-detected on `_emu_dbg_set_bp_write`, which the pinned emu8051 WASM build does not export | lite (emu8051 pin) | **1** | 5 | open — see PLAN.md |
 | **D30** | `microbitplus` blocks are deliberate VM no-ops and the extension declares no `showStatusButton`, so no connection indicator is drawn | lite (`overlay/scratch-vm`) | **1** | 4 | open — see PLAN.md |
 | **D31** | The scope's V/div is a single global setting, so two channels of very different amplitude cannot be scaled independently | bw-circuit-ui (`ScopePanel`) | **1** | 2 | **FIXED 2026-08-29** — per-channel V/div and centre |
-| **D32** | `arduino-03-calibration` has no filter, so its lesson's "estimate filter delay" has nothing to check against | sb3-creator (example) | **1** | 4 | open — see PLAN.md |
+| **D32** | `arduino-03-calibration` has no filter, so its lesson's "estimate filter delay" has nothing to check against | sb3-creator (example) | **1** | 4 | **FIXED 2026-08-29** — a 4-tap boxcar, as variables and not a list |
 | **D37** | `machines-interrupts-performance` asks what an interrupt costs on a bench that cannot raise one: neither Z80 example wires an interrupt source. **CORRECTED 2026-08-25 by measurement** — an earlier draft of this row said the interrupt pins were unconnected. They are not: in all 7 CPU benches `/IRQ` and `/NMI` are tied to VCC, i.e. held inactive, which is correct idle wiring. The real statement is that **no interrupt-capable device OUTPUT drives any CPU interrupt input anywhere in the corpus** — no `mc6850.irqb`, no `w65c22.irqb`, no `tms9918.int`. **And the simulator does not need one:** both `M6502Machine` and `Z80Machine` poll every chip's `irqAsserted` directly, so the drawn tie is schematic. Measured on `eater6502-blink`'s own extracted machine: arming VIA T1 free-running with IER and `CLI` takes **440 interrupts in 1,806,166 cycles**, against 4095 cycles per T1 period. The interrupt machinery works; what is missing is that **no example PROGRAM uses it**, so the lesson has nothing to step through. That makes this the same shape as D7 — ship an interrupt-driven image and re-point the lesson — not the emitter/wiring job first assumed | sb3-creator (examples) + sb3-creator (emitter) | **1** | 7 | **FIXED** — `eater6502-bench` ships an interrupt program; the lesson moved to it |
 | **D33** | `6502-terminal/controller.json` declares widget type `terminal`, which is not in `ControllerPanel`'s `DEFAULTS`, so `addWidget` throws — and the importer removes every widget *before* adding, inside a bare `catch`, leaving the panel **empty** | bw-board (`controller.js`) + lite (importer) | **0** | 4 | **FIXED** — `terminal` type + guarded restore |
 | **D34** | `dc_motor` stamps the winding's inductor companion conductance `dt/L` in parallel with `1/R` rather than in series, so its DC operating point depends on the solver step (1.801 A at 1 µs, 1.980 A at 1 ms, against 0.900 A) | bw-board (`devices/dc-motor.js`) | **0** | 1 | **EXPIRED** — re-measured, no longer reproduces |
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
-| **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | open — the last of 67 |
+| **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | **FIXED 2026-08-29** — `INPUT ACTIVE LOW`, and the read inverted to keep the sketch's printed value |
 
-**37 defects. Twenty-four are closed** — D1, D3, D4, D5, D6, D7, D8, D10, D11,
-D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D31, D33, D35 and D37 by
-repair, and D34 by re-measurement, which is a different and weaker claim: it
-stopped reproducing between the Wave 1 vendor and today, and this campaign only
-found that out. Together they account for **64 of the 90 lesson-slots** the
-table counts, and D1 alone is 28 of them. Every row still open is recorded in
+**37 defects. Twenty-eight are closed** — D1, D3, D4, D5, D6, D7, D8, D10, D11,
+D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D26, D27, D31, D32, D33, D35,
+D36 and D37 by repair, and D34 by re-measurement, which is a different and
+weaker claim: it stopped reproducing between the Wave 1 vendor and today, and
+this campaign only found that out. Together they account for **67 of the 90
+lesson-slots** the table counts, and D1 alone is 28 of them. **Nine are open**:
+D2, D9, D12, D13, D22, D25, D28, D29 and D30 — and three of those nine (D13, D22
+and D30) are labelled rather than broken. Every row still open is recorded in
 `PLAN.md` with what blocks it and who owns it.
 
-**Six closed on 2026-08-29**, in one wave, and they are the six this document's
-"shape of it" section called a single family. D18 (the LM358 secant), D20 (the
+**Ten closed on 2026-08-29**, in one campaign across three repos, and they are
+not ten independent repairs: six are the instrument family this document's
+"shape of it" section named, and four came out of one sb3-creator wave.
+
+The six engine-side ones, which are the family: D18 (the LM358 secant), D20 (the
 op-amp's 40 mA output limit, filed under bw-board's MNA gate with hand-computed
 oracles in the same commit), D23 (the first solve honours stored capacitor
 state) and D22's *design* landed in bw-board `999eb66`+`187694f`+`18555e7`+
@@ -93,6 +98,40 @@ fabricated "0 V" off an empty board. Wiring the instrument destroyed the circuit
 it was pointed at. That is worth recording because the ledger's own counting
 rule — one row per root cause — hid it: the same missing step caused both, so it
 is still one row, but the row understated it.
+
+The four sb3-creator ones are D26 (re-worded, below), D27 (`ttl-clock-module`
+grew a D flip-flop as a divide-by-two on the step button's own edge — Q toggles
+0.0000/4.4643 V and HOLDS after the press, so `machines-clocks` gets both its
+single-step and downstream-transition halves back at v4), D32
+(`arduino-03-calibration` grew a 4-tap boxcar, written as four VARIABLES because
+list ops lower to `0 /* item */` on the device — settling 4 × 20 ms = 80 ms, lag
+(N−1)/2 = 30 ms, staircase 24/49/74/100 %, `interactive-calibration-control` →
+v3) and D36 (`INPUT ACTIVE LOW`, with the program's own read inverted so the
+sketch still prints the RAW pin). **D36 takes `EXPECTED_DEAD` in
+`test/simulator-driver-controls-respond.test.mjs` to EMPTY** — 67 wired controls
+dead → 43 → 22 → 1 → 0 across four repairs in three repos — and it took the
+counterfactual "armed low" number from 22 to 21 with it, which corrected a small
+untruth in that file: the 22 were not "the 8051 side specifically", they were 21
+quasi-pin benches plus the one Arduino bench that was dead under every rail. At
+21 the sentence is exactly true.
+
+**D26 is RE-WORDED, not merely closed, and the row it replaces was wrong twice.**
+Wave 7 read it as "a bitops reporter compared against a number is false". A
+later re-measurement read it as two spellings with complementary holes. Both
+were descriptions of a shadow: **the referee's own truth test was inverted**
+(`num("true")` is 0), which masked a four-way disagreement between the backends
+about what a bare value means in condition position — and the referee is the
+instrument every earlier measurement of this defect was taken through. One
+`boolishTruthTest` now serves all four backends, and the prefix spelling
+`bitand a b` is REFUSED by name (it is a reference to a variable nothing writes)
+rather than silently read as zero; 0 false positives over 280 programs. Measured
+here after the vendor: all three prefix forms refused with the naming warning,
+all three infix forms firing including the bare one, and `not` correct in both
+directions in condition position. **The remaining open half is a different
+shape**: `not <cond>` in VALUE position is a phantom variable and
+`cToPseudocode` emits that shape, so it needs a dialect decision rather than a
+patch. It is pinned as an OPEN DEFECT test in sb3-creator, which is where the
+decision belongs.
 
 **D24 closed further than "partially".** The expectation carried into this pass
 was that the FFT and the sample capture would exist upstream while lite still
@@ -247,7 +286,7 @@ affected and nothing else.
 | bw-board | D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D18, D19, D20, D23, D33, D34 |
 | lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D33 |
 | bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D3, D4, D6, D21, D24, D31 |
-| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D8, D10, D11, D35 |
+| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D7, D8, D10, D11, D26, D27, D32, D35, D36 |
 
 Rows appear under every owner that must change, so the columns oversum: D6,
 D9 and D33 each need two repos (D4 was listed as needing two and did not —

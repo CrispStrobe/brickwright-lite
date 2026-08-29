@@ -64,18 +64,22 @@ const INTEGRATED = path.join(root, 'packages/scratch-gui');
 const EXAMPLES = path.join(root, 'overlay/scratch-gui/examples');
 
 /**
- * The one bench whose control still cannot respond, with the reason and the
- * owner. `arduino-02-digital-input-pullup` is the Arduino sketch whose whole
- * subject is `pinMode(2, INPUT_PULLUP)`: the button goes to ground and the
- * bench carries no pull resistor, so the pull must come from inside the MCU.
- * Its declaration is `PIN btn = D2 INPUT` — active HIGH — which the driver
- * correctly honours as a programmed pull-DOWN, leaving both sides of the button
- * at 0 V. The fix is the declaration (`INPUT ACTIVE LOW` is what INPUT_PULLUP
- * plus button-to-ground means), it is upstream in sb3-creator's examples, and
- * it changes what the example emits for real silicon — so it carries its own
- * verdict rather than riding along inside a driver fix.
+ * EMPTY, since 2026-08-29 — and it is a ratchet, so it may only stay that way.
+ *
+ * Its last entry was `arduino-02-digital-input-pullup:btn`, the Arduino sketch
+ * whose whole subject is `pinMode(2, INPUT_PULLUP)`: the button goes to ground
+ * and the bench carries no pull resistor, so the pull must come from inside the
+ * MCU. Its declaration said `PIN btn = D2 INPUT` — active HIGH — which the
+ * driver correctly honoured as a programmed pull-DOWN, leaving both sides of the
+ * button at 0 V. sb3-creator `934f594` changed the declaration to
+ * `INPUT ACTIVE LOW`, which is what INPUT_PULLUP plus a button to ground means,
+ * and inverted the program's own read to keep the sketch's printed value (the
+ * RAW pin, the complement of the logical level) intact.
+ *
+ * 67 wired controls dead -> 43 -> 22 -> 1 -> 0, across four repairs in three
+ * repos. A new entry here is a regression, not a waiver.
  */
-const EXPECTED_DEAD = new Set(['arduino-02-digital-input-pullup:btn']);
+const EXPECTED_DEAD = new Set([]);
 
 const MS = 1000000n;
 
@@ -272,13 +276,23 @@ test('both halves of the repair are measurable, and each one helps', async () =>
     assert.equal(unarmed.dead.length, 60,
         `unarmed: ${unarmed.dead.length} dead of ${unarmed.pins} (the pre-0777a17 corpus number, ` +
         're-derived at 84 pins on 2026-08-25; it was 43 of 67)');
-    assert.equal(armedLow.dead.length, 22,
+    // 22 until 2026-08-29, 21 since, and the one that left is the finding. The
+    // counterfactual arms EVERY input pin at a low rail; `input-pullup` carries
+    // its own rail in pin-model.js and ignores the argument, so once D36 made
+    // `arduino-02-digital-input-pullup` declare ACTIVE LOW its pin stopped being
+    // reachable by this rule at all. Which means the sentence below the
+    // assertion — "the 22 are the 8051 side specifically" — was very slightly
+    // false while it was 22: it was 21 quasi-pin benches plus one Arduino bench
+    // that was dead under every rail. At 21 it is exactly true.
+    assert.equal(armedLow.dead.length, 21,
         `armed low: ${armedLow.dead.length} dead of ${armedLow.pins} (the 0777a17 corpus number — ` +
         'the board-class half of the repair, with the 8051 half still open)');
+    assert.ok(armedLow.dead.every(d => !d.startsWith('arduino-')),
+        'an Arduino bench is dead under the low-rail counterfactual again — that was D36');
     assert.equal(armedRail.dead.length, EXPECTED_DEAD.size,
         `armed at the rail: ${armedRail.dead.length} dead, EXPECTED_DEAD names ${EXPECTED_DEAD.size}`);
 
-    // And the 22 are the 8051 side specifically — the shape of the finding, not
+    // And the 21 are the 8051 side specifically — the shape of the finding, not
     // just its size. Three of them are Wave 5 lesson benches.
     for (const id of ['05-counter:button', '26-debounce:btn', '60-retro-console:btn1']) {
         assert.ok(armedLow.dead.includes(id), `${id} was dead under the 0777a17 arming rule`);

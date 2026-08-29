@@ -45,7 +45,7 @@ to this wave's question. Seven defects sat behind it.
 | interactive-displays | lego-hub-face | 1→**2** | **defect, fixed** — two of the values its checkpoint asks for cannot be produced by running the project |
 | interactive-two-way-binding | mb05-faceplate-matrix | 1→2→**3** | defect, **FIXED 2026-08-24** — the inspector has a Binding section; "rename" is still a no-op by design and is now taught as the contrast |
 | interactive-dashboard | lego-hub-face | 1 | achievable |
-| interactive-calibration-control | arduino-03-calibration | 1→**2** | **defect, fixed** — no filter exists to time; the dead actuator it also pointed at was repaired upstream mid-review |
+| interactive-calibration-control | arduino-03-calibration | 1→2→**3** | defect ×2, **BENCH FIXED 2026-08-29** — no filter existed to time; sb3-creator `1d2606b` gave the example a 4-tap boxcar, so `predict` asks for a prediction that can be checked. The dead actuator it also pointed at was repaired upstream mid-review |
 
 Seven of eight. That is a higher rate than Waves 1, 3 or 5, and the reason is
 structural rather than a sudden collapse in quality: six of the eight lessons
@@ -388,9 +388,9 @@ full rather than quietly deleting: it is the second time in this campaign
 review shipped.
 
 **The `predict` checkpoint asked the learner to "estimate filter delay in
-samples and seconds", and there is no filter.** `arduino-03-calibration`'s
-program calibrates, clamps and maps; it contains no moving average, no window
-and no N. Measured with the trace referee, stepping the sensor 0 → 1023 at
+samples and seconds", and there was no filter.** `arduino-03-calibration`'s
+program calibrated, clamped and mapped; it contained no moving average, no
+window and no N. Measured with the trace referee, stepping the sensor 0 → 1023 at
 t = 8000 ms:
 
 ```
@@ -398,11 +398,44 @@ horizon 7990 ms -> sensorValue    0   outputValue   0
 horizon 8000 ms -> sensorValue 1022   outputValue 100
 ```
 
-The mapped output arrives complete at the first sample after the step: zero
-filter delay, one pass of its 20-millisecond loop. The learner's estimate has
-nothing to check it against. **This still stands**, and is what version 2 of the
-lesson addresses: `predict` now asks the learner to *choose* a moving-average
-length and say what delay it would cost, stating that this program has none.
+The mapped output arrived complete at the first sample after the step: zero
+filter delay, one pass of its 20-millisecond loop. The learner's estimate had
+nothing to check it against. Version 2 of the lesson worked around that:
+`predict` asked the learner to *choose* a moving-average length and say what
+delay it would cost, stating that this program has none.
+
+> **FIXED 2026-08-29** (sb3-creator `1d2606b`), and version 3 undoes the
+> workaround. The program now runs a **4-sample moving average**, written as four
+> VARIABLES rather than a list — list operations lower to `0 /* item */` on the
+> device, so a list filter would have been a no-op on real silicon and a worse
+> lesson than no filter at all. Re-measured here through lite's own trace
+> referee, calibrated over the full span and stepped 0 → 1023 at t = 8000 ms:
+>
+> ```
+> horizon 7990 ms -> outputValue   0     window 0, 0, 0, 0
+> horizon 8000 ms -> outputValue  24     window 1023, 0, 0, 0
+> horizon 8020 ms -> outputValue  49     window 1023, 1023, 0, 0
+> horizon 8040 ms -> outputValue  74     window 1023 x 3, 0
+> horizon 8060 ms -> outputValue 100     window 1023 x 4
+> ```
+>
+> Settling time is window × loop period = 4 × 20 ms = **80 ms**; the group delay
+> of an N-tap boxcar is (N − 1) / 2 = 1.5 samples = **30 ms**. Both are
+> properties of the window and the loop period, not of this step.
+>
+> **One caveat, found by measuring rather than by copying the numbers.** The
+> staircase reads 24/49/74/100 only when the calibration sweep reaches BOTH
+> rails. The stimulus this review's own gate had been using peaks at 1022, which
+> makes `sensorMax` 1022 and the middle two steps read **50 and 75** instead —
+> 511/1022 is exactly 50 %, 511/1023 is 49.95 % and truncates to 49. That is
+> arithmetic, not a defect, but a lesson that quotes 49 and 74 needs a bench
+> calibrated to 1023, so the gate now clips a larger sine instead of scaling a
+> smaller one.
+>
+> `predict` v3 asks for the settling time and the lag, and then asks the learner
+> to measure both. The v2 hint said the opposite of what is now true — "This
+> program has no filter at all" — which is exactly the kind of sentence a
+> workaround leaves behind when its defect is repaired somewhere else.
 
 **The `test` checkpoint pointed at an actuator the program did not drive — and
 now does.** As measured on `2e294ceaf`, the program's `set pwm led to

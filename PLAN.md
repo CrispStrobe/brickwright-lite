@@ -343,7 +343,13 @@ Two shapes are worth carrying forward from the rest:
   Wave 6's whole finding — a good engine behind instruments that report pictures
   rather than numbers — and it is where the remaining 24 mostly live.
 
-#### The twenty-four still open, and what blocks each
+#### The nine still open, and what blocks each
+
+Updated 2026-08-29: **ten rows closed in one campaign** — D18, D20, D21, D23,
+D24 and D31 (the instrument family, bw-board + bw-circuit-ui) and D26, D27, D32
+and D36 (sb3-creator). Their rows are struck through below with what actually
+happened, which in four cases is not what the row predicted. Nine are open, and
+three of those nine (D13, D22, D30) are labelled rather than broken.
 
 Ordered by lessons affected, as in the table. Every row here is a decision
 someone has to make, not work someone has to find.
@@ -367,32 +373,38 @@ someone has to make, not work someone has to find.
 | ~~D23 first solve is a DC operating point~~ | 1 | bw-board / bw-circuit-ui | **CLOSED 2026-08-29** (bw-board `f87adcc`), and NOT the way this row proposed. "Advance before the first read" would have papered over it in one consumer; the walker now honours the capacitor's stored state in the first solve, including the unfiled decoupling-cap-pins-rail-to-0 case. Measured after the lite vendor: a freshly loaded `43-rc-timing` reads **0.0000 V** at `c1.a` and agrees with `getCapVoltage`, and 0.5/1/2/3 τ are unchanged to four decimals. `signals-rc-response` → v6. |
 | ~~D24 no FFT~~ | 1 | bw-circuit-ui + bw-board | **CLOSED 2026-08-29**, and this row's two-piece diagnosis was exactly right — bw-circuit-ui `7696656` (`model/fft.js` + the panel's spectrum view) and bw-board `9441e4f`+`2169d9b` (`addScopeChannel({capture: 'sample'})`, whose sample instants are SOLVE points: 1.2e-11 V of barrier error against 618 mV holding and 128 mV interpolating). The envelope stays the default *because* this row was right that it is the correct structure for drawing, so the spectrum is a second tap and a transform over an envelope is refused by name. Measured after the lite vendor on `49-function-generator-sine` at the tap's default 10 kHz × 8192: Nyquist 5000 Hz, bins 1.220703125 Hz, the 1 kHz sine on bin 819 interpolating to 999.9466 Hz at 2.499976 V peak, THD 0.0000 % over four harmonics. `signals-aliasing-fft` → v4. |
 | D25 no cycle-level step | 1 | lite + bw-circuit-ui | The 6502 target steps by instruction; a cycle step means new capability in the debug target, not just a button. |
-| D26 prefix/infix bitop holes | 1 | sb3-creator | **Not isolated, and a different shape than first reported.** Measured across six forms: PREFIX (`bitand val 128`) works bare and is false the moment it is compared, with or without parentheses; INFIX (`val bitand 128`) works compared and is false bare. Complementary holes, not "a bitops reporter compared against a number". The EXAMPLE was repaired upstream on 2026-08-24 by switching to infix, so no lesson is blocked; whether the fault is the emitted comparison or the referee's evaluation is still undetermined, and the real device runs generated C. Isolating it is the next step. |
-| D27 `ttl-clock-module`'s dead step button | 1 | sb3-creator | A wire plus a flip-flop, i.e. a real example revision. `EXPECTED.md` claims the button injects a pulse; it reaches nothing. |
+| ~~D26 prefix/infix bitop holes~~ | 1 | sb3-creator | **ISOLATED AND MOSTLY CLOSED 2026-08-29** (sb3-creator `32b1e1a`), and the answer was neither of this row's two readings. The referee's OWN truth test was inverted — `num("true")` is 0 — and the referee is the instrument every measurement in this row was taken through, so both "the comparison" and "complementary holes" were descriptions of its shadow. Underneath it, four backends answered `IF <bare value>` four different ways. One `boolishTruthTest` now serves all four, and the prefix spelling is REFUSED by name (a reference to a variable nothing writes) rather than read as zero: *"`bitand val 128` reads as a VARIABLE NAME… the bit operators are infix in this dialect"*. 0 false positives over 280 programs. Re-measured after the lite vendor: three prefix forms refused with the warning, three infix forms firing INCLUDING the bare one that was the second hole, and `not` correct in both directions in condition position. **Still open, different shape, upstream:** `not <cond>` in VALUE position is a phantom variable and `cToPseudocode` EMITS that shape — a dialect decision, pinned as an OPEN DEFECT test in sb3-creator. |
+| ~~D27 `ttl-clock-module`'s dead step button~~ | 1 | sb3-creator | **CLOSED 2026-08-29** (sb3-creator `56bd1ce`) by exactly what this row scoped: a wire plus a flip-flop. `ff1` is a D flip-flop with D tied to its own Q̄ — a divide-by-two — clocked from the button and driving a second LED through `r4`. Measured after the lite vendor: Q at rest 0.0000 V, then 4.4643 / 0.0000 / 4.4643 / 0.0000 across four presses, and unchanged on RELEASE, which is what distinguishes stored state from a light following a switch. The 555 half is asserted untouched. `machines-clocks` → v4, both halves restored; `EXPECTED.md`'s claim is now the measured one. |
 | D28 no call stack | 1 | lite | A frames-and-locals view. Real work, and the lesson's revised exercise (reconstruct the stack from where Step Out lands) is arguably better. |
 | D29 watchpoints gated off | 1 | lite | The pinned emu8051 WASM does not export `_emu_dbg_set_bp_write`. Upstream builds do; this is a pin bump plus a rebuild, and **the claim is second-hand** — it comes from the module's own docs, not from instantiating lite's actual binary. Verify before acting. |
 | D30 `microbitplus` no-ops | 1 | lite | **Deliberate and documented.** The blocks lower to MicroPython for the simulator; the VM methods are intentional no-ops. What is open is only the missing `showStatusButton`, and declaring one for an extension with no transport would be a lie. |
 | ~~D31 one global V/div~~ | 1 | bw-circuit-ui | **CLOSED 2026-08-29** (bw-circuit-ui `7696656`, `model/scope-scale.js`): per-channel V/div and centre, each channel carrying its own scale. Small, additive and unblocked, exactly as this row said. |
-| D32 no filter to time | 1 | sb3-creator | `arduino-03-calibration` has no moving average. Adding one changes what the lesson predicts; the lesson currently asks the learner to choose a window and say what it would cost, which is a better exercise. |
+| ~~D32 no filter to time~~ | 1 | sb3-creator | **CLOSED 2026-08-29** (sb3-creator `1d2606b`). This row's caution was right and was paid: the lesson moved with the bench, to v3. The filter is four VARIABLES, not a list — list ops lower to `0 /* item */` on the device, so a list filter would have been a no-op on real silicon and a worse lesson than none. Measured after the lite vendor: settling = window × loop period = 4 × 20 ms = **80 ms**, group delay = (N−1)/2 = 1.5 samples = **30 ms**, staircase **24 / 49 / 74 / 100 %** one quarter per pass. One caveat found by measuring: the staircase reads 24/50/75/100 unless the calibration sweep reaches BOTH rails (511/1022 is exactly 50 %; 511/1023 truncates to 49), so the gate now clips a larger sine instead of scaling a smaller one. |
 
-Three of those — D13, D26, D30 — are labelled because they are not what they
-look like: one is a documented design decision, one was never isolated to a
-component, and one is deliberate. Recording them as "open defects" without that
-label would send someone to fix something that is not broken.
+Three of those — D13, D22, D30 — are labelled because they are not what they
+look like: one is a documented design decision, one has its design filed and is
+waiting for a consumer, and one is deliberate. Recording them as "open defects"
+without that label would send someone to fix something that is not broken.
+(D26 used to be the second of these three, for the honest reason that it had
+never been isolated to a component. It has been now — see its struck-through
+row — and the isolation is why it moved off this list rather than a repair
+being found for what the row described.)
 
 What is still open is in that table with what blocks it. The biggest by lessons
 is **D2**, the debugger's unconditional `POST` to the hosted compiler, which puts
 all ten Wave 5 lessons behind a network connection while they declare
 `environment: "simulation"`. That is a curriculum-schema question before it is a
 code one — whether `simulation` means "no hardware" or "no network" — and
-answering it by editing ten hints would bury it.
+answering it by editing ten hints would bury it. After the 2026-08-29 campaign
+it is also, by a wide margin, the largest thing left: D2 alone is 12 of the 23
+remaining lesson-slots.
 
 **Added 2026-08-25 by the post-repair re-check** (`docs/POST-REPAIR-RECHECK.md`):
 
 | defect | lessons | owner | what blocks it |
 | --- | --- | --- | --- |
 | ~~D35 quasi pins armed at zero~~ | 0 | sb3-creator | **CLOSED** (`553a639`). The Pocket Calculator repair fixed the board-class half of a two-family defect; the arming loop it added passed `false` as the pull's rail, and a quasi pin idles HIGH. 43 → 22 → 1 of 67 wired controls dead. |
-| D36 `arduino-02-digital-input-pullup` declares the wrong polarity | 0 | sb3-creator | The last dead control of the 67. `INPUT_PULLUP` plus button-to-ground is an active-LOW input; the example declares active HIGH. One word in a declaration — but it changes what the example emits for real silicon, so it wants its own which-side-was-wrong verdict rather than a drive-by edit. Ratcheted in `test/simulator-driver-controls-respond.test.mjs`. |
+| ~~D36 `arduino-02-digital-input-pullup` declares the wrong polarity~~ | 0 | sb3-creator | **CLOSED 2026-08-29** (sb3-creator `934f594`), with the which-side-was-wrong verdict this row asked for: the DECLARATION was wrong, and `cToPseudocode` already agreed (*"INPUT_PULLUP is a button wired to ground: pressed reads 0. That is ACTIVE LOW"*). `PIN btn = D2 INPUT ACTIVE LOW`, and the program's own read inverted to `(1 - read btn)` so the sketch still prints the RAW pin, which is the inverted logic the example is about. **`EXPECTED_DEAD` is now EMPTY**: 67 wired controls dead → 43 → 22 → 1 → 0. It also took the counterfactual low-rail number from 22 to 21, because `input-pullup` carries its own rail in `pin-model.js` and ignores the argument — which corrected the claim that the 22 were "the 8051 side specifically". They were 21 plus this one. |
 
 That pass also leaves one gap named rather than closed: **`declared-pins-wired`
 asks whether a declared pad is WIRED, and nothing asks whether it is wired with

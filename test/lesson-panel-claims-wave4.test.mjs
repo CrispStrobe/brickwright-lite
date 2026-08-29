@@ -543,14 +543,17 @@ test('interactive-calibration-control: the bench sweeps, and the map lands where
     assert.equal(statusEdges[1].level, 0);
 });
 
-test('interactive-calibration-control has no filter, so there is no delay to time', () => {
-    // The lesson's `predict` checkpoint asks for a moving-average length and
-    // the delay it would cost. This program carries no filter at all, and its
-    // step response says so: the mapped output arrives complete at the first
-    // sample after the step.
+// This test used to be the D32 sentinel — "has no filter, so there is no delay
+// to time" — and it fired on 2026-08-29 at the sb3-creator `86a5bab` vendor
+// bump. sb3-creator `1d2606b` gave the example a 4-tap boxcar, written as four
+// VARIABLES rather than a list because list ops lower to `0 /* item */` on the
+// device: a filter that is a no-op on real silicon would have been a worse
+// lesson than no filter at all.
+test('interactive-calibration-control: the filter is four taps, and its cost is measurable', () => {
     const source = readFileSync(path.join(EX, 'arduino-03-calibration/program.bw'), 'utf8');
-    assert.ok(!/average|filter|smooth/i.test(source),
-        'the example grew a filter — restore the filter-delay prediction to the lesson');
+    assert.match(source, /average/i, 'the filter is gone again — re-open D32');
+    assert.ok(!/^\s*(add|item|delete) .*\blist\b/mi.test(source),
+        'the filter must not be a list: list ops lower to `0 /* item */` on the device');
     assert.match(source, /^PIN led = D9 PWM$/m,
         'the led pin is no longer PWM — if the actuator went inert again, re-measure Wave 4');
     assert.match(source, /^\s*set led to outputValue percent$/m,
@@ -558,15 +561,30 @@ test('interactive-calibration-control has no filter, so there is no delay to tim
 
     const creator = new SB3Creator();
     creator.parse(source);
+    // The calibration sweep must reach BOTH rails, or the mapped percentages
+    // come out against a narrower band and the staircase reads 24/50/75 instead
+    // of 24/49/74. That is arithmetic, not a defect — but it is why this
+    // stimulus clips a larger sine rather than reusing the one above.
     const rows = [];
     for (let ms = 0; ms <= 12000; ms += 10) {
-        const counts = ms < 5200 ? Math.round(511 + (511 * Math.sin(ms / 300))) : (ms < 8000 ? 0 : 1023);
+        const counts = ms < 5200
+            ? Math.min(1023, Math.max(0, Math.round(512 + (600 * Math.sin(ms / 300)))))
+            : (ms < 8000 ? 0 : 1023);
         rows.push({tMs: ms, pin: 'sensor', volts: (counts / 1023) * 5});
     }
     const at = horizonMs => interpretTrace(creator.project,
-        {horizonMs, stimulus: rows, adc: {bits: 10, vref: 5}, maxSteps: 4_000_000}).vars.outputValue;
-    assert.equal(at(7990), 0, 'before the step');
-    assert.equal(at(8000), 100, 'and fully arrived at the first sample after it — zero filter delay');
+        {horizonMs, stimulus: rows, adc: {bits: 10, vref: 5}, maxSteps: 6_000_000});
+    assert.deepEqual([at(8000).vars.sensorMin, at(8000).vars.sensorMax], [0, 1023],
+        'the calibration must cover the full span, or the percentages below shift');
+    assert.equal(at(7990).vars.outputValue, 0, 'before the step');
+    // Four loop passes, one quarter of the step each: the boxcar's own shape.
+    assert.deepEqual(
+        [8000, 8020, 8040, 8060].map(h => at(h).vars.outputValue),
+        [24, 49, 74, 100],
+        'the 4-tap staircase changed — re-measure Wave 4 and arduino-03-calibration/EXPECTED.md');
+    assert.equal(at(8200).vars.outputValue, 100, 'and it stays there');
+    // The duty reaches the pin at every step, not only at the end.
+    assert.equal(at(8020).pwm.at(-1).percent, 49, 'the half-filled window drives the LED too');
 });
 
 // ── The lesson copy this review wrote, in both languages ───────────────────
@@ -581,7 +599,7 @@ test('the Wave 4 revisions are present, EN and DE, at the content version this r
         'interactive-displays': 2,
         'interactive-two-way-binding': 3,
         'interactive-dashboard': 1,
-        'interactive-calibration-control': 2
+        'interactive-calibration-control': 3
     }, 'a Wave 4 lesson changed content version — update docs/LESSON-REVIEW-WAVE-4.md with it');
 
     const says = (id, cp, field, en, de) => {
@@ -595,7 +613,11 @@ test('the Wave 4 revisions are present, EN and DE, at the content version this r
     says('interactive-input-controls', 'predict', 'action', /toggle.*inspector|inspector.*toggle/i, /Inspektor/);
     says('interactive-displays', 'observe', 'action', /beyond|outside/i, /au(ß|ss)erhalb/i);
     says('interactive-two-way-binding', 'test', 'action', /re-bind/i, /binde .*neu|neu — /i);
-    says('interactive-calibration-control', 'predict', 'hint', /no filter|has none/i, /kein(en)? Filter/i);
+    // v3 (D32 closed): the bench grew the filter, so the predict hint stopped
+    // saying there is none and started asking for a prediction that can be
+    // checked against a measurement.
+    says('interactive-calibration-control', 'predict', 'hint', /Predict it, then measure it/, /Sage es voraus und miss es dann/);
+    says('interactive-calibration-control', 'predict', 'hint', /80 ms.*30 ms|24, 49, 74, 100/s, /80 ms.*30 ms|24, 49, 74, 100/s);
     says('interactive-calibration-control', 'test', 'action', /sensorValue.*outputValue/, /sensorValue.*outputValue/);
     says('interactive-calibration-control', 'test', 'hint', /no plausibility check/i, /Plausibilit(ä|ae)tspr(ü|ue)fung fehlt/i);
 });
