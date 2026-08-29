@@ -84,19 +84,30 @@ const messages = defineMessages({
         id: 'gui.extensionLibrary.customName'
     },
     customDescription: {
-        defaultMessage: 'Load any TurboWarp- or Xcratch-style extension directly from a URL.',
+        defaultMessage: 'Load a sandbox-compatible TurboWarp or Scratch extension from a URL.',
         description: 'Description of the custom-extension-from-URL tile',
         id: 'gui.extensionLibrary.customDescription'
     },
     untrusted: {
-        defaultMessage: 'Load and run code from:\n\n{url}\n\nOnly continue if you trust the source — the extension runs with full access to this page.',
-        description: 'Confirmation before running a custom extension from an untrusted URL',
+        defaultMessage: 'Load code from:\n\n{url}\n\nIt will run in an isolated worker without access to the ' +
+            'editor or native device bridge. HTTP(S) requests remain available; direct WebSockets and nested ' +
+            'workers are blocked. ' +
+            'Extensions which require unsandboxed mode will be refused.',
+        description: 'Confirmation before running a custom extension in the worker sandbox',
         id: 'gui.extensionLibrary.untrusted'
     },
     loadFailed: {
         defaultMessage: 'Could not load the extension from {url}\n\n{error}',
         description: 'Alert shown when a custom extension URL fails to load',
         id: 'gui.extensionLibrary.loadFailed'
+    },
+    unpinned: {
+        defaultMessage: 'This gallery extension is newer than this app, so its code has not been pinned or ' +
+            'reviewed here yet:\n\n{url}\n\nIt will run in an isolated worker without editor or ' +
+            'native-device access. HTTP(S) requests remain available; direct WebSockets and nested workers are ' +
+            'blocked. Load it?',
+        description: 'Confirmation for a gallery extension published since this build was pinned',
+        id: 'gui.extensionLibrary.unpinned'
     }
 });
 
@@ -105,9 +116,17 @@ const messages = defineMessages({
 const DE_MESSAGES = {
     'gui.extensionLibrary.extensionUrl': 'URL der Erweiterung eingeben',
     'gui.extensionLibrary.customName': '➕ Erweiterung per URL',
-    'gui.extensionLibrary.customDescription': 'Lade eine beliebige TurboWarp- oder Xcratch-Erweiterung direkt von einer URL.',
-    'gui.extensionLibrary.untrusted': 'Code laden und ausführen von:\n\n{url}\n\nNur fortfahren, wenn du der Quelle vertraust — die Erweiterung läuft mit vollem Zugriff auf diese Seite.',
-    'gui.extensionLibrary.loadFailed': 'Erweiterung von {url} konnte nicht geladen werden\n\n{error}'
+    'gui.extensionLibrary.customDescription':
+        'Lade eine sandbox-kompatible TurboWarp- oder Scratch-Erweiterung von einer URL.',
+    'gui.extensionLibrary.untrusted': 'Code laden von:\n\n{url}\n\nEr läuft in einem isolierten Worker ohne ' +
+        'Zugriff auf den Editor oder die native Gerätebrücke. HTTP(S)-Anfragen sind weiterhin möglich; ' +
+        'direkte WebSockets und verschachtelte Worker sind gesperrt. ' +
+        'Erweiterungen, die den unsicheren Modus benötigen, werden abgelehnt.',
+    'gui.extensionLibrary.loadFailed': 'Erweiterung von {url} konnte nicht geladen werden\n\n{error}',
+    'gui.extensionLibrary.unpinned': 'Diese Galerie-Erweiterung ist neuer als diese App; ihr Code wurde hier ' +
+        'noch nicht festgeschrieben oder geprüft:\n\n{url}\n\nSie läuft in einem isolierten Worker ohne Zugriff ' +
+        'auf den Editor oder die native Gerätebrücke. HTTP(S)-Anfragen sind weiterhin möglich; direkte ' +
+        'WebSockets und verschachtelte Worker sind gesperrt. Laden?'
 };
 
 class ExtensionLibrary extends React.PureComponent {
@@ -145,10 +164,13 @@ class ExtensionLibrary extends React.PureComponent {
             url = url.trim();
         }
         if (!url) return;
-        // A URL from an untrusted host runs remote code in-process with full page access — confirm.
+        // Unpinned URLs run in the worker sandbox, but still execute downloaded code with network
+        // access. Distinguish a genuinely new gallery entry from a disguised or foreign URL without
+        // weakening the user decision at this boundary.
         if (/^https?:\/\//.test(url) && !em.isTrustedExtensionURL(url)) {
+            const newEntry = typeof em.pinStatusFor === 'function' && em.pinStatusFor(url) === 'unpinned';
             // eslint-disable-next-line no-alert
-            if (!confirm(this.msg(messages.untrusted, {url}))) return;
+            if (!confirm(this.msg(newEntry ? messages.unpinned : messages.untrusted, {url}))) return;
         }
         const done = () => (id ? this.props.onCategorySelected(id) : this.props.onRequestClose());
         if (em.isExtensionLoaded(url)) { done(); return; }

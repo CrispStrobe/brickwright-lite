@@ -1,12 +1,11 @@
 // Brickwright: load extensions named in the URL on startup, e.g.
 //   ?extension=https://host/ext.mjs
 // Repeatable (?extension=a&extension=b) or comma-separated. Mirrors Xcratch's
-// ?extension= and TurboWarp's URL loading, reusing our existing in-process
-// loader (extensionManager.loadExtensionURL → _loadRemoteExtension).
+// ?extension= and TurboWarp's URL loading, reusing the extension manager.
 //
-// SECURITY: these run in-process with full page access. Anything NOT on our
-// trusted gallery host is loaded only after an explicit confirm — a query-param
-// link must never silently run arbitrary remote code on someone's machine.
+// SECURITY: exact content-pinned gallery URLs use the reviewed compatibility
+// adapter. Everything else runs in the extension worker, without DOM/editor or
+// native IPC access, after an explicit confirmation.
 
 const collectUrls = () => {
     if (typeof window === 'undefined' || !window.location) return [];
@@ -57,7 +56,9 @@ export default function initUrlExtensions () {
                         // eslint-disable-next-line no-alert
                         const ok = typeof window.confirm === 'function' && window.confirm(
                             `Load the extension from:\n\n${url}\n\n` +
-                            'Only continue if you trust this source — it runs with full access to the editor.'
+                            'It will run in an isolated worker without editor or native-device access. ' +
+                            'HTTP(S) requests remain available; direct WebSockets and nested workers are blocked. ' +
+                            'Extensions requiring unsandboxed mode will fail.'
                         );
                         if (!ok) continue;
                     }

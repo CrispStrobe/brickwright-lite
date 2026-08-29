@@ -7,6 +7,10 @@ import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
 import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.js';
+// Static, not lazy: `_asmExamples()` is read during render, so it has to be
+// synchronous — and the module is a few KB of strings, not a chunk worth
+// splitting.
+import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 
 // Keep locally-authored games outside the upstream-synchronized examples file.
 const examples = {...upstreamExamples, ...gameExamples};
@@ -32,6 +36,12 @@ const DEVICE_GROUPS = [
         { id: 'atmega168p', label: 'ATmega168P (bare)', compile: false, emulator: 'avr8js' },
         { id: 'attiny88', label: 'ATtiny88 (bare)', compile: false, emulator: 'attiny88' },
         { id: 'attiny85', label: 'ATtiny85', compile: false, emulator: 'attiny85' },
+        // An ATmega32U4 console. `compile: false` is the important half:
+        // there is no path from blocks to an Arduboy binary — that needs
+        // avr-gcc, which is GPL and cannot ship here — so choosing this
+        // offers to RUN a .hex, not to build one. Listing it as compilable
+        // would promise something the licence forbids.
+        { id: 'arduboy', label: 'Arduboy (run .hex)', compile: false, emulator: 'arduboy' },
     ]},
     { label: 'Raspberry Pi', core: 'rp2040', devices: [
         { id: 'pico', label: 'Raspberry Pi Pico', compile: true, emulator: 'rp2040js' },
@@ -47,6 +57,12 @@ const DEVICE_GROUPS = [
     ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
+        // The Calliope runs the micro:bit's API on different hardware, so it
+        // shares the vocabulary, the simulator and the whole MicroPython
+        // path. It is listed separately because a program written for one
+        // says so — a Calliope import that claimed DEVICE MICROBIT told the
+        // reader their board was a micro:bit.
+        { id: 'calliopemini', label: 'Calliope mini', compile: false, emulator: null },
     ]},
     { label: 'Arcade & SAMD51', core: 'samd51', devices: [
         { id: 'arcade', label: 'MakeCode Arcade (160×120)', compile: false, emulator: 'arcade' },
@@ -71,6 +87,10 @@ const L10N = {
         openBad: e => `Don't know that file type (${e}).`,
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
         mcReading: f => `Reading ${f}…`,
+        downloadHex: '⬇ .hex for the board',
+        microbitNeedFirmware: 'Pick a MicroPython .hex once (from python.microbit.org, or the one that came with the board) — it is kept for this session.',
+        microbitFirmwareBad: f => `${f} is not an Intel HEX file.`,
+        microbitHexReady: f => `${f} saved. Copy it onto the MICROBIT drive.`,
         arduboyRunning: f => `Running ${f} on the Arduboy console. Arrow keys move, Z is A, X is B.`,
         mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
         mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
@@ -158,6 +178,9 @@ const L10N = {
         // BASIC / ASM mode bar
         profile: 'Profile:', lineNumbers: 'Line numbers', alwaysOn6502: '(always on for 6502)',
         asmModeLabel: 'Mode:', asmSource: 'Source (editable)', asmListing: 'Listing (from compiler)',
+        asmExampleLabel: 'Example:', asmExamplePick: 'choose…',
+        asmExampleReplace: 'Replace what is in the assembly editor?',
+        asmExampleLoaded: n => `Loaded "${n}". Press Assemble & Run to build it.`,
         assembleAndRun: '🔩 Assemble & Run',
         basicInfoTitle: 'BASIC info', asmInfoTitle: 'ASM info',
         // micro:bit bar
@@ -195,6 +218,10 @@ const L10N = {
         openBad: e => `Unbekannter Dateityp (${e}).`,
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
         mcReading: f => `${f} wird gelesen…`,
+        downloadHex: '⬇ .hex für das Board',
+        microbitNeedFirmware: 'Einmal eine MicroPython-.hex wählen (von python.microbit.org oder die vom Board) — sie bleibt für diese Sitzung gespeichert.',
+        microbitFirmwareBad: f => `${f} ist keine Intel-HEX-Datei.`,
+        microbitHexReady: f => `${f} gespeichert. Auf das MICROBIT-Laufwerk kopieren.`,
         arduboyRunning: f => `${f} läuft auf der Arduboy-Konsole. Pfeiltasten bewegen, Z ist A, X ist B.`,
         mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
         mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
@@ -282,6 +309,9 @@ const L10N = {
         // BASIC / ASM mode bar
         profile: 'Profil:', lineNumbers: 'Zeilennummern', alwaysOn6502: '(immer an bei 6502)',
         asmModeLabel: 'Modus:', asmSource: 'Source (editierbar)', asmListing: 'Listing (vom Compiler)',
+        asmExampleLabel: 'Beispiel:', asmExamplePick: 'wählen…',
+        asmExampleReplace: 'Inhalt des Assembler-Editors ersetzen?',
+        asmExampleLoaded: n => `„${n}" geladen. Mit Assemblieren & Ausführen bauen.`,
         assembleAndRun: '🔩 Assemblieren & Ausführen',
         basicInfoTitle: 'BASIC-Info', asmInfoTitle: 'ASM-Info',
         // micro:bit bar
@@ -335,6 +365,8 @@ const GROUPS = [
         ['vector_seven', '🏓 Vector Seven — first to 7'],
         ['reactor_ricochet', '⚡ Reactor Ricochet — clear 20 cells'],
         ['flux_vault', '🔷 Flux Vault — 3 puzzle chambers'],
+        ['neon_circuit', '💡 Neon Circuit — darken 3 boards'],
+        ['canal_command', '🚢 Canal Command — lift 4 boats'],
         ['sky_skim', '🪽 Skyline Swoop — polished'],
         ['missile_ballet', '✈️ Contrail Panic — polished'],
         ['orbit_ward', '🛡️ Aegis Arc — polished'],
@@ -443,6 +475,26 @@ const BW_AUTOSAVE_KEY = 'bw-code-autosave';
 const BW_AUTOSAVE_MAX = 512 * 1024;   // localStorage is ~5MB total; don't hog it
 
 const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit'};
+
+const DEVICE_HELP = {
+    microbit: 'Run MicroPython in the right-hand micro:bit simulator, use its A/B buttons and sensor sliders, or download a .hex for a real board.',
+    calliopemini: 'Uses the micro:bit-compatible MicroPython editor and simulator. P0–P20 programs retarget directly; MakeCode Calliope imports keep the Calliope device identity.',
+    arcade: 'Runs games on the 160×120 console in the right pane. Arrow keys and the on-screen pad move; Space/Z are A/B.',
+    pybadge: 'Runs the Arcade game on a PyBadge-shaped 160×128 console with A/B, D-pad, NeoPixels, light and tilt controls.',
+    'pybadge-lc': 'Runs the Arcade game on the compact PyBadge LC console. Its virtual GPIO keeps code runnable without inventing physical breakout pins.',
+    samd51: 'Targets the generic ATSAMD51J19 pin vocabulary. It has no invented board peripherals; choose PyBadge for its screen, controls and sensors.',
+    arduboy: 'Loads and runs an existing ATmega32U4 .hex in the Arduboy console. Brickwright does not claim to compile Arduboy firmware.',
+    pico: 'Compiles bare-metal RP2040 code for the emulator, or deploys MicroPython main.py to a mounted Pico.',
+    eater6502: 'Builds for the breadboard 6502 workstation: W65C22 VIA, ACIA serial, keyboard, OLED or VGA circuits and debugger.',
+    z80: 'Builds for the Z80 bench with OUT0–OUT7 and IN0–IN7 latch/buffer pins and its machine debugger.',
+    stm32f030: 'Compiles and emulates the light-tier STM32F030 target. Serial bootloader and SWD flashing actions appear for pseudocode.',
+    default: 'Choose examples written for this exact board, edit code, convert supported constructs to Blocks, then run, emulate or flash using the actions shown for the target.'
+};
+
+const deviceHelp = id => DEVICE_HELP[id] || (/^(arduino|atmega|attiny)/.test(id || '') ?
+    'Uses the AVR pin vocabulary and emulator. Open an example for this exact board; serial-bootloader targets also offer Flash to board.' :
+    (/^stc/.test(id || '') ?
+        'Compiles 8051/STC pseudocode, runs it in the chip emulator and offers the STC serial ISP flashing path.' : DEVICE_HELP.default));
 
 // Languages you can compile back INTO blocks. C joined them once cToPseudocode landed:
 // it reads both our own emitted C (which carries an `@bw` marker header, so the round-trip
@@ -627,7 +679,8 @@ class PseudocodeImporter extends React.Component {
         this.state = {lang: 'pseudocode', importedPython: false,
             buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
-            uploads: [], status: '', conversionReport: null, busy: false, showRef: false, showInfo: false,
+            uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false,
+            showRepresentation: true,
             showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
@@ -869,6 +922,119 @@ class PseudocodeImporter extends React.Component {
         }
     }
 
+    /**
+     * Build a .hex a real micro:bit or Calliope will run, and download it.
+     *
+     * MicroPython is interpreted, so there is nothing to compile and no
+     * server to ask: a flashable image is the RUNTIME with the script
+     * appended at 0x3E000. The only thing we do not have is the runtime,
+     * and it is 1.8 MB — too big to bundle into an app whose whole first
+     * paint is 3.8 MB, and not ours to fetch by name at click time.
+     *
+     * So it is asked for once and kept for the session. Two ways to
+     * supply it, and the second is why this is not a nuisance:
+     *
+     *   - pick a MicroPython .hex (python.microbit.org, uflash, or the
+     *     one that came with the board), or
+     *   - simply IMPORT one first — a downloaded MicroPython hex is
+     *     runtime + script, so opening one to read its Python already
+     *     hands us the runtime, and this button then needs nothing.
+     */
+    async downloadMicrobitHex () {
+        const script = this.state.buffers.micropython || '';
+        if (!script.trim()) {
+            this.setState({status: this.L.mcExportEmpty});
+            return;
+        }
+        let firmware = this._microbitFirmwareHex;
+        if (!firmware) {
+            firmware = await this._askForFirmware();
+            if (!firmware) return;                 // cancelled; status already set
+            this._microbitFirmwareHex = firmware;
+        }
+        try {
+            const {appendScript} = await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/micropython-hex.js');
+            const hex = appendScript(firmware, script);
+            const name = `${(this.currentStc()?.device || 'microbit').toLowerCase()}-program.hex`;
+            this._download(name, hex, 'application/octet-stream');
+            this.setState({status: this.L.microbitHexReady(name)});
+        } catch (e) {
+            this.setState({status: this.L.mcFailed('hex', (e && e.message) || String(e))});
+        }
+    }
+
+    /** One file prompt for the MicroPython runtime. Resolves null if cancelled. */
+    _askForFirmware () {
+        return new Promise(resolve => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.hex';
+            input.onchange = () => {
+                const file = input.files && input.files[0];
+                if (!file) { resolve(null); return; }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const text = String(reader.result || '');
+                    // Refuse anything that is not a hex here rather than
+                    // letting appendScript emit a file the board rejects.
+                    if (!/^\s*:[0-9A-Fa-f]{8}/.test(text)) {
+                        this.setState({status: this.L.microbitFirmwareBad(file.name)});
+                        resolve(null);
+                        return;
+                    }
+                    resolve(text);
+                };
+                reader.onerror = () => resolve(null);
+                reader.readAsText(file);
+            };
+            // A cancelled picker fires no event at all, so nothing is
+            // pending afterwards — the promise simply never settles, which
+            // is correct: no download, no status change, no error.
+            input.click();
+            this.setState({status: this.L.microbitNeedFirmware});
+        });
+    }
+
+    /** Hand the browser a file. */
+    _download (name, text, type) {
+        const url = URL.createObjectURL(new Blob([text], {type: type || 'text/plain'}));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /** Starter programs for the selected device, or none. */
+    _asmExamples () {
+        const stc = this.currentStc();
+        return asmExamplesFor((stc && stc.device) || '');
+    }
+
+    /**
+     * Load a starter program into the ASM editor.
+     *
+     * It replaces the buffer rather than appending, and asks first when
+     * there is work there — an example that silently eats what someone
+     * typed is worse than no example.
+     */
+    loadAsmExample (id) {
+        if (!id) return;
+        const example = this._asmExamples().find(e => e.id === id);
+        if (!example) return;
+        const current = (this.state.buffers.asm || '').trim();
+        if (current && !window.confirm(this.L.asmExampleReplace)) return;
+        this.setState(state => ({
+            buffers: {...state.buffers, asm: example.source},
+            asmMode: 'source',
+            status: this.L.asmExampleLoaded(
+                pickLocale(this.props.locale) === 'de' ? example.labelDe : example.label)
+        }));
+    }
+
     openArtefactFile (file) {
         this.setState({status: this.L.mcReading(file.name)});
         const reader = new FileReader();
@@ -883,6 +1049,16 @@ class PseudocodeImporter extends React.Component {
                     this.L.mcNoSource(file.name, err.format) :
                     this.L.mcFailed(file.name, (err && err.message) || String(err))});
                 return;
+            }
+            // A downloaded MicroPython hex is runtime + script, so importing
+            // one to read its Python also hands us the runtime the flash
+            // button needs. Keeping it here means that button never has to
+            // ask.
+            if (res && res.kind === 'micropython') {
+                try {
+                    this._microbitFirmwareHex = new TextDecoder().decode(
+                        new Uint8Array(reader.result));
+                } catch (e) { /* not text; the button will ask instead */ }
             }
             this.applyMakeCodeImport(res, file.name);
         };
@@ -2056,10 +2232,13 @@ class PseudocodeImporter extends React.Component {
     catalogForDevice (device) {
         const dev = this._normDevice(device);
         return (this.state.catalog || []).map(ex => {
-            const devices = ex.devices || [];
+            // Older catalog rows use singular `device`; treating its absence
+            // from `devices` as "works everywhere" exposed Nano/Mega examples
+            // under micro:bit and every other unrelated board.
+            const devices = ex.devices || (ex.device ? [ex.device] : []);
             const compatible = devices.length === 0 || devices.some(d => this._normDevice(d) === dev);
-            return { ...ex, _compatible: compatible };
-        });
+            return { ...ex, devices, _compatible: compatible };
+        }).filter(ex => ex._compatible);
     }
 
     // Load a catalog example's program.bw into the pseudocode editor. If the
@@ -2579,6 +2758,68 @@ class PseudocodeImporter extends React.Component {
         );
     }
 
+    renderActionMenu (csel) {
+        const item = {...csel, display: 'block', width: '100%', boxSizing: 'border-box',
+            textAlign: 'left', cursor: 'pointer', border: 'none', background: 'transparent'};
+        return (
+            <details style={{position: 'relative', alignSelf: 'center'}} data-testid="bw-code-actions">
+                <summary style={{...csel, cursor: 'pointer', listStyle: 'none', border: '1px solid #cbd5e1',
+                    background: '#f1f5f9', whiteSpace: 'nowrap'}} title="Open, save, import, examples and reference">
+                    ⋯
+                </summary>
+                <div style={{position: 'absolute', top: '100%', right: 0, zIndex: 70, marginTop: 4,
+                    width: 220, padding: 6, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
+                    boxShadow: '0 8px 24px rgba(15,23,42,.2)', display: 'flex', flexDirection: 'column', gap: 2}}>
+                    <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
+                        data-testid="bw-open-file">
+                        {this.L.openFile}
+                        <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
+                            onChange={this.openCodeFile} />
+                    </label>
+                    <button type="button" onClick={this.saveCodeFile} style={item}
+                        title={this.L.saveFileTitle(this.saveFileName())} data-testid="bw-save-file">
+                        {this.L.saveFile}
+                    </button>
+                    <button type="button" onClick={this.openMakeCodeShare} style={item}
+                        title={this.L.mcShareTitle} data-testid="bw-makecode-share">
+                        {this.L.mcShare}
+                    </button>
+                    {['microbit', 'calliopemini'].includes(this.currentDevice()) ? (
+                        <button type="button" onClick={this.exportMakeCode} style={item}
+                            title={this.L.mcExportTitle} disabled={this.state.busy}
+                            data-testid="bw-makecode-export">{this.L.mcExport}</button>
+                    ) : null}
+                    {this._makeCodeProject ? (
+                        <button type="button" onClick={() => this.exportMakeCodeSource()} style={item}
+                            title={this.L.exportMakeCodeTitle} data-testid="bw-export-makecode-source">
+                            {this.L.exportMakeCode}
+                        </button>
+                    ) : null}
+                    <div style={{borderTop: '1px solid #e2e8f0', margin: '3px 0'}} />
+                    {this.currentDevice() ? this.renderCatalogControl(item) : (
+                        <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
+                            style={{...item, border: 'none'}} title={this.L.loadExampleTitle}
+                            data-testid="bw-load-example">
+                            <option value="" disabled>{this.L.loadExample}</option>
+                            {GROUPS.map(g => (
+                                <optgroup key={g.label} label={g.label}>
+                                    {g.items.filter(([k]) => examples[k]).map(([k, label]) =>
+                                        <option key={k} value={k}>{label}</option>)}
+                                </optgroup>
+                            ))}
+                        </select>
+                    )}
+                    <button type="button" onClick={() => this.setState(s => ({showRef: !s.showRef}))}
+                        style={item} title={this.L.referenceTitle(this.state.lang)}>📝 {this.L.reference}</button>
+                    <button type="button" onClick={() => this.setState(s => ({showArt: !s.showArt}))}
+                        style={item} title={this.L.customArtTitle}>
+                        🖼️ {this.L.customArt}{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
+                    </button>
+                </div>
+            </details>
+        );
+    }
+
     render () {
         // The selected .tab-panel is display:flex (row); like .blocks-wrapper we must
         // flex-grow to fill the column width, else we shrink to content (~660px) and
@@ -2618,102 +2859,28 @@ class PseudocodeImporter extends React.Component {
                         );
                     })}
                     <span style={{flex: 1, minWidth: 4}} />
-                    {/* Compact controls — hidden in maximize mode */}
-                    {!max && (
-                        <React.Fragment>
-                            <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
-                                aria-label={this.L.infoAria} title={this.L.infoTitle}
-                                style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20,
-                                    padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
-                                    color: this.state.showInfo ? '#fff' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                                    fontStyle: 'italic', alignSelf: 'center'}}>
-                                i
-                            </button>
-                            <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
-                                style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}
-                                data-testid="bw-device-select">
-                                <option value="">{this.L.noChips}</option>
-                                {DEVICE_GROUPS.map(g => (
-                                    <optgroup key={g.label} label={g.label}>
-                                        {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-                                    </optgroup>
-                                ))}
-                            </select>
-                            {/* Your own files, beside the built-in catalog: the examples
-                                are read-only, and code you write yourself had nowhere
-                                to live. Open routes by extension to the tab that owns
-                                it; Save writes whichever tab you are looking at. */}
-                            <label style={{...csel, alignSelf: 'center', cursor: 'pointer',
-                                border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)} data-testid="bw-open-file">
-                                {this.L.openFile}
-                                <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
-                                    onChange={this.openCodeFile} />
-                            </label>
-                            {this.currentDevice() === 'microbit' && (
-                                <button type="button" onClick={this.exportMakeCode}
-                                    style={{...csel, alignSelf: 'center', cursor: 'pointer',
-                                        border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                    title={this.L.mcExportTitle}
-                                    disabled={this.state.busy}
-                                    data-testid="bw-makecode-export">
-                                    {this.L.mcExport}
-                                </button>
-                            )}
-                            <button type="button" onClick={this.openMakeCodeShare}
-                                style={{...csel, alignSelf: 'center', cursor: 'pointer',
-                                    border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.mcShareTitle}
-                                data-testid="bw-makecode-share">
-                                {this.L.mcShare}
-                            </button>
-                            <button type="button" onClick={this.saveCodeFile}
-                                style={{...csel, alignSelf: 'center', cursor: 'pointer',
-                                    border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.saveFileTitle(this.saveFileName())}
-                                data-testid="bw-save-file">
-                                {this.L.saveFile}
-                            </button>
-                            {this._makeCodeProject ? <button type="button" onClick={() => this.exportMakeCodeSource()}
-                                style={{...csel, alignSelf: 'center', cursor: 'pointer', border: '1px solid #cbd5e1', background: '#f1f5f9'}}
-                                title={this.L.exportMakeCodeTitle} data-testid="bw-export-makecode-source">
-                                {this.L.exportMakeCode}
-                            </button> : null}
-                            {this.currentDevice() ? this.renderCatalogControl(csel) : (
-                                <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
-                                    style={{...csel, alignSelf: 'center'}} title={this.L.loadExampleTitle}
-                                    data-testid="bw-load-example">
-                                    <option value="" disabled>{this.L.loadExample}</option>
-                                    {GROUPS.map(g => (
-                                        <optgroup key={g.label} label={g.label}>
-                                            {g.items.filter(([k]) => examples[k]).map(([k, label]) => {
-                                                const compat = this.exampleCompat(k);
-                                                const blocked = compat && !compat.ok;
-                                                return (
-                                                    <option key={k} value={k} disabled={blocked}
-                                                        title={blocked ? compat.reasons.join('; ') : ''}>
-                                                        {blocked ? `${label} ⛔` : label}
-                                                    </option>
-                                                );
-                                            })}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                            )}
-                            <button onClick={() => this.setState(s => ({showRef: !s.showRef}))}
-                                style={{...csel, cursor: 'pointer', background: this.state.showRef ? '#e2e8f0' : '#f1f5f9',
-                                    border: '1px solid #cbd5e1', alignSelf: 'center'}}
-                                title={this.L.referenceTitle(this.state.lang)}>
-                                📝 {this.L.reference}
-                            </button>
-                            <button type="button" onClick={() => this.setState(s => ({showArt: !s.showArt}))}
-                                title={this.L.customArtTitle}
-                                style={{...csel, cursor: 'pointer', border: '1px solid #cbd5e1',
-                                    background: this.state.showArt ? '#e2e8f0' : '#f1f5f9', alignSelf: 'center'}}>
-                                🖼️{this.state.uploads.length ? ` (${this.state.uploads.length})` : ''}
-                            </button>
-                        </React.Fragment>
-                    )}
+                    {/* Compact controls */}
+                    <React.Fragment>
+                        <button type="button" onClick={() => this.setState(s => ({showInfo: !s.showInfo}))}
+                            aria-label={this.L.infoAria} title={this.L.infoTitle}
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20,
+                                padding: 0, border: 'none', borderRadius: '50%', background: this.state.showInfo ? '#4c97ff' : '#e2e8f0',
+                                color: this.state.showInfo ? '#fff' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                                fontStyle: 'italic', alignSelf: 'center'}}>
+                            i
+                        </button>
+                        <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
+                            style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}
+                            data-testid="bw-device-select">
+                            <option value="">{this.L.noChips}</option>
+                            {DEVICE_GROUPS.map(g => (
+                                <optgroup key={g.label} label={g.label}>
+                                    {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                                </optgroup>
+                            ))}
+                        </select>
+                        {this.renderActionMenu(csel)}
+                    </React.Fragment>
                     {/* In maximize mode: compact To/From-blocks in the tab row */}
                     {max && (
                         <React.Fragment>
@@ -2741,16 +2908,22 @@ class PseudocodeImporter extends React.Component {
                     </button>
                 </div>
 
-                <div data-testid="bw-representation-status" role="status"
-                    style={{padding: '5px 10px', background: '#fff8e1', border: '1px solid #f0c36d',
-                        borderRadius: '0 0 6px 6px', color: '#5d4300', fontSize: 11, lineHeight: 1.35,
-                        flexShrink: 0}}>
-                    {representationNotice(this.state.lang, this.state.asmMode, this.props.locale)}
-                </div>
+                {this.state.showRepresentation && !max && (
+                    <div data-testid="bw-representation-status" role="status"
+                        style={{padding: '5px 10px', background: '#fff8e1', border: '1px solid #f0c36d',
+                            borderRadius: '0 0 6px 6px', color: '#5d4300', fontSize: 11, lineHeight: 1.35,
+                            flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <span>{representationNotice(this.state.lang, this.state.asmMode, this.props.locale)}</span>
+                        <button onClick={() => this.setState({showRepresentation: false})} style={{background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontSize: 14}}>✕</button>
+                    </div>
+                )}
 
                 {this.state.showInfo && !max && (
-                    <div style={{padding: '6px 10px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                    <div style={{padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: '0 0 8px 8px', fontSize: 12, color: '#334155', flexShrink: 0}}>
+                        <div style={{fontWeight: 'bold', marginBottom: 6, color: '#1e3a8a'}}>
+                            {this.currentDevice() ? deviceHelp(this.currentDevice()) : deviceHelp('default')}
+                        </div>
                         {pickLocale(this.props.locale) === 'de' ? (
                             <React.Fragment>
                                 Schreibe dein Projekt als Code in jedem Tab. <strong>Pseudocode</strong>, <strong>Python</strong>,{' '}
@@ -2826,6 +2999,24 @@ class PseudocodeImporter extends React.Component {
                                 <option value="listing">{this.L.asmListing}</option>
                             </select>
                         </label>
+                        {this.state.asmMode === 'source' && this._asmExamples().length > 0 && (
+                            <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                                {this.L.asmExampleLabel}
+                                <select
+                                    data-testid="bw-asm-examples"
+                                    onChange={e => this.loadAsmExample(e.target.value)}
+                                    style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}
+                                    value=""
+                                >
+                                    <option value="">{this.L.asmExamplePick}</option>
+                                    {this._asmExamples().map(ex => (
+                                        <option key={ex.id} value={ex.id}>
+                                            {pickLocale(this.props.locale) === 'de' ? ex.labelDe : ex.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        )}
                         {this.state.asmMode === 'source' && (
                             <button type="button"
                                 onClick={() => this.assembleAndRun()}
@@ -2879,6 +3070,16 @@ class PseudocodeImporter extends React.Component {
                                 background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff'}}
                             data-testid="bw-microbit-flash">
                             {this.L.runOnSimulator}
+                        </button>
+                        <button type="button"
+                            onClick={() => this.downloadMicrobitHex()}
+                            disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
+                            title={this.L.microbitNeedFirmware}
+                            style={{padding: '4px 12px', borderRadius: 6, border: '1px solid #0ea5e9',
+                                cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                background: '#f0f9ff', color: '#0369a1'}}
+                            data-testid="bw-microbit-download-hex">
+                            {this.L.downloadHex}
                         </button>
                     </div>
                 )}
@@ -3111,26 +3312,43 @@ class PseudocodeImporter extends React.Component {
                 {this.state.conversionReport ? (() => {
                     const report = this.state.conversionReport;
                     const de = pickLocale(this.props.locale) === 'de';
+                    const exp = this.state.reportExpanded;
                     return (
                         <div data-testid="bw-conversion-report" role="status"
-                            style={{marginTop: 4, padding: '7px 10px', border: '1px solid #cbd5e1',
+                            style={{marginTop: 4, border: '1px solid #cbd5e1',
                                 borderRadius: 6, background: '#f8fafc', fontSize: 12, color: '#334155',
                                 flexShrink: 0}}>
-                            <strong>{de ? 'Umwandlungsbericht' : 'Conversion report'}: {report.direction}</strong>
-                            <div data-testid="bw-conversion-preserved" style={{color: report.preserved ? '#166534' : '#991b1b'}}>
-                                {de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
-                                    (de ? 'Projektstruktur erzeugt und geladen' : 'project structure generated and loaded') :
-                                    (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}
+                            <div style={{display: 'flex', alignItems: 'center', padding: exp ? '7px 10px 4px' : '4px 8px', cursor: 'pointer', fontWeight: 600}}
+                                onClick={() => this.setState(s => ({reportExpanded: !s.reportExpanded}))}>
+                                <span style={{width: 16, display: 'inline-block', fontSize: 10}}>{exp ? '▼' : '▶'}</span>
+                                {de ? 'Umwandlungsbericht' : 'Conversion report'}: {report.direction}
+                                {!exp && (
+                                    <span style={{marginLeft: 'auto', display: 'flex', gap: 6, fontSize: 11}}>
+                                        {report.preserved ? null : <span style={{color: '#991b1b'}}>❌</span>}
+                                        {report.changed.length > 0 && <span style={{color: '#0284c7'}}>{report.changed.length} {de ? 'geändert' : 'changed'}</span>}
+                                        {report.unsupported.length > 0 && <span style={{color: '#92400e'}}>{report.unsupported.length} {de ? 'nicht unterstützt' : 'unsupported'}</span>}
+                                        {report.preserved && report.changed.length === 0 && report.unsupported.length === 0 && <span style={{color: '#166534'}}>✓ OK</span>}
+                                    </span>
+                                )}
                             </div>
-                            <div data-testid="bw-conversion-changed">
-                                {de ? 'Geändert' : 'Changed'}: {report.changed.length ? report.changed.join(' · ') :
-                                    (de ? 'keine gemeldeten Änderungen' : 'no reported changes')}
-                            </div>
-                            <div data-testid="bw-conversion-unsupported"
-                                style={{color: report.unsupported.length ? '#92400e' : '#334155'}}>
-                                {de ? 'Nicht unterstützt' : 'Unsupported'}: {report.unsupported.length ?
-                                    report.unsupported.join(' · ') : (de ? 'nichts gemeldet' : 'nothing reported')}
-                            </div>
+                            {exp && (
+                                <div style={{padding: '0 10px 7px 26px'}}>
+                                    <div data-testid="bw-conversion-preserved" style={{color: report.preserved ? '#166534' : '#991b1b'}}>
+                                        {de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
+                                            (de ? 'Projektstruktur erzeugt und geladen' : 'project structure generated and loaded') :
+                                            (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}
+                                    </div>
+                                    <div data-testid="bw-conversion-changed">
+                                        {de ? 'Geändert' : 'Changed'}: {report.changed.length ? report.changed.join(' · ') :
+                                            (de ? 'keine gemeldeten Änderungen' : 'no reported changes')}
+                                    </div>
+                                    <div data-testid="bw-conversion-unsupported"
+                                        style={{color: report.unsupported.length ? '#92400e' : '#334155'}}>
+                                        {de ? 'Nicht unterstützt' : 'Unsupported'}: {report.unsupported.length ?
+                                            report.unsupported.join(' · ') : (de ? 'nichts gemeldet' : 'nothing reported')}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     );
                 })() : null}

@@ -148,6 +148,27 @@ export function resolveShare(size) {
  * @param {string|number} right — size name or dragged fraction
  * @returns {{ left: object, middle: object, right: object }} — style objects
  */
+/**
+ * Every column is a containing block, in EVERY state — not only while collapsed.
+ *
+ * The base `.stage-and-target-wrapper` does not set `position`, so it has to be
+ * stated here. It used to be stated in the collapsed branch alone, for
+ * PaneStrip's benefit, and that asymmetry was a bug rather than an economy:
+ * React removes an inline property that the previous style object had and the
+ * next one does not, so collapsing a column and restoring it left the column
+ * `position: static`. The circuit tab's stage host is `position: absolute;
+ * inset: 0` and had been sized by that column; with the column no longer
+ * positioned it resolved against the VIEWPORT instead, stretched to
+ * 1600x900 over the whole editor, and silently swallowed every click on the
+ * tab strip. Collapse the stage, restore it, then try to open the Costumes
+ * tab — measured 2026-08-28.
+ *
+ * Absolutely-positioned children of a column are the normal case here
+ * (PaneStrip, the circuit stage host, dock overlays). They may not depend on
+ * which branch below happened to run.
+ */
+const POSITIONED = {position: 'relative'};
+
 export function computePaneStyles(left, middle, right) {
   const shares = {
     left: resolveShare(left),
@@ -165,10 +186,7 @@ export function computePaneStyles(left, middle, right) {
         flexShrink: 0,
         minWidth: `${XS_MIN_WIDTH}px`,
         overflow: 'hidden',
-        // The containing block for PaneStrip, which covers the collapsed column so the
-        // 28px slice of clipped stage underneath is not what the user sees. Stated here
-        // rather than relied upon: the base .stage-and-target-wrapper does not set it.
-        position: 'relative',
+        ...POSITIONED,
       };
     }
     if (isFit(name)) {
@@ -180,6 +198,7 @@ export function computePaneStyles(left, middle, right) {
         flexShrink: 1,
         minWidth: `${MIN_COLUMN_WIDTH}px`,
         overflow: 'hidden',
+        ...POSITIONED,
       };
     }
     if (isExplicitFraction(name)) {
@@ -193,6 +212,7 @@ export function computePaneStyles(left, middle, right) {
         flexShrink: 1,
         minWidth: `${MIN_COLUMN_WIDTH}px`,
         overflow: 'hidden',
+        ...POSITIONED,
       };
     }
     return {
@@ -201,6 +221,7 @@ export function computePaneStyles(left, middle, right) {
       flexShrink: 1,
       minWidth: `${MIN_COLUMN_WIDTH}px`,
       overflow: 'hidden',
+      ...POSITIONED,
     };
   }
 

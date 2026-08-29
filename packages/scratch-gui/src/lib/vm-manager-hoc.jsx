@@ -5,6 +5,7 @@ import {connect} from 'react-redux';
 
 import VM from 'scratch-vm';
 import AudioEngine from 'scratch-audio';
+import unblockAudio from './audio-context-unblock.js';
 
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
@@ -30,6 +31,9 @@ const vmManagerHOC = function (WrappedComponent) {
         componentDidMount () {
             if (!this.props.vm.initialized) {
                 this.audioEngine = new AudioEngine();
+                // Firefox never settles decodeAudioData on a suspended context, which
+                // hangs project load forever. See lib/audio-context-unblock.js.
+                unblockAudio(this.audioEngine);
                 this.props.vm.attachAudioEngine(this.audioEngine);
                 this.props.vm.setCompatibilityMode(true);
                 this.props.vm.initialized = true;

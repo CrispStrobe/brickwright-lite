@@ -4,6 +4,7 @@ import React from 'react';
 import {defineMessages, injectIntl, intlShape} from 'react-intl';
 import VM from 'scratch-vm';
 import AudioEngine from 'scratch-audio';
+import unblockAudio from '../lib/audio-context-unblock.js';
 
 import LibraryComponent from '../components/library/library.jsx';
 
@@ -53,6 +54,9 @@ class SoundLibrary extends React.PureComponent {
     }
     componentDidMount () {
         this.audioEngine = new AudioEngine();
+        // Firefox never settles decodeAudioData on a suspended context, which
+        // hangs project load forever. See lib/audio-context-unblock.js.
+        unblockAudio(this.audioEngine);
         this.playingSoundPromise = null;
     }
     componentWillUnmount () {

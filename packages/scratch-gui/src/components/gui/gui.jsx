@@ -220,8 +220,13 @@ const GUIComponent = props => {
             // session was showing the sim for no reason (owner report).
             // The button still switches explicitly; only the silent
             // restore is gated on the device actually being a micro:bit.
-            if (dock === 'microbit'
-                && props.vm?.runtime?.stc?.device !== 'microbit') return 'top';
+            if (dock === 'microbit' &&
+                !['microbit', 'calliopemini'].includes(props.vm?.runtime?.stc?.device)) return 'top';
+            // Same rule for the console: a restored 'arduboy' dock with no
+            // program is a blank screen someone has to work out how to
+            // leave, so it opens only when the device says so.
+            if (dock === 'arduboy' && props.vm?.runtime?.bwDeviceId !== 'arduboy' &&
+                !window.__bwArduboyPending) return 'top';
             if (dock === 'arcade' && !['arcade', 'pybadge', 'pybadge-lc', 'samd51']
                 .includes(props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device)) return 'top';
             return dock;
@@ -252,7 +257,7 @@ const GUIComponent = props => {
                 // collapsed pane is indistinguishable from nothing loading
                 // (measured: the calculator's shipped layout, present in
                 // the DOM, invisible on screen).
-                if (detail.value === 'right' || detail.value === 'controller') {
+                if (detail.value === 'right' || detail.value === 'controller' || detail.value === 'microbit' || detail.value === 'arcade') {
                     setStagePaneVisible(true);
                     try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
                 }
@@ -829,11 +834,9 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={
                                     <div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'micro:bit-Simulator wird geladen…' : 'Loading micro:bit simulator…'}</div>
                                 }>
-                                    {dockFullScreenStyle ? (
-                                        <div style={dockFullScreenStyle}><MicrobitSimPane /></div>
-                                    ) : (
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
                                         <MicrobitSimPane />
-                                    )}
+                                    </div>
                                 </React.Suspense>
                             ) : dockMode === 'arduboy' ? (
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading Arduboy…</div>}>
