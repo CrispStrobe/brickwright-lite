@@ -74,6 +74,21 @@ const FILES = [
 
 // Downstream-only modules imported by a synced file. They must exist locally,
 // but have no source-repository counterpart to compare against.
+//
+// EACH ONE IS A TRIPWIRE, and on 2026-08-29 it was needed. A plain sync
+// OVERWRITES `sb3-creator.js` with the upstream file, which does not carry
+// lite's downstream dialect — the vector-art `SHAPE art` verb, the
+// arcade/pybadge/samd51 device tables, and the dropped "micropython — no C
+// retarget" refusal. That vendor was silent: the delta simply vanished, and the
+// first symptom was fourteen game tests failing with `Unknown SHAPE "art"` in
+// CI, three commits and one push later. So after writing, this script now
+// checks that every module named here is still imported by something it just
+// vendored, and REFUSES if it is not — the loss is reported where it happens,
+// not where it hurts.
+//
+// The real fix is upstreaming the dialect; until then the recovery is a 3-way
+// merge (`git merge-file lite.js upstream@oldpin.js upstream@newpin.js`), which
+// applied cleanly with zero conflicts.
 const LOCAL_FILES = [
     'sb3-creator-vector-art.js'
 ];
@@ -128,6 +143,26 @@ for (const [, dest] of FILES) {
     }
 }
 if (unresolved) process.exit(1);
+
+// The other direction: a downstream-only module that NOTHING imports any more.
+// A sync that silently drops lite's dialect passes every check above — every
+// import it left behind still resolves, because there are none.
+if (!check) {
+    const importers = new Map(LOCAL_FILES.map(f => [f, []]));
+    for (const [, dest] of FILES) {
+        const text = await readFile(dest, 'utf8').catch(() => '');
+        for (const f of LOCAL_FILES) if (text.includes(`./${f}`)) importers.get(f).push(path.basename(dest));
+    }
+    const orphaned = [...importers].filter(([, who]) => who.length === 0).map(([f]) => f);
+    if (orphaned.length) {
+        console.error(`\nDOWNSTREAM DIALECT LOST: ${orphaned.join(', ')} is imported by nothing after`);
+        console.error('this sync. The upstream file that used to import it was overwritten, so lite');
+        console.error('just lost a feature it ships. Recover with a 3-way merge against the OLD pin:');
+        console.error('  git merge-file <vendored> <upstream@oldpin> <upstream@newpin>');
+        console.error('and then upstream the delta so the next sync does not have to.');
+        process.exit(1);
+    }
+}
 
 if (check && stale && !allowStale) {
     console.error(`\n${stale} vendored file(s) out of date — run: npm run sync:sb3creator`);

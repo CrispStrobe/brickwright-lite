@@ -44,7 +44,15 @@ const UNITS = {
     v: ['V', 1], mv: ['V', 1e-3], kv: ['V', 1e3],
     a: ['A', 1], ma: ['A', 1e-3], ua: ['A', 1e-6], 'µa': ['A', 1e-6],
     ohm: ['R', 1], ohms: ['R', 1], 'Ω': ['R', 1], kohm: ['R', 1e3], 'kΩ': ['R', 1e3],
-    'mΩ': ['R', 1e6], mohm: ['R', 1e6],
+    // `mΩ` is MILLIohm and `MΩ` is MEGohm — SI, and the two differ by 1e9.
+    // Until 2026-08-29 this table read `'mΩ': 1e6` and had no `MΩ` at all, so a
+    // lesson writing "20 mΩ" was checked against 20 MΩ (found: the multimeter's
+    // shunt, which is 0.02 Ω) and one writing "10 MΩ" was not checked at all —
+    // the regex is case-sensitive, so `MΩ` matched nothing and fell through
+    // silently. A unit the checker cannot see is a claim it cannot refuse.
+    // The ASCII spellings keep their old meaning: nobody writes milliohms as
+    // `mohm`, and `Mohm` lowercases to the same string.
+    'mΩ': ['R', 1e-3], 'MΩ': ['R', 1e6], mohm: ['R', 1e6],
     f: ['C', 1], uf: ['C', 1e-6], 'µf': ['C', 1e-6], nf: ['C', 1e-9], pf: ['C', 1e-12],
     h: ['L', 1], mh: ['L', 1e-3], uh: ['L', 1e-6], 'µh': ['L', 1e-6],
     hz: ['F', 1], khz: ['F', 1e3], mhz: ['F', 1e6],
@@ -55,7 +63,7 @@ const UNITS = {
 // not word characters, so `Ω\b` requires the NEXT character to be one and
 // silently drops every "10 kΩ and ..." in the corpus. Found by testing the
 // extractor on a sentence whose answer was known.
-const NUMBER = /(-?\d+(?:[.,]\d+)?)\s*(kΩ|mΩ|Ω|µF|µA|µH|µs|mV|kV|mA|uA|kohm|mohm|ohms?|nF|pF|uF|mH|uH|kHz|MHz|Hz|ms|us|V|A|F|H|s)(?![a-zA-Z0-9µ])/g;
+const NUMBER = /(-?\d+(?:[.,]\d+)?)\s*(MΩ|kΩ|mΩ|Ω|µF|µA|µH|µs|mV|kV|mA|uA|kohm|mohm|ohms?|nF|pF|uF|mH|uH|kHz|MHz|Hz|ms|us|V|A|F|H|s)(?![a-zA-Z0-9µ])/g;
 
 /** Pull every electrical quantity out of a block of prose. */
 export function claimsIn(text) {
@@ -282,7 +290,12 @@ const matches = (value, dimension, pool, quantum = 0) => {
 // is a fact about the run budget, not about the circuit. Bare `simulat` would match
 // 92 places catalog-wide and blunt the check wherever a lesson merely says a real
 // measured value was taken in simulation; these two phrases match four sentences.
-const INSTRUMENT_CONTEXT = /\b(timebase|window|per div|v\/div|refresh|display|adc|counts?|resolution|sample|per count|bit|fit in|fits in|of simulation|simulated time)\b/i;
+// `input impedance` joined the list on 2026-08-29 with D21: a placed meter's
+// 10 MOhm is a property of the INSTRUMENT, exactly like the ADC's volts-per-count
+// already on this list, and it is the number `signals-loading` exists to teach.
+// It is deliberately the two-word phrase and not bare `impedance`, which would
+// exempt every sentence in `signals-complex-impedance`.
+const INSTRUMENT_CONTEXT = /\b(timebase|window|per div|v\/div|refresh|display|adc|counts?|resolution|sample|per count|bit|fit in|fits in|of simulation|simulated time|input impedance)\b/i;
 
 /**
  * Check one lesson's quoted numbers against its bench.

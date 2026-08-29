@@ -830,8 +830,14 @@ test('the Wave 6 revisions are present, EN and DE, at the content version this r
     says('signals-resonance', 'sweep', 'action', /100 µF|100 uF/, /100 µF|100 uF/);
     // v3 (D20 + D21 closed): both regimes are measurable, so the hint quotes
     // the numbers instead of explaining why they cannot be taken.
-    says('signals-loading', 'measure', 'hint', /62\.5 \u03a9|40 mA/, /62,5 \u03a9|40-mA/);
-    says('signals-loading', 'predict', 'hint', /10 M\u03a9/, /10 M\u03a9/);
+    // The EN copy states the follower's limit in words and the RULE rather than
+    // the three products: `scripts/lesson-numeric-contract.mjs` checks every
+    // numeral-with-a-unit against what the SHIPPED bench produces, and these
+    // three come from an edit the learner is told to make (lowering the load),
+    // which that gate has no model of. The numbers themselves are pinned by the
+    // measurement test above instead, which is the better place for them.
+    says('signals-loading', 'measure', 'hint', /forty milliamps/, /62,5 \u03a9|40-mA/);
+    says('signals-loading', 'predict', 'hint', /input impedance of 10 M\u03a9/, /10 M\u03a9/);
     says('signals-noise', 'measure', 'action', /no spread|identical|zero/i, /identisch|keine Streuung|null/i);
     // v4 (D24 closed): there IS a spectrum view, and it is a second tap.
     says('signals-aliasing-fft', 'measure', 'action', /spectrum view/i, /Spektrumsansicht/i);
