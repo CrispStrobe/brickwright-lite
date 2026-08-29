@@ -467,6 +467,18 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: node scripts/verify-labwired-engine.mjs --absent
 
+      # Both gates above screenshot what they saw, and a screenshot that only
+      # ever exists inside a runner is a screenshot nobody can look at. Keeping
+      # them makes "prove the heavy tier runs" answerable by anyone, from any
+      # run, without a local production build — which on a shared box is a
+      # 2.4 GiB memory race that is not always winnable.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: labwired-tier-screenshots
+          path: artifacts/labwired-*.png
+          if-no-files-found: warn
+
       # The debugger-only pane, which the note above says has regressed to a
       # blank pane twice. This gate existed for it and was never run by CI — so
       # it rotted until it could not get past its first click, and nobody knew.
