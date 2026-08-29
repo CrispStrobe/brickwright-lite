@@ -1,17 +1,25 @@
-# micro:bit Hello World
-# Licensed under MIT
-# Provenance: Created for Brickwright Lite
+DEVICE MICROBIT
 
-DEVICE microbit
-
+# Hello micro:bit — the first program on the board itself.
+#
+# No breadboard, no wires: the 5x5 LED matrix and the two buttons are the
+# whole circuit. Greet, then count how many times A is pressed and show the
+# running total; B shows a heart and resets the count.
 WHEN flag clicked:
-  say "HELLO"
+  set greetings to 0
+  show text "HELLO"
+  show pattern 09090:99999:99999:09990:00900
+  wait 1 seconds
+  clear display
   FOREVER:
-    IF key a pressed? THEN:
-      switch costume to "happy"
-    ELSE:
-      IF key b pressed? THEN:
-        switch costume to "sad"
-      ELSE:
-        clear
+    IF read button_a > 0 THEN:
+      change greetings by 1
+      show text "HI"
+      wait 0.3 seconds
+      clear display
+    IF read button_b > 0 THEN:
+      set greetings to 0
+      show pattern 09090:99999:99999:09990:00900
+      wait 0.3 seconds
+      clear display
     wait 0.1 seconds
