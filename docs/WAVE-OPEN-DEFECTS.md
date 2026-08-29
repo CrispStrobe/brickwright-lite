@@ -49,11 +49,11 @@ Two counting rules, so the numbers are comparable:
 | **D22** | The simulated potentiometer is bit-exact: twelve reads of a still knob give ADC count 380 every time, standard deviation exactly 0 | bw-board | **1** | 6 | open — **design filed** 2026-08-29 (bw-board `3e58fd7`, `spec-updates/seeded-measurement-noise.md`), deliberately not implemented until a consumer exists |
 | **D23** | The first solve of a fresh board is a DC operating point, in which a capacitor is an open circuit — so the meter reads 5.0000 V on a capacitor the engine's own `getCapVoltage` holds at 0 | bw-board / bw-circuit-ui | **1** | 6 | **FIXED 2026-08-29** — the first solve honours stored cap state |
 | **D24** | There is no FFT anywhere in the circuit UI, and the scope's ring buffer stores an interleaved (min, max) envelope rather than a sample series | bw-circuit-ui + bw-board | **1** | 6 | **FIXED 2026-08-29** — a spectrum view over a second, sample-series tap |
-| **D25** | No cycle-level step: the 6502 target steps by `insn`/`over`/`out`, the circuit step button advances 50 ms (50 000 cycles at 1 MHz) | lite (`bw-debug`) + bw-circuit-ui | **1** | 7 | open — see PLAN.md |
+| **D25** | **RE-WORDED 2026-08-29 — the row named the wrong engine.** It said the 6502 target needed a cycle step. Measured: `W65C02.step()` fetches an opcode and runs `_exec` to completion, returning the instruction's cycle count; `Z80Machine.step()`, avr8js and rp2040js are the same shape. None has sub-instruction state, so a cycle step on any of them could only be an instruction step with a different label — the D5 lie. The one core that CAN is emu8051, whose `tick()` advances a single oscillator clock | emu8051-stc, then bw-board + lite (`bw-debug`) | **1** | 7 | **FIXED 2026-08-29** — a real cycle step on emu8051 (3 cycle steps vs 2 instruction steps across the same two instructions), feature-detected; the other four refuse by name with the architectural reason. The circuit-side 50 ms button is unchanged and `machines-buses` keeps its adjudicated sentinel |
 | **D26** | **RE-WORDED 2026-08-29 — the row was wrong.** It said the PREFIX bitop form does not compose with a comparison and the INFIX form does not work bare (complementary holes), and located the fault in "the compiler or the referee". Isolated: **the referee's own truth test was inverted** (`num("true")` is 0), which masked a FOUR-WAY backend disagreement on a bare value in condition position — and the referee was one of the four, so every earlier measurement of this defect was taken through it. `20-shift-register-binary` shifted a constant zero because of that, not because of a bitop hole | sb3-creator (referee, then all four backends) | **1** | 7 | **FIXED 2026-08-29** — one `boolishTruthTest` on all four backends, the prefix spelling REFUSED by name; the remaining open half is `not <cond>` in VALUE position, pinned upstream |
 | **D27** | `ttl-clock-module`'s step button is electrically isolated (its net carries only `r3.a`, and `r3` goes to ground), and the board has no downstream state at all | sb3-creator (example) | **1** | 7 | **FIXED 2026-08-29** — a D flip-flop as a divide-by-two on the button's own edge |
-| **D28** | There is no frames-or-locals view in the debug UI; `Step Out` is real, a call stack is not | lite (`bw-debug` UI) | **1** | 5 | open — see PLAN.md |
-| **D29** | Write watchpoints are feature-detected on `_emu_dbg_set_bp_write`, which the pinned emu8051 WASM build does not export | lite (emu8051 pin) | **1** | 5 | open — see PLAN.md |
+| **D28** | There is no frames-or-locals view in the debug UI; `Step Out` is real, a call stack is not | lite (`bw-debug` UI) | **1** | 5 | **FIXED 2026-08-29** — and the row's second half is now a FEATURE, not a gap. On the C target there is no call stack to show (a cooperative scheduler is not a stack machine), so the Position pane leads with that refusal in words and then shows what does exist: each task's state, deadline, symbol-table ADDRESS and block. 6502/Z80 get a real return-address stack walk, labelled as candidates because nothing on those machines marks one apart from a pushed register |
+| **D29** | **RE-WORDED 2026-08-29 — the row was false, exactly as PLAN.md warned.** It said the pinned emu8051 WASM does not export `_emu_dbg_set_bp_write`. Instantiated, the pinned binary exported it all along; the claim came from a comment inside `emu8051-debug.js`, and this row, a test comment and a lesson hint were all written around it. The REAL defects were two: the halt reported no address or value at all (`struct dbg_halt_reason` carried cause/pc/bp_id/t_ns and reached JS only as an unreadable pointer), and lite's own `circuit-tab.jsx` never put `addWatchpoint` into `debugState`, so the vendored field could not render whatever the emulator supported | emu8051-stc + bw-board + lite (`circuit-tab.jsx`) | **1** | 5 | **FIXED 2026-08-29** — nine halt-reason exports, the breakpoint NAMED rather than matched by PC, `cause: 'watchpoint'` carrying space/addr/value/prev, and the consumer wired. Two real bugs found on the way: `dbg_reset` did not re-seed watch shadows (an SFR watchpoint fired on the reset's own rewrite) and `set_bp_write` accepted any space (armed and dead) |
 | **D30** | `microbitplus` blocks are deliberate VM no-ops and the extension declares no `showStatusButton`, so no connection indicator is drawn | lite (`overlay/scratch-vm`) | **1** | 4 | open — see PLAN.md |
 | **D31** | The scope's V/div is a single global setting, so two channels of very different amplitude cannot be scaled independently | bw-circuit-ui (`ScopePanel`) | **1** | 2 | **FIXED 2026-08-29** — per-channel V/div and centre |
 | **D32** | `arduino-03-calibration` has no filter, so its lesson's "estimate filter delay" has nothing to check against | sb3-creator (example) | **1** | 4 | **FIXED 2026-08-29** — a 4-tap boxcar, as variables and not a list |
@@ -63,15 +63,26 @@ Two counting rules, so the numbers are comparable:
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | **FIXED 2026-08-29** — `INPUT ACTIVE LOW`, and the read inverted to keep the sketch's printed value |
 
-**37 defects. Twenty-eight are closed** — D1, D3, D4, D5, D6, D7, D8, D10, D11,
-D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D26, D27, D31, D32, D33, D35,
-D36 and D37 by repair, and D34 by re-measurement, which is a different and
-weaker claim: it stopped reproducing between the Wave 1 vendor and today, and
-this campaign only found that out. Together they account for **67 of the 90
-lesson-slots** the table counts, and D1 alone is 28 of them. **Nine are open**:
-D2, D9, D12, D13, D22, D25, D28, D29 and D30 — and three of those nine (D13, D22
-and D30) are labelled rather than broken. Every row still open is recorded in
-`PLAN.md` with what blocks it and who owns it.
+**37 defects. Thirty-one are closed** — D1, D3, D4, D5, D6, D7, D8, D10, D11,
+D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D25, D26, D27, D28, D29, D31,
+D32, D33, D35, D36 and D37 by repair, and D34 by re-measurement, which is a
+different and weaker claim: it stopped reproducing between the Wave 1 vendor
+and today, and this campaign only found that out. Together they account for
+**70 of the 90 lesson-slots** the table counts, and D1 alone is 28 of them.
+**Six are open**: D2, D9, D12, D13, D22 and D30 — and three of those six (D13,
+D22 and D30) are labelled rather than broken. Every row still open is recorded
+in `PLAN.md` with what blocks it and who owns it.
+
+**The debugger wave of 2026-08-29 closed three, and two of the three rows were
+wrong about what was broken.** D29 said an export was missing from the pinned
+WASM; it had been there all along, and the row, a test comment and a lesson
+hint had all been written from a source comment nobody had instantiated. D25
+named the 6502 as the engine needing a cycle step; that core executes whole
+instructions and cannot have one, and the engine that could was emu8051. Both
+rows are re-worded above rather than quietly ticked, because a row's wrong
+premise is the part a later reader most needs. D28 is the third and its row was
+right — but its fix is a REFUSAL: on the C target there is no call stack, and
+the pane says so instead of listing one.
 
 **Ten closed on 2026-08-29**, in one campaign across three repos, and they are
 not ten independent repairs: six are the instrument family this document's
@@ -284,7 +295,7 @@ affected and nothing else.
 | Owner | Defects | Lessons | Closed here |
 | --- | --- | --- | --- |
 | bw-board | D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D18, D19, D20, D23, D33, D34 |
-| lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D33 |
+| lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D25, D28, D29, D33 |
 | bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D3, D4, D6, D21, D24, D31 |
 | sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D7, D8, D10, D11, D26, D27, D32, D35, D36 |
 

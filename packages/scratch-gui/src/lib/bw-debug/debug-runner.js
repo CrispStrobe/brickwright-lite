@@ -365,6 +365,23 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let skipRequested = false;
     /** Address breakpoints, which the drawer sets by number rather than by block. */
     const addrBps = new Map();
+    /**
+     * Write watchpoints, keyed "<space>:<addr>" because iram and sfr overlap
+     * at 0x80+ and an address alone does not name a byte on this architecture.
+     */
+    const watchBps = new Map();
+
+    /**
+     * The capability object for the CURRENT target, through the same memo the
+     * snapshot uses so consumers keep comparing by identity. `capsOf` is the
+     * memoised VALUE, not a function — reading it directly is the bug this
+     * helper exists to stop anyone repeating.
+     */
+    function capsNow() {
+        if (!target) return null;
+        if (capsFor !== target) { capsFor = target; capsOf = target.capabilities(); }
+        return capsOf;
+    }
 
     function setStatus(phase, message = '') {
         status = { phase, message };
@@ -1877,6 +1894,78 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
             emit();
             return addrBps.has(a);
+        },
+
+        /**
+         * Write watchpoints — "stop when this byte changes".
+         *
+         * Kept here rather than in the block-breakpoint store because a
+         * watchpoint is about an ADDRESS, and blocks cannot express one. The
+         * key carries the space: iram 0x90 and sfr 0x90 are different bytes.
+         *
+         * Every refusal comes back as a REASON, never as a silent false: a
+         * watchpoint that looks armed and is not is the failure the whole
+         * feature exists to avoid.
+         */
+        watchpoints: () => [...watchBps.entries()].map(([key, handle]) => {
+            const [space, addr] = key.split(':');
+            return { space, addr: Number(addr), handle };
+        }),
+
+        toggleWatchpoint(space, addr) {
+            if (!target) return { refused: 'nothing is running yet' };
+            const caps = capsNow();
+            if (!caps || !(caps.breakpoints || []).includes('write')) {
+                return { refused:
+                    'this engine has no write watchpoints. Read the value between blocks ' +
+                    'instead — and call that sampling, because it is.' };
+            }
+            const a = addr & 0xFFFF;
+            const key = `${space}:${a}`;
+            if (watchBps.has(key)) {
+                target.clearBreakpoint(watchBps.get(key));
+                watchBps.delete(key);
+                emit();
+                return { removed: true, space, addr: a };
+            }
+            const handle = target.setBreakpoint({ kind: 'write', space, addr: a });
+            if (typeof handle !== 'number') {
+                // The target's own sentence, not a paraphrase of it.
+                return { refused: (handle && handle.unsupported) || 'the engine refused it' };
+            }
+            watchBps.set(key, handle);
+            emit();
+            return { added: true, space, addr: a, handle };
+        },
+
+        /**
+         * One CPU cycle, where that means anything.
+         *
+         * Deliberately separate from stepInstruction rather than a parameter
+         * on it: they are different units, and only one target has the finer
+         * one. Refuses with the ENGINE's reason so the person reading it
+         * learns why a core cannot do this, rather than assuming a missing
+         * button.
+         */
+        stepCycle(count = 1) {
+            if (!target) return { unsupported: 'nothing is running yet' };
+            const caps = capsNow();
+            if (caps && !(caps.steps || []).includes('cycle')) {
+                const refusal = target.step('cycle', 1);
+                return refusal || { unsupported: 'this engine has no cycle step' };
+            }
+            for (let i = 0; i < count; i++) {
+                const refusal = target.step('cycle', 1);
+                if (refusal) return refusal;
+                // A cycle is one clock; the pump budget only has to be big
+                // enough to contain it, and 1 us contains one at any clock
+                // this app runs.
+                for (let n = 0; n < 4096 && target.state() === 'running'; n++) {
+                    target.runFor(1000);
+                }
+            }
+            emit();
+            return undefined;
         },
 
         /** The execution history. Newest last. */

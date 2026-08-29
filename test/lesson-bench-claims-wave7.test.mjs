@@ -493,16 +493,39 @@ test('machines-6502-execution: the debugger reports everything the checkpoint as
     assert.match(drawer, /runner\.readMem\(spec\.id, start, perPage\)/);
 });
 
-test('OPEN DEFECT: there is no cycle-level step, and the scope cannot resolve a bus at CPU speed', async () => {
+// D25 was adjudicated 2026-08-29 rather than simply fixed, and this test
+// changed shape with it. The row said "no cycle-level step" and named the
+// 6502; measured, `W65C02.step()` fetches an opcode and runs `_exec` to
+// completion, so this core has no sub-instruction state to stop in and a
+// cycle step on it could only be an instruction step with a different label —
+// the D5 lie. A real cycle step shipped on the one core that HAS clocks to
+// stop between (emu8051: `tick()` is one oscillator clock), proven in
+// test/debug-watchpoint-cycle.test.mjs at 3 cycle steps against 2 instruction
+// steps.
+//
+// So this test no longer asserts an absence waiting to be filled. It pins the
+// ADJUDICATION: the 6502 must keep refusing, and the refusal must keep saying
+// why. If someone rewrites the core into a cycle-stepped state machine, the
+// first assertion fires and machines-buses can be restored.
+test('ADJUDICATED (was OPEN DEFECT): the 6502 refuses a cycle step by name, and the scope still cannot resolve a bus at CPU speed', async () => {
     assert.equal(lesson('machines-buses').exampleId, 'eater6502-bench');
-    // "Single-step the clock": the finest CPU step is one INSTRUCTION, and the
-    // circuit-side step button advances 50 ms — 50 000 cycles at 1 MHz.
+    // "Single-step the clock": the finest CPU step here is one INSTRUCTION, and
+    // the circuit-side step button advances 50 ms — 50 000 cycles at 1 MHz.
     const m = extract6502Machine(circuitOf('eater6502-bench'));
     const adapter = createM6502Adapter({config: {regions: m.regions, chips: m.chips}});
     adapter.attachBoard({advanceTo () {}, setPin () {}});
     const target = createM6502DebugTarget(adapter, {});
     assert.ok(!target.capabilities().steps.includes('cycle'),
-        'a cycle step exists now — restore it to machines-buses and delete this test');
+        'the 6502 core became cycle-steppable — restore the clock-stepping exercise to ' +
+        'machines-buses, re-measure Wave 7, and delete this test');
+    // A refusal that explains is the whole point of the adjudication: a
+    // learner who asks "why can I not step a cycle here?" must get the
+    // architecture answer, not silence.
+    const refusal = target.step('cycle');
+    assert.match(refusal.unsupported, /no cycle step/i,
+        'the 6502 must refuse `cycle` by name rather than ignoring it');
+    assert.match(refusal.unsupported, /instruction step with a different label/i,
+        'and the refusal must explain, or the absence reads as an oversight');
     const designer = readFileSync(path.join(CUI, 'components/CircuitDesigner.jsx'), 'utf8');
     assert.match(designer, /Advance one 50 ms tick/,
         "the circuit-side step button's granularity changed — re-measure Wave 7");

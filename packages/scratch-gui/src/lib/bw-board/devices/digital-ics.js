@@ -8,7 +8,12 @@
 import { registerDevice } from '../devices.js';
 
 const R_OUT = 50;
-const R_INPUT = 1e6;
+// Input pins draw nothing here, on purpose. These models used to declare
+// `ctx.conductance(pin, null, 1 / R_INPUT)` with R_INPUT = 1e6 — a call that
+// names no second terminal, which stampTwoTerminal's air-leg guard declines,
+// so it never stamped. 1 MOhm is not a CMOS input either (a 74HC draws 1 uA
+// max). The ideal high-Z input IS the model, and GMIN keeps every pin a real
+// node. See spec-updates/ideal-high-z-inputs.md.
 
 /**
  * Register digital IC device models.
@@ -29,12 +34,6 @@ export function registerDigitalICs() {
         drives[`q${i}`] = { vTh: i === 0 ? 5 : 0, rTh: R_OUT };
       }
       return { drives, count: 0, _lastClk: false };
-    },
-
-    stamp(ctx) {
-      ctx.conductance('clk', null, 1 / R_INPUT);
-      ctx.conductance('rst', null, 1 / R_INPUT);
-      ctx.conductance('en', null, 1 / R_INPUT);
     },
 
     update(part, state, read) {
@@ -81,13 +80,6 @@ export function registerDigitalICs() {
       };
     },
 
-    stamp(ctx) {
-      ctx.conductance('d', null, 1 / R_INPUT);
-      ctx.conductance('clk', null, 1 / R_INPUT);
-      ctx.conductance('set', null, 1 / R_INPUT);
-      ctx.conductance('rst', null, 1 / R_INPUT);
-    },
-
     update(part, state, read) {
       const vcc = 5.0;
       const threshold = vcc * 0.5;
@@ -126,14 +118,6 @@ export function registerDigitalICs() {
         _q: 0,
         _lastClk: false,
       };
-    },
-
-    stamp(ctx) {
-      ctx.conductance('j', null, 1 / R_INPUT);
-      ctx.conductance('k', null, 1 / R_INPUT);
-      ctx.conductance('clk', null, 1 / R_INPUT);
-      ctx.conductance('set', null, 1 / R_INPUT);
-      ctx.conductance('rst', null, 1 / R_INPUT);
     },
 
     update(part, state, read) {
@@ -180,12 +164,6 @@ export function registerDigitalICs() {
         drives[`out${i}`] = null; // high-Z by default (open collector off)
       }
       return { drives, _levels: new Array(8).fill(0) };
-    },
-
-    stamp(ctx) {
-      for (let i = 0; i < 8; i++) {
-        ctx.conductance(`in${i}`, null, 1 / R_INPUT);
-      }
     },
 
     update(part, state, read) {

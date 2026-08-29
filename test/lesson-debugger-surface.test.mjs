@@ -52,33 +52,72 @@ test('conditional breakpoints accept the syntax debug-conditional-breakpoints te
 
 
 
-test('OPEN DEFECT: nothing in the debugger displays a call stack', () => {
-    // debug-call-stack's `inspect` checkpoint says "Halt inside the procedure,
-    // inspect frames and locals, step out". `stepOut` exists as a control; a
-    // frames or locals view does not exist anywhere in the debug UI.
+// Was an OPEN DEFECT: "nothing in the debugger displays a call stack". It
+// fired on its own terms on 2026-08-29 and was retired per its own
+// instruction — debug-call-stack re-measured, LESSON-REVIEW-WAVE-5.md updated,
+// the hint rewritten (v3, EN and DE).
+//
+// What replaced it is deliberately NOT "a frames pane exists". The defect was
+// half right in a way that matters: on the C target there IS no call stack,
+// because the program is a cooperative scheduler and not a stack machine. A
+// pane that filled the gap with a plausible list would have been worse than
+// the gap. So what is pinned here is the REFUSAL — that the pane says a call
+// stack does not exist on this target, in words, rather than rendering one.
+test('the frames view exists, and refuses to invent a call stack the C target does not have', async () => {
     assert.match(PANEL, /stepOut/, 'the step-out control is still there');
-    for (const rel of [
-        'overlay/scratch-gui/src/lib/bw-circuit-ui/components/DebugStatus.jsx',
-        'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
-    ]) {
-        const source = read(rel);
-        const rendersFrames = /\{\s*\w*[Ff]rames?\b|callStack|\blocals\b/.test(source);
-        assert.ok(!rendersFrames,
-            `${rel} now shows frames or locals — re-measure debug-call-stack, ` +
-            `update docs/LESSON-REVIEW-WAVE-5.md and its hint, then delete this test.`);
-    }
+
+    const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx');
+    assert.match(panel, /DebugFrames/, 'the debug panel mounts the frames pane');
+
+    const {deriveFrames} = await import(
+        path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-debug/frames.js'));
+
+    // A C-target session: two cooperative tasks, no stack machine anywhere.
+    const runner = {
+        symbols: () => ({scheduler: {tasks: [{name: 'task0', state: {addr: 0x0A}}]}}),
+        state: () => ({session: {tasks: [{task: 'task0', state: 1, until: 250}]}}),
+        variables: () => [{name: 'counter', value: 3, where: 'iram 0x30'}]
+    };
+    const view = deriveFrames(runner);
+    assert.equal(view.kind, 'scheduler');
+    // null, not []. An empty array reads as "no frames right now", which would
+    // claim frames exist and happen to be absent.
+    assert.equal(view.callStack, null,
+        'the pane must not present a call stack for a cooperative scheduler');
+    assert.match(view.why, /cooperative scheduler, not a stack machine/,
+        'and it must SAY why, in the words the lesson hint now uses');
+    assert.match(view.why, /Step Out/,
+        'naming what to do instead — which is exactly debug-call-stack v3');
+    // The position that DOES exist is shown, with the address that makes it
+    // checkable. That address lives only in the symbol table.
+    assert.equal(view.frames[0].task, 'task0');
+    assert.equal(view.frames[0].stateAddr, 0x0A);
 });
 
 test('watchpoints are feature-detected, and the panel gates its UI on them', () => {
-    // debug-watches leans on a "watch set". Write watchpoints are offered only
-    // when the emu8051 WASM exports _emu_dbg_set_bp_write, which the module's
-    // own docs say the build pinned in lite does NOT. Not executed here — the
-    // WASM is env-gated — so this pins the mechanism, not the build.
+    // CORRECTED 2026-08-29, and the correction is the point. This test used to
+    // carry the sentence "which the module's own docs say the build pinned in
+    // lite does NOT" — taken from a comment in emu8051-debug.js rather than
+    // from the binary. Instantiated, the pinned build exported
+    // _emu_dbg_set_bp_write all along. D29's row, this note and the
+    // debug-watches hint were all written around a claim nobody had checked.
+    //
+    // The mechanism is still worth pinning; the BUILD claim is now made where
+    // it can be measured, in test/debug-watchpoint-cycle.test.mjs, which loads
+    // the vendored artifact and asks it.
     const emu = TARGETS.find(([n]) => n === 'emu8051-debug')[1];
     assert.match(emu, /_emu_dbg_set_bp_write/, 'watchpoints are still feature-detected');
     assert.match(emu, /breakpoints: hasWatchpoints/);
     assert.match(PANEL, /breakpoints.*includes\('write'\)|canWatch/s,
         'the panel still gates the watchpoint field on the write capability');
+
+    // And the consumer half, which was the real defect: DebugStatus renders
+    // the field only when handed `onAddWatchpoint`, and lite's debugState
+    // never set it — so the field could not appear whatever the emulator
+    // supported. Producer-must-assert-consumer, from the consumer's side.
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
+    assert.match(tab, /addWatchpoint:/,
+        'lite must actually supply addWatchpoint, or the vendored field stays invisible');
 });
 
 test('every Wave 5 bench ships the parts and program its lesson needs', async () => {

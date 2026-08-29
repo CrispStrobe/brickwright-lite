@@ -138,6 +138,25 @@ reconstruct the stack from where each Step Out lands. That is a harder exercise
 and an honest one — the learner's prediction from the previous checkpoint becomes
 the thing under test, which is what the lesson wanted anyway.
 
+**Version 3, 2026-08-29 — the pane now exists, and what it shows is a
+refusal.** D28 is closed, and not by adding the list this lesson originally
+asked for. There IS no call stack on the C target: the program is a cooperative
+scheduler, so each WHEN block is a state machine over a millisecond tick and
+"inside the pulse procedure" is a value in a `<task>_state` variable. The
+Position pane says exactly that, in words, above the data — and then shows what
+does exist: every task, its state, its deadline, the symbol-table ADDRESS the
+state lives at, and the block it belongs to. On a 6502 or Z80 bench the same
+pane walks a real return-address stack, still labelled as candidates because
+nothing on those machines distinguishes a return address from a pushed
+register.
+
+So v2's exercise survives intact — reconstruct the nesting from where Step Out
+lands — and the hint now points at the pane that tells the learner WHY they
+have to. The sentinel that held this open fired on its own terms and was
+retired; what stands in its place asserts the refusal, not the pane's
+existence, because a pane that invented a call stack here would satisfy the old
+test and fail the lesson.
+
 ### 3. The watch surface is gated off on this lesson's target
 
 `debug-watches` asks the learner to "Choose a minimal watch set" and "annotate the
@@ -172,6 +191,29 @@ not first-hand: whether lite's *actual* pinned WASM exports
 firmware, both env-gated. So the mechanism is measured and the build is taken
 from the module's own docs. If the pinned build does export it, the watchpoint
 field appears and this lesson needs its hint softened again.
+
+**CHECKED 2026-08-29, and it did.** The one unverified claim in this document
+was the one that was wrong. Instantiating the vendored artifact —
+`overlay/scratch-gui/src/lib/emu8051/emu8051.js`, the binary this app actually
+ships — shows `_emu_dbg_set_bp_write` present, and present in every build back
+through the pin this document was written against. The comment in
+`emu8051-debug.js` that said otherwise was the source for this section, for
+D29's ledger row, for a test comment and for the hint below; none of the four
+had asked the binary. That is the lesson of this paragraph and it is worth
+keeping: a claim marked "not first-hand" was the only false one in a document
+of forty.
+
+What was genuinely missing was the other half — the halt could not report WHICH
+address changed or to what, because `struct dbg_halt_reason` carried no such
+fields and reached JS only as a pointer. And lite never handed
+`onAddWatchpoint` to the panel that gates on it, so the field could not have
+appeared even with the export present. Both are fixed; the emulator now reports
+space, address, value and previous value, and the halt line names them.
+
+**Version 3**: the hint says the watchpoint field IS available here and how to
+reach it, and states the limit that actually matters — it reports a CHANGE, not
+every write, so a watch that never fires may mean the write happened and
+changed nothing.
 
 ## The seven that hold up
 
@@ -224,8 +266,15 @@ field appears and this lesson needs its hint softened again.
 node --test test/lesson-debugger-surface.test.mjs
 ```
 
-Two of its tests remain named `OPEN DEFECT` (frames view, hosted compiler).
-They fail the day those change, each message naming this document and the lesson
-hint to update. The two task-panel sentinels did exactly that on 2026-08-23 —
-the 90161eb5 vendor turned them red — and were retired per their own
-instructions.
+One of its tests remains named `OPEN DEFECT` (the hosted compiler). It fails
+the day that changes, its message naming this document and the lesson hint to
+update. Three sentinels have now done exactly that and been retired per their
+own instructions: the two task-panel ones on 2026-08-23 (the 90161eb5 vendor
+turned them red) and the frames-view one on 2026-08-29.
+
+The watchpoint test is still here but its wording is corrected: it pins the
+MECHANISM (feature detection, and the panel gating on the capability) plus the
+consumer wiring that was the real gap. The claim about the BUILD moved to
+`test/debug-watchpoint-cycle.test.mjs`, which loads the vendored WASM and asks
+it rather than reading a comment about it. That relocation is the fix for how
+this section went wrong.

@@ -10,7 +10,12 @@
 
 import { registerDevice } from '../devices.js';
 
-const R_INPUT = 1e6; // high-Z signal input
+// Input pins draw nothing here, on purpose. These models used to declare
+// `ctx.conductance(pin, null, 1 / R_INPUT)` with R_INPUT = 1e6 — a call that
+// names no second terminal, which stampTwoTerminal's air-leg guard declines,
+// so it never stamped. 1 MOhm is not a CMOS input either (a 74HC draws 1 uA
+// max). The ideal high-Z input IS the model, and GMIN keeps every pin a real
+// node. See spec-updates/ideal-high-z-inputs.md.
 
 /**
  * Register the servo device model.
@@ -30,11 +35,10 @@ export function registerServo() {
       };
     },
 
-    stamp(ctx, part, state) {
-      // Signal pin: high impedance input
-      ctx.conductance('signal', null, 1 / R_INPUT);
-      // VCC/GND: power draw not modeled (would need current spec)
-    },
+    // No stamp. Signal pin: an ideal high-impedance input, which is what this
+    // model computes — the 1 MOhm declared here named no second terminal and
+    // never stamped (spec-updates/ideal-high-z-inputs.md).
+    // VCC/GND: power draw not modeled (would need current spec)
 
     // Boundary B setDeviceControl (spec-updates/set-device-control.md):
     // 'angle' sets the TARGET; the slew limit stays the model's honesty —

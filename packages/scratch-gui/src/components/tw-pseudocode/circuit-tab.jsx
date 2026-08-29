@@ -1355,7 +1355,34 @@ class CircuitTab extends React.Component {
                     tasks: enriched,
                     _tasksStamp: tasksStamp,
                     _serialStamp: serialStamp,
-                    capabilities: caps
+                    capabilities: caps,
+                    // D29. The designer's DebugStatus renders its watchpoint
+                    // field only when `onAddWatchpoint` is a function, and it
+                    // is handed `debugState.addWatchpoint` — which nothing here
+                    // ever set, so the field could not appear no matter what
+                    // the emulator supported. The defect ledger recorded this
+                    // as a missing WASM export; the export was there all along
+                    // (instantiated and checked), and the consumer was the gap.
+                    // Producer-must-assert-consumer, from the other side.
+                    //
+                    // The space is iram because that is where the C target's
+                    // scheduler variables live and where a learner's `counter`
+                    // is; the drawer offers the other spaces by name.
+                    addWatchpoint: addr => {
+                        const r = runner.toggleWatchpoint
+                            ? runner.toggleWatchpoint('iram', addr) : null;
+                        // Surface a refusal rather than dropping it: the whole
+                        // point of this feature is that an armed watchpoint is
+                        // really armed.
+                        if (r && r.refused && typeof window !== 'undefined') {
+                            window.alert(r.refused);
+                        }
+                        return r;
+                    },
+                    // Step-over and step-out were the same shape of gap: the
+                    // buttons render from `capabilities` and called undefined.
+                    stepOver: () => runner.stepOver(),
+                    stepOut: () => runner.stepOut()
                 }
             });
         }

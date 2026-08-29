@@ -45,7 +45,12 @@ import { FUNSCII } from '../funscii-font.js';
 
 const R_OUT = 50;
 const R_OFF = 1e9;
-const R_INPUT = 1e6;
+// Input pins draw nothing here, on purpose. These models used to declare
+// `ctx.conductance(pin, null, 1 / R_INPUT)` with R_INPUT = 1e6 — a call that
+// names no second terminal, which stampTwoTerminal's air-leg guard declines,
+// so it never stamped. 1 MOhm is not a CMOS input either (a 74HC draws 1 uA
+// max). The ideal high-Z input IS the model, and GMIN keeps every pin a real
+// node. See spec-updates/ideal-high-z-inputs.md.
 
 const WIDTH = 128;
 const HEIGHT = 64;
@@ -185,10 +190,6 @@ export function registerSSD1306() {
             state.i2cHandlers = handlers;
             state._i2c = createI2CSlave(handlers);
             return state;
-        },
-
-        stamp(ctx) {
-            ctx.conductance('scl', null, 1 / R_INPUT);
         },
 
         update(part, state, read) {

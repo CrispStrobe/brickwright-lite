@@ -67,6 +67,18 @@ const L10N = {
             'disassembled backwards, because nothing marks where an instruction starts.',
         cols: 'Columns', regs: 'registers', ports: 'ports', timers: 'timers',
         stepInsn: 'Step instruction', over: 'Step over', out: 'Step out',
+        stepCycle: 'Step cycle',
+        cycleHint: 'One CPU clock — finer than one instruction. A multi-cycle ' +
+            'instruction takes several presses, and the PC only moves on the one ' +
+            'that retires it.',
+        noCycle: 'This engine executes a whole instruction per step, so it has no ' +
+            'cycle to stop on. Step one instruction; the register row reports what ' +
+            'it cost in cycles.',
+        watch: 'Watchpoints', addWatch: 'Watch a byte…',
+        watchHint: 'Stop when this byte CHANGES. Writing the value already there is ' +
+            'invisible, and a byte the peripherals move fires on its own.',
+        noWatch: 'This engine has no write watchpoints.',
+        removeWatch: 'Stop watching this byte',
         setPc: 'Set PC', breakAt: 'Break at', reset: 'Reset', wipe: 'Wipe',
         noSetPc: 'This engine cannot move the program counter',
         noWipe: 'This engine cannot wipe memory',
@@ -92,6 +104,19 @@ const L10N = {
             'rückwärts disassemblieren, da nichts den Befehlsanfang markiert.',
         cols: 'Spalten', regs: 'Register', ports: 'Ports', timers: 'Timer',
         stepInsn: 'Ein Befehl', over: 'Überspringen', out: 'Heraus',
+        stepCycle: 'Ein Takt',
+        cycleHint: 'Ein CPU-Takt — feiner als ein Befehl. Ein mehrtaktiger Befehl ' +
+            'braucht mehrere Klicks, und der PC bewegt sich nur bei dem Takt, der ihn ' +
+            'abschließt.',
+        noCycle: 'Diese Engine führt pro Schritt einen ganzen Befehl aus und hat daher ' +
+            'keinen Takt zum Anhalten. Gehe einen Befehl weiter; die Registerzeile zeigt, ' +
+            'wie viele Takte er gekostet hat.',
+        watch: 'Watchpoints', addWatch: 'Byte beobachten…',
+        watchHint: 'Anhalten, wenn sich dieses Byte ÄNDERT. Denselben Wert erneut zu ' +
+            'schreiben bleibt unsichtbar, und ein Byte, das die Peripherie bewegt, löst ' +
+            'von selbst aus.',
+        noWatch: 'Diese Engine hat keine Schreib-Watchpoints.',
+        removeWatch: 'Dieses Byte nicht mehr beobachten',
         setPc: 'PC setzen', breakAt: 'Halt bei', reset: 'Reset', wipe: 'Löschen',
         noSetPc: 'Diese Engine kann den Programmzähler nicht setzen',
         noWipe: 'Diese Engine kann den Speicher nicht löschen',
@@ -157,6 +182,13 @@ class DebugDrawer extends React.Component {
         const {runner} = this.props;
         const caps = (this.props.ui && this.props.ui.capabilities) || null;
         const can = kind => !caps || caps.steps.includes(kind);
+        // `can` defaults to TRUE when capabilities have not arrived, which is
+        // right for the controls every engine has and wrong for one that must
+        // be ASSERTED. A cycle step is the second kind: absent capabilities
+        // must mean no button, not a button that turns out to refuse. This is
+        // the D5 lesson in one line.
+        const hasCycle = !!(caps && (caps.steps || []).includes('cycle'));
+        const hasWatch = !!(caps && (caps.breakpoints || []).includes('write'));
         // Set PC and Wipe are NOT capability flags — only the 8051 target
         // implements them at all. These two buttons were ungated while their
         // neighbours were, so on any other engine they threw a TypeError
@@ -169,6 +201,21 @@ class DebugDrawer extends React.Component {
                     style={BTN}
                     onClick={() => runner.stepInstruction(1)}
                 >{this.tx('stepInsn')}</button>
+                {/* One CPU clock — offered ONLY where the engine says it has
+                    one. Every core here except emu8051 executes a whole
+                    instruction per call, so on those this button would be the
+                    instruction step with a different label: the D5 lie. It is
+                    absent there rather than disabled, because a greyed-out
+                    control implies a feature that could be switched on. The
+                    `noCycle` sentence explains it in the drawer's note line. */}
+                {hasCycle ? (
+                    <button
+                        style={BTN}
+                        data-step-cycle
+                        title={this.tx('cycleHint')}
+                        onClick={() => runner.stepCycle(1)}
+                    >{this.tx('stepCycle')}</button>
+                ) : null}
                 <button
                     style={can('over') ? BTN : off}
                     disabled={!can('over')}
@@ -202,6 +249,75 @@ class DebugDrawer extends React.Component {
                     title={this.tx('tenHint')}
                     onClick={() => runner.stepInstruction(10)}
                 >{this.tx('stepTen')}</button>
+                {/* Say why the finer step is missing, rather than leaving its
+                    absence to be read as an oversight. A learner who wonders
+                    "why can I not step a cycle here?" gets the architecture
+                    answer instead of filing a bug. */}
+                {hasCycle ? null : (
+                    <span style={{fontSize: 11, color: '#5d6d7e', alignSelf: 'center', maxWidth: 320}}>
+                        {this.tx('noCycle')}
+                    </span>
+                )}
+            </div>
+        );
+    }
+
+    /**
+     * Write watchpoints, by address.
+     *
+     * Lives in the drawer rather than the main panel for the same reason the
+     * memory editor does: it is addressed in hex, and the person who wants it
+     * has already said so by opening this. The main panel's pause points are
+     * addressed by BLOCK, which is the same idea in the user's own nouns.
+     */
+    renderWatchpoints () {
+        const {runner} = this.props;
+        const caps = (this.props.ui && this.props.ui.capabilities) || null;
+        const hasWatch = !!(caps && (caps.breakpoints || []).includes('write'));
+        if (!hasWatch) {
+            return (
+                <div style={{...PANE, marginTop: 8}} data-watchpoints>
+                    <div style={TITLE}>{this.tx('watch')}</div>
+                    <div style={{fontSize: 11, color: '#5d6d7e'}}>{this.tx('noWatch')}</div>
+                </div>
+            );
+        }
+        const list = runner.watchpoints ? runner.watchpoints() : [];
+        return (
+            <div style={{...PANE, marginTop: 8}} data-watchpoints>
+                <div style={TITLE}>{this.tx('watch')}</div>
+                <div style={{display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center'}}>
+                    <button
+                        style={BTN}
+                        data-add-watchpoint
+                        title={this.tx('watchHint')}
+                        onClick={() => {
+                            const a = this.askAddress(this.tx('addWatch'), 0x30);
+                            if (a === null) return;
+                            const r = runner.toggleWatchpoint('iram', a);
+                            // A refusal is shown, never swallowed: a watchpoint
+                            // that looks armed and is not is the exact failure
+                            // this feature exists to avoid.
+                            if (r && r.refused) window.alert(r.refused);
+                            this.forceUpdate();
+                        }}
+                    >{this.tx('addWatch')}</button>
+                    {list.map(w => (
+                        <button
+                            key={`${w.space}:${w.addr}`}
+                            style={{...BTN, borderColor: '#f39c12', color: '#f39c12'}}
+                            title={this.tx('removeWatch')}
+                            data-watchpoint-entry
+                            onClick={() => {
+                                runner.toggleWatchpoint(w.space, w.addr);
+                                this.forceUpdate();
+                            }}
+                        >{`${w.space} ${hex16(w.addr)} ✕`}</button>
+                    ))}
+                </div>
+                <div style={{fontSize: 11, color: '#5d6d7e', marginTop: 4}}>
+                    {this.tx('watchHint')}
+                </div>
             </div>
         );
     }
@@ -662,6 +778,7 @@ class DebugDrawer extends React.Component {
                 {!open ? null : (
                     <div style={{display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8}}>
                         {this.renderControls()}
+                        {this.renderWatchpoints()}
                         {this.renderCode()}
                         {this.renderTrace()}
                         <div style={{display: 'grid', gap: 8,

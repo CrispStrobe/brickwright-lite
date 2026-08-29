@@ -35,7 +35,12 @@
 
 import { registerDevice } from '../devices.js';
 
-const R_INPUT = 1e6;
+// Input pins draw nothing here, on purpose. These models used to declare
+// `ctx.conductance(pin, null, 1 / R_INPUT)` with R_INPUT = 1e6 — a call that
+// names no second terminal, which stampTwoTerminal's air-leg guard declines,
+// so it never stamped. 1 MOhm is not a CMOS input either (a 74HC draws 1 uA
+// max). The ideal high-Z input IS the model, and GMIN keeps every pin a real
+// node. See spec-updates/ideal-high-z-inputs.md.
 
 export function registerST7920() {
 
@@ -55,13 +60,6 @@ export function registerST7920() {
                 _bits: 0, _sr: 0,
                 _phase: 'sync', _rs: 0, _hi: 0,
             };
-        },
-
-        stamp(ctx) {
-            ctx.conductance('cs', null, 1 / R_INPUT);
-            ctx.conductance('sclk', null, 1 / R_INPUT);
-            ctx.conductance('sid', null, 1 / R_INPUT);
-            ctx.conductance('rstb', null, 1 / R_INPUT);
         },
 
         update(part, state, read) {

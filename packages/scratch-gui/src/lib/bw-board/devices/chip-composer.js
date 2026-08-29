@@ -16,7 +16,12 @@ import { registerDevice } from '../devices.js';
 import { inputThresholds } from './logic-levels.js';
 
 const R_OUT = 50;
-const R_INPUT = 1e6;
+// Input pins draw nothing here, on purpose. These models used to declare
+// `ctx.conductance(pin, null, 1 / R_INPUT)` with R_INPUT = 1e6 — a call that
+// names no second terminal, which stampTwoTerminal's air-leg guard declines,
+// so it never stamped. 1 MOhm is not a CMOS input either (a 74HC draws 1 uA
+// max). The ideal high-Z input IS the model, and GMIN keeps every pin a real
+// node. See spec-updates/ideal-high-z-inputs.md.
 
 // ─── Logic evaluation functions ─────────────────────────────────────────
 
@@ -225,7 +230,6 @@ function buildChipModel(def) {
       for (const pin of allTerminals) {
         if (pin === 'vcc' || pin === 'gnd') continue;
         if (outputPins.has(pin)) continue;
-        ctx.conductance(pin, null, 1 / R_INPUT);
       }
     },
 
@@ -314,13 +318,6 @@ const CHIP_74HC93 = {
     };
   },
 
-  stamp(ctx) {
-    ctx.conductance('clk_a', null, 1 / R_INPUT);
-    ctx.conductance('clk_b', null, 1 / R_INPUT);
-    ctx.conductance('r0_1', null, 1 / R_INPUT);
-    ctx.conductance('r0_2', null, 1 / R_INPUT);
-  },
-
   update(part, state, read) {
     const vcc = read('vcc') || 5.0;
     const threshold = vcc * 0.5;
@@ -380,12 +377,6 @@ const CHIP_CD4511 = {
       drives[s] = { vTh: 0, rTh: R_OUT };
     }
     return { drives, _latchedBCD: 0 };
-  },
-
-  stamp(ctx) {
-    for (const p of ['a','b','c','d','le','bl','lt']) {
-      ctx.conductance(p, null, 1 / R_INPUT);
-    }
   },
 
   update(part, state, read) {
@@ -458,12 +449,6 @@ const CHIP_74HC95 = {
     };
   },
 
-  stamp(ctx) {
-    for (const p of ['ser', 'a', 'b', 'c', 'd', 'mode', 'clk']) {
-      ctx.conductance(p, null, 1 / R_INPUT);
-    }
-  },
-
   update(part, state, read) {
     const vcc = read('vcc') || 5.0;
     const threshold = vcc * 0.5;
@@ -508,12 +493,6 @@ const CHIP_74HC374 = {
     const drives = {};
     for (let i = 0; i < 8; i++) drives[`q${i}`] = { vTh: 0, rTh: R_OUT };
     return { drives, reg: 0, _lastClk: false };
-  },
-
-  stamp(ctx) {
-    ctx.conductance('clk', null, 1 / R_INPUT);
-    ctx.conductance('oeb', null, 1 / R_INPUT);
-    for (let i = 0; i < 8; i++) ctx.conductance(`d${i}`, null, 1 / R_INPUT);
   },
 
   update(part, state, read) {
@@ -561,12 +540,6 @@ const CHIP_74HC373 = {
     return { drives, reg: 0 };
   },
 
-  stamp(ctx) {
-    ctx.conductance('le', null, 1 / R_INPUT);
-    ctx.conductance('oeb', null, 1 / R_INPUT);
-    for (let i = 0; i < 8; i++) ctx.conductance(`d${i}`, null, 1 / R_INPUT);
-  },
-
   update(part, state, read) {
     const vcc = read('vcc') || 5.0;
     // Mid-rail for the HC part; TTL center for the '74ls373' alias.
@@ -603,14 +576,6 @@ const CHIP_74HC688 = {
 
   init() {
     return { drives: { pqb: { vTh: 5, rTh: R_OUT } } };
-  },
-
-  stamp(ctx) {
-    ctx.conductance('gb', null, 1 / R_INPUT);
-    for (let i = 0; i < 8; i++) {
-      ctx.conductance(`p${i}`, null, 1 / R_INPUT);
-      ctx.conductance(`q${i}`, null, 1 / R_INPUT);
-    }
   },
 
   update(part, state, read) {

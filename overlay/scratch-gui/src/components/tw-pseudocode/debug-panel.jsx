@@ -4,6 +4,7 @@ import {connect} from 'react-redux';
 
 import DebugDrawer from './debug-drawer.jsx';
 import DebugInspector from './debug-inspector.jsx';
+import DebugFrames from './debug-frames.jsx';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const VdpScreen = React.lazy(() =>
@@ -55,7 +56,13 @@ const L10N = {
         unreachableWhy: 'The program only stops at a wait or a loop, so these marks have ' +
             'nowhere to land in this build. They are kept in case a later edit gives them one.',
         yieldNote: 'The program can only stop at a wait or a loop — so the highlight marks ' +
-            'the last one it passed, not every block in between.'
+            'the last one it passed, not every block in between.',
+        watchHit: 'Stopped on a write to',
+        watchWas: 'was',
+        watchNow: 'now',
+        watchNote: 'A watchpoint here reports a CHANGE, not every store: writing the value ' +
+            'that is already there is invisible, and a byte the peripherals move fires ' +
+            'with no instruction of yours responsible.'
     },
     de: {
         run: 'Start', pause: 'Pause', step: 'Schritt', stop: 'Stopp',
@@ -80,7 +87,13 @@ const L10N = {
             'Markierungen haben in diesem Build keinen Platz. Sie bleiben erhalten, falls eine ' +
             'spätere Änderung einen schafft.',
         yieldNote: 'Das Programm kann nur bei einem Warten oder einer Schleife anhalten — die ' +
-            'Markierung zeigt also die letzte solche Stelle, nicht jeden Block dazwischen.'
+            'Markierung zeigt also die letzte solche Stelle, nicht jeden Block dazwischen.',
+        watchHit: 'Angehalten bei einem Schreibzugriff auf',
+        watchWas: 'war',
+        watchNow: 'jetzt',
+        watchNote: 'Ein Watchpoint meldet hier eine ÄNDERUNG, nicht jeden Schreibzugriff: ' +
+            'denselben Wert erneut zu schreiben bleibt unsichtbar, und ein Byte, das die ' +
+            'Peripherie bewegt, löst aus, ohne dass eine deiner Anweisungen schuld ist.'
     }
 };
 
@@ -705,6 +718,21 @@ class DebugPanel extends React.Component {
                     <DebugInspector runner={this.state.runner} locale={this.props.locale} />
                 ) : null}
 
+                {/* Where the program is, and what may honestly be said about
+                    how it got there (D28). Sits between the user's nouns and
+                    the machine's view because that is what it is: the position
+                    in the user's terms, with the addresses that make it
+                    checkable. On the C target it leads with the reason there
+                    is no call stack to list. */}
+                {this.state.runner ? (
+                    <DebugFrames
+                        runner={this.state.runner}
+                        ui={ui}
+                        kind={this.state.kind}
+                        locale={this.props.locale}
+                    />
+                ) : null}
+
                 {/* Parity with emu8051's TUI, closed by default: opening it is
                     the user declaring they want the engineer's view. */}
                 {this.state.runner ? (
@@ -785,6 +813,42 @@ class DebugPanel extends React.Component {
                             {' '}
                             {`${(Number(why.tNs) / 1e6).toFixed(2)} ms`}
                         </div>
+                        {/* A watchpoint halt is the one stop whose subject is
+                            an ADDRESS rather than a PC. "Paused at PC 0x0142"
+                            is not an answer to "what wrote my variable?", so
+                            the byte and its transition are reported here. The
+                            previous value travels with the new one because the
+                            transition is the evidence — a value with no before
+                            is half a measurement. */}
+                        {why.cause === 'watchpoint' && Number.isFinite(why.addr) ? (
+                            <div style={{marginTop: 4}} data-watch-hit>
+                                <span style={{color: '#f39c12'}}>{this.tx('watchHit')}</span>
+                                {' '}
+                                <code style={{color: '#ecf0f1'}}>
+                                    {`${why.space || 'iram'} 0x${why.addr.toString(16).toUpperCase().padStart(2, '0')}`}
+                                </code>
+                                {Number.isFinite(why.value) ? (
+                                    <span>
+                                        {' — '}
+                                        {this.tx('watchWas')}
+                                        {' '}
+                                        <code style={{color: '#95a5a6'}}>
+                                            {`0x${(why.prev >>> 0).toString(16).toUpperCase().padStart(2, '0')}`}
+                                        </code>
+                                        {', '}
+                                        {this.tx('watchNow')}
+                                        {' '}
+                                        <code style={{color: '#2ecc71'}}>
+                                            {`0x${(why.value >>> 0).toString(16).toUpperCase().padStart(2, '0')}`}
+                                        </code>
+                                        {` (${why.value})`}
+                                    </span>
+                                ) : null}
+                                <div style={{fontSize: 11, marginTop: 2, color: '#7f8c8d'}}>
+                                    {this.tx('watchNote')}
+                                </div>
+                            </div>
+                        ) : null}
                         <div style={{fontSize: 11, marginTop: 4}}>{this.tx('yieldNote')}</div>
                     </div>
                 ) : null}

@@ -28,7 +28,12 @@ import { inputThreshold } from './logic-levels.js';
 
 const R_OUT = 50;
 const R_OFF = 1e9;
-const R_INPUT = 1e6;
+// Input pins draw nothing here, on purpose. These models used to declare
+// `ctx.conductance(pin, null, 1 / R_INPUT)` with R_INPUT = 1e6 — a call that
+// names no second terminal, which stampTwoTerminal's air-leg guard declines,
+// so it never stamped. 1 MOhm is not a CMOS input either (a 74HC draws 1 uA
+// max). The ideal high-Z input IS the model, and GMIN keeps every pin a real
+// node. See spec-updates/ideal-high-z-inputs.md.
 const R_MODULE_PULLUP = 10000;   // the KY-040 breakout's on-board pullups
 
 export function registerTier2Parts() {
@@ -42,12 +47,6 @@ export function registerTier2Parts() {
             const drives = {};
             for (let i = 0; i < 8; i++) drives[`y${i}b`] = { vTh: 5, rTh: R_OUT };
             return { drives, _sel: -1 };
-        },
-
-        stamp(ctx) {
-            for (const t of ['a', 'b', 'c', 'g1', 'g2ab', 'g2bb']) {
-                ctx.conductance(t, null, 1 / R_INPUT);
-            }
         },
 
         update(part, state, read) {
@@ -77,11 +76,6 @@ export function registerTier2Parts() {
 
         init() {
             return { drives: {}, _cfg: '' };
-        },
-
-        stamp(ctx) {
-            ctx.conductance('1oeb', null, 1 / R_INPUT);
-            ctx.conductance('2oeb', null, 1 / R_INPUT);
         },
 
         update(part, state, read) {
@@ -120,11 +114,6 @@ export function registerTier2Parts() {
 
         init() {
             return { drives: {}, _cfg: '' };
-        },
-
-        stamp(ctx) {
-            ctx.conductance('dir', null, 1 / R_INPUT);
-            ctx.conductance('oeb', null, 1 / R_INPUT);
         },
 
         update(part, state, read) {
@@ -177,12 +166,6 @@ export function registerTier2Parts() {
             };
         },
 
-        stamp(ctx) {
-            for (const t of ['shldb', 'clk', 'clkinh', 'ser']) {
-                ctx.conductance(t, null, 1 / R_INPUT);
-            }
-        },
-
         update(part, state, read) {
             const vcc = read('vcc') || 5.0;
             const th = vcc * 0.5;
@@ -227,16 +210,6 @@ export function registerTier2Parts() {
                 },
                 _key: -1,
             };
-        },
-
-        stamp(ctx) {
-            ctx.conductance('oeb', null, 1 / R_INPUT);
-            ctx.conductance('osc', null, 1 / R_INPUT);
-            ctx.conductance('kbm', null, 1 / R_INPUT);
-            for (let i = 1; i <= 4; i++) {
-                ctx.conductance(`x${i}`, null, 1 / R_INPUT);
-                ctx.conductance(`y${i}`, null, 1 / R_INPUT);
-            }
         },
 
         update(part, state, read) {
