@@ -17,7 +17,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -193,4 +193,73 @@ test('the cycle counter the drawer SHOWS advances by exactly one per cycle step'
     }
     assert.deepEqual(deltas, [1, 1, 1, 1, 1, 1, 1, 1],
         'every cycle step must move the displayed cycle count by exactly one');
+});
+
+// ── the honest-refusal branches ──────────────────────────────────────────
+//
+// Both features are feature-detected, and a feature detector is only worth
+// anything if the negative branch is exercised. These tests hide the exports
+// from an otherwise real module and check that the target DEGRADES rather than
+// throwing or, worse, offering a control that then does nothing.
+//
+// This is the D5 lesson stated as a test: a button that lies is worse than an
+// absent one, and the way a button comes to lie is that nobody ran the branch
+// where the capability is missing.
+
+/** The real wasm with some exports hidden, as an older build would look. */
+function withoutExports (wasm, names) {
+    const hidden = new Set(names);
+    return new Proxy(wasm, {
+        get: (t, k) => (hidden.has(k) ? undefined : t[k]),
+        has: (t, k) => (hidden.has(k) ? false : k in t)
+    });
+}
+
+test('a build with no watchpoint export offers none, and refuses with a reason', async () => {
+    if (!have) return;
+    const {default: createEmu8051} = await import(WASM_JS);
+    const {createEmu8051DebugTarget} = await import(DEBUG_JS);
+    const wasm = await createEmu8051();
+    wasm._emu_init(1);
+    const t = createEmu8051DebugTarget(withoutExports(wasm, ['_emu_dbg_set_bp_write']));
+
+    assert.ok(!t.capabilities().breakpoints.includes('write'),
+        'no export means the capability must not be advertised');
+    const refusal = t.setBreakpoint({kind: 'write', space: 'iram', addr: 0x30});
+    assert.match(refusal.unsupported, /no watchpoints/i);
+    assert.match(refusal.unsupported, /label that as sampling/i,
+        'and it names the honest alternative rather than just declining');
+});
+
+test('a build with no cycle-step export offers none, and refuses with a reason', async () => {
+    if (!have) return;
+    const {default: createEmu8051} = await import(WASM_JS);
+    const {createEmu8051DebugTarget} = await import(DEBUG_JS);
+    const wasm = await createEmu8051();
+    wasm._emu_init(1);
+    const t = createEmu8051DebugTarget(withoutExports(wasm, ['_emu_dbg_supports_step']));
+
+    const steps = t.capabilities().steps;
+    assert.ok(!steps.includes('cycle'),
+        'an older pin must not advertise a cycle step — the export\'s absence IS the answer');
+    // The controls that do exist are untouched: degrading must not cost the
+    // features that were never in question.
+    assert.deepEqual(steps, ['insn', 'block', 'over', 'out']);
+    const refusal = t.step('cycle', 1);
+    assert.match(refusal.unsupported, /no cycle step/i);
+    assert.match(refusal.unsupported, /Re-vendor/i, 'and says how to get one');
+});
+
+test('the drawer gates both controls on an ASSERTED capability, not a defaulted one', () => {
+    // `can()` in debug-drawer.jsx defaults to TRUE when capabilities have not
+    // arrived — correct for controls every engine has, and wrong for one that
+    // must be asserted. If someone ever routes the cycle button through `can`,
+    // it will render before capabilities load and then refuse on click, which
+    // is precisely the lying button.
+    const drawer = readFileSync(
+        path.join(ROOT, 'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'), 'utf8');
+    assert.match(drawer, /const hasCycle = !!\(caps && \(caps\.steps \|\| \[\]\)\.includes\('cycle'\)\)/,
+        'the cycle button must be gated on an asserted capability');
+    assert.match(drawer, /\{hasCycle \? \(/, 'and rendered conditionally, not merely disabled');
+    assert.match(drawer, /data-step-cycle/, 'with a stable hook for the browser proof');
 });

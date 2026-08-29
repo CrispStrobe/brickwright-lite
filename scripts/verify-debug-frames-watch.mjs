@@ -219,8 +219,13 @@ const main = async () => {
 
     // ── D25: one cycle step moves the counter by exactly one ────────────
     // The drawer holds the engineer's controls; open it first.
-    await clickByText(/under the hood|unter der haube|drawer|schublade/i);
-    await page.waitForTimeout(400);
+    await clickByText(/under the hood|unter der haube/i);
+    // Everything below lives inside the drawer's `open` branch, so a failed
+    // toggle would read as "the feature is missing". Confirm it opened.
+    const drawerOpen = await waitFor(
+        () => page.$('[data-watchpoints]').then(Boolean), v => v, 10000);
+    record('the under-the-hood drawer opened', drawerOpen,
+        drawerOpen ? 'watchpoints pane present' : 'toggle did not open the drawer');
 
     const cycleBtn = await page.$('[data-step-cycle]');
     record('D25: the cycle-step button is present on the C target', !!cycleBtn,
@@ -229,8 +234,8 @@ const main = async () => {
     if (cycleBtn) {
         const readCycles = () => page.evaluate(() => {
             const host = document.querySelector('[data-bw-circuit-stage-host]') || document.body;
-            const m = (host.innerText || '').match(/([\d,]+)\s*(cycles?|Takte?)/i);
-            return m ? Number(m[1].replace(/,/g, '')) : null;
+            const m = (host.innerText || '').match(/([\d.,]+)\s*(cycles?|Zyklen)\s*@/i);
+            return m ? Number(m[1].replace(/[.,]/g, '')) : null;
         });
         const before = await readCycles();
         await cycleBtn.click();
@@ -249,9 +254,9 @@ const main = async () => {
         const el = document.querySelector('[data-debug-frames]');
         return el ? [...el.querySelectorAll('[data-frame-var]')].map(r => r.innerText) : [];
     });
-    const m = varsNow.map(v => v.match(/counter\s+(-?\d+)\s*·\s*(\w+)\s+0x([0-9A-F]+)/i)).find(Boolean);
-    const watchAddr = m ? parseInt(m[3], 16) : 0x30;
-    console.log(`watching ${m ? `counter at ${m[2]} 0x${m[3]}` : 'iram 0x30 (fallback)'}`);
+    const m = varsNow.map(v => v.match(/counter[\s\S]*?(iram|sfr|xram|code)\s+0x([0-9A-F]+)/i)).find(Boolean);
+    const watchAddr = m ? parseInt(m[2], 16) : 0x30;
+    console.log(`watching ${m ? `counter at ${m[1]} 0x${m[2]}` : 'iram 0x30 (fallback)'}`);
 
     page.removeAllListeners('dialog');
     page.on('dialog', d => d.accept(watchAddr.toString(16)));
