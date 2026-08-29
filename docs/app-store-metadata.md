@@ -199,6 +199,74 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.13 en-US
+
+A much larger build than 0.1.12 — it collects two weeks of work. Four areas
+matter most, in this order:
+
+- **The Code tab's controls moved into one ⋯ menu.** Open, Save, "Load
+  example", the MakeCode share/export entries and the hardware catalog now
+  live behind a single menu button instead of a row of controls. Please check
+  that everything you used before is still reachable, and that loading an
+  example from the menu still works end to end.
+- **Extensions are safer, and it should look like nothing changed.** Gallery
+  extensions are now verified against their reviewed content before they run,
+  and an extension loaded from an arbitrary URL runs in a restricted sandbox
+  without access to the editor or your hardware connections. Please load a
+  gallery extension you normally use and confirm it behaves exactly as before.
+- **Bluetooth extensions may only reach the services they declare.** This is a
+  tightening under the hood; connecting LEGO Boost, Powered Up, WeDo or
+  micro:bit over Bluetooth should work exactly as in 0.1.12. If a hub that
+  connected before refuses now, that is precisely the report we need —
+  Settings › Connection diagnostics… › Copy, and send us the text.
+- **Most of the mini-games were finished or repaired.** Over twenty of the
+  bundled games (Core Cascade, Prism Lock, Skyline Swoop, Comet Strikers,
+  Orbit Hoops and others) had incomplete rules, unfair restarts or endings
+  that never triggered. Pick two or three, play to the end, and restart them
+  once — a game that cannot be finished or replayed is what we are testing
+  against.
+
+Also in this build: the micro:bit pane lays out correctly on narrow windows,
+Calliope mini is a complete retarget target, two new hello examples (micro:bit
+and Arcade), the boot hang some Firefox users saw is fixed, and every bundled
+third-party licence text now ships inside the app.
+
+## What to Test — 0.1.13 de-DE
+
+Ein deutlich größerer Build als 0.1.12 — er sammelt zwei Wochen Arbeit. Vier
+Bereiche sind am wichtigsten, in dieser Reihenfolge:
+
+- **Die Steuerelemente des Code-Tabs sind in ein ⋯-Menü umgezogen.** Öffnen,
+  Speichern, „Beispiel laden", die MakeCode-Einträge und der Hardware-Katalog
+  liegen jetzt hinter einem einzigen Menü-Knopf statt in einer Reihe von
+  Bedienelementen. Bitte prüfe, ob alles Gewohnte weiterhin erreichbar ist und
+  ob das Laden eines Beispiels über das Menü vollständig funktioniert.
+- **Erweiterungen sind sicherer — und es sollte aussehen, als hätte sich
+  nichts geändert.** Galerie-Erweiterungen werden vor dem Start gegen ihren
+  geprüften Inhalt verifiziert, und eine von einer beliebigen URL geladene
+  Erweiterung läuft in einer eingeschränkten Sandbox ohne Zugriff auf den
+  Editor oder deine Hardware-Verbindungen. Bitte lade eine Galerie-Erweiterung,
+  die du normalerweise nutzt, und bestätige, dass sie sich exakt wie vorher
+  verhält.
+- **Bluetooth-Erweiterungen erreichen nur noch die Dienste, die sie
+  deklarieren.** Das ist eine Verschärfung unter der Haube; LEGO Boost,
+  Powered Up, WeDo oder micro:bit sollten sich exakt wie in 0.1.12 verbinden.
+  Falls ein Hub, der vorher funktionierte, jetzt nicht mehr will: genau diesen
+  Bericht brauchen wir — Einstellungen › Verbindungsdiagnose… › Copy, und
+  schick uns den Text.
+- **Die meisten Mini-Spiele wurden fertiggestellt oder repariert.** Über
+  zwanzig der mitgelieferten Spiele (Core Cascade, Prism Lock, Skyline Swoop,
+  Comet Strikers, Orbit Hoops und weitere) hatten unvollständige Regeln,
+  unfaire Neustarts oder Enden, die nie eintraten. Such dir zwei oder drei
+  aus, spiel sie zu Ende und starte sie einmal neu — ein Spiel, das sich nicht
+  beenden oder wiederholen lässt, ist genau das, wogegen wir testen.
+
+Außerdem in diesem Build: das micro:bit-Panel bricht auf schmalen Fenstern
+korrekt um, Calliope mini ist ein vollständiges Zielgerät, zwei neue
+Hallo-Beispiele (micro:bit und Arcade), der Start-Hänger einiger
+Firefox-Nutzer ist behoben, und alle Lizenztexte der mitgelieferten
+Drittkomponenten werden jetzt in der App ausgeliefert.
+
 ## What to Test — 0.1.12 en-US
 
 A small, targeted follow-up to 0.1.11. If you already installed 0.1.11 and the
