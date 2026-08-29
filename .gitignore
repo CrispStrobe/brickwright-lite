@@ -27,3 +27,10 @@ out/
 CLAUDE.md
 .claude/
 .last-run.json
+
+# Gate output — screenshots, rendered schematic corpora. Written by
+# scripts/verify-*.mjs and render-schematic.mjs, never an input to anything.
+# Ignored specifically so it cannot be swept in by a `git add -A`: that is how
+# a 21 MB wasm blob got committed in bw-board (LABWIRED-BRIDGE.md §7), and this
+# directory now collects PNGs on every browser-gate run.
+/artifacts/
