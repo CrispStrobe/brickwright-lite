@@ -42,20 +42,20 @@ Two counting rules, so the numbers are comparable:
 | **D15** | A widget cannot be re-bound from the app: `bindToVariable`, `bindToPart` and `bindToPin` are called from nowhere in the GUI; `WidgetCard` takes an unused `onBindPart` prop | lite (`controller-panel-view.jsx`) | **1** | 4 | **FIXED** — Binding section |
 | **D16** | No simulated micro:bit sensor can be varied: the bundled simulator declares each one with its range, default and unit and accepts `{kind:'set_value', id, value}`, and `set_value` appears nowhere in lite | lite (`microbit-sim-pane.jsx`) | **1** | 4 | **FIXED** — Sensors strip |
 | **D17** | `char_lcd_i2c` is the only display model in the corpus with no `control()` handler, so `74-ammeter`'s LCD stays blank under `setDeviceControl` | bw-board (`devices/i2c-parts.js`) | **1** | 2 | **FIXED** — `control()` handler |
-| **D18** | The LM358 model is a damped integrator that halts once its per-round output step falls below 1 mV, leaving up to 0.667 mV of input error unamplified — realised gain 31–39 against a documented ×46.45, and it depends on the input | bw-board (`devices/analog-amps.js`) | **1** | 2 | open |
+| **D18** | The LM358 model is a damped integrator that halts once its per-round output step falls below 1 mV, leaving up to 0.667 mV of input error unamplified — realised gain 31–39 against a documented ×46.45, and it depends on the input | bw-board (`devices/analog-amps.js`) | **1** | 2 | **FIXED 2026-08-29** — a secant on the input error |
 | **D19** | `branchCurrent()` returns a device model's own quantity on a device-model terminal instead of the solved branch current, and a flat zero for `switch`, `button` and `dc_motor` — the ammeter reads 43.0 mA on a collector carrying 5.8 mA | bw-board | **1** | 1 | **FIXED** — extraction agrees with the stamp |
-| **D20** | The op-amp has no output limit: the follower holds 2.5000 V into 1 Ω (2.5 A) without drooping | bw-board (`devices/analog-ics.js`) | **1** | 6 | open — see PLAN.md |
-| **D21** | `model/circuit.js` filters `p.kind !== 'meter'` out of the netlist before the solve, so a probe draws exactly zero current and cannot load anything | bw-circuit-ui | **1** | 6 | open — see PLAN.md |
-| **D22** | The simulated potentiometer is bit-exact: twelve reads of a still knob give ADC count 380 every time, standard deviation exactly 0 | bw-board | **1** | 6 | open — see PLAN.md |
-| **D23** | The first solve of a fresh board is a DC operating point, in which a capacitor is an open circuit — so the meter reads 5.0000 V on a capacitor the engine's own `getCapVoltage` holds at 0 | bw-board / bw-circuit-ui | **1** | 6 | open — see PLAN.md |
-| **D24** | There is no FFT anywhere in the circuit UI, and the scope's ring buffer stores an interleaved (min, max) envelope rather than a sample series | bw-circuit-ui + bw-board | **1** | 6 | open — see PLAN.md |
+| **D20** | The op-amp has no output limit: the follower holds 2.5000 V into 1 Ω (2.5 A) without drooping | bw-board (`devices/analog-ics.js`) | **1** | 6 | **FIXED 2026-08-29** — `rout` + a 40 mA `iShort`, GATED |
+| **D21** | `model/circuit.js` filters `p.kind !== 'meter'` out of the netlist before the solve, so a probe draws exactly zero current and cannot load anything | bw-circuit-ui | **1** | 6 | **FIXED 2026-08-29** — the meter is a 10 MΩ resistor in the netlist |
+| **D22** | The simulated potentiometer is bit-exact: twelve reads of a still knob give ADC count 380 every time, standard deviation exactly 0 | bw-board | **1** | 6 | open — **design filed** 2026-08-29 (bw-board `3e58fd7`, `spec-updates/seeded-measurement-noise.md`), deliberately not implemented until a consumer exists |
+| **D23** | The first solve of a fresh board is a DC operating point, in which a capacitor is an open circuit — so the meter reads 5.0000 V on a capacitor the engine's own `getCapVoltage` holds at 0 | bw-board / bw-circuit-ui | **1** | 6 | **FIXED 2026-08-29** — the first solve honours stored cap state |
+| **D24** | There is no FFT anywhere in the circuit UI, and the scope's ring buffer stores an interleaved (min, max) envelope rather than a sample series | bw-circuit-ui + bw-board | **1** | 6 | **FIXED 2026-08-29** — a spectrum view over a second, sample-series tap |
 | **D25** | No cycle-level step: the 6502 target steps by `insn`/`over`/`out`, the circuit step button advances 50 ms (50 000 cycles at 1 MHz) | lite (`bw-debug`) + bw-circuit-ui | **1** | 7 | open — see PLAN.md |
 | **D26** | The PREFIX bitop form does not compose with a comparison and the INFIX form does not work bare — complementary holes. `20-shift-register-binary` shifted a constant zero because of the first | sb3-creator (compiler or referee — not isolated) | **1** | 7 | example fixed; compiler defect open |
 | **D27** | `ttl-clock-module`'s step button is electrically isolated (its net carries only `r3.a`, and `r3` goes to ground), and the board has no downstream state at all | sb3-creator (example) | **1** | 7 | open — see PLAN.md |
 | **D28** | There is no frames-or-locals view in the debug UI; `Step Out` is real, a call stack is not | lite (`bw-debug` UI) | **1** | 5 | open — see PLAN.md |
 | **D29** | Write watchpoints are feature-detected on `_emu_dbg_set_bp_write`, which the pinned emu8051 WASM build does not export | lite (emu8051 pin) | **1** | 5 | open — see PLAN.md |
 | **D30** | `microbitplus` blocks are deliberate VM no-ops and the extension declares no `showStatusButton`, so no connection indicator is drawn | lite (`overlay/scratch-vm`) | **1** | 4 | open — see PLAN.md |
-| **D31** | The scope's V/div is a single global setting, so two channels of very different amplitude cannot be scaled independently | bw-circuit-ui (`ScopePanel`) | **1** | 2 | open — see PLAN.md |
+| **D31** | The scope's V/div is a single global setting, so two channels of very different amplitude cannot be scaled independently | bw-circuit-ui (`ScopePanel`) | **1** | 2 | **FIXED 2026-08-29** — per-channel V/div and centre |
 | **D32** | `arduino-03-calibration` has no filter, so its lesson's "estimate filter delay" has nothing to check against | sb3-creator (example) | **1** | 4 | open — see PLAN.md |
 | **D37** | `machines-interrupts-performance` asks what an interrupt costs on a bench that cannot raise one: neither Z80 example wires an interrupt source. **CORRECTED 2026-08-25 by measurement** — an earlier draft of this row said the interrupt pins were unconnected. They are not: in all 7 CPU benches `/IRQ` and `/NMI` are tied to VCC, i.e. held inactive, which is correct idle wiring. The real statement is that **no interrupt-capable device OUTPUT drives any CPU interrupt input anywhere in the corpus** — no `mc6850.irqb`, no `w65c22.irqb`, no `tms9918.int`. **And the simulator does not need one:** both `M6502Machine` and `Z80Machine` poll every chip's `irqAsserted` directly, so the drawn tie is schematic. Measured on `eater6502-blink`'s own extracted machine: arming VIA T1 free-running with IER and `CLI` takes **440 interrupts in 1,806,166 cycles**, against 4095 cycles per T1 period. The interrupt machinery works; what is missing is that **no example PROGRAM uses it**, so the lesson has nothing to step through. That makes this the same shape as D7 — ship an interrupt-driven image and re-point the lesson — not the emitter/wiring job first assumed | sb3-creator (examples) + sb3-creator (emitter) | **1** | 7 | **FIXED** — `eater6502-bench` ships an interrupt program; the lesson moved to it |
 | **D33** | `6502-terminal/controller.json` declares widget type `terminal`, which is not in `ControllerPanel`'s `DEFAULTS`, so `addWidget` throws — and the importer removes every widget *before* adding, inside a bare `catch`, leaving the panel **empty** | bw-board (`controller.js`) + lite (importer) | **0** | 4 | **FIXED** — `terminal` type + guarded restore |
@@ -63,12 +63,47 @@ Two counting rules, so the numbers are comparable:
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | open — the last of 67 |
 
-**36 defects. Sixteen are closed** — D1, D3, D4, D5, D6, D8, D10, D11, D14,
-D15, D16, D17, D19, D33 and D35 by repair, and D34 by re-measurement, which is a different and
-weaker claim: it stopped reproducing between the Wave 1 vendor and today, and
-this campaign only found that out. Together they account for **58 of the 90
-lesson-slots** the table counts, and D1 alone is 28 of them. Every row still open
-is recorded in `PLAN.md` with what blocks it and who owns it.
+**37 defects. Twenty-four are closed** — D1, D3, D4, D5, D6, D7, D8, D10, D11,
+D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D31, D33, D35 and D37 by
+repair, and D34 by re-measurement, which is a different and weaker claim: it
+stopped reproducing between the Wave 1 vendor and today, and this campaign only
+found that out. Together they account for **64 of the 90 lesson-slots** the
+table counts, and D1 alone is 28 of them. Every row still open is recorded in
+`PLAN.md` with what blocks it and who owns it.
+
+**Six closed on 2026-08-29**, in one wave, and they are the six this document's
+"shape of it" section called a single family. D18 (the LM358 secant), D20 (the
+op-amp's 40 mA output limit, filed under bw-board's MNA gate with hand-computed
+oracles in the same commit), D23 (the first solve honours stored capacitor
+state) and D22's *design* landed in bw-board `999eb66`+`187694f`+`18555e7`+
+`f87adcc`+`3e58fd7`; D21 (a placed meter is a real 10 MΩ in the netlist), D31
+(per-channel V/div) and D24 (a spectrum view over a second, sample-series scope
+tap) in bw-circuit-ui `3f1d194`+`7696656` with bw-board `9441e4f`+`2169d9b`
+supplying `capture: 'sample'`. Lite vendored all of it at bw-board `4ae89b5` /
+bw-circuit-ui `60fd117` and re-measured every number before restoring the
+lesson copy — the measurements are in `docs/LESSON-REVIEW-WAVE-2.md` §3 and
+`docs/LESSON-REVIEW-WAVE-6.md` §1, §6 and §8.
+
+**D21 was two defects, and only one of them was on this table.** The row said a
+filtered-out meter draws no current. What the repair measured is worse: leaving
+the meter's probe terminals in the nets while filtering the meter out of `parts`
+made bw-board's validator reject the WHOLE netlist, so a bench went from 5
+engine parts to 0 the moment the probes were wired and the meter then read a
+fabricated "0 V" off an empty board. Wiring the instrument destroyed the circuit
+it was pointed at. That is worth recording because the ledger's own counting
+rule — one row per root cause — hid it: the same missing step caused both, so it
+is still one row, but the row understated it.
+
+**D24 closed further than "partially".** The expectation carried into this pass
+was that the FFT and the sample capture would exist upstream while lite still
+had wiring to do. Measured, there is none: lite's ScopePanel *is* the vendored
+`bw-circuit-ui` panel, the spectrum view opens its own `capture: 'sample'`
+channels, and `test/lesson-bench-claims-wave6.test.mjs` drives the whole path
+from the bench through `model/fft.js`. The only thing that did not change is
+that the drawing ring is still a min/max envelope — and that is a design
+decision, not a residue: the envelope is what keeps a narrow pulse visible at a
+coarse timebase, so the fix is a second tap, and asking for a transform of an
+envelope is refused by name rather than answered.
 
 **D35 and D36 were added on 2026-08-25** by the post-repair re-check
 (`docs/POST-REPAIR-RECHECK.md`), which went looking for lesson findings the
@@ -209,9 +244,9 @@ affected and nothing else.
 
 | Owner | Defects | Lessons | Closed here |
 | --- | --- | --- | --- |
-| bw-board | D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D19, D33, D34 |
+| bw-board | D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D18, D19, D20, D23, D33, D34 |
 | lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D33 |
-| bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D3, D4, D6 |
+| bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D3, D4, D6, D21, D24, D31 |
 | sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D8, D10, D11, D35 |
 
 Rows appear under every owner that must change, so the columns oversum: D6,
@@ -231,6 +266,12 @@ the netlist before the solve so it cannot load anything (D21). Every one of
 these is a *readout* gap on top of an engine that computes the right answer —
 `43-rc-timing` matches 5(1 − e^(−t/τ)) to four decimals, and the sweep's −3 dB
 and −45° crossings bracket the same cutoff. The physics is not the problem.
+
+**All five of that family are now closed** (D3 and D4 on 2026-08-25, D21, D24
+and D31 on 2026-08-29), and the family held: not one of them needed a change to
+the solver. D21 came closest and still did not — the meter is stamped as the
+resistor it physically is, and the numbers it then reads are the ones the
+existing MNA already produced.
 
 **The interactive surfaces are younger than the lesson copy.** The widget
 inspector edits decoration and nothing else (D14), a widget cannot be re-bound
