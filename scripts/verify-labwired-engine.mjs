@@ -42,26 +42,47 @@ const ABSENT = process.argv.includes('--absent');
 const shot = process.env.LW_SHOT
     || join(root, 'artifacts', ABSENT ? 'labwired-absent.png' : 'labwired-heavy-tier.png');
 
-if (!existsSync(join(build, 'index.html'))) throw new Error('Build first: packages/scratch-gui/build/index.html is missing');
-
-if (!ABSENT && !existsSync(join(build, 'static', 'labwired', 'labwired_wasm.js'))) {
-    console.log('SKIP — verify-labwired-engine: build/static/labwired is absent; run '
-        + '`node scripts/sync-labwired-wasm.mjs` and rebuild. (The --absent branch of this '
-        + 'gate does not need the artifact and is the one to run in that situation.)');
-    process.exit(0);
+/** Drive an ALREADY-SERVED app instead of a local build — the same PROOF_URL
+ *  every other gate here takes. It exists for the case a local production build
+ *  cannot be made (this box has been OOM-killed mid-webpack more than once), and
+ *  for proving the DEPLOY rather than a tree: the artifact is fetched by CI, so
+ *  "is the heavy tier live on the site users get" is a different question from
+ *  "does it work in my checkout", and only this answers it.
+ *
+ *  --absent is deliberately refused with it: that branch is proven by WITHHOLDING
+ *  the artifact, which this gate can only do from its own server. Silently
+ *  running the positive branch instead would report a pass for a claim nobody
+ *  checked. */
+const PROOF_URL = process.env.PROOF_URL || null;
+if (PROOF_URL && ABSENT) {
+    console.error('verify-labwired-engine: --absent cannot run against PROOF_URL. The branch is '
+        + 'proven by withholding static/labwired/ from the response, which needs this gate\'s own '
+        + 'server. Run it without PROOF_URL, against a local build.');
+    process.exit(1);
 }
-// The artifact-less branch is only meaningful against a build that HAS the
-// artifact — otherwise it proves the picker hides an engine that was never
-// there, which is not the claim. Withholding it from a build that has it is.
-if (ABSENT && !existsSync(join(build, 'static', 'labwired', 'labwired_wasm.js'))) {
-    console.log('SKIP — verify-labwired-engine --absent: this build has no artifact to '
-        + 'withhold, so hiding the picker entry would prove nothing. Fetch it and rebuild.');
-    process.exit(0);
+
+if (!PROOF_URL) {
+    if (!existsSync(join(build, 'index.html'))) throw new Error('Build first: packages/scratch-gui/build/index.html is missing');
+
+    if (!ABSENT && !existsSync(join(build, 'static', 'labwired', 'labwired_wasm.js'))) {
+        console.log('SKIP — verify-labwired-engine: build/static/labwired is absent; run '
+            + '`node scripts/sync-labwired-wasm.mjs` and rebuild. (The --absent branch of this '
+            + 'gate does not need the artifact and is the one to run in that situation.)');
+        process.exit(0);
+    }
+    // The artifact-less branch is only meaningful against a build that HAS the
+    // artifact — otherwise it proves the picker hides an engine that was never
+    // there, which is not the claim. Withholding it from a build that has it is.
+    if (ABSENT && !existsSync(join(build, 'static', 'labwired', 'labwired_wasm.js'))) {
+        console.log('SKIP — verify-labwired-engine --absent: this build has no artifact to '
+            + 'withhold, so hiding the picker entry would prove nothing. Fetch it and rebuild.');
+        process.exit(0);
+    }
 }
 
 /** Requests the artifact-less branch refused, so the run can say what it denied. */
 const withheld = [];
-const server = createServer(async (req, res) => {
+const server = PROOF_URL ? null : createServer(async (req, res) => {
     try {
         let path = decodeURIComponent(req.url.split('?')[0]);
         if (path.endsWith('/')) path += 'index.html';
@@ -84,7 +105,9 @@ const server = createServer(async (req, res) => {
         res.end('not found');
     }
 });
-await new Promise(done => server.listen(port, done));
+if (server) await new Promise(done => server.listen(port, done));
+const APP = PROOF_URL || `http://localhost:${port}/`;
+console.log(`driving ${APP}${PROOF_URL ? ' (PROOF_URL)' : ''}`);
 
 const PROGRAM = `DEVICE STM32F030
 PIN led1 = PA0 OUTPUT
@@ -125,7 +148,9 @@ try {
         localStorage.setItem('bw-debug-dock', 'solo');
         localStorage.setItem('bw-stage-circuit', '1');
     });
-    await page.goto(`http://localhost:${port}/`, {waitUntil: 'networkidle', timeout: 60000});
+    // domcontentloaded, not networkidle: a deployed page keeps chattering (service
+    // worker, telemetry) and networkidle can simply never arrive.
+    await page.goto(APP, {waitUntil: PROOF_URL ? 'domcontentloaded' : 'networkidle', timeout: 60000});
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
     // The VM is not a global: it lives in the redux store, and the gates that
     // need it lift it onto window themselves. Same handle as the others use.
@@ -228,7 +253,7 @@ try {
         console.log(`\nscreenshot: ${shot}`);
         console.log(`withheld:   ${withheld.join(', ')}`);
         await browser.close();
-        server.close();
+        if (server) server.close();
         if (failures.length) {
             console.error(`\n${failures.length} check(s) failed: ${failures.join(', ')}`);
             process.exit(1);
@@ -382,7 +407,7 @@ try {
     }
 } finally {
     await browser.close();
-    server.close();
+    if (server) server.close();
 }
 
 if (skip) {

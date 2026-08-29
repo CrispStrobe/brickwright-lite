@@ -42,7 +42,13 @@ import {join, resolve, dirname, basename} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const build = join(root, 'packages', 'scratch-gui', 'build');
+// BW_BUILD exists so this gate can be MUTATION-TESTED without a 30-minute
+// rebuild: point it at a copy of build/, break the copy (inline the marker into
+// the entry bundle, or delete the lazy chunk), and watch each check go red.
+// A gate nobody has seen fail is a guess about a gate.
+const build = process.env.BW_BUILD
+    ? resolve(process.env.BW_BUILD)
+    : join(root, 'packages', 'scratch-gui', 'build');
 
 /** The literal that says "labwired-engine.js's code is in this file". */
 const MARKER = 'static/labwired/labwired_wasm_bg.wasm';
