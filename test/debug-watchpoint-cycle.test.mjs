@@ -167,3 +167,30 @@ test('the engines that cannot step a cycle refuse by name, and say why', async (
     assert.equal(typeof t.regs().cycles, 'number',
         'and points at the number it CAN report: what the instruction cost');
 });
+
+test('the cycle counter the drawer SHOWS advances by exactly one per cycle step', async () => {
+    if (!have) return;
+    // The drawer derives cycles from program time — `Math.round(tNs/1e9 * hz)`
+    // — and says so rather than presenting a derived number as a counted one.
+    // emu8051 exports no hardware cycle counter, so that derivation is the only
+    // honest source. This test exists because a derived number is exactly the
+    // kind that can drift: at 11.0592 MHz one clock is 90.42 ns, and if the
+    // emulator's time were rounded per step the display could move by 0 or 2.
+    // Measured: it moves by 1, every time, because the emulator accumulates
+    // whole nanoseconds (90, 90, 91, …) and the rounding recovers the cycle.
+    const {t} = await targetWith(CYCLE_HEX);
+    const hz = 11059200;
+    const shown = () => Math.round((Number(t.timeNs()) / 1e9) * hz);
+
+    let prev = shown();
+    const deltas = [];
+    for (let i = 0; i < 8; i++) {
+        t.step('cycle', 1);
+        settle(t);
+        const now = shown();
+        deltas.push(now - prev);
+        prev = now;
+    }
+    assert.deepEqual(deltas, [1, 1, 1, 1, 1, 1, 1, 1],
+        'every cycle step must move the displayed cycle count by exactly one');
+});

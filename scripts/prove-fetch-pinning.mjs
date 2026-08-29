@@ -67,7 +67,14 @@ const MUTATIONS = [
     {
         name: 'the WASM pin is abbreviated back to seven characters',
         file: 'scripts/sync-emu8051-wasm.mjs',
-        edit: (s) => s.replace("const PIN = '2f1855a26dacd17619e6d398bbd9b0ae177a476a';", "const PIN = '2f1855a';"),
+        // Derived from whatever the PIN currently is, not hard-coded to one
+        // sha. The literal form was `'2f1855a26…'` and it silently stopped
+        // mutating the moment the pin moved — the prover's own "changed
+        // nothing" check caught it, which is the only reason this mutation
+        // did not go on proving nothing indefinitely. A gate that names a
+        // value it does not own has an expiry date.
+        edit: (s) => s.replace(/const PIN = '([0-9a-f]{40})';/,
+            (_, sha) => `const PIN = '${sha.slice(0, 7)}';`),
         expect: 'is not a 40-hex sha'
     },
     {
