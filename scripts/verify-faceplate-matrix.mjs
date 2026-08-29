@@ -15,6 +15,8 @@ for (const base of ['../package.json', '/Users/christianstrobele/code/wt-fable/b
     catch { try { ({ chromium } = createRequire(base)('playwright')); break; } catch { /* next */ } }
 }
 
+import { openCodeActions } from './lib-code-actions.mjs';
+
 const URL_ = process.env.PROOF_URL || 'http://localhost:8623/';
 const fail = (m) => { console.error(`FAIL ${m}`); process.exitCode = 1; };
 const pass = (m) => console.log(`PASS ${m}`);
@@ -150,6 +152,10 @@ await buttons.nth(1).dispatchEvent('pointerup');
     // the catalog control only renders with a device chosen
     await page.locator('[data-testid="bw-device-select"]').selectOption({ value: 'microbit' }).catch(() => {});
     await page.waitForTimeout(400);
+    // The catalog toggle lives inside the Code tab's `...` actions menu since
+    // the UI consolidation (31c5a815). Open it, or the toggle is in the DOM and
+    // unreachable — which reads exactly like "the control is gone".
+    await openCodeActions(page);
     const togglePresent = await page.locator('[data-testid="bw-catalog-toggle"]').count();
     if (!togglePresent) {
         const ids = await page.evaluate(() =>

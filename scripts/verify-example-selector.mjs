@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Browser acceptance for the Code-tab example selector and game gallery. */
 import {chromium} from 'playwright';
+import {openCodeActions} from './lib-code-actions.mjs';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const browser = await chromium.launch();
@@ -47,6 +48,11 @@ try {
     check('Code starts in no-chip mode', await device.inputValue() === '' && /no chips/i.test(firstDevice || ''),
         `value=${await device.inputValue()} label=${firstDevice}`);
 
+    // Open / Save / examples / catalog live behind the `⋯` menu since the UI
+    // consolidation. Opening it is the user's click, not a shortcut around one:
+    // everything below still has to find and use the real control.
+    check('the Code tab offers an actions menu', await openCodeActions(page));
+
     const games = page.locator('[data-testid="bw-load-example"]');
     const labels = await games.locator('option').allTextContents();
     const missing = NEW_GAMES.filter(name => !labels.some(label => label.includes(name)));
@@ -62,6 +68,9 @@ try {
     check('a game loads as editable pseudocode', /Skyline Swoop/.test(source || '') && /WHEN flag clicked/.test(source || ''));
 
     await device.selectOption('arduino-uno');
+    // The device select sits OUTSIDE the menu, and re-rendering the menu's
+    // contents does not close it — but assert that rather than assume it.
+    await openCodeActions(page);
     const catalogToggle = page.locator('[data-testid="bw-catalog-toggle"]');
     await catalogToggle.waitFor({timeout: 10000});
     check('choosing hardware swaps the game selector for the catalog',

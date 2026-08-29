@@ -26,6 +26,7 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {openCodeActions} from './lib-code-actions.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -108,6 +109,9 @@ try {
     await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
+    // Open/Save moved into the `...` actions menu (31c5a815); a closed
+    // <details> hides them, so wait for the menu and open it first.
+    await openCodeActions(page);
     await page.waitForSelector('[data-testid="bw-open-file"]', {timeout: 30000});
 
     const input = page.locator('input[type="file"][accept*=".hex"]');
