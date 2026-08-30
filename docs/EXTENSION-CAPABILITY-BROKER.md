@@ -30,13 +30,13 @@ errors.
 
 ## CP0 — claim, census and executable contract (30–45 minutes)
 
-- [ ] Record the LANES claim and reconcile it by name against current remote
+- [x] Record the LANES claim and reconcile it by name against current remote
   `main`; publish this tasklist as the first checkpoint.
-- [ ] Build a deterministic 120/120 compatibility and capability census from
+- [x] Build a deterministic 120/120 compatibility and capability census from
   the pinned snapshot, not mutable gallery URLs. Classify DOM/runtime access,
   fetch/import, WebSocket, Web Bluetooth, Web Serial/USB/HID, native bridge and
   nested-worker use; distinguish bundled built-ins from URL-loaded pins.
-- [ ] Add a fail-closed schema/version contract to generated gallery pins.
+- [x] Add a fail-closed schema/version contract to generated gallery pins.
   Every entry declares capabilities (default `[]`) and migration status with a
   reason for every deferral. Unknown capabilities, missing entries, duplicate
   identities and new unclassified pins are errors.
@@ -44,6 +44,14 @@ errors.
 DoD: census denominator is exactly 120; generated output is deterministic;
 delete-one-entry, invent-one-capability and widen-one-declaration mutations each
 make a named assertion red. Push checkpoint and require vendor freshness green.
+
+Result: schema v1 classifies exactly 120/120 URL pins at immutable gallery
+commit `fc94e19`: 27 zero-static-requirement worker candidates and 93 explicit
+deferrals. The ten-class census measured DOM 49, runtime 79, fetch/import 25,
+WebSocket 8, Web Bluetooth 4, Web Serial 4, Web USB/HID 0, direct native bridge
+0 and nested worker 1. This is deliberately a static candidate census, not a
+claim of runtime compatibility. Fourteen focused assertions pass; deleting the
+unknown-capability validator makes its named mutation assertion red.
 
 ## CP1 — identity-bound verified worker path (2–3 hours)
 
