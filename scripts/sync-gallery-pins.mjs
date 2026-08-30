@@ -249,6 +249,15 @@ export function renderCensusReport (document) {
             `${c.migration.reason || 'zero statically detected ambient requirement'} |`).join('\n') + '\n';
 }
 
+export const authorityDeclarations = value => JSON.stringify(Object.fromEntries(
+    Object.entries(value.extensions).map(([slug, pin]) => [slug, {
+        identity: pin.identity,
+        load: pin.load,
+        capabilities: pin.capabilities,
+        brokerCapabilities: pin.brokerCapabilities,
+        migration: pin.migration
+    }])));
+
 const REPO = 'CrispStrobe/extensions';
 const REF = 'main';
 const BASE = 'https://crispstrobe.github.io/extensions/';
@@ -523,11 +532,7 @@ async function main () {
         // contract is ours: deletion, snapshot growth without classification,
         // or a hand-widened declaration must make freshness fail closed.
         validateGalleryContract(prev, slugs);
-        const declarations = value => JSON.stringify(Object.fromEntries(Object.entries(value.extensions)
-            .map(([slug, pin]) => [slug, {
-                identity: pin.identity, load: pin.load, capabilities: pin.capabilities, migration: pin.migration
-            }])));
-        if (declarations(prev) !== declarations(next)) {
+        if (authorityDeclarations(prev) !== authorityDeclarations(next)) {
             throw new Error('checked-in gallery capability declarations differ from the pinned-source census');
         }
         const report = await readFile(CENSUS_OUT, 'utf8').catch(() => '');

@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import path from 'node:path';
 
 import {
+    authorityDeclarations,
     GALLERY_CAPABILITIES,
     censusEntry,
     classifyGallerySource,
@@ -31,6 +32,13 @@ test('ambient requirements and semantic broker grants are separate and default-d
     const widened = structuredClone(pins);
     widened.extensions['Clay/htmlEncode'].brokerCapabilities = ['native.invoke'];
     assert.throws(() => validateGalleryContract(widened, slugs), /unknown broker capability.*Clay\/htmlEncode/);
+
+    const allowedButUnreviewed = structuredClone(pins);
+    allowedButUnreviewed.extensions['Clay/htmlEncode'].brokerCapabilities = ['project.metadata.read'];
+    assert.equal(validateGalleryContract(allowedButUnreviewed, slugs), true,
+        'the vocabulary alone cannot decide whether a particular pin was reviewed');
+    assert.notEqual(authorityDeclarations(allowedButUnreviewed), authorityDeclarations(pins),
+        'freshness must detect a hand-widened known semantic grant');
 });
 
 test('gallery capability census is deterministic and its checked-in report agrees', () => {
