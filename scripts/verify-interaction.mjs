@@ -166,6 +166,35 @@ function hitTestAt(cx, cy) {
   }, { cx, cy });
 }
 
+/** Wait until ResizeObserver/camera rendering has produced stable geometry. */
+async function waitForStableSchematic() {
+  await page.evaluate(() => new Promise(resolve => {
+    const svg = document.querySelector('svg[data-schematic]');
+    let previous = '';
+    let stableFrames = 0;
+    const check = () => {
+      const rect = svg.getBoundingClientRect();
+      const current = `${svg.getAttribute('viewBox')}|${rect.width}|${rect.height}`;
+      stableFrames = current === previous ? stableFrames + 1 : 0;
+      previous = current;
+      if (stableFrames >= 2) resolve();
+      else requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }));
+}
+
+/** Reset through the production gesture and observe its camera transition. */
+async function resetCamera() {
+  const svg = page.locator('svg[data-schematic]');
+  const before = await svg.getAttribute('viewBox');
+  await svg.dblclick();
+  await page.waitForFunction(oldViewBox =>
+    document.querySelector('svg[data-schematic]')?.getAttribute('viewBox') !== oldViewBox,
+  before, {timeout: 10000});
+  await waitForStableSchematic();
+}
+
 // ── Test runner ──────────────────────────────────────────────────────────
 
 const results = [];
@@ -180,6 +209,7 @@ function assert(name, passed, detail = '') {
 // the issue where elementFromPoint misses unfilled SVG paths at their
 // center (the center of a zigzag resistor path is empty space).
 
+await waitForStableSchematic();
 const base = await getSymbolTextPos('1kΩ');
 if (!base) throw new Error('could not find required "1kΩ" label in 01-blink');
 const baseHit = await hitTestAt(base.cx, base.cy);
@@ -223,14 +253,7 @@ assert('Pan: nothing at OLD screen position', !panHitOld.inSymbol,
 // to ~55px wide (3× zoom factor). The old position still hits because
 // the anchor held it in place — this is correct, not a stale region.
 
-await page.locator('svg[data-schematic]').dblclick(); // reset
-await page.waitForFunction(({label, x, width}) => {
-  const text = [...document.querySelectorAll('svg[data-schematic] text')]
-    .find(node => node.textContent.trim() === label);
-  if (!text) return false;
-  const rect = text.getBoundingClientRect();
-  return Math.abs(rect.left + rect.width / 2 - x) <= 3 && Math.abs(rect.width - width) <= 3;
-}, {label: '1kΩ', x: base.cx, width: base.w}, {timeout: 10000});
+await resetCamera();
 
 const preZoom = await getSymbolTextPos('1kΩ');
 if (!preZoom) throw new Error('1kΩ label missing before zoom');
@@ -264,14 +287,7 @@ assert('Zoom: cursor-anchored shift is small (≤20px)', zoomShift <= 20,
 // Pan moves the symbol away from its original position, then zoom grows
 // it. The original position must miss entirely.
 
-await page.locator('svg[data-schematic]').dblclick(); // reset
-await page.waitForFunction(({label, x, width}) => {
-  const text = [...document.querySelectorAll('svg[data-schematic] text')]
-    .find(node => node.textContent.trim() === label);
-  if (!text) return false;
-  const rect = text.getBoundingClientRect();
-  return Math.abs(rect.left + rect.width / 2 - x) <= 3 && Math.abs(rect.width - width) <= 3;
-}, {label: '1kΩ', x: base.cx, width: base.w}, {timeout: 10000});
+await resetCamera();
 
 const preCombo = await getSymbolTextPos('1kΩ');
 if (!preCombo) throw new Error('1kΩ label missing before combined transform');
