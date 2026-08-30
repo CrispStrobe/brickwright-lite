@@ -535,8 +535,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             );
         }
 
+        // Through the registering door. A game program can reach the debug runner
+        // without the importer having mounted, and an unregistered registry parses
+        // `SHAPE art …` as `Unknown SHAPE "art"` — the failure this door removes.
         const { default: SB3Creator } = await import(
-            /* webpackChunkName: "sb3-creator" */ '../sb3-creator.js');
+            /* webpackChunkName: "sb3-creator" */ '../sb3-creator-register-art.js');
         const { readYieldMap } = await import(
             /* webpackChunkName: "sb3-creator-c" */ '../sb3-creator-c.js');
 

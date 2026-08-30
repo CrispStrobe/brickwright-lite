@@ -1268,15 +1268,12 @@ class PseudocodeImporter extends React.Component {
         this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', [s.lang]: text}}));
     }
 
-    // Lazily import the compiler and inject this app's authored vector assets.
-    // The SHAPE art dialect lives upstream; the artwork deliberately does not.
+    // Lazily import the compiler through the registering door, which injects this
+    // app's authored vector assets before handing the class over. The SHAPE art
+    // dialect lives upstream; the artwork deliberately does not.
     async lib () {
-        const [compiler, vectorArt] = await Promise.all([
-            import(/* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js'),
-            import(/* webpackChunkName: "sb3-creator-vector-art" */ '../../lib/sb3-creator-vector-art.js')
-        ]);
-            compiler.default.registerVectorArt(vectorArt.default);
-        return compiler;
+        return await import(
+            /* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator-register-art.js');
     }
 
     // Convert one language's source to another by going through blocks:
