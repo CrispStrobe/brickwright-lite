@@ -74,6 +74,11 @@ async function runTool (factory, name, args, resolve, setup, stdinBytes = null) 
                 if (!M.FS.init.initialized) M.FS.init();
                 const stdin = M.FS.getStream ? M.FS.getStream(0) : M.FS.streams[0];
                 if (stdin) M.FS.close(stdin);
+                // c1mode can reopen the standard-input pathname rather than
+                // retaining fd 0. Point that pathname at the same regular file;
+                // otherwise Chromium reopens Emscripten's prompt-backed TTY.
+                M.FS.unlink('/dev/stdin');
+                M.FS.symlink('/work/main.i', '/dev/stdin');
                 const input = M.FS.open('/work/main.i', 'r');
                 if (input.fd !== 0) throw new Error(`expected compiler input on fd 0, got ${input.fd}`);
                 M.FS.chdir('/work');
