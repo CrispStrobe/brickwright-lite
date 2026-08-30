@@ -618,14 +618,29 @@ present. Full detail: `docs/EXAMPLE-CORPUS-FINDINGS.md`.
   against the bundled extension's `getInfo()` and methods — rather than by watching the VM.
 - **The general fix §5.1 asks for, applied.** Option (a): the comparison now runs entirely inside
   lite, between lite's emitter and lite's extensions, so both inputs are always present and the
-  gate cannot skip. sb3-creator's `test/stc12-conformance.test.mjs` still carries
-  `skip: availableCopies < 2` and still reads as a pass in its own CI; that one is unfixed.
+  gate cannot skip. **The sentence that used to end this bullet — "sb3-creator's
+  `test/stc12-conformance.test.mjs` still carries `skip: availableCopies < 2` and still reads
+  as a pass in its own CI; that one is unfixed" — is FALSE, and has been since sb3-creator
+  `517c146` ("Make the stc12 conformance gate unable to skip: vendor what the siblings ship").
+  Corrected 2026-08-30 at sb3-creator `6d15d2a`, by reading the file rather than the note.**
+  That repo took option (b) of the three below: the gallery and lite copies are vendored as
+  pinned snapshots under `test/fixtures/downstream/`, so the comparison runs in every
+  environment with no skip branch at all, and `MANIFEST.json` asserts the per-snapshot
+  `expectedMissing` set EXACTLY — a new gap fails, and so does a gap fixed upstream without
+  re-vendoring, which stops an exemption outliving its cause. One `skip` remains in that file
+  and it is the opposite shape: `…: vendored snapshot matches the live sibling checkout` adds a
+  drift check where a sibling happens to be on disk, and its own comment says "it adds a check,
+  it is not the check". Both halves of the gap this section names are therefore closed; only the
+  §3.5 item 6 work (the eleven `devices_oled*`/`devices_tft*` opcodes) is still open, and that
+  was never a skipping-gate problem.
 
-**Why CI never saw it.** `test/stc12-conformance.test.mjs` finds copies at
-`../../lego/brickwright-lite/…` (bundled), `../../extensions/…` (gallery) and in-repo (reference),
-and carries `skip: availableCopies < 2`. sb3-creator's CI clones only sb3-creator, so exactly one
-copy exists and the test skips with "need two copies to compare" — indistinguishable, in a green
-run, from a comparison that passed.
+**Why CI never saw it** (history — the mechanism described here was removed by sb3-creator
+`517c146`; kept because the failure mode is the lesson). `test/stc12-conformance.test.mjs` USED TO
+find copies at `../../lego/brickwright-lite/…` (bundled), `../../extensions/…` (gallery) and
+in-repo (reference), carrying `skip: availableCopies < 2`. sb3-creator's CI clones only
+sb3-creator, so exactly one copy existed and the test skipped with "need two copies to compare" —
+indistinguishable, in a green run, from a comparison that passed. It hid a bundled extension that
+was eight opcodes short for five days, with one shipped example quietly inert.
 
 **The general fix, which matters more than this one bug:** a cross-repo gate must either (a) check
 out its sibling in CI, or (b) vendor a pinned snapshot of what it compares against so the
