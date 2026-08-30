@@ -23,10 +23,11 @@
  * transforms which can leave hit regions at old coordinates. These
  * tests verify that contract holds after each transform type.
  *
- * Three scenarios, tested on the 01-blink example (6 symbols, "5V" label):
+ * Three scenarios, tested on the 01-blink example using its unique "1kΩ"
+ * resistor-value label:
  *
- *   1. PAN: wheel-scroll pans the view. The "5V" text moves ~155px
- *      rightward on screen. elementFromPoint at the NEW position must
+ *   1. PAN: wheel-scroll pans the view. The label moves rightward on screen.
+ *      elementFromPoint at the NEW position must
  *      hit a symbol; at the OLD position must hit nothing (svg background).
  *
  *   2. CURSOR-ANCHORED ZOOM: ctrl+wheel zooms at the cursor, which is
@@ -45,14 +46,22 @@
  */
 
 import { chromium } from 'playwright';
+import {mkdir} from 'node:fs/promises';
+import path from 'node:path';
 
-const URL = 'https://crispstrobe.github.io/brickwright-lite/';
+const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+let exitCode = 0;
+let page;
+try {
+page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+const pageErrors = [];
+await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
 page.on('dialog', async d => { await d.accept(); });
+page.on('pageerror', error => pageErrors.push(error.message));
 
-await page.goto(URL, { waitUntil: 'networkidle', timeout: 60000 });
+await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForSelector('[role="tab"]', { timeout: 60000 });
 
 // Navigate to Circuit tab, full width, load example
@@ -80,12 +89,16 @@ await page.evaluate(async () => {
     if (f && f.child) queue.push(f.child);
     if (f && f.sibling) queue.push(f.sibling);
   }
-  if (window.__bwCT) await window.__bwCT.loadExample(window.__bwCT.state.examples[0]);
+  if (!window.__bwCT) throw new Error('CircuitTab with examples not found');
+  const example = window.__bwCT.state.examples.find(item => item.id === '01-blink');
+  if (!example) throw new Error('required example 01-blink not found');
+  await window.__bwCT.loadExample(example);
 });
 await page.waitForTimeout(3000);
 
 // Switch to Schematic view
-await page.locator('button', { hasText: 'Schematic' }).first().click({ force: true });
+await page.locator('[data-circuit-view-switcher] button[title="Schematic view"]')
+  .first().click({ force: true });
 await page.waitForTimeout(2000);
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -146,15 +159,15 @@ function assert(name, passed, detail = '') {
 }
 
 // ── BASELINE ─────────────────────────────────────────────────────────────
-// The "5V" text inside the vsource symbol is a filled <text> element with
+// The "1kΩ" resistor value is a filled <text> element with
 // a reliable hit area. Using a text label rather than a <path> avoids
 // the issue where elementFromPoint misses unfilled SVG paths at their
 // center (the center of a zigzag resistor path is empty space).
 
-const base = await getSymbolTextPos('5V');
-if (!base) { console.error('FAIL: could not find "5V" label'); process.exit(1); }
+const base = await getSymbolTextPos('1kΩ');
+if (!base) throw new Error('could not find required "1kΩ" label in 01-blink');
 const baseHit = await hitTestAt(base.cx, base.cy);
-assert('Baseline: "5V" label hittable at identity transform', baseHit.inSymbol,
+assert('Baseline: "1kΩ" label hittable at identity transform', baseHit.inSymbol,
   `${base.w}×${base.h} px at (${base.cx}, ${base.cy})`);
 
 // ── SCENARIO 1: PAN ─────────────────────────────────────────────────────
@@ -171,7 +184,8 @@ for (let i = 0; i < 3; i++) {
 }
 await page.waitForTimeout(500);
 
-const panPos = await getSymbolTextPos('5V');
+const panPos = await getSymbolTextPos('1kΩ');
+if (!panPos) throw new Error('1kΩ label disappeared after pan');
 const panHitNew = await hitTestAt(panPos.cx, panPos.cy);
 const panHitOld = await hitTestAt(base.cx, base.cy);
 const panShift = Math.abs(panPos.cx - base.cx);
@@ -191,7 +205,8 @@ assert('Pan: nothing at OLD screen position', !panHitOld.inSymbol,
 await page.locator('svg[data-schematic]').dblclick(); // reset
 await page.waitForTimeout(500);
 
-const preZoom = await getSymbolTextPos('5V');
+const preZoom = await getSymbolTextPos('1kΩ');
+if (!preZoom) throw new Error('1kΩ label missing before zoom');
 await page.mouse.move(preZoom.cx, preZoom.cy); // cursor ON the symbol
 await page.keyboard.down('Control');
 for (let i = 0; i < 3; i++) {
@@ -201,7 +216,8 @@ for (let i = 0; i < 3; i++) {
 await page.keyboard.up('Control');
 await page.waitForTimeout(500);
 
-const zoomPos = await getSymbolTextPos('5V');
+const zoomPos = await getSymbolTextPos('1kΩ');
+if (!zoomPos) throw new Error('1kΩ label disappeared after zoom');
 const zoomHitNew = await hitTestAt(zoomPos.cx, zoomPos.cy);
 const zoomShift = Math.round(Math.hypot(zoomPos.cx - preZoom.cx, zoomPos.cy - preZoom.cy));
 
@@ -221,7 +237,8 @@ assert('Zoom: cursor-anchored shift is small (≤20px)', zoomShift <= 20,
 await page.locator('svg[data-schematic]').dblclick(); // reset
 await page.waitForTimeout(500);
 
-const preCombo = await getSymbolTextPos('5V');
+const preCombo = await getSymbolTextPos('1kΩ');
+if (!preCombo) throw new Error('1kΩ label missing before combined transform');
 
 // Pan
 for (let i = 0; i < 3; i++) {
@@ -230,7 +247,8 @@ for (let i = 0; i < 3; i++) {
   await page.waitForTimeout(80);
 }
 // Zoom at the symbol's new position
-const midCombo = await getSymbolTextPos('5V');
+const midCombo = await getSymbolTextPos('1kΩ');
+if (!midCombo) throw new Error('1kΩ label disappeared after combined pan');
 await page.mouse.move(midCombo.cx, midCombo.cy);
 await page.keyboard.down('Control');
 for (let i = 0; i < 3; i++) {
@@ -240,7 +258,8 @@ for (let i = 0; i < 3; i++) {
 await page.keyboard.up('Control');
 await page.waitForTimeout(500);
 
-const comboPos = await getSymbolTextPos('5V');
+const comboPos = await getSymbolTextPos('1kΩ');
+if (!comboPos) throw new Error('1kΩ label disappeared after combined zoom');
 const comboHitNew = await hitTestAt(comboPos.cx, comboPos.cy);
 const comboHitOld = await hitTestAt(preCombo.cx, preCombo.cy);
 const comboShift = Math.abs(comboPos.cx - preCombo.cx);
@@ -257,6 +276,9 @@ console.log('CAMERA HIT-TESTING');
 console.log('════════════════════════════════════════');
 const passed = results.filter(r => r.passed).length;
 const failed = results.filter(r => !r.passed).length;
+if (pageErrors.length) {
+  console.log(`Page errors: ${pageErrors.join('; ')}`);
+}
 console.log(`${passed} passed, ${failed} failed out of ${results.length}`);
 if (failed === 0) {
   console.log('\nAll assertions pass. Hit regions track the SVG viewBox');
@@ -267,5 +289,14 @@ for (const r of results.filter(r => !r.passed)) {
   console.log(`\n  FAIL: ${r.name}\n    ${r.detail}`);
 }
 
-await browser.close();
-process.exit(failed > 0 ? 1 : 0);
+exitCode = failed > 0 || pageErrors.length > 0 ? 1 : 0;
+} catch (error) {
+  console.error(`FAIL: ${error.stack || error.message}`);
+  const artifacts = path.resolve('artifacts');
+  await mkdir(artifacts, {recursive: true});
+  await page?.screenshot({path: path.join(artifacts, 'verify-interaction-failure.png'), fullPage: true}).catch(() => {});
+  exitCode = 1;
+} finally {
+  await browser.close();
+}
+process.exit(exitCode);

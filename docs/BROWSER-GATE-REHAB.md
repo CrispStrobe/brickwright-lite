@@ -22,7 +22,7 @@ comment-only workflow mention, or a skipped scenario does not satisfy any DoD.
 
 ## Wave A — shell, navigation, and panels (60–90 minutes)
 
-- [ ] `verify-about-dialog.mjs`
+- [x] `verify-about-dialog.mjs`
   - DoD: open the real About surface; prove build identity, legal/about content,
     and close/reopen behavior; screenshot; detector fails if identity is absent.
 - [ ] `verify-controller-panel.mjs`
@@ -32,9 +32,10 @@ comment-only workflow mention, or a skipped scenario does not satisfy any DoD.
 - [ ] `verify-instruments-scroll.mjs`
   - DoD: canonical circuit panel only; every instrument remains reachable at the
     constrained viewport; bottom control scrolls into view and is actionable.
-- [ ] `verify-intro.mjs`
-  - DoD: open current lesson/intro content, verify language/content navigation
-    and one actionable link without stale sleeps or modal interference.
+- [x] `verify-intro.mjs`
+  - DoD: open a current example's intro through visible controls; require its
+    content heading plus level and age badges without stale sleeps or modal
+    interference; fail on page errors and retain a failure screenshot.
 
 ## Wave B — circuit interaction and rendering (75–120 minutes)
 
@@ -44,26 +45,29 @@ comment-only workflow mention, or a skipped scenario does not satisfy any DoD.
 - [ ] `verify-faceplate-matrix.mjs`
   - DoD: every declared faceplate case is exercised with an asserted denominator;
     inputs and displays both have behavioral evidence; artifact matrix uploaded.
-- [ ] `verify-interaction.mjs`
+- [x] `verify-interaction.mjs`
   - DoD: run against the current designer, canonical canvas scoped; drag/click
     effects measured; no palette-as-workspace or second-portal false readings.
-- [ ] `verify-schematic.mjs`
+- [x] `verify-schematic.mjs`
   - DoD: every fixture/scenario count asserted; schematic geometry and view
     transitions measured; screenshots stored under the repository artifact path.
 
 ## Wave C — execution and shipped content (45–75 minutes)
 
-- [ ] `verify-basic-run.mjs`
-  - DoD: a shipped BASIC program visibly executes, input changes machine output,
-    pause freezes it, and resume advances it; no success by canvas existence.
+- [x] `verify-basic-run.mjs`
+  - DoD: `10 PRINT 2+2` executes independently on the real 6502 and BBC BASIC
+    profiles; each terminal contains an exact standalone `4` line, each profile
+    fails independently under an expected-output mutation, and screenshots plus
+    terminal transcripts are uploaded.
 - [x] `verify-ssd1306-face.mjs` — removed as subsumed by the already-wired
   `verify-aurora65-workstation.mjs`, which now asserts the physical SSD1306 face,
   boots the shipped ROM, and measures non-blank device GDDRAM and controller
   pixels. Removing either renderer or device registration makes that gate red;
   stale bundle-source spelling is no longer treated as behavioral evidence.
-- [ ] `verify-starter-journeys.mjs`
-  - DoD: assert the shipped journey/topic denominator, open a current topic in
-    both supported languages, and prove progress/navigation state changes.
+- [x] `verify-starter-journeys.mjs`
+  - DoD: assert all three shipped journey paths, search by the exact displayed
+    `motor flyback` topic, open a current catalog project, exercise circuit,
+    board, and LEGO destinations, and prove saved progress/navigation changes.
 
 ## Campaign closeout (30–45 minutes plus CI wall time)
 

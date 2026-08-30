@@ -13,13 +13,18 @@
  *   PROOF_URL=http://localhost:8601 node scripts/verify-intro.mjs
  */
 import { chromium } from 'playwright';
+import {mkdir, writeFile} from 'node:fs/promises';
+import path from 'node:path';
 
 const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 
 async function verify () {
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+    const page = await browser.newPage({viewport: {width: 1280, height: 720}});
+    await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     page.on('dialog', d => d.accept());
+    const pageErrors = [];
+    page.on('pageerror', error => pageErrors.push(String(error)));
 
     let ok = true;
     const fail = msg => { ok = false; console.error(`  FAIL: ${msg}`); };
@@ -28,37 +33,31 @@ async function verify () {
     try {
         console.log(`Opening ${URL} ...`);
         await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.waitForTimeout(5000);
+        await page.getByRole('tab', {name: /Circuit/}).waitFor({state: 'visible', timeout: 60000});
 
         // Navigate to Circuit tab
-        const circuitTab = page.locator('text=/Circuit/i').first();
-        if (await circuitTab.count() > 0) {
-            await circuitTab.click();
-            await page.waitForTimeout(3000);
-        } else {
-            fail('Circuit tab not found');
-            await browser.close();
-            process.exit(1);
-        }
+        const circuitTab = page.getByRole('tab', {name: /Circuit/});
+        await circuitTab.click();
+        const designer = page.locator('.bw-circuit-designer:visible').last();
+        await designer.waitFor({state: 'visible', timeout: 60000});
 
         // Open Examples panel
-        const examplesBtn = page.locator('button:has-text("Examples"), button:has-text("▤")').first();
-        if (await examplesBtn.count() > 0) {
-            await examplesBtn.click();
-            await page.waitForTimeout(2000);
-        }
+        const examplesBtn = designer.getByRole('button', {name: /Expand Examples/});
+        if (await examplesBtn.count()) await examplesBtn.click();
 
         // Find an (i) toggle button on an example card
-        const introToggle = page.locator('[data-testid="bw-example-intro-toggle"]').first();
-        if (await introToggle.count() > 0) {
+        const introToggle = designer.getByTestId('bw-example-intro-toggle').first();
+        const hasIntro = await introToggle.waitFor({state: 'visible', timeout: 15000})
+            .then(() => true).catch(() => false);
+        if (hasIntro) {
             pass('Intro toggle found on example card');
 
             // Click to expand
             await introToggle.click();
-            await page.waitForTimeout(3000);
 
             // Check intro panel appeared
-            const introPanel = page.locator('[data-testid="bw-example-intro-panel"]').first();
+            const introPanel = page.getByTestId('bw-example-intro-panel');
+            await introPanel.waitFor({state: 'visible', timeout: 10000});
             if (await introPanel.count() > 0) {
                 pass('Intro panel rendered');
 
@@ -82,22 +81,30 @@ async function verify () {
                 }
 
                 // Check for level/age badges
-                const badges = await introPanel.locator('span').count();
-                if (badges >= 2) {
-                    pass(`Badges present (${badges} spans in intro panel)`);
-                } else {
-                    console.log(`  note: ${badges} spans — badges may not be present for this example`);
-                }
+                const levelBadge = introPanel.getByText(/^(Level|Stufe):/);
+                const ageBadge = introPanel.getByText(/^(Age|Alter):/);
+                await levelBadge.waitFor({state: 'visible', timeout: 5000})
+                    .then(() => pass('Level badge present'))
+                    .catch(() => fail('Level badge missing'));
+                await ageBadge.waitFor({state: 'visible', timeout: 5000})
+                    .then(() => pass('Age badge present'))
+                    .catch(() => fail('Age badge missing'));
             } else {
                 fail('Intro panel not found after clicking toggle');
             }
         } else {
             fail('No intro toggle found on any example card');
         }
+        if (pageErrors.length) fail(`page errors: ${pageErrors.join(' | ')}`);
 
     } catch (err) {
         fail(err.message);
     } finally {
+        if (!ok) {
+            await mkdir(path.resolve('artifacts'), {recursive: true});
+            await page.screenshot({path: path.resolve('artifacts/verify-intro-failure.png'), fullPage: true}).catch(() => {});
+            await writeFile(path.resolve('artifacts/verify-intro-page-errors.txt'), `${pageErrors.join('\n')}\n`).catch(() => {});
+        }
         await browser.close();
     }
 

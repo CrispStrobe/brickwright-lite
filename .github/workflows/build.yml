@@ -511,6 +511,22 @@ jobs:
           name: starter-journey-screenshots
           path: artifacts/starter-journeys/*.png
           if-no-files-found: warn
+      - name: Browser gates — About, intro, interaction, and schematic rendering
+        if: steps.playwright.outcome == 'success'
+        run: |
+          PROOF_URL=http://localhost:8617/ node scripts/verify-about-dialog.mjs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-intro.mjs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-interaction.mjs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-schematic.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: rehabilitated-browser-gate-artifacts
+          path: |
+            artifacts/verify-*-failure.png
+            artifacts/verify-*-page-errors.txt
+            artifacts/schematic-production/*.png
+          if-no-files-found: warn
       - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-aurora65-workstation.mjs

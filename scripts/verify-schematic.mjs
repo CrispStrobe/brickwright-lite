@@ -26,26 +26,33 @@
  * Usage:
  *   node scripts/verify-schematic.mjs
  *
- * Saves PNG screenshots to /tmp/schematic-{1,2,3}-*.png for owner review.
+ * Saves PNG screenshots under artifacts/schematic-production/ for review and
+ * CI artifact upload.
  */
 import { chromium } from 'playwright';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
 
 // PROOF_URL overrides for local builds — every verify gate honors it;
 // this one silently probing production while "passing" a local check
 // was a measurement lie (found during the 930000d recovery).
 const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
-const SS = '/tmp';
+const SS = path.resolve('artifacts/schematic-production');
+await mkdir(SS, { recursive: true });
 
 const browser = await chromium.launch();
+let exitCode = 0;
+try {
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 const errors = [];
+await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
 page.on('pageerror', e => errors.push(e.message));
 
 // Auto-accept any confirmation dialogs (loadExample shows one)
 page.on('dialog', async d => { await d.accept(); });
 
 console.log('Loading', URL);
-await page.goto(URL, { waitUntil: 'networkidle', timeout: 60000 });
+await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForSelector('[role="tab"]', { timeout: 60000 });
 
 // Click the Circuit tab
@@ -61,30 +68,6 @@ try { await page.locator('button', { hasText: 'Examples' }).click({ timeout: 200
 await page.waitForTimeout(2000);
 
 // ── Helper to find CircuitTab fiber once ─────────────────────────────────────
-function findCircuitTabScript() {
-  return `
-    (function findCT() {
-      const guiEl = document.querySelector('[class*="gui_body"]') ||
-                    document.querySelector('[class*="gui"]');
-      if (!guiEl) return null;
-      const key = Object.keys(guiEl).find(k =>
-        k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
-      if (!key) return null;
-      const queue = [guiEl[key]];
-      for (let i = 0; i < 8000 && queue.length; i++) {
-        const f = queue.shift();
-        if (f && f.stateNode && typeof f.stateNode.loadExample === 'function'
-            && f.stateNode.state && Array.isArray(f.stateNode.state.examples)) {
-          return f.stateNode;
-        }
-        if (f && f.child) queue.push(f.child);
-        if (f && f.sibling) queue.push(f.sibling);
-      }
-      return null;
-    })()
-  `;
-}
-
 const exInfo = await page.evaluate(() => {
   const guiEl = document.querySelector('[class*="gui_body"]') ||
                 document.querySelector('[class*="gui"]');
@@ -118,30 +101,14 @@ const exInfo = await page.evaluate(() => {
 });
 
 if (exInfo.error) {
-  console.error('FAIL:', exInfo.error);
-  await browser.close();
-  process.exit(1);
+  throw new Error(exInfo.error);
 }
 
 console.log(`${exInfo.count} examples`);
-const withCircuit = exInfo.examples.filter(e => e.hasCircuit);
-
-// Pick three: simple, mid, complex
-const basics = withCircuit.filter(e => e.category === 'basics');
-const analog = withCircuit.filter(e => e.category === 'analog');
-const digital = withCircuit.filter(e => e.category === 'digital');
-const motors = withCircuit.filter(e => e.category === 'motors');
-
-const picks = [];
-if (basics.length > 0) picks.push(basics[0]);
-if (analog.length > 0) picks.push(analog[0]);
-if (digital.length > 0) picks.push(digital[0]);
-else if (motors.length > 0) picks.push(motors[0]);
-// Ensure 3
-while (picks.length < 3 && picks.length < withCircuit.length) {
-  const next = withCircuit.find(e => !picks.some(p => p.idx === e.idx));
-  if (next) picks.push(next); else break;
-}
+const requiredIds = ['01-blink', '02-dimmer', '08-led-chaser-595'];
+const picks = requiredIds.map(id => exInfo.examples.find(example => example.id === id));
+const missingIds = requiredIds.filter((id, index) => !picks[index] || !picks[index].hasCircuit);
+if (missingIds.length) throw new Error(`required circuit example(s) missing: ${missingIds.join(', ')}`);
 
 console.log('Selected:', picks.map(p => `${p.idx}:"${p.title}" (${p.category})`).join(' | '));
 
@@ -187,10 +154,14 @@ async function measure() {
     const texts = svg.querySelectorAll('text');
     let minFont = Infinity;
     const fontSet = new Set();
+    const netLabelCounts = new Map();
     for (const t of texts) {
       const fs = parseFloat(getComputedStyle(t).fontSize);
       if (fs > 0) { fontSet.add(Math.round(fs * 10) / 10); if (fs < minFont) minFont = fs; }
+      const label = t.textContent.trim();
+      if (/^N\d+$/u.test(label)) netLabelCounts.set(label, (netLabelCounts.get(label) || 0) + 1);
     }
+    const connectedNetLabels = [...netLabelCounts.values()].filter(count => count > 1).length;
 
     let breadboard = 0;
     for (const el of svg.querySelectorAll('*')) {
@@ -224,6 +195,7 @@ async function measure() {
       symbols: symbolGs.length,
       wireNets: wireGs.length,
       wireSegments: wireSegs.length,
+      connectedNetLabels,
       junctions: junctions.length,
       overlappingPairs: overlaps,
       overlapDetail: overlapList,
@@ -257,33 +229,29 @@ for (let ci = 0; ci < picks.length; ci++) {
   }, pick.idx);
 
   if (loadOk.error) {
-    console.error('  Load failed:', loadOk.error);
-    continue;
+    throw new Error(`failed to load ${pick.id}: ${loadOk.error}`);
   }
   console.log('  Loaded:', loadOk.id);
   await page.waitForTimeout(3000);
 
   // loadExample sets panel:'designer', so we should be on the designer view.
   // Now click Schematic.
-  const schBtn = page.locator('button', { hasText: 'Schematic' });
+  const schBtn = page.locator('[data-circuit-view-switcher] button[title="Schematic view"]');
   const schCount = await schBtn.count();
   if (schCount > 0) {
     await schBtn.first().click({ force: true });
     await page.waitForTimeout(2000);
   } else {
-    console.error('  No Schematic button');
-    continue;
+    throw new Error(`no Schematic view button for ${pick.id}`);
   }
 
   const m = await measure();
   if (m.error) {
-    console.error('  Measure failed:', m.error);
-    // Screenshot anyway for debugging
     await page.screenshot({ path: `${SS}/schematic-${ci + 1}-ERROR.png` });
-    continue;
+    throw new Error(`could not measure ${pick.id}: ${m.error}`);
   }
 
-  results.push({ name: pick.title, category: pick.category, ...m });
+  results.push({ id: pick.id, name: pick.title, category: pick.category, ...m });
 
   const slug = (pick.id || pick.title).replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 40);
   const ssFile = `${SS}/schematic-${ci + 1}-${slug}.png`;
@@ -295,6 +263,7 @@ for (let ci = 0; ci < picks.length; ci++) {
   console.log(`  viewBox:          ${m.viewBox}`);
   console.log(`  Symbols:          ${m.symbols}`);
   console.log(`  Wire nets:        ${m.wireNets}  (${m.wireSegments} segments, ${m.junctions} junctions)`);
+  console.log(`  Named net links:  ${m.connectedNetLabels}`);
   console.log(`  Overlapping pairs:${m.overlappingPairs}${m.overlapDetail.length ? ' -> ' + m.overlapDetail.join(',') : ''}`);
   console.log(`  Min font:         ${m.minFontPx ?? 'none'} px`);
   console.log(`  Font sizes:       ${m.fontSizes.join(', ')} px`);
@@ -303,26 +272,53 @@ for (let ci = 0; ci < picks.length; ci++) {
   console.log(`  Wires thru syms:  ${m.wiresThruSymbols}`);
 
   // Back to realistic for next
-  try {
-    await page.locator('button', { hasText: 'Realistic' }).first().click({ force: true });
+  if (ci < picks.length - 1) {
+    const realistic = page.locator('[data-circuit-view-switcher] button[title="Realistic view"]');
+    if (!await realistic.count()) throw new Error(`no Realistic view button after ${pick.id}`);
+    await realistic.first().click({ force: true });
     await page.waitForTimeout(500);
-  } catch {}
+  }
 }
 
 // ── Summary ──────────────────────────────────────────────────────────────────
 console.log('\n\n════════════════════════════════════════');
 console.log('SCHEMATIC VERIFICATION RESULTS');
 console.log('════════════════════════════════════════');
+const failures = [];
+const check = (ok, message) => {
+  if (!ok) failures.push(message);
+};
 for (const r of results) {
   console.log(`\n${r.name} (${r.category}):`);
   console.log(`  rendering:     ${r.svgW}x${r.svgH} in ${r.containerW}x${r.containerH} (${r.fillW}%W ${r.fillH}%H)  ${r.svgW > 0 && r.svgH > 0 ? 'OK' : 'ZERO'}`);
   console.log(`  symbols:       ${r.symbols}  ${r.symbols > 0 ? 'OK' : 'EMPTY'}`);
+  console.log(`  connectivity:  ${r.wireNets} routed, ${r.connectedNetLabels} named  ${r.wireNets > 0 || r.connectedNetLabels > 0 ? 'OK' : 'EMPTY'}`);
   console.log(`  overlaps:      ${r.overlappingPairs}  ${r.overlappingPairs === 0 ? 'OK' : 'OVERLAP'}`);
   console.log(`  min font:      ${r.minFontPx ?? 'n/a'} px  ${r.minFontPx == null || r.minFontPx >= 6 ? 'OK' : 'TINY'}`);
   console.log(`  breadboard:    ${r.breadboardEls}  ${r.breadboardEls === 0 ? 'OK absent' : 'LEAKED'}`);
   console.log(`  wires thru:    ${r.wiresThruSymbols}  ${r.wiresThruSymbols === 0 ? 'OK' : 'CROSSINGS'}`);
+  check(r.svgW > 0 && r.svgH > 0, `${r.id}: zero-sized SVG`);
+  check(r.symbols > 0, `${r.id}: no schematic symbols`);
+  check((r.wireNets > 0 && r.wireSegments > 0) || r.connectedNetLabels > 0,
+    `${r.id}: no routed or named-net connectivity`);
+  check(r.overlappingPairs === 0, `${r.id}: ${r.overlappingPairs} overlapping symbol pair(s)`);
+  check(r.minFontPx !== null && r.minFontPx >= 6, `${r.id}: minimum font ${r.minFontPx}`);
+  check(r.breadboardEls === 0, `${r.id}: breadboard leaked into schematic`);
+  check(r.wiresThruSymbols === 0, `${r.id}: ${r.wiresThruSymbols} wire crossing(s)`);
 }
 
-console.log('\nScreenshots saved to /tmp/schematic-*.png');
-if (errors.length) console.log('Page errors:', errors.join('; '));
-await browser.close();
+check(results.length === requiredIds.length,
+  `measured ${results.length}/${requiredIds.length} required fixtures`);
+for (const error of errors) failures.push(`page error: ${error}`);
+console.log(`\nScreenshots saved to ${SS}`);
+if (failures.length) {
+  for (const failure of failures) console.error(`FAIL: ${failure}`);
+}
+exitCode = failures.length ? 1 : 0;
+} catch (error) {
+  console.error(`FAIL: ${error.stack || error.message}`);
+  exitCode = 1;
+} finally {
+  await browser.close();
+}
+process.exit(exitCode);

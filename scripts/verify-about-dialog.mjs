@@ -6,6 +6,8 @@
  *   PROOF_URL=http://localhost:8601 node scripts/verify-about-dialog.mjs
  */
 import { chromium } from 'playwright';
+import {mkdir, writeFile} from 'node:fs/promises';
+import path from 'node:path';
 
 const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 
@@ -37,8 +39,11 @@ const EXPECTED_ENTRIES = [
 
 async function verify() {
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+    const page = await browser.newPage({viewport: {width: 1280, height: 720}});
+    await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     page.on('dialog', d => d.accept());
+    const pageErrors = [];
+    page.on('pageerror', error => pageErrors.push(String(error)));
 
     let ok = true;
     const fail = msg => { ok = false; console.error(`  FAIL: ${msg}`); };
@@ -47,44 +52,25 @@ async function verify() {
     try {
         console.log(`Opening ${URL} ...`);
         await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.waitForTimeout(4000);
+        await page.getByText('Settings', {exact: true}).waitFor({state: 'visible', timeout: 60000});
 
-        // Find and click the About trigger (the settings menu "About Brickwright" item,
-        // or the version badge button).
-        // Try the settings menu first.
-        const settingsBtn = page.locator('[class*="settings"]').first();
-        if (await settingsBtn.count() > 0) {
-            await settingsBtn.click();
-            await page.waitForTimeout(500);
-        }
+        // Use the labelled menu surface, not CSS-module class fragments shared
+        // by unrelated settings content.
+        const settingsBtn = page.getByText('Settings', {exact: true});
+        await settingsBtn.click();
 
-        // Look for an "About" menu item or button
-        const aboutItem = page.locator('text=/About Brickwright|Uber Brickwright/i').first();
-        if (await aboutItem.count() > 0) {
-            await aboutItem.click();
-            await page.waitForTimeout(500);
-        } else {
-            // Fall back to the version badge trigger
-            const trigger = page.locator('[class*="trigger"]').first();
-            if (await trigger.count() > 0) {
-                await trigger.click();
-                await page.waitForTimeout(500);
-            } else {
-                fail('Could not find About trigger');
-                return;
-            }
-        }
+        // The label is intentionally bilingual; this is the user-facing action.
+        const aboutItem = page.getByText(/About Brickwright|Über Brickwright/i, {exact: false});
+        await aboutItem.waitFor({state: 'visible', timeout: 10000});
+        await aboutItem.click();
 
         // Check dialog is open
-        const dialog = page.locator('[class*="dialog"]').first();
-        if (await dialog.count() === 0) {
-            fail('About dialog did not open');
-            return;
-        }
+        const groups = page.getByTestId('about-licence-groups');
+        await groups.waitFor({state: 'visible', timeout: 10000});
         pass('About dialog opened');
 
         // Get the full text content of the dialog
-        const text = await dialog.innerText();
+        const text = await groups.innerText();
 
         // Check each expected entry
         for (const entry of EXPECTED_ENTRIES) {
@@ -119,30 +105,32 @@ async function verify() {
         }
 
         // Check scrollability — the section should have overflow
-        const section = page.locator('[class*="section"]').first();
-        if (await section.count() > 0) {
-            const scrollable = await section.evaluate(el => el.scrollHeight > el.clientHeight);
-            if (scrollable) {
-                pass('Licence section is scrollable');
-            } else {
-                // Not a hard fail — may be on a tall screen
-                console.log('  note: section fits without scrolling (tall viewport)');
+        const scrollable = await groups.evaluate(el => {
+            let node = el.parentElement;
+            while (node && node !== document.body) {
+                if (node.scrollHeight > node.clientHeight && /auto|scroll/.test(getComputedStyle(node).overflowY)) return true;
+                node = node.parentElement;
             }
-        }
+            return false;
+        });
+        scrollable ? pass('Licence section is scrollable') : fail('Licence section is not inside a scrollable viewport');
 
         // Close with Escape
         await page.keyboard.press('Escape');
-        await page.waitForTimeout(300);
-        const stillOpen = await page.locator('[class*="backdrop"]').count();
-        if (stillOpen === 0) {
-            pass('Dialog closes on Escape');
-        } else {
-            fail('Dialog did not close on Escape');
-        }
+        await groups.waitFor({state: 'detached', timeout: 5000})
+            .then(() => pass('Dialog closes on Escape'))
+            .catch(() => fail('Dialog did not close on Escape'));
+
+        if (pageErrors.length) fail(`page errors: ${pageErrors.join(' | ')}`);
 
     } catch (err) {
         fail(err.message);
     } finally {
+        if (!ok) {
+            await mkdir(path.resolve('artifacts'), {recursive: true});
+            await page.screenshot({path: path.resolve('artifacts/verify-about-dialog-failure.png'), fullPage: true}).catch(() => {});
+            await writeFile(path.resolve('artifacts/verify-about-dialog-page-errors.txt'), `${pageErrors.join('\n')}\n`).catch(() => {});
+        }
         await browser.close();
     }
 
