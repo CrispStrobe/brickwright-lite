@@ -414,6 +414,15 @@ jobs:
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
           for i in $(seq 1 30); do curl -sf http://localhost:8617/ >/dev/null && break; sleep 1; done
+      # ROADMAP §2.2. Deliberately NOT pointed at PROOF_URL: this gate serves its
+      # own four-line origin so it can do what the built app cannot be made to do
+      # on demand — delete a chunk mid-session, hang a socket, seed a poisoned
+      # cache. It tests overlay/scratch-gui/sw.js verbatim, and it mutation-proves
+      # itself on every run, so a scenario that stops biting says so here rather
+      # than passing quietly for years the way the white-screen path did.
+      - name: Browser gate — service worker failure modes
+        if: steps.playwright.outcome == 'success'
+        run: node scripts/verify-service-worker.mjs
       - name: Browser gate — circuit UX
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs

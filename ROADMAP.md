@@ -127,13 +127,47 @@ interleaved build published a mismatched tree (index.html naming 404 chunks). If
 artifact name, or a concurrency group keyed on the commit, and prove it somewhere other than this
 repo.
 
-### 2.2 Service-worker failure-mode tests — OPEN, **bw-bundle**
-Playwright tests for chunk 404, fetch timeout, and stale entry vs fresh chunks. The white-screen
-bug (9886889) was found by hand; these catch the class. Identified in `BLOCKED.md`, not built.
+### 2.2 Service-worker failure-mode tests — BUILT 2026-08-30 (`scripts/verify-service-worker.mjs`)
+Four scenarios in a real Chromium, against `overlay/scratch-gui/sw.js` read off disk and served
+verbatim, wired into `build.yml` after the Playwright install. **17.4 s** for the four scenarios,
+**47.4 s** including the mutation half. It serves its own four-line origin rather than the built
+app: no scenario here is about scratch-gui, and the fixture can do what the real build cannot be
+made to do on demand — delete a chunk mid-session, hang a socket, seed a poisoned cache. It needs
+no webpack build, so it runs whether or not the app builds.
 
-Note for whoever builds them: `respondWith` rejects if its promise resolves to `undefined`, which
-is what produced the white screen. Cache renaming is the only way to recover an already-poisoned
-browser, since `activate` deletes non-current caches.
+| scenario | what it does | the mutation that must redden it |
+|---|---|---|
+| `chunk-404-after-deploy` | warm the cache, change the hash index.html names, 404 the old chunk, reload | documents served cache-first → boots the deleted build |
+| `document-timeout` | the server stops answering the document — no response, no failure | drop the bound → `page.reload` never returns |
+| `stale-caches-vs-fresh-chunks` | seed a `brickwright-v1` cache **and** a poisoned entry in the current one | `activate` keeps old caches; documents cache-first |
+| `cached-failure-is-not-served` | put a 404 into the current cache for a hashed URL the server answers 200 | the SWR branch tests `cached` instead of `cached.ok` |
+
+Two of those five mutations are not hypothetical — **they are the code as it shipped**, and both
+were live instances of the class:
+
+- **Network-first documents had no bound.** `try/catch` around `fetch` handles a network that
+  FAILS. A captive portal, a dropped route or a half-open socket neither answers nor rejects, so
+  the catch never runs and the document request hangs — on a page the browser is holding a good
+  copy of, in an app whose whole reason for shipping a worker is the offline case. Fixed with
+  `raceWithCache` (3 s, network left running so the cache still refreshes; a false trip costs one
+  stale first paint, never a missed deploy). Reverting it makes `document-timeout` hit its 20 s
+  navigation bound.
+- **The `.ok` guard was on one of the two paths out of the cache.** The cache-first branch refused
+  to serve a non-ok hashed hit and then fell through to stale-while-revalidate, which returned the
+  same entry because a 404 is still a hit. Measured 2026-08-30: a 404 seeded into `brickwright-v4`
+  for a hashed chunk was served with the server answering that URL 200. One word (`cached` →
+  `cached.ok`); the mutation restores it and the scenario reports `status 404`.
+
+No cache rename was needed for either — both fixes route around a bad entry rather than trusting
+it, so an already-poisoned browser recovers on its next load. `CACHE` stays `brickwright-v4`.
+
+The original note still holds and is now asserted rather than remembered: `respondWith` rejects if
+its promise resolves to `undefined` (the white screen, 9886889), and renaming the cache is the
+only recovery for a worker that trusts something it should not — which is why the `activate` purge
+has its own mutation.
+
+**The gate proves itself on every run.** A mutation whose edit matches nothing is a failure, not a
+skip: a pattern that silently misses is exactly how a vacuous test looks verified.
 
 ### 2.3 playwright must not reach package-lock.json — RESOLVED (c1692f0), but standing hazard
 `package-lock.json` is tracked now. `npm i -D playwright --no-save` spares `package.json` and
