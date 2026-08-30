@@ -57,6 +57,7 @@ const KNOWN_UNWIRED = {
     'verify-instruments-scroll.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-interaction.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-intro.mjs': 'FAILS (2026-08-27)',
+    'verify-debug-frames-watch.mjs': '15/19 — real session, probe must enforce paused phase and real variable address (2026-08-30)',
     'verify-schematic.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-ssd1306-face.mjs': 'FAILS — 0 ssd1306 case handlers in the built chunk (2026-08-27)',
     'verify-starter-journeys.mjs': 'FAILS — lesson search finds no Wave 1 topic (2026-08-27)',
@@ -66,12 +67,17 @@ const workflowText = readdirSync(path.join(ROOT, '.github/workflows'))
     .filter(f => f.endsWith('.yml'))
     .map(f => readFileSync(path.join(ROOT, '.github/workflows', f), 'utf8'))
     .join('\n');
+// A prose comment saying "NOT WIRED" used to satisfy includes(filename), so
+// the very warning about this gate made the coverage gate report it as run.
+const workflowExecutableText = workflowText.split('\n')
+    .filter(line => !line.trimStart().startsWith('#'))
+    .join('\n');
 
 const gates = readdirSync(path.join(ROOT, 'scripts'))
     .filter(f => f.startsWith('verify-') && f.endsWith('.mjs'));
 
 test('every browser gate is either run by CI or knowingly listed as not', () => {
-    const unwired = gates.filter(g => !workflowText.includes(g));
+    const unwired = gates.filter(g => !workflowExecutableText.includes(g));
     const undeclared = unwired.filter(g => !(g in KNOWN_UNWIRED));
     assert.deepEqual(undeclared, [],
         `these gates are run by nothing and are not in KNOWN_UNWIRED: ${undeclared.join(', ')}. ` +
@@ -83,9 +89,16 @@ test('the unwired list only shrinks — entries that are now wired must be remov
     // Without this the list rots too: a gate could be wired into CI and still
     // sit here claiming to be unwatched, which is exactly the kind of stale
     // bookkeeping that made the sweep necessary.
-    const wrongly = Object.keys(KNOWN_UNWIRED).filter(g => workflowText.includes(g));
+    const wrongly = Object.keys(KNOWN_UNWIRED).filter(g => workflowExecutableText.includes(g));
     assert.deepEqual(wrongly, [],
         `these are in KNOWN_UNWIRED but ARE run by a workflow — delete them from the list: ${wrongly.join(', ')}`);
+});
+
+test('workflow comments do not masquerade as executable browser gates', () => {
+    assert.match(workflowText, /NOT WIRED IN YET[\s\S]*verify-debug-frames-watch\.mjs/,
+        'fixture drift: the known unwired comment is gone, so replace this proof');
+    assert.ok(!workflowExecutableText.includes('verify-debug-frames-watch.mjs'),
+        'a comment-only filename must not count as a CI invocation');
 });
 
 test('every listed gate still exists', () => {

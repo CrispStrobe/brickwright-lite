@@ -270,35 +270,33 @@ const main = async () => {
         };
     });
     record('a chip is on the board for the debugger to drive',
-        !!(boardInfo.hasBoard || boardInfo.hasCircuit),
+        !!(boardInfo.hasBoard && boardInfo.hasCircuit && boardInfo.kinds && boardInfo.kinds.includes('mcu')),
         JSON.stringify(boardInfo));
 
     // The dock is driven by the real settings event, not by clicking Settings.
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('bw-settings-change',
         {detail: {key: 'bw-debug-dock', value: 'right'}})));
 
-    const panelText = () => page.evaluate(() => {
-        const host = document.querySelector('[data-bw-circuit-stage-host]') || document.body;
-        return host.innerText || '';
-    });
+    const debugPanel = page.locator('[data-debug-panel]:visible').first();
+    await debugPanel.waitFor({state: 'visible', timeout: 30000});
+    const panelText = () => debugPanel.innerText();
+    const phase = () => debugPanel.getAttribute('data-debug-phase');
 
     const ready = await waitFor(panelText, t => /Speed|Tempo/.test(t) && /Run|Start/.test(t), 60000);
     record('the debug panel is on screen', /Speed|Tempo/.test(ready), `${ready.length} chars`);
 
     // Start the session so a target exists (build + attach go over the network).
-    const clickByText = async (re) => page.evaluate((src) => {
-        const rx = new RegExp(src[0], src[1]);
-        const btns = [...document.querySelectorAll('button')];
-        const b = btns.find(x => rx.test(x.innerText || ''));
-        if (b) { b.click(); return true; }
-        return false;
-    }, [re.source, re.flags]);
+    const clickByText = async re => {
+        const button = debugPanel.locator('button', {hasText: re}).first();
+        await button.waitFor({state: 'visible', timeout: 15000});
+        await button.click();
+    };
 
     await clickByText(/^\s*▶?\s*(Run|Start)\s*$/i);
-    const running = await waitFor(panelText, t => /running|läuft|paused|angehalten/i.test(t), 120000);
-    const attached = /running|läuft|paused|angehalten/i.test(running);
+    const running = await waitFor(phase, p => p === 'running', 120000);
+    const attached = running === 'running';
     record('a debug session attached', attached,
-        attached ? 'phase reached running/paused' : running.slice(0, 200));
+        attached ? 'phase=running' : `last phase=${running}`);
     if (!attached) {
         await page.screenshot({path: path.join(SHOTS, '00-attach-failed.png'), fullPage: true});
         console.log('\nCannot proceed without a session. See 00-attach-failed.png');
@@ -308,10 +306,12 @@ const main = async () => {
 
     // ── D28: the Position pane, while paused ────────────────────────────
     await clickByText(/^\s*⏸?\s*(Pause)\s*$/i);
-    await waitFor(panelText, t => /paused|angehalten/i.test(t), 20000);
+    const paused = await waitFor(phase, p => p === 'paused', 20000);
+    record('the session is paused before inspecting or stepping', paused === 'paused',
+        `phase=${paused}`);
 
-    const frames = await page.evaluate(() => {
-        const el = document.querySelector('[data-debug-frames]');
+    const frames = await debugPanel.evaluate(el => {
+        el = el.querySelector('[data-debug-frames]');
         if (!el) return null;
         return {
             kind: el.getAttribute('data-frames-kind'),
@@ -338,18 +338,18 @@ const main = async () => {
     // Everything below lives inside the drawer's `open` branch, so a failed
     // toggle would read as "the feature is missing". Confirm it opened.
     const drawerOpen = await waitFor(
-        () => page.$('[data-watchpoints]').then(Boolean), v => v, 10000);
+        () => debugPanel.locator('[data-watchpoints]').count().then(n => n > 0), v => v, 10000);
     record('the under-the-hood drawer opened', drawerOpen,
         drawerOpen ? 'watchpoints pane present' : 'toggle did not open the drawer');
 
-    const cycleBtn = await page.$('[data-step-cycle]');
-    record('D25: the cycle-step button is present on the C target', !!cycleBtn,
-        cycleBtn ? 'rendered' : 'missing — the emu8051 target should declare `cycle`');
+    const cycleBtn = debugPanel.locator('[data-step-cycle]').first();
+    const hasCycleBtn = await cycleBtn.count() > 0;
+    record('D25: the cycle-step button is present on the C target', hasCycleBtn,
+        hasCycleBtn ? 'rendered' : 'missing — the emu8051 target should declare `cycle`');
 
-    if (cycleBtn) {
-        const readCycles = () => page.evaluate(() => {
-            const host = document.querySelector('[data-bw-circuit-stage-host]') || document.body;
-            const m = (host.innerText || '').match(/([\d.,]+)\s*(cycles?|Zyklen)\s*@/i);
+    if (hasCycleBtn) {
+        const readCycles = () => debugPanel.evaluate(el => {
+            const m = (el.innerText || '').match(/([\d.,]+)\s*(cycles?|Zyklen)\s*@/i);
             return m ? Number(m[1].replace(/[.,]/g, '')) : null;
         });
         const before = await readCycles();
@@ -367,36 +367,45 @@ const main = async () => {
     // ── D29: a watchpoint halts at the write and names the byte ──────────
     // `counter` lives in iram; the drawer's watch button prompts for the hex
     // address. The prompt is answered through the dialog handler.
-    const varsNow = await page.evaluate(() => {
-        const el = document.querySelector('[data-debug-frames]');
+    const varsNow = await debugPanel.evaluate(el => {
+        el = el.querySelector('[data-debug-frames]');
         return el ? [...el.querySelectorAll('[data-frame-var]')].map(r => r.innerText) : [];
     });
-    const m = varsNow.map(v => v.match(/counter[\s\S]*?(iram|sfr|xram|code)\s+0x([0-9A-F]+)/i)).find(Boolean);
-    const watchAddr = m ? parseInt(m[2], 16) : 0x30;
-    console.log(`watching ${m ? `counter at ${m[1]} 0x${m[2]}` : 'iram 0x30 (fallback)'}`);
+    const m = varsNow.map(v => v.match(/^([^\n]+)[\s\S]*?(iram)\s+0x([0-9A-F]+)/i)).find(Boolean);
+    record('D29: a rendered IRAM variable supplies the watch address', !!m,
+        m ? `${m[1].trim()} at ${m[2]} 0x${m[3]}` : `variables: ${varsNow.join(' | ')}`);
+    const watchAddr = m ? parseInt(m[3], 16) : null;
+    if (watchAddr === null) {
+        await browser.close(); if (server) server.close();
+        process.exit(1);
+    }
+    console.log(`watching ${m[1].trim()} at ${m[2]} 0x${m[3]}`);
 
     page.removeAllListeners('dialog');
     page.on('dialog', d => d.accept(watchAddr.toString(16)));
 
-    const addWatch = await page.$('[data-add-watchpoint]');
-    record('D29: the watchpoint control is offered on this build', !!addWatch,
-        addWatch ? 'rendered' : 'missing — the vendored WASM does export _emu_dbg_set_bp_write');
+    const addWatch = debugPanel.locator('[data-add-watchpoint]').first();
+    const hasAddWatch = await addWatch.count() > 0;
+    record('D29: the watchpoint control is offered on this build', hasAddWatch,
+        hasAddWatch ? 'rendered' : 'missing — the vendored WASM does export _emu_dbg_set_bp_write');
 
-    if (addWatch) {
+    if (hasAddWatch) {
         await addWatch.click();
         // The armed entry is the condition; the prompt is answered by the
         // dialog handler above, so this resolves as soon as React repaints.
-        await page.locator('[data-watchpoint-entry]').first()
+        const entry = debugPanel.locator('[data-watchpoint-entry]').first();
+        await entry
             .waitFor({state: 'visible', timeout: 15000}).catch(() => {});
-        const armed = await page.$$('[data-watchpoint-entry]');
-        record('D29: the watchpoint is armed and listed', armed.length > 0,
-            `${armed.length} entry`);
+        const entryText = await entry.count() ? await entry.innerText() : '';
+        const armedAtAddress = new RegExp(`0x0*${watchAddr.toString(16)}`, 'i').test(entryText);
+        record('D29: the watchpoint is armed and listed at that address', armedAtAddress,
+            entryText || 'no entry');
 
         // Resume: the very next write to that byte must stop us.
         await clickByText(/^\s*▶?\s*(Run|Start)\s*$/i);
         const hit = await waitFor(
-            () => page.evaluate(() => {
-                const el = document.querySelector('[data-watch-hit]');
+            () => debugPanel.evaluate(root => {
+                const el = root.querySelector('[data-watch-hit]');
                 return el ? el.innerText : '';
             }),
             t => /0x/i.test(t), 30000);

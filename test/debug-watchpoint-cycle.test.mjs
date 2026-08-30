@@ -262,4 +262,8 @@ test('the drawer gates both controls on an ASSERTED capability, not a defaulted 
         'the cycle button must be gated on an asserted capability');
     assert.match(drawer, /\{hasCycle \? \(/, 'and rendered conditionally, not merely disabled');
     assert.match(drawer, /data-step-cycle/, 'with a stable hook for the browser proof');
+    const panel = readFileSync(
+        path.join(ROOT, 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'), 'utf8');
+    assert.match(panel, /data-debug-panel data-debug-phase=\{phase\}/,
+        'the browser proof must observe the exact phase, not infer it from button text');
 });

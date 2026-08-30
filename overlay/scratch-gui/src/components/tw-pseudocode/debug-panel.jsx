@@ -484,7 +484,7 @@ class DebugPanel extends React.Component {
 
         const inferredBoard = this.state.boardSource === 'inferred';
         return (
-            <div style={{
+            <div data-debug-panel data-debug-phase={phase} style={{
                 display: 'flex', flexDirection: 'column', gap: 8, padding: 10,
                 background: '#1a1a2e', border: '1px solid #2c3e50', borderRadius: 8,
                 fontFamily: 'monospace', fontSize: 12, color: '#bdc3c7'
