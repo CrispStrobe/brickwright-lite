@@ -36,13 +36,15 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    // ROOT-CAUSED 2026-08-30, and it is not the browser: the vendored SDCC
-    // 4.5.0 mcs51 build takes a FATAL Compiler Internal Error (SDCCast.c:3528)
-    // on the idle fast-forward `generateC` emits into main() of every 8051
-    // program. Native SDCC 4.2.0 compiles the identical preprocessed text in
-    // the identical --c1mode silently. Node and Chromium fail the same way; the
-    // existing Node integration test stays 2/2 only because its fixture is a
-    // hand-written main() with no idle block.
+    // ROOT-CAUSED 2026-08-30, and it is not the browser: the vendored
+    // static/sdcc-wasm build dies on the idle fast-forward `generateC` emits
+    // into main() of every 8051 program, with `null function or function
+    // signature mismatch` — a WASM table miss, i.e. a fact about the binary.
+    // Native SDCC 4.2.0 compiles the identical preprocessed text through the
+    // identical --c1mode in silence, three rewrites of the idle logic all die,
+    // and Node fails exactly as Chromium does. The existing Node integration
+    // test stays 2/2 only because its fixture is a hand-written main() with no
+    // idle block.
     //
     // So the gate cannot pass until the toolchain is repaired, and no amount of
     // driving the UI differently will change that: LOCAL_8051_TARGETS routing

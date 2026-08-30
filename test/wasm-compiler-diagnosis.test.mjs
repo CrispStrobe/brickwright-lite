@@ -12,14 +12,24 @@
  *    names the missing file and not one thing about the cause. Five consecutive
  *    red CI runs of the debugger browser gate were spent on that sentence.
  *
- * 2. With the diagnosis visible, the cause is not subtle: the vendored SDCC
- *    4.5.0 mcs51 front end takes a FATAL Compiler Internal Error (SDCCast.c
- *    line 3528) on the idle fast-forward that `generateC` emits into main() of
- *    every 8051 program. Native SDCC 4.2.0 compiles the identical preprocessed
- *    text in the identical `--c1mode` without a word. So this is the vendored
- *    build, not the program — and while it stands, the shipped app cannot start
- *    an 8051 debug session at all, because LOCAL_8051_TARGETS routing has no
- *    fallback to the hosted service by design.
+ * 2. With the diagnosis visible, the cause is not subtle, and it is not in the
+ *    program. The vendored SDCC 4.5.0 mcs51 stage dies on the idle fast-forward
+ *    that `generateC` emits into main() of EVERY 8051 program — unconditionally,
+ *    at sb3-creator.js's `_core === '8051'` branch, so no project avoids it. On
+ *    the app's own generated C it exits reporting `null function or function
+ *    signature mismatch`; on the ten-line reduction below it manages a
+ *    `FATAL Compiler Internal Error` first.
+ *
+ *    A null indirect call is a WASM table miss, which is a statement about the
+ *    BINARY rather than about SDCC: three separate rewrites of the same idle
+ *    logic (nested if, else-if chain, post-increment then test) all die, and
+ *    native SDCC 4.2.0 compiles the identical preprocessed text through the
+ *    identical `--c1mode` in silence. So the repair belongs to whoever builds
+ *    static/sdcc-wasm — the Emscripten link, not the C.
+ *
+ *    While it stands, the shipped app cannot start an 8051 debug session at
+ *    all: LOCAL_8051_TARGETS routing has no fallback to the hosted service, by
+ *    design, so every 8051 Run ends in this refusal.
  *
  * The second test below therefore asserts a DEFECT, deliberately. It is the
  * only honest way to have the tree state a live failure without shipping red:
