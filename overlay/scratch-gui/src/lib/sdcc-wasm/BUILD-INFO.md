@@ -6,7 +6,22 @@
 **Emscripten:** emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.61 (67fa4c16496b157a7fc3377afd69ee0445e8a6e3)
 **Ports:** mcs51 only
 **Threading:** single-threaded (no -pthread, no SharedArrayBuffer)
-**Patches applied:** (none / list here if any)
+**Architecture:** four isolated single-threaded MEMFS stages; artifacts are copied explicitly
+between stages because WebAssembly has no fork/exec.
+**Patch applied:** libiberty `psignal` conflict (`HAVE_PSIGNAL`)
+
+## Shipped runtime
+
+`cc1` preprocesses, `sdcc --c1mode` generates assembly, `sdas8051` assembles,
+and `sdld` links against the bundled small-model mcs51 runtime. The browser
+loads the headers and libraries from `runtime.json`; it does not contact a CDN.
+
+| Module | WASM bytes |
+| --- | ---: |
+| cc1 | 853,793 |
+| sdcc | 2,839,908 |
+| sdas8051 | 659,154 |
+| sdld | 1,008,609 |
 
 ## Licence
 

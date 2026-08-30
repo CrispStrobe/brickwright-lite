@@ -467,8 +467,8 @@ deleted**, and that is the reasoned answer to the rule rather than a dodge of it
 
 ### 4.2 sdcc-wasm dist: loaded by computed URL, which no static scan can follow
 
-`sdcc.js`, `sdas8051.js` and `sdld.js` under `lib/sdcc-wasm/dist/` are Emscripten output. Verified
-2026-08-30: `lib/sdcc-wasm/compiler.js` lines 44–46 load all three as
+`cc1.js`, `sdcc.js`, `sdas8051.js` and `sdld.js` under `lib/sdcc-wasm/dist/` are Emscripten output.
+Verified 2026-08-30: `lib/sdcc-wasm/compiler.js` loads all four stages as
 `import(/* webpackIgnore: true */ resolve('<name>'))`. The specifier is a **function call**, so no
 import scan can resolve it and no scan ever will — this is not debt awaiting a decision, it is a
 permanent property of loading an Emscripten artifact by URL.

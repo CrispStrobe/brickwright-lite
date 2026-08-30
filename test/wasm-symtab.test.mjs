@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildSymbolTable, parseCdb, SymbolTableError} from '../overlay/scratch-gui/src/lib/sdcc-wasm/symtab.js';
+import {addCLineRecords, buildSymbolTable, parseCdb, SymbolTableError} from '../overlay/scratch-gui/src/lib/sdcc-wasm/symtab.js';
 
 const SOURCE = `/* @bw-begin
  * @bw yield bw_task0 0 block%2FA hat
@@ -43,4 +43,13 @@ test('browser symbol builder refuses mismatched yield metadata and unknown space
     const bad = CDB.replace('({2}SI:U),E,0,0', '({2}SI:U),Z,0,0');
     assert.throws(() => buildSymbolTable(bad, SOURCE), /unmapped SDCC address space/);
     assert.equal(parseCdb(CDB).lines.size, 2);
+});
+
+test('c1mode assembly markers recover linked C-line records without an ADB sidecar', () => {
+    const cdb = 'M:main\nL:A$main$3:105\nL:A$main$5:10A\n';
+    const asm = ['.module main', '; /work/main.c:9: case 0', 'inc r0',
+        '; /work/main.c:11: case 1', 'ret'].join('\n');
+    const parsed = parseCdb(addCLineRecords(cdb, asm));
+    assert.equal(parsed.lines.get(`main.c\0${9}`), 0x105);
+    assert.equal(parsed.lines.get(`main.c\0${11}`), 0x10a);
 });

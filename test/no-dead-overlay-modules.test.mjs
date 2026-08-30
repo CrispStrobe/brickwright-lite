@@ -64,6 +64,9 @@ const roadmapPath = resolve(repo, 'ROADMAP.md');
  * vague enough to cover anything owns nothing.
  */
 const ALLOWED = new Map([
+    ['lib/sdcc-wasm/dist/cc1.js', {roadmap: '4.2',
+        reason: 'Emscripten output, loaded by compiler.js through the same computed ' +
+            'webpack-ignored URL as the other three stages (preprocessor).'}],
     ['lib/sdcc-wasm/dist/sdcc.js', {roadmap: '4.2',
         reason: 'Emscripten output. Loaded at runtime by compiler.js as ' +
             '`import(/* webpackIgnore: true */ resolve(\'sdcc.js\'))` — a computed ' +

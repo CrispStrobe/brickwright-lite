@@ -1,140 +1,182 @@
-/**
- * SDCC 4.5.0 as WebAssembly — lazy-loaded, behind a flag.
- *
- * NOT the default compiler. Byte-identity with native SDCC is not yet verified.
- * Enabled by: localStorage.setItem('bw-use-wasm-compiler', '1')
- *
- * The WASM artifacts (sdcc.js/wasm, sdas8051.js/wasm, sdld.js/wasm, include/)
- * are served as static assets from the build, fetched on first compile, and
- * immutably cached. Total: ~1.6 MiB gzip.
- *
- * The compile function matches the server API shape so the debug-runner can
- * consume it without modification — it returns { success, hex, symbols, ... }.
- *
- * Licence: SDCC is GPL-2+. This is a distribution of SDCC. Source tarball SHA-256
- * in BUILD-INFO.md. mcs51 port only.
- */
+/** SDCC 4.5.0 mcs51 toolchain in four single-threaded WASM stages. */
+import {addCLineRecords, buildSymbolTable} from './symtab.js';
 
-import {buildSymbolTable} from './symtab.js';
+const LOCAL_TARGETS = Object.freeze({
+    stc12c5a60s2: {iram: 0x100, xram: 0x400, code: 0xf000},
+    stc12c5a16s2: {iram: 0x100, xram: 0x400, code: 0x4000},
+    stc15f2k60s2: {iram: 0x100, xram: 0x700, code: 0xf000},
+    stc15w408as: {iram: 0x100, xram: 0x200, code: 0x2000},
+    stc89c52rc: {iram: 0x100, xram: 0x100, code: 0x2000}
+});
+let loaded = null;
 
-let loaded = false;
-let sdcc = null;
-let sdas = null;
-let sdld = null;
-
-/**
- * Whether the WASM compiler flag is set.
- */
 export function isEnabled () {
-    try {
-        return localStorage.getItem('bw-use-wasm-compiler') === '1';
-    } catch {
-        return false;
-    }
+    try { return localStorage.getItem('bw-use-wasm-compiler') === '1'; } catch { return false; }
+}
+export function localTargetSupported (target) {
+    return Object.prototype.hasOwnProperty.call(LOCAL_TARGETS, String(target || '').toLowerCase());
 }
 
-/**
- * Load the WASM toolchain. Called once on first compile.
- * @param {string} base - base URL for the static assets (e.g. document.baseURI)
- */
+const decodeBase64 = text => {
+    const raw = atob(text);
+    return Uint8Array.from(raw, c => c.charCodeAt(0));
+};
+
 async function loadToolchain (base) {
-    if (loaded) return;
-    const resolve = (name) => new URL(`static/sdcc-wasm/${name}`, base).href;
-
-    // Each Emscripten module is a factory function that returns a promise
-    const [sdccMod, sdasMod, sdldMod] = await Promise.all([
-        import(/* webpackIgnore: true */ resolve('sdcc.js')),
-        import(/* webpackIgnore: true */ resolve('sdas8051.js')),
-        import(/* webpackIgnore: true */ resolve('sdld.js'))
-    ]);
-
-    // Initialise each with locateFile pointing at the static dir
-    const locateFile = (name) => resolve(name);
-    sdcc = await (sdccMod.default || sdccMod)({ locateFile });
-    sdas = await (sdasMod.default || sdasMod)({ locateFile });
-    sdld = await (sdldMod.default || sdldMod)({ locateFile });
-    loaded = true;
+    if (loaded) return loaded;
+    loaded = (async () => {
+        const resolve = name => new URL(`static/sdcc-wasm/${name}`, base).href;
+        const [cc1, sdcc, sdas, sdld, response] = await Promise.all([
+            import(/* webpackIgnore: true */ resolve('cc1.js')),
+            import(/* webpackIgnore: true */ resolve('sdcc.js')),
+            import(/* webpackIgnore: true */ resolve('sdas8051.js')),
+            import(/* webpackIgnore: true */ resolve('sdld.js')),
+            fetch(resolve('runtime.json'))
+        ]);
+        if (!response.ok) throw new Error(`runtime.json returned ${response.status}`);
+        const packed = await response.json();
+        if (packed.format !== 1 || !packed.files) throw new Error('unsupported SDCC runtime pack');
+        const runtime = new Map(Object.entries(packed.files).map(([name, data]) => [name, decodeBase64(data)]));
+        for (const name of ['/lib/small/mcs51.lib', '/lib/small/libsdcc.lib', '/include/mcs51/stc12.h']) {
+            if (!runtime.has(name)) throw new Error(`SDCC runtime pack is missing ${name}`);
+        }
+        return {factories: [cc1, sdcc, sdas, sdld].map(m => m.default || m), runtime, resolve};
+    })();
+    try { return await loaded; } catch (e) { loaded = null; throw e; }
 }
 
-/**
- * Compile C source to Intel HEX using the WASM toolchain.
- *
- * Matches the server's POST /compile response shape:
- *   { success, hex?, error?, symbols?, symbols_error? }
- *
- * @param {string} code - C source
- * @param {object} opts
- * @param {string} opts.target - device target (e.g. 'stc12c5a60s2')
- * @param {boolean} opts.symbols - whether to extract symbol table
- * @returns {Promise<object>}
- */
-export async function compile (code, { target = 'stc12c5a60s2', symbols = false } = {}) {
-    try {
-        await loadToolchain(document.baseURI);
-    } catch (e) {
-        return { success: false, error: `WASM toolchain failed to load: ${e.message}` };
+function mkdirp (FS, name) {
+    let current = '';
+    for (const part of name.split('/').filter(Boolean)) {
+        current += `/${part}`;
+        try { FS.mkdir(current); } catch { /* exists */ }
     }
+}
+function populateRuntime (FS, runtime) {
+    for (const [name, bytes] of runtime) {
+        mkdirp(FS, name.slice(0, name.lastIndexOf('/')));
+        FS.writeFile(name, bytes);
+    }
+}
+async function runTool (factory, name, args, resolve, setup, stdinBytes = null) {
+    if (typeof factory !== 'function') throw new Error(`${name}.js did not export a module factory`);
+    let stdinAt = 0;
+    const errors = [];
+    const module = await factory({
+        noExitRuntime: true,
+        thisProgram: name,
+        arguments: args,
+        locateFile: file => resolve(file),
+        preRun: [M => setup?.(M.FS)],
+        ...(stdinBytes ? {stdin: () => stdinAt < stdinBytes.length ? stdinBytes[stdinAt++] : null} : {}),
+        print: () => {}, printErr: text => errors.push(String(text))
+    });
+    return {module, errors};
+}
+function readRequired (FS, name, stage) {
+    try { return FS.readFile(name); } catch { throw new Error(`${stage} produced no ${name}`); }
+}
 
+export function linkerScript (limits = LOCAL_TARGETS.stc12c5a60s2) {
+    return [
+        '-muwx', '-i /work/main.ihx', '-M',
+        `-I 0x${limits.iram.toString(16)}`, `-X 0x${limits.xram.toString(16)}`,
+        `-C 0x${limits.code.toString(16)}`, '-y',
+        '-b HOME = 0x0000', '-b XSEG = 0x0001', '-b PSEG = 0x0001',
+        '-b ISEG = 0x0000', '-b BSEG = 0x0000',
+        '-k /lib/small', '-l mcs51', '-l libsdcc', '-l libint', '-l liblong', '-l libfloat',
+        '/work/main.rel', '', '-e', ''
+    ].join('\n');
+}
+function bytesToBase64 (bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+}
+
+export async function compileWithToolchain (code, {target = 'stc12c5a60s2', symbols = false,
+    fosc = 11059200} = {}, toolchain) {
+    const normalized = String(target).toLowerCase();
+    if (!localTargetSupported(normalized)) return {success: false, unsupported: true,
+        error: `the local compiler supports 8051 targets only; '${target}' needs the hosted toolchain`};
     try {
-        // Write source to the virtual filesystem
-        sdcc.FS.writeFile('/input.c', code);
-
-        // Run sdcc: compile C → .asm
-        const sdccArgs = [
-            '-mmcs51',
-            `--model-${target.includes('stc89') ? 'small' : 'small'}`,
-            ...(symbols ? ['--debug'] : []),
-            '-c', '/input.c',
-            '-o', '/input.rel'
+        const {factories, runtime, resolve} = toolchain;
+        const source = new TextEncoder().encode(code);
+        const cppArgs = [
+            '-E', '-quiet', '-nostdinc', '-Wall', '-std=c11', '-D__SDCC_CHAR_UNSIGNED',
+            '-D__SDCC_MODEL_SMALL', '-D__SDCC_FLOAT_REENT', '-D__SDCCCALL=0', '-D__SDCC=4_5_0',
+            '-D__SDCC_VERSION_MAJOR=4', '-D__SDCC_VERSION_MINOR=5', '-D__SDCC_VERSION_PATCH=0',
+            '-DSDCC=450', '-D__SDCC_REVISION=15242', '-D__SDCC_mcs51', '-D__STDC_NO_COMPLEX__=1',
+            '-D__STDC_NO_THREADS__=1', '-D__STDC_NO_ATOMICS__=1', '-D__STDC_NO_VLA__=1',
+            '-D__STDC_ISO_10646__=201409L', '-D__STDC_UTF_16__=1', '-D__STDC_UTF_32__=1',
+            '-D__SIZEOF_FLOAT__=4', '-D__SIZEOF_DOUBLE__=4', '-D__SDCC_BITINT_MAXWIDTH=64',
+            `-DFOSC_HZ=${Math.round(fosc)}UL`, '-isystem', '/include/mcs51', '-isystem', '/include',
+            '-o', '/work/main.i', '/work/main.c'
         ];
-        const sdccResult = sdcc.callMain(sdccArgs);
-        if (sdccResult !== 0) {
-            const stderr = ''; // TODO: capture stderr from Emscripten
-            return { success: false, error: `sdcc exited with code ${sdccResult}. ${stderr}` };
+        const cpp = await runTool(factories[0], 'cc1', cppArgs, resolve, FS => {
+            populateRuntime(FS, runtime); mkdirp(FS, '/work'); FS.writeFile('/work/main.c', source);
+        });
+        const preprocessed = readRequired(cpp.module.FS, '/work/main.i', 'preprocessor');
+
+        const cc = await runTool(factories[1], 'sdcc', [
+            '--c1mode', '-mmcs51', '--model-small', ...(symbols ? ['--debug'] : []), '-o', 'main.asm'
+        ], resolve, FS => {
+            populateRuntime(FS, runtime); mkdirp(FS, '/work');
+            // Debug codegen follows the preprocessor's #line markers back to the
+            // original file. Keep it in this stage's isolated MEMFS so SDCC can
+            // emit C-line records instead of "No such file" assembly comments.
+            FS.writeFile('/work/main.c', source);
+        }, preprocessed);
+        let asm = new TextDecoder().decode(readRequired(cc.module.FS, '/main.asm', 'compiler'));
+        if (!asm.includes('.optsdcc')) asm = asm.replace(/^(\s*\.module\s+\S+)/m,
+            `$1\n\t.optsdcc -mmcs51 --model-small${symbols ? ' --debug' : ''}`);
+        const adbPath = ['/main.adb', '/work/main.adb'].find(name => cc.module.FS.analyzePath(name).exists);
+        const adb = symbols && adbPath ? cc.module.FS.readFile(adbPath) : null;
+
+        const assembler = await runTool(factories[2], 'sdas8051', [
+            symbols ? '-plosgffwy' : '-plosgffw', '/work/main.rel', '/work/main.asm'
+        ], resolve, FS => {
+            mkdirp(FS, '/work'); FS.writeFile('/work/main.asm', asm);
+            if (adb) FS.writeFile('/work/main.adb', adb);
+        });
+        const rel = readRequired(assembler.module.FS, '/work/main.rel', 'assembler');
+        const optional = {};
+        for (const ext of ['lst', 'sym', 'adb']) {
+            const name = `/work/main.${ext}`;
+            if (assembler.module.FS.analyzePath(name).exists) optional[ext] = assembler.module.FS.readFile(name);
         }
 
-        // Run sdas8051: assemble (sdcc already does this, but if needed)
-        // For the mcs51 port, sdcc calls the assembler internally
-
-        // Run sdld: link → .ihx
-        const sdldArgs = [
-            '-nui',
-            '-i', '/output.ihx',
-            '/input.rel'
-        ];
-        const sdldResult = sdld.callMain(sdldArgs);
-        if (sdldResult !== 0) {
-            return { success: false, error: `sdld exited with code ${sdldResult}` };
-        }
-
-        // Read the output
-        const hex = sdcc.FS.readFile('/output.ihx', { encoding: 'utf8' });
-
-        const result = {
-            success: true,
-            hex,
-            base64: btoa(hex)
-        };
-
-        // Protocol 004 symbol extraction is implemented locally. It remains
-        // fail-closed: the linked .cdb, not the compile-only one, must carry
-        // every address used by the debugger.
+        const linker = await runTool(factories[3], 'sdld', ['-nf', '/work/main.lk'], resolve, FS => {
+            populateRuntime(FS, runtime); mkdirp(FS, '/work'); FS.writeFile('/work/main.rel', rel);
+            FS.writeFile('/work/main.lk', linkerScript(LOCAL_TARGETS[normalized]));
+            for (const [ext, bytes] of Object.entries(optional)) FS.writeFile(`/work/main.${ext}`, bytes);
+        });
+        const ihx = readRequired(linker.module.FS, '/work/main.ihx', 'linker');
+        const result = {success: true, hex: new TextDecoder().decode(ihx), base64: bytesToBase64(ihx),
+            bytes: ihx.length, filename: 'firmware.ihx', format: 'ihx', f_cpu: fosc};
         if (symbols) {
+            let cdb = '';
             try {
-                const candidates = ['/output.cdb', '/input.cdb'];
-                const cdbPath = candidates.find(path => sdcc.FS.analyzePath(path).exists);
-                if (!cdbPath) throw new Error('the WASM link wrote no .cdb file');
-                const cdb = sdcc.FS.readFile(cdbPath, {encoding: 'utf8'});
-                result.symbols = buildSymbolTable(cdb, code, {target, device: target});
+                cdb = new TextDecoder().decode(readRequired(linker.module.FS, '/work/main.cdb', 'debug linker'));
+                cdb = addCLineRecords(cdb, asm);
+                result.symbols = buildSymbolTable(cdb, code, {fosc, device: normalized});
                 result.symbols_error = null;
             } catch (e) {
                 result.symbols = null;
                 result.symbols_error = `local symbol extraction failed: ${e.message}`;
             }
         }
-
         return result;
     } catch (e) {
-        return { success: false, error: `WASM compilation failed: ${e.message}` };
+        return {success: false, error: `local WASM compilation failed: ${e.message}`};
+    }
+}
+
+export async function compile (code, options = {}) {
+    try {
+        const toolchain = await loadToolchain(document.baseURI);
+        return await compileWithToolchain(code, options, toolchain);
+    } catch (e) {
+        return {success: false, error: `local WASM compilation failed: ${e.message}`};
     }
 }

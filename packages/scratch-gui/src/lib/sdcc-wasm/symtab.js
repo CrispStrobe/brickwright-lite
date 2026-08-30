@@ -25,10 +25,42 @@ export function parseCdb (text) {
     return out;
 }
 
-function location (cdb, name, size) {
+/**
+ * c1mode cannot write its usual .adb sidecar. It does retain exact C source
+ * markers in the generated assembly, while sdas writes linked assembly-line
+ * addresses to the CDB. Join those two lossless records into the L:C records
+ * consumed by the debugger protocol builder.
+ */
+export function addCLineRecords (cdbText, asmText, sourceFile = 'main.c') {
+    const addresses = new Map();
+    for (const record of String(cdbText).split(/\r?\n/)) {
+        const match = record.match(/^L:A\$[^$]+\$(\d+):([0-9A-Fa-f]+)$/);
+        if (match && !addresses.has(Number(match[1]))) {
+            addresses.set(Number(match[1]), match[2].toUpperCase());
+        }
+    }
+    const added = new Map();
+    let sourceLine = null;
+    const escaped = sourceFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const marker = new RegExp(`;\\s*(?:[^:]+/)?${escaped}:(\\d+):`);
+    String(asmText).split(/\r?\n/).forEach((line, index) => {
+        const match = line.match(marker);
+        if (match) sourceLine = Number(match[1]);
+        const address = addresses.get(index + 1);
+        if (sourceLine !== null && address !== undefined && !added.has(sourceLine)) added.set(sourceLine, address);
+    });
+    if (!added.size) return String(cdbText);
+    return `${String(cdbText).trimEnd()}\n${[...added].map(([line, address]) =>
+        `L:C$${sourceFile}$${line}$0_0$0:${address}`).join('\n')}\n`;
+}
+
+function location (cdb, name, size, fallbackSpace = null) {
     if (!cdb.addrs.has(name)) throw new SymbolTableError(`${name} has no linked address in the .cdb`);
     const letter = cdb.spaces.get(name);
-    if (!letter) throw new SymbolTableError(`${name} has an address but no symbol record`);
+    if (!letter) {
+        if (fallbackSpace) return {space: fallbackSpace, addr: cdb.addrs.get(name), size};
+        throw new SymbolTableError(`${name} has an address but no symbol record`);
+    }
     if (!CDB_SPACE[letter]) {
         throw new SymbolTableError(`${name} uses unmapped SDCC address space ${letter}; refusing to guess`);
     }
@@ -99,8 +131,10 @@ export function buildSymbolTable (cdbText, source, {fosc = 11059200, device = 's
     const taskRows = ordered.map(([name, cases]) => ({
         name,
         func_addr: cdb.addrs.get(name),
-        state: location(cdb, `${name}_state`, 2),
-        until: location(cdb, `${name}_until`, 2),
+        // c1mode emits linked L:G records but no compiler ADB symbol records.
+        // These generated, unqualified globals are IRAM in the fixed small model.
+        state: location(cdb, `${name}_state`, 2, 'iram'),
+        until: location(cdb, `${name}_until`, 2, 'iram'),
         yields: cases.sort((a, b) => a.state - b.state).map(c => {
             const addr = cdb.lines.get(`${sourceName}\0${c.line}`);
             if (addr === undefined) throw new SymbolTableError(`${name}: no code address for state ${c.state}`);
@@ -109,8 +143,8 @@ export function buildSymbolTable (cdbText, source, {fosc = 11059200, device = 's
         })
     }));
     const variables = scanVariables(source).map(v => {
-        try { return {...v, ...location(cdb, v.c, 2)}; } catch (e) { return {...v, unlocated: e.message}; }
+        try { return {...v, ...location(cdb, v.c, 2, 'iram')}; } catch (e) { return {...v, unlocated: e.message}; }
     });
-    return {fosc, device, scheduler: {bw_ms: location(cdb, 'bw_ms', 2), tasks: taskRows},
+    return {fosc, device, scheduler: {bw_ms: location(cdb, 'bw_ms', 2, 'iram'), tasks: taskRows},
         ...(variables.length ? {variables} : {})};
 }
