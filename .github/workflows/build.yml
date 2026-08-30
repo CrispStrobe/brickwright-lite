@@ -488,31 +488,27 @@ jobs:
           path: artifacts/labwired-*.png
           if-no-files-found: warn
 
-      # D29, D28 and D25 — the three debugger defects closed 2026-08-29. Each
-      # of them was recorded from source reading and two of the three records
-      # were WRONG (D29's export existed; D25 named a core that cannot step a
-      # cycle), so this gate deliberately proves them the other way round: it
-      # drives a real session and reads what the panel says.
+      # NOT WIRED IN YET, deliberately. `scripts/verify-debug-frames-watch.mjs`
+      # is written and is in the tree, and it does not yet get a debug session
+      # up in this app: the debugger needs a program AND a chip, the example
+      # picker supplies the circuit but not the program, and the three ways I
+      # tried to supply the program each failed differently (see the script's
+      # own header — it records all three, because each looked like a broken
+      # feature rather than a broken setup).
       #
-      #   D29  a watchpoint set in the UI halts at the write, and the panel
-      #        names the address and both sides of the value transition.
-      #   D28  the Position pane is on screen while paused and REFUSES, in
-      #        words, to show a call stack the C target does not have.
-      #   D25  one cycle step advances the displayed cycle count by exactly 1.
-      - name: Browser gate — watchpoints, frames/locals and the cycle step
-        if: steps.playwright.outcome == 'success'
-        run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
-
-      # Same reasoning as the labwired shots above: a screenshot that only ever
-      # exists inside a runner is a screenshot nobody can look at, and a local
-      # production build on a shared box is a memory race that is not always
-      # winnable.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
-        with:
-          name: debugger-defect-screenshots
-          path: artifacts/debug-proof/*.png
-          if-no-files-found: warn
+      # Landing it as a CI step before it passes did what it deserved: it made
+      # main red for three pushes and stopped every gate after it from running,
+      # while the deploy watchdog filed "Pages not deploying". A gate that
+      # cannot pass is not a gate, and a gate that has never passed has no
+      # business being the thing that blocks a deploy. It goes back in — with
+      # its screenshot upload — in the commit that makes it green.
+      #
+      # D25/D28/D29 are proven meanwhile by node tests against the REAL
+      # vendored artifact, which is the stronger half of the evidence anyway:
+      # test/debug-watchpoint-cycle.test.mjs (10) and test/debug-frames.test.mjs
+      # (15) load the shipped WASM and assert the halt names iram 0x30 / 0x00 ->
+      # 0x42, that 3 cycle steps cross what 2 instruction steps do, and that the
+      # frames view refuses to invent a call stack.
 
       # The debugger-only pane, which the note above says has regressed to a
       # blank pane twice. This gate existed for it and was never run by CI — so

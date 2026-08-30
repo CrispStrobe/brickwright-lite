@@ -137,19 +137,35 @@ const main = async () => {
     // ratchets the fixed sleeping CI does, and the first version of this script
     // added seven sleeps totalling 9.1 s — which the ratchet caught to the
     // millisecond (116.9 s -> 126.0 s, 261 -> 268). Every one of them was
-    // standing in for a condition that can be waited on directly, so they are
-    // waits now and the ceiling is untouched. A sleep costs what it was given
-    // whether or not the app is ready; a condition wait costs what the app
-    // actually took.
+    // standing in for a condition that can be waited on directly.
+    //
+    // GETTING A SESSION TOOK THREE ATTEMPTS AND EACH FAILED DIFFERENTLY. Worth
+    // recording, because each failure looked like a broken feature:
+    //
+    //  1. Typing the program with leading indentation. CodeMirror auto-indents,
+    //     so the spaces COMPOUNDED and the FOREVER body nested wrong; what
+    //     reached the compiler was `set counter to 0` and nothing else, the
+    //     image built with no yield states, symbol extraction failed, and the
+    //     runner attached WITHOUT the 8051 target — reporting no watchpoints
+    //     and no cycle step, i.e. exactly the two defects under test.
+    //  2. Loading the 05-counter example and reading the Blocks tab. The blocks
+    //     canvas was empty and the tab said "Costumes" — a SPRITE was selected.
+    //     BrickWright programs live on the STAGE; the program was there all
+    //     along, in a workspace nobody was looking at.
+    //  3. Typing an unindented program with no circuit. The debugger refuses:
+    //     "needs a program and a chip to drive". A program alone is not a
+    //     session — the chip comes from the circuit.
+    //
+    // So: load the example, which carries BOTH halves, and select the stage.
+    // `05-counter` is `debug-watches`'s own bench — DEVICE STC12C5A60S2 with a
+    // counter variable and a button, the exact target D29's row was about.
     await page.locator('[role="tab"]', {hasText: /Circuit/i}).first().click();
-    // The example list is what the Circuit tab is being opened FOR.
     const search = page.locator('input[placeholder*="earch"], input[type="search"]').first();
     try {
         await search.waitFor({state: 'visible', timeout: 30000});
         await search.fill('counter');
     } catch { /* the example list may not be searchable in this build */ }
 
-    // Wait for the filtered row itself rather than for the filter to "settle".
     const row = page.locator('text=/counter/i').first();
     await row.waitFor({state: 'visible', timeout: 30000});
     await row.click();
@@ -158,16 +174,79 @@ const main = async () => {
     // native confirm — accept it explicitly when it appears.
     try {
         const okBtn = page.locator('button:visible', {hasText: /^OK$/}).first();
-        await okBtn.waitFor({timeout: 6000});
+        await okBtn.waitFor({timeout: 8000});
         await okBtn.click();
     } catch { /* some examples load without the chooser */ }
 
-    // The load is done when the project's own blocks exist — the condition the
-    // 3 s sleep was guessing at.
-    await page.locator('[role="tab"]', {hasText: /Blocks|Bl\u00f6cke/i}).first().click();
-    await page.waitForFunction(
-        () => document.querySelectorAll('.blocklyDraggable, .blocklyBlockCanvas > g').length > 2,
-        null, {timeout: 60000}).catch(() => {});
+    // The load is done when the project is named after the example.
+    const title = await waitFor(
+        () => page.evaluate(() => {
+            const el = document.querySelector('input[class*="title-field"], [class*="project-title"] input');
+            return el ? el.value : '';
+        }),
+        t => /counter/i.test(t || ''), 60000, 500);
+    record('the example bench loaded', /counter/i.test(title || ''), `project title: "${title}"`);
+
+    // The example picker loads the bench's CIRCUIT — that is where the chip
+    // comes from — but leaves the program to the Code tab. Measured: after
+    // this load the workspace canvas holds 0 blocks. So supply the program
+    // here, unless the build already put one in the editor.
+    //
+    // Typed with NO leading indentation, which is the trick: CodeMirror
+    // auto-indents, so typed spaces compound and the FOREVER body nests wrong.
+    // scripts/verify-debug-dock.mjs has typed an unindented program at this
+    // editor for months without flaking; same shape, plus a counter variable,
+    // because D29's watchpoint needs a byte that changes.
+    await page.locator('[role="tab"]', {hasText: /^Code$/i}).first().click();
+    const cm = page.locator('.cm-content').first();
+    await cm.waitFor({state: 'visible', timeout: 30000});
+    const already = await page.evaluate(() => {
+        const el = document.querySelector('.cm-content');
+        return el ? el.innerText : '';
+    });
+    if (!/DEVICE\s+STC12/i.test(already)) {
+        await cm.click();
+        await page.keyboard.press('Control+a');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.type(
+            'DEVICE STC12C5A60S2\n'
+            + 'CLOCK 11059200\n'
+            + 'PIN led1 = P1.0 OUTPUT ACTIVE LOW\n'
+            + '\n'
+            + 'WHEN flag clicked:\n'
+            + 'set counter to 0\n'
+            + 'FOREVER:\n'
+            + 'change counter by 1\n'
+            + 'toggle led1\n'
+            + 'wait 0.15 seconds\n', {delay: 5});
+        const toBlocks = page.locator('button', {hasText: /To blocks/i}).first();
+        await toBlocks.waitFor({state: 'visible', timeout: 20000});
+        await toBlocks.click({force: true});
+    }
+    const typed = await page.evaluate(() => {
+        const el = document.querySelector('.cm-content');
+        return el ? el.innerText : '';
+    });
+    record('the program is in the editor', /DEVICE\s+STC12/i.test(typed) && /FOREVER/i.test(typed),
+        `${typed.length} chars, pre-loaded=${/DEVICE\s+STC12/i.test(already)}`);
+
+    await page.locator('[role="tab"]', {hasText: /^Blocks$/i}).first().click();
+    // BrickWright programs land on the STAGE, not on a sprite, and a sprite is
+    // selected by default — which is why an earlier attempt saw an empty canvas.
+    try {
+        const stage = page.locator('[class*="stage-selector_stage-selector"]').first();
+        await stage.waitFor({state: 'visible', timeout: 15000});
+        await stage.click();
+    } catch { /* some layouts have no separate stage selector */ }
+
+    const blocks = await waitFor(
+        () => page.evaluate(() => {
+            const ws = document.querySelector('.blocklyBlockCanvas');
+            return ws ? ws.querySelectorAll('.blocklyDraggable').length : 0;
+        }),
+        n => n > 3, 60000, 500);
+    record('the program is on the stage workspace', blocks > 3,
+        `${blocks} blocks in the workspace canvas`);
 
     // The dock is driven by the real settings event, not by clicking Settings.
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('bw-settings-change',
