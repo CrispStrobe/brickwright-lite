@@ -3381,7 +3381,8 @@ class PseudocodeImporter extends React.Component {
                     </React.Suspense>
                 ) : null}
                 {this.state.output != null ? (
-                    <pre style={{marginTop: 10, padding: 12, background: '#0c3a44', color: '#c7f0e0', borderRadius: 8,
+                    <pre data-testid={this.state.lang === 'basic' ? 'bw-basic-output' : undefined}
+                        style={{marginTop: 10, padding: 12, background: '#0c3a44', color: '#c7f0e0', borderRadius: 8,
                         fontFamily: 'monospace', fontSize: 13, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap'}}>
                         {this.state.output || '…'}
                     </pre>
