@@ -57,21 +57,42 @@ function populateRuntime (FS, runtime) {
 }
 async function runTool (factory, name, args, resolve, setup, stdinBytes = null) {
     if (typeof factory !== 'function') throw new Error(`${name}.js did not export a module factory`);
-    let stdinAt = 0;
     const errors = [];
     const module = await factory({
         noExitRuntime: true,
         thisProgram: name,
         arguments: args,
         locateFile: file => resolve(file),
-        preRun: [M => setup?.(M.FS)],
-        ...(stdinBytes ? {stdin: () => stdinAt < stdinBytes.length ? stdinBytes[stdinAt++] : null} : {}),
+        preRun: [M => {
+            setup?.(M.FS);
+            if (stdinBytes) {
+                // SDCC's c1mode rewinds stdin. A MEMFS regular file works in both
+                // Chromium and Node; Emscripten's callback device reports EOF in
+                // Chromium and cannot provide seek semantics.
+                mkdirp(M.FS, '/work');
+                M.FS.writeFile('/work/main.i', stdinBytes);
+                if (!M.FS.init.initialized) M.FS.init();
+                const stdin = M.FS.getStream ? M.FS.getStream(0) : M.FS.streams[0];
+                if (stdin) M.FS.close(stdin);
+                const input = M.FS.open('/work/main.i', 'r');
+                if (input.fd !== 0) throw new Error(`expected compiler input on fd 0, got ${input.fd}`);
+                M.FS.chdir('/work');
+            }
+        }],
         print: () => {}, printErr: text => errors.push(String(text))
     });
     return {module, errors};
 }
-function readRequired (FS, name, stage) {
-    try { return FS.readFile(name); } catch { throw new Error(`${stage} produced no ${name}`); }
+function readRequired (FS, name, stage, errors = []) {
+    try { return FS.readFile(name); } catch {
+        const detail = errors.filter(Boolean).slice(-6).join(' | ');
+        const list = dir => {
+            try { return FS.readdir(dir).filter(entry => entry !== '.' && entry !== '..').join(','); }
+            catch { return '-'; }
+        };
+        throw new Error(`${stage} produced no ${name}${detail ? `: ${detail}` : ''} ` +
+            `(root=${list('/')}; work=${list('/work')})`);
+    }
 }
 
 export function linkerScript (limits = LOCAL_TARGETS.stc12c5a60s2) {
@@ -113,7 +134,7 @@ export async function compileWithToolchain (code, {target = 'stc12c5a60s2', symb
         const cpp = await runTool(factories[0], 'cc1', cppArgs, resolve, FS => {
             populateRuntime(FS, runtime); mkdirp(FS, '/work'); FS.writeFile('/work/main.c', source);
         });
-        const preprocessed = readRequired(cpp.module.FS, '/work/main.i', 'preprocessor');
+        const preprocessed = readRequired(cpp.module.FS, '/work/main.i', 'preprocessor', cpp.errors);
 
         const cc = await runTool(factories[1], 'sdcc', [
             '--c1mode', '-mmcs51', '--model-small', ...(symbols ? ['--debug'] : []), '-o', 'main.asm'
@@ -124,7 +145,7 @@ export async function compileWithToolchain (code, {target = 'stc12c5a60s2', symb
             // emit C-line records instead of "No such file" assembly comments.
             FS.writeFile('/work/main.c', source);
         }, preprocessed);
-        let asm = new TextDecoder().decode(readRequired(cc.module.FS, '/main.asm', 'compiler'));
+        let asm = new TextDecoder().decode(readRequired(cc.module.FS, '/work/main.asm', 'compiler', cc.errors));
         if (!asm.includes('.optsdcc')) asm = asm.replace(/^(\s*\.module\s+\S+)/m,
             `$1\n\t.optsdcc -mmcs51 --model-small${symbols ? ' --debug' : ''}`);
         const adbPath = ['/main.adb', '/work/main.adb'].find(name => cc.module.FS.analyzePath(name).exists);
@@ -136,7 +157,7 @@ export async function compileWithToolchain (code, {target = 'stc12c5a60s2', symb
             mkdirp(FS, '/work'); FS.writeFile('/work/main.asm', asm);
             if (adb) FS.writeFile('/work/main.adb', adb);
         });
-        const rel = readRequired(assembler.module.FS, '/work/main.rel', 'assembler');
+        const rel = readRequired(assembler.module.FS, '/work/main.rel', 'assembler', assembler.errors);
         const optional = {};
         for (const ext of ['lst', 'sym', 'adb']) {
             const name = `/work/main.${ext}`;
@@ -148,7 +169,7 @@ export async function compileWithToolchain (code, {target = 'stc12c5a60s2', symb
             FS.writeFile('/work/main.lk', linkerScript(LOCAL_TARGETS[normalized]));
             for (const [ext, bytes] of Object.entries(optional)) FS.writeFile(`/work/main.${ext}`, bytes);
         });
-        const ihx = readRequired(linker.module.FS, '/work/main.ihx', 'linker');
+        const ihx = readRequired(linker.module.FS, '/work/main.ihx', 'linker', linker.errors);
         const result = {success: true, hex: new TextDecoder().decode(ihx), base64: bytesToBase64(ihx),
             bytes: ihx.length, filename: 'firmware.ihx', format: 'ihx', f_cpu: fosc};
         if (symbols) {

@@ -174,5 +174,5 @@ test('the debugger compiles supported 8051 targets locally and names hosted fami
     assert.doesNotMatch(runner, /bw-use-wasm-compiler/,
         'the repaired local compiler must not regress behind an undiscoverable flag');
     assert.ok(existsSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/sdcc-wasm/intercept.js')),
-        'the local WASM compiler chunk is gone, so the opt-in leads nowhere');
+        'the default local WASM compiler router is gone');
 });

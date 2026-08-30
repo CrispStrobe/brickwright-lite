@@ -3,23 +3,23 @@
  *
  * Design: `sb3-creator/reference/debugger-ui.md`. This is the host side of it:
  * bw-board owns the target and the session (both framework-free and tested in
- * Node), and this file owns the four things only a browser can do — build the
- * image over the network, instantiate the WASM, drive a frame loop, and light
+ * Node), and this file owns the four things only a browser can do — route the
+ * compiler, instantiate the WASM, drive a frame loop, and light
  * up a block in the editor.
  *
  *     project  --generateC({debug:true})-->  C + @bw yield map
- *              --POST /compile{symbols}-->   .hex + symbol table
+ *              --local/hosted compile------> .hex + symbol table
  *              --emu8051 + bw-board------->  a running, breakable program
  *              --why.tasks + yields[].block->  vm.runtime.glowBlock
  *
- * ## Why the symbol table has to come from the server
+ * ## Why the symbol table has to come from the linker
  *
- * A browser cannot run SDCC and cannot run stc_symtab.py, and the yield map
- * alone is not enough: it says WHICH BLOCK each `(task, state)` is, but not
- * where `<task>_state` lives in RAM or what code address a yield sits at. Only
- * the linker knows that. So `POST /compile {"symbols": true}` returns both, and
- * the two are joined here — by `(task, state)`, which is the one key that
- * survives the whole chain.
+ * The yield map alone is not enough: it says WHICH BLOCK each `(task, state)`
+ * is, but not where `<task>_state` lives in RAM or what code address a yield
+ * sits at. Only the linker knows that. Supported 8051 devices run SDCC and the
+ * CDB parser locally in four WASM stages; other families use the hosted
+ * compiler. Either route returns image and symbols together, joined here by
+ * `(task, state)`, the one key that survives the whole chain.
  *
  * ## Debug builds are not release builds, twice over
  *
@@ -58,9 +58,8 @@ const LOCAL_8051_TARGETS = new Set([
  *
  * It lives here rather than in the circuit tab because the intercept patches
  * `globalThis.fetch` and only matters at the moment something compiles. Wired
- * to tab visibility, a user who opted in and pressed run without ever opening
- * the Circuit tab would silently get the hosted compiler instead — the flag
- * would appear not to work, depending on which tab they had visited.
+ * to tab visibility, pressing Run without first visiting Circuit would skip
+ * local routing and behave differently based on navigation history.
  *
  * The chunk remains lazy: users who never build firmware do not download it.
  * Once loaded, the router handles supported 8051 targets locally and leaves

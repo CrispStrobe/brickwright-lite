@@ -653,8 +653,8 @@ class CircuitTab extends React.Component {
             // (The WASM compiler intercept used to be installed here. It now
             // lives at the compile call site in debug-runner.js: patching
             // globalThis.fetch only matters when something compiles, and hanging
-            // it off this tab's visibility meant opting in did nothing unless you
-            // happened to open the Circuit tab first.)
+            // it off this tab's visibility made local routing depend on whether
+            // the user happened to open the Circuit tab first.)
             // Keep the whole module, not just the designer. The warnings, parts
             // list and examples panels are separate exports, and a build may
             // legitimately not have them yet — which the panel strip reports

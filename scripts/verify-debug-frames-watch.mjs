@@ -199,30 +199,54 @@ const main = async () => {
         t => /counter/i.test(t || ''), 60000, 500);
     record('the example bench loaded', /counter/i.test(title || ''), `project title: "${title}"`);
 
-    // The current example loader supplies BOTH the circuit and its program.
-    // Keep that production chain intact: replacing the program here once made
-    // a malformed three-block loop look like a debugger failure. The example's
-    // count changes on its real button input; D29 drives that control after the
-    // watch is armed instead of swapping in a special proof program.
+    // Keep the example's real solved circuit, but author the canonical program
+    // through the public Code surface. The gallery currently selects a sprite
+    // whose editor is empty; trusting that selection made this gate test zero
+    // blocks. `insertText` sends the whole string without CodeMirror adding
+    // indentation to an already-indented multiline paste.
+    const selectedStage = await page.evaluate(() => {
+        const state = window.__brickwrightStore?.getState();
+        const vm = state?.scratchGui?.vm;
+        const stage = vm?.runtime?.targets?.find(target => target && target.isStage);
+        if (!vm || !stage) return {id: null, stateKeys: Object.keys(state || {}),
+            guiKeys: Object.keys(state?.scratchGui || {}), hasVm: !!vm,
+            targetCount: vm?.runtime?.targets?.length ?? null};
+        vm.setEditingTarget(stage.id);
+        return {id: stage.id};
+    });
+    record('the Stage target is selected for the hardware program', !!selectedStage.id,
+        selectedStage.id || JSON.stringify(selectedStage));
     await page.locator('[role="tab"]', {hasText: /^Code$/i}).first().click();
     const cm = page.locator('.cm-content').first();
     await cm.waitFor({state: 'visible', timeout: 30000});
-    const already = await page.evaluate(() => {
+    await cm.click();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.insertText(`DEVICE STC12C5A60S2
+CLOCK 11059200
+
+PIN led = P1.0 OUTPUT ACTIVE LOW
+PIN button = P3.2 INPUT ACTIVE LOW
+
+WHEN flag clicked:
+  set count to 0
+  FOREVER:
+    wait until read button
+    change count by 1
+    turn on led
+    wait 0.25 seconds
+    turn off led
+    wait 0.25 seconds`);
+    const authored = await page.evaluate(() => {
         const el = document.querySelector('.cm-content');
         return el ? el.innerText : '';
     });
-    record('the shipped example program is in the editor',
-        /DEVICE\s+STC12/i.test(already) && /FOREVER/i.test(already) && /change\s+count\s+by\s+1/i.test(already),
-        `${already.length} chars`);
+    record('the counter program is in the editor',
+        /DEVICE\s+STC12/i.test(authored) && /FOREVER/i.test(authored) && /change\s+count\s+by\s+1/i.test(authored),
+        `${authored.length} chars`);
 
+    await page.locator('button', {hasText: /To blocks/i}).first().click({force: true});
     await page.locator('[role="tab"]', {hasText: /^Blocks$/i}).first().click();
-    // BrickWright programs land on the STAGE, not on a sprite, and a sprite is
-    // selected by default — which is why an earlier attempt saw an empty canvas.
-    try {
-        const stage = page.locator('[class*="stage-selector_stage-selector"]').first();
-        await stage.waitFor({state: 'visible', timeout: 15000});
-        await stage.click();
-    } catch { /* some layouts have no separate stage selector */ }
 
     // Count blocks in the MAIN workspace, which means excluding the palette.
     // `document.querySelector('.blocklyBlockCanvas')` returns the FLYOUT's
