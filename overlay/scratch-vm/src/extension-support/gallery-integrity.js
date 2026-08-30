@@ -1,4 +1,5 @@
 const pins = require('./gallery-pins.json');
+const proofPins = require('./gallery-proof-pins.json');
 
 const BASE = pins.base;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -35,6 +36,18 @@ const gallerySlugForURL = value => {
  * @returns {{slug: string, served: string, repo: string, capabilities: Array<string>, brokerCapabilities: Array<string>, migration: object}|null} pin or null
  */
 const pinForURL = value => {
+    const proof = proofPins[value];
+    if (proof && SHA256.test(proof.served) && SHA256.test(proof.repo)) {
+        return {
+            slug: proof.slug,
+            served: proof.served,
+            repo: proof.repo,
+            capabilities: [],
+            brokerCapabilities: Array.isArray(proof.brokerCapabilities) ? proof.brokerCapabilities.slice() : [],
+            migration: {status: 'worker', reason: 'content-pinned production browser proof'},
+            proof: true
+        };
+    }
     const slug = gallerySlugForURL(value);
     if (slug === null) return null;
     const pin = pins.extensions[slug];
@@ -45,7 +58,8 @@ const pinForURL = value => {
         repo: pin.repo,
         capabilities: Array.isArray(pin.capabilities) ? pin.capabilities.slice() : [],
         brokerCapabilities: Array.isArray(pin.brokerCapabilities) ? pin.brokerCapabilities.slice() : [],
-        migration: pin.migration || {status: 'deferred', reason: 'missing migration review'}
+        migration: pin.migration || {status: 'deferred', reason: 'missing migration review'},
+        proof: false
     };
 };
 

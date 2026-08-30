@@ -291,6 +291,7 @@ class ExtensionManager {
             slug: pin.slug,
             digest: pin.served,
             capabilities,
+            proof: pin.proof === true,
             source
         });
         return new Promise((resolve, reject) => {

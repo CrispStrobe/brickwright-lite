@@ -517,6 +517,21 @@ jobs:
           name: basic-run-proof
           path: artifacts/basic-run/*
           if-no-files-found: error
+
+      - name: Browser gate — declared extension capability broker
+        if: steps.playwright.outcome == 'success'
+        run: |
+          mkdir -p artifacts/capability-broker
+          PROOF_URL=http://localhost:8617/ \
+            SUCCESS_SCREENSHOT=artifacts/capability-broker/success.png \
+            FAILURE_JSON=artifacts/capability-broker/failure.json \
+            node scripts/verify-capability-broker.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: capability-broker-proof
+          path: artifacts/capability-broker/*
+          if-no-files-found: error
       - name: Browser gate — first-run chooser and guided journeys
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs

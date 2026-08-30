@@ -97,6 +97,50 @@ test('host-bound capability request returns only the semantic broker result', as
     }
 });
 
+test('capability refusals survive structured clone and terminated reply races are contained', () => {
+    const broker = compileBroker();
+    let cloned;
+    const refusal = new Error('Capability was not declared');
+    refusal.code = 'undeclared-operation';
+    broker._postCapabilityReply({postMessage: message => { cloned = structuredClone(message); }}, 77, null, refusal);
+    assert.deepEqual(cloned, {
+        responseId: 77,
+        error: {
+            name: 'CapabilityRefusal',
+            code: 'undeclared-operation',
+            message: 'Capability was not declared'
+        }
+    });
+    assert.doesNotThrow(() => broker._postCapabilityReply({
+        postMessage: () => { throw new Error('worker terminated'); }
+    }, 78, 'late', null));
+});
+
+test('live capability result clone failure becomes a closed deterministic refusal', () => {
+    const broker = compileBroker();
+    const messages = [];
+    const worker = {
+        postMessage: message => {
+            if (message.result) throw new Error('could not be cloned');
+            messages.push(structuredClone(message));
+        }
+    };
+    broker.workerState.set(worker, {hostRecord: {}, initialized: true});
+    broker._postCapabilityReply(worker, 79, {bad: () => {}}, null);
+    assert.deepEqual(messages, [{
+        responseId: 79,
+        error: {
+            name: 'CapabilityRefusal',
+            code: 'operation-failed',
+            message: 'Capability result could not cross the worker boundary'
+        }
+    }]);
+    const attackerError = new Error('attacker-chosen');
+    attackerError.code = 'raw-native-authority';
+    broker._postCapabilityReply(worker, 80, null, attackerError);
+    assert.equal(messages[1].error.code, 'operation-failed', 'unreviewed codes never cross the boundary');
+});
+
 const connect = async (broker, worker, hostRecord) => {
     broker.addWorker(worker, hostRecord);
     const handshake = worker.messages.shift();

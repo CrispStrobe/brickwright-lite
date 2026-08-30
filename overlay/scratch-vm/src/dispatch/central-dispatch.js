@@ -2,6 +2,16 @@ const SharedDispatch = require('./shared-dispatch');
 
 const log = require('../util/log');
 const {CapabilityBroker} = require('../extension-support/capability-broker');
+const CAPABILITY_REFUSAL_CODES = new Set([
+    'invalid-session', 'invalid-envelope', 'replayed-request', 'unknown-operation',
+    'undeclared-operation', 'invalid-arguments', 'unavailable-operation',
+    'operation-failed', 'stale-reply'
+]);
+
+const proofMetadataHandler = (args, hostRecord) => {
+    if (!hostRecord.proof) throw new Error('Project metadata handler is unavailable');
+    return args.field === 'locale' ? 'en' : 'capability-browser-proof';
+};
 
 /**
  * Main-thread broker for Scratch VM workers.
@@ -20,7 +30,9 @@ class CentralDispatch extends SharedDispatch {
         this.workers = [];
         this.workerState = new WeakMap();
         this.callbackWorkers = [];
-        this.capabilityBroker = new CapabilityBroker();
+        // This deterministic handler is reachable only by the two exact, content-pinned browser-proof
+        // identities. Ordinary gallery records never carry `proof`, and there is no runtime setter.
+        this.capabilityBroker = new CapabilityBroker({'project.metadata.read': proofMetadataHandler});
     }
 
     callSync (service, method, ...args) {
@@ -166,6 +178,43 @@ class CentralDispatch extends SharedDispatch {
         }
     }
 
+    _postCapabilityReply (worker, responseId, result, error) {
+        const reply = {responseId};
+        if (error) {
+            // Error's custom fields are not portable across structured clone. Send a closed plain
+            // refusal record so the worker can reliably inspect the reviewed public code.
+            reply.error = Object.freeze({
+                name: 'CapabilityRefusal',
+                code: CAPABILITY_REFUSAL_CODES.has(error.code) ? error.code : 'operation-failed',
+                message: typeof error.message === 'string' ? error.message : 'Capability operation failed'
+            });
+        } else reply.result = result;
+        try {
+            worker.postMessage(reply);
+        } catch (postError) {
+            // A dead destination is an expected lifecycle race. A live destination, however, may
+            // have exposed a result which is not structured-cloneable: refuse deterministically
+            // instead of swallowing the exception and leaving its request promise unresolved.
+            if (!this.workerState.has(worker)) {
+                log.warn(`Dropped capability reply for terminated worker: ${postError.message}`);
+                return;
+            }
+            const fallback = {
+                responseId,
+                error: {
+                    name: 'CapabilityRefusal',
+                    code: 'operation-failed',
+                    message: 'Capability result could not cross the worker boundary'
+                }
+            };
+            try {
+                worker.postMessage(fallback);
+            } catch (fallbackError) {
+                this.removeWorker(worker, fallbackError);
+            }
+        }
+    }
+
     _allowWorkerMessage (worker, message) {
         // Responses to calls the main thread sent to this worker carry no
         // service. They are required for getInfo and opcode results.
@@ -241,8 +290,8 @@ class CentralDispatch extends SharedDispatch {
         const state = this.workerState.get(worker);
         if (message.service === 'capabilityBroker' && message.method === 'request') {
             this.capabilityBroker.request(worker, message.args[0]).then(
-                result => worker.postMessage({responseId: message.responseId, result}),
-                error => worker.postMessage({responseId: message.responseId, error})
+                result => this._postCapabilityReply(worker, message.responseId, result, null),
+                error => this._postCapabilityReply(worker, message.responseId, null, error)
             );
             return;
         }

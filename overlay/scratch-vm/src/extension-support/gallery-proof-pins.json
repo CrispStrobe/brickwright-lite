@@ -1,0 +1,14 @@
+{
+  "https://crispstrobe.github.io/brickwright-lite/static/test-fixtures/capability-probe-declared.js": {
+    "slug": "browser-proof/declared",
+    "served": "109b38c1740624623b31e0782f4e8b09769674dd7302851ef3858bc7c3fd2484",
+    "repo": "109b38c1740624623b31e0782f4e8b09769674dd7302851ef3858bc7c3fd2484",
+    "brokerCapabilities": ["project.metadata.read"]
+  },
+  "https://crispstrobe.github.io/brickwright-lite/static/test-fixtures/capability-probe-none.js": {
+    "slug": "browser-proof/none",
+    "served": "109b38c1740624623b31e0782f4e8b09769674dd7302851ef3858bc7c3fd2484",
+    "repo": "109b38c1740624623b31e0782f4e8b09769674dd7302851ef3858bc7c3fd2484",
+    "brokerCapabilities": []
+  }
+}

@@ -171,8 +171,16 @@ green. Runtime corpus review closed every zero-requirement candidate: 21 pins
 are migrated, while six candidate-era blockers now name Web NFC, DOM/XML,
 vibration, external evaluation, page URL access, or the absence of any
 executable opcode. The other ambient-requirement deferrals still need
-pin-by-pin review, and the declared-capability browser fixture remains open, so
-CP4 is not marked complete.
+pin-by-pin review. The declared-capability production gate now uses two exact
+content-pinned proof identities outside the 120-entry gallery census. The same
+restricted-worker opcode source receives `project.metadata.read` for one
+identity and no broker capabilities for the other, proving allowed and
+default-deny results, monotonic sequential requests, closed pending loads,
+teardown/reload and zero page errors. The safe worker API deliberately owns
+request IDs, so replay refusal remains at the adversarial transport boundary;
+the browser gate does not add a replay or raw-frame escape hatch merely to
+attack itself. CP4 remains open on the wider pin-by-pin deferral review, not on
+this declared-capability fixture.
 
 ## CP5 — release, adversarial review and closure (45–90 minutes plus CI)
 
