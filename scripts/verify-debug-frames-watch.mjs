@@ -248,6 +248,25 @@ const main = async () => {
     record('the program is on the stage workspace', blocks > 3,
         `${blocks} blocks in the workspace canvas`);
 
+    // Does a CHIP exist? The debugger refuses without one, and its refusal
+    // ("needs a program and a chip to drive") reads the same whether the
+    // circuit failed to load or the program did — so ask the documented
+    // diagnosis hooks directly rather than inferring from the refusal.
+    const boardInfo = await page.evaluate(() => {
+        const b = window.__activeBoard || window.__board;
+        const c = window.__circuit;
+        const parts = c && c.parts ? c.parts : (b && b.parts) || null;
+        return {
+            hasBoard: !!b,
+            hasCircuit: !!c,
+            partCount: Array.isArray(parts) ? parts.length : null,
+            kinds: Array.isArray(parts) ? [...new Set(parts.map(p => p && p.kind))].slice(0, 12) : null
+        };
+    });
+    record('a chip is on the board for the debugger to drive',
+        !!(boardInfo.hasBoard || boardInfo.hasCircuit),
+        JSON.stringify(boardInfo));
+
     // The dock is driven by the real settings event, not by clicking Settings.
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('bw-settings-change',
         {detail: {key: 'bw-debug-dock', value: 'right'}})));
