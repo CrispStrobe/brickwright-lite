@@ -50,9 +50,12 @@ on:
   workflow_dispatch:
 
 # Do not leave one full upstream checkout/sweep queued for every superseded PR
-# commit. Push, nightly, and manual runs remain distinct and non-cancelling.
+# commit. Every non-PR run needs its own group: even with cancel-in-progress
+# false, GitHub keeps at most one PENDING run in a concurrency group and replaces
+# an older pending run when another arrives. That starved twelve push verdicts
+# before this was keyed by run id (ROADMAP 2.1).
 concurrency:
-  group: vendor-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: vendor-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

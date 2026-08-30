@@ -187,14 +187,22 @@ logged `published=03d20c74 ours=4643c623 / compare = behind` and published, `ver
 Every push since has been a `LANES.md` row, which `paths-ignore` skips by design. The behavioural
 evidence is the scratch repo's controlled bursts; lite's own is one green end-to-end pass.
 
-**Not fixed, and measured rather than assumed: `vendor-freshness.yml` has the same group shape**
+**Fixed 2026-08-30, after measuring rather than assuming: `vendor-freshness.yml` had the same group shape**
 (`vendor-${{ github.event_name }}-${{ github.ref }}`) and `build.yml`'s own comment names it as
 collateral of this queue. Measured 2026-08-30 over its 100 most recent `main` runs: 83 success,
 3 failure, **13 cancelled** — but only **1 of the 13 had zero jobs**. The other twelve had a job
-created before being cancelled, so the mechanism there is NOT the pending-entry eviction fixed
-above, and applying the same one-line change on that assumption is exactly the naive redo this
-item warns against. What it would take: classify those twelve (job created, never started, versus
-started and cancelled) before choosing a shape. Blocked on: nobody — it is small and unclaimed.
+created before being cancelled. The classification used the jobs API rather than treating job
+presence as execution: all twelve had `runner_name: ""`, an empty `steps` array, and start times
+equal to job creation. They were job records that never acquired a runner; zero jobs actually
+started and were then cancelled. Eleven predate the concurrency block introduced at `eb2c821b`,
+so the API evidence does NOT attribute their cancellation cause. The one later zero-job case is
+conclusive for the current group: `33277887086` queued behind running `33277776474`, successor
+`33277959378` arrived at 22:11:31, and the pending run was cancelled at 22:11:32. GitHub permits at
+most one pending member of a concurrency group even when `cancel-in-progress` is false. The fix
+therefore groups only superseded PR commits together and keys push, scheduled, and manual runs by
+unique `github.run_id`; the latter can no longer replace one another while waiting.
+`test/vendor-freshness-concurrency.test.mjs` pins all three event classes and the PR-only
+cancellation rule.
 
 **Residual, stated rather than discovered later.** The guard treats a deployment RECORD as
 published, and a record exists for a deploy job that started and was then cancelled. The site can
