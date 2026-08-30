@@ -130,6 +130,26 @@ class CircuitTab extends React.Component {
         this.handleProjectStart = this.handleProjectStart.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
         this.handleProjectChanged = this.handleProjectChanged.bind(this);
+        this._circuitFileWake = this._circuitFileWake.bind(this);
+        // The File-menu action waiting for the designer to exist, or null. Not
+        // state: replaying it must not itself schedule a render.
+        this._circuitFilePending = null;
+    }
+
+    /**
+     * Wake the lazily-mounted designer for a File-menu circuit action.
+     *
+     * Does NOTHING once `state.Designer` is set — from that moment the designer
+     * is rendered (hidden or visible, it stays mounted whatever panel shows) and
+     * bw-circuit-ui's own `bw-circuit-file` listener owns the event. The replay
+     * carries `bwReplay: true` so this handler cannot queue its own echo.
+     */
+    _circuitFileWake (e) {
+        if (this.state.Designer || this.state.error) return;
+        const detail = (e && e.detail) || {};
+        if (detail.bwReplay) return;
+        this._circuitFilePending = detail.action || null;
+        if (this._circuitFilePending) this.load();
     }
 
     componentDidMount () {
@@ -138,6 +158,17 @@ class CircuitTab extends React.Component {
             this.loadExamples();
         }
         window.addEventListener('resize', this._measureBox);
+        // The File menu's four circuit actions (menu-bar.jsx) dispatch
+        // `bw-circuit-file`, and the RECEIVER is bw-circuit-ui's CircuitDesigner,
+        // which lite mounts LAZILY: `load()` runs only once this tab is visible or
+        // portalled into the stage column. On a session where the Circuit tab has
+        // never been opened there was no listener at all, so Open / Save / Import /
+        // Export circuit did nothing, said nothing and logged nothing — the exact
+        // shape of the dead "Diagram (.json)" button bw-circuit-ui 1397493 deleted.
+        // This listener is registered unconditionally and only acts while the
+        // designer is absent: it starts the load and replays the action once the
+        // receiver exists, so the menu reaches the feature from a cold start.
+        window.addEventListener('bw-circuit-file', this._circuitFileWake);
         // Project save/load carries the Circuit and Widgets tabs through the
         // .sb3 bundle (lib/bw-project-bundle.js). COLLECT: flush the LIVE
         // state into the bundle's keys before the save reads them — the
@@ -333,7 +364,19 @@ class CircuitTab extends React.Component {
         }
     }
 
-    componentDidUpdate (prevProps) {
+    componentDidUpdate (prevProps, prevState) {
+        // The designer has just appeared and a File-menu action was waiting for it.
+        // Re-dispatch on the SAME channel rather than calling a handler directly:
+        // the receiver is vendored (bw-circuit-ui CircuitDesigner) and lite does not
+        // edit vendored files. `bwReplay` stops _circuitFileWake re-queueing it.
+        if (prevState && !prevState.Designer && this.state.Designer && this._circuitFilePending) {
+            const action = this._circuitFilePending;
+            this._circuitFilePending = null;
+            // One frame, so the designer's own listener is registered before the
+            // event arrives — React has rendered it, but effects run after paint.
+            requestAnimationFrame(() => window.dispatchEvent(new CustomEvent(
+                'bw-circuit-file', {detail: {action, bwReplay: true}})));
+        }
         // TitledHOC resets the title to “BrickWright Project” when the
         // load/create state settles. Publish an example's name after that
         // transition, rather than racing it immediately after vm.loadProject.
@@ -404,6 +447,7 @@ class CircuitTab extends React.Component {
         cancelAnimationFrame(this._hostResizeFrame);
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
+        window.removeEventListener('bw-circuit-file', this._circuitFileWake);
         window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
         window.removeEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
         window.removeEventListener('bw-settings-change', this._settingsHandler);

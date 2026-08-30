@@ -349,8 +349,33 @@ Lite-side items (ours, this repo):
    never enter the shipped graph; the full ruling table is in
    `bw-board/ROADMAP.md` §"Backends and licence policy". The oracle policy is
    unchanged: GPL/LGPL engines are CI/dev-side oracles only.
-5. **Surface the new exports in lite's Circuit tab** once vendored (schematic
-   SVG/PNG save, LaTeX export, trace CSV) — menu wiring only, no logic here.
+5. ~~**Surface the new exports in lite's Circuit tab** once vendored (schematic
+   SVG/PNG save, LaTeX export, trace CSV) — menu wiring only, no logic here.~~
+   **MEASURED 2026-08-30 at bw-circuit-ui `dba5c44`: the surfacing delta is EMPTY, and
+   two of the three named formats do not exist to surface.** This item assumed lite
+   would have to add menu entries per exporter. It does not, because `1397493` replaced
+   the two never-mounted menu components with `model/exporters/registry.js` and menus
+   that render FROM it — `BoardCanvas`'s `FileMenu` (Import ▸ 9 entries, Export ▸ 8) and
+   `BoardPanel`'s `⤓` popover (3 board exports). Lite mounts that same `CircuitDesigner`
+   from a byte-identical vendored tree (`diff -rq` against the tip: zero differing
+   files), so the SPICE importer `6154745` added appeared in lite's menu the moment it
+   was vendored, with no lite-side edit — which is what a registry-driven menu is for.
+   Lite has **no** exporter/importer call sites of its own (grep for `IMPORT_FORMATS`,
+   `CIRCUIT_EXPORTS`, `BOARD_EXPORTS`, `runExport`, `importCircuit` outside
+   `lib/bw-circuit-ui/`: nothing), and referenced none of the seven writers `1397493`
+   deleted, so those deletions cost lite nothing.
+   **What is NOT available, corrected here rather than left as a promise:** there is no
+   SVG file save anywhere in either repo (the `png` entry rasterises `[data-canvas] svg`
+   — the realistic canvas, not `SchematicPanel`'s `[data-schematic]`); no LaTeX/TikZ
+   export exists at all; and trace CSV is clipboard-copy only in `SweepPanel` and
+   `ScopePanel` (`bomToCsv` is the one real CSV *download*). Those three are upstream
+   work items, not lite menu wiring.
+   **The one lite-side defect this measurement did find is fixed** (see
+   `test/circuit-file-menu-reach.test.mjs`): the File menu's four circuit actions
+   dispatch `bw-circuit-file`, whose only receiver is the lazily-mounted
+   `CircuitDesigner`, so before the Circuit tab had ever been opened all four were
+   silent no-ops. Still open, and shared with upstream: `BoardCanvas` is unmounted in
+   Schematic and Board view, so "Export circuit…" reaches nothing there either.
 6. **Define the eleven `devices_oled*`/`devices_tft*` opcodes** the emitter emits but
    no extension copy defines (measured in §5.1a — not a vendoring lag; there is
    nothing upstream to vendor). Fix at the source of truth first
