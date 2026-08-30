@@ -154,10 +154,14 @@ if (!check) {
 const importerPath = path.join(here, '..', 'overlay', 'scratch-gui', 'src',
     'components', 'tw-pseudocode', 'pseudocode-importer.jsx');
 const importer = await readFile(importerPath, 'utf8').catch(() => '');
-if (!importer.includes("../../lib/sb3-creator-vector-art.js") ||
-    !importer.includes('registerVectorArt(vectorArt.default)')) {
+const registrarPath = path.join(here, '..', 'overlay', 'scratch-gui', 'src',
+    'lib', 'sb3-creator-register-art.js');
+const registrar = await readFile(registrarPath, 'utf8').catch(() => '');
+if (!importer.includes('../../lib/sb3-creator-register-art.js') ||
+    !registrar.includes("import art from './sb3-creator-vector-art.js'") ||
+    !registrar.includes('SB3Creator.registerVectorArt(art)')) {
     console.error('\nVECTOR ART NOT INJECTED: the upstream dialect registry has no app consumer.');
-    console.error('pseudocode-importer.jsx must load sb3-creator-vector-art.js and register it.');
+    console.error('pseudocode-importer.jsx must load the registering compiler door, which must inject the art.');
     process.exit(1);
 }
 
