@@ -47,7 +47,10 @@ describe('the vendored analytical AC contract reaches the UI', () => {
     const panel = readFileSync(path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/SweepPanel.jsx'), 'utf8');
     const readout = readFileSync(path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/sweep-readout.js'), 'utf8');
     assert.match(panel, /data-testid="bw-sweep-region-warning"/);
-    assert.match(panel, /data-testid="bw-sweep-scope-method"/);
+    assert.match(panel, /testid:\s*'bw-sweep-scope-method'/,
+      'the scope method keeps its stable test identity in the method declaration');
+    assert.match(panel, /data-testid=\{m\.testid\}/,
+      'the rendered method button receives the declared test identity');
     assert.match(panel, /regionSummary\(r\)/);
     assert.match(readout, /linearization_region/);
   });
