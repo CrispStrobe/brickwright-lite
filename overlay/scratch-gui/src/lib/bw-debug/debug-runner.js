@@ -49,13 +49,12 @@ import { instructionLength } from './opcodes.js';
  * dispatch loop, so this is routinely in the thousands.
  */
 const SKIP_BUDGET = 20000;
+const LOCAL_8051_TARGETS = new Set([
+    'stc12c5a60s2', 'stc12c5a16s2', 'stc15f2k60s2', 'stc15w408as', 'stc89c52rc'
+]);
 
 /**
- * Route compilation to the local WASM toolchain, if the user asked for it.
- *
- * The preview flag gates a ~1.6 MiB download, so the check happens BEFORE the
- * dynamic import — a flag read inside the imported module would let webpack
- * fetch the chunk for everyone and gate nothing. That diagnosis is bw-bundle's.
+ * Install target-aware compilation routing before the debugger builds.
  *
  * It lives here rather than in the circuit tab because the intercept patches
  * `globalThis.fetch` and only matters at the moment something compiles. Wired
@@ -63,10 +62,9 @@ const SKIP_BUDGET = 20000;
  * the Circuit tab would silently get the hosted compiler instead — the flag
  * would appear not to work, depending on which tab they had visited.
  *
- * A failure here is reported, not swallowed. Someone who deliberately turned on
- * a preview flag is owed the reason it did not take effect; falling back to the
- * hosted compiler in silence is the same bug this file's other catch blocks
- * exist to prevent.
+ * The chunk remains lazy: users who never build firmware do not download it.
+ * Once loaded, the router handles supported 8051 targets locally and leaves
+ * AVR, RP2040, STM32 and retro targets on the hosted service.
  *
  * @param {(phase: string, detail: string) => void} setStatus
  */
@@ -116,14 +114,8 @@ export function compileCachePut (key, out) {
 }
 
 let wasmCompilerInstalled = false;
-async function installWasmCompilerIfOptedIn (setStatus) {
+async function installWasmCompilerRouting (setStatus) {
     if (wasmCompilerInstalled) return;
-    let wanted = false;
-    try {
-        wanted = typeof localStorage !== 'undefined' &&
-                 localStorage.getItem('bw-use-wasm-compiler') === '1';
-    } catch { /* private browsing: no localStorage, treat as not opted in */ }
-    if (!wanted) return;
     try {
         const m = await import(
             /* webpackChunkName: "sdcc-wasm" */ '../sdcc-wasm/intercept.js');
@@ -135,9 +127,10 @@ async function installWasmCompilerIfOptedIn (setStatus) {
             window.__bwRecoverFromStaleBuild &&
             window.__bwRecoverFromStaleBuild(e && e.message);
         if (!recovering) {
-            setStatus('building', 'local compiler unavailable — using the hosted one');
-            console.warn('[brickwright] WASM compiler opted in but failed to load:', e);
+            setStatus('building', 'local 8051 compiler unavailable');
+            console.warn('[brickwright] local 8051 compiler failed to load:', e);
         }
+        throw new Error(`local 8051 compiler unavailable: ${e && e.message ? e.message : e}`);
     }
 }
 
@@ -558,7 +551,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         setStatus('building', 'compiling…');
-        await installWasmCompilerIfOptedIn(setStatus);
         // The compiler accepts chip names (atmega328p, stc12c5a60s2), not board
         // names (arduino-nano). Map the user-facing device to the compile target.
         const COMPILE_TARGET = {
@@ -571,6 +563,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         };
         const deviceLower = (stc.device || 'stc12c5a60s2').toLowerCase();
         const compileTarget = COMPILE_TARGET[deviceLower] || deviceLower;
+        // Loading failure is fatal only for a target promised as local. Other
+        // families deliberately retain the hosted fetch below and never need
+        // the WASM chunk.
+        if (LOCAL_8051_TARGETS.has(compileTarget)) await installWasmCompilerRouting(setStatus);
         // 'bin' — the service's name for the raw SRAM image. It refuses
         // 'uf2' outright ("format must be ihx, hex or bin"), which made
         // every Pico compile fail with status stuck on the stale RUNNING

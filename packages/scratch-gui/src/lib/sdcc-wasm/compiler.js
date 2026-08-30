@@ -10,9 +10,6 @@ const LOCAL_TARGETS = Object.freeze({
 });
 let loaded = null;
 
-export function isEnabled () {
-    try { return localStorage.getItem('bw-use-wasm-compiler') === '1'; } catch { return false; }
-}
 export function localTargetSupported (target) {
     return Object.prototype.hasOwnProperty.call(LOCAL_TARGETS, String(target || '').toLowerCase());
 }

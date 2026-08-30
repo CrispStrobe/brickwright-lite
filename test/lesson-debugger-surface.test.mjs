@@ -146,7 +146,7 @@ test('every Wave 5 bench ships the parts and program its lesson needs', async ()
     }
 });
 
-test('OPEN DEFECT: the debugger needs a hosted compiler, on every device family', () => {
+test('the debugger compiles supported 8051 targets locally and names hosted families', () => {
     // Missed on the first Wave 5 pass, because I checked what the debugger can
     // SHOW and not whether it can START. `debug-runner.js` lists "build the
     // image over the network" among the four things only a browser can do, and
@@ -160,17 +160,19 @@ test('OPEN DEFECT: the debugger needs a hosted compiler, on every device family'
         'the default compiler URL moved — re-check whether the debugger still ' +
         'needs the network, then update docs/LESSON-REVIEW-WAVE-5.md');
     assert.match(runner, /await fetch\(`\$\{compilerUrl\}\/compile`/);
-    // and it is not gated on device: the map translates board names to chip
-    // names for the SAME request rather than choosing a local path for any.
+    // Non-8051 families retain the hosted service explicitly.
     for (const chip of ['atmega328p', 'rp2040', 'eater6502']) {
         assert.ok(runner.includes(`'${chip}'`), `${chip} no longer routes through COMPILE_TARGET`);
     }
 
-    // The escape hatch is real but undiscoverable from a lesson: an in-bundle
-    // SDCC WASM that INTERCEPTS the same fetch, behind a localStorage flag.
-    assert.match(runner, /localStorage\.getItem\('bw-use-wasm-compiler'\) === '1'/,
-        'the local-compiler opt-in changed — if it became the default, all ten ' +
-        'Wave 5 lessons stop needing the network and this test should go');
+    // The five mcs51 variants are routed through the lazy local compiler by
+    // default. A supported-target chunk failure must abort before hosted fetch.
+    for (const chip of ['stc12c5a60s2', 'stc12c5a16s2', 'stc15f2k60s2', 'stc15w408as', 'stc89c52rc']) {
+        assert.ok(runner.includes(`'${chip}'`), `${chip} is absent from LOCAL_8051_TARGETS`);
+    }
+    assert.match(runner, /if \(LOCAL_8051_TARGETS\.has\(compileTarget\)\) await installWasmCompilerRouting/);
+    assert.doesNotMatch(runner, /bw-use-wasm-compiler/,
+        'the repaired local compiler must not regress behind an undiscoverable flag');
     assert.ok(existsSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/sdcc-wasm/intercept.js')),
         'the local WASM compiler chunk is gone, so the opt-in leads nowhere');
 });
