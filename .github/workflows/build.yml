@@ -449,6 +449,38 @@ jobs:
       - name: Browser gate — circuit rendering and placement
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs
+
+      # The DRC's rule 8 (aggregate current) reads its ratings off the injected
+      # engine and falls back to `getMaxCurrent: () => null` when the host did
+      # not supply them — silently, because a conservative default is a
+      # legitimate answer and nothing logs. circuit-tab's setEngine call omitted
+      # `getMaxCurrent` and `PORT_LIMITS`, so the DEPLOYED rule 8 could not sum
+      # chip current at all: every part was an honest unknown and every verdict
+      # a hedged lower bound, while every isolated test — each of which injects
+      # the pair — stayed green. Measured on production 2026-08-30, before the
+      # fix, by running exactly this script against it: the two discriminating
+      # checks failed and the other four passed.
+      #
+      # Only a browser can say the BUNDLE ships the injection, and the gate is
+      # careful about WHICH warning it reads: bw-board's own checkCurrentBudget
+      # surfaces a generic "Up to N mA at maximum ratings" ceiling through the
+      # board's render state either way, so the gate keys on rule 8's own
+      # sentence ("Total circuit current is …") — the warning that names the
+      # largest consumers and offers a fix.
+      - name: Browser gate — the DRC can sum chip current
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-drc-current.mjs
+
+      # Same reasoning as the labwired and debugger shots below: a screenshot
+      # that only ever exists inside a runner is a screenshot nobody can look
+      # at, and "the deployed DRC sums current" is a claim someone will want to
+      # check by eye rather than by trusting a green tick.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: drc-current-screenshots
+          path: artifacts/drc-current-*.png
+          if-no-files-found: warn
       - name: Browser gate — view buttons
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs

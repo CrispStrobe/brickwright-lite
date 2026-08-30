@@ -622,7 +622,18 @@ class CircuitTab extends React.Component {
                 // these on an offline board copy. Same contract as the
                 // extractors above — if they are absent, the panel refuses
                 // truthfully instead of blaming the circuit.
-                runDcSweep: engine.runDcSweep, runAcSweep: engine.runAcSweep, logSpace: engine.logSpace});
+                runDcSweep: engine.runDcSweep, runAcSweep: engine.runAcSweep, logSpace: engine.logSpace,
+                // DRC rule 8 (aggregate current) sums the chip current of every
+                // seated part. Without these two it cannot: drc.js's
+                // getCurrentRatings() falls back to `getMaxCurrent: () => null`,
+                // which marks EVERY kind-rated part an honest unknown, so the
+                // sum never reaches the limit and the danger warning cannot
+                // fire — silently, because the fallback is a legitimate
+                // conservative default and nothing logs. The deployed app has
+                // been in that state; only the isolated tests (which inject
+                // them) ever summed. Same producer-must-assert-consumer shape
+                // as getDevice and the extractors above.
+                getMaxCurrent: engine.getMaxCurrent, PORT_LIMITS: engine.PORT_LIMITS});
             // Part sidecars (pin maps, current ratings, footprints) into the
             // parts registry. require.context because this bundle is webpack,
             // not vite. 115 files, ~464 KiB, in this same chunk.
