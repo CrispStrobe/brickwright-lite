@@ -627,7 +627,6 @@ jobs:
           path: artifacts/pinned-worker/*
           if-no-files-found: error
 
-
       # The debugger-only pane, which the note above says has regressed to a
       # blank pane twice. This gate existed for it and was never run by CI — so
       # it rotted until it could not get past its first click, and nobody knew.

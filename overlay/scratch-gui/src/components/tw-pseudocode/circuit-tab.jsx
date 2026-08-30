@@ -996,8 +996,10 @@ class CircuitTab extends React.Component {
         const res = await fetch(`examples/${path}`);
         if (!res.ok) throw new Error(`program: HTTP ${res.status}`);
         let source = await res.text();
+        // Through the registering door: an example loaded here is parsed here, and a
+        // game example's `SHAPE art …` needs this app's artwork already injected.
         const {default: SB3Creator} = await import(
-            /* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator.js');
+            /* webpackChunkName: "sb3-creator" */ '../../lib/sb3-creator-register-art.js');
 
         // An example is a curated PAIRING of program and circuit: the
         // circuit.json has the example's own device seated and wired. This
