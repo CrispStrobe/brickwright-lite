@@ -119,44 +119,55 @@ const main = async () => {
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
 
     // ── get a C-target debug session running ────────────────────────────
-    // The Code tab, a tiny STC program with a variable a watchpoint can catch,
-    // then Blocks, then the debugger dock.
-    const PROGRAM = [
-        'DEVICE STC12C5A60S2',
-        'CLOCK 11059200',
-        'PIN led1 = P1.0 OUTPUT',
-        '',
-        'WHEN flag clicked:',
-        '  set counter to 0',
-        '  FOREVER:',
-        '    change counter by 1',
-        '    toggle led1',
-        '    wait 0.2 seconds'
-    ].join('\n');
+    //
+    // Load the EXAMPLE rather than typing a program. The first version of this
+    // script typed pseudocode into CodeMirror and it half-converted:
+    // CodeMirror auto-indents, so the leading spaces compounded, the FOREVER
+    // body was lost, and the project that reached the compiler was `set
+    // counter to 0` and nothing else. The image then built with no yield
+    // states, symbol extraction failed ("bw_task0: no code address for the
+    // case labels of states [0]"), and the runner attached WITHOUT the 8051
+    // debug target — which reported no watchpoints and no cycle step, and the
+    // proof duly "failed" for a reason that had nothing to do with either
+    // feature. A known-good bench removes the whole class of that mistake.
+    //
+    // `05-counter` is `debug-watches`'s own bench: DEVICE STC12C5A60S2, a
+    // counter variable, and a button. Exactly the target D29's row was about.
+    // NOT ONE waitForTimeout IN THIS FILE, deliberately. test/wait-census.test.mjs
+    // ratchets the fixed sleeping CI does, and the first version of this script
+    // added seven sleeps totalling 9.1 s — which the ratchet caught to the
+    // millisecond (116.9 s -> 126.0 s, 261 -> 268). Every one of them was
+    // standing in for a condition that can be waited on directly, so they are
+    // waits now and the ceiling is untouched. A sleep costs what it was given
+    // whether or not the app is ready; a condition wait costs what the app
+    // actually took.
+    await page.locator('[role="tab"]', {hasText: /Circuit/i}).first().click();
+    // The example list is what the Circuit tab is being opened FOR.
+    const search = page.locator('input[placeholder*="earch"], input[type="search"]').first();
+    try {
+        await search.waitFor({state: 'visible', timeout: 30000});
+        await search.fill('counter');
+    } catch { /* the example list may not be searchable in this build */ }
 
-    const clickTab = async (re) => {
-        const tabs = await page.$$('[role="tab"]');
-        for (const t of tabs) {
-            const txt = (await t.innerText().catch(() => '')) || '';
-            if (re.test(txt)) { await t.click(); return true; }
-        }
-        return false;
-    };
+    // Wait for the filtered row itself rather than for the filter to "settle".
+    const row = page.locator('text=/counter/i').first();
+    await row.waitFor({state: 'visible', timeout: 30000});
+    await row.click();
 
-    await clickTab(/code|pseudo/i);
-    await page.waitForSelector('.cm-content', {timeout: 30000});
-    await page.click('.cm-content');
-    await page.keyboard.press('Control+A');
-    await page.keyboard.type(PROGRAM, {delay: 1});
+    // The example row opens cui's own confirm dialog (device chooser), not a
+    // native confirm — accept it explicitly when it appears.
+    try {
+        const okBtn = page.locator('button:visible', {hasText: /^OK$/}).first();
+        await okBtn.waitFor({timeout: 6000});
+        await okBtn.click();
+    } catch { /* some examples load without the chooser */ }
 
-    // "To blocks" turns the text into a project the debugger can build from.
-    const toBlocks = await page.$$('button');
-    for (const b of toBlocks) {
-        const t = (await b.innerText().catch(() => '')) || '';
-        if (/to blocks|zu bl/i.test(t)) { await b.click(); break; }
-    }
-    await page.waitForTimeout(2500);
-    await clickTab(/blocks|blöcke/i);
+    // The load is done when the project's own blocks exist — the condition the
+    // 3 s sleep was guessing at.
+    await page.locator('[role="tab"]', {hasText: /Blocks|Bl\u00f6cke/i}).first().click();
+    await page.waitForFunction(
+        () => document.querySelectorAll('.blocklyDraggable, .blocklyBlockCanvas > g').length > 2,
+        null, {timeout: 60000}).catch(() => {});
 
     // The dock is driven by the real settings event, not by clicking Settings.
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('bw-settings-change',
@@ -239,8 +250,10 @@ const main = async () => {
         });
         const before = await readCycles();
         await cycleBtn.click();
-        await page.waitForTimeout(600);
-        const after = await readCycles();
+        // Wait for the number to MOVE rather than for a fixed 600 ms. This is
+        // strictly better than a sleep here: it cannot pass by reading a stale
+        // value, and it cannot fail because the box was busy.
+        const after = await waitFor(readCycles, v => v !== null && v !== before, 15000, 100);
         const delta = (before != null && after != null) ? after - before : null;
         record('D25: one cycle step advances the cycle count by EXACTLY 1', delta === 1,
             `before=${before} after=${after} delta=${delta}`);
@@ -267,7 +280,10 @@ const main = async () => {
 
     if (addWatch) {
         await addWatch.click();
-        await page.waitForTimeout(400);
+        // The armed entry is the condition; the prompt is answered by the
+        // dialog handler above, so this resolves as soon as React repaints.
+        await page.locator('[data-watchpoint-entry]').first()
+            .waitFor({state: 'visible', timeout: 15000}).catch(() => {});
         const armed = await page.$$('[data-watchpoint-entry]');
         record('D29: the watchpoint is armed and listed', armed.length > 0,
             `${armed.length} entry`);
