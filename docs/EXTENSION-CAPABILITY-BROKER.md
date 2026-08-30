@@ -136,6 +136,14 @@ DoD: all 120 entries classified, no migrated pinned source runs in the page
 realm, browser and protocol mutations removing the broker check go red, and the
 workflow executes the gate rather than merely naming it.
 
+Progress: the first production-browser gate now loads the immutable served
+`Clay/htmlEncode` pin through the real built VM, executes its reporter, proves
+the host-derived `extension.0.0` namespace and closed pending-load lifecycle,
+and requires exactly 3/3 scenarios with zero page errors. CI uploads its success
+screenshot or failure JSON. The local production build and browser journey are
+green; the declared-capability browser fixture and 120-pin migration closure
+remain open, so CP4 is not marked complete.
+
 ## CP5 — release, adversarial review and closure (45–90 minutes plus CI)
 
 - [ ] Run focused and full Node suites, gallery pin regeneration/check,

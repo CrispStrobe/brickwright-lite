@@ -41,6 +41,7 @@
     "verify:dock": "node scripts/verify-debug-dock.mjs",
     "verify:bluetooth": "node scripts/verify-bluetooth.mjs",
     "verify:extension-sandbox": "node scripts/verify-extension-sandbox.mjs",
+    "verify:pinned-worker": "node scripts/verify-pinned-worker.mjs",
     "verify:makecode": "node scripts/verify-makecode.mjs",
     "verify:labwired": "node scripts/verify-labwired-engine.mjs",
     "verify:labwired-absent": "node scripts/verify-labwired-engine.mjs --absent",

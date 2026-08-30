@@ -505,6 +505,20 @@ jobs:
       - name: Browser gate — unpinned extension sandbox
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-extension-sandbox.mjs
+      - name: Browser gate — promoted pinned extension worker
+        if: steps.playwright.outcome == 'success'
+        run: |
+          mkdir -p artifacts/pinned-worker
+          PROOF_URL=http://localhost:8617/ \
+            SUCCESS_SCREENSHOT=artifacts/pinned-worker/success.png \
+            FAILURE_JSON=artifacts/pinned-worker/failure.json \
+            node scripts/verify-pinned-worker.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: pinned-worker-proof
+          path: artifacts/pinned-worker/*
+          if-no-files-found: error
       - name: Browser gate — game gallery and hardware examples
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs
