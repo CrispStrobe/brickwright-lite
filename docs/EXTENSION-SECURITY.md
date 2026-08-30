@@ -7,9 +7,11 @@ the remaining tasks are deliberately independent checkpoints.
 
 `extension-manager.js` now has two deliberately different remote paths:
 
-- An exact URL in the shipped gallery pin map is fetched, hashed and compared
-  with the reviewed snapshot before the compatibility adapter evaluates it
-  in-process. A changed known URL is refused.
+- Every exact URL in the shipped gallery pin map is fetched, hashed and compared
+  with the reviewed snapshot. Twenty-one runtime-proven, zero-authority pins
+  then execute in identity-bound workers; 99 explicitly deferred pins retain
+  the compatibility adapter. A changed known URL is refused and there is no
+  worker-to-adapter fallback.
 - Every other HTTP(S), relative, `data:` or `blob:` URL runs in the Scratch VM
   extension worker. HTTP(S) entry points still ask first and explain that the
   worker retains HTTP(S) fetch/import, but no DOM, editor runtime or Tauri
@@ -28,10 +30,10 @@ worker which received the corresponding call. Calls into `runtime`, `gui`, or
 another worker are refused. A runtime test exercises both the permitted
 lifecycle and the forged-call/forged-reply cases.
 
-The remaining in-process surface is therefore the content-pinned compatibility
-set, not arbitrary confirmed code. Those reviewed bytes can still invoke Tauri
-commands — Bluetooth, file writes and serial flashing — which is the remaining
-least-privilege question.
+The remaining in-process surface is therefore 99 explicitly deferred
+content-pinned entries, not arbitrary confirmed code. Those reviewed bytes can
+still invoke Tauri commands — Bluetooth, file writes and serial flashing —
+which is the remaining least-privilege question.
 
 None of this is an App Store problem, and the earlier worry that it might be was
 overstated: Guideline 2.5.2 explicitly permits code run by WebKit/JavaScriptCore,
@@ -108,10 +110,18 @@ as wide as each extension asked for.
 
 ## Task 3 — Native capabilities are declared, not ambient
 
-**Status: narrowed, but not implemented as a declaration system.** Unpinned
-extensions have no native bridge at all after Task 4. Content-pinned gallery
-extensions still share the page realm and can call any Tauri command exposed to
-the main window.
+**Status: JavaScript broker core shipped; native attribution deliberately not
+enabled.** Schema v2 separates measured ambient requirements from reviewed
+semantic grants, which default to none for 120/120 pins. Promoted workers can
+reach only the closed `Scratch.capabilities.request(operation, args)` protocol;
+host WeakMap identity, exact declarations, strict arguments, replay state and
+revocation are enforced before a handler can run. No raw invoke operation or
+native handler is registered.
+
+The 99 deferred gallery entries still share the page realm and can call any
+Tauri command exposed to the main window. That fact blocks an honest native
+lease implementation in the same webview: one of those entries could retain or
+monkey-patch the invoke closure and observe any lease delivered through it.
 
 A wrapper around `window.__TAURI__` is not an enforcement boundary: trusted and
 extension code occupy the same JavaScript global, and Rust sees only the main
@@ -120,10 +130,13 @@ capabilities would require native calls to cross an identity-bearing broker or
 use unforgeable session tokens checked in Rust. Do not claim this is enforced
 until that attribution exists.
 
-The sandbox changes the priority: this work would now provide least privilege
-between already reviewed, hash-pinned extensions, rather than protecting the
-app from an arbitrary URL. If implemented, refusals still belong in diagnostics;
-a capability that silently does nothing is indistinguishable from a bug.
+The two defensible continuations are (a) finish removing every deferred entry
+from the privileged realm before issuing leases, or (b) create a separately
+privileged hidden broker webview/process which owns verification, workers and
+leases while the editor webview loses native permission. The latter requires
+desktop plus iOS/Android lifecycle proof and is tracked as a separate
+multi-platform campaign. Refusals still belong in diagnostics; a capability
+that silently does nothing is indistinguishable from a bug.
 
 ## Task 4 — Sandbox unpinned extensions
 

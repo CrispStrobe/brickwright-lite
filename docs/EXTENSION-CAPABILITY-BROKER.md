@@ -124,6 +124,18 @@ and revoked calls; JavaScript protocol tests prove the same identity. Removing
 either host or Rust validation makes an oracle red. Push native and UI pieces as
 reviewable checkpoints; do not broaden permissions merely for compatibility.
 
+Architecture finding: CP3 cannot be completed securely inside the existing
+editor webview while 99 deferred adapters share that privileged realm. They can
+retain or monkey-patch Tauri invocation and observe any lease delivered there.
+A Rust policy prototype was therefore rejected rather than shipped with an
+unreachable or interceptable allow path. The smallest independent solution is
+a hidden privileged broker webview/process which owns verification, workers and
+leases; Rust rejects callers whose webview label is not that broker, and the
+editor loses the corresponding native permission. Desktop implementation plus
+iOS/Android lifecycle proof is estimated at 5–8 engineering days. Until that
+campaign or full migration closure, no native capability command is registered
+and CP3 remains honestly open.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [ ] Resolve every deferred pin: migrate it through an implemented broker
