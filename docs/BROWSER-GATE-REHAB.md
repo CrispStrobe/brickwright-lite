@@ -56,9 +56,11 @@ comment-only workflow mention, or a skipped scenario does not satisfy any DoD.
 - [ ] `verify-basic-run.mjs`
   - DoD: a shipped BASIC program visibly executes, input changes machine output,
     pause freezes it, and resume advances it; no success by canvas existence.
-- [ ] `verify-ssd1306-face.mjs`
-  - DoD: load a shipped SSD1306 bench, run its real program, measure non-blank
-    framebuffer pixels and a state change; reject stale bundle-source greps.
+- [x] `verify-ssd1306-face.mjs` — removed as subsumed by the already-wired
+  `verify-aurora65-workstation.mjs`, which now asserts the physical SSD1306 face,
+  boots the shipped ROM, and measures non-blank device GDDRAM and controller
+  pixels. Removing either renderer or device registration makes that gate red;
+  stale bundle-source spelling is no longer treated as behavioral evidence.
 - [ ] `verify-starter-journeys.mjs`
   - DoD: assert the shipped journey/topic denominator, open a current topic in
     both supported languages, and prove progress/navigation state changes.

@@ -50,7 +50,6 @@ const KNOWN_UNWIRED = {
     // Already broken. Each needs its assumptions rechecked against the app as
     // it is now, not its selectors patched until it goes quiet.
     'verify-about-dialog.mjs': 'FAILS (2026-08-27)',
-    'verify-basic-run.mjs': 'FAILS (2026-08-27)',
     'verify-chrome-sweep.mjs': 'FAILS (2026-08-27)',
     'verify-controller-panel.mjs': 'FAILS — no Controller button in the stage header (2026-08-27)',
     'verify-faceplate-matrix.mjs': 'FAILS — timeout (2026-08-27)',
@@ -58,7 +57,6 @@ const KNOWN_UNWIRED = {
     'verify-interaction.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-intro.mjs': 'FAILS (2026-08-27)',
     'verify-schematic.mjs': 'FAILS — timeout (2026-08-27)',
-    'verify-ssd1306-face.mjs': 'FAILS — 0 ssd1306 case handlers in the built chunk (2026-08-27)',
 };
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))

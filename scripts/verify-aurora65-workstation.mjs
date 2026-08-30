@@ -91,6 +91,10 @@ try {
     for (const kind of ['w65c02', 'w65c22', 'ssd1306', 'ps2', 'simplevga_card']) {
         check(`drawn circuit contains ${kind}`, circuit.kinds.includes(kind));
     }
+    const oledFace = page.locator('[data-part-face="ssd1306"]');
+    await oledFace.waitFor({state: 'visible', timeout: 10000});
+    check('physical circuit renders the SSD1306 face', await oledFace.count() === 1,
+        `${await oledFace.count()} visible face(s)`);
     const expectedWidgets = [
         ['vgaMonitor', 'simplevga', 'vga'],
         ['statusOled', 'oled', 'oled1'],
