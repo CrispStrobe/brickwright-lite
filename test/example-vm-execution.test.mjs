@@ -426,9 +426,13 @@ test('every device kind the devices extension can drive accepts a control verb',
 
 test('instrument: the shipped corpus is the size this gate was written against', () => {
     // A corpus that silently shrank would make every per-example test vanish and
-    // the file still report green. The floor moves up when examples are added.
-    assert.ok(entries.length >= 259, `index.json has ${entries.length} entries, expected 259+`);
-    assert.ok(withProgram.length >= 257, `${withProgram.length} entries ship a program, expected 257+`);
+    // the file still report green. The floor moves up when examples are added --
+    // ratcheted 2026-08-30 from 259/257 to the MEASURED 311/280 at sb3-creator
+    // 6d15d2a, after a re-vendor found 52 entries of unguarded slack: the gallery
+    // had grown by a fifth since the floor was last set, so a fifth of it could
+    // have disappeared with this instrument still reporting green.
+    assert.ok(entries.length >= 311, `index.json has ${entries.length} entries, expected 311+`);
+    assert.ok(withProgram.length >= 280, `${withProgram.length} entries ship a program, expected 280+`);
 });
 
 // ── The corpus ─────────────────────────────────────────────────────────────

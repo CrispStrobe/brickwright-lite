@@ -124,8 +124,31 @@ const main = async () => {
         } catch { /* private mode */ }
     });
 
+    /** Screenshot, saying so if it cannot. A crashed page throws here, and a
+     *  throw on the last line of a check loses the whole run's report. */
+    const shoot = async name => {
+        try {
+            await page.screenshot({path: path.join(SHOTS, name), fullPage: true});
+        } catch (e) {
+            console.log(`could not write ${name}: ${e && e.message}`);
+        }
+    };
+
     const errors = [];
     page.on('pageerror', e => errors.push(String(e && e.message)));
+    // A renderer that dies takes every later read with it, and Playwright then
+    // reports whatever ran NEXT ("Target crashed" from a screenshot 120 s
+    // later) rather than the event itself. Name it where it happens.
+    let crashed = false;
+    page.on('crash', () => { crashed = true; errors.push('THE RENDERER CRASHED'); });
+    // The local-compiler failure path console.warn()s its reason while the
+    // panel shows only a generic line. Keep the last of them.
+    const console_ = [];
+    page.on('console', m => {
+        if (m.type() !== 'warning' && m.type() !== 'error') return;
+        console_.push(`${m.type()}: ${m.text()}`.slice(0, 300));
+        if (console_.length > 40) console_.shift();
+    });
 
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
@@ -204,18 +227,30 @@ const main = async () => {
     // whose editor is empty; trusting that selection made this gate test zero
     // blocks. `insertText` sends the whole string without CodeMirror adding
     // indentation to an already-indented multiline paste.
-    const selectedStage = await page.evaluate(() => {
-        const state = window.__brickwrightStore?.getState();
-        const vm = state?.scratchGui?.vm;
-        const stage = vm?.runtime?.targets?.find(target => target && target.isStage);
-        if (!vm || !stage) return {id: null, stateKeys: Object.keys(state || {}),
-            guiKeys: Object.keys(state?.scratchGui || {}), hasVm: !!vm,
-            targetCount: vm?.runtime?.targets?.length ?? null};
-        vm.setEditingTarget(stage.id);
-        return {id: stage.id};
-    });
+    //
+    // WAIT for the Stage to EXIST before selecting it. The project title lands
+    // before its targets do: measured `{"hasVm":true,"targetCount":0}` at this
+    // point, so `targets.find(isStage)` found nothing, the sprite stayed
+    // selected, the typed program went into a sprite's workspace (0 blocks on
+    // the stage), and `[data-debug-panel]` — which only the Stage renders —
+    // never appeared at all. One asked-for condition instead of one assumed
+    // one; a store that never populates still fails, and says which half.
+    const selectedStage = await waitFor(
+        () => page.evaluate(() => {
+            const state = window.__brickwrightStore?.getState();
+            const vm = state?.scratchGui?.vm;
+            const targets = vm?.runtime?.targets || [];
+            const stage = targets.find(target => target && target.isStage);
+            if (!vm || !stage) return {id: null, stateKeys: Object.keys(state || {}),
+                guiKeys: Object.keys(state?.scratchGui || {}), hasVm: !!vm,
+                targetCount: targets.length};
+            vm.setEditingTarget(stage.id);
+            return {id: stage.id, targetCount: targets.length};
+        }),
+        v => !!(v && v.id), 60000, 250);
     record('the Stage target is selected for the hardware program', !!selectedStage.id,
-        selectedStage.id || JSON.stringify(selectedStage));
+        selectedStage.id ? `${selectedStage.id} of ${selectedStage.targetCount} targets`
+            : JSON.stringify(selectedStage));
     await page.locator('[role="tab"]', {hasText: /^Code$/i}).first().click();
     const cm = page.locator('.cm-content').first();
     await cm.waitFor({state: 'visible', timeout: 30000});
@@ -288,8 +323,13 @@ WHEN flag clicked:
 
     const debugPanel = page.locator('[data-debug-panel]:visible').first();
     await debugPanel.waitFor({state: 'visible', timeout: 30000});
-    const panelText = () => debugPanel.innerText();
-    const phase = () => debugPanel.getAttribute('data-debug-phase');
+    // Both readers return a STRING on every path. waitFor() hands back its last
+    // value on timeout, and when that value was an exception object the report
+    // read `last phase=[object Object]` — a line that says nothing about either
+    // the phase or the throw. A failing read now says so in words.
+    const panelText = () => debugPanel.innerText().catch(e => `«unreadable: ${e && e.message}»`);
+    const phase = () => debugPanel.getAttribute('data-debug-phase')
+        .catch(e => `«unreadable: ${e && e.message}»`);
 
     const ready = await waitFor(panelText, t => /Speed|Tempo/.test(t) && /Run|Start/.test(t), 60000);
     record('the debug panel is on screen', /Speed|Tempo/.test(ready), `${ready.length} chars`);
@@ -302,16 +342,34 @@ WHEN flag clicked:
         await button.click();
     };
 
+    // Keep every distinct (phase, status line) the panel passes through, not
+    // only the value at the deadline. setStatus() narrates the whole build —
+    // 'reading the project…', 'compiling…', 'local 8051 compiler unavailable'
+    // — and five red CI runs reported none of it, because a poll that keeps
+    // only its last read throws the narration away. The trace is the answer to
+    // "where did this stop?", and it is free: the poll was happening anyway.
+    const trace = [];
+    const phaseAndMessage = async () => {
+        const p = await phase();
+        const line = `${p} — ${(await panelText()).replace(/\s+/g, ' ').slice(0, 110)}`;
+        if (trace[trace.length - 1] !== line) trace.push(line);
+        return p;
+    };
     await clickByText(/^\s*▶?\s*(Run|Start)\s*$/i);
-    const running = await waitFor(phase, p => p === 'running', 120000);
+    // 'error' ends the wait too: polling only for success turns a build that
+    // failed in two seconds into a two-minute timeout.
+    const running = await waitFor(phaseAndMessage, p => p === 'running' || p === 'error', 120000);
     const attached = running === 'running';
     record('a debug session attached', attached,
-        attached ? 'phase=running' : `last phase=${running}`);
+        attached ? 'phase=running'
+            : `last phase=${running}${crashed ? ' — THE RENDERER CRASHED' : ''}`);
     record('D2: the 8051 build made exactly zero hosted compiler requests',
         hostedCompilerRequests.length === 0,
         hostedCompilerRequests.length ? hostedCompilerRequests.join(' | ') : '0 POST /compile requests');
     if (!attached) {
-        await page.screenshot({path: path.join(SHOTS, '00-attach-failed.png'), fullPage: true});
+        console.log(`panel trace:\n  ${trace.join('\n  ')}`);
+        if (console_.length) console.log(`console:\n  ${console_.join('\n  ')}`);
+        await shoot('00-attach-failed.png');
         console.log('\nCannot proceed without a session. See 00-attach-failed.png');
         await browser.close(); if (server) server.close();
         process.exit(1);
@@ -343,7 +401,7 @@ WHEN flag clicked:
         record('D28: and the program variables with their addresses', frames.vars.length > 0,
             frames.vars.join(' | ').slice(0, 120));
     }
-    await page.screenshot({path: path.join(SHOTS, '01-frames-locals.png'), fullPage: true});
+    await shoot('01-frames-locals.png');
 
     // ── D25: one cycle step moves the counter by exactly one ────────────
     // The drawer holds the engineer's controls; open it first.
@@ -375,7 +433,7 @@ WHEN flag clicked:
         record('D25: one cycle step advances the cycle count by EXACTLY 1', delta === 1,
             `before=${before} after=${after} delta=${delta}`);
     }
-    await page.screenshot({path: path.join(SHOTS, '02-cycle-step.png'), fullPage: true});
+    await shoot('02-cycle-step.png');
 
     // ── D29: a watchpoint halts at the write and names the byte ──────────
     // `counter` lives in iram; the drawer's watch button prompts for the hex
@@ -446,7 +504,7 @@ WHEN flag clicked:
         record('D29: the report carries the watched ADDRESS', hasAddr, hit.slice(0, 120));
         record('D29: and both sides of the VALUE transition', hasVals, hit.slice(0, 120));
     }
-    await page.screenshot({path: path.join(SHOTS, '03-watchpoint-hit.png'), fullPage: true});
+    await shoot('03-watchpoint-hit.png');
 
     record('no uncaught page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 

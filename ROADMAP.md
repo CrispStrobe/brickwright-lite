@@ -351,25 +351,31 @@ Lite-side items (ours, this repo):
    unchanged: GPL/LGPL engines are CI/dev-side oracles only.
 5. ~~**Surface the new exports in lite's Circuit tab** once vendored (schematic
    SVG/PNG save, LaTeX export, trace CSV) — menu wiring only, no logic here.~~
-   **MEASURED 2026-08-30 at bw-circuit-ui `dba5c44`: the surfacing delta is EMPTY, and
-   two of the three named formats do not exist to surface.** This item assumed lite
+   **MEASURED 2026-08-30 at bw-circuit-ui `e4046d0`: the surfacing delta is EMPTY, and
+   one of the three named formats does not exist to surface.** This item assumed lite
    would have to add menu entries per exporter. It does not, because `1397493` replaced
    the two never-mounted menu components with `model/exporters/registry.js` and menus
-   that render FROM it — `BoardCanvas`'s `FileMenu` (Import ▸ 9 entries, Export ▸ 8) and
+   that render FROM it — `BoardCanvas`'s `FileMenu` (Import ▸ 9 entries, Export ▸ 10) and
    `BoardPanel`'s `⤓` popover (3 board exports). Lite mounts that same `CircuitDesigner`
    from a byte-identical vendored tree (`diff -rq` against the tip: zero differing
-   files), so the SPICE importer `6154745` added appeared in lite's menu the moment it
-   was vendored, with no lite-side edit — which is what a registry-driven menu is for.
+   files), so the SPICE importer `6154745` added — and the `schematic-svg` /
+   `schematic-png` entries `e4046d0` added — appeared in lite's menus the moment they
+   were vendored, with no lite-side edit. That is what a registry-driven menu is for.
    Lite has **no** exporter/importer call sites of its own (grep for `IMPORT_FORMATS`,
    `CIRCUIT_EXPORTS`, `BOARD_EXPORTS`, `runExport`, `importCircuit` outside
    `lib/bw-circuit-ui/`: nothing), and referenced none of the seven writers `1397493`
    deleted, so those deletions cost lite nothing.
-   **What is NOT available, corrected here rather than left as a promise:** there is no
-   SVG file save anywhere in either repo (the `png` entry rasterises `[data-canvas] svg`
-   — the realistic canvas, not `SchematicPanel`'s `[data-schematic]`); no LaTeX/TikZ
-   export exists at all; and trace CSV is clipboard-copy only in `SweepPanel` and
-   `ScopePanel` (`bomToCsv` is the one real CSV *download*). Those three are upstream
-   work items, not lite menu wiring.
+   **Schematic SVG/PNG landed while this was being measured** (bw-circuit-ui `e4046d0`,
+   vendored here): `schematic-svg` and `schematic-png` are registry entries, so lite's
+   Export ▸ submenu carries them with no lite-side edit, and both go through the
+   HEADLESS `renderSchematicSvg` at the projection's own bounds rather than serialising
+   the panel element — the panel carries a camera, so serialising it would have saved
+   whatever happened to be in the viewport. Note the older `png` entry is a different
+   thing: it rasterises `[data-canvas] svg`, the realistic canvas, not the schematic.
+   **What is still NOT available, recorded rather than promised:** no LaTeX/TikZ export
+   exists at all, and trace CSV is clipboard-copy only in `SweepPanel` and `ScopePanel`
+   (`bomToCsv` is the one real CSV *download*). Both are upstream work items, not lite
+   menu wiring.
    **The one lite-side defect this measurement did find is fixed** (see
    `test/circuit-file-menu-reach.test.mjs`): the File menu's four circuit actions
    dispatch `bw-circuit-file`, whose only receiver is the lazily-mounted
