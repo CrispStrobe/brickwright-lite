@@ -72,9 +72,22 @@ const FILES = [
     ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')]
 ];
 
-// Downstream-only modules imported by synced compiler files. This is empty now:
-// the SHAPE art dialect was upstreamed as an injectable registry, while the app
-// injects its product-specific artwork from pseudocode-importer.jsx below.
+// Downstream-only modules imported by synced compiler files. EMPTY, with no stated
+// remainder: the SHAPE art dialect was upstreamed as an injectable registry
+// (sb3-creator fdb1334), so no vendored file imports a downstream-only module any
+// more and the forward resolve check has nothing to whitelist.
+//
+// The reverse orphan check below is deliberately KEPT rather than deleted. With an
+// empty list it is inert, not gone — and it is the only thing that can see a
+// silently-eaten downstream delta, because a sync that drops lite's dialect passes
+// every other check here: every import it leaves behind still resolves, since there
+// are none. That cost a day to learn (14 red tests, three commits and one push after
+// the cause). The next downstream module will want it.
+//
+// The artwork itself stays lite's, and the app injects it through
+// lib/sb3-creator-register-art.js — asserted at the bottom of this file, and more
+// completely by test/vector-art-registration.test.mjs, which holds the stronger
+// property that NO module under overlay/ can reach the compiler around that door.
 const LOCAL_FILES = [];
 
 async function readSource (rel) {
