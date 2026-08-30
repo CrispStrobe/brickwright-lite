@@ -47,8 +47,34 @@ function deriveValue(kind, params) {
   if (params.henrys != null) return formatSi(params.henrys);
   if (params.voltage != null) return formatSi(params.voltage);
   if (params.vz != null) return formatSi(params.vz) + 'V';
+  // `volts` is what the ENGINE reads (mna.js sourceVoltage); `v` was the only
+  // spelling checked here, so a source authored the way bw-board expects
+  // exported with an empty value and the deck fell back to a guess.
+  if (params.volts != null) return formatSi(params.volts);
+  if (params.amps != null) return formatSi(params.amps);
   if (kind === 'vsource' && params.v != null) return formatSi(params.v);
   return '';
+}
+
+/**
+ * The same quantity as deriveValue, still a NUMBER.
+ *
+ * deriveValue formats for humans, and `formatSi` writes megohms as `M` —
+ * which a SPICE deck reads as milli. A serializer that needs a value in a
+ * machine-read file must format it itself (`formatSpiceValue`) from this
+ * number rather than re-parsing the display string.
+ *
+ * @param {string} kind
+ * @param {Record<string,*>} params
+ * @returns {number|null}
+ */
+function deriveValueNumber(kind, params) {
+  if (!params) return null;
+  for (const k of ['ohms', 'farads', 'henrys', 'voltage', 'vz', 'volts', 'amps']) {
+    if (typeof params[k] === 'number' && isFinite(params[k])) return params[k];
+  }
+  if (kind === 'vsource' && typeof params.v === 'number') return params.v;
+  return null;
 }
 
 /**
@@ -112,6 +138,7 @@ export function extractNetlist(circuit) {
       refdes,
       kind: p.kind,
       value: deriveValue(p.kind, p.params),
+      valueNumber: deriveValueNumber(p.kind, p.params),
       footprint: (sym && sym.kicadFootprint) || '',
       symbol: (sym && sym.kicadSymbol) || '',
       params: p.params || {},
@@ -119,13 +146,28 @@ export function extractNetlist(circuit) {
   }
 
   // ── 2. Build nets from resolvedNets ────────────────────────────
+  //
+  // A net is a RAIL because a rail part sits on it, not because its id
+  // spells one. The engine names nets `net-lgc-3`, `n-bb1-row-12`,
+  // `net-7` — ids that can never contain the substrings "vcc" or "gnd",
+  // so the old substring rename fired on exactly zero real circuits and
+  // every deck we shipped named its ground `net-lgc-3`.
+  const kindById = new Map();
+  for (const p of rawParts) kindById.set(p.id, p.kind);
+
   const rawNets = circuit.resolvedNets || [];
   const nets = [];
   let netCode = 0;
+  let vccSeq = 0;
 
   for (const net of rawNets) {
     const nodes = [];
+    let rail = null;
+    let railPartId = null;
     for (const t of (net.terminals || [])) {
+      const railKind = kindById.get(t.part);
+      if (railKind === 'gnd') { rail = 'gnd'; railPartId = t.part; }
+      else if (railKind === 'vcc' && rail !== 'gnd') { rail = 'vcc'; railPartId = t.part; }
       const entry = partMap.get(t.part);
       if (!entry) continue; // skip infrastructure/power terminals
       nodes.push({
@@ -136,22 +178,31 @@ export function extractNetlist(circuit) {
     }
     if (nodes.length === 0) continue;
 
-    // Derive a human-friendly net name
     let name = net.id || '';
-    // Power-rail nets get canonical names
-    if (name.includes('vcc') || name.includes('VCC')) name = 'VCC';
-    else if (name.includes('gnd') || name.includes('GND')) name = 'GND';
-    else {
+    if (rail === 'gnd') {
+      name = 'GND';
+    } else if (rail === 'vcc') {
+      vccSeq++;
+      name = vccSeq === 1 ? 'VCC' : `VCC${vccSeq}`;
+    } else {
       netCode++;
       name = name || `Net${netCode}`;
     }
 
-    nets.push({ name, nodes });
+    // `id` is the ENGINE's net id, kept so a consumer can ask the board what
+    // this net solved to (`circuit.nodeVoltage(id)`) after the name has been
+    // canonicalised to VCC/GND. Without it the rename is one-way and the
+    // SPICE oracle cannot line its nodes up with the engine's.
+    nets.push({ id: net.id || null, name, nodes, rail, railPartId });
   }
 
   return {
     parts: [...partMap.values()],
     nets,
+    // The rail voltage the designer's bench is running at. A serializer
+    // that has to SYNTHESIZE the supply (SPICE has no implicit rails) can
+    // only do so honestly if it is told the number rather than assuming 5.
+    vcc: typeof circuit.vcc === 'number' ? circuit.vcc : null,
     warnings,
   };
 }

@@ -308,7 +308,7 @@ test('the Bode bench corners inside the instrument\'s range', async () => {
     // re-measure Wave 6 and restore the corner sweep to the lesson."
     //
     // pc50-two-stage-rc was two 10 kΩ / 100 µF stages cornering at 0.159 Hz.
-    // `runAcSweep` measures each point by single-frequency correlation over
+    // The optional `runAcSweep` scope comparison measures each point over
     // settleCycles + measureCycles cycles, so a point costs 10/f seconds of
     // SIMULATED time — 629 s a decade below that corner, which is why the
     // checkpoint had to be reworded to stay two decades ABOVE the corners, i.e.
@@ -350,14 +350,14 @@ test('the Bode bench corners inside the instrument\'s range', async () => {
     near(below.phaseDeg, -16.60, 0.1, 'phase a decade below the corner');
     near(at.magDb, -9.572, 0.02, 'magnitude at the corner');
     near(at.phaseDeg, -89.62, 0.1, 'phase at the corner');
-    near(above.magDb, -40.738, 0.05, 'magnitude a decade above the corner');
-    near(above.phaseDeg, -161.98, 0.1, 'phase a decade above the corner');
+    near(above.magDb, -40.295, 0.05, 'magnitude a decade above the corner');
+    near(above.phaseDeg, -163.09, 0.1, 'phase a decade above the corner');
 
-    // And the finding the checkpoint's `explain` step exists for: two poles, but
-    // short of the ideal −40 dB/decade because the second stage loads the first.
+    // And the finding the checkpoint's `explain` step exists for: the
+    // analytical response exposes the two-pole asymptote directly.
     const twoAbove = bodePoint(board, 'src', inNet, outNet, fc * 100);
     const slope = twoAbove.magDb - above.magDb;
-    near(slope, -36.64, 0.1, 'slope one to two decades above the corner');
+    near(slope, -39.71, 0.1, 'slope one to two decades above the corner');
     assert.ok(slope > -40,
         'the loaded cascade must attenuate LESS steeply than the product of two ideal stages');
 
@@ -453,7 +453,7 @@ test('the sweep reports numbers, and they are the ones it measured', async () =>
     // display rounding is measuring the formatter.
     const csv = sweepRowsToCsv(swept.rows, 'bode');
     const lines = csv.trim().split('\n');
-    assert.equal(lines[0], 'f_hz,mag_db,phase_deg');
+    assert.equal(lines[0], 'f_hz,mag_db,phase_deg,linearization_region');
     assert.equal(lines.length, swept.rows.length + 1, 'every measured point is exported');
     const first = lines[1].split(',').map(Number);
     assert.equal(first[0], swept.rows[0].f, 'the CSV frequency IS the measured one, unrounded');
@@ -499,8 +499,8 @@ test('signals-bode-sweep: the two-pole slope and the loading effect are both mea
         * data.parts.find(p => p.id === 'c1').params.farads);
     const one = bodePoint(board, 'src', inNet, outNet, fc * 6.2832);
     const ten = bodePoint(board, 'src', inNet, outNet, fc * 62.832);
-    near(one.magDb, -32.782, 0.05, 'magnitude at 2*pi times the corner');
-    near(ten.magDb, -71.549, 0.05, 'magnitude a decade above that');
+    near(one.magDb, -32.641, 0.05, 'magnitude at 2*pi times the corner');
+    near(ten.magDb, -71.935, 0.05, 'magnitude a decade above that');
     const slope = ten.magDb - one.magDb;
     assert.ok(slope < -38 && slope > -41,
         `two poles give about -40 dB/decade; measured ${slope.toFixed(2)}`);
