@@ -204,31 +204,34 @@ const main = async () => {
         const el = document.querySelector('.cm-content');
         return el ? el.innerText : '';
     });
-    if (!/DEVICE\s+STC12/i.test(already)) {
-        await cm.click();
-        await page.keyboard.press('Control+a');
-        await page.keyboard.press('Backspace');
-        await page.keyboard.type(
-            'DEVICE STC12C5A60S2\n'
-            + 'CLOCK 11059200\n'
-            + 'PIN led1 = P1.0 OUTPUT ACTIVE LOW\n'
-            + '\n'
-            + 'WHEN flag clicked:\n'
-            + 'set counter to 0\n'
-            + 'FOREVER:\n'
-            + 'change counter by 1\n'
-            + 'toggle led1\n'
-            + 'wait 0.15 seconds\n', {delay: 5});
-        const toBlocks = page.locator('button', {hasText: /To blocks/i}).first();
-        await toBlocks.waitFor({state: 'visible', timeout: 20000});
-        await toBlocks.click({force: true});
-    }
+    // The example's own count changes only after a PHYSICAL button press.
+    // That is good curriculum and a bad watchpoint fixture: a correctly armed
+    // watch would never fire. Keep its real circuit/chip, but always replace
+    // the program half with this autonomous counter so the next write is
+    // deterministic and no synthetic canvas gesture is part of the proof.
+    await cm.click();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type(
+        'DEVICE STC12C5A60S2\n'
+        + 'CLOCK 11059200\n'
+        + 'PIN led1 = P1.0 OUTPUT ACTIVE LOW\n'
+        + '\n'
+        + 'WHEN flag clicked:\n'
+        + 'set counter to 0\n'
+        + 'FOREVER:\n'
+        + 'change counter by 1\n'
+        + 'toggle led1\n'
+        + 'wait 0.15 seconds\n', {delay: 5});
+    const toBlocks = page.locator('button', {hasText: /To blocks/i}).first();
+    await toBlocks.waitFor({state: 'visible', timeout: 20000});
+    await toBlocks.click({force: true});
     const typed = await page.evaluate(() => {
         const el = document.querySelector('.cm-content');
         return el ? el.innerText : '';
     });
     record('the program is in the editor', /DEVICE\s+STC12/i.test(typed) && /FOREVER/i.test(typed),
-        `${typed.length} chars, pre-loaded=${/DEVICE\s+STC12/i.test(already)}`);
+        `${typed.length} chars, replaced pre-loaded=${/DEVICE\s+STC12/i.test(already)}`);
 
     await page.locator('[role="tab"]', {hasText: /^Blocks$/i}).first().click();
     // BrickWright programs land on the STAGE, not on a sprite, and a sprite is
@@ -397,12 +400,15 @@ const main = async () => {
         await entry
             .waitFor({state: 'visible', timeout: 15000}).catch(() => {});
         const entryText = await entry.count() ? await entry.innerText() : '';
-        const armedAtAddress = new RegExp(`0x0*${watchAddr.toString(16)}`, 'i').test(entryText);
+        const armedAtAddress = new RegExp(`(?:0x)?0*${watchAddr.toString(16)}\\b`, 'i').test(entryText);
         record('D29: the watchpoint is armed and listed at that address', armedAtAddress,
             entryText || 'no entry');
 
         // Resume: the very next write to that byte must stop us.
         await clickByText(/^\s*▶?\s*(Run|Start)\s*$/i);
+        const resumed = await waitFor(phase, p => p === 'running', 15000, 25);
+        record('D29: the session resumed with the watch armed', resumed === 'running',
+            `phase=${resumed}`);
         const hit = await waitFor(
             () => debugPanel.evaluate(root => {
                 const el = root.querySelector('[data-watch-hit]');
