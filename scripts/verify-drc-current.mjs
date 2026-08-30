@@ -205,10 +205,20 @@ try {
               + 'getMaxCurrent is still the () => null fallback');
     check('bench 2 calls it a danger past the 120 mA limit',
         /Total circuit current is 125 mA, exceeding the .*120 mA limit/.test(two.text));
-    // Note, not a check: drc.js lists a contributor only when `rating > 0.005`,
-    // and an ir_receiver is exactly 0.005, so "Largest consumers:" comes out
-    // empty on this bench. Cosmetic, upstream in bw-circuit-ui, ledgered by
-    // fab-parity 2026-08-30 rather than patched in a vendored file.
+    // Was a note, and is a CHECK since bw-circuit-ui dba5c44 was vendored: drc.js
+    // used to list a contributor only when `rating > 0.005`, and an ir_receiver is
+    // rated EXACTLY 0.005 — the only kind of 133 sitting on that boundary — so this
+    // bench summed 25 of them into a 125 mA danger and then named nobody. The part
+    // that caused the warning was the one part the warning could not mention.
+    // The floor is `>= CONSUMER_LIST_FLOOR_A` now, so the screenshot below shows
+    // what it was always meant to show, and this asserts it rather than admiring it.
+    // A note next to a screenshot is not a gate: nothing fails when it stops being
+    // true, which is how the empty list survived long enough to need a ledger row.
+    check('bench 2 names the part that caused the warning',
+        /Largest consumers: ir_receiver \(5 mA\)/.test(two.text),
+        /Largest consumers:/.test(two.text)
+            ? two.text.slice(two.text.indexOf('Largest consumers:'), two.text.indexOf('Largest consumers:') + 120)
+            : 'no consumers line at all');
     await page.screenshot({path: join(shotDir, 'drc-current-rated.png'), fullPage: false});
     console.log(`screenshot: ${join(shotDir, 'drc-current-rated.png')}`);
 
