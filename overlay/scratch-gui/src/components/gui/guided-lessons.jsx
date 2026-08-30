@@ -11,6 +11,7 @@ import machinesWave from './lesson-waves/machines-7.json';
 import measurementWave from './lesson-waves/measurement-2.json';
 import signalsWave from './lesson-waves/signals-6.json';
 import styles from './guided-lessons.css';
+import {lessonMatchesQuery} from './lesson-search.mjs';
 
 const catalog = {
     lessons: [...coreCatalog.lessons, ...electricityWave.lessons, ...measurementWave.lessons,
@@ -207,15 +208,10 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
     }, [complete, initialEvent, lesson]);
 
     if (!lesson) {
-        const normalizedQuery = query.trim().toLowerCase();
         const visibleLessons = catalog.lessons.filter(item => {
             if (depthFilter && item.depth !== depthFilter) return false;
-            if (!normalizedQuery) return true;
             const copy = localized(item.copy, lang);
-            return [copy.title, copy.objective, item.topic || '', ...item.domains, ...item.languages]
-                .join(' ')
-                .toLowerCase()
-                .includes(normalizedQuery);
+            return lessonMatchesQuery(item, copy, query);
         });
         return (
             <aside
