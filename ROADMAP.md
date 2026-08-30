@@ -117,15 +117,76 @@ the build and vendor gates without consuming the account-wide deployment quota.
 If the public Vercel site is stale, inspect the scheduled/manual deployment
 workflow rather than looking for a missing per-push deployment.
 
-### 2.1 Deploy starvation with two agents pushing — OPEN, do not redo naively
-Workflow is on stock `concurrency: {group: pages, cancel-in-progress: false}`. With two sessions
-pushing, runs are cancelled while queued and the site lags several commits, arriving out of order.
-Observed again on 2026-08-10: run for `155fc7f` was cancelled by a newer push.
+### 2.1 Deploy starvation with two agents pushing — FIXED 2026-08-30, proven elsewhere first
 
-**A previous per-job split took the site down** — the Pages artifact is a single shared name, so an
-interleaved build published a mismatched tree (index.html naming 404 chunks). If retried: per-run
-artifact name, or a concurrency group keyed on the commit, and prove it somewhere other than this
-repo.
+**The measurement, so nobody re-derives it.** 200 most recent `build.yml` runs on `main`
+(2026-08-24T23:17Z .. 2026-08-30T05:47Z): 101 success, 26 failure, **72 cancelled (36 %)**. Each
+cancelled run asked for its jobs:
+
+```
+62   ZERO JOBS      cancelled while queued. No runner, no verdict, no minutes.
+ 4   build:success  a green tree whose deploy was cancelled.
+ 6   build:cancelled after starting.
+```
+
+**62 verdicts thrown away in six days.** `concurrency: pages-${{ github.ref }}` is one group for
+all of `main`, and GitHub holds exactly one pending entry per group: a third push cancels the
+second while it is still queued. Serializing PUBLICATION was always required. Serializing
+VALIDATION never was, and that is the whole of this bug.
+
+**The fix, three changes.** Pushes are grouped per **commit** (`github.sha`) and PRs per PR number,
+so no push is cancelled while queued. The **deploy job** carries the one shared group that is left
+(`pages-deploy`, `cancel-in-progress: false`). And the deploy **refuses to publish a tree older
+than the published one** — ordering by queue release is not ordering by commit, which is what
+"arriving out of order" was.
+
+**Known cost, so it is not rediscovered as a bug.** A deploy superseded while pending is cancelled,
+which marks its RUN `cancelled` even though its build passed. That is the intended outcome and it
+is mechanically distinguishable from starvation: starvation has **zero jobs**, this has
+`build: success`. `verify-gui` is now gated on whether the run actually published — it smoke-tests
+the LIVE site, and a run that stood down would otherwise report somebody else's tree as its own
+verdict.
+
+**The mismatched-tree hazard, and the mechanism that excludes it.** The previous attempt was a
+per-**job** split. Artifact names are unique within a RUN, not across runs: two jobs of one run
+writing `github-pages`, or a deploy job resolving that name while a sibling was still uploading,
+publishes an index.html from one tree beside chunks from another. Separate RUNS cannot do this to
+each other — each run's artifact is scoped to its own `GITHUB_RUN_ID` and `deploy-pages` resolves
+it there. So the invariant is **build and upload stay in one job, and the deploy takes the artifact
+from its own run and never fetches one by name**; running builds in parallel does not touch it.
+That invariant is now a test (`test/pages-deploy-ordering.test.mjs`, nine mutations proven to
+redden it) rather than a comment, per the working rule about beliefs that decay.
+
+**Proven in `CrispStrobe/bw-pages-concurrency-proof` first**, per this item's own instruction, and
+the proof earned its keep twice. Full transcript in that repo's `RESULTS.md`.
+
+- Baseline burst of 5 pushes: **2 verdicts**, three runs with zero jobs (33295713813, 33295717265,
+  33295720367). The item reproduced in isolation.
+- Candidate burst of 5: **5 build verdicts, 0 starved** (33295873557, 33295875547, 33295877641,
+  33295881123, 33295882892).
+- **The first guard was wrong and moved the live site BACKWARDS.** Run 33295873557 attempt 2
+  printed `published=654edac ours=654edac` and republished a superseded tree with a green check.
+  Cause: declaring `environment: github-pages` makes GitHub create that environment's deployment
+  record when the JOB STARTS, before any step runs — so a guard reading the newest deployment reads
+  *itself*. Fixed by filtering every occurrence of our own sha out of the list.
+- Second defect (run 33296240426): `gh api --jq` takes one argument and no `--arg` ("accepts 1
+  arg(s), received 4"). The step failed and the deploy was skipped rather than run unguarded — the
+  guard is **fail-closed**, which is the right direction.
+- Fixed candidate, burst of 5 (33296399703, 33296406582, 33296408593, 33296413340, 33296416120):
+  **5/5 build verdicts**; deployment records strictly increasing by commit; the site transcript
+  moved forward only and the chunk `index.html` named was 200 at every sample.
+- The guard proven **positively**: re-running 33296399703 (the burst's oldest commit) while a newer
+  one was live logged `compare ours...published = ahead`, skipped `deploy-pages`, concluded
+  **success**, and left the site where it was.
+
+Both guard defects would have been live-site incidents here. Neither cost anything there.
+
+**Residual, stated rather than discovered later.** The guard treats a deployment RECORD as
+published, and a record exists for a deploy job that started and was then cancelled. The site can
+therefore sit one commit behind if the newest deploy job's `deploy-pages` step itself FAILS after
+an older run has already stood down for it. It cannot happen through cancellation — a job is only
+cancelled when a newer one enters the group, and the newest always deploys — and the next push or
+`deploy-daily` corrects it.
 
 ### 2.2 Service-worker failure-mode tests — BUILT 2026-08-30 (`scripts/verify-service-worker.mjs`)
 Four scenarios in a real Chromium, against `overlay/scratch-gui/sw.js` read off disk and served

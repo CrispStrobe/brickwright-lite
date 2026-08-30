@@ -49,10 +49,30 @@ permissions:
   contents: read
   pages: write
   id-token: write
+# ROADMAP §2.1, and the reason this is keyed on the COMMIT rather than the ref.
+#
+# `pages-<ref>` is one group for all of main, and GitHub holds exactly ONE
+# pending entry per group: a third push cancels the second while it is still
+# queued. Measured over the 200 most recent main runs (2026-08-24 .. 2026-08-30):
+# 101 success, 26 failure, **72 cancelled** — and 62 of those 72 had ZERO JOBS.
+# No runner, no verdict, no minutes, and a conclusion that reads as if somebody
+# chose to stop it. Serializing PUBLICATION is required. Serializing VALIDATION
+# never was, and it is what threw away 62 verdicts in six days.
+#
+# Keyed on the sha, no two pushes share a group, so nothing is cancelled while
+# queued. The deploy job below carries the one shared group that is left, plus a
+# guard that refuses to publish a tree older than the published one — because
+# ordering by queue release is not ordering by commit, which is what "the site
+# lags several commits, arriving out of order" was.
+#
+# PROVEN IN A SCRATCH REPO FIRST, per this item's own instruction, because the
+# previous attempt took the live site down: CrispStrobe/bw-pages-concurrency-proof.
+# Baseline burst of 5 pushes -> 2 verdicts, 3 runs with zero jobs. Candidate
+# burst of 5 -> 5 build verdicts, 0 starved. See RESULTS.md there for run ids.
 concurrency:
-  group: pages-${{ github.event.pull_request.number || github.ref }}
-  # A newer commit makes an older PR build obsolete. Main remains fail-safe:
-  # its post-merge validation is never cancelled by a subsequent push.
+  group: pages-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.sha }}
+  # A newer commit makes an older PR build obsolete, so PRs still collapse to
+  # the latest push. Main gets one group per commit and is never cancelled.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
@@ -607,23 +627,96 @@ jobs:
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with: { path: packages/scratch-gui/build }
 
+  # THE MISMATCHED-TREE HAZARD, and why parallel builds are safe here when a
+  # previous attempt at this fix took the site down.
+  #
+  # That attempt was a per-JOB split. Artifact names are unique within a RUN, not
+  # across runs: two jobs of one run writing `github-pages`, or a deploy job
+  # resolving that name while a sibling was still uploading, publishes an
+  # index.html from one tree beside chunks from another — which is exactly what
+  # went out (index.html naming 404 chunks). Separate RUNS cannot do this to each
+  # other; each run's artifact is scoped to its own GITHUB_RUN_ID and
+  # `deploy-pages` resolves it there.
+  #
+  # So the invariant is structural, and `test/pages-deploy-ordering.test.mjs`
+  # asserts it rather than leaving it as a comment: BUILD AND UPLOAD STAY IN ONE
+  # JOB, and this job takes the artifact from its own run and never fetches one
+  # by name. Making the build groups per-commit does not touch that.
   deploy:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
+      contents: read       # the compare API, for the ordering guard
+      deployments: read    # the github-pages deployment history
       pages: write
       id-token: write
+    # The one shared group left. Publication is serialized; validation is not.
+    # A deploy that is superseded while pending is cancelled here, which marks
+    # its RUN cancelled even though its build job succeeded — that is the
+    # intended outcome (an older tree must not publish) and it is distinguishable
+    # from starvation: starvation has zero jobs, this has `build: success`.
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      deployed: ${{ steps.order.outputs.stale != 'true' }}
     steps:
+      # Evaluated INSIDE the job, so it runs after the queue lets this deploy
+      # through — by which time a newer commit may already have published.
+      # Asking before queuing would answer the wrong question.
+      - name: Refuse to publish a tree older than the published one
+        id: order
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # OUR OWN SHA IS FILTERED OUT, and that filter is the whole trap.
+          # Declaring `environment: github-pages` makes GitHub create this
+          # environment's deployment record when the JOB STARTS, before any step
+          # runs — so a guard that reads the newest deployment reads ITSELF,
+          # concludes it is current, and publishes. Measured in the scratch repo
+          # on 2026-08-30 (run 33295873557 attempt 2): the guard printed
+          # `published=654edac ours=654edac` and moved the live site BACKWARDS
+          # from ae89f11 to 654edac — the exact failure it was written to
+          # prevent, with a green check on it. Ours can appear more than once
+          # (a re-run), so every occurrence goes.
+          #
+          # `gh api --jq` takes one argument and no `--arg`; piping to jq is not
+          # a style choice ("accepts 1 arg(s), received 4").
+          published=$(gh api "repos/${{ github.repository }}/deployments?environment=github-pages&per_page=30" \
+            | jq -r --arg ours "$GITHUB_SHA" '[.[] | select(.sha != $ours)] | .[0].sha // empty')
+          echo "published=$published  ours=$GITHUB_SHA"
+          if [ -z "$published" ] || [ "$published" = "$GITHUB_SHA" ]; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # `ahead` means the published commit is ahead of OURS: it is newer, and
+          # publishing would move the site backwards. `behind`, `identical` and
+          # `diverged` all deploy — for diverged there is no ordering to respect,
+          # and refusing would freeze the site after any history rewrite.
+          status=$(gh api "repos/${{ github.repository }}/compare/${GITHUB_SHA}...${published}" --jq '.status')
+          echo "compare ours...published = $status"
+          if [ "$status" = "ahead" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::skipping deploy: $published is published and is newer than $GITHUB_SHA"
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Deploy to GitHub Pages
         id: deployment
+        if: steps.order.outputs.stale != 'true'
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
 
   verify-gui:
     needs: deploy
+    # Only when THIS run published. A deploy that stood down for a newer commit
+    # would otherwise send this job to smoke-test somebody else's tree and
+    # report the verdict against ours — a green that means nothing, or worse, a
+    # red attributed to the wrong commit.
+    if: needs.deploy.outputs.deployed == 'true'
     runs-on: ubuntu-latest
     # Smoke-test the deployed site in a headless browser. Catches GUI-breaking
     # regressions that pass all static guards — the unknown-cause class.

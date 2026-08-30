@@ -9,6 +9,21 @@
 # Pages froze on a stale deploy while everything LOOKED green. The
 # stuck-run step cancels any build run in flight longer than 25 minutes
 # (a healthy build takes ~10–15) and says so in an issue.
+#
+# STILL CORRECT AFTER ROADMAP §2.1 (2026-08-30), for a different reason.
+# build.yml now groups pushes per COMMIT, so a hung build no longer holds a
+# queue behind it — the sentence above describes a world that ended. What did
+# not change is that a hung build burns a runner for its full 30-minute timeout
+# and produces no verdict, and that several builds can now legitimately be
+# in_progress at once. The step measures each run's own execution age, so
+# parallel healthy builds are not affected by each other; only a genuinely
+# stuck one is cancelled. Do not "simplify" this to a count of in-progress runs.
+#
+# The red-streak check above is unaffected: still one build run per push, so
+# three consecutive failures still mean Pages is not deploying. Cancellations
+# do not enter it, which is right — a superseded DEPLOY is now an ordinary
+# outcome (§2.1: an older tree standing down for a newer one), and alerting on
+# it would train everyone to ignore this watchdog.
 name: deploy-watchdog
 on:
   schedule:
