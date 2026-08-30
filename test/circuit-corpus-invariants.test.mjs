@@ -160,6 +160,8 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // 1198 -> 1199 on 2026-08-27: pc118-eight-bit-machine, which arrived with
     // the sb3-creator gallery sync to 4c714d3 — one circuit.json, and the only
     // new example in that sync.
+    // 1199 -> 1200 on 2026-08-30: logic-74c922-keypad adds the physical
+    // matrix-keypad-to-encoder circuit used by the product browser gate.
     // 1170 -> 1171 on 2026-08-26: aurora65-workstation, the complete
     // OLED + PS/2 + VIA + SimpleVGA circuit/ROM/controller example.
     // 1094 -> 1170 on 2026-08-25: the stm32f030 retarget axis (sb3-creator
@@ -173,7 +175,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1199, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1200, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
