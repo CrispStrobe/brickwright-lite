@@ -62,6 +62,8 @@ import {fetchRetry, resolveRef, FULL_SHA} from './lib-pin.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(here, '..', 'overlay', 'scratch-vm', 'src', 'extension-support', 'gallery-pins.json');
 const CENSUS_OUT = path.join(here, '..', 'docs', 'generated', 'GALLERY-CAPABILITY-CENSUS.md');
+export const REVIEWED_DEFERRED_REASONS = Object.freeze(JSON.parse(await readFile(
+    path.join(here, 'gallery-deferred-reasons.json'), 'utf8')));
 
 export const GALLERY_CONTRACT_VERSION = 2;
 export const GALLERY_CAPABILITIES = Object.freeze([
@@ -150,7 +152,7 @@ export function applyMigrationPolicy (slug, capabilities, entry) {
     const workerProven = RUNTIME_WORKER_PROVEN.includes(slug);
     const incompatibleRequirements = capabilities.filter(capability =>
         !WORKER_COMPATIBLE_REQUIREMENTS.includes(capability));
-    const runtimeDeferral = RUNTIME_WORKER_DEFERRED[slug] || null;
+    const reviewedDeferral = REVIEWED_DEFERRED_REASONS[slug] || null;
     const missingReviewed = (REQUIRED_AMBIENT_REQUIREMENTS[slug] || [])
         .filter(capability => !capabilities.includes(capability));
     if (missingReviewed.length) {
@@ -165,10 +167,9 @@ export function applyMigrationPolicy (slug, capabilities, entry) {
         ...entry,
         brokerCapabilities: Array.isArray(entry.brokerCapabilities) ? entry.brokerCapabilities : [],
         migration: {
-            status: workerProven ? 'worker' : (capabilities.length || runtimeDeferral ? 'deferred' : 'candidate'),
+            status: workerProven ? 'worker' : (capabilities.length || reviewedDeferral ? 'deferred' : 'candidate'),
             reason: workerProven ? 'runtime parity proven by gallery worker compatibility corpus' :
-                (capabilities.length ? `static scan requires review: ${capabilities.join(', ')}` :
-                    (runtimeDeferral || null))
+                reviewedDeferral
         }
     };
 }
@@ -217,7 +218,7 @@ export function validateGalleryContract (document, expectedSlugs) {
             throw new Error(`runtime-proven gallery entry ${slug} was downgraded from worker`);
         }
         if (c.migration.status === 'candidate') {
-            if (RUNTIME_WORKER_DEFERRED[slug]) {
+            if (REVIEWED_DEFERRED_REASONS[slug]) {
                 throw new Error(`runtime-deferred gallery entry ${slug} was downgraded to candidate`);
             }
             if (c.capabilities.length || c.migration.reason !== null) {
@@ -230,12 +231,16 @@ export function validateGalleryContract (document, expectedSlugs) {
                 throw new Error(`worker gallery entry ${slug} lacks generator-owned runtime proof`);
             }
         } else if (c.migration.status === 'deferred') {
-            const exactReason = c.capabilities.length ?
-                `static scan requires review: ${c.capabilities.join(', ')}` : RUNTIME_WORKER_DEFERRED[slug];
+            const exactReason = REVIEWED_DEFERRED_REASONS[slug];
             if (!exactReason || c.migration.reason !== exactReason) {
                 throw new Error(`deferred gallery entry ${slug} needs an exact reason`);
             }
         } else throw new Error(`gallery census has unknown migration status for ${slug}`);
+    }
+    const deferred = actual.filter(slug => document.extensions[slug].migration.status === 'deferred').sort();
+    const reviewed = Object.keys(REVIEWED_DEFERRED_REASONS).sort();
+    if (JSON.stringify(deferred) !== JSON.stringify(reviewed)) {
+        throw new Error('reviewed deferral ledger must exactly match the deferred gallery denominator');
     }
     return true;
 }

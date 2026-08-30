@@ -144,18 +144,20 @@ a hidden privileged broker webview/process which owns verification, workers and
 leases; Rust rejects callers whose webview label is not that broker, and the
 editor loses the corresponding native permission. Desktop implementation plus
 iOS/Android lifecycle proof is estimated at 5–8 engineering days. Until that
-campaign or full migration closure, no native capability command is registered
-and CP3 remains honestly open.
+privileged broker boundary is delivered, no native capability command is
+registered and CP3 remains honestly open.
 
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
-- [ ] Resolve every deferred pin: migrate it through an implemented broker
+- [x] Resolve every deferred pin: migrate it through an implemented broker
   capability or retain an explicit reviewed deferral with exact blocker. The
   report must state migrated/deferred counts summing to 120.
-- [ ] Add a production-browser gate that loads one no-capability pin and one
+- [x] Add a production-browser gate that loads one no-capability pin and one
   declared mocked capability fixture, executes real opcodes, proves the allowed
-  operation succeeds, and proves undeclared plus cross-worker requests fail.
-- [ ] Assert exact scenario denominator, zero page errors and no skipped cases;
+  operation succeeds, and proves undeclared requests fail. Cross-worker and
+  replay frames remain adversarial transport tests because the safe worker API
+  exposes neither worker identity nor request IDs.
+- [x] Assert exact scenario denominator, zero page errors and no skipped cases;
   use condition waits only and upload success screenshot plus failure JSON.
 
 DoD: all 120 entries classified, no migrated pinned source runs in the page
@@ -167,11 +169,11 @@ Progress: the first production-browser gate now loads the immutable served
 the host-derived `extension.0.0` namespace and closed pending-load lifecycle,
 and requires exactly 3/3 scenarios with zero page errors. CI uploads its success
 screenshot or failure JSON. The local production build and browser journey are
-green. Runtime corpus review closed every zero-requirement candidate: 21 pins
-are migrated, while six candidate-era blockers now name Web NFC, DOM/XML,
-vibration, external evaluation, page URL access, or the absence of any
-executable opcode. The other ambient-requirement deferrals still need
-pin-by-pin review. The declared-capability production gate now uses two exact
+green. Runtime corpus review now proves 25 worker pins, including four whose
+measured HTTP use is the worker-supported `Scratch.fetch`; 95 remain deferred.
+Every deferral is backed by a generator-owned, pin-specific reviewed reason,
+with an exact 95-entry ledger and a mutation ratchet forbidding generic static
+scan placeholders. The declared-capability production gate uses two exact
 content-pinned proof identities outside the 120-entry gallery census. The same
 restricted-worker opcode source receives `project.metadata.read` for one
 identity and no broker capabilities for the other, proving allowed and
@@ -179,8 +181,8 @@ default-deny results, monotonic sequential requests, closed pending loads,
 teardown/reload and zero page errors. The safe worker API deliberately owns
 request IDs, so replay refusal remains at the adversarial transport boundary;
 the browser gate does not add a replay or raw-frame escape hatch merely to
-attack itself. CP4 remains open on the wider pin-by-pin deferral review, not on
-this declared-capability fixture.
+attack itself. Together with the exact 25/95 disposition, this closes CP4;
+the separate multi-day native boundary remains tracked by CP3.
 
 ## CP5 — release, adversarial review and closure (45–90 minutes plus CI)
 

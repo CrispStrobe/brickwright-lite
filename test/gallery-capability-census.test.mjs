@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
     authorityDeclarations,
     GALLERY_CAPABILITIES,
+    REVIEWED_DEFERRED_REASONS,
     censusEntry,
     classifyGallerySource,
     renderCensusReport,
@@ -46,6 +47,22 @@ test('gallery capability census is deterministic and its checked-in report agree
     assert.equal(generated, renderCensusReport(clone(pins)));
     assert.equal(generated, readFileSync(path.join(root, 'docs/generated/GALLERY-CAPABILITY-CENSUS.md'), 'utf8'));
     assert.match(generated, /Denominator: \*\*120\/120 URL-loaded pins\*\*/);
+});
+
+test('every deferred pin has a pin-specific reviewed reason and no generic scan placeholder', () => {
+    const deferred = Object.entries(pins.extensions).filter(([, pin]) => pin.migration.status === 'deferred');
+    assert.equal(deferred.length, 95);
+    assert.equal(Object.keys(REVIEWED_DEFERRED_REASONS).length, 95);
+    for (const [slug, pin] of deferred) {
+        assert.equal(pin.migration.reason, REVIEWED_DEFERRED_REASONS[slug], slug);
+        assert.doesNotMatch(pin.migration.reason, /^static scan requires review:/, slug);
+        assert.ok(pin.migration.reason.length >= 35, `${slug} needs an evidence-specific blocker`);
+    }
+    const mutated = clone(pins);
+    const [slug] = deferred[0];
+    mutated.extensions[slug].migration.reason =
+        `static scan requires review: ${mutated.extensions[slug].capabilities.join(', ')}`;
+    assert.throws(() => validateGalleryContract(mutated, slugs), /needs an exact reason/);
 });
 
 test('delete-one-entry mutation: a missing pin fails the census by name', () => {

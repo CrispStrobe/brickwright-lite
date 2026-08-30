@@ -23,120 +23,120 @@ Denominator: **120/120 URL-loaded pins**; bundled built-ins are excluded. Runtim
 | -SIPC-/consoles | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | -SIPC-/time | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | 0832/rxFS2 | worker | fetch-import | runtime parity proven by gallery worker compatibility corpus |
-| Alestore/nfcwarp | deferred | web-nfc | static scan requires review: web-nfc |
-| ar | deferred | dom, runtime | static scan requires review: dom, runtime |
-| battery | deferred | runtime | static scan requires review: runtime |
+| Alestore/nfcwarp | deferred | web-nfc | constructs and uses NDEFReader from Web NFC, which the restricted worker does not expose |
+| ar | deferred | dom, runtime | reads video/renderer state through Scratch.vm.runtime and creates browser DOM media elements |
+| battery | deferred | runtime | registers runtime lifecycle listeners through Scratch.vm.runtime; the Battery API itself is worker-capable but VM access is not |
 | bitwise | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| box2d | deferred | dom, runtime | static scan requires review: dom, runtime |
+| box2d | deferred | dom, runtime | reads stage dimensions and requests redraw/target updates through Scratch.vm.runtime; its document/window scanner hits are license comments and commented CommonJS examples, not ambient DOM dependencies |
 | Clay/htmlEncode | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| clipboard | deferred | dom, runtime | static scan requires review: dom, runtime |
-| clouddata-ping | deferred | websocket | static scan requires review: websocket |
-| cloudlink | deferred | dom, runtime, fetch-import, websocket | static scan requires review: dom, runtime, fetch-import, websocket |
-| CrispStrobe/arrays | deferred | dom, runtime | static scan requires review: dom, runtime |
-| CrispStrobe/circuit | deferred | dom, runtime, fetch-import | static scan requires review: dom, runtime, fetch-import |
-| CrispStrobe/csp | deferred | dom, runtime | static scan requires review: dom, runtime |
-| CrispStrobe/ev3_direct | deferred | dom, runtime, web-serial | static scan requires review: dom, runtime, web-serial |
-| CrispStrobe/ev3_lms_transpile | deferred | dom, runtime, fetch-import | static scan requires review: dom, runtime, fetch-import |
-| CrispStrobe/ev3_universal | deferred | dom, runtime, fetch-import, websocket, web-serial | static scan requires review: dom, runtime, fetch-import, websocket, web-serial |
-| CrispStrobe/ev3dev_py_transpile | deferred | dom, runtime, fetch-import | static scan requires review: dom, runtime, fetch-import |
-| CrispStrobe/gamepad | deferred | dom, runtime | static scan requires review: dom, runtime |
-| CrispStrobe/ledcube | deferred | runtime | static scan requires review: runtime |
-| CrispStrobe/lego_poweredup | deferred | dom, runtime, fetch-import, websocket, web-bluetooth | static scan requires review: dom, runtime, fetch-import, websocket, web-bluetooth |
-| CrispStrobe/lego_wedo2_universal | deferred | dom, runtime, web-bluetooth | static scan requires review: dom, runtime, web-bluetooth |
-| CrispStrobe/legoboost_universal | deferred | dom, runtime, fetch-import, websocket, web-bluetooth | static scan requires review: dom, runtime, fetch-import, websocket, web-bluetooth |
-| CrispStrobe/legonxt_transpile_universal | deferred | dom, runtime, fetch-import, websocket, web-serial | static scan requires review: dom, runtime, fetch-import, websocket, web-serial |
-| CrispStrobe/legospike_ble | deferred | dom, runtime, web-bluetooth | static scan requires review: dom, runtime, web-bluetooth |
-| CrispStrobe/legospike_bridge | deferred | dom, runtime, websocket | static scan requires review: dom, runtime, websocket |
-| CrispStrobe/legospike_turbowarp_transpile | deferred | dom, runtime | static scan requires review: dom, runtime |
-| CrispStrobe/legospikeprime_ble | deferred | dom, runtime | static scan requires review: dom, runtime |
-| CrispStrobe/legospikeprime_btc_scratchlink | deferred | dom, runtime | static scan requires review: dom, runtime |
-| CrispStrobe/planetemaths | deferred | dom, runtime | static scan requires review: dom, runtime |
-| CrispStrobe/stc12live | deferred | runtime, web-serial | static scan requires review: runtime, web-serial |
+| clipboard | deferred | dom, runtime | calls navigator.clipboard and uses Scratch.vm.runtime editing-target state, neither exposed by the restricted worker contract |
+| clouddata-ping | deferred | websocket | constructs a raw WebSocket to measure the cloud server; brokered worker WebSocket support is not implemented |
+| cloudlink | deferred | dom, runtime, fetch-import, websocket | captures Scratch.vm.runtime and directly manages WebSocket connections and window timers; the fetch/import scanner hit does not make those dependencies worker-safe |
+| CrispStrobe/arrays | deferred | dom, runtime | bootstraps and live-updates locale from window.ReduxStore, window storage events, document.documentElement, navigator.language, and Scratch.vm.runtime.getLocale |
+| CrispStrobe/circuit | deferred | dom, runtime, fetch-import | bootstraps locale from window.ReduxStore/storage events, document.documentElement, navigator.language, and Scratch.vm.runtime.getLocale; its fetch-like/runtime capability-model references are comments/JSDoc rather than executable imports |
+| CrispStrobe/csp | deferred | dom, runtime | bootstraps and live-updates module locale from window.ReduxStore, window storage events, document.documentElement, navigator.language, and Scratch.vm.runtime.getLocale |
+| CrispStrobe/ev3_direct | deferred | dom, runtime, web-serial | uses navigator.serial for EV3 transport and Scratch.vm.runtime/DOM locale plumbing unavailable in the restricted worker |
+| CrispStrobe/ev3_lms_transpile | deferred | dom, runtime, fetch-import | its Scratch.fetch calls are worker-safe, but locale bootstrap still reads window, document, navigator, and Scratch.vm.runtime.getLocale |
+| CrispStrobe/ev3_universal | deferred | dom, runtime, fetch-import, websocket, web-serial | depends on Scratch Link WebSocket and navigator.serial transports plus DOM/VM locale bootstrap; worker-safe Scratch.fetch does not remove those blockers |
+| CrispStrobe/ev3dev_py_transpile | deferred | dom, runtime, fetch-import | its Scratch.fetch calls are worker-safe, but module locale state is sourced from window storage/ReduxStore, document, navigator, and Scratch.vm.runtime |
+| CrispStrobe/gamepad | deferred | dom, runtime | polls navigator.getGamepads and uses Scratch.vm.runtime lifecycle hooks; the restricted worker exposes neither host gamepad state nor VM internals |
+| CrispStrobe/ledcube | deferred | runtime | stores and mutates renderer frame state supplied through the Scratch runtime rather than operating as an isolated extension |
+| CrispStrobe/lego_poweredup | deferred | dom, runtime, fetch-import, websocket, web-bluetooth | uses Web Bluetooth and Scratch Link WebSocket transports with DOM/VM locale bootstrap; its Scratch.fetch usage is worker-safe but not sufficient for promotion |
+| CrispStrobe/lego_wedo2_universal | deferred | dom, runtime, web-bluetooth | uses Web Bluetooth and Scratch runtime/Scratch Link integration plus browser locale globals unavailable in the restricted worker |
+| CrispStrobe/legoboost_universal | deferred | dom, runtime, fetch-import, websocket, web-bluetooth | uses Web Bluetooth and Scratch Link WebSocket transports with runtime/DOM locale access; its Scratch.fetch usage is worker-safe but other transports are not |
+| CrispStrobe/legonxt_transpile_universal | deferred | dom, runtime, fetch-import, websocket, web-serial | uses navigator.serial and Scratch Link WebSocket transports with runtime/DOM locale access; its Scratch.fetch usage is worker-safe but other transports are not |
+| CrispStrobe/legospike_ble | deferred | dom, runtime, web-bluetooth | opens Web Bluetooth devices and relies on browser/VM locale state unavailable in the restricted worker |
+| CrispStrobe/legospike_bridge | deferred | dom, runtime, websocket | opens a Scratch Link WebSocket and bootstraps locale through window.ReduxStore, document, navigator, and Scratch.vm.runtime |
+| CrispStrobe/legospike_turbowarp_transpile | deferred | dom, runtime | runs an executable locale diagnostic against navigator, document, window storage, and Scratch.vm.runtime.getLocale |
+| CrispStrobe/legospikeprime_ble | deferred | dom, runtime | obtains a BLE Scratch Link socket from runtime.getScratchLinkSocket and uses window timers/ReduxStore and navigator locale state |
+| CrispStrobe/legospikeprime_btc_scratchlink | deferred | dom, runtime | depends on Scratch Link runtime socket plumbing and executable navigator/document/window/VM locale diagnostics |
+| CrispStrobe/planetemaths | deferred | dom, runtime | runs locale detection/diagnostics through navigator, document, window storage/ReduxStore, and Scratch.vm.runtime.getLocale |
+| CrispStrobe/stc12live | deferred | runtime, web-serial | opens navigator.serial and publishes device capabilities onto Scratch.vm.runtime, both outside the restricted worker contract |
 | cs2627883/numericalencoding | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| CST1229/images | deferred | runtime, fetch-import | static scan requires review: runtime, fetch-import |
-| CST1229/zip | deferred | runtime, fetch-import | static scan requires review: runtime, fetch-import |
-| CubesterYT/KeySimulation | deferred | dom, runtime | static scan requires review: dom, runtime |
+| CST1229/images | deferred | runtime, fetch-import | reads renderer, targets, and lifecycle events through Scratch.vm.runtime; its Scratch.fetch image loads are worker-safe but renderer/VM access is not |
+| CST1229/zip | deferred | runtime, fetch-import | loads JSZip from Scratch.vm.exports and stores/listens on Scratch.vm.runtime; its Scratch.fetch calls are worker-safe but VM exports and lifecycle access are not |
+| CubesterYT/KeySimulation | deferred | dom, runtime | synthesizes and dispatches KeyboardEvent objects through document and also reaches Scratch.vm.runtime keyboard state |
 | CubesterYT/TurboHook | worker | fetch-import | runtime parity proven by gallery worker compatibility corpus |
-| CubesterYT/WindowControls | deferred | dom, runtime | static scan requires review: dom, runtime |
-| cursor | deferred | dom, runtime | static scan requires review: dom, runtime |
-| DNin/wake-lock | deferred | dom, runtime | static scan requires review: dom, runtime |
+| CubesterYT/WindowControls | deferred | dom, runtime | directly manipulates the browser window (movement, size, fullscreen, and related state) and consults Scratch.vm.runtime |
+| cursor | deferred | dom, runtime | requires DOM canvas plus private VM renderer skins, target costumes and runtime-dispose lifecycle |
+| DNin/wake-lock | deferred | dom, runtime | requires page visibility lifecycle, Screen Wake Lock API, and PROJECT_STOP_ALL cleanup |
 | DogeisCut/FormatNumbers | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| DT/cameracontrols | deferred | runtime | static scan requires review: runtime |
+| DT/cameracontrols | deferred | runtime | requires private VM renderer/camera controls and direct runtime target mutation |
 | encoding | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | fetch | worker | fetch-import | runtime parity proven by gallery worker compatibility corpus |
-| files | deferred | dom, runtime, fetch-import | static scan requires review: dom, runtime, fetch-import |
-| gamejolt | deferred | dom | static scan requires review: dom |
-| gamepad | deferred | runtime | static scan requires review: runtime |
-| godslayerakp/http | deferred | runtime, fetch-import | static scan requires review: runtime, fetch-import |
-| godslayerakp/ws | deferred | runtime, websocket | static scan requires review: runtime, websocket |
-| iframe | deferred | dom, runtime | static scan requires review: dom, runtime |
-| itchio | deferred | fetch-import | static scan requires review: fetch-import |
-| JeremyGamer13/tween | deferred | runtime | static scan requires review: runtime |
-| lab/face-sensing | deferred | dom, runtime, fetch-import | static scan requires review: dom, runtime, fetch-import |
-| lab/text | deferred | dom, runtime | static scan requires review: dom, runtime |
-| Lily/AllMenus | deferred | dom, runtime | static scan requires review: dom, runtime |
-| Lily/Assets | deferred | runtime, fetch-import | static scan requires review: runtime, fetch-import |
+| files | deferred | dom, runtime, fetch-import | requires DOM file-picker modal/keyboard handling, renderer overlays, project-stop lifecycle and HTTP(S) fetch |
+| gamejolt | deferred | dom | requires page URL/origin, XMLHttpRequest GameJolt API access, and window unload/timer session lifecycle |
+| gamepad | deferred | runtime | requires Gamepad API polling synchronized to VM BEFORE_EXECUTE |
+| godslayerakp/http | deferred | runtime, fetch-import | requires HTTP(S) request transport plus VM runtime-dispose cleanup |
+| godslayerakp/ws | deferred | runtime, websocket | requires raw WebSocket lifecycle, VM runtime ownership and util.target-scoped instances |
+| iframe | deferred | dom, runtime | requires DOM iframe/overlay, window message events and VM stage-size/hat lifecycle |
+| itchio | deferred | fetch-import | requires HTTP(S) itch data fetch plus page window-opening and screen geometry |
+| JeremyGamer13/tween | deferred | runtime | requires util.target variable lookup and direct sprite position/direction/size mutation |
+| lab/face-sensing | deferred | dom, runtime, fetch-import | requires injected page face-detection runtime/model, VM video/renderer internals, target mutation and model fetch |
+| lab/text | deferred | dom, runtime | requires DOM canvas text rendering plus VM renderer, font manager, target state and redraw internals |
+| Lily/AllMenus | deferred | dom, runtime | requires page ScratchBlocks menu APIs and VM block-info/extension refresh events |
+| Lily/Assets | deferred | runtime, fetch-import | requires VM costume/sound/sprite import-export mutation and HTTP(S) asset fetch |
 | Lily/Cast | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| Lily/ClonesPlus | deferred | runtime | static scan requires review: runtime |
+| Lily/ClonesPlus | deferred | runtime | requires private VM clone creation, renderer touching queries and direct clone/target internals |
 | Lily/CommentBlocks | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | Lily/HackedBlocks | deferred | none | runtime corpus found no executable opcode for parity proof |
-| Lily/ListTools | deferred | runtime | static scan requires review: runtime |
-| Lily/lmsutils | deferred | dom, runtime | static scan requires review: dom, runtime |
-| Lily/LooksPlus | deferred | runtime | static scan requires review: runtime |
+| Lily/ListTools | deferred | runtime | requires VM list-variable access plus util.target and util.thread stack/state internals |
+| Lily/lmsutils | deferred | dom, runtime | requires VM/target internals, page URL/viewport/user-agent, and async Clipboard read/write |
+| Lily/LooksPlus | deferred | runtime | requires VM renderer, packaged-state and direct target costume/effect/geometry mutation |
 | Lily/McUtils | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| Lily/MoreEvents | deferred | runtime | static scan requires review: runtime |
-| Lily/MoreTimers | deferred | runtime | static scan requires review: runtime |
-| Lily/Skins | deferred | runtime, fetch-import | static scan requires review: runtime, fetch-import |
-| Lily/SoundExpanded | deferred | runtime | static scan requires review: runtime |
-| Lily/TempVariables2 | deferred | runtime | static scan requires review: runtime |
-| Lily/Video | deferred | dom, runtime | static scan requires review: dom, runtime |
-| local-storage | deferred | dom, runtime | static scan requires review: dom, runtime |
-| Longboost/color_channels | deferred | runtime | static scan requires review: runtime |
-| mbw/xml | deferred | dom | static scan requires review: dom |
-| mdwalters/notifications | deferred | runtime | static scan requires review: runtime |
-| navigator | deferred | dom | static scan requires review: dom |
-| NexusKitten/controlcontrols | deferred | dom, runtime | static scan requires review: dom, runtime |
-| NexusKitten/moremotion | deferred | runtime | static scan requires review: runtime |
-| NexusKitten/sgrab | deferred | fetch-import | static scan requires review: fetch-import |
+| Lily/MoreEvents | deferred | runtime | requires VM runtime hats/targets plus util.thread stack and received-data internals |
+| Lily/MoreTimers | deferred | runtime | requires VM runtime timing/event integration |
+| Lily/Skins | deferred | runtime, fetch-import | requires private VM renderer/skin and target internals plus HTTP(S) image fetch |
+| Lily/SoundExpanded | deferred | runtime | requires VM sound-bank/private sound runtime and direct target sprite sound state |
+| Lily/TempVariables2 | deferred | runtime | requires VM project lifecycle events and util.thread-local state |
+| Lily/Video | deferred | dom, runtime | requires DOM video/canvas elements plus VM renderer/runtime target integration |
+| local-storage | deferred | dom, runtime | requires page localStorage/storage events and VM extension-storage/project lifecycle |
+| Longboost/color_channels | deferred | runtime | requires private VM renderer skins/drawables and renderer dirty-state mutation |
+| mbw/xml | deferred | dom | requires DOMParser/XMLSerializer-style document nodes unavailable in the restricted worker |
+| mdwalters/notifications | deferred | runtime | requires VM notification consent, Notification API, Android service-worker notification fallback, and lifecycle cleanup |
+| navigator | deferred | dom | requires page media-query state; also reports navigator user-agent/device-memory metadata |
+| NexusKitten/controlcontrols | deferred | dom, runtime | requires direct editor DOM controls (flag/stop/pause/fullscreen) plus runtime-dispose cleanup |
+| NexusKitten/moremotion | deferred | runtime | requires unsandboxed Scratch.vm renderer plus util.target motion and bounds mutation |
+| NexusKitten/sgrab | deferred | fetch-import | explicitly requires unsandboxed execution; HTTP uses worker-supported Scratch.fetch |
 | NOname-awa/graphics2d | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | NOname-awa/more-comparisons | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | numerical-encoding-2 | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| obviousAlexC/newgroundsIO | deferred | dom, runtime | static scan requires review: dom, runtime |
-| obviousAlexC/penPlus | deferred | dom, runtime | static scan requires review: dom, runtime |
-| obviousAlexC/SensingPlus | deferred | dom, runtime | static scan requires review: dom, runtime |
-| penplus | deferred | runtime | static scan requires review: runtime |
-| pointerlock | deferred | dom, runtime | static scan requires review: dom, runtime |
+| obviousAlexC/newgroundsIO | deferred | dom, runtime | requires page DOM and location, Scratch.vm runtime and renderer, and reusable Scratch.external.evalAndReturn |
+| obviousAlexC/penPlus | deferred | dom, runtime | explicitly requires unsandboxed execution, renderer and target internals, and canvas, iframe, and page DOM |
+| obviousAlexC/SensingPlus | deferred | dom, runtime | requires page speech, device, touch, and clipboard APIs, DOM, Scratch.vm renderer and runtime, and util.target |
+| penplus | deferred | runtime | explicitly requires unsandboxed execution, Scratch.vm renderer, and util.target pen mutation |
+| pointerlock | deferred | dom, runtime | explicitly requires unsandboxed execution, document pointer-lock and event APIs, window resize, and the Scratch.vm canvas |
 | PwLDev/vibration | deferred | none | runtime corpus requires unsandboxed navigator.vibrate |
 | qxsck/data-analysis | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| qxsck/var-and-list | deferred | runtime | static scan requires review: runtime |
-| rixxyx | deferred | runtime | static scan requires review: runtime |
-| runtime-options | deferred | runtime | static scan requires review: runtime |
-| SharkPool/Camera | deferred | runtime | static scan requires review: runtime |
-| SharkPool/Font-Manager | deferred | runtime, fetch-import | static scan requires review: runtime, fetch-import |
-| shreder95ua/resolution | deferred | dom | static scan requires review: dom |
+| qxsck/var-and-list | deferred | runtime | requires main-thread util.target variable and list lookup plus util.runtime cloud and stage mutation |
+| rixxyx | deferred | runtime | registers a Scratch.vm.runtime AFTER_EXECUTE hook during source evaluation |
+| runtime-options | deferred | runtime | explicitly requires unsandboxed execution and reads or mutates VM runtime options, renderer, stage size, framerate, and events |
+| SharkPool/Camera | deferred | runtime | explicitly requires unsandboxed execution, Scratch.vm renderer and camera internals, and util.target |
+| SharkPool/Font-Manager | deferred | runtime, fetch-import | explicitly requires unsandboxed execution and Scratch.vm font and runtime hats; HTTP uses worker-supported Scratch.fetch |
+| shreder95ua/resolution | deferred | dom | window.screen width and height reporters require the page realm |
 | Skyhigh173/bigint | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| Skyhigh173/json | deferred | runtime | static scan requires review: runtime |
-| sound | deferred | runtime | static scan requires review: runtime |
+| Skyhigh173/json | deferred | runtime | captures unavailable Scratch.vm during source evaluation for list lookup integration |
+| sound | deferred | runtime | captures Scratch.vm.runtime.audioEngine during source evaluation and requires util.target sound playback |
 | steamworks | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| stretch | deferred | runtime | static scan requires review: runtime |
+| stretch | deferred | runtime | captures the Scratch.vm renderer and mutates util.target drawable scale state |
 | text | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| TheShovel/CanvasEffects | deferred | runtime | static scan requires review: runtime |
-| TheShovel/ColorPicker | deferred | dom, runtime | static scan requires review: dom, runtime |
-| TheShovel/CustomStyles | deferred | dom, runtime | static scan requires review: dom, runtime |
+| TheShovel/CanvasEffects | deferred | runtime | explicitly requires unsandboxed execution, Scratch.vm runtime lifecycle, and renderer resize and canvas styling |
+| TheShovel/ColorPicker | deferred | dom, runtime | creates a page input during source evaluation and starts Scratch.vm runtime hats |
+| TheShovel/CustomStyles | deferred | dom, runtime | creates and injects page stylesheet and monitor DOM and requires Scratch.vm stage geometry and util.target |
 | TheShovel/LZ-String | deferred | none | runtime corpus requires reusable Scratch.external eval/import |
-| TheShovel/ShovelUtils | deferred | runtime, fetch-import | static scan requires review: runtime, fetch-import |
+| TheShovel/ShovelUtils | deferred | runtime, fetch-import | explicitly requires unsandboxed execution and Scratch.vm access; HTTP uses worker-supported Scratch.fetch |
 | true-fantom/base | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | true-fantom/couplers | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | true-fantom/math | worker | none | runtime parity proven by gallery worker compatibility corpus |
-| true-fantom/network | deferred | dom, fetch-import | static scan requires review: dom, fetch-import |
+| true-fantom/network | deferred | dom, fetch-import | requires navigator network, user-agent, and connection APIs, document.URL, and window.screen; HTTP uses worker-supported Scratch.fetch |
 | true-fantom/regexp | worker | none | runtime parity proven by gallery worker compatibility corpus |
 | utilities | worker | fetch-import | runtime parity proven by gallery worker compatibility corpus |
-| veggiecan/browserfullscreen | deferred | dom, runtime | static scan requires review: dom, runtime |
-| veggiecan/LongmanDictionary | deferred | dom, fetch-import | static scan requires review: dom, fetch-import |
-| veggiecan/mobilekeyboard | deferred | dom | static scan requires review: dom |
-| vercte/dictionaries | deferred | runtime | static scan requires review: runtime |
-| Xeltalliv/clippingblending | deferred | runtime | static scan requires review: runtime |
-| Xeltalliv/simple3D | deferred | dom, runtime, nested-worker | static scan requires review: dom, runtime, nested-worker |
-| XeroName/Deltatime | deferred | runtime | static scan requires review: runtime |
-| XmerOriginals/closecontrol | deferred | dom | static scan requires review: dom |
+| veggiecan/browserfullscreen | deferred | dom, runtime | requires the document fullscreen API, window fullscreen events, and Scratch.vm runtime hats |
+| veggiecan/LongmanDictionary | deferred | dom, fetch-import | requires DOMParser and XML element queries; HTTP uses worker-supported Scratch.fetch |
+| veggiecan/mobilekeyboard | deferred | dom | explicitly requires unsandboxed execution and creates and appends page input DOM |
+| vercte/dictionaries | deferred | runtime | registers a Scratch.vm.runtime RUNTIME_DISPOSED hook during source evaluation |
+| Xeltalliv/clippingblending | deferred | runtime | explicitly requires unsandboxed execution and Scratch.vm renderer and shader internals |
+| Xeltalliv/simple3D | deferred | dom, runtime, nested-worker | explicitly requires unsandboxed execution, a nested Worker, a renderer Skin subclass, canvas and page DOM, and window and location access |
+| XeroName/Deltatime | deferred | runtime | explicitly requires unsandboxed execution and Scratch.vm runtime timing hooks |
+| XmerOriginals/closecontrol | deferred | dom | installs a page beforeunload listener during source evaluation |
 | ZXMushroom63/searchApi | deferred | none | runtime corpus requires unsandboxed page URL search parameters |
