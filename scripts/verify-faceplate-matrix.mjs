@@ -174,12 +174,17 @@ await buttons.nth(1).dispatchEvent('pointerup');
     const item = page.locator('[data-testid="bw-catalog-item"]').first();
     await item.waitFor({ state: 'visible', timeout: 10000 })
         .catch(() => fail('mb05-faceplate-matrix not in the catalog (vendored examples stale?)'));
+    const previousStageId = await page.evaluate(() =>
+        window.__vm.runtime.getTargetForStage()?.id);
     await item.click();
-    await page.waitForFunction(() => {
+    await page.waitForFunction(oldStageId => {
         const p = window.__vm.runtime.controllerPanel;
         const scr = p && p.getWidget('scr');
-        return scr && scr.type === 'matrix' && scr.binding?.variableName === 'screen';
-    }, { timeout: 15000 });
+        const stage = window.__vm.runtime.getTargetForStage();
+        return stage && stage.id !== oldStageId &&
+            stage.lookupVariableByNameAndType('screen', '') &&
+            scr && scr.type === 'matrix' && scr.binding?.variableName === 'screen';
+    }, previousStageId, { timeout: 15000 });
     const restored = await page.evaluate(() => {
         const p = window.__vm.runtime.controllerPanel;
         const names = p.getWidgetNames();
@@ -206,12 +211,13 @@ await buttons.nth(1).dispatchEvent('pointerup');
     // button -> variable -> display loop.  Here, isolate the seven-segment
     // binding contract from catalog-load/green-flag timing by changing the
     // real Scratch stage variable that production's binding pump reads.
-    const setScreen = async value => page.evaluate(nextValue => {
+    const setScreen = async value => page.waitForFunction(nextValue => {
         const stage = window.__vm.runtime.getTargetForStage();
         const variable = stage && stage.lookupVariableByNameAndType('screen', '');
-        if (!variable) throw new Error('catalog project has no stage variable named screen');
+        if (!variable) return false;
         variable.value = nextValue;
-    }, value);
+        return variable.value === nextValue;
+    }, value, { timeout: 15000 });
     await setScreen(IDLE);
     // re-open the controller view to see the face
     if (!await controllerButton().count()) fail('Controller button disappeared before sevenseg phase');
