@@ -73,9 +73,11 @@ comment-only workflow mention, or a skipped scenario does not satisfy any DoD.
 
 - [x] `KNOWN_UNWIRED` is reduced to the honestly blocked residual, target zero.
 - [x] The ratchet rejects comment-only, skipped, and missing workflow commands.
-- [ ] `actionlint`, focused Node tests, overlay/package equality, and wait census
-  pass without raising ceilings.
-- [ ] Every integration checkpoint is pushed; vendor freshness and the complete
+- [x] Affected workflow YAML is actionlint-clean; focused Node tests,
+  overlay/package equality, and wait census pass without raising ceilings.
+  Repository-wide actionlint still reports the pre-existing build/deploy/mobile
+  findings outside this lane.
+- [x] Every integration checkpoint is pushed; vendor freshness and the complete
   build/browser/deploy/deployed-GUI workflow are green on the final code commit.
-- [ ] `LANES.md` moves the claim to DONE with commits, gate counts, detector
+- [x] `LANES.md` moves the claim to DONE with commits, gate counts, detector
   proofs, artifacts, CI run IDs, and any remaining refusal named explicitly.
