@@ -450,6 +450,21 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs
 
+      # Physical product proof for the 74C922 gallery bench. This deliberately
+      # clicks three real keypad faces and reads both the production solver and
+      # the rendered LEDs: a dead X/Y wire, swapped code bit, stale example, or
+      # non-interactive face can all pass the model's isolated unit tests.
+      - name: Browser gate — physical 74C922 keypad encoder
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-74c922-keypad.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: 74c922-keypad-browser-proof
+          path: artifacts/74c922-keypad/
+          if-no-files-found: warn
+
       # The DRC's rule 8 (aggregate current) reads its ratings off the injected
       # engine and falls back to `getMaxCurrent: () => null` when the host did
       # not supply them — silently, because a conservative default is a

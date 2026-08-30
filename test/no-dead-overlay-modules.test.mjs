@@ -120,8 +120,7 @@ const KNOWN_DEAD = new Map([
     // m6502-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
     ['lib/bw-board/m6507-machine.js', {roadmap: '4.4',
         reason: 'Vendored; Atari 2600 / SBC6507 machine — future device target.'}],
-    ['lib/bw-board/m74c922.js', {roadmap: '4.4',
-        reason: 'Vendored; 4x4 keypad encoder IC — wired when a keypad part lands.'}],
+    // m74c922.js removed from KNOWN_DEAD: tier2-parts registers its physical keypad model.
     // mc6845.js removed from KNOWN_DEAD: now imported by upstream bw-board (tilevga).
     ['lib/bw-board/blinkenrocket-modem.js', {roadmap: '4.4',
         reason: 'Vendored; blinkenrocket audio modem — wired when firmware upload lands.'}],
