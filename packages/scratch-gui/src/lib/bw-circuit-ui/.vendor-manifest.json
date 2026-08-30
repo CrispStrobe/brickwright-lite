@@ -2,7 +2,7 @@
  "audio/buzzer-audio.js": "7b514a48a60ddb9a5f62af8785ece9ee2ed0bd90",
  "components/ArchitectureFace.jsx": "fa230111ed6aa1d07ab23403088030b7e8cb1394",
  "components/AsmDebugPanel.jsx": "ec9a12a452eaab5000eb7a0ac0182b378c070528",
- "components/BoardCanvas.jsx": "e1beac29bcf9c9f68fb9f0fbd3ca13644c31312e",
+ "components/BoardCanvas.jsx": "a9c402bc0322b1ea5dcb015792a3075f4ed1f36f",
  "components/BoardPanel.jsx": "a568e718b6cf5c927290f01b6695407bebd9b2a5",
  "components/BomPanel.jsx": "107613c28fc993356180d2c8b56ab1a29f17d45b",
  "components/BreadboardView.jsx": "773368a9c96d1b8c88a71188d995c3cf4224e1d5",
