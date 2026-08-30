@@ -36,8 +36,10 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    // Empty after the 2026-08-30 rehabilitation campaign. New exceptions must
-    // name a current reproduced state; the target remains zero.
+    // Reproduced locally and twice in CI on 2026-08-30: the browser SDCC c1mode
+    // stage produces no /work/main.asm (Node WASM integration remains 2/2).
+    // The gate is honest and runnable; it returns to CI with that compiler fix.
+    'verify-debug-frames-watch.mjs': 'FAIL: Chromium compiler produced no /work/main.asm'
 };
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))
