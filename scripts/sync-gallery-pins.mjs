@@ -79,13 +79,16 @@ export const BROKER_CAPABILITIES = Object.freeze([
 // Keeping this policy beside the generator prevents a hand-edited pin from
 // silently claiming runtime proof that will disappear on the next sync.
 export const RUNTIME_WORKER_PROVEN = Object.freeze([
+    '0832/rxFS2',
     '-SIPC-/consoles',
     '-SIPC-/time',
     'bitwise',
     'Clay/htmlEncode',
     'cs2627883/numericalencoding',
     'DogeisCut/FormatNumbers',
+    'CubesterYT/TurboHook',
     'encoding',
+    'fetch',
     'Lily/Cast',
     'Lily/CommentBlocks',
     'Lily/McUtils',
@@ -99,8 +102,11 @@ export const RUNTIME_WORKER_PROVEN = Object.freeze([
     'true-fantom/base',
     'true-fantom/couplers',
     'true-fantom/math',
-    'true-fantom/regexp'
+    'true-fantom/regexp',
+    'utilities'
 ]);
+
+const WORKER_COMPATIBLE_REQUIREMENTS = Object.freeze(['fetch-import']);
 
 export const RUNTIME_WORKER_DEFERRED = Object.freeze({
     'Lily/HackedBlocks': 'runtime corpus found no executable opcode for parity proof',
@@ -142,6 +148,8 @@ export function censusEntry (slug, source) {
 
 export function applyMigrationPolicy (slug, capabilities, entry) {
     const workerProven = RUNTIME_WORKER_PROVEN.includes(slug);
+    const incompatibleRequirements = capabilities.filter(capability =>
+        !WORKER_COMPATIBLE_REQUIREMENTS.includes(capability));
     const runtimeDeferral = RUNTIME_WORKER_DEFERRED[slug] || null;
     const missingReviewed = (REQUIRED_AMBIENT_REQUIREMENTS[slug] || [])
         .filter(capability => !capabilities.includes(capability));
@@ -149,17 +157,18 @@ export function applyMigrationPolicy (slug, capabilities, entry) {
         throw new Error(`gallery classifier lost reviewed ambient requirement for ${slug}: ` +
             missingReviewed.join(', '));
     }
-    if (workerProven && capabilities.length) {
-        throw new Error(`runtime-proven worker ${slug} acquired ambient requirements: ${capabilities.join(', ')}`);
+    if (workerProven && incompatibleRequirements.length) {
+        throw new Error(`runtime-proven worker ${slug} acquired ambient requirements: ` +
+            incompatibleRequirements.join(', '));
     }
     return {
         ...entry,
         brokerCapabilities: Array.isArray(entry.brokerCapabilities) ? entry.brokerCapabilities : [],
         migration: {
-            status: capabilities.length || runtimeDeferral ? 'deferred' : (workerProven ? 'worker' : 'candidate'),
-            reason: capabilities.length ? `static scan requires review: ${capabilities.join(', ')}` :
-                (runtimeDeferral || (workerProven ?
-                    'runtime parity proven by gallery worker compatibility corpus' : null))
+            status: workerProven ? 'worker' : (capabilities.length || runtimeDeferral ? 'deferred' : 'candidate'),
+            reason: workerProven ? 'runtime parity proven by gallery worker compatibility corpus' :
+                (capabilities.length ? `static scan requires review: ${capabilities.join(', ')}` :
+                    (runtimeDeferral || null))
         }
     };
 }
@@ -204,10 +213,10 @@ export function validateGalleryContract (document, expectedSlugs) {
             canonicalBroker.some((name, i) => name !== c.brokerCapabilities[i])) {
             throw new Error(`gallery broker capabilities are duplicated or non-canonical for ${slug}`);
         }
+        if (RUNTIME_WORKER_PROVEN.includes(slug) && c.migration.status !== 'worker') {
+            throw new Error(`runtime-proven gallery entry ${slug} was downgraded from worker`);
+        }
         if (c.migration.status === 'candidate') {
-            if (RUNTIME_WORKER_PROVEN.includes(slug)) {
-                throw new Error(`runtime-proven gallery entry ${slug} was downgraded from worker`);
-            }
             if (RUNTIME_WORKER_DEFERRED[slug]) {
                 throw new Error(`runtime-deferred gallery entry ${slug} was downgraded to candidate`);
             }
@@ -215,7 +224,8 @@ export function validateGalleryContract (document, expectedSlugs) {
                 throw new Error(`candidate gallery entry ${slug} widened its declaration`);
             }
         } else if (c.migration.status === 'worker') {
-            if (c.capabilities.length || !RUNTIME_WORKER_PROVEN.includes(slug) ||
+            if (c.capabilities.some(capability => !WORKER_COMPATIBLE_REQUIREMENTS.includes(capability)) ||
+                !RUNTIME_WORKER_PROVEN.includes(slug) ||
                 c.migration.reason !== 'runtime parity proven by gallery worker compatibility corpus') {
                 throw new Error(`worker gallery entry ${slug} lacks generator-owned runtime proof`);
             }

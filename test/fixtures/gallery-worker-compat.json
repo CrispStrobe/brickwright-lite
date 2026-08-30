@@ -1,13 +1,16 @@
 {
   "commit": "fc94e19ee259c9fc8465c5a0b69dc366085ab376",
   "cases": [
+    {"slug": "0832/rxFS2", "opcode": "webin", "args": {"STR": "https://fixture.invalid/rxfs.txt"}, "expected": "rxfs fixture", "fetch": {"responseText": "rxfs fixture", "calls": [{"url": "https://fixture.invalid/rxfs.txt"}]}},
     {"slug": "-SIPC-/consoles", "opcode": "Information", "args": {"string": "cp4-probe"}, "console": [["info", "cp4-probe"]]},
     {"slug": "-SIPC-/time", "opcode": "daysInMonth", "args": {"MONTH": "2", "YEAR": "2000"}, "expected": 29},
     {"slug": "bitwise", "opcode": "toNumberBits", "args": {"CENTRAL": 32}, "expected": "100000"},
     {"slug": "Clay/htmlEncode", "opcode": "encode", "args": {"text": "<b>&\"'"}},
     {"slug": "cs2627883/numericalencoding", "opcode": "NumericalEncode", "args": {"DATA": "Hi"}, "after": {"opcode": "GetNumericalEncoded", "args": {}, "expected": "000072000105"}},
     {"slug": "DogeisCut/FormatNumbers", "opcode": "formatNumber", "args": {"NUM": 1234.5, "NOTATION": "comma separated", "DECIMALS": 2}, "expected": "1,234.50"},
+    {"slug": "CubesterYT/TurboHook", "opcode": "webhook", "args": {"hookDATA": "{\"content\":\"worker proof\"}", "hookURL": "https://fixture.invalid/hook"}, "fetch": {"responseText": "accepted", "calls": [{"url": "https://fixture.invalid/hook", "options": {"method": "POST", "headers": {"Content-Type": "application/json"}, "body": "{\"content\":\"worker proof\"}"}}]}},
     {"slug": "encoding", "opcode": "encode", "args": {"string": "apple", "code": "Base64"}, "expected": "YXBwbGU="},
+    {"slug": "fetch", "opcode": "get", "args": {"URL": "https://fixture.invalid/fetch.txt"}, "expected": "fetch fixture", "fetch": {"responseText": "fetch fixture", "calls": [{"url": "https://fixture.invalid/fetch.txt"}]}},
     {"slug": "Lily/Cast", "opcode": "typeOf", "args": {"INPUT": 42}},
     {"slug": "Lily/CommentBlocks", "opcode": "commentReporter", "args": {"INPUT": "parity"}, "expected": "parity"},
     {"slug": "Lily/McUtils", "opcode": "managerReporter", "args": {"INPUTA": true, "INPUTB": "yes", "INPUTC": "no"}, "expected": "yes"},
@@ -21,6 +24,7 @@
     {"slug": "true-fantom/base", "opcode": "is_base_block", "args": {"A": "101101", "B": "2"}, "expected": true},
     {"slug": "true-fantom/couplers", "opcode": "value_in_boolean_block", "args": {"VALUE": "false"}, "expected": "false"},
     {"slug": "true-fantom/math", "opcode": "exponent_block", "args": {"A": 12, "B": 5}, "expected": 248832},
-    {"slug": "true-fantom/regexp", "opcode": "regexp_equal_block", "args": {"A": "/apple/gi", "B": "/apple/ig"}, "expected": true}
+    {"slug": "true-fantom/regexp", "opcode": "regexp_equal_block", "args": {"A": "/apple/gi", "B": "/apple/ig"}, "expected": true},
+    {"slug": "utilities", "opcode": "fetchFrom", "args": {"URL": "https://fixture.invalid/utilities.txt"}, "expected": "utilities fixture", "fetch": {"responseText": "utilities fixture", "calls": [{"url": "https://fixture.invalid/utilities.txt"}]}}
   ]
 }

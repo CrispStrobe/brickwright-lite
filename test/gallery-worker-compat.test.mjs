@@ -34,18 +34,30 @@ const enumProxy = new Proxy({}, {get: (_target, property) => String(property)});
 const translate = Object.assign(message => typeof message === 'object' ? (message.default || '') : message,
     {setup: () => {}});
 
-function load (source, restricted) {
+function load (source, restricted, fetchFixture) {
     const registrations = [];
     const consoleEvents = [];
     const capturedConsole = Object.fromEntries(['log', 'info', 'warn', 'error', 'debug', 'clear', 'group',
         'groupCollapsed', 'groupEnd', 'time', 'timeLog', 'timeEnd'].map(name =>
         [name, (...args) => consoleEvents.push([name, ...args])]));
+    const fetchCalls = [];
+    const deterministicFetch = async (url, options) => {
+        fetchCalls.push(JSON.parse(JSON.stringify({url: String(url), ...(options ? {options} : {})})));
+        return {
+            ok: true,
+            status: 200,
+            text: async () => fetchFixture ? fetchFixture.responseText : '',
+            json: async () => JSON.parse(fetchFixture ? fetchFixture.responseText : '{}'),
+            arrayBuffer: async () => new TextEncoder().encode(fetchFixture ? fetchFixture.responseText : '').buffer
+        };
+    };
     const Scratch = {
         ArgumentType: enumProxy,
         BlockType: enumProxy,
         TargetType: enumProxy,
         Cast,
         translate,
+        fetch: deterministicFetch,
         extensions: {register: extension => registrations.push(extension), unsandboxed: !restricted,
             isPenguinMod: false}
     };
@@ -58,7 +70,7 @@ function load (source, restricted) {
     }
     vm.runInContext(source.toString('utf8'), context, {timeout: 1000});
     assert.equal(registrations.length, 1, 'source must register exactly one extension');
-    return {extension: registrations[0], context, consoleEvents};
+    return {extension: registrations[0], context, consoleEvents, fetchCalls};
 }
 
 function normalizedInfo (extension) {
@@ -72,8 +84,8 @@ for (const entry of fixture.cases) {
         const sourcePath = path.join(extensionsRoot, `${entry.slug}.js`);
         const source = readFileSync(sourcePath);
         assert.equal(sha256(source), pin.repo, 'immutable repository bytes must match the reviewed pin');
-        const oldRealm = load(source, false);
-        const workerRealm = load(source, true);
+        const oldRealm = load(source, false, entry.fetch);
+        const workerRealm = load(source, true, entry.fetch);
         const oldAdapter = oldRealm.extension;
         const worker = workerRealm.extension;
         assert.equal(workerRealm.context.Scratch.extensions.unsandboxed, false);
@@ -91,6 +103,8 @@ for (const entry of fixture.cases) {
         if (Object.hasOwn(entry, 'expected')) assert.deepEqual(actual, entry.expected, 'representative oracle');
         assert.deepEqual(workerRealm.consoleEvents, oldRealm.consoleEvents, 'console side-effect parity');
         if (entry.console) assert.deepEqual(workerRealm.consoleEvents, entry.console, 'console side-effect oracle');
+        assert.deepEqual(workerRealm.fetchCalls, oldRealm.fetchCalls, 'fetch side-effect parity');
+        if (entry.fetch) assert.deepEqual(workerRealm.fetchCalls, entry.fetch.calls, 'deterministic fetch oracle');
         if (entry.after) {
             const oldAfter = await oldAdapter[entry.after.opcode](structuredClone(entry.after.args));
             const workerAfter = await worker[entry.after.opcode](structuredClone(entry.after.args));
@@ -142,5 +156,18 @@ test('published migration counts distinguish proven, awaiting-proof and ambient 
         result[pin.migration.status] = (result[pin.migration.status] || 0) + 1;
         return result;
     }, {});
-    assert.deepEqual(counts, {worker: 21, deferred: 99});
+    assert.deepEqual(counts, {worker: 25, deferred: 95});
+});
+
+test('worker-safe fetch requirements remain measured while their proven cohort stays promoted', () => {
+    for (const slug of ['0832/rxFS2', 'CubesterYT/TurboHook', 'fetch', 'utilities']) {
+        assert.deepEqual(pins.extensions[slug].capabilities, ['fetch-import']);
+        assert.equal(pins.extensions[slug].migration.status, 'worker');
+        const mutated = structuredClone(pins);
+        mutated.extensions[slug].migration = {
+            status: 'deferred', reason: 'static scan requires review: fetch-import'
+        };
+        assert.throws(() => validateGalleryContract(mutated, Object.keys(mutated.extensions)),
+            new RegExp(`runtime-proven gallery entry ${slug.replace('/', '\\/')} was downgraded from worker`));
+    }
 });

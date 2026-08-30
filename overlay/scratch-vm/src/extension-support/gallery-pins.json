@@ -41,8 +41,8 @@
         "fetch-import"
       ],
       "migration": {
-        "status": "deferred",
-        "reason": "static scan requires review: fetch-import"
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -592,8 +592,8 @@
         "fetch-import"
       ],
       "migration": {
-        "status": "deferred",
-        "reason": "static scan requires review: fetch-import"
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -696,8 +696,8 @@
         "fetch-import"
       ],
       "migration": {
-        "status": "deferred",
-        "reason": "static scan requires review: fetch-import"
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1691,8 +1691,8 @@
         "fetch-import"
       ],
       "migration": {
-        "status": "deferred",
-        "reason": "static scan requires review: fetch-import"
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
