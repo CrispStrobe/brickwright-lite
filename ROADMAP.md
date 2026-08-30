@@ -336,32 +336,108 @@ Each task is independently shippable and none blocks the next.
 
 ## 4. Standing debt
 
+### 4.1 The dead-module ratchet — TRIAGED 2026-08-30, and the instrument was wrong
+
 **Dead-module ratchet** (`test/no-dead-overlay-modules.test.mjs`) — this entry said **five**
 entries and "the list may only go down". Measured 2026-08-22: **sixteen**. The ratchet did not
 fail; the claim about it did, and nobody noticed because a growing exclusion list still shows
 green.
 
-Worse than the count is the shape. **Eleven of the sixteen are of the form "vendored; wired when
-X lands"** — `avr-peripherals.js` (AVR debug), `face-live.js` (tethered hardware),
-`m6507-machine.js` (Atari 2600 / SBC6507), `m74c922.js` (keypad part), `blinkenrocket-modem.js`
-(firmware upload), `zx-tzx.js` (ZX tape loading), plus the bw-circuit-ui demo modules and the
-`sdcc-wasm` dist bundles.
+Triaged 2026-08-30 under this file's own rule (promote with what-it-takes and blocked-on, or
+delete). **16 → 13**, and each remaining entry now names the item below that owns it, enforced:
 
-**That is a roadmap hiding in a test's exclusion list.** Six future device/hardware features are
-recorded nowhere else in this repo: not in this file, not in `PLAN.md`. A reader of the planning
-docs cannot see them, and a reader of the test file sees them as noise to scroll past. Either
-promote each to a tracked item here (with the evidence rule applied — what would it take, what is
-it blocked on) or delete the vendored file until its feature is real. An exclusion that says
-"later" with no owner and no date is a to-do with a green checkmark on it.
+| left the list | why |
+|---|---|
+| `schematic-svg.js` | never was dead — `scripts/render-schematic.mjs` imports it, and that script IS the `verify:schematic-corpus` gate |
+| `trace-oracle.js` | never was dead — `scripts/oracle-differential.mjs` imports it |
+| `flyout-resize.js` | DELETED. Ours, unwired, and its feature is deferred rather than pending (§3.2) |
 
-The one genuinely ours remains `lib/flyout-resize.js`: it bridges the pane size vocabulary to
-Blockly's flyout for the LEFT column and has no caller because only the right column is sized
-today. `components/gui/pane-column.jsx` came off the list in §1.1.
+**Two of twelve "known dead" modules had a live consumer, and the scan was never pointed at it.**
+It walked `packages/scratch-gui/src` and nothing else, so a module whose only caller is a *tool*
+read as dead — for as long as the list has existed. The scan now also walks `scripts/`.
 
-**Attribution wart** — the `project-data.js` rotation-centre fix was swept into `333fae8`
-("vendor bw-circuit-ui") by a concurrent `git add -A`. Content is correct and verified; only the
-attribution is wrong. Not worth rewriting under another active session. Recorded so the commit
-log's oddity has an explanation.
+It deliberately still does **not** walk `test/`. Every bug in that file's header was correct code
+that passed its own tests; a test is the one caller that proves nothing, and counting tests as
+consumers would make the ratchet green for exactly the modules it exists to find. The distinction
+is: `scripts/` ships behaviour (a gate, a build step, a CLI), `test/` observes it.
+
+**The anchor gate.** §4 said the exclusion list was "a roadmap hiding in a test", and the fix for
+that was a rule somebody had to remember. It is now a test: every entry carries a `roadmap` field,
+and the gate refuses an entry whose item does not exist **or whose item never mentions the file by
+name** — because sixteen entries pointing at one heading called "standing debt" is the state this
+started in, and a gate that only checked the heading existed would have called it ownership. The
+gate is mutation-proven in-place (`the anchor gate can fail (three ways)`): a fabricated anchorless
+entry, one naming §99.9, and one pointed at a real item that does not name it.
+
+**Why "delete the vendored file" is not the tool the rule assumed.** For a file we wrote it is
+(that is how `flyout-resize.js` went). For a vendored one it is not: `sync-bw-board.mjs --dir`
+enumerates the source tree and restores anything missing, so a deletion in lite survives until the
+next sync. The only durable form is an entry in the sync script's `EXCLUDE` set — and that set
+exists for one hard reason (`pin-functions.js` imports node builtins and cannot enter a browser
+bundle), not for tidiness. Two rules stand against widening it: *"vendor scripts must copy the
+complete tree or fail before writing"* — a partial vendor shipped mixed builds for days once — and
+the script's own import-resolution check, which throws the moment upstream wires an excluded leaf
+to anything (`imports ./m74c922.js, which was not vendored`). A discretionary EXCLUDE is a landmine
+armed by somebody else's commit in another repo. So the vendored entries below are **promoted, not
+deleted**, and that is the reasoned answer to the rule rather than a dodge of it.
+
+### 4.2 sdcc-wasm dist: loaded by computed URL, which no static scan can follow
+
+`sdcc.js`, `sdas8051.js` and `sdld.js` under `lib/sdcc-wasm/dist/` are Emscripten output. Verified
+2026-08-30: `lib/sdcc-wasm/compiler.js` lines 44–46 load all three as
+`import(/* webpackIgnore: true */ resolve('<name>'))`. The specifier is a **function call**, so no
+import scan can resolve it and no scan ever will — this is not debt awaiting a decision, it is a
+permanent property of loading an Emscripten artifact by URL.
+
+**What it would take to remove the exclusion:** nothing worth doing. Rewriting the loader to use
+literal specifiers would make webpack try to bundle a multi-megabyte Emscripten module into the
+app chunk, which is the thing `webpackIgnore` exists to prevent.
+**Blocked on:** nothing. Closed by design; the entry stays because the *scanner* cannot see the
+caller, not because the caller is missing.
+
+### 4.3 bw-circuit-ui is vendored wholesale, demo entry included
+
+`sync-bw-circuit-ui.mjs` copies upstream's `src` tree rather than cherry-picking, which is
+deliberate: a cherry-picked vendor is how a partial tree shipped mixed builds. Four files arrive
+that lite does not use.
+
+| file | what it would take to wire it | blocked on |
+|---|---|---|
+| `main.jsx` | nothing — it is upstream's standalone demo entry point, and lite has its own | never. It is not a feature; it is another app's `index.js` |
+| `demo-netlist.js` | nothing — the fixture the demo above loads | same |
+| `export-png.js` | a "save schematic as PNG" affordance in `SchematicPanel.jsx`, plus a decision about where the file goes on iOS/Android (the share sheet, not a download) | product decision. The SVG path already exists via `render-schematic.mjs`; PNG is a convenience nobody has asked for |
+| `simulation.js` | nothing, and it should stay unwired: lite drives the board through **bw-board**, and "one board, one truth" is the law most regressions have violated. Wiring bw-circuit-ui's own simulation shim would create a second engine | nothing. Wiring it would be the bug |
+
+Three of the four are permanently correct as exclusions. `export-png.js` is the only one with a
+plausible future, and it has no date because nobody has asked for it — which is now written down
+here rather than implied by a one-line comment in a test.
+
+### 4.4 bw-board device modules waiting on their device
+
+Six leaves of the vendored bw-board tree. Each is a leaf in the strict sense — nothing inside the
+vendored tree imports it either — so they cost nothing in the bundle (webpack never reaches them)
+and everything in legibility, which is what §4 was complaining about. These are the six device and
+hardware features the planning docs could not see.
+
+| file | the feature | what it would take | blocked on |
+|---|---|---|---|
+| `avr-peripherals.js` | SPI/I2C peripheral models on the AVR debug path | a boundary-D AVR debug target that exposes bus traffic, then registering these models with the device registry and asserting a consumer (producer-must-assert-consumer) | the boundary-D debugger port for avr8js — the next coordinator piece named in `bw-setup.md`, not started |
+| `face-live.js` | resolving a board face against **tethered** hardware instead of the simulated board | a live-hardware transport (ScratchLink/WebSerial is present; a board-identity handshake is not) and a decision about what happens when the tethered board disagrees with the designed one | tethered-hardware mode, which has no design yet. `§3.4` long-horizon |
+| `m6507-machine.js` | Atari 2600 / SBC6507 as a device target | a device-selector entry, an example set, and a display path — the 6502 workstation shape already exists (`test/6502-workstation.test.mjs`), so this is mostly wiring plus content | nothing technical. Unscheduled: no example corpus, and a device with no lessons is a device nobody uses |
+| `m74c922.js` | 4×4 keypad encoder IC as a placeable part | a bw-parts sidecar (datasheet-audited terminals + SVG art) before the model is reachable from the designer | bw-parts. The engine half is vendored and idle until the part exists |
+| `blinkenrocket-modem.js` | audio-modem firmware upload to a Blinkenrocket | a UI affordance for "upload over the headphone jack", and the browser audio-output path to drive it | no owner. The firmware regression canary (`blinkenrocket-firmware`) exists on the box; the app-side feature does not |
+| `zx-tzx.js` | loading ZX Spectrum tape images | a Z80 machine target that accepts tape input — `z80-debug.js` and `z80-extract.js` both came OFF this list already, so the machine half is live; the tape half is not | a file-in affordance and a decision about where tape images come from (bundled corpus vs user upload) |
+
+None of these has an owner, and saying so is the point: the rule was "no entry may remain *later*,
+no owner, no date", and the honest resolution for five of six is **no owner, and here is exactly
+what the next person would have to build**. That is a tracked item. "Wired when AVR debug lands"
+was not.
+
+### 4.5 Attribution wart
+
+The `project-data.js` rotation-centre fix was swept into `333fae8` ("vendor bw-circuit-ui") by a
+concurrent `git add -A`. Content is correct and verified; only the attribution is wrong. Not worth
+rewriting under another active session. Recorded so the commit log's oddity has an explanation.
 
 ---
 

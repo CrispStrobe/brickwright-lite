@@ -19,6 +19,21 @@
 // overlay file that patches an upstream path is imported by upstream code that
 // the overlay alone cannot see. Scanning only the overlay reports 16 dead
 // modules, 6 of them false. Scanning the integrated tree reports 10, all real.
+//
+// ...and it scans `scripts/` too, which it did not until 2026-08-30. An app
+// module can have a consumer that is not app code: `render-schematic.mjs` (the
+// `verify:schematic-corpus` gate) imports `schematic-svg.js`, and
+// `oracle-differential.mjs` imports `trace-oracle.js`. Both were carried in
+// KNOWN_DEAD for as long as that list has existed, because the scan looked in
+// exactly one place and answered confidently from it.
+//
+// `test/` is NOT scanned, and that is the doctrine, not an oversight. Every bug
+// in the header above was correct code that passed its own tests; a test is
+// therefore the one caller that proves nothing. Counting tests as consumers
+// would make this file green for precisely the modules it exists to find.
+//
+// ROADMAP §4.1 has the triage, the numbers, and why deleting a VENDORED file is
+// not the tool the roadmap thought it was.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,25 +46,36 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
 const overlaySrc = resolve(repo, 'overlay/scratch-gui/src');
 const builtSrc = resolve(repo, 'packages/scratch-gui/src');
+const scriptsDir = resolve(repo, 'scripts');
+const roadmapPath = resolve(repo, 'ROADMAP.md');
 
 /**
- * Modules that are legitimately imported by nobody, each with the reason.
+ * Modules that are legitimately imported by nobody, each with the reason and
+ * the ROADMAP item that owns it.
  *
  * An entry here is a claim that the file has a caller outside the import
  * graph — a runtime loader, a separate entry point, a build step. "We might
  * use it later" is not a reason; delete it and let git remember.
+ *
+ * `roadmap` is not decoration. An exclusion with a reason but no owner is a
+ * to-do with a green checkmark on it, which is what §4 said about the state
+ * this list was in. The gate below refuses an entry whose anchor does not
+ * exist, and refuses one whose section does not NAME the file — a heading
+ * vague enough to cover anything owns nothing.
  */
 const ALLOWED = new Map([
-    ['lib/sdcc-wasm/dist/sdcc.js',
-        'Emscripten output. Fetched at runtime by the WASM compile driver, never imported.'],
-    ['lib/sdcc-wasm/dist/sdas8051.js',
-        'Emscripten output, as above (assembler).'],
-    ['lib/sdcc-wasm/dist/sdld.js',
-        'Emscripten output, as above (linker).'],
-    ['lib/bw-circuit-ui/main.jsx',
-        'bw-circuit-ui\'s own standalone demo entry point. Vendored wholesale by ' +
-        'sync-bw-circuit-ui.mjs, which copies the upstream src tree rather than ' +
-        'cherry-picking; unused here by design.']
+    ['lib/sdcc-wasm/dist/sdcc.js', {roadmap: '4.2',
+        reason: 'Emscripten output. Loaded at runtime by compiler.js as ' +
+            '`import(/* webpackIgnore: true */ resolve(\'sdcc.js\'))` — a computed ' +
+            'specifier, which no static scan can follow. Verified 2026-08-30.'}],
+    ['lib/sdcc-wasm/dist/sdas8051.js', {roadmap: '4.2',
+        reason: 'Emscripten output, as above (assembler). compiler.js:45.'}],
+    ['lib/sdcc-wasm/dist/sdld.js', {roadmap: '4.2',
+        reason: 'Emscripten output, as above (linker). compiler.js:46.'}],
+    ['lib/bw-circuit-ui/main.jsx', {roadmap: '4.3',
+        reason: 'bw-circuit-ui\'s own standalone demo entry point. Vendored wholesale by ' +
+            'sync-bw-circuit-ui.mjs, which copies the upstream src tree rather than ' +
+            'cherry-picking; unused here by design.'}]
 ]);
 
 /**
@@ -60,43 +86,48 @@ const ALLOWED = new Map([
  * name; removing one means editing this list in the same commit.
  */
 const KNOWN_DEAD = new Map([
-    ['lib/bw-circuit-ui/model/schematic-svg.js',
-        'The headless SVG renderer for the bwc CLI (info/convert/render/roundtrip). ' +
-        'One description, two renderers: the lite app draws schematics via ' +
-        'SchematicPanel.jsx (React), and this is its headless twin — both consume ' +
-        'schematic-symbols.js. Vendored with the importer set for version ' +
-        'lockstep, but the CLI is not in the app bundle, so it is intentionally ' +
-        'unused in-app.'],
-    ['lib/trace-oracle.js',
-        'The referee (reference trace interpreter + comparator) - consumed by ' +
-        'scripts/oracle-differential.mjs, the layer-4 C-vs-referee differential, ' +
-        'which imports from the integrated packages/ tree rather than the app ' +
-        'bundle. Not app code; vendored beside sb3-creator.js so the two stay ' +
-        'in version lockstep.'],
+    // schematic-svg.js was here, and never belonged: scripts/render-schematic.mjs
+    // imports it, and that script IS the `verify:schematic-corpus` gate. Left the
+    // list 2026-08-30 when the scan started reading scripts/.
+    // trace-oracle.js was here for the same reason: scripts/oracle-differential.mjs
+    // imports it. Two of twelve "known dead" modules had a live consumer the scan
+    // was never pointed at.
     // pane-column.jsx was here. Its collapsed-strip branch was the only part with a
     // caller waiting for it, and pane-strip.jsx now does that job for the one column
     // that collapses; the rest of it rendered the two-slot layout, which was ruled out
     // as not worth breaking Scratch's <Tabs> apart for (BLOCKED.md, "pane-slots"). Kept
     // as a comment rather than silently dropped, because the ratchet's whole point is
     // that the list moving is visible.
-    ['lib/flyout-resize.js',
-        'Bridges the pane size vocabulary to Blockly\'s flyout for the LEFT column. ' +
-        'Written, never imported; only the right column is sized today.'],
-    ['lib/bw-circuit-ui/model/demo-netlist.js', 'Vendored; used only by the standalone demo.'],
-    ['lib/bw-circuit-ui/model/export-png.js', 'Vendored; PNG export is not surfaced in lite.'],
-    ['lib/bw-circuit-ui/model/simulation.js', 'Vendored; lite drives the board through bw-board.'],
+    // flyout-resize.js was here, and is now DELETED (2026-08-30). It was the one
+    // entry that was genuinely ours, genuinely unwired, and whose feature is
+    // deferred rather than pending (§3.2 pane-slots). The roadmap's rule for that
+    // case is "delete the vendored file until its feature is real", and for a file
+    // we wrote, deletion is a tool we actually have. git remembers it.
+    ['lib/bw-circuit-ui/model/demo-netlist.js', {roadmap: '4.3',
+        reason: 'Vendored; used only by bw-circuit-ui\'s standalone demo (main.jsx).'}],
+    ['lib/bw-circuit-ui/model/export-png.js', {roadmap: '4.3',
+        reason: 'Vendored; PNG export of a schematic is not surfaced in lite.'}],
+    ['lib/bw-circuit-ui/model/simulation.js', {roadmap: '4.3',
+        reason: 'Vendored; lite drives the board through bw-board, not through ' +
+            'bw-circuit-ui\'s own simulation shim.'}],
     // machine-extract.js removed from KNOWN_DEAD: now imported by upstream circuit-ui.
     // bw-board vendored tree: device-specific modules synced for completeness, wired when
     // the corresponding device target or debug view lands. Each is a leaf — nothing within
     // the vendored tree imports it either; the sync copies the full src/ tree.
-    ['lib/bw-board/avr-peripherals.js', 'Vendored; AVR peripheral extensions (SPI/I2C devices) — wired when AVR debug lands.'],
-    ['lib/bw-board/face-live.js', 'Vendored; live-mode face resolver — wired when tethered hardware lands.'],
+    ['lib/bw-board/avr-peripherals.js', {roadmap: '4.4',
+        reason: 'Vendored; AVR peripheral extensions (SPI/I2C devices) — wired when AVR debug lands.'}],
+    ['lib/bw-board/face-live.js', {roadmap: '4.4',
+        reason: 'Vendored; live-mode face resolver — wired when tethered hardware lands.'}],
     // m6502-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
-    ['lib/bw-board/m6507-machine.js', 'Vendored; Atari 2600 / SBC6507 machine — future device target.'],
-    ['lib/bw-board/m74c922.js', 'Vendored; 4x4 keypad encoder IC — wired when keypad part lands.'],
+    ['lib/bw-board/m6507-machine.js', {roadmap: '4.4',
+        reason: 'Vendored; Atari 2600 / SBC6507 machine — future device target.'}],
+    ['lib/bw-board/m74c922.js', {roadmap: '4.4',
+        reason: 'Vendored; 4x4 keypad encoder IC — wired when a keypad part lands.'}],
     // mc6845.js removed from KNOWN_DEAD: now imported by upstream bw-board (tilevga).
-    ['lib/bw-board/blinkenrocket-modem.js', 'Vendored; blinkenrocket audio modem — wired when firmware upload lands.'],
-    ['lib/bw-board/zx-tzx.js', 'Vendored; ZX Spectrum tape format — wired when tape loading lands.'],
+    ['lib/bw-board/blinkenrocket-modem.js', {roadmap: '4.4',
+        reason: 'Vendored; blinkenrocket audio modem — wired when firmware upload lands.'}],
+    ['lib/bw-board/zx-tzx.js', {roadmap: '4.4',
+        reason: 'Vendored; ZX Spectrum tape format — wired when tape loading lands.'}],
     // vdu-decoder.js removed from KNOWN_DEAD: now imported by vdu-terminal.jsx (BBC BASIC VDU canvas).
     // z80-debug.js removed from KNOWN_DEAD: now imported by debug-target-factory (Z80 interactive target).
     // z80-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
@@ -108,9 +139,75 @@ function walk (dir, out = []) {
     for (const name of readdirSync(dir)) {
         const p = join(dir, name);
         if (statSync(p).isDirectory()) walk(p, out);
-        else if (['.js', '.jsx'].includes(extname(p))) out.push(p);
+        else if (['.js', '.jsx', '.mjs'].includes(extname(p))) out.push(p);
     }
     return out;
+}
+
+/**
+ * Every module specifier written anywhere a CONSUMER can live.
+ *
+ * Two places: the integrated app tree, and `scripts/`. Not `test/` — see the
+ * header. A file's basename appearing here is a weak signal (two modules with
+ * the same basename are indistinguishable) but it is the conservative
+ * direction: it can only ever call a dead module live, never a live one dead,
+ * and calling a live module dead is the mistake that nearly deleted a fix.
+ */
+function referencedBasenames () {
+    const referenced = new Set();
+    const files = [...walk(builtSrc), ...(existsSync(scriptsDir) ? walk(scriptsDir) : [])];
+    for (const f of files) {
+        for (const m of readFileSync(f, 'utf8').matchAll(SPEC)) {
+            const spec = m[1] || m[2] || m[3];
+            const base = spec.replace(/\/$/, '').split('/').pop();
+            referenced.add(base);
+            referenced.add(base.replace(/\.(js|jsx|mjs)$/, ''));
+        }
+    }
+    return referenced;
+}
+
+/**
+ * ROADMAP `### N.M …` sections, id -> the section's body.
+ *
+ * The body is what makes the anchor gate mean something: an entry must be
+ * NAMED by the item that claims to own it. Pointing sixteen exclusions at one
+ * heading called "standing debt" would otherwise satisfy a gate that only
+ * checked the heading exists, and that is the state §4 was already in.
+ */
+function roadmapSections () {
+    const src = readFileSync(roadmapPath, 'utf8');
+    const out = new Map();
+    const heads = [...src.matchAll(/^###\s+(\d+\.\d+[a-z]?)\s+([^\n]*)$/gm)];
+    for (let i = 0; i < heads.length; i++) {
+        const start = heads[i].index + heads[i][0].length;
+        const end = i + 1 < heads.length ? heads[i + 1].index : src.length;
+        out.set(heads[i][1], src.slice(start, end));
+    }
+    return out;
+}
+
+/** The anchor gate itself, as a function, so it can be run against a fabricated
+ *  entry as well as the real ones. A gate nobody has watched fail is a claim. */
+function anchorComplaints (entries, sections) {
+    const bad = [];
+    for (const [path, entry] of entries) {
+        const name = basename(path);
+        if (!entry || typeof entry !== 'object' || !entry.roadmap) {
+            bad.push(`${path}: no roadmap anchor — "later" with no owner and no date`);
+            continue;
+        }
+        const body = sections.get(entry.roadmap);
+        if (body === undefined) {
+            bad.push(`${path}: names ROADMAP §${entry.roadmap}, which does not exist`);
+        } else if (!body.includes(name)) {
+            bad.push(`${path}: ROADMAP §${entry.roadmap} exists but never mentions ${name}`);
+        }
+        if (!entry.reason || entry.reason.length <= 20) {
+            bad.push(`${path}: listed without a real reason`);
+        }
+    }
+    return bad;
 }
 
 /**
@@ -159,17 +256,7 @@ test('every overlay module is imported by something', {
     skip: existsSync(builtSrc) ? false :
         'packages/scratch-gui not integrated — run `npm run integrate` first'
 }, () => {
-    const all = walk(builtSrc);
-    const referenced = new Set();
-    for (const f of all) {
-        const src = readFileSync(f, 'utf8');
-        for (const m of src.matchAll(SPEC)) {
-            const spec = m[1] || m[2] || m[3];
-            const base = spec.replace(/\/$/, '').split('/').pop();
-            referenced.add(base);
-            referenced.add(base.replace(/\.(js|jsx)$/, ''));
-        }
-    }
+    const referenced = referencedBasenames();
 
     const dead = [];
     for (const f of walk(overlaySrc)) {
@@ -201,16 +288,7 @@ test('KNOWN_DEAD entries are still dead, and get removed when they are not', {
     // The mirror of the test above, and the one that makes the ratchet tighten.
     // A file listed as dead that has since been wired must leave the list, or
     // the list slowly becomes fiction and stops being read.
-    const all = walk(builtSrc);
-    const referenced = new Set();
-    for (const f of all) {
-        for (const m of readFileSync(f, 'utf8').matchAll(SPEC)) {
-            const spec = m[1] || m[2] || m[3];
-            const base = spec.replace(/\/$/, '').split('/').pop();
-            referenced.add(base);
-            referenced.add(base.replace(/\.(js|jsx)$/, ''));
-        }
-    }
+    const referenced = referencedBasenames();
     const revived = [...KNOWN_DEAD.keys()].filter((rel) => {
         const name = basename(rel);
         return referenced.has(name) || referenced.has(name.replace(/\.(js|jsx)$/, ''));
@@ -220,13 +298,60 @@ test('KNOWN_DEAD entries are still dead, and get removed when they are not', {
         `from the list:\n` + revived.map((r) => `  ${r}`).join('\n'));
 });
 
-test('every ALLOWED entry states a reason', () => {
-    for (const [path, reason] of ALLOWED) {
-        assert.ok(reason && reason.length > 20,
-            `${path} is allow-listed without a real reason`);
-    }
-    for (const [path, reason] of KNOWN_DEAD) {
-        assert.ok(reason && reason.length > 20,
-            `${path} is in KNOWN_DEAD without a real reason`);
-    }
+/**
+ * Every exclusion is owned by a roadmap item that names it.
+ *
+ * ROADMAP §4 measured this list at sixteen and called it "a roadmap hiding in a
+ * test's exclusion list": six future device features recorded nowhere a reader
+ * of the planning docs would ever look. Its rule — promote each to a tracked
+ * item with what-it-takes and blocked-on, or delete the file until its feature
+ * is real — held for exactly as long as somebody remembered it.
+ *
+ * This is the same rule, enforced. A new exclusion cannot be added without
+ * writing the item it belongs to, and an item cannot be a vague heading,
+ * because the section has to say the file's name.
+ */
+test('every exclusion is owned by a ROADMAP item that names it', () => {
+    const sections = roadmapSections();
+    assert.ok(sections.size >= 5,
+        `parsed only ${sections.size} numbered ROADMAP sections — the scan is broken, ` +
+        'and a broken scan makes every entry below unownable rather than owned.');
+    const bad = anchorComplaints([...ALLOWED, ...KNOWN_DEAD], sections);
+    assert.deepEqual(bad, [],
+        `${bad.length} exclusion(s) are not owned by a roadmap item:\n` +
+        bad.map((b) => `  ${b}`).join('\n') +
+        '\n\nAn exclusion that says "later" with no owner and no date is a to-do with ' +
+        'a green checkmark on it. Add a `### N.M` item to ROADMAP.md saying what it ' +
+        'would take and what it is blocked on, name the file in it, and point the ' +
+        'entry at it — or delete the file.');
+});
+
+test('the anchor gate can fail (three ways)', () => {
+    // Verify the instrument. This gate's whole job is to refuse something, and
+    // a refusal nobody has watched happen is a claim about code, not a result.
+    const sections = roadmapSections();
+    const anchored = [...KNOWN_DEAD][0];
+    assert.ok(anchored, 'KNOWN_DEAD is empty — nothing to model a fabricated entry on');
+
+    const anchorless = anchorComplaints(
+        [['lib/fabricated.js', {reason: 'a reason long enough to pass the length check'}]],
+        sections);
+    assert.equal(anchorless.length, 1, 'an entry with no roadmap anchor must be rejected');
+    assert.match(anchorless[0], /no roadmap anchor/);
+
+    const wrongAnchor = anchorComplaints(
+        [['lib/fabricated.js', {roadmap: '99.9', reason: 'a reason long enough to pass'}]],
+        sections);
+    assert.equal(wrongAnchor.length, 1, 'an entry naming a nonexistent item must be rejected');
+    assert.match(wrongAnchor[0], /does not exist/);
+
+    // The one that matters most: a real item that does not actually mention the
+    // file. Without this, sixteen entries could point at one heading and the
+    // gate would call that ownership.
+    const unnamed = anchorComplaints(
+        [['lib/fabricated.js', {roadmap: anchored[1].roadmap,
+            reason: 'a reason long enough to clear the length check on its own'}]],
+        sections);
+    assert.equal(unnamed.length, 1, 'an entry its own section never names must be rejected');
+    assert.match(unnamed[0], /never mentions fabricated\.js/);
 });
