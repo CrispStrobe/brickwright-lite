@@ -28,7 +28,7 @@ const LED_IDS = ['led_da', 'led_a', 'led_b', 'led_c', 'led_d'];
 const expectedLeds = code => [true, ...[0, 1, 2, 3].map(bit => Boolean(code & (1 << bit)))];
 
 const snapshot = () => page.evaluate((ids) => {
-    const board = window.__activeBoard;
+    const board = window.__activeBoard || window.__board;
     const device = board && board.getDeviceState && board.getDeviceState('enc1');
     const faces = [...document.querySelectorAll('wokwi-led')];
     return {
@@ -110,7 +110,7 @@ try {
 
     await page.getByRole('radio', {name: /sim mode/i}).click({force: true});
     await page.waitForFunction(() => {
-        const board = window.__activeBoard;
+        const board = window.__activeBoard || window.__board;
         return board && board.getDeviceState && board.getDeviceState('enc1') &&
             typeof board.ledBrightness === 'function';
     }, null, {timeout: 15000});
@@ -126,7 +126,7 @@ try {
         await key.hover();
         await page.mouse.down();
         await page.waitForFunction(({code}) => {
-            const board = window.__activeBoard;
+            const board = window.__activeBoard || window.__board;
             const device = board && board.getDeviceState && board.getDeviceState('enc1');
             const encoder = device && device.encoder;
             const want = [true, ...[0, 1, 2, 3].map(bit => Boolean(code & (1 << bit)))];
@@ -147,7 +147,7 @@ try {
 
         await page.mouse.up();
         await page.waitForFunction(() => {
-            const board = window.__activeBoard;
+            const board = window.__activeBoard || window.__board;
             const device = board && board.getDeviceState && board.getDeviceState('enc1');
             const encoder = device && device.encoder;
             return encoder && encoder.registered === null && encoder.da === 0 &&
