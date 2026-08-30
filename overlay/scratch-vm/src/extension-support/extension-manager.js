@@ -223,7 +223,7 @@ class ExtensionManager {
             // adapter until their individual review changes the manifest; only `worker` pins enter
             // the source-bootstrap protocol.
             if (pin.migration && pin.migration.status === 'worker') {
-                return this._loadPinnedWorkerExtension(extensionURL, pin);
+                return this._loadPinnedWorkerExtension(extensionURL);
             }
             return this._loadTrustedRemoteExtension(extensionURL);
         }
@@ -251,10 +251,15 @@ class ExtensionManager {
      * the allocation and source: downloaded code cannot choose an ID, URL, or replacement payload.
      * There is deliberately no adapter fallback if any stage fails.
      * @param {string} extensionURL exact pinned gallery URL
-     * @param {object} pin reviewed pin record
      * @returns {Promise<number>} resolved with the immutable worker ID after initialization
      */
-    _loadPinnedWorkerExtension (extensionURL, pin) {
+    _loadPinnedWorkerExtension (extensionURL) {
+        // Re-derive authority at this boundary. A same-realm caller can invoke this method directly,
+        // so a caller-supplied object must never be able to invent a digest, identity or declaration.
+        const pin = pinForURL(extensionURL);
+        if (!pin || !pin.migration || pin.migration.status !== 'worker') {
+            return Promise.reject(new Error(`URL is not an immutable promoted worker pin: ${extensionURL}`));
+        }
         if (this.isExtensionLoaded(extensionURL)) {
             log.warn(`Rejecting attempt to load a second extension with URL ${extensionURL}`);
             return;

@@ -180,6 +180,36 @@ test('candidate and deferred pins remain on the verified adapter path', async ()
     }
 });
 
+test('direct loader calls cannot supply or promote a non-canonical capability record', async () => {
+    let fetched = 0;
+    let workers = 0;
+    const oldWorker = globalThis.Worker;
+    const oldFetch = globalThis.fetch;
+    globalThis.Worker = class { constructor () { workers++; } };
+    globalThis.fetch = async () => { fetched++; return {ok: true}; };
+    try {
+        const Manager = loadManager({
+            pin: {slug: 'candidate', capabilities: [], migration: {status: 'candidate'}},
+            dispatch: {setService: () => Promise.resolve(), addWorker: () => {}},
+            verify: async () => true,
+            adapter: () => assert.fail('direct promoted loader must fail before choosing an adapter')
+        });
+        const forged = Object.freeze({
+            slug: 'forged', served: 'a'.repeat(64), capabilities: ['project.metadata.read'],
+            migration: {status: 'worker'}
+        });
+        await assert.rejects(
+            new Manager({})._loadPinnedWorkerExtension('https://example.test/candidate.js', forged),
+            /not an immutable promoted worker pin/
+        );
+        assert.deepEqual({fetched, workers}, {fetched: 0, workers: 0});
+    } finally {
+        if (oldWorker === undefined) delete globalThis.Worker;
+        else globalThis.Worker = oldWorker;
+        globalThis.fetch = oldFetch;
+    }
+});
+
 test('concurrent requests for one promoted URL share one fetch, worker and initialization', async () => {
     let fetches = 0;
     let workers = 0;
