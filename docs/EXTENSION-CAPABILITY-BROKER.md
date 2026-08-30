@@ -75,9 +75,9 @@ Mutations restoring main-realm evaluation, posting before digest verification,
 trusting the extension slug, or accepting forged registration/call/reply frames
 must fail by name. Push as an independently green product checkpoint.
 
-Result: two immutable zero-requirement pins (`Clay/htmlEncode` and
-`Lily/Cast`) are runtime-proven and promoted; 25 remain candidates and 93 are
-honestly deferred. The host verifies bytes before worker creation, binds
+Result: 21 immutable zero-requirement pins are runtime-proven and promoted; the
+remaining denominator is 99 explicit deferrals and zero unmeasured candidates.
+The host verifies bytes before worker creation, binds
 identity before handshake, and retains raw messaging only in a trusted closure.
 Concurrent loads deduplicate, registration is awaited, teardown rejects pending
 work and terminates the worker, and the legacy unpinned FIFO remains distinct.
@@ -144,8 +144,12 @@ Progress: the first production-browser gate now loads the immutable served
 the host-derived `extension.0.0` namespace and closed pending-load lifecycle,
 and requires exactly 3/3 scenarios with zero page errors. CI uploads its success
 screenshot or failure JSON. The local production build and browser journey are
-green; the declared-capability browser fixture and 120-pin migration closure
-remain open, so CP4 is not marked complete.
+green. Runtime corpus review closed every zero-requirement candidate: 21 pins
+are migrated, while six candidate-era blockers now name Web NFC, DOM/XML,
+vibration, external evaluation, page URL access, or the absence of any
+executable opcode. The other ambient-requirement deferrals still need
+pin-by-pin review, and the declared-capability browser fixture remains open, so
+CP4 is not marked complete.
 
 ## CP5 — release, adversarial review and closure (45–90 minutes plus CI)
 

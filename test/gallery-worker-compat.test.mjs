@@ -5,7 +5,12 @@ import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 
-import {RUNTIME_WORKER_PROVEN, censusEntry, validateGalleryContract} from '../scripts/sync-gallery-pins.mjs';
+import {
+    RUNTIME_WORKER_DEFERRED,
+    RUNTIME_WORKER_PROVEN,
+    censusEntry,
+    validateGalleryContract
+} from '../scripts/sync-gallery-pins.mjs';
 
 const root = path.join(import.meta.dirname, '..');
 const extensionsRoot = path.join(import.meta.dirname, 'fixtures', 'gallery-worker-sources');
@@ -31,6 +36,10 @@ const translate = Object.assign(message => typeof message === 'object' ? (messag
 
 function load (source, restricted) {
     const registrations = [];
+    const consoleEvents = [];
+    const capturedConsole = Object.fromEntries(['log', 'info', 'warn', 'error', 'debug', 'clear', 'group',
+        'groupCollapsed', 'groupEnd', 'time', 'timeLog', 'timeEnd'].map(name =>
+        [name, (...args) => consoleEvents.push([name, ...args])]));
     const Scratch = {
         ArgumentType: enumProxy,
         BlockType: enumProxy,
@@ -40,8 +49,8 @@ function load (source, restricted) {
         extensions: {register: extension => registrations.push(extension), unsandboxed: !restricted,
             isPenguinMod: false}
     };
-    const context = vm.createContext({Scratch, console, TextEncoder, TextDecoder, URL, Blob,
-        setTimeout, clearTimeout});
+    const context = vm.createContext({Scratch, console: capturedConsole, TextEncoder, TextDecoder, URL, Blob,
+        setTimeout, clearTimeout, atob, btoa});
     if (!restricted) {
         context.window = context;
         context.document = {};
@@ -49,7 +58,7 @@ function load (source, restricted) {
     }
     vm.runInContext(source.toString('utf8'), context, {timeout: 1000});
     assert.equal(registrations.length, 1, 'source must register exactly one extension');
-    return {extension: registrations[0], context};
+    return {extension: registrations[0], context, consoleEvents};
 }
 
 function normalizedInfo (extension) {
@@ -79,6 +88,15 @@ for (const entry of fixture.cases) {
         const expected = await oldAdapter[entry.opcode](structuredClone(entry.args));
         const actual = await worker[entry.opcode](structuredClone(entry.args));
         assert.deepEqual(actual, expected, 'representative opcode parity');
+        if (Object.hasOwn(entry, 'expected')) assert.deepEqual(actual, entry.expected, 'representative oracle');
+        assert.deepEqual(workerRealm.consoleEvents, oldRealm.consoleEvents, 'console side-effect parity');
+        if (entry.console) assert.deepEqual(workerRealm.consoleEvents, entry.console, 'console side-effect oracle');
+        if (entry.after) {
+            const oldAfter = await oldAdapter[entry.after.opcode](structuredClone(entry.after.args));
+            const workerAfter = await worker[entry.after.opcode](structuredClone(entry.after.args));
+            assert.deepEqual(workerAfter, oldAfter, 'post-opcode state parity');
+            assert.deepEqual(workerAfter, entry.after.expected, 'post-opcode state oracle');
+        }
     });
 }
 
@@ -88,10 +106,9 @@ test('runtime worker cohort is deterministic, complete and tied to the immutable
     assert.equal(new Set(RUNTIME_WORKER_PROVEN).size, RUNTIME_WORKER_PROVEN.length);
 });
 
-test('generator rejects a hand-promoted worker without runtime proof', () => {
+test('generator rejects promoting a reviewed deferral without runtime proof', () => {
     const mutated = structuredClone(pins);
-    const slug = Object.keys(mutated.extensions).find(name =>
-        mutated.extensions[name].migration.status === 'candidate' && !RUNTIME_WORKER_PROVEN.includes(name));
+    const slug = Object.keys(RUNTIME_WORKER_DEFERRED)[0];
     mutated.extensions[slug].migration = {
         status: 'worker', reason: 'runtime parity proven by gallery worker compatibility corpus'
     };
@@ -111,10 +128,19 @@ test('generator refuses downgrading a runtime-proven worker back to an unmeasure
         /runtime-proven gallery entry .* was downgraded from worker/);
 });
 
+test('generator refuses erasing an exact zero-capability runtime deferral', () => {
+    for (const slug of Object.keys(RUNTIME_WORKER_DEFERRED)) {
+        const mutated = structuredClone(pins);
+        mutated.extensions[slug].migration = {status: 'candidate', reason: null};
+        assert.throws(() => validateGalleryContract(mutated, Object.keys(mutated.extensions)),
+            new RegExp(`runtime-deferred gallery entry ${slug.replace('/', '\\/')} was downgraded to candidate`));
+    }
+});
+
 test('published migration counts distinguish proven, awaiting-proof and ambient deferrals', () => {
     const counts = Object.values(pins.extensions).reduce((result, pin) => {
         result[pin.migration.status] = (result[pin.migration.status] || 0) + 1;
         return result;
     }, {});
-    assert.deepEqual(counts, {candidate: 25, deferred: 93, worker: 2});
+    assert.deepEqual(counts, {worker: 21, deferred: 99});
 });

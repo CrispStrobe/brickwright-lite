@@ -90,11 +90,28 @@ export const RUNTIME_WORKER_PROVEN = Object.freeze([
     'Lily/CommentBlocks',
     'Lily/McUtils',
     'NOname-awa/graphics2d',
-    'NOname-awa/more-comparisons'
+    'NOname-awa/more-comparisons',
+    'Skyhigh173/bigint',
+    'numerical-encoding-2',
+    'qxsck/data-analysis',
+    'steamworks',
+    'text',
+    'true-fantom/base',
+    'true-fantom/couplers',
+    'true-fantom/math',
+    'true-fantom/regexp'
 ]);
 
 export const RUNTIME_WORKER_DEFERRED = Object.freeze({
-    'Lily/HackedBlocks': 'runtime corpus found no executable opcode for parity proof'
+    'Lily/HackedBlocks': 'runtime corpus found no executable opcode for parity proof',
+    'PwLDev/vibration': 'runtime corpus requires unsandboxed navigator.vibrate',
+    'TheShovel/LZ-String': 'runtime corpus requires reusable Scratch.external eval/import',
+    'ZXMushroom63/searchApi': 'runtime corpus requires unsandboxed page URL search parameters'
+});
+
+const REQUIRED_AMBIENT_REQUIREMENTS = Object.freeze({
+    'Alestore/nfcwarp': ['web-nfc'],
+    'mbw/xml': ['dom']
 });
 
 const CAPABILITY_PATTERNS = Object.freeze({
@@ -126,6 +143,12 @@ export function censusEntry (slug, source) {
 export function applyMigrationPolicy (slug, capabilities, entry) {
     const workerProven = RUNTIME_WORKER_PROVEN.includes(slug);
     const runtimeDeferral = RUNTIME_WORKER_DEFERRED[slug] || null;
+    const missingReviewed = (REQUIRED_AMBIENT_REQUIREMENTS[slug] || [])
+        .filter(capability => !capabilities.includes(capability));
+    if (missingReviewed.length) {
+        throw new Error(`gallery classifier lost reviewed ambient requirement for ${slug}: ` +
+            missingReviewed.join(', '));
+    }
     if (workerProven && capabilities.length) {
         throw new Error(`runtime-proven worker ${slug} acquired ambient requirements: ${capabilities.join(', ')}`);
     }
@@ -405,9 +428,22 @@ const bytesOf = async (url, attempts = 3) => {
 async function main () {
     if (has('--migration-only')) {
         const current = JSON.parse(await readFile(OUT, 'utf8'));
+        const sourceArg = args.find(arg => arg.startsWith('--source-dir='));
+        const sourceDir = sourceArg && sourceArg.slice('--source-dir='.length);
+        const extensions = {};
+        for (const [slug, pin] of Object.entries(current.extensions)) {
+            let capabilities = pin.capabilities;
+            if (sourceDir) {
+                const source = await readFile(path.join(sourceDir, 'extensions', `${slug}.js`));
+                if (sha256(source) !== pin.repo) {
+                    throw new Error(`local immutable source differs from reviewed pin for ${slug}`);
+                }
+                capabilities = classifyGallerySource(source);
+            }
+            extensions[slug] = applyMigrationPolicy(slug, capabilities, {...pin, capabilities});
+        }
         const next = {...current, schemaVersion: GALLERY_CONTRACT_VERSION,
-            extensions: Object.fromEntries(Object.entries(current.extensions).map(
-            ([slug, pin]) => [slug, applyMigrationPolicy(slug, pin.capabilities, pin)]))};
+            extensions};
         validateGalleryContract(next, Object.keys(current.extensions));
         await writeFile(OUT, `${JSON.stringify(next, null, 2)}\n`);
         await writeFile(CENSUS_OUT, renderCensusReport(next));

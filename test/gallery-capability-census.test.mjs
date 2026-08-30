@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import {
     GALLERY_CAPABILITIES,
+    censusEntry,
     classifyGallerySource,
     renderCensusReport,
     validateGalleryContract
@@ -51,12 +52,12 @@ test('invent-one-capability mutation: an unknown declaration fails by name', () 
     assert.throws(() => validateGalleryContract(mutated, slugs), /unknown capability/);
 });
 
-test('widen-one-declaration mutation: a compatible pin cannot acquire ambient authority', () => {
+test('widen-one-declaration mutation: a proven worker cannot acquire ambient authority', () => {
     const mutated = clone(pins);
-    const slug = slugs.find(name => mutated.extensions[name].migration.status === 'candidate');
-    assert.ok(slug, 'fixture needs a zero-capability compatible pin');
+    const slug = slugs.find(name => mutated.extensions[name].migration.status === 'worker');
+    assert.ok(slug, 'fixture needs a runtime-proven worker');
     mutated.extensions[slug].capabilities.push('dom');
-    assert.throws(() => validateGalleryContract(mutated, slugs), /widened its declaration/);
+    assert.throws(() => validateGalleryContract(mutated, slugs), /lacks generator-owned runtime proof/);
 });
 
 test('duplicate-identity mutation: two pins cannot share host authority', () => {
@@ -73,7 +74,23 @@ test('new-unclassified-pin mutation: snapshot growth fails closed', () => {
 
 test('source classifier covers every ambient access class in canonical order', () => {
     const source = `document.body; Scratch.vm; fetch('/'); new WebSocket('wss://x');
-        navigator.bluetooth; navigator.serial; navigator.usb; navigator.hid;
+        navigator.bluetooth; navigator.serial; navigator.usb; navigator.hid; new NDEFReader();
         window.__TAURI__.invoke('x'); new Worker('nested.js');`;
     assert.deepEqual(classifyGallerySource(source), GALLERY_CAPABILITIES);
+});
+
+test('bare Web NFC and DOM parser globals are classified instead of promoted as zero-requirement', () => {
+    assert.deepEqual(classifyGallerySource('typeof NDEFReader !== "undefined"'), ['web-nfc']);
+    assert.deepEqual(classifyGallerySource('new DOMParser()'), ['dom']);
+    assert.equal(pins.extensions['Alestore/nfcwarp'].migration.status, 'deferred');
+    assert.deepEqual(pins.extensions['Alestore/nfcwarp'].capabilities, ['web-nfc']);
+    assert.equal(pins.extensions['mbw/xml'].migration.status, 'deferred');
+    assert.deepEqual(pins.extensions['mbw/xml'].capabilities, ['dom']);
+});
+
+test('classifier-blindness mutation cannot erase reviewed Web NFC or DOM requirements', () => {
+    assert.throws(() => censusEntry('Alestore/nfcwarp', 'class NFC {}'),
+        /classifier lost reviewed ambient requirement for Alestore\/nfcwarp: web-nfc/);
+    assert.throws(() => censusEntry('mbw/xml', 'class XML {}'),
+        /classifier lost reviewed ambient requirement for mbw\/xml: dom/);
 });

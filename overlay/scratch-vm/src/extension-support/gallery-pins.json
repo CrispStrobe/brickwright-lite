@@ -13,8 +13,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -26,8 +26,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -52,10 +52,12 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Alestore/nfcwarp.js",
       "load": "url",
-      "capabilities": [],
+      "capabilities": [
+        "web-nfc"
+      ],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "deferred",
+        "reason": "static scan requires review: web-nfc"
       },
       "brokerCapabilities": []
     },
@@ -98,8 +100,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -527,8 +529,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -651,8 +653,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -679,8 +681,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -925,8 +927,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -938,8 +940,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "deferred",
+        "reason": "runtime corpus found no executable opcode for parity proof"
       },
       "brokerCapabilities": []
     },
@@ -997,8 +999,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1131,10 +1133,12 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/mbw/xml.js",
       "load": "url",
-      "capabilities": [],
+      "capabilities": [
+        "dom"
+      ],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "deferred",
+        "reason": "static scan requires review: dom"
       },
       "brokerCapabilities": []
     },
@@ -1222,8 +1226,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1235,8 +1239,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1248,8 +1252,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1340,8 +1344,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "deferred",
+        "reason": "runtime corpus requires unsandboxed navigator.vibrate"
       },
       "brokerCapabilities": []
     },
@@ -1353,8 +1357,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1457,8 +1461,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1500,8 +1504,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1528,8 +1532,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1588,8 +1592,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "deferred",
+        "reason": "runtime corpus requires reusable Scratch.external eval/import"
       },
       "brokerCapabilities": []
     },
@@ -1617,8 +1621,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1630,8 +1634,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1643,8 +1647,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1672,8 +1676,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       },
       "brokerCapabilities": []
     },
@@ -1715,11 +1719,12 @@
       "identity": "https://crispstrobe.github.io/extensions/veggiecan/LongmanDictionary.js",
       "load": "url",
       "capabilities": [
+        "dom",
         "fetch-import"
       ],
       "migration": {
         "status": "deferred",
-        "reason": "static scan requires review: fetch-import"
+        "reason": "static scan requires review: dom, fetch-import"
       },
       "brokerCapabilities": []
     },
@@ -1823,8 +1828,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "deferred",
+        "reason": "runtime corpus requires unsandboxed page URL search parameters"
       },
       "brokerCapabilities": []
     }
