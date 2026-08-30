@@ -505,20 +505,6 @@ jobs:
       - name: Browser gate — unpinned extension sandbox
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-extension-sandbox.mjs
-      - name: Browser gate — promoted pinned extension worker
-        if: steps.playwright.outcome == 'success'
-        run: |
-          mkdir -p artifacts/pinned-worker
-          PROOF_URL=http://localhost:8617/ \
-            SUCCESS_SCREENSHOT=artifacts/pinned-worker/success.png \
-            FAILURE_JSON=artifacts/pinned-worker/failure.json \
-            node scripts/verify-pinned-worker.mjs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
-        with:
-          name: pinned-worker-proof
-          path: artifacts/pinned-worker/*
-          if-no-files-found: error
       - name: Browser gate — game gallery and hardware examples
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs
@@ -620,15 +606,37 @@ jobs:
           path: artifacts/labwired-*.png
           if-no-files-found: warn
 
-      # scripts/verify-debug-frames-watch.mjs (D2/D25/D28/D29) is NOT wired here
-      # yet, on purpose. It was added to this file before it had ever passed,
-      # and it then failed on every push for five consecutive runs — taking the
-      # four browser gates below it, the verify-gui job and the deploy down with
-      # it, none of which had anything to do with the debugger. A gate that has
-      # never been green is a red build with extra steps: it goes back into this
-      # chain in the same commit that makes it pass, and not before.
-      # The script itself stays in the tree and is runnable by hand:
-      #   PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
+      # D2/D25/D28/D29 against the production app. The gate aborts external
+      # POST /compile before it leaves Chromium and requires exactly zero such
+      # attempts, then proves paused frames, one-cycle delta and a watch hit.
+      - name: Browser gate — offline 8051 compile, debug and watchpoint
+        id: debug_frames_watch
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
+
+      # Run this short, independently green extension proof after the two heavy
+      # labwired journeys, keeping the earlier product sweep's peak memory flat.
+      - name: Browser gate — promoted pinned extension worker
+        if: steps.playwright.outcome == 'success'
+        run: |
+          mkdir -p artifacts/pinned-worker
+          PROOF_URL=http://localhost:8617/ \
+            SUCCESS_SCREENSHOT=artifacts/pinned-worker/success.png \
+            FAILURE_JSON=artifacts/pinned-worker/failure.json \
+            node scripts/verify-pinned-worker.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: pinned-worker-proof
+          path: artifacts/pinned-worker/*
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: debugger-frames-watch-screenshots
+          path: artifacts/debug-proof/*.png
+          if-no-files-found: error
 
       # The debugger-only pane, which the note above says has regressed to a
       # blank pane twice. This gate existed for it and was never run by CI — so
