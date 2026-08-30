@@ -72,26 +72,10 @@ const FILES = [
     ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')]
 ];
 
-// Downstream-only modules imported by a synced file. They must exist locally,
-// but have no source-repository counterpart to compare against.
-//
-// EACH ONE IS A TRIPWIRE, and on 2026-08-29 it was needed. A plain sync
-// OVERWRITES `sb3-creator.js` with the upstream file, which does not carry
-// lite's downstream dialect — the vector-art `SHAPE art` verb, the
-// arcade/pybadge/samd51 device tables, and the dropped "micropython — no C
-// retarget" refusal. That vendor was silent: the delta simply vanished, and the
-// first symptom was fourteen game tests failing with `Unknown SHAPE "art"` in
-// CI, three commits and one push later. So after writing, this script now
-// checks that every module named here is still imported by something it just
-// vendored, and REFUSES if it is not — the loss is reported where it happens,
-// not where it hurts.
-//
-// The real fix is upstreaming the dialect; until then the recovery is a 3-way
-// merge (`git merge-file lite.js upstream@oldpin.js upstream@newpin.js`), which
-// applied cleanly with zero conflicts.
-const LOCAL_FILES = [
-    'sb3-creator-vector-art.js'
-];
+// Downstream-only modules imported by synced compiler files. This is empty now:
+// the SHAPE art dialect was upstreamed as an injectable registry, while the app
+// injects its product-specific artwork from pseudocode-importer.jsx below.
+const LOCAL_FILES = [];
 
 async function readSource (rel) {
     if (srcDir) return readFile(path.join(srcDir, rel), 'utf8');
@@ -162,6 +146,19 @@ if (!check) {
         console.error('and then upstream the delta so the next sync does not have to.');
         process.exit(1);
     }
+}
+
+// Producer-must-assert-consumer for the upstream vector-art registry. Merely
+// retaining the artwork file is not enough: without this host injection every
+// game parses with an empty registry and refuses SHAPE art by name.
+const importerPath = path.join(here, '..', 'overlay', 'scratch-gui', 'src',
+    'components', 'tw-pseudocode', 'pseudocode-importer.jsx');
+const importer = await readFile(importerPath, 'utf8').catch(() => '');
+if (!importer.includes("../../lib/sb3-creator-vector-art.js") ||
+    !importer.includes('registerVectorArt(vectorArt.default)')) {
+    console.error('\nVECTOR ART NOT INJECTED: the upstream dialect registry has no app consumer.');
+    console.error('pseudocode-importer.jsx must load sb3-creator-vector-art.js and register it.');
+    process.exit(1);
 }
 
 if (check && stale && !allowStale) {
