@@ -109,6 +109,13 @@ wildcards are rejected. The initial transport-backed operation is read-only
 project metadata, deliberately not a raw native command. Declaration and
 WeakMap-identity mutations make named tests red.
 
+Replay accounting is constant-space: each session retains only its greatest
+accepted request ID, while duplicate and lower IDs fail. A 256-entry broker
+audit ring records host-derived worker identity, declarations, approvals,
+refusal codes and revocation without retaining arguments, source, digest or
+results. Its frozen snapshot is the trustworthy input for a later product
+diagnostics renderer rather than another ad-hoc console transcript.
+
 ## CP3 — native boundary and one real vertical slice (60–90 minutes)
 
 - [ ] Carry broker identity and semantic operation to the native boundary
