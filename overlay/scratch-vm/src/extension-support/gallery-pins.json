@@ -119,8 +119,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       }
     },
     "clipboard": {
@@ -841,8 +841,8 @@
       "load": "url",
       "capabilities": [],
       "migration": {
-        "status": "candidate",
-        "reason": null
+        "status": "worker",
+        "reason": "runtime parity proven by gallery worker compatibility corpus"
       }
     },
     "Lily/ClonesPlus": {

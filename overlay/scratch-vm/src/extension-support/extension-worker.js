@@ -71,8 +71,10 @@ class ExtensionWorker {
     constructor () {
         this.nextExtensionId = 0;
         this.initialRegistrations = [];
-
-        dispatch.waitForConnection.then(() => {
+        this.extensions = [];
+        dispatch.waitForConnection.then(hostBound => {
+            this.hostBound = hostBound;
+            if (hostBound) return;
             dispatch.call('extensions', 'allocateWorker').then(([id, extension]) => {
                 this.workerId = id;
                 try {
@@ -87,16 +89,36 @@ class ExtensionWorker {
                 }
             });
         });
-
-        this.extensions = [];
+        dispatch.setBootstrapHandler((protocol, workerId, source) => {
+            if (protocol !== 1 || !Number.isInteger(workerId) || typeof source !== 'string') {
+                throw new Error('Invalid extension worker bootstrap');
+            }
+            this.hostBound = true;
+            this.workerId = workerId;
+            try {
+                // Lock realm-creation and device escape hatches before evaluating even one byte.
+                blockNetworkEscapeHatches();
+                dispatch.lockSourceMessaging();
+                (0, eval)(`${source}\n//# sourceURL=brickwright-sandbox-extension.js`);
+                const initialRegistrations = this.initialRegistrations;
+                this.initialRegistrations = null;
+                return Promise.all(initialRegistrations)
+                    .then(() => dispatch.call('extensions', 'onWorkerInit'));
+            } catch (e) {
+                return dispatch.call('extensions', 'onWorkerInit', e);
+            }
+        });
     }
 
     register (extensionObject) {
         const extensionId = this.nextExtensionId++;
         this.extensions.push(extensionObject);
         const serviceName = `extension.${this.workerId}.${extensionId}`;
-        const promise = dispatch.setService(serviceName, extensionObject)
-            .then(() => dispatch.call('extensions', 'registerExtensionService', serviceName));
+        const promise = (this.hostBound ?
+            dispatch.setExtensionService(this.workerId, extensionId, extensionObject) :
+            dispatch.setService(serviceName, extensionObject))
+            .then(() => dispatch.call('extensions', 'registerExtensionService',
+                this.hostBound ? extensionId : serviceName));
         if (this.initialRegistrations) this.initialRegistrations.push(promise);
         return promise;
     }
@@ -119,6 +141,9 @@ global.Scratch = {
     Cast,
     translate,
     fetch: (...args) => fetch(...args),
+    capabilities: Object.freeze({
+        request: (operation, args) => dispatch.requestCapability(operation, args)
+    }),
     extensions: {
         register: extensionWorker.register.bind(extensionWorker),
         unsandboxed: false,

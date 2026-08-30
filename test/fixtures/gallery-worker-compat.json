@@ -1,0 +1,7 @@
+{
+  "commit": "fc94e19ee259c9fc8465c5a0b69dc366085ab376",
+  "cases": [
+    {"slug": "Clay/htmlEncode", "opcode": "encode", "args": {"text": "<b>&\"'"}},
+    {"slug": "Lily/Cast", "opcode": "typeOf", "args": {"INPUT": 42}}
+  ]
+}

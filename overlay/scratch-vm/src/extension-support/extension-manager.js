@@ -123,6 +123,11 @@ class ExtensionManager {
          */
         this.pendingWorkers = [];
 
+        // URL -> in-flight promoted-pin load. _loadedExtensions is populated only
+        // after registration, so it cannot by itself close the fetch/verify race
+        // between two callers loading the same gallery URL concurrently.
+        this.pendingPinnedLoads = new Map();
+
         /**
          * Map of loaded extension URLs/IDs (equivalent for built-in extensions) to service name.
          * @type {Map.<string,string>}
@@ -213,6 +218,13 @@ class ExtensionManager {
         // worker and therefore cannot see the DOM or Tauri IPC. Hostname and a confirm dialog are
         // not isolation boundaries.
         if (isRemoteExtensionURL(extensionURL) && pinForURL(extensionURL)) {
+            const pin = pinForURL(extensionURL);
+            // Promotion is explicit and fail closed. Candidate/deferred pins retain the compatibility
+            // adapter until their individual review changes the manifest; only `worker` pins enter
+            // the source-bootstrap protocol.
+            if (pin.migration && pin.migration.status === 'worker') {
+                return this._loadPinnedWorkerExtension(extensionURL, pin);
+            }
             return this._loadTrustedRemoteExtension(extensionURL);
         }
 
@@ -231,6 +243,60 @@ class ExtensionManager {
 
             this.pendingExtensions.push({extensionURL, resolve, reject});
             dispatch.addWorker(worker);
+        });
+    }
+
+    /**
+     * Fetch and authenticate a promoted gallery extension before creating its worker. The host owns
+     * the allocation and source: downloaded code cannot choose an ID, URL, or replacement payload.
+     * There is deliberately no adapter fallback if any stage fails.
+     * @param {string} extensionURL exact pinned gallery URL
+     * @param {object} pin reviewed pin record
+     * @returns {Promise<number>} resolved with the immutable worker ID after initialization
+     */
+    _loadPinnedWorkerExtension (extensionURL, pin) {
+        if (this.isExtensionLoaded(extensionURL)) {
+            log.warn(`Rejecting attempt to load a second extension with URL ${extensionURL}`);
+            return;
+        }
+        if (this.pendingPinnedLoads.has(extensionURL)) return this.pendingPinnedLoads.get(extensionURL);
+        const loading = this._startPinnedWorkerExtension(extensionURL, pin)
+            .finally(() => this.pendingPinnedLoads.delete(extensionURL));
+        this.pendingPinnedLoads.set(extensionURL, loading);
+        return loading;
+    }
+
+    async _startPinnedWorkerExtension (extensionURL, pin) {
+
+        const response = await fetch(extensionURL);
+        if (!response.ok) throw new Error(`HTTP ${response.status} loading ${extensionURL}`);
+        const bytes = await response['arrayBuffer']();
+        const verifyPinnedBytes = verifyGallerySource;
+        await verifyPinnedBytes(extensionURL, bytes);
+        const source = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+
+        // Allocate only after all fallible fetch/verification/decoding work. A failed pin therefore
+        // consumes neither an ID nor a pending slot and never constructs an execution realm.
+        const workerId = this.nextExtensionWorker++;
+        const capabilities = Object.freeze((pin.capabilities || []).slice());
+        const hostRecord = Object.freeze({
+            protocol: 1,
+            workerId,
+            url: extensionURL,
+            slug: pin.slug,
+            digest: pin.served,
+            capabilities,
+            source
+        });
+        return new Promise((resolve, reject) => {
+            this.pendingWorkers[workerId] = {extensionURL, resolve, reject, hostRecord, serviceNames: []};
+            try {
+                const worker = new Worker('./extension-worker.js');
+                dispatch.addWorker(worker, hostRecord);
+            } catch (error) {
+                delete this.pendingWorkers[workerId];
+                reject(error);
+            }
         });
     }
 
@@ -325,8 +391,14 @@ class ExtensionManager {
      * @param {string} serviceName - the name of the service hosting the extension.
      */
     registerExtensionService (serviceName) {
-        dispatch.call(serviceName, 'getInfo').then(info => {
-            this._registerExtensionInfo(serviceName, info);
+        return dispatch.call(serviceName, 'getInfo').then(info => {
+            const extensionInfo = this._prepareExtensionInfo(serviceName, info);
+            return dispatch.call('runtime', '_registerExtensionPrimitives', extensionInfo).then(() => {
+                this._loadedExtensions.set(extensionInfo.id, serviceName);
+                const match = /^extension\.(\d+)\.\d+$/.exec(serviceName);
+                const workerInfo = match && this.pendingWorkers[Number(match[1])];
+                if (workerInfo && Array.isArray(workerInfo.serviceNames)) workerInfo.serviceNames.push(serviceName);
+            });
         });
     }
 
@@ -338,9 +410,13 @@ class ExtensionManager {
     onWorkerInit (id, e) {
         const workerInfo = this.pendingWorkers[id];
         delete this.pendingWorkers[id];
+        if (!workerInfo) throw new Error(`Unknown extension worker ${id} initialized`);
         if (e) {
             workerInfo.reject(e);
         } else {
+            if (workerInfo.extensionURL && workerInfo.serviceNames && workerInfo.serviceNames.length) {
+                this._loadedExtensions.set(workerInfo.extensionURL, workerInfo.serviceNames[0]);
+            }
             workerInfo.resolve(id);
         }
     }

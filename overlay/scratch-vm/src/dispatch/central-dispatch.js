@@ -1,6 +1,7 @@
 const SharedDispatch = require('./shared-dispatch');
 
 const log = require('../util/log');
+const {CapabilityBroker} = require('../extension-support/capability-broker');
 
 /**
  * Main-thread broker for Scratch VM workers.
@@ -19,6 +20,7 @@ class CentralDispatch extends SharedDispatch {
         this.workers = [];
         this.workerState = new WeakMap();
         this.callbackWorkers = [];
+        this.capabilityBroker = new CapabilityBroker();
     }
 
     callSync (service, method, ...args) {
@@ -47,17 +49,65 @@ class CentralDispatch extends SharedDispatch {
         }
     }
 
-    addWorker (worker) {
+    addWorker (worker, hostRecord) {
         if (this.workers.indexOf(worker) === -1) {
+            if (hostRecord && (!Object.isFrozen(hostRecord) || hostRecord.protocol !== 1 ||
+                !Number.isInteger(hostRecord.workerId) || typeof hostRecord.source !== 'string')) {
+                throw new Error('Extension worker requires a frozen, verified host record');
+            }
+            // Validate and bind capability declarations before exposing the worker to dispatch.
+            if (hostRecord) this.capabilityBroker.attach(worker, hostRecord);
             this.workers.push(worker);
-            this.workerState.set(worker, {allocated: false, initialized: false, workerId: null});
-            worker.onmessage = this._onMessage.bind(this, worker);
-            this._remoteCall(worker, 'dispatch', 'handshake').catch(e => {
-                log.error(`Could not handshake with worker: ${JSON.stringify(e)}`);
+            // Install the host-owned identity before the worker can receive a handshake or send a frame.
+            // The complete verified record stays in this WeakMap; only bootstrap necessities cross realms.
+            this.workerState.set(worker, {
+                hostRecord: hostRecord || null,
+                allocated: false,
+                initialized: false,
+                workerId: hostRecord ? hostRecord.workerId : null,
+                extensionIds: new Set()
             });
+            worker.onmessage = this._onMessage.bind(this, worker);
+            const terminate = this.removeWorker.bind(this, worker);
+            if (typeof worker.addEventListener === 'function') {
+                worker.addEventListener('error', terminate);
+                worker.addEventListener('messageerror', terminate);
+            }
+            this._remoteCall(worker, 'dispatch', 'handshake', Boolean(hostRecord))
+                .then(() => hostRecord && this._remoteCall(worker, 'dispatch', 'bootstrap',
+                    hostRecord.protocol, hostRecord.workerId, hostRecord.source))
+                .catch(e => {
+                    log.error(`Could not handshake with worker: ${JSON.stringify(e)}`);
+                    this.removeWorker(worker, e);
+                });
         } else {
             log.warn('Central dispatch ignoring attempt to add duplicate worker');
         }
+    }
+
+    removeWorker (worker, reason) {
+        const state = this.workerState.get(worker);
+        if (!state) return;
+        this.capabilityBroker.revoke(worker);
+        this.workerState.delete(worker);
+        this.workers = this.workers.filter(candidate => candidate !== worker);
+        for (const service of Object.keys(this.services)) {
+            if (this.services[service] === worker) delete this.services[service];
+        }
+        for (let responseId = 0; responseId < this.callbackWorkers.length; responseId++) {
+            if (this.callbackWorkers[responseId] !== worker) continue;
+            const callbacks = this.callbacks[responseId];
+            delete this.callbackWorkers[responseId];
+            delete this.callbacks[responseId];
+            if (callbacks) callbacks[1](reason || new Error('Extension worker terminated'));
+        }
+        if (state.hostRecord && !state.initialized) {
+            this.call('extensions', 'onWorkerInit', state.workerId,
+                reason || new Error('Extension worker terminated')).catch(error => {
+                log.error(`Could not reject terminated extension worker: ${JSON.stringify(error)}`);
+            });
+        }
+        if (typeof worker.terminate === 'function') worker.terminate();
     }
 
     _getServiceProvider (service) {
@@ -119,34 +169,54 @@ class CentralDispatch extends SharedDispatch {
     _allowWorkerMessage (worker, message) {
         // Responses to calls the main thread sent to this worker carry no
         // service. They are required for getInfo and opcode results.
-        if (!message || !message.service) return true;
+        if (!message || typeof message !== 'object') return false;
+        if (!message.service) return Number.isInteger(message.responseId);
         const state = this.workerState.get(worker);
         if (!state) return false;
+        if (!Array.isArray(message.args)) return false;
 
         if (message.service === 'dispatch' && message.method === 'setService') {
-            const service = message.args && message.args[0];
-            const match = /^extension\.(\d+)\.(\d+)$/.exec(service);
-            if (!state.allocated || state.workerId === null || !match) return false;
-            const workerId = Number(match[1]);
-            if (state.workerId !== workerId) return false;
+            if (!state.hostRecord) {
+                const service = message.args && message.args[0];
+                const match = /^extension\.(\d+)\.(\d+)$/.exec(service);
+                if (!state.allocated || state.workerId === null || !match ||
+                    state.workerId !== Number(match[1])) return false;
+                const owner = this.services[service];
+                return !owner || owner === worker;
+            }
+            const extensionId = message.args && message.args[0];
+            if (!Number.isInteger(extensionId) || extensionId < 0 || state.initialized) return false;
+            const service = `extension.${state.hostRecord.workerId}.${extensionId}`;
             const owner = this.services[service];
             return !owner || owner === worker;
         }
 
+        if (message.service === 'capabilityBroker' && message.method === 'request') {
+            return Boolean(state.hostRecord) && state.initialized &&
+                Number.isInteger(message.responseId) && message.responseId >= 0 &&
+                Array.isArray(message.args) && message.args.length === 1;
+        }
         if (message.service !== 'extensions') return false;
         const args = message.args || [];
-        if (message.method === 'allocateWorker') {
+        if (!state.hostRecord && message.method === 'allocateWorker') {
             if (state.allocated || state.initialized || args.length) return false;
             state.allocated = true;
             return true;
         }
         if (message.method === 'registerExtensionService') {
-            return typeof args[0] === 'string' && this.services[args[0]] === worker;
+            if (!state.hostRecord) return typeof args[0] === 'string' && this.services[args[0]] === worker;
+            if (args.length !== 1 || !Number.isInteger(args[0]) || args[0] < 0) return false;
+            const service = `extension.${state.hostRecord.workerId}.${args[0]}`;
+            return state.extensionIds.has(args[0]) && this.services[service] === worker;
         }
         if (message.method === 'onWorkerInit') {
-            const id = args[0];
-            if (!state.allocated || state.initialized || !Number.isInteger(id)) return false;
-            if (state.workerId !== id) return false;
+            if (!state.hostRecord) {
+                const id = args[0];
+                if (!state.allocated || state.initialized || !Number.isInteger(id) || state.workerId !== id) return false;
+                state.initialized = true;
+                return true;
+            }
+            if (state.initialized || args.length > 1) return false;
             state.initialized = true;
             return true;
         }
@@ -168,18 +238,59 @@ class CentralDispatch extends SharedDispatch {
                 `${message && message.service || 'unknown service'}.${message && message.method || 'unknown method'}`);
             return;
         }
-        if (message.service === 'extensions' && message.method === 'allocateWorker') {
-            // Bind identity from the manager-controlled allocation result, not from a service name
-            // chosen later by downloaded code. The promise microtask completes before another
-            // worker message can run, so the namespace is fixed before importScripts starts.
+        const state = this.workerState.get(worker);
+        if (message.service === 'capabilityBroker' && message.method === 'request') {
+            this.capabilityBroker.request(worker, message.args[0]).then(
+                result => worker.postMessage({responseId: message.responseId, result}),
+                error => worker.postMessage({responseId: message.responseId, error})
+            );
+            return;
+        }
+        if (!state.hostRecord && message.service === 'extensions' && message.method === 'allocateWorker') {
             this.call('extensions', 'allocateWorker').then(result => {
-                const state = this.workerState.get(worker);
-                if (!state || !Array.isArray(result) || !Number.isInteger(result[0])) {
+                if (!Array.isArray(result) || !Number.isInteger(result[0])) {
                     throw new Error('Extension worker allocation returned an invalid worker ID');
                 }
                 state.workerId = result[0];
                 return result;
             }).then(
+                result => worker.postMessage({responseId: message.responseId, result}),
+                error => worker.postMessage({responseId: message.responseId, error})
+            );
+            return;
+        }
+        if (message.service === 'dispatch' && message.method === 'setService') {
+            if (!state.hostRecord) {
+                super._onMessage(worker, event);
+                return;
+            }
+            const extensionId = message.args[0];
+            const service = `extension.${state.hostRecord.workerId}.${extensionId}`;
+            state.extensionIds.add(extensionId);
+            this.setService(service, worker).then(
+                () => worker.postMessage({responseId: message.responseId, result: service}),
+                error => worker.postMessage({responseId: message.responseId, error})
+            );
+            return;
+        }
+        if (message.service === 'extensions' && message.method === 'registerExtensionService') {
+            if (!state.hostRecord) {
+                super._onMessage(worker, event);
+                return;
+            }
+            const service = `extension.${state.hostRecord.workerId}.${message.args[0]}`;
+            this.call('extensions', 'registerExtensionService', service).then(
+                result => worker.postMessage({responseId: message.responseId, result}),
+                error => worker.postMessage({responseId: message.responseId, error})
+            );
+            return;
+        }
+        if (message.service === 'extensions' && message.method === 'onWorkerInit') {
+            if (!state.hostRecord) {
+                super._onMessage(worker, event);
+                return;
+            }
+            this.call('extensions', 'onWorkerInit', state.hostRecord.workerId, message.args[0]).then(
                 result => worker.postMessage({responseId: message.responseId, result}),
                 error => worker.postMessage({responseId: message.responseId, error})
             );

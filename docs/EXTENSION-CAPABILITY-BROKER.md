@@ -55,13 +55,13 @@ unknown-capability validator makes its named mutation assertion red.
 
 ## CP1 — identity-bound verified worker path (2–3 hours)
 
-- [ ] Refactor the remote loader so the main realm fetches and hashes exact
+- [x] Refactor the remote loader so the main realm fetches and hashes exact
   bytes before allocating a worker and posting source. No migrated pinned source
   reaches `new Function` in the page realm.
-- [ ] Bind a non-user-controlled worker identity to the verified pin at
+- [x] Bind a non-user-controlled worker identity to the verified pin at
   allocation. Preserve registration, `getInfo`, opcode calls, async replies,
   errors, locale and teardown through central dispatch.
-- [ ] Keep bundled BrickWright extensions on their existing internal path;
+- [x] Keep bundled BrickWright extensions on their existing internal path;
   migrate the zero-capability compatible cohort first and publish measured
   migrated/deferred counts rather than claiming all-gallery isolation early.
 
@@ -72,15 +72,23 @@ Mutations restoring main-realm evaluation, posting before digest verification,
 trusting the extension slug, or accepting forged registration/call/reply frames
 must fail by name. Push as an independently green product checkpoint.
 
+Result: two immutable zero-requirement pins (`Clay/htmlEncode` and
+`Lily/Cast`) are runtime-proven and promoted; 25 remain candidates and 93 are
+honestly deferred. The host verifies bytes before worker creation, binds
+identity before handshake, and retains raw messaging only in a trusted closure.
+Concurrent loads deduplicate, registration is awaited, teardown rejects pending
+work and terminates the worker, and the legacy unpinned FIFO remains distinct.
+The frozen focused security matrix passes 49/49 with adversarial mutations.
+
 ## CP2 — default-deny semantic capability broker (2–3 hours)
 
-- [ ] Define a narrow, versioned vocabulary based on the census. Declarations
+- [x] Define a narrow, versioned vocabulary based on the census. Declarations
   carry semantic operations and resource constraints (for example BLE service
   UUIDs), never raw Tauri command names or wildcards.
-- [ ] Route worker requests through a broker keyed only by immutable host worker
+- [x] Route worker requests through a broker keyed only by immutable host worker
   identity. Validate operation and arguments against the verified pin before
   calling any browser/native transport; default is refusal plus diagnostics.
-- [ ] Make lifecycle ownership explicit: worker termination revokes its broker
+- [x] Make lifecycle ownership explicit: worker termination revokes its broker
   sessions, replies cannot cross identities, and BLE rediscovery replaces rather
   than unions service allowances.
 
@@ -89,6 +97,14 @@ stale reply and forged slug all refuse; one declared vertical slice succeeds;
 termination revokes it. Mutations skipping the declaration check, keying by
 slug, accepting a wildcard, or unioning rediscovery allowances make named tests
 red. Push broker core before broadening the migrated cohort.
+
+Result: protocol v1 exposes only `Scratch.capabilities.request(operation,
+args)` over the captured worker transport. Its closed semantic vocabulary,
+strict envelopes and arguments, host-record declarations, per-worker replay
+state and lifecycle revocation fail closed; caller identity fields and
+wildcards are rejected. The initial transport-backed operation is read-only
+project metadata, deliberately not a raw native command. Declaration and
+WeakMap-identity mutations make named tests red.
 
 ## CP3 — native boundary and one real vertical slice (60–90 minutes)
 

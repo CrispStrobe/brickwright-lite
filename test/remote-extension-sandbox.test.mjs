@@ -17,13 +17,15 @@ const guiWebpack = readFileSync(path.join(root, 'overlay/scratch-gui/webpack.con
 const applyVmOverlay = readFileSync(path.join(root, 'scripts/apply-vm-overlay.mjs'), 'utf8');
 const browserProof = readFileSync(path.join(root, 'scripts/verify-extension-sandbox.mjs'), 'utf8');
 
-test('only a content-pinned remote URL reaches the in-process adapter', () => {
-    assert.match(manager,
-        new RegExp('if \\(isRemoteExtensionURL\\(extensionURL\\) && pinForURL\\(extensionURL\\)\\) \\{' +
-            '\\s*return this\\._loadTrustedRemoteExtension'));
+test('remote URLs take the explicit worker, compatibility, or unpinned route', () => {
+    assert.match(manager, /pin\.migration && pin\.migration\.status === 'worker'/,
+        'only explicitly promoted pins may enter the verified worker protocol');
+    assert.match(manager, /return this\._loadPinnedWorkerExtension\(extensionURL, pin\)/);
+    assert.match(manager, /return this\._loadTrustedRemoteExtension\(extensionURL\)/,
+        'candidate and deferred pins retain the compatibility adapter');
     assert.match(manager, /return this\._loadSandboxedExtension\(extensionURL\)/);
-    assert.doesNotMatch(manager, /if \(isRemoteExtensionURL\(extensionURL\)\) \{\s*return this\._load/,
-        'remote by itself must never imply in-process execution');
+    assert.doesNotMatch(manager, /if \(isRemoteExtensionURL\(extensionURL\)\) \{\s*return this\._loadTrustedRemoteExtension/,
+        'remote by itself must never imply page-realm execution');
 });
 
 test('the trusted path still verifies bytes before adapting or registering', () => {
@@ -39,6 +41,8 @@ test('the worker API contains compatibility helpers but no page or native bridge
         assert.match(worker, new RegExp(`\\b${name}\\b`));
     }
     assert.match(worker, /unsandboxed: false/);
+    assert.match(worker, /capabilities: Object\.freeze/);
+    assert.match(worker, /dispatch\.requestCapability\(operation, args\)/);
     assert.match(worker, /blockNetworkEscapeHatches\(\)/);
     assert.match(worker, /\['Worker', 'SharedWorker'\]/);
     assert.match(worker, /\['bluetooth', 'serial', 'usb', 'hid'\]/);
@@ -117,6 +121,10 @@ test('the broker rejects privileged calls and cross-worker response forgery at r
         brokerModule.require = request => {
             if (request === './shared-dispatch') return sharedModule.exports;
             if (request === '../util/log') return log;
+            if (request === '../extension-support/capability-broker') {
+                return Module.prototype.require.call(brokerModule,
+                    path.join(root, 'overlay/scratch-vm/src/extension-support/capability-broker.js'));
+            }
             return Module.prototype.require.call(brokerModule, request);
         };
         brokerModule._compile(central, filename);
