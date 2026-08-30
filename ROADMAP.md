@@ -181,6 +181,21 @@ the proof earned its keep twice. Full transcript in that repo's `RESULTS.md`.
 
 Both guard defects would have been live-site incidents here. Neither cost anything there.
 
+**Sample size on lite itself, so the claim is not overstated.** Run 33296829625 (`4643c623e`) is
+the only post-change build at the time of writing: `build: success`, `deploy: success`, guard
+logged `published=03d20c74 ours=4643c623 / compare = behind` and published, `verify-gui: success`.
+Every push since has been a `LANES.md` row, which `paths-ignore` skips by design. The behavioural
+evidence is the scratch repo's controlled bursts; lite's own is one green end-to-end pass.
+
+**Not fixed, and measured rather than assumed: `vendor-freshness.yml` has the same group shape**
+(`vendor-${{ github.event_name }}-${{ github.ref }}`) and `build.yml`'s own comment names it as
+collateral of this queue. Measured 2026-08-30 over its 100 most recent `main` runs: 83 success,
+3 failure, **13 cancelled** — but only **1 of the 13 had zero jobs**. The other twelve had a job
+created before being cancelled, so the mechanism there is NOT the pending-entry eviction fixed
+above, and applying the same one-line change on that assumption is exactly the naive redo this
+item warns against. What it would take: classify those twelve (job created, never started, versus
+started and cancelled) before choosing a shape. Blocked on: nobody — it is small and unclaimed.
+
 **Residual, stated rather than discovered later.** The guard treats a deployment RECORD as
 published, and a record exists for a deploy job that started and was then cancelled. The site can
 therefore sit one commit behind if the newest deploy job's `deploy-pages` step itself FAILS after
