@@ -105,8 +105,7 @@ const KNOWN_DEAD = new Map([
     // we wrote, deletion is a tool we actually have. git remembers it.
     ['lib/bw-circuit-ui/model/demo-netlist.js', {roadmap: '4.3',
         reason: 'Vendored; used only by bw-circuit-ui\'s standalone demo (main.jsx).'}],
-    ['lib/bw-circuit-ui/model/export-png.js', {roadmap: '4.3',
-        reason: 'Vendored; PNG export of a schematic is not surfaced in lite.'}],
+    // export-png.js removed from KNOWN_DEAD: the lite export menu now imports it.
     ['lib/bw-circuit-ui/model/simulation.js', {roadmap: '4.3',
         reason: 'Vendored; lite drives the board through bw-board, not through ' +
             'bw-circuit-ui\'s own simulation shim.'}],
