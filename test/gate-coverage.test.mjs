@@ -59,7 +59,6 @@ const KNOWN_UNWIRED = {
     'verify-intro.mjs': 'FAILS (2026-08-27)',
     'verify-schematic.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-ssd1306-face.mjs': 'FAILS — 0 ssd1306 case handlers in the built chunk (2026-08-27)',
-    'verify-starter-journeys.mjs': 'FAILS — lesson search finds no Wave 1 topic (2026-08-27)',
 };
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))

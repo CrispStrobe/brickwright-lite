@@ -1,8 +1,13 @@
 /** Browser gate for the first-run chooser and its three real project paths. */
+import {mkdir} from 'node:fs/promises';
+import {join, resolve} from 'node:path';
 import {chromium} from 'playwright';
 
 const url = process.env.PROOF_URL || 'http://127.0.0.1:8765/';
+const artifacts = resolve('artifacts/starter-journeys');
+await mkdir(artifacts, {recursive: true});
 const browser = await chromium.launch({headless: true});
+const pageErrors = [];
 
 const check = (value, message) => {
     if (!value) throw new Error(message);
@@ -12,6 +17,7 @@ const check = (value, message) => {
 try {
     let context = await browser.newContext();
     let page = await context.newPage();
+    page.on('pageerror', error => pageErrors.push(`chooser: ${error.message}`));
     await page.goto(url, {waitUntil: 'domcontentloaded'});
     const dialog = page.getByTestId('bw-starter-dialog');
     await dialog.waitFor({timeout: 30000});
@@ -20,7 +26,7 @@ try {
 
     await page.getByRole('button', {name: 'Not now'}).click();
     await page.reload({waitUntil: 'domcontentloaded'});
-    await page.waitForTimeout(500);
+    await dialog.waitFor({state: 'detached'});
     check(await dialog.count() === 0, 'dismissal survives reload');
     await page.getByText('Settings', {exact: true}).click();
     await page.getByText('Getting started…', {exact: true}).click();
@@ -34,10 +40,13 @@ try {
         'Settings opens the broad lessons catalog');
     const lessonSearch = page.getByRole('searchbox', {name: 'Search lessons'});
     await lessonSearch.fill('motor flyback');
-    check(await page.locator('[data-lesson-id="electricity-motor-flyback"]').isVisible(),
+    const motorLesson = page.locator('[data-lesson-id="electricity-motor-flyback"]');
+    await motorLesson.waitFor();
+    check(await motorLesson.isVisible(),
         'lesson search finds a Wave 1 topic');
     check(await page.locator('[data-lesson-id]').count() === 1,
         'lesson search filters the larger catalog');
+    await page.screenshot({path: join(artifacts, 'catalog-motor-flyback.png')});
     await lessonSearch.fill('');
     await page.getByRole('combobox', {name: 'All levels'}).selectOption('discover');
     check(await page.locator('[data-lesson-id="electricity-polarity"]').isVisible(),
@@ -53,6 +62,7 @@ try {
     for (const id of ['circuit', 'board', 'lego']) {
         context = await browser.newContext();
         page = await context.newPage();
+        page.on('pageerror', error => pageErrors.push(`${id}: ${error.message}`));
         page.on('dialog', prompt => prompt.accept());
         await page.goto(`${url}${url.includes('?') ? '&' : '?'}journey=${id}`, {
             waitUntil: 'domcontentloaded'
@@ -83,8 +93,10 @@ try {
             .allTextContents()).join(' ').toLowerCase();
         const expected = id === 'lego' ? 'code' : 'circuit';
         check(selected.includes(expected), `${id} opens the ${expected} editor`);
+        await page.screenshot({path: join(artifacts, `${id}-guided-lesson.png`)});
         await context.close();
     }
+    check(pageErrors.length === 0, `all journeys have zero page errors${pageErrors.length ? `: ${pageErrors.join(' | ')}` : ''}`);
 } finally {
     await browser.close();
 }
