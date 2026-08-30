@@ -239,10 +239,16 @@ const main = async () => {
         await stage.click();
     } catch { /* some layouts have no separate stage selector */ }
 
+    // Count blocks in the MAIN workspace, which means excluding the palette.
+    // `document.querySelector('.blocklyBlockCanvas')` returns the FLYOUT's
+    // canvas first, so the scoped count read 0 while the unscoped one read 107
+    // — the palette. Measured both ways in the same run before believing
+    // either: the earlier unscoped version reported 107 blocks on a project
+    // whose workspace held two.
     const blocks = await waitFor(
         () => page.evaluate(() => {
-            const ws = document.querySelector('.blocklyBlockCanvas');
-            return ws ? ws.querySelectorAll('.blocklyDraggable').length : 0;
+            const all = [...document.querySelectorAll('.blocklyDraggable')];
+            return all.filter(b => !b.closest('.blocklyFlyout')).length;
         }),
         n => n > 3, 60000, 500);
     record('the program is on the stage workspace', blocks > 3,
