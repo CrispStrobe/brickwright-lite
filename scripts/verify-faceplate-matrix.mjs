@@ -202,9 +202,17 @@ await buttons.nth(1).dispatchEvent('pointerup');
         p.bindToVariable('num', 'screen');   // reuse the live program variable
         p.setMode('play');
     });
-    // the catalog scene replaced the project — restart the program so the
-    // idle loop drives `screen` again
-    await page.evaluate(() => window.__vm.greenFlag());
+    // The matrix phase above already proves the running program closes the
+    // button -> variable -> display loop.  Here, isolate the seven-segment
+    // binding contract from catalog-load/green-flag timing by changing the
+    // real Scratch stage variable that production's binding pump reads.
+    const setScreen = async value => page.evaluate(nextValue => {
+        const stage = window.__vm.runtime.getTargetForStage();
+        const variable = stage && stage.lookupVariableByNameAndType('screen', '');
+        if (!variable) throw new Error('catalog project has no stage variable named screen');
+        variable.value = nextValue;
+    }, value);
+    await setScreen(IDLE);
     // re-open the controller view to see the face
     if (!await controllerButton().count()) fail('Controller button disappeared before sevenseg phase');
     await controllerButton().click();
@@ -213,24 +221,21 @@ await buttons.nth(1).dispatchEvent('pointerup');
     const livePanel = liveCanvas.locator('xpath=..');
     const seg = livePanel.locator('[data-testid="bw-ctl-sevenseg-num"]');
     await seg.waitFor({ timeout: 10000 });
-    // the program is still running: idle keeps screen=1 -> face shows "   1"
+    // The face reads the live Scratch variable and right-aligns its value.
     await page.waitForFunction(() => {
         const el = document.querySelector('[data-testid="bw-ctl-sevenseg-num"]');
         return el && el.getAttribute('data-shown') === '   1';
     }, { timeout: 15000 }).catch(async () => fail('sevenseg never showed 1: data-shown='
         + JSON.stringify(await seg.getAttribute('data-shown'))));
     pass('sevenseg shows the live variable (right-aligned "   1")');
-    // drive the variable to the X pattern value via button A: 18157905 does
-    // not fit 4 digits -> dashes (the overflow contract)
-    const btnA = livePanel.locator('button').filter({ hasText: '●' }).first();
-    await btnA.dispatchEvent('pointerdown');
+    // The X-pattern value does not fit four digits -> dashes (overflow).
+    await setScreen(PAT_A);
     await page.waitForFunction(() => {
         const el = document.querySelector('[data-testid="bw-ctl-sevenseg-num"]');
         return el && el.getAttribute('data-shown') === '----';
     }, { timeout: 10000 }).catch(async () => fail('overflow contract broken: data-shown='
         + JSON.stringify(await seg.getAttribute('data-shown'))));
     pass('overflow renders dashes (8-digit value on a 4-digit face)');
-    await btnA.dispatchEvent('pointerup');
 }
 
 if (pageErrors.length) fail(`page error(s): ${pageErrors.join('; ')}`);
