@@ -83,7 +83,7 @@ test('host-bound capability request returns only the semantic broker result', as
             responseId: 901,
             args: [{
                 protocol: 1,
-                requestId: 1,
+                requestId: 0,
                 operation: 'project.metadata.read',
                 args: {field: 'locale'}
             }]

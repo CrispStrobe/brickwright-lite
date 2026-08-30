@@ -14,7 +14,7 @@ const record = (workerId, capabilities = [operation]) => Object.freeze({
     capabilities: Object.freeze(capabilities.slice()),
     source: 'reviewed source'
 });
-const request = (requestId = 1, overrides = {}) => Object.assign({
+const request = (requestId = 0, overrides = {}) => Object.assign({
     protocol: VOCABULARY_VERSION,
     requestId,
     operation,
@@ -48,7 +48,7 @@ test('invented operation and wildcard declaration are refused', async () => {
     const worker = {};
     const broker = new CapabilityBroker();
     broker.attach(worker, record(1, []));
-    await assert.rejects(broker.request(worker, request(1, {operation: 'native.invoke'})), /Unknown/);
+    await assert.rejects(broker.request(worker, request(0, {operation: 'native.invoke'})), /Unknown/);
     assert.throws(() => new CapabilityBroker().attach({}, record(2, ['project.*'])), /Unknown capability/);
 });
 
@@ -66,7 +66,7 @@ test('cross-worker replay and same-session replay are refused', async () => {
     const broker = new CapabilityBroker({[operation]: async () => 'ok'});
     broker.attach(first, record(4));
     broker.attach(second, record(5, []));
-    const captured = request(44);
+    const captured = request(0);
     assert.equal(await broker.request(first, captured), 'ok');
     await assert.rejects(broker.request(first, captured), /Replayed/);
     await assert.rejects(broker.request(second, captured), /not declared/);
@@ -76,8 +76,8 @@ test('operation arguments are exact and strictly validated', async () => {
     const worker = {};
     const broker = new CapabilityBroker({[operation]: async () => 'ok'});
     broker.attach(worker, record(6));
-    await assert.rejects(broker.request(worker, request(1, {args: {field: 'digest'}})), /arguments/);
-    await assert.rejects(broker.request(worker, request(2, {args: {field: 'title', extra: true}})), /arguments/);
+    await assert.rejects(broker.request(worker, request(0, {args: {field: 'digest'}})), /arguments/);
+    await assert.rejects(broker.request(worker, request(1, {args: {field: 'title', extra: true}})), /arguments/);
 });
 
 test('stale reply and post-termination request are refused', async () => {
@@ -91,7 +91,7 @@ test('stale reply and post-termination request are refused', async () => {
     broker.revoke(worker);
     complete('late secret');
     await assert.rejects(pending, /Stale/);
-    await assert.rejects(broker.request(worker, request(2)), /not active/);
+    await assert.rejects(broker.request(worker, request(1)), /not active/);
 });
 
 test('monotonic replay protection is constant-space and rejects duplicate or lower IDs', async () => {
@@ -105,7 +105,9 @@ test('monotonic replay protection is constant-space and rejects duplicate or low
         error.code === 'replayed-request');
     await assert.rejects(broker.request(worker, request(50_000)), error =>
         error.code === 'replayed-request');
-    assert.equal(await broker.request(worker, request(100_001)), 'ok');
+    await assert.rejects(broker.request(worker, request(100_001)), error =>
+        error.code === 'out-of-order-request');
+    assert.equal(await broker.request(worker, request(100_000)), 'ok');
     assert.equal(broker.diagnostics().length, MAX_DIAGNOSTICS);
     assert.doesNotMatch(String(brokerModule.CapabilityBroker), /requestIds\s*:\s*new Set/,
         'replay state must not grow once per request');
@@ -113,9 +115,9 @@ test('monotonic replay protection is constant-space and rejects duplicate or low
 
 test('every refusal has a stable sanitized diagnostic code', async () => {
     const cases = [
-        ['invalid-envelope', request(1, {extra: true})],
-        ['unknown-operation', request(2, {operation: 'native.invoke'})],
-        ['invalid-arguments', request(3, {args: {field: 'digest'}})]
+        ['invalid-envelope', request(0, {extra: true})],
+        ['unknown-operation', request(0, {operation: 'native.invoke'})],
+        ['invalid-arguments', request(1, {args: {field: 'digest'}})]
     ];
     const worker = {};
     const broker = new CapabilityBroker({[operation]: () => 'ok'});
@@ -126,10 +128,10 @@ test('every refusal has a stable sanitized diagnostic code', async () => {
 
     const undeclaredWorker = {};
     broker.attach(undeclaredWorker, record(11, []));
-    await assert.rejects(broker.request(undeclaredWorker, request(1)), error =>
+    await assert.rejects(broker.request(undeclaredWorker, request(0)), error =>
         error.code === 'undeclared-operation');
     broker.revoke(undeclaredWorker);
-    await assert.rejects(broker.request(undeclaredWorker, request(2)), error =>
+    await assert.rejects(broker.request(undeclaredWorker, request(1)), error =>
         error.code === 'invalid-session');
 
     const codes = broker.diagnostics().filter(entry => entry.event === 'refused').map(entry => entry.code);
@@ -144,8 +146,8 @@ test('diagnostic snapshots are immutable, bounded, host-identified and redact au
     const broker = new CapabilityBroker({[operation]: (_args, hostRecord) => `worker-${hostRecord.workerId}`});
     broker.attach(first, record(12));
     broker.attach(second, record(13, []));
-    assert.equal(await broker.request(first, request(1)), 'worker-12');
-    await assert.rejects(broker.request(second, request(1)), error => error.code === 'undeclared-operation');
+    assert.equal(await broker.request(first, request(0)), 'worker-12');
+    await assert.rejects(broker.request(second, request(0)), error => error.code === 'undeclared-operation');
 
     const snapshot = broker.diagnostics();
     assert.ok(Object.isFrozen(snapshot));
@@ -170,7 +172,7 @@ test('revocation and stale completion are independently visible without leaking 
     const worker = {};
     const broker = new CapabilityBroker({[operation]: () => new Promise(resolve => { complete = resolve; })});
     broker.attach(worker, record(14));
-    const pending = broker.request(worker, request(1));
+    const pending = broker.request(worker, request(0));
     broker.revoke(worker);
     complete({privateResult: true});
     await assert.rejects(pending, error => error.code === 'stale-reply');
@@ -180,4 +182,46 @@ test('revocation and stale completion are independently visible without leaking 
         ['refused', 'stale-reply']
     ]);
     assert.doesNotMatch(JSON.stringify(tail), /privateResult/);
+});
+
+test('revocation is a permanent attributed tombstone for the same worker object', async () => {
+    const worker = {};
+    const broker = new CapabilityBroker({[operation]: () => 'ok'});
+    broker.attach(worker, record(15));
+    broker.revoke(worker);
+    assert.throws(() => broker.attach(worker, record(16)), /already attached/,
+        'a revoked transport must never acquire a second host identity');
+    await assert.rejects(broker.request(worker, request(0)), error => error.code === 'invalid-session');
+    const refusal = broker.diagnostics().at(-1);
+    assert.deepEqual({workerId: refusal.workerId, slug: refusal.slug, code: refusal.code}, {
+        workerId: 15,
+        slug: 'reviewed-15',
+        code: 'invalid-session'
+    });
+});
+
+test('all session diagnostics share one frozen canonical declaration snapshot', async () => {
+    const worker = {};
+    const broker = new CapabilityBroker({[operation]: () => 'ok'});
+    broker.attach(worker, record(17));
+    await broker.request(worker, request(0));
+    await broker.request(worker, request(1));
+    broker.revoke(worker);
+    const entries = broker.diagnostics().filter(entry => entry.workerId === 17);
+    assert.ok(entries.length >= 4);
+    assert.ok(entries.every(entry => entry.declared === entries[0].declared),
+        'audit recording must not allocate and sort declarations per event');
+    assert.ok(Object.isFrozen(entries[0].declared));
+    assert.deepEqual(entries[0].declared, [operation]);
+});
+
+test('a high-ID gap is refused without poisoning the exact-next sequence', async () => {
+    const worker = {};
+    const broker = new CapabilityBroker({[operation]: () => 'ok'});
+    broker.attach(worker, record(18));
+    await assert.rejects(broker.request(worker, request(Number.MAX_SAFE_INTEGER)), error =>
+        error.code === 'out-of-order-request');
+    assert.equal(await broker.request(worker, request(0)), 'ok',
+        'a refused gap must not self-DoS the capability session');
+    await assert.rejects(broker.request(worker, request(0)), error => error.code === 'replayed-request');
 });

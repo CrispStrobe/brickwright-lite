@@ -39,7 +39,7 @@ class CapabilityBroker {
             event,
             workerId: hostRecord ? hostRecord.workerId : null,
             slug: hostRecord ? hostRecord.slug : null,
-            declared: Object.freeze(session ? Array.from(session.declared).sort() : []),
+            declared: session ? session.declaredSnapshot : Object.freeze([]),
             operation: OPERATIONS[operation] ? operation : null,
             code
         });
@@ -76,7 +76,8 @@ class CapabilityBroker {
             }
             declared.add(capability);
         }
-        const session = {hostRecord, declared, lastRequestId: -1, active: true};
+        const declaredSnapshot = Object.freeze(Array.from(declared).sort());
+        const session = {hostRecord, declared, declaredSnapshot, lastRequestId: -1, active: true};
         this._sessions.set(worker, session);
         this._record(session, 'attached', 'worker-attached', null);
     }
@@ -88,7 +89,9 @@ class CapabilityBroker {
             session.active = false;
             this._record(session, 'revoked', 'worker-revoked', null);
         }
-        this._sessions.delete(worker);
+        // Keep an inactive WeakMap tombstone. It is garbage-collected with the worker, retains
+        // attribution for refused stale calls, and prevents the same transport object from being
+        // rebound to a fresh authority after revocation.
     }
 
     /**
@@ -110,6 +113,10 @@ class CapabilityBroker {
         }
         if (envelope.requestId <= session.lastRequestId) {
             return this._refuse(session, 'replayed-request', 'Replayed capability request', envelope.operation);
+        }
+        if (envelope.requestId !== session.lastRequestId + 1) {
+            return this._refuse(session, 'out-of-order-request', 'Out-of-order capability request',
+                envelope.operation);
         }
         session.lastRequestId = envelope.requestId;
 
