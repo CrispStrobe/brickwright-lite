@@ -187,16 +187,11 @@ const main = async () => {
         t => /counter/i.test(t || ''), 60000, 500);
     record('the example bench loaded', /counter/i.test(title || ''), `project title: "${title}"`);
 
-    // The example picker loads the bench's CIRCUIT — that is where the chip
-    // comes from — but leaves the program to the Code tab. Measured: after
-    // this load the workspace canvas holds 0 blocks. So supply the program
-    // here, unless the build already put one in the editor.
-    //
-    // Typed with NO leading indentation, which is the trick: CodeMirror
-    // auto-indents, so typed spaces compound and the FOREVER body nests wrong.
-    // scripts/verify-debug-dock.mjs has typed an unindented program at this
-    // editor for months without flaking; same shape, plus a counter variable,
-    // because D29's watchpoint needs a byte that changes.
+    // The current example loader supplies BOTH the circuit and its program.
+    // Keep that production chain intact: replacing the program here once made
+    // a malformed three-block loop look like a debugger failure. The example's
+    // count changes on its real button input; D29 drives that control after the
+    // watch is armed instead of swapping in a special proof program.
     await page.locator('[role="tab"]', {hasText: /^Code$/i}).first().click();
     const cm = page.locator('.cm-content').first();
     await cm.waitFor({state: 'visible', timeout: 30000});
@@ -204,34 +199,9 @@ const main = async () => {
         const el = document.querySelector('.cm-content');
         return el ? el.innerText : '';
     });
-    // The example's own count changes only after a PHYSICAL button press.
-    // That is good curriculum and a bad watchpoint fixture: a correctly armed
-    // watch would never fire. Keep its real circuit/chip, but always replace
-    // the program half with this autonomous counter so the next write is
-    // deterministic and no synthetic canvas gesture is part of the proof.
-    await cm.click();
-    await page.keyboard.press('Control+a');
-    await page.keyboard.press('Backspace');
-    await page.keyboard.type(
-        'DEVICE STC12C5A60S2\n'
-        + 'CLOCK 11059200\n'
-        + 'PIN led1 = P1.0 OUTPUT ACTIVE LOW\n'
-        + '\n'
-        + 'WHEN flag clicked:\n'
-        + 'set counter to 0\n'
-        + 'FOREVER:\n'
-        + 'change counter by 1\n'
-        + 'toggle led1\n'
-        + 'wait 0.15 seconds\n', {delay: 5});
-    const toBlocks = page.locator('button', {hasText: /To blocks/i}).first();
-    await toBlocks.waitFor({state: 'visible', timeout: 20000});
-    await toBlocks.click({force: true});
-    const typed = await page.evaluate(() => {
-        const el = document.querySelector('.cm-content');
-        return el ? el.innerText : '';
-    });
-    record('the program is in the editor', /DEVICE\s+STC12/i.test(typed) && /FOREVER/i.test(typed),
-        `${typed.length} chars, replaced pre-loaded=${/DEVICE\s+STC12/i.test(already)}`);
+    record('the shipped example program is in the editor',
+        /DEVICE\s+STC12/i.test(already) && /FOREVER/i.test(already) && /change\s+count\s+by\s+1/i.test(already),
+        `${already.length} chars`);
 
     await page.locator('[role="tab"]', {hasText: /^Blocks$/i}).first().click();
     // BrickWright programs land on the STAGE, not on a sprite, and a sprite is
@@ -409,6 +379,17 @@ const main = async () => {
         const resumed = await waitFor(phase, p => p === 'running', 15000, 25);
         record('D29: the session resumed with the watch armed', resumed === 'running',
             `phase=${resumed}`);
+        const pressed = await page.evaluate(() => {
+            const board = window.__activeBoard || window.__board;
+            const circuit = window.__circuit;
+            const button = circuit && Array.isArray(circuit.parts) &&
+                circuit.parts.find(p => p && p.kind === 'button');
+            if (!board || typeof board.setControl !== 'function' || !button) return null;
+            board.setControl(button.id, 1);
+            return button.id;
+        });
+        record('D29: the example button is pressed through the active solved board', !!pressed,
+            pressed || 'no active-board button control');
         const hit = await waitFor(
             () => debugPanel.evaluate(root => {
                 const el = root.querySelector('[data-watch-hit]');

@@ -540,27 +540,20 @@ jobs:
           path: artifacts/labwired-*.png
           if-no-files-found: warn
 
-      # NOT WIRED IN YET, deliberately. `scripts/verify-debug-frames-watch.mjs`
-      # is written and is in the tree, and it does not yet get a debug session
-      # up in this app: the debugger needs a program AND a chip, the example
-      # picker supplies the circuit but not the program, and the three ways I
-      # tried to supply the program each failed differently (see the script's
-      # own header — it records all three, because each looked like a broken
-      # feature rather than a broken setup).
-      #
-      # Landing it as a CI step before it passes did what it deserved: it made
-      # main red for three pushes and stopped every gate after it from running,
-      # while the deploy watchdog filed "Pages not deploying". A gate that
-      # cannot pass is not a gate, and a gate that has never passed has no
-      # business being the thing that blocks a deploy. It goes back in — with
-      # its screenshot upload — in the commit that makes it green.
-      #
-      # D25/D28/D29 are proven meanwhile by node tests against the REAL
-      # vendored artifact, which is the stronger half of the evidence anyway:
-      # test/debug-watchpoint-cycle.test.mjs (10) and test/debug-frames.test.mjs
-      # (15) load the shipped WASM and assert the halt names iram 0x30 / 0x00 ->
-      # 0x42, that 3 cycle steps cross what 2 instruction steps do, and that the
-      # frames view refuses to invent a call stack.
+      # D25/D28/D29 against the production app: exact paused phase, one-cycle
+      # delta, scheduler-position refusal, and a real solved-board button write
+      # halting at the rendered variable address with both byte values.
+      - name: Browser gate — debugger frames, cycle step and write watchpoint
+        id: debug_frames_watch
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: debugger-frames-watch-screenshots
+          path: artifacts/debug-proof/*.png
+          if-no-files-found: error
 
       # The debugger-only pane, which the note above says has regressed to a
       # blank pane twice. This gate existed for it and was never run by CI — so

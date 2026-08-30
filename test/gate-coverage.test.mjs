@@ -57,7 +57,6 @@ const KNOWN_UNWIRED = {
     'verify-instruments-scroll.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-interaction.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-intro.mjs': 'FAILS (2026-08-27)',
-    'verify-debug-frames-watch.mjs': '15/19 — real session, probe must enforce paused phase and real variable address (2026-08-30)',
     'verify-schematic.mjs': 'FAILS — timeout (2026-08-27)',
     'verify-ssd1306-face.mjs': 'FAILS — 0 ssd1306 case handlers in the built chunk (2026-08-27)',
     'verify-starter-journeys.mjs': 'FAILS — lesson search finds no Wave 1 topic (2026-08-27)',
@@ -69,9 +68,10 @@ const workflowText = readdirSync(path.join(ROOT, '.github/workflows'))
     .join('\n');
 // A prose comment saying "NOT WIRED" used to satisfy includes(filename), so
 // the very warning about this gate made the coverage gate report it as run.
-const workflowExecutableText = workflowText.split('\n')
+const executableWorkflowText = text => text.split('\n')
     .filter(line => !line.trimStart().startsWith('#'))
     .join('\n');
+const workflowExecutableText = executableWorkflowText(workflowText);
 
 const gates = readdirSync(path.join(ROOT, 'scripts'))
     .filter(f => f.startsWith('verify-') && f.endsWith('.mjs'));
@@ -95,9 +95,8 @@ test('the unwired list only shrinks — entries that are now wired must be remov
 });
 
 test('workflow comments do not masquerade as executable browser gates', () => {
-    assert.match(workflowText, /NOT WIRED IN YET[\s\S]*verify-debug-frames-watch\.mjs/,
-        'fixture drift: the known unwired comment is gone, so replace this proof');
-    assert.ok(!workflowExecutableText.includes('verify-debug-frames-watch.mjs'),
+    const commentOnly = '# NOT WIRED: node scripts/verify-comment-only.mjs\nname: example\n';
+    assert.ok(!executableWorkflowText(commentOnly).includes('verify-comment-only.mjs'),
         'a comment-only filename must not count as a CI invocation');
 });
 
