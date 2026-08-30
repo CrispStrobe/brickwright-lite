@@ -37,26 +37,27 @@ lane closes the electrical path rather than merely importing a dead module.
 
 ## Wave B — physical circuit and product surface (60–90 minutes)
 
-- [ ] Add the 74C922 to the designer palette without duplicating its existing
+- [x] Add the 74C922 to the designer palette without duplicating its existing
   sidecar or renderer; confirm placement/export/import round trips.
-- [ ] Build one small shipped bench/example with a separate `keypad_4x4`,
+- [x] Build one small shipped bench/example with a separate `keypad_4x4`,
   pull network, 74C922 and visible A–D/DA consumers.
 - [x] Prove key presses cross real row/column nets into the encoder. Lite's
   vendored-overlay acceptance severs one row and one column, proves each target
   key no longer encodes, and proves a neighboring key still does.
-- [ ] Preserve ordinary clickable keypad behavior and corpus invariants.
+- [x] Preserve ordinary clickable keypad behavior and corpus invariants.
 
 ## Wave C — browser acceptance and release (45–75 minutes plus CI)
 
-- [ ] Add a browser gate that places/loads the real bench, enters Simulate,
+- [x] Add a browser gate that places/loads the real bench, enters Simulate,
   presses at least keys `1`, `6`, and `D`, and observes three distinct exact
-  codes with DA asserted; release clears DA and OEB floats the outputs.
-- [ ] Capture success/failure artifacts, assert the scenario denominator, use
+  codes with DA asserted; release clears DA. The electrical acceptance above
+  proves OEB floats all four outputs under opposite external biases.
+- [x] Capture success/failure artifacts, assert the scenario denominator, use
   condition waits only, and wire the gate into an executable workflow command.
 - [x] Remove only `lib/bw-board/m74c922.js` from the dead-module exclusion and
   update ROADMAP §4.4 with measured evidence. The integrated-tree ratchet sees
   the real `tier2-parts.js` consumer; 10 focused Lite assertions pass, and an
   A/B output-map mutation makes the all-16-codes assertion red (`2 !== 1`).
-- [ ] Run focused/full upstream tests, vendor checks, Lite focused/full tests,
+- [x] Run focused/full upstream tests, vendor checks, Lite focused/full tests,
   production browser proof, mutation proofs, GitHub CI/deploy, and a deployed
   rerun. Move the LANES claim to DONE with commits, counts and run IDs.
