@@ -15,6 +15,8 @@
  * in BUILD-INFO.md. mcs51 port only.
  */
 
+import {buildSymbolTable} from './symtab.js';
+
 let loaded = false;
 let sdcc = null;
 let sdas = null;
@@ -81,6 +83,7 @@ export async function compile (code, { target = 'stc12c5a60s2', symbols = false 
         const sdccArgs = [
             '-mmcs51',
             `--model-${target.includes('stc89') ? 'small' : 'small'}`,
+            ...(symbols ? ['--debug'] : []),
             '-c', '/input.c',
             '-o', '/input.rel'
         ];
@@ -113,10 +116,21 @@ export async function compile (code, { target = 'stc12c5a60s2', symbols = false 
             base64: btoa(hex)
         };
 
-        // Symbol extraction (stub — needs stc_symtab.py equivalent in JS)
+        // Protocol 004 symbol extraction is implemented locally. It remains
+        // fail-closed: the linked .cdb, not the compile-only one, must carry
+        // every address used by the debugger.
         if (symbols) {
-            result.symbols = null;
-            result.symbols_error = 'WASM compiler does not yet extract symbols (use server for debugging)';
+            try {
+                const candidates = ['/output.cdb', '/input.cdb'];
+                const cdbPath = candidates.find(path => sdcc.FS.analyzePath(path).exists);
+                if (!cdbPath) throw new Error('the WASM link wrote no .cdb file');
+                const cdb = sdcc.FS.readFile(cdbPath, {encoding: 'utf8'});
+                result.symbols = buildSymbolTable(cdb, code, {target, device: target});
+                result.symbols_error = null;
+            } catch (e) {
+                result.symbols = null;
+                result.symbols_error = `local symbol extraction failed: ${e.message}`;
+            }
         }
 
         return result;

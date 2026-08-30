@@ -33,7 +33,7 @@ Two counting rules, so the numbers are comparable:
 | **D6** | `bw-circuit-changed` is dispatched only when the derived **pin declarations** change, so on an MCU-less bench no wiring edit can raise it | bw-circuit-ui (`CircuitDesigner`) + lite (`circuit-tab.jsx`) | **3** | 1, 6, 7 | **FIXED** — `onCircuitEdit` |
 | **D7** | Three machine benches boot with an empty ROM: no example ships an image, `sb3-creator` has no assembler, and the runner skips the build for machine targets | sb3-creator (examples) | **3** | 7 | **FIXED** — an assembler and three shipped ROMs |
 | **D8** | `pc52-inductor-filter` is an RLC used as an RL bench; the L/R law holds for its first ~300 µs and then the 100 µF takes over | sb3-creator (example) | **3** | 1, 6 | **FIXED** — a new RL bench |
-| **D9** | A Bode point costs 10/f seconds of simulated time (`settleCycles` 6 + `measureCycles` 4) and `SweepPanel` runs the sweep synchronously | bw-board (`runAcSweep`) + bw-circuit-ui | **2** | 6 | open — see PLAN.md |
+| **D9** | A Bode point costs 10/f seconds of simulated time (`settleCycles` 6 + `measureCycles` 4) and `SweepPanel` ran the sweep synchronously | bw-circuit-ui | **2** | 6 | **FIXED** — chunked/worker session, progress and cancellation |
 | **D10** | `pc50-two-stage-rc` corners at 0.159 Hz, so the decade below the corner its own lesson asks for costs 629 s of simulation per point | sb3-creator (example) | **2** | 6 | **FIXED** — 100 µF → 100 nF |
 | **D11** | `43-rc-timing` has no controls at all, so the charging step it measures happens once and cannot be repeated | sb3-creator (example) | **2** | 2, 6 | **FIXED** — a discharge switch |
 | **D12** | There is no ASM emitter; the Code tab's ASM view is real but both its modes go over the network (`/compile`, `/assemble`) | sb3-creator | **2** | 3, 7 | open — see PLAN.md |
@@ -63,13 +63,13 @@ Two counting rules, so the numbers are comparable:
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | **FIXED 2026-08-29** — `INPUT ACTIVE LOW`, and the read inverted to keep the sketch's printed value |
 
-**37 defects. Thirty-one are closed** — D1, D3, D4, D5, D6, D7, D8, D10, D11,
+**37 defects. Thirty-two are closed** — D1, D3, D4, D5, D6, D7, D8, D9, D10, D11,
 D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D25, D26, D27, D28, D29, D31,
 D32, D33, D35, D36 and D37 by repair, and D34 by re-measurement, which is a
 different and weaker claim: it stopped reproducing between the Wave 1 vendor
 and today, and this campaign only found that out. Together they account for
-**70 of the 90 lesson-slots** the table counts, and D1 alone is 28 of them.
-**Six are open**: D2, D9, D12, D13, D22 and D30 — and three of those six (D13,
+**72 of the 90 lesson-slots** the table counts, and D1 alone is 28 of them.
+**Five are open**: D2, D12, D13, D22 and D30 — and three of those five (D13,
 D22 and D30) are labelled rather than broken. Every row still open is recorded
 in `PLAN.md` with what blocks it and who owns it.
 
