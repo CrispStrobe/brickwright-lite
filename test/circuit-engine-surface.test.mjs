@@ -28,6 +28,18 @@
  * adds to the library cannot ship unwired.
  *
  * The second half proves the DRC consequence by running it both ways.
+ *
+ * TWO CURRENT-SUMMING PATHS, kept apart on purpose. bw-board's own
+ * `checkCurrentBudget` holds the ratings by construction and surfaces a generic
+ * ceiling through the board's render state ("Up to 125.0 mA at maximum
+ * ratings") whatever the host injected — measured on production before the fix,
+ * once per part, 25 times on the 25-part bench below, with no consumer
+ * breakdown and no suggested fix. So current summing was never wholly absent.
+ * What the omission crippled is bw-circuit-ui's rule 8 specifically: the
+ * warning that states a TOTAL rather than a ceiling, names the largest
+ * consumers, and offers a way out. The assertions below read rule 8's own
+ * output and nothing else, because a check that cannot tell the two apart
+ * would have passed on the broken build.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';

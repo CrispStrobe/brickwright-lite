@@ -36,9 +36,12 @@
  *     ratings being live in the shipped bundle.
  *
  *   BENCH 2 — kind-rated only. 25 IR receivers, 5 mA each = 125 mA, and not one
- *     wire: every milliamp in that sum comes from `getMaxCurrent`. Under the
- *     fallback the total is 0 mA and NO warning appears at all. This is the
- *     half that cannot be faked by the solver.
+ *     wire: every milliamp in that sum comes from `getMaxCurrent`, because the
+ *     solver has nothing to measure. Under the fallback rule 8 sums 0 mA and
+ *     says nothing — the chip still appears, carrying 25 copies of the engine's
+ *     generic ceiling and no rule-8 sentence at all, which is exactly what the
+ *     production run before the fix printed. This is the half that cannot be
+ *     faked by the solver.
  *
  * Both are screenshotted so the claim is inspectable from any CI run.
  *
@@ -127,23 +130,48 @@ try {
     check('the Circuit host is reachable', found);
     if (!found) throw new Error('circuit tab host not found');
 
-    /** Load a bench, open the warning chip, return its rendered findings. */
-    const loadAndRead = async (data) => {
+    /**
+     * Load a bench, open the warning chip, return its rendered findings.
+     *
+     * NO FIXED SLEEPS — `test/wait-census.test.mjs` ratchets the repository's
+     * unconditional sleeping and it may only shrink, which is the right rule:
+     * a `waitForTimeout` costs exactly what it was given on every future run
+     * and is the one guess that cannot be checked by watching. So each step
+     * waits for the condition it is actually standing in for.
+     *
+     * `settled` is a marker the bench produces in BOTH the broken and the fixed
+     * build, so waiting for it is a wait and not an assertion wearing a wait's
+     * clothes: it says "the DRC has re-run over the new topology", and the
+     * discriminating checks then read settled content. Picking a
+     * fix-only marker here would have turned the broken build's honest FAIL
+     * into a timeout, which reads as infrastructure trouble rather than as the
+     * defect it is.
+     */
+    const loadAndRead = async (data, settled) => {
         await page.evaluate(value => new Promise(res => {
             window.__bwDrcCircuitTab.setState({circuitData: value}, res);
         }), data);
-        // The DRC memo keys on topology; give the designer a solve and a paint.
-        await page.waitForTimeout(1200);
         const chip = designer.locator('[data-warnings-chip]');
-        if (await chip.count() === 0) return {chip: false, text: ''};
+        try {
+            await chip.first().waitFor({state: 'visible', timeout: 30000});
+        } catch {
+            return {chip: false, text: ''};
+        }
         if (await designer.locator('[data-warnings-popover]').count() === 0) await chip.first().click();
-        await page.waitForTimeout(300);
         const pop = designer.locator('[data-warnings-popover]');
-        return {chip: true, text: await pop.count() ? (await pop.first().innerText()) : ''};
+        await pop.first().waitFor({state: 'visible', timeout: 30000});
+        // The popover renders before the DRC memo has necessarily re-run over
+        // the new topology; wait for this bench's own finding to be in it.
+        await pop.first().locator(`text=${settled}`).first()
+            .waitFor({state: 'visible', timeout: 30000});
+        return {chip: true, text: await pop.first().innerText()};
     };
 
     // ── BENCH 1 ────────────────────────────────────────────────────────────
-    const one = await loadAndRead(measuredBench());
+    // 'Total circuit current is' fires on this bench either way — the LEDs are
+    // MEASURED by the solver, so rule 8 reaches a verdict with or without the
+    // ratings. What differs is the wording, which is what the checks read.
+    const one = await loadAndRead(measuredBench(), 'Total circuit current is');
     check('overloaded LED bench raises the warning chip', one.chip);
     console.log(`  bench 1 findings:\n    ${one.text.replace(/\n/g, '\n    ')}`);
     check('bench 1 reports an aggregate current past the chip limit',
@@ -163,7 +191,11 @@ try {
     console.log(`screenshot: ${join(shotDir, 'drc-current-measured.png')}`);
 
     // ── BENCH 2 ────────────────────────────────────────────────────────────
-    const two = await loadAndRead(ratedBench());
+    // 'at maximum ratings' is bw-board's own ceiling, which this bench raises
+    // in both builds (and bench 1 never raises, so it cannot be stale text from
+    // the previous popover). Rule 8's sentence is the thing under test here and
+    // is deliberately NOT the settle marker.
+    const two = await loadAndRead(ratedBench(), 'at maximum ratings');
     check('kind-rated-only bench raises the warning chip', two.chip);
     console.log(`  bench 2 findings:\n    ${two.text.replace(/\n/g, '\n    ')}`);
     check('bench 2 sums 25 x 5 mA of rated parts into rule 8 as 125 mA',
