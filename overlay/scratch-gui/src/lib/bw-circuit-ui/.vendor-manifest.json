@@ -77,7 +77,7 @@
  "model/demo-netlist.js": "d94b5c974a9f060bbb9415b993555ede172edf98",
  "model/dip-chips.js": "517c7bd5b2414c754418b427772be3ce9fb19787",
  "model/dip-geometry.js": "8d57d46e8bc70cd93ed6df459b07294f174c1037",
- "model/drc.js": "7bc62a63d28a6ea5a8d62f596f53c750e50ce5b6",
+ "model/drc.js": "06ff533ca0745103dbbb5e3c072d3bb083868e75",
  "model/exact-hypot.js": "c3f7c82a9a661ae9df825837f676efbc6b0010f4",
  "model/export-png.js": "f1930b1d125b5de307aa2d508500dc3ae17db280",
  "model/exporters/download.js": "18f7eb6fd5b4554ff28d4ba03ee7ae356398f9e7",
