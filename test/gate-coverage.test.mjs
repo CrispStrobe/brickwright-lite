@@ -36,10 +36,23 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    // Reproduced locally and twice in CI on 2026-08-30: the browser SDCC c1mode
-    // stage produces no /work/main.asm (Node WASM integration remains 2/2).
-    // The gate is honest and runnable; it returns to CI with that compiler fix.
-    'verify-debug-frames-watch.mjs': 'FAIL: Chromium compiler produced no /work/main.asm'
+    // ROOT-CAUSED 2026-08-30, and it is not the browser: the vendored SDCC
+    // 4.5.0 mcs51 build takes a FATAL Compiler Internal Error (SDCCast.c:3528)
+    // on the idle fast-forward `generateC` emits into main() of every 8051
+    // program. Native SDCC 4.2.0 compiles the identical preprocessed text in
+    // the identical --c1mode silently. Node and Chromium fail the same way; the
+    // existing Node integration test stays 2/2 only because its fixture is a
+    // hand-written main() with no idle block.
+    //
+    // So the gate cannot pass until the toolchain is repaired, and no amount of
+    // driving the UI differently will change that: LOCAL_8051_TARGETS routing
+    // has no fallback to the hosted compiler by design, so the shipped app
+    // cannot start an 8051 debug session at all while this stands.
+    //
+    // Pinned by test/wasm-compiler-diagnosis.test.mjs, whose second test goes
+    // red when the toolchain is fixed and says what to do then.
+    'verify-debug-frames-watch.mjs':
+        'FAIL: vendored SDCC 4.5.0 internal error (SDCCast.c:3528) on the emitted idle fast-forward'
 };
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))

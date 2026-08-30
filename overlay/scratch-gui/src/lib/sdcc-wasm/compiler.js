@@ -58,6 +58,7 @@ function populateRuntime (FS, runtime) {
 async function runTool (factory, name, args, resolve, setup, stdinBytes = null) {
     if (typeof factory !== 'function') throw new Error(`${name}.js did not export a module factory`);
     const errors = [];
+    const note = line => { if (!errors.includes(line)) errors.push(line); };
     const module = await factory({
         noExitRuntime: true,
         thisProgram: name,
@@ -84,6 +85,31 @@ async function runTool (factory, name, args, resolve, setup, stdinBytes = null) 
                 M.FS.chdir('/work');
             }
         }],
+        // THE COMPILER'S OWN DIAGNOSIS, WHICH THIS HARNESS WAS THROWING AWAY.
+        //
+        // Emscripten's default exit path throws ExitStatus, and it unwinds
+        // before the buffered stderr is flushed. So a stage that DID diagnose
+        // the program and then exit(1) — the ordinary way a compiler reports a
+        // bad program — arrived here with `errors` empty, and the only thing
+        // the app could say was "compiler produced no /work/main.asm". Measured
+        // on the app's own generated C: with these two handlers the same run
+        // reports `error 20: Undefined identifier 'bw_calm'` and
+        // `error 9: FATAL Compiler Internal Error in file 'SDCCast.c' line
+        // number '3528'`, which is the whole answer; without them, nothing.
+        //
+        // Taking the exit rather than letting it throw is also what keeps the
+        // module object readable afterwards, so `readRequired` can still list
+        // the working directory and say what the stage did produce.
+        onAbort: why => note(`aborted: ${why}`),
+        quit: (status, e) => {
+            // Called more than once when the exit is followed by a trap, so
+            // each distinct line is kept once: a message that repeats itself
+            // reads like two failures.
+            if (status) note(`${name} exited with status ${status}`);
+            if (e && e.message && !/^Program terminated/.test(e.message)) {
+                note(`${name}: ${e.message}`);
+            }
+        },
         print: () => {}, printErr: text => errors.push(String(text))
     });
     return {module, errors};
