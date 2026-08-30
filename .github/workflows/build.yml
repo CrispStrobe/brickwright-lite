@@ -527,6 +527,23 @@ jobs:
             artifacts/verify-*-page-errors.txt
             artifacts/schematic-production/*.png
           if-no-files-found: warn
+      - name: Browser gates — Code chrome, Controller, faceplates, and Instruments
+        if: steps.playwright.outcome == 'success'
+        run: |
+          PROOF_URL=http://localhost:8617/ node scripts/verify-chrome-sweep.mjs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-controller-panel.mjs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-faceplate-matrix.mjs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-instruments-scroll.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: chrome-controller-faceplate-instruments-artifacts
+          path: |
+            artifacts/chrome-sweep/*
+            artifacts/controller-panel/*
+            artifacts/faceplate-matrix/*
+            artifacts/verify-instruments-scroll-*
+          if-no-files-found: warn
       - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-aurora65-workstation.mjs

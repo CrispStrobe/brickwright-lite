@@ -5,18 +5,18 @@
 // handoff resolves, and operating the widget in the DOM moves the model.
 //
 //   PROOF_URL=http://localhost:8623/ node scripts/verify-controller-panel.mjs
-import { createRequire } from 'node:module';
-let chromium;
-for (const base of ['../package.json', '/Users/christianstrobele/code/wt-fable/bw-circuit-ui/package.json']) {
-    try { ({ chromium } = createRequire(new URL(base, import.meta.url).pathname ? new URL(base, import.meta.url) : base)('playwright')); break; }
-    catch { try { ({ chromium } = createRequire(base)('playwright')); break; } catch { /* next */ } }
-}
+import {chromium} from 'playwright';
+import {mkdir, writeFile} from 'node:fs/promises';
+import path from 'node:path';
 const fail = (m) => { console.error(`FAIL ${m}`); process.exitCode = 1; };
 const pass = (m) => console.log(`PASS ${m}`);
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1600, height: 950 } });
-page.on('pageerror', (e) => console.log('[pageerr]', String(e).slice(0, 120)));
-await page.goto(process.env.PROOF_URL || 'http://127.0.0.1:8623/', { waitUntil: 'load' });
+const pageErrors = [];
+page.on('pageerror', e => pageErrors.push(String(e)));
+await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
+try {
+await page.goto(process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await page.waitForFunction(() => {
   const st = window.__brickwrightStore;
   const vm = st && st.getState && st.getState().scratchGui && st.getState().scratchGui.vm;
@@ -25,28 +25,33 @@ await page.waitForFunction(() => {
 }, { timeout: 60000 });
 
 // 1. the stage-header Controller button
-const btn = page.locator('[title="Controller"]').first();
-await btn.waitFor({ timeout: 15000 }).catch(() => fail('no Controller button in the stage header'));
+const showRight = page.getByRole('button', {name: 'Show right panel'});
+if (await showRight.count()) await showRight.click();
+const btn = page.locator('button[title="Controller"]:visible');
+await btn.waitFor({state: 'visible', timeout: 15000});
 await btn.click();
-await page.waitForTimeout(1200);
 
 // 2. the panel renders with the Add Widget affordance
-const add = page.getByText('+ Add Widget').first();
-(await add.count()) ? pass('controller panel renders (+ Add Widget present)')
-  : fail('panel did not render — no Add Widget');
+const canvas = page.getByTestId('bw-controller-canvas');
+await canvas.waitFor({state: 'visible', timeout: 15000});
+const add = page.getByText('+ Add Widget', {exact: true});
+await add.waitFor({state: 'visible', timeout: 10000});
+pass('controller panel renders (+ Add Widget present)');
+const addFromPalette = async (label, expectedTestId) => {
+  const closeInspector = page.getByTestId('bw-ctl-insp-ok');
+  if (await closeInspector.count()) await closeInspector.click();
+  await add.click();
+  const item = page.getByText(label, {exact: true});
+  await item.waitFor({state: 'visible', timeout: 5000});
+  await item.click();
+  const widget = page.getByTestId(expectedTestId);
+  await widget.waitFor({state: 'visible', timeout: 10000});
+  return widget;
+};
 
 // 3. add a slider
-await add.click();
-await page.waitForTimeout(400);
-const sliderItem = page.getByText(/^Slider$/).first();
-if (await sliderItem.count()) {
-  await sliderItem.click();
-  await page.waitForTimeout(600);
-  pass('added a Slider widget via the palette');
-} else {
-  const texts = await page.evaluate(() => [...document.querySelectorAll('button, [role="menuitem"]')].map((e) => e.textContent.trim()).filter(Boolean).slice(0, 20));
-  fail('no Slider entry after Add Widget; saw: ' + JSON.stringify(texts));
-}
+await addFromPalette('Slider', 'bw-ctl-widget-slider1');
+pass('added a Slider widget via the palette');
 
 // 4. the GUI handoff: vm.runtime.controllerPanel resolves and holds the widget
 const model = await page.evaluate(() => {
@@ -72,7 +77,7 @@ if (await range.count()) {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await page.waitForTimeout(400);
+  await page.waitForFunction(value => window.__vm.runtime.controllerPanel.getWidget('slider1')?.state.value !== value, before);
   const after = await page.evaluate(() => {
     const p = window.__vm.runtime.controllerPanel;
     const w = [...p._widgets.values()][0];
@@ -93,15 +98,13 @@ const layoutOf = (name) => page.evaluate((n) => {
 
 // -- edit mode + select ------------------------------------------------------
 await page.evaluate(() => window.__vm.runtime.controllerPanel.setMode('edit'));
-await page.waitForTimeout(400);
+await page.waitForFunction(() => window.__vm.runtime.controllerPanel.mode === 'edit');
 const card = page.locator('[data-testid="bw-ctl-widget-slider1"]');
 await card.waitFor({ timeout: 10000 }).catch(() => fail('positioned widget wrapper missing'));
 await card.dispatchEvent('pointerdown', { pointerId: 9, clientX: 300, clientY: 300 });
 await card.dispatchEvent('pointerup', { pointerId: 9 });
-await page.waitForTimeout(300);
-(await page.locator('[data-testid="bw-ctl-inspector"]').count())
-    ? pass('click selects; inspector opens')
-    : fail('inspector did not open on select');
+await page.getByTestId('bw-ctl-inspector').waitFor({state: 'visible', timeout: 5000});
+pass('click selects; inspector opens');
 
 // -- drag with grid snap -----------------------------------------------------
 {
@@ -111,7 +114,10 @@ await page.waitForTimeout(300);
     await page.mouse.down();
     await page.mouse.move(bb.x + 10 + 37, bb.y + 10 + 21, { steps: 4 });
     await page.mouse.up();
-    await page.waitForTimeout(300);
+    await page.waitForFunction(({x, y}) => {
+        const L = window.__vm.runtime.controllerPanel.getWidget('slider1')?.layout;
+        return L && (L.x !== x || L.y !== y);
+    }, before);
     const after = await layoutOf('slider1');
     const moved = after.x !== before.x || after.y !== before.y;
     const snapped = after.x % 8 === 0 && after.y % 8 === 0;
@@ -129,7 +135,10 @@ await page.waitForTimeout(300);
     await page.mouse.down();
     await page.mouse.move(hb.x + 7 + 45, hb.y + 7 + 30, { steps: 4 });
     await page.mouse.up();
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => {
+        const L = window.__vm.runtime.controllerPanel.getWidget('slider1')?.layout;
+        return Number.isFinite(L?.w) && Number.isFinite(L?.h);
+    });
     const L = await layoutOf('slider1');
     (typeof L.w === 'number' && L.w % 8 === 0 && typeof L.h === 'number' && L.h % 8 === 0)
         ? pass(`corner resize sets snapped w/h (${L.w}x${L.h})`)
@@ -139,7 +148,8 @@ await page.waitForTimeout(300);
 // -- rotate via the inspector (deterministic) --------------------------------
 {
     await page.locator('[data-testid="bw-ctl-insp-rotation"]').fill('45');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => window.__vm.runtime.controllerPanel.getWidget('slider1')?.layout.rotation === 45);
+    await card.waitFor({state: 'visible'});
     const L = await layoutOf('slider1');
     const style = await card.getAttribute('style');
     (L.rotation === 45 && /rotate\(45deg\)/.test(style || ''))
@@ -157,7 +167,11 @@ await page.waitForTimeout(300);
             el.dispatchEvent(new Event('change', { bubbles: true }));
         });
     await page.locator('[data-testid="bw-ctl-insp-label"]').fill('Throttle');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => {
+        const L = window.__vm.runtime.controllerPanel.getWidget('slider1')?.layout;
+        return L?.color === '#ff0000' && L?.label === 'Throttle';
+    });
+    await page.getByTestId('bw-ctl-title-slider1').getByText('Throttle', {exact: true}).waitFor({state: 'visible'});
     const L = await layoutOf('slider1');
     const title = await page.locator('[data-testid="bw-ctl-title-slider1"]').textContent();
     (L.color === '#ff0000' && L.label === 'Throttle' && title.trim() === 'Throttle')
@@ -171,7 +185,10 @@ await page.waitForTimeout(300);
     const nameInput = page.locator('[data-testid="bw-ctl-insp-name"]');
     await nameInput.fill('throttle');
     await nameInput.press('Enter');
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => {
+        const p = window.__vm.runtime.controllerPanel;
+        return !p.getWidget('slider1') && p.getWidget('throttle')?.binding?.variableName === 'speed';
+    });
     const r = await page.evaluate(() => {
         const p = window.__vm.runtime.controllerPanel;
         const w = p.getWidget('throttle');
@@ -185,17 +202,12 @@ await page.waitForTimeout(300);
 
 // -- free text ---------------------------------------------------------------
 {
-    await page.evaluate(() => {
-        const p = window.__vm.runtime.controllerPanel;
-        p.addWidget('note', 'text', {}, { x: 240, y: 24 });
-    });
-    await page.waitForTimeout(300);
-    await page.locator('[data-testid="bw-ctl-widget-note"]').dispatchEvent('pointerdown', { pointerId: 13, clientX: 400, clientY: 200 });
-    await page.locator('[data-testid="bw-ctl-widget-note"]').dispatchEvent('pointerup', { pointerId: 13 });
-    await page.waitForTimeout(300);
-    await page.locator('[data-testid="bw-ctl-insp-text"]').fill('HELLO FACE');
-    await page.waitForTimeout(300);
-    const shown = await page.locator('[data-testid="bw-ctl-text-note"]').textContent();
+    const note = await addFromPalette('text', 'bw-ctl-widget-text1');
+    await page.evaluate(() => window.__vm.runtime.controllerPanel.setWidgetLayout('text1', {x: 240, y: 24}));
+    await note.click({force: true, position: {x: 5, y: 5}});
+    await page.getByTestId('bw-ctl-inspector').waitFor({state: 'visible', timeout: 5000});
+    await page.getByTestId('bw-ctl-insp-cfg-text').fill('HELLO FACE');
+    const shown = await page.locator('[data-testid="bw-ctl-text-text1"]').textContent();
     shown === 'HELLO FACE'
         ? pass('free-text decoration renders its edited text')
         : fail(`text decoration broken: ${JSON.stringify(shown)}`);
@@ -203,20 +215,16 @@ await page.waitForTimeout(300);
 
 // -- free image via upload ----------------------------------------------------
 {
-    await page.evaluate(() => {
-        const p = window.__vm.runtime.controllerPanel;
-        p.addWidget('pic', 'image', {}, { x: 240, y: 120 });
-    });
-    await page.waitForTimeout(300);
-    await page.locator('[data-testid="bw-ctl-widget-pic"]').dispatchEvent('pointerdown', { pointerId: 14, clientX: 400, clientY: 300 });
-    await page.locator('[data-testid="bw-ctl-widget-pic"]').dispatchEvent('pointerup', { pointerId: 14 });
-    await page.waitForTimeout(300);
+    const pic = await addFromPalette('image', 'bw-ctl-widget-image1');
+    await page.evaluate(() => window.__vm.runtime.controllerPanel.setWidgetLayout('image1', {x: 240, y: 120}));
+    await pic.click({force: true, position: {x: 5, y: 5}});
+    await page.getByTestId('bw-ctl-inspector').waitFor({state: 'visible', timeout: 5000});
     const PNG = Buffer.from(
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
     await page.locator('[data-testid="bw-ctl-insp-upload"]').setInputFiles({
         name: 'dot.png', mimeType: 'image/png', buffer: PNG });
     await page.waitForFunction(() => {
-        const img = document.querySelector('img[data-testid="bw-ctl-image-pic"]');
+        const img = document.querySelector('img[data-testid="bw-ctl-image-image1"]');
         return img && /^data:image\/png/.test(img.getAttribute('src') || '');
     }, { timeout: 10000 })
         .then(() => pass('image decoration: upload lands as a dataURL <img>'))
@@ -237,7 +245,7 @@ await page.waitForTimeout(300);
             const closers = document.querySelectorAll('[class*="header-close"], [aria-label="Close"]');
             if (closers[0]) closers[0].click();
         });
-        await page.waitForTimeout(500);
+        await page.waitForFunction(() => document.querySelectorAll('[class*="library-item"], [class*="libraryItem"]').length === 0);
     }
 }
 
@@ -251,8 +259,8 @@ await page.waitForTimeout(300);
         const P = p.constructor;
         const r = P.fromJSON(JSON.parse(JSON.stringify(json)));
         const th = r.getWidget('throttle');
-        const note = r.getWidget('note');
-        const pic = r.getWidget('pic');
+        const note = r.getWidget('text1');
+        const pic = r.getWidget('image1');
         return {
             throttle: th && { layout: th.layout, binding: th.binding },
             noteText: note && note.config.text,
@@ -269,5 +277,15 @@ await page.waitForTimeout(300);
         : fail(`round-trip broken: ${JSON.stringify(roundtrip)}`);
 }
 
-await browser.close();
+if (pageErrors.length) fail(`page errors: ${pageErrors.join(' | ')}`);
+} catch (error) {
+    fail(error.stack || error.message);
+} finally {
+    if (process.exitCode) {
+        await mkdir(path.resolve('artifacts'), {recursive: true});
+        await page.screenshot({path: path.resolve('artifacts/verify-controller-panel-failure.png'), fullPage: true}).catch(() => {});
+        await writeFile(path.resolve('artifacts/verify-controller-panel-page-errors.txt'), `${pageErrors.join('\n')}\n`).catch(() => {});
+    }
+    await browser.close();
+}
 console.log(process.exitCode ? 'CONTROLLER SMOKE: FAIL' : 'CONTROLLER SMOKE: PASS');

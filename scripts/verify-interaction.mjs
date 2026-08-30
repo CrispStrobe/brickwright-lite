@@ -66,10 +66,21 @@ await page.waitForSelector('[role="tab"]', { timeout: 60000 });
 
 // Navigate to Circuit tab, full width, load example
 await page.locator('[role="tab"]', { hasText: /circuit/i }).click();
-await page.waitForTimeout(3000);
+await page.locator('[data-circuit-view-switcher]').first().waitFor({state: 'visible', timeout: 30000});
 try { await page.locator('button', { hasText: 'Full width' }).click({ timeout: 2000 }); } catch {}
 try { await page.locator('button', { hasText: 'Examples' }).click({ timeout: 2000 }); } catch {}
-await page.waitForTimeout(2000);
+await page.waitForFunction(() => {
+  const guiEl = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
+  const key = guiEl && Object.keys(guiEl).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
+  const queue = key ? [guiEl[key]] : [];
+  for (let i = 0; i < 8000 && queue.length; i++) {
+    const f = queue.shift();
+    if (f?.stateNode?.state?.examples?.some(item => item.id === '01-blink')) return true;
+    if (f?.child) queue.push(f.child);
+    if (f?.sibling) queue.push(f.sibling);
+  }
+  return false;
+}, null, {timeout: 30000});
 
 // Load 01-blink via CircuitTab fiber
 await page.evaluate(async () => {
@@ -94,12 +105,17 @@ await page.evaluate(async () => {
   if (!example) throw new Error('required example 01-blink not found');
   await window.__bwCT.loadExample(example);
 });
-await page.waitForTimeout(3000);
+await page.locator('[data-circuit-view-switcher] button[title="Schematic view"]')
+  .first().waitFor({state: 'visible', timeout: 30000});
 
 // Switch to Schematic view
 await page.locator('[data-circuit-view-switcher] button[title="Schematic view"]')
   .first().click({ force: true });
-await page.waitForTimeout(2000);
+await page.waitForFunction(() => {
+  const svg = document.querySelector('svg[data-schematic]');
+  return svg && svg.getBoundingClientRect().width > 0 &&
+    [...svg.querySelectorAll('text')].some(text => text.textContent.trim() === '1kΩ');
+}, null, {timeout: 30000});
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -180,9 +196,14 @@ const svgBox = await page.locator('svg[data-schematic]').boundingBox();
 for (let i = 0; i < 3; i++) {
   await page.mouse.move(svgBox.x + svgBox.width / 2, svgBox.y + svgBox.height / 2);
   await page.mouse.wheel(30, 0);
-  await page.waitForTimeout(80);
 }
-await page.waitForTimeout(500);
+await page.waitForFunction(({label, x}) => {
+  const text = [...document.querySelectorAll('svg[data-schematic] text')]
+    .find(node => node.textContent.trim() === label);
+  if (!text) return false;
+  const rect = text.getBoundingClientRect();
+  return Math.abs(rect.left + rect.width / 2 - x) >= 30;
+}, {label: '1kΩ', x: base.cx}, {timeout: 10000});
 
 const panPos = await getSymbolTextPos('1kΩ');
 if (!panPos) throw new Error('1kΩ label disappeared after pan');
@@ -203,7 +224,13 @@ assert('Pan: nothing at OLD screen position', !panHitOld.inSymbol,
 // the anchor held it in place — this is correct, not a stale region.
 
 await page.locator('svg[data-schematic]').dblclick(); // reset
-await page.waitForTimeout(500);
+await page.waitForFunction(({label, x, width}) => {
+  const text = [...document.querySelectorAll('svg[data-schematic] text')]
+    .find(node => node.textContent.trim() === label);
+  if (!text) return false;
+  const rect = text.getBoundingClientRect();
+  return Math.abs(rect.left + rect.width / 2 - x) <= 3 && Math.abs(rect.width - width) <= 3;
+}, {label: '1kΩ', x: base.cx, width: base.w}, {timeout: 10000});
 
 const preZoom = await getSymbolTextPos('1kΩ');
 if (!preZoom) throw new Error('1kΩ label missing before zoom');
@@ -211,10 +238,13 @@ await page.mouse.move(preZoom.cx, preZoom.cy); // cursor ON the symbol
 await page.keyboard.down('Control');
 for (let i = 0; i < 3; i++) {
   await page.mouse.wheel(0, -40);
-  await page.waitForTimeout(100);
 }
 await page.keyboard.up('Control');
-await page.waitForTimeout(500);
+await page.waitForFunction(({label, width}) => {
+  const text = [...document.querySelectorAll('svg[data-schematic] text')]
+    .find(node => node.textContent.trim() === label);
+  return text && text.getBoundingClientRect().width >= width * 1.5;
+}, {label: '1kΩ', width: preZoom.w}, {timeout: 10000});
 
 const zoomPos = await getSymbolTextPos('1kΩ');
 if (!zoomPos) throw new Error('1kΩ label disappeared after zoom');
@@ -235,7 +265,13 @@ assert('Zoom: cursor-anchored shift is small (≤20px)', zoomShift <= 20,
 // it. The original position must miss entirely.
 
 await page.locator('svg[data-schematic]').dblclick(); // reset
-await page.waitForTimeout(500);
+await page.waitForFunction(({label, x, width}) => {
+  const text = [...document.querySelectorAll('svg[data-schematic] text')]
+    .find(node => node.textContent.trim() === label);
+  if (!text) return false;
+  const rect = text.getBoundingClientRect();
+  return Math.abs(rect.left + rect.width / 2 - x) <= 3 && Math.abs(rect.width - width) <= 3;
+}, {label: '1kΩ', x: base.cx, width: base.w}, {timeout: 10000});
 
 const preCombo = await getSymbolTextPos('1kΩ');
 if (!preCombo) throw new Error('1kΩ label missing before combined transform');
@@ -244,8 +280,14 @@ if (!preCombo) throw new Error('1kΩ label missing before combined transform');
 for (let i = 0; i < 3; i++) {
   await page.mouse.move(svgBox.x + svgBox.width / 2, svgBox.y + svgBox.height / 2);
   await page.mouse.wheel(25, 0);
-  await page.waitForTimeout(80);
 }
+await page.waitForFunction(({label, x}) => {
+  const text = [...document.querySelectorAll('svg[data-schematic] text')]
+    .find(node => node.textContent.trim() === label);
+  if (!text) return false;
+  const rect = text.getBoundingClientRect();
+  return Math.abs(rect.left + rect.width / 2 - x) >= 25;
+}, {label: '1kΩ', x: preCombo.cx}, {timeout: 10000});
 // Zoom at the symbol's new position
 const midCombo = await getSymbolTextPos('1kΩ');
 if (!midCombo) throw new Error('1kΩ label disappeared after combined pan');
@@ -253,10 +295,13 @@ await page.mouse.move(midCombo.cx, midCombo.cy);
 await page.keyboard.down('Control');
 for (let i = 0; i < 3; i++) {
   await page.mouse.wheel(0, -40);
-  await page.waitForTimeout(100);
 }
 await page.keyboard.up('Control');
-await page.waitForTimeout(500);
+await page.waitForFunction(({label, width}) => {
+  const text = [...document.querySelectorAll('svg[data-schematic] text')]
+    .find(node => node.textContent.trim() === label);
+  return text && text.getBoundingClientRect().width >= width * 1.5;
+}, {label: '1kΩ', width: midCombo.w}, {timeout: 10000});
 
 const comboPos = await getSymbolTextPos('1kΩ');
 if (!comboPos) throw new Error('1kΩ label disappeared after combined zoom');

@@ -139,6 +139,8 @@ try {
     check('debugger view shows the panel or explains missing code',
         (await page.locator('[data-debugger-solo-pane] [data-debugger-panel]').count())
         + (await page.locator('[data-debugger-solo-pane] [data-no-code-indicator]').count()) >= 1);
+    check('fresh debugger honestly identifies that no program is loaded',
+        await page.locator('[data-debugger-solo-pane] [data-no-code-indicator]').count() === 1);
     await stageButton.click({force: true});
     check('Scratch Stage becomes selected again', await stageButton.getAttribute('aria-pressed') === 'true');
     await stageButton.click({force: true});
@@ -195,6 +197,17 @@ try {
     check('Blocks + Circuit + Debugger layout docks the debugger in Instruments',
         await dedicatedDesigner.locator('[data-instruments-column] [data-debugger-panel]').count() === 1 &&
         await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'top');
+    const debugInstrumentMetrics = await dedicatedDesigner.locator('[data-instruments-scroll]').evaluate(el => ({
+        overflowY: getComputedStyle(el).overflowY,
+        columnBottom: el.parentElement.getBoundingClientRect().bottom,
+        viewportBottom: window.innerHeight,
+        panel: !!el.querySelector('[data-debugger-panel]'),
+        noCode: !!el.querySelector('[data-no-code-indicator]')
+    }));
+    check('instrument-docked debugger stays in a bounded scroll viewport',
+        debugInstrumentMetrics.panel && debugInstrumentMetrics.overflowY === 'auto' &&
+        debugInstrumentMetrics.columnBottom <= debugInstrumentMetrics.viewportBottom + 1,
+        JSON.stringify(debugInstrumentMetrics));
     const moveDebuggerRight = dedicatedDesigner.locator('button[title="Move debugger to full-size right pane"]');
     check('debugger exposes >> to move to the right pane', await moveDebuggerRight.count() === 1);
     if (await moveDebuggerRight.count()) await moveDebuggerRight.click({force: true});

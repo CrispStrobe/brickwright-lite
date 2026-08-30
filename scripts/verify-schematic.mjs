@@ -57,15 +57,26 @@ await page.waitForSelector('[role="tab"]', { timeout: 60000 });
 
 // Click the Circuit tab
 await page.locator('[role="tab"]', { hasText: /circuit/i }).click();
-await page.waitForTimeout(3000);
+await page.locator('[data-circuit-view-switcher]').first().waitFor({state: 'visible', timeout: 30000});
 
 // Click Full Width
 try { await page.locator('button', { hasText: 'Full width' }).click({ timeout: 2000 }); } catch {}
-await page.waitForTimeout(500);
 
 // Click Examples to trigger loadExamples()
 try { await page.locator('button', { hasText: 'Examples' }).click({ timeout: 2000 }); } catch {}
-await page.waitForTimeout(2000);
+await page.waitForFunction(() => {
+  const guiEl = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
+  const key = guiEl && Object.keys(guiEl).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
+  const queue = key ? [guiEl[key]] : [];
+  for (let i = 0; i < 8000 && queue.length; i++) {
+    const f = queue.shift();
+    const examples = f?.stateNode?.state?.examples;
+    if (Array.isArray(examples) && examples.length > 0) return true;
+    if (f?.child) queue.push(f.child);
+    if (f?.sibling) queue.push(f.sibling);
+  }
+  return false;
+}, null, {timeout: 30000});
 
 // ── Helper to find CircuitTab fiber once ─────────────────────────────────────
 const exInfo = await page.evaluate(() => {
@@ -232,7 +243,8 @@ for (let ci = 0; ci < picks.length; ci++) {
     throw new Error(`failed to load ${pick.id}: ${loadOk.error}`);
   }
   console.log('  Loaded:', loadOk.id);
-  await page.waitForTimeout(3000);
+  await page.locator('[data-circuit-view-switcher] button[title="Schematic view"]')
+    .first().waitFor({state: 'visible', timeout: 30000});
 
   // loadExample sets panel:'designer', so we should be on the designer view.
   // Now click Schematic.
@@ -240,7 +252,14 @@ for (let ci = 0; ci < picks.length; ci++) {
   const schCount = await schBtn.count();
   if (schCount > 0) {
     await schBtn.first().click({ force: true });
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(() => {
+      const svg = document.querySelector('svg[data-schematic]');
+      if (!svg || svg.getBoundingClientRect().width <= 0) return false;
+      const symbols = [...svg.querySelectorAll(':scope > g')]
+        .filter(group => group.getAttribute('stroke-linecap') === 'round');
+      return symbols.length > 0 && [...svg.querySelectorAll('text')]
+        .some(text => text.getBoundingClientRect().width > 0);
+    }, null, {timeout: 30000});
   } else {
     throw new Error(`no Schematic view button for ${pick.id}`);
   }
@@ -276,7 +295,7 @@ for (let ci = 0; ci < picks.length; ci++) {
     const realistic = page.locator('[data-circuit-view-switcher] button[title="Realistic view"]');
     if (!await realistic.count()) throw new Error(`no Realistic view button after ${pick.id}`);
     await realistic.first().click({ force: true });
-    await page.waitForTimeout(500);
+    await page.locator('svg[data-schematic]').waitFor({state: 'detached', timeout: 10000});
   }
 }
 

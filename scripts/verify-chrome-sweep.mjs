@@ -1,188 +1,125 @@
-/**
- * Playwright: chrome sweep verification.
- *
- * Checks:
- * - Tab says "Code" (not "Code ⇄ Blocks")
- * - BASIC tab: no Run button (no JS run bug)
- * - BASIC tab: (i) toggle shows/hides info panel
- * - Editor scrolling: 500-line buffer scrolls inside CM, controls visible
- * - Chrome compression: single merged row in normal mode
- * - Maximize hides chrome, shows compact To/From
- *
- * Usage:
- *   node scripts/verify-chrome-sweep.mjs
- *   PROOF_URL=http://localhost:8601 node scripts/verify-chrome-sweep.mjs
- */
-import { chromium } from 'playwright';
+#!/usr/bin/env node
+/** Browser acceptance for the Code editor's compact chrome and scrolling. */
+import {mkdir, writeFile} from 'node:fs/promises';
+import path from 'node:path';
+import {chromium} from 'playwright';
 
 const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
+const INFO_TOKEN = process.env.CHROME_INFO_TOKEN || 'zlib';
+const ARTIFACTS = path.resolve('artifacts/chrome-sweep');
+const browser = await chromium.launch({headless: true});
+const page = await browser.newPage({viewport: {width: 1440, height: 960}});
+const failures = [];
+const diagnostics = [];
 
-async function verify () {
-    const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
-    page.on('dialog', d => d.accept());
+page.on('dialog', dialog => dialog.accept());
+page.on('pageerror', error => diagnostics.push(`pageerror: ${error.stack || error.message}`));
+page.on('console', message => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+        diagnostics.push(`console.${message.type()}: ${message.text()}`);
+    }
+});
 
-    let ok = true;
-    const fail = msg => { ok = false; console.error(`  FAIL: ${msg}`); };
-    const pass = msg => console.log(`  ok: ${msg}`);
+const check = (condition, message, detail = '') => {
+    console.log(`${condition ? 'ok  ' : 'FAIL'} ${message}${detail ? ` — ${detail}` : ''}`);
+    if (!condition) failures.push(`${message}${detail ? ` — ${detail}` : ''}`);
+};
 
+try {
+    await mkdir(ARTIFACTS, {recursive: true});
+    await page.addInitScript(() => {
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        sessionStorage.clear();
+    });
+    console.log(`Opening ${URL} ...`);
+    await page.goto(URL, {waitUntil: 'domcontentloaded', timeout: 60000});
+
+    const codeTab = page.getByRole('tab', {name: 'Code', exact: true});
+    await codeTab.waitFor({timeout: 30000});
+    check(await codeTab.innerText() === 'Code', 'main tab is exactly "Code"');
+    await codeTab.click();
+
+    const langRow = page.getByTestId('bw-lang-row');
+    await langRow.waitFor({timeout: 15000});
+    const languageButtons = langRow.getByRole('button', {pressed: false});
+    check(await languageButtons.count() >= 5, 'merged row contains the language tabs',
+        `${await languageButtons.count()} inactive language buttons`);
+    check(await langRow.getByTestId('bw-device-select').count() === 1,
+        'merged row contains the device selector');
+
+    await langRow.getByRole('button', {name: /BAS/}).click();
+    const profile = page.getByRole('combobox', {name: /Profile/i});
+    await profile.waitFor({timeout: 10000});
+    // A profile change deliberately clears the BASIC buffer. This makes the
+    // absence of a run control attributable, not dependent on project state.
+    await profile.selectOption((await profile.inputValue()) === 'ms' ? 'bbc' : 'ms');
+    await page.waitForFunction(() =>
+        (document.querySelector('.cm-content')?.textContent || '').trim() === '',
+    null, {timeout: 10000});
+    check(await page.getByTestId('bw-basic-run').count() === 0,
+        'empty BASIC buffer has no Run control');
+    check(await page.getByRole('button', {name: /Run (Python|JavaScript)/i}).count() === 0,
+        'BASIC tab never exposes a wrong-language Run control');
+
+    const infoToggle = page.getByTestId('bw-basic-info-toggle');
+    await infoToggle.click();
+    const infoPanel = page.getByTestId('bw-basic-info-panel');
+    await infoPanel.waitFor({state: 'visible', timeout: 10000});
+    const infoText = await infoPanel.innerText();
+    check(infoText.includes('BBC BASIC') && infoText.includes(INFO_TOKEN),
+        `BASIC info names BBC BASIC and ${INFO_TOKEN}`, infoText);
+    await infoToggle.click();
+    await infoPanel.waitFor({state: 'detached', timeout: 10000});
+    check(await infoPanel.count() === 0, 'BASIC info hides on its second click');
+
+    await langRow.getByRole('button', {name: /Pseudo/}).click();
+    const editor = page.locator('.cm-content:visible');
+    await editor.click();
+    await page.keyboard.press('Control+a');
+    const lines = Array.from({length: 500}, (_, index) => `    say "line ${index + 1}"`).join('\n');
+    const source = `SPRITE Cat:\n  WHEN flag clicked:\n${lines}`;
+    await page.keyboard.insertText(source);
+    await page.waitForFunction(expected =>
+        (document.querySelector('.cm-content')?.textContent || '').includes(expected),
+    'line 500', {timeout: 15000});
+
+    const scrollInfo = await page.locator('.cm-scroller:visible').evaluate(scroller => ({
+        scrollHeight: scroller.scrollHeight,
+        clientHeight: scroller.clientHeight
+    }));
+    check(scrollInfo.scrollHeight > scrollInfo.clientHeight, '500-line editor buffer scrolls internally',
+        `${scrollInfo.scrollHeight} > ${scrollInfo.clientHeight}`);
+    check(await langRow.isVisible(), 'editor controls remain visible above a tall buffer');
+
+    const maximize = page.getByTestId('bw-editor-maximize');
+    await maximize.click();
+    await page.getByTitle('Restore panels').waitFor({state: 'visible', timeout: 10000});
+    // The merged row is deliberately retained in maximize mode; only the
+    // expanded chrome below it is replaced by compact conversion controls.
+    check(await page.getByTestId('bw-device-select').isVisible(),
+        'maximize retains the compact target selector');
+    check(await page.getByRole('button', {name: '⇦ Blocks', exact: true}).isVisible() &&
+        await page.getByRole('button', {name: 'Blocks ⇨', exact: true}).isVisible(),
+    'maximize exposes both compact block-conversion controls');
+    await page.getByTitle('Restore panels').click();
+    await page.getByTitle('Maximize editor').waitFor({state: 'visible', timeout: 10000});
+    check(await page.getByTestId('bw-device-select').isVisible(), 'restoring returns the normal editor chrome');
+} catch (error) {
+    check(false, 'chrome sweep journey completes', error.message);
+} finally {
     try {
-        console.log(`Opening ${URL} ...`);
-        await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.waitForTimeout(5000);
-
-        // ── 1. Tab says "Code" ──
-        const tabs = await page.locator('[class*="tab"]').allInnerTexts();
-        const tabText = tabs.join(' ');
-        if (tabText.includes('Code') && !tabText.includes('Code ⇄ Blocks')) {
-            pass('Tab says "Code" (not "Code ⇄ Blocks")');
-        } else if (tabText.includes('Code')) {
-            pass('Tab says "Code" (may include other text)');
-        } else {
-            fail('Code tab not found in tab row');
+        await mkdir(ARTIFACTS, {recursive: true});
+        await writeFile(path.join(ARTIFACTS, 'diagnostics.txt'),
+            diagnostics.length ? `${diagnostics.join('\n')}\n` : 'No page errors or console warnings/errors.\n');
+        if (failures.length || diagnostics.some(line => line.startsWith('pageerror:'))) {
+            await page.screenshot({path: path.join(ARTIFACTS, 'failure.png'), fullPage: true}).catch(() => {});
         }
-
-        // Navigate to Code tab
-        const codeTab = page.locator('text=/^Code$/i').first();
-        if (await codeTab.count() > 0) {
-            await codeTab.click();
-            await page.waitForTimeout(2000);
-        }
-
-        // ── 2. BASIC tab: no Run button ──
-        const basicTab = page.locator('button:has-text("BAS")').first();
-        if (await basicTab.count() > 0) {
-            await basicTab.click();
-            await page.waitForTimeout(1500);
-
-            // Check NO Run button
-            const runBtn = page.locator('button:has-text("▶ Run")');
-            if (await runBtn.count() === 0) {
-                pass('BASIC tab: no Run button (JS run bug fixed)');
-            } else {
-                // Check it's not a Run Python / Run JavaScript button
-                const runText = await runBtn.first().innerText();
-                if (runText.includes('Python') || runText.includes('JavaScript')) {
-                    fail('BASIC tab: Run button present but labelled for wrong language');
-                } else {
-                    fail('BASIC tab: Run button still present');
-                }
-            }
-
-            // ── 3. BASIC (i) toggle ──
-            const basicInfoToggle = page.locator('[data-testid="bw-basic-info-toggle"]').first();
-            if (await basicInfoToggle.count() > 0) {
-                pass('BASIC (i) toggle present');
-                // Click to show
-                await basicInfoToggle.click();
-                await page.waitForTimeout(300);
-                const infoPanel = page.locator('[data-testid="bw-basic-info-panel"]').first();
-                if (await infoPanel.count() > 0) {
-                    const infoText = await infoPanel.innerText();
-                    if (infoText.includes('BBC BASIC') && infoText.includes('zlib')) {
-                        pass('BASIC info panel shows licensing text');
-                    } else {
-                        fail('BASIC info panel missing licensing text');
-                    }
-                    // Click to hide
-                    await basicInfoToggle.click();
-                    await page.waitForTimeout(300);
-                    if (await infoPanel.count() === 0) {
-                        pass('BASIC info panel hides on second click');
-                    }
-                } else {
-                    fail('BASIC info panel did not appear');
-                }
-            } else {
-                fail('BASIC (i) toggle not found');
-            }
-        } else {
-            fail('BASIC tab button not found');
-        }
-
-        // ── 4. Switch back to Pseudocode tab for scroll test ──
-        const pseudoTab = page.locator('button:has-text("Pseudo")').first();
-        if (await pseudoTab.count() > 0) {
-            await pseudoTab.click();
-            await page.waitForTimeout(1500);
-        }
-
-        // ── 5. Editor scrolling ──
-        const cmContent = page.locator('.cm-content').first();
-        if (await cmContent.count() > 0) {
-            await cmContent.click();
-            await page.keyboard.press('Control+a');
-            await page.keyboard.press('Backspace');
-            await page.waitForTimeout(200);
-            // Type a tall buffer (50 lines)
-            const lines = Array.from({length: 50}, (_, i) => `say "line ${i + 1}"`).join('\n');
-            await page.keyboard.type(`SPRITE Cat:\n  WHEN flag clicked:\n${lines.split('\n').map(l => '    ' + l).join('\n')}`, { delay: 1 });
-            await page.waitForTimeout(500);
-
-            // Check that cm-scroller has scrollable content
-            const scrollInfo = await page.evaluate(() => {
-                const scroller = document.querySelector('.cm-scroller');
-                if (!scroller) return null;
-                return {
-                    scrollHeight: scroller.scrollHeight,
-                    clientHeight: scroller.clientHeight,
-                    scrollable: scroller.scrollHeight > scroller.clientHeight
-                };
-            });
-            if (scrollInfo && scrollInfo.scrollable) {
-                pass(`Editor scrolls (scrollHeight=${scrollInfo.scrollHeight} > clientHeight=${scrollInfo.clientHeight})`);
-            } else if (scrollInfo) {
-                fail(`Editor NOT scrollable (scrollHeight=${scrollInfo.scrollHeight}, clientHeight=${scrollInfo.clientHeight})`);
-            } else {
-                fail('cm-scroller element not found');
-            }
-        }
-
-        // ── 6. Chrome compression: merged row ──
-        const langRow = page.locator('[data-testid="bw-lang-row"]').first();
-        if (await langRow.count() > 0) {
-            pass('Merged language+controls row present');
-            // Check it contains both language tabs AND controls
-            const rowText = await langRow.innerText();
-            if (rowText.includes('Pseudo') && rowText.includes('Device')) {
-                pass('Row has both language tabs and device control');
-            }
-        } else {
-            fail('Merged lang row not found');
-        }
-
-        // ── 7. Maximize mode ──
-        const maxBtn = page.locator('[data-testid="bw-editor-maximize"]').first();
-        if (await maxBtn.count() > 0) {
-            await maxBtn.click();
-            await page.waitForTimeout(500);
-            // Check that device/example controls are hidden
-            const deviceAfter = page.locator('select[title="Target device"]').first();
-            if (await deviceAfter.count() === 0 || !(await deviceAfter.isVisible())) {
-                pass('Maximize hides device selector');
-            } else {
-                fail('Device selector still visible in maximize mode');
-            }
-            // Check compact To/From buttons appear
-            const compactBlocks = page.locator('button:has-text("Blocks")');
-            if (await compactBlocks.count() >= 2) {
-                pass('Compact To/From blocks buttons in maximize mode');
-            } else {
-                console.log('  note: compact blocks buttons not found (may need different selector)');
-            }
-            // Restore
-            await maxBtn.click();
-            await page.waitForTimeout(300);
-        }
-
-    } catch (err) {
-        fail(err.message);
     } finally {
         await browser.close();
     }
-
-    console.log(ok ? '\nAll chrome-sweep checks passed.' : '\nSome checks failed.');
-    process.exit(ok ? 0 : 1);
 }
 
-verify();
+check(!diagnostics.some(line => line.startsWith('pageerror:')), 'no page errors',
+    diagnostics.filter(line => line.startsWith('pageerror:')).join(' | '));
+console.log(failures.length ? `\n${failures.length} chrome-sweep check(s) failed.` : '\nAll chrome-sweep checks passed.');
+process.exit(failures.length ? 1 : 0);

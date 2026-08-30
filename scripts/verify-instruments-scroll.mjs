@@ -1,42 +1,23 @@
 #!/usr/bin/env node
 /** Focused browser regression test for the Circuit Designer Instruments column. */
-import {createServer} from 'node:http';
-import {readFile} from 'node:fs/promises';
-import {existsSync} from 'node:fs';
-import {extname, join, normalize, resolve, dirname} from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {mkdir, writeFile} from 'node:fs/promises';
+import path from 'node:path';
 import {chromium} from 'playwright';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const build = join(root, 'packages', 'scratch-gui', 'build');
-if (!existsSync(join(build, 'index.html'))) throw new Error('Build first: packages/scratch-gui/build/index.html is missing');
-const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm'};
-const server = createServer(async (req, res) => {
-    try {
-        let path = decodeURIComponent(req.url.split('?')[0]);
-        if (path.endsWith('/')) path += 'index.html';
-        const file = join(build, normalize(path));
-        if (!file.startsWith(build)) throw new Error('escape');
-        // Read BEFORE the head goes out. Writing 200 and then failing to
-        // read leaves the catch unable to send a 404 — writeHead throws
-        // once headers are sent, and that throw escapes the handler and
-        // kills the gate. A missing asset is one 404 line, not a crash.
-        const body = await readFile(file);
-        res.writeHead(200, {'content-type': types[extname(file)] || 'application/octet-stream'});
-        res.end(body);
-    } catch {
-        console.log(`404 ${req.url}`);
-        if (!res.headersSent) res.writeHead(404);
-        res.end('not found');
-    }
-});
-await new Promise(done => server.listen(8099, done));
+const URL = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1024, height: 768}});
+const pageErrors = [];
+page.on('pageerror', error => pageErrors.push(String(error)));
+let ok = false;
 try {
-    await page.addInitScript(() => { localStorage.clear(); sessionStorage.clear(); });
-    await page.goto('http://localhost:8099/', {waitUntil: 'networkidle', timeout: 60000});
+    await page.addInitScript(() => {
+        localStorage.clear();
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        sessionStorage.clear();
+    });
+    await page.goto(URL, {waitUntil: 'domcontentloaded', timeout: 60000});
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
 
     const circuitTab = page.getByRole('tab', {name: /Circuit/});
@@ -47,14 +28,15 @@ try {
     if (await expand.count()) await expand.click({force: true});
     const column = designer.locator('[data-instruments-column]');
     const scroll = designer.locator('[data-instruments-scroll]');
-    if (await column.count() !== 1 || await scroll.count() !== 1) throw new Error('Instruments DOM is missing');
+    if (await column.count() !== 1 || await scroll.count() !== 1) throw new Error('Instruments DOM is missing or duplicated');
 
     const scope = designer.getByRole('button', {name: /Scope$/});
     const meter = designer.getByRole('button', {name: /Meter$/});
     if (await scope.count() !== 1 || await meter.count() !== 1) throw new Error('Scope/Meter controls are missing');
     await scope.click({force: true});
     await meter.click({force: true});
-    await page.waitForTimeout(150);
+    await scroll.locator('[data-scope-module]').waitFor({state: 'visible', timeout: 5000});
+    await scroll.locator('[data-meter-module]').waitFor({state: 'visible', timeout: 5000});
 
     const before = await scroll.evaluate(el => ({
         clientHeight: el.clientHeight,
@@ -79,29 +61,17 @@ try {
         throw new Error(`Instruments did not scroll to Meter: ${JSON.stringify(after)}`);
     }
 
-    const debuggerButton = page.getByRole('button', {name: /Circuit Designer with debugger|Switch to debugger/}).first();
-    if (await debuggerButton.count()) {
-        await debuggerButton.click({force: true});
-        await page.waitForTimeout(300);
-        const debugDesigner = page.locator('.bw-circuit-designer:visible').last();
-        const debugColumn = debugDesigner.locator('[data-instruments-column]');
-        const debugScroll = debugDesigner.locator('[data-instruments-scroll]');
-        const debugMetrics = await debugScroll.evaluate(el => ({
-            clientHeight: el.clientHeight,
-            scrollHeight: el.scrollHeight,
-            overflowY: getComputedStyle(el).overflowY,
-            columnBottom: el.parentElement.getBoundingClientRect().bottom,
-            viewport: window.innerHeight,
-            panel: !!el.querySelector('[data-debugger-panel]'),
-            noCode: !!el.querySelector('[data-no-code-indicator]')
-        }));
-        if (await debugColumn.count() !== 1 || !debugMetrics.panel || !debugMetrics.noCode || debugMetrics.overflowY !== 'auto' || debugMetrics.columnBottom > debugMetrics.viewport + 1) {
-            throw new Error(`Debugger is cropped or missing: ${JSON.stringify(debugMetrics)}`);
-        }
-        console.log(`ok  debugger ${JSON.stringify(debugMetrics)}`);
-    }
+    // Debugger/no-code placement is exercised unconditionally by the wired
+    // verify-circuit-ux gate. This focused proof owns the stricter instrument
+    // overflow contract and must never make it conditional on a button label.
+    if (pageErrors.length) throw new Error(`page errors: ${pageErrors.join(' | ')}`);
     console.log(`ok  scope+meter before=${JSON.stringify(before)} after=${JSON.stringify(after)}`);
+    ok = true;
 } finally {
+    if (!ok) {
+        await mkdir(path.resolve('artifacts'), {recursive: true});
+        await page.screenshot({path: path.resolve('artifacts/verify-instruments-scroll-failure.png'), fullPage: true}).catch(() => {});
+        await writeFile(path.resolve('artifacts/verify-instruments-scroll-page-errors.txt'), `${pageErrors.join('\n')}\n`).catch(() => {});
+    }
     await browser.close();
-    server.close();
 }

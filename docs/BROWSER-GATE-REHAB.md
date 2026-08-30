@@ -25,11 +25,11 @@ comment-only workflow mention, or a skipped scenario does not satisfy any DoD.
 - [x] `verify-about-dialog.mjs`
   - DoD: open the real About surface; prove build identity, legal/about content,
     and close/reopen behavior; screenshot; detector fails if identity is absent.
-- [ ] `verify-controller-panel.mjs`
+- [x] `verify-controller-panel.mjs`
   - DoD: reach the current controller/widgets surface through user-visible
     navigation; round-trip one edit/cancel contract; prove a bound input reaches
     its consumer; screenshot and negative binding case.
-- [ ] `verify-instruments-scroll.mjs`
+- [x] `verify-instruments-scroll.mjs`
   - DoD: canonical circuit panel only; every instrument remains reachable at the
     constrained viewport; bottom control scrolls into view and is actionable.
 - [x] `verify-intro.mjs`
@@ -39,10 +39,10 @@ comment-only workflow mention, or a skipped scenario does not satisfy any DoD.
 
 ## Wave B — circuit interaction and rendering (75–120 minutes)
 
-- [ ] `verify-chrome-sweep.mjs`
+- [x] `verify-chrome-sweep.mjs`
   - DoD: all enumerated browser/layout scenarios execute with an asserted count;
     each user gesture changes the intended state; screenshot failing scenario.
-- [ ] `verify-faceplate-matrix.mjs`
+- [x] `verify-faceplate-matrix.mjs`
   - DoD: every declared faceplate case is exercised with an asserted denominator;
     inputs and displays both have behavioral evidence; artifact matrix uploaded.
 - [x] `verify-interaction.mjs`
@@ -71,8 +71,8 @@ comment-only workflow mention, or a skipped scenario does not satisfy any DoD.
 
 ## Campaign closeout (30–45 minutes plus CI wall time)
 
-- [ ] `KNOWN_UNWIRED` is reduced to the honestly blocked residual, target zero.
-- [ ] The ratchet rejects comment-only, skipped, and missing workflow commands.
+- [x] `KNOWN_UNWIRED` is reduced to the honestly blocked residual, target zero.
+- [x] The ratchet rejects comment-only, skipped, and missing workflow commands.
 - [ ] `actionlint`, focused Node tests, overlay/package equality, and wait census
   pass without raising ceilings.
 - [ ] Every integration checkpoint is pushed; vendor freshness and the complete

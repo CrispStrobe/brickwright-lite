@@ -66,8 +66,13 @@ async function verify () {
                 if (text.includes('What you see') || text.includes('Was du siehst')) {
                     pass('Intro contains "What you see" section');
                 } else if (text.includes('Loading') || text.includes('geladen')) {
-                    // Still loading — wait more
-                    await page.waitForTimeout(5000);
+                    // Wait for the fetch to resolve to real content or an
+                    // explicit no-introduction result; elapsed time proves nothing.
+                    await page.waitForFunction(() => {
+                        const panel = document.querySelector('[data-testid="bw-example-intro-panel"]');
+                        const value = panel?.innerText || '';
+                        return /What you see|Was du siehst|No introduction|Keine Einführung/i.test(value);
+                    }, null, {timeout: 5000});
                     const text2 = await introPanel.innerText();
                     if (text2.includes('What you see') || text2.includes('Was du siehst')) {
                         pass('Intro contains "What you see" section (after wait)');
