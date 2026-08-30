@@ -20,7 +20,9 @@ const browserProof = readFileSync(path.join(root, 'scripts/verify-extension-sand
 test('remote URLs take the explicit worker, compatibility, or unpinned route', () => {
     assert.match(manager, /pin\.migration && pin\.migration\.status === 'worker'/,
         'only explicitly promoted pins may enter the verified worker protocol');
-    assert.match(manager, /return this\._loadPinnedWorkerExtension\(extensionURL, pin\)/);
+    assert.match(manager, /return this\._loadPinnedWorkerExtension\(extensionURL\)/);
+    assert.match(manager, /const pin = pinForURL\(extensionURL\);[\s\S]*not an immutable promoted worker pin/,
+        'the execution boundary must re-derive authority instead of accepting a pin object');
     assert.match(manager, /return this\._loadTrustedRemoteExtension\(extensionURL\)/,
         'candidate and deferred pins retain the compatibility adapter');
     assert.match(manager, /return this\._loadSandboxedExtension\(extensionURL\)/);

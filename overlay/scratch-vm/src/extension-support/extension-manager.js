@@ -283,7 +283,7 @@ class ExtensionManager {
         // Allocate only after all fallible fetch/verification/decoding work. A failed pin therefore
         // consumes neither an ID nor a pending slot and never constructs an execution realm.
         const workerId = this.nextExtensionWorker++;
-        const capabilities = Object.freeze((pin.capabilities || []).slice());
+        const capabilities = Object.freeze((pin.brokerCapabilities || []).slice());
         const hostRecord = Object.freeze({
             protocol: 1,
             workerId,

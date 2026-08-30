@@ -18,8 +18,18 @@ const slugs = Object.keys(pins.extensions);
 test('gallery capability census closes the exact 120/120 pinned denominator', () => {
     assert.equal(slugs.length, 120);
     assert.equal(validateGalleryContract(pins, slugs), true);
-    assert.equal(pins.schemaVersion, 1);
+    assert.equal(pins.schemaVersion, 2);
     assert.deepEqual([...GALLERY_CAPABILITIES].sort(), [...new Set(GALLERY_CAPABILITIES)].sort());
+});
+
+test('ambient requirements and semantic broker grants are separate and default-deny', () => {
+    for (const [slug, pin] of Object.entries(pins.extensions)) {
+        assert.ok(Array.isArray(pin.capabilities), `${slug} needs measured requirements`);
+        assert.deepEqual(pin.brokerCapabilities, [], `${slug} must start without semantic authority`);
+    }
+    const widened = structuredClone(pins);
+    widened.extensions['Clay/htmlEncode'].brokerCapabilities = ['native.invoke'];
+    assert.throws(() => validateGalleryContract(widened, slugs), /unknown broker capability.*Clay\/htmlEncode/);
 });
 
 test('gallery capability census is deterministic and its checked-in report agrees', () => {

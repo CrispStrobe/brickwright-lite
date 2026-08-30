@@ -45,13 +45,16 @@ DoD: census denominator is exactly 120; generated output is deterministic;
 delete-one-entry, invent-one-capability and widen-one-declaration mutations each
 make a named assertion red. Push checkpoint and require vendor freshness green.
 
-Result: schema v1 classifies exactly 120/120 URL pins at immutable gallery
+Result: schema v2 classifies exactly 120/120 URL pins at immutable gallery
 commit `fc94e19`: 27 zero-static-requirement worker candidates and 93 explicit
 deferrals. The ten-class census measured DOM 49, runtime 79, fetch/import 25,
 WebSocket 8, Web Bluetooth 4, Web Serial 4, Web USB/HID 0, direct native bridge
 0 and nested worker 1. This is deliberately a static candidate census, not a
 claim of runtime compatibility. Fourteen focused assertions pass; deleting the
-unknown-capability validator makes its named mutation assertion red.
+unknown-capability validator makes its named mutation assertion red. Schema v2
+separates measured ambient `capabilities` from semantic `brokerCapabilities`:
+all 120 grants default to `[]`, and an invented grant fails by pin name. This
+prevents a source requirement such as `fetch-import` from becoming authority.
 
 ## CP1 — identity-bound verified worker path (2–3 hours)
 

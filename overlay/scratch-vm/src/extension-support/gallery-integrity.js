@@ -32,7 +32,7 @@ const gallerySlugForURL = value => {
  * Return the reviewed pin for an exact gallery extension URL.
  * New unindexed gallery entries are deliberately untrusted and therefore prompt.
  * @param {string} value candidate URL
- * @returns {{slug: string, served: string, repo: string, capabilities: Array<string>, migration: object}|null} pin or null
+ * @returns {{slug: string, served: string, repo: string, capabilities: Array<string>, brokerCapabilities: Array<string>, migration: object}|null} pin or null
  */
 const pinForURL = value => {
     const slug = gallerySlugForURL(value);
@@ -44,6 +44,7 @@ const pinForURL = value => {
         served: pin.served,
         repo: pin.repo,
         capabilities: Array.isArray(pin.capabilities) ? pin.capabilities.slice() : [],
+        brokerCapabilities: Array.isArray(pin.brokerCapabilities) ? pin.brokerCapabilities.slice() : [],
         migration: pin.migration || {status: 'deferred', reason: 'missing migration review'}
     };
 };

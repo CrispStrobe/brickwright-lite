@@ -63,10 +63,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(here, '..', 'overlay', 'scratch-vm', 'src', 'extension-support', 'gallery-pins.json');
 const CENSUS_OUT = path.join(here, '..', 'docs', 'generated', 'GALLERY-CAPABILITY-CENSUS.md');
 
-export const GALLERY_CONTRACT_VERSION = 1;
+export const GALLERY_CONTRACT_VERSION = 2;
 export const GALLERY_CAPABILITIES = Object.freeze([
     'dom', 'runtime', 'fetch-import', 'websocket', 'web-bluetooth',
-    'web-serial', 'web-usb', 'web-hid', 'native-bridge', 'nested-worker'
+    'web-serial', 'web-usb', 'web-hid', 'web-nfc', 'native-bridge', 'nested-worker'
+]);
+export const BROKER_CAPABILITIES = Object.freeze([
+    'project.metadata.read'
 ]);
 
 // CP1 migration is deliberately narrower than the static capability census.
@@ -76,12 +79,26 @@ export const GALLERY_CAPABILITIES = Object.freeze([
 // Keeping this policy beside the generator prevents a hand-edited pin from
 // silently claiming runtime proof that will disappear on the next sync.
 export const RUNTIME_WORKER_PROVEN = Object.freeze([
+    '-SIPC-/consoles',
+    '-SIPC-/time',
+    'bitwise',
     'Clay/htmlEncode',
-    'Lily/Cast'
+    'cs2627883/numericalencoding',
+    'DogeisCut/FormatNumbers',
+    'encoding',
+    'Lily/Cast',
+    'Lily/CommentBlocks',
+    'Lily/McUtils',
+    'NOname-awa/graphics2d',
+    'NOname-awa/more-comparisons'
 ]);
 
+export const RUNTIME_WORKER_DEFERRED = Object.freeze({
+    'Lily/HackedBlocks': 'runtime corpus found no executable opcode for parity proof'
+});
+
 const CAPABILITY_PATTERNS = Object.freeze({
-    dom: /\b(?:document|localStorage|sessionStorage)\b|\bwindow\s*[.[]/,
+    dom: /\b(?:document|DOMParser|XMLSerializer|localStorage|sessionStorage)\b|\bwindow\s*[.[]/,
     runtime: /\bScratch\s*\.\s*(?:vm|runtime)\b|\butil\s*\.\s*(?:runtime|target|thread)\b/,
     'fetch-import': /\bfetch\s*\(|\bimportScripts\s*\(|\bimport\s*\(/,
     websocket: /\bWebSocket\s*\(/,
@@ -89,6 +106,7 @@ const CAPABILITY_PATTERNS = Object.freeze({
     'web-serial': /\bnavigator\s*\.\s*serial\b/,
     'web-usb': /\bnavigator\s*\.\s*usb\b/,
     'web-hid': /\bnavigator\s*\.\s*hid\b/,
+    'web-nfc': /\bNDEFReader\b|\bnavigator\s*\.\s*nfc\b/,
     'native-bridge': /\b__TAURI(?:_INTERNALS)?__\b|\b(?:window\s*\.\s*)?__TAURI__\b|\binvoke\s*\(/,
     'nested-worker': /\b(?:new\s+)?(?:SharedWorker|Worker)\s*\(/
 });
@@ -101,21 +119,24 @@ export function classifyGallerySource (source) {
 export function censusEntry (slug, source) {
     const capabilities = classifyGallerySource(source);
     return applyMigrationPolicy(slug, capabilities, {
-        identity: `${BASE}${slug}.js`, load: 'url', capabilities
+        identity: `${BASE}${slug}.js`, load: 'url', capabilities, brokerCapabilities: []
     });
 }
 
 export function applyMigrationPolicy (slug, capabilities, entry) {
     const workerProven = RUNTIME_WORKER_PROVEN.includes(slug);
+    const runtimeDeferral = RUNTIME_WORKER_DEFERRED[slug] || null;
     if (workerProven && capabilities.length) {
         throw new Error(`runtime-proven worker ${slug} acquired ambient requirements: ${capabilities.join(', ')}`);
     }
     return {
         ...entry,
+        brokerCapabilities: Array.isArray(entry.brokerCapabilities) ? entry.brokerCapabilities : [],
         migration: {
-            status: capabilities.length ? 'deferred' : (workerProven ? 'worker' : 'candidate'),
+            status: capabilities.length || runtimeDeferral ? 'deferred' : (workerProven ? 'worker' : 'candidate'),
             reason: capabilities.length ? `static scan requires review: ${capabilities.join(', ')}` :
-                (workerProven ? 'runtime parity proven by gallery worker compatibility corpus' : null)
+                (runtimeDeferral || (workerProven ?
+                    'runtime parity proven by gallery worker compatibility corpus' : null))
         }
     };
 }
@@ -136,7 +157,7 @@ export function validateGalleryContract (document, expectedSlugs) {
     const identities = new Set();
     for (const slug of actual) {
         const c = document.extensions[slug];
-        if (!Array.isArray(c.capabilities) || !c.migration) {
+        if (!Array.isArray(c.capabilities) || !Array.isArray(c.brokerCapabilities) || !c.migration) {
             throw new Error(`gallery census missing capability declaration for ${slug}`);
         }
         if (identities.has(c.identity)) throw new Error(`gallery census has duplicate identity: ${c.identity}`);
@@ -151,9 +172,21 @@ export function validateGalleryContract (document, expectedSlugs) {
             canonical.some((name, i) => name !== c.capabilities[i])) {
             throw new Error(`gallery census capabilities are duplicated or non-canonical for ${slug}`);
         }
+        const unknownBroker = c.brokerCapabilities.filter(name => !BROKER_CAPABILITIES.includes(name));
+        if (unknownBroker.length) {
+            throw new Error(`gallery census has unknown broker capability for ${slug}: ${unknownBroker.join(', ')}`);
+        }
+        const canonicalBroker = BROKER_CAPABILITIES.filter(name => c.brokerCapabilities.includes(name));
+        if (new Set(c.brokerCapabilities).size !== c.brokerCapabilities.length ||
+            canonicalBroker.some((name, i) => name !== c.brokerCapabilities[i])) {
+            throw new Error(`gallery broker capabilities are duplicated or non-canonical for ${slug}`);
+        }
         if (c.migration.status === 'candidate') {
             if (RUNTIME_WORKER_PROVEN.includes(slug)) {
                 throw new Error(`runtime-proven gallery entry ${slug} was downgraded from worker`);
+            }
+            if (RUNTIME_WORKER_DEFERRED[slug]) {
+                throw new Error(`runtime-deferred gallery entry ${slug} was downgraded to candidate`);
             }
             if (c.capabilities.length || c.migration.reason !== null) {
                 throw new Error(`candidate gallery entry ${slug} widened its declaration`);
@@ -164,8 +197,9 @@ export function validateGalleryContract (document, expectedSlugs) {
                 throw new Error(`worker gallery entry ${slug} lacks generator-owned runtime proof`);
             }
         } else if (c.migration.status === 'deferred') {
-            if (!c.capabilities.length ||
-                c.migration.reason !== `static scan requires review: ${c.capabilities.join(', ')}`) {
+            const exactReason = c.capabilities.length ?
+                `static scan requires review: ${c.capabilities.join(', ')}` : RUNTIME_WORKER_DEFERRED[slug];
+            if (!exactReason || c.migration.reason !== exactReason) {
                 throw new Error(`deferred gallery entry ${slug} needs an exact reason`);
             }
         } else throw new Error(`gallery census has unknown migration status for ${slug}`);
@@ -371,7 +405,8 @@ const bytesOf = async (url, attempts = 3) => {
 async function main () {
     if (has('--migration-only')) {
         const current = JSON.parse(await readFile(OUT, 'utf8'));
-        const next = {...current, extensions: Object.fromEntries(Object.entries(current.extensions).map(
+        const next = {...current, schemaVersion: GALLERY_CONTRACT_VERSION,
+            extensions: Object.fromEntries(Object.entries(current.extensions).map(
             ([slug, pin]) => [slug, applyMigrationPolicy(slug, pin.capabilities, pin)]))};
         validateGalleryContract(next, Object.keys(current.extensions));
         await writeFile(OUT, `${JSON.stringify(next, null, 2)}\n`);

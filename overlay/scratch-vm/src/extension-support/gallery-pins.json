@@ -3,7 +3,7 @@
   "repo": "CrispStrobe/extensions",
   "commit": "fc94e19ee259c9fc8465c5a0b69dc366085ab376",
   "base": "https://crispstrobe.github.io/extensions/",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "extensions": {
     "-SIPC-/consoles": {
       "served": "6d38fda8af6a60c9ce8ed03a755f5c2a1158a796a11f8cf6b336fc4e5d64640b",
@@ -15,7 +15,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "-SIPC-/time": {
       "served": "d6f9fa74ad5746d367dab4e603d92f3de897ed786e731e87358986eea0b86967",
@@ -27,7 +28,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "0832/rxFS2": {
       "served": "7181f46a3cf6f96b19c7ad762a0ea439c84657f021a2362612817bc6c45594ef",
@@ -41,7 +43,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Alestore/nfcwarp": {
       "served": "6fda9ef24c2abdc60c2db58946bb4ae79a8e49aaa35c79f424408b8028c724a0",
@@ -53,7 +56,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "ar": {
       "served": "d42bd2216b86852f6e7253c0d6ebc09d4ead58c44564e2ce5a7aa84cb3e78986",
@@ -68,7 +72,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "battery": {
       "served": "ae05b25a7b4eaf2726f57bc1c1a95ca6b40c5d7524ff986e5f9ec1d9409e71c1",
@@ -82,7 +87,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "bitwise": {
       "served": "925aa1d5752861faa5cfd0cdb2e8e8cd711727912d9fd5d97850f828167e7a38",
@@ -94,7 +100,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "box2d": {
       "served": "fa388ddc7ecc018ae1bc92698d9abf2430f14e999073f10a8a0da996b8a861d0",
@@ -109,7 +116,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Clay/htmlEncode": {
       "served": "7360ee79c802c74a563de7bc29cb80e49803b4b6a33f89678291bd44a7a9a457",
@@ -121,7 +129,8 @@
       "migration": {
         "status": "worker",
         "reason": "runtime parity proven by gallery worker compatibility corpus"
-      }
+      },
+      "brokerCapabilities": []
     },
     "clipboard": {
       "served": "29bb14e0fd3ad200bd5afc4eac6a7657367a2b9c73a2ba9acf9a7d8c75b9ff79",
@@ -136,7 +145,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "clouddata-ping": {
       "served": "dbf77d69b735cd8528757b43b1f7bae61205ec6b1dacba2dfd7856bab9345491",
@@ -150,7 +160,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: websocket"
-      }
+      },
+      "brokerCapabilities": []
     },
     "cloudlink": {
       "served": "4479a27b396c1c8d17c95bbefa4575740dc3f92e7d9abead55bfb7e78c5a9091",
@@ -167,7 +178,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import, websocket"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/arrays": {
       "served": "676704b382c36db1fa0f47a6aae0c706e6ed1f28383c13baf5636b5ee6dc47fe",
@@ -182,7 +194,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/circuit": {
       "served": "84feb2ccbf67caed7993120fbdf2c534b9f949b445ee74f30357d50c74475c1d",
@@ -198,7 +211,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/csp": {
       "served": "a42b1f6f7f8765278e2439d025f378225c6cbdd6c8b05d1f5d5441ca22485569",
@@ -213,7 +227,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/ev3_direct": {
       "served": "6db50660bd64aa851c9f904d09f08642c42ef1984520f41be8f4bd5de03ce825",
@@ -229,7 +244,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, web-serial"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/ev3_lms_transpile": {
       "served": "cdbdd0513b35202c7a401201de7988b38e37e1e811e3103df4c61bb70606f0a3",
@@ -245,7 +261,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/ev3_universal": {
       "served": "f6ebb18ece958a2aaddc010b84f3dad9811c1cab25d34e8b6be8722b9ccc1298",
@@ -263,7 +280,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import, websocket, web-serial"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/ev3dev_py_transpile": {
       "served": "7261fa2181b4942eb03319fd36db634f4da3f2324cc6949dfa32ab4eec80b638",
@@ -279,7 +297,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/gamepad": {
       "served": "b6c065288bfeaf69c98c2285a98c7ee5e3aa78d4aaf1101957a55ada0f11b673",
@@ -294,7 +313,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/ledcube": {
       "served": "dca0bd9d5ff62286b3caad771064b511f4eb4816dfc09208e2935a49ae2117f1",
@@ -308,7 +328,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/lego_poweredup": {
       "served": "55ab3c1e6379afd7aa7a9ca45dbe4c0e109a9680c55864912136811ada674143",
@@ -326,7 +347,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import, websocket, web-bluetooth"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/lego_wedo2_universal": {
       "served": "355939d75d05bf1b5531314094a86b97d84cce620cb7d285f6323092f9583814",
@@ -342,7 +364,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, web-bluetooth"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/legoboost_universal": {
       "served": "b1005ee188bcf86f6b7b0e9198b35ad3989ee8c483e2e05952c770035e9617da",
@@ -360,7 +383,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import, websocket, web-bluetooth"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/legonxt_transpile_universal": {
       "served": "093a758c1fca3a3032129a2b0a794d3902e3d9c88e4d97bb581696363c75330a",
@@ -378,7 +402,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import, websocket, web-serial"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/legospike_ble": {
       "served": "931d0ce578a8e436fc2c75f02717dc90cf8b6d537f7e6ff3fa1819c6a0c72a1a",
@@ -394,7 +419,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, web-bluetooth"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/legospike_bridge": {
       "served": "a4a23c73c1a049db39d6acb7e0fa11f4434a9fb3f55777972534aad8686512e8",
@@ -410,7 +436,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, websocket"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/legospike_turbowarp_transpile": {
       "served": "0fd6757cc4072381afb748dbd14ed101c7a72eb7e19ab3cad8939e5a1b6be65e",
@@ -425,7 +452,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/legospikeprime_ble": {
       "served": "a210e71e594e265fe15e26dfcb7c2535500a4d730517a18babc92f11407443b1",
@@ -440,7 +468,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/legospikeprime_btc_scratchlink": {
       "served": "0f457d74cd6b3696921607c30b65f0dbb0f17af3f7988151aa74b9e4058cea15",
@@ -455,7 +484,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/planetemaths": {
       "served": "8c18332486cacb971ec25334d1e2906dec173e13ba5f24b3f63dae30c81922e4",
@@ -470,7 +500,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CrispStrobe/stc12live": {
       "served": "d83873a2734058ae8010e780112bfff02cf657d3f6b72b7994700e715b9f4e8c",
@@ -485,7 +516,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, web-serial"
-      }
+      },
+      "brokerCapabilities": []
     },
     "cs2627883/numericalencoding": {
       "served": "746957a6c18dbbcbb7991571ff6ef00815de5e1abe26974584c867b5b2999cb9",
@@ -497,7 +529,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "CST1229/images": {
       "served": "39233ec7f54b37650dde1d5dd6233bf66ebfd295e71b1b7a878393a66d84b485",
@@ -512,7 +545,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CST1229/zip": {
       "served": "7142f45f10fe94004113f8bc9ea7f4547c6cac3a97639680a807e6e61037be79",
@@ -527,7 +561,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CubesterYT/KeySimulation": {
       "served": "bb8eb5e427f0c15199afa3f99838c75b1eadeb41b733ef3e8fef401df5be6f5c",
@@ -542,7 +577,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CubesterYT/TurboHook": {
       "served": "40710dc18e755d13f1fad48384ccb52391be2483ec6dc9d55dc608ba8d339c63",
@@ -556,7 +592,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "CubesterYT/WindowControls": {
       "served": "fddb271768997cec69f68b7d9642b0af0b50c45844771e12fdbbf11b139cbbca",
@@ -571,7 +608,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "cursor": {
       "served": "10febfa87d28534499834e74ee5f8bcc335685218b53243d454ab93f1077dc53",
@@ -586,7 +624,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "DNin/wake-lock": {
       "served": "985874ed9c32dfeb6c78f7493883b2ea18ab51227f4f717dfe0cb110d1a17682",
@@ -601,7 +640,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "DogeisCut/FormatNumbers": {
       "served": "5e41fd3aab13738b2a44acabfe717225e547b28c0069e0d96ec8e6fc1e6327e0",
@@ -613,7 +653,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "DT/cameracontrols": {
       "served": "7becbcdce44ef6c93f510f48c55df33b05f6b21ed9aa342d6d3a6ca1559250b8",
@@ -627,7 +668,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "encoding": {
       "served": "ea527450871bfd91fba39248157b7a591dde4f98db553083c19b99ab933ea27a",
@@ -639,7 +681,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "fetch": {
       "served": "56d1db68d30f846908730607d092602cddea65b84543fb35f85c162421698f7a",
@@ -653,7 +696,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "files": {
       "served": "b26a779b8559ee1d4d990f740cbb33a46cd1b6b19b047a9d4d344a831ded8466",
@@ -669,7 +713,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "gamejolt": {
       "served": "4677dd06f354fbfec5550a1069bd31da40613324a300f70230797ab32f313626",
@@ -683,7 +728,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom"
-      }
+      },
+      "brokerCapabilities": []
     },
     "gamepad": {
       "served": "974d2c790f6b726aa5e47c033b0b7c7798220a1dd44c7776217558ca1e1a1070",
@@ -697,7 +743,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "godslayerakp/http": {
       "served": "4695db02aa91594584d7c9b7653f1eb1e159e0329267f01e1fc318c64c5b8520",
@@ -712,7 +759,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "godslayerakp/ws": {
       "served": "f582391a056902b0498ee4c0a71afbfd488a01a3f6578c761953a3382e19ae7c",
@@ -727,7 +775,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, websocket"
-      }
+      },
+      "brokerCapabilities": []
     },
     "iframe": {
       "served": "fd292e9b6848e0f590b954e32015fb612fd6fbb5948ddbf371e978a3e6b92843",
@@ -742,7 +791,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "itchio": {
       "served": "242403a29c1be23dc81182d2cdde60dd9c3e55e4d427f02d15b776a4d86f4f96",
@@ -756,7 +806,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "JeremyGamer13/tween": {
       "served": "01a1ef81d442950826f08819d0d421b2e3181f60d7fe08b1e8e3a6326717f33d",
@@ -770,7 +821,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "lab/face-sensing": {
       "served": "c747ea8be0703209a8203aa4432c6c283ef0657ba456b9d8ff28145cede6f86c",
@@ -786,7 +838,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "lab/text": {
       "served": "b51673a9a1db616cbbe5403c00a8c51ab191446940a85e89a6308ac7f8929e48",
@@ -801,7 +854,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/AllMenus": {
       "served": "b7602df66c82383d8b90ac2696324c7590658ab8beff63118e544ca02a3e0e48",
@@ -816,7 +870,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/Assets": {
       "served": "b8e04cee9220b9a5d55826f31c9584cc9d0be1b44dc927441a40ae549f8a66b4",
@@ -831,7 +886,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/Cast": {
       "served": "25314d0937a813a2bd98dd21752276499fe0b150ffb6cd9f65b6f3b603356743",
@@ -843,7 +899,8 @@
       "migration": {
         "status": "worker",
         "reason": "runtime parity proven by gallery worker compatibility corpus"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/ClonesPlus": {
       "served": "fbf8188d94ca51d59c4eeeed0d4f44238e9e2f2e65f4823cdc01538c3202f035",
@@ -857,7 +914,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/CommentBlocks": {
       "served": "7ffecc2527ec87b0dab21fb4a0e1361107a5b0b10c19ad555f22ca84cfd6b9f3",
@@ -869,7 +927,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/HackedBlocks": {
       "served": "f73c7c9f46d2b2e080df5c1fb3f1eba0226af52f6011d8d37f0ee3a56ad294b6",
@@ -881,7 +940,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/ListTools": {
       "served": "4327d430af8443c7ee0389afd8a46a6206ca6b1e69748ba9a34fa05f08c02427",
@@ -895,7 +955,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/lmsutils": {
       "served": "40b9506e84c30bd2a6b22fab54fc1cb1c21b3ce1a1b237231ca89cd1a27c1d8c",
@@ -910,7 +971,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/LooksPlus": {
       "served": "74e07803c5d783163d59f7aa3cc3ffd83e490a8c67f287e41e37f407a41dced8",
@@ -924,7 +986,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/McUtils": {
       "served": "496e9956a398239f29884c83ac09ca9cfc78071299fe59bc869bbace8b1d5b3d",
@@ -936,7 +999,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/MoreEvents": {
       "served": "c1e773048da0939a40377b29d9e9ab505d60f66baaa3c7df4202d205b697d21e",
@@ -950,7 +1014,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/MoreTimers": {
       "served": "d71047f8773666dceb4a1b1c3bc2edfe0fe92376bfb9892bda85fbf8ef58dafd",
@@ -964,7 +1029,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/Skins": {
       "served": "4aae26f98091f5e6d36c83d9089819178c72205ac1a8d7267e41c31eb4bf472a",
@@ -979,7 +1045,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/SoundExpanded": {
       "served": "c293a5f5be4d4bf348b21f86a19f02f0939e0e679ff55a55dab6d46907b6d4c2",
@@ -993,7 +1060,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/TempVariables2": {
       "served": "2b3441cb2d66e68507ffc465b2eacf77c9333584da87859c2f79e454c105b950",
@@ -1007,7 +1075,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Lily/Video": {
       "served": "1b9c52cd24e5b5a3632dde3ed656c5a42651cdd83d601cd66129101ba0847888",
@@ -1022,7 +1091,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "local-storage": {
       "served": "450cbec7c7194d500846d479abc1e3799598b045d1f00a47855afb876acaabf5",
@@ -1037,7 +1107,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Longboost/color_channels": {
       "served": "6fb94f44b7364c2c227dd459c2837dbb815a1fb1676d6bbaaf779864f057a802",
@@ -1051,7 +1122,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "mbw/xml": {
       "served": "fe2be9e29f669d5ac2f88ef12957ad8b9a74cd94d7071f8395397b0302c3c2ac",
@@ -1063,7 +1135,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "mdwalters/notifications": {
       "served": "e54e915a886b95165c067ef8fe7c7ee4df2cbc30741c5dced22b8e4c3d1d3937",
@@ -1077,7 +1150,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "navigator": {
       "served": "7fbd01d765b885ec9c39ebaea1e73a9a843610a1aa99fd0590155d0e504d84c6",
@@ -1091,7 +1165,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom"
-      }
+      },
+      "brokerCapabilities": []
     },
     "NexusKitten/controlcontrols": {
       "served": "36711d7656ebae22b851127a004aad02c19321cd515723484d1506d7dae0ed07",
@@ -1106,7 +1181,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "NexusKitten/moremotion": {
       "served": "7cd46461cde3f525ad5b99c1f16aa8b6a9399e758b3a85e60af56a533788f8b1",
@@ -1120,7 +1196,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "NexusKitten/sgrab": {
       "served": "888eb0fd7cd81da3819a9b68a72f3a85b21f8f89ec8be0fda30f83ff85f3d3e4",
@@ -1134,7 +1211,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "NOname-awa/graphics2d": {
       "served": "25ab070242c758e077f619fd06a0dcba5705adfefe7b72d03ec24d725f70593d",
@@ -1146,7 +1224,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "NOname-awa/more-comparisons": {
       "served": "976d130026a3db73b050eff1cef47edbf7ee31d01d2dc2650fb9d11a9dc3635b",
@@ -1158,7 +1237,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "numerical-encoding-2": {
       "served": "5c4d7a899f899e379e2c215826ebcf8459db159a53fd82a7dc16d553c960e0a1",
@@ -1170,7 +1250,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "obviousAlexC/newgroundsIO": {
       "served": "5a1e9345a5a242f81cd3c017c8dcaebdb0d3f12eafe3923678b93afd2d379a20",
@@ -1185,7 +1266,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "obviousAlexC/penPlus": {
       "served": "16863a96df8f7c3296927561f4a74117d05a40b1e10a3c86b790df42b8d16c71",
@@ -1200,7 +1282,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "obviousAlexC/SensingPlus": {
       "served": "e6a9dcafa8a4ec81d12391b5d216be8cd8f001d56d0d19597550363d99de20ce",
@@ -1215,7 +1298,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "penplus": {
       "served": "9ac5fedc827b2d60e6a0dd980aca60d36501c2c59a531feff5ef879512420925",
@@ -1229,7 +1313,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "pointerlock": {
       "served": "0a3d18b9b96fa3ae8e719cc54581a798a5de50074c253bd9449635f52ba82a97",
@@ -1244,7 +1329,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "PwLDev/vibration": {
       "served": "9c5484e73aeaa39fe570699fb130ad43f6ea18e0948769c55083bfb6c81497ac",
@@ -1256,7 +1342,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "qxsck/data-analysis": {
       "served": "a139477f2301c1b5649e0e6abb059bfbb21bfd96b0f492ea57626f264881ceb8",
@@ -1268,7 +1355,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "qxsck/var-and-list": {
       "served": "789da42f44e7de3e3824907ca4212d76779f168bc9a279b6203d98d89260e25a",
@@ -1282,7 +1370,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "rixxyx": {
       "served": "beacfb4118e3d11e2f8a88ad4d000b2b354781d40d9fb8aee245f04b56e31a1c",
@@ -1296,7 +1385,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "runtime-options": {
       "served": "4d027e73bccbd9e39a3aa2e0e93fe632342c7b6b809355b220d612088ef5f493",
@@ -1310,7 +1400,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "SharkPool/Camera": {
       "served": "72dc1048a62eba189ec2715e51b238600e523bdf67a0e9f44207288229a1d109",
@@ -1324,7 +1415,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "SharkPool/Font-Manager": {
       "served": "0f8bb8c70f21c28adeaf1635a01b226119cfd737f9bcd2027e8e091d28164a5a",
@@ -1339,7 +1431,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "shreder95ua/resolution": {
       "served": "9beb1a1f89c9a7f83e32362c0737c5786d3fadbd6f6e9b81a6499e92c644a989",
@@ -1353,7 +1446,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Skyhigh173/bigint": {
       "served": "9d8fa15a3af4e53be296365f61ce30789cf7e55d08f919fcb62a66308673f1f1",
@@ -1365,7 +1459,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "Skyhigh173/json": {
       "served": "ba294f2b7e002fe24c6cf344af042a456660f6cada498c732ef68b4ed4854078",
@@ -1379,7 +1474,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "sound": {
       "served": "ca54b2c5793605793bc7190be220a4cca6aabeb45cb1e7df90097ee3b67d792f",
@@ -1393,7 +1489,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "steamworks": {
       "served": "78a777a2b919b7547e2995da8c39529990f714c09f4298ac12b9b37748d916cb",
@@ -1405,7 +1502,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "stretch": {
       "served": "5ff66bda4d3b91c24596bc87e76045c85cf9ebcce333c97385a02f1ad5d152f8",
@@ -1419,7 +1517,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "text": {
       "served": "8251ab8352392abfdc1ee3a8b05b0311cdec6f68427e073cba0b96915b8d906f",
@@ -1431,7 +1530,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "TheShovel/CanvasEffects": {
       "served": "3c742a2026ef9cc84f78855bb7ab3a83234620363d457b5bea0253ba4b872000",
@@ -1445,7 +1545,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "TheShovel/ColorPicker": {
       "served": "d76163ea17d005fe0cd4c804ea5cf0344aca6c989ed26aa0cdfd2b4b7260f932",
@@ -1460,7 +1561,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "TheShovel/CustomStyles": {
       "served": "e3207af958e1390b5f362de946b63dde0154ba1b17b94b83a0ed80e48a97d004",
@@ -1475,7 +1577,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "TheShovel/LZ-String": {
       "served": "b6cc1d49cd109c5639d22d082df7d8963ce0ac95a2f5dcb0b1d144dfe4713061",
@@ -1487,7 +1590,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "TheShovel/ShovelUtils": {
       "served": "871374ad406c93043beb5c9fbb22884af75f3e85f87b6ea013582dccf8c5f0d1",
@@ -1502,7 +1606,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "true-fantom/base": {
       "served": "2d21c8dd64e332460045f41b5dc9d9f904d0823dd92823165830b0d643304c2e",
@@ -1514,7 +1619,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "true-fantom/couplers": {
       "served": "4fe4659614b21b7b128ac5312e33c3e94deafa9caab12a1bf33d7f94d3db96e1",
@@ -1526,7 +1632,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "true-fantom/math": {
       "served": "1f42b749674d2ca31ccb58570f3d8d2b0015258b2018dd5e0f6162c7cc315856",
@@ -1538,7 +1645,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "true-fantom/network": {
       "served": "17690d40e2def03446948b9daca2418e30835604fbdac8050376c2ca580b9cc4",
@@ -1553,7 +1661,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "true-fantom/regexp": {
       "served": "e550c7e0697cf8d4464254a8f46f8937424d60f594ceacbdc5a74bbf38430190",
@@ -1565,7 +1674,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     },
     "utilities": {
       "served": "54c2706202669bf45ba186b8c81855acb1a32b1a60f0273bc871f680d83b6d49",
@@ -1579,7 +1689,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "veggiecan/browserfullscreen": {
       "served": "ed0576ab41f6008fda4b1ccd9790251dee380292f2808f4d578db750766d8e26",
@@ -1594,7 +1705,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "veggiecan/LongmanDictionary": {
       "served": "814f43cbecac328c7957cbce5972eb2a7755dc9a89fca9093072f99fdc947d04",
@@ -1608,7 +1720,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: fetch-import"
-      }
+      },
+      "brokerCapabilities": []
     },
     "veggiecan/mobilekeyboard": {
       "served": "b44181a39113ded401736b671762793eed2e91097536b622f0977d55317e0b66",
@@ -1622,7 +1735,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom"
-      }
+      },
+      "brokerCapabilities": []
     },
     "vercte/dictionaries": {
       "served": "dcf7b6adc11ed4be80832c16e84c17411faa524684178fd77af3c030718d8efe",
@@ -1636,7 +1750,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Xeltalliv/clippingblending": {
       "served": "1bf53e884cbbdd7946b5fed9ce1c54c3a4b00429f5a749245614b4fda659ea12",
@@ -1650,7 +1765,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "Xeltalliv/simple3D": {
       "served": "266f388ca8c8441f3b16254ceb37054270823837622db80112724738a7f90156",
@@ -1666,7 +1782,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom, runtime, nested-worker"
-      }
+      },
+      "brokerCapabilities": []
     },
     "XeroName/Deltatime": {
       "served": "163c8d83503aa92bf8d43de75628a2d0aa56a06996cf487c08562f2fc0b06ed7",
@@ -1680,7 +1797,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: runtime"
-      }
+      },
+      "brokerCapabilities": []
     },
     "XmerOriginals/closecontrol": {
       "served": "a9aed9fe2a2abca0fcedca08ebd68c318c17413cfd5a52ba9c35c26620610154",
@@ -1694,7 +1812,8 @@
       "migration": {
         "status": "deferred",
         "reason": "static scan requires review: dom"
-      }
+      },
+      "brokerCapabilities": []
     },
     "ZXMushroom63/searchApi": {
       "served": "65f4e9d2ed165678a6ee5abfea3442e25b9fa00068103ceedad5eecfc6173489",
@@ -1706,7 +1825,8 @@
       "migration": {
         "status": "candidate",
         "reason": null
-      }
+      },
+      "brokerCapabilities": []
     }
   }
 }

@@ -61,6 +61,7 @@ test('worker pin is fetched, verified and decoded before immutable host allocati
             served: 'a'.repeat(64),
             repo: 'b'.repeat(64),
             capabilities: ['fetch'],
+            brokerCapabilities: ['project.metadata.read'],
             migration: {status: 'worker'}
         };
         const Manager = loadManager({
@@ -80,7 +81,7 @@ test('worker pin is fetched, verified and decoded before immutable host allocati
         assert.equal(added.record.url, 'https://example.test/safe.js');
         assert.equal(added.record.slug, 'safe');
         assert.equal(added.record.digest, 'a'.repeat(64));
-        assert.deepEqual(added.record.capabilities, ['fetch']);
+        assert.deepEqual(added.record.capabilities, ['project.metadata.read']);
         assert.match(added.record.source, /Scratch\.extensions/);
         assert.ok(Object.isFrozen(added.record));
         assert.ok(Object.isFrozen(added.record.capabilities));
