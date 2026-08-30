@@ -123,8 +123,8 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 to: 'static/emu8051.wasm'
             },
             {
-                // SDCC 4.5.0 as WASM — lazy-loaded on first compile when
-                // the preview flag is set. Not the default compiler path.
+                // SDCC 4.5.0 as WASM — lazy-loaded on the first supported
+                // 8051 compile. Other processor families stay hosted.
                 from: 'src/lib/sdcc-wasm/dist',
                 to: 'static/sdcc-wasm',
                 noErrorOnMissing: true

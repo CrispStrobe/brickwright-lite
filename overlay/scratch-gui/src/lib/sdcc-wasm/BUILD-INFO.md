@@ -9,6 +9,10 @@
 **Architecture:** four isolated single-threaded MEMFS stages; artifacts are copied explicitly
 between stages because WebAssembly has no fork/exec.
 **Patch applied:** libiberty `psignal` conflict (`HAVE_PSIGNAL`)
+**Glue post-processing:** each modularized factory has an ES-module default
+export appended so the browser can load it through a webpack-ignored URL. The
+generated program and WASM bytes are unchanged; the integration gate executes
+the same glue through its Node branch and asserts that the browser export exists.
 
 ## Shipped runtime
 

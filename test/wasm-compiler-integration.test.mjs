@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
+import {dirname} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
 
@@ -8,14 +9,26 @@ import {compileWithToolchain} from '../overlay/scratch-gui/src/lib/sdcc-wasm/com
 
 const distUrl = new URL('../overlay/scratch-gui/src/lib/sdcc-wasm/dist/', import.meta.url);
 const require = createRequire(import.meta.url);
-
 const decodeBase64 = text => Uint8Array.from(Buffer.from(text, 'base64'));
+
+async function importFactory (name) {
+    // Exercise the glue's Node branch while retaining the shipped ES-module
+    // export for the production browser. Only that final declaration is
+    // removed; the Emscripten program executed here is byte-for-byte the same.
+    const source = await readFile(new URL(`${name}.js`, distUrl), 'utf8');
+    assert.match(source, /export default createSDCC;/, `${name}.js is not browser-importable`);
+    const module = {exports: {}};
+    const filename = fileURLToPath(new URL(`${name}.js`, distUrl));
+    Function('module', 'exports', 'require', '__filename', '__dirname',
+        source.replace(/export default createSDCC;\s*$/, ''))(
+        module, module.exports, require, filename, dirname(filename));
+    return module.exports;
+}
 
 async function toolchain () {
     const packed = JSON.parse(await readFile(new URL('runtime.json', distUrl), 'utf8'));
     return {
-        factories: ['cc1', 'sdcc', 'sdas8051', 'sdld'].map(name =>
-            require(fileURLToPath(new URL(`${name}.js`, distUrl)))),
+        factories: await Promise.all(['cc1', 'sdcc', 'sdas8051', 'sdld'].map(importFactory)),
         runtime: new Map(Object.entries(packed.files).map(([name, data]) => [name, decodeBase64(data)])),
         resolve: name => pathToFileURL(fileURLToPath(new URL(name, distUrl))).href
     };

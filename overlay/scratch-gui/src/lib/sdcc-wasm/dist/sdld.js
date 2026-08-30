@@ -4871,3 +4871,4 @@ if (typeof exports === 'object' && typeof module === 'object')
   module.exports = createSDCC;
 else if (typeof define === 'function' && define['amd'])
   define([], () => createSDCC);
+export default createSDCC;

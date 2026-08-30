@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Browser proof for D29, D28 and D25 — the three debugger defects.
+ * Offline browser proof for D2, D29, D28 and D25.
  *
  * Three claims, each measured in a real Chromium against a real build, each
  * leaving a screenshot the coordinator can look at:
@@ -32,6 +32,7 @@ import {readFile, mkdir} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {isHostedCompilerRequest} from './lib/offline-compiler-policy.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
@@ -103,6 +104,17 @@ const main = async () => {
 
     const browser = await chromium.launch();
     const page = await browser.newPage({viewport: {width: 1600, height: 1100}});
+    const hostedCompilerRequests = [];
+    // Keep localhost available for the production bundle and its WASM assets,
+    // but make the hosted compiler physically unreachable. Abort before the
+    // request leaves Chromium and retain its URL as failure evidence.
+    await page.route('**/*', route => {
+        if (isHostedCompilerRequest(route.request(), url)) {
+            hostedCompilerRequests.push(route.request().url());
+            return route.abort('blockedbyclient');
+        }
+        return route.continue();
+    });
     page.on('dialog', d => d.accept());          // confirm() would auto-DISMISS
     await page.addInitScript(() => {
         try {
@@ -258,7 +270,8 @@ const main = async () => {
     const ready = await waitFor(panelText, t => /Speed|Tempo/.test(t) && /Run|Start/.test(t), 60000);
     record('the debug panel is on screen', /Speed|Tempo/.test(ready), `${ready.length} chars`);
 
-    // Start the session so a target exists (build + attach go over the network).
+    // Start the session so a target exists. The route above makes a hosted
+    // compile impossible; success therefore proves the shipped local pipeline.
     const clickByText = async re => {
         const button = debugPanel.locator('button', {hasText: re}).first();
         await button.waitFor({state: 'visible', timeout: 15000});
@@ -270,6 +283,9 @@ const main = async () => {
     const attached = running === 'running';
     record('a debug session attached', attached,
         attached ? 'phase=running' : `last phase=${running}`);
+    record('D2: the 8051 build made exactly zero hosted compiler requests',
+        hostedCompilerRequests.length === 0,
+        hostedCompilerRequests.length ? hostedCompilerRequests.join(' | ') : '0 POST /compile requests');
     if (!attached) {
         await page.screenshot({path: path.join(SHOTS, '00-attach-failed.png'), fullPage: true});
         console.log('\nCannot proceed without a session. See 00-attach-failed.png');
