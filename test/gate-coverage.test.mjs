@@ -35,7 +35,11 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * making it pass, which for most of these means bringing it up to the current
  * UI rather than tweaking a selector.
  */
-const KNOWN_UNWIRED = {};
+const KNOWN_UNWIRED = {
+    // New production proof for the local linked-listing path. Remove this in
+    // the same change that wires its first watched-green run into build.yml.
+    'verify-local-asm-listing.mjs': 'awaiting proof against the first production artifact'
+};
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))
     .filter(f => f.endsWith('.yml'))
