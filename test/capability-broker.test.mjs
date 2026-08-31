@@ -5,6 +5,7 @@ import brokerModule from '../overlay/scratch-vm/src/extension-support/capability
 
 const {CapabilityBroker, MAX_DIAGNOSTICS, VOCABULARY_VERSION} = brokerModule;
 const operation = 'project.metadata.read';
+const platformOperation = 'platform.kind.read';
 const record = (workerId, capabilities = [operation]) => Object.freeze({
     protocol: 1,
     workerId,
@@ -35,6 +36,81 @@ test('one declared semantic operation succeeds with host-owned identity', async 
     broker.attach(worker, hostRecord);
     assert.equal(await broker.request(worker, request()), 'de-DE');
     assert.equal(observedRecord, hostRecord);
+});
+
+test('declared platform kind read accepts only an exact empty plain argument record', async () => {
+    const worker = {};
+    let observedArgs;
+    let observedRecord;
+    const broker = new CapabilityBroker({
+        [platformOperation]: async (args, hostRecord) => {
+            observedArgs = args;
+            observedRecord = hostRecord;
+            return 'desktop';
+        }
+    });
+    const hostRecord = record(19, [platformOperation]);
+    broker.attach(worker, hostRecord);
+
+    assert.equal(await broker.request(worker, request(0, {
+        operation: platformOperation,
+        args: {}
+    })), 'desktop');
+    assert.deepEqual(observedArgs, {});
+    assert.ok(Object.isFrozen(observedArgs));
+    assert.equal(observedRecord, hostRecord);
+});
+
+test('platform kind read refuses extra, inherited, and malformed arguments', async () => {
+    const malformedArgs = [
+        {unexpected: true},
+        Object.assign(Object.create({polluted: true}), {}),
+        null,
+        [],
+        'empty',
+        0
+    ];
+
+    for (const [index, args] of malformedArgs.entries()) {
+        const worker = {};
+        const broker = new CapabilityBroker({[platformOperation]: () => 'desktop'});
+        broker.attach(worker, record(20 + index, [platformOperation]));
+        await assert.rejects(broker.request(worker, request(0, {
+            operation: platformOperation,
+            args
+        })), error => error.code === 'invalid-arguments');
+    }
+});
+
+test('platform kind read requires an exact host declaration and keeps diagnostics redacted', async () => {
+    const worker = {};
+    const broker = new CapabilityBroker({[platformOperation]: () => ({secretNativeResult: true})});
+    const hostRecord = record(30, []);
+    broker.attach(worker, hostRecord);
+
+    await assert.rejects(broker.request(worker, request(0, {
+        operation: platformOperation,
+        args: {}
+    })), error => error.code === 'undeclared-operation');
+
+    const diagnostic = broker.diagnostics().at(-1);
+    assert.deepEqual({
+        event: diagnostic.event,
+        code: diagnostic.code,
+        workerId: diagnostic.workerId,
+        slug: diagnostic.slug,
+        operation: diagnostic.operation,
+        declared: diagnostic.declared
+    }, {
+        event: 'refused',
+        code: 'undeclared-operation',
+        workerId: 30,
+        slug: 'reviewed-30',
+        operation: platformOperation,
+        declared: []
+    });
+    const serialized = JSON.stringify(diagnostic);
+    assert.doesNotMatch(serialized, /reviewed source|secretNativeResult|gallery\.invalid|000000000000000000000000000000/);
 });
 
 test('undeclared operation is refused', async () => {
