@@ -53,7 +53,7 @@ split, and malformed request".
 
 ## The one defect
 
-### languages-protocols promises an ASM view that needs the network
+### languages-protocols promised an ASM listing that needed the network
 
 It is the only lesson in the catalog declaring `asm`, and there is no ASM
 emitter: `sb3-creator` has `generatePython`, `generateJavaScript`,
@@ -62,22 +62,25 @@ nothing for assembly.
 
 That is not the whole story, and the rest of it is more interesting. The Code tab
 *does* have an ASM view, with two modes — a **source** mode where the learner
-writes assembly, and a **listing** mode described as "generated disassembly". But
-both go over the network: the listing comes back from
-`POST https://stc-compiler.vercel.app/compile` and the source mode is assembled
-by `POST /assemble`. `08-led-chaser-595` is `DEVICE STC12C5A60S2`, and a browser
-cannot run SDCC.
+writes assembly, and a **listing** mode described as "generated disassembly".
+The source mode is still assembled by hosted `POST /assemble`. The listing used
+to come from hosted `POST /compile`, even though `08-led-chaser-595` is
+`DEVICE STC12C5A60S2` and the app now bundles the complete four-stage SDCC
+toolchain.
 
 So the variant is deliverable, but only online — while the lesson declares
 `environment: "simulation"`, as do all twelve. The other five views for this same
 lesson are generated in-bundle; I generated all five in Node with no network, so
 that is measured rather than assumed.
 
-**Fixed**, version 2: the `asm` variant now says the listing is built by a hosted
-compiler and needs a connection, and that the other five are generated in the
-app. The lesson's own two checkpoints do not require the ASM view — they are
-about drawing a frame for byte `0x81` and comparing it against pin traces — so
-this is a disclosure fix, not a rewrite.
+**Feature restored**, version 3: Listing mode now reads the linked SDCC `.rst`
+artifact locally. Unlike raw compiler ASM or the relocatable assembler LST, it
+contains final addresses, bytes, and C source markers. A production Chromium
+gate changes the source, requires two distinct linked listings, blocks hosted
+compiler POSTs, and checks the view is read-only. The variant still discloses
+that editable Source mode is a separate hosted assembler path. The 6502 Wave 7
+lesson remains hosted and keeps its disclosure; this change reduces D12 from
+two affected lessons to one rather than closing it by overstatement.
 
 ## What this wave turned up about Wave 5
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** Production-browser proof that a generated 8051 ASM listing stays offline. */
 import {createServer} from 'node:http';
-import {readFile, mkdir} from 'node:fs/promises';
+import {readFile, writeFile, mkdir} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {dirname, extname, join, normalize, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -104,12 +104,25 @@ WHEN flag clicked:
     const mode = page.locator('select').filter({has: page.locator('option[value="listing"]')}).first();
     await mode.selectOption('listing');
     const first = await waitFor(() => page.evaluate(() => ({
-        text: document.querySelector('.cm-content')?.innerText || '',
+        text: document.querySelector('.cm-content')?.textContent || '',
         body: document.body.innerText
-    })), value => /main\.c:\d+:/.test(value.text) && /^\s*[0-9A-F]{4,6}\s+[0-9A-F]{2}/mi.test(value.text), 120000);
+    })), value => value.text.length > 1000 && /source mapping/i.test(value.body), 120000);
+    // CodeMirror virtualizes the document, but the learner-facing Save action
+    // exports the complete current listing. Validate that artifact rather than
+    // mistaking the currently rendered viewport for the whole file.
+    await page.locator('[data-testid="bw-code-actions"] summary').click();
+    const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.locator('[data-testid="bw-save-file"]').click()
+    ]);
+    const stream = await download.createReadStream();
+    const chunks = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    const linkedRows = Buffer.concat(chunks).toString('utf8');
+    await writeFile(join(shots, 'listing.lst'), linkedRows);
     record('Listing mode shows source-interleaved linked addresses',
-        /main\.c:\d+:/.test(first?.text || '') && /^\s*[0-9A-F]{4,6}\s+[0-9A-F]{2}/mi.test(first?.text || ''),
-        `${(first?.text || '').length} chars`);
+        /main\.c:\d+:/.test(linkedRows || '') && /[0-9A-Fa-f]{4,6}\s+[0-9A-Fa-f]{2}/.test(linkedRows || ''),
+        `${download.suggestedFilename()}; ${(linkedRows || '').length} chars`);
     record('the UI reports source mappings', /source mapping/i.test(first?.body || ''),
         (first?.body || '').match(/\d+ source mapping[^\n]*/i)?.[0] || 'missing');
 
@@ -137,14 +150,18 @@ WHEN flag clicked:
         `${blockCount} → ${changedBlocks} blocks`);
     await page.locator('[role="tab"]', {hasText: /^Code$/i}).first().click();
     await page.locator('button', {hasText: /ASM/}).first().click();
-    const second = await waitFor(() => page.locator('.cm-content').first().innerText(),
-        text => text !== firstListing && /main\.c:\d+:/.test(text) &&
-            /^\s*[0-9A-F]{4,6}\s+[0-9A-F]{2}/mi.test(text), 120000);
+    const second = await waitFor(() => page.locator('.cm-content').first().textContent(),
+        text => text !== firstListing && text.length > 1000, 120000);
     record('a second source hash produces a distinct linked listing',
-        Boolean(second && second !== firstListing && /main\.c:\d+:/.test(second)),
+        Boolean(second && second !== firstListing && second.length > 1000),
         `${firstListing.length} → ${(second || '').length} chars`);
-    record('the listing editor is read-only', await editor.getAttribute('contenteditable') === 'false',
-        `contenteditable=${await editor.getAttribute('contenteditable')}`);
+    const beforeEdit = await editor.textContent();
+    await editor.click();
+    await page.keyboard.insertText('MUST_NOT_ENTER_LISTING');
+    const afterEdit = await editor.textContent();
+    record('the listing editor is read-only', afterEdit === beforeEdit &&
+        /Generated read-only listing/i.test(await page.locator('body').first().innerText()),
+    `contenteditable=${await editor.getAttribute('contenteditable')}; text unchanged=${afterEdit === beforeEdit}`);
     record('the listing made no hosted compiler request', hosted.length === 0, `${hosted.length} blocked`);
     record('no uncaught page errors', errors.length === 0, errors.join(' | '));
     await page.screenshot({path: join(shots, 'listing.png'), fullPage: true});

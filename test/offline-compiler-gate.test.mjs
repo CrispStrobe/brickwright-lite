@@ -24,3 +24,12 @@ test('browser proof retains the zero-request assertion and debugger evidence', a
     assert.match(source, /data-debug-frames/);
     assert.match(source, /data-step-cycle/);
 });
+
+test('listing proof retains cache invalidation and offline linked evidence', async () => {
+    const source = await readFile(new URL('../scripts/verify-local-asm-listing.mjs', import.meta.url), 'utf8');
+    assert.match(source, /route\.abort\('blockedbyclient'\)/);
+    assert.match(source, /hosted\.length === 0/);
+    assert.match(source, /main\\\.c:\\d\+:/);
+    assert.match(source, /second !== firstListing/);
+    assert.match(source, /contenteditable/);
+});

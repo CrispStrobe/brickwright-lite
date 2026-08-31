@@ -26,7 +26,7 @@ Two counting rules, so the numbers are comparable:
 | # | Defect | Owner | Lessons | Waves | State |
 | --- | --- | --- | --- | --- | --- |
 | **D1** | 28 checkpoints observe `circuit-ready`, which fires once when the example loads — so they tick themselves before the learner measures anything | lite (`guided-lessons.jsx`) | **28** | 1, 2, 6, 7 | **FIXED** — arming semantics |
-| **D2** | The debugger cannot start offline on any device family: `debug-runner.js` builds every image through `POST stc-compiler.vercel.app/compile`, while all ten Wave 5 lessons declare `environment: "simulation"` | lite (`bw-debug/debug-runner.js`) | **12** | 5, 3, 7 | open — see PLAN.md |
+| **D2** | The debugger cannot start offline on any device family: `debug-runner.js` builds every image through `POST stc-compiler.vercel.app/compile`, while all ten Wave 5 lessons declare `environment: "simulation"` | lite (`bw-debug/debug-runner.js`) | **12** | 5, 3, 7 | **FIXED 2026-08-31** — bundled four-stage SDCC pipeline and production offline debugger gate; see PLAN.md |
 | **D3** | The Bode sweep reports no numbers: `drawBode` writes four strings on a 260×140 canvas (two dB extremes, ±180°), no frequency axis, no per-point value, no export | bw-circuit-ui | **4** | 6 | **FIXED** — axis, table and CSV |
 | **D4** | The scope record is fixed at 100 kHz × 8192 = 81.92 ms; both numbers are hard-coded in `addScopeChannel` and `ScopePanel` passes neither | bw-circuit-ui (**not** bw-board — see below) | **4** | 6, 7 | **FIXED** — a record-length control |
 | **D5** | Four faceplate layouts ship no `"mode": "play"`, and `ControllerPanel` defaults to `edit` where every input control renders `disabled`; the panel's own `toJSON`/`fromJSON` drop `mode` entirely, so even a corrected file is lost on the first save | sb3-creator (examples) + bw-board (`controller.js`) + lite (`gui.jsx`) | **3** | 4 | **FIXED** — three repos |
@@ -36,7 +36,7 @@ Two counting rules, so the numbers are comparable:
 | **D9** | A Bode point costs 10/f seconds of simulated time (`settleCycles` 6 + `measureCycles` 4) and `SweepPanel` ran the sweep synchronously | bw-circuit-ui | **2** | 6 | **FIXED** — chunked/worker session, progress and cancellation |
 | **D10** | `pc50-two-stage-rc` corners at 0.159 Hz, so the decade below the corner its own lesson asks for costs 629 s of simulation per point | sb3-creator (example) | **2** | 6 | **FIXED** — 100 µF → 100 nF |
 | **D11** | `43-rc-timing` has no controls at all, so the charging step it measures happens once and cannot be repeated | sb3-creator (example) | **2** | 2, 6 | **FIXED** — a discharge switch |
-| **D12** | There is no ASM emitter; the Code tab's ASM view is real but both its modes go over the network (`/compile`, `/assemble`) | sb3-creator | **2** | 3, 7 | open — see PLAN.md |
+| **D12** | Generated ASM listings were hosted alongside the separately editable hosted assembler | lite + sb3-creator | **1** | 7 | **PARTIALLY FIXED 2026-08-31** — the STC/8051 Wave 3 listing is now linked locally from SDCC `.rst` and production-gated offline; editable ASM and the 6502 Wave 7 listing remain explicitly hosted |
 | **D13** | `board.resistance(a, b)` is directional — B is the reference and ground symbols are deliberately switched out of that solve, so a real path reads as open when probed the other way | bw-board (`mna.js`) — **by design** | **2** | 2 | open — not a bug |
 | **D14** | The widget inspector edits no functional config: only `color`, `fontSize`, `src`, `text`. A button's `toggle`, a slider's `min`/`max`/`step`, a gauge's range and a matrix's `rows`/`cols` are reachable only by hand-editing `controller.json` | lite (`controller-panel-view.jsx`) | **1** | 4 | **FIXED** — Config section |
 | **D15** | A widget cannot be re-bound from the app: `bindToVariable`, `bindToPart` and `bindToPin` are called from nowhere in the GUI; `WidgetCard` takes an unused `onBindPart` prop | lite (`controller-panel-view.jsx`) | **1** | 4 | **FIXED** — Binding section |
@@ -63,13 +63,13 @@ Two counting rules, so the numbers are comparable:
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | **FIXED 2026-08-29** — `INPUT ACTIVE LOW`, and the read inverted to keep the sketch's printed value |
 
-**37 defects. Thirty-two are closed** — D1, D3, D4, D5, D6, D7, D8, D9, D10, D11,
+**37 defects. Thirty-three are closed** — D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11,
 D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D25, D26, D27, D28, D29, D31,
 D32, D33, D35, D36 and D37 by repair, and D34 by re-measurement, which is a
 different and weaker claim: it stopped reproducing between the Wave 1 vendor
 and today, and this campaign only found that out. Together they account for
-**72 of the 90 lesson-slots** the table counts, and D1 alone is 28 of them.
-**Five are open**: D2, D12, D13, D22 and D30 — and three of those five (D13,
+**85 of the 90 lesson-slots** the table counts, and D1 alone is 28 of them.
+**Four are open**: D12, D13, D22 and D30 — and three of those four (D13,
 D22 and D30) are labelled rather than broken. Every row still open is recorded
 in `PLAN.md` with what blocks it and who owns it.
 

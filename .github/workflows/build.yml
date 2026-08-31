@@ -630,11 +630,25 @@ jobs:
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
 
+      # Listing mode shares the compiler but not the consumer path above. This
+      # proof changes the source, exports two distinct linked .rst listings,
+      # and aborts hosted compiler POSTs before they leave Chromium.
+      - name: Browser gate — offline linked 8051 assembly listings
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-local-asm-listing.mjs
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
         with:
           name: offline-8051-debug-proof
           path: artifacts/debug-proof/*
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: offline-8051-listing-proof
+          path: artifacts/local-asm-listing/*
           if-no-files-found: error
 
       # Run this short, independently green extension proof after the two heavy

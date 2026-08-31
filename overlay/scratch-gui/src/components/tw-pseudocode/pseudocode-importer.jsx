@@ -173,7 +173,7 @@ const L10N = {
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
         basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
-        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly (8051/6502/Z80/AVR, assembled by the hosted toolchain) and assemble+run — the 6502/Z80 benches boot the image directly. Listing mode: generated disassembly. No ASM-to-blocks path — that asymmetry is deliberate.',
+        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly (8051/6502/Z80/AVR, assembled by the hosted toolchain) and assemble+run — the 6502/Z80 benches boot the image directly. Listing mode: generated read-only evidence, linked locally for bundled 8051 targets and explicitly hosted for unsupported targets. No ASM-to-blocks path — that asymmetry is deliberate.',
         stCOneWay: 'That language cannot be compiled back to blocks.',
         // BASIC / ASM mode bar
         profile: 'Profile:', lineNumbers: 'Line numbers', alwaysOn6502: '(always on for 6502)',
@@ -304,7 +304,7 @@ const L10N = {
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
         basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
-        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler (8051/6502/Z80/AVR, assembliert vom gehosteten Toolchain-Dienst) schreiben und assemblieren+ausführen — die 6502/Z80-Werkbänke booten das Image direkt. Listing-Modus: generierte Disassemblierung. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
+        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler (8051/6502/Z80/AVR, assembliert vom gehosteten Toolchain-Dienst) schreiben und assemblieren+ausführen — die 6502/Z80-Werkbänke booten das Image direkt. Listing-Modus: erzeugter, schreibgeschützter Beleg, für gebündelte 8051-Ziele lokal gelinkt und für nicht unterstützte Ziele ausdrücklich gehostet. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
         stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.',
         // BASIC / ASM mode bar
         profile: 'Profil:', lineNumbers: 'Zeilennummern', alwaysOn6502: '(immer an bei 6502)',

@@ -53,9 +53,9 @@ const EMITTERS = {
 };
 /** Declared languages that are not generated code. */
 const NON_EMITTED = new Set(['pseudocode', 'blocks']);
-/** Declared languages with no in-bundle emitter — each needs a stated reason. */
+/** Declared languages not emitted directly by sb3-creator — each needs a stated route. */
 const NO_LOCAL_EMITTER = new Map([
-    ['asm', 'built by the hosted compiler at stc-compiler.vercel.app; see docs/LESSON-REVIEW-WAVE-3.md']
+    ['asm', 'linked locally by the bundled SDCC pipeline; see docs/LESSON-REVIEW-WAVE-3.md']
 ]);
 
 test('every language a Wave 3 lesson declares renders from its own example', () => {
@@ -97,17 +97,27 @@ test('every language a Wave 3 lesson declares renders from its own example', () 
     assert.ok(variants >= 60, `only ${variants} variants exercised`);
 });
 
-test('OPEN DEFECT: asm is the one declared language with no in-bundle emitter', () => {
+test('the declared 8051 asm view has a pinned local linked-listing route', () => {
     const asmLessons = lessons.filter(l => l.languages.includes('asm')).map(l => l.id);
     assert.deepEqual(asmLessons, ['languages-protocols'],
         'the set of lessons declaring asm changed — re-measure and update ' +
         'docs/LESSON-REVIEW-WAVE-3.md');
-    assert.ok(!/generateAsm|generateASM/i.test(overlayCompiler.toString('utf8')),
-        'sb3-creator now emits assembly in-bundle — the languages-protocols asm ' +
-        'variant no longer needs the network. Update its copy and delete this test.');
-    // and the lesson must say so, since the app will not
+    const compiler = readFileSync(path.join(REPO, 'overlay/scratch-gui/src/lib/sdcc-wasm/compiler.js'), 'utf8');
+    const route = readFileSync(path.join(REPO, 'overlay/scratch-gui/src/lib/sdcc-wasm/listing-route.js'), 'utf8');
+    const intercept = readFileSync(path.join(REPO, 'overlay/scratch-gui/src/lib/sdcc-wasm/intercept.js'), 'utf8');
+    const importer = readFileSync(path.join(REPO,
+        'overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx'), 'utf8');
+    assert.match(compiler, /listingFromRst/);
+    assert.match(compiler, /main\.rst/,
+        'the local listing must be linked evidence, not relocatable assembler output');
+    assert.match(route, /compileLocal\(code,\s*\{target, fosc, disassemble:\s*true\}\)/);
+    assert.match(intercept, /disassemble:\s*body\.disassemble/,
+        'the local compiler boundary must retain the listing request flag');
+    assert.match(importer, /linked locally for bundled 8051 targets/);
+    assert.match(importer, /8051-Ziele lokal gelinkt/);
     const lesson = lessons.find(l => l.id === 'languages-protocols');
-    assert.match(lesson.variants.asm.en, /hosted compiler|network/i,
-        'the asm variant must disclose that its view needs a connection');
-    assert.match(lesson.variants.asm.de, /Compiler|Netz/i);
+    assert.match(lesson.variants.asm.en, /local|offline/i);
+    assert.match(lesson.variants.asm.en, /source mode.*hosted/i);
+    assert.match(lesson.variants.asm.de, /lokal|offline/i);
+    assert.match(lesson.variants.asm.de, /Source-Modus.*gehostet/i);
 });

@@ -62,6 +62,12 @@ escape. Overlay and integrated package copies agree.
 
 ## Checkpoint 4 — production offline browser proof (50–75 minutes)
 
+Status: watched green against the `71b41aae0` production `github-pages`
+artifact (Actions run `33368101931`): 8/8 checks, two source-distinct
+listings, 49 source mappings, a 37,410-byte `program.lst`, immutable editor,
+zero hosted requests, and zero page errors. Wired into the normal build after
+that watched run.
+
 - Load a real 8051 example, open Code → ASM → Listing, and block external
   compiler requests before they leave Chromium.
 - Prove the listing belongs to the current generated program using source lines,
@@ -74,6 +80,11 @@ mode/status, no page errors, and retained screenshots plus structured failure
 evidence. The gate is workflow-wired only after a watched green run.
 
 ## Checkpoint 5 — lesson and ledger closure (35–50 minutes)
+
+Status: complete. `languages-protocols` is version 3 in English and German;
+the positive sentinel pins the local linked-listing route and UI disclosure.
+Wave 7's 6502 hosted boundary remains unchanged, and D12 is recorded as one
+remaining lesson rather than struck through.
 
 - Update the affected 8051 lesson in English and German and bump its content
   version with the new offline boundary stated precisely. Keep the 6502
