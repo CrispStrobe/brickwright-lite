@@ -458,7 +458,21 @@ falls through to the hosted service — which refuses honestly with no network.
 No prebuilt image ever stands in for it, and the browser gate proves that half
 too: after one changed number the run goes to `error`, the blocked POST is
 recorded, and the prebuilt sentence disappears rather than staying on screen
-describing firmware that is no longer running.
+describing firmware that is no longer running. (Measured while writing that
+gate, because reading the code had suggested otherwise: an edit that keeps the
+same PIN SIGNATURE also rebuilds. `stop()` leaves `session` in place and the
+panel only tears the runner down on a pin change, which looked like it would
+resume the old image; it does not.)
+
+**And the refusal says something.** It used to be the browser's own "Failed to
+fetch" — six words naming neither what was attempted nor why the same bench had
+started without a connection a minute earlier. It now says what was tried, that
+avr-gcc and arm-none-eabi-gcc cannot run in a browser so they are not in the
+page, that lesson benches on this family DO ship their program prebuilt, that an
+edited program is not one of them because nobody has compiled it, and the three
+things that would work. Branched on the family: an 8051 target only reaches that
+line when its in-page router is not answering, and telling that user to switch
+to an 8051 device would be nonsense.
 
 **A defect the evidence found.** `runner.variables()` read a fixed two bytes for
 every symbol, so anything narrower had its neighbour spliced into the high byte
