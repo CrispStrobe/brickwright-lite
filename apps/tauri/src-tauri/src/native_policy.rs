@@ -191,6 +191,10 @@ impl PolicyCore {
         result
     }
 
+    // Keep the protocol fields separate until the Tauri envelope type exists;
+    // grouping them prematurely would make this pure core deserialize input.
+    // Both unwraps below are dominated by the explicit unknown-name refusals.
+    #[allow(clippy::too_many_arguments, clippy::unnecessary_unwrap)]
     pub(crate) fn authorize(
         &mut self,
         caller_label: &str,

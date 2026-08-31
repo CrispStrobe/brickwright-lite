@@ -189,6 +189,18 @@ closing the inherited `core:default` route that could otherwise open a future
 hidden broker's inspector by label. This does not create the broker or register
 a capability command; it establishes the least-privilege substrate first.
 
+Desktop now constructs an inert broker shell from the bundled
+`capability-broker.html`: it is hidden, unfocusable, undecorated,
+non-resizable/non-closable, absent from the taskbar, incognito, and has
+devtools disabled. Its navigation predicate accepts only the exact platform
+local origin and document path with no URL variants; new windows are denied;
+the document is scriptless under `default-src 'none'`. Three Rust URL tests and
+a 20-mutation structural/asset gate cover this shell. It still owns no workers,
+commands, leases or native results, so this is safe scaffolding rather than a
+claim that CP3-C is complete. Installed Tauri has no supported registered child
+webview API on iOS/Android; mobile remains explicitly open pending a native
+broker process/plugin or an upstream-supported isolated webview primitive.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker

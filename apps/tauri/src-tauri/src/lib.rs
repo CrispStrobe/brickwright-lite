@@ -3,6 +3,8 @@
 mod assetserver;
 mod downloads;
 mod fileio;
+#[cfg(desktop)]
+mod native_broker;
 // Compiled now so every target type-checks the staged policy core. Its first
 // production consumer is deliberately withheld until the isolated broker
 // webview exists; the topology gate forbids registering a partial boundary.
@@ -64,6 +66,9 @@ pub fn run() {
         ])
         .manage(scratchlink::bridge::BridgeState::default())
         .setup(|app| {
+            #[cfg(desktop)]
+            native_broker::create(app)?;
+
             // Bring up the local ScratchLink WS server the web VM dials.
             scratchlink::start();
 
