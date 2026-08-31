@@ -95,3 +95,16 @@ Agent audits are inputs. The coordinator reviews every diff and fixture,
 reruns focused and adversarial tests, checks archive bytes and browser output,
 integrates onto current remote defaults, and owns every acceptance and push.
 
+## Checkpoint evidence
+
+- **1–2 complete:** sb3-creator `a967f8b` pins and counts the canonical 84-opcode surface as
+  30 mapped + 21 host-control + 4 event hats + 29 learner gaps. Removing a mapped opcode makes
+  `spikeprime-census` fail.
+- **3 complete:** sb3-creator `bcc65cd` proves external-CWD CLI generation, ZIP topology and
+  deterministic Scratch VM execution. Mutating the distance reporter result from 12 to 0 makes
+  the semantic test fail. The upstream plan records the measured boundary at `e0ec0fa`.
+- **4 code complete, fresh-build verdict pending:** Lite `225faf95c` vendors the executable
+  compiler contract; `4dc204ef7` wires the real File → blocks → Code → blocks → saved-file browser
+  journey into the build workflow. It uses state predicates rather than fixed sleeps.
+- **5 pending:** do not close this claim until the matching Pages build passes the browser gate,
+  its screenshot is inspected, and the deployed build identity is recorded here.

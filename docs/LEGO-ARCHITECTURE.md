@@ -1,4 +1,4 @@
-# LEGO architecture — the three open gaps
+# LEGO architecture — one measured round-trip slice and the remaining gaps
 
 *Internal technical doc, English-only (per the bilingual rule: user-facing getting-started
 docs are EN/DE, implementation contracts stay English). Written 2026-08-19.*
@@ -33,37 +33,48 @@ The **faceplate campaign** (bw-circuit-ui widgets + bw-board faces + the LCD/RGB
 flight) adds the **offline visual face** for these hubs — what a learner sees when no hardware
 is connected.
 
-That is the ground truth. Three architectural gaps remain on top of it.
+That is the ground truth. One useful SPIKE Prime slice now crosses the first gap, but the
+generic multi-hub architecture remains open.
 
 ---
 
-## Gap 1 (highest priority) — pseudocode ⇄ Scratch-with-LEGO-blocks
+## Gap 1 (highest priority) — pseudocode ⇄ Scratch-with-LEGO-blocks (partial)
 
-**The islands.** Two authoring worlds exist and do not meet:
+**Measured status on 2026-08-31.** The two worlds now meet for a deliberately bounded
+`spikeprime` dialect. sb3-creator `bcc65cde` emits and decompiles 30 canonical opcodes; its real
+CLI output is a ZIP project with the pinned extension URL, and Scratch VM executes a controlled
+motor → distance reporter → display → stop chain. Lite vendors that contract and drives the same
+archive through its File menu and Code ⇄ Blocks UI.
+
+The denominator is not hidden: the canonical extension has **84** opcodes at extensions commit
+`c681d995`. The executable census classifies them as **30 mapped, 21 host-control blocks, 4 event
+hats, and 29 learner-facing gaps**. The five other SPIKE-family extension IDs have different block
+schemas and are not aliases for this map.
+
+**The remaining islands.** Outside that measured slice, two authoring worlds still do not meet:
 
 - `.bw` (BrickWright dialect) transpiles to `c | micropython | python | sb3` via `bw`
-  (`sb3-creator/bin/bw.mjs`). Its `sb3` output is generic Scratch.
+  (`sb3-creator/bin/bw.mjs`). Only the canonical SPIKE slice produces measured LEGO blocks.
 - The LEGO extensions transpile *Scratch-with-LEGO-blocks* ⇄ *hub code*.
 
-There is **no edge** between `.bw` and the LEGO extension blocks. A `.bw` program cannot be
-expressed as a LEGO-block project, and a LEGO-block project cannot be read back to `.bw`.
+There is not yet a general edge for EV3, NXT, Boost, WeDo, Powered Up, the other SPIKE schemas,
+or the 29 canonical learner-facing SPIKE operations outside the current dialect.
 
 **What's missing, concretely:**
-- **Forward:** a device-aware sb3 emitter so `bw transpile <f.bw> --to sb3 --device spikeprime`
-  (or ev3/nxt/…) emits a project whose blocks are the hub extension's opcodes — mapping the
+- **Forward:** extend the proven device-aware emitter beyond `--device spikeprime` so ev3/nxt/…
+  emit projects whose blocks are the hub extension's opcodes — mapping the
   dialect's motor / sensor / display / wait verbs to each hub's block set. The scaffolding is
   there: `sb3Creator.js` already reconciles `project.extensions` with the opcodes actually used,
   and already maps some extensions' field-blocks (the `stc12` pin blocks). What's missing is a
   **per-hub block-map** (dialect verb → extension opcode + arg shape), anchored on each
   extension's `getInfo` block set.
-- **Reverse:** `bw read` a LEGO-block `.sb3` → `.bw`. Today the reverse transpilers
-  (`basicToPseudocode.js`, `pythonToPseudocode.js`) know only the `arrays` extension. A LEGO
-  block → dialect-verb table is the mirror of the forward map.
+- **Reverse:** extend `bw read` beyond the 30 mapped `spikeprime` opcodes. Each remaining hub needs
+  its own block → dialect-verb table; incompatible extension IDs must not be collapsed by name.
 
 **Why it's the priority (above Gap 2):** it is the missing joint that connects the whole stack
-— pseudocode ⇄ blocks ⇄ hub. Without it, everything a learner authors in `.bw` is invisible to
-the LEGO extensions and vice versa; with it, the same program flows from pseudocode to blocks
-to a real Spike/EV3 and back.
+— pseudocode ⇄ blocks ⇄ hub. The SPIKE slice proves pseudocode ⇄ blocks for its measured set.
+It does not prove a physical connection or on-brick deployment, and it does not justify a
+family-wide claim; those boundaries remain owned by each extension and transport.
 
 **Lives in:** `sb3-creator` (`sb3Creator.js` forward emitter + a reverse table), the
 `CrispStrobe/extensions` per-hardware transpilers, and the `bw` CLI. Needs a per-hub block-map

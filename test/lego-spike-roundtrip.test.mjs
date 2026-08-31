@@ -24,7 +24,7 @@ const projectFrom = async bytes => JSON.parse(await (await JSZip.loadAsync(bytes
 
 test('vendored SPIKE compiler emits a canonical executable round-trip artifact', async () => {
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'bcc65cde9ed4248a58868bbaad5b3d016c8561f9');
+        'e0ec0fab214ac4a4cf47daa8bb7f7a848ddd49b8');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
