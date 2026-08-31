@@ -84,3 +84,24 @@ Definition of done: generator, native-corpus, shipped-image, lesson, l10n,
 vendor, gate-coverage, and production-browser suites pass; all accepted commits
 are ancestors of the relevant GitHub default branches; Lite local HEAD equals
 `origin/main`; unrelated lockfile/translation edits remain untouched.
+
+## Closure evidence — 2026-08-31
+
+- Checkpoint 1: `sb3-creator@9e7f2f0`. The task-only and debug-forced AVR
+  contracts fail under the one-line mutation and pass with one helper; the
+  single-main release and 8051 controls remain negative/green.
+- Checkpoint 2: `sb3-creator@5d6d83c`. `scripts/avr-native-census.mjs` maps the
+  exact tracked denominator (UNO 68, Nano 6, Mega 4, ATmega168P 1, ATtiny88 1)
+  and real avr-gcc 7.3.0 links 80/80 sequentially. The mutation names all five
+  original D38 failures; the wait-bearing control remains linked.
+- Checkpoint 3: Lite `4d4c66f9b` (published through merge `464950644`). Both
+  vendor trees pin `5d6d83ca6699d6d51a6964583fc47abb4ab134fe`; the full rebuild
+  produced 14 images, zero refusals, and a repeat was byte-identical. The D38
+  payload advances its exported `bw_ms` to the expected 2,500 ms in avr8js.
+- Checkpoint 4: Lite `068c5bafc`. A capped local production build succeeded;
+  the exact lesson bench passed 20/20 watched Chromium checks with zero
+  cross-origin requests and zero page errors. Program time advanced
+  333.334→483.335 ms, and a same-pin edit made one blocked compiler POST.
+- Checkpoint 5: PLAN, wave ledger, Wave 5 lesson v3 (EN/DE), and LANES agree:
+  36/39 rows closed, 86/90 lesson-slots closed, D13/D22/D30 fully open. The
+  edited AVR/ARM hosted-compiler boundary remains explicit.

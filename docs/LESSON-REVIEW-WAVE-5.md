@@ -226,6 +226,11 @@ changed nothing.
   mentions a button**: its two checkpoints are entirely about edge times, period
   error and jitter. So the decorative control is a corpus question, not a lesson
   one, and it does not affect this verdict.
+  **D38 closure, 2026-08-31:** the bench now also starts offline from its
+  provenance-pinned AVR image. The production proof pauses on `bw_task0 state
+  1`, measures program time advancing 333.334→483.335 ms, and retains the
+  edited-source hosted-compiler boundary. The lesson is restored to content v3
+  in English and German; its timing measurement remains the exercise.
 - **debug-simulation-hardware** is the wave's only `optional-hardware` lesson and
   the only one observing `hardware-state`. Its `compare` checkpoint explicitly
   offers a fallback — "otherwise use a documented hypothetical deviation" — so it
