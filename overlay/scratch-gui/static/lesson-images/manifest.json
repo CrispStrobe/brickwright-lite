@@ -52,6 +52,22 @@
       ]
     },
     {
+      "exampleId": "arduino-02-blink-without-delay",
+      "file": "arduino-02-blink-without-delay.atmega328p.ihx.json",
+      "target": "atmega328p",
+      "format": "ihx",
+      "device": "arduino-uno",
+      "bytes": 1674,
+      "codeLength": 3967,
+      "codeSha256": "bd16a8561018fe990759becfcff799a54e9a72cb3cfada7204949b4b0892f874",
+      "programSha256": "f677a6ff721ff0ff317091bd4e09450893032ed3ec85aa738d0aebf63edf10a1",
+      "program": "arduino-02-blink-without-delay/program.bw",
+      "toolchain": "avr-gcc (GCC) 5.4.0",
+      "lessons": [
+        "debugging-5/debug-timing-bugs"
+      ]
+    },
+    {
       "exampleId": "arduino-03-calibration",
       "file": "arduino-03-calibration.atmega328p.ihx.json",
       "target": "atmega328p",
@@ -213,15 +229,5 @@
       ]
     }
   ],
-  "refused": [
-    {
-      "exampleId": "arduino-02-blink-without-delay",
-      "target": "atmega328p",
-      "format": "ihx",
-      "lessons": [
-        "debugging-5/debug-timing-bugs"
-      ],
-      "error": "main.c: In function ‘main’: main.c:96:28: warning: implicit declaration of function ‘bw_now’ [-Wimplicit-function-declaration] uint32_t pass_ms = bw_now(); ^ main.c: At top level: cc1: warning: unrecognized command line option ‘-Wno-implicit-fallthrough’ /tmp/ccaHUcfA.o: In function `main': main.c:9"
-    }
-  ]
+  "refused": []
 }

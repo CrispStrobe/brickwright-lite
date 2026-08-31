@@ -243,24 +243,16 @@ test('every lesson bench that needs a shipped image has one, or is a named refus
 });
 
 /**
- * THE HONEST RESIDUE, ratcheted.
+ * THE REFUSAL RATCHET.
  *
- * `arduino-02-blink-without-delay` cannot be built by anybody — with or
- * without a network. Measured 2026-08-31: sb3-creator's AVR preamble emits the
- * millisecond ISR and `bw_ms`, and `main()`'s idle fast-forward calls
- * `bw_now()` twice, but the AVR path only DEFINES `bw_now()` when something
- * else in the program set `_cUses.now` — which `wait` does and `timer` does
- * not. Five of the 80 AVR examples in the corpus emit C that calls `bw_now()`
- * and never defines it (`arduino-02-blink-without-delay`, `arduino-02-button`,
- * `arduino-02-debounce`, `arduino-08-string-addition`,
- * `arduino-sk-p09-motorized-pinwheel`); one of them, this one, is a Wave 5
- * lesson bench (`debug-timing-bugs`). It is sb3-creator's emitter to fix and
- * lite must not patch a vendored file, so it is named here and in
- * docs/WAVE-OPEN-DEFECTS.md rather than papered over.
+ * This set reached zero when sb3-creator@9e7f2f0 made the AVR task scheduler's
+ * clock dependency explicit and the previously refused Wave 5 bench linked.
+ * Keep the empty set: deleting the ratchet would let the next unbuildable
+ * lesson image disappear into a generated manifest unnoticed.
  *
  * The list may only SHRINK. A new refusal fails this gate.
  */
-const KNOWN_REFUSALS = new Set(['arduino-02-blink-without-delay']);
+const KNOWN_REFUSALS = new Set();
 
 test('the refusal list is exactly the known upstream hole — no new ones, no stale ones', () => {
     const refused = new Set((manifest.refused || []).map(r => r.exampleId));
@@ -365,6 +357,57 @@ test('AVR: a lesson image attaches and RUNS with the network cut', async () => {
         `the prebuilt AVR image ran but never toggled the LED (saw ${[...seen]})`);
     assert.ok(adapter.stats.instructions > 100000,
         `only ${adapter.stats.instructions} instructions executed — the image did not run`);
+});
+
+test('D38: blink-without-delay image advances its repaired task clock offline', async () => {
+    const entry = manifest.images.find(e => e.exampleId === 'arduino-02-blink-without-delay');
+    assert.ok(entry, 'debug-timing-bugs must ship its formerly refused image');
+    const code = await generateDebugC(programOf(entry));
+    assert.match(code, /static uint32_t bw_now\(void\)/,
+        'the image identity must include the repaired scheduler helper');
+
+    shipped.resetShippedManifest();
+    const net = offlineFetch();
+    let out;
+    try {
+        out = await shipped.shippedImageFor(code, entry.target, entry.format, BASE_URI);
+    } finally {
+        net.restore();
+    }
+    assert.ok(out && out.success && out.symbols, 'D38 image or its symbols did not load');
+    assert.equal(out.provenance.exampleId, 'arduino-02-blink-without-delay');
+    assert.ok(net.asked.every(url => url.startsWith('file:')), net.asked.join(', '));
+
+    const {createDebugTarget, createDebugSession, BoardImpl} =
+        await import(pathToFileURL(path.join(BW_BOARD, 'index.js')).href);
+    (await import(pathToFileURL(path.join(BW_BOARD, 'register-all.js')).href)).registerAllDevices();
+    const board = new BoardImpl();
+    board.setNetlist([
+        {id: 'u1', kind: 'mcu', terminals: ['D13', 'gnd']},
+        {id: 'r1', kind: 'resistor', params: {ohms: 220}, terminals: ['a', 'b']},
+        {id: 'd1', kind: 'led', params: {color: 'red'}, terminals: ['anode', 'cathode']},
+        {id: 'g1', kind: 'gnd', terminals: ['gnd']}
+    ], [
+        {id: 'n1', terminals: [{part: 'u1', terminal: 'D13'}, {part: 'r1', terminal: 'a'}]},
+        {id: 'n2', terminals: [{part: 'r1', terminal: 'b'}, {part: 'd1', terminal: 'anode'}]},
+        {id: 'n3', terminals: [{part: 'd1', terminal: 'cathode'},
+            {part: 'g1', terminal: 'gnd'}, {part: 'u1', terminal: 'gnd'}]}
+    ]);
+    board.setPower(true);
+    const hex = Buffer.from(out.base64, 'base64').toString('binary');
+    const {target, adapter} = await createDebugTarget('avr8js',
+        {board, hex, symbols: out.symbols, clockHz: 16_000_000});
+    const session = createDebugSession(target, {onChange: () => {}});
+    session.start();
+    for (let i = 0; i < 50; i++) adapter.advanceNs(50_000_000);
+    const clock = out.symbols.scheduler.bw_ms;
+    assert.ok(clock && clock.size === 4, 'D38 image does not expose the scheduler clock');
+    const bytes = target.readMem(clock.space, clock.addr, clock.size);
+    const elapsed = (bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)) >>> 0;
+    assert.ok(elapsed >= 2400 && elapsed <= 2600,
+        `D38 scheduler clock did not follow 2500 ms of simulated time (read ${elapsed})`);
+    assert.ok(adapter.stats.instructions > 100000,
+        `D38 firmware only executed ${adapter.stats.instructions} instructions`);
 });
 
 test('ARM: the Pico lesson image attaches and PRINTS with the network cut', async () => {
