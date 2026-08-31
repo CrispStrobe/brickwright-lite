@@ -5,7 +5,7 @@ import {dirname} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
 
-import {compileWithToolchain} from '../overlay/scratch-gui/src/lib/sdcc-wasm/compiler.js';
+import {compileWithToolchain, listingFromRst} from '../overlay/scratch-gui/src/lib/sdcc-wasm/compiler.js';
 
 const distUrl = new URL('../overlay/scratch-gui/src/lib/sdcc-wasm/dist/', import.meta.url);
 const require = createRequire(import.meta.url);
@@ -48,6 +48,44 @@ test('four isolated WASM stages produce linked Intel HEX', {timeout: 30000}, asy
     assert.match(result.hex, /^:00000001FF$/m);
     assert.equal(Buffer.from(result.base64, 'base64').toString(), result.hex);
     assert.ok(result.bytes > 100, `unexpectedly small output: ${result.bytes}`);
+});
+
+test('listing mode returns SDCC relocated addresses and source mappings', {timeout: 30000}, async () => {
+    const result = await compileWithToolchain([
+        '#include <stc12.h>',
+        'void main(void) {',
+        '  P1 = 0x5a;',
+        '  for (;;) {}',
+        '}'
+    ].join('\n'), {target: 'stc12c5a60s2', disassemble: true}, await toolchain());
+
+    assert.equal(result.success, true, result.error);
+    assert.equal(result.listing.format, 'sdcc');
+    assert.equal(result.listing.v, 1);
+    assert.match(result.listing.asm, /main\.c:3:/, 'the C assignment is interleaved into the listing');
+    assert.match(result.listing.asm, /^\s*[0-9A-Fa-f]{4,6}\s+[0-9A-Fa-f]{2}/m,
+        'the listing contains relocated addresses and emitted bytes');
+    assert.ok(result.listing.lineMap.some(entry => entry.file === 'main.c' && entry.line === 3),
+        `line 3 is absent from ${JSON.stringify(result.listing.lineMap)}`);
+    assert.equal(result.disassembly, result.listing.asm, 'the compatibility field is the same artifact');
+});
+
+test('ordinary compilation does not carry the optional listing payload', {timeout: 30000}, async () => {
+    const result = await compileWithToolchain('void main(void) { for (;;) {} }',
+        {target: 'stc12c5a60s2'}, await toolchain());
+    assert.equal(result.success, true, result.error);
+    assert.equal(Object.hasOwn(result, 'listing'), false);
+    assert.equal(Object.hasOwn(result, 'disassembly'), false);
+});
+
+test('listing parser rejects artifacts that cannot map source to machine addresses', () => {
+    assert.throws(() => listingFromRst(''), /empty relocated listing/);
+    assert.throws(() => listingFromRst('0000 02 00 08 ljmp 0008'), /no source\/address mappings/);
+    const listing = listingFromRst([
+        '                                    1 ; C:\\work\\main.c:7: value++;',
+        '      00000A 05 20            [12]  2 inc _value'
+    ].join('\n'));
+    assert.deepEqual(listing.lineMap, [{addr: 10, file: 'main.c', line: 7}]);
 });
 
 test('debug build transfers ADB data through assembler and linker', {timeout: 30000}, async () => {

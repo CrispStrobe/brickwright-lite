@@ -143,8 +143,35 @@ function bytesToBase64 (bytes) {
     return btoa(binary);
 }
 
+/**
+ * Convert SDCC's relocated, source-interleaved .rst text into the listing
+ * contract consumed by the Code tab. Unlike main.asm, .rst addresses have
+ * passed through the linker and therefore describe the image the user runs.
+ */
+export function listingFromRst (text) {
+    const asm = String(text || '');
+    const lineMap = [];
+    let file = null;
+    let line = null;
+    for (const row of asm.split('\n')) {
+        const source = row.match(/;\s*(.+?):(\d+):\s/);
+        if (source && !/^\s*[0-9A-Fa-f]{4,6}\s/.test(row)) {
+            file = source[1].split(/[\\/]/).pop();
+            line = Number(source[2]);
+            continue;
+        }
+        const address = row.match(/^\s*([0-9A-Fa-f]{4,6})\s+[0-9A-Fa-f]{2}/);
+        if (address && file && Number.isInteger(line)) {
+            lineMap.push({addr: parseInt(address[1], 16), file, line});
+        }
+    }
+    if (!asm.trim()) throw new Error('linker produced an empty relocated listing');
+    if (!lineMap.length) throw new Error('relocated listing contains no source/address mappings');
+    return {asm, lineMap, format: 'sdcc', v: 1};
+}
+
 export async function compileWithToolchain (code, {target = 'stc12c5a60s2', symbols = false,
-    fosc = 11059200} = {}, toolchain) {
+    disassemble = false, fosc = 11059200} = {}, toolchain) {
     const normalized = String(target).toLowerCase();
     if (!localTargetSupported(normalized)) return {success: false, unsupported: true,
         error: `the local compiler supports 8051 targets only; '${target}' needs the hosted toolchain`};
@@ -203,6 +230,13 @@ export async function compileWithToolchain (code, {target = 'stc12c5a60s2', symb
         const ihx = readRequired(linker.module.FS, '/work/main.ihx', 'linker', linker.errors);
         const result = {success: true, hex: new TextDecoder().decode(ihx), base64: bytesToBase64(ihx),
             bytes: ihx.length, filename: 'firmware.ihx', format: 'ihx', f_cpu: fosc};
+        if (disassemble) {
+            const rst = new TextDecoder().decode(
+                readRequired(linker.module.FS, '/work/main.rst', 'linker listing'));
+            result.listing = listingFromRst(rst);
+            // Kept for the v0 consumer while every call site moves to listing.
+            result.disassembly = result.listing.asm;
+        }
         if (symbols) {
             let cdb = '';
             try {
