@@ -68,11 +68,17 @@ try {
 
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByRole('button', {name: /From blocks/}).first().click();
-    await page.waitForFunction(() => {
-        const text = document.querySelector('.cm-content')?.textContent || '';
-        return text.includes('start motor A forward') && text.includes('spike distance B') &&
-            text.includes('stop motor A');
-    }, null, {timeout: 30000});
+    try {
+        await page.waitForFunction(() => {
+            const text = document.querySelector('.cm-content')?.textContent || '';
+            return text.includes('start motor A forward') && text.includes('spike distance B') &&
+                text.includes('stop motor A');
+        }, null, {timeout: 30000});
+    } catch (error) {
+        const text = await page.locator('.cm-content').textContent().catch(() => 'editor absent');
+        await page.screenshot({path: resolve(artifacts, 'code-roundtrip-failure.png'), fullPage: true});
+        throw new Error(`From blocks did not produce canonical SPIKE text: ${text}`, {cause: error});
+    }
     await page.screenshot({path: resolve(artifacts, 'code-roundtrip.png'), fullPage: true});
 
     await page.getByRole('button', {name: /To blocks/}).first().click();
