@@ -74,7 +74,10 @@ try {
     });
     if (!loadedExample?.ok) throw new Error(`cannot load named circuit: ${loadedExample?.error || 'unknown error'}`);
     await designer.getByRole('radio', {name: 'Sim mode'}).click();
-    await page.waitForTimeout(1000);
+    await designer.getByRole('radio', {name: 'Sim mode'}).waitFor({state: 'attached'});
+    await page.waitForFunction(root =>
+        root.querySelector('[role="radio"][aria-label="Sim mode"]')?.getAttribute('aria-checked') === 'true',
+    await designer.elementHandle(), {timeout: 10000});
 
     const artifacts = [];
     for (const view of ['Realistic view', 'Schematic view', 'Board view']) {
@@ -104,7 +107,18 @@ try {
     // it has never exposed the prose label "Add channel". Keep this selector
     // bilingual because production may inherit either supported GUI locale.
     await scope.getByRole('button', {name: /^\+ (?:channel|Kanal)$/}).click();
-    await page.waitForTimeout(750);
+    await page.waitForFunction(root => {
+        const canvas = root.querySelector('canvas');
+        if (!canvas) return false;
+        const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let index = 0; index < pixels.length; index += 4) {
+            // The CH1 trace is #2ecc71. Tolerate antialiasing while requiring
+            // green dominance, which the empty graticule/background lacks.
+            if (pixels[index + 1] > 140 && pixels[index + 1] > pixels[index] * 1.5 &&
+                pixels[index + 1] > pixels[index + 2] * 1.2) return true;
+        }
+        return false;
+    }, await scope.elementHandle(), {timeout: 10000});
     const [csvDownload] = await Promise.all([
         page.waitForEvent('download', {timeout: 10000}),
         scope.locator('[data-testid="bw-scope-trace-csv-download"]').click()
