@@ -27,6 +27,10 @@ const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const MENU_BAR = 'overlay/scratch-gui/src/components/menu-bar/menu-bar.jsx';
 const CIRCUIT_TAB = 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx';
 const DESIGNER = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx';
+const CANVAS = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx';
+const REGISTRY = 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/exporters/registry.js';
+const SCOPE = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/ScopePanel.jsx';
+const SWEEP = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/SweepPanel.jsx';
 
 const dispatchedActions = src => {
     const found = new Set();
@@ -84,4 +88,28 @@ test('the cold-start listener is registered unconditionally, and replays what it
         'so a File-menu action would be handled twice');
     assert.match(tab, /removeEventListener\('bw-circuit-file'/,
         'the listener is never removed on unmount');
+});
+
+test('the replayed export is owned above all three circuit views', () => {
+    const designer = read(DESIGNER);
+    const canvas = read(CANVAS);
+    assert.match(designer, /import \{ BoardCanvas, FileMenu \}/,
+        'the designer does not own the same registry-backed picker as the canvas');
+    assert.match(designer, /data-host-file-command[\s\S]*<FileMenu[\s\S]*fileAction=\{fileAction\}/,
+        'the host export command has no actionable picker outside the view branch');
+    const canvasMount = designer.slice(designer.indexOf('<BoardCanvas'),
+        designer.indexOf('<BoardCanvas') + 9000);
+    assert.doesNotMatch(canvasMount, /fileAction=|onFileActionDone=/,
+        'host export still terminates in BoardCanvas and disappears in Schematic/Board view');
+    assert.match(canvas, /export function FileMenu/,
+        'the persistent owner copied a format list instead of reusing the actionable picker');
+});
+
+test('the vendored export registry and instruments expose the completed formats', () => {
+    const registry = read(REGISTRY);
+    assert.match(registry, /id: 'circuitikz'[\s\S]*name: 'schematic\.tex'[\s\S]*mime: 'text\/x-tex'/,
+        'the pinned registry does not ship the deterministic Circuitikz document');
+    assert.match(read(SCOPE), /scope-trace\.csv/);
+    assert.match(read(SCOPE), /scope-spectrum\.csv/);
+    assert.match(read(SWEEP), /mode === 'vi' \? 'sweep-vi\.csv' : 'sweep-bode\.csv'/);
 });
