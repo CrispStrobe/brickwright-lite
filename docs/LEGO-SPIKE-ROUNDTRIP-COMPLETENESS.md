@@ -103,6 +103,8 @@ integrates onto current remote defaults, and owns every acceptance and push.
 - **3 complete:** sb3-creator `bcc65cd` proves external-CWD CLI generation, ZIP topology and
   deterministic Scratch VM execution. Mutating the distance reporter result from 12 to 0 makes
   the semantic test fail. The upstream plan records the measured boundary at `e0ec0fa`.
+- **CI repair:** upstream `a023885` attaches measured evidence to the two new census bounds;
+  the repository threshold ratchet then returns to its 24-item ceiling without raising it.
 - **4 code complete, fresh-build verdict pending:** Lite `225faf95c` vendors the executable
   compiler contract; `4dc204ef7` wires the real File → blocks → Code → blocks → saved-file browser
   journey into the build workflow. It uses state predicates rather than fixed sleeps.
