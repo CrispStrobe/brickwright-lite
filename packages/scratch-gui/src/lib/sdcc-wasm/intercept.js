@@ -23,6 +23,7 @@ export function createCompilerFetch (originalFetch, compileLocal = compile) {
                     return compileLocal(body.code, {
                         target: body.target,
                         symbols: body.symbols,
+                        disassemble: body.disassemble,
                         fosc: body.fosc || body.f_cpu
                     }).then(result => new Response(JSON.stringify(result), {
                         status: 200,

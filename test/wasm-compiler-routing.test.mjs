@@ -22,6 +22,25 @@ test('supported 8051 requests stay local even when compilation fails', async () 
     assert.equal(hosted, 0, 'a local failure must not escape to the hosted compiler');
 });
 
+test('the fetch compatibility route forwards listing intent to the local compiler', async () => {
+    let options;
+    const local = async (code, received) => {
+        options = received;
+        return {success: true, listing: {asm: 'linked', lineMap: [], format: 'sdcc', v: 1}};
+    };
+    const fetch = createCompilerFetch(async () => {
+        throw new Error('hosted compiler was reached');
+    }, local);
+    const response = await fetch('https://stc-compiler.vercel.app/compile', {
+        method: 'POST',
+        body: JSON.stringify({language: 'c', code: 'void main(void){}', target: 'stc12c5a60s2',
+            disassemble: true, fosc: 12000000})
+    });
+    assert.equal((await response.json()).listing.asm, 'linked');
+    assert.deepEqual(options, {target: 'stc12c5a60s2', symbols: undefined,
+        disassemble: true, fosc: 12000000});
+});
+
 test('unsupported processor families retain the explicit hosted route', async () => {
     const hostedTargets = [];
     let local = 0;

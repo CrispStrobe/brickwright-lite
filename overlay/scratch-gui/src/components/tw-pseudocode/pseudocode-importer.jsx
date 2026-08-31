@@ -1365,8 +1365,13 @@ class PseudocodeImporter extends React.Component {
             cSrc = result.code;
         }
 
-        // Check cache
-        const hash = this._hashSource(cSrc);
+        const stc = this.currentStc();
+        const deviceId = (stc && stc.device || 'stc12c5a60s2').toLowerCase();
+        const fosc = Number(stc && (stc.clock || stc.fosc)) || 11059200;
+        // A listing belongs to a particular image, not merely to source text.
+        // Include every option that can change code generation and the listing
+        // schema version so another device/clock cannot borrow stale addresses.
+        const hash = this._hashSource(JSON.stringify({cSrc, deviceId, fosc, listingVersion: 1}));
         if (this._asmCache.hash === hash && this._asmCache.asm) {
             this.setState({
                 lang: 'asm', asmMode: 'listing', busy: false, output: null, status: '',
@@ -1378,29 +1383,16 @@ class PseudocodeImporter extends React.Component {
 
         this.setState({busy: true, status: this.L.stCompiling, conversionReport: null});
         try {
-            const stc = this.currentStc();
-            const deviceId = (stc && stc.device || 'stc12c5a60s2').toLowerCase();
-            // Map device to compile target (same map as debug-runner.js)
-            const COMPILE_TARGET = {
-                'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
-                'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
-                'arduino-mega': 'atmega2560', 'pico': 'rp2040',
-                'stm32f030': 'stm32f030', 'eater6502': 'eater6502'
-            };
-            const compileTarget = COMPILE_TARGET[deviceId] || deviceId;
-            const res = await fetch('https://stc-compiler.vercel.app/compile', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    code: cSrc,
-                    language: 'c',
-                    target: compileTarget,
-                    format: (deviceId === 'pico' || deviceId === 'stm32f030') ? 'bin' : 'ihx',
-                    disassemble: true
-                })
+            const {requestGeneratedListing} = await import(
+                /* webpackChunkName: "sdcc-listing-route" */ '../../lib/sdcc-wasm/listing-route.js');
+            const out = await requestGeneratedListing({code: cSrc, deviceId, fosc}, {
+                compileLocal: async (...args) => {
+                    const {compile} = await import(
+                        /* webpackChunkName: "sdcc-wasm" */ '../../lib/sdcc-wasm/compiler.js');
+                    return compile(...args);
+                },
+                hostedFetch: globalThis.fetch
             });
-            const out = await res.json();
-            if (!out.success) throw new Error(out.error || 'the compiler refused this program');
             // v1 listing shape: {asm, lineMap, format, v}
             // Fallback: old response.disassembly string
             let asmText = '';
