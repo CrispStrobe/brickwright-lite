@@ -1,0 +1,102 @@
+#!/usr/bin/env node
+/** Real-browser acceptance for the shipped LEGO SPIKE SB3 round trip. */
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {createRequire} from 'node:module';
+import {chromium} from 'playwright';
+import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
+
+const requireFromGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
+const JSZip = requireFromGui('jszip');
+const url = process.env.PROOF_URL || 'http://localhost:8617/';
+const artifacts = resolve('artifacts/lego-spike-roundtrip');
+await mkdir(artifacts, {recursive: true});
+
+const program = `DEVICE SPIKE
+
+GLOBAL dist = 0
+
+WHEN flag clicked:
+  start motor A forward
+  wait 250 ms
+  set dist to spike distance B
+  display text "GO"
+  stop motor A
+`;
+const creator = new SB3Creator();
+creator.parse(program);
+const fixture = resolve(artifacts, 'spike-roundtrip-input.sb3');
+await writeFile(fixture, Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+
+const expected = ['event_whenflagclicked', 'spikeprime_motorStart', 'control_wait',
+    'data_setvariableto', 'spikeprime_getDistance', 'spikeprime_displayText', 'spikeprime_motorStop'];
+const browser = await chromium.launch({headless: true});
+const page = await browser.newPage({viewport: {width: 1600, height: 1000}, acceptDownloads: true});
+const pageErrors = [];
+page.on('pageerror', error => pageErrors.push(error.message));
+page.on('dialog', dialog => dialog.accept());
+
+const opcodes = async () => page.evaluate(() => {
+    const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
+    return [...new Set((vm?.runtime?.targets || []).flatMap(target =>
+        Object.values(target.blocks?._blocks || {}).map(block => block.opcode)))].sort();
+});
+const assertOpcodes = (actual, label) => {
+    const missing = expected.filter(opcode => !actual.includes(opcode));
+    if (missing.length) throw new Error(`${label} lost opcodes: ${missing.join(', ')}`);
+    console.log(`  ok: ${label} contains all ${expected.length} required opcodes`);
+};
+
+try {
+    await page.addInitScript(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('bw-starter-v1-complete', '1');
+    });
+    await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 60000});
+    await page.getByText('File', {exact: true}).click();
+    await page.getByText('Load from your computer', {exact: true}).click();
+    const input = page.locator('body > input[type="file"][accept=".sb,.sb2,.sb3"]');
+    await input.setInputFiles(fixture);
+    await page.waitForFunction(required => {
+        const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
+        const found = new Set((vm?.runtime?.targets || []).flatMap(target =>
+            Object.values(target.blocks?._blocks || {}).map(block => block.opcode)));
+        return required.every(opcode => found.has(opcode));
+    }, expected, {timeout: 45000});
+    assertOpcodes(await opcodes(), 'loaded SB3');
+
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => {
+        const text = document.querySelector('.cm-content')?.textContent || '';
+        return text.includes('start motor A forward') && text.includes('spike distance B') &&
+            text.includes('stop motor A');
+    }, null, {timeout: 30000});
+    await page.screenshot({path: resolve(artifacts, 'code-roundtrip.png'), fullPage: true});
+
+    await page.getByRole('button', {name: /To blocks/}).first().click();
+    await page.waitForFunction(required => {
+        const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
+        const found = new Set((vm?.runtime?.targets || []).flatMap(target =>
+            Object.values(target.blocks?._blocks || {}).map(block => block.opcode)));
+        return required.every(opcode => found.has(opcode));
+    }, expected, {timeout: 30000});
+    assertOpcodes(await opcodes(), 'Code-to-blocks result');
+
+    await page.getByText('File', {exact: true}).click();
+    const downloadPromise = page.waitForEvent('download', {timeout: 30000});
+    await page.getByText('Save to your computer', {exact: true}).click();
+    const download = await downloadPromise;
+    const saved = resolve(artifacts, 'spike-roundtrip-saved.sb3');
+    await download.saveAs(saved);
+    const savedProject = JSON.parse(await (await JSZip.loadAsync(await readFile(saved)))
+        .file('project.json').async('string'));
+    const savedOpcodes = [...new Set(savedProject.targets.flatMap(target =>
+        Object.values(target.blocks).map(block => block.opcode)))].sort();
+    assertOpcodes(savedOpcodes, 'downloaded SB3');
+    if (pageErrors.length) throw new Error(`page errors: ${pageErrors.join(' | ')}`);
+    console.log('LEGO SPIKE browser round trip passed.');
+} finally {
+    await browser.close();
+}
