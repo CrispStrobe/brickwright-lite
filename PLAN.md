@@ -402,8 +402,8 @@ being found for what the row described.)
 
 What is still open is in that table with what blocks it. D2 was the largest row
 and is now closed on both halves: no lesson bench in the corpus needs the
-network to start. The remaining rows account for 12 lesson-slots, and no single
-remaining defect affects more than two lessons.
+network to start. The rows still open account for 5 lesson-slots, and no single
+one affects more than two lessons.
 
 ### D2's second half: prebuilt lesson images (2026-08-31)
 

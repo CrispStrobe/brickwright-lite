@@ -36,8 +36,8 @@ Two counting rules, so the numbers are comparable:
 | **D9** | A Bode point costs 10/f seconds of simulated time (`settleCycles` 6 + `measureCycles` 4) and `SweepPanel` ran the sweep synchronously | bw-circuit-ui | **2** | 6 | **FIXED** — chunked/worker session, progress and cancellation |
 | **D10** | `pc50-two-stage-rc` corners at 0.159 Hz, so the decade below the corner its own lesson asks for costs 629 s of simulation per point | sb3-creator (example) | **2** | 6 | **FIXED** — 100 µF → 100 nF |
 | **D11** | `43-rc-timing` has no controls at all, so the charging step it measures happens once and cannot be repeated | sb3-creator (example) | **2** | 2, 6 | **FIXED** — a discharge switch |
-| **D12** | Generated ASM listings were hosted alongside the separately editable hosted assembler | lite + sb3-creator | **1** | 7 | **PARTIALLY FIXED 2026-08-31** — the STC/8051 Wave 3 listing is now linked locally from SDCC `.rst` and production-gated offline; editable ASM and the 6502 Wave 7 listing remain explicitly hosted |
 | **D13** | `board.resistance(a, b)` is directional — B is the reference and ground symbols are deliberately switched out of that solve, so a real path reads as open when probed the other way | bw-board (`mna.js`) — **by design** | **2** | 2 | open — not a bug |
+| **D12** | Generated ASM listings were hosted alongside the separately editable hosted assembler | lite + sb3-creator | **1** | 7 | **PARTIALLY FIXED 2026-08-31** — the STC/8051 Wave 3 listing is now linked locally from SDCC `.rst` and production-gated offline; editable ASM and the 6502 Wave 7 listing remain explicitly hosted |
 | **D14** | The widget inspector edits no functional config: only `color`, `fontSize`, `src`, `text`. A button's `toggle`, a slider's `min`/`max`/`step`, a gauge's range and a matrix's `rows`/`cols` are reachable only by hand-editing `controller.json` | lite (`controller-panel-view.jsx`) | **1** | 4 | **FIXED** — Config section |
 | **D15** | A widget cannot be re-bound from the app: `bindToVariable`, `bindToPart` and `bindToPin` are called from nowhere in the GUI; `WidgetCard` takes an unused `onBindPart` prop | lite (`controller-panel-view.jsx`) | **1** | 4 | **FIXED** — Binding section |
 | **D16** | No simulated micro:bit sensor can be varied: the bundled simulator declares each one with its range, default and unit and accepts `{kind:'set_value', id, value}`, and `set_value` appears nowhere in lite | lite (`microbit-sim-pane.jsx`) | **1** | 4 | **FIXED** — Sensors strip |
@@ -64,18 +64,20 @@ Two counting rules, so the numbers are comparable:
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | **FIXED 2026-08-29** — `INPUT ACTIVE LOW`, and the read inverted to keep the sketch's printed value |
 
-**38 defects. Thirty-three are closed** — D1, D2, D3, D4, D5, D6, D7, D8, D9,
-D10, D11, D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D25, D26, D27, D28,
-D29, D31, D32, D33, D35, D36 and D37 by repair, and D34 by re-measurement, which
-is a different and weaker claim: it stopped reproducing between the Wave 1
-vendor and today, and this campaign only found that out. Together they account
-for **85 of the 91 lesson-slots** the table counts, and D1 alone is 28 of them.
-**Five are open**: D12, D13, D22, D30 and D38 — and three of those five (D13,
-D22 and D30) are labelled rather than broken. Every row still open is recorded
-in `PLAN.md` with what blocks it and who owns it.
+**38 defects. Thirty-four rows are marked closed** — D1, D2, D3, D4, D5, D6, D7,
+D8, D9, D10, D11, D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D25, D26,
+D27, D28, D29, D31, D32, D33, D35, D36 and D37 by repair, D34 by re-measurement
+(a different and weaker claim: it stopped reproducing between the Wave 1 vendor
+and today, and this campaign only found that out), and D12 **partially**, which
+its own row says out loud — the 8051 listing is linked locally and gated
+offline, editable ASM and the 6502 listing are still hosted. Together they
+account for **85 of the 90 lesson-slots** the table counts, and D1 alone is 28
+of them. **Four are fully open**: D13, D22, D30 and D38 — and three of those
+four (D13, D22 and D30) are labelled rather than broken. Every row still open is
+recorded in `PLAN.md` with what blocks it and who owns it.
 
-**The count of open rows did not move, and that is the useful part.** D2 closed
-and D38 opened in the same pass, because building D2's images is what found
+**D2 closed and D38 opened in the same pass, and that is the useful part.**
+Building D2's images is what found
 D38: an emitter hole on the AVR path that no lesson review had reached, sitting
 under a bench (`debug-timing-bugs`) whose lesson has never had a buildable
 image. The D2 row's own arithmetic was also wrong in a way worth keeping —
