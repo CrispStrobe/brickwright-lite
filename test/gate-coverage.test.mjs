@@ -35,30 +35,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * making it pass, which for most of these means bringing it up to the current
  * UI rather than tweaking a selector.
  */
-const KNOWN_UNWIRED = {
-    // THE BLOCKER IS GONE; WHAT IS MISSING NOW IS A GREEN RUN.
-    //
-    // 2026-08-30 this said the vendored static/sdcc-wasm could not compile the
-    // idle fast-forward `generateC` emits, so no 8051 debug session could start
-    // and no amount of driving the UI would help. That was true and is now
-    // fixed: the cause was a 64 KiB Emscripten stack against SDCC's ~158 KB
-    // recursive AST walk, the link takes -sSTACK_SIZE=8388608, and
-    // test/wasm-compiler-diagnosis.test.mjs now proves in Node, against the
-    // vendored binary, that a real generated 8051 program compiles to a hex
-    // AND yields a complete debug symbol table. 43 of the 44 generated 8051
-    // examples compile (the 44th, 51-tft-pixels, native SDCC rejects too — a
-    // transpiler defect, tracked separately).
-    //
-    // The row stays only because this gate has not been SEEN green: it needs a
-    // local production build plus Chromium, which this lane did not run. Wire
-    // it into .github/workflows/build.yml (the marked spot after the labwired
-    // journeys, ~line 623) as soon as someone watches it pass, and delete this
-    // entry in that commit. Do not wire it unseen — that is how it cost five
-    // red runs and blocked the deploy the first time.
-    'verify-debug-frames-watch.mjs':
-        'UNVERIFIED since the 2026-08-31 sdcc-wasm repair: the compiler defect that made it '
-        + 'impossible is fixed and proven in Node, but nobody has watched this gate go green'
-};
+const KNOWN_UNWIRED = {};
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))
     .filter(f => f.endsWith('.yml'))

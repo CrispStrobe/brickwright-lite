@@ -621,14 +621,21 @@ jobs:
           path: artifacts/labwired-*.png
           if-no-files-found: warn
 
-      # verify-debug-frames-watch is still unwired, but no longer BLOCKED: the
-      # sdcc-wasm defect that made it impossible (a 64 KiB Emscripten stack
-      # against SDCC's recursive AST walk) was repaired 2026-08-31, and
-      # test/wasm-compiler-diagnosis.test.mjs proves in Node that a real
-      # generated 8051 program now compiles and yields debug symbols. What is
-      # missing is a green run: wire it in HERE, and delete its KNOWN_UNWIRED
-      # row in test/gate-coverage.test.mjs in the same commit, once someone has
-      # actually watched it pass. Wiring it unseen cost five red runs before.
+      # This is the browser half of the offline 8051 compiler acceptance. It is
+      # deliberately after the labwired journeys so the two WASM-heavy proofs
+      # do not overlap. The gate aborts a hosted compiler POST before it leaves
+      # Chromium, then proves the local image can attach, cycle-step, expose
+      # source-linked scheduler state, and halt on a real write watchpoint.
+      - name: Browser gate — offline 8051 compile and debugger evidence
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: offline-8051-debug-proof
+          path: artifacts/debug-proof/*
+          if-no-files-found: error
 
       # Run this short, independently green extension proof after the two heavy
       # labwired journeys, keeping the earlier product sweep's peak memory flat.
