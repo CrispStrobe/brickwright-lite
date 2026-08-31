@@ -150,25 +150,42 @@ test('the debugger compiles supported 8051 targets locally and names hosted fami
     // Missed on the first Wave 5 pass, because I checked what the debugger can
     // SHOW and not whether it can START. `debug-runner.js` lists "build the
     // image over the network" among the four things only a browser can do, and
-    // the fetch is unconditional: every device Wave 5 uses — stc12c5a60s2,
-    // atmega328p (Uno/Nano), rp2040 (Pico) — routes through the same
+    // the fetch was unconditional: every device Wave 5 uses — stc12c5a60s2,
+    // atmega328p (Uno/Nano), rp2040 (Pico) — went through the same
     // POST /compile. A browser cannot run SDCC, and the symbol table the
     // debugger joins its yield map against comes from the linker, so this is
     // not incidental.
+    //
+    // BOTH HALVES OF D2 ARE NOW CLOSED and this test reads across two files
+    // because of it. The 8051 route is a compiler that runs in the browser; the
+    // other families keep the hosted route for a program nobody has compiled,
+    // but their LESSON benches ship a prebuilt image. The device -> target map
+    // moved into `shipped-images.js` on 2026-08-31 so the build script that
+    // produces those images and the runner that looks them up cannot drift
+    // apart — hence the map is asserted THERE and its use asserted here.
     const runner = read('overlay/scratch-gui/src/lib/bw-debug/debug-runner.js');
+    const shipped = read('overlay/scratch-gui/src/lib/bw-debug/shipped-images.js');
     assert.match(runner, /compilerUrl = 'https:\/\/stc-compiler\.vercel\.app'/,
         'the default compiler URL moved — re-check whether the debugger still ' +
         'needs the network, then update docs/LESSON-REVIEW-WAVE-5.md');
     assert.match(runner, /await fetch\(`\$\{compilerUrl\}\/compile`/);
-    // Non-8051 families retain the hosted service explicitly.
+    // Non-8051 families retain the hosted service explicitly, for the program
+    // the learner has edited.
     for (const chip of ['atmega328p', 'rp2040', 'eater6502']) {
-        assert.ok(runner.includes(`'${chip}'`), `${chip} no longer routes through COMPILE_TARGET`);
+        assert.ok(shipped.includes(`'${chip}'`),
+            `${chip} no longer routes through COMPILE_TARGET`);
     }
+    assert.match(runner, /compileTargetFor\(deviceLower\)/,
+        'the runner no longer resolves its compile target through the shared map');
+    // And it asks for a prebuilt image FIRST, which is what makes an AVR or
+    // RP2040 lesson bench start with no connection at all.
+    assert.match(runner, /await shippedImageFor\(c, compileTarget, compileFormat\)/,
+        'the runner no longer consults the shipped lesson images — D2 second half');
 
     // The five mcs51 variants are routed through the lazy local compiler by
     // default. A supported-target chunk failure must abort before hosted fetch.
     for (const chip of ['stc12c5a60s2', 'stc12c5a16s2', 'stc15f2k60s2', 'stc15w408as', 'stc89c52rc']) {
-        assert.ok(runner.includes(`'${chip}'`), `${chip} is absent from LOCAL_8051_TARGETS`);
+        assert.ok(shipped.includes(`'${chip}'`), `${chip} is absent from LOCAL_8051_TARGETS`);
     }
     assert.match(runner, /if \(LOCAL_8051_TARGETS\.has\(compileTarget\)\) await installWasmCompilerRouting/);
     assert.doesNotMatch(runner, /bw-use-wasm-compiler/,

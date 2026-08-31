@@ -365,7 +365,7 @@ someone has to make, not work someone has to find.
 
 | # | Lessons | Owner | What blocks it |
 | --- | --- | --- | --- |
-| ~~D2 hosted compiler~~ | 12 | lite | **CLOSED 2026-08-31** (routing `61a86f994`+`6899019aa`+`d26d1415b`; upstream repair `00fefb4`+`47c5041`; vendor `5bf1cea15`; browser gate `491d2dcb6`). The repair is a four-stage browser toolchain, not a smaller hosted call: cc1 writes preprocessed C, SDCC c1mode emits ASM/ADB, sdas emits REL/LST/SYM, and sdld links IHX/CDB against a provenance-pinned small-model runtime. Five supported 8051 targets route locally by default; unsupported families retain an explicit hosted route, while a supported-target local failure is never hidden by a network fallback. The first production attempt exposed two deeper defects rather than being waved through: Emscripten's 64 KiB default stack corrupted SDCC's recursive AST walk, and source-line extraction dropped instruction-less `case 0` labels needed by every scheduler task. The accepted build takes an 8 MiB checked stack, 43/44 generated 8051 examples compile (the remaining program also fails native SDCC), and generated programs yield complete symbols. The production gate blocks every external compiler POST and drives example 05 through build, run and pause, checking scheduler position, linked `count`, an exact one-cycle step and a write watchpoint transition. |
+| ~~D2 hosted compiler~~ | 12 | lite | **CLOSED 2026-08-31, IN TWO HALVES, and the halves needed opposite answers.** *First half — the 8051 family* (routing `61a86f994`+`6899019aa`+`d26d1415b`; upstream repair `00fefb4`+`47c5041`; vendor `5bf1cea15`; browser gate `491d2dcb6`): a four-stage browser toolchain, not a smaller hosted call — cc1 writes preprocessed C, SDCC c1mode emits ASM/ADB, sdas emits REL/LST/SYM, and sdld links IHX/CDB against a provenance-pinned small-model runtime. Five supported 8051 targets route locally by default; unsupported families retain an explicit hosted route, while a supported-target local failure is never hidden by a network fallback. The first production attempt exposed two deeper defects rather than being waved through: Emscripten's 64 KiB default stack corrupted SDCC's recursive AST walk, and source-line extraction dropped instruction-less `case 0` labels needed by every scheduler task. The accepted build takes an 8 MiB checked stack, 43/44 generated 8051 examples compile (the remaining program also fails native SDCC), and generated programs yield complete symbols. The production gate blocks every external compiler POST and drives example 05 through build, run and pause, checking scheduler position, linked `count`, an exact one-cycle step and a write watchpoint transition. *Second half — everything else* (this push): avr-gcc and arm-none-eabi-gcc are not going to run in a browser, so those lesson benches take **D7's answer** and SHIP their image, with provenance. See the section below. |
 | ~~D4 fixed scope record~~ | 4 | bw-circuit-ui | **CLOSED 2026-08-25** (`29f6da6`). This row was right that it was additive and that nothing blocked it but the work; it was wrong about the owner and about `addScopeChannel`. Both numbers are DEFAULTS there, not hard-coded — every read inside the engine uses `ch.intervalNs`/`ch.depth` — so no timebase argument had to be added, only passed. Measured on 43-rc-timing: 100 kHz → 0.082 s reaching 0.987 V, 1 kHz → 8.192 s reaching 4.999 V, the charged tail the old record could never hold. The control is labelled by record LENGTH, not rate, because "does my event fit" is the question. All four lessons restored: signals-rc-response → v5, signals-complex-impedance → v3, signals-aliasing-fft → v3, machines-clocks → v3. |
 | ~~D3 Bode sweep has no numbers~~ | 4 | bw-circuit-ui | **CLOSED 2026-08-25** (`2c66851`). This row was right that the data was already in `runBode`'s result and that what was missing was a UI decision. It went: keep the rows in panel state, label the frequency axis, a twelve-row table (thinned, always keeping the two points the axis names), and a CSV button carrying every point at FULL precision — display rounding would have made a residual analysis measure the formatter. dB labels went to one decimal because whole decibels rendered −3.010 and −3.5 as the same string. `signals-cutoff-phase` → v3 and `signals-model-measurement` → v4; the other two lessons D3 is counted against were never worded around it, so there was nothing in them to restore. |
 | ~~D7 empty machine ROMs~~ | 3 | sb3-creator | **CLOSED 2026-08-25** (sb3-creator `0a20e24`, `c3f25c1`, `fb1ae3a`, `2cb91f0`, `93838a2`; lite vendors them) by a THIRD option this row did not list. It offered "an assembler, or a checked-in binary and a provenance note"; for images this small the better answer is to ship **the source AND its assembler** — `scripts/build-machine-roms.mjs` builds all three, and `--check` refuses a hand-edited `.bin`, so the binary is reproducible and reviewable rather than trusted. **The third bench was the wrong bench, and finding out was the work.** Both Z80 examples said "There is no DEVICE Z80 program axis in the transpiler yet" — false since the Z80 core landed. But that axis is narrow: `z80Hw()` knows only `OUT0-7`/`IN0-7`, a 74HC374 latch and a 74HC244 buffer at port 0. `z80-bench`'s only I/O is an MC6850 ACIA, so it correctly stays program-less (its comment now says so for the true reason); **`z80-pd-bench`** has the latch, the buffer and `led0..led7`, so it got the program. Measured: `eater6502-blink` walks one bit at 99,940 cycles/lamp (799.5 ms), `eater6502-vdp-hello` puts HELLO on the TMS9918 at row 11 col 13, `z80-pd-bench` walks at **736,147 cycles/lamp (99.847 ms)** — the hand-computed T-state arithmetic and the core agree exactly. The first Z80 program in the corpus also exposed that `cToPseudocode` never learned the Z80 (it read back as `DEVICE STC12C5A60S2`); that is fixed, and the gate that holds it asserts FAITHFULNESS, because the degraded read-back was itself a fixed point and the corpus convergence check stayed green through it. **What is NOT closed here is D37**: `machines-interrupts-performance` needs an interrupt source, and neither Z80 bench wires one — a ROM cannot supply that. |
@@ -386,6 +386,7 @@ someone has to make, not work someone has to find.
 | ~~D27 `ttl-clock-module`'s dead step button~~ | 1 | sb3-creator | **CLOSED 2026-08-29** (sb3-creator `56bd1ce`) by exactly what this row scoped: a wire plus a flip-flop. `ff1` is a D flip-flop with D tied to its own Q̄ — a divide-by-two — clocked from the button and driving a second LED through `r4`. Measured after the lite vendor: Q at rest 0.0000 V, then 4.4643 / 0.0000 / 4.4643 / 0.0000 across four presses, and unchanged on RELEASE, which is what distinguishes stored state from a light following a switch. The 555 half is asserted untouched. `machines-clocks` → v4, both halves restored; `EXPECTED.md`'s claim is now the measured one. |
 | ~~D28 no call stack~~ | 1 | lite | **CLOSED 2026-08-29** (lite this push), and the row's own aside turned out to be the design. It said the revised exercise — reconstruct the stack from where Step Out lands — is arguably better; that is now what the pane TEACHES. On the C target there is no call stack to display, because the program is not a stack machine: `generateC` lowers each WHEN block to a state machine over a millisecond tick, so "inside the pulse procedure" is a value in a `<task>_state` variable, and the 8051 stack underneath holds SDCC's return addresses mixed with saved registers and spilled locals with no frame pointer to separate them. So `deriveFrames` returns `callStack: null` — not `[]`, which would read as "no frames right now" and claim frames exist — with the reason in words above the data, and shows the position that DOES exist: each task's state, its deadline, the symbol table ADDRESS that state lives at (which no target exposes; only `runner.symbols()` has it) and the block it belongs to. For 6502 and Z80 a real return-address stack is walked, still labelled CANDIDATES because nothing on those machines marks a return address apart from a pushed register. Writing that walk found a bug of exactly the kind the pane exists to prevent: masking the 6502's `S + 1` to eight bits turned the reset value 0xFF into base 0x0100 and reported the whole stack page as sixteen call frames. The empty-stack test caught it. The program's variables are reported as `variables`, never as `locals` — calling a global a local is the same lie in a smaller place. `debug-call-stack` → v3, EN and DE. |
 | ~~D29 watchpoints gated off~~ | 1 | emu8051-stc + bw-board + lite | **CLOSED 2026-08-29** (emu8051-stc `3c31e48`+`cf3c7c0`, bw-board `70c75d6`, lite this push), and **the caution in this row was right: the claim was false.** It was verified before acting, as instructed. Lite's pinned binary exported `_emu_dbg_set_bp_write` all along — the claim came from a comment inside `emu8051-debug.js` that said the opposite, and this row, a test comment and the `debug-watches` hint were all written around a sentence nobody had instantiated. It was never a pin bump. **Two real defects sat underneath.** (1) The halt could not say what it caught: `struct dbg_halt_reason` carried cause, pc, bp_id and t_ns, reached JS only as a pointer whose layout must not be assumed, and `bp_id` was therefore recovered by matching the halted PC — which works for code and yield breakpoints, both set AT an address, and cannot work for a watchpoint, whose subject is an address rather than a PC. Nine scalar exports now carry the reason across, the breakpoint is NAMED, and a write watchpoint reports `cause: 'watchpoint'` with space, address, value and **prev**, because a transition is the evidence and a new value with no before is half a measurement. (2) Lite never wired the consumer: `DebugStatus` renders its watchpoint field only when handed `onAddWatchpoint`, `CircuitDesigner` passes `debugState.addWatchpoint`, and `circuit-tab.jsx` never set it — producer-must-assert-consumer, from the consumer's side. Two further bugs were found by testing the path: `dbg_reset` did not re-seed the watch shadows, so an SFR watchpoint surviving a Restart fired on the reset's own rewrite of P0..P3 (a stop with a real address on it that no instruction caused), and `emu_dbg_set_bp_write` accepted any `space`, arming a watchpoint that could never fire. The honest limit is documented in three places rather than left to be discovered: this is a CHANGE detector sampled at instruction boundaries, so a store of the value already there is invisible. `debug-watches` → v3, EN and DE. |
+| D38 AVR `bw_now()` is called and not defined | 1 | sb3-creator | **NEW 2026-08-31**, found by building D2's images and the one bench that could not be given one. The AVR preamble emits the millisecond ISR and `bw_ms`, and `main()`'s idle fast-forward calls `bw_now()` — but the preamble only DEFINES it when something set `_cUses.now`, which `wait` does and `timer` does not. avr-gcc then refuses the link. 5 of 80 AVR examples reproduce (`arduino-02-blink-without-delay`, `arduino-02-button`, `arduino-02-debounce`, `arduino-08-string-addition`, `arduino-sk-p09-motorized-pinwheel`); the first is `debug-timing-bugs`'s bench, so that lesson has never had a buildable image — this is not a regression from D2, it is what D2 was hiding. Lite must not patch a vendored file: the fix is one gate in sb3-creator's AVR preamble. It is a named refusal in the shipped manifest and ratcheted, so the day it is fixed the gate says so. |
 | D30 `microbitplus` no-ops | 1 | lite | **Deliberate and documented.** The blocks lower to MicroPython for the simulator; the VM methods are intentional no-ops. What is open is only the missing `showStatusButton`, and declaring one for an extension with no transport would be a lie. |
 | ~~D31 one global V/div~~ | 1 | bw-circuit-ui | **CLOSED 2026-08-29** (bw-circuit-ui `7696656`, `model/scope-scale.js`): per-channel V/div and centre, each channel carrying its own scale. Small, additive and unblocked, exactly as this row said. |
 | ~~D32 no filter to time~~ | 1 | sb3-creator | **CLOSED 2026-08-29** (sb3-creator `1d2606b`). This row's caution was right and was paid: the lesson moved with the bench, to v3. The filter is four VARIABLES, not a list — list ops lower to `0 /* item */` on the device, so a list filter would have been a no-op on real silicon and a worse lesson than none. Measured after the lite vendor: settling = window × loop period = 4 × 20 ms = **80 ms**, group delay = (N−1)/2 = 1.5 samples = **30 ms**, staircase **24 / 49 / 74 / 100 %** one quarter per pass. One caveat found by measuring: the staircase reads 24/50/75/100 unless the calibration sweep reaches BOTH rails (511/1022 is exactly 50 %; 511/1023 truncates to 49), so the gate now clips a larger sine instead of scaling a smaller one. |
@@ -400,9 +401,72 @@ row — and the isolation is why it moved off this list rather than a repair
 being found for what the row described.)
 
 What is still open is in that table with what blocks it. D2 was the largest row
-and is now closed: supported 8051 debugger lessons no longer cross the network.
-The remaining rows account for 11 lesson-slots, and no single remaining defect
-affects more than two lessons.
+and is now closed on both halves: no lesson bench in the corpus needs the
+network to start. The remaining rows account for 12 lesson-slots, and no single
+remaining defect affects more than two lessons.
+
+### D2's second half: prebuilt lesson images (2026-08-31)
+
+**What the row's own numbers got wrong, first.** It said "all ten Wave 5 lessons
+declare `environment: "simulation"`" in a position that reads as though that
+field picks out the affected set. Measured at tip, **68 of 70 lessons declare
+it** — the two that do not are `optional-hardware`. A field almost every lesson
+sets cannot select anything. The set that actually could not start offline is
+the one whose bench needs a compiler: **41 lessons name an example with an MCU
+program, 25 of those on a non-8051 part**, and those 25 sit on 22 distinct
+examples. Wave 5's own ten split **five 8051 / four AVR / one RP2040**, which is
+the shape the row should have carried.
+
+**What was shipped.** Of the 22 non-8051 examples, four are eater6502 machine
+benches that already ship ROMs (D7), four are micro:bit/SPIKE benches whose
+runtimes are bundled simulators with no `/compile` route at all, and **14 need a
+hosted compiler**. Thirteen of the fourteen now ship their compiled image under
+`overlay/scratch-gui/static/lesson-images/` — 204 KB in total, the largest
+24 KB, one file per (example, target, format) plus a manifest carrying the
+program's SHA-256, the compiler version from `/health`, the build date and the
+lessons each image serves. The fourteenth is D38 and cannot be built by anyone.
+
+**Why a first-class lookup and not a pre-seeded localStorage LRU**, since the
+compile cache was the other candidate. The LRU holds six entries, evicts on
+quota and swallows the quota error — correct for a cache, wrong for an asset
+whose entire promise is that it is still there; it is empty on a first visit, so
+seeding it needs startup code that writes every image anyway; its keys embed the
+full C, so seeding pays for the source twice; and a cache entry carries no
+provenance, so the panel could not say why it skipped the network. The LRU keeps
+doing its own job (a user's own repeat compiles). This is a separate, read-only
+lookup, asked BEFORE the LRU and before any network, and skipped entirely for
+the five 8051 targets — shipping an image for a build the app can do itself
+would be a second source of truth, and the stale one would win.
+
+**`generateC({debug: true})` is not byte-stable, which the mechanism had to
+survive.** Every parse mints fresh random block ids and writes them into the
+`@bw yield` markers: three differing lines on `73-voltmeter`, seven on
+`nano03-two-tasks`, line count identical, nothing else moving. Those ids sit in
+a C comment, and the compiler proves it — the same program parsed twice and
+compiled twice returned **byte-identical images** both times (2472 and 1992
+bytes), while only the echoed `block` field in the symbol table differed. So the
+key is the C with that one token blanked, compared character for character after
+a `(target, format, length)` index — no `crypto.subtle`, which does not exist
+outside a secure context. The echoed ids are DELETED from the shipped symbol
+tables: both debug targets index `${task}/${state}` and never read them, and an
+id belonging to a parse nobody will repeat is worse absent-than-wrong.
+
+**The honest residue.** A program the learner has EDITED on an AVR or ARM bench
+is a program nobody has compiled. It changes real code, misses the lookup, and
+falls through to the hosted service — which refuses honestly with no network.
+No prebuilt image ever stands in for it, and the browser gate proves that half
+too: after one changed number the run goes to `error`, the blocked POST is
+recorded, and the prebuilt sentence disappears rather than staying on screen
+describing firmware that is no longer running.
+
+**Evidence.** `test/shipped-lesson-images.test.mjs` — 15 assertions,
+mutation-proven on both families (add a script to `nano03-two-tasks` and three
+go red, to `pico02-pot-print` and two do). It re-derives every manifest claim
+from the corpus, and it ATTACHES each image to a real bw-board with `fetch` cut
+to the shipped directory and RUNS it: the AVR blinks its LED across 428k
+instructions, the Pico prints its ADC count. The browser half is
+`scripts/verify-offline-lesson-image.mjs`, which loads `debug-task-scheduling`'s
+own bench in Chromium with **every** cross-origin request aborted.
 
 **Added 2026-08-25 by the post-repair re-check** (`docs/POST-REPAIR-RECHECK.md`):
 
