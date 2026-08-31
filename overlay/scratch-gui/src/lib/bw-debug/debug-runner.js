@@ -1074,15 +1074,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // bw-board/LABWIRED-BRIDGE.md §4 and §4c, each measured against the
         // light tier as its control.
         engineNotes = [
-            'Analog inputs are not injected on this tier: labwired-wasm exports no '
-            + 'per-channel ADC entry point yet, so a pot or LDR reads the engine\'s own '
-            + 'counter instead of the voltage this board solves. Use the light tier '
-            + '(Simulated STM32F030) for analog work.',
-            'Interrupt-counted time runs at DOUBLE speed here: labwired re-enters a '
-            + 'level-pended timer handler twice per update event, and our generated code '
-            + 'counts milliseconds in exactly that handler, so a 20 ms wait elapses in '
-            + 'about 10 ms. The timer grid itself is exact — this is the NVIC, and the '
-            + 'fix is upstream.',
+            // The 2x-clock caveat that used to sit beside this one RETIRED on
+            // 2026-08-30: the vendored engine (labwired-core 0c0cd0ec) drops a
+            // level-pended timer interrupt when its source deasserts inside the
+            // handler, measured 0.97 entries per update event on both tiers —
+            // the same instrument that ledgered 1.95.
+            'Analog inputs are not injected on this tier: the engine now EXPORTS a '
+            + 'per-channel ADC entry point, but this adapter does not feed it yet, so a '
+            + 'pot or LDR still reads the engine\'s own counter instead of the voltage '
+            + 'this board solves. Use the light tier (Simulated STM32F030) for analog work.',
             ...(refusals || []).map(r => `${r.subject}: ${r.reason}`)
         ];
 

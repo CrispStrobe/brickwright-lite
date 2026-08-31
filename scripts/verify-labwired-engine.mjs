@@ -391,11 +391,17 @@ try {
     // a 20 ms wait that elapses in 10 ms is the kind of thing a learner blames
     // on their own program.
     const caveatText = await page.evaluate(() => document.body.innerText);
-    check('the tier caveats are stated in the panel',
+    // The 2x-clock caveat RETIRED 2026-08-31 with the level-pend repair
+    // (labwired-core 0c0cd0ec): this very gate's PA0 edge count halved from
+    // 23 to 11 per 7 s window the first time it ran the repaired engine —
+    // the formerly double-speed ms clock, now exact. So the timing sentence
+    // must be ABSENT: its return means either a stale vendored engine or
+    // restored stale text.
+    check('the analog caveat is stated, and the retired timing caveat stays retired',
         /analog inputs are not injected/i.test(caveatText)
-        && /double speed/i.test(caveatText),
+        && !/double speed/i.test(caveatText),
         [/analog inputs are not injected/i.test(caveatText) ? 'analog: yes' : 'analog: MISSING',
-            /double speed/i.test(caveatText) ? 'timing: yes' : 'timing: MISSING'].join(', '));
+            /double speed/i.test(caveatText) ? 'timing: PRESENT (should be retired)' : 'timing: retired'].join(', '));
 
     await mkdir(dirname(shot), {recursive: true});
     await page.screenshot({path: shot, fullPage: false});

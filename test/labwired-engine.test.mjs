@@ -114,12 +114,19 @@ describe('the labwired attach path', () => {
         // first Run rather than inferable from a blink at half the period.
         const panel = readFileSync(PANEL, 'utf8');
         const runner = readFileSync(RUNNER, 'utf8');
-        for (const [what, re] of [['analog injection', /analog input/i], ['the 2x clock', /double speed/i]]) {
+        // The 2x-clock caveat RETIRED with the level-pend repair (labwired-core
+        // 0c0cd0ec, measured 0.97 entries/update both tiers) — its ABSENCE is
+        // asserted below, so a stale vendored copy re-shipping the retired
+        // sentence reads as the defect it would be.
+        for (const [what, re] of [['analog injection', /analog input/i]]) {
             assert.match(panel, re, `the panel no longer states ${what}`);
             assert.match(runner, re, `the attach no longer states ${what}`);
         }
         // Bilingual, like every other learner-facing string in this panel.
         assert.match(panel, /lwCaveats: 'Heavy tier/, 'the English caveat string is gone');
+        assert.ok(!/double speed/i.test(panel) && !/doppelt/i.test(panel),
+            'the retired 2x-clock caveat is back in the panel — either the vendored '
+            + 'engine regressed past the level-pend repair or stale text was restored');
         assert.match(panel, /lwCaveats: 'Schwere Stufe/, 'the caveat is not translated');
     });
 });

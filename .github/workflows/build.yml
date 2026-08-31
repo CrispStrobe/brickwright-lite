@@ -621,9 +621,14 @@ jobs:
           path: artifacts/labwired-*.png
           if-no-files-found: warn
 
-      # verify-debug-frames-watch remains deliberately unwired: its exact
-      # production-browser failure is tracked in test/gate-coverage.test.mjs.
-      # Rewire it only with the Chromium SDCC c1mode repair which makes it pass.
+      # verify-debug-frames-watch is still unwired, but no longer BLOCKED: the
+      # sdcc-wasm defect that made it impossible (a 64 KiB Emscripten stack
+      # against SDCC's recursive AST walk) was repaired 2026-08-31, and
+      # test/wasm-compiler-diagnosis.test.mjs proves in Node that a real
+      # generated 8051 program now compiles and yields debug symbols. What is
+      # missing is a green run: wire it in HERE, and delete its KNOWN_UNWIRED
+      # row in test/gate-coverage.test.mjs in the same commit, once someone has
+      # actually watched it pass. Wiring it unseen cost five red runs before.
 
       # Run this short, independently green extension proof after the two heavy
       # labwired journeys, keeping the earlier product sweep's peak memory flat.
