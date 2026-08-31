@@ -12,6 +12,18 @@ The work is split into independently useful checkpoints. Each checkpoint is
 pushed immediately after its own definition of done; the final Lite pin points
 at one reviewed upstream commit, not a succession of half-vendored snapshots.
 
+## Progress
+
+| checkpoint | remote evidence | state |
+| --- | --- | --- |
+| claim and contract | Lite `a6edb82f9` | complete |
+| view-independent owner | bw-circuit-ui `bf74620` | complete |
+| trace downloads | bw-circuit-ui `cbfd331` | complete |
+| deterministic Circuitikz | bw-circuit-ui `9cc6a3f` | complete |
+| cross-view browser bytes | bw-circuit-ui `9b3abdb` | complete |
+| Lite vendor and consumer | Lite `f9f997008` | complete |
+| deployed artifact proof | Lite `496db0d76`..`262683c57` | awaiting matching Pages build |
+
 ## Checkpoint 1 — claim, measurements and executable command contract
 
 **DoD**

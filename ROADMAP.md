@@ -372,16 +372,25 @@ Lite-side items (ours, this repo):
    the panel element — the panel carries a camera, so serialising it would have saved
    whatever happened to be in the viewport. Note the older `png` entry is a different
    thing: it rasterises `[data-canvas] svg`, the realistic canvas, not the schematic.
-   **What is still NOT available, recorded rather than promised:** no LaTeX/TikZ export
-   exists at all, and trace CSV is clipboard-copy only in `SweepPanel` and `ScopePanel`
-   (`bomToCsv` is the one real CSV *download*). Both are upstream work items, not lite
-   menu wiring.
+   **COMPLETED 2026-08-31 at bw-circuit-ui `9b3abdb`, vendored by Lite
+   `f9f997008`.** The registry now carries a deterministic complete Circuitikz
+   document (`schematic.tex`, `text/x-tex`). It translates the schematic projection
+   rather than inventing a second layout: conservative native bipoles, explicit
+   labelled-box fallbacks for every other visible part, escaped TeX text, resolved-net
+   precedence for seated circuits, and exact route/label/junction accounting. Scope
+   envelope traces, scope sample spectra and DC/AC sweep rows now retain clipboard copy
+   and also download honest full-precision CSV with stable names. Envelope CSV names
+   `min_volts,max_volts`; it never calls their midpoint a sampled waveform.
    **The one lite-side defect this measurement did find is fixed** (see
    `test/circuit-file-menu-reach.test.mjs`): the File menu's four circuit actions
    dispatch `bw-circuit-file`, whose only receiver is the lazily-mounted
    `CircuitDesigner`, so before the Circuit tab had ever been opened all four were
-   silent no-ops. Still open, and shared with upstream: `BoardCanvas` is unmounted in
-   Schematic and Board view, so "Export circuit…" reaches nothing there either.
+   silent no-ops. The remaining shared defect is now closed: the one registry-backed
+   picker and its report live at `CircuitDesigner` level, above the mutually-exclusive
+   Realistic/Schematic/Board branches. The upstream real-browser gate downloads one
+   SPICE artifact in each view, requires exactly three download events, compares the
+   three SHA-256s and fails on any page error. Lite's pinned consumer contract and
+   `verify-circuit-export-completeness.mjs` carry the same boundary into the product.
 6. **Define the eleven `devices_oled*`/`devices_tft*` opcodes** the emitter emits but
    no extension copy defines (measured in §5.1a — not a vendoring lag; there is
    nothing upstream to vendor). Fix at the source of truth first
