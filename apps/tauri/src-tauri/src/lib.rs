@@ -5,6 +5,10 @@ mod downloads;
 mod fileio;
 #[cfg(desktop)]
 mod native_broker;
+// Compiled on every target so the staged relay stays warning-clean. It has no
+// command registration or runtime consumer until the authenticated adapter lands.
+#[allow(dead_code)]
+mod native_broker_transport;
 // Compiled now so every target type-checks the staged policy core. Its first
 // production consumer is deliberately withheld until the isolated broker
 // webview exists; the topology gate forbids registering a partial boundary.

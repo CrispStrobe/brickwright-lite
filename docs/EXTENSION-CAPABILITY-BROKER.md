@@ -240,6 +240,20 @@ sender authority. The semantic native command remains broker-only. This route
 still needs executable IPC/session/serialization mutations before registration,
 and mobile stays fail-closed because it has no isolated broker realm.
 
+An unregistered Rust relay core now stages the state which that adapter will
+own. Exact main/broker labels are checked before parsing; host-random session
+and per-request correlation IDs are independently bounded and never reused;
+editor sequence IDs cannot route broker replies; reply, session and serialized
+delivery bytes have separate caps and monotonic deadlines. Expiry preserves
+pending work until an exactly-once cancellation is emitted, and main/broker
+teardown drains the correct authority. Fourteen Rust mutations include live and
+completed correlation collision, process-lifetime session ABA, cross-session
+swaps, duplicate/expired replies, global capacity, clock regression and hostile
+JS serialization. The relay is intentionally byte-opaque: typed operation and
+reply-kind validation, origin-bound result sinks, injected Tauri caller objects
+and actual delivery remain adapter release gates. Merely compiling this module
+does not register a command or grant either webview new authority.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker
