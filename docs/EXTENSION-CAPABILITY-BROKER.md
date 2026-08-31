@@ -210,6 +210,22 @@ idempotent, and maps a poisoned lock to a sanitized unavailable result. No
 broker command is registered, so lifecycle wiring still creates no reachable
 native authority.
 
+The broker-realm protocol core is also present as an unregistered, pure module.
+It accepts calls only with a host-held owner object, snapshots exact sequenced
+envelopes before mutation or asynchronous work, maps provider identities to
+broker identities, and exposes only methods from the worker's bounded
+registration. Arguments and results cross a bounded plain-data clone which
+rejects accessors, symbols, exotic prototypes, cycles and oversized graphs.
+Worker creation is transactional: failed registration, termination, disposal
+and creation/disposal races revoke before termination and cannot return a late
+result. Nineteen focused tests cover replay/gaps, forged ownership, cross-worker
+routing, stale replies, redacted dependency failures, data-shape mutations,
+capacity, rollback and lifecycle races. The module is deliberately not wired to
+Tauri or the editor yet. Transport registration and dependency cancellation /
+deadlines remain explicit blockers; a never-settling injected dependency can
+still delay disposal, so this checkpoint is not a production broker and does
+not complete CP3-C.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker
