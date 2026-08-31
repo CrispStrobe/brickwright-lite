@@ -635,6 +635,23 @@ class DebugPanel extends React.Component {
                     </div>
                 ) : null}
 
+                {/* WHERE THIS IMAGE CAME FROM, when it was not compiled just now.
+                    Neutral grey and not amber: a prebuilt image is provenance,
+                    not a refusal, and the amber block above is where a learner
+                    reads "something here does not work". The sentence says all
+                    three parts — nothing was compiled, what it was built from
+                    and when, and that an edit makes it stop applying — because
+                    a reader who edits the program must not be left believing
+                    the prebuilt image still describes it. See D2 in
+                    docs/WAVE-OPEN-DEFECTS.md. */}
+                {ui.imageProvenance ? (
+                    <div
+                        data-image-provenance={ui.imageProvenance.exampleId}
+                        data-image-toolchain={ui.imageProvenance.toolchain || ''}
+                        style={{color: '#7f8c8d', fontSize: 11}}
+                    >{ui.imageProvenance.sentence}</div>
+                ) : null}
+
                 <div style={{display: 'flex', gap: 10, alignItems: 'baseline'}}>
                     <strong style={{color: phase === 'error' ? '#e74c3c'
                         : running ? '#2ecc71' : paused ? '#f39c12' : '#7f8c8d'}}>
