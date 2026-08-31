@@ -460,7 +460,19 @@ too: after one changed number the run goes to `error`, the blocked POST is
 recorded, and the prebuilt sentence disappears rather than staying on screen
 describing firmware that is no longer running.
 
-**Evidence.** `test/shipped-lesson-images.test.mjs` — 15 assertions,
+**A defect the evidence found.** `runner.variables()` read a fixed two bytes for
+every symbol, so anything narrower had its neighbour spliced into the high byte
+and was reported as fact. It surfaced not from a failing test but from LOOKING
+at the browser proof's screenshot: `bw_calm`, a one-byte flag, rendered as 2561
+in one run and −11775 in the next. Measured on the shipped image, the byte holds
+0 and the two-byte read gives 59136. Fixed here (D39), with 2 kept as the
+fallback so an 8051 table that omits `size` is unchanged, and the signed reading
+applied only at the emitter's own 16-bit width — nothing in the symbol table
+declares a sign, and reading a one-byte counter as signed would turn 255 into −1
+on exactly the variables the fix exists to stop guessing about. The argument for
+a gate that leaves a picture behind is this row.
+
+**Evidence.** `test/shipped-lesson-images.test.mjs` — 17 assertions,
 mutation-proven on both families (add a script to `nano03-two-tasks` and three
 go red, to `pico02-pot-print` and two do). It re-derives every manifest claim
 from the corpus, and it ATTACHES each image to a real bw-board with `fetch` cut

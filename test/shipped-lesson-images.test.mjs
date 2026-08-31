@@ -426,6 +426,65 @@ test('ARM: the Pico lesson image attaches and PRINTS with the network cut', asyn
         `the ADC readings ${numbers.slice(0, 4)} are not a half-turned pot`);
 });
 
+// ── 4b. A defect the shipped image found ───────────────────────────────────
+
+test('the variables pane reads a variable at its DECLARED width, not always two bytes', async () => {
+    // Found by this lane's own browser screenshot: `bw_calm` showed 2561 in one
+    // run and -11775 in another, for a program in which it can only be 0 or 1.
+    // `runner.variables()` read a fixed 2 bytes for every symbol, so anything
+    // narrower had its NEIGHBOUR spliced into the high byte and was then
+    // reported with full confidence — the shape of defect a debugger exists to
+    // not have.
+    //
+    // TWO HALVES, because neither alone is honest. The measurement below proves
+    // the numbers in the fix's comment are real, on the shipped image itself;
+    // the source assertion proves the consumer stopped hard-coding the width,
+    // which is a claim about code that node cannot execute here (the read lives
+    // inside createDebugRunner, which needs a browser).
+    const entry = manifest.images.find(e => e.exampleId === 'nano03-two-tasks');
+    const payload = JSON.parse(readFileSync(path.join(IMAGES, entry.file), 'utf8'));
+    const {createDebugTarget, createDebugSession, BoardImpl} =
+        await import(pathToFileURL(path.join(BW_BOARD, 'index.js')).href);
+    (await import(pathToFileURL(path.join(BW_BOARD, 'register-all.js')).href)).registerAllDevices();
+    const board = new BoardImpl();
+    board.setNetlist([
+        {id: 'u1', kind: 'mcu', terminals: ['D13', 'gnd']},
+        {id: 'g1', kind: 'gnd', terminals: ['gnd']}
+    ], [
+        {id: 'n1', terminals: [{part: 'u1', terminal: 'gnd'}, {part: 'g1', terminal: 'gnd'}]}
+    ]);
+    board.setPower(true);
+    const hex = Buffer.from(payload.base64, 'base64').toString('binary');
+    const {target, adapter} = await createDebugTarget('avr8js',
+        {board, hex, symbols: payload.symbols, clockHz: 16_000_000});
+    createDebugSession(target, {onChange: () => {}}).start();
+    for (let i = 0; i < 20; i++) adapter.advanceNs(50_000_000);
+
+    const narrow = payload.symbols.variables.find(v => v.size === 1);
+    assert.ok(narrow, 'no one-byte variable in this image any more — pick another, or the ' +
+        'defect this test pins can no longer be demonstrated here');
+    const atWidth = target.readMem(narrow.space, narrow.addr, 1)[0];
+    const twoBytes = target.readMem(narrow.space, narrow.addr, 2);
+    const wrong = (twoBytes[1] << 8) | twoBytes[0];
+    assert.ok(atWidth <= 1,
+        `${narrow.name} is a one-byte flag and reads ${atWidth}`);
+    assert.notEqual(wrong, atWidth,
+        `the two-byte read happens to agree with the one-byte read right now, so this ` +
+        `measurement cannot show the difference. Advance further or pick another symbol.`);
+
+    const src = readFileSync(
+        path.join(OVERLAY, 'src/lib/bw-debug/debug-runner.js'), 'utf8');
+    const fn = src.slice(src.indexOf('        variables() {'),
+        src.indexOf('        variables() {') + 2000);
+    assert.match(fn, /const size = v\.size > 0 \? v\.size : 2;/,
+        'variables() no longer takes the declared width — it is back to guessing');
+    assert.match(fn, /target\.readMem\(v\.space, v\.addr, size\)/);
+    assert.match(fn, /size === 2 && raw > 0x7FFF/,
+        'the signed reading must be applied ONLY at the emitter\'s 16-bit width: nothing ' +
+        'in the symbol table declares a sign, so reading a one-byte counter as signed ' +
+        'would turn 255 into -1 on exactly the variables this fix exists to stop guessing about');
+});
+
 // ── 5. An edit falls through, and 8051 never asks ──────────────────────────
 
 test('one changed character misses, so a prebuilt image never stands in for an edit', async () => {

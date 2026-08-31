@@ -2101,13 +2101,32 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         variables() {
             if (!target) return [];
             return variableTable.map((v) => {
-                const bytes = target.readMem(v.space, v.addr, 2);
-                const raw = (bytes[1] << 8) | bytes[0];
+                // READ THE DECLARED WIDTH, not always two bytes. This read was
+                // hard-coded at 2, so every variable the symbol table declares
+                // narrower than that had its NEIGHBOUR spliced into the high
+                // byte and the result reported with full confidence. Found on
+                // 2026-08-31 in this lane's own browser screenshot, which showed
+                // `bw_calm` as 2561 in one run and -11775 in another; measured
+                // at node level against the shipped nano03-two-tasks image, the
+                // byte is size 1 and holds 0 while the 2-byte read gives 59136.
+                //
+                // Two is still the FALLBACK, because the pane exists for the
+                // user's own variables and `generateC` emits those as 16-bit
+                // ints — an 8051 symbol table that omits `size` must keep
+                // behaving exactly as before.
+                const size = v.size > 0 ? v.size : 2;
+                const bytes = target.readMem(v.space, v.addr, size);
+                let raw = 0;
+                for (let i = size - 1; i >= 0; i--) raw = (raw * 256) + (bytes[i] || 0);
+                // Scratch's numbers are signed; at the emitter's own 16-bit
+                // width 0xFFFF is -1, not 65535. Applied ONLY at that width:
+                // nothing in the symbol table declares a sign, so reading a
+                // one-byte counter as signed would turn 255 into -1 on exactly
+                // the variables this fix exists to stop guessing about.
                 return {
                     name: v.name,
                     sprite: v.sprite || null,
-                    // Scratch's numbers are signed; 0xFFFF is -1, not 65535.
-                    value: raw > 0x7FFF ? raw - 0x10000 : raw,
+                    value: (size === 2 && raw > 0x7FFF) ? raw - 0x10000 : raw,
                     where: `${v.space} 0x${v.addr.toString(16).toUpperCase()}`
                 };
             });

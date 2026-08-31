@@ -59,14 +59,15 @@ Two counting rules, so the numbers are comparable:
 | **D32** | `arduino-03-calibration` has no filter, so its lesson's "estimate filter delay" has nothing to check against | sb3-creator (example) | **1** | 4 | **FIXED 2026-08-29** — a 4-tap boxcar, as variables and not a list |
 | **D37** | `machines-interrupts-performance` asks what an interrupt costs on a bench that cannot raise one: neither Z80 example wires an interrupt source. **CORRECTED 2026-08-25 by measurement** — an earlier draft of this row said the interrupt pins were unconnected. They are not: in all 7 CPU benches `/IRQ` and `/NMI` are tied to VCC, i.e. held inactive, which is correct idle wiring. The real statement is that **no interrupt-capable device OUTPUT drives any CPU interrupt input anywhere in the corpus** — no `mc6850.irqb`, no `w65c22.irqb`, no `tms9918.int`. **And the simulator does not need one:** both `M6502Machine` and `Z80Machine` poll every chip's `irqAsserted` directly, so the drawn tie is schematic. Measured on `eater6502-blink`'s own extracted machine: arming VIA T1 free-running with IER and `CLI` takes **440 interrupts in 1,806,166 cycles**, against 4095 cycles per T1 period. The interrupt machinery works; what is missing is that **no example PROGRAM uses it**, so the lesson has nothing to step through. That makes this the same shape as D7 — ship an interrupt-driven image and re-point the lesson — not the emitter/wiring job first assumed | sb3-creator (examples) + sb3-creator (emitter) | **1** | 7 | **FIXED** — `eater6502-bench` ships an interrupt program; the lesson moved to it |
 | **D38** | **NEW 2026-08-31, found by building the D2 images.** On the AVR path `generateC` emits the millisecond ISR and `bw_ms`, and `main()`'s idle fast-forward calls `bw_now()` twice — but the AVR preamble only DEFINES `bw_now()` when something in the program set `_cUses.now`, which `wait` does and `timer` does not. A program with a cooperative task and no `wait` therefore emits C that calls a function it never declares, and avr-gcc refuses it at the link (`undefined reference to 'bw_now'`). **5 of the 80 AVR examples** reproduce: `arduino-02-blink-without-delay`, `arduino-02-button`, `arduino-02-debounce`, `arduino-08-string-addition`, `arduino-sk-p09-motorized-pinwheel`. The first is `debug-timing-bugs`'s own bench, so that lesson has never had a buildable image — with or without a network, before or after D2. It is the only one of D2's fourteen that could not be shipped | sb3-creator (emitter, AVR preamble) | **1** | 5 | open — named refusal in `static/lesson-images/manifest.json`, ratcheted by `test/shipped-lesson-images.test.mjs`. Lite must not patch a vendored file; the fix is one gate in the AVR preamble upstream |
+| **D39** | **NEW AND FIXED 2026-08-31, found by looking at D2's own browser screenshot.** `runner.variables()` read a fixed **two bytes** for every symbol the table declares, so any variable narrower than that had its NEIGHBOUR spliced into the high byte and the result was then reported to the learner with full confidence. Seen first as a value that could not be: `bw_calm` — a one-byte flag that is 0 or 1 — rendered as **2561** in one run of the proof and **-11775** in the next. Measured at node level on the shipped `nano03-two-tasks` image: the byte holds **0**, the two-byte read gives **59136**. It affects no lesson's checkpoint, because the variables those lessons watch are `generateC`'s own 16-bit ints and were read at the right width by accident | lite (`bw-debug/debug-runner.js`) | **0** | 5 | **FIXED 2026-08-31** — the declared width is honoured, with 2 kept as the FALLBACK so an 8051 symbol table that omits `size` behaves exactly as before, and the signed reading applied ONLY at 16 bits: nothing in the table declares a sign, so reading a one-byte counter as signed would turn 255 into -1 on exactly the variables this fix exists to stop guessing about |
 | **D33** | `6502-terminal/controller.json` declares widget type `terminal`, which is not in `ControllerPanel`'s `DEFAULTS`, so `addWidget` throws — and the importer removes every widget *before* adding, inside a bare `catch`, leaving the panel **empty** | bw-board (`controller.js`) + lite (importer) | **0** | 4 | **FIXED** — `terminal` type + guarded restore |
 | **D34** | `dc_motor` stamps the winding's inductor companion conductance `dt/L` in parallel with `1/R` rather than in series, so its DC operating point depends on the solver step (1.801 A at 1 µs, 1.980 A at 1 ms, against 0.900 A) | bw-board (`devices/dc-motor.js`) | **0** | 1 | **EXPIRED** — re-measured, no longer reproduces |
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | **FIXED 2026-08-29** — `INPUT ACTIVE LOW`, and the read inverted to keep the sketch's printed value |
 
-**38 defects. Thirty-four rows are marked closed** — D1, D2, D3, D4, D5, D6, D7,
+**39 defects. Thirty-five rows are marked closed** — D1, D2, D3, D4, D5, D6, D7,
 D8, D9, D10, D11, D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D25, D26,
-D27, D28, D29, D31, D32, D33, D35, D36 and D37 by repair, D34 by re-measurement
+D27, D28, D29, D31, D32, D33, D35, D36, D37 and D39 by repair, D34 by re-measurement
 (a different and weaker claim: it stopped reproducing between the Wave 1 vendor
 and today, and this campaign only found that out), and D12 **partially**, which
 its own row says out loud — the 8051 listing is linked locally and gated
@@ -76,8 +77,11 @@ of them. **Four are fully open**: D13, D22, D30 and D38 — and three of those
 four (D13, D22 and D30) are labelled rather than broken. Every row still open is
 recorded in `PLAN.md` with what blocks it and who owns it.
 
-**D2 closed and D38 opened in the same pass, and that is the useful part.**
-Building D2's images is what found
+**D2 closed and TWO defects came out of the evidence that closed it.** D39 was
+found by looking at the browser screenshot the proof produces — a variable
+showing 2561 where only 0 or 1 was possible — which is the argument for making a
+gate leave a picture behind rather than a pass/fail line. Building
+D2's images is what found
 D38: an emitter hole on the AVR path that no lesson review had reached, sitting
 under a bench (`debug-timing-bugs`) whose lesson has never had a buildable
 image. The D2 row's own arithmetic was also wrong in a way worth keeping —
@@ -308,7 +312,7 @@ affected and nothing else.
 | Owner | Defects | Lessons | Closed here |
 | --- | --- | --- | --- |
 | bw-board | D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D18, D19, D20, D23, D33, D34 |
-| lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D2, D5, D14, D15, D16, D25, D28, D29, D33 |
+| lite | D1·D2·D14·D15·D16·D25·D28·D29·D30·D39 | 46 | D1, D2, D5, D14, D15, D16, D25, D28, D29, D33, D39 |
 | bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D3, D4, D6, D21, D24, D31 |
 | sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36·D38 | 19 | D5, D7, D8, D10, D11, D26, D27, D32, D35, D36 |
 
