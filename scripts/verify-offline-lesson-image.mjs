@@ -11,9 +11,9 @@
  *
  * Four claims, in one real Chromium against one real build:
  *
- *   1. With EVERY cross-origin request aborted, `debug-task-scheduling`'s own
- *      bench (`nano03-two-tasks`, DEVICE ARDUINO-NANO) reaches a running debug
- *      session.
+ *   1. With EVERY cross-origin request aborted, `debug-timing-bugs`'s own
+ *      bench (`arduino-02-blink-without-delay`, DEVICE ARDUINO-UNO) reaches a
+ *      running debug session.
  *   2. Nothing was asked of the hosted compiler — zero POSTs, and in fact zero
  *      cross-origin requests of any kind.
  *   3. The panel SAYS the image is prebuilt, and says it in the terms the
@@ -52,8 +52,8 @@ const repo = path.resolve(here, '..');
 const BUILD = path.join(repo, 'packages/scratch-gui/build');
 const SHOTS = path.join(repo, 'artifacts/offline-lesson-image');
 
-/** `debug-task-scheduling`'s own bench. Two green-flag scripts on an ATmega328P. */
-const EXAMPLE = 'nano03-two-tasks';
+/** D38's actual Wave 5 timing bench, not a neighboring AVR smoke fixture. */
+const EXAMPLE = 'arduino-02-blink-without-delay';
 
 const MIME = {
     '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
@@ -180,10 +180,10 @@ const main = async () => {
     const search = page.locator('input[placeholder*="earch"], input[type="search"]').first();
     try {
         await search.waitFor({state: 'visible', timeout: 30000});
-        await search.fill('two tasks');
+        await search.fill('blink without delay');
     } catch { /* the example list may not be searchable in this build */ }
 
-    const row = page.locator(`text=/two[- ]?tasks/i`).first();
+    const row = page.locator('text=/blink without delay/i').first();
     await row.waitFor({state: 'visible', timeout: 30000});
     await row.click();
     try {
@@ -197,8 +197,9 @@ const main = async () => {
             const el = document.querySelector('input[class*="title-field"], [class*="project-title"] input');
             return el ? el.value : '';
         }),
-        t => /task/i.test(t || ''), 60000, 500);
-    record('the AVR lesson bench loaded', /task/i.test(title || ''), `project title: "${title}"`);
+        t => /blink.*without.*delay/i.test(t || ''), 60000, 500);
+    record('the D38 AVR lesson bench loaded', /blink.*without.*delay/i.test(title || ''),
+        `project title: "${title}"`);
 
     // The Stage holds the hardware program; the gallery may leave a sprite
     // selected. Wait for the Stage to EXIST rather than assuming it does — the
@@ -216,7 +217,7 @@ const main = async () => {
         }),
         v => !!(v && v.id), 60000, 250);
     record('the Stage target is selected, and the project declares the AVR device',
-        !!stage.id && /nano|uno|atmega/i.test(String(stage.device || '')),
+        !!stage.id && /uno|atmega/i.test(String(stage.device || '')),
         stage.id ? `${stage.device} on ${stage.id}` : JSON.stringify(stage));
     if (!stage.id) {
         // The two things that can explain an empty target list, both worth
@@ -299,7 +300,43 @@ const main = async () => {
         await browser.close(); if (server) server.close();
         process.exit(1);
     }
-    await shoot('01-prebuilt-image-running-offline.png');
+
+    // D38 is a scheduler-timebase repair. Merely attaching an AVR image would
+    // not prove the repaired helper participates in a live program, so pause,
+    // read the scheduler position, and measure the debugger's own program clock
+    // across a resume/pause cycle. Poll the clock; a fixed sleep would turn a
+    // slow VPS into a flaky timing assertion.
+    await clickByText(/^\s*⏸?\s*(Pause)\s*$/i);
+    const firstPause = await waitFor(phase, p => p === 'paused', 20000, 250);
+    record('D38: the shipped program pauses', firstPause === 'paused', `phase=${firstPause}`);
+    const frames = await debugPanel.evaluate(root => {
+        const el = root.querySelector('[data-debug-frames]');
+        return el ? {
+            kind: el.getAttribute('data-frames-kind'),
+            rows: [...el.querySelectorAll('[data-frame-row]')].map(row => row.innerText)
+        } : null;
+    });
+    record('D38: the debugger exposes the repaired scheduler state',
+        !!frames && frames.kind === 'scheduler' && frames.rows.length > 0,
+        frames ? `${frames.kind}: ${frames.rows.join(' | ').slice(0, 140)}` : 'position pane absent');
+
+    await clickByText(/under the hood|unter der haube/i);
+    const readClockMs = () => debugPanel.evaluate(root => {
+        const match = (root.innerText || '').match(/([\d,.]+)\s*ms\b/i);
+        return match ? Number(match[1].replace(/,/g, '')) : null;
+    });
+    const beforeClock = await waitFor(readClockMs, n => Number.isFinite(n), 10000, 250);
+    await clickByText(/^\s*▶?\s*(Run|Start)\s*$/i);
+    await waitFor(phase, p => p === 'running', 20000, 250);
+    const advancedClock = await waitFor(readClockMs,
+        n => Number.isFinite(n) && Number.isFinite(beforeClock) && n > beforeClock,
+        20000, 100);
+    await clickByText(/^\s*⏸?\s*(Pause)\s*$/i);
+    const secondPause = await waitFor(phase, p => p === 'paused', 20000, 250);
+    record('D38: program time advances across run and pause',
+        Number.isFinite(advancedClock) && advancedClock > beforeClock && secondPause === 'paused',
+        `${beforeClock} ms → ${advancedClock} ms; phase=${secondPause}`);
+    await shoot('01-d38-prebuilt-timebase-offline.png');
 
     // ── the edit falls through ───────────────────────────────────────────
     //
@@ -313,14 +350,9 @@ const main = async () => {
     // exists, so a Stop that silently did not happen would make the edit below
     // re-run the OLD image and this check would "pass" having tested nothing.
     //
-    // Reading that code also suggested a second hazard — the panel tears the
-    // runner down on a PIN SIGNATURE change, so an edit that keeps the same pins
-    // looked like it would resume the old image. MEASURED 2026-08-31 and it does
-    // NOT: the same bench edited to keep `led1 = D13` and `pot1 = A6`, changing
-    // only the blink period, still went to `error` with one blocked POST, which
-    // means `build()` ran. Written down because the inference was wrong and the
-    // next reader should not spend the same hour on it. The edit below moves the
-    // LED anyway — a conservative choice, not a necessary one.
+    // Keep the SAME pin signature and change the program itself. That is the
+    // stronger stale-image test: teardown cannot be credited to a pin change,
+    // while the canonical generated C and its image key must still change.
     await clickByText(/^\s*⏹?\s*(Stop)\s*$/i);
     const stopped = await waitFor(phase, p => p === 'idle', 20000, 250);
     record('the session stopped before the program was edited', stopped === 'idle',
@@ -331,25 +363,18 @@ const main = async () => {
     await cm.click();
     await page.keyboard.press('Control+a');
     await page.keyboard.press('Backspace');
-    // The same bench, edited the way a learner edits: the LED moved to another
-    // pin and the blink made faster. Deliberately real code and not a comment,
-    // which might not reach the emitted C at all.
-    await page.keyboard.insertText(`DEVICE ARDUINO-NANO
+    // Deliberately real code and not a comment, which might not reach the
+    // emitted C at all.
+    await page.keyboard.insertText(`DEVICE ARDUINO-UNO
 CLOCK 16000000
-PIN led1 = D12 OUTPUT
-PIN pot1 = A6 ANALOG
+PIN led = D13 OUTPUT
 
 WHEN flag clicked:
   FOREVER:
-    turn on led1
+    turn on led
     wait 0.25 seconds
-    turn off led1
-    wait 0.25 seconds
-
-WHEN flag clicked:
-  FOREVER:
-    print read pot1
-    wait 1 seconds`);
+    turn off led
+    wait 0.25 seconds`);
     await page.locator('button', {hasText: /To blocks/i}).first().click({force: true});
     await page.locator('[role="tab"]', {hasText: /^Circuit$/i}).first().click().catch(() => {});
 
