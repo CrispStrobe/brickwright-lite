@@ -421,8 +421,9 @@ the shape the row should have carried.
 benches that already ship ROMs (D7), four are micro:bit/SPIKE benches whose
 runtimes are bundled simulators with no `/compile` route at all, and **14 need a
 hosted compiler**. Thirteen of the fourteen now ship their compiled image under
-`overlay/scratch-gui/static/lesson-images/` — 204 KB in total, the largest
-24 KB, one file per (example, target, format) plus a manifest carrying the
+`overlay/scratch-gui/static/lesson-images/` — 154 KB of payload plus a 9 KB
+manifest, the largest single file 23.4 KB, one per (example, target, format)
+and a manifest carrying the
 program's SHA-256, the compiler version from `/health`, the build date and the
 lessons each image serves. The fourteenth is D38 and cannot be built by anyone.
 
