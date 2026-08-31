@@ -5,10 +5,28 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:webview:deny-internal-toggle-devtools",
     "blec:default",
     "log:default",
     "dialog:default",
     "deep-link:default",
-    "opener:allow-open-url"
+    "opener:allow-open-url",
+    "allow-save-project",
+    "allow-write-temp-project",
+    "allow-is-mobile",
+    "allow-download-pack",
+    "allow-download-pack-zip",
+    "allow-pack-present",
+    "allow-remove-pack",
+    "allow-pico-serial-list",
+    "allow-pico-serial-open",
+    "allow-pico-serial-write",
+    "allow-pico-serial-read",
+    "allow-pico-serial-close",
+    "allow-pico-bootsel-volume",
+    "allow-pico-flash-uf2",
+    "allow-scratchlink-bridge-open",
+    "allow-scratchlink-bridge-send",
+    "allow-scratchlink-bridge-close"
   ]
 }

@@ -3,6 +3,10 @@
 mod assetserver;
 mod downloads;
 mod fileio;
+// Compiled now so every target type-checks the staged policy core. Its first
+// production consumer is deliberately withheld until the isolated broker
+// webview exists; the topology gate forbids registering a partial boundary.
+#[allow(dead_code)]
 mod native_policy;
 mod pico;
 mod scratchlink;

@@ -134,9 +134,17 @@ diagnostics renderer rather than another ad-hoc console transcript.
   green, but makes any future registration fail unless Rust checks the exact
   `capability-broker` caller label before dispatch, constructs that webview
   hidden and unfocused from bundled local content, and grants the command only
-  through a capability targeting that label. The contract includes mutations
+  through a capability targeting that exact webview label (never its containing
+  window, which would include sibling webviews). Tauri's build-time application
+  manifest generates an ACL for custom commands; the broker receives only its
+  generated permission, while the exact Rust caller-label check remains defense
+  in depth. Because
+  `core:default` lets `main` open another label's inspector, the future topology
+  must also add `core:webview:deny-internal-toggle-devtools` to `main`. The
+  contract includes mutations
   for an inverted label check, external content, a visible broker, a main-window
-  grant and wildcard window scope.
+  grant, window-level broker scope, ambient broker permission, restored
+  cross-label devtools authority and wildcard window scope.
 
 DoD: Rust unit/integration tests prove allowed, undeclared, malformed, replayed
 and revoked calls; JavaScript protocol tests prove the same identity. Removing
@@ -171,6 +179,15 @@ issue/revoke attempts that must leave a valid session unchanged. The module is
 deliberately not registered as a command: a tested policy engine is not caller
 isolation, and the topology gate continues to require the isolated webview
 before registration.
+
+The existing 17 native application commands now use Tauri's generated
+application-command ACL instead of ambient registration. `main` receives the
+exact 17 compatibility grants, the additive mobile capability receives none,
+and a structural gate keeps the build manifest, invoke handler and capability
+grants in exact lockstep. `main` also explicitly denies cross-label devtools,
+closing the inherited `core:default` route that could otherwise open a future
+hidden broker's inspector by label. This does not create the broker or register
+a capability command; it establishes the least-privilege substrate first.
 
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
