@@ -201,6 +201,15 @@ claim that CP3-C is complete. Installed Tauri has no supported registered child
 webview API on iOS/Android; mobile remains explicitly open pending a native
 broker process/plugin or an upstream-supported isolated webview primitive.
 
+The desktop shell now owns a bounded managed policy state with a monotonic
+clock. Any denied navigation revokes all leases before the navigation is
+rejected, and `WindowEvent::Destroyed` revokes every principal; an allowed
+local reload and unrelated window events do not. Bulk revocation retains the
+same exact broker-label guard as issue/request/single-principal revocation, is
+idempotent, and maps a poisoned lock to a sanitized unavailable result. No
+broker command is registered, so lifecycle wiring still creates no reachable
+native authority.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker

@@ -3,13 +3,16 @@
 //! There are deliberately no commands, policy hooks, or runtime privileges in
 //! this module. It only establishes a hidden, local, non-navigable webview.
 
-use tauri::{webview::NewWindowResponse, WebviewUrl, WebviewWindowBuilder};
+use tauri::{webview::NewWindowResponse, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+
+use crate::native_policy::NativePolicyState;
 
 const LABEL: &str = "capability-broker";
 const DOCUMENT: &str = "capability-broker.html";
 
-pub(crate) fn create(app: &tauri::App) -> tauri::Result<()> {
-    WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(DOCUMENT.into()))
+pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Result<()> {
+    let navigation_policy = policy.clone();
+    let broker = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(DOCUMENT.into()))
         .visible(false)
         .focused(false)
         .focusable(false)
@@ -21,10 +24,33 @@ pub(crate) fn create(app: &tauri::App) -> tauri::Result<()> {
         .skip_taskbar(true)
         .devtools(false)
         .incognito(true)
-        .on_navigation(is_exact_local_document)
+        .on_navigation(move |url| {
+            handle_navigation(url, || {
+                let _ = navigation_policy.revoke_all(LABEL);
+            })
+        })
         .on_new_window(|_, _| NewWindowResponse::Deny)
         .build()?;
+    broker.on_window_event(move |event| {
+        handle_window_event(event, || {
+            let _ = policy.revoke_all(LABEL);
+        });
+    });
     Ok(())
+}
+
+fn handle_navigation(url: &tauri::Url, revoke: impl FnOnce()) -> bool {
+    let allowed = is_exact_local_document(url);
+    if !allowed {
+        revoke();
+    }
+    allowed
+}
+
+fn handle_window_event(event: &WindowEvent, revoke: impl FnOnce()) {
+    if matches!(event, WindowEvent::Destroyed) {
+        revoke();
+    }
 }
 
 fn is_exact_local_document(url: &tauri::Url) -> bool {
@@ -113,5 +139,31 @@ mod tests {
                 "{value}"
             );
         }
+    }
+
+    #[test]
+    fn denied_navigation_revokes_before_returning_false() {
+        let denied = tauri::Url::parse("https://example.com/").unwrap();
+        let mut revoked = false;
+        assert!(!handle_navigation(&denied, || revoked = true));
+        assert!(revoked);
+    }
+
+    #[test]
+    fn allowed_navigation_does_not_revoke() {
+        let mut revoked = false;
+        assert!(handle_navigation(&canonical(), || revoked = true));
+        assert!(!revoked);
+    }
+
+    #[test]
+    fn only_destroyed_window_event_revokes() {
+        let mut destroyed_revocations = 0;
+        handle_window_event(&WindowEvent::Destroyed, || destroyed_revocations += 1);
+        assert_eq!(destroyed_revocations, 1);
+
+        let mut focus_revocations = 0;
+        handle_window_event(&WindowEvent::Focused(false), || focus_revocations += 1);
+        assert_eq!(focus_revocations, 0);
     }
 }

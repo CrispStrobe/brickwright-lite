@@ -6,8 +6,53 @@
 
 use serde_json::Value;
 use std::collections::{BTreeSet, HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 const BROKER_LABEL: &str = "capability-broker";
+
+#[derive(Clone)]
+pub(crate) struct NativePolicyState {
+    inner: Arc<NativePolicyStateInner>,
+}
+
+struct NativePolicyStateInner {
+    core: Mutex<PolicyCore>,
+    epoch: Instant,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum StateError {
+    Denied(Denial),
+    Unavailable,
+}
+
+impl NativePolicyState {
+    pub(crate) fn new() -> Self {
+        Self {
+            inner: Arc::new(NativePolicyStateInner {
+                core: Mutex::new(PolicyCore::new(Limits {
+                    lease_ttl: 60_000,
+                    request_budget: 256,
+                    max_live_leases: 256,
+                    audit_capacity: 1_024,
+                })),
+                epoch: Instant::now(),
+            }),
+        }
+    }
+
+    pub(crate) fn revoke_all(&self, caller_label: &str) -> Result<usize, StateError> {
+        let elapsed = self.inner.epoch.elapsed().as_millis();
+        let now = u64::try_from(elapsed).unwrap_or(u64::MAX);
+        self.inner
+            .core
+            .lock()
+            .map_err(|_| StateError::Unavailable)?
+            .revoke_all(caller_label, now)
+            .map_err(StateError::Denied)
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) enum Operation {
@@ -327,6 +372,23 @@ impl PolicyCore {
         Ok(count)
     }
 
+    pub(crate) fn revoke_all(&mut self, caller_label: &str, now: u64) -> Result<usize, Denial> {
+        if caller_label != BROKER_LABEL {
+            return Err(Denial::WrongCaller);
+        }
+        let mut principals = Vec::new();
+        for lease in self.leases.values_mut() {
+            if !lease.revoked {
+                lease.revoked = true;
+                principals.push(lease.principal);
+            }
+        }
+        for principal in &principals {
+            self.record(now, Some(*principal), None, None, None, Decision::Revoked);
+        }
+        Ok(principals.len())
+    }
+
     pub(crate) fn audit(&self) -> impl Iterator<Item = &AuditEvent> {
         self.audit.iter()
     }
@@ -616,5 +678,38 @@ mod tests {
         );
         assert_eq!(core.audit().count(), audit_len);
         assert!(request(&mut core, lease, 0, 1).is_ok());
+    }
+
+    #[test]
+    fn main_cannot_revoke_all_and_valid_leases_remain_usable() {
+        let mut core = PolicyCore::new(limits());
+        let lease = core.issue(BROKER_LABEL, declared(7), id(1), 0).unwrap();
+        let audit_len = core.audit().count();
+        assert_eq!(core.revoke_all("main", 1), Err(Denial::WrongCaller));
+        assert_eq!(core.audit().count(), audit_len);
+        assert!(request(&mut core, lease, 0, 1).is_ok());
+    }
+
+    #[test]
+    fn broker_revoke_all_covers_every_principal_and_is_idempotent() {
+        let mut core = PolicyCore::new(limits());
+        let first = core.issue(BROKER_LABEL, declared(7), id(1), 0).unwrap();
+        let second = core.issue(BROKER_LABEL, declared(8), id(2), 0).unwrap();
+        assert_eq!(core.revoke_all(BROKER_LABEL, 1), Ok(2));
+        assert_eq!(core.revoke_all(BROKER_LABEL, 2), Ok(0));
+        assert_eq!(request(&mut core, first, 0, 2), Err(Denial::Revoked));
+        assert_eq!(request(&mut core, second, 0, 2), Err(Denial::Revoked));
+    }
+
+    #[test]
+    fn managed_state_sanitizes_a_poisoned_lock() {
+        let state = NativePolicyState::new();
+        let inner = state.inner.clone();
+        let _ = std::thread::spawn(move || {
+            let _guard = inner.core.lock().unwrap();
+            panic!("poison for test");
+        })
+        .join();
+        assert_eq!(state.revoke_all(BROKER_LABEL), Err(StateError::Unavailable));
     }
 }

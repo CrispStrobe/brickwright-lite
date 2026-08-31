@@ -44,6 +44,11 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = builder.manage(pico::PicoSerial(std::sync::Mutex::new(None)));
 
+    #[cfg(desktop)]
+    let native_policy = native_policy::NativePolicyState::new();
+    #[cfg(desktop)]
+    let builder = builder.manage(native_policy.clone());
+
     builder
         .invoke_handler(tauri::generate_handler![
             fileio::save_project,
@@ -65,9 +70,9 @@ pub fn run() {
             scratchlink::bridge::scratchlink_bridge_close
         ])
         .manage(scratchlink::bridge::BridgeState::default())
-        .setup(|app| {
+        .setup(move |app| {
             #[cfg(desktop)]
-            native_broker::create(app)?;
+            native_broker::create(app, native_policy.clone())?;
 
             // Bring up the local ScratchLink WS server the web VM dials.
             scratchlink::start();
