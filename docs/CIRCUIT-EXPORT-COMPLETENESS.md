@@ -22,7 +22,24 @@ at one reviewed upstream commit, not a succession of half-vendored snapshots.
 | deterministic Circuitikz | bw-circuit-ui `9cc6a3f` | complete |
 | cross-view browser bytes | bw-circuit-ui `9b3abdb` | complete |
 | Lite vendor and consumer | Lite `f9f997008` | complete |
-| deployed artifact proof | Lite `496db0d76`..`262683c57` | awaiting matching Pages build |
+| deployed artifact proof | Lite `496db0d76`..`83214cb13`; Pages `f9f997008` | complete |
+
+## Production evidence
+
+GitHub Pages deployment `6182391235` published Lite `f9f997008`, the exact
+product commit that pins bw-circuit-ui `9b3abdb07401700c669471c4aca18c54bc9cdc16`.
+The later Lite commits only add, strengthen and wire the acceptance proof.
+
+The coordinator ran the corrected proof against the live Pages URL and
+personally inspected its 1440×900 Board-view screenshot. It loaded the named
+`50-rc-scope` circuit, entered simulation, exported a 1,212-byte Circuitikz
+document in Realistic, Schematic and Board views, and obtained the identical
+SHA-256 `dc81a507f9969c8d25b7675013d298a48f5d6c865c2478c7c8922db4feff7cc0`
+in all three. The same journey downloaded one honest envelope trace with
+8,192 numeric rows. It recorded four downloads, hashed assets
+`chunks/2923.acafc33f95f63349f3f8.js` and `gui.2f0326ec.js`, and zero page
+errors. The screenshot visibly contains the named RC circuit, active Board
+view simulation, populated scope waveform and trace-download control.
 
 ## Checkpoint 1 — claim, measurements and executable command contract
 

@@ -31,6 +31,7 @@ const CANVAS = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas
 const REGISTRY = 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/exporters/registry.js';
 const SCOPE = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/ScopePanel.jsx';
 const SWEEP = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/SweepPanel.jsx';
+const EXPORT_PROOF = 'scripts/verify-circuit-export-completeness.mjs';
 
 const dispatchedActions = src => {
     const found = new Set();
@@ -112,4 +113,16 @@ test('the vendored export registry and instruments expose the completed formats'
     assert.match(read(SCOPE), /scope-trace\.csv/);
     assert.match(read(SCOPE), /scope-spectrum\.csv/);
     assert.match(read(SWEEP), /mode === 'vi' \? 'sweep-vi\.csv' : 'sweep-bode\.csv'/);
+});
+
+test('the deployed export proof uses ScopePanel actual channel label', () => {
+    const proof = read(EXPORT_PROOF);
+    assert.match(proof, /name: \/\^\\\+ \(\?:channel\|Kanal\)\$\//,
+        'the browser proof must select the compact bilingual + channel button');
+    assert.doesNotMatch(proof, /name: \/Add channel\//,
+        'the prose label is not rendered by ScopePanel and makes production proof time out');
+    assert.match(proof, /item\.id === '50-rc-scope'/,
+        'the deployed journey must load the named, time-varying scope fixture');
+    assert.match(proof, /getByRole\('radio', \{name: 'Sim mode'\}\)\.click/,
+        'a pure circuit only advances and captures trace data in simulation mode');
 });

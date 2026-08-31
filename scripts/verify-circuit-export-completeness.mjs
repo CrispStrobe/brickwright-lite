@@ -49,6 +49,33 @@ try {
     const designer = page.locator('.bw-circuit-designer:visible').last();
     await designer.waitFor({state: 'visible', timeout: 60000});
 
+    // Load a named, time-varying fixture through CircuitTab's production host
+    // callback. A blank project's DC net can render the scope controls before
+    // the engine has produced even one capture, making a click truthfully yield
+    // no CSV and proving nothing about trace bytes.
+    const loadedExample = await page.evaluate(async () => {
+        const response = await fetch('examples/index.json');
+        const examples = await response.json();
+        const example = examples.find(item => item.id === '50-rc-scope');
+        if (!example) return {ok: false, error: '50-rc-scope is absent from examples/index.json'};
+        const root = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
+        const key = Object.keys(root || {}).find(name =>
+            name.startsWith('__reactFiber') || name.startsWith('__reactInternalInstance'));
+        const queue = key ? [root[key]] : [];
+        for (let seen = 0; seen < 10000 && queue.length; seen++) {
+            const fiber = queue.shift();
+            if (fiber?.stateNode?.loadExample && Object.hasOwn(fiber.stateNode.state || {}, 'circuitData')) {
+                return fiber.stateNode.loadExample(example, {circuitOnly: true});
+            }
+            if (fiber?.child) queue.push(fiber.child);
+            if (fiber?.sibling) queue.push(fiber.sibling);
+        }
+        return {ok: false, error: 'CircuitTab host is unavailable'};
+    });
+    if (!loadedExample?.ok) throw new Error(`cannot load named circuit: ${loadedExample?.error || 'unknown error'}`);
+    await designer.getByRole('radio', {name: 'Sim mode'}).click();
+    await page.waitForTimeout(1000);
+
     const artifacts = [];
     for (const view of ['Realistic view', 'Schematic view', 'Board view']) {
         if (view !== 'Realistic view') {
@@ -73,7 +100,10 @@ try {
     const options = await netSelect.locator('option').count();
     if (options < 2) throw new Error('scope has no solved net to export');
     await netSelect.selectOption({index: 1});
-    await scope.getByRole('button', {name: /Add channel/}).click();
+    // ScopePanel's visible contract is deliberately compact ("+ channel" / "+ Kanal");
+    // it has never exposed the prose label "Add channel". Keep this selector
+    // bilingual because production may inherit either supported GUI locale.
+    await scope.getByRole('button', {name: /^\+ (?:channel|Kanal)$/}).click();
     await page.waitForTimeout(750);
     const [csvDownload] = await Promise.all([
         page.waitForEvent('download', {timeout: 10000}),
@@ -89,7 +119,7 @@ try {
     const assets = await page.locator('script[src],link[rel="stylesheet"][href]').evaluateAll(nodes =>
         nodes.map(node => node.getAttribute('src') || node.getAttribute('href'))
             .filter(value => /\.[a-f0-9]{8,32}\.(?:js|css)/.test(value)));
-    result = {url: proofUrl, views: 3, downloads: 4, bytes: artifacts[0].length,
+    result = {url: proofUrl, example: '50-rc-scope', views: 3, downloads: 4, bytes: artifacts[0].length,
         sha256: hashes[0], scopeRows: numericRows.length, pageErrors, assets};
     await page.screenshot({path: path.join(outDir, 'circuit-export-board-view.png'), fullPage: true});
     await writeFile(path.join(outDir, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
