@@ -2,9 +2,9 @@
 
 Reviewed 2026-08-23 against `a3f30be6b`. Ten lessons, twenty checkpoints.
 
-**3 defective of 10 · 3 revised to content version 2 · 4 defects open, all in
-the debugger rather than in a lesson or a bench — and the fourth applies to all
-ten lessons at once.**
+**3 defective of 10 · 3 revised to content version 2 · the four debugger
+defects found by this review are closed.** The last closure, on 2026-08-31,
+removed the network requirement from supported 8051 debug builds.
 
 Wave 5 is the first wave whose observable is not a circuit. Every other wave asks
 whether a bench can produce a reading, and `scripts/lesson-bench.mjs` answers by
@@ -37,44 +37,32 @@ bench capability.
 
 ## The defects
 
-### 0. The debugger cannot start offline, on any device family — and all ten lessons say `simulation`
+### 0. The debugger could not start offline — closed 2026-08-31 for supported 8051 targets
 
 Found last, while reviewing Wave 3, and it should have been found first. My whole
 first pass asked what the debugger can **show**; none of it asked whether the
 debugger can **start**.
 
-`debug-runner.js` names the four things only a browser can do, and the first is
-"**build the image over the network**":
+`debug-runner.js` now routes supported 8051 builds through four browser-local
+WASM stages:
 
 ```
 project  --generateC({debug:true})-->  C + @bw yield map
-         --POST /compile{symbols}-->   .hex + symbol table
+         --cc1→sdcc→sdas→sdld WASM--> .hex + symbol table
          --emu8051 + bw-board------->  a running, breakable program
 ```
 
-The fetch is unconditional. `COMPILE_TARGET` translates board names to chip names
-— `arduino-nano`/`arduino-uno` → `atmega328p`, `pico` → `rp2040`, `eater6502` →
-`eater6502` — and then every one of them goes to the same
-`POST https://stc-compiler.vercel.app/compile`. There is no device for which a
-local path is chosen. The reason is given and is not incidental: a browser cannot
-run SDCC, and the yield map alone does not say where `<task>_state` lives in RAM
-or what code address a yield sits at — "only the linker knows that".
-
-So **every Wave 5 lesson needs a network connection before its first checkpoint**,
-and all ten declare `environment: "simulation"`.
-
-There is an escape hatch, and it is real: an in-bundle SDCC WASM at
-`lib/sdcc-wasm/intercept.js` that *intercepts* the same fetch, enabled by
-`localStorage['bw-use-wasm-compiler'] === '1'`. It is opt-in, off by default, and
-discoverable from no lesson and no checkpoint. When it fails to load the status
-line says "local compiler unavailable — using the hosted one", which is honest
-about the fallback but only visible to someone who already opted in.
-
-Not fixed in copy. Ten lessons declaring an environment they do not have is a
-curriculum-schema question — whether `simulation` should mean "no hardware" or
-"no network" — and answering it by editing ten hints would bury it. Pinned by a
-test that fails if the default compiler URL moves or the opt-in becomes the
-default.
+The local route is the default for the five targets whose headers and small-model
+libraries are bundled. A local failure stays local and visible; it never silently
+falls back to the network. AVR, RP2040, 6502 and other unsupported families retain
+an explicit hosted route. The first real generated program also forced the
+toolchain past two defects the hand-written fixtures missed: SDCC's recursive AST
+walk overflowed Emscripten's 64 KiB default stack, and instruction-less `case 0`
+labels were absent from the debug line map. The accepted build uses an 8 MiB
+checked stack and generated scheduler programs now produce complete symbols.
+The production gate aborts any external compiler POST
+and proves the counter lesson can build, run, pause, expose its linked `count`
+variable and scheduler frames, step one cycle, and halt on a write watchpoint.
 
 ### 1. The task list shows one of the four fields the lesson asks for
 
@@ -255,10 +243,9 @@ changed nothing.
 - **Pedagogy** — in particular whether a wave about debugging should be taught on
   a debugger this young. Three of its ten lessons describe a richer tool than the
   one that exists.
-- **Whether the hosted compiler is actually reachable**, and what a learner sees
-  when it is not. I read the call site and the fallback message; I did not take
-  the network away and watch. That is the obvious next probe and it needs a
-  browser.
+- **Hosted-family outage behaviour.** The offline gate deliberately covers the
+  supported 8051 path. Unsupported families still name and use their hosted
+  compiler route, so outage UX for those families remains a separate field test.
 
 ## Reproducing
 
@@ -266,11 +253,10 @@ changed nothing.
 node --test test/lesson-debugger-surface.test.mjs
 ```
 
-One of its tests remains named `OPEN DEFECT` (the hosted compiler). It fails
-the day that changes, its message naming this document and the lesson hint to
-update. Three sentinels have now done exactly that and been retired per their
-own instructions: the two task-panel ones on 2026-08-23 (the 90161eb5 vendor
-turned them red) and the frames-view one on 2026-08-29.
+The old hosted-compiler `OPEN DEFECT` sentinel is retired. Its replacement pins
+the five local target names, the explicit hosted-family route, and the rule that
+a supported-target local failure cannot escape to the network. The production
+browser proof is `node scripts/verify-debug-frames-watch.mjs`.
 
 The watchpoint test is still here but its wording is corrected: it pins the
 MECHANISM (feature detection, and the panel gating on the capability) plus the

@@ -343,14 +343,14 @@ Two shapes are worth carrying forward from the rest:
   Wave 6's whole finding — a good engine behind instruments that report pictures
   rather than numbers — and it is where the remaining 24 mostly live.
 
-#### The six still open, and what blocks each
+#### The five still open, and what blocks each
 
 Updated 2026-08-29: **thirteen rows closed in one campaign** — D18, D20, D21,
 D23, D24 and D31 (the instrument family, bw-board + bw-circuit-ui), D26, D27,
 D32 and D36 (sb3-creator), and D25, D28 and D29 (the debugger wave, across
 emu8051-stc, bw-board and lite). Their rows are struck through below with what
-actually happened, which in six cases is not what the row predicted. Six are
-open, and three of those six (D13, D22, D30) are labelled rather than broken.
+actually happened, which in six cases is not what the row predicted. Five are
+open, and three of those five (D13, D22, D30) are labelled rather than broken.
 
 Two of the debugger three are worth reading as corrections rather than as
 closures. **D29's row was false and said so about itself** — it carried the
@@ -365,7 +365,7 @@ someone has to make, not work someone has to find.
 
 | # | Lessons | Owner | What blocks it |
 | --- | --- | --- | --- |
-| D2 hosted compiler | 12 | lite | **IN PROGRESS 2026-08-30, complex progression claimed by this session.** Checkpoint 1 DoD: four isolated stages copy source→preprocessed C→ASM/ADB→REL/LST/SYM→IHX/CDB, bundle the small-model runtime with provenance, produce real Intel HEX and debugger symbols in an executable integration test, mirror cleanly, then push main. Checkpoint 2 DoD: make local compilation the default only for the five supported 8051 targets, preserve explicit hosted fallback for unsupported targets, never turn a supported-target local failure into a silent network request, cover routing mutations, then push main. Checkpoint 3 DoD: a production-browser gate blocks every compiler-network request and proves example 05 reaches building→running→paused with scheduler frames, linked variable `count`, and one-cycle stepping; mutation must escape the blocked request and fail, then push main. Checkpoint 4 DoD: production build, overlay/package mirror check, full focused Node and browser gates, CI admission without queue polling, documentation closure only if all earlier evidence is green, and a clean main push. |
+| ~~D2 hosted compiler~~ | 12 | lite | **CLOSED 2026-08-31** (routing `61a86f994`+`6899019aa`+`d26d1415b`; upstream repair `00fefb4`+`47c5041`; vendor `5bf1cea15`; browser gate `491d2dcb6`). The repair is a four-stage browser toolchain, not a smaller hosted call: cc1 writes preprocessed C, SDCC c1mode emits ASM/ADB, sdas emits REL/LST/SYM, and sdld links IHX/CDB against a provenance-pinned small-model runtime. Five supported 8051 targets route locally by default; unsupported families retain an explicit hosted route, while a supported-target local failure is never hidden by a network fallback. The first production attempt exposed two deeper defects rather than being waved through: Emscripten's 64 KiB default stack corrupted SDCC's recursive AST walk, and source-line extraction dropped instruction-less `case 0` labels needed by every scheduler task. The accepted build takes an 8 MiB checked stack, 43/44 generated 8051 examples compile (the remaining program also fails native SDCC), and generated programs yield complete symbols. The production gate blocks every external compiler POST and drives example 05 through build, run and pause, checking scheduler position, linked `count`, an exact one-cycle step and a write watchpoint transition. |
 | ~~D4 fixed scope record~~ | 4 | bw-circuit-ui | **CLOSED 2026-08-25** (`29f6da6`). This row was right that it was additive and that nothing blocked it but the work; it was wrong about the owner and about `addScopeChannel`. Both numbers are DEFAULTS there, not hard-coded — every read inside the engine uses `ch.intervalNs`/`ch.depth` — so no timebase argument had to be added, only passed. Measured on 43-rc-timing: 100 kHz → 0.082 s reaching 0.987 V, 1 kHz → 8.192 s reaching 4.999 V, the charged tail the old record could never hold. The control is labelled by record LENGTH, not rate, because "does my event fit" is the question. All four lessons restored: signals-rc-response → v5, signals-complex-impedance → v3, signals-aliasing-fft → v3, machines-clocks → v3. |
 | ~~D3 Bode sweep has no numbers~~ | 4 | bw-circuit-ui | **CLOSED 2026-08-25** (`2c66851`). This row was right that the data was already in `runBode`'s result and that what was missing was a UI decision. It went: keep the rows in panel state, label the frequency axis, a twelve-row table (thinned, always keeping the two points the axis names), and a CSV button carrying every point at FULL precision — display rounding would have made a residual analysis measure the formatter. dB labels went to one decimal because whole decibels rendered −3.010 and −3.5 as the same string. `signals-cutoff-phase` → v3 and `signals-model-measurement` → v4; the other two lessons D3 is counted against were never worded around it, so there was nothing in them to restore. |
 | ~~D7 empty machine ROMs~~ | 3 | sb3-creator | **CLOSED 2026-08-25** (sb3-creator `0a20e24`, `c3f25c1`, `fb1ae3a`, `2cb91f0`, `93838a2`; lite vendors them) by a THIRD option this row did not list. It offered "an assembler, or a checked-in binary and a provenance note"; for images this small the better answer is to ship **the source AND its assembler** — `scripts/build-machine-roms.mjs` builds all three, and `--check` refuses a hand-edited `.bin`, so the binary is reproducible and reviewable rather than trusted. **The third bench was the wrong bench, and finding out was the work.** Both Z80 examples said "There is no DEVICE Z80 program axis in the transpiler yet" — false since the Z80 core landed. But that axis is narrow: `z80Hw()` knows only `OUT0-7`/`IN0-7`, a 74HC374 latch and a 74HC244 buffer at port 0. `z80-bench`'s only I/O is an MC6850 ACIA, so it correctly stays program-less (its comment now says so for the true reason); **`z80-pd-bench`** has the latch, the buffer and `led0..led7`, so it got the program. Measured: `eater6502-blink` walks one bit at 99,940 cycles/lamp (799.5 ms), `eater6502-vdp-hello` puts HELLO on the TMS9918 at row 11 col 13, `z80-pd-bench` walks at **736,147 cycles/lamp (99.847 ms)** — the hand-computed T-state arithmetic and the core agree exactly. The first Z80 program in the corpus also exposed that `cToPseudocode` never learned the Z80 (it read back as `DEVICE STC12C5A60S2`); that is fixed, and the gate that holds it asserts FAITHFULNESS, because the degraded read-back was itself a fixed point and the corpus convergence check stayed green through it. **What is NOT closed here is D37**: `machines-interrupts-performance` needs an interrupt source, and neither Z80 bench wires one — a ROM cannot supply that. |
@@ -399,14 +399,10 @@ never been isolated to a component. It has been now — see its struck-through
 row — and the isolation is why it moved off this list rather than a repair
 being found for what the row described.)
 
-What is still open is in that table with what blocks it. The biggest by lessons
-is **D2**, the debugger's unconditional `POST` to the hosted compiler, which puts
-all ten Wave 5 lessons behind a network connection while they declare
-`environment: "simulation"`. That is a curriculum-schema question before it is a
-code one — whether `simulation` means "no hardware" or "no network" — and
-answering it by editing ten hints would bury it. After the 2026-08-29 campaign
-it is also, by a wide margin, the largest thing left: D2 alone is 12 of the 23
-remaining lesson-slots.
+What is still open is in that table with what blocks it. D2 was the largest row
+and is now closed: supported 8051 debugger lessons no longer cross the network.
+The remaining rows account for 11 lesson-slots, and no single remaining defect
+affects more than two lessons.
 
 **Added 2026-08-25 by the post-repair re-check** (`docs/POST-REPAIR-RECHECK.md`):
 
@@ -442,7 +438,7 @@ as current as that sha, and several findings expired within hours of being writt
 | 2 Measure rather than guess | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24, 1 more 2026-08-25 — 5 of 10 defective; 6 revised (two now at v3, four at v2), **2 open** engine defects, 2 fixed upstream | `3e87340f5`, re-measured `7ce24a619`, re-derived `1311898d5` | open | open |
 | 3 One idea, several languages | 12 | done | **full, 2026-08-23** — 1 of 12 defective; 1 revised to v2 | `a3f30be6b` | open | open |
 | 4 Interactive systems | 8 | done | **full, 2026-08-23**; 4 of 5 closed 2026-08-24 — 7 of 8 defective; 10 revised (three to v3), **1 open** app defect (the micro:bit no-ops, deliberate) | `2e294ceaf`, re-measured `d7325a272` then `7ce24a619`, re-derived `1311898d5` | open | open |
-| 5 Debug with evidence | 10 | done | **full, 2026-08-23** — 3 of 10 defective; 3 revised to v2, 4 open debugger defects (one affects all ten) | `a3f30be6b` | open | open |
+| 5 Debug with evidence | 10 | done | **full, 2026-08-23; debugger defects closed 2026-08-31** — 3 of 10 defective; 3 revised to v2, **0 open** | `a3f30be6b`, offline compiler proof `491d2dcb6` | open | open |
 | 6 Signals and systems | 10 | done | **full, 2026-08-23**; 1 closed 2026-08-24, 5 more 2026-08-25 — 9 of 10 defective; 10 revised (one at v5, two at v4, four at v3, three at v2 — counted from the file), **5 open** instrument/engine defects | `1d10902cb`, re-derived `1311898d5` | open | open |
 | 7 Computers from wires upward | 10 | done | **full, 2026-08-23**; re-measured 2026-08-24, 1 closed 2026-08-25 — 8 of 10 defective; 9 revised (three now at v3, five at v2), **6 open**, of which the shift register's is now compiler-only (its example was repaired upstream) | `1d10902cb`, re-measured `91a95ba42`, re-derived `1311898d5` | open | open |
 

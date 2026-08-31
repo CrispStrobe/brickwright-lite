@@ -2,6 +2,12 @@
 
 Owner: `fab-sdcc` (claimed 2026-08-30)
 
+Status: all five checkpoints completed 2026-08-31. The upstream repair is
+`emu8051-stc` `00fefb4`+`47c5041`; the accepted vendor is `5bf1cea15`; the
+locally observed 25/25 production-browser gate and its CI wiring are
+`491d2dcb6`. This document remains the acceptance contract for future toolchain
+updates.
+
 This is a four-to-six-hour recovery progression for the local SDCC WebAssembly
 compiler and the production debugger path it gates.  A green unit test is not
 the finish line: the shipped browser must compile Brickwright's generated C
