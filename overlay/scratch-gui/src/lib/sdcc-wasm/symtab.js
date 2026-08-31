@@ -40,14 +40,31 @@ export function addCLineRecords (cdbText, asmText, sourceFile = 'main.c') {
         }
     }
     const added = new Map();
-    let sourceLine = null;
+    // A C line that emits no instructions of its own — `case 0:`, `{`, a label —
+    // has no assembly line between its marker and the next marker, so pairing
+    // "current source line" with "next address" dropped it entirely. Every
+    // generated 8051 program with a cooperative scheduler starts each task at
+    // `case 0:`, which is why buildSymbolTable could only say
+    // "bw_task0: no code address for state 0" and the debug session could not
+    // start (measured 2026-08-31 on 76-multimeter and 61-console-pong, the two
+    // examples in the corpus that have more than one task).
+    //
+    // A label sits at the address of the code that follows it, so lines wait in
+    // `pending` until an address turns up and then all take it.
+    const pending = [];
     const escaped = sourceFile.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const marker = new RegExp(`;\\s*(?:[^:]+/)?${escaped}:(\\d+):`);
     String(asmText).split(/\r?\n/).forEach((line, index) => {
         const match = line.match(marker);
-        if (match) sourceLine = Number(match[1]);
+        if (match) {
+            const sourceLine = Number(match[1]);
+            if (!added.has(sourceLine) && !pending.includes(sourceLine)) pending.push(sourceLine);
+        }
         const address = addresses.get(index + 1);
-        if (sourceLine !== null && address !== undefined && !added.has(sourceLine)) added.set(sourceLine, address);
+        if (address !== undefined && pending.length) {
+            for (const line of pending) added.set(line, address);
+            pending.length = 0;
+        }
     });
     if (!added.size) return String(cdbText);
     return `${String(cdbText).trimEnd()}\n${[...added].map(([line, address]) =>

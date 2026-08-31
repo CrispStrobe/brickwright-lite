@@ -36,25 +36,28 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    // ROOT-CAUSED 2026-08-30, and it is not the browser: the vendored
-    // static/sdcc-wasm build dies on the idle fast-forward `generateC` emits
-    // into main() of every 8051 program, with `null function or function
-    // signature mismatch` — a WASM table miss, i.e. a fact about the binary.
-    // Native SDCC 4.2.0 compiles the identical preprocessed text through the
-    // identical --c1mode in silence, three rewrites of the idle logic all die,
-    // and Node fails exactly as Chromium does. The existing Node integration
-    // test stays 2/2 only because its fixture is a hand-written main() with no
-    // idle block.
+    // THE BLOCKER IS GONE; WHAT IS MISSING NOW IS A GREEN RUN.
     //
-    // So the gate cannot pass until the toolchain is repaired, and no amount of
-    // driving the UI differently will change that: LOCAL_8051_TARGETS routing
-    // has no fallback to the hosted compiler by design, so the shipped app
-    // cannot start an 8051 debug session at all while this stands.
+    // 2026-08-30 this said the vendored static/sdcc-wasm could not compile the
+    // idle fast-forward `generateC` emits, so no 8051 debug session could start
+    // and no amount of driving the UI would help. That was true and is now
+    // fixed: the cause was a 64 KiB Emscripten stack against SDCC's ~158 KB
+    // recursive AST walk, the link takes -sSTACK_SIZE=8388608, and
+    // test/wasm-compiler-diagnosis.test.mjs now proves in Node, against the
+    // vendored binary, that a real generated 8051 program compiles to a hex
+    // AND yields a complete debug symbol table. 43 of the 44 generated 8051
+    // examples compile (the 44th, 51-tft-pixels, native SDCC rejects too — a
+    // transpiler defect, tracked separately).
     //
-    // Pinned by test/wasm-compiler-diagnosis.test.mjs, whose second test goes
-    // red when the toolchain is fixed and says what to do then.
+    // The row stays only because this gate has not been SEEN green: it needs a
+    // local production build plus Chromium, which this lane did not run. Wire
+    // it into .github/workflows/build.yml (the marked spot after the labwired
+    // journeys, ~line 623) as soon as someone watches it pass, and delete this
+    // entry in that commit. Do not wire it unseen — that is how it cost five
+    // red runs and blocked the deploy the first time.
     'verify-debug-frames-watch.mjs':
-        'FAIL: vendored SDCC 4.5.0 internal error (SDCCast.c:3528) on the emitted idle fast-forward'
+        'UNVERIFIED since the 2026-08-31 sdcc-wasm repair: the compiler defect that made it '
+        + 'impossible is fixed and proven in Node, but nobody has watched this gate go green'
 };
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))
