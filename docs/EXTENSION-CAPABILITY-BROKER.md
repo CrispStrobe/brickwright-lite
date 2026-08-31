@@ -134,9 +134,17 @@ diagnostics renderer rather than another ad-hoc console transcript.
   green, but makes any future registration fail unless Rust checks the exact
   `capability-broker` caller label before dispatch, constructs that webview
   hidden and unfocused from bundled local content, and grants the command only
-  through a capability targeting that label. The contract includes mutations
+  through a capability targeting that exact webview label (never its containing
+  window, which would include sibling webviews). Tauri's build-time application
+  manifest generates an ACL for custom commands; the broker receives only its
+  generated permission, while the exact Rust caller-label check remains defense
+  in depth. Because
+  `core:default` lets `main` open another label's inspector, the future topology
+  must also add `core:webview:deny-internal-toggle-devtools` to `main`. The
+  contract includes mutations
   for an inverted label check, external content, a visible broker, a main-window
-  grant and wildcard window scope.
+  grant, window-level broker scope, ambient broker permission, restored
+  cross-label devtools authority and wildcard window scope.
 
 DoD: Rust unit/integration tests prove allowed, undeclared, malformed, replayed
 and revoked calls; JavaScript protocol tests prove the same identity. Removing
@@ -159,6 +167,48 @@ the only accepted pre-implementation state; partial topology is rejected rather
 than treated as progress. Runtime completion still requires mock-IPC tests for
 both labels plus packaged Linux and iOS/Android lifecycle evidence, because a
 static contract cannot prove platform webview routing.
+
+The native policy core is now implemented independently of Tauri registration.
+It accepts only the exact `capability-broker` caller for lease issue, semantic
+authorization and revocation; binds a host-created identity to a 256-bit opaque
+lease; validates the closed `platform.kind.read` / `platform/default` pair and
+an exactly empty argument object; enforces exact sequencing, TTL, request and
+live-lease bounds; and retains only a bounded redacted audit. Twelve Rust tests
+cover the allow path and every boundary above, including editor-originated
+issue/revoke attempts that must leave a valid session unchanged. The module is
+deliberately not registered as a command: a tested policy engine is not caller
+isolation, and the topology gate continues to require the isolated webview
+before registration.
+
+The existing 17 native application commands now use Tauri's generated
+application-command ACL instead of ambient registration. `main` receives the
+exact 17 compatibility grants, the additive mobile capability receives none,
+and a structural gate keeps the build manifest, invoke handler and capability
+grants in exact lockstep. `main` also explicitly denies cross-label devtools,
+closing the inherited `core:default` route that could otherwise open a future
+hidden broker's inspector by label. This does not create the broker or register
+a capability command; it establishes the least-privilege substrate first.
+
+Desktop now constructs an inert broker shell from the bundled
+`capability-broker.html`: it is hidden, unfocusable, undecorated,
+non-resizable/non-closable, absent from the taskbar, incognito, and has
+devtools disabled. Its navigation predicate accepts only the exact platform
+local origin and document path with no URL variants; new windows are denied;
+the document is scriptless under `default-src 'none'`. Three Rust URL tests and
+a 20-mutation structural/asset gate cover this shell. It still owns no workers,
+commands, leases or native results, so this is safe scaffolding rather than a
+claim that CP3-C is complete. Installed Tauri has no supported registered child
+webview API on iOS/Android; mobile remains explicitly open pending a native
+broker process/plugin or an upstream-supported isolated webview primitive.
+
+The desktop shell now owns a bounded managed policy state with a monotonic
+clock. Any denied navigation revokes all leases before the navigation is
+rejected, and `WindowEvent::Destroyed` revokes every principal; an allowed
+local reload and unrelated window events do not. Bulk revocation retains the
+same exact broker-label guard as issue/request/single-principal revocation, is
+idempotent, and maps a poisoned lock to a sanitized unavailable result. No
+broker command is registered, so lifecycle wiring still creates no reachable
+native authority.
 
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 

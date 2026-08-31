@@ -7,6 +7,7 @@ const root = path.resolve(import.meta.dirname, '..');
 const tauri = path.join(root, 'apps/tauri/src-tauri');
 const BROKER_LABEL = 'capability-broker';
 const BROKER_PERMISSION = 'allow-capability-broker-invoke';
+const DENY_CROSS_LABEL_DEVTOOLS = 'core:webview:deny-internal-toggle-devtools';
 
 const balancedBody = (source, marker, open = '[', close = ']') => {
     const start = source.indexOf(marker);
@@ -46,14 +47,21 @@ const audit = ({rust, config, capabilities}) => {
 
     const broker = capabilities.find(item => item.identifier === 'native-capability-broker');
     assert.ok(broker, 'an isolated native-capability-broker capability is required');
-    assert.deepEqual(broker.windows, [BROKER_LABEL], 'the capability must target only the exact broker label');
-    assert.ok(broker.permissions.includes(BROKER_PERMISSION), 'the broker capability must grant its command');
+    assert.deepEqual(broker.webviews, [BROKER_LABEL],
+        'the capability must target only the exact broker webview label');
+    assert.deepEqual(broker.windows || [], [],
+        'window scope would grant every child webview in that window and must stay empty');
+    assert.deepEqual(broker.permissions, [BROKER_PERMISSION],
+        'the broker must receive only its generated app-command permission');
     for (const capability of capabilities.filter(item => item !== broker)) {
         assert.ok(!capability.permissions.includes(BROKER_PERMISSION),
             `${capability.identifier} must not grant the native broker command`);
         assert.ok(!(capability.windows || []).includes('*'),
             `${capability.identifier} must not wildcard webview access once the broker exists`);
     }
+    const main = capabilities.find(item => (item.windows || []).includes('main'));
+    assert.ok(main && main.permissions.includes(DENY_CROSS_LABEL_DEVTOOLS),
+        'main must explicitly lose core:default cross-label devtools authority');
     assert.ok(!(config.app.windows || []).some(window => window.label === BROKER_LABEL),
         'the privileged broker must not be an ordinary visible config window');
     return {implemented: true, commands};
@@ -91,8 +99,8 @@ fn run() { x.invoke_handler(tauri::generate_handler![capability_broker::invoke])
 `,
     config: {app: {windows: [{label: 'main'}]}},
     capabilities: [
-        {identifier: 'default', windows: ['main'], permissions: ['core:default']},
-        {identifier: 'native-capability-broker', windows: [BROKER_LABEL], permissions: [BROKER_PERMISSION]}
+        {identifier: 'default', windows: ['main'], permissions: ['core:default', DENY_CROSS_LABEL_DEVTOOLS]},
+        {identifier: 'native-capability-broker', webviews: [BROKER_LABEL], permissions: [BROKER_PERMISSION]}
     ]
 });
 
@@ -102,8 +110,11 @@ test('future topology contract rejects independently weakened boundaries', () =>
         input => { input.rust = input.rust.replace(' != CAPABILITY_BROKER_LABEL', ' == CAPABILITY_BROKER_LABEL'); },
         input => { input.rust = input.rust.replace('WebviewUrl::App(', 'WebviewUrl::External('); },
         input => { input.rust = input.rust.replace('.visible(false)', '.visible(true)'); },
-        input => { input.capabilities[1].windows = ['main']; },
+        input => { input.capabilities[1].webviews = ['main']; },
+        input => { input.capabilities[1].windows = [BROKER_LABEL]; },
+        input => { input.capabilities[1].permissions.push('core:default'); },
         input => { input.capabilities[0].permissions.push(BROKER_PERMISSION); },
+        input => { input.capabilities[0].permissions = ['core:default']; },
         input => { input.capabilities[0].windows = ['*']; }
     ];
     for (const mutate of mutations) {

@@ -26,7 +26,7 @@ Two counting rules, so the numbers are comparable:
 | # | Defect | Owner | Lessons | Waves | State |
 | --- | --- | --- | --- | --- | --- |
 | **D1** | 28 checkpoints observe `circuit-ready`, which fires once when the example loads — so they tick themselves before the learner measures anything | lite (`guided-lessons.jsx`) | **28** | 1, 2, 6, 7 | **FIXED** — arming semantics |
-| **D2** | The debugger cannot start offline on any device family: `debug-runner.js` builds every image through `POST stc-compiler.vercel.app/compile`, while all ten Wave 5 lessons declare `environment: "simulation"` | lite (`bw-debug/debug-runner.js`) | **12** | 5, 3, 7 | **FIXED 2026-08-31** — bundled four-stage SDCC pipeline and production offline debugger gate; see PLAN.md |
+| **D2** | **RE-WORDED 2026-08-31 — the row's premise was right and its arithmetic was not.** It said "all ten Wave 5 lessons declare `environment: "simulation"`", which reads as though that field selects the affected set. Measured at tip: **68 of 70** lessons declare it, so it selects almost everything and discriminates nothing. The set that actually could not start offline is the one whose bench needs a compiler — 41 lessons name an example with an MCU program, 25 of those on a non-8051 part. Wave 5's ten split **five 8051 / four AVR / one RP2040**, which is the real shape of the row | lite (`bw-debug/debug-runner.js`) | **12** | 5, 3, 7 | **FIXED 2026-08-31 in two halves, and the halves are different repairs.** The 8051 half is a compiler that runs in the browser (four WASM stages; see PLAN.md). The other half is D7's answer, not a smaller network call: the lesson benches whose compiler CANNOT run in a browser now SHIP their image. 13 images, 204 KB, one per (example, target, format), keyed on the generated C and used without the network; the panel says in words that the image is prebuilt, when it was built and with which compiler, and that an edit makes it stop applying. **The honest residue, named rather than hidden:** a program the learner has EDITED on an AVR or ARM bench is a program nobody has compiled, so it still needs the hosted service and still refuses honestly without one. That is the boundary of what a shipped image can do, and it is the reason the sentence in the panel ends where it does |
 | **D3** | The Bode sweep reports no numbers: `drawBode` writes four strings on a 260×140 canvas (two dB extremes, ±180°), no frequency axis, no per-point value, no export | bw-circuit-ui | **4** | 6 | **FIXED** — axis, table and CSV |
 | **D4** | The scope record is fixed at 100 kHz × 8192 = 81.92 ms; both numbers are hard-coded in `addScopeChannel` and `ScopePanel` passes neither | bw-circuit-ui (**not** bw-board — see below) | **4** | 6, 7 | **FIXED** — a record-length control |
 | **D5** | Four faceplate layouts ship no `"mode": "play"`, and `ControllerPanel` defaults to `edit` where every input control renders `disabled`; the panel's own `toJSON`/`fromJSON` drop `mode` entirely, so even a corrected file is lost on the first save | sb3-creator (examples) + bw-board (`controller.js`) + lite (`gui.jsx`) | **3** | 4 | **FIXED** — three repos |
@@ -58,20 +58,31 @@ Two counting rules, so the numbers are comparable:
 | **D31** | The scope's V/div is a single global setting, so two channels of very different amplitude cannot be scaled independently | bw-circuit-ui (`ScopePanel`) | **1** | 2 | **FIXED 2026-08-29** — per-channel V/div and centre |
 | **D32** | `arduino-03-calibration` has no filter, so its lesson's "estimate filter delay" has nothing to check against | sb3-creator (example) | **1** | 4 | **FIXED 2026-08-29** — a 4-tap boxcar, as variables and not a list |
 | **D37** | `machines-interrupts-performance` asks what an interrupt costs on a bench that cannot raise one: neither Z80 example wires an interrupt source. **CORRECTED 2026-08-25 by measurement** — an earlier draft of this row said the interrupt pins were unconnected. They are not: in all 7 CPU benches `/IRQ` and `/NMI` are tied to VCC, i.e. held inactive, which is correct idle wiring. The real statement is that **no interrupt-capable device OUTPUT drives any CPU interrupt input anywhere in the corpus** — no `mc6850.irqb`, no `w65c22.irqb`, no `tms9918.int`. **And the simulator does not need one:** both `M6502Machine` and `Z80Machine` poll every chip's `irqAsserted` directly, so the drawn tie is schematic. Measured on `eater6502-blink`'s own extracted machine: arming VIA T1 free-running with IER and `CLI` takes **440 interrupts in 1,806,166 cycles**, against 4095 cycles per T1 period. The interrupt machinery works; what is missing is that **no example PROGRAM uses it**, so the lesson has nothing to step through. That makes this the same shape as D7 — ship an interrupt-driven image and re-point the lesson — not the emitter/wiring job first assumed | sb3-creator (examples) + sb3-creator (emitter) | **1** | 7 | **FIXED** — `eater6502-bench` ships an interrupt program; the lesson moved to it |
+| **D38** | **NEW 2026-08-31, found by building the D2 images.** On the AVR path `generateC` emits the millisecond ISR and `bw_ms`, and `main()`'s idle fast-forward calls `bw_now()` twice — but the AVR preamble only DEFINES `bw_now()` when something in the program set `_cUses.now`, which `wait` does and `timer` does not. A program with a cooperative task and no `wait` therefore emits C that calls a function it never declares, and avr-gcc refuses it at the link (`undefined reference to 'bw_now'`). **5 of the 80 AVR examples** reproduce: `arduino-02-blink-without-delay`, `arduino-02-button`, `arduino-02-debounce`, `arduino-08-string-addition`, `arduino-sk-p09-motorized-pinwheel`. The first is `debug-timing-bugs`'s own bench, so that lesson has never had a buildable image — with or without a network, before or after D2. It is the only one of D2's fourteen that could not be shipped | sb3-creator (emitter, AVR preamble) | **1** | 5 | open — named refusal in `static/lesson-images/manifest.json`, ratcheted by `test/shipped-lesson-images.test.mjs`. Lite must not patch a vendored file; the fix is one gate in the AVR preamble upstream |
 | **D33** | `6502-terminal/controller.json` declares widget type `terminal`, which is not in `ControllerPanel`'s `DEFAULTS`, so `addWidget` throws — and the importer removes every widget *before* adding, inside a bare `catch`, leaving the panel **empty** | bw-board (`controller.js`) + lite (importer) | **0** | 4 | **FIXED** — `terminal` type + guarded restore |
 | **D34** | `dc_motor` stamps the winding's inductor companion conductance `dt/L` in parallel with `1/R` rather than in series, so its DC operating point depends on the solver step (1.801 A at 1 µs, 1.980 A at 1 ms, against 0.900 A) | bw-board (`devices/dc-motor.js`) | **0** | 1 | **EXPIRED** — re-measured, no longer reproduces |
 | **D35** | The simulator driver armed every read-only pin with `driveHigh = false`, but that argument is the pull's RAIL: a quasi pin idles HIGH, so arming it low clamped 22 of the corpus's 67 wired controls to ~0 V and no button could move its own pin | sb3-creator (driver) | **0** | — | **FIXED** — `553a639`, and gated |
 | **D36** | `arduino-02-digital-input-pullup` is the `pinMode(2, INPUT_PULLUP)` sketch — button to ground, no external pull — but declares `PIN btn = D2 INPUT`, i.e. active HIGH, which the driver honours as a programmed pull-DOWN; both sides of the button then sit at 0 V | sb3-creator (example) | **0** | — | **FIXED 2026-08-29** — `INPUT ACTIVE LOW`, and the read inverted to keep the sketch's printed value |
 
-**37 defects. Thirty-three are closed** — D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11,
-D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D25, D26, D27, D28, D29, D31,
-D32, D33, D35, D36 and D37 by repair, and D34 by re-measurement, which is a
-different and weaker claim: it stopped reproducing between the Wave 1 vendor
-and today, and this campaign only found that out. Together they account for
-**85 of the 90 lesson-slots** the table counts, and D1 alone is 28 of them.
-**Four are open**: D12, D13, D22 and D30 — and three of those four (D13,
+**38 defects. Thirty-three are closed** — D1, D2, D3, D4, D5, D6, D7, D8, D9,
+D10, D11, D14, D15, D16, D17, D18, D19, D20, D21, D23, D24, D25, D26, D27, D28,
+D29, D31, D32, D33, D35, D36 and D37 by repair, and D34 by re-measurement, which
+is a different and weaker claim: it stopped reproducing between the Wave 1
+vendor and today, and this campaign only found that out. Together they account
+for **85 of the 91 lesson-slots** the table counts, and D1 alone is 28 of them.
+**Five are open**: D12, D13, D22, D30 and D38 — and three of those five (D13,
 D22 and D30) are labelled rather than broken. Every row still open is recorded
 in `PLAN.md` with what blocks it and who owns it.
+
+**The count of open rows did not move, and that is the useful part.** D2 closed
+and D38 opened in the same pass, because building D2's images is what found
+D38: an emitter hole on the AVR path that no lesson review had reached, sitting
+under a bench (`debug-timing-bugs`) whose lesson has never had a buildable
+image. The D2 row's own arithmetic was also wrong in a way worth keeping —
+`environment: "simulation"` was offered as the thing that selected the affected
+lessons, and 68 of 70 lessons declare it. A field almost everything sets cannot
+be a filter, and reading it as one is how "ten Wave 5 lessons" got written down
+without anyone asking which ten and on what parts.
 
 **The debugger wave of 2026-08-29 closed three, and two of the three rows were
 wrong about what was broken.** D29 said an export was missing from the pinned
@@ -295,9 +306,9 @@ affected and nothing else.
 | Owner | Defects | Lessons | Closed here |
 | --- | --- | --- | --- |
 | bw-board | D9·D13·D17·D18·D19·D20·D22·D23·D33·D34 | 12 | D17, D18, D19, D20, D23, D33, D34 |
-| lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D5, D14, D15, D16, D25, D28, D29, D33 |
+| lite | D1·D2·D14·D15·D16·D25·D28·D29·D30 | 46 | D1, D2, D5, D14, D15, D16, D25, D28, D29, D33 |
 | bw-circuit-ui | D3·D4·D6·D9·D21·D24·D31 | 15 | D3, D4, D6, D21, D24, D31 |
-| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36 | 18 | D5, D7, D8, D10, D11, D26, D27, D32, D35, D36 |
+| sb3-creator | D5·D7·D8·D10·D11·D12·D26·D27·D32·D35·D36·D38 | 19 | D5, D7, D8, D10, D11, D26, D27, D32, D35, D36 |
 
 Rows appear under every owner that must change, so the columns oversum: D6,
 D9 and D33 each need two repos (D4 was listed as needing two and did not —

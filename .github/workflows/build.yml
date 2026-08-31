@@ -651,6 +651,25 @@ jobs:
           path: artifacts/local-asm-listing/*
           if-no-files-found: error
 
+      # D2's OTHER half, and the families the gate above cannot cover: avr-gcc
+      # and arm-none-eabi-gcc will not run in a browser, so those lesson benches
+      # ship their image instead. This gate cuts EVERY cross-origin request (not
+      # only the compiler POST), starts debug-task-scheduling's own ATmega328P
+      # bench on its prebuilt image, checks the panel says so in the learner's
+      # terms, and then proves the safety half: one edited number makes the image
+      # stop matching, the build goes for the hosted compiler, and the run fails
+      # honestly instead of stepping through firmware nobody compiled.
+      - name: Browser gate — an AVR lesson bench starts offline on its shipped image
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-offline-lesson-image.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: offline-lesson-image-proof
+          path: artifacts/offline-lesson-image/*
+          if-no-files-found: error
+
       # Run this short, independently green extension proof after the two heavy
       # labwired journeys, keeping the earlier product sweep's peak memory flat.
       - name: Browser gate — promoted pinned extension worker

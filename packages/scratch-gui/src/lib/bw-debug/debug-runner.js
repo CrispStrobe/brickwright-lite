@@ -42,6 +42,10 @@ import { parseCondition } from './condition.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
+import {
+    LOCAL_8051_TARGETS, compileTargetFor, compileFormatFor,
+    shippedImageFor, provenanceSentence
+} from './shipped-images.js';
 
 /**
  * How many suppressed breakpoint hits one frame will absorb before yielding to
@@ -49,9 +53,6 @@ import { instructionLength } from './opcodes.js';
  * dispatch loop, so this is routinely in the thousands.
  */
 const SKIP_BUDGET = 20000;
-const LOCAL_8051_TARGETS = new Set([
-    'stc12c5a60s2', 'stc12c5a16s2', 'stc15f2k60s2', 'stc15w408as', 'stc89c52rc'
-]);
 
 /**
  * Install target-aware compilation routing before the debugger builds.
@@ -351,6 +352,19 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * runner did until now — is the failure the ledger exists to prevent.
      */
     let engineNotes = [];
+    /**
+     * Where the image the session is running came from, when that is not "the
+     * compiler just built it".
+     *
+     * Deliberately NOT folded into `engineNotes`: those are amber refusals —
+     * things the engine cannot do — and a prebuilt image is not a limitation,
+     * it is a fact about provenance. Rendering it as a warning would teach the
+     * learner to read a working bench as a broken one. It gets its own neutral
+     * line, and it stays on screen for the whole session rather than flashing
+     * past in the build status, because "why did this not need the network?" is
+     * a question asked after the program is running, not during the build.
+     */
+    let imageProvenance = null;
     /** How many conditional hits were skipped, so the UI can show it happened. */
     let skipped = 0;
     /** Set by the halt handler when a stop should not be shown; read by pumpFrame. */
@@ -444,8 +458,25 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
              * undefined when the engine carried everything, so a panel renders
              * nothing rather than an empty warning box.
              */
-            engineNotes: engineNotes.length ? [...engineNotes] : undefined
+            engineNotes: engineNotes.length ? [...engineNotes] : undefined,
+            /**
+             * The prebuilt-image sentence, or undefined when the image was
+             * compiled for this session. See `imageProvenance` above.
+             */
+            imageProvenance: imageProvenance
+                ? {...imageProvenance, sentence: provenanceSentence(imageProvenance, uiLang())}
+                : undefined
         };
+    }
+
+    /** The document language, for the one sentence this module says in words. */
+    function uiLang() {
+        try {
+            const html = typeof document !== 'undefined' && document.documentElement;
+            const lang = (html && html.lang) ||
+                (typeof navigator !== 'undefined' && navigator.language) || 'en';
+            return /^de/i.test(lang) ? 'de' : 'en';
+        } catch { return 'en'; }
     }
 
     function emit() {
@@ -554,50 +585,70 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         setStatus('building', 'compiling…');
         // The compiler accepts chip names (atmega328p, stc12c5a60s2), not board
-        // names (arduino-nano). Map the user-facing device to the compile target.
-        const COMPILE_TARGET = {
-            'arduino-nano': 'atmega328p', 'arduino-uno': 'atmega328p',
-            'atmega328p': 'atmega328p', 'atmega168p': 'atmega168p',
-            'arduino-mega': 'atmega2560',
-            'pico': 'rp2040',
-            'stm32f030': 'stm32f030',
-            'eater6502': 'eater6502',
-        };
+        // names (arduino-nano). The map lives in shipped-images.js so the build
+        // script that produces the prebuilt images and the runner that looks
+        // them up cannot drift apart — two copies of it is exactly how an image
+        // built for `atmega328p` would stop matching a runner asking for
+        // `arduino-nano`.
         const deviceLower = (stc.device || 'stc12c5a60s2').toLowerCase();
-        const compileTarget = COMPILE_TARGET[deviceLower] || deviceLower;
-        // Loading failure is fatal only for a target promised as local. Other
-        // families deliberately retain the hosted fetch below and never need
-        // the WASM chunk.
-        if (LOCAL_8051_TARGETS.has(compileTarget)) await installWasmCompilerRouting(setStatus);
+        const compileTarget = compileTargetFor(deviceLower);
         // 'bin' — the service's name for the raw SRAM image. It refuses
         // 'uf2' outright ("format must be ihx, hex or bin"), which made
         // every Pico compile fail with status stuck on the stale RUNNING
         // label (found by the production probe).
-        const compileFormat = (deviceLower === 'pico' || deviceLower === 'stm32f030') ? 'bin' : 'ihx';
-        // The compile is a pure function of (code, target, format), and the
-        // edit-run-edit loop mostly re-runs UNCHANGED programs — while a
-        // serverless cold start costs seconds per Run. Successful responses
-        // live in a small localStorage LRU keyed by the FULL request (exact
-        // match, no hash collisions), so a repeat Run skips the network.
-        const cacheKey = JSON.stringify([c, compileTarget, compileFormat]);
-        let out = compileCacheGet(cacheKey);
+        const compileFormat = compileFormatFor(deviceLower);
+
+        // ── the prebuilt lesson image (D2, second half) ──────────────────
+        //
+        // Asked FIRST, and before any network or WASM chunk, because when it
+        // hits nothing else is needed: it is this exact program, already built,
+        // with the symbol table from the same request. The match is on the
+        // generated C character for character (see shipped-images.js), so a
+        // user EDIT changes the C, misses here, and falls through to the
+        // ordinary route below — local SDCC for the five supported 8051 parts,
+        // the hosted service otherwise, with the hosted route's existing honest
+        // failure when there is no network.
+        //
+        // 8051 programs are deliberately NOT shipped: they compile in the
+        // browser already, and a shipped image for a build the app can do would
+        // be a second source of truth that can go stale unnoticed.
+        let out = LOCAL_8051_TARGETS.has(compileTarget)
+            ? null
+            : await shippedImageFor(c, compileTarget, compileFormat);
         if (out) {
-            setStatus('building', 'compiled (cached)');
+            imageProvenance = out.provenance;
+            setStatus('building', provenanceSentence(out.provenance, uiLang()));
         } else {
-            const res = await fetch(`${compilerUrl}/compile`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code: c,
-                    language: 'c',
-                    target: compileTarget,
-                    format: compileFormat,
-                    // Both, from the SAME request — see the header.
-                    symbols: true
-                })
-            });
-            out = await res.json();
-            if (out.success) compileCachePut(cacheKey, out);
+            imageProvenance = null;
+            // Loading failure is fatal only for a target promised as local. Other
+            // families deliberately retain the hosted fetch below and never need
+            // the WASM chunk.
+            if (LOCAL_8051_TARGETS.has(compileTarget)) await installWasmCompilerRouting(setStatus);
+            // The compile is a pure function of (code, target, format), and the
+            // edit-run-edit loop mostly re-runs UNCHANGED programs — while a
+            // serverless cold start costs seconds per Run. Successful responses
+            // live in a small localStorage LRU keyed by the FULL request (exact
+            // match, no hash collisions), so a repeat Run skips the network.
+            const cacheKey = JSON.stringify([c, compileTarget, compileFormat]);
+            out = compileCacheGet(cacheKey);
+            if (out) {
+                setStatus('building', 'compiled (cached)');
+            } else {
+                const res = await fetch(`${compilerUrl}/compile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: c,
+                        language: 'c',
+                        target: compileTarget,
+                        format: compileFormat,
+                        // Both, from the SAME request — see the header.
+                        symbols: true
+                    })
+                });
+                out = await res.json();
+                if (out.success) compileCachePut(cacheKey, out);
+            }
         }
         if (!out.success) throw new Error(out.error || 'the compiler refused this program');
         const isPico = String(stc.device || '').toLowerCase() === 'pico';
@@ -1606,6 +1657,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         async start() {
             try {
                 if (!session) {
+                    // Clear it HERE and not in build(): the ROM and
+                    // user-firmware routes never reach build(), so a stale
+                    // "prebuilt for this lesson" line would survive a switch
+                    // from an AVR lesson to a machine bench and describe an
+                    // image that is not running.
+                    imageProvenance = null;
                     const device = String(projectStc(null)?.device || '').toLowerCase();
                     const selectedKind = selectDebugTargetKind(device, targetKind);
                     // Z80/6502 interactive interpreters: no compile step

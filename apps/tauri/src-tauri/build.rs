@@ -39,5 +39,31 @@ fn main() {
         println!("cargo:rerun-if-changed=src/scratchlink/ble_apple.m");
     }
 
-    tauri_build::build();
+    // Defining an application manifest turns Tauri's ACL checks on for local
+    // application commands. Keep this list in exact lockstep with
+    // `generate_handler!` in src/lib.rs; the structural test enforces that.
+    const APP_COMMANDS: &[&str] = &[
+        "save_project",
+        "write_temp_project",
+        "is_mobile",
+        "download_pack",
+        "download_pack_zip",
+        "pack_present",
+        "remove_pack",
+        "pico_serial_list",
+        "pico_serial_open",
+        "pico_serial_write",
+        "pico_serial_read",
+        "pico_serial_close",
+        "pico_bootsel_volume",
+        "pico_flash_uf2",
+        "scratchlink_bridge_open",
+        "scratchlink_bridge_send",
+        "scratchlink_bridge_close",
+    ];
+    tauri_build::try_build(
+        tauri_build::Attributes::new()
+            .app_manifest(tauri_build::AppManifest::new().commands(APP_COMMANDS)),
+    )
+    .expect("failed to build Tauri application manifest");
 }

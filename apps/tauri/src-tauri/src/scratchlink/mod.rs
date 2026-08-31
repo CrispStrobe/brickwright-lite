@@ -247,13 +247,23 @@ mod tests {
     }
 
     async fn roundtrip(path: &str, request: &str) -> Value {
+        let expected_id: Value = serde_json::from_str::<Value>(request).unwrap()["id"].clone();
         let port = spawn().await;
         let (mut ws, _) = connect_async(format!("ws://127.0.0.1:{port}{path}"))
             .await
             .unwrap();
         ws.send(Message::Text(request.to_string())).await.unwrap();
-        let msg = ws.next().await.unwrap().unwrap();
-        serde_json::from_str(msg.to_text().unwrap()).unwrap()
+        // JSON-RPC notifications may legitimately precede the response. In
+        // particular pingMe emits an id-less `ping` request before its
+        // id-bearing acknowledgement, so selecting the first frame makes this
+        // oracle scheduler-dependent.
+        loop {
+            let msg = ws.next().await.unwrap().unwrap();
+            let value: Value = serde_json::from_str(msg.to_text().unwrap()).unwrap();
+            if value.get("id") == Some(&expected_id) {
+                return value;
+            }
+        }
     }
 
     #[tokio::test]
