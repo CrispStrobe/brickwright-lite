@@ -20,10 +20,36 @@
  *     is scoped to the panel under test.
  *   - the starter overlay eats clicks unless its localStorage flag is set.
  *   - never sleep for a state change; poll and report the last value seen.
+ *   - THE SCREENSHOTS ARE THE DELIVERABLE, AND A GREEN RUN DOES NOT PROVE
+ *     THEY SHOW ANYTHING. Attempt four got all 25 checks to PASS in CI
+ *     (run 33364321419) and uploaded three screenshots of which only ONE —
+ *     01-frames-locals — actually contained its claim. The debug panel
+ *     scrolls inside itself, the document is one screen tall, so `fullPage`
+ *     framed the panel's top band; the watchpoint halt line and the derived
+ *     cycle readout were both below that panel's own fold. Every check still
+ *     passed because they read `innerText`, which returns text the viewport
+ *     is not showing. Framing is therefore asserted now (see `frame()`), and
+ *     the "+1" claim is photographed on BOTH sides of the click, because one
+ *     number in one frame cannot show a delta.
  *
  * Usage:
  *   PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
  *   node scripts/verify-debug-frames-watch.mjs        (serves the build itself)
+ *
+ * REPRODUCING IT LOCALLY: build the way build.yml builds, all four steps.
+ *   node scripts/integrate.mjs
+ *   node scripts/apply-vm-overlay.mjs      <- NOT OPTIONAL
+ *   node scripts/apply-paint-overlay.mjs
+ *   cd packages/scratch-gui && NODE_ENV=production npm run build
+ * Skipping apply-vm-overlay costs an hour and looks like a broken feature, not
+ * a broken build: its `pre-load declared extensions + URL strip` patch is what
+ * stops scratch-vm resolving the declared extension id `stc12` as a RELATIVE
+ * URL. Without it the example's load fetches `/stc12`, takes a 404, and leaves
+ * the VM with ZERO targets and no thrown error — so the title updates, the
+ * circuit solves with all 8 parts, and only `targetCount: 0` (for the full 60 s
+ * poll) says anything is wrong. The visible symptom is three checks failing in
+ * a row down at `[data-debug-panel]` never appearing, which reads as "the
+ * debugger is gone".
  *
  * Screenshots land in artifacts/debug-proof/.
  */
@@ -124,14 +150,60 @@ const main = async () => {
         } catch { /* private mode */ }
     });
 
+    /** Put the element that CARRIES a claim inside the shutter's rectangle,
+     *  and measure whether it landed there.
+     *
+     *  THE FIRST CI-GREEN RUN OF THIS GATE WROTE THREE SCREENSHOTS OF WHICH
+     *  ONLY ONE SHOWED ITS CLAIM (run 33364321419, all 25 checks PASS). The
+     *  debug panel scrolls INSIDE itself and the document is exactly one
+     *  screen tall, so `fullPage` — which only grows the DOCUMENT — captured
+     *  the panel's top band while the watchpoint-halt line and the derived
+     *  cycle readout sat below that panel's own fold. Nothing caught it,
+     *  because every check reads `innerText`, and innerText does not care
+     *  what is on screen: the text is in the DOM whether or not a human could
+     *  ever have seen it. That is the exact failure mode two earlier lanes
+     *  refused to land — evidence that is asserted rather than shown.
+     *
+     *  So framing is now a CHECK, not an assumption. `scrollIntoView` reaches
+     *  an overflow:hidden container too, which `scrollIntoViewIfNeeded` will
+     *  not; the rect is then compared against the viewport, and the result is
+     *  reported in the ok-list beside the claim it frames. A future layout
+     *  change that pushes the evidence off-frame turns this gate RED instead
+     *  of quietly shipping a screenshot of the wrong part of the panel. */
+    const frame = async locator => {
+        if (!(await locator.count())) return {ok: false, detail: 'the element is not rendered'};
+        await locator.evaluate(node => node.scrollIntoView({block: 'center', inline: 'nearest'}))
+            .catch(() => {});
+        const measure = () => locator.evaluate(node => {
+            const r = node.getBoundingClientRect();
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            return {
+                ok: r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= vh &&
+                    r.left >= 0 && r.right <= vw,
+                detail: `${Math.round(r.width)}x${Math.round(r.height)} at `
+                    + `${Math.round(r.left)},${Math.round(r.top)} of ${vw}x${vh}`,
+                text: (node.innerText || '').replace(/\s+/g, ' ').slice(0, 110)
+            };
+        }).catch(e => ({ok: false, detail: `unreadable: ${e && e.message}`, text: ''}));
+        // Condition-wait, not a sleep: a smooth scroll needs frames, and this
+        // asks for the state those frames produce. NOT ONE waitForTimeout IN
+        // THIS FILE — see the note further down.
+        const seen = await waitFor(measure, v => v && v.ok, 5000, 100);
+        return {...seen, detail: `${seen.detail}${seen.ok ? '' : ' — OFF FRAME'} · "${seen.text}"`};
+    };
+
     /** Screenshot, saying so if it cannot. A crashed page throws here, and a
-     *  throw on the last line of a check loses the whole run's report. */
-    const shoot = async name => {
+     *  throw on the last line of a check loses the whole run's report.
+     *  `reveal`, when given, is the claim-bearing locator to frame first. */
+    const shoot = async (name, reveal) => {
+        const framed = reveal ? await frame(reveal) : null;
         try {
             await page.screenshot({path: path.join(SHOTS, name), fullPage: true});
         } catch (e) {
             console.log(`could not write ${name}: ${e && e.message}`);
         }
+        return framed;
     };
 
     const errors = [];
@@ -401,7 +473,10 @@ WHEN flag clicked:
         record('D28: and the program variables with their addresses', frames.vars.length > 0,
             frames.vars.join(' | ').slice(0, 120));
     }
-    await shoot('01-frames-locals.png');
+    const framed01 = await shoot('01-frames-locals.png',
+        debugPanel.locator('[data-debug-frames]').first());
+    record('01-frames-locals.png SHOWS the Position pane, refusal text and all',
+        !!(framed01 && framed01.ok), framed01 ? framed01.detail : 'nothing to frame');
 
     // ── D25: one cycle step moves the counter by exactly one ────────────
     // The drawer holds the engineer's controls; open it first.
@@ -418,12 +493,28 @@ WHEN flag clicked:
     record('D25: the cycle-step button is present on the C target', hasCycleBtn,
         hasCycleBtn ? 'rendered' : 'missing — the emu8051 target should declare `cycle`');
 
+    // The drawer's clock pane is where the derived count is printed. It has no
+    // data-attribute of its own, so it is located by the text it renders —
+    // `5,529,625 cycles @ 11.059 MHz` — which is also exactly the string a
+    // human has to be able to read off the screenshot.
+    const cycleReadout = debugPanel
+        .locator('div', {hasText: /^[\d.,]+ (cycles|Zyklen) @ [\d.]+ MHz$/}).last();
+
     if (hasCycleBtn) {
         const readCycles = () => debugPanel.evaluate(el => {
             const m = (el.innerText || '').match(/([\d.,]+)\s*(cycles?|Zyklen)\s*@/i);
             return m ? Number(m[1].replace(/[.,]/g, '')) : null;
         });
         const before = await readCycles();
+        // ONE NUMBER IN ONE FRAME CANNOT SHOW A DELTA. The claim under test is
+        // "+1", so the evidence is a pair: the same readout photographed either
+        // side of the click. A single after-shot would be a screenshot of a
+        // number nobody can check, which is how the first green run of this
+        // gate produced three unreadable claims and passed anyway.
+        const framedBefore = await shoot('02-cycle-step-before.png', cycleReadout);
+        record('02-cycle-step-before.png SHOWS the derived cycle count before the step',
+            !!(framedBefore && framedBefore.ok),
+            framedBefore ? framedBefore.detail : 'nothing to frame');
         await cycleBtn.click();
         // Wait for the number to MOVE rather than for a fixed 600 ms. This is
         // strictly better than a sleep here: it cannot pass by reading a stale
@@ -433,7 +524,9 @@ WHEN flag clicked:
         record('D25: one cycle step advances the cycle count by EXACTLY 1', delta === 1,
             `before=${before} after=${after} delta=${delta}`);
     }
-    await shoot('02-cycle-step.png');
+    const framed02 = await shoot('02-cycle-step.png', cycleReadout);
+    record('02-cycle-step.png SHOWS the derived cycle count after the step',
+        !!(framed02 && framed02.ok), framed02 ? framed02.detail : 'nothing to frame');
 
     // ── D29: a watchpoint halts at the write and names the byte ──────────
     // `counter` lives in iram; the drawer's watch button prompts for the hex
@@ -504,7 +597,10 @@ WHEN flag clicked:
         record('D29: the report carries the watched ADDRESS', hasAddr, hit.slice(0, 120));
         record('D29: and both sides of the VALUE transition', hasVals, hit.slice(0, 120));
     }
-    await shoot('03-watchpoint-hit.png');
+    const framed03 = await shoot('03-watchpoint-hit.png',
+        debugPanel.locator('[data-watch-hit]').first());
+    record('03-watchpoint-hit.png SHOWS the halt line naming the byte and both values',
+        !!(framed03 && framed03.ok), framed03 ? framed03.detail : 'nothing to frame');
 
     record('no uncaught page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
