@@ -112,6 +112,37 @@ WHEN flag clicked:
         `${(first?.text || '').length} chars`);
     record('the UI reports source mappings', /source mapping/i.test(first?.body || ''),
         (first?.body || '').match(/\d+ source mapping[^\n]*/i)?.[0] || 'missing');
+
+    // A non-empty listing alone could be a stale cache hit. Change the actual
+    // program, rebuild the workspace, and require a different linked artifact.
+    const firstListing = first?.text || '';
+    await page.locator('button', {hasText: /Pseudo/}).first().click();
+    await editor.click();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.insertText(`DEVICE STC12C5A60S2
+CLOCK 11059200
+PIN led = P1.0 OUTPUT ACTIVE LOW
+
+WHEN flag clicked:
+  repeat 3:
+    toggle led
+    wait 0.01 seconds
+  turn off led`);
+    await page.locator('button', {hasText: /To blocks/i}).first().click({force: true});
+    const changedBlocks = await waitFor(() => page.evaluate(() =>
+        [...document.querySelectorAll('.blocklyDraggable')].filter(node => !node.closest('.blocklyFlyout')).length),
+    count => count > blockCount);
+    record('the changed 8051 source rebuilt the workspace', changedBlocks > blockCount,
+        `${blockCount} → ${changedBlocks} blocks`);
+    await page.locator('[role="tab"]', {hasText: /^Code$/i}).first().click();
+    await page.locator('button', {hasText: /ASM/}).first().click();
+    const second = await waitFor(() => page.locator('.cm-content').first().innerText(),
+        text => text !== firstListing && /main\.c:\d+:/.test(text) &&
+            /^\s*[0-9A-F]{4,6}\s+[0-9A-F]{2}/mi.test(text), 120000);
+    record('a second source hash produces a distinct linked listing',
+        Boolean(second && second !== firstListing && /main\.c:\d+:/.test(second)),
+        `${firstListing.length} → ${(second || '').length} chars`);
     record('the listing editor is read-only', await editor.getAttribute('contenteditable') === 'false',
         `contenteditable=${await editor.getAttribute('contenteditable')}`);
     record('the listing made no hosted compiler request', hosted.length === 0, `${hosted.length} blocked`);
