@@ -160,6 +160,18 @@ than treated as progress. Runtime completion still requires mock-IPC tests for
 both labels plus packaged Linux and iOS/Android lifecycle evidence, because a
 static contract cannot prove platform webview routing.
 
+The native policy core is now implemented independently of Tauri registration.
+It accepts only the exact `capability-broker` caller for lease issue, semantic
+authorization and revocation; binds a host-created identity to a 256-bit opaque
+lease; validates the closed `platform.kind.read` / `platform/default` pair and
+an exactly empty argument object; enforces exact sequencing, TTL, request and
+live-lease bounds; and retains only a bounded redacted audit. Twelve Rust tests
+cover the allow path and every boundary above, including editor-originated
+issue/revoke attempts that must leave a valid session unchanged. The module is
+deliberately not registered as a command: a tested policy engine is not caller
+isolation, and the topology gate continues to require the isolated webview
+before registration.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker

@@ -3,6 +3,7 @@
 mod assetserver;
 mod downloads;
 mod fileio;
+mod native_policy;
 mod pico;
 mod scratchlink;
 
