@@ -308,19 +308,31 @@ const main = async () => {
     // correspond to the blocks in front of them. So the edited program must NOT
     // run on the shipped image — it must go for the compiler, and with the
     // network off, fail saying so.
-    await clickByText(/^\s*⏹?\s*(Stop)\s*$/i).catch(() => {});
+    // Stop is ASSERTED, not attempted-and-swallowed. `debug-runner.stop()`
+    // leaves `session` in place, and `start()` skips `build()` whenever a
+    // session exists — so a Stop that silently did not happen would make the
+    // edit below re-run the OLD image and this check would "pass" having tested
+    // nothing. The runner is torn down by the panel on a PIN SIGNATURE change,
+    // which is why the edited program below moves the LED to another pin: that
+    // is what guarantees a real rebuild rather than a resumed session.
+    await clickByText(/^\s*⏹?\s*(Stop)\s*$/i);
+    const stopped = await waitFor(phase, p => p === 'idle', 20000, 250);
+    record('the session stopped before the program was edited', stopped === 'idle',
+        `phase=${stopped}`);
     await page.locator('[role="tab"]', {hasText: /^Code$/i}).first().click();
     const cm = page.locator('.cm-content').first();
     await cm.waitFor({state: 'visible', timeout: 30000});
     await cm.click();
     await page.keyboard.press('Control+a');
     await page.keyboard.press('Backspace');
-    // The same bench with ONE number changed. Deliberately a real behavioural
-    // change and not a comment: a comment might not reach the emitted C at all,
-    // and then this check would pass without having tested anything.
+    // The same bench, edited the way a learner edits: the LED moved to another
+    // pin and the blink made faster. Deliberately real code and not a comment,
+    // which might not reach the emitted C at all — and deliberately a PIN
+    // change, because the panel keys its runner teardown on the pin signature
+    // (see the Stop note above), so this is the edit that certainly rebuilds.
     await page.keyboard.insertText(`DEVICE ARDUINO-NANO
 CLOCK 16000000
-PIN led1 = D13 OUTPUT
+PIN led1 = D12 OUTPUT
 PIN pot1 = A6 ANALOG
 
 WHEN flag clicked:
@@ -354,6 +366,13 @@ WHEN flag clicked:
     record('D2: and the prebuilt sentence is GONE, not left describing the old image',
         !(await debugPanel.locator('[data-image-provenance]').count()),
         editedPanel.slice(0, 160));
+    // The refusal itself. "Failed to fetch" is what the browser says; it names
+    // neither what was attempted nor why this same bench started offline a
+    // minute ago, and this is the ONE place a learner meets D2's residue.
+    record('D2: the refusal explains the residue instead of saying "Failed to fetch"',
+        /compiler service/.test(editedPanel) && /cannot run in a browser/.test(editedPanel) &&
+        /Undo back to the lesson/.test(editedPanel),
+        editedPanel.replace(/^.*?error/, 'error').slice(0, 260));
     await shoot('02-edited-program-falls-through.png');
 
     record('no uncaught page errors', errors.length === 0, errors.slice(0, 3).join(' | '));

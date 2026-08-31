@@ -493,6 +493,34 @@ test('the runner asks for a shipped image before any network, and never for 8051
         'debug-runner has grown its own copy of the device -> target map again');
 });
 
+test('the offline refusal on an edited AVR/ARM program says what a learner needs', () => {
+    // The residue D2 cannot close: an edited program on a family whose compiler
+    // is not in the page. Before this it surfaced as the browser's own "Failed
+    // to fetch" — six words that name neither what was attempted nor why the
+    // same bench started offline a minute earlier.
+    const src = readFileSync(
+        path.join(OVERLAY, 'src/lib/bw-debug/debug-runner.js'), 'utf8');
+    const start = src.indexOf('THE HONEST RESIDUE OF D2');
+    assert.ok(start > 0, 'the hosted compile no longer catches its own network failure');
+    const block = src.slice(start, start + 2200);
+    for (const [what, re] of [
+        ['what was attempted', /built by the compiler service at/],
+        ['why it is not in the page', /cannot run in a browser/],
+        ['that the lesson program is prebuilt', /ship their program already built/],
+        ['why the edit is different', /nobody has compiled it yet/],
+        // Matched loosely because the sentence is concatenated across source
+        // lines — asserting the exact wording would be asserting the line wrap.
+        ['what would work instead', /Undo back to the lesson/],
+        ['that 8051 is the family that does work in the page', /switch to an 8051 device/]
+    ]) {
+        assert.match(block, re, `the refusal does not say ${what}`);
+    }
+    // And it must NOT hand an 8051 user advice about switching to 8051.
+    assert.match(block, /LOCAL_8051_TARGETS\.has\(compileTarget\)/,
+        'the refusal is not branched on the family, so a supported 8051 target whose ' +
+        'in-page router failed would be told to switch to an 8051 device');
+});
+
 test('the panel renders the provenance sentence, and not as a warning', () => {
     const src = readFileSync(
         path.join(OVERLAY, 'src/components/tw-pseudocode/debug-panel.jsx'), 'utf8');

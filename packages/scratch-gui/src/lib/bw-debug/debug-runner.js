@@ -634,18 +634,46 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (out) {
                 setStatus('building', 'compiled (cached)');
             } else {
-                const res = await fetch(`${compilerUrl}/compile`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        code: c,
-                        language: 'c',
-                        target: compileTarget,
-                        format: compileFormat,
-                        // Both, from the SAME request — see the header.
-                        symbols: true
-                    })
-                });
+                let res;
+                try {
+                    res = await fetch(`${compilerUrl}/compile`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code: c,
+                            language: 'c',
+                            target: compileTarget,
+                            format: compileFormat,
+                            // Both, from the SAME request — see the header.
+                            symbols: true
+                        })
+                    });
+                } catch (e) {
+                    // THE HONEST RESIDUE OF D2, in the one place a learner meets
+                    // it. A dead network here surfaced as the browser's own
+                    // "Failed to fetch", which says nothing about what was being
+                    // attempted, and nothing about why the SAME bench started a
+                    // minute earlier without a connection. Say what was tried,
+                    // why it is not in the page, and what would work instead.
+                    //
+                    // Deliberately branched on the family rather than written
+                    // once: an 8051 target only reaches here when its in-page
+                    // router is not answering, and telling that user to "use an
+                    // 8051 device" would be nonsense.
+                    const reason = e && e.message ? e.message : String(e);
+                    throw new Error(LOCAL_8051_TARGETS.has(compileTarget)
+                        ? `the in-page ${compileTarget} compiler did not answer and the ` +
+                          `service at ${compilerUrl} could not be reached either (${reason})`
+                        : `${compileTarget} programs are built by the compiler service at ` +
+                          `${compilerUrl}, which could not be reached (${reason}). Its ` +
+                          `compiler cannot run in a browser, so it is not in the page. Some ` +
+                          `lesson benches on this family ship their program already built and ` +
+                          `start with no connection — but an edited program is not one of ` +
+                          `them, because nobody has compiled it yet. Undo back to the lesson's ` +
+                          `own program to run offline again, reconnect to build this one, or ` +
+                          `switch to an 8051 device, whose compiler does run in the page.`
+                    );
+                }
                 out = await res.json();
                 if (out.success) compileCachePut(cacheKey, out);
             }
