@@ -16,10 +16,11 @@ const owner = Object.freeze({});
 const makeProtocol = (overrides = {}) => new NativeBrokerProtocol({
     owner,
     resolvePin: async candidate => candidate === url ? pin : null,
-    loadWorker: async (resolvedPin, workerId) => {
+    startWorker: (resolvedPin, workerId) => {
         assert.equal(resolvedPin, pin);
         assert.equal(workerId, 0);
-        return {extensions: [{extensionId: 4, opcodes: ['readKind'], menus: ['kindMenu']}]};
+        return {target: {workerId}, registration: Promise.resolve(
+            {extensions: [{extensionId: 4, opcodes: ['readKind'], menus: ['kindMenu']}]})};
     },
     callWorker: async (_state, extensionId, method, args) => ({extensionId, method, args}),
     ...overrides
@@ -136,7 +137,8 @@ test('pending request capacity is constant and released after completion', async
     let finishLoad;
     const broker = makeProtocol({
         maxPending: 1,
-        loadWorker: () => new Promise(resolve => { finishLoad = resolve; })
+        startWorker: (_pin, workerId) => ({target: {workerId},
+            registration: new Promise(resolve => { finishLoad = resolve; })})
     });
     const first = broker.load(owner, load(0));
     await Promise.resolve();
@@ -225,7 +227,8 @@ test('failed post-create registration rolls back with revoke and terminate', asy
         {extensions: [{extensionId: 4, opcodes: ['x', 'y'], menus: []}]}
     ]) {
         const events = [];
-        const broker = makeProtocol({maxMethods: 1, loadWorker: async () => registration,
+        const broker = makeProtocol({maxMethods: 1, startWorker: (_pin, workerId) =>
+            ({target: {workerId}, registration: Promise.resolve(registration)}),
             revokeWorker: () => events.push('revoke'), terminateWorker: () => events.push('terminate')});
         await assert.rejects(broker.load(owner, load()), e => e.code === 'invalid-registration');
         assert.deepEqual(events, ['revoke', 'terminate']);
@@ -251,7 +254,7 @@ test('dispose permanently closes protocol, cleans every worker, and stales infli
     await broker.load(owner, load());
     const pending = broker.call(owner, call(1));
     await broker.dispose(owner); finish('secret');
-    await assert.rejects(pending, e => e.code === 'stale-reply');
+    await assert.rejects(pending, e => e.code === 'closed');
     assert.deepEqual(events, ['r0', 't0']);
     await assert.rejects(broker.load(owner, load(2)), e => e.code === 'closed');
     await assert.rejects(broker.call(owner, call(2)), e => e.code === 'closed');
@@ -259,15 +262,15 @@ test('dispose permanently closes protocol, cleans every worker, and stales infli
     assert.throws(() => broker.snapshot(owner), e => e.code === 'closed');
 });
 
-test('dispose waits for in-flight worker creation before cleanup', async () => {
+test('dispose cleans an atomically owned target without waiting for registration', async () => {
     let finishCreation;
     let enteredCreation;
     const entered = new Promise(resolve => { enteredCreation = resolve; });
     const events = [];
     const broker = makeProtocol({
-        loadWorker: () => {
+        startWorker: (_pin, workerId) => {
             enteredCreation();
-            return new Promise(resolve => { finishCreation = resolve; });
+            return {target: {workerId}, registration: new Promise(resolve => { finishCreation = resolve; })};
         },
         revokeWorker: () => events.push('revoke'),
         terminateWorker: () => events.push('terminate')
@@ -275,18 +278,196 @@ test('dispose waits for in-flight worker creation before cleanup', async () => {
     const pendingLoad = broker.load(owner, load());
     await entered;
     const disposing = broker.dispose(owner);
-    assert.deepEqual(events, [], 'cleanup cannot run before creation settles');
-    finishCreation({extensions: [{extensionId: 4, opcodes: ['readKind'], menus: []}]});
     await disposing;
-    await assert.rejects(pendingLoad, error => error.code === 'stale-reply');
+    assert.deepEqual(events, ['revoke', 'terminate']);
+    finishCreation({extensions: [{extensionId: 4, opcodes: ['readKind'], menus: []}]});
+    await assert.rejects(pendingLoad, error => error.code === 'closed');
     assert.deepEqual(events, ['revoke', 'terminate']);
 });
 
 test('checked worker IDs and registration collection bounds fail closed', async () => {
     const exhausted = makeProtocol(); exhausted._nextWorkerId = Number.MAX_SAFE_INTEGER;
     await assert.rejects(exhausted.load(owner, load()), e => e.code === 'capacity');
-    const oversized = makeProtocol({maxExtensions: 1, loadWorker: () => ({extensions: [
+    const oversized = makeProtocol({maxExtensions: 1, startWorker: (_pin, workerId) => ({target: {workerId},
+        registration: Promise.resolve({extensions: [
         {extensionId: 1, opcodes: ['a'], menus: []}, {extensionId: 2, opcodes: ['b'], menus: []}
-    ]})});
+    ]})})});
     await assert.rejects(oversized.load(owner, load()), e => e.code === 'invalid-registration');
+});
+
+const fakeTime = () => {
+    let now = 0; let next = 0; const timers = new Map();
+    return {
+        clock: {now: () => now},
+        scheduler: {
+            set: (delay, callback) => { const id = ++next; timers.set(id, {at: now + delay, callback}); return id; },
+            clear: id => timers.delete(id)
+        },
+        advance: async amount => {
+            now += amount;
+            for (const [id, timer] of [...timers].sort((a, b) => a[1].at - b[1].at || a[0] - b[0])) {
+                if (timer.at <= now && timers.delete(id)) timer.callback();
+            }
+            await Promise.resolve(); await Promise.resolve();
+        },
+        setNow: value => { now = value; }
+    };
+};
+
+test('resolve timeout is deterministic, consumes sequence, and clears pending', async () => {
+    const time = fakeTime();
+    const broker = makeProtocol({clock: time.clock, scheduler: time.scheduler, operationTimeoutMs: 10,
+        resolvePin: () => new Promise(() => {})});
+    const pending = broker.load(owner, load());
+    await time.advance(9);
+    assert.deepEqual(broker.snapshot(owner), {workers: 1, pending: 1});
+    await time.advance(1);
+    await assert.rejects(pending, e => e.code === 'timeout');
+    assert.deepEqual(broker.snapshot(owner), {workers: 0, pending: 0});
+    await assert.rejects(broker.load(owner, load(0)), e => e.code === 'replayed-request');
+});
+
+test('late resolve after timeout never starts a worker', async () => {
+    const time = fakeTime(); let resolve; let starts = 0;
+    const broker = makeProtocol({clock: time.clock, scheduler: time.scheduler, operationTimeoutMs: 5,
+        resolvePin: () => new Promise(r => { resolve = r; }), startWorker: () => { starts++; throw new Error('bad'); }});
+    const pending = broker.load(owner, load());
+    await time.advance(5); await assert.rejects(pending, e => e.code === 'timeout');
+    resolve(pin); await Promise.resolve(); await Promise.resolve();
+    assert.equal(starts, 0);
+});
+
+test('dispose returns while resolve and call dependencies never settle', async () => {
+    const time = fakeTime();
+    const resolving = makeProtocol({clock: time.clock, scheduler: time.scheduler,
+        resolvePin: () => new Promise(() => {})});
+    const pendingLoad = resolving.load(owner, load());
+    await resolving.dispose(owner);
+    await assert.rejects(pendingLoad, e => e.code === 'closed');
+
+    const callTime = fakeTime(); const calling = makeProtocol({clock: callTime.clock, scheduler: callTime.scheduler,
+        callWorker: () => new Promise(() => {})});
+    await calling.load(owner, load());
+    const pendingCall = calling.call(owner, call(1));
+    await calling.dispose(owner);
+    await assert.rejects(pendingCall, e => e.code === 'closed');
+});
+
+test('startWorker must return atomic target ownership synchronously', async () => {
+    const broker = makeProtocol({startWorker: async () =>
+        ({target: {}, registration: {extensions: []}})});
+    await assert.rejects(broker.load(owner, load()), e => e.code === 'operation-failed');
+});
+
+test('registration timeout cleans exactly once and late settlement cannot publish', async () => {
+    const time = fakeTime(); let finish; const events = [];
+    const broker = makeProtocol({clock: time.clock, scheduler: time.scheduler, operationTimeoutMs: 5,
+        startWorker: (_pin, workerId) => ({target: {workerId},
+            registration: new Promise(resolve => { finish = resolve; })}),
+        revokeWorker: () => events.push('revoke'), terminateWorker: () => events.push('terminate')});
+    const pending = broker.load(owner, load());
+    while (!finish) await Promise.resolve();
+    await time.advance(5); await assert.rejects(pending, e => e.code === 'timeout');
+    while (events.length < 2) await Promise.resolve();
+    assert.deepEqual(events, ['revoke', 'terminate']);
+    finish({extensions: [{extensionId: 4, opcodes: ['readKind'], menus: []}]});
+    await Promise.resolve(); await Promise.resolve();
+    assert.deepEqual(events, ['revoke', 'terminate']);
+    assert.deepEqual(broker.snapshot(owner), {workers: 0, pending: 0});
+});
+
+test('late dependency rejection after timeout is handled and redacted', async () => {
+    const time = fakeTime(); let rejectCall; const unhandled = [];
+    const listener = reason => unhandled.push(reason); process.on('unhandledRejection', listener);
+    try {
+        const broker = makeProtocol({clock: time.clock, scheduler: time.scheduler, operationTimeoutMs: 5,
+            callWorker: () => new Promise((_resolve, reject) => { rejectCall = reject; })});
+        await broker.load(owner, load());
+        const pending = broker.call(owner, call(1)); await time.advance(5);
+        await assert.rejects(pending, e => e.code === 'timeout' && !/secret/.test(e.message));
+        rejectCall(new Error('late secret')); await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(unhandled, []);
+    } finally { process.off('unhandledRejection', listener); }
+});
+
+test('dispose with hung cleanup is bounded and terminate follows revoke timeout', async () => {
+    const time = fakeTime(); const events = [];
+    const broker = makeProtocol({clock: time.clock, scheduler: time.scheduler, cleanupTimeoutMs: 5,
+        revokeWorker: () => { events.push('revoke'); return new Promise(() => {}); },
+        terminateWorker: () => { events.push('terminate'); return new Promise(() => {}); }});
+    await broker.load(owner, load());
+    let disposed = false; const disposing = broker.dispose(owner).then(() => { disposed = true; });
+    await Promise.resolve(); assert.deepEqual(events, ['revoke']); assert.equal(disposed, false);
+    await time.advance(5);
+    while (events.length < 2) await Promise.resolve();
+    assert.deepEqual(events, ['revoke', 'terminate']); assert.equal(disposed, false);
+    await time.advance(5); await disposing; assert.equal(disposed, true);
+});
+
+test('monotonic clock regression fails closed without consuming sequence', async () => {
+    const time = fakeTime(); const broker = makeProtocol({clock: time.clock, scheduler: time.scheduler});
+    time.setNow(-1);
+    await assert.rejects(broker.load(owner, load()), e => e.code === 'operation-failed');
+    time.setNow(0);
+    assert.equal((await broker.load(owner, load())).requestId, 0);
+});
+
+test('terminate timeout never restores worker authority and cleanup continues', async () => {
+    const time = fakeTime(); const events = [];
+    const broker = makeProtocol({clock: time.clock, scheduler: time.scheduler, operationTimeoutMs: 5,
+        cleanupTimeoutMs: 10, revokeWorker: () => { events.push('revoke'); return new Promise(() => {}); },
+        terminateWorker: () => events.push('terminate')});
+    await broker.load(owner, load());
+    const terminating = broker.terminate(owner, {protocol: 1, requestId: 1, workerId: 0});
+    await time.advance(5);
+    await assert.rejects(terminating, error => error.code === 'timeout');
+    assert.deepEqual(broker.snapshot(owner), {workers: 0, pending: 0});
+    await assert.rejects(broker.call(owner, call(2)), error => error.code === 'unknown-worker');
+    await time.advance(5);
+    while (events.length < 2) await Promise.resolve();
+    assert.deepEqual(events, ['revoke', 'terminate']);
+});
+
+test('timed-out calls release capacity and never inspect late result getters', async () => {
+    const time = fakeTime(); let finish; let reads = 0;
+    const broker = makeProtocol({clock: time.clock, scheduler: time.scheduler, operationTimeoutMs: 5, maxPending: 1,
+        callWorker: () => new Promise(resolve => { finish = resolve; })});
+    await broker.load(owner, load());
+    const first = broker.call(owner, call(1));
+    await time.advance(5); await assert.rejects(first, error => error.code === 'timeout');
+    assert.deepEqual(broker.snapshot(owner), {workers: 1, pending: 0});
+    const late = {}; Object.defineProperty(late, 'secret', {get: () => { reads++; return 'secret'; }});
+    finish(late); await Promise.resolve(); await Promise.resolve();
+    assert.equal(reads, 0);
+});
+
+test('cleanup scheduler failure still attempts terminate and resolves disposal', async () => {
+    const events = [];
+    const scheduler = {set: () => { throw new Error('timer secret'); }, clear: () => {}};
+    await assert.rejects(makeProtocol({scheduler}).load(owner, load()), error => error.code === 'operation-failed');
+
+    let failCleanupTimers = false;
+    const time = fakeTime();
+    const conditionalScheduler = {
+        set: (delay, callback) => {
+            if (failCleanupTimers && delay === 7) throw new Error('timer secret');
+            return time.scheduler.set(delay, callback);
+        },
+        clear: time.scheduler.clear
+    };
+    const broker = makeProtocol({clock: time.clock, scheduler: conditionalScheduler, cleanupTimeoutMs: 7,
+        revokeWorker: () => { events.push('revoke'); return new Promise(() => {}); },
+        terminateWorker: () => events.push('terminate')});
+    await broker.load(owner, load()); failCleanupTimers = true;
+    await broker.dispose(owner);
+    assert.deepEqual(events, ['revoke', 'terminate']);
+});
+
+test('a synchronous timeout callback cannot strand pending capacity', async () => {
+    const scheduler = {set: (_delay, callback) => { callback(); return 1; }, clear: () => {}};
+    const broker = makeProtocol({scheduler, maxPending: 1});
+    await assert.rejects(broker.load(owner, load()), error => error.code === 'timeout');
+    assert.equal(broker._operations.size, 0);
+    await assert.rejects(broker.load(owner, load(1)), error => error.code === 'timeout');
+    assert.equal(broker._operations.size, 0);
 });

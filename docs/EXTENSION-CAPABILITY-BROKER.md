@@ -216,15 +216,29 @@ envelopes before mutation or asynchronous work, maps provider identities to
 broker identities, and exposes only methods from the worker's bounded
 registration. Arguments and results cross a bounded plain-data clone which
 rejects accessors, symbols, exotic prototypes, cycles and oversized graphs.
-Worker creation is transactional: failed registration, termination, disposal
-and creation/disposal races revoke before termination and cannot return a late
-result. Nineteen focused tests cover replay/gaps, forged ownership, cross-worker
-routing, stale replies, redacted dependency failures, data-shape mutations,
-capacity, rollback and lifecycle races. The module is deliberately not wired to
-Tauri or the editor yet. Transport registration and dependency cancellation /
-deadlines remain explicit blockers; a never-settling injected dependency can
-still delay disposal, so this checkpoint is not a production broker and does
-not complete CP3-C.
+Worker creation is transactional: the adapter must synchronously return an
+owned cleanup target before its registration promise is observed. Failed
+registration, termination, disposal and creation/disposal races revoke before
+termination and cannot return a late result. Injected monotonic timers bound
+resolve, registration, calls and both cleanup stages; timeout/disposal clears
+public pending state immediately, consumes late settlements safely, and cannot
+restore worker authority. Thirty-one focused tests cover replay/gaps, forged
+ownership, cross-worker routing, stale replies, redacted dependency failures,
+data-shape mutations, capacity, rollback, hung dependencies, timer failure and
+lifecycle races. The module is deliberately not wired to Tauri or the editor
+yet. The future adapter must honor AbortSignal to release foreign promises; JS
+cannot forcibly detach a dependency which ignores cancellation even though the
+broker's own maps remain bounded. Authenticated transport ownership therefore
+remains an explicit blocker, and this checkpoint does not complete CP3-C.
+
+Local Tauri 2.11 source inspection identified the desktop transport without
+assuming transferable ports: separate main-request and broker-reply commands,
+each ACL-scoped to its exact webview and each checking Tauri's injected sender
+label again before parsing. Rust can target the exact hidden broker with a
+bounded serialized frame; events and custom protocols carry no equivalent
+sender authority. The semantic native command remains broker-only. This route
+still needs executable IPC/session/serialization mutations before registration,
+and mobile stays fail-closed because it has no isolated broker realm.
 
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
