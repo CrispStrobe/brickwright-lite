@@ -2,10 +2,13 @@
 
 Owner: `fab-asm-local` (claimed 2026-08-31)
 
-Budget: 3–5 hours across five independently pushed checkpoints. This closes D12
-for the generated-listing path used by `languages-protocols` and
-`machines-source-asm`. Editable handwritten assembly remains a separate
-assembler workflow and must not be silently relabelled as compiler output.
+Budget: 3–5 hours across five independently pushed checkpoints. This closes the
+generated-listing half of D12 for the STC/8051 `languages-protocols` lesson.
+`machines-source-asm` is a 6502 lesson, outside the bundled SDCC target set, and
+its listing remains explicitly hosted. Editable handwritten assembly is also a
+separate hosted assembler workflow and must not be silently relabelled as
+compiler output. D12 therefore shrinks from two affected lessons to one; it is
+not honestly closed by this progression.
 
 Agents may audit bounded pieces, but the owner reviews and integrates every
 change, runs the real compiler and browser proofs, and pushes each accepted
@@ -13,6 +16,10 @@ checkpoint directly to the relevant default branch. Heavy work is guarded by
 `scripts/check-system-load.mjs`; GitHub CI receives consolidated commits.
 
 ## Checkpoint 1 — specify listing semantics (35–55 minutes)
+
+Status: shipped in `eb24d16f4`. The linked `main.rst` is the only existing SDCC
+artifact combining final addresses, bytes, and C source markers; raw compiler
+ASM has no final addresses and the assembler LST is still relocatable.
 
 - Trace Source and Listing modes from the Code tab through compiler responses.
 - Decide which existing local artifact is the honest listing: SDCC source ASM,
@@ -24,6 +31,8 @@ the response shape and mapping guarantees, distinguish source ASM from linked
 addresses, and include mutation reds for swapped or falsely labelled modes.
 
 ## Checkpoint 2 — expose a local listing contract (45–70 minutes)
+
+Status: shipped in `eb24d16f4` with real four-stage WASM tests.
 
 - Extend the four-stage WASM compiler result with the chosen listing and a
   deterministic source/address map derived from artifacts it already creates.
@@ -37,6 +46,9 @@ remain green; malformed artifacts fail by name; focused tests are mutation-
 proved and pushed to `main`.
 
 ## Checkpoint 3 — wire the Code tab locally (45–70 minutes)
+
+Status: shipped in `71b41aae0`; the gate scaffold and its cache-invalidation
+proof followed in `067bb1240` and `5d957d6fe`.
 
 - Route supported 8051 Listing mode directly through the local compiler module.
 - Preserve the explicit hosted route for unsupported targets and editable ASM
@@ -63,8 +75,9 @@ evidence. The gate is workflow-wired only after a watched green run.
 
 ## Checkpoint 5 — lesson and ledger closure (35–50 minutes)
 
-- Update both affected lessons in English and German and bump their content
-  versions with the new offline boundary stated precisely.
+- Update the affected 8051 lesson in English and German and bump its content
+  version with the new offline boundary stated precisely. Keep the 6502
+  lesson's hosted boundary explicit.
 - Convert the D12 open-defect sentinel into positive local-listing coverage.
 - Reconcile PLAN, Wave 3, Wave 7, and the open-defect ledger.
 
