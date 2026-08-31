@@ -309,12 +309,18 @@ const main = async () => {
     // run on the shipped image — it must go for the compiler, and with the
     // network off, fail saying so.
     // Stop is ASSERTED, not attempted-and-swallowed. `debug-runner.stop()`
-    // leaves `session` in place, and `start()` skips `build()` whenever a
-    // session exists — so a Stop that silently did not happen would make the
-    // edit below re-run the OLD image and this check would "pass" having tested
-    // nothing. The runner is torn down by the panel on a PIN SIGNATURE change,
-    // which is why the edited program below moves the LED to another pin: that
-    // is what guarantees a real rebuild rather than a resumed session.
+    // leaves `session` in place and `start()` skips `build()` whenever a session
+    // exists, so a Stop that silently did not happen would make the edit below
+    // re-run the OLD image and this check would "pass" having tested nothing.
+    //
+    // Reading that code also suggested a second hazard — the panel tears the
+    // runner down on a PIN SIGNATURE change, so an edit that keeps the same pins
+    // looked like it would resume the old image. MEASURED 2026-08-31 and it does
+    // NOT: the same bench edited to keep `led1 = D13` and `pot1 = A6`, changing
+    // only the blink period, still went to `error` with one blocked POST, which
+    // means `build()` ran. Written down because the inference was wrong and the
+    // next reader should not spend the same hour on it. The edit below moves the
+    // LED anyway — a conservative choice, not a necessary one.
     await clickByText(/^\s*⏹?\s*(Stop)\s*$/i);
     const stopped = await waitFor(phase, p => p === 'idle', 20000, 250);
     record('the session stopped before the program was edited', stopped === 'idle',
@@ -327,9 +333,7 @@ const main = async () => {
     await page.keyboard.press('Backspace');
     // The same bench, edited the way a learner edits: the LED moved to another
     // pin and the blink made faster. Deliberately real code and not a comment,
-    // which might not reach the emitted C at all — and deliberately a PIN
-    // change, because the panel keys its runner teardown on the pin signature
-    // (see the Stop note above), so this is the edit that certainly rebuilds.
+    // which might not reach the emitted C at all.
     await page.keyboard.insertText(`DEVICE ARDUINO-NANO
 CLOCK 16000000
 PIN led1 = D12 OUTPUT
