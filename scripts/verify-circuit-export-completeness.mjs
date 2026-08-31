@@ -64,11 +64,33 @@ try {
     }
     if (pageErrors.length) throw new Error(`page errors: ${pageErrors.join(' | ')}`);
 
+    const expand = designer.getByRole('button', {name: 'Expand instruments panel'});
+    if (await expand.count()) await expand.click({force: true});
+    await designer.getByRole('button', {name: /Scope$/}).click({force: true});
+    const scope = designer.locator('[data-scope-module]');
+    await scope.waitFor({state: 'visible', timeout: 10000});
+    const netSelect = scope.locator('select').last();
+    const options = await netSelect.locator('option').count();
+    if (options < 2) throw new Error('scope has no solved net to export');
+    await netSelect.selectOption({index: 1});
+    await scope.getByRole('button', {name: /Add channel/}).click();
+    await page.waitForTimeout(750);
+    const [csvDownload] = await Promise.all([
+        page.waitForEvent('download', {timeout: 10000}),
+        scope.locator('[data-testid="bw-scope-trace-csv-download"]').click()
+    ]);
+    const csv = (await readDownload(csvDownload)).toString('utf8');
+    if (!/^# net=.* capture=envelope .*points=\d+\nelapsed_seconds,min_volts,max_volts\n/m.test(csv)) {
+        throw new Error(`scope CSV has no truthful envelope header: ${csv.slice(0, 180)}`);
+    }
+    const numericRows = csv.split('\n').filter(line => /^\d+(?:\.\d+)?,(?:NaN|-?\d)/.test(line));
+    if (!numericRows.length) throw new Error('scope CSV has no numeric measurement row');
+
     const assets = await page.locator('script[src],link[rel="stylesheet"][href]').evaluateAll(nodes =>
         nodes.map(node => node.getAttribute('src') || node.getAttribute('href'))
             .filter(value => /\.[a-f0-9]{8,32}\.(?:js|css)/.test(value)));
-    result = {url: proofUrl, views: 3, downloads: 3, bytes: artifacts[0].length,
-        sha256: hashes[0], pageErrors, assets};
+    result = {url: proofUrl, views: 3, downloads: 4, bytes: artifacts[0].length,
+        sha256: hashes[0], scopeRows: numericRows.length, pageErrors, assets};
     await page.screenshot({path: path.join(outDir, 'circuit-export-board-view.png'), fullPage: true});
     await writeFile(path.join(outDir, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
     console.log(JSON.stringify(result));
