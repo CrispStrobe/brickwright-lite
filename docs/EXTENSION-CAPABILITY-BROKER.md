@@ -129,6 +129,14 @@ diagnostics renderer rather than another ad-hoc console transcript.
   command boundary.
 - [ ] Show declared capabilities and explicit refusals in product diagnostics
   before/after extension load.
+- [x] Add an executable topology contract for the native checkpoint. It keeps
+  the current fail-closed state (no native capability command is registered)
+  green, but makes any future registration fail unless Rust checks the exact
+  `capability-broker` caller label before dispatch, constructs that webview
+  hidden and unfocused from bundled local content, and grants the command only
+  through a capability targeting that label. The contract includes mutations
+  for an inverted label check, external content, a visible broker, a main-window
+  grant and wildcard window scope.
 
 DoD: Rust unit/integration tests prove allowed, undeclared, malformed, replayed
 and revoked calls; JavaScript protocol tests prove the same identity. Removing
@@ -145,7 +153,12 @@ leases; Rust rejects callers whose webview label is not that broker, and the
 editor loses the corresponding native permission. Desktop implementation plus
 iOS/Android lifecycle proof is estimated at 5–8 engineering days. Until that
 privileged broker boundary is delivered, no native capability command is
-registered and CP3 remains honestly open.
+registered and CP3 remains honestly open. `node --test
+test/tauri-broker-topology.test.mjs` is the executable checkpoint: absence is
+the only accepted pre-implementation state; partial topology is rejected rather
+than treated as progress. Runtime completion still requires mock-IPC tests for
+both labels plus packaged Linux and iOS/Android lifecycle evidence, because a
+static contract cannot prove platform webview routing.
 
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 

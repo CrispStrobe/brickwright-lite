@@ -5,6 +5,9 @@
 const VOCABULARY_VERSION = 1;
 const MAX_DIAGNOSTICS = 256;
 const OPERATIONS = Object.freeze({
+    'platform.kind.read': Object.freeze({
+        validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
+    }),
     'project.metadata.read': Object.freeze({
         validate: args => {
             if (!isPlainRecord(args) || !hasOnlyKeys(args, ['field'])) return false;
