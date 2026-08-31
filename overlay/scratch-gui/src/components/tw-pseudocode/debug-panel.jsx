@@ -44,10 +44,9 @@ const L10N = {
         serialHint: 'type a line, Enter sends it',
         serialSend: 'Send this line to the machine (ends with CR)',
         consumes: 'Debugging this board uses:',
-        lwCaveats: 'Heavy tier, two known limits: analog inputs are not injected (a pot or ' +
-            'LDR reads the engine’s own counter, not the voltage this board solves), and ' +
-            'interrupt-counted time runs at double speed (a 20 ms wait elapses in about ' +
-            '10 ms — the timer grid itself is exact). Use the light tier for either.',
+        lwCaveats: 'Heavy tier, one known limit: analog inputs are not injected — a pot or ' +
+            'LDR reads the engine’s own counter, not the voltage this board solves. ' +
+            'Use the light tier for analog work.',
         pausedAt: 'Paused at', afterMs: 'after',
         noPins: 'Declare pins in the Code tab to debug this project.',
         bps: 'Pause points', noBps: 'Right-click a block and choose “Pause here”.',
@@ -73,11 +72,9 @@ const L10N = {
         serialHint: 'Zeile eingeben, Enter sendet',
         serialSend: 'Diese Zeile an die Maschine senden (endet mit CR)',
         consumes: 'Das Debuggen dieser Platine belegt:',
-        lwCaveats: 'Schwere Stufe, zwei bekannte Grenzen: Analogeingänge werden nicht ' +
-            'eingespeist (ein Poti oder LDR liest den internen Zähler der Engine, nicht die ' +
-            'Spannung, die diese Platine löst), und per Interrupt gezählte Zeit läuft doppelt ' +
-            'so schnell (20 ms Warten vergehen in etwa 10 ms — das Timer-Raster selbst ist ' +
-            'exakt). Für beides die leichte Stufe verwenden.',
+        lwCaveats: 'Schwere Stufe, eine bekannte Grenze: Analogeingänge werden nicht ' +
+            'eingespeist — ein Poti oder LDR liest den internen Zähler der Engine, nicht die ' +
+            'Spannung, die diese Platine löst. Für Analoges die leichte Stufe verwenden.',
         pausedAt: 'Angehalten bei', afterMs: 'nach',
         noPins: 'Für das Debuggen im Code-Tab Pins deklarieren.',
         bps: 'Haltepunkte', noBps: 'Rechtsklick auf einen Block, dann „Hier anhalten“.',
