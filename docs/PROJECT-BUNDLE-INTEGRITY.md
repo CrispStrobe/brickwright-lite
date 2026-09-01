@@ -100,3 +100,6 @@ runs adversarial rollback/migration tests, performs the live journey, reconciles
   clears all seven language buffers, Circuit receives an explicit empty model, and Controller
   removes old widgets before optionally applying the incoming layout. Invalid/future/storage
   failures leave current auxiliary state intact and surface the compatibility outcome in Code.
+- **5 implemented:** the real attach/extract functions produce identical sidecar bytes under an
+  injected fixed clock, preserve SPIKE extension metadata, and recover code language/device,
+  circuit seating/PCB data, controller play mode and widget binding through semantic readers.

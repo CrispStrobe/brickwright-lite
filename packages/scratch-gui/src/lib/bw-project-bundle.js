@@ -225,9 +225,10 @@ const loadJSZip = async () => {
  * nothing, and this must never be the reason an export dies.
  *
  * @param {Blob} blob - the .sb3 produced by vm.saveProjectSb3()
+ * @param {object} options - injectable clock for deterministic archive tests
  * @returns {Promise<Blob>} the blob to hand to the download
  */
-const attachBrickwrightState = async blob => {
+const attachBrickwrightState = async (blob, {now = () => new Date()} = {}) => {
     // Save-what-you-SEE, not what the debounced autosaves last wrote: the
     // circuit autosave only updates on an EDIT, so a loaded-but-untouched
     // example saved the PREVIOUS bench (measured: the screen showed the
@@ -254,7 +255,7 @@ const attachBrickwrightState = async blob => {
             const unknown = Object.fromEntries(Object.entries(priorState)
                 .filter(([key]) => !KNOWN_SECTIONS.includes(key)));
             document = {...previous, format: BUNDLE_FORMAT, version: BUNDLE_VERSION,
-                savedAt: new Date().toISOString(), state: {...unknown, ...encodeProjectState(state)}};
+                savedAt: now().toISOString(), state: {...unknown, ...encodeProjectState(state)}};
         }
         if (document) zip.file(BUNDLE_PATH, JSON.stringify(document));
         return await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
