@@ -4,11 +4,13 @@
 use crate::native_broker_transport::{BrokerTransportCore, RelayLimits, BROKER_LABEL, MAIN_LABEL};
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::time::Duration;
 use std::time::Instant;
 use tauri::{Manager, State, WebviewWindow};
 use tokio::sync::oneshot;
 
 type OriginKey = (String, u64);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 struct Inner {
     relay: BrokerTransportCore,
@@ -53,21 +55,26 @@ impl NativeBrokerAdapter {
     }
 
     fn lock(&self) -> Result<std::sync::MutexGuard<'_, Inner>, String> {
-        self.inner.lock().map_err(|_| "broker unavailable".into())
+        match self.inner.lock() {
+            Ok(inner) => Ok(inner),
+            Err(poisoned) => {
+                let mut inner = poisoned.into_inner();
+                close_broker(&mut inner, "broker unavailable");
+                Err("broker unavailable".into())
+            }
+        }
     }
 
     pub(crate) fn revoke_broker(&self) {
         if let Ok(mut inner) = self.lock() {
-            if let Ok(cancelled) = inner.relay.broker_teardown(BROKER_LABEL) {
-                for item in cancelled {
-                    if let Some(sender) = inner
-                        .origins
-                        .remove(&(item.session.as_str().to_owned(), item.request_id))
-                    {
-                        let _ = sender.send(Err("broker closed".into()));
-                    }
-                }
-            }
+            close_broker(&mut inner, "broker closed");
+        }
+    }
+
+    /// Ready for the main-window Destroyed hook: no caller payload or label is accepted here.
+    pub(crate) fn revoke_main(&self) {
+        if let Ok(mut inner) = self.lock() {
+            close_broker(&mut inner, "broker closed");
         }
     }
 }
@@ -97,6 +104,88 @@ fn close_main_session(inner: &mut Inner, session: &str, error: &str) -> Result<(
             let _ = sender.send(Err(error.to_owned()));
         }
     }
+    Ok(())
+}
+
+fn close_broker(inner: &mut Inner, error: &str) {
+    let _ = inner.relay.broker_teardown(BROKER_LABEL);
+    // Drain even origins not represented by relay pending state; they are inconsistent and must
+    // fail closed rather than survive a broker lifecycle transition.
+    for (_, sender) in inner.origins.drain() {
+        let _ = sender.send(Err(error.to_owned()));
+    }
+}
+
+fn timeout_delivery(inner: &mut Inner, session: &str, correlation: &str, request_id: u64) {
+    if !inner
+        .origins
+        .contains_key(&(session.to_owned(), request_id))
+    {
+        return;
+    }
+    if inner
+        .relay
+        .cancel_delivery(MAIN_LABEL, session, correlation, request_id)
+        .is_ok()
+    {
+        inner.origins.remove(&(session.to_owned(), request_id));
+    } else {
+        close_broker(inner, "broker unavailable");
+    }
+}
+
+struct RequestGuard<'a> {
+    adapter: &'a NativeBrokerAdapter,
+    session: String,
+    correlation: String,
+    request_id: u64,
+    active: bool,
+}
+
+impl RequestGuard<'_> {
+    fn disarm(&mut self) {
+        self.active = false;
+    }
+}
+
+impl Drop for RequestGuard<'_> {
+    fn drop(&mut self) {
+        if self.active {
+            if let Ok(mut inner) = self.adapter.lock() {
+                timeout_delivery(
+                    &mut inner,
+                    &self.session,
+                    &self.correlation,
+                    self.request_id,
+                );
+            }
+        }
+    }
+}
+
+fn accept_reply(
+    inner: &mut Inner,
+    session: &str,
+    correlation: &str,
+    request_id: u64,
+    payload: &[u8],
+    now: u64,
+) -> Result<(), String> {
+    if !inner
+        .origins
+        .contains_key(&(session.to_owned(), request_id))
+    {
+        return Err("broker refused".into());
+    }
+    let reply = inner
+        .relay
+        .reply(BROKER_LABEL, session, correlation, request_id, payload, now)
+        .map_err(|_| "broker refused".to_owned())?;
+    let sender = inner
+        .origins
+        .remove(&(session.to_owned(), reply.request_id))
+        .ok_or_else(|| "broker refused".to_owned())?;
+    let _ = sender.send(Ok(reply.payload));
     Ok(())
 }
 
@@ -160,9 +249,29 @@ pub(crate) async fn native_broker_request(
         close_main_session(&mut inner, &session, "broker unavailable")?;
         return Err("broker unavailable".into());
     }
-    receiver
-        .await
-        .map_err(|_| "broker unavailable".to_owned())?
+    // No await occurs after successful eval and before this cancellation guard exists.
+    let mut guard = RequestGuard {
+        adapter: &state,
+        session: session.clone(),
+        correlation: delivery.correlation.as_str().to_owned(),
+        request_id,
+        active: true,
+    };
+    let outcome = match tokio::time::timeout(REQUEST_TIMEOUT, receiver).await {
+        Ok(result) => result.map_err(|_| "broker unavailable".to_owned())?,
+        Err(_) => {
+            let mut inner = state.lock()?;
+            timeout_delivery(
+                &mut inner,
+                &session,
+                delivery.correlation.as_str(),
+                request_id,
+            );
+            Err("broker timeout".into())
+        }
+    };
+    guard.disarm();
+    outcome
 }
 
 #[tauri::command]
@@ -177,23 +286,14 @@ pub(crate) fn native_broker_reply(
     exact_label(&window, BROKER_LABEL)?;
     let now = state.now()?;
     let mut inner = state.lock()?;
-    let reply = inner
-        .relay
-        .reply(
-            BROKER_LABEL,
-            &session,
-            &correlation,
-            request_id,
-            payload.as_bytes(),
-            now,
-        )
-        .map_err(|_| "broker refused".to_owned())?;
-    let sender = inner
-        .origins
-        .remove(&(session, reply.request_id))
-        .ok_or_else(|| "broker refused".to_owned())?;
-    let _ = sender.send(Ok(reply.payload));
-    Ok(())
+    accept_reply(
+        &mut inner,
+        &session,
+        &correlation,
+        request_id,
+        payload.as_bytes(),
+        now,
+    )
 }
 
 #[tauri::command]
@@ -214,18 +314,7 @@ pub(crate) fn native_broker_teardown(
 ) -> Result<(), String> {
     exact_label(&window, BROKER_LABEL)?;
     let mut inner = state.lock()?;
-    let cancelled = inner
-        .relay
-        .broker_teardown(BROKER_LABEL)
-        .map_err(|_| "broker refused".to_owned())?;
-    for item in cancelled {
-        if let Some(sender) = inner
-            .origins
-            .remove(&(item.session.as_str().to_owned(), item.request_id))
-        {
-            let _ = sender.send(Err("broker closed".into()));
-        }
-    }
+    close_broker(&mut inner, "broker closed");
     Ok(())
 }
 
@@ -247,6 +336,40 @@ mod tests {
 
     fn fixed(byte: u8) -> impl FnOnce() -> Result<[u8; 32], ()> {
         move || Ok([byte; 32])
+    }
+
+    fn one_pending() -> (
+        Inner,
+        String,
+        String,
+        oneshot::Receiver<Result<String, String>>,
+    ) {
+        let mut inner = Inner {
+            relay: BrokerTransportCore::new(limits()).unwrap(),
+            origins: HashMap::new(),
+        };
+        let session = inner.relay.open_session(MAIN_LABEL, 0, fixed(70)).unwrap();
+        let delivery = inner
+            .relay
+            .request(
+                MAIN_LABEL,
+                session.as_str(),
+                0,
+                br#"{"kind":"load","url":"https://gallery.invalid/x.js"}"#,
+                0,
+                fixed(71),
+            )
+            .unwrap();
+        let (sender, receiver) = oneshot::channel();
+        inner
+            .origins
+            .insert((session.as_str().to_owned(), 0), sender);
+        (
+            inner,
+            session.as_str().to_owned(),
+            delivery.correlation.as_str().to_owned(),
+            receiver,
+        )
     }
 
     #[tokio::test]
@@ -313,5 +436,171 @@ mod tests {
         close_main_session(&mut inner, session.as_str(), "broker closed").unwrap();
         assert_eq!(recv1.await.unwrap(), Err("broker closed".into()));
         assert!(inner.origins.is_empty());
+    }
+
+    #[tokio::test]
+    async fn reply_wins_and_timeout_transition_becomes_inert() {
+        let (mut inner, session, correlation, receiver) = one_pending();
+        accept_reply(
+            &mut inner,
+            &session,
+            &correlation,
+            0,
+            br#"{"kind":"load","worker_id":0,"extension_ids":[0]}"#,
+            1,
+        )
+        .unwrap();
+        timeout_delivery(&mut inner, &session, &correlation, 0);
+        assert!(receiver
+            .await
+            .unwrap()
+            .unwrap()
+            .contains("\"kind\":\"load\""));
+        assert!(inner.origins.is_empty());
+    }
+
+    #[tokio::test]
+    async fn timeout_wins_and_late_reply_is_refused() {
+        let (mut inner, session, correlation, receiver) = one_pending();
+        timeout_delivery(&mut inner, &session, &correlation, 0);
+        assert!(receiver.await.is_err());
+        assert!(accept_reply(
+            &mut inner,
+            &session,
+            &correlation,
+            0,
+            br#"{"kind":"load","worker_id":0,"extension_ids":[0]}"#,
+            1
+        )
+        .is_err());
+        assert!(inner.origins.is_empty());
+        let payload = br#"{"kind":"load","url":"https://gallery.invalid/y.js"}"#;
+        assert!(inner
+            .relay
+            .request(MAIN_LABEL, &session, 1, payload, 1, fixed(72))
+            .is_ok());
+        assert!(inner
+            .relay
+            .request(MAIN_LABEL, &session, 2, payload, 1, fixed(71))
+            .is_err());
+    }
+
+    #[test]
+    fn wrong_reply_preserves_relay_and_origin_for_valid_reply() {
+        let (mut inner, session, correlation, _receiver) = one_pending();
+        assert!(accept_reply(
+            &mut inner,
+            &session,
+            &correlation,
+            1,
+            br#"{"kind":"load","worker_id":0,"extension_ids":[0]}"#,
+            1
+        )
+        .is_err());
+        assert!(inner.origins.contains_key(&(session.clone(), 0)));
+        assert!(accept_reply(
+            &mut inner,
+            &session,
+            &correlation,
+            0,
+            br#"{"kind":"load","worker_id":0,"extension_ids":[0]}"#,
+            1
+        )
+        .is_ok());
+    }
+
+    #[tokio::test]
+    async fn broker_and_main_revocation_drain_orphan_origins() {
+        for main in [false, true] {
+            let adapter = NativeBrokerAdapter::new();
+            let (sender, receiver) = oneshot::channel();
+            adapter
+                .inner
+                .lock()
+                .unwrap()
+                .origins
+                .insert(("orphan".into(), 7), sender);
+            if main {
+                adapter.revoke_main();
+            } else {
+                adapter.revoke_broker();
+            }
+            assert_eq!(receiver.await.unwrap(), Err("broker closed".into()));
+        }
+    }
+
+    #[tokio::test]
+    async fn poisoned_mutex_recovers_only_to_drain_and_close() {
+        let adapter = NativeBrokerAdapter::new();
+        let (sender, receiver) = oneshot::channel();
+        adapter
+            .inner
+            .lock()
+            .unwrap()
+            .origins
+            .insert(("orphan".into(), 8), sender);
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _guard = adapter.inner.lock().unwrap();
+            panic!("poison transition");
+        }));
+        assert!(matches!(adapter.lock(), Err(error) if error == "broker unavailable"));
+        assert_eq!(receiver.await.unwrap(), Err("broker unavailable".into()));
+        match adapter.inner.lock() {
+            Err(poisoned) => assert!(poisoned.into_inner().origins.is_empty()),
+            Ok(_) => panic!("mutex poison must remain observable"),
+        };
+    }
+
+    #[tokio::test]
+    async fn dropping_request_guard_cancels_origin_and_relay_pending() {
+        let (inner, session, correlation, receiver) = one_pending();
+        let adapter = NativeBrokerAdapter::new();
+        *adapter.inner.lock().unwrap() = inner;
+        drop(RequestGuard {
+            adapter: &adapter,
+            session: session.clone(),
+            correlation: correlation.clone(),
+            request_id: 0,
+            active: true,
+        });
+        assert!(receiver.await.is_err());
+        let mut inner = adapter.inner.lock().unwrap();
+        assert!(inner.origins.is_empty());
+        assert!(accept_reply(
+            &mut inner,
+            &session,
+            &correlation,
+            0,
+            br#"{"kind":"load","worker_id":0,"extension_ids":[0]}"#,
+            1
+        )
+        .is_err());
+    }
+
+    #[tokio::test]
+    async fn failed_exact_cancel_drains_every_origin_fail_closed() {
+        let (mut inner, session, _correlation, receiver0) = one_pending();
+        let second = inner
+            .relay
+            .request(
+                MAIN_LABEL,
+                &session,
+                1,
+                br#"{"kind":"load","url":"https://gallery.invalid/y.js"}"#,
+                0,
+                fixed(73),
+            )
+            .unwrap();
+        let (sender1, receiver1) = oneshot::channel();
+        inner.origins.insert((session.clone(), 1), sender1);
+        timeout_delivery(&mut inner, &session, second.correlation.as_str(), 0);
+        assert_eq!(receiver0.await.unwrap(), Err("broker unavailable".into()));
+        assert_eq!(receiver1.await.unwrap(), Err("broker unavailable".into()));
+        assert!(inner.origins.is_empty());
+        assert!(inner
+            .relay
+            .main_session_teardown(MAIN_LABEL, &session)
+            .unwrap()
+            .is_empty());
     }
 }

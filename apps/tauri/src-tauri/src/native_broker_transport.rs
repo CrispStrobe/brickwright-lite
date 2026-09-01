@@ -629,6 +629,39 @@ impl BrokerTransportCore {
         Ok(self.expire_at(now))
     }
 
+    /// Cancel exactly one delivered request without closing its session or releasing its
+    /// sequence/correlation tombstones. Used by the caller-side timeout transition.
+    pub(crate) fn cancel_delivery(
+        &mut self,
+        caller_label: &str,
+        session: &str,
+        correlation: &str,
+        request_id: u64,
+    ) -> Result<Cancellation, RelayError> {
+        if caller_label != MAIN_LABEL {
+            return Err(refuse(RelayErrorCode::WrongCaller));
+        }
+        let id = SessionId::parse(session)?;
+        let correlation = CorrelationId::parse(correlation)?;
+        let state = self
+            .sessions
+            .get_mut(&id)
+            .ok_or_else(|| refuse(RelayErrorCode::InvalidSession))?;
+        let pending = state
+            .pending
+            .get(&correlation)
+            .ok_or_else(|| refuse(RelayErrorCode::UnknownRequest))?;
+        if pending.request_id != request_id {
+            return Err(refuse(RelayErrorCode::InvalidRequest));
+        }
+        state.pending.remove(&correlation);
+        Ok(Cancellation {
+            session: id,
+            request_id,
+            code: RelayErrorCode::Expired,
+        })
+    }
+
     fn expire_at(&mut self, now: u64) -> Vec<Cancellation> {
         let mut cancelled = Vec::new();
         self.sessions.retain(|id, session| {

@@ -323,6 +323,20 @@ core, not CP3-C4 completion: no receiver acknowledges delivery, request timeout
 is not yet owned by the adapter, and no command is reachable until C4b/C5 add
 the executable bootstrap, deadline race and disjoint ACL proof together.
 
+CP3-C4b closes the adapter's in-memory cancellation and lifecycle races while
+keeping that registration gate shut. Every request now has a fixed 30-second
+deadline and a drop guard installed immediately after successful delivery;
+timeout or caller-future cancellation removes the exact relay delivery before
+discarding its origin sink. A mismatch drains the broker fail-closed. Reply and
+timeout serialize through the same mutex, so exactly one wins, late replies are
+refused, and a wrong reply cannot consume the pending origin. Broker teardown,
+the prepared main-window revocation path, orphan origins and poisoned state all
+drain without leaving reusable authority. Eleven adapter tests cover these
+races and cleanup paths, alongside the twenty-two relay tests and the existing
+structural registration/ACL gates. The main-window destruction hook, receiver,
+command registration and capabilities are still deliberately absent; those
+executable topology and caller-ACL proofs remain CP3-C5/C4 completion work.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker
