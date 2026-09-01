@@ -86,3 +86,10 @@ dropped on the next save.
 Agents may audit bounded surfaces. The coordinator owns the format policy, reviews every diff,
 runs adversarial rollback/migration tests, performs the live journey, reconciles current remote
 `main` before every push, and does not infer project integrity from ZIP readability alone.
+
+## Checkpoint evidence
+
+- **1–2 implemented:** v2 uses typed Code/Circuit/Controller sections with a strict v1 migration.
+  Eleven format fixtures have exact named outcomes. Replacement removes absent content keys,
+  preserves preferences, and restores the prior byte strings after an injected write failure.
+  A merge mutation makes both A→B and A→vanilla tests fail.

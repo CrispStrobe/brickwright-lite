@@ -30,7 +30,8 @@
  */
 
 const BUNDLE_PATH = 'brickwright/state.json';
-const BUNDLE_VERSION = 1;
+const BUNDLE_FORMAT = 'brickwright-state';
+const BUNDLE_VERSION = 2;
 
 /**
  * The localStorage keys that are PROJECT CONTENT, as opposed to per-device UI
@@ -46,6 +47,135 @@ const KEY_PREFIXES = ['bw-ctl-widget-'];
 
 const isContentKey = key =>
     EXACT_KEYS.indexOf(key) !== -1 || KEY_PREFIXES.some(p => key.startsWith(p));
+
+const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const decodeSection = (name, value) => {
+    if (!isRecord(value)) throw new Error(`${name} must be an object`);
+    if (name === 'code' && (typeof value.lang !== 'string' || typeof value.code !== 'string')) {
+        throw new Error('code must contain string lang and code');
+    }
+    if (name === 'circuit' && !Array.isArray(value.parts)) {
+        throw new Error('circuit must contain a parts array');
+    }
+    if (name === 'controller' && !Array.isArray(value.widgets)) {
+        throw new Error('controller must contain a widgets array');
+    }
+    return value;
+};
+
+const decodeStored = (name, value) => {
+    if (typeof value !== 'string') throw new Error(`${name} storage value must be a string`);
+    return decodeSection(name, JSON.parse(value));
+};
+
+/** Convert allowlisted storage strings into the typed v2 state. */
+const encodeProjectState = raw => {
+    const state = {};
+    if (raw['bw-code-autosave'] !== undefined) {
+        state.code = decodeStored('code', raw['bw-code-autosave']);
+    }
+    if (raw['bw-circuit-autosave'] !== undefined) {
+        state.circuit = decodeStored('circuit', raw['bw-circuit-autosave']);
+    }
+    if (raw['bw-ctl-widgets'] !== undefined) {
+        state.controller = decodeStored('controller', raw['bw-ctl-widgets']);
+    }
+    const legacyWidgets = Object.fromEntries(Object.entries(raw)
+        .filter(([key, value]) => KEY_PREFIXES.some(prefix => key.startsWith(prefix)) &&
+            typeof value === 'string'));
+    if (Object.keys(legacyWidgets).length) state.legacyWidgets = legacyWidgets;
+    return state;
+};
+
+/** Convert a typed v2 state into the exact storage records consumed by mounted tabs. */
+const decodeProjectState = state => {
+    if (!isRecord(state)) throw new Error('state must be an object');
+    const raw = {};
+    if (state.code !== undefined) raw['bw-code-autosave'] = JSON.stringify(decodeSection('code', state.code));
+    if (state.circuit !== undefined) {
+        raw['bw-circuit-autosave'] = JSON.stringify(decodeSection('circuit', state.circuit));
+    }
+    if (state.controller !== undefined) {
+        raw['bw-ctl-widgets'] = JSON.stringify(decodeSection('controller', state.controller));
+    }
+    if (state.legacyWidgets !== undefined) {
+        if (!isRecord(state.legacyWidgets)) throw new Error('legacyWidgets must be an object');
+        for (const [key, value] of Object.entries(state.legacyWidgets)) {
+            if (!KEY_PREFIXES.some(prefix => key.startsWith(prefix)) || typeof value !== 'string') {
+                throw new Error(`invalid legacy widget ${key}`);
+            }
+            raw[key] = value;
+        }
+    }
+    return raw;
+};
+
+const migrateV1 = doc => {
+    if (!isRecord(doc.state)) throw new Error('v1 state must be an object');
+    const raw = {};
+    for (const [key, value] of Object.entries(doc.state)) {
+        if (!isContentKey(key)) continue;
+        if (typeof value !== 'string') throw new Error(`${key} must be a string`);
+        raw[key] = value;
+    }
+    // Validate every recognized section before returning any of it.
+    return decodeProjectState(encodeProjectState(raw));
+};
+
+/** Pure parser: classify and normalize before anything touches localStorage. */
+const parseBundleDocument = text => {
+    let doc;
+    try { doc = JSON.parse(text); } catch (error) {
+        return {outcome: 'invalid', reason: `invalid JSON: ${error.message}`};
+    }
+    if (!isRecord(doc)) return {outcome: 'invalid', reason: 'document must be an object'};
+    const version = doc.version === undefined ? 1 : doc.version;
+    if (!Number.isInteger(version) || version < 1) {
+        return {outcome: 'invalid', reason: 'version must be a positive integer'};
+    }
+    if (version > BUNDLE_VERSION) return {outcome: 'future', version};
+    try {
+        if (version === 1) return {outcome: 'loaded', version, state: migrateV1(doc)};
+        if (doc.format !== BUNDLE_FORMAT) {
+            return {outcome: 'invalid', version, reason: `format must be ${BUNDLE_FORMAT}`};
+        }
+        return {outcome: 'loaded', version, state: decodeProjectState(doc.state)};
+    } catch (error) {
+        return {outcome: 'invalid', version, reason: error.message};
+    }
+};
+
+const contentSnapshot = storage => {
+    const snapshot = {};
+    for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (key && isContentKey(key)) snapshot[key] = storage.getItem(key);
+    }
+    return snapshot;
+};
+
+const writeSnapshot = (storage, state) => {
+    for (const key of Object.keys(contentSnapshot(storage))) storage.removeItem(key);
+    for (const [key, value] of Object.entries(state)) storage.setItem(key, value);
+};
+
+/** Replace the project namespace as one transaction, restoring it on any failure. */
+const replaceProjectState = (storage, next) => {
+    const previous = contentSnapshot(storage);
+    try {
+        writeSnapshot(storage, next);
+        return {outcome: 'loaded', keys: Object.keys(next).length, previous};
+    } catch (error) {
+        try {
+            writeSnapshot(storage, previous);
+            return {outcome: 'storage-failed', keys: 0, rolledBack: true, reason: error.message};
+        } catch (rollbackError) {
+            return {outcome: 'storage-failed', keys: 0, rolledBack: false,
+                reason: error.message, rollbackReason: rollbackError.message};
+        }
+    }
+};
 
 /** Read the content keys out of localStorage. Returns {} when unavailable. */
 const collectState = () => {
@@ -96,9 +226,10 @@ const attachBrickwrightState = async blob => {
         const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(await blob.arrayBuffer());
         zip.file(BUNDLE_PATH, JSON.stringify({
+            format: BUNDLE_FORMAT,
             version: BUNDLE_VERSION,
             savedAt: new Date().toISOString(),
-            state
+            state: encodeProjectState(state)
         }));
         return await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
     } catch (e) {
@@ -112,36 +243,29 @@ const attachBrickwrightState = async blob => {
  * Restore the Brickwright bundle from a loaded .sb3.
  *
  * @param {ArrayBuffer} buffer - the raw file the user opened
- * @returns {Promise<{found: boolean, keys: number}>} what was restored
+ * @returns {Promise<object>} named load outcome and what was restored
  */
 const extractBrickwrightState = async buffer => {
     try {
         const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(buffer);
         const entry = zip.file(BUNDLE_PATH);
-        if (!entry) return {found: false, keys: 0};   // a legacy or vanilla project
-        const doc = JSON.parse(await entry.async('text'));
-        if (!doc || typeof doc.state !== 'object' || doc.state === null) {
-            return {found: false, keys: 0};
+        if (!entry) {
+            const result = replaceProjectState(localStorage, {});
+            return result.outcome === 'loaded' ? {...result, outcome: 'legacy', found: false} : result;
         }
-        let keys = 0;
-        for (const key of Object.keys(doc.state)) {
-            // Honour the same allowlist on the way IN. A file is untrusted input,
-            // and a bundle must not be able to set arbitrary localStorage keys.
-            if (!isContentKey(key)) continue;
-            const value = doc.state[key];
-            if (typeof value !== 'string') continue;
-            try {
-                localStorage.setItem(key, value);
-                keys++;
-            } catch (e) { /* storage full or disabled; skip this key */ }
-        }
-        return {found: true, keys};
+        const parsed = parseBundleDocument(await entry.async('text'));
+        if (parsed.outcome !== 'loaded') return {...parsed, keys: 0, found: false};
+        const result = replaceProjectState(localStorage, parsed.state);
+        return {...result, version: parsed.version, found: result.outcome === 'loaded'};
     } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[brickwright] could not read tab state from the project', e);
-        return {found: false, keys: 0};
+        return {outcome: 'invalid', found: false, keys: 0, reason: e.message};
     }
 };
 
-export {attachBrickwrightState, extractBrickwrightState, isContentKey, BUNDLE_PATH, BUNDLE_VERSION};
+export {
+    attachBrickwrightState, extractBrickwrightState, parseBundleDocument, replaceProjectState,
+    encodeProjectState, decodeProjectState, isContentKey, BUNDLE_PATH, BUNDLE_FORMAT, BUNDLE_VERSION
+};

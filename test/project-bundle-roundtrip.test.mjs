@@ -140,7 +140,7 @@ describe('save-what-you-see and the widgets key (2026-08-25)', () => {
             const zip = await JSZip.loadAsync(
                 typeof out.arrayBuffer === 'function' ? await out.arrayBuffer() : out);
             const doc = JSON.parse(await zip.file(BUNDLE_PATH).async('text'));
-            assert.match(doc.state['bw-circuit-autosave'], /FRESH/,
+            assert.match(JSON.stringify(doc.state.circuit), /FRESH/,
                 'the bundle carries what the flush wrote, not what was there before');
         } finally {
             delete global.localStorage;
