@@ -39,6 +39,7 @@
     "verify:microbit": "node scripts/verify-microbit.mjs",
     "verify:starters": "node scripts/verify-starter-journeys.mjs",
     "verify:lego-spike": "node scripts/verify-lego-spike-roundtrip.mjs",
+    "verify:project-bundle": "node scripts/verify-project-bundle-integrity.mjs",
     "verify:dock": "node scripts/verify-debug-dock.mjs",
     "verify:bluetooth": "node scripts/verify-bluetooth.mjs",
     "verify:extension-sandbox": "node scripts/verify-extension-sandbox.mjs",

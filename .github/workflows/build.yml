@@ -538,6 +538,15 @@ jobs:
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
         if: steps.playwright.outcome == 'success'
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lego-spike-roundtrip.mjs
+      - name: Browser gate — four-surface project save, reopen and vanilla replacement
+        if: steps.playwright.outcome == 'success'
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-project-bundle-integrity.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: project-bundle-integrity-proof
+          path: artifacts/project-bundle-integrity/*
+          if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
         with:
