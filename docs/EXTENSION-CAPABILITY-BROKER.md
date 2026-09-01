@@ -337,6 +337,24 @@ structural registration/ACL gates. The main-window destruction hook, receiver,
 command registration and capabilities are still deliberately absent; those
 executable topology and caller-ACL proofs remain CP3-C5/C4 completion work.
 
+CP3-C5a stages the document-start bootstrap without opening that gate. Tauri
+now embeds the reviewed protocol and receiver sources into an initialization
+script guarded to the platform's exact top-level local broker URL. A one-shot
+host-factory entrypoint can install one immutable receiver; it is deliberately
+not invoked because the isolated realm does not yet have a production pin
+resolver or worker host. The receiver maps the three typed Rust envelopes to
+the exact camel-case protocol calls, owns one protocol and opaque owner per
+session, bounds live and retired sessions, emits one caught reply attempt, and
+normalizes only genuine protocol errors to the shared code vocabulary. Generic
+or forged errors become `operation-failed`, reply failure retires and disposes
+the affected session, and page hide disposes every live protocol. Ten new
+executable bootstrap tests use the real protocol core for success, replay,
+cross-session, malformed-data, capacity, immutable-realm, transport-failure and
+unhandled-rejection paths. The HTML remains scriptless under `default-src
+'none'`; commands, ACLs, the host factory invocation and native session-dispose
+wiring remain absent, so this is a C5 bootstrap checkpoint rather than C5 or
+CP3 completion.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker

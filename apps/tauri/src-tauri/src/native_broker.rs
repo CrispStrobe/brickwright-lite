@@ -9,11 +9,27 @@ use crate::native_policy::NativePolicyState;
 
 const LABEL: &str = "capability-broker";
 const DOCUMENT: &str = "capability-broker.html";
+const PROTOCOL_SOURCE: &str =
+    include_str!("../../../../overlay/scratch-vm/src/extension-support/native-broker-protocol.js");
+const BOOTSTRAP_SOURCE: &str = include_str!("native_broker_bootstrap.js");
+#[cfg(windows)]
+const EXPECTED_ORIGIN: &str = "https://tauri.localhost";
+#[cfg(not(windows))]
+const EXPECTED_ORIGIN: &str = "tauri://localhost";
+
+fn initialization_script() -> String {
+    // C5 stages a one-shot host factory entrypoint. It is intentionally not invoked until the
+    // authenticated worker host lands; therefore no receiver exists in production yet.
+    format!(
+        r#"(()=>{{const l=globalThis.location,expectedOrigin='{EXPECTED_ORIGIN}';if(globalThis.top!==globalThis||l.origin!==expectedOrigin||l.pathname!=='/capability-broker.html'||l.search!==''||l.hash!=='')throw new TypeError('Invalid broker realm');const protocolModule=(()=>{{const module={{exports:{{}}}};{{{PROTOCOL_SOURCE}}};return module.exports;}})();const bootstrapModule=(()=>{{const module={{exports:{{}}}};{{{BOOTSTRAP_SOURCE}}};return module.exports;}})();const install=bootstrapModule.installNativeBrokerReceiver;let installed=false;Object.defineProperty(globalThis,'__brickwrightInstallBrokerHost',{{value:host=>{{if(installed)throw new TypeError('Broker already initialized');installed=true;delete globalThis.__brickwrightInstallBrokerHost;return install({{NativeBrokerProtocol:protocolModule.NativeBrokerProtocol,BrokerProtocolError:protocolModule.BrokerProtocolError,invoke:globalThis.__TAURI_INTERNALS__.invoke,createProtocol:host,expectedOrigin}});}},configurable:true}});}})();"#
+    )
+}
 
 pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Result<()> {
     let navigation_policy = policy.clone();
     let navigation_app = app.handle().clone();
     let broker = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(DOCUMENT.into()))
+        .initialization_script(initialization_script())
         .visible(false)
         .focused(false)
         .focusable(false)
@@ -173,5 +189,17 @@ mod tests {
         let mut focus_revocations = 0;
         handle_window_event(&WindowEvent::Focused(false), || focus_revocations += 1);
         assert_eq!(focus_revocations, 0);
+    }
+
+    #[test]
+    fn initialization_is_local_one_shot_and_does_not_register_commands() {
+        let script = initialization_script();
+        assert!(script.contains(EXPECTED_ORIGIN));
+        assert!(script.contains("l.search!==''||l.hash!==''"));
+        assert!(script.contains("globalThis.top!==globalThis"));
+        assert!(script.contains("Broker already initialized"));
+        assert!(script.contains("configurable: false"));
+        assert!(!script.contains("native_broker_open"));
+        assert!(!script.contains("platform.kind.read"));
     }
 }
