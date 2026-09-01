@@ -134,14 +134,14 @@ an earlier pure core look complete retroactively.
   reflection, response-kind swaps, extra fields, deep/large data, duplicate,
   late and cross-session frames all fail by named mutation; focused Rust tests
   and production-library clippy pass.
-- [ ] **CP3-C4 — caller-bound Tauri adapter (60–90 minutes).** Add separate
+- [x] **CP3-C4 — caller-bound Tauri adapter (60–90 minutes).** Add separate
   main-request and broker-reply commands with disjoint exact-label ACLs and
   runtime checks of Tauri's injected sender before payload parsing. DoD:
   bounded origin-owned sinks, deadlines and teardown; fixed escaped delivery
   into only the local hidden broker; mutations of either label check, ACL,
   destination, session, correlation or serialization make a gate red. The
   semantic native command remains absent at this checkpoint.
-- [ ] **CP3-C5 — isolated broker bootstrap (45–75 minutes).** Give the local
+- [x] **CP3-C5 — isolated broker bootstrap (45–75 minutes).** Give the local
   broker asset a narrowly scoped bundle and one-shot host bootstrap, then bind
   the private JS protocol owner to the relay. DoD: owner/session/source/worker
   handles never enter the editor realm; wrong, duplicate and stale bootstrap,
@@ -158,7 +158,7 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   URL, schema, duplicate/unsorted capability and stale-output mutations; two
   aliases may share bytes but retain distinct declarations; no caller supplies
   source, digest or capability authority.
-- [ ] **CP3-C5c2 — dedicated worker host core (90–120 minutes).** Implement a
+- [x] **CP3-C5c2 — dedicated worker host core (90–120 minutes).** Implement a
   fixed broker-to-worker protocol rather than importing editor CentralDispatch.
   DoD: source verification precedes allocation; registration derives bounded
   opcode/menu allowlists; callback identity, replay, timeout, abort, terminate
@@ -192,6 +192,16 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   GitHub workflows are green, artifacts show the real vertical slice with zero
   page errors, and every mobile/native limitation is either closed or an
   explicit fail-closed verdict rather than an implied compatibility claim.
+
+CP3-C5c2 now supplies a standalone parent host and worker core with one closed,
+identity-bearing protocol. The parent verifies packaged bytes before worker
+allocation; the worker derives callable opcode and dynamic-menu sets from
+registered implementations; both sides snapshot and bound data without
+invoking accessors. Executable tests compose the real packaged proof source
+through both cores and cover registration, call, capability, replay,
+cross-worker, timeout, abort and termination mutations. This is intentionally
+still a pure core: production bundles, document-start installation and CSP are
+the separately gated C5c3 checkpoint below.
 
 - [ ] Carry broker identity and semantic operation to the native boundary
   without exposing a reusable raw invoke handle to the worker.
