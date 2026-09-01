@@ -72,6 +72,10 @@ describe('project bundle typed document census', () => {
         const oversizedCode = JSON.stringify({format: BUNDLE_FORMAT, version: 2,
             state: {code: {lang: 'pseudocode', code: 'x'.repeat((512 * 1024) + 1)}}});
         assert.equal(parseBundleDocument(oversizedCode).outcome, 'invalid');
+        const oversizedUtf8Code = JSON.stringify({format: BUNDLE_FORMAT, version: 2,
+            state: {code: {lang: 'pseudocode', code: '€'.repeat(180000)}}});
+        assert.equal(parseBundleDocument(oversizedUtf8Code).outcome, 'invalid',
+            'limits count UTF-8 bytes, not JavaScript code units');
     });
 
     test('v1 migrates and v2 decodes to the same exact storage state', () => {

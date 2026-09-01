@@ -37,6 +37,7 @@ const SECTION_LIMITS = Object.freeze({code: 512 * 1024, circuit: 1024 * 1024,
     controller: 512 * 1024});
 const KNOWN_SECTIONS = Object.freeze(['code', 'circuit', 'controller', 'legacyWidgets']);
 let preservedBundle = null;
+const utf8Size = value => new TextEncoder().encode(value).byteLength;
 
 /**
  * The localStorage keys that are PROJECT CONTENT, as opposed to per-device UI
@@ -58,7 +59,9 @@ const isRecord = value => value !== null && typeof value === 'object' && !Array.
 const decodeSection = (name, value) => {
     if (!isRecord(value)) throw new Error(`${name} must be an object`);
     const limit = SECTION_LIMITS[name];
-    if (limit && JSON.stringify(value).length > limit) throw new Error(`${name} exceeds ${limit} bytes`);
+    if (limit && utf8Size(JSON.stringify(value)) > limit) {
+        throw new Error(`${name} exceeds ${limit} bytes`);
+    }
     if (name === 'code' && (typeof value.lang !== 'string' || typeof value.code !== 'string')) {
         throw new Error('code must contain string lang and code');
     }
@@ -132,7 +135,7 @@ const migrateV1 = doc => {
 
 /** Pure parser: classify and normalize before anything touches localStorage. */
 const parseBundleDocument = text => {
-    if (typeof text !== 'string' || text.length > MAX_BUNDLE_BYTES) {
+    if (typeof text !== 'string' || utf8Size(text) > MAX_BUNDLE_BYTES) {
         return {outcome: 'invalid', reason: `bundle exceeds ${MAX_BUNDLE_BYTES} bytes`,
             report: {action: 'refused', supportedVersion: BUNDLE_VERSION}};
     }
