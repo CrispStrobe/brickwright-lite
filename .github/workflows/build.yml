@@ -370,6 +370,9 @@ jobs:
 
       # --- build ---
 
+      - name: Guard — packaged native broker proof authority is fresh
+        run: node scripts/package-native-broker-proof-pins.mjs --check
+
       - name: Build the editor
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 

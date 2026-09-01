@@ -14,11 +14,15 @@
 //
 // Idempotent; run after `vendor`.
 import { cpSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import {spawnSync} from 'node:child_process';
 import path from 'node:path';
 
 const ROOT = process.cwd();
 const GUI = path.join(ROOT, 'packages', 'scratch-gui');
 if (!existsSync(GUI)) { console.error('Run `npm run vendor` first (packages/scratch-gui missing).'); process.exit(1); }
+const proofPins = spawnSync(process.execPath, [path.join(ROOT, 'scripts/package-native-broker-proof-pins.mjs'), '--check'],
+    {cwd: ROOT, stdio: 'inherit'});
+if (proofPins.status !== 0) throw new Error('native broker proof package freshness check failed');
 
 // 1) overlay our owned scratch-gui files onto the vendored source. (The scratch-vm delta lives
 // in overlay/scratch-vm and is applied to node_modules/scratch-vm AFTER install by

@@ -147,6 +147,34 @@ an earlier pure core look complete retroactively.
   handles never enter the editor realm; wrong, duplicate and stale bootstrap,
   navigation, delivery and reply failures dispose exactly once; CSP permits
   only the audited local asset; mobile remains fail-closed.
+
+The C5a/C5b reviews exposed that the original C5 estimate covered transport
+bootstrap but not a trusted worker host. The remaining C5 progression is now
+split into separately pushed, independently audited checkpoints (3–5 hours):
+
+- [x] **CP3-C5c1 — packaged pin authority (45–75 minutes).** Generate a
+  deterministic broker-only manifest and digest-addressed source asset from an
+  exact reviewed local fixture. DoD: generator and check mode reject byte/hash,
+  URL, schema, duplicate/unsorted capability and stale-output mutations; two
+  aliases may share bytes but retain distinct declarations; no caller supplies
+  source, digest or capability authority.
+- [ ] **CP3-C5c2 — dedicated worker host core (90–120 minutes).** Implement a
+  fixed broker-to-worker protocol rather than importing editor CentralDispatch.
+  DoD: source verification precedes allocation; registration derives bounded
+  opcode/menu allowlists; callback identity, replay, timeout, abort, terminate
+  and cross-worker mutations are executable; all handles drain exactly once.
+- [ ] **CP3-C5c3 — self-contained host/worker assets (60–90 minutes).** Produce
+  deterministic no-chunk broker-host and fixed worker bundles, install the host
+  factory at document start, and minimally widen CSP only for the packaged
+  worker/source path. DoD: real browser load/register/call/terminate succeeds
+  offline; remote/script/nested-worker/loopback variants stay red; bundle
+  staleness and Linux/macOS/Windows custom-origin behavior are proved.
+- [ ] **CP3-C5d — transport registration and ACK (45–75 minutes).** Register the
+  disjoint main/broker transport commands only after the host acknowledges its
+  immutable receiver, grant exact webview-scoped generated ACLs, and keep every
+  semantic native operation absent. DoD: injected caller, ACL, label, ordering,
+  ACK, reload and teardown mutations fail; editor cannot retain or reflect the
+  broker invoke closure; mobile remains unregistered.
 - [ ] **CP3-D1 — real native vertical slice (60–90 minutes).** Register only
   `platform.kind.read` through the broker label, semantic Rust policy and exact
   empty arguments. DoD: editor direct/reflected/raw-command attempts are red;
@@ -370,6 +398,20 @@ own a session. Twelve bootstrap tests, forty-two focused Rust lifecycle/adapter/
 relay tests and eight structural topology/ACL tests cover the staged boundary.
 The real isolated pin/worker host and command/ACL registration remain absent,
 so C4/C5 and CP3 are still open.
+
+CP3-C5c1 packages the first offline authority without granting it to a runtime.
+The generator hard-anchors the reviewed 1,421-byte capability probe and its
+full SHA-256, validates the exact two canonical proof URLs and schemas, and
+emits one digest-addressed source plus a deterministic manifest whose declared
+and no-capability aliases remain distinct. It copies the input bytes before
+hashing/emission and refuses stale executable files before normal generation;
+check mode requires byte-for-byte manifest/source agreement and exactly one
+source asset. Five focused tests include authority mutations, a real temporary
+stale-asset directory and structural production-build wiring. Integration,
+both root GUI build commands and CI now run the freshness gate before packaging.
+The manifest and source are public assets, not authority by themselves: no host
+currently consumes them, the one-shot factory remains uninvoked, and commands,
+ACL and CSP are unchanged.
 
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
