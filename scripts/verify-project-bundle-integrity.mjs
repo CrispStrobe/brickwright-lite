@@ -12,6 +12,8 @@ const artifacts = resolve('artifacts/project-bundle-integrity');
 await mkdir(artifacts, {recursive: true});
 const savedPath = resolve(artifacts, 'four-surface.sb3');
 const vanillaPath = resolve(artifacts, 'vanilla-replacement.sb3');
+const futurePath = resolve(artifacts, 'future-sidecar.sb3');
+const invalidPath = resolve(artifacts, 'invalid-sidecar.sb3');
 const source = 'SPRITE Cat:\n  WHEN flag clicked:\n    say "bundle integrity" for 2 seconds';
 const errors = [];
 
@@ -21,6 +23,7 @@ const newContext = async () => {
         acceptDownloads: true});
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
+    page.on('dialog', dialog => dialog.accept());
     await page.addInitScript(() => {
         localStorage.clear();
         sessionStorage.clear();
@@ -90,6 +93,12 @@ try {
     }
     savedZip.remove('brickwright/state.json');
     await writeFile(vanillaPath, await savedZip.generateAsync({type: 'nodebuffer'}));
+    savedZip.file('brickwright/state.json', JSON.stringify({
+        format: 'brickwright-state', version: 7, state: {futureOnly: {value: 99}}
+    }));
+    await writeFile(futurePath, await savedZip.generateAsync({type: 'nodebuffer'}));
+    savedZip.file('brickwright/state.json', '{invalid');
+    await writeFile(invalidPath, await savedZip.generateAsync({type: 'nodebuffer'}));
     await context.close();
 
     ({context, page} = await newContext());
@@ -109,6 +118,20 @@ try {
     await page.locator('button[title="Controller"]:visible').click();
     await page.getByTestId('bw-ctl-widget-slider1').waitFor({state: 'visible', timeout: 15000});
     await page.screenshot({path: resolve(artifacts, 'four-surface-restored.png'), fullPage: true});
+
+    const beforeRefusal = await projectKeys(page);
+    await openProject(page, futurePath);
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await page.getByText(/Brickwright state v7 was not applied: preserved-not-applied/)
+        .waitFor({timeout: 15000});
+    if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
+        throw new Error('future sidecar partially replaced known project state');
+    }
+    await openProject(page, invalidPath);
+    await page.getByText(/Brickwright state was not applied: invalid JSON/).waitFor({timeout: 15000});
+    if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
+        throw new Error('invalid sidecar partially replaced known project state');
+    }
 
     await openProject(page, vanillaPath);
     await page.waitForFunction(() => ['bw-code-autosave', 'bw-circuit-autosave', 'bw-ctl-widgets']
