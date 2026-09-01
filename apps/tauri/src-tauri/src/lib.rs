@@ -5,6 +5,9 @@ mod downloads;
 mod fileio;
 #[cfg(desktop)]
 mod native_broker;
+#[cfg(desktop)]
+#[allow(dead_code)]
+mod native_broker_adapter;
 // Compiled on every target so the staged relay stays warning-clean. It has no
 // command registration or runtime consumer until the authenticated adapter lands.
 #[allow(dead_code)]
@@ -52,6 +55,8 @@ pub fn run() {
     let native_policy = native_policy::NativePolicyState::new();
     #[cfg(desktop)]
     let builder = builder.manage(native_policy.clone());
+    #[cfg(desktop)]
+    let builder = builder.manage(native_broker_adapter::NativeBrokerAdapter::new());
 
     builder
         .invoke_handler(tauri::generate_handler![

@@ -307,6 +307,22 @@ per relay session, code-only error normalization, origin-bound result sinks,
 injected Tauri caller objects and exact local delivery. Merely compiling this
 module does not register a command or grant either webview new authority.
 
+CP3-C4a stages the desktop Tauri adapter behind the same registration gate. Its
+five command functions accept Tauri's injected `WebviewWindow`, perform the
+exact main/broker label check first, use OS CSPRNG identifiers and monotonic
+time, and keep the bounded relay plus origin-owned oneshot senders under one
+short-held mutex. A request installs both relay and origin state before fixed
+delivery to the exact broker label. Missing-window/eval failure closes the
+whole affected session and resolves every sibling origin; denied navigation or
+broker destruction drains every session alongside policy revocation. Four Rust
+tests include two simultaneous origins and a dropped receiver, while a
+structural mutation gate covers label, CSPRNG, insertion-before-delivery and
+rollback ordering. The commands remain absent from `generate_handler!`, the
+application manifest and every capability. This is a compile-tested adapter
+core, not CP3-C4 completion: no receiver acknowledges delivery, request timeout
+is not yet owned by the adapter, and no command is reachable until C4b/C5 add
+the executable bootstrap, deadline race and disjoint ACL proof together.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker

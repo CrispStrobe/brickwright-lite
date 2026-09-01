@@ -37,6 +37,7 @@ futures-util = "0.3"
 log = "0.4"
 uuid = "1"
 base64 = "0.22"
+getrandom = "0.2"
 # On-demand asset/model downloads. rustls to stay OpenSSL-free / permissive
 # across all platforms incl. mobile; `stream` for byte-progress on the one-file
 # library pack.

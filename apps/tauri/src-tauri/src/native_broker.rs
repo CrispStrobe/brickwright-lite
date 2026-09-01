@@ -3,7 +3,7 @@
 //! There are deliberately no commands, policy hooks, or runtime privileges in
 //! this module. It only establishes a hidden, local, non-navigable webview.
 
-use tauri::{webview::NewWindowResponse, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{webview::NewWindowResponse, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 use crate::native_policy::NativePolicyState;
 
@@ -12,6 +12,7 @@ const DOCUMENT: &str = "capability-broker.html";
 
 pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Result<()> {
     let navigation_policy = policy.clone();
+    let navigation_app = app.handle().clone();
     let broker = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(DOCUMENT.into()))
         .visible(false)
         .focused(false)
@@ -27,13 +28,20 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
         .on_navigation(move |url| {
             handle_navigation(url, || {
                 let _ = navigation_policy.revoke_all(LABEL);
+                navigation_app
+                    .state::<crate::native_broker_adapter::NativeBrokerAdapter>()
+                    .revoke_broker();
             })
         })
         .on_new_window(|_, _| NewWindowResponse::Deny)
         .build()?;
+    let window_app = app.handle().clone();
     broker.on_window_event(move |event| {
         handle_window_event(event, || {
             let _ = policy.revoke_all(LABEL);
+            window_app
+                .state::<crate::native_broker_adapter::NativeBrokerAdapter>()
+                .revoke_broker();
         });
     });
     Ok(())
