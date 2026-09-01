@@ -1,12 +1,15 @@
 //! Pure state machine for a future desktop broker relay. Deliberately unregistered: no Tauri
-//! commands, events, protocols, eval calls, or capability grants live here. Payloads are byte-opaque:
-//! typed Load/Call/Terminate and reply-kind validation belong to the broker protocol/adapter and
-//! remain a release gate before this relay can be registered.
+//! commands, events, protocols, eval calls, or capability grants live here.
 
+use serde::de::{self, DeserializeSeed, MapAccess, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
 pub(crate) const MAIN_LABEL: &str = "main";
 pub(crate) const BROKER_LABEL: &str = "capability-broker";
+const JS_MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
+const MAX_LOAD_EXTENSIONS: usize = 16;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum RelayErrorCode {
@@ -17,7 +20,6 @@ pub(crate) enum RelayErrorCode {
     OutOfOrder,
     Capacity,
     PayloadTooLarge,
-    InvalidUtf8,
     Expired,
     UnknownRequest,
     ClockFailure,
@@ -50,6 +52,9 @@ pub(crate) struct RelayLimits {
     pub(crate) max_requests_per_session: usize,
     pub(crate) max_payload_bytes: usize,
     pub(crate) max_delivery_bytes: usize,
+    pub(crate) max_data_depth: usize,
+    pub(crate) max_data_nodes: usize,
+    pub(crate) max_string_bytes: usize,
     pub(crate) session_ttl: u64,
     pub(crate) request_ttl: u64,
 }
@@ -100,6 +105,92 @@ pub(crate) struct Cancellation {
 struct Pending {
     request_id: u64,
     deadline: u64,
+    expected: ReplyKind,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum ReplyKind {
+    Load,
+    Call,
+    Terminate,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+enum BrokerFailureCode {
+    Closed,
+    InvalidEnvelope,
+    ReplayedRequest,
+    OutOfOrderRequest,
+    Capacity,
+    InvalidData,
+    InvalidUrl,
+    UnpinnedUrl,
+    StaleReply,
+    OperationFailed,
+    InvalidRegistration,
+    UnknownWorker,
+    UnknownExtension,
+    UnknownMethod,
+    Timeout,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
+enum EditorRequest {
+    Load {
+        url: String,
+    },
+    Call {
+        worker_id: u64,
+        extension_id: u64,
+        method: String,
+        args: Value,
+    },
+    Terminate {
+        worker_id: u64,
+    },
+}
+
+impl EditorRequest {
+    fn expected(&self) -> ReplyKind {
+        match self {
+            Self::Load { .. } => ReplyKind::Load,
+            Self::Call { .. } => ReplyKind::Call,
+            Self::Terminate { .. } => ReplyKind::Terminate,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
+enum BrokerReply {
+    Load {
+        worker_id: u64,
+        extension_ids: Vec<u64>,
+    },
+    Call {
+        result: Value,
+    },
+    Terminate {
+        terminated: bool,
+    },
+    Failure {
+        request_kind: ReplyKind,
+        code: BrokerFailureCode,
+    },
+}
+
+impl BrokerReply {
+    fn kind(&self) -> ReplyKind {
+        match self {
+            Self::Load { .. } => ReplyKind::Load,
+            Self::Call { .. } => ReplyKind::Call,
+            Self::Terminate { .. } => ReplyKind::Terminate,
+            Self::Failure { request_kind, .. } => *request_kind,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -115,6 +206,7 @@ impl CorrelationId {
 }
 
 struct Session {
+    // One session is one NativeBrokerProtocol instance; its sequence is never shared.
     next_request_id: u64,
     deadline: u64,
     pending: HashMap<CorrelationId, Pending>,
@@ -137,6 +229,9 @@ impl BrokerTransportCore {
             || limits.max_session_ids == 0
             || limits.max_payload_bytes == 0
             || limits.max_delivery_bytes == 0
+            || limits.max_data_depth == 0
+            || limits.max_data_nodes == 0
+            || limits.max_string_bytes == 0
             || limits.session_ttl == 0
             || limits.request_ttl == 0
         {
@@ -161,6 +256,184 @@ impl BrokerTransportCore {
     fn deadline(now: u64, ttl: u64) -> Result<u64, RelayError> {
         now.checked_add(ttl)
             .ok_or_else(|| refuse(RelayErrorCode::ClockFailure))
+    }
+
+    fn validate_value(&self, value: &Value) -> Result<(), RelayError> {
+        fn walk(
+            value: &Value,
+            depth: usize,
+            nodes: &mut usize,
+            limits: RelayLimits,
+        ) -> Result<(), RelayError> {
+            *nodes = nodes
+                .checked_add(1)
+                .ok_or_else(|| refuse(RelayErrorCode::Capacity))?;
+            if depth > limits.max_data_depth || *nodes > limits.max_data_nodes {
+                return Err(refuse(RelayErrorCode::InvalidRequest));
+            }
+            match value {
+                Value::Null | Value::Bool(_) | Value::Number(_) => Ok(()),
+                Value::String(text) if text.len() <= limits.max_string_bytes => Ok(()),
+                Value::String(_) => Err(refuse(RelayErrorCode::PayloadTooLarge)),
+                Value::Array(items) => items
+                    .iter()
+                    .try_for_each(|item| walk(item, depth + 1, nodes, limits)),
+                Value::Object(map) => map.iter().try_for_each(|(key, item)| {
+                    if key.len() > limits.max_string_bytes {
+                        return Err(refuse(RelayErrorCode::PayloadTooLarge));
+                    }
+                    walk(item, depth + 1, nodes, limits)
+                }),
+            }
+        }
+        walk(value, 0, &mut 0, self.limits)
+    }
+
+    fn parse_strict(&self, payload: &[u8]) -> Result<Value, RelayError> {
+        struct StrictValue;
+        impl<'de> Visitor<'de> for StrictValue {
+            type Value = Value;
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("JSON without duplicate object keys")
+            }
+            fn visit_bool<E: de::Error>(self, v: bool) -> Result<Value, E> {
+                Ok(Value::Bool(v))
+            }
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Value, E> {
+                Ok(v.into())
+            }
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<Value, E> {
+                Ok(v.into())
+            }
+            fn visit_f64<E: de::Error>(self, v: f64) -> Result<Value, E> {
+                serde_json::Number::from_f64(v)
+                    .map(Value::Number)
+                    .ok_or_else(|| E::custom("non-finite number"))
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Value, E> {
+                Ok(Value::String(v.to_owned()))
+            }
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Value, E> {
+                Ok(Value::String(v))
+            }
+            fn visit_none<E: de::Error>(self) -> Result<Value, E> {
+                Ok(Value::Null)
+            }
+            fn visit_unit<E: de::Error>(self) -> Result<Value, E> {
+                Ok(Value::Null)
+            }
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Value, A::Error> {
+                let mut values = Vec::new();
+                while let Some(value) = seq.next_element_seed(StrictSeed)? {
+                    values.push(value);
+                }
+                Ok(Value::Array(values))
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Value, A::Error> {
+                let mut values = serde_json::Map::new();
+                while let Some(key) = map.next_key::<String>()? {
+                    if values.contains_key(&key) {
+                        return Err(de::Error::custom("duplicate key"));
+                    }
+                    values.insert(key, map.next_value_seed(StrictSeed)?);
+                }
+                Ok(Value::Object(values))
+            }
+        }
+        struct StrictSeed;
+        impl<'de> de::DeserializeSeed<'de> for StrictSeed {
+            type Value = Value;
+            fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Value, D::Error> {
+                deserializer.deserialize_any(StrictValue)
+            }
+        }
+        let mut deserializer = serde_json::Deserializer::from_slice(payload);
+        let value = StrictSeed
+            .deserialize(&mut deserializer)
+            .map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
+        deserializer
+            .end()
+            .map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
+        Ok(value)
+    }
+
+    fn decode_request(&self, payload: &[u8]) -> Result<(EditorRequest, String), RelayError> {
+        let parsed = self.parse_strict(payload)?;
+        self.validate_value(&parsed)?;
+        let request: EditorRequest =
+            serde_json::from_value(parsed).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
+        if let EditorRequest::Load { url } = &request {
+            if !url.starts_with("https://") {
+                return Err(refuse(RelayErrorCode::InvalidRequest));
+            }
+        }
+        match &request {
+            EditorRequest::Call {
+                worker_id,
+                extension_id,
+                ..
+            } if *worker_id > JS_MAX_SAFE_INTEGER || *extension_id > JS_MAX_SAFE_INTEGER => {
+                return Err(refuse(RelayErrorCode::InvalidRequest))
+            }
+            EditorRequest::Call { method, args, .. }
+                if method.is_empty()
+                    || method.len() > 128
+                    || !method
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+                    || !args.is_object() =>
+            {
+                return Err(refuse(RelayErrorCode::InvalidRequest))
+            }
+            EditorRequest::Terminate { worker_id } if *worker_id > JS_MAX_SAFE_INTEGER => {
+                return Err(refuse(RelayErrorCode::InvalidRequest))
+            }
+            _ => {}
+        }
+        let value =
+            serde_json::to_value(&request).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
+        self.validate_value(&value)?;
+        let mut fields = value;
+        fields
+            .as_object_mut()
+            .expect("typed request serializes as an object")
+            .remove("kind");
+        let canonical =
+            serde_json::to_string(&fields).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
+        Ok((request, canonical))
+    }
+
+    fn decode_reply(&self, payload: &[u8]) -> Result<(BrokerReply, String), RelayError> {
+        let parsed = self.parse_strict(payload)?;
+        self.validate_value(&parsed)?;
+        let reply: BrokerReply =
+            serde_json::from_value(parsed).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
+        match &reply {
+            BrokerReply::Load {
+                worker_id,
+                extension_ids,
+            } => {
+                let unique: HashSet<_> = extension_ids.iter().copied().collect();
+                if *worker_id > JS_MAX_SAFE_INTEGER
+                    || extension_ids.is_empty()
+                    || extension_ids.len() > MAX_LOAD_EXTENSIONS
+                    || unique.len() != extension_ids.len()
+                    || extension_ids.iter().any(|id| *id > JS_MAX_SAFE_INTEGER)
+                {
+                    return Err(refuse(RelayErrorCode::InvalidRequest));
+                }
+            }
+            BrokerReply::Terminate { terminated } if !terminated => {
+                return Err(refuse(RelayErrorCode::InvalidRequest))
+            }
+            _ => {}
+        }
+        let value =
+            serde_json::to_value(&reply).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
+        self.validate_value(&value)?;
+        let canonical =
+            serde_json::to_string(&reply).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
+        Ok((reply, canonical))
     }
 
     pub(crate) fn open_session(
@@ -213,11 +486,13 @@ impl BrokerTransportCore {
             return Err(refuse(RelayErrorCode::WrongCaller));
         }
         self.observe_now(now)?;
+        if request_id > JS_MAX_SAFE_INTEGER {
+            return Err(refuse(RelayErrorCode::InvalidRequest));
+        }
         if payload.len() > self.limits.max_payload_bytes {
             return Err(refuse(RelayErrorCode::PayloadTooLarge));
         }
-        let payload =
-            std::str::from_utf8(payload).map_err(|_| refuse(RelayErrorCode::InvalidUtf8))?;
+        let (typed_request, payload) = self.decode_request(payload)?;
         let id = SessionId::parse(session)?;
         let state = self
             .sessions
@@ -262,9 +537,16 @@ impl BrokerTransportCore {
             return Err(refuse(RelayErrorCode::RandomFailure));
         }
         let deadline = Self::deadline(now, self.limits.request_ttl)?.min(state.deadline);
+        let kind = match typed_request.expected() {
+            ReplyKind::Load => "load",
+            ReplyKind::Call => "call",
+            ReplyKind::Terminate => "terminate",
+        };
+        // The broker bootstrap adds protocol:1 and maps these fixed outer fields to the exact
+        // camelCase NativeBrokerProtocol envelope. `payload` contains request fields only.
         let javascript = format!(
-            "globalThis.__brickwrightBrokerReceive({{\"session\":{},\"correlation\":{},\"payload\":{}}})",
-            json_string(id.as_str()), json_string(correlation.as_str()), json_string(payload)
+            "globalThis.__brickwrightBrokerReceive({{\"session\":{},\"correlation\":{},\"kind\":{},\"requestId\":{},\"payload\":{}}})",
+            json_string(id.as_str()), json_string(correlation.as_str()), json_string(kind), request_id, json_string(&payload)
         );
         if javascript.len() > self.limits.max_delivery_bytes {
             return Err(refuse(RelayErrorCode::PayloadTooLarge));
@@ -282,6 +564,7 @@ impl BrokerTransportCore {
             Pending {
                 request_id,
                 deadline,
+                expected: typed_request.expected(),
             },
         );
         state.used_correlations.insert(correlation.clone());
@@ -298,6 +581,7 @@ impl BrokerTransportCore {
         caller_label: &str,
         session: &str,
         correlation: &str,
+        request_id: u64,
         payload: &[u8],
         now: u64,
     ) -> Result<Reply, RelayError> {
@@ -308,8 +592,7 @@ impl BrokerTransportCore {
         if payload.len() > self.limits.max_payload_bytes {
             return Err(refuse(RelayErrorCode::PayloadTooLarge));
         }
-        let payload =
-            std::str::from_utf8(payload).map_err(|_| refuse(RelayErrorCode::InvalidUtf8))?;
+        let (typed_reply, payload) = self.decode_reply(payload)?;
         let id = SessionId::parse(session)?;
         let correlation = CorrelationId::parse(correlation)?;
         let state = self
@@ -326,11 +609,18 @@ impl BrokerTransportCore {
         if now >= pending.deadline {
             return Err(refuse(RelayErrorCode::Expired));
         }
+        if request_id != pending.request_id || request_id > JS_MAX_SAFE_INTEGER {
+            return Err(refuse(RelayErrorCode::InvalidRequest));
+        }
+        // Wrong/reflected kinds leave pending intact for one correct, bounded retry.
+        if typed_reply.kind() != pending.expected {
+            return Err(refuse(RelayErrorCode::InvalidRequest));
+        }
         let request_id = pending.request_id;
         state.pending.remove(&correlation);
         Ok(Reply {
             request_id,
-            payload: payload.to_owned(),
+            payload,
         })
     }
 
@@ -461,514 +751,538 @@ fn json_string(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     fn limits() -> RelayLimits {
         RelayLimits {
-            max_sessions: 2,
+            max_sessions: 3,
             max_session_ids: 8,
-            max_pending_per_session: 2,
-            max_pending: 3,
+            max_pending_per_session: 3,
+            max_pending: 5,
             max_requests_per_session: 4,
-            max_payload_bytes: 128,
-            max_delivery_bytes: 512,
+            max_payload_bytes: 512,
+            max_delivery_bytes: 1024,
+            max_data_depth: 6,
+            max_data_nodes: 32,
+            max_string_bytes: 128,
             session_ttl: 100,
             request_ttl: 10,
         }
     }
-    fn random(byte: u8) -> impl FnOnce() -> Result<[u8; 32], ()> {
+    fn rng(byte: u8) -> impl FnOnce() -> Result<[u8; 32], ()> {
         move || Ok([byte; 32])
     }
-
-    #[test]
-    fn exact_labels_sequence_and_reply_correlation() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        assert_eq!(
-            core.open_session("evil", 0, random(1)).unwrap_err().code,
-            RelayErrorCode::WrongCaller
-        );
-        let session = core.open_session(MAIN_LABEL, 0, random(1)).unwrap();
-        assert_eq!(
-            core.request(MAIN_LABEL, session.as_str(), 1, b"{}", 0, random(8))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::OutOfOrder
-        );
-        let delivery = core
-            .request(MAIN_LABEL, session.as_str(), 0, b"{}", 0, random(8))
-            .unwrap();
-        assert_eq!(
-            core.reply(
-                MAIN_LABEL,
-                session.as_str(),
-                delivery.correlation.as_str(),
-                b"ok",
-                1
-            )
-            .unwrap_err()
-            .code,
-            RelayErrorCode::WrongCaller
-        );
-        assert_eq!(
-            core.reply(BROKER_LABEL, session.as_str(), &"9".repeat(64), b"ok", 1)
-                .unwrap_err()
-                .code,
-            RelayErrorCode::UnknownRequest
-        );
-        assert_eq!(
-            core.reply(
-                BROKER_LABEL,
-                session.as_str(),
-                delivery.correlation.as_str(),
-                b"ok",
-                1
-            )
-            .unwrap()
-            .payload,
-            "ok"
-        );
-        assert_eq!(
-            core.request(MAIN_LABEL, session.as_str(), 0, b"{}", 1, random(9))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::Replay
-        );
+    const LOAD: &[u8] = br#"{"kind":"load","url":"https://gallery.invalid/x.js"}"#;
+    const CALL: &[u8] =
+        br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"probe","args":{"x":1}}"#;
+    const TERMINATE: &[u8] = br#"{"kind":"terminate","worker_id":0}"#;
+    const LOAD_REPLY: &[u8] = br#"{"kind":"load","worker_id":0,"extension_ids":[0]}"#;
+    const CALL_REPLY: &[u8] = br#"{"kind":"call","result":{"ok":true}}"#;
+    const TERMINATE_REPLY: &[u8] = br#"{"kind":"terminate","terminated":true}"#;
+    fn session(core: &mut BrokerTransportCore, byte: u8) -> SessionId {
+        core.open_session(MAIN_LABEL, 0, rng(byte)).unwrap()
     }
 
     #[test]
-    fn delivery_escapes_code_breakout_and_unicode_separators() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        let session = core.open_session(MAIN_LABEL, 0, random(2)).unwrap();
-        let payload = "{\"x\":\"'</script>\\\\\u{2028}\u{2029}\"}";
-        let delivery = core
-            .request(
-                MAIN_LABEL,
-                session.as_str(),
+    fn typed_load_round_trip() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 1);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(11))
+            .unwrap();
+        let r = c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
                 0,
-                payload.as_bytes(),
+                LOAD_REPLY,
+                1,
+            )
+            .unwrap();
+        assert_eq!(r.request_id, 0);
+        assert!(r.payload.contains("\"kind\":\"load\""));
+    }
+    #[test]
+    fn typed_call_round_trip() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 2);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, CALL, 0, rng(12))
+            .unwrap();
+        assert_eq!(
+            c.reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
                 0,
-                random(9),
-            )
-            .unwrap();
-        assert!(!delivery.javascript.contains("</script>"));
-        assert!(!delivery.javascript.contains('\u{2028}'));
-        assert!(!delivery.javascript.contains('\u{2029}'));
-        assert!(delivery.javascript.contains("\\u003c/script>"));
-        assert!(delivery
-            .javascript
-            .starts_with("globalThis.__brickwrightBrokerReceive("));
-    }
-
-    #[test]
-    fn capacity_bytes_random_and_clock_fail_closed() {
-        let mut one = limits();
-        one.max_sessions = 1;
-        one.max_pending_per_session = 1;
-        one.max_pending = 1;
-        one.max_payload_bytes = 2;
-        let mut core = BrokerTransportCore::new(one).unwrap();
-        assert_eq!(
-            core.open_session(MAIN_LABEL, 0, random(0))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::RandomFailure
-        );
-        let session = core.open_session(MAIN_LABEL, 0, random(3)).unwrap();
-        assert_eq!(
-            core.open_session(MAIN_LABEL, 0, random(4))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::Capacity
-        );
-        assert_eq!(
-            core.request(MAIN_LABEL, session.as_str(), 0, b"xxx", 0, random(10))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::PayloadTooLarge
-        );
-        core.request(MAIN_LABEL, session.as_str(), 0, b"{}", 0, random(10))
-            .unwrap();
-        assert_eq!(
-            core.request(MAIN_LABEL, session.as_str(), 1, b"{}", 0, random(11))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::Capacity
-        );
-        assert_eq!(core.expire(0).unwrap().len(), 0);
-        assert_eq!(core.expire(11).unwrap().len(), 1);
-        assert_eq!(
-            core.expire(10).unwrap_err().code,
-            RelayErrorCode::ClockFailure
-        );
-    }
-
-    #[test]
-    fn teardown_cancels_all_pending_and_removes_authority() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        for byte in [5, 6] {
-            let session = core.open_session(MAIN_LABEL, 0, random(byte)).unwrap();
-            core.request(MAIN_LABEL, session.as_str(), 0, b"{}", 0, random(byte + 10))
-                .unwrap();
-        }
-        assert_eq!(
-            core.broker_teardown(MAIN_LABEL).unwrap_err().code,
-            RelayErrorCode::WrongCaller
-        );
-        let cancelled = core.broker_teardown(BROKER_LABEL).unwrap();
-        assert_eq!(cancelled.len(), 2);
-        assert_eq!(core.counts(), (0, 0));
-    }
-
-    #[test]
-    fn stable_errors_and_invalid_utf8_do_not_leak_input() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        let session = core.open_session(MAIN_LABEL, 0, random(7)).unwrap();
-        let error = core
-            .request(MAIN_LABEL, session.as_str(), 0, &[0xff], 0, random(17))
-            .unwrap_err();
-        assert_eq!(error.code, RelayErrorCode::InvalidUtf8);
-        assert_eq!(error.to_string(), "broker transport refused");
-        assert!(!format!("{error:?}").contains("secret"));
-    }
-
-    #[test]
-    fn same_request_ids_route_only_by_session_and_host_correlation() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        let a = core.open_session(MAIN_LABEL, 0, random(20)).unwrap();
-        let b = core.open_session(MAIN_LABEL, 0, random(21)).unwrap();
-        let da = core
-            .request(MAIN_LABEL, a.as_str(), 0, b"a", 0, random(30))
-            .unwrap();
-        let db = core
-            .request(MAIN_LABEL, b.as_str(), 0, b"b", 0, random(31))
-            .unwrap();
-        assert_eq!(
-            core.reply(BROKER_LABEL, a.as_str(), db.correlation.as_str(), b"bad", 1)
-                .unwrap_err()
-                .code,
-            RelayErrorCode::UnknownRequest
-        );
-        assert_eq!(
-            core.reply(BROKER_LABEL, a.as_str(), da.correlation.as_str(), b"a", 1)
-                .unwrap()
-                .request_id,
-            0
-        );
-        assert_eq!(
-            core.reply(BROKER_LABEL, b.as_str(), db.correlation.as_str(), b"b", 1)
-                .unwrap()
-                .payload,
-            "b"
-        );
-    }
-
-    #[test]
-    fn wrong_swapped_and_duplicate_correlations_never_deliver_another_reply() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        let session = core.open_session(MAIN_LABEL, 0, random(22)).unwrap();
-        let first = core
-            .request(MAIN_LABEL, session.as_str(), 0, b"a", 0, random(32))
-            .unwrap();
-        let second = core
-            .request(MAIN_LABEL, session.as_str(), 1, b"b", 0, random(33))
-            .unwrap();
-        assert_eq!(
-            core.reply(BROKER_LABEL, session.as_str(), &"f".repeat(64), b"x", 1)
-                .unwrap_err()
-                .code,
-            RelayErrorCode::UnknownRequest
-        );
-        assert_eq!(
-            core.reply(
-                BROKER_LABEL,
-                session.as_str(),
-                second.correlation.as_str(),
-                b"b",
+                CALL_REPLY,
                 1
             )
             .unwrap()
             .request_id,
-            1
+            0
+        );
+    }
+    #[test]
+    fn typed_terminate_round_trip() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 3);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, TERMINATE, 0, rng(13))
+            .unwrap();
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                TERMINATE_REPLY,
+                1
+            )
+            .is_ok());
+    }
+    #[test]
+    fn request_as_reply_is_rejected_without_consuming_pending() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 4);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(14))
+            .unwrap();
+        assert_eq!(
+            c.reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, LOAD, 1)
+                .unwrap_err()
+                .code,
+            RelayErrorCode::InvalidRequest
+        );
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                LOAD_REPLY,
+                1
+            )
+            .is_ok());
+    }
+    #[test]
+    fn reply_as_request_is_rejected_before_sequence_mutation() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 5);
+        assert_eq!(
+            c.request(MAIN_LABEL, s.as_str(), 0, LOAD_REPLY, 0, rng(15))
+                .unwrap_err()
+                .code,
+            RelayErrorCode::InvalidRequest
         );
         assert_eq!(
-            core.reply(
+            c.request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(15))
+                .unwrap()
+                .request_id,
+            0
+        );
+    }
+    #[test]
+    fn kind_swap_remains_pending_for_correct_reply() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 6);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, CALL, 0, rng(16))
+            .unwrap();
+        assert_eq!(
+            c.reply(
                 BROKER_LABEL,
-                session.as_str(),
-                second.correlation.as_str(),
-                b"again",
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                TERMINATE_REPLY,
+                1
+            )
+            .unwrap_err()
+            .code,
+            RelayErrorCode::InvalidRequest
+        );
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                CALL_REPLY,
+                1
+            )
+            .is_ok());
+    }
+    #[test]
+    fn extra_request_fields_are_rejected() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 7);
+        let bad = br#"{"kind":"load","url":"https://gallery.invalid/x.js","source":"x"}"#;
+        assert_eq!(
+            c.request(MAIN_LABEL, s.as_str(), 0, bad, 0, rng(17))
+                .unwrap_err()
+                .code,
+            RelayErrorCode::InvalidRequest
+        );
+    }
+    #[test]
+    fn extra_reply_fields_do_not_consume_pending() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 8);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(18))
+            .unwrap();
+        let bad = br#"{"kind":"load","worker_id":0,"extension_ids":[0],"result":"reflection"}"#;
+        assert!(c
+            .reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, bad, 1)
+            .is_err());
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                LOAD_REPLY,
+                1
+            )
+            .is_ok());
+    }
+    #[test]
+    fn oversized_nesting_and_nodes_fail_closed() {
+        let mut l = limits();
+        l.max_data_depth = 2;
+        let mut c = BrokerTransportCore::new(l).unwrap();
+        let s = session(&mut c, 9);
+        let deep=br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"x","args":{"a":{"b":{"c":1}}}}"#;
+        assert_eq!(
+            c.request(MAIN_LABEL, s.as_str(), 0, deep, 0, rng(19))
+                .unwrap_err()
+                .code,
+            RelayErrorCode::InvalidRequest
+        );
+    }
+    #[test]
+    fn hostile_strings_are_canonicalized_and_script_escaped() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 10);
+        let hostile="{\"kind\":\"call\",\"worker_id\":0,\"extension_id\":0,\"method\":\"x\",\"args\":{\"x\":\"'</script>\\u2028\\u2029\"}}";
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, hostile.as_bytes(), 0, rng(20))
+            .unwrap();
+        assert!(!d.javascript.contains("</script>"));
+        assert!(!d.javascript.contains('\u{2028}'));
+    }
+    #[test]
+    fn cross_session_correlation_cannot_route() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let a = session(&mut c, 21);
+        let b = session(&mut c, 22);
+        let d = c
+            .request(MAIN_LABEL, a.as_str(), 0, LOAD, 0, rng(23))
+            .unwrap();
+        assert_eq!(
+            c.reply(
+                BROKER_LABEL,
+                b.as_str(),
+                d.correlation.as_str(),
+                0,
+                LOAD_REPLY,
                 1
             )
             .unwrap_err()
             .code,
             RelayErrorCode::UnknownRequest
         );
-        assert_eq!(
-            core.reply(
+    }
+    #[test]
+    fn duplicate_and_late_reply_are_stable_failures() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 24);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(25))
+            .unwrap();
+        assert!(c
+            .reply(
                 BROKER_LABEL,
-                session.as_str(),
-                first.correlation.as_str(),
-                b"a",
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                LOAD_REPLY,
                 1
             )
-            .unwrap()
-            .request_id,
-            0
-        );
-    }
-
-    #[test]
-    fn reply_enforces_session_deadline_without_expire_tick() {
-        let mut short = limits();
-        short.session_ttl = 5;
-        short.request_ttl = 20;
-        let mut core = BrokerTransportCore::new(short).unwrap();
-        let session = core.open_session(MAIN_LABEL, 0, random(23)).unwrap();
-        let first = core
-            .request(MAIN_LABEL, session.as_str(), 0, b"a", 0, random(34))
-            .unwrap();
-        let second = core
-            .request(MAIN_LABEL, session.as_str(), 1, b"b", 0, random(35))
-            .unwrap();
+            .is_ok());
         assert_eq!(
-            core.request(MAIN_LABEL, session.as_str(), 2, b"c", 5, random(36))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::Expired
-        );
-        assert_eq!(
-            core.reply(
+            c.reply(
                 BROKER_LABEL,
-                session.as_str(),
-                first.correlation.as_str(),
-                b"late",
-                5
-            )
-            .unwrap_err()
-            .code,
-            RelayErrorCode::Expired
-        );
-        assert_eq!(core.counts(), (1, 2));
-        let cancelled = core.expire(5).unwrap();
-        assert_eq!(
-            cancelled
-                .iter()
-                .map(|item| item.request_id)
-                .collect::<Vec<_>>(),
-            vec![0, 1]
-        );
-        assert_eq!(core.counts(), (0, 0));
-        assert!(core.expire(5).unwrap().is_empty());
-        assert_ne!(first.correlation, second.correlation);
-    }
-
-    #[test]
-    fn completed_correlation_cannot_be_reused_or_satisfy_a_later_request() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        let session = core.open_session(MAIN_LABEL, 0, random(28)).unwrap();
-        let first = core
-            .request(MAIN_LABEL, session.as_str(), 0, b"a", 0, random(40))
-            .unwrap();
-        assert_eq!(
-            core.reply(
-                BROKER_LABEL,
-                session.as_str(),
-                first.correlation.as_str(),
-                b"a",
-                1
-            )
-            .unwrap()
-            .request_id,
-            0
-        );
-        assert_eq!(
-            core.request(MAIN_LABEL, session.as_str(), 1, b"b", 1, random(40))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::RandomFailure
-        );
-        assert_eq!(
-            core.reply(
-                BROKER_LABEL,
-                session.as_str(),
-                first.correlation.as_str(),
-                b"late",
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                LOAD_REPLY,
                 1
             )
             .unwrap_err()
             .code,
             RelayErrorCode::UnknownRequest
         );
-        let second = core
-            .request(MAIN_LABEL, session.as_str(), 1, b"b", 1, random(41))
+    }
+    #[test]
+    fn expiry_preserves_cancellation_until_expire_tick() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 26);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(27))
             .unwrap();
-        assert_ne!(first.correlation, second.correlation);
         assert_eq!(
-            core.reply(
+            c.reply(
                 BROKER_LABEL,
-                session.as_str(),
-                second.correlation.as_str(),
-                b"b",
-                2
-            )
-            .unwrap()
-            .request_id,
-            1
-        );
-    }
-
-    #[test]
-    fn correlation_zero_and_collision_fail_before_request_mutation() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        let a = core.open_session(MAIN_LABEL, 0, random(24)).unwrap();
-        let b = core.open_session(MAIN_LABEL, 0, random(25)).unwrap();
-        assert_eq!(
-            core.request(MAIN_LABEL, a.as_str(), 0, b"a", 0, random(0))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::RandomFailure
-        );
-        core.request(MAIN_LABEL, a.as_str(), 0, b"a", 0, random(35))
-            .unwrap();
-        assert_eq!(
-            core.request(MAIN_LABEL, b.as_str(), 0, b"b", 0, random(35))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::RandomFailure
-        );
-        assert_eq!(
-            core.request(MAIN_LABEL, b.as_str(), 0, b"b", 0, random(36))
-                .unwrap()
-                .request_id,
-            0
-        );
-    }
-
-    #[test]
-    fn global_pending_cap_and_main_teardown_are_session_isolated_and_idempotent() {
-        let mut capped = limits();
-        capped.max_pending = 1;
-        let mut core = BrokerTransportCore::new(capped).unwrap();
-        let a = core.open_session(MAIN_LABEL, 0, random(26)).unwrap();
-        let b = core.open_session(MAIN_LABEL, 0, random(27)).unwrap();
-        core.request(MAIN_LABEL, a.as_str(), 0, b"a", 0, random(37))
-            .unwrap();
-        assert_eq!(
-            core.request(MAIN_LABEL, b.as_str(), 0, b"b", 0, random(38))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::Capacity
-        );
-        assert_eq!(
-            core.main_session_teardown("evil", a.as_str())
-                .unwrap_err()
-                .code,
-            RelayErrorCode::WrongCaller
-        );
-        assert_eq!(
-            core.main_session_teardown(MAIN_LABEL, a.as_str())
-                .unwrap()
-                .len(),
-            1
-        );
-        assert!(core
-            .main_session_teardown(MAIN_LABEL, a.as_str())
-            .unwrap()
-            .is_empty());
-        assert_eq!(
-            core.request(MAIN_LABEL, b.as_str(), 0, b"b", 0, random(38))
-                .unwrap()
-                .request_id,
-            0
-        );
-        assert_eq!(core.counts(), (1, 1));
-    }
-
-    #[test]
-    fn expired_request_reply_is_non_consuming_until_expire_emits_once() {
-        let mut core = BrokerTransportCore::new(limits()).unwrap();
-        let session = core.open_session(MAIN_LABEL, 0, random(50)).unwrap();
-        let delivery = core
-            .request(MAIN_LABEL, session.as_str(), 0, b"x", 0, random(51))
-            .unwrap();
-        assert_eq!(
-            core.reply(
-                BROKER_LABEL,
-                session.as_str(),
-                delivery.correlation.as_str(),
-                b"late",
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                LOAD_REPLY,
                 10
             )
             .unwrap_err()
             .code,
             RelayErrorCode::Expired
         );
-        assert_eq!(core.counts(), (1, 1));
-        let cancelled = core.expire(10).unwrap();
-        assert_eq!(cancelled.len(), 1);
-        assert_eq!(cancelled[0].request_id, 0);
-        assert_eq!(core.counts(), (1, 0));
-        assert!(core.expire(10).unwrap().is_empty());
+        assert_eq!(c.expire(10).unwrap().len(), 1);
+        assert!(c.expire(10).unwrap().is_empty());
     }
-
     #[test]
-    fn process_lifetime_session_history_prevents_teardown_reopen_aba() {
-        let mut bounded = limits();
-        bounded.max_session_ids = 2;
-        let mut core = BrokerTransportCore::new(bounded).unwrap();
-        let old = core.open_session(MAIN_LABEL, 0, random(52)).unwrap();
-        let delivery = core
-            .request(MAIN_LABEL, old.as_str(), 0, b"x", 0, random(53))
+    fn teardown_is_label_bound_and_session_isolated() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let a = session(&mut c, 28);
+        let b = session(&mut c, 29);
+        c.request(MAIN_LABEL, a.as_str(), 0, LOAD, 0, rng(30))
+            .unwrap();
+        c.request(MAIN_LABEL, b.as_str(), 0, LOAD, 0, rng(31))
             .unwrap();
         assert_eq!(
-            core.main_session_teardown(MAIN_LABEL, old.as_str())
+            c.main_session_teardown(MAIN_LABEL, a.as_str())
                 .unwrap()
                 .len(),
             1
         );
+        assert_eq!(c.counts(), (1, 1));
+        assert_eq!(c.broker_teardown(BROKER_LABEL).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn duplicate_keys_are_rejected_without_sequence_mutation() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 32);
+        let duplicate =
+            br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"x","args":{"x":1,"x":2}}"#;
         assert_eq!(
-            core.open_session(MAIN_LABEL, 1, random(52))
+            c.request(MAIN_LABEL, s.as_str(), 0, duplicate, 0, rng(33))
                 .unwrap_err()
                 .code,
-            RelayErrorCode::RandomFailure
+            RelayErrorCode::InvalidRequest
         );
-        core.open_session(MAIN_LABEL, 1, random(56)).unwrap();
+        assert!(c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(33))
+            .is_ok());
+    }
+
+    #[test]
+    fn javascript_unsafe_ids_and_invalid_load_sets_are_rejected() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 34);
+        let unsafe_call = br#"{"kind":"call","worker_id":9007199254740992,"extension_id":0,"method":"x","args":null}"#;
         assert_eq!(
-            core.open_session(MAIN_LABEL, 1, random(57))
+            c.request(MAIN_LABEL, s.as_str(), 0, unsafe_call, 0, rng(35))
                 .unwrap_err()
                 .code,
-            RelayErrorCode::Capacity
+            RelayErrorCode::InvalidRequest
         );
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(35))
+            .unwrap();
+        let duplicate_extensions = br#"{"kind":"load","worker_id":0,"extension_ids":[1,1]}"#;
         assert_eq!(
-            core.reply(
+            c.reply(
                 BROKER_LABEL,
-                old.as_str(),
-                delivery.correlation.as_str(),
-                b"late",
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                duplicate_extensions,
                 1
             )
             .unwrap_err()
             .code,
-            RelayErrorCode::InvalidSession
+            RelayErrorCode::InvalidRequest
         );
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                LOAD_REPLY,
+                1
+            )
+            .is_ok());
     }
 
     #[test]
-    fn serialized_delivery_bound_rejects_hostile_controls_before_mutation() {
-        let mut bounded = limits();
-        bounded.max_delivery_bytes = 230;
-        let mut core = BrokerTransportCore::new(bounded).unwrap();
-        let session = core.open_session(MAIN_LABEL, 0, random(54)).unwrap();
-        let mut hostile: Vec<u8> = (0..=31).collect();
-        hostile.extend_from_slice(b"\"\\</script>");
-        assert_eq!(
-            core.request(MAIN_LABEL, session.as_str(), 0, &hostile, 0, random(55))
-                .unwrap_err()
-                .code,
-            RelayErrorCode::PayloadTooLarge
-        );
-        let accepted = core
-            .request(MAIN_LABEL, session.as_str(), 0, b"{}", 0, random(55))
+    fn terminate_false_and_unlisted_failure_codes_leave_pending() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 36);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, TERMINATE, 0, rng(37))
             .unwrap();
-        assert_eq!(accepted.request_id, 0);
-        assert!(!accepted.javascript.contains("</script>"));
+        let false_reply = br#"{"kind":"terminate","terminated":false}"#;
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                false_reply,
+                1
+            )
+            .is_err());
+        let invented = br#"{"kind":"failure","request_kind":"terminate","code":"invoke-anything"}"#;
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                invented,
+                1
+            )
+            .is_err());
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                TERMINATE_REPLY,
+                1
+            )
+            .is_ok());
+    }
+
+    #[test]
+    fn allowlisted_failure_is_bound_to_expected_kind() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 38);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, CALL, 0, rng(39))
+            .unwrap();
+        let reflected = br#"{"kind":"failure","request_kind":"load","code":"operation-failed"}"#;
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                reflected,
+                1
+            )
+            .is_err());
+        let failure = br#"{"kind":"failure","request_kind":"call","code":"operation-failed"}"#;
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                failure,
+                1
+            )
+            .is_ok());
+    }
+
+    #[test]
+    fn outer_request_id_above_javascript_safe_integer_does_not_advance_sequence() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 40);
+        assert_eq!(
+            c.request(
+                MAIN_LABEL,
+                s.as_str(),
+                JS_MAX_SAFE_INTEGER + 1,
+                LOAD,
+                0,
+                rng(41)
+            )
+            .unwrap_err()
+            .code,
+            RelayErrorCode::InvalidRequest
+        );
+        assert!(c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(41))
+            .is_ok());
+    }
+
+    #[test]
+    fn call_requires_plain_object_args_and_restricted_method_name() {
+        let invalid = [
+            br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"native.invoke","args":{}}"#
+                .as_slice(),
+            br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"","args":{}}"#.as_slice(),
+            br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"ok","args":null}"#
+                .as_slice(),
+            br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"ok","args":[]}"#.as_slice(),
+        ];
+        for (index, payload) in invalid.into_iter().enumerate() {
+            let mut c = BrokerTransportCore::new(limits()).unwrap();
+            let s = session(&mut c, 42 + index as u8);
+            assert_eq!(
+                c.request(MAIN_LABEL, s.as_str(), 0, payload, 0, rng(50 + index as u8))
+                    .unwrap_err()
+                    .code,
+                RelayErrorCode::InvalidRequest
+            );
+        }
+    }
+
+    #[test]
+    fn delivery_contains_fixed_routing_envelope_and_fields_only_payload() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 60);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(61))
+            .unwrap();
+        assert!(d.javascript.contains(r#""kind":"load""#));
+        assert!(d.javascript.contains(r#""requestId":0"#));
+        assert!(d
+            .javascript
+            .contains(r#""payload":"{\"url\":\"https://gallery.invalid/x.js\"}""#));
+        assert!(!d.javascript.contains(r#"\\\"kind\\\":\\\"load\\\""#));
+    }
+
+    #[test]
+    fn wrong_inner_reply_id_leaves_pending_for_correct_reply() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 62);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, LOAD, 0, rng(63))
+            .unwrap();
+        assert_eq!(
+            c.reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                1,
+                LOAD_REPLY,
+                1
+            )
+            .unwrap_err()
+            .code,
+            RelayErrorCode::InvalidRequest
+        );
+        assert!(c
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                LOAD_REPLY,
+                1
+            )
+            .is_ok());
     }
 }

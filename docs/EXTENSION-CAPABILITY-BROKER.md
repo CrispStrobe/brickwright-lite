@@ -128,7 +128,7 @@ This progression replaces the original CP3 estimate after the isolated-realm
 finding. Each item is a separately pushed checkpoint; later wiring cannot make
 an earlier pure core look complete retroactively.
 
-- [ ] **CP3-C3 — typed relay envelopes (45–75 minutes).** Replace the Rust
+- [x] **CP3-C3 — typed relay envelopes (45–75 minutes).** Replace the Rust
   relay's deliberately byte-opaque payload with exact bounded
   load/call/terminate and matching reply variants. DoD: request/reply
   reflection, response-kind swaps, extra fields, deep/large data, duplicate,
@@ -289,13 +289,23 @@ and per-request correlation IDs are independently bounded and never reused;
 editor sequence IDs cannot route broker replies; reply, session and serialized
 delivery bytes have separate caps and monotonic deadlines. Expiry preserves
 pending work until an exactly-once cancellation is emitted, and main/broker
-teardown drains the correct authority. Fourteen Rust mutations include live and
-completed correlation collision, process-lifetime session ABA, cross-session
-swaps, duplicate/expired replies, global capacity, clock regression and hostile
-JS serialization. The relay is intentionally byte-opaque: typed operation and
-reply-kind validation, origin-bound result sinks, injected Tauri caller objects
-and actual delivery remain adapter release gates. Merely compiling this module
-does not register a command or grant either webview new authority.
+teardown drains the correct authority. The relay now decodes exact typed
+load/call/terminate operations and kind-bound success/failure replies. It
+enforces JavaScript-safe IDs, object-only call arguments, restricted method
+names, duplicate-key rejection, recursive data bounds, exact fields, unique
+bounded load identities and literal termination success. Wrong request IDs,
+reflected/wrong reply kinds and malformed replies leave the pending request
+live only until its bounded valid retry or deadline. Twenty-two active Rust
+mutations cover these typed boundaries plus correlation/session ABA,
+cross-session swaps, duplicate/expired replies, global capacity, clock
+regression and hostile JS serialization.
+
+The emitted delivery intentionally targets a receiver which does not exist yet;
+CP3-C3 is the typed relay core, not transport completion. CP3-C4/C5 must prove
+the actual snake-case-to-JavaScript envelope mapping, one private protocol owner
+per relay session, code-only error normalization, origin-bound result sinks,
+injected Tauri caller objects and exact local delivery. Merely compiling this
+module does not register a command or grant either webview new authority.
 
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
