@@ -279,7 +279,8 @@ const extractBrickwrightState = async buffer => {
         if (!entry) {
             preservedBundle = null;
             const result = replaceProjectState(localStorage, {});
-            return result.outcome === 'loaded' ? {...result, outcome: 'legacy', found: false} : result;
+            return result.outcome === 'loaded' ? {...result, outcome: 'legacy', found: false,
+                report: {action: 'cleared', supportedVersion: BUNDLE_VERSION}} : result;
         }
         if (entry._data?.uncompressedSize > MAX_BUNDLE_BYTES) {
             preservedBundle = null;
@@ -298,7 +299,8 @@ const extractBrickwrightState = async buffer => {
         const result = replaceProjectState(localStorage, parsed.state);
         preservedBundle = result.outcome === 'loaded' && parsed.version === BUNDLE_VERSION ?
             {outcome: 'loaded', document: parsed.passthrough} : null;
-        return {...result, version: parsed.version, found: result.outcome === 'loaded'};
+        return {...result, version: parsed.version, found: result.outcome === 'loaded',
+            report: parsed.report};
     } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[brickwright] could not read tab state from the project', e);

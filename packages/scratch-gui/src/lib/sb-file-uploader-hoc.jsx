@@ -158,7 +158,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                         // when all four are. Tell the tabs their storage changed;
                         // they seed from localStorage on mount and this is what
                         // makes an already-mounted tab notice.
-                        if (bundle && bundle.found && typeof window !== 'undefined') {
+                        if (bundle && typeof window !== 'undefined') {
                             window.dispatchEvent(new CustomEvent('bw-project-bundle-loaded',
                                 {detail: bundle}));
                         }

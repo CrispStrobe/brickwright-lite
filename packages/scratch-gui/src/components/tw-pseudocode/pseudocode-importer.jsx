@@ -776,7 +776,7 @@ class PseudocodeImporter extends React.Component {
             this.writeAutosave();
         };
         window.addEventListener('bw-project-bundle-collect', this._onBundleCollect);
-        this._onBundleLoaded = () => {
+        this._onBundleLoaded = event => {
             const saved = this.readAutosave();
             if (saved) {
                 this.publishGameControls(this.gameKeyForSource(saved.code));
@@ -785,6 +785,21 @@ class PseudocodeImporter extends React.Component {
                     buffers: {...st.buffers, [saved.lang]: saved.code},
                     status: this.L.restored(LANG_LABEL[saved.lang] || saved.lang)
                 }));
+            } else if (event?.detail?.outcome === 'legacy' || event?.detail?.outcome === 'loaded') {
+                this.publishGameControls(null);
+                this.setState({
+                    lang: 'pseudocode',
+                    buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
+                        asm: '', micropython: ''},
+                    status: ''
+                });
+            } else if (event?.detail?.outcome === 'future' || event?.detail?.outcome === 'invalid' ||
+                event?.detail?.outcome === 'storage-failed') {
+                const version = event.detail.version ? ` v${event.detail.version}` : '';
+                const reason = event.detail.reason || event.detail.report?.action || event.detail.outcome;
+                this.setState({
+                    status: `Project blocks loaded; Brickwright state${version} was not applied: ${reason}`
+                });
             }
         };
         window.addEventListener('bw-project-bundle-loaded', this._onBundleLoaded);

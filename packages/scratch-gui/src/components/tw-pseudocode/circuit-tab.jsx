@@ -195,26 +195,31 @@ class CircuitTab extends React.Component {
             } catch (e) { /* the Scratch half of the save must survive this */ }
         };
         window.addEventListener('bw-project-bundle-collect', this._onBundleCollect);
-        this._onBundleLoaded = () => {
+        this._onBundleLoaded = event => {
             try {
                 const raw = localStorage.getItem('bw-circuit-autosave');
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch (e) { /* full */ }
                     this.setState({circuitData: parsed});
+                } else if (event?.detail?.outcome === 'legacy' || event?.detail?.outcome === 'loaded') {
+                    try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch (e) { /* full */ }
+                    this.setState({circuitData: {version: 1, parts: [], wires: []}});
                 }
                 const wraw = localStorage.getItem('bw-ctl-widgets');
                 const rt = this.props.vm && this.props.vm.runtime;
                 const p = rt && rt.controllerPanel;
-                if (wraw && p) {
-                    const data = JSON.parse(wraw);
-                    if (data && data.version === 1 && Array.isArray(data.widgets)) {
-                        for (const name of p.getWidgetNames()) p.removeWidget(name);
-                        for (const w of data.widgets) {
-                            const added = p.addWidget(w.name, w.type, w.config || {}, w.layout || {});
-                            if (w.binding) added.binding = {...w.binding};
+                if (p && (event?.detail?.outcome === 'legacy' || event?.detail?.outcome === 'loaded')) {
+                    for (const name of p.getWidgetNames()) p.removeWidget(name);
+                    if (wraw) {
+                        const data = JSON.parse(wraw);
+                        if (data && data.version === 1 && Array.isArray(data.widgets)) {
+                            for (const w of data.widgets) {
+                                const added = p.addWidget(w.name, w.type, w.config || {}, w.layout || {});
+                                if (w.binding) added.binding = {...w.binding};
+                            }
+                            if (data.mode === 'play' || data.mode === 'edit') p.setMode(data.mode);
                         }
-                        if (data.mode === 'play' || data.mode === 'edit') p.setMode(data.mode);
                     }
                 }
             } catch (e) {
