@@ -18,17 +18,17 @@ const source = 'SPRITE Cat:\n  WHEN flag clicked:\n    say "bundle integrity" fo
 const errors = [];
 
 const browser = await chromium.launch({headless: true});
-const newContext = async () => {
+const newContext = async ({starterComplete = true} = {}) => {
     const context = await browser.newContext({viewport: {width: 1600, height: 1000},
         acceptDownloads: true});
     const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     page.on('dialog', dialog => dialog.accept());
-    await page.addInitScript(() => {
+    await page.addInitScript(complete => {
         localStorage.clear();
         sessionStorage.clear();
-        localStorage.setItem('bw-starter-v1-complete', '1');
-    });
+        if (complete) localStorage.setItem('bw-starter-v1-complete', '1');
+    }, starterComplete);
     return {context, page};
 };
 const waitForVM = page => page.waitForFunction(() => {
@@ -49,7 +49,7 @@ const projectKeys = page => page.evaluate(() => ({
 }));
 
 try {
-    let {context, page} = await newContext();
+    let {context, page} = await newContext({starterComplete: false});
     await page.goto(`${url}${url.includes('?') ? '&' : '?'}journey=board`,
         {waitUntil: 'domcontentloaded', timeout: 60000});
     await waitForVM(page);
@@ -156,6 +156,11 @@ try {
     console.log('Project bundle integrity: restored 4/4 surfaces; vanilla cleared 3/3 auxiliaries.');
     await context.close();
 } catch (error) {
+    const failurePage = browser.contexts().at(-1)?.pages()?.[0];
+    if (failurePage) {
+        await failurePage.screenshot({path: resolve(artifacts, 'failure.png'), fullPage: true})
+            .catch(() => {});
+    }
     await writeFile(resolve(artifacts, 'failure.txt'), `${error.stack || error}\n`);
     throw error;
 } finally {
