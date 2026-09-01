@@ -107,6 +107,9 @@ integrates onto current remote defaults, and owns every acceptance and push.
   the repository threshold ratchet then returns to its 24-item ceiling without raising it.
 - **4 code complete, fresh-build verdict pending:** Lite `225faf95c` vendors the executable
   compiler contract; `4dc204ef7` wires the real File → blocks → Code → blocks → saved-file browser
-  journey into the build workflow. It uses state predicates rather than fixed sleeps.
+  journey into the build workflow. A completed CI run exposed an opcode-predicate race against the
+  pre-replacement VM; the gate now waits for the importer's explicit post-`loadProject` completion
+  signal. The repaired journey passed against the deployed app with all 7 opcodes before and after
+  Code and in the downloaded SB3, without fixed sleeps.
 - **5 pending:** do not close this claim until the matching Pages build passes the browser gate,
   its screenshot is inspected, and the deployed build identity is recorded here.

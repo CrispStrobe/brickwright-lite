@@ -55,9 +55,10 @@ try {
     });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 60000});
     await page.getByText('File', {exact: true}).click();
+    const chooserPromise = page.waitForEvent('filechooser', {timeout: 30000});
     await page.getByText('Load from your computer', {exact: true}).click();
-    const input = page.locator('body > input[type="file"][accept=".sb,.sb2,.sb3"]');
-    await input.setInputFiles(fixture);
+    const chooser = await chooserPromise;
+    await chooser.setFiles(fixture);
     await page.waitForFunction(required => {
         const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
         const found = new Set((vm?.runtime?.targets || []).flatMap(target =>
@@ -82,6 +83,11 @@ try {
     await page.screenshot({path: resolve(artifacts, 'code-roundtrip.png'), fullPage: true});
 
     await page.getByRole('button', {name: /To blocks/}).first().click();
+    // The old VM still contains every expected opcode while compilation is
+    // starting, so an opcode-only wait can resolve before replacement begins.
+    // The importer publishes this message only after vm.loadProject resolves.
+    await page.getByText('Compiled to blocks and loaded. Switch to the Code tab to see them.',
+        {exact: true}).waitFor({timeout: 30000});
     await page.waitForFunction(required => {
         const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
         const found = new Set((vm?.runtime?.targets || []).flatMap(target =>
