@@ -93,3 +93,6 @@ runs adversarial rollback/migration tests, performs the live journey, reconciles
   Eleven format fixtures have exact named outcomes. Replacement removes absent content keys,
   preserves preferences, and restores the prior byte strings after an injected write failure.
   A merge mutation makes both A→B and A→vanilla tests fail.
+- **3 implemented:** the sidecar is capped at 2 MiB and known sections have narrower caps. Unknown
+  v2 fields survive load→save without becoming storage keys. Future versions return an explicit
+  `preserved-not-applied` report, do not mutate storage, and are reattached verbatim.

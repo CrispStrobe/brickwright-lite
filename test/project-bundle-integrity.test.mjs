@@ -66,6 +66,14 @@ describe('project bundle typed document census', () => {
         }
     });
 
+    test('oversized bundle and known sections are refused before storage', () => {
+        const tooLargeBundle = ' '.repeat((2 * 1024 * 1024) + 1);
+        assert.equal(parseBundleDocument(tooLargeBundle).outcome, 'invalid');
+        const oversizedCode = JSON.stringify({format: BUNDLE_FORMAT, version: 2,
+            state: {code: {lang: 'pseudocode', code: 'x'.repeat((512 * 1024) + 1)}}});
+        assert.equal(parseBundleDocument(oversizedCode).outcome, 'invalid');
+    });
+
     test('v1 migrates and v2 decodes to the same exact storage state', () => {
         const v1 = parseBundleDocument(JSON.stringify({version: 1, state: raw}));
         const v2 = parseBundleDocument(JSON.stringify({format: BUNDLE_FORMAT, version: 2,
@@ -156,4 +164,58 @@ describe('real archive extraction applies the classified outcome', () => {
             }
         });
     }
+
+    test('unknown v2 data survives load to save but never becomes a storage key', async () => {
+        const storage = memoryStorage();
+        global.localStorage = storage;
+        global.window = {dispatchEvent: () => {}};
+        try {
+            const module = await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+            const inputDocument = {format: BUNDLE_FORMAT, version: 2, vendor: {name: 'future-tool'},
+                state: {code, analysis: {opaque: [1, 2, 3]}}};
+            const input = await archive(JSON.stringify(inputDocument));
+            const loaded = await module.extractBrickwrightState(
+                input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength));
+            assert.equal(loaded.outcome, 'loaded');
+            assert.equal(storage.getItem('analysis'), null, 'unknown sections never become storage keys');
+
+            const base = await archive();
+            const output = await module.attachBrickwrightState(new Blob([base]));
+            const zip = await JSZip.loadAsync(await output.arrayBuffer());
+            const saved = JSON.parse(await zip.file('brickwright/state.json').async('text'));
+            assert.deepEqual(saved.vendor, inputDocument.vendor);
+            assert.deepEqual(saved.state.analysis, inputDocument.state.analysis);
+            assert.deepEqual(saved.state.code, code);
+        } finally {
+            delete global.localStorage;
+            delete global.window;
+        }
+    });
+
+    test('a future document mutates no storage and survives the next save opaquely', async () => {
+        const storage = memoryStorage({...raw, 'bw-theme': 'dark'});
+        global.localStorage = storage;
+        global.window = {dispatchEvent: () => {}};
+        try {
+            const module = await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+            const future = {format: BUNDLE_FORMAT, version: 7, state: {quantum: {program: 'q'}}};
+            const input = await archive(JSON.stringify(future));
+            const loaded = await module.extractBrickwrightState(
+                input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength));
+            assert.equal(loaded.outcome, 'future');
+            assert.equal(loaded.version, 7);
+            assert.deepEqual(loaded.report, {action: 'preserved-not-applied', version: 7,
+                supportedVersion: 2});
+            assert.deepEqual(storage.dump(), {...raw, 'bw-theme': 'dark'});
+
+            const base = await archive();
+            const output = await module.attachBrickwrightState(new Blob([base]));
+            const zip = await JSZip.loadAsync(await output.arrayBuffer());
+            const saved = JSON.parse(await zip.file('brickwright/state.json').async('text'));
+            assert.deepEqual(saved, future);
+        } finally {
+            delete global.localStorage;
+            delete global.window;
+        }
+    });
 });

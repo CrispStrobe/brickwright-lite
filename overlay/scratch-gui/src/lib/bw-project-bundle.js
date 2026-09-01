@@ -32,6 +32,11 @@
 const BUNDLE_PATH = 'brickwright/state.json';
 const BUNDLE_FORMAT = 'brickwright-state';
 const BUNDLE_VERSION = 2;
+const MAX_BUNDLE_BYTES = 2 * 1024 * 1024;
+const SECTION_LIMITS = Object.freeze({code: 512 * 1024, circuit: 1024 * 1024,
+    controller: 512 * 1024});
+const KNOWN_SECTIONS = Object.freeze(['code', 'circuit', 'controller', 'legacyWidgets']);
+let preservedBundle = null;
 
 /**
  * The localStorage keys that are PROJECT CONTENT, as opposed to per-device UI
@@ -52,6 +57,8 @@ const isRecord = value => value !== null && typeof value === 'object' && !Array.
 
 const decodeSection = (name, value) => {
     if (!isRecord(value)) throw new Error(`${name} must be an object`);
+    const limit = SECTION_LIMITS[name];
+    if (limit && JSON.stringify(value).length > limit) throw new Error(`${name} exceeds ${limit} bytes`);
     if (name === 'code' && (typeof value.lang !== 'string' || typeof value.code !== 'string')) {
         throw new Error('code must contain string lang and code');
     }
@@ -125,22 +132,35 @@ const migrateV1 = doc => {
 
 /** Pure parser: classify and normalize before anything touches localStorage. */
 const parseBundleDocument = text => {
+    if (typeof text !== 'string' || text.length > MAX_BUNDLE_BYTES) {
+        return {outcome: 'invalid', reason: `bundle exceeds ${MAX_BUNDLE_BYTES} bytes`,
+            report: {action: 'refused', supportedVersion: BUNDLE_VERSION}};
+    }
     let doc;
     try { doc = JSON.parse(text); } catch (error) {
-        return {outcome: 'invalid', reason: `invalid JSON: ${error.message}`};
+        return {outcome: 'invalid', reason: `invalid JSON: ${error.message}`,
+            report: {action: 'refused', supportedVersion: BUNDLE_VERSION}};
     }
     if (!isRecord(doc)) return {outcome: 'invalid', reason: 'document must be an object'};
     const version = doc.version === undefined ? 1 : doc.version;
     if (!Number.isInteger(version) || version < 1) {
         return {outcome: 'invalid', reason: 'version must be a positive integer'};
     }
-    if (version > BUNDLE_VERSION) return {outcome: 'future', version};
+    if (version > BUNDLE_VERSION) return {outcome: 'future', version, passthrough: doc,
+        passthroughText: text,
+        report: {action: 'preserved-not-applied', version, supportedVersion: BUNDLE_VERSION}};
     try {
-        if (version === 1) return {outcome: 'loaded', version, state: migrateV1(doc)};
+        if (version === 1) return {outcome: 'loaded', version, state: migrateV1(doc),
+            report: {action: 'migrated-and-applied', version, supportedVersion: BUNDLE_VERSION}};
         if (doc.format !== BUNDLE_FORMAT) {
             return {outcome: 'invalid', version, reason: `format must be ${BUNDLE_FORMAT}`};
         }
-        return {outcome: 'loaded', version, state: decodeProjectState(doc.state)};
+        const state = decodeProjectState(doc.state);
+        const unknownSections = Object.fromEntries(Object.entries(doc.state)
+            .filter(([key]) => !KNOWN_SECTIONS.includes(key)));
+        return {outcome: 'loaded', version, state, passthrough: doc, unknownSections,
+            report: {action: 'applied', version, supportedVersion: BUNDLE_VERSION,
+                unknownSections: Object.keys(unknownSections)}};
     } catch (error) {
         return {outcome: 'invalid', version, reason: error.message};
     }
@@ -221,16 +241,22 @@ const attachBrickwrightState = async blob => {
         }
     } catch (e) { /* a listener throwing must never break the save */ }
     const state = collectState();
-    if (Object.keys(state).length === 0) return blob;
+    if (Object.keys(state).length === 0 && !preservedBundle) return blob;
     try {
         const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-        zip.file(BUNDLE_PATH, JSON.stringify({
-            format: BUNDLE_FORMAT,
-            version: BUNDLE_VERSION,
-            savedAt: new Date().toISOString(),
-            state: encodeProjectState(state)
-        }));
+        let document;
+        if (preservedBundle?.outcome === 'future') {
+            zip.file(BUNDLE_PATH, preservedBundle.text);
+        } else {
+            const previous = preservedBundle?.outcome === 'loaded' ? preservedBundle.document : {};
+            const priorState = isRecord(previous.state) ? previous.state : {};
+            const unknown = Object.fromEntries(Object.entries(priorState)
+                .filter(([key]) => !KNOWN_SECTIONS.includes(key)));
+            document = {...previous, format: BUNDLE_FORMAT, version: BUNDLE_VERSION,
+                savedAt: new Date().toISOString(), state: {...unknown, ...encodeProjectState(state)}};
+        }
+        if (document) zip.file(BUNDLE_PATH, JSON.stringify(document));
         return await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
     } catch (e) {
         // eslint-disable-next-line no-console
@@ -251,12 +277,27 @@ const extractBrickwrightState = async buffer => {
         const zip = await JSZip.loadAsync(buffer);
         const entry = zip.file(BUNDLE_PATH);
         if (!entry) {
+            preservedBundle = null;
             const result = replaceProjectState(localStorage, {});
             return result.outcome === 'loaded' ? {...result, outcome: 'legacy', found: false} : result;
         }
+        if (entry._data?.uncompressedSize > MAX_BUNDLE_BYTES) {
+            preservedBundle = null;
+            return {outcome: 'invalid', keys: 0, found: false,
+                reason: `bundle exceeds ${MAX_BUNDLE_BYTES} bytes`};
+        }
         const parsed = parseBundleDocument(await entry.async('text'));
-        if (parsed.outcome !== 'loaded') return {...parsed, keys: 0, found: false};
+        if (parsed.outcome === 'future') {
+            preservedBundle = {outcome: 'future', text: parsed.passthroughText};
+            return {...parsed, keys: 0, found: false};
+        }
+        if (parsed.outcome !== 'loaded') {
+            preservedBundle = null;
+            return {...parsed, keys: 0, found: false};
+        }
         const result = replaceProjectState(localStorage, parsed.state);
+        preservedBundle = result.outcome === 'loaded' && parsed.version === BUNDLE_VERSION ?
+            {outcome: 'loaded', document: parsed.passthrough} : null;
         return {...result, version: parsed.version, found: result.outcome === 'loaded'};
     } catch (e) {
         // eslint-disable-next-line no-console
