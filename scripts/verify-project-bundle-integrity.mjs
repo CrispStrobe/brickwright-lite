@@ -110,7 +110,7 @@ try {
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.waitForFunction(needle => (document.querySelector('.cm-content')?.textContent || '')
         .includes(needle), 'bundle integrity', {timeout: 15000});
-    await page.getByRole('tab', {name: 'Circuit', exact: true}).click();
+    await page.getByRole('tab', {name: /Circuit/}).click();
     await page.waitForFunction(() => (window.__vm?.runtime?.circuitModel?.parts?.length || 0) > 0,
         null, {timeout: 15000});
     const reopenRight = page.getByRole('button', {name: 'Show right panel'});
