@@ -122,6 +122,49 @@ diagnostics renderer rather than another ad-hoc console transcript.
 
 ## CP3 — native boundary and one real vertical slice (60–90 minutes)
 
+### 2026-09-01 continuation tasklist (4–6 hours)
+
+This progression replaces the original CP3 estimate after the isolated-realm
+finding. Each item is a separately pushed checkpoint; later wiring cannot make
+an earlier pure core look complete retroactively.
+
+- [ ] **CP3-C3 — typed relay envelopes (45–75 minutes).** Replace the Rust
+  relay's deliberately byte-opaque payload with exact bounded
+  load/call/terminate and matching reply variants. DoD: request/reply
+  reflection, response-kind swaps, extra fields, deep/large data, duplicate,
+  late and cross-session frames all fail by named mutation; focused Rust tests
+  and production-library clippy pass.
+- [ ] **CP3-C4 — caller-bound Tauri adapter (60–90 minutes).** Add separate
+  main-request and broker-reply commands with disjoint exact-label ACLs and
+  runtime checks of Tauri's injected sender before payload parsing. DoD:
+  bounded origin-owned sinks, deadlines and teardown; fixed escaped delivery
+  into only the local hidden broker; mutations of either label check, ACL,
+  destination, session, correlation or serialization make a gate red. The
+  semantic native command remains absent at this checkpoint.
+- [ ] **CP3-C5 — isolated broker bootstrap (45–75 minutes).** Give the local
+  broker asset a narrowly scoped bundle and one-shot host bootstrap, then bind
+  the private JS protocol owner to the relay. DoD: owner/session/source/worker
+  handles never enter the editor realm; wrong, duplicate and stale bootstrap,
+  navigation, delivery and reply failures dispose exactly once; CSP permits
+  only the audited local asset; mobile remains fail-closed.
+- [ ] **CP3-D1 — real native vertical slice (60–90 minutes).** Register only
+  `platform.kind.read` through the broker label, semantic Rust policy and exact
+  empty arguments. DoD: editor direct/reflected/raw-command attempts are red;
+  broker lease, sequence, expiry and revocation mutations are red; JavaScript
+  and Rust return the same platform result without exposing a reusable invoke
+  handle.
+- [ ] **CP3-D2 — diagnostics and lifecycle closure (45–75 minutes).** Render
+  declared, allowed, refused and revoked capability state from bounded redacted
+  audit data. DoD: no pin source, digest, lease, correlation, raw args/results
+  or dependency errors appear; destroy, navigation, reload and timeout leave
+  zero stale authority and update diagnostics deterministically.
+- [ ] **CP3-E — production evidence (60–120 minutes).** Reconcile current
+  remote main and run the full Node, Rust, Tauri, build, browser and packaged
+  desktop gates. DoD: focused mutation denominators remain exact, applicable
+  GitHub workflows are green, artifacts show the real vertical slice with zero
+  page errors, and every mobile/native limitation is either closed or an
+  explicit fail-closed verdict rather than an implied compatibility claim.
+
 - [ ] Carry broker identity and semantic operation to the native boundary
   without exposing a reusable raw invoke handle to the worker.
 - [ ] Add Rust-side validation for the chosen vertical slice and keep web/native
