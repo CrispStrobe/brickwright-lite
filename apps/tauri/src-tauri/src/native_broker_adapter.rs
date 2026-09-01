@@ -93,6 +93,27 @@ fn exact_label(window: &WebviewWindow, expected: &str) -> Result<(), String> {
     }
 }
 
+fn valid_session(session: &str) -> bool {
+    session.len() == 64
+        && session
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+}
+
+pub(crate) fn dispose_all_javascript() -> &'static str {
+    "globalThis.__brickwrightBrokerDisposeAll?.()"
+}
+
+fn dispose_session_javascript(session: &str) -> Result<String, String> {
+    if !valid_session(session) {
+        return Err("broker refused".into());
+    }
+    let encoded = serde_json::to_string(session).map_err(|_| "broker unavailable".to_owned())?;
+    Ok(format!(
+        "void globalThis.__brickwrightBrokerDisposeSession?.({encoded})"
+    ))
+}
+
 fn close_main_session(inner: &mut Inner, session: &str, error: &str) -> Result<(), String> {
     let cancelled = inner
         .relay
@@ -303,8 +324,28 @@ pub(crate) fn native_broker_main_teardown(
     session: String,
 ) -> Result<(), String> {
     exact_label(&window, MAIN_LABEL)?;
-    let mut inner = state.lock()?;
-    close_main_session(&mut inner, &session, "broker closed")
+    let dispose_script = dispose_session_javascript(&session)?;
+    {
+        let mut inner = state.lock()?;
+        close_main_session(&mut inner, &session, "broker closed")?;
+    }
+    let app = window.app_handle();
+    let Some(broker) = app.get_webview_window(BROKER_LABEL) else {
+        let _ = app
+            .state::<crate::native_policy::NativePolicyState>()
+            .revoke_all(BROKER_LABEL);
+        state.revoke_broker();
+        return Err("broker unavailable".into());
+    };
+    if broker.eval(dispose_script).is_err() {
+        let _ = app
+            .state::<crate::native_policy::NativePolicyState>()
+            .revoke_all(BROKER_LABEL);
+        state.revoke_broker();
+        let _ = broker.destroy();
+        return Err("broker unavailable".into());
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -332,6 +373,21 @@ mod tests {
     fn command_error_surface_is_redacted() {
         assert_eq!("broker refused", "broker refused");
         assert_eq!("broker unavailable", "broker unavailable");
+    }
+
+    #[test]
+    fn session_disposal_script_accepts_only_canonical_lower_hex() {
+        let session = "ab".repeat(32);
+        assert_eq!(
+            dispose_session_javascript(&session).unwrap(),
+            format!("void globalThis.__brickwrightBrokerDisposeSession?.(\"{session}\")")
+        );
+        for invalid in ["ab", &"AB".repeat(32), &format!("{}\"", "a".repeat(63))] {
+            assert_eq!(
+                dispose_session_javascript(invalid),
+                Err("broker refused".into())
+            );
+        }
     }
 
     fn fixed(byte: u8) -> impl FnOnce() -> Result<[u8; 32], ()> {

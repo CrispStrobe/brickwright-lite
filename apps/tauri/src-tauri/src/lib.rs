@@ -82,6 +82,31 @@ pub fn run() {
         .setup(move |app| {
             #[cfg(desktop)]
             native_broker::create(app, native_policy.clone())?;
+            #[cfg(desktop)]
+            {
+                use tauri::Manager;
+                let main = app
+                    .get_webview_window("main")
+                    .ok_or(tauri::Error::WindowNotFound)?;
+                let handle = app.handle().clone();
+                let lifecycle_policy = native_policy.clone();
+                main.on_window_event(move |event| {
+                    if matches!(event, tauri::WindowEvent::Destroyed) {
+                        let _ = lifecycle_policy.revoke_all("capability-broker");
+                        handle
+                            .state::<native_broker_adapter::NativeBrokerAdapter>()
+                            .revoke_main();
+                        if let Some(broker) = handle.get_webview_window("capability-broker") {
+                            if broker
+                                .eval(native_broker_adapter::dispose_all_javascript())
+                                .is_err()
+                            {
+                                let _ = broker.destroy();
+                            }
+                        }
+                    }
+                });
+            }
 
             // Bring up the local ScratchLink WS server the web VM dials.
             scratchlink::start();

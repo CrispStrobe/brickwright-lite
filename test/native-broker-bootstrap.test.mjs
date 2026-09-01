@@ -184,6 +184,41 @@ test('installation realm is exact and production receiver descriptor is immutabl
     const source = String(bootstrapModule.installNativeBrokerReceiver);
     assert.match(source, /configurable:\s*false/u);
     assert.match(source, /writable:\s*false/u);
+    assert.match(source, /__brickwrightBrokerDisposeSession/u);
+    assert.match(source, /hexId\(session\)/u);
+});
+
+test('session disposal removes authority before await and is exactly once', async () => {
+    let finish; let disposed = 0;
+    const control = createNativeBrokerReceiver({NativeBrokerProtocol,
+        BrokerProtocolError: protocolModule.BrokerProtocolError, invoke: async () => {},
+        createProtocol: owner => new NativeBrokerProtocol({...dependencies(owner),
+            revokeWorker: () => { disposed++; return new Promise(resolve => { finish = resolve; }); },
+            terminateWorker: () => {}})});
+    const session = sid(7);
+    await control.receive(delivery(session, sid(71), 'load', 0, {url}));
+    const disposing = control.disposeSession(session);
+    assert.deepEqual(control.snapshot(), {sessions: 0});
+    await control.disposeSession(session);
+    finish(); await disposing;
+    assert.equal(disposed, 1);
+    await control.dispose();
+});
+
+test('dispose before a queued delivery tombstones the unknown session', async () => {
+    const replies = [];
+    const control = createNativeBrokerReceiver({NativeBrokerProtocol,
+        BrokerProtocolError: protocolModule.BrokerProtocolError,
+        invoke: async (_command, args) => replies.push(JSON.parse(args.payload)),
+        createProtocol: owner => new NativeBrokerProtocol(dependencies(owner))});
+    const session = sid(9);
+    await control.disposeSession(session);
+    await control.receive(delivery(session, sid(91), 'load', 0, {url}));
+    assert.deepEqual(replies, [
+        {kind: 'failure', request_kind: 'load', code: 'stale-reply'}
+    ]);
+    assert.deepEqual(control.snapshot(), {sessions: 0});
+    await control.dispose();
 });
 
 test('the production CommonJS sources compose in separate lexical scopes', () => {

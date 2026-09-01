@@ -355,6 +355,22 @@ unhandled-rejection paths. The HTML remains scriptless under `default-src
 wiring remain absent, so this is a C5 bootstrap checkpoint rather than C5 or
 CP3 completion.
 
+CP3-C5b closes the staged bootstrap's lifecycle gaps without registering it.
+Main-session teardown removes the native relay and origin sinks before it
+schedules an exact JSON-encoded JavaScript session disposal; a missing broker
+or scheduling failure revokes all native policy and relay authority and
+destroys the inconsistent broker. The immutable bootstrap disposal receiver
+tombstones even an as-yet unknown session before awaiting cleanup, so a queued
+delivery cannot recreate authority, while duplicate disposal stays inert.
+Main-window destruction revokes policy and adapter state before best-effort
+dispose-all, and absence of the configured main window now fails desktop setup.
+The first broker page-load start is inert, but every subsequent start—including
+a canonical reload—revokes policy and relay state before the fresh document can
+own a session. Twelve bootstrap tests, forty-two focused Rust lifecycle/adapter/
+relay tests and eight structural topology/ACL tests cover the staged boundary.
+The real isolated pin/worker host and command/ACL registration remain absent,
+so C4/C5 and CP3 are still open.
+
 ## CP4 — migration closure and production browser acceptance (1–2 hours)
 
 - [x] Resolve every deferred pin: migrate it through an implemented broker

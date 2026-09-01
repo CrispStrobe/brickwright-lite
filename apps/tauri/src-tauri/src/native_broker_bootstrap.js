@@ -24,7 +24,14 @@ const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, 
     let fullyDisposed = false;
     const dispose = async session => {
         const state = sessions.get(session);
-        if (!state || state.disposed) return;
+        if (!state) {
+            if (!retired.has(session)) {
+                if (retired.size >= maxRetired) closed = true;
+                else retired.add(session);
+            }
+            return;
+        }
+        if (state.disposed) return;
         state.disposed = true;
         sessions.delete(session);
         if (retired.size >= maxRetired) closed = true;
@@ -111,6 +118,11 @@ const installNativeBrokerReceiver = options => {
     const control = createNativeBrokerReceiver(options);
     Object.defineProperty(globalThis, '__brickwrightBrokerReceive', {value: control.receive, configurable: false,
         enumerable: false, writable: false});
+    Object.defineProperty(globalThis, '__brickwrightBrokerDisposeSession', {value: async session => {
+        if (hexId(session)) try { await control.disposeSession(session); } catch {}
+    }, configurable: false, enumerable: false, writable: false});
+    Object.defineProperty(globalThis, '__brickwrightBrokerDisposeAll', {value: control.dispose,
+        configurable: false, enumerable: false, writable: false});
     if (typeof globalThis.addEventListener === 'function') globalThis.addEventListener('pagehide', control.dispose,
         {once: true});
     return control;

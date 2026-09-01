@@ -1,9 +1,13 @@
 //! Inert desktop shell for the future native capability broker.
 //!
-//! There are deliberately no commands, policy hooks, or runtime privileges in
-//! this module. It only establishes a hidden, local, non-navigable webview.
+//! There are deliberately no registered commands or runtime privileges in this
+//! module. It establishes the hidden local webview and fail-closed lifecycle hooks.
 
-use tauri::{webview::NewWindowResponse, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::{
+    webview::{NewWindowResponse, PageLoadEvent},
+    Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+};
 
 use crate::native_policy::NativePolicyState;
 
@@ -28,6 +32,9 @@ fn initialization_script() -> String {
 pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Result<()> {
     let navigation_policy = policy.clone();
     let navigation_app = app.handle().clone();
+    let page_policy = policy.clone();
+    let page_app = app.handle().clone();
+    let page_seen = AtomicBool::new(false);
     let broker = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(DOCUMENT.into()))
         .initialization_script(initialization_script())
         .visible(false)
@@ -49,6 +56,14 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
                     .revoke_broker();
             })
         })
+        .on_page_load(move |_, payload| {
+            handle_page_load(payload.event(), &page_seen, || {
+                let _ = page_policy.revoke_all(LABEL);
+                page_app
+                    .state::<crate::native_broker_adapter::NativeBrokerAdapter>()
+                    .revoke_broker();
+            });
+        })
         .on_new_window(|_, _| NewWindowResponse::Deny)
         .build()?;
     let window_app = app.handle().clone();
@@ -69,6 +84,12 @@ fn handle_navigation(url: &tauri::Url, revoke: impl FnOnce()) -> bool {
         revoke();
     }
     allowed
+}
+
+fn handle_page_load(event: PageLoadEvent, seen: &AtomicBool, revoke: impl FnOnce()) {
+    if matches!(event, PageLoadEvent::Started) && seen.swap(true, Ordering::SeqCst) {
+        revoke();
+    }
 }
 
 fn handle_window_event(event: &WindowEvent, revoke: impl FnOnce()) {
@@ -201,5 +222,17 @@ mod tests {
         assert!(script.contains("configurable: false"));
         assert!(!script.contains("native_broker_open"));
         assert!(!script.contains("platform.kind.read"));
+    }
+
+    #[test]
+    fn canonical_reload_revokes_before_allowing_fresh_document() {
+        let seen = AtomicBool::new(false);
+        let mut revocations = 0;
+        handle_page_load(PageLoadEvent::Started, &seen, || revocations += 1);
+        assert_eq!(revocations, 0);
+        handle_page_load(PageLoadEvent::Finished, &seen, || revocations += 1);
+        assert_eq!(revocations, 0);
+        handle_page_load(PageLoadEvent::Started, &seen, || revocations += 1);
+        assert_eq!(revocations, 1);
     }
 }
