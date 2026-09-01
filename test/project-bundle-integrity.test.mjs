@@ -4,6 +4,8 @@ import {createRequire} from 'node:module';
 import {
     parseBundleDocument,
     replaceProjectState,
+    applyBrickwrightInspection,
+    rollbackBrickwrightInspection,
     encodeProjectState,
     decodeProjectState,
     BUNDLE_FORMAT,
@@ -120,6 +122,24 @@ describe('project state is replacement, not merge', () => {
         });
         assert.equal(result.outcome, 'storage-failed');
         assert.equal(result.rolledBack, true);
+        assert.deepEqual(storage.dump(), before);
+    });
+
+    test('a later Scratch VM failure rolls the auxiliary half back byte-for-byte', () => {
+        const before = {...raw, 'bw-theme': 'dark'};
+        const storage = memoryStorage(before);
+        const next = {'bw-code-autosave': JSON.stringify({...code, code: 'DEVICE PICO'})};
+        const applied = applyBrickwrightInspection({
+            outcome: 'loaded',
+            version: BUNDLE_VERSION,
+            state: next,
+            passthrough: {format: BUNDLE_FORMAT, version: BUNDLE_VERSION, state: {code}}
+        }, storage);
+        assert.equal(applied.outcome, 'loaded');
+        assert.deepEqual(storage.dump(), {...next, 'bw-theme': 'dark'});
+
+        const rollback = rollbackBrickwrightInspection(applied, storage);
+        assert.equal(rollback.rolledBack, true);
         assert.deepEqual(storage.dump(), before);
     });
 });

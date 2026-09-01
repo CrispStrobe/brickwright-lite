@@ -200,6 +200,51 @@ const replaceProjectState = (storage, next) => {
     }
 };
 
+/** Inspect the archive and normalize its sidecar without mutating browser state. */
+const inspectBrickwrightState = async buffer => {
+    try {
+        const JSZip = await loadJSZip();
+        const zip = await JSZip.loadAsync(buffer);
+        const entry = zip.file(BUNDLE_PATH);
+        if (!entry) {
+            return {outcome: 'legacy', version: 0, state: {}, found: false,
+                report: {action: 'cleared', supportedVersion: BUNDLE_VERSION}};
+        }
+        if (entry._data?.uncompressedSize > MAX_BUNDLE_BYTES) {
+            return {outcome: 'invalid', keys: 0, found: false,
+                reason: `bundle exceeds ${MAX_BUNDLE_BYTES} bytes`,
+                report: {action: 'refused', supportedVersion: BUNDLE_VERSION}};
+        }
+        const parsed = parseBundleDocument(await entry.async('text'));
+        return {...parsed, found: parsed.outcome === 'loaded', keys: 0};
+    } catch (error) {
+        return {outcome: 'invalid', found: false, keys: 0, reason: error.message,
+            report: {action: 'refused', supportedVersion: BUNDLE_VERSION}};
+    }
+};
+
+/** Apply one already-inspected compatible sidecar and retain rollback material. */
+const applyBrickwrightInspection = (inspection, storage = localStorage) => {
+    if (inspection.outcome !== 'loaded' && inspection.outcome !== 'legacy') return inspection;
+    const previousPreserved = preservedBundle;
+    const result = replaceProjectState(storage, inspection.state || {});
+    if (result.outcome !== 'loaded') return {...result, report: inspection.report};
+    preservedBundle = inspection.outcome === 'loaded' && inspection.version === BUNDLE_VERSION ?
+        {outcome: 'loaded', document: inspection.passthrough} : null;
+    return {...result, outcome: inspection.outcome, version: inspection.version,
+        found: inspection.outcome === 'loaded', report: inspection.report, previousPreserved};
+};
+
+/** Restore auxiliary state when the Scratch half fails after a successful apply. */
+const rollbackBrickwrightInspection = (applied, storage = localStorage) => {
+    if (!applied || !isRecord(applied.previous)) {
+        return {outcome: 'storage-failed', rolledBack: false, reason: 'rollback snapshot missing'};
+    }
+    const restored = replaceProjectState(storage, applied.previous);
+    if (restored.outcome === 'loaded') preservedBundle = applied.previousPreserved || null;
+    return {...restored, rolledBack: restored.outcome === 'loaded'};
+};
+
 /** Read the content keys out of localStorage. Returns {} when unavailable. */
 const collectState = () => {
     const out = {};
@@ -277,34 +322,16 @@ const attachBrickwrightState = async (blob, {now = () => new Date()} = {}) => {
  */
 const extractBrickwrightState = async buffer => {
     try {
-        const JSZip = await loadJSZip();
-        const zip = await JSZip.loadAsync(buffer);
-        const entry = zip.file(BUNDLE_PATH);
-        if (!entry) {
+        const inspection = await inspectBrickwrightState(buffer);
+        if (inspection.outcome === 'future') {
+            preservedBundle = {outcome: 'future', text: inspection.passthroughText};
+            return inspection;
+        }
+        if (inspection.outcome === 'invalid') {
             preservedBundle = null;
-            const result = replaceProjectState(localStorage, {});
-            return result.outcome === 'loaded' ? {...result, outcome: 'legacy', found: false,
-                report: {action: 'cleared', supportedVersion: BUNDLE_VERSION}} : result;
+            return inspection;
         }
-        if (entry._data?.uncompressedSize > MAX_BUNDLE_BYTES) {
-            preservedBundle = null;
-            return {outcome: 'invalid', keys: 0, found: false,
-                reason: `bundle exceeds ${MAX_BUNDLE_BYTES} bytes`};
-        }
-        const parsed = parseBundleDocument(await entry.async('text'));
-        if (parsed.outcome === 'future') {
-            preservedBundle = {outcome: 'future', text: parsed.passthroughText};
-            return {...parsed, keys: 0, found: false};
-        }
-        if (parsed.outcome !== 'loaded') {
-            preservedBundle = null;
-            return {...parsed, keys: 0, found: false};
-        }
-        const result = replaceProjectState(localStorage, parsed.state);
-        preservedBundle = result.outcome === 'loaded' && parsed.version === BUNDLE_VERSION ?
-            {outcome: 'loaded', document: parsed.passthrough} : null;
-        return {...result, version: parsed.version, found: result.outcome === 'loaded',
-            report: parsed.report};
+        return applyBrickwrightInspection(inspection);
     } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('[brickwright] could not read tab state from the project', e);
@@ -313,6 +340,7 @@ const extractBrickwrightState = async buffer => {
 };
 
 export {
-    attachBrickwrightState, extractBrickwrightState, parseBundleDocument, replaceProjectState,
+    attachBrickwrightState, extractBrickwrightState, inspectBrickwrightState,
+    applyBrickwrightInspection, rollbackBrickwrightInspection, parseBundleDocument, replaceProjectState,
     encodeProjectState, decodeProjectState, isContentKey, BUNDLE_PATH, BUNDLE_FORMAT, BUNDLE_VERSION
 };

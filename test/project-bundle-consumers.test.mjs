@@ -15,6 +15,16 @@ describe('mounted project consumers obey replacement outcomes', () => {
         assert.match(uploader, /bw-project-bundle-loaded/);
     });
 
+    test('the uploader preflights compatibility and can roll back before reporting success', () => {
+        const inspectAt = uploader.indexOf('inspectBrickwrightState(rawFile)');
+        const loadAt = uploader.indexOf('this.props.vm.loadProject(rawFile)');
+        assert.ok(inspectAt >= 0 && inspectAt < loadAt,
+            'sidecar compatibility must be known before Scratch mutates its VM');
+        assert.match(uploader, /outcome === 'invalid'.*outcome === 'future'/s);
+        assert.match(uploader, /rollbackBrickwrightInspection\(bundle\)/,
+            'a VM rejection must restore the auxiliary project snapshot');
+    });
+
     test('Code explicitly clears every authored buffer on loaded empty or legacy state', () => {
         assert.match(code, /outcome === 'legacy'.*outcome === 'loaded'/s);
         for (const language of ['pseudocode', 'python', 'javascript', 'c', 'basic', 'asm',

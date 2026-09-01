@@ -4,7 +4,11 @@ import PropTypes from 'prop-types';
 import {defineMessages, intlShape, injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import log from '../lib/log';
-import {extractBrickwrightState} from './bw-project-bundle';
+import {
+    inspectBrickwrightState,
+    applyBrickwrightInspection,
+    rollbackBrickwrightInspection
+} from './bw-project-bundle';
 import sharedMessages from './shared-messages';
 
 import {
@@ -151,9 +155,32 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 const filename = this.fileToUpload && this.fileToUpload.name;
                 let loadingSuccess = false;
                 const rawFile = this.fileReader.result;
-                this.props.vm.loadProject(rawFile)
-                    .then(() => extractBrickwrightState(rawFile))
-                    .then(bundle => {
+                let bundle;
+                inspectBrickwrightState(rawFile)
+                    .then(inspection => {
+                        if (inspection.outcome === 'invalid' || inspection.outcome === 'future') {
+                            if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('bw-project-bundle-loaded',
+                                    {detail: inspection}));
+                            }
+                            const reason = inspection.reason || inspection.report?.action;
+                            throw new Error(
+                                `Brickwright project state ${inspection.outcome}: ${reason}`
+                            );
+                        }
+                        bundle = applyBrickwrightInspection(inspection);
+                        if (bundle.outcome === 'storage-failed') {
+                            throw new Error(`Brickwright project state storage failed: ${bundle.reason}`);
+                        }
+                        return this.props.vm.loadProject(rawFile).catch(error => {
+                            const rollback = rollbackBrickwrightInspection(bundle);
+                            if (!rollback.rolledBack) {
+                                error.message += `; auxiliary rollback failed: ${rollback.reason}`;
+                            }
+                            throw error;
+                        });
+                    })
+                    .then(() => {
                         // A project that spans four tabs is only really loaded
                         // when all four are. Tell the tabs their storage changed;
                         // they seed from localStorage on mount and this is what

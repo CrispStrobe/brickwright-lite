@@ -92,7 +92,9 @@ runs adversarial rollback/migration tests, performs the live journey, reconciles
 - **1–2 implemented:** v2 uses typed Code/Circuit/Controller sections with a strict v1 migration.
   Eleven format fixtures have exact named outcomes. Replacement removes absent content keys,
   preserves preferences, and restores the prior byte strings after an injected write failure.
-  A merge mutation makes both A→B and A→vanilla tests fail.
+  The uploader now inspects compatibility before the Scratch VM can mutate, and restores the exact
+  auxiliary snapshot when the later VM load rejects. A merge mutation makes both A→B and
+  A→vanilla tests fail; bypassing the VM-failure rollback fails its named byte-for-byte test.
 - **3 implemented:** the sidecar is capped at 2 MiB and known sections have narrower caps. Unknown
   v2 fields survive load→save without becoming storage keys. Future versions return an explicit
   `preserved-not-applied` report, do not mutate storage, and are reattached verbatim.
