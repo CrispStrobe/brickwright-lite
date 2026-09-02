@@ -155,3 +155,33 @@ PASSES and the scope gate fails. That mutation is pinned in `test/js-scope.test.
    must be told about (`gate-shapes-allow`, honoured per line and the line above), never a
    hardcoded list of its own filenames: that is how a detector learns to lie about itself.
 
+## Twelfth species: POSITIONAL SUBJECT (2026-09-02, found in my own harness)
+
+`scripts/verify-native-broker-e2e.mjs` selected the editor webview as `handles[0]`. That was
+true for as long as the broker realm failed to load — one realm, index 0, correct by accident.
+The moment the realm was fixed and loaded its document, a second handle appeared, the order
+was not the assumed one, and the probe ran INSIDE the broker realm. There
+`native_broker_audit` is refused **by design**, because it is bound to the main label.
+
+So the harness printed
+
+    FAIL: the editor could not read the broker audit, so `native_broker_ready` never granted
+          its runtime capability
+
+on a run where the boundary had worked perfectly and the log two lines below said
+`acknowledged; transport capabilities granted`. A correct refusal, read as the defect it exists
+to prevent.
+
+**The shape:** a gate that identifies its subject by POSITION asserts about whatever occupies
+that index. It does not fail when it loses its subject — it silently changes subject and keeps
+reporting with full confidence. This is AMBIENT-BINDING's sibling: there the binding comes from
+outside the repository, here from an ordering nobody promised.
+
+**The rule:** identify the subject by identity — a label, a URL, a role — and assert that
+exactly one thing matches. `realms.filter(r => !isBroker(r))` with a `length !== 1` check cannot
+quietly move to a different webview; `handles[0]` cannot do anything else.
+
+**Also worth its own line:** this gate had been reporting a real defect for seven runs, so its
+red was never questioned. A gate that has been correctly red for a long time is exactly where a
+second defect hides, because nobody re-reads a failure they have already explained.
+
