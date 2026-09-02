@@ -1,0 +1,18 @@
+# The native broker's assets are verified BYTE-FOR-BYTE, not by content equivalence:
+# proof-pins/manifest.json records an exact size and sha256 for the digest-addressed
+# capability probe, and package-native-broker-assets.mjs regenerates the host and worker
+# bundles and compares them to the committed copies character by character.
+#
+# Git's autocrlf is on by default on Windows runners, so those files were checked out with
+# CRLF and every line ending added a byte. The size and the digest both moved, and
+# `npm run tauri build` failed at its pretauri check with "capability probe bytes differ
+# from the reviewed digest or byte size" — on Windows only, and only on the packaged
+# desktop gate, which had not run since 2026-08-29 and so had never seen this code.
+#
+# `-text` disables end-of-line translation entirely rather than normalising it: for a file
+# whose identity IS its bytes, "convert consistently" is still a conversion.
+overlay/scratch-gui/static/native-broker/** -text
+overlay/scratch-vm/src/extension-support/native-broker-protocol.js -text
+overlay/scratch-vm/src/extension-support/native-broker-worker-host.js -text
+overlay/scratch-vm/src/extension-support/native-broker-extension-worker.js -text
+apps/tauri/src-tauri/src/native_broker_bootstrap.js -text
