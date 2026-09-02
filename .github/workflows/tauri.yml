@@ -8,6 +8,8 @@ on:
       - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
       - 'overlay/scratch-gui/static/native-broker/**'
       - 'scripts/package-native-broker-*.mjs'
+      - 'scripts/verify-native-broker-e2e.mjs'
+      - 'overlay/scratch-gui/static/capability-broker.html'
       - '.github/workflows/tauri.yml'
   pull_request:
     paths:
@@ -15,6 +17,8 @@ on:
       - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
       - 'overlay/scratch-gui/static/native-broker/**'
       - 'scripts/package-native-broker-*.mjs'
+      - 'scripts/verify-native-broker-e2e.mjs'
+      - 'overlay/scratch-gui/static/capability-broker.html'
       - '.github/workflows/tauri.yml'
 
 # A PR branch is already tested by pull_request; running the same job again for
@@ -67,3 +71,54 @@ jobs:
 
       - name: cargo clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+
+  # The only gate that LAUNCHES the app. Everything else tests a model of this boundary: the Node
+  # suites read Rust and JSON as text, the browser gates stub __TAURI_INTERNALS__ themselves, and
+  # release.yml builds the app and stops. tauri-driver drives the real binary, so every invoke
+  # below crosses the real Tauri ACL in the real process.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Tauri system dependencies and a WebDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf libdbus-1-dev libudev-dev \
+            webkit2gtk-driver xvfb
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8.1
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install tauri-driver
+        run: cargo install tauri-driver --locked
+
+      # A REAL frontend is not needed and would cost twenty minutes of webpack: what the broker
+      # requires is its own document and its packaged assets. Anything else the editor would
+      # normally serve is irrelevant to this boundary, and building it would only make the gate
+      # slow enough to be skipped.
+      - name: Assemble the minimal frontend the broker actually needs
+        run: |
+          set -eu
+          out=packages/scratch-gui/build
+          mkdir -p "$out"
+          printf '%s' '<!doctype html><title>broker-e2e</title>' > "$out/index.html"
+          cp overlay/scratch-gui/static/capability-broker.html "$out/capability-broker.html"
+          cp -r overlay/scratch-gui/static/native-broker "$out/native-broker"
+          test -f "$out/native-broker/native-broker-host.js"
+          test -f "$out/native-broker/proof-pins/manifest.json"
+
+      - name: Build the app
+        run: cargo build --manifest-path apps/tauri/src-tauri/Cargo.toml
+
+      - name: Drive the packaged broker boundary
+        run: |
+          xvfb-run -a node scripts/verify-native-broker-e2e.mjs \
+            apps/tauri/src-tauri/target/debug/brickwright-tauri
