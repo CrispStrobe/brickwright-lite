@@ -33,6 +33,7 @@ await btn.click();
 
 // 2. the panel renders with the Add Widget affordance
 const canvas = page.getByTestId('bw-controller-canvas');
+// gate-shapes-allow: precondition for the click that follows; an absent canvas throws here.
 await canvas.waitFor({state: 'visible', timeout: 15000});
 const add = page.getByText('+ Add Widget', {exact: true});
 await add.waitFor({state: 'visible', timeout: 10000});

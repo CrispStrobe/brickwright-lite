@@ -29,7 +29,17 @@ const BASELINE = {
     // version identity — a different sdcc or simavr is still a different verdict — and nothing
     // here pins one. See docs/GATES-THAT-CANNOT-FAIL.md.
     'AMBIENT-BINDING': 0,
-    'EVENT-AS-STATE': 12,
+    // 12 -> 0 on 2026-09-02. The rule now ignores an appearance that is immediately followed by
+    // a click/fill/count/evaluate — synchronisation before the real assertion, and the correct
+    // way to write a browser gate. The five that survived that narrowing were each triaged at
+    // their site: in every one, absence FAILS. What none of them assert is DISAPPEARANCE, which
+    // is a different property; where a contract includes it (a dialog that must close) it still
+    // needs writing.
+    'EVENT-AS-STATE': 0,
+    // Added 2026-09-02, from triaging EVENT-AS-STATE: an awaited precondition inside a try whose
+    // catch is empty or comment-only. Four instances, all bounded by a downstream hard assertion
+    // and marked with the assertion that bounds them.
+    'SWALLOWED-PRECONDITION': 0,
     // 1 -> 0 on 2026-09-02: the single hit was triaged and kept, marked at the site. The
     // widening is real but bounded to one dot-prefixed spelling whose receiver is a per-game
     // variable name; a SECOND entry of that form is what should be refused.
@@ -50,7 +60,10 @@ const BASELINE = {
 // indistinguishable from deleting it.
 const scan = source => {
     const dir = mkdtempSync(path.join(tmpdir(), 'gate-shapes-'));
-    writeFileSync(path.join(dir, 'fixture.mjs'), source);
+    // Named for the convention the AMBIENT-BINDING rule keys on, so all six rules are reachable
+    // from a fixture. With every class at zero, these tests are the only thing standing between
+    // this detector and a dead one.
+    writeFileSync(path.join(dir, 'verify-fixture.mjs'), source);
     const raw = execFileSync(process.execPath,
         [path.join(root, 'scripts/audit-gate-shapes.mjs'), '--json', '--root', dir],
         {cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024});
@@ -84,6 +97,46 @@ test('a deliberate demonstration may be marked, and the marker must be honoured'
     assert.deepEqual(scan(demo), []);
     assert.deepEqual(scan(demo.replace(' // gate-shapes-allow', '')), ['WINDOWED-SEARCH'],
         'removing the marker must bring the finding back, or the marker is a blanket silence');
+});
+
+test('a discarded precondition failure is caught', () => {
+    // gate-shapes-allow: the fixture IS the shape (ninth time this detector has found itself)
+    const swallowed = "try { await el.waitFor({state: 'visible'}); await el.fill('x'); } catch { }";
+    assert.deepEqual(scan(swallowed), ['SWALLOWED-PRECONDITION']);
+    assert.deepEqual(scan(swallowed.replace('catch { }', 'catch { skipped = true; }')), [],
+        'a handler that RECORDS the failure is doing its job');
+    assert.deepEqual(scan(swallowed.replace('catch { }', 'catch (e) { throw e; }')), []);
+});
+
+test('an appearance used to synchronise is not an appearance assertion', () => {
+    // The correct way to write a browser gate, and 7 of the original 12 hits.
+    // gate-shapes-allow
+    assert.deepEqual(scan("await panel.waitFor({state: 'visible'});\nawait panel.click();"), []);
+    assert.deepEqual(scan("await panel.waitFor({state: 'visible'});\nconst n = await panel.count();"), []);
+    // Standing alone, with nothing in the file proving the thing ever leaves, it is a suspect.
+    // gate-shapes-allow
+    assert.deepEqual(scan("await panel.waitFor({state: 'visible'});\nreport('done');"), ['EVENT-AS-STATE']);
+});
+
+test('every rule still fires — all six, from one fixture', () => {
+    const kinds = new Set(scan([
+        "assert.match(body.slice(0, 600), /guard/);",          // gate-shapes-allow
+        // gate-shapes-allow
+        "const seg = name.split('::').pop();\nif (allow.has(seg)) ok();",
+        // gate-shapes-allow
+        "const cap = src.match(/LIST = \\[([\\s\\S]*?)\\]/);",
+        // gate-shapes-allow
+        // gate-shapes-allow
+        "execFileSync('sdcc', ['--version']);",
+        // gate-shapes-allow
+        "try { await el.waitFor({state: 'visible'}); } catch { }",
+        // gate-shapes-allow
+        "await panel.waitFor({state: 'visible'});\nreport('done');"
+    ].join('\n')));
+    assert.deepEqual([...kinds].sort(), ['AMBIENT-BINDING', 'EVENT-AS-STATE', 'SEGMENT-MATCH',
+        'SWALLOWED-PRECONDITION', 'TRUNCATED-CAPTURE', 'WINDOWED-SEARCH'],
+        'a rule that fires on nothing is indistinguishable from a rule that is correct, and ' +
+        'every baseline in this file is now zero');
 });
 
 test('no new gate-shape suspects', () => {

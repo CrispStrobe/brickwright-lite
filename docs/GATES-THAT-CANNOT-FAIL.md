@@ -239,3 +239,61 @@ still a different verdict, and nothing in this repository pins one. Closing that
 each tool's version alongside the result it produced, so a changed oracle is visible rather than
 inferred. That is real work and it is not done; the marker exempts the shape, not the residue.
 
+## The sweep is triaged: 69 -> 0, and a sixth shape came out of it (2026-09-02)
+
+    WINDOWED-SEARCH        37 -> 0    dataflow rule + 3 real conversions
+    EVENT-AS-STATE         12 -> 0    narrowed to standalone appearances; 5 triaged
+    AMBIENT-BINDING        11 -> 0    generators out of scope; 1 real defect; rest fail closed
+    TRUNCATED-CAPTURE       8 -> 0    7 converted to bracket-matched regions
+    SEGMENT-MATCH           1 -> 0    triaged and kept, bounded to one spelling
+    SWALLOWED-PRECONDITION  0 -> 0    NEW, found while triaging EVENT-AS-STATE
+
+**Zero is the most dangerous number this file can print**, so it comes with proof rather than
+assurance. `test/gate-shapes.test.mjs` now builds one fixture carrying all six shapes and
+requires all six kinds to fire; and the ratchet was checked by dropping a genuinely new suspect
+of each class into the tree and confirming it goes red, then removing it. Without that, every
+baseline reading zero is indistinguishable from a detector that has been quietly switched off.
+
+### The sixth shape: SWALLOWED-PRECONDITION
+
+Found by triaging EVENT-AS-STATE, in two files carrying the same copy-pasted comment:
+
+```js
+try { await search.waitFor({state: 'visible'}); await search.fill('counter'); }
+catch { /* the example list may not be searchable in this build */ }
+```
+
+The gate does not fail and does not skip. It **continues**, and every assertion after it runs
+against a state that was never established. It is worse than EVENT-AS-STATE, which at least
+asserts something; this asserts nothing and says nothing. All four instances turned out to be
+bounded by a downstream hard assertion, and each is now marked with the assertion that bounds
+it — which is the only thing that makes such a swallow legitimate.
+
+### What triage actually decided, per class
+
+- **EVENT-AS-STATE was mostly noise, and that was the problem.** A `waitFor` followed
+  immediately by a click, fill, count or evaluate is SYNCHRONISATION — the correct way to write
+  a browser gate — and it fails loudly when the element never arrives. Seven of twelve were
+  that. A class that is mostly noise gets skipped, and the real ones survive inside it.
+- **AMBIENT-BINDING contained a real defect that the detector described wrongly.** It reported a
+  cross-checkout read; what was actually there was a hardcoded absolute path under `/Users` on
+  one particular laptop, which on every other machine turned "playwright is not installed" into
+  an ENOENT about a stranger's home directory.
+- **The residue is named, not hidden.** Every surviving ambient binding fails closed on
+  ABSENCE; none pins the tool's IDENTITY. A different `sdcc` or `simavr` is still a different
+  verdict. And none of the appearance assertions proves DISAPPEARANCE, which matters wherever a
+  contract includes it. Both are open work, written down rather than closed by marker.
+
+### The marker, after ten self-flags
+
+`gate-shapes-allow` is honoured in `note()`, so every rule obeys it — it was first written into
+one rule's branch, which meant a carefully justified finding elsewhere stayed reported no matter
+what was written beside it. It exempts the line it sits on and the line below, deliberately: a
+marker that acts at a distance silences more than its author is looking at. That is why a block
+of six fixtures needs six markers, and that is the right trade.
+
+This detector has now flagged its own material ten times — its documentation, its source, its
+test fixtures three separate times, and a source gate that matched the very comment explaining
+the hazard it was gating. Every one was fixed with a marker it must be told about, never with a
+list of its own filenames.
+

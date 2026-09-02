@@ -26,6 +26,7 @@ const exportTex = async designer => {
         detail: {action: 'export'}
     })));
     const dialog = designer.locator('[data-host-file-command]');
+    // gate-shapes-allow: precondition for the download that follows; an absent dialog throws here.
     await dialog.waitFor({state: 'visible', timeout: 10000});
     const [download] = await Promise.all([
         page.waitForEvent('download', {timeout: 10000}),

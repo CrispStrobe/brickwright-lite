@@ -47,6 +47,7 @@ async function verify () {
 
         // Find an (i) toggle button on an example card
         const introToggle = designer.getByTestId('bw-example-intro-toggle').first();
+        // gate-shapes-allow: absence is handled — the else branch calls fail('No intro toggle found').
         const hasIntro = await introToggle.waitFor({state: 'visible', timeout: 15000})
             .then(() => true).catch(() => false);
         if (hasIntro) {

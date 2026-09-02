@@ -117,6 +117,7 @@ try {
     const pane = page.locator('[data-testid="bw-arduboy-pane"]');
     let appeared = true;
     try {
+        // gate-shapes-allow: the appearance IS the subject, and its absence sets `appeared` false, which check() reports and the next line throws on.
         await pane.waitFor({state: 'visible', timeout: 30000});
     } catch (e) {
         appeared = false;

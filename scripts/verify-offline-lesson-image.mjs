@@ -178,6 +178,9 @@ const main = async () => {
     // under test is a compiler.)
     await page.locator('[role="tab"]', {hasText: /Circuit/i}).first().click();
     const search = page.locator('input[placeholder*="earch"], input[type="search"]').first();
+    // SWALLOWED-PRECONDITION, triaged 2026-09-02: filtering is a convenience; the row below has
+    // its own 30s visible wait, so a genuine absence fails there.
+    // gate-shapes-allow
     try {
         await search.waitFor({state: 'visible', timeout: 30000});
         await search.fill('blink without delay');
@@ -186,6 +189,9 @@ const main = async () => {
     const row = page.locator('text=/blink without delay/i').first();
     await row.waitFor({state: 'visible', timeout: 30000});
     await row.click();
+    // SWALLOWED-PRECONDITION, triaged 2026-09-02: the device chooser is optional; the title wait
+    // below is the hard assertion an unaccepted chooser would fail.
+    // gate-shapes-allow
     try {
         const okBtn = page.locator('button:visible', {hasText: /^OK$/}).first();
         await okBtn.waitFor({timeout: 8000});

@@ -268,6 +268,10 @@ const main = async () => {
     // counter variable and a button, the exact target D29's row was about.
     await page.locator('[role="tab"]', {hasText: /Circuit/i}).first().click();
     const search = page.locator('input[placeholder*="earch"], input[type="search"]').first();
+    // SWALLOWED-PRECONDITION, triaged 2026-09-02: filtering is a convenience. If the search box
+    // never appears the example row below is still located, with its own 30s visible wait, so a
+    // real failure is caught there rather than passing silently.
+    // gate-shapes-allow
     try {
         await search.waitFor({state: 'visible', timeout: 30000});
         await search.fill('counter');
@@ -279,6 +283,10 @@ const main = async () => {
 
     // The example row opens cui's own confirm dialog (device chooser), not a
     // native confirm — accept it explicitly when it appears.
+    // SWALLOWED-PRECONDITION, triaged 2026-09-02: the chooser is genuinely optional, and the
+    // title wait below is the hard assertion — an unaccepted chooser blocks the load and fails
+    // there. The swallow is bounded by a downstream check, which is what makes it legitimate.
+    // gate-shapes-allow
     try {
         const okBtn = page.locator('button:visible', {hasText: /^OK$/}).first();
         await okBtn.waitFor({timeout: 8000});
@@ -394,6 +402,7 @@ WHEN flag clicked:
         {detail: {key: 'bw-debug-dock', value: 'right'}})));
 
     const debugPanel = page.locator('[data-debug-panel]:visible').first();
+    // gate-shapes-allow: precondition for the innerText reads below; an absent panel throws here.
     await debugPanel.waitFor({state: 'visible', timeout: 30000});
     // Both readers return a STRING on every path. waitFor() hands back its last
     // value on timeout, and when that value was an exception object the report

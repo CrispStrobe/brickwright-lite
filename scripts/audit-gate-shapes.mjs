@@ -22,6 +22,11 @@
  *                       than the construct, it reads into the NEXT one and a deleted guard
  *                       matches its neighbour's. Brace-match the region instead.
  *
+ *   SWALLOWED-PRECONDITION
+ *                       An awaited precondition inside a `try` whose `catch` is empty or
+ *                       comment-only. The gate neither fails nor skips: it CONTINUES, and every
+ *                       later assertion runs against a state that was never established.
+ *
  *   EVENT-AS-STATE      A visibility/appearance assertion (`waitFor`, `toBeVisible`, a `count()`
  *                       compared against a positive number) in a file that never asserts the
  *                       same thing is ABSENT. Appearance is a transition; most of these defects
@@ -167,7 +172,12 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
     // `package-*` are generators and tools: one of them invoking the developer's cargo or
     // python3 is the intended behaviour, not a hazard, and reporting it taught the reader to
     // skim past the class that actually cost stc-compiler-70 a real defect.
-    const rendersAVerdict = /(?:^|\/)test\/.*\.test\.mjs$|(?:^|\/)scripts\/(?:verify|proof|audit|oracle|smoke)-/
+    // Matched on the BASENAME convention, not the directory, so the rule is reachable under
+    // `--root` and can be proven to fire. It was written against the directory first, and the
+    // all-six fixture then showed five rules firing and this one silent — a rule sitting at
+    // zero with nothing demonstrating it still works, which is the failure this whole file
+    // exists to find.
+    const rendersAVerdict = /(?:^|\/)[^/]*\.test\.mjs$|(?:^|\/)(?:verify|proof|audit|oracle|smoke)-/
         .test(path.relative(root, file));
     if (rendersAVerdict) {
     for (const m of text.matchAll(/(?:execFileSync|execSync|spawnSync|spawn|execFile)\(\s*['"`]([a-z0-9_.-]+)['"`]/gi)) {
@@ -192,8 +202,34 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
     }
     }
 
+    // SWALLOWED-PRECONDITION: an awaited precondition inside a `try` whose `catch` body is empty
+    // or comment-only. Found 2026-09-02 in two files carrying the SAME copy-pasted comment:
+    //
+    //     try { await search.waitFor({state: 'visible'}); await search.fill('counter'); }
+    //     catch { /* the example list may not be searchable in this build */ }
+    //
+    // If the element never appears the gate does not fail and does not skip — it CONTINUES, and
+    // every assertion after it runs against a state that was never established. Worse than
+    // EVENT-AS-STATE, which at least asserts something: this asserts nothing and says nothing.
+    for (const m of text.matchAll(/\btry\s*\{([\s\S]{0,600}?)\}\s*catch\s*(?:\([^)]*\))?\s*\{([\s\S]{0,200}?)\}/g)) {
+        const [, body, handler] = m;
+        if (!/await[\s\S]*?(?:waitFor|toBeVisible|expect)\(/.test(body)) continue;
+        // A handler that records the failure, rethrows, or exits is doing its job.
+        if (/\S/.test(handler.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, ''))) continue;
+        note(file, lineOf(text, m.index), 'SWALLOWED-PRECONDITION',
+            'an awaited precondition whose failure is discarded — the gate continues as if it held');
+    }
+
     // EVENT-AS-STATE: proves a thing appears, never proves it goes away.
-    const appears = [...text.matchAll(/waitFor\(\s*\{?\s*state:\s*'visible'|toBeVisible\(|\.waitFor\(\)/g)];
+    //
+    // Only counts an appearance that STANDS ALONE. A `waitFor` immediately followed by a click,
+    // a fill, a count or an evaluate is SYNCHRONISATION before the real assertion, and it fails
+    // loudly when the element never arrives. Flagging those made 12 hits of which most were the
+    // correct way to write a browser gate — and a class that is mostly noise gets skipped, which
+    // is how the real ones survive.
+    const appears = [...text.matchAll(/waitFor\(\s*\{?\s*state:\s*'visible'|toBeVisible\(|\.waitFor\(\)/g)]
+        .filter(m => !/^[\s\S]{0,180}?\.(?:click|fill|press|type|check|selectOption|count|evaluate|textContent|innerText|screenshot|boundingBox)\(/
+            .test(text.slice(m.index + m[0].length)));
     if (appears.length) {
         const provesAbsence = /state:\s*'(detached|hidden)'|toBeHidden\(|count\(\)\s*(?:===|!==)?\s*0|\.count\(\)\s*\)?\s*,\s*0|not\.toBeVisible/.test(text);
         if (!provesAbsence) {
