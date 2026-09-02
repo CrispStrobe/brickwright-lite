@@ -193,6 +193,49 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   page errors, and every mobile/native limitation is either closed or an
   explicit fail-closed verdict rather than an implied compatibility claim.
 
+CP3-E ran, found a real defect, and closes on every clause but one. Its box stays unchecked for
+that one, which is a missing RIG rather than a missing assertion.
+
+WHAT IT PROVED. The packaged desktop gate is `release.yml` — `tauri-action` across ubuntu, macOS
+and Windows — dispatched build-only on `main` after checking that both outward-facing paths are
+tag-gated (no draft release, and the App Store upload requires `refs/tags/`). Run `33639882929`:
+build-web, ubuntu, macOS and Windows all green, so the whole broker surface — packaged assets,
+transport, acknowledgement, the semantic pair and the diagnostics read — compiles and packages on
+all three desktop platforms. Alongside it: the full Node suite at 1749 tests (1747 pass, 1 skip,
+and one local-hygiene failure that passes on an integrated tree), `cargo test` and
+`cargo clippy -- -D warnings` green, Build green with 31/31 browser gates, and the focused
+mutation denominators intact — topology 22, ACL 23, shell 28, adapter 10, assets 2, ratchet 3,
+with all twelve broker gates green at 60 tests.
+
+WHAT IT FOUND, which is why the checkpoint was worth running. The first dispatch failed on
+Windows with `capability probe bytes differ from the reviewed digest or byte size`. The broker's
+assets are verified byte-for-byte rather than by content equivalence, there was no
+`.gitattributes`, and Windows runners check out with autocrlf on — so every line ending gained a
+byte and both the size and the sha256 moved. `npm run tauri build` died in its `pretauri` check
+before the compiler ran. The defect arrives with C5c1 and had been invisible because this gate had
+not run since 2026-08-29, before any of the pinned-asset work existed. Fixed with `-text` rather
+than `eol=lf`: for a file whose identity IS its bytes, converting consistently is still
+converting. The first attempt protected the generated output directory instead of the hashed
+INPUT (`static/test-fixtures/capability-probe.js`) and Windows failed identically; the file list is
+now derived from what the two scripts actually open.
+
+MOBILE AND NATIVE, as an explicit fail-closed verdict rather than an implied compatibility claim.
+iOS/Android remains open — installed Tauri has no supported registered child webview API, so there
+is no isolated broker realm to host. It is fail-closed at three independent layers, any one of
+which suffices: `mod native_broker` is `#[cfg(desktop)]` so the realm does not compile; every
+broker command is `#[cfg(desktop)]` in `generate_handler!` so none is registered; `mobile.json`
+grants only `share:default`; and both runtime transport capabilities are platform-scoped to
+`["linux", "macOS", "windows"]`.
+
+THE ONE CLAUSE THAT DOES NOT CLOSE, and the reason D1 and D2 do not either. "Artifacts show the
+real vertical slice with zero page errors" needs the packaged app to RUN. Nothing runs it: there
+is no webdriver, no `tauri-driver`, no e2e harness, and `apps/tauri`'s scripts are build, dev, icon
+and mobile-init only. The desktop gate builds and stops. So D1's "JavaScript and Rust return the
+same platform result", D2's rendered capability state and its destroy/navigation/reload/timeout
+determinism, and this clause are one blocker, not three: a harness that launches the built desktop
+app and drives `platform.kind.read` end to end. Writing any of those three assertions against the
+Tauri-less browser gate would prove only that a stub agrees with itself.
+
 CP3-D2 is PARTIAL and its box stays unchecked, for the same reason D1's does: the DATA is in and
 proved, the RENDERING is not.
 
