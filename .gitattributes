@@ -11,6 +11,11 @@
 #
 # `-text` disables end-of-line translation entirely rather than normalising it: for a file
 # whose identity IS its bytes, "convert consistently" is still a conversion.
+# The HASHED INPUT lives here, not beside the output: package-native-broker-proof-pins.mjs
+# reads static/test-fixtures/capability-probe.js and checks its sha256 and byte length against
+# constants in the script. Protecting only the generated proof-pins/ directory left the one file
+# whose bytes are the identity unprotected, and Windows failed exactly as before.
+overlay/scratch-gui/static/test-fixtures/** -text
 overlay/scratch-gui/static/native-broker/** -text
 overlay/scratch-vm/src/extension-support/native-broker-protocol.js -text
 overlay/scratch-vm/src/extension-support/native-broker-worker-host.js -text
