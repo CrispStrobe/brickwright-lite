@@ -252,6 +252,11 @@ pub(crate) fn native_broker_ready(
     app: tauri::AppHandle,
     state: State<'_, NativeBrokerAdapter>,
 ) -> Result<(), String> {
+    // Logged BEFORE the label check, on purpose. The previous round proved the command is never
+    // ENTERED — neither the granted nor the refused line appeared — but `exact_label` returns
+    // early, so a call arriving with an unexpected label would have looked identical to no call
+    // at all. Those are opposite faults and they were indistinguishable.
+    eprintln!("[broker] native_broker_ready entered from label={}", window.label());
     exact_label(&window, BROKER_LABEL)?;
     // Observability, not diagnostics-in-production. The e2e harness could tell that the
     // acknowledgement had not arrived but not whether the realm existed, because

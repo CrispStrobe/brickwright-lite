@@ -60,8 +60,10 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
             })
         })
         .on_page_load(move |webview, payload| {
-            // The realm has no console anyone can read and no IPC it can trust, so a failing
-            // initialization script writes its error into the document title. That needs neither.
+            // NOTE: this reports the WINDOW title, which Tauri does not sync from document.title —
+            // measured, it stays "Tauri App" no matter what the page sets. The init script still
+            // records its error there for a future channel that can read it, but this line cannot,
+            // so do not read a plain title here as "the script succeeded".
             eprintln!("[broker] page-load {:?} url={} title={}", payload.event(),
                 webview.url().map(|u| u.to_string()).unwrap_or_else(|_| "<none>".into()),
                 webview.title().unwrap_or_else(|_| "<none>".into()));
