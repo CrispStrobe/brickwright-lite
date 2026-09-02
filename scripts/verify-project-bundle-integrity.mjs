@@ -128,6 +128,7 @@ try {
         throw new Error('future sidecar partially replaced known project state');
     }
     await openProject(page, invalidPath);
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByText(/Brickwright state was not applied: invalid JSON/).waitFor({timeout: 15000});
     if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
         throw new Error('invalid sidecar partially replaced known project state');
