@@ -181,9 +181,14 @@ test('the native broker topology binds every caller and grants transport only on
 
 test('topology contract rejects independently weakened boundaries', () => {
     const mutations = [
-        input => { input.adapter = input.adapter.replace(
-            'exact_label(&window, BROKER_LABEL)?;\n    state.grant_transport_once(&app)',
-            'state.grant_transport_once(&app)'); },
+        // Scoped to the acknowledgement's own body rather than a literal pair of adjacent
+        // lines: inserting a log line between them silently turned this replace into a no-op,
+        // and a mutation that does not mutate proves nothing. The survivors assertion caught it.
+        input => {
+            const body = fnBody(input.adapter, ACK_COMMAND);
+            input.adapter = input.adapter.replace(body,
+                body.replace(/exact_label\(&window,\s*BROKER_LABEL\)\?;/, ''));
+        },
         input => { input.adapter = input.adapter.replace(
             'fn native_broker_reply(', 'fn native_broker_reply_renamed('); },
         input => { input.adapter = input.adapter.replace(

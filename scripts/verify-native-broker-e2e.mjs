@@ -57,7 +57,20 @@ const call = async (method, url, body) => {
     return {status: response.status, body: parsed};
 };
 
-const driver = spawn('tauri-driver', ['--port', String(DRIVER_PORT), '--native-driver', nativeDriver],
+// Resolve tauri-driver from where cargo installs it rather than from PATH. Binding a gate to
+// whatever the machine happens to have is the species stc-compiler-70 found the hard way: their
+// assembler suites called sdcc by bare name, bound to the developer's toolchain, and never once
+// exercised the binaries the service ships. `audit-gate-shapes.mjs` flagged this very line, which
+// is the sweep catching its own author. Prefer the known path; fall back to PATH but SAY so.
+const cargoBin = path.join(process.env.CARGO_HOME || path.join(process.env.HOME || '', '.cargo'), 'bin');
+const driverBin = [path.join(cargoBin, 'tauri-driver'), '/usr/local/bin/tauri-driver']
+    .find(candidate => existsSync(candidate));
+if (!driverBin) {
+    console.error(`tauri-driver not found in ${cargoBin} — install it with \`cargo install tauri-driver --locked\``);
+    process.exit(2);
+}
+console.log(`driver binary: ${driverBin}`);
+const driver = spawn(driverBin, ['--port', String(DRIVER_PORT), '--native-driver', nativeDriver],
     {stdio: ['ignore', 'pipe', 'pipe']});
 const driverLog = [];
 driver.stdout.on('data', chunk => driverLog.push(String(chunk)));
