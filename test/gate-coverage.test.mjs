@@ -75,8 +75,15 @@ const workflowRunScalars = text => {
 };
 
 const shellQuote = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Exec wrappers count as running the gate. `xvfb-run -a dbus-run-session -- node scripts/x.mjs`
+// runs x.mjs; without this the e2e harness read as orphaned for seven hours while CI was
+// executing it on every push that touched its paths. The list is a WHITELIST, not a free prefix:
+// the strictness exists so a gate named in an `echo` cannot look protected, and `echo` is not a
+// wrapper. Each token must be a wrapper name, a flag, `--`, or a timeout duration.
+const WRAPPERS = '(?:xvfb-run|dbus-run-session|timeout|env|nice|stdbuf|setsid|--|-{1,2}[A-Za-z0-9-]+|\\d+[smh]?)';
 const runInvokesGate = (run, gate) => new RegExp(
     `(?:^|[;&|]\\s*)\\s*(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\\s]+)\\s+)*` +
+    `(?:${WRAPPERS}\\s+)*` +
     `node\\s+(?:\\./)?scripts/${shellQuote(gate)}(?=\\s|$)`,
     'm'
 ).test(run);
@@ -85,6 +92,29 @@ const gateIsWired = gate => workflowRuns.some(run => runInvokesGate(run, gate));
 
 const gates = readdirSync(path.join(ROOT, 'scripts'))
     .filter(f => f.startsWith('verify-') && f.endsWith('.mjs'));
+
+test('a wrapper runs a gate; a mention of one does not', () => {
+    // The whitelist that lets `xvfb-run -a dbus-run-session -- node …` count must not also let a
+    // gate named in an echo or a comment look protected — that strictness is the whole reason
+    // this file reads `run:` scalars rather than grepping the workflow.
+    const gate = 'verify-example.mjs';
+    for (const run of [
+        `node scripts/${gate}`,
+        `xvfb-run -a dbus-run-session -- node scripts/${gate}`,
+        `PROOF_URL=http://localhost:8617/ node scripts/${gate}`,
+        `timeout 600 node scripts/${gate}`,
+        `set -e; xvfb-run -a node scripts/${gate}`
+    ]) {
+        assert.ok(runInvokesGate(run, gate), `should count as running the gate: ${run}`);
+    }
+    for (const run of [
+        `echo node scripts/${gate}`,
+        `echo "remember to run node scripts/${gate}"`,
+        `# node scripts/${gate}`
+    ]) {
+        assert.equal(runInvokesGate(run, gate), false, `must NOT count as running it: ${run}`);
+    }
+});
 
 test('every browser gate is either run by CI or knowingly listed as not', () => {
     const unwired = gates.filter(g => !gateIsWired(g));
