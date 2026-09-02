@@ -297,3 +297,45 @@ test fixtures three separate times, and a source gate that matched the very comm
 the hazard it was gating. Every one was fixed with a marker it must be told about, never with a
 list of its own filenames.
 
+## Fourteenth species: TIMEOUT-AS-VALUE (2026-09-02)
+
+A bounded wait whose expiry is reported by the VALUE assertion downstream of it, so a timing
+failure and a semantic failure produce the same message.
+
+`test/pseudocode-game-examples.test.mjs` waits for a game variable to change, then asserts the
+change was exactly one unit:
+
+```js
+for (let i = 0; i < 20 && Number(value(coil, 'oxygen').value) === beforeOxygen; i++) { ... }
+assert.equal(Number(value(coil, 'oxygen').value), beforeOxygen - 1,
+    'dash did not spend exactly one oxygen');
+```
+
+CI printed `dash did not spend exactly one oxygen — 5 !== 4`, which reads as a game-rule
+regression. It was a flake: the same commit reran green and the test passed 3/3 locally. **The
+5 was not a wrong amount — it was the unchanged STARTING value.** The wait expired, the dash
+never fired, and the only assertion positioned to notice reported the timeout in the vocabulary
+of a semantics failure.
+
+**Why it belongs in this catalogue even though the gate did fail.** The gate bit correctly; the
+DIAGNOSIS did not. A gate that reports the wrong failure mode costs the same as one that
+reports nothing: the reader goes looking for a defect that is not there, and — worse — the next
+person to see it may write it off as "that flaky oxygen test" and stop reading, at which point
+a real regression in the same assertion is invisible.
+
+**The rule:** if a wait can expire, assert the expiry SEPARATELY and first, and say how long it
+actually waited. `assert.notEqual(value, before, 'the dash never fired: … through N steps')`
+before `assert.equal(value, before - 1, …)`. The two failures then have two names.
+
+This also decides when raising a bound is legitimate. Raising a PERF ceiling hides a slowdown
+and is forbidden here. Raising an event WAIT is fine once expiry has its own named assertion
+reporting its duration — because a genuinely slower subject then surfaces as itself instead of
+disappearing into a green run.
+
+### Method note
+
+`pkill -f "node --test test/x"` matches its own invoking shell, because the shell's command
+line contains the pattern. It killed the block before the backup line ran. Caught only because
+the file's state did not match what the command should have done — the same "read the output,
+do not trust the step" habit that broke the `.incognito` hunt.
+
