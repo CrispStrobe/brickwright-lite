@@ -23,6 +23,7 @@ import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 import {IMPORT_ACCEPT} from '../overlay/scratch-gui/src/lib/bw-makecode/accept.js';
+import {scopeAfter} from './helpers/js-scope.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const IMPORTER = resolve(here, '../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx');
@@ -43,9 +44,9 @@ test('the Open button offers the artefact extensions and routes them', () => {
 test('an artefact is read as bytes, not as text', () => {
     // A .uf2 or .png read through readAsText is mangled beyond recovery
     // by the encoder, and the failure looks like "no source embedded".
-    const method = source.slice(source.indexOf('openArtefactFile (file) {'));
-    assert.match(method.slice(0, 1500), /readAsArrayBuffer\(file\)/);
-    assert.match(method.slice(0, 1500), /new Uint8Array\(reader\.result\)/);
+    const method = scopeAfter(source, 'openArtefactFile (file) {');
+    assert.match(method, /readAsArrayBuffer\(file\)/);
+    assert.match(method, /new Uint8Array\(reader\.result\)/);
 });
 
 test('all three entry points share one lazily-loaded chunk', () => {
@@ -59,15 +60,15 @@ test('costumes are handed over under the names compile() reads', () => {
     // The contract: applyMakeCodeImport fills `uploads`, and compile()
     // consumes it. Rename a field on one side and the artwork silently
     // stops arriving — the project still loads, so nothing throws.
-    const apply = source.slice(source.indexOf('applyMakeCodeImport (res, label) {'));
+    const apply = scopeAfter(source, 'applyMakeCodeImport (res, label) {');
     const uploads = apply.slice(apply.indexOf('uploads:'), apply.indexOf('output: null'));
     for (const field of ['sprite:', 'filename:', 'svg:', 'mode:']) {
         assert.ok(uploads.includes(field), `uploads entries must carry ${field}`);
     }
-    const compile = source.slice(source.indexOf('this.state.uploads.forEach'));
-    assert.match(compile.slice(0, 600), /u\.sprite/);
-    assert.match(compile.slice(0, 600), /u\.svg/);
-    assert.match(compile.slice(0, 600), /u\.mode === 'add'/);
+    const compile = scopeAfter(source, 'this.state.uploads.forEach');
+    assert.match(compile, /u\.sprite/);
+    assert.match(compile, /u\.svg/);
+    assert.match(compile, /u\.mode === 'add'/);
 });
 
 test('the share and export buttons exist, and are bound', () => {

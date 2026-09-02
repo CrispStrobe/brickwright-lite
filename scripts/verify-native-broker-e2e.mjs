@@ -155,7 +155,14 @@ try {
                 origin: String(globalThis.location && globalThis.location.origin),
                 receiver: typeof globalThis.__brickwrightBrokerReceive,
                 factoryStillThere: typeof globalThis.__brickwrightInstallBrokerHost,
-                tauri: typeof (globalThis.__TAURI_INTERNALS__ || {}).invoke
+                tauri: typeof (globalThis.__TAURI_INTERNALS__ || {}).invoke,
+                // Tauri injects __TAURI_INTERNALS__ and the IPC regardless of whether the
+                // DOCUMENT loaded, so their presence is not evidence that the frontend is
+                // there. Six rounds were spent reading the broker realm's failure as
+                // broker-specific without ever checking whether the EDITOR had loaded either.
+                title: String(globalThis.document && globalThis.document.title),
+                doc: String(globalThis.document && globalThis.document.documentElement &&
+                    globalThis.document.documentElement.outerHTML || '').slice(0, 120)
             };`, args: []
         });
         realms.push({handle, ...(seen.body?.value || {error: 'unreadable'})});
