@@ -130,7 +130,21 @@ const installNativeBrokerReceiver = options => {
     // becoming the receiver. The host holds no transport permission until this resolves, which
     // is why the order matters rather than merely reads well: acknowledging first would widen
     // the ACL around a receiver that might still fail to install.
-    options.invoke('native_broker_ready').catch(() => control.dispose());
+    // Acknowledge once Tauri's IPC actually exists. This script runs at DOCUMENT START, and the
+    // host that calls it runs in the same tick, so `__TAURI_INTERNALS__` is not guaranteed to be
+    // injected yet — reading `.invoke` off an undefined object threw, the factory call died, and
+    // nothing installed or acknowledged. In a hidden webview with devtools disabled that failure
+    // is completely silent, which is why it survived every static gate and only appeared when the
+    // app was finally launched: realm created, page loaded, no acknowledgement, no error.
+    (async () => {
+        for (let attempt = 0; attempt < 200; attempt++) {
+            if (globalThis.__TAURI_INTERNALS__ && typeof globalThis.__TAURI_INTERNALS__.invoke === 'function') {
+                return options.invoke('native_broker_ready');
+            }
+            await new Promise(resolve => setTimeout(resolve, 25));
+        }
+        throw new TypeError('Tauri IPC never became available to the broker realm');
+    })().catch(() => control.dispose());
     return control;
 };
 
