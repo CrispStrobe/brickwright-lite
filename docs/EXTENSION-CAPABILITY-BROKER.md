@@ -736,3 +736,35 @@ has security consequences — the same clause forbids "exposing a reusable invok
 it is the lane owner's to make, not something to infer from a test that needs to go green.
 Until it is made, D1's box stays unchecked and the harness asserts what is actually true.
 
+## CP3-D2 lifecycle, after the boundary was fixed (2026-09-02)
+
+The DoD names four events: **destroy, navigation, reload and timeout** must leave zero stale
+authority. All four are already proven as LOGIC by Rust unit tests —
+`only_destroyed_window_event_revokes`, `denied_navigation_revokes_before_returning_false`,
+`canonical_reload_revokes_before_allowing_fresh_document`,
+`expiry_boundary_and_revocation_are_enforced`. What a unit test cannot say is whether the
+handler is WIRED to the running webview, or whether the host's clock behaves as the policy
+assumes. That is the e2e harness's job, and the two are worth keeping distinct.
+
+- **navigation — proven end to end.** A navigation attempt from inside the realm is refused,
+  and a lease minted before it no longer authorises afterwards, at its next LEGITIMATE sequence
+  so the refusal is revocation rather than the replay guard. The revocation appears in the
+  audit the editor can read.
+- **timeout — proven end to end against the REAL clock.** The unit test injects `now`; this
+  mints a lease, waits out the 60s `lease_ttl` on the harness side, and requires the next call
+  to be refused. The wait is deliberately not inside the page: a 61s script would exceed
+  WebDriver's timeout and report as a driver error rather than as the measurement.
+- **destroy — NOT reachable from the harness, and this is by design.** The broker window is
+  built `.closable(false)`, so WebDriver cannot close it. Rather than write a test that cannot
+  run, or a skip that quietly claims coverage it does not have, the limit is recorded here. The
+  logic is unit-proven and the wiring is the same `on_window_event` registration.
+- **reload — logic unit-proven; e2e wiring NOT asserted.** `handle_page_load` revokes when a
+  second `Started` arrives, and the navigation case already demonstrates that page and
+  navigation events from the real webview reach these handlers. Left unasserted rather than
+  claimed.
+
+The honest summary is that D2's lifecycle clause is closed for navigation and timeout, and
+rests on unit tests plus a shared wiring argument for destroy and reload. The rendering half —
+declared/allowed/refused/revoked shown to the learner — is still not started; the data is in
+`native_broker_audit` and already structurally redacted, and nothing displays it.
+

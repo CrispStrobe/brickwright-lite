@@ -291,6 +291,33 @@ try {
         await fail(`no allowed platform.kind.read row in the audit: ${recorded.slice(0, 300)}`);
     }
 
+    // ── CP3-D2: the TTL is enforced against the REAL clock ────────────────────────────────
+    // `expiry_boundary_and_revocation_are_enforced` proves the rule with an INJECTED `now`, which
+    // says nothing about whether the running host advances time the way the policy expects.
+    // lease_ttl is 60_000ms, so this waits it out. The wait is on the HARNESS side, in two short
+    // scripts: a 61s sleep inside the page would exceed WebDriver's script timeout and report as
+    // a driver error rather than as the thing being measured.
+    await call('POST', `/session/${session}/window`, {handle: brokers[0].handle});
+    const aged = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        globalThis.__TAURI_INTERNALS__.invoke('native_broker_lease')
+            .then(lease => done({lease}))
+            .catch(error => done({fatal: 'could not mint a lease to age: ' + String(error)}));`);
+    if (!aged || aged.fatal) await fail(`the expiry check could not start: ${aged && aged.fatal}`);
+    await sleep(61000);
+    const afterTtl = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        globalThis.__TAURI_INTERNALS__.invoke('native_broker_invoke', {
+            lease: ${JSON.stringify(aged.lease)}, sequence: 0,
+            operation: 'platform.kind.read', resource: 'platform/default', args: {}
+        }).then(value => done({ok: true, value})).catch(error => done({ok: false, error: String(error)}));`);
+    if (!afterTtl) await fail('the post-TTL invoke returned nothing');
+    if (afterTtl.ok) {
+        await fail('a lease older than its 60s TTL still authorised a call ' +
+            `(returned ${JSON.stringify(afterTtl.value)}) — the TTL is enforced against the ` +
+            'injected clock the unit test uses, but not against the real one');
+    }
+
     // ── CP3-D2 (lifecycle half): a navigation attempt must leave ZERO stale authority ──────
     // The realm guard denies any navigation away from its own document AND revokes on the way
     // past. Proving the denial alone would be half a gate: the interesting claim is that the
@@ -341,6 +368,7 @@ try {
         `through a broker-minted lease and is recorded in the audit (${before} -> ${after.rows.length} rows, ` +
         'lease and result both absent from what the editor can see); a replayed sequence was refused; ' +
         'editor refused native_broker_reply and native_broker_lease at the real Tauri boundary; ' +
+        'a lease aged past its 60s TTL was refused against the REAL clock; ' +
         'a refused navigation revoked the outstanding lease and the revocation is visible in the audit');
     await shutdown();
     process.exit(0);
