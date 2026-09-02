@@ -260,8 +260,8 @@ pub(crate) fn native_broker_ready(
     // argument — there is nothing here a reader could not already infer from the binary.
     let granted = state.grant_transport_once(&app);
     match &granted {
-        Ok(()) => log::info!("broker acknowledged; transport capabilities granted"),
-        Err(_) => log::warn!("broker acknowledgement refused (already granted, or ACL unavailable)"),
+        Ok(()) => eprintln!("[broker] acknowledged; transport capabilities granted"),
+        Err(_) => eprintln!("[broker] acknowledgement refused (already granted, or ACL unavailable)"),
     }
     granted
 }

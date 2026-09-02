@@ -59,7 +59,9 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
                     .revoke_broker();
             })
         })
-        .on_page_load(move |_, payload| {
+        .on_page_load(move |webview, payload| {
+            eprintln!("[broker] page-load {:?} url={}", payload.event(), webview.url()
+                .map(|u| u.to_string()).unwrap_or_else(|_| "<none>".into()));
             handle_page_load(payload.event(), &page_seen, || {
                 let _ = page_policy.revoke_all(LABEL);
                 page_app
@@ -73,7 +75,10 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
     // acknowledgement had not arrived but not whether the realm existed, because WebKitWebDriver
     // exposes only the window it attached to. One line each side of the chain makes the app's own
     // output answer that. Neither carries a lease, a digest, a correlation id or any argument.
-    log::info!("capability broker realm created");
+    // stderr, not log::info!, and deliberately. Under the e2e harness the app is a grandchild
+    // of tauri-driver and only its stderr propagates — the BLE panic arrived, the info line
+    // did not. A lifecycle line nobody can read is not observability.
+    eprintln!("[broker] capability broker realm created");
     let window_app = app.handle().clone();
     broker.on_window_event(move |event| {
         handle_window_event(event, || {
