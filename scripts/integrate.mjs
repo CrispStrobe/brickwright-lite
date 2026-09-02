@@ -23,6 +23,9 @@ if (!existsSync(GUI)) { console.error('Run `npm run vendor` first (packages/scra
 const proofPins = spawnSync(process.execPath, [path.join(ROOT, 'scripts/package-native-broker-proof-pins.mjs'), '--check'],
     {cwd: ROOT, stdio: 'inherit'});
 if (proofPins.status !== 0) throw new Error('native broker proof package freshness check failed');
+const brokerAssets = spawnSync(process.execPath, [path.join(ROOT, 'scripts/package-native-broker-assets.mjs'), '--check'],
+    {cwd: ROOT, stdio: 'inherit'});
+if (brokerAssets.status !== 0) throw new Error('native broker asset freshness check failed');
 
 // 1) overlay our owned scratch-gui files onto the vendored source. (The scratch-vm delta lives
 // in overlay/scratch-vm and is applied to node_modules/scratch-vm AFTER install by

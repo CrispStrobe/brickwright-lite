@@ -5,10 +5,16 @@ on:
     branches: [main]
     paths:
       - 'apps/tauri/**'
+      - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
+      - 'overlay/scratch-gui/static/native-broker/**'
+      - 'scripts/package-native-broker-*.mjs'
       - '.github/workflows/tauri.yml'
   pull_request:
     paths:
       - 'apps/tauri/**'
+      - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
+      - 'overlay/scratch-gui/static/native-broker/**'
+      - 'scripts/package-native-broker-*.mjs'
       - '.github/workflows/tauri.yml'
 
 # A PR branch is already tested by pull_request; running the same job again for
@@ -26,6 +32,12 @@ jobs:
         working-directory: apps/tauri
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Check native broker packaged assets
+        working-directory: .
+        run: |
+          node scripts/package-native-broker-proof-pins.mjs --check
+          node scripts/package-native-broker-assets.mjs --check
 
       - name: Install Tauri system dependencies
         run: |

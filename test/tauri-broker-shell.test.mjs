@@ -111,6 +111,9 @@ const audit = ({rust, lib, html}) => {
     assert.ok(csp, 'the CSP meta element must have a content value');
     const policy = csp[1] || csp[2];
     assert.match(policy, /(?:^|;)\s*default-src\s+'none'\s*(?:;|$)/i);
+    assert.match(policy, /(?:^|;)\s*script-src\s+blob:\s*(?:;|$)/i);
+    assert.match(policy, /(?:^|;)\s*worker-src\s+blob:\s*(?:;|$)/i);
+    assert.match(policy, /(?:^|;)\s*connect-src\s+'none'\s*(?:;|$)/i);
     assert.match(policy, /(?:^|;)\s*base-uri\s+'none'\s*(?:;|$)/i);
     assert.match(policy, /(?:^|;)\s*form-action\s+'none'\s*(?:;|$)/i);
     assert.match(policy, /(?:^|;)\s*frame-ancestors\s+'none'\s*(?:;|$)/i);
@@ -147,6 +150,9 @@ test('broker shell gate detects independently weakened controls', () => {
         input => { input.lib = input.lib.replace('fileio::save_project,', 'native_broker::invoke,\n            fileio::save_project,'); },
         input => { input.lib = input.lib.replace('#[cfg(desktop)]', '#[cfg(mobile)]'); },
         input => { input.html = input.html.replace("default-src 'none'", "default-src 'self'"); },
+        input => { input.html = input.html.replace('script-src blob:', "script-src 'unsafe-eval'"); },
+        input => { input.html = input.html.replace('worker-src blob:', "worker-src 'self'"); },
+        input => { input.html = input.html.replace("connect-src 'none'", "connect-src 'self'"); },
         input => { input.html = input.html.replace('</body>', '<script src="https://evil.invalid/x.js"></script></body>'); }
     ];
 

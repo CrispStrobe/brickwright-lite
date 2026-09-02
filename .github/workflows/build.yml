@@ -373,6 +373,9 @@ jobs:
       - name: Guard — packaged native broker proof authority is fresh
         run: node scripts/package-native-broker-proof-pins.mjs --check
 
+      - name: Guard — packaged native broker host and worker assets are fresh
+        run: node scripts/package-native-broker-assets.mjs --check
+
       - name: Build the editor
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 
@@ -432,6 +435,12 @@ jobs:
             sleep 5
           done
           [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed after 3 attempts"; exit 1; }
+      # Keyed on `playwright` rather than `serve` because this gate needs no
+      # server: it drives the packaged broker document from local files. It still
+      # carries `!cancelled()` for the same reason every gate below does.
+      - name: Browser gate — native broker packaged assets
+        if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
+        run: node scripts/verify-native-broker-assets.mjs
       # Every browser gate below hangs off THIS step's outcome, not
       # playwright's, and each carries `!cancelled()` so a red gate no longer
       # SKIPS its successors. GitHub folds an implicit `success()` into any
