@@ -97,7 +97,13 @@ jobs:
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
+      # Everything from here to `Serve the built app` is an INDEPENDENT check —
+      # guards, unit tests, the lazy-bundle inspection, the debugger smoke test.
+      # None of them produces an input the next one needs, so none of them should
+      # silence the next one. They hang off this id, the last step of the actual
+      # prerequisite chain (vendor -> integrate -> install -> overlays).
       - name: Apply the scratch-paint overlay (extended costume designer)
+        id: overlays
         run: node scripts/apply-paint-overlay.mjs
 
       # --- guards: catch silent reverts before the build runs ---
@@ -117,6 +123,7 @@ jobs:
       #      not just the three named regressions. Branch: guard4-falsification.
 
       - name: Guard — bundled stc12 has all emitted opcodes
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           FILE=overlay/scratch-vm/src/extensions/crispstrobe/stc12/index.js
           COUNT=$(grep -c 'opcode:' "$FILE")
@@ -127,6 +134,7 @@ jobs:
           fi
 
       - name: Guard — WASM pin is a descendant of the crash-fix floor
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           # The floor: 85ed23d94a1fbf8a15c2ddff068d438a832913cc is the commit
           # with the emu_init crash fix and corrected BUILD-INFO.md. Any pin
@@ -158,6 +166,7 @@ jobs:
           node scripts/sync-emu8051-wasm.mjs --check
 
       - name: Guard — blocks.jsx has the toolbox null-guard
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           # The crash: blocks.jsx passes this.props.toolboxXML to ScratchBlocks.inject().
           # toolboxXML is null at startup (deferred because scratch-blocks is lazy-loaded).
@@ -170,6 +179,7 @@ jobs:
           echo "blocks.jsx: toolbox null-guard present (good)"
 
       - name: Guard — the vendored overlay matches the commit it PINS
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           # WHAT THIS COMPARES, AND WHAT IT USED TO.
           #
@@ -244,6 +254,7 @@ jobs:
       # bundled extension, padding a ratchet, and removing the corpus each make
       # the gate red.
       - name: Guard — the example execution gates exist and their ratchets have not grown
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           set -e
           for gate in test/example-vm-execution.test.mjs test/example-execution.test.mjs; do
@@ -300,6 +311,7 @@ jobs:
           "
 
       - name: Guard — the fetch-pinning gate exists and can still fail
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           set -e
           # `npm test` below runs test/fetch-pinning.test.mjs through its glob.
@@ -331,12 +343,14 @@ jobs:
       # no built app. They were sitting unrun with the browser gates purely
       # because of their filename, and they cost about a second each.
       - name: Content gates — faceplates, hub faces, retro console
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           node scripts/verify-faceplate-blinkenrocket.mjs
           node scripts/verify-lego-hub-faces.mjs
           node scripts/verify-retro-console.mjs
 
       - name: Run unit tests
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           if ! grep -q '"test"' package.json; then
             echo "::error::package.json has no test script — tests exist but nothing runs them"
@@ -371,12 +385,15 @@ jobs:
       # --- build ---
 
       - name: Guard — packaged native broker proof authority is fresh
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: node scripts/package-native-broker-proof-pins.mjs --check
 
       - name: Guard — packaged native broker host and worker assets are fresh
         run: node scripts/package-native-broker-assets.mjs --check
 
       - name: Build the editor
+        id: build_editor
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 
       # The heavy tier is 20 MB and MUST stay out of the first load. That is a
@@ -388,9 +405,11 @@ jobs:
       # Deliberately NOT gated on the artifact fetch above — this inspects
       # bundle contents, which exist whether or not the release download did.
       - name: Guard — the labwired engine stays lazily loaded
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: node scripts/verify-labwired-lazy-bundle.mjs
 
       - name: Smoke-test the debugger
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           if ! grep -q '"smoke:debugger"' package.json; then
             echo "::error::package.json has no smoke:debugger script — the debugger is untested"
@@ -415,6 +434,7 @@ jobs:
       # BUILT APP and block the deploy when it is visibly wrong.
       - name: Install Playwright browser
         id: playwright
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         # Gate-only tool (the gates drive the built app), NOT an app dependency —
         # and NOT worth blocking a deploy over. If chromium can't install (a
         # CDN/infra outage, exit 100), this step fails softly and the gates below
@@ -454,8 +474,11 @@ jobs:
       # skipped when playwright fails, so this still covers that case — and it
       # additionally stops 30 gates from being fired at a dead HTTP server, each
       # burning its own navigation timeout, if the server never came up.
+      # Requires the BUILD, not only playwright: with `!cancelled()` above, a
+      # failed build would otherwise hand 31 browser gates an empty directory and
+      # turn one red step into 31, each burning its own navigation timeout.
       - name: Serve the built app
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.playwright.outcome == 'success' && steps.build_editor.outcome == 'success' }}
         id: serve
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
