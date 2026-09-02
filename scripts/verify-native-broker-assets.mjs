@@ -15,7 +15,7 @@ const [html, protocolSource, bootstrapSource, hostSource, workerSource] = await 
     read('overlay/scratch-gui/static/native-broker/native-broker-host.js'),
     read('overlay/scratch-gui/static/native-broker/native-broker-extension-worker.js')
 ]);
-const productionCsp = "default-src 'none'; script-src blob:; worker-src blob:; connect-src 'none'; " +
+const productionCsp = "default-src 'none'; script-src 'unsafe-inline' blob:; worker-src blob:; connect-src 'none'; " +
     "base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 const requests = [];
 const server = createServer((request, response) => {

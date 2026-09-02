@@ -136,7 +136,12 @@ const audit = ({rust, lib, html}) => {
     assert.ok(csp, 'the CSP meta element must have a content value');
     const policy = csp[1] || csp[2];
     assert.match(policy, /(?:^|;)\s*default-src\s+'none'\s*(?:;|$)/i);
-    assert.match(policy, /(?:^|;)\s*script-src\s+blob:\s*(?:;|$)/i);
+    // 'unsafe-inline' is required, not conceded: WebKitGTK applies this policy to the host's
+    // DOCUMENT-START scripts, and without it Tauri's IPC bootstrap and the broker's own
+    // initialization script were both blocked — silently, because the script that would have
+    // reported the failure was the one being blocked. The document carries no <script> of its
+    // own (asserted below), so the only inline script that can exist here is host-injected.
+    assert.match(policy, /(?:^|;)\s*script-src\s+'unsafe-inline'\s+blob:\s*(?:;|$)/i);
     assert.match(policy, /(?:^|;)\s*worker-src\s+blob:\s*(?:;|$)/i);
     assert.match(policy, /(?:^|;)\s*connect-src\s+'none'\s*(?:;|$)/i);
     assert.match(policy, /(?:^|;)\s*base-uri\s+'none'\s*(?:;|$)/i);
@@ -175,7 +180,10 @@ test('broker shell gate detects independently weakened controls', () => {
         input => { input.lib = input.lib.replace('fileio::save_project,', 'native_broker::invoke,\n            fileio::save_project,'); },
         input => { input.lib = input.lib.replace('#[cfg(desktop)]', '#[cfg(mobile)]'); },
         input => { input.html = input.html.replace("default-src 'none'", "default-src 'self'"); },
-        input => { input.html = input.html.replace('script-src blob:', "script-src 'unsafe-eval'"); },
+        input => { input.html = input.html.replace("script-src 'unsafe-inline' blob:", "script-src 'unsafe-eval'"); },
+        // blob: is what the packaged worker and source are loaded from; losing it is as
+        // much a weakening as losing the inline allowance is a break.
+        input => { input.html = input.html.replace("script-src 'unsafe-inline' blob:", "script-src 'unsafe-inline'"); },
         input => { input.html = input.html.replace('worker-src blob:', "worker-src 'self'"); },
         input => { input.html = input.html.replace("connect-src 'none'", "connect-src 'self'"); },
         input => { input.html = input.html.replace('</body>', '<script src="https://evil.invalid/x.js"></script></body>'); }
