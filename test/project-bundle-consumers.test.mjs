@@ -37,7 +37,26 @@ describe('mounted project consumers obey replacement outcomes', () => {
     });
 
     test('Circuit and Controller both clear when their incoming section is absent', () => {
-        assert.match(circuit, /circuitData: \{version: 1, parts: \[\], wires: \[\]\}/);
+        // This asserted the LITERAL `circuitData: {version: 1, parts: [], wires: []}`
+        // and went red the moment that object was given a name — a gate that
+        // tracked one spelling rather than the behaviour underneath it. Restated
+        // as the invariant that actually matters, which is also strictly more
+        // than the old line checked: every branch that decides what the circuit
+        // now IS must reach the LIVE model as well as React state.
+        //
+        // vm.runtime.circuitModel is not the Designer's private state —
+        // bw-debug's debug-runner and the circuit VM extension resolve the board
+        // through it — but the Designer is what assigns it, and circuit-tab's
+        // render drops the Designer entirely when the debugger is docked 'right'
+        // (the default) while the Code tab is active. React state alone therefore
+        // leaves a running program on the previous project's board.
+        const applied = [...circuit.matchAll(
+            /this\.setState\(\{circuitData: (\w+)\}\);\s*\n\s*this\._applyToLiveCircuit\(\1\);/g)];
+        assert.equal(applied.length, 2,
+            'both the restore and the replacement branch must hand their circuit to ' +
+            `vm.runtime.circuitModel, not only to setState — found ${applied.length}`);
+        assert.match(circuit, /\{version: 1, parts: \[\], wires: \[\]\}/,
+            'replacement must still produce an empty bench');
         const clear = 'for (const name of p.getWidgetNames()) p.removeWidget(name)';
         assert.ok(circuit.includes(clear), 'the old controller widgets are not removed');
         assert.ok(circuit.indexOf(clear) < circuit.indexOf('if (wraw)', circuit.indexOf(clear)),
