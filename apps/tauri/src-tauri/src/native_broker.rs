@@ -28,7 +28,7 @@ fn initialization_script() -> String {
     // The generated host consumes the one-shot factory in the same document-start script. No
     // editor-realm script or document subresource receives the factory or its protocol owner.
     format!(
-        r#"(()=>{{const l=globalThis.location,expectedOrigin='{EXPECTED_ORIGIN}';if(globalThis.top!==globalThis||l.origin!==expectedOrigin||l.pathname!=='/capability-broker.html'||l.search!==''||l.hash!=='')throw new TypeError('Invalid broker realm');const protocolModule=(()=>{{const module={{exports:{{}}}};{{{PROTOCOL_SOURCE}}};return module.exports;}})();const bootstrapModule=(()=>{{const module={{exports:{{}}}};{{{BOOTSTRAP_SOURCE}}};return module.exports;}})();const install=bootstrapModule.installNativeBrokerReceiver;let installed=false;Object.defineProperty(globalThis,'__brickwrightInstallBrokerHost',{{value:host=>{{if(installed)throw new TypeError('Broker already initialized');installed=true;delete globalThis.__brickwrightInstallBrokerHost;return install({{NativeBrokerProtocol:protocolModule.NativeBrokerProtocol,BrokerProtocolError:protocolModule.BrokerProtocolError,invoke:(...a)=>globalThis.__TAURI_INTERNALS__.invoke(...a),createProtocol:host,expectedOrigin}});}},configurable:true}});{HOST_SOURCE}}})();"#
+        r#"(()=>{{try{{const l=globalThis.location,expectedOrigin='{EXPECTED_ORIGIN}';if(globalThis.top!==globalThis||l.origin!==expectedOrigin||l.pathname!=='/capability-broker.html'||l.search!==''||l.hash!=='')throw new TypeError('Invalid broker realm');const protocolModule=(()=>{{const module={{exports:{{}}}};{{{PROTOCOL_SOURCE}}};return module.exports;}})();const bootstrapModule=(()=>{{const module={{exports:{{}}}};{{{BOOTSTRAP_SOURCE}}};return module.exports;}})();const install=bootstrapModule.installNativeBrokerReceiver;let installed=false;Object.defineProperty(globalThis,'__brickwrightInstallBrokerHost',{{value:host=>{{if(installed)throw new TypeError('Broker already initialized');installed=true;delete globalThis.__brickwrightInstallBrokerHost;return install({{NativeBrokerProtocol:protocolModule.NativeBrokerProtocol,BrokerProtocolError:protocolModule.BrokerProtocolError,invoke:(...a)=>globalThis.__TAURI_INTERNALS__.invoke(...a),createProtocol:host,expectedOrigin}});}},configurable:true}});{HOST_SOURCE}}}catch(e){{try{{document.title='BROKER-ERR '+String((e&&e.message)||e);}}catch(_){{}}throw e;}}}})();"#
     )
 }
 
@@ -60,8 +60,11 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
             })
         })
         .on_page_load(move |webview, payload| {
-            eprintln!("[broker] page-load {:?} url={}", payload.event(), webview.url()
-                .map(|u| u.to_string()).unwrap_or_else(|_| "<none>".into()));
+            // The realm has no console anyone can read and no IPC it can trust, so a failing
+            // initialization script writes its error into the document title. That needs neither.
+            eprintln!("[broker] page-load {:?} url={} title={}", payload.event(),
+                webview.url().map(|u| u.to_string()).unwrap_or_else(|_| "<none>".into()),
+                webview.title().unwrap_or_else(|_| "<none>".into()));
             handle_page_load(payload.event(), &page_seen, || {
                 let _ = page_policy.revoke_all(LABEL);
                 page_app
