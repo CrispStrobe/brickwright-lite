@@ -25,7 +25,10 @@ const root = path.resolve(import.meta.dirname, '..');
 const BASELINE = {
     'AMBIENT-BINDING': 11,
     'EVENT-AS-STATE': 12,
-    'SEGMENT-MATCH': 1,
+    // 1 -> 0 on 2026-09-02: the single hit was triaged and kept, marked at the site. The
+    // widening is real but bounded to one dot-prefixed spelling whose receiver is a per-game
+    // variable name; a SECOND entry of that form is what should be refused.
+    'SEGMENT-MATCH': 0,
     'TRUNCATED-CAPTURE': 8,
     // 37 -> 0 on 2026-09-02: three real conversions to brace-matched scopes, and 34 that were
     // never defects. The rule asked whether an assertion sat within 200 characters of the slice;

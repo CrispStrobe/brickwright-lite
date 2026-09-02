@@ -66,8 +66,18 @@ const walk = dir => {
 
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 const findings = [];
-const note = (file, line, kind, detail) =>
+// The `gate-shapes-allow` marker is honoured HERE, in the reporting path, so it works for every
+// rule. It was first written into the WINDOWED-SEARCH branch alone, which meant a triaged
+// SEGMENT-MATCH stayed reported however carefully it was justified at the site — an exemption
+// mechanism that only some rules obey is worse than none, because it teaches you to distrust it.
+let rawLines = [];
+const note = (file, line, kind, detail) => {
+    // The marker may sit on the line itself or the line above it, for long expressions.
+    const marked = [rawLines[line - 1], rawLines[line - 2]]
+        .some(text => typeof text === 'string' && text.includes('gate-shapes-allow'));
+    if (marked) return;
     findings.push({file: path.relative(root, file), line, kind, detail: detail.slice(0, 120)});
+};
 
 // Comments are prose ABOUT these shapes as often as instances of them — this file's own header
 // is four examples — so they are blanked (length-preserving, so line numbers stay true) before
@@ -78,6 +88,7 @@ const blankComments = source => source
 
 for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
     const raw = readFileSync(file, 'utf8');
+    rawLines = raw.split('\n');
     const text = blankComments(raw);
 
     // TRUNCATED-CAPTURE: a lazy any-char capture that ends on a bracket/brace/paren which can
@@ -137,10 +148,7 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
         const tail = text.slice(end, end + 80);
         const soundEmpty = /^\s*,\s*(?:\[\s*\]|''|""|``)\s*[,)]/.test(tail);
         const soundDomain = /^\s*\]\s*\.(?:every|some|filter|map|reduce)\s*\(/.test(tail);
-        // From `raw`: blankComments has already erased the marker from `text`, and it blanks
-        // in place, so the index maps across unchanged.
-        const marked = /gate-shapes-allow/.test(lineTextOf(raw, m.index));
-        if (reaches && !soundEmpty && !soundDomain && !marked) {
+        if (reaches && !soundEmpty && !soundDomain) {
             note(file, lineOf(text, m.index), 'WINDOWED-SEARCH',
                 `fixed ${m[1]}-char window searched as a scope — brace-match instead`);
         }

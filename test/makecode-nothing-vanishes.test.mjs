@@ -75,6 +75,12 @@ const sweep = body => {
         // `coinAnimation.addAnimationFrame` is a method on a plain variable,
         // so the path carries the variable's name; the deferred thing is the
         // method.
+        // SEGMENT-MATCH, triaged 2026-09-02 and KEPT. The reduction to a final segment does
+        // widen — any object's `.addAnimationFrame` matches — but the widening is bounded to
+        // the single dot-prefixed spelling in DEFERRED above, which exists because the
+        // receiver is a per-game variable name. The `.` prefix keeps it from colliding with a
+        // full path. A SECOND entry of that form is the thing to refuse, not this one.
+        // gate-shapes-allow
         const method = String(what).includes('.') ? `.${String(what).split('.').pop()}` : what;
         if (DEFERRED.has(what) || DEFERRED.has(method)) return;
         vanished.set(what, (vanished.get(what) || 0) + 1);
