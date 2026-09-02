@@ -93,6 +93,35 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
         }
     }
 
+    // AMBIENT-BINDING: a gate whose verdict depends on something outside the repository — a
+    // binary resolved from PATH, or a sibling checkout. stc-compiler-70 found the sharp version
+    // on 2026-09-02: its assembler tests invoked sdcc/ca65 by BARE NAME, so they bound to the
+    // developer's system toolchain, passed locally, and had never once exercised the binaries
+    // the service actually ships. Wiring them into CI turned them red immediately and exposed a
+    // production defect — POST /assemble had never returned a symbol table. The same shape runs
+    // the other way here: two sb3-creator tests compare against a "live sibling checkout" and
+    // fail on this box while passing in CI. Either direction, the verdict is not about the code.
+    for (const m of text.matchAll(/(?:execFileSync|execSync|spawnSync|spawn|execFile)\(\s*['"`]([a-z0-9_.-]+)['"`]/gi)) {
+        const tool = m[1];
+        // `node` and `process.execPath` are the runtime this file already runs under; a bare
+        // name with no separator that is NOT node is a tool picked up from the environment.
+        if (tool !== 'node' && !tool.includes('/') && !tool.includes('.exe')) {
+            note(file, lineOf(text, m.index), 'AMBIENT-BINDING',
+                `'${tool}' resolved from PATH — the gate may be exercising a tool the build does not ship`);
+        }
+    }
+    // Only a path that ESCAPES this repository counts. `../overlay/.../bw-board/...` is lite's
+    // own vendored copy and is exactly what these gates should read; matching the library name
+    // anywhere flagged 112 of those and buried the real thing. A sibling is an absolute path
+    // into another checkout, or a relative one climbing above the repo root.
+    for (const m of text.matchAll(/['"`](\/mnt\/[^'"`\n]*|(?:\.\.\/){2,}[^'"`\n]*)['"`]/g)) {
+        const target = m[1];
+        if (/(?:bw-board|bw-circuit-ui|sb3-creator|bw-parts|extensions|stc-compiler)\b/.test(target)) {
+            note(file, lineOf(text, m.index), 'AMBIENT-BINDING',
+                `reads ${target.split('/').slice(-2).join('/')} — a checkout outside this repository`);
+        }
+    }
+
     // EVENT-AS-STATE: proves a thing appears, never proves it goes away.
     const appears = [...text.matchAll(/waitFor\(\s*\{?\s*state:\s*'visible'|toBeVisible\(|\.waitFor\(\)/g)];
     if (appears.length) {

@@ -21,6 +21,7 @@ const root = path.resolve(import.meta.dirname, '..');
 // Measured 2026-09-02. LOWER these as suspects are triaged; never raise one to make a push
 // green. A new suspect is a new place a gate can stop biting without saying so.
 const BASELINE = {
+    'AMBIENT-BINDING': 11,
     'EVENT-AS-STATE': 12,
     'SEGMENT-MATCH': 1,
     'TRUNCATED-CAPTURE': 8,
