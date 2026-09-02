@@ -21,6 +21,7 @@ was any way to find the ones already written.
 | 6 | Correct about CONTENT, silent about POSITION. A one-sided `indexOf` ordering check is a direction, not a gate, until it is bounded on the far side too | the dispatch moved into a scope where its variable did not exist | partly |
 | 7 | A test double with no producer to fail against — a closed allow-list of command names is a copy of a contract with no link back to it, so it cannot rot loudly | the real surface grew a command and the stub answered nothing | partly |
 | 8 | Correct and NARROW, where the narrowness is invisible in the PASS LINE. "LEGO SPIKE browser round trip passed" is a sentence about the round trip that a reader hears as one about the page | a human looked at the screenshot | no — **rename**, not fix |
+| 11 | PAYLOAD-BLIND: the gate would pass unchanged if the thing under test returned nothing | the 8051 stage tests asserted on tokens and the listing, never on symbols, so an always-empty `passes: []` was green everywhere | no — see below |
 | 10 | A gate bound to an AMBIENT dependency rather than the one under test — a binary resolved from `PATH`, or a checkout outside the repository | stc-compiler-70 wired a root suite into CI for the first time and it went red immediately: those tests had invoked `sdcc`/`ca65` by bare name, bound to the developer's system toolchain, and had never once exercised the binaries the service ships | **yes** |
 | 9 | An assertion about an EVENT silently taken as one about a STATE. `waitFor` is a transition; the defect lived in the steady state after it | a screenshot showed a refusal notice over a project whose surfaces had just been cleared | **yes** |
 
@@ -36,6 +37,31 @@ every target. The gate was not weak — it was pointed at the wrong artefact, an
 It runs in both directions. Here, two sb3-creator tests compare a vendored snapshot against a
 "live sibling checkout" and fail on this machine while passing in CI. Same root: the verdict is
 about ambient state rather than about the code.
+
+## The second axis: would it fail if the thing returned nothing?
+
+Species 10 has a companion that stc-compiler-70 identified from the inside, and it is the reason
+their defect hid for so long. Ambient binding decided WHICH artefact got tested. A separate,
+independent gap decided that nobody noticed the artefact was empty: their 8051 stage tests
+asserted on tokens and on the listing and never on symbols, so `passes: []` was not a red test
+anywhere — it was a green one.
+
+So the sweep has two questions, not one:
+
+1. Does this gate's verdict depend on ambient state rather than on the code? (species 10)
+2. **Would this gate still pass if the thing under test returned nothing at all?** (species 11)
+
+The second is worth asking of every assertion set that touches a payload. A gate can be
+ambient-bound and never fail in EITHER direction — passing locally, passing in CI, and never
+once looking at the field that was empty.
+
+Deliberately NOT mechanised here. The obvious detector — an assertion set that never compares a
+payload's contents — is exactly the kind of loose scan this document argues against, and the
+honest signature is hard: `assert.ok(result)` is fine when the emptiness is checked two lines
+later, and damning when it is not. The closest existing instrument is sb3-creator's
+`gate-inventory.mjs` FLOORS column, which already records assertions that a count is at least N;
+a payload-returning gate with no floor is the shape to read. Shipping a fifth noisy detector to
+claim coverage of species 11 would be the disease, not the cure.
 
 ## What is mechanised
 
