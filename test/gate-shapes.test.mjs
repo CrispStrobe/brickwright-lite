@@ -29,7 +29,10 @@ const BASELINE = {
     // widening is real but bounded to one dot-prefixed spelling whose receiver is a per-game
     // variable name; a SECOND entry of that form is what should be refused.
     'SEGMENT-MATCH': 0,
-    'TRUNCATED-CAPTURE': 8,
+    // 8 -> 0 on 2026-09-02. Seven were converted to bracket-matched regions via
+    // test/helpers/js-scope.mjs (balancedAfter / balancedFrom); the eighth is this suite's own
+    // demonstration of the shape and is marked at the site.
+    'TRUNCATED-CAPTURE': 0,
     // 37 -> 0 on 2026-09-02: three real conversions to brace-matched scopes, and 34 that were
     // never defects. The rule asked whether an assertion sat within 200 characters of the slice;
     // it now asks whether the slice's RESULT reaches a predicate. Truncating a failure MESSAGE

@@ -57,6 +57,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync, existsSync} from 'node:fs';
 import path from 'node:path';
+import {balancedFrom} from './helpers/js-scope.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const OV = path.join(root, 'overlay/scratch-gui/src/lib');
@@ -135,17 +136,31 @@ async function boot () {
  * @returns {{mode: function, arm: function(object):void}}
  */
 function driverArming (js) {
-    const mode = js.match(/const _mod = (\(p\) => \(.*?\));/);
-    const pins = js.match(/const _stc12_pins = (\{.*?\});/s);
-    const arm = js.match(/const _bw_arm = (\(b\) => \{[\s\S]*?\} \};)/);
-    assert.ok(mode && pins && arm,
-        'the simulator driver no longer emits `_mod` / `_stc12_pins` / `_bw_arm` in the shape ' +
-        'this gate reads. Re-read stc12SimulatorDriver before trusting any number here — a ' +
-        'gate that silently stops finding its subject reports zero defects for the wrong reason.');
+    // These three sources are handed to `new Function`, so a capture that stops early does not
+    // fail — it compiles a DIFFERENT program, or throws a syntax error blamed on the driver.
+    // All three were lazy captures ending on a literal bracket; `_bw_arm`'s terminator was the
+    // spelling `} };`, which emitted code can easily contain before its real end.
+    for (const name of ['const _mod =', 'const _stc12_pins =', 'const _bw_arm =']) {
+        assert.ok(js.includes(name),
+            `the simulator driver no longer emits \`${name}\` in the shape this gate reads. ` +
+            'Re-read stc12SimulatorDriver before trusting any number here — a gate that silently ' +
+            'stops finding its subject reports zero defects for the wrong reason.');
+    }
+    // The initialiser, from after the `=` to the end of the BALANCED body. `afterArrow` skips
+    // the parameter list so `(p) => (…)` measures the body and not `(p)`.
+    const initialiser = (name, open, close, afterArrow) => {
+        const at = js.indexOf(name);
+        const from = afterArrow ? js.indexOf('=>', at) : at;
+        const body = balancedFrom(js, from, open, close, name);
+        return js.slice(js.indexOf('=', at) + 1, js.indexOf(open, from) + body.length).trim();
+    };
+    const mode = initialiser('const _mod =', '(', ')', true);
+    const pins = initialiser('const _stc12_pins =', '{', '}', false);
+    const arm = initialiser('const _bw_arm =', '{', '}', true);
     // eslint-disable-next-line no-new-func
     const built = new Function(
-        `const _stc12_pins = ${pins[1]};\nconst _mod = ${mode[1]};\nlet _bw_armed_board = null;\n` +
-        `const _bw_arm = ${arm[1]}\nreturn {mode: _mod, arm: _bw_arm, pins: _stc12_pins};`)();
+        `const _stc12_pins = ${pins};\nconst _mod = ${mode};\nlet _bw_armed_board = null;\n` +
+        `const _bw_arm = ${arm};\nreturn {mode: _mod, arm: _bw_arm, pins: _stc12_pins};`)();
     return built;
 }
 

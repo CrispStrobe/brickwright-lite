@@ -28,6 +28,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {boot, load, terminalVolts, EXAMPLES, circuitPathFor, fmt} from '../scripts/lesson-bench.mjs';
+import {balancedFrom} from './helpers/js-scope.mjs';
 
 const REPO = path.resolve(import.meta.dirname, '..');
 const GUI = path.join(REPO, 'overlay/scratch-gui/src');
@@ -166,7 +167,10 @@ test('the scope record is chosen, and a full RC step now fits in one', async () 
     // moves a label and nothing else.
     const panel = readFileSync(path.join(CUI, 'components/ScopePanel.jsx'), 'utf8');
     assert.match(panel, /data-testid="bw-scope-record"/, 'the record control is rendered');
-    const calls = [...panel.matchAll(/board\.addScopeChannel\(\{[\s\S]*?\}\)/g)].map(m => m[0]);
+    // Each call's argument object, brace-matched from its own opening `{`, so a nested object
+    // literal cannot end the region early.
+    const calls = [...panel.matchAll(/board\.addScopeChannel\(/g)]
+        .map(m => balancedFrom(panel, m.index, '{', '}', 'addScopeChannel argument'));
     // Two time-domain sites (re-attach after a netlist edit, and add-channel) plus
     // the spectrum tap the FFT view opens (D24, bw-circuit-ui `7696656`). The
     // invariant that matters is not the count but that NO site takes the default:

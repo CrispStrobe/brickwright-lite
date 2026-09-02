@@ -23,7 +23,7 @@ import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 import {IMPORT_ACCEPT} from '../overlay/scratch-gui/src/lib/bw-makecode/accept.js';
-import {scopeAfter} from './helpers/js-scope.mjs';
+import {balancedAfter, scopeAfter} from './helpers/js-scope.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const IMPORTER = resolve(here, '../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx');
@@ -100,19 +100,20 @@ test('a status message gets every argument its template names', () => {
     const template = /mcArcade: \((.*?)\) =>/.exec(source);
     assert.ok(template, 'the English template');
     const parameters = template[1].split(',').length;
-    const call = /this\.L\.mcArcade\(([\s\S]*?)\);/.exec(source);
-    assert.ok(call, 'the call site');
+    // Paren-matched: a `);` inside a string argument would end the old lazy capture early and
+    // the depth-zero argument count below would then be taken over a truncated argument list.
+    const call = balancedAfter(source, 'this.L.mcArcade', '(', ')');
     // Arguments, counted at depth zero so `(res.sprites || []).length`
     // is one argument and not two.
     let depth = 0;
     let args = 1;
-    for (const c of call[1]) {
+    for (const c of call.slice(1, -1)) {
         if ('([{'.includes(c)) depth++;
         else if (')]}'.includes(c)) depth--;
         else if (c === ',' && depth === 0) args++;
     }
     assert.equal(args, parameters, 'the call passes as many arguments as the message takes');
-    assert.match(call[1], /this\.L\.toBlocks/, 'and the button label comes from the button');
+    assert.match(call, /this\.L\.toBlocks/, 'and the button label comes from the button');
 });
 
 test('every buffer set carries every language', () => {

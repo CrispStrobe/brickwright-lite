@@ -185,3 +185,30 @@ quietly move to a different webview; `handles[0]` cannot do anything else.
 red was never questioned. A gate that has been correctly red for a long time is exactly where a
 second defect hides, because nobody re-reads a failure they have already explained.
 
+## TRUNCATED-CAPTURE cleared: 8 -> 0 (2026-09-02)
+
+Seven were converted to bracket-matched regions (`balancedAfter` / `balancedFrom` in
+`test/helpers/js-scope.mjs`); the eighth is this suite's own demonstration of the shape and is
+marked at the site.
+
+The three in `simulator-driver-controls-respond.test.mjs` were the ones that mattered, and not
+because they were failing. Their captured text is handed to `new Function`, so a capture that
+stops early does not report anything — **it compiles a different program**, or throws a syntax
+error that reads as a defect in the driver under test. `_bw_arm`'s terminator was the literal
+spelling `} };`, which emitted code can easily contain before its real end. Two of the three
+were not even flagged by the detector (its rule looks for `[\s\S]*?`, and those used `.*?`),
+which is worth remembering: **the detector finds instances of a shape, not all of them.** Read
+the neighbours of every hit.
+
+The primitive is the whole fix. A lazy capture terminated by a literal bracket asks "where is
+the next `]`"; the answer is right only when nothing nests. `balancedFrom` asks "where does
+THIS bracket close", skipping strings, template literals and comments, and is correct whether
+or not anything nests. `balancedFrom` exists separately from `balancedAfter` because a caller
+with several identical call sites already knows the index it wants — requiring it to name a
+unique signature would push it straight back to a lazy capture.
+
+Proven, not argued: `test/js-scope.test.mjs` pins a source where the lazy capture drops every
+entry after a nested array and the balanced region does not, and the converted
+`makecode-ui-contract` gate was mutation-checked by deleting an argument from the real call
+site (red) and restoring it (green).
+

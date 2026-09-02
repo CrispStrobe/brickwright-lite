@@ -11,7 +11,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {scopeAfter} from './helpers/js-scope.mjs';
+import {balancedAfter, scopeAfter} from './helpers/js-scope.mjs';
 
 test('a scope ends at its own closing brace, not a character count', () => {
     const src = 'a (x) {\n  first();\n}\nb (y) {\n  second();\n}\n';
@@ -42,7 +42,28 @@ test('an escaped quote does not end a string early', () => {
 });
 
 test('a missing or ambiguous scope is an error, never an empty match', () => {
-    assert.throws(() => scopeAfter('a () {}', 'nope (x) {'), /no such scope/);
-    assert.throws(() => scopeAfter('f () {}\nf () {}', 'f () {'), /ambiguous scope/);
-    assert.throws(() => scopeAfter('f () {\n  unbalanced();\n', 'f () {'), /unbalanced body/);
+    assert.throws(() => scopeAfter('a () {}', 'nope (x) {'), /no such region/);
+    assert.throws(() => scopeAfter('f () {}\nf () {}', 'f () {'), /ambiguous region/);
+    assert.throws(() => scopeAfter('f () {\n  unbalanced();\n', 'f () {'), /unbalanced/);
+});
+
+test('a bracketed region ends at its own closing bracket, not the first one', () => {
+    // The TRUNCATED-CAPTURE shape: `/IDS = \[([\s\S]*?)\]/` stops at the FIRST `]`, which here
+    // belongs to the nested array, so the lazy capture loses every entry after it.
+    const src = "const IDS = ['a', ['nested'], 'b'];\nconst OTHER = [];\n";
+    const region = balancedAfter(src, 'const IDS =');
+    assert.ok(region.includes("'b'"), 'the region must reach its own closing bracket');
+    // gate-shapes-allow
+    const lazy = src.match(/const IDS = \[([\s\S]*?)\]/)[1];
+    assert.equal(lazy.includes("'b'"), false, 'the lazy capture truncates — that is the defect');
+});
+
+test('a bracket inside a string does not close a region', () => {
+    const src = "const IDS = ['a]', 'b'];\nconst AFTER = [];\n";
+    assert.ok(balancedAfter(src, 'const IDS =').includes("'b'"));
+});
+
+test('parentheses balance too', () => {
+    const src = 'call(a, f(b), c);\n';
+    assert.equal(balancedAfter(src, 'call', '(', ')'), '(a, f(b), c)');
 });

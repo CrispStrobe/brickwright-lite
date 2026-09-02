@@ -34,6 +34,7 @@ import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
 import {REPO, INTEGRATED} from './helpers/bw-integrated.mjs';
+import {balancedAfter} from './helpers/js-scope.mjs';
 
 const EX = path.join(REPO, 'overlay/scratch-gui/examples');
 const GUI = path.join(REPO, 'overlay/scratch-gui/src');
@@ -450,7 +451,7 @@ test('the micro:bit simulator models its sensors, and lite can now vary them', (
 
     // Every id the strip offers must be one the simulator's own switch handles,
     // or the write is silently dropped.
-    const offered = [...pane.match(/const SENSOR_IDS = \[([\s\S]*?)\]/)[1]
+    const offered = [...balancedAfter(pane, 'const SENSOR_IDS =')
         .matchAll(/'([A-Za-z]+)'/g)].map(m => m[1]);
     for (const id of offered) {
         assert.ok(sim.includes(`case "${id}":`),

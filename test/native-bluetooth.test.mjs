@@ -23,6 +23,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {balancedAfter} from './helpers/js-scope.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const LIB = resolve(here, '../overlay/scratch-gui/src/lib');
@@ -410,9 +411,8 @@ describe('the extensions can reach the app\'s own Scratch Link', () => {
     for (const id of ['legoboostunified', 'legopoweredup']) {
         test(`${id} dials the local service before the legacy host`, () => {
             const src = extensionSource(id);
-            const table = src.match(/const SCRATCH_LINK_ENDPOINTS = \[([\s\S]*?)\];/);
-            assert.ok(table, 'no endpoint table — the legacy host is probably hard-coded again');
-            const urls = [...table[1].matchAll(/"([^"]+)"/g)].map(m => m[1]);
+            const table = balancedAfter(src, 'const SCRATCH_LINK_ENDPOINTS =');
+            const urls = [...table.matchAll(/"([^"]+)"/g)].map(m => m[1]);
             assert.match(urls[0], /^ws:\/\/127\.0\.0\.1:20111\//,
                 'the app\'s in-process service must be tried first, or the app can never connect');
             assert.equal(urls.length, 2, 'legacy Scratch Link should remain as the fallback');

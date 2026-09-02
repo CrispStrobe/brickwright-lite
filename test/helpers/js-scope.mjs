@@ -14,16 +14,24 @@ const fail = (message) => {
     throw new Error(`js-scope: ${message}`);
 };
 
-export const scopeAfter = (source, signature) => {
-    const at = source.indexOf(signature);
-    if (at === -1) fail(`no such scope: ${signature}`);
-    if (source.indexOf(signature, at + 1) !== -1) fail(`ambiguous scope, ${signature} occurs more than once`);
-
-    const open = source.indexOf('{', at);
-    if (open === -1) fail(`${signature} has no body`);
+// Same argument for `[` and `(`. A lazy capture terminated by a literal bracket —
+// `/const IDS = \[([\s\S]*?)\]/` — stops at the first one, which may be a NESTED bracket, and
+// the assertion then reads a region that can no longer contain what it is looking for. That is
+// how this repository lost a real gate: `generate_handler!\(\[([\s\S]*?)\]\)` stopped at a
+// `#[cfg(desktop)]` and "the broker remains unregistered" was reading a truncated string.
+/**
+ * The balanced region beginning at the first `open` at or after `from`.
+ *
+ * Separate from `balancedAfter` because a caller with SEVERAL identical call sites already
+ * knows the index of the one it wants; asking it to name a unique signature it does not have
+ * would push it back to a lazy capture.
+ */
+export const balancedFrom = (source, from, open = '[', close = ']', what = 'region') => {
+    const start = source.indexOf(open, from);
+    if (start === -1) fail(`${what} has no ${open}`);
 
     let depth = 0;
-    for (let i = open; i < source.length; i++) {
+    for (let i = start; i < source.length; i++) {
         const ch = source[i];
         const next = source[i + 1];
 
@@ -34,7 +42,7 @@ export const scopeAfter = (source, signature) => {
         }
         if (ch === '/' && next === '*') {
             const end = source.indexOf('*/', i + 2);
-            if (end === -1) fail(`unterminated block comment in ${signature}`);
+            if (end === -1) fail(`unterminated block comment in ${what}`);
             i = end + 1;
             continue;
         }
@@ -42,12 +50,22 @@ export const scopeAfter = (source, signature) => {
             for (let j = i + 1; j < source.length; j++) {
                 if (source[j] === '\\') { j++; continue; }
                 if (source[j] === ch) { i = j; break; }
-                if (j === source.length - 1) fail(`unterminated string in ${signature}`);
+                if (j === source.length - 1) fail(`unterminated string in ${what}`);
             }
             continue;
         }
-        if (ch === '{') depth++;
-        if (ch === '}' && --depth === 0) return source.slice(open, i + 1);
+        if (ch === open) depth++;
+        if (ch === close && --depth === 0) return source.slice(start, i + 1);
     }
-    fail(`unbalanced body for ${signature}`);
+    fail(`unbalanced ${open}${close} for ${what}`);
 };
+
+export const balancedAfter = (source, signature, open = '[', close = ']') => {
+    const at = source.indexOf(signature);
+    if (at === -1) fail(`no such region: ${signature}`);
+    if (source.indexOf(signature, at + 1) !== -1) fail(`ambiguous region, ${signature} occurs more than once`);
+    return balancedFrom(source, at, open, close, signature);
+};
+
+/** A function or method BODY, brace-matched. The original spelling, kept for its callers. */
+export const scopeAfter = (source, signature) => balancedAfter(source, signature, '{', '}');

@@ -20,6 +20,7 @@ import {fileURLToPath} from 'node:url';
 
 import {ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS, DECORATION_TYPES}
     from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
+import {balancedAfter} from './helpers/js-scope.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GUI = path.join(REPO, 'overlay/scratch-gui/src');
@@ -170,8 +171,8 @@ test('D14 FIXED: every configurable key of every widget type has an editor or a 
         if (!block) return [];
         return [...block[1].matchAll(/key: '([A-Za-z]+)'/g)].map(m => m[1]);
     };
-    const nonField = new Set([...view.matchAll(/NON_FIELD_CONFIG_KEYS = new Set\(\[([\s\S]*?)\]\)/g)]
-        .flatMap(m => [...m[1].matchAll(/'([A-Za-z]+)'/g)].map(x => x[1])));
+    const nonField = new Set([...balancedAfter(view, 'NON_FIELD_CONFIG_KEYS = new Set(')
+        .matchAll(/'([A-Za-z]+)'/g)].map(m => m[1]));
     assert.ok(nonField.size > 0, 'NON_FIELD_CONFIG_KEYS is gone — the exclusions are unstated again');
 
     const missing = [];
@@ -236,7 +237,7 @@ test('D16: every sensor the pane offers is one the simulator can actually set', 
     const sim = readFileSync(
         path.join(GUI, '../static/microbit-sim/build/simulator.js'), 'utf8');
     const pane = simPane();
-    const offered = [...pane.match(/const SENSOR_IDS = \[([\s\S]*?)\]/)[1]
+    const offered = [...balancedAfter(pane, 'const SENSOR_IDS =')
         .matchAll(/'([A-Za-z]+)'/g)].map(m => m[1]);
     assert.ok(offered.length >= 6, `only ${offered.length} sensors offered`);
     for (const id of offered) {

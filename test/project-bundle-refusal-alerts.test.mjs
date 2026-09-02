@@ -20,6 +20,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
+import {balancedAfter} from './helpers/js-scope.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = rel => readFileSync(path.join(ROOT, rel), 'utf8');
@@ -120,9 +121,10 @@ test('a successful load retires every refusal notice', () => {
     }
     // The clearing must be driven by the SAME list the registry defines, not a hand-copy that can
     // drift — a fourth refusal alert must not be silently left un-retired.
-    const listed = importer.match(/const REFUSAL_ALERTS = \[([\s\S]*?)\];/);
-    assert.ok(listed, 'the importer must name the refusal alerts it retires');
-    const named = [...listed[1].matchAll(/'([^']+)'/g)].map(m => m[1]).sort();
+    // Bracket-matched, not lazily captured: a nested `]` would end the old capture early and
+    // the comparison below would then be made against a SHORTER list than the file declares.
+    const listed = balancedAfter(importer, 'const REFUSAL_ALERTS =');
+    const named = [...listed.matchAll(/'([^']+)'/g)].map(m => m[1]).sort();
     assert.deepEqual(named, refusalIds.slice().sort(),
         'the retired set must be exactly the registered refusal alerts');
 });
