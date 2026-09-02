@@ -35,8 +35,9 @@ const initializationScript = `(()=>{'use strict';
 const expectedOrigin=${JSON.stringify(origin)};
 const protocolModule=(()=>{const module={exports:{}};${protocolSource}\nreturn module.exports;})();
 const bootstrapModule=(()=>{const module={exports:{}};${bootstrapSource}\nreturn module.exports;})();
-const replies=[];
+const replies=[];const acknowledgements=[];
 Object.defineProperty(globalThis,'__TAURI_INTERNALS__',{value:Object.freeze({invoke:async(command,args)=>{
+if(command==='native_broker_ready'){acknowledgements.push(args===undefined?'no-args':args);return;}
 if(command!=='native_broker_reply')throw new TypeError('Unexpected native command');replies.push(args);}})});
 let installed=false;
 Object.defineProperty(globalThis,'__brickwrightInstallBrokerHost',{value:host=>{
@@ -48,6 +49,7 @@ ${hostSource}
 Object.defineProperty(globalThis,'__brokerProofDeliver',{value:async delivery=>{
 await globalThis.__brickwrightBrokerReceive(delivery);if(replies.length!==1)throw new Error('Reply cardinality');
 return replies.pop();}});
+Object.defineProperty(globalThis,'__brokerProofAcknowledgements',{value:()=>acknowledgements.slice()});
 })();`;
 
 const pageErrors = [];
@@ -59,6 +61,20 @@ try {
     await page.goto(`${origin}/capability-broker.html`, {waitUntil: 'load'});
     assert.equal(await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content'),
         productionCsp);
+
+    // C5d: the host acknowledges itself once the receiver globals exist, and the native side
+    // grants no transport permission until it does. Assert the real bootstrap actually sends it —
+    // exactly once, and with no arguments, because there is nothing a caller may influence. The
+    // receiver globals are read in the same evaluate, so a bootstrap that acknowledged BEFORE
+    // installing them would show an acknowledgement beside a missing receiver.
+    const acknowledgement = await page.evaluate(() => ({
+        sent: globalThis.__brokerProofAcknowledgements(),
+        receiverInstalled: typeof globalThis.__brickwrightBrokerReceive === 'function'
+    }));
+    assert.deepEqual(acknowledgement.sent, ['no-args'],
+        'the broker must acknowledge exactly once, carrying no arguments');
+    assert.equal(acknowledgement.receiverInstalled, true,
+        'the receiver must exist by the time the acknowledgement has been sent');
 
     const positive = await page.evaluate(async () => {
         const session = '1'.repeat(64); const correlation = '2'.repeat(64);
