@@ -127,6 +127,30 @@ try {
             done({audit, reply, lease});
         })();`;
 
+    // Before judging, look at the broker realm itself. A refused audit read has three very
+    // different causes — the realm never loaded, its receiver never installed, or the
+    // acknowledgement was refused — and they are indistinguishable from the editor, because the
+    // bootstrap deliberately swallows a failed acknowledgement and disposes itself quietly.
+    // A harness that cannot tell them apart makes its own verdict unactionable.
+    const handles = (await call('GET', `/session/${session}/window/handles`)).body?.value || [];
+    const realms = [];
+    for (const handle of handles) {
+        await call('POST', `/session/${session}/window`, {handle});
+        const seen = await call('POST', `/session/${session}/execute/sync`, {
+            script: `return {
+                href: String(globalThis.location && globalThis.location.href),
+                origin: String(globalThis.location && globalThis.location.origin),
+                receiver: typeof globalThis.__brickwrightBrokerReceive,
+                factoryStillThere: typeof globalThis.__brickwrightInstallBrokerHost,
+                tauri: typeof (globalThis.__TAURI_INTERNALS__ || {}).invoke
+            };`, args: []
+        });
+        realms.push({handle, ...(seen.body?.value || {error: 'unreadable'})});
+    }
+    console.log('realms: ' + JSON.stringify(realms, null, 1));
+    // Return to the editor before probing it.
+    if (handles.length) await call('POST', `/session/${session}/window`, {handle: handles[0]});
+
     const outcome = await evaluate(probe);
     if (!outcome || outcome.fatal) await fail(outcome?.fatal || 'the probe returned nothing');
 
