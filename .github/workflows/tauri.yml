@@ -129,10 +129,16 @@ jobs:
 
       # Force tauri-build to re-run so the frontend assembled above is the one embedded. A
       # cached build script output is silent about which assets it captured.
+      # --features custom-protocol is REQUIRED, not an optimisation. Without tauri/custom-protocol
+      # Tauri does not embed or serve frontendDist at all — it expects a dev server — so every
+      # webview loads an empty document. Measured: the broker realm reported htmlLen=61, metas=0
+      # and an empty title, which is `<html><head></head><body></body></html>`, not the broker
+      # page. `tauri build` passes this feature; a bare `cargo build` does not, and that
+      # difference is invisible until something reads the DOM.
       - name: Build the app against the frontend just assembled
         run: |
           touch apps/tauri/src-tauri/build.rs
-          cargo build --manifest-path apps/tauri/src-tauri/Cargo.toml
+          cargo build --manifest-path apps/tauri/src-tauri/Cargo.toml --features custom-protocol
 
       - name: Drive the packaged broker boundary
         run: |
