@@ -215,24 +215,31 @@ try {
     const slice = await evaluate(`
         const done = arguments[arguments.length - 1];
         (async () => {
-            try {
-                const invoke = globalThis.__TAURI_INTERNALS__ && globalThis.__TAURI_INTERNALS__.invoke;
-                if (typeof invoke !== 'function') { done({fatal: 'the broker realm has no invoke'}); return; }
-                const lease = await invoke('native_broker_lease');
-                const value = await invoke('native_broker_invoke', {
-                    lease, sequence: 1, operation: 'platform.kind.read', resource: 'platform', args: {}
-                });
-                // A second call on the SAME sequence must be refused: the sequence is a replay
-                // guard, and an executor this side-effect-free would otherwise answer twice
-                // without anything visibly going wrong.
-                let replay = null;
-                try {
-                    replay = {ok: true, value: await invoke('native_broker_invoke', {
-                        lease, sequence: 1, operation: 'platform.kind.read', resource: 'platform', args: {}
-                    })};
-                } catch (error) { replay = {ok: false, error: String(error)}; }
-                done({lease, value, replay});
-            } catch (error) { done({fatal: String((error && error.message) || error)}); }
+            const invoke = globalThis.__TAURI_INTERNALS__ && globalThis.__TAURI_INTERNALS__.invoke;
+            if (typeof invoke !== 'function') { done({fatal: 'the broker realm has no invoke'}); return; }
+            // Each call reports separately. Wrapping the pair in one try produced exactly one
+            // word — "capability refused" — with no way to tell WHICH call refused or why, which
+            // is the undiagnosable-diagnostic shape this repository exists to catch.
+            let lease;
+            try { lease = await invoke('native_broker_lease'); }
+            catch (error) { done({fatal: 'native_broker_lease refused: ' + String(error)}); return; }
+
+            // sequence 0, because a fresh lease's next_sequence IS 0 and authorize() denies
+            // OutOfSequence on anything else. resource 'platform/default', the name
+            // Resource::parse accepts — 'platform' is an UnknownResource and denies identically,
+            // so a wrong name here would have looked like a broken boundary.
+            const call = {lease, sequence: 0, operation: 'platform.kind.read', resource: 'platform/default', args: {}};
+            let value;
+            try { value = await invoke('native_broker_invoke', call); }
+            catch (error) { done({fatal: 'native_broker_invoke refused: ' + String(error)}); return; }
+
+            // Re-sending the SAME sequence must be refused: it was consumed above, so this is a
+            // replay. An executor this side-effect-free would otherwise answer twice with
+            // nothing visibly going wrong.
+            let replay;
+            try { replay = {ok: true, value: await invoke('native_broker_invoke', call)}; }
+            catch (error) { replay = {ok: false, error: String(error)}; }
+            done({lease, value, replay});
         })();`);
     if (!slice || slice.fatal) await fail(`the semantic slice did not run: ${slice && slice.fatal}`);
 
