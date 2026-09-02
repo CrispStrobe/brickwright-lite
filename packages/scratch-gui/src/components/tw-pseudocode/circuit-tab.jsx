@@ -195,6 +195,57 @@ class CircuitTab extends React.Component {
             } catch (e) { /* the Scratch half of the save must survive this */ }
         };
         window.addEventListener('bw-project-bundle-collect', this._onBundleCollect);
+        // vm.runtime.circuitModel is read by a RUNNING program — bw-debug's
+        // debug-runner and the circuit VM extension both resolve the board
+        // through it — so it is not the Designer's private state. But it is
+        // ASSIGNED by the Designer, once, from onCircuitReady, and the Designer
+        // is not always mounted: render() returns early with two portals when
+        // the debugger is docked 'right' (the DEFAULT) or 'solo' while the Code
+        // tab is active, and <Designer> is then absent from the returned tree.
+        // Its circuitData effect cannot run, and the reference outlives it.
+        //
+        // Measured 2026-09-02 in a real browser against a production build, with
+        // an ordered localStorage/event trace. Opening a vanilla .sb3 while the
+        // Circuit tab was active: two `SET bw-circuit-file-loaded` (this handler
+        // AND the Designer effect) and `ASSIGN parts len=6`. Opening one while
+        // the Code tab was active: ONE set, no assign — the effect never ran and
+        // vm.runtime.circuitModel kept the previous project's six parts
+        // (breadboard, vcc, gnd, mcu, resistor, led) after every localStorage
+        // key, the code buffer and the widgets had cleared.
+        //
+        // So a learner who opens a fresh project from the Code tab and presses
+        // the green flag drives the PREVIOUS project's board. That is the
+        // one-board-one-truth law in bw-setup.md, and clicking the Circuit tab
+        // before reading would only hide it. Replacement applies HERE, in a
+        // window listener that runs whatever the render branch is doing.
+        this._applyToLiveCircuit = data => {
+            const rt = this.props.vm && this.props.vm.runtime;
+            const model = rt && rt.circuitModel;
+            if (!model || !data || !Array.isArray(data.parts)) return;
+            try {
+                if (!data.parts.length && !(data.wires && data.wires.length)) {
+                    // Emptying needs no parser, so replacement stays atomic even
+                    // before the bw-circuit-ui chunk has ever been fetched.
+                    model.parts.length = 0;
+                    model.wires.length = 0;
+                    if (model.breadboards && typeof model.breadboards.clear === 'function') {
+                        model.breadboards.clear();
+                    }
+                } else if (this._Circuit) {
+                    const parsed = this._Circuit.fromJSON(data);
+                    model.parts = parsed.parts;
+                    model.wires = parsed.wires;
+                    model.breadboards = parsed.breadboards;
+                } else {
+                    // No chunk yet means no Designer has ever run, so nothing has
+                    // published a model to be stale — leave it to seed on mount.
+                    return;
+                }
+                if (typeof model._syncNetlist === 'function') model._syncNetlist();
+            } catch (e) {
+                console.warn('[brickwright] could not apply the loaded circuit to the live model', e);
+            }
+        };
         this._onBundleLoaded = event => {
             try {
                 const raw = localStorage.getItem('bw-circuit-autosave');
@@ -202,9 +253,12 @@ class CircuitTab extends React.Component {
                     const parsed = JSON.parse(raw);
                     try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch (e) { /* full */ }
                     this.setState({circuitData: parsed});
+                    this._applyToLiveCircuit(parsed);
                 } else if (event?.detail?.outcome === 'legacy' || event?.detail?.outcome === 'loaded') {
                     try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch (e) { /* full */ }
-                    this.setState({circuitData: {version: 1, parts: [], wires: []}});
+                    const emptied = {version: 1, parts: [], wires: []};
+                    this.setState({circuitData: emptied});
+                    this._applyToLiveCircuit(emptied);
                 }
                 const wraw = localStorage.getItem('bw-ctl-widgets');
                 const rt = this.props.vm && this.props.vm.runtime;
@@ -640,6 +694,9 @@ class CircuitTab extends React.Component {
             // with their drivers sitting right there. Register at injection.
             if (typeof engine.registerAllDevices === 'function') engine.registerAllDevices();
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
+            // Kept so _applyToLiveCircuit can parse a restored bench without a
+            // second import. Nothing else in this file needs the model class.
+            this._Circuit = ui.Circuit || (ui.default && ui.default.Circuit) || null;
             const setEngine = ui.setEngine || (ui.default && ui.default.setEngine);
             if (typeof setEngine !== 'function') throw new Error('bw-circuit-ui setEngine export is unavailable');
             // `stc_mcu` is the legacy arbitrary-package surface: shipped

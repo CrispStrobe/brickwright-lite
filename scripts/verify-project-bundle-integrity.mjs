@@ -121,6 +121,12 @@ try {
 
     const beforeRefusal = await projectKeys(page);
     await openProject(page, futurePath);
+    // BEFORE any tab click. Opening a project changes the active tab, so a
+    // refusal written only into the Code tab's status strip lands where the
+    // learner has just stopped looking — the text was present and HIDDEN, which
+    // is a silent refusal wearing a notice. The app-level alert has to carry it.
+    await page.getByText(/saved by a newer version of Brickwright/)
+        .waitFor({state: 'visible', timeout: 15000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByText(/Brickwright state v7 was not applied: preserved-not-applied/)
         .waitFor({timeout: 15000});
@@ -128,6 +134,8 @@ try {
         throw new Error('future sidecar partially replaced known project state');
     }
     await openProject(page, invalidPath);
+    await page.getByText(/Brickwright data could not be read/)
+        .waitFor({state: 'visible', timeout: 15000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByText(/Brickwright state was not applied: invalid JSON/).waitFor({timeout: 15000});
     if (JSON.stringify(await projectKeys(page)) !== JSON.stringify(beforeRefusal)) {
@@ -144,6 +152,10 @@ try {
         circuitParts: window.__vm?.runtime?.circuitModel?.parts?.length || 0,
         widgets: window.__vm?.runtime?.controllerPanel?.getWidgetNames?.().length || 0
     }));
+    // Read WITHOUT activating the Circuit tab, on purpose. vm.runtime.circuitModel
+    // is what bw-debug's debug-runner and the circuit VM extension resolve the
+    // board through, so this is the state a green flag runs against. Activating
+    // the tab first would remount the Designer and hide a stale live model.
     if (cleared.circuitParts !== 0 || cleared.widgets !== 0) {
         throw new Error(`vanilla replacement retained auxiliary state: ${JSON.stringify(cleared)}`);
     }
