@@ -2,24 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; worker-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
-  <!--
-    `script-src` must admit the host's DOCUMENT-START scripts. WebKitGTK applies this policy to
-    injected scripts, and without an inline allowance BOTH Tauri's own IPC bootstrap and the
-    broker's initialization script were silently blocked: the realm was created, this inert page
-    loaded, __TAURI_INTERNALS__ never appeared, no receiver installed, and no acknowledgement was
-    ever sent. Nothing reported it, because the script that would have caught and reported the
-    failure was itself the thing not running.
-
-    Measured against the alternative: the main webview carries NO csp at all and its IPC works.
-    This document keeps every other directive at its strictest — no default-src, no network, no
-    base-uri, no form-action, no framing — and the shell gate asserts the document declares no
-    script element of its own, so the only inline script that can exist here is one the host itself
-    injected before any content ran.
-
-    Playwright's addInitScript bypasses page CSP, which is why the browser gate passed 1/1
-    throughout: the double was more permissive than the engine it stood in for.
-  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src blob:; worker-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
   <title>Capability Broker</title>
 </head>
 <body></body>

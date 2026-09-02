@@ -193,6 +193,47 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   page errors, and every mobile/native limitation is either closed or an
   explicit fail-closed verdict rather than an implied compatibility claim.
 
+THE E2E HARNESS EXISTS AND WORKS. THE BOUNDARY DOES NOT. Read this before touching CP3-D1/D2/E.
+
+`scripts/verify-native-broker-e2e.mjs` plus the `e2e` job in `tauri.yml` launch the built app
+under tauri-driver and probe it from the real main webview, so every invoke crosses the real
+Tauri ACL. It is the only gate that runs the program. Eight CI runs so far.
+
+ESTABLISHED, by measurement rather than inference:
+- The broker realm IS created, and its page loads: `[broker] page-load Finished
+  url=tauri://localhost/capability-broker.html`. Origin and pathname both satisfy the realm check.
+- `native_broker_ready` is NEVER ENTERED. The entry trace sits BEFORE the label check, so "called
+  under an unexpected label" and "never called" are now distinguishable, and it is the latter.
+- The permission and the capability both exist in the generated ACL — `allow-native-broker-ready`
+  appears in `gen/schemas/acl-manifests.json`, `native-broker-ack` in `capabilities.json`.
+- Therefore the editor's `native_broker_audit` read is refused, correctly, because the runtime
+  capability was never added. The refusal is a SYMPTOM. The acknowledgement is the defect.
+
+FOUR HYPOTHESES TESTED AND FALSIFIED, each by a CI run. Recorded so nobody pays for them twice:
+1. CRLF on the pinned asset — real, but a different defect, and fixed; not this.
+2. `__TAURI_INTERNALS__.invoke` captured eagerly at document start. The lazy resolution and the
+   deferred acknowledgement were KEPT because they are correct hazards to close, but they did not
+   change the outcome.
+3. The document title as a diagnostic channel. `webview.title()` reports the WINDOW title, which
+   Tauri does not sync from `document.title`; it stays "Tauri App" whatever the page sets.
+4. The document CSP blocking host document-start scripts. Plausible — the main webview carries no
+   csp at all and its IPC works — but adding `'unsafe-inline'` changed nothing, so the relaxation
+   was REVERTED rather than left in place unjustified.
+
+THE NEXT THING TO TEST, and it is now the leading candidate by elimination: whether
+`WebviewWindowBuilder::initialization_script` is delivered to this secondary webview at all. Every
+falsified hypothesis assumed the script runs and fails somewhere inside it. Nothing has yet shown
+it runs. The cheap decisive probe is a side effect Rust can observe WITHOUT IPC or CSP — a
+navigation attempt is the only such channel this shell has, since `on_navigation` already receives
+the URL. Note it will trip the realm guard and revoke, so it is a deliberate one-shot diagnostic
+rather than something to leave in.
+
+WHY EVERY OTHER GATE DISAGREES: the browser gate passes 1/1 with zero page errors because
+Playwright's `addInitScript` bypasses page CSP and injects unconditionally. It is a more permissive
+engine than WebKitGTK. Twelve Node suites, 73 mutations, cargo test, clippy and a three-platform
+packaging matrix are all green on a boundary that does not function. That is the strongest single
+piece of evidence this repository has produced for its own thesis.
+
 CP3-E ran, found a real defect, and closes on every clause but one. Its box stays unchecked for
 that one, which is a missing RIG rather than a missing assertion.
 
