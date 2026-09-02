@@ -253,7 +253,17 @@ pub(crate) fn native_broker_ready(
     state: State<'_, NativeBrokerAdapter>,
 ) -> Result<(), String> {
     exact_label(&window, BROKER_LABEL)?;
-    state.grant_transport_once(&app)
+    // Observability, not diagnostics-in-production. The e2e harness could tell that the
+    // acknowledgement had not arrived but not whether the realm existed, because
+    // WebKitWebDriver exposes only the window it attached to. One line each side of the chain
+    // makes the app's own output answer that. It carries no lease, digest, correlation or
+    // argument — there is nothing here a reader could not already infer from the binary.
+    let granted = state.grant_transport_once(&app);
+    match &granted {
+        Ok(()) => log::info!("broker acknowledged; transport capabilities granted"),
+        Err(_) => log::warn!("broker acknowledgement refused (already granted, or ACL unavailable)"),
+    }
+    granted
 }
 
 #[tauri::command]

@@ -102,6 +102,12 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.8.1
         with:
           workspaces: apps/tauri/src-tauri
+          # A DISTINCT key. The `test` job stubs frontendDist with index.html alone, and
+          # tauri-build EMBEDS that directory at compile time. Sharing one cache let this job
+          # restore a binary whose embedded assets had no capability-broker.html, so the broker
+          # webview loaded nothing, its realm check threw, no acknowledgement was sent, and the
+          # audit read was refused — a harness fault wearing the costume of a boundary fault.
+          key: e2e-real-frontend
 
       - name: Install tauri-driver
         run: cargo install tauri-driver --locked
@@ -121,8 +127,12 @@ jobs:
           test -f "$out/native-broker/native-broker-host.js"
           test -f "$out/native-broker/proof-pins/manifest.json"
 
-      - name: Build the app
-        run: cargo build --manifest-path apps/tauri/src-tauri/Cargo.toml
+      # Force tauri-build to re-run so the frontend assembled above is the one embedded. A
+      # cached build script output is silent about which assets it captured.
+      - name: Build the app against the frontend just assembled
+        run: |
+          touch apps/tauri/src-tauri/build.rs
+          cargo build --manifest-path apps/tauri/src-tauri/Cargo.toml
 
       - name: Drive the packaged broker boundary
         run: |

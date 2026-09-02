@@ -69,6 +69,11 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
         })
         .on_new_window(|_, _| NewWindowResponse::Deny)
         .build()?;
+    // Observability, not diagnostics-in-production: the e2e harness could tell that the
+    // acknowledgement had not arrived but not whether the realm existed, because WebKitWebDriver
+    // exposes only the window it attached to. One line each side of the chain makes the app's own
+    // output answer that. Neither carries a lease, a digest, a correlation id or any argument.
+    log::info!("capability broker realm created");
     let window_app = app.handle().clone();
     broker.on_window_event(move |event| {
         handle_window_event(event, || {
