@@ -33,13 +33,32 @@ pub fn run() {
                 .level(log::LevelFilter::Info)
                 .build(),
         )
-        // BLE transport (btleplug on desktop/iOS; Tauri Android plugin on Android).
-        .plugin(tauri_plugin_blec::init())
         // Native Save/Open dialogs, and deep links / .sb3 "open with".
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_deep_link::init())
         // Open external links (help/docs/credits) in the system browser.
         .plugin(tauri_plugin_opener::init());
+
+    // BLE transport (btleplug on desktop/iOS; Tauri Android plugin on Android).
+    //
+    // `tauri_plugin_blec::init()` PANICS if its handler cannot be built — the crate documents
+    // this, and on Linux the handler needs org.bluez on the session bus. So a desktop with no
+    // Bluetooth hardware, one where bluetoothd is masked, or any container was not degrading to
+    // "no BLE": it was a hard crash before the first window appeared. Found by the end-to-end
+    // harness, which is the first gate that LAUNCHES the app rather than building it — the panic
+    // is invisible to every compile-time and packaging gate we have.
+    //
+    // Registering it conditionally means a machine without Bluetooth loses the BLE features it
+    // could not have used anyway, and keeps the rest of the app. catch_unwind is the available
+    // mechanism because init() panics rather than returning a Result.
+    let builder = match std::panic::catch_unwind(tauri_plugin_blec::init) {
+        Ok(plugin) => builder.plugin(plugin),
+        Err(_) => {
+            log::warn!("BLE transport unavailable (no reachable Bluetooth service); \
+                        ScratchLink over BLE is disabled for this session");
+            builder
+        }
+    };
 
     // OS share sheet (sender side of the project share round-trip) — mobile only.
     #[cfg(mobile)]
