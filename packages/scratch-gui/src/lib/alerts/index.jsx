@@ -233,6 +233,63 @@ const alerts = [
         ),
         iconSpinner: true,
         level: AlertLevels.SUCCESS
+    },
+    // Brickwright: a REFUSED sidecar. The reason line already exists — the Code
+    // tab's status strip — but that is one tab's surface, and opening a project
+    // changes the active tab, so the notice was written where the learner had
+    // just stopped looking (measured 2026-09-02: the assertion found the right
+    // text in a HIDDEN span, 32 polls running). A refusal is an app-level fact
+    // about the file that was just opened, so it belongs on the app-level alert
+    // surface, which gui.jsx already mounts outside the tab strip.
+    //
+    // One alert per REASON rather than one alert carrying an interpolated
+    // string, because `data.message` is dead: reducers/alerts.js sets it,
+    // containers/alerts.jsx forwards it, containers/alert.jsx forwards it, and
+    // components/alerts/alert.jsx neither destructures nor renders it, so
+    // showStandardAlertWithMessage's detail is dropped on the floor. Named
+    // messages are also the only translatable form; an interpolated reason
+    // would ship English into every locale.
+    {
+        alertId: 'bwBundleRefusedFuture',
+        alertType: AlertTypes.STANDARD,
+        clearList: ['bwBundleRefusedFuture', 'bwBundleRefusedInvalid', 'bwBundleRefusedStorage'],
+        closeButton: true,
+        content: (
+            <FormattedMessage
+                defaultMessage="This project was saved by a newer version of Brickwright. Its blocks opened, but its circuit, code and widgets were not applied — what you had is still here."
+                description="Shown when a project's Brickwright sidecar is too new to apply"
+                id="gui.alerts.bwBundleRefusedFuture"
+            />
+        ),
+        level: AlertLevels.WARN
+    },
+    {
+        alertId: 'bwBundleRefusedInvalid',
+        alertType: AlertTypes.STANDARD,
+        clearList: ['bwBundleRefusedFuture', 'bwBundleRefusedInvalid', 'bwBundleRefusedStorage'],
+        closeButton: true,
+        content: (
+            <FormattedMessage
+                defaultMessage="This project's Brickwright data could not be read. Its blocks opened, but its circuit, code and widgets were not applied — what you had is still here."
+                description="Shown when a project's Brickwright sidecar is malformed"
+                id="gui.alerts.bwBundleRefusedInvalid"
+            />
+        ),
+        level: AlertLevels.WARN
+    },
+    {
+        alertId: 'bwBundleRefusedStorage',
+        alertType: AlertTypes.STANDARD,
+        clearList: ['bwBundleRefusedFuture', 'bwBundleRefusedInvalid', 'bwBundleRefusedStorage'],
+        closeButton: true,
+        content: (
+            <FormattedMessage
+                defaultMessage="Browser storage refused this project's Brickwright data, so its circuit, code and widgets were not applied — what you had is still here."
+                description="Shown when browser storage rejects a project's Brickwright sidecar"
+                id="gui.alerts.bwBundleRefusedStorage"
+            />
+        ),
+        level: AlertLevels.WARN
     }
 ];
 

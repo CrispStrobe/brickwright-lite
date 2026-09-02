@@ -68,5 +68,20 @@
     "id": "gui.alerts.importing",
     "description": "Message indicating that project is in process of importing",
     "defaultMessage": "Importing…"
+  },
+  {
+    "id": "gui.alerts.bwBundleRefusedFuture",
+    "description": "Shown when a project's Brickwright sidecar is too new to apply",
+    "defaultMessage": "This project was saved by a newer version of Brickwright. Its blocks opened, but its circuit, code and widgets were not applied — what you had is still here."
+  },
+  {
+    "id": "gui.alerts.bwBundleRefusedInvalid",
+    "description": "Shown when a project's Brickwright sidecar is malformed",
+    "defaultMessage": "This project's Brickwright data could not be read. Its blocks opened, but its circuit, code and widgets were not applied — what you had is still here."
+  },
+  {
+    "id": "gui.alerts.bwBundleRefusedStorage",
+    "description": "Shown when browser storage rejects a project's Brickwright sidecar",
+    "defaultMessage": "Browser storage refused this project's Brickwright data, so its circuit, code and widgets were not applied — what you had is still here."
   }
 ]
