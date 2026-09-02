@@ -159,6 +159,17 @@ try {
     if (cleared.circuitParts !== 0 || cleared.widgets !== 0) {
         throw new Error(`vanilla replacement retained auxiliary state: ${JSON.stringify(cleared)}`);
     }
+    // A refusal notice must not outlive the refusal. The invalid sidecar above legitimately
+    // raises one; this load succeeded and cleared all three surfaces, so a banner still reading
+    // "what you had is still here" would be describing the opposite of what just happened. The
+    // source gate cannot see this — the text was correct, the LIFETIME was wrong — so it is
+    // asserted here, on the rendered page, immediately before the screenshot that first showed it.
+    const staleRefusal = await page
+        .getByText(/Brickwright data could not be read|saved by a newer version of Brickwright|Browser storage refused/)
+        .count();
+    if (staleRefusal !== 0) {
+        throw new Error(`a refusal notice survived a successful load: ${staleRefusal} still shown`);
+    }
     const keys = await projectKeys(page);
     await page.screenshot({path: resolve(artifacts, 'vanilla-cleared.png'), fullPage: true});
     await writeFile(resolve(artifacts, 'result.json'), JSON.stringify({

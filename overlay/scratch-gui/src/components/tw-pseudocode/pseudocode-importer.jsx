@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
-import {showStandardAlert} from '../../reducers/alerts';
+import {closeAlertWithId, showStandardAlert} from '../../reducers/alerts';
 import upstreamExamples from '../../lib/sb3-creator-examples.js';
 import gameExamples from '../../lib/sb3-creator-game-examples.js';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
@@ -794,10 +794,22 @@ class PseudocodeImporter extends React.Component {
             // was present and HIDDEN). Raise it on the app-level alert surface
             // too, which gui.jsx mounts outside the tab strip; the status line
             // stays for anyone who IS on this tab.
+            const REFUSAL_ALERTS = ['bwBundleRefusedFuture', 'bwBundleRefusedInvalid',
+                'bwBundleRefusedStorage'];
             if (refused && this.props.dispatch) {
                 const alertId = outcome === 'future' ? 'bwBundleRefusedFuture' :
                     outcome === 'storage-failed' ? 'bwBundleRefusedStorage' : 'bwBundleRefusedInvalid';
                 try { this.props.dispatch(showStandardAlert(alertId)); } catch (e) { /* never break the load */ }
+            } else if (this.props.dispatch) {
+                // A refusal notice must not outlive the refusal. Each alert's clearList retires
+                // the OTHER two, so a second bad file replaces the first notice — but a good load
+                // raises nothing and so cleared nothing, and the stale banner then said "what you
+                // had is still here" over a project whose surfaces had just been replaced. Seen in
+                // the CP6 vanilla-cleared screenshot: empty Code, no widgets, no chip, and a notice
+                // claiming everything had been preserved.
+                for (const alertId of REFUSAL_ALERTS) {
+                    try { this.props.dispatch(closeAlertWithId(alertId)); } catch (e) { /* never break the load */ }
+                }
             }
             const refusal = () => {
                 const version = event.detail.version ? ` v${event.detail.version}` : '';

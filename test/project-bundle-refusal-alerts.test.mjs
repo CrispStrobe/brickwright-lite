@@ -98,3 +98,31 @@ test('the refusal outcomes match what bw-project-bundle can actually produce', (
     assert.deepEqual(unknown, [],
         `the importer refuses on outcomes bw-project-bundle.js never emits: ${unknown.join(', ')}`);
 });
+
+test('a successful load retires every refusal notice', () => {
+    // Found in CP6's own vanilla-cleared screenshot: empty Code, no widgets, no chip — and a
+    // banner reading "what you had is still here". Each alert's clearList retires the OTHER two,
+    // so a second bad file replaces the first notice; but a GOOD load raises nothing, therefore
+    // cleared nothing, and the stale notice then described the opposite of what had happened.
+    // A notice must not outlive the condition it describes.
+    const registered = registeredAlertIds();
+    const refusalIds = registered.filter(id => id.startsWith('bwBundleRefused'));
+    assert.ok(refusalIds.length >= 3, `expected the refusal alerts, got ${refusalIds.join(', ')}`);
+
+    assert.match(importer, /closeAlertWithId/,
+        'the importer must be able to retire a refusal notice, not only raise one');
+    const elseBranch = importer.match(/\}\s*else if \(this\.props\.dispatch\) \{([\s\S]*?)\n {12}\}/);
+    assert.ok(elseBranch, 'the non-refused path must clear the notices');
+    for (const id of refusalIds) {
+        assert.ok(elseBranch[1].includes(id) ||
+            /REFUSAL_ALERTS/.test(elseBranch[1]),
+        `${id} is never retired on a successful load`);
+    }
+    // The clearing must be driven by the SAME list the registry defines, not a hand-copy that can
+    // drift — a fourth refusal alert must not be silently left un-retired.
+    const listed = importer.match(/const REFUSAL_ALERTS = \[([\s\S]*?)\];/);
+    assert.ok(listed, 'the importer must name the refusal alerts it retires');
+    const named = [...listed[1].matchAll(/'([^']+)'/g)].map(m => m[1]).sort();
+    assert.deepEqual(named, refusalIds.slice().sort(),
+        'the retired set must be exactly the registered refusal alerts');
+});
