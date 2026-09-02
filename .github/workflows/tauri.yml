@@ -6,6 +6,10 @@ on:
     paths:
       - 'apps/tauri/**'
       - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
+      # The JS-side vocabulary DECLARES platform.kind.read, so it belongs to the boundary's
+      # contract even though it is not named native-broker-*. Editing it used to leave the
+      # e2e gate unrun, and a trigger too narrow is nearly a gate nothing runs.
+      - 'overlay/scratch-vm/src/extension-support/capability-broker.js'
       - 'overlay/scratch-gui/static/native-broker/**'
       - 'scripts/package-native-broker-*.mjs'
       - 'scripts/verify-native-broker-e2e.mjs'
@@ -15,6 +19,10 @@ on:
     paths:
       - 'apps/tauri/**'
       - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
+      # The JS-side vocabulary DECLARES platform.kind.read, so it belongs to the boundary's
+      # contract even though it is not named native-broker-*. Editing it used to leave the
+      # e2e gate unrun, and a trigger too narrow is nearly a gate nothing runs.
+      - 'overlay/scratch-vm/src/extension-support/capability-broker.js'
       - 'overlay/scratch-gui/static/native-broker/**'
       - 'scripts/package-native-broker-*.mjs'
       - 'scripts/verify-native-broker-e2e.mjs'
