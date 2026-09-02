@@ -777,15 +777,32 @@ class PseudocodeImporter extends React.Component {
         };
         window.addEventListener('bw-project-bundle-collect', this._onBundleCollect);
         this._onBundleLoaded = event => {
+            // A REFUSED sidecar is the case that PRESERVES what was already
+            // here, so readAutosave() succeeds precisely when the refusal
+            // notice matters most. Computing it after `if (saved)` therefore
+            // made the notice unreachable for every learner who had anything
+            // to preserve: the buffers came back and nothing said the file had
+            // not been applied. Refusal wins the status line; the restore
+            // still happens.
+            const outcome = event?.detail?.outcome;
+            const refused = outcome === 'future' || outcome === 'invalid' ||
+                outcome === 'storage-failed';
+            const refusal = () => {
+                const version = event.detail.version ? ` v${event.detail.version}` : '';
+                const reason = event.detail.reason || event.detail.report?.action || outcome;
+                return `Project blocks loaded; Brickwright state${version} was not applied: ${reason}`;
+            };
             const saved = this.readAutosave();
             if (saved) {
                 this.publishGameControls(this.gameKeyForSource(saved.code));
                 this.setState(st => ({
                     lang: saved.lang,
                     buffers: {...st.buffers, [saved.lang]: saved.code},
-                    status: this.L.restored(LANG_LABEL[saved.lang] || saved.lang)
+                    status: refused
+                        ? refusal()
+                        : this.L.restored(LANG_LABEL[saved.lang] || saved.lang)
                 }));
-            } else if (event?.detail?.outcome === 'legacy' || event?.detail?.outcome === 'loaded') {
+            } else if (outcome === 'legacy' || outcome === 'loaded') {
                 this.publishGameControls(null);
                 this.setState({
                     lang: 'pseudocode',
@@ -793,13 +810,8 @@ class PseudocodeImporter extends React.Component {
                         asm: '', micropython: ''},
                     status: ''
                 });
-            } else if (event?.detail?.outcome === 'future' || event?.detail?.outcome === 'invalid' ||
-                event?.detail?.outcome === 'storage-failed') {
-                const version = event.detail.version ? ` v${event.detail.version}` : '';
-                const reason = event.detail.reason || event.detail.report?.action || event.detail.outcome;
-                this.setState({
-                    status: `Project blocks loaded; Brickwright state${version} was not applied: ${reason}`
-                });
+            } else if (refused) {
+                this.setState({status: refusal()});
             }
         };
         window.addEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
