@@ -2480,12 +2480,25 @@ test('lunar dash and rocket thrust consume resources in the live Scratch VM', as
         // inspect oxygen before the key hat had run. Observe the authored
         // transition with a hard bound; still require exactly one unit, so a
         // repeated or missing dash cannot make this test green.
-        for (let i = 0; i < 20 && Number(value(coil, 'oxygen').value) === beforeOxygen; i++) {
+        let waited = 0;
+        for (; waited < 60 && Number(value(coil, 'oxygen').value) === beforeOxygen; waited++) {
             coil.runtime._step();
             await new Promise(resolve => setTimeout(resolve, 10));
         }
         coil.postIOData('keyboard', {key: ' ', isDown: false});
         assert.equal(Number(value(coil, 'dirY').value), 1, 'Up did not turn the coil north');
+        // The wait running out and the dash spending the wrong amount used to produce the SAME
+        // message. On 2026-09-02 CI reported `dash did not spend exactly one oxygen — 5 !== 4`,
+        // which reads as a semantic regression and was the bound expiring: oxygen never moved.
+        // Confirmed a flake — the same commit reran green and passed 3/3 locally. Separated, so
+        // the next one says which it was, and the bound raised from 20 to 60 steps because 20 was
+        // already the RAISED value (2026-08-27, same race). Raising it hides nothing: the
+        // exactly-one assertion below is untouched, and an exhausted wait now reports how long it
+        // actually waited, so a genuinely slower dash surfaces as itself.
+        assert.notEqual(Number(value(coil, 'oxygen').value), beforeOxygen,
+            `the dash never fired: oxygen stayed at ${beforeOxygen} through ${waited} steps ` +
+            `(~${waited * 10}ms of stepping). This is the WAIT expiring, not the dash spending ` +
+            'the wrong amount.');
         assert.equal(Number(value(coil, 'oxygen').value), beforeOxygen - 1,
             'dash did not spend exactly one oxygen');
         assert.ok(Number(value(coil, 'headY').value) > beforeY, 'dash did not advance an extra grid cell');
