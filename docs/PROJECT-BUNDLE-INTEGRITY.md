@@ -89,6 +89,34 @@ runs adversarial rollback/migration tests, performs the live journey, reconciles
 
 ## Checkpoint evidence
 
+- **6 complete 2026-09-02, and the progression is closed.** The live journey ran twice, against the
+  local build in CI (Build run 33618196074: 31/31 browser gates, deploy and verify-gui green) and
+  against the MATCHING deployment (`gui.453bbd62.js` contains `68a5f83`, so Pages serves this tree).
+  `result.json` from the deployed run: sidecar v2, all three sections restored, `legacyCleared`
+  `{circuitParts: 0, widgets: 0}`, all three storage keys null, zero page errors. Both screenshots were
+  inspected rather than merely retained: `four-surface-restored.png` visibly shows the seated
+  STC12C5A60S2 with its resistor and LED AND the restored `slider1` widget, so two of the four surfaces
+  are proved by eye and not only by assertion.
+
+- **What the CP6 artifact showed that the gate had passed.** `vanilla-cleared.png` from the earlier run
+  showed empty Code, no widgets and no chip — beside a banner reading "This project's Brickwright data
+  could not be read ... what you had is still here." Every word was true when the invalid sidecar one
+  step earlier raised it, and false by the time it was photographed over a project whose surfaces had
+  just been cleared. Each refusal alert's `clearList` retires the other two, so a second bad file
+  replaces the first notice; a GOOD load raises nothing and therefore cleared nothing, and nothing in
+  the app ever retired a refusal. Fixed at `68a5f83af`: the non-refused branch closes all three, driven
+  by a named list the gate requires to equal the registered refusal alerts exactly.
+
+  Gated twice on purpose, because the text was correct and only the LIFETIME was wrong, which no source
+  gate can see. The source assertion is mutation-proved by deleting the branch. The behavioural one
+  runs in the probe immediately before that screenshot and was proved from both sides: it fails against
+  the unfixed deployment `8da3b17ff` with `a refusal notice survived a successful load: 1 still shown`,
+  and passes against the fixed deployment `68a5f83af`. Verdicts recorded: unit suites (refusal-alerts
+  5, consumers 4, integrity 13), mutation proofs on both new assertions, full build green, and both the
+  local and matching-deployment browser runs. All accepted commits are on remote `main`; the four dirty
+  files in the shared checkout are the generated translations and package-lock churn present at session
+  start, untouched — every change this session was made in a worktree.
+
 - **1–2 implemented:** v2 uses typed Code/Circuit/Controller sections with a strict v1 migration.
   Eleven format fixtures have exact named outcomes. Replacement removes absent content keys,
   preserves preferences, and restores the prior byte strings after an injected write failure.
