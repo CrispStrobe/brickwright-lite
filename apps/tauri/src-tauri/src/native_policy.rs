@@ -90,6 +90,25 @@ impl NativePolicyState {
             .map_err(StateError::Denied)
     }
 
+    /// A bounded, already-redacted view of the audit ring, for the diagnostics surface.
+    ///
+    /// Redaction here is structural rather than a filtering step that could be forgotten:
+    /// `AuditEvent` has no field for a pin source, a digest, a lease id, a correlation id, raw
+    /// arguments or a result, so there is nothing to strip. What remains is a host-derived
+    /// principal, the operation and resource NAMES, a sequence number and a decision — enough
+    /// to render "declared, allowed, refused, revoked" and nothing more. `LeaseId`'s own Debug
+    /// prints `[REDACTED]`, so even a future accidental include cannot leak one through a log.
+    pub(crate) fn redacted_audit(&self) -> Result<Vec<RedactedAuditRow>, StateError> {
+        Ok(self
+            .inner
+            .core
+            .lock()
+            .map_err(|_| StateError::Unavailable)?
+            .audit()
+            .map(RedactedAuditRow::from_event)
+            .collect())
+    }
+
     pub(crate) fn revoke_all(&self, caller_label: &str) -> Result<usize, StateError> {
         let now = self.now();
         self.inner
@@ -223,6 +242,60 @@ pub(crate) struct AuditEvent {
     pub(crate) resource: Option<Resource>,
     pub(crate) sequence: Option<u64>,
     pub(crate) decision: Decision,
+}
+
+/// The diagnostics row. Every field is a name, a counter or a verdict; none is a secret, and
+/// the type carries no variant that could become one without a deliberate edit here.
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize)]
+pub(crate) struct RedactedAuditRow {
+    pub(crate) index: u64,
+    pub(crate) at: u64,
+    pub(crate) principal: Option<u64>,
+    pub(crate) operation: Option<&'static str>,
+    pub(crate) resource: Option<&'static str>,
+    pub(crate) sequence: Option<u64>,
+    pub(crate) decision: &'static str,
+    pub(crate) denial: Option<&'static str>,
+}
+
+impl RedactedAuditRow {
+    fn from_event(event: &AuditEvent) -> Self {
+        let (decision, denial) = match event.decision {
+            Decision::Allowed => ("allowed", None),
+            Decision::Issued => ("issued", None),
+            Decision::Revoked => ("revoked", None),
+            Decision::Denied(reason) => ("denied", Some(Self::denial_name(reason))),
+        };
+        Self {
+            index: event.index,
+            at: event.at,
+            principal: event.principal,
+            operation: event.operation.map(|_| "platform.kind.read"),
+            resource: event.resource.map(|_| "platform/default"),
+            sequence: event.sequence,
+            decision,
+            denial,
+        }
+    }
+
+    /// Stable, caller-facing denial names. They are deliberately the same vocabulary the policy
+    /// core refuses with, so a diagnostics reader and a refusal cannot disagree about why.
+    fn denial_name(reason: Denial) -> &'static str {
+        match reason {
+            Denial::WrongCaller => "wrong-caller",
+            Denial::UnknownOperation => "unknown-operation",
+            Denial::UnknownResource => "unknown-resource",
+            Denial::MalformedArguments => "malformed-arguments",
+            Denial::UnknownLease => "unknown-lease",
+            Denial::Revoked => "revoked",
+            Denial::Expired => "expired",
+            Denial::Exhausted => "exhausted",
+            Denial::OutOfSequence => "out-of-sequence",
+            Denial::Undeclared => "undeclared",
+            Denial::Capacity => "capacity",
+            Denial::InvalidLease => "invalid-lease",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

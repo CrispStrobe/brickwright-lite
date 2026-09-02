@@ -107,7 +107,8 @@ const audit = ({rust, lib, html}) => {
     // job, behind its own lease). An unrecognised broker-ish command fails here.
     const ALLOWED_BROKER_COMMANDS = new Set(['native_broker_ready', 'native_broker_open',
         'native_broker_request', 'native_broker_reply', 'native_broker_main_teardown',
-        'native_broker_teardown', 'native_broker_lease', 'native_broker_invoke']);
+        'native_broker_teardown', 'native_broker_lease', 'native_broker_invoke',
+        'native_broker_audit']);
     // Match on the FULL path, not the final segment: `native_broker::invoke` is broker-ish in
     // its module and innocuous in its name, and checking only the name let it through.
     const registered = handler.split(',')

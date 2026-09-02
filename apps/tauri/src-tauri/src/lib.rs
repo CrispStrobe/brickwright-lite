@@ -102,7 +102,10 @@ pub fn run() {
             #[cfg(desktop)]
             native_capability::native_broker_lease,
             #[cfg(desktop)]
-            native_capability::native_broker_invoke
+            native_capability::native_broker_invoke,
+            // Diagnostics: a READ, granted to the editor because that is where it is rendered.
+            #[cfg(desktop)]
+            native_capability::native_broker_audit
         ])
         .manage(scratchlink::bridge::BridgeState::default())
         .setup(move |app| {

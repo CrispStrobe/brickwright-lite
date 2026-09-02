@@ -58,7 +58,7 @@ const audit = ({handler, build, main, mobile, ack, runtime}) => {
     const entries = handlerEntries(handler);
     const registered = entries.map(entry => entry.name);
     const manifested = manifestCommands(build);
-    assert.equal(registered.length, 25, 'review a deliberate command-count change');
+    assert.equal(registered.length, 26, 'review a deliberate command-count change');
     assert.equal(new Set(registered).size, registered.length, 'handler commands must be unique');
     assert.equal(new Set(manifested).size, manifested.length, 'manifest commands must be unique');
     assert.deepEqual(uniqueSorted(manifested), uniqueSorted(registered),
@@ -129,6 +129,13 @@ const audit = ({handler, build, main, mobile, ack, runtime}) => {
         assert.ok(brokerHalf.includes(semantic), `${semantic} must be granted to the broker`);
         assert.ok(!mainHalf.includes(semantic), `${semantic} must never reach the editor`);
     }
+    // D2: diagnostics are a READ and belong to the editor, which is where they render. The
+    // broker must NOT hold them — it has no surface to render on, so a grant there would be
+    // authority with no purpose, which is how a read becomes a channel.
+    assert.ok(mainHalf.includes('allow-native-broker-audit'),
+        'the editor must be able to read its own diagnostics');
+    assert.ok(!brokerHalf.includes('allow-native-broker-audit'),
+        'the broker must not hold the diagnostics read');
 };
 
 const readJson = file => JSON.parse(readFileSync(file, 'utf8'));
@@ -172,7 +179,10 @@ test('Tauri application-command ACL rejects omissions, extras, and mobile duplic
         input => { input.runtime[0].permissions.push('allow-native-broker-invoke'); },
         input => { input.runtime[0].permissions.push('allow-native-broker-lease'); },
         input => { input.runtime[1].permissions =
-            input.runtime[1].permissions.filter(p => p !== 'allow-native-broker-invoke'); }
+            input.runtime[1].permissions.filter(p => p !== 'allow-native-broker-invoke'); },
+        input => { input.runtime[1].permissions.push('allow-native-broker-audit'); },
+        input => { input.runtime[0].permissions =
+            input.runtime[0].permissions.filter(p => p !== 'allow-native-broker-audit'); }
     ];
     for (const mutate of mutations) {
         const input = structuredClone(live());

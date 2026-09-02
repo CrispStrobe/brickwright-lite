@@ -1,13 +1,20 @@
 {
   "identifier": "native-broker-main",
-  "description": "Main-webview half of the broker transport. Added at runtime only after the broker host acknowledges its immutable receiver, never at startup. Carries no semantic native operation.",
+  "description": "Main-webview half of the broker transport, plus the read-only diagnostics audit. Added at runtime only after the broker host acknowledges its immutable receiver. Carries no semantic operation and no reply path: the editor can drive its own session and SEE redacted audit rows, and can do nothing else.",
   "local": true,
   "windows": [],
-  "webviews": ["main"],
-  "platforms": ["linux", "macOS", "windows"],
+  "webviews": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
   "permissions": [
+    "allow-native-broker-audit",
+    "allow-native-broker-main-teardown",
     "allow-native-broker-open",
-    "allow-native-broker-request",
-    "allow-native-broker-main-teardown"
+    "allow-native-broker-request"
   ]
 }

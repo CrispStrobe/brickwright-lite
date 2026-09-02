@@ -73,6 +73,7 @@ fn main() {
         "native_broker_teardown",
         "native_broker_lease",
         "native_broker_invoke",
+        "native_broker_audit",
     ];
     tauri_build::try_build(
         tauri_build::Attributes::new()

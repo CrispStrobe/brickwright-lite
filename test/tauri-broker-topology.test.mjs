@@ -22,6 +22,8 @@ const ACK_COMMAND = 'native_broker_ready';
 // D1 adds the first semantic pair. They live in native_capability.rs rather than the adapter,
 // because the adapter is transport-only by construction and should stay that way.
 const SEMANTIC_COMMANDS = ['native_broker_invoke', 'native_broker_lease'];
+// D2's diagnostics read is bound to MAIN, not the broker, so it is checked separately.
+const DIAGNOSTIC_COMMANDS = ['native_broker_audit'];
 
 const balancedBody = (source, marker, open = '[', close = ']') => {
     const start = source.indexOf(marker);
@@ -64,7 +66,8 @@ const audit = ({handler, broker, adapter, capability, transport, capabilities, r
     const brokerCommands = commands.filter(command => /(?:capability|broker)/i.test(command)).sort();
     if (brokerCommands.length === 0) return {implemented: false, commands};
 
-    assert.deepEqual(brokerCommands, [ACK_COMMAND, ...TRANSPORT_COMMANDS, ...SEMANTIC_COMMANDS].sort(),
+    assert.deepEqual(brokerCommands,
+        [ACK_COMMAND, ...TRANSPORT_COMMANDS, ...SEMANTIC_COMMANDS, ...DIAGNOSTIC_COMMANDS].sort(),
         'the native boundary must register exactly the acknowledgement, the disjoint transport and the semantic pair');
     // Every semantic command binds the broker label too, and none of them may grant authority.
     for (const command of SEMANTIC_COMMANDS) {
@@ -72,6 +75,13 @@ const audit = ({handler, broker, adapter, capability, transport, capabilities, r
         assert.match(body, /broker_only\(&window\)\?;/,
             `${command} must bind its caller label before dispatch`);
         assert.doesNotMatch(body, /grant_transport_once/, `${command} must not grant capabilities`);
+    }
+    for (const command of DIAGNOSTIC_COMMANDS) {
+        const body = fnBody(capability, command);
+        assert.match(body, /window\.label\(\) != MAIN_LABEL/,
+            `${command} must bind the editor label, not the broker's`);
+        assert.doesNotMatch(body, /issue_broker_lease|authorize_broker_call|grant_transport_once|revoke/,
+            `${command} must be a read: it may not issue, authorise, grant or revoke`);
     }
     // The executor is the whole semantic surface, and it must stay a single read.
     assert.match(capability, /fn execute\(operation: Operation\)[\s\S]{0,400}Operation::PlatformKindRead/,
@@ -203,7 +213,11 @@ test('topology contract rejects independently weakened boundaries', () => {
             'Operation::PlatformKindRead', 'Operation::SomethingElse'); },
         input => { input.capability = input.capability.replace(
             'fn execute(operation: Operation)', 'fn execute_renamed(operation: Operation)'); },
-        input => { input.capability += '\nfn escape() { let _ = std::process::Command::new("sh"); }\n'; }
+        input => { input.capability += '\nfn escape() { let _ = std::process::Command::new("sh"); }\n'; },
+        input => { input.capability = input.capability.replace(
+            'if window.label() != MAIN_LABEL {', 'if false {'); },
+        input => { input.capability = input.capability.replace(
+            'policy.redacted_audit().map_err(opaque)', 'policy.issue_broker_lease("main", 0, LeaseId::from_host_random([0; 32])).map_err(opaque)'); }
     ];
     const survivors = [];
     mutations.forEach((mutate, index) => {

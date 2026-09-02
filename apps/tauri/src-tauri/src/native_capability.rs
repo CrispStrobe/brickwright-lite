@@ -5,11 +5,12 @@
 //! decision to the policy core, and executes exactly one side-effect-free read. Nothing here
 //! interprets caller-supplied capability, and no reusable invoke handle is ever returned.
 
-use crate::native_policy::{LeaseId, NativePolicyState, Operation, StateError};
+use crate::native_policy::{LeaseId, NativePolicyState, Operation, RedactedAuditRow, StateError};
 use serde_json::Value;
 use tauri::{State, WebviewWindow};
 
 const BROKER_LABEL: &str = "capability-broker";
+const MAIN_LABEL: &str = "main";
 
 fn broker_only(window: &WebviewWindow) -> Result<(), String> {
     if window.label() == BROKER_LABEL {
@@ -80,4 +81,20 @@ pub(crate) fn native_broker_invoke(
         .authorize_broker_call(window.label(), id, sequence, &operation, &resource, &args)
         .map_err(opaque)?;
     Ok(execute(call.operation).to_owned())
+}
+
+/// Diagnostics. Readable from the MAIN webview because that is where the learner sees it, and
+/// safe to read there because the row type has no field that could carry a secret: no pin
+/// source, no digest, no lease id, no correlation id, no raw arguments and no result. It is a
+/// READ — it cannot issue, authorise or revoke anything — so granting it to the editor widens
+/// what the editor can SEE and not what it can DO.
+#[tauri::command]
+pub(crate) fn native_broker_audit(
+    window: WebviewWindow,
+    policy: State<'_, NativePolicyState>,
+) -> Result<Vec<RedactedAuditRow>, String> {
+    if window.label() != MAIN_LABEL {
+        return Err("capability refused".into());
+    }
+    policy.redacted_audit().map_err(opaque)
 }

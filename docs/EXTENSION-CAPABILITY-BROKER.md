@@ -193,6 +193,31 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   page errors, and every mobile/native limitation is either closed or an
   explicit fail-closed verdict rather than an implied compatibility claim.
 
+CP3-D2 is PARTIAL and its box stays unchecked, for the same reason D1's does: the DATA is in and
+proved, the RENDERING is not.
+
+DONE: `NativePolicyState::redacted_audit()` projects the audit ring into `RedactedAuditRow`, and
+`native_broker_audit` exposes it to the MAIN webview — the editor, because that is where diagnostics
+are seen. Redaction here is structural rather than a filtering step somebody could forget: the
+`AuditEvent` type has no field for a pin source, a digest, a lease id, a correlation id, raw
+arguments or a result, so there is nothing to strip. What crosses is a host-derived principal, the
+operation and resource NAMES, a sequence number, a decision, and a stable denial name drawn from the
+same vocabulary the policy core refuses with — so a diagnostics reader and a refusal cannot disagree
+about why something was denied. `LeaseId`'s Debug prints `[REDACTED]`, so even a future accidental
+include could not leak one through a log.
+
+The grant is a READ and is scoped to `main` alone. The gate asserts both halves of that: the editor
+must hold `allow-native-broker-audit`, and the BROKER must not — it has no surface to render on, so a
+grant there would be authority with no purpose, which is how a read turns into a channel. The command
+is also asserted not to issue, authorise, grant or revoke, mutation-proved by swapping its body for a
+lease issue and by neutering its label check.
+
+NOT DONE: nothing renders it. D2's DoD asks for declared/allowed/refused/revoked state to appear in
+product diagnostics, and for destroy, navigation, reload and timeout to leave zero stale authority
+and update those diagnostics deterministically. The revocation paths already exist and are gated; the
+surface that would show them does not, and the determinism clause cannot be proved against a surface
+that is absent. Remaining for D2: the diagnostics panel, and the lifecycle assertions against it.
+
 CP3-D1 is PARTIAL and its box stays unchecked. The native half is in and verified; the JavaScript
 half and the matching-result proof are not, so the checkpoint is not closed.
 

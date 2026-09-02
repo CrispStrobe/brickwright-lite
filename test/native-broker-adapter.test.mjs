@@ -59,9 +59,10 @@ test('native broker adapter is caller-bound and rollback-safe', () => {
     const brokerEntries = entries.filter(entry => /native_broker_/u.test(entry));
     // Six transport/ack commands from the adapter plus D1's semantic pair, which lives in
     // native_capability.rs so the adapter stays transport-only.
-    assert.equal(brokerEntries.length, 8, 'the eight broker commands must be registered');
-    assert.equal(brokerEntries.filter(entry => /native_capability::/u.test(entry)).length, 2,
-        'the semantic pair must come from the capability module, not the transport adapter');
+    assert.equal(brokerEntries.length, 9, 'the nine broker commands must be registered');
+    assert.equal(brokerEntries.filter(entry => /native_capability::/u.test(entry)).length, 3,
+        'the semantic pair and the diagnostics read must come from the capability module, ' +
+        'not the transport adapter');
     for (const entry of brokerEntries) {
         assert.match(entry, /^#\[\s*cfg\(desktop\)\s*\]/u, `${entry} must be desktop-gated`);
     }
