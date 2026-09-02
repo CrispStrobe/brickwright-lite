@@ -207,7 +207,71 @@ try {
     if (outcome.reply.ok) await fail('the EDITOR was able to call native_broker_reply — the broker half of the ACL is not disjoint');
     if (outcome.lease.ok) await fail('the EDITOR was able to mint a lease — a semantic grant reached the wrong webview');
 
-    console.log(`PASS: acknowledgement reached the ACL (audit returned ${outcome.audit.value.length} row(s)); ` +
+    // ── CP3-D1: one real semantic operation, driven end to end ────────────────────────────
+    // Until this ran the audit returned ZERO rows, so "the audit is readable" was true of an
+    // empty list and proved only the grant. A vertical slice has to actually cross the boundary.
+    const before = outcome.audit.value.length;
+    await call('POST', `/session/${session}/window`, {handle: brokers[0].handle});
+    const slice = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try {
+                const invoke = globalThis.__TAURI_INTERNALS__ && globalThis.__TAURI_INTERNALS__.invoke;
+                if (typeof invoke !== 'function') { done({fatal: 'the broker realm has no invoke'}); return; }
+                const lease = await invoke('native_broker_lease');
+                const value = await invoke('native_broker_invoke', {
+                    lease, sequence: 1, operation: 'platform.kind.read', resource: 'platform', args: {}
+                });
+                // A second call on the SAME sequence must be refused: the sequence is a replay
+                // guard, and an executor this side-effect-free would otherwise answer twice
+                // without anything visibly going wrong.
+                let replay = null;
+                try {
+                    replay = {ok: true, value: await invoke('native_broker_invoke', {
+                        lease, sequence: 1, operation: 'platform.kind.read', resource: 'platform', args: {}
+                    })};
+                } catch (error) { replay = {ok: false, error: String(error)}; }
+                done({lease, value, replay});
+            } catch (error) { done({fatal: String((error && error.message) || error)}); }
+        })();`);
+    if (!slice || slice.fatal) await fail(`the semantic slice did not run: ${slice && slice.fatal}`);
+
+    // The value is the platform the runner actually is — asserted against the harness's own
+    // view of the OS, so this cannot pass by agreeing with itself.
+    const expected = process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux';
+    if (slice.value !== expected) {
+        await fail(`platform.kind.read returned ${JSON.stringify(slice.value)}, expected ${expected}`);
+    }
+    if (slice.replay.ok) {
+        await fail(`a replayed sequence was answered: ${JSON.stringify(slice.replay.value)} — the sequence is not a guard`);
+    }
+
+    // Back to the editor: the operation must now be VISIBLE in the audit, and still redacted.
+    await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
+    const after = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try { done({ok: true, rows: await globalThis.__TAURI_INTERNALS__.invoke('native_broker_audit')}); }
+            catch (error) { done({ok: false, error: String((error && error.message) || error)}); }
+        })();`);
+    if (!after) await fail('the audit re-read returned nothing from the editor realm');
+    if (!after.ok) await fail(`the editor could not re-read the audit after the operation: ${after.error}`);
+    if (!(after.rows.length > before)) {
+        await fail(`the audit did not record the operation: ${before} row(s) before, ${after.rows.length} after`);
+    }
+    const recorded = JSON.stringify(after.rows);
+    for (const [what, secret] of [['the lease id', slice.lease], ['the result', slice.value]]) {
+        if (recorded.includes(secret)) {
+            await fail(`the audit leaked ${what} to the editor: ${recorded.slice(0, 200)}`);
+        }
+    }
+    if (!after.rows.some(row => row.operation === 'platform.kind.read' && row.decision === 'allowed')) {
+        await fail(`no allowed platform.kind.read row in the audit: ${recorded.slice(0, 300)}`);
+    }
+
+    console.log(`PASS: acknowledgement reached the ACL; platform.kind.read returned ${JSON.stringify(slice.value)} ` +
+        `through a broker-minted lease and is recorded in the audit (${before} -> ${after.rows.length} rows, ` +
+        'lease and result both absent from what the editor can see); a replayed sequence was refused; ' +
         'editor refused native_broker_reply and native_broker_lease at the real Tauri boundary');
     await shutdown();
     process.exit(0);
