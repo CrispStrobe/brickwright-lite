@@ -80,7 +80,7 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
                 // nowhere. location.replace to another path is a real navigation, which on_navigation
                 // receives (and denies — it is a diagnostic, and the boundary is already broken).
                 let _ = webview.eval(
-                    "try{location.replace('tauri://localhost/__brokerprobe__'+encodeURIComponent([typeof globalThis.__TAURI_INTERNALS__,typeof globalThis.__brickwrightBrokerReceive,typeof globalThis.__brickwrightInstallBrokerHost,String(document.title).slice(0,60)].join('|')))}catch(e){}",
+                    "try{location.replace('tauri://localhost/__brokerprobe__'+encodeURIComponent([typeof globalThis.__TAURI_INTERNALS__,typeof globalThis.__brickwrightBrokerReceive,typeof globalThis.__brickwrightInstallBrokerHost,'title='+String(document.title),'htmlLen='+String((document.documentElement&&document.documentElement.outerHTML||'').length),'metas='+String(document.getElementsByTagName('meta').length)].join('|')))}catch(e){}",
                 );
             }
             handle_page_load(payload.event(), &page_seen, || {
