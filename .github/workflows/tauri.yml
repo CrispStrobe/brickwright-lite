@@ -87,7 +87,13 @@ jobs:
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
             libayatana-appindicator3-dev patchelf libdbus-1-dev libudev-dev \
-            webkit2gtk-driver xvfb
+            webkit2gtk-driver xvfb dbus-x11 bluez
+          # The app initialises a BLE handler at startup (ScratchLink). With no session bus and
+          # no org.bluez the first run logged
+          #   failed to initialize handler: Btleplug(... org.bluez was not provided ...)
+          # and the WebDriver connection died mid-session. bluez plus a real session bus below
+          # give it something to talk to; the gate is about the broker, and an unrelated
+          # subsystem failing to start is noise that looks exactly like a boundary failure.
 
       - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
         with:
@@ -120,5 +126,5 @@ jobs:
 
       - name: Drive the packaged broker boundary
         run: |
-          xvfb-run -a node scripts/verify-native-broker-e2e.mjs \
+          xvfb-run -a dbus-run-session -- node scripts/verify-native-broker-e2e.mjs \
             apps/tauri/src-tauri/target/debug/brickwright-tauri

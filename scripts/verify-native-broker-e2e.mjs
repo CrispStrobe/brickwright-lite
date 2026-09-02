@@ -37,7 +37,12 @@ if (!binary || !existsSync(binary)) {
 }
 const DRIVER_PORT = Number(process.env.TAURI_DRIVER_PORT || 4444);
 const base = `http://127.0.0.1:${DRIVER_PORT}`;
-const nativeDriver = process.env.NATIVE_DRIVER || '/usr/bin/WebKitWebDriver';
+// The distro puts WebKitWebDriver in different places depending on the webkit2gtk packaging;
+// resolve it rather than hard-coding one and failing with a path error that looks like a
+// boundary error.
+const nativeDriver = process.env.NATIVE_DRIVER ||
+    ['/usr/bin/WebKitWebDriver', '/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitWebDriver',
+        '/usr/bin/webkitwebdriver'].find(candidate => existsSync(candidate)) || '/usr/bin/WebKitWebDriver';
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const call = async (method, url, body) => {
@@ -72,11 +77,20 @@ const fail = async message => {
 };
 
 try {
-    // tauri-driver needs a moment to bind before the first request.
-    for (let attempt = 0; attempt < 40; attempt++) {
-        try { await call('GET', '/status'); break; } catch { await sleep(250); }
+    // Wait for the driver to bind, and FAIL if it never does. The first version swallowed every
+    // attempt and fell through to POST /session, which then reported `fetch failed` — an error
+    // about the harness's own socket, dressed up as an error about the app. A wait loop that
+    // cannot report never-ready is the same shape as a gate that cannot fail.
+    let ready = false;
+    for (let attempt = 0; attempt < 60 && !ready; attempt++) {
+        try { await call('GET', '/status'); ready = true; } catch { await sleep(500); }
+        if (driver.exitCode !== null) {
+            await fail(`tauri-driver exited with code ${driver.exitCode} before accepting a connection`);
+        }
     }
+    if (!ready) await fail(`tauri-driver never accepted a connection on ${base} after 30s`);
 
+    console.log(`tauri-driver ready on ${base}; native driver ${nativeDriver}`);
     const created = await call('POST', '/session', {
         capabilities: {alwaysMatch: {'tauri:options': {application: path.resolve(binary)}}}
     });
