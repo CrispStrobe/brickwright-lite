@@ -163,7 +163,7 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   DoD: source verification precedes allocation; registration derives bounded
   opcode/menu allowlists; callback identity, replay, timeout, abort, terminate
   and cross-worker mutations are executable; all handles drain exactly once.
-- [ ] **CP3-C5c3 — self-contained host/worker assets (60–90 minutes).** Produce
+- [x] **CP3-C5c3 — self-contained host/worker assets (60–90 minutes).** Produce
   deterministic no-chunk broker-host and fixed worker bundles, install the host
   factory at document start, and minimally widen CSP only for the packaged
   worker/source path. DoD: real browser load/register/call/terminate succeeds
@@ -192,6 +192,17 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   GitHub workflows are green, artifacts show the real vertical slice with zero
   page errors, and every mobile/native limitation is either closed or an
   explicit fail-closed verdict rather than an implied compatibility claim.
+
+CP3-C5c3 landed at `1a5636953`: the generated no-chunk host and fixed worker now consume the
+one-shot factory inside the same document-start script, so the staged entrypoint is no longer
+empty. The generator is authority-free — it verifies the packaged proof against the manifest's
+byte length and digest and refuses to emit when the host's manifest import is not rewritten —
+and `--check` guards integrate, `build:gui`, the Tauri pre-hooks and both workflows. The CSP
+widened by exactly `script-src blob:` and `worker-src blob:` and closed the network with
+`connect-src 'none'`; each directive has its own shell-gate mutation. Browser evidence:
+document-start broker 1/1 lifecycle, remote/script/nested-worker/loopback 4/4 blocked,
+production CSP, HTML-only request census, zero page errors. Staleness was mutation-proved by
+tampering with the generated host. Still open in CP3: C5d, D1, D2 and E.
 
 CP3-C5c2 now supplies a standalone parent host and worker core with one closed,
 identity-bearing protocol. The parent verifies packaged bytes before worker
