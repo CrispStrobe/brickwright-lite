@@ -747,17 +747,6 @@ class PseudocodeImporter extends React.Component {
         // Only when EVERY buffer is empty: an example loaded through the
         // Circuit tab (above) or a restored project must win over the autosave.
         if (!Object.values(this.state.buffers).some(b => b && b.trim())) {
-            // The status line below is the Code tab's own surface, and opening a
-            // project changes the active tab — so on its own the notice is
-            // written where the learner is no longer looking (measured: the text
-            // was present and HIDDEN). Raise it on the app-level alert surface
-            // too, which gui.jsx mounts outside the tab strip; the status line
-            // stays for anyone who IS on this tab.
-            if (refused && this.props.dispatch) {
-                const alertId = outcome === 'future' ? 'bwBundleRefusedFuture' :
-                    outcome === 'storage-failed' ? 'bwBundleRefusedStorage' : 'bwBundleRefusedInvalid';
-                try { this.props.dispatch(showStandardAlert(alertId)); } catch (e) { /* never break the load */ }
-            }
             const saved = this.readAutosave();
             if (saved) {
                 this.publishGameControls(this.gameKeyForSource(saved.code));
@@ -799,6 +788,17 @@ class PseudocodeImporter extends React.Component {
             const outcome = event?.detail?.outcome;
             const refused = outcome === 'future' || outcome === 'invalid' ||
                 outcome === 'storage-failed';
+            // The status line below is the Code tab's own surface, and opening a
+            // project changes the active tab — so on its own the notice is
+            // written where the learner is no longer looking (measured: the text
+            // was present and HIDDEN). Raise it on the app-level alert surface
+            // too, which gui.jsx mounts outside the tab strip; the status line
+            // stays for anyone who IS on this tab.
+            if (refused && this.props.dispatch) {
+                const alertId = outcome === 'future' ? 'bwBundleRefusedFuture' :
+                    outcome === 'storage-failed' ? 'bwBundleRefusedStorage' : 'bwBundleRefusedInvalid';
+                try { this.props.dispatch(showStandardAlert(alertId)); } catch (e) { /* never break the load */ }
+            }
             const refusal = () => {
                 const version = event.detail.version ? ` v${event.detail.version}` : '';
                 const reason = event.detail.reason || event.detail.report?.action || outcome;

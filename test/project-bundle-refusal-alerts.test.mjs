@@ -55,6 +55,33 @@ test('every refusal outcome the importer recognises can raise an alert', () => {
         'strip, which the learner is not looking at after a project load.');
 });
 
+test('the dispatch sits where `refused` is actually in scope', () => {
+    // This file did not catch its own worst bug, and that is the point of this
+    // test. The first version of the dispatch block was inserted at the wrong
+    // `const saved = this.readAutosave();` — there are two, and the earlier one
+    // is the MOUNT-TIME buffer restore, where `refused` and `outcome` do not
+    // exist. Every check above still passed: the mapping was total, every id was
+    // registered, the outcomes matched the producer. The app threw
+    // `ReferenceError: refused is not defined` from the top-level component on
+    // every start, and 13 browser gates went red.
+    //
+    // So a mapping test that never asks WHERE the mapping lives is a grep, not a
+    // gate. Position is the thing that failed, so position is what is asserted.
+    const declaresRefused = importer.indexOf('const refused =');
+    const dispatches = importer.indexOf('this.props.dispatch(showStandardAlert(');
+    assert.ok(declaresRefused >= 0, 'the importer no longer declares `const refused =`');
+    assert.ok(dispatches >= 0, 'the importer no longer dispatches a refusal alert');
+    assert.ok(dispatches > declaresRefused,
+        'the refusal dispatch reads `refused` before it is declared — it has been ' +
+        'placed outside _onBundleLoaded, which throws at the top level on every app start');
+
+    // And it must be inside the SAME handler, not merely later in the file: the
+    // next `_on...` assignment after the declaration bounds it.
+    const nextHandler = importer.indexOf('this._on', declaresRefused);
+    assert.ok(nextHandler === -1 || dispatches < nextHandler,
+        'the refusal dispatch has drifted past the end of _onBundleLoaded');
+});
+
 test('every alert the importer dispatches is registered', () => {
     const registered = registeredAlertIds();
     const missing = dispatchedAlertIds().filter(id => !registered.includes(id));
