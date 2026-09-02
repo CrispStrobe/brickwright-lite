@@ -696,3 +696,43 @@ DoD: the final remote tip is green on every required surface; the deployed
 journey repeats the exact local/CI denominator with zero page errors; the docs
 never claim isolation for a deferred entry or native enforcement that exists
 only in JavaScript.
+
+## CP3-D1 after the boundary was fixed (2026-09-02)
+
+WHAT IS NOW PROVEN, at the real Tauri ACL, in the packaged app under tauri-driver
+(run `33682241186`, e2e green):
+
+- `platform.kind.read` returns `"linux"` through a broker-minted lease, asserted against the
+  harness's OWN view of the platform (`process.platform`) so it cannot pass by agreeing with
+  itself.
+- The audit grows 0 -> 3 rows across the operation, and neither the lease id nor the result
+  appears in what the editor can read — checked against the actual values just observed, not
+  against a guessed row shape.
+- A replayed sequence is REFUSED. Two probe defects had to be fixed to learn this: a fresh
+  lease's `next_sequence` is 0 (I sent 1) and `Resource::parse` accepts `platform/default` (I
+  sent `platform`). Both deny with the same opaque string, so the probe now names its own step
+  — wrapping the pair in one `try` produced one word, "capability refused", and no way to tell
+  which call produced it.
+- The editor is refused `native_broker_reply` and `native_broker_lease`.
+- The broker host is installed (`receiver` is a function), its factory is GONE after install,
+  and the editor realm has neither. These four were in the realms dump all along and nothing
+  checked them; they are assertions now.
+
+WHAT REMAINS, and it is a DESIGN DECISION rather than missing test work. The DoD clause
+"JavaScript and Rust return the same platform result" needs a JavaScript caller for
+`platform.kind.read`. There is none, and this is not an oversight in the harness:
+
+    overlay/scratch-vm/src/extension-support/capability-broker.js:8
+        'platform.kind.read' is DECLARED in the vocabulary
+    overlay/scratch-vm/src/dispatch/central-dispatch.js:35
+        new CapabilityBroker({'project.metadata.read': proofMetadataHandler})
+        — the only wired executor, and it is not this one
+
+So the JS side can name the operation and cannot perform it. Closing the clause means deciding
+HOW editor-side JavaScript reaches the native operation: through the existing
+open/request/reply transport (which today carries the extension-worker `load`/`call`/
+`terminate` envelopes, not capability calls), or through a separate one-shot path. That choice
+has security consequences — the same clause forbids "exposing a reusable invoke handle" — and
+it is the lane owner's to make, not something to infer from a test that needs to go green.
+Until it is made, D1's box stays unchecked and the harness asserts what is actually true.
+

@@ -192,6 +192,21 @@ try {
         await fail('the broker realm did not load its document: ' +
             JSON.stringify({title: brokers[0].title, doc: String(brokers[0].doc).slice(0, 160)}));
     }
+    // No reusable handle, asserted rather than logged. All four of these facts were already in
+    // the realms dump and nothing checked any of them — the "collected but never gated" shape:
+    // a measurement printed beside a verdict reads as though it were part of it.
+    if (brokers[0].receiver !== 'function') {
+        await fail(`the broker host did not install: receiver is ${brokers[0].receiver}`);
+    }
+    if (brokers[0].factoryStillThere !== 'undefined') {
+        await fail('__brickwrightInstallBrokerHost survived installation — the factory is ' +
+            'one-shot precisely so a second host cannot be installed over the first');
+    }
+    for (const [what, value] of [['a broker receiver', editors[0].receiver],
+        ['the broker host factory', editors[0].factoryStillThere]]) {
+        if (value !== 'undefined') await fail(`the EDITOR realm exposes ${what} (${value})`);
+    }
+
     await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
 
     const outcome = await evaluate(probe);
