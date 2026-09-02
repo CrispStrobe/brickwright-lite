@@ -111,5 +111,39 @@ integrates onto current remote defaults, and owns every acceptance and push.
   pre-replacement VM; the gate now waits for the importer's explicit post-`loadProject` completion
   signal. The repaired journey passed against the deployed app with all 7 opcodes before and after
   Code and in the downloaded SB3, without fixed sleeps.
-- **5 pending:** do not close this claim until the matching Pages build passes the browser gate,
-  its screenshot is inspected, and the deployed build identity is recorded here.
+- **5 complete 2026-09-02.** The journey ran against the deployed Pages build, not a local one:
+  `PROOF_URL=https://crispstrobe.github.io/brickwright-lite/ node scripts/verify-lego-spike-roundtrip.mjs`,
+  all three stages green — 7/7 required opcodes in the loaded SB3, in the Code-to-blocks result, and in
+  the downloaded SB3 — with zero page errors. **Deployed identity was taken from the artifact, not from
+  timing:** the served `gui.b19dd2cc.js` contains `8da3b17`, so Pages is running lite `8da3b17ff`
+  (Build run 33603356436: build, deploy and verify-gui all green, 31/31 browser gates — the first clean
+  board since the 25-hour red streak began at `f15fd3e6c`). Screenshot `code-roundtrip.png` inspected
+  personally: it shows the normalized Code for the round-tripped project — `DEVICE SPIKE`, `STAGE:`,
+  `WHEN flag clicked:`, `start motor A forward`, `wait 0.25 seconds`, `set dist to (spike distance B)`,
+  `display text "GO"`, `stop motor A` — with the conversion report reading `Blocks → Code ✓ OK`.
+  `LEGO-ARCHITECTURE.md` already scopes this correctly ("One useful SPIKE Prime slice now crosses the
+  first gap, but the generic multi-hub architecture remains open"); no EV3/NXT/Boost/WeDo/Powered Up
+  claim is inferred from this hub.
+
+- **What inspecting the screenshot found, which the gate could not.** The Code pane renders TWO globals
+  where the source declares one: `GLOBAL dist = 0` on line 4 and `GLOBAL dist` on line 5. That is not a
+  round-trip fault — the round trip preserves faithfully what it is handed — it is an sb3-creator parse
+  defect that the fixture happens to exercise. `sb3Creator.js:5109` matches
+  `/^(GLOBAL|LOCAL)\s+(.+)$/i` and takes `decl[2]` as the variable NAME, so `GLOBAL dist = 0` creates a
+  variable literally named `dist = 0` and drops the initial value; if the program later uses the
+  variable, a second, correct-but-uninitialized one is created beside it. Minimal repro against the
+  vendored copy:
+
+  | source | variables produced |
+  | --- | --- |
+  | `GLOBAL dist = 0`, used later | `["dist = 0", "dist"]` |
+  | `GLOBAL dist`, used later | `["dist"]` (correct) |
+  | `GLOBAL dist = 0`, never used | `["dist = 0"]` |
+  | `GLOBAL score = 7`, used later | `["score = 7", "score"]` |
+
+  The emitter has the matching hole: `sb3Creator.js:5635` writes `GLOBAL ${v[0]}` with no initializer
+  concept, so even a corrected parse would not round-trip the value. This belongs to sb3-creator and its
+  lane, NOT to this claim and NOT to lite — the vendored copy must not be edited in place (house rule 5).
+  Recorded here rather than fixed here, and deliberately not re-vendored: lite's `main` had been green
+  for minutes when this was found, and a sb3-creator re-vendor is a pin change that deserves its own
+  push rather than riding a closure.
