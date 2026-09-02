@@ -8,6 +8,10 @@ mod native_broker;
 #[cfg(desktop)]
 #[allow(dead_code)]
 mod native_broker_adapter;
+// The semantic seam. Desktop-only for the same reason the adapter is: a phone must not carry
+// the command at all, rather than carry it and be refused by an ACL.
+#[cfg(desktop)]
+mod native_capability;
 // Compiled on every target so the staged relay stays warning-clean. It has no
 // command registration or runtime consumer until the authenticated adapter lands.
 #[allow(dead_code)]
@@ -91,7 +95,14 @@ pub fn run() {
             #[cfg(desktop)]
             native_broker_adapter::native_broker_main_teardown,
             #[cfg(desktop)]
-            native_broker_adapter::native_broker_teardown
+            native_broker_adapter::native_broker_teardown,
+            // The only semantic pair. `native_broker_invoke` refuses every operation name the
+            // policy core does not know, so registering it does not widen the surface beyond
+            // platform.kind.read.
+            #[cfg(desktop)]
+            native_capability::native_broker_lease,
+            #[cfg(desktop)]
+            native_capability::native_broker_invoke
         ])
         .manage(scratchlink::bridge::BridgeState::default())
         .setup(move |app| {

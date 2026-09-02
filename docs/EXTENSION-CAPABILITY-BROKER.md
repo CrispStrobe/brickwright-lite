@@ -193,6 +193,32 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   page errors, and every mobile/native limitation is either closed or an
   explicit fail-closed verdict rather than an implied compatibility claim.
 
+CP3-D1 is PARTIAL and its box stays unchecked. The native half is in and verified; the JavaScript
+half and the matching-result proof are not, so the checkpoint is not closed.
+
+DONE: `src/native_capability.rs` is the semantic seam — deliberately outside the transport adapter,
+whose header promises transport only. `native_broker_lease` draws 32 bytes from the OS CSPRNG and
+derives the audit id from the same draw, so a caller cannot choose the principal it is recorded as;
+`native_broker_invoke` refuses a lease string that is not exactly 64 lowercase hex characters rather
+than coercing it, then defers every decision to the policy core, which already enforces empty-object
+arguments, exact sequence, expiry, revocation, budget and the declaration set — and consumes budget
+BEFORE any executor runs, so a failed executor cannot make a request replayable. Both bind the broker
+label first, and every denial returns one opaque string so a caller cannot learn from the error
+whether the lease, the sequence or its own identity was the problem. The declaration set is
+host-derived and fixed at `(PlatformKindRead, PlatformDefault)`. The ACL pair is granted to the broker
+webview only, still inside the acknowledgement, so the editor cannot mint a lease; `cargo check` is
+clean at 0 errors and 0 warnings, and nine Node suites (53 tests) are green with the three gates this
+touched re-pinned and mutation-proved.
+
+NOT DONE, and the reason the box is unchecked: the DoD also requires that "JavaScript and Rust return
+the same platform result without exposing a reusable invoke handle". No JavaScript calls
+`native_broker_lease`/`native_broker_invoke` yet, and there is no proof comparing the two results. The
+browser gate cannot supply it either — it runs without Tauri, so `__TAURI_INTERNALS__` is a stub there
+and a same-result assertion against it would prove only that the stub agrees with itself, which is
+exactly the doubles-with-no-producer species already on this repo's list. That proof needs the packaged
+desktop gate, which is CP3-E's rig. Remaining for D1: the broker-host caller, the no-reusable-handle
+assertion, and the same-result comparison run under the real Tauri boundary.
+
 CP3-C5d: startup grants exactly one broker permission — `allow-native-broker-ready`, scoped to the
 broker webview by `capabilities/native-broker-ack.json`. The five transport commands are granted
 only inside the acknowledgement, by `Manager::add_capability` over the two reviewed files in

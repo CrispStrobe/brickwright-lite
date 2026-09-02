@@ -107,7 +107,7 @@ const audit = ({rust, lib, html}) => {
     // job, behind its own lease). An unrecognised broker-ish command fails here.
     const ALLOWED_BROKER_COMMANDS = new Set(['native_broker_ready', 'native_broker_open',
         'native_broker_request', 'native_broker_reply', 'native_broker_main_teardown',
-        'native_broker_teardown']);
+        'native_broker_teardown', 'native_broker_lease', 'native_broker_invoke']);
     // Match on the FULL path, not the final segment: `native_broker::invoke` is broker-ish in
     // its module and innocuous in its name, and checking only the name let it through.
     const registered = handler.split(',')
@@ -117,8 +117,14 @@ const audit = ({rust, lib, html}) => {
         assert.ok(ALLOWED_BROKER_COMMANDS.has(path.split('::').at(-1)),
             `${path} is not a reviewed broker transport command`);
     }
-    assert.doesNotMatch(handler, /platform_kind|platform\.kind|native_broker_invoke|capability_broker::invoke/i,
-        'no semantic native operation may be registered at this checkpoint');
+    // D1 registers the first semantic operation, so "none" is no longer the invariant. What
+    // must hold now is narrower: the semantic surface is a single generic invoke whose operation
+    // NAMES are parsed by the policy core, so an unknown name is a denial rather than a new
+    // command — and no operation is registered as a command of its own.
+    assert.doesNotMatch(handler, /platform_kind|platform_read|native_capability_[a-z_]*platform/i,
+        'a semantic operation must not become a command of its own');
+    assert.doesNotMatch(handler, /capability_broker::invoke/i,
+        'the superseded single-command boundary must not reappear');
 
     assert.doesNotMatch(html, /<script\b|<link\b|<iframe\b|<object\b|<embed\b|<img\b|<audio\b|<video\b/i,
         'the broker document must be inert and carry no executable or fetched subresources');

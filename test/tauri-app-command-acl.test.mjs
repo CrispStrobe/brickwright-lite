@@ -58,7 +58,7 @@ const audit = ({handler, build, main, mobile, ack, runtime}) => {
     const entries = handlerEntries(handler);
     const registered = entries.map(entry => entry.name);
     const manifested = manifestCommands(build);
-    assert.equal(registered.length, 23, 'review a deliberate command-count change');
+    assert.equal(registered.length, 25, 'review a deliberate command-count change');
     assert.equal(new Set(registered).size, registered.length, 'handler commands must be unique');
     assert.equal(new Set(manifested).size, manifested.length, 'manifest commands must be unique');
     assert.deepEqual(uniqueSorted(manifested), uniqueSorted(registered),
@@ -123,6 +123,12 @@ const audit = ({handler, build, main, mobile, ack, runtime}) => {
     assert.ok(!brokerHalf.includes('allow-native-broker-open') &&
         !brokerHalf.includes('allow-native-broker-request'),
     'the broker must never be able to open or drive a session');
+    // D1: the semantic pair is broker-scoped like everything else that can reach native work.
+    // The editor holding either would make the lease meaningless, because it could mint its own.
+    for (const semantic of ['allow-native-broker-lease', 'allow-native-broker-invoke']) {
+        assert.ok(brokerHalf.includes(semantic), `${semantic} must be granted to the broker`);
+        assert.ok(!mainHalf.includes(semantic), `${semantic} must never reach the editor`);
+    }
 };
 
 const readJson = file => JSON.parse(readFileSync(file, 'utf8'));
@@ -162,7 +168,11 @@ test('Tauri application-command ACL rejects omissions, extras, and mobile duplic
         input => { input.runtime[1].permissions.push('allow-native-broker-open'); },
         input => { input.runtime[0].windows = ['main']; },
         input => { input.runtime[0].platforms = ['linux', 'macOS', 'windows', 'android']; },
-        input => { input.runtime[1].permissions = []; }
+        input => { input.runtime[1].permissions = []; },
+        input => { input.runtime[0].permissions.push('allow-native-broker-invoke'); },
+        input => { input.runtime[0].permissions.push('allow-native-broker-lease'); },
+        input => { input.runtime[1].permissions =
+            input.runtime[1].permissions.filter(p => p !== 'allow-native-broker-invoke'); }
     ];
     for (const mutate of mutations) {
         const input = structuredClone(live());

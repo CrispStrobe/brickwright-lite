@@ -19,6 +19,9 @@ const TRANSPORT_COMMANDS = [
     'native_broker_teardown'
 ];
 const ACK_COMMAND = 'native_broker_ready';
+// D1 adds the first semantic pair. They live in native_capability.rs rather than the adapter,
+// because the adapter is transport-only by construction and should stay that way.
+const SEMANTIC_COMMANDS = ['native_broker_invoke', 'native_broker_lease'];
 
 const balancedBody = (source, marker, open = '[', close = ']') => {
     const start = source.indexOf(marker);
@@ -56,13 +59,25 @@ const fnBody = (source, name) => {
     assert.fail(`unbalanced body for ${name}`);
 };
 
-const audit = ({handler, broker, adapter, transport, capabilities, runtime, config}) => {
+const audit = ({handler, broker, adapter, capability, transport, capabilities, runtime, config}) => {
     const commands = registeredCommands(handler);
     const brokerCommands = commands.filter(command => /(?:capability|broker)/i.test(command)).sort();
     if (brokerCommands.length === 0) return {implemented: false, commands};
 
-    assert.deepEqual(brokerCommands, [ACK_COMMAND, ...TRANSPORT_COMMANDS].sort(),
-        'the native boundary must register exactly the acknowledgement and the disjoint transport');
+    assert.deepEqual(brokerCommands, [ACK_COMMAND, ...TRANSPORT_COMMANDS, ...SEMANTIC_COMMANDS].sort(),
+        'the native boundary must register exactly the acknowledgement, the disjoint transport and the semantic pair');
+    // Every semantic command binds the broker label too, and none of them may grant authority.
+    for (const command of SEMANTIC_COMMANDS) {
+        const body = fnBody(capability, command);
+        assert.match(body, /broker_only\(&window\)\?;/,
+            `${command} must bind its caller label before dispatch`);
+        assert.doesNotMatch(body, /grant_transport_once/, `${command} must not grant capabilities`);
+    }
+    // The executor is the whole semantic surface, and it must stay a single read.
+    assert.match(capability, /fn execute\(operation: Operation\)[\s\S]{0,400}Operation::PlatformKindRead/,
+        'the only semantic operation is platform.kind.read');
+    assert.doesNotMatch(capability, /std::process|Command::new|fs::(read|write)|reqwest|TcpStream/,
+        'the semantic executor must not reach the filesystem, the network or a subprocess');
     assert.match(transport, /pub\(crate\)\s+const\s+BROKER_LABEL\s*:\s*&str\s*=\s*"capability-broker"\s*;/,
         'the broker caller label must be a single Rust constant');
     assert.match(transport, /pub\(crate\)\s+const\s+MAIN_LABEL\s*:\s*&str\s*=\s*"main"\s*;/,
@@ -138,6 +153,7 @@ const liveInputs = () => ({
     handler: readFileSync(path.join(tauri, 'src/lib.rs'), 'utf8'),
     broker: readFileSync(path.join(tauri, 'src/native_broker.rs'), 'utf8'),
     adapter: readFileSync(path.join(tauri, 'src/native_broker_adapter.rs'), 'utf8'),
+    capability: readFileSync(path.join(tauri, 'src/native_capability.rs'), 'utf8'),
     transport: readFileSync(path.join(tauri, 'src/native_broker_transport.rs'), 'utf8'),
     config: readJson(path.join(tauri, 'tauri.conf.json')),
     capabilities: readdirSync(path.join(tauri, 'capabilities'))
@@ -178,7 +194,16 @@ test('topology contract rejects independently weakened boundaries', () => {
         input => { input.runtime.find(c => c.identifier === 'native-capability-broker').webviews = ['main']; },
         input => { input.runtime.find(c => c.identifier === 'native-capability-broker').windows = [BROKER_LABEL]; },
         input => { input.handler = input.handler.replace(
-            'native_broker_adapter::native_broker_reply,', ''); }
+            'native_broker_adapter::native_broker_reply,', ''); },
+        input => { input.capability = input.capability.replace(
+            'broker_only(&window)?;\n    let mut bytes', 'let mut bytes'); },
+        input => { input.capability = input.capability.replace(
+            'broker_only(&window)?;\n    // A malformed lease', '// A malformed lease'); },
+        input => { input.capability = input.capability.replace(
+            'Operation::PlatformKindRead', 'Operation::SomethingElse'); },
+        input => { input.capability = input.capability.replace(
+            'fn execute(operation: Operation)', 'fn execute_renamed(operation: Operation)'); },
+        input => { input.capability += '\nfn escape() { let _ = std::process::Command::new("sh"); }\n'; }
     ];
     const survivors = [];
     mutations.forEach((mutate, index) => {

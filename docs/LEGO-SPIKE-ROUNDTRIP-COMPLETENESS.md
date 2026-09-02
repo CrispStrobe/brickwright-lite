@@ -134,15 +134,26 @@ integrates onto current remote defaults, and owns every acceptance and push.
   variable, a second, correct-but-uninitialized one is created beside it. Minimal repro against the
   vendored copy:
 
-  | source | variables produced |
+  | source | produced |
   | --- | --- |
-  | `GLOBAL dist = 0`, used later | `["dist = 0", "dist"]` |
-  | `GLOBAL dist`, used later | `["dist"]` (correct) |
-  | `GLOBAL dist = 0`, never used | `["dist = 0"]` |
-  | `GLOBAL score = 7`, used later | `["score = 7", "score"]` |
+  | `GLOBAL dist = 0` | variable named `dist = 0` |
+  | `LOCAL n = 3` | variable named `n = 3` |
+  | `GLOBAL LIST xs = [1,2]` | list named `xs = [1,2]` |
+  | `LOCAL LIST ys = []` | list named `ys = []` |
+  | `GLOBAL dist` (bare) | variable named `dist` (correct) |
+  | `GLOBAL LIST xs` (bare) | list named `xs` (correct) |
 
-  The emitter has the matching hole: `sb3Creator.js:5635` writes `GLOBAL ${v[0]}` with no initializer
-  concept, so even a corrected parse would not round-trip the value. This belongs to sb3-creator and its
+  **Corrected 2026-09-02: the defect is four forms wide, not one.** My first table recorded only the
+  scalar `GLOBAL` case; bw-ci measured the other three and I re-verified all four independently against
+  the vendored copy. The same shape sits at `sb3Creator.js:5095` for the LIST form, and neither regex
+  excludes `LOCAL`. Two consequences worth having before anyone starts: the LIST case is the nastier
+  one, because `xs = [1,2]` becomes a NAME containing brackets and a comma, so any later display or
+  round trip carries a name that reads like a literal; and `LOCAL` names are scoped per target
+  (`${currentTarget.name}:${name}` in `declaredLocals`), so a corrupted LOCAL cannot collide across
+  sprites and is correspondingly less likely to be noticed by eye than the GLOBAL that surfaced here.
+  The emitter hole is four-wide to match — `5635` `GLOBAL ${v[0]}`, `5636` `GLOBAL LIST ${l[0]}` and the
+  `LOCAL` pair near `5653` — so a corrected parse alone would not round-trip an initializer in any of
+  the four. This belongs to sb3-creator and its
   lane, NOT to this claim and NOT to lite — the vendored copy must not be edited in place (house rule 5).
   Recorded here rather than fixed here, and deliberately not re-vendored: lite's `main` had been green
   for minutes when this was found, and a sb3-creator re-vendor is a pin change that deserves its own
