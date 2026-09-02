@@ -75,8 +75,12 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
             // which is the only channel out of here that needs neither. It trips the realm guard
             // and revokes by design — the boundary is already known not to work.
             if matches!(payload.event(), PageLoadEvent::Finished) {
+                // A PATH, not a hash: setting location.hash is a SAME-DOCUMENT navigation and never
+                // reaches the navigation handler, so the first probe fired and its answer went
+                // nowhere. location.replace to another path is a real navigation, which on_navigation
+                // receives (and denies — it is a diagnostic, and the boundary is already broken).
                 let _ = webview.eval(
-                    "try{location.hash='#probe='+[typeof globalThis.__TAURI_INTERNALS__,                     typeof globalThis.__brickwrightBrokerReceive,                     typeof globalThis.__brickwrightInstallBrokerHost,                     String(document.title).slice(0,80)].join('|')}catch(e){}",
+                    "try{location.replace('tauri://localhost/__brokerprobe__'+encodeURIComponent([typeof globalThis.__TAURI_INTERNALS__,typeof globalThis.__brickwrightBrokerReceive,typeof globalThis.__brickwrightInstallBrokerHost,String(document.title).slice(0,60)].join('|')))}catch(e){}",
                 );
             }
             handle_page_load(payload.event(), &page_seen, || {
