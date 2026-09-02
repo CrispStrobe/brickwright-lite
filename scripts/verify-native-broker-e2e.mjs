@@ -168,8 +168,31 @@ try {
         realms.push({handle, ...(seen.body?.value || {error: 'unreadable'})});
     }
     console.log('realms: ' + JSON.stringify(realms, null, 1));
-    // Return to the editor before probing it.
-    if (handles.length) await call('POST', `/session/${session}/window`, {handle: handles[0]});
+    // Select the editor by IDENTITY, never by position. This read `handles[0]` until the broker
+    // realm started loading its document: a second realm then appeared, the order was not the one
+    // assumed, and the probe ran INSIDE the broker — where `native_broker_audit` is refused by
+    // design, because it is bound to the main label. The harness reported that as "the boundary
+    // is broken" when the boundary was working correctly and the harness was standing in the
+    // wrong room. A gate that identifies its subject positionally asserts about whatever is at
+    // that index.
+    const isBroker = realm => /capability-broker\.html/.test(String(realm.href));
+    const editors = realms.filter(realm => !isBroker(realm));
+    const brokers = realms.filter(isBroker);
+    if (editors.length !== 1) {
+        await fail(`expected exactly one editor realm, found ${editors.length}: ` +
+            JSON.stringify(realms.map(r => r.href)));
+    }
+    if (brokers.length !== 1) {
+        await fail(`expected exactly one broker realm, found ${brokers.length}: ` +
+            JSON.stringify(realms.map(r => r.href)));
+    }
+    // The realm must hold its OWN document. It rendered WebKit's "The URL can't be shown" page
+    // for seven CI runs while every other signal looked healthy, so this is asserted, not assumed.
+    if (!/Capability Broker/.test(String(brokers[0].doc) + String(brokers[0].title))) {
+        await fail('the broker realm did not load its document: ' +
+            JSON.stringify({title: brokers[0].title, doc: String(brokers[0].doc).slice(0, 160)}));
+    }
+    await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
 
     const outcome = await evaluate(probe);
     if (!outcome || outcome.fatal) await fail(outcome?.fatal || 'the probe returned nothing');
