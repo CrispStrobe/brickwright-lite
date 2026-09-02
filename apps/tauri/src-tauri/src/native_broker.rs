@@ -67,6 +67,18 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
             eprintln!("[broker] page-load {:?} url={} title={}", payload.event(),
                 webview.url().map(|u| u.to_string()).unwrap_or_else(|_| "<none>".into()),
                 webview.title().unwrap_or_else(|_| "<none>".into()));
+            // DIAGNOSTIC (temporary, see LANES): four hypotheses about why the acknowledgement
+            // never fires have been falsified, and "the init script ran and threw" is still
+            // indistinguishable from "it never ran". This asks the realm directly. eval() is a
+            // Rust-side WebKit call, so it works whether or not the document's CSP admits
+            // scripts and whether or not Tauri's IPC exists; the answer returns as a navigation,
+            // which is the only channel out of here that needs neither. It trips the realm guard
+            // and revokes by design — the boundary is already known not to work.
+            if matches!(payload.event(), PageLoadEvent::Finished) {
+                let _ = webview.eval(
+                    "try{location.hash='#probe='+[typeof globalThis.__TAURI_INTERNALS__,                     typeof globalThis.__brickwrightBrokerReceive,                     typeof globalThis.__brickwrightInstallBrokerHost,                     String(document.title).slice(0,80)].join('|')}catch(e){}",
+                );
+            }
             handle_page_load(payload.event(), &page_seen, || {
                 let _ = page_policy.revoke_all(LABEL);
                 page_app
@@ -97,6 +109,7 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
 }
 
 fn handle_navigation(url: &tauri::Url, revoke: impl FnOnce()) -> bool {
+    eprintln!("[broker] navigation attempt url={url}");
     let allowed = is_exact_local_document(url);
     if !allowed {
         revoke();
