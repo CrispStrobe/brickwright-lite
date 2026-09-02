@@ -291,10 +291,57 @@ try {
         await fail(`no allowed platform.kind.read row in the audit: ${recorded.slice(0, 300)}`);
     }
 
+    // ── CP3-D2 (lifecycle half): a navigation attempt must leave ZERO stale authority ──────
+    // The realm guard denies any navigation away from its own document AND revokes on the way
+    // past. Proving the denial alone would be half a gate: the interesting claim is that the
+    // authority already handed out stops working, not that the page stayed put.
+    await call('POST', `/session/${session}/window`, {handle: brokers[0].handle});
+    const lifecycle = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            const invoke = globalThis.__TAURI_INTERNALS__.invoke;
+            const lease = ${JSON.stringify(slice.lease)};
+            try { globalThis.location.href = 'tauri://localhost/index.html'; } catch (error) {}
+            // The navigation is handled on the Rust side; give it a moment to be refused.
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const still = {href: String(globalThis.location.href)};
+            // sequence 1 is the NEXT legitimate sequence for this lease, so a refusal here is
+            // revocation and not the replay guard firing again.
+            try {
+                still.after = {ok: true, value: await invoke('native_broker_invoke', {
+                    lease, sequence: 1, operation: 'platform.kind.read', resource: 'platform/default', args: {}
+                })};
+            } catch (error) { still.after = {ok: false, error: String(error)}; }
+            done(still);
+        })();`);
+    if (!lifecycle) await fail('the lifecycle probe returned nothing');
+    if (!/capability-broker\.html/.test(lifecycle.href)) {
+        await fail(`the realm navigated away from its document: ${lifecycle.href}`);
+    }
+    if (lifecycle.after.ok) {
+        await fail('a lease minted before a refused navigation still authorised a call ' +
+            `afterwards (returned ${JSON.stringify(lifecycle.after.value)}) — the revocation on ` +
+            'the navigation path is not reaching the policy');
+    }
+
+    await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
+    const revoked = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try { done({ok: true, rows: await globalThis.__TAURI_INTERNALS__.invoke('native_broker_audit')}); }
+            catch (error) { done({ok: false, error: String((error && error.message) || error)}); }
+        })();`);
+    if (!revoked || !revoked.ok) await fail(`could not read the audit after revocation: ${revoked && revoked.error}`);
+    if (!revoked.rows.some(row => row.decision === 'revoked')) {
+        await fail('the revocation is not visible in the diagnostics the learner can see: ' +
+            JSON.stringify(revoked.rows).slice(0, 300));
+    }
+
     console.log(`PASS: acknowledgement reached the ACL; platform.kind.read returned ${JSON.stringify(slice.value)} ` +
         `through a broker-minted lease and is recorded in the audit (${before} -> ${after.rows.length} rows, ` +
         'lease and result both absent from what the editor can see); a replayed sequence was refused; ' +
-        'editor refused native_broker_reply and native_broker_lease at the real Tauri boundary');
+        'editor refused native_broker_reply and native_broker_lease at the real Tauri boundary; ' +
+        'a refused navigation revoked the outstanding lease and the revocation is visible in the audit');
     await shutdown();
     process.exit(0);
 } catch (error) {
