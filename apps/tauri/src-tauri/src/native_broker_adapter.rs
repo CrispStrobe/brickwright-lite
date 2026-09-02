@@ -3,6 +3,7 @@
 
 use crate::native_broker_transport::{BrokerTransportCore, RelayLimits, BROKER_LABEL, MAIN_LABEL};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 use std::time::Instant;
@@ -12,6 +13,20 @@ use tokio::sync::oneshot;
 type OriginKey = (String, u64);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
+// Tauri's RuntimeCapability::build() parses with `.expect("invalid capability")`, so malformed
+// JSON here would panic rather than refuse. That is survivable only because these two files are
+// compiled in and re-parsed by `tauri-app-command-acl` and `tauri-broker-topology` on every test
+// run: a capability that cannot parse fails CI long before it can reach a user's machine.
+//
+// The two transport halves are reviewed JSON, compiled in, and disjoint by construction: the
+// main webview may open/request/tear down its own side and can never reply; the broker webview
+// may reply and tear down and can never open a session. Neither is present in `capabilities/`,
+// so neither exists at startup — `native_broker_ready` is the only way they are ever granted.
+const MAIN_TRANSPORT_CAPABILITY: &str =
+    include_str!("../runtime-capabilities/native-broker-main.json");
+const BROKER_TRANSPORT_CAPABILITY: &str =
+    include_str!("../runtime-capabilities/native-capability-broker.json");
+
 struct Inner {
     relay: BrokerTransportCore,
     origins: HashMap<OriginKey, oneshot::Sender<Result<String, String>>>,
@@ -19,6 +34,7 @@ struct Inner {
 
 pub(crate) struct NativeBrokerAdapter {
     epoch: Instant,
+    granted: AtomicBool,
     inner: Mutex<Inner>,
 }
 
@@ -43,6 +59,7 @@ impl NativeBrokerAdapter {
     pub(crate) fn new() -> Self {
         Self {
             epoch: Instant::now(),
+            granted: AtomicBool::new(false),
             inner: Mutex::new(Inner {
                 relay: BrokerTransportCore::new(limits()).expect("fixed relay limits are valid"),
                 origins: HashMap::new(),
@@ -63,6 +80,21 @@ impl NativeBrokerAdapter {
                 Err("broker unavailable".into())
             }
         }
+    }
+
+    /// Grant the two disjoint transport halves, exactly once, and only from the acknowledgement
+    /// path. `swap` claims the right to grant BEFORE either capability is added, so a second
+    /// acknowledgement — a reload, a replayed invoke, a race — is refused rather than widening
+    /// the ACL a second time.
+    fn grant_transport_once(&self, app: &tauri::AppHandle) -> Result<(), String> {
+        if self.granted.swap(true, Ordering::SeqCst) {
+            return Err("broker refused".into());
+        }
+        for capability in [MAIN_TRANSPORT_CAPABILITY, BROKER_TRANSPORT_CAPABILITY] {
+            app.add_capability(capability)
+                .map_err(|_| "broker unavailable".to_owned())?;
+        }
+        Ok(())
     }
 
     pub(crate) fn revoke_broker(&self) {
@@ -208,6 +240,20 @@ fn accept_reply(
         .ok_or_else(|| "broker refused".to_owned())?;
     let _ = sender.send(Ok(reply.payload));
     Ok(())
+}
+
+/// The acknowledgement. The broker host calls this after its receiver globals are installed
+/// non-configurable and non-writable; until it lands no webview holds a transport permission,
+/// so an editor that somehow reached `native_broker_request` is refused by the ACL and not by
+/// this module. It carries no arguments on purpose: there is nothing a caller could influence.
+#[tauri::command]
+pub(crate) fn native_broker_ready(
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+    state: State<'_, NativeBrokerAdapter>,
+) -> Result<(), String> {
+    exact_label(&window, BROKER_LABEL)?;
+    state.grant_transport_once(&app)
 }
 
 #[tauri::command]

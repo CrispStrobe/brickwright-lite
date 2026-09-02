@@ -169,7 +169,7 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   worker/source path. DoD: real browser load/register/call/terminate succeeds
   offline; remote/script/nested-worker/loopback variants stay red; bundle
   staleness and Linux/macOS/Windows custom-origin behavior are proved.
-- [ ] **CP3-C5d — transport registration and ACK (45–75 minutes).** Register the
+- [x] **CP3-C5d — transport registration and ACK (45–75 minutes).** Register the
   disjoint main/broker transport commands only after the host acknowledges its
   immutable receiver, grant exact webview-scoped generated ACLs, and keep every
   semantic native operation absent. DoD: injected caller, ACL, label, ordering,
@@ -192,6 +192,34 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   GitHub workflows are green, artifacts show the real vertical slice with zero
   page errors, and every mobile/native limitation is either closed or an
   explicit fail-closed verdict rather than an implied compatibility claim.
+
+CP3-C5d: startup grants exactly one broker permission — `allow-native-broker-ready`, scoped to the
+broker webview by `capabilities/native-broker-ack.json`. The five transport commands are granted
+only inside the acknowledgement, by `Manager::add_capability` over the two reviewed files in
+`runtime-capabilities/`: `native-broker-main` (webviews `[main]`: open, request, main_teardown)
+and `native-capability-broker` (webviews `[capability-broker]`: reply, teardown). Disjoint by
+construction, `windows: []`, desktop platforms only. `granted.swap(true, SeqCst)` claims the one
+shot before either capability is added, so a reload or replayed invoke is refused rather than
+widening the ACL twice; the bootstrap acknowledges LAST, after its receiver globals are
+non-configurable and non-writable. Every broker entry in `generate_handler!` is `#[cfg(desktop)]`,
+so mobile registers no transport command at compile time rather than merely lacking a grant.
+
+Two structural gates had to be revised, because both predated the disjoint design and one
+contradicted this DoD outright: `tauri-app-command-acl` asserted that main must receive EVERY
+registered command's permission — including `allow-native-broker-reply`. Both were revised to be
+strictly stronger (main holds exactly the non-broker allows and provably none of the broker ones;
+the two halves must be disjoint; the ack capability may carry nothing else) and every new
+assertion is mutation-proved. Writing them exposed three gates that could not fail: a fixed-width
+search window that matched the NEXT command's label check, a non-greedy handler regex that
+`#[cfg(desktop)]` truncated so an 'adapter remains unregistered' assertion read an empty string,
+and an injected-command mutation matched on the final path segment so `native_broker::invoke`
+passed as `invoke`. All three now brace-match or match full paths.
+
+Evidence: nine Node suites, 53 tests, 0 failures — topology 2/2 (15 mutations), ACL 2/2 (18),
+shell 2/2 (28), adapter 2/2, assets-package 4, bootstrap 12, worker-host 13, extension-worker 11,
+proof-package 5. `cargo check` clean: 0 errors, 0 warnings. The full `cargo test` and clippy are
+CI's: four local attempts were SIGKILLed mid-codegen with no diagnostics on a 7 GB box whose swap
+was full, which is an environment verdict and not a code one. Still open in CP3: D1, D2 and E.
 
 CP3-C5c3 landed at `1a5636953`: the generated no-chunk host and fixed worker now consume the
 one-shot factory inside the same document-start script, so the staged entrypoint is no longer

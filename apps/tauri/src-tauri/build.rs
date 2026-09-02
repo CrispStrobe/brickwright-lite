@@ -60,6 +60,17 @@ fn main() {
         "scratchlink_bridge_open",
         "scratchlink_bridge_send",
         "scratchlink_bridge_close",
+        // Desktop-only broker transport. These are registered behind `#[cfg(desktop)]` in
+        // `generate_handler!`, and NONE of them is granted by `capabilities/default.json`:
+        // `native_broker_ready` is scoped to the broker webview, and the other five are granted
+        // only at runtime, after that acknowledgement, by the two disjoint reviewed capabilities
+        // in `runtime-capabilities/`.
+        "native_broker_ready",
+        "native_broker_open",
+        "native_broker_request",
+        "native_broker_reply",
+        "native_broker_main_teardown",
+        "native_broker_teardown",
     ];
     tauri_build::try_build(
         tauri_build::Attributes::new()

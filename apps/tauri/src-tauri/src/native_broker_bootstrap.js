@@ -125,6 +125,12 @@ const installNativeBrokerReceiver = options => {
         configurable: false, enumerable: false, writable: false});
     if (typeof globalThis.addEventListener === 'function') globalThis.addEventListener('pagehide', control.dispose,
         {once: true});
+    // Acknowledge LAST. Every receiver global above is already installed non-configurable and
+    // non-writable, so the acknowledgement cannot be sent by a realm that has not finished
+    // becoming the receiver. The host holds no transport permission until this resolves, which
+    // is why the order matters rather than merely reads well: acknowledging first would widen
+    // the ACL around a receiver that might still fail to install.
+    options.invoke('native_broker_ready').catch(() => control.dispose());
     return control;
 };
 

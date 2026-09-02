@@ -1,0 +1,12 @@
+{
+  "identifier": "native-capability-broker",
+  "description": "Broker-webview half of the broker transport. Added at runtime only after the broker host acknowledges its immutable receiver. Disjoint from the main half: the editor can never reply, the broker can never open or request.",
+  "local": true,
+  "windows": [],
+  "webviews": ["capability-broker"],
+  "platforms": ["linux", "macOS", "windows"],
+  "permissions": [
+    "allow-native-broker-reply",
+    "allow-native-broker-teardown"
+  ]
+}

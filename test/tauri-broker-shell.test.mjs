@@ -98,9 +98,27 @@ const audit = ({rust, lib, html}) => {
     const setupAt = lib.indexOf('.setup(');
     assert.ok(manageAt !== -1 && setupAt !== -1 && manageAt < setupAt,
         'native policy state must be managed before broker setup');
-    const handler = balancedBody(lib, 'tauri::generate_handler!', '[', ']');
-    assert.doesNotMatch(handler, /native_(?:broker|policy)|capability|broker/i,
-        'the inert shell must not register a native broker command');
+    const handler = balancedBody(lib, 'tauri::generate_handler!', '[', ']')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    // C5d registers TRANSPORT, and only transport. The shell stayed inert for as long as it
+    // could; what must stay true now is narrower and more useful than "no broker command":
+    // the registered broker surface is exactly the acknowledgement plus the five relay
+    // commands, and no SEMANTIC native operation has slipped in beside them (that is D1's
+    // job, behind its own lease). An unrecognised broker-ish command fails here.
+    const ALLOWED_BROKER_COMMANDS = new Set(['native_broker_ready', 'native_broker_open',
+        'native_broker_request', 'native_broker_reply', 'native_broker_main_teardown',
+        'native_broker_teardown']);
+    // Match on the FULL path, not the final segment: `native_broker::invoke` is broker-ish in
+    // its module and innocuous in its name, and checking only the name let it through.
+    const registered = handler.split(',')
+        .map(entry => entry.replace(/^#\[\s*cfg\([^)]*\)\s*\]/, '').trim())
+        .filter(Boolean);
+    for (const path of registered.filter(entry => /native_(?:broker|policy)|capability|broker/i.test(entry))) {
+        assert.ok(ALLOWED_BROKER_COMMANDS.has(path.split('::').at(-1)),
+            `${path} is not a reviewed broker transport command`);
+    }
+    assert.doesNotMatch(handler, /platform_kind|platform\.kind|native_broker_invoke|capability_broker::invoke/i,
+        'no semantic native operation may be registered at this checkpoint');
 
     assert.doesNotMatch(html, /<script\b|<link\b|<iframe\b|<object\b|<embed\b|<img\b|<audio\b|<video\b/i,
         'the broker document must be inert and carry no executable or fetched subresources');

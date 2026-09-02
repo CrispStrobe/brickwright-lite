@@ -1,0 +1,13 @@
+{
+  "identifier": "native-broker-main",
+  "description": "Main-webview half of the broker transport. Added at runtime only after the broker host acknowledges its immutable receiver, never at startup. Carries no semantic native operation.",
+  "local": true,
+  "windows": [],
+  "webviews": ["main"],
+  "platforms": ["linux", "macOS", "windows"],
+  "permissions": [
+    "allow-native-broker-open",
+    "allow-native-broker-request",
+    "allow-native-broker-main-teardown"
+  ]
+}

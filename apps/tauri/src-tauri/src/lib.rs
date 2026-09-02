@@ -76,7 +76,22 @@ pub fn run() {
             pico::pico_flash_uf2,
             scratchlink::bridge::scratchlink_bridge_open,
             scratchlink::bridge::scratchlink_bridge_send,
-            scratchlink::bridge::scratchlink_bridge_close
+            scratchlink::bridge::scratchlink_bridge_close,
+            // Transport only, desktop only. Registration is not authority: every one of these
+            // is unreachable until `native_broker_ready` grants the runtime capabilities, and
+            // mobile never compiles them in at all.
+            #[cfg(desktop)]
+            native_broker_adapter::native_broker_ready,
+            #[cfg(desktop)]
+            native_broker_adapter::native_broker_open,
+            #[cfg(desktop)]
+            native_broker_adapter::native_broker_request,
+            #[cfg(desktop)]
+            native_broker_adapter::native_broker_reply,
+            #[cfg(desktop)]
+            native_broker_adapter::native_broker_main_teardown,
+            #[cfg(desktop)]
+            native_broker_adapter::native_broker_teardown
         ])
         .manage(scratchlink::bridge::BridgeState::default())
         .setup(move |app| {
