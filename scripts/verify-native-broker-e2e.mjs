@@ -375,6 +375,14 @@ try {
             JSON.stringify(revoked.rows).slice(0, 300));
     }
 
+    // The app's own trace, on success as well as failure. It was printed only by fail(), so the
+    // evidence artifact carried a PASS line asserting the acknowledgement happened and nothing
+    // showing it — the reader had to take the assertion's word for the thing it asserts. These
+    // are the broker's `[broker] …` eprintln lines, picked out of the driver's stream.
+    const brokerTrace = driverLog.join('').split('\n').filter(line => line.includes('[broker]'));
+    if (brokerTrace.length) console.log('--- broker trace ---\n' + brokerTrace.join('\n'));
+    else console.log('--- broker trace --- (none captured; the app printed no [broker] lines)');
+
     console.log(`PASS: acknowledgement reached the ACL; platform.kind.read returned ${JSON.stringify(slice.value)} ` +
         `through a broker-minted lease and is recorded in the audit (${before} -> ${after.rows.length} rows, ` +
         'lease and result both absent from what the editor can see); a replayed sequence was refused; ' +
