@@ -432,8 +432,22 @@ jobs:
             sleep 5
           done
           [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed after 3 attempts"; exit 1; }
+      # Every browser gate below hangs off THIS step's outcome, not
+      # playwright's, and each carries `!cancelled()` so a red gate no longer
+      # SKIPS its successors. GitHub folds an implicit `success()` into any
+      # `if:` naming no status function, so the old `steps.playwright.outcome ==
+      # 'success'` meant "playwright installed AND nothing has failed yet" —
+      # measured on 2026-09-02: one red gate (step 41 of 61) skipped 17 later
+      # gate steps covering 23 distinct verify scripts, on all 17 pushes of a
+      # 23-hour streak, while the run said only "build failed".
+      #
+      # Keyed on `serve` rather than `playwright` ON PURPOSE. `serve` is itself
+      # skipped when playwright fails, so this still covers that case — and it
+      # additionally stops 30 gates from being fired at a dead HTTP server, each
+      # burning its own navigation timeout, if the server never came up.
       - name: Serve the built app
         if: steps.playwright.outcome == 'success'
+        id: serve
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
           for i in $(seq 1 30); do curl -sf http://localhost:8617/ >/dev/null && break; sleep 1; done
@@ -444,13 +458,13 @@ jobs:
       # itself on every run, so a scenario that stops biting says so here rather
       # than passing quietly for years the way the white-screen path did.
       - name: Browser gate — service worker failure modes
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-service-worker.mjs
       - name: Browser gate — circuit UX
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
       - name: Browser gate — circuit rendering and placement
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs
 
       # Physical product proof for the 74C922 gallery bench. This deliberately
@@ -458,7 +472,7 @@ jobs:
       # the rendered LEDs: a dead X/Y wire, swapped code bit, stale example, or
       # non-interactive face can all pass the model's isolated unit tests.
       - name: Browser gate — physical 74C922 keypad encoder
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-74c922-keypad.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -486,7 +500,7 @@ jobs:
       # sentence ("Total circuit current is …") — the warning that names the
       # largest consumers and offers a fix.
       - name: Browser gate — the DRC can sum chip current
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-drc-current.mjs
 
       # Same reasoning as the labwired and debugger shots below: a screenshot
@@ -500,19 +514,19 @@ jobs:
           path: artifacts/drc-current-*.png
           if-no-files-found: warn
       - name: Browser gate — view buttons
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs
       - name: Browser gate — editor
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor.mjs
       - name: Browser gate — unpinned extension sandbox
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-extension-sandbox.mjs
       - name: Browser gate — game gallery and hardware examples
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs
       - name: Browser gate — both BASIC profiles execute on real machines
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-basic-run.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
@@ -522,7 +536,7 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — declared extension capability broker
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           mkdir -p artifacts/capability-broker
           PROOF_URL=http://localhost:8617/ \
@@ -536,13 +550,13 @@ jobs:
           path: artifacts/capability-broker/*
           if-no-files-found: error
       - name: Browser gate — first-run chooser and guided journeys
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lego-spike-roundtrip.mjs
       - name: Browser gate — four-surface project save, reopen and vanilla replacement
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-project-bundle-integrity.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
@@ -563,7 +577,7 @@ jobs:
           path: artifacts/starter-journeys/*.png
           if-no-files-found: warn
       - name: Browser gates — About, intro, interaction, and schematic rendering
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-about-dialog.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-intro.mjs
@@ -579,7 +593,7 @@ jobs:
             artifacts/schematic-production/*.png
           if-no-files-found: warn
       - name: Browser gates — Code chrome, Controller, faceplates, and Instruments
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-chrome-sweep.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-controller-panel.mjs
@@ -597,14 +611,14 @@ jobs:
             artifacts/verify-instruments-scroll-*
           if-no-files-found: warn
       - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-aurora65-workstation.mjs
       # The debugger dock has now regressed to a blank pane twice, and the
       # serial console was output-only for as long as it existed. Both are
       # invisible to every unit suite: one is a chunk that was never
       # requested, the other a machine that could not be answered.
       - name: Browser gate — debugger dock and serial input
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
 
       # The heavy simulation tier. Everything else about it — the adapter, the
@@ -618,7 +632,7 @@ jobs:
       # remote compiler is unreachable, since neither is a regression in this
       # repo — but the engine IS fetched above, so in CI it runs for real.
       - name: Browser gate — the labwired heavy tier actually executes
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-labwired-engine.mjs
 
       # The OTHER branch of the same honesty rule, and the one production
@@ -628,7 +642,7 @@ jobs:
       # by the gate's own server — proving it against a second, artifact-less
       # build would leave open whether the two builds differed elsewhere.
       - name: Browser gate — with no engine artifact, the tier is not offered
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-labwired-engine.mjs --absent
 
       # Both gates above screenshot what they saw, and a screenshot that only
@@ -649,14 +663,14 @@ jobs:
       # Chromium, then proves the local image can attach, cycle-step, expose
       # source-linked scheduler state, and halt on a real write watchpoint.
       - name: Browser gate — offline 8051 compile and debugger evidence
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
 
       # Listing mode shares the compiler but not the consumer path above. This
       # proof changes the source, exports two distinct linked .rst listings,
       # and aborts hosted compiler POSTs before they leave Chromium.
       - name: Browser gate — offline linked 8051 assembly listings
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-local-asm-listing.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -682,7 +696,7 @@ jobs:
       # stop matching, the build goes for the hosted compiler, and the run fails
       # honestly instead of stepping through firmware nobody compiled.
       - name: Browser gate — an AVR lesson bench starts offline on its shipped image
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-offline-lesson-image.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -695,7 +709,7 @@ jobs:
       # Run this short, independently green extension proof after the two heavy
       # labwired journeys, keeping the earlier product sweep's peak memory flat.
       - name: Browser gate — promoted pinned extension worker
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           mkdir -p artifacts/pinned-worker
           PROOF_URL=http://localhost:8617/ \
@@ -713,7 +727,7 @@ jobs:
       # blank pane twice. This gate existed for it and was never run by CI — so
       # it rotted until it could not get past its first click, and nobody knew.
       - name: Browser gate — the debugger-only pane and its round trip
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-debugger-solo.mjs
 
       # The navigator.bluetooth shim the LEGO extensions depend on inside the
@@ -721,14 +735,14 @@ jobs:
       # worst possible time for it to regress unnoticed — and it was one of the
       # four gates that still passed while nothing ran it.
       - name: Browser gate — the native Web Bluetooth shim
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-bluetooth.mjs
 
       # The MakeCode importer lives behind a dynamic import(), so a webpack
       # misconfiguration would show up in a browser and in no unit test —
       # and the routing from the Open button is JSX that nothing else runs.
       - name: Browser gate — MakeCode import
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
 
       # Both of these were on the KNOWN_UNWIRED list as FAILING, and both
@@ -739,11 +753,11 @@ jobs:
       # The MicroPython tab and the simulator are the far end of the MakeCode
       # importer, so they belong next to the gate above.
       - name: Browser gate — micro:bit MicroPython tab and simulator
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit.mjs
 
       - name: Browser gate — micro:bit debugger, block and line stepping
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-debug-toggle.mjs
       # The Arduboy console is the only thing in the app that RUNS a
       # compiled binary rather than translating source, so "the unit tests
@@ -751,7 +765,7 @@ jobs:
       # reads pixels back off the canvas, and checks they keep changing —
       # one frame and a freeze is exactly what a stalled boot looks like.
       - name: Browser gate — Arduboy console runs a compiled game
-        if: steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arduboy.mjs
       # MEASURE the browser waits, on a runner instead of a developer box.
       #
@@ -779,7 +793,7 @@ jobs:
       # keeps that observation instead of discarding the run that produced it.
       - name: Measure — time every browser wait (manual runs only)
         id: waits
-        if: github.event_name == 'workflow_dispatch' && steps.playwright.outcome == 'success'
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && steps.serve.outcome == 'success' }}
         run: |
           for g in verify-circuit-ux verify-circuit-rendering verify-view-buttons \
                    verify-editor verify-debug-dock; do
