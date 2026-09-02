@@ -137,7 +137,13 @@ jobs:
       # difference is invisible until something reads the DOM.
       - name: Build the app against the frontend just assembled
         run: |
-          touch apps/tauri/src-tauri/build.rs
+          # Measured: the broker realm rendered WebKit's "The URL can't be shown" page, so
+          # tauri://localhost/capability-broker.html was not being served even though the
+          # precondition above proves the file is in frontendDist. The main webview loads, so the
+          # protocol works and only this asset is missing — a stale embedded asset set. `touch
+          # build.rs` was not enough; the assets are baked into the crate by generate_context!,
+          # so the CRATE has to be rebuilt, not just its build script re-run.
+          cargo clean -p brickwright-tauri --manifest-path apps/tauri/src-tauri/Cargo.toml
           cargo build --manifest-path apps/tauri/src-tauri/Cargo.toml --features custom-protocol
 
       # A precondition, because six hypotheses were spent reading a symptom of this job's own
