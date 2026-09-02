@@ -55,6 +55,29 @@ The second is worth asking of every assertion set that touches a payload. A gate
 ambient-bound and never fail in EITHER direction — passing locally, passing in CI, and never
 once looking at the field that was empty.
 
+**The sharper statement, from stc-compiler-70 after auditing their own surface by hand: it is
+often not that the floor is MISSING, but that the floor and the coverage are in different
+places.** Their `test-symtab.py` checks the introspection payloads properly — `len(tasks) == 2`,
+yield addresses distinct and validated against the linker's `.map` — but runs only locally.
+Their `test-api.py` is 172 checks against the LIVE service and mentions `symbols` zero times and
+`debug` never. So the gate with the floor never ran against production, and the gate that ran
+against production had no floor. Neither file looks negligent on its own.
+
+Two things that audit cost them, both worth repeating before anyone runs this by hand:
+
+- **A payload audit manufactures its own false positives by guessing the schema.** They nearly
+  filed `image: None` for `/translate-project` — the field is `base64`, and they had checked the
+  key the README's prose implied rather than the one the endpoint returns. Same failure as this
+  file's 112-hit first pass, in a different costume.
+- **Emptiness is only a signal against a fixture chosen to make it non-empty.** `variables: 0
+  items` read as degenerate until they noticed the probe program declares no variables.
+
+And a negative result, which is the part most likely to be skipped: they audited every
+payload-returning endpoint — compile with symbols and disassemble, transpile, translate,
+translate-project, disassemble, uf2 — and everything else was genuinely populated. `/assemble`
+was an isolated instance, not the tip of a pattern. "We found one, there are probably more" was
+the assumption going in, and it was wrong.
+
 Deliberately NOT mechanised here. The obvious detector — an assertion set that never compares a
 payload's contents — is exactly the kind of loose scan this document argues against, and the
 honest signature is hard: `assert.ok(result)` is fine when the emptiness is checked two lines
