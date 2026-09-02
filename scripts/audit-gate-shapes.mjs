@@ -34,9 +34,24 @@
 import {readdirSync, readFileSync, statSync} from 'node:fs';
 import path from 'node:path';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const roots = ['test', 'scripts'];
+// `--root <dir>` scans one directory instead of the repository's own test/ and scripts/, so the
+// detectors can be exercised against fixtures. A rule that fires on nothing is indistinguishable
+// from a rule that is correct, and this sweep just went from 37 WINDOWED-SEARCH hits to 0.
+const rootFlag = process.argv.indexOf('--root');
+const root = rootFlag === -1
+    ? path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+    : path.resolve(process.argv[rootFlag + 1]);
+const roots = rootFlag === -1 ? ['test', 'scripts'] : ['.'];
 const strict = process.argv.includes('--strict');
+
+// The text of the line a match sits on, plus the line before it, so an exemption marker may
+// be written above a long expression instead of crammed onto its end.
+const lineTextOf = (text, index) => {
+    const start = text.lastIndexOf('\n', Math.max(0, index - 1)) + 1;
+    const prev = text.lastIndexOf('\n', Math.max(0, start - 2)) + 1;
+    const end = text.indexOf('\n', index);
+    return text.slice(prev, end === -1 ? text.length : end);
+};
 
 const walk = dir => {
     const out = [];
@@ -85,9 +100,47 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
     }
 
     // WINDOWED-SEARCH: a fixed-width slice used as if it were a scope.
+    //
+    // This detector used to ask "is there an assertion within 200 characters of the slice",
+    // which is a fixed window searched for a construct — the very shape it exists to find. It
+    // reported 37 suspects of which 34 were EVIDENCE truncation: the `.slice(0, 160)` in
+    // `check(label, labels.some(...), labels.join(' | ').slice(0, 160))` shortens a failure
+    // MESSAGE and is good practice, not a hazard. Only a slice whose result reaches a
+    // PREDICATE can make a gate lie, so the question is dataflow, not proximity.
+    const predicateAfter = /^\s*(?:\.(?:test|exec|match|includes|startsWith|endsWith|indexOf)\s*\(|={2,3}|!={1,2})/;
+    const predicateCaller = /(?:\.(?:test|exec)|assert\.(?:match|doesNotMatch|ok|equal|deepEqual|notEqual))\s*\($/;
     for (const m of text.matchAll(/\.slice\(\s*0\s*,\s*(\d{2,})\s*\)/g)) {
-        const around = text.slice(Math.max(0, m.index - 200), m.index + 200);
-        if (/(exec|match|test|includes|assert)\s*\(/.test(around)) {
+        const end = m.index + m[0].length;
+        // (a) the window is the receiver of a predicate, or an operand of an equality test.
+        let reaches = predicateAfter.test(text.slice(end, end + 24));
+        // (b) or the window is the FIRST argument of one — `/re/.test(body.slice(0, 600))`.
+        if (!reaches) {
+            let depth = 0;
+            for (let i = m.index; i >= 0 && m.index - i < 400; i--) {
+                const ch = text[i];
+                if (ch === ')') depth++;
+                else if (ch === '(') {
+                    if (depth === 0) { reaches = predicateCaller.test(text.slice(Math.max(0, i - 40), i + 1)); break; }
+                    depth--;
+                } else if (ch === ',' && depth === 0) break;  // a later argument: this is evidence
+            }
+        }
+        // Three ways a window that reaches a predicate is still sound:
+        //   - the expected value is an EMPTY literal, so a truncated prefix of a non-empty
+        //     actual still differs from it. `assert.deepEqual(bad.slice(0, 10), [])` shortens
+        //     the DIFF, never the verdict.
+        //   - the slice selects a row of a typed/array structure for a quantifier
+        //     (`[...cells.slice(0, 32)].every(...)`) — a domain, not a text window.
+        //   - the line is marked `gate-shapes-allow`, for the deliberate demonstrations. This
+        //     detector has now flagged its own documentation five times; a marker it must be
+        //     told about is honest, hardcoding its own filenames is how it learns to lie.
+        const tail = text.slice(end, end + 80);
+        const soundEmpty = /^\s*,\s*(?:\[\s*\]|''|""|``)\s*[,)]/.test(tail);
+        const soundDomain = /^\s*\]\s*\.(?:every|some|filter|map|reduce)\s*\(/.test(tail);
+        // From `raw`: blankComments has already erased the marker from `text`, and it blanks
+        // in place, so the index maps across unchanged.
+        const marked = /gate-shapes-allow/.test(lineTextOf(raw, m.index));
+        if (reaches && !soundEmpty && !soundDomain && !marked) {
             note(file, lineOf(text, m.index), 'WINDOWED-SEARCH',
                 `fixed ${m[1]}-char window searched as a scope — brace-match instead`);
         }

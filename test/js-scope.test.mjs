@@ -24,6 +24,7 @@ test('a neighbouring scope cannot satisfy an assertion', () => {
     // target's body would report green. The scope must not.
     const src = 'target (f) {\n  noop();\n}\nneighbour (f) {\n  readAsArrayBuffer(f);\n}\n';
     assert.doesNotMatch(scopeAfter(src, 'target (f) {'), /readAsArrayBuffer/);
+    // gate-shapes-allow: this window IS the defect, demonstrated deliberately.
     assert.match(src.slice(src.indexOf('target (f) {')).slice(0, 200), /readAsArrayBuffer/,
         'the window this replaces does find it — which is precisely the false green');
 });

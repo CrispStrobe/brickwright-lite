@@ -13,6 +13,8 @@
  */
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -25,8 +27,53 @@ const BASELINE = {
     'EVENT-AS-STATE': 12,
     'SEGMENT-MATCH': 1,
     'TRUNCATED-CAPTURE': 8,
-    'WINDOWED-SEARCH': 37
+    // 37 -> 0 on 2026-09-02: three real conversions to brace-matched scopes, and 34 that were
+    // never defects. The rule asked whether an assertion sat within 200 characters of the slice;
+    // it now asks whether the slice's RESULT reaches a predicate. Truncating a failure MESSAGE
+    // is good practice and made up the bulk of the old count.
+    'WINDOWED-SEARCH': 0
 };
+
+// The detector must still bite. Each fixture is a shape the rules exist to catch, or a sound
+// idiom they must leave alone; without these, tightening a rule to silence false positives is
+// indistinguishable from deleting it.
+const scan = source => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'gate-shapes-'));
+    writeFileSync(path.join(dir, 'fixture.mjs'), source);
+    const raw = execFileSync(process.execPath,
+        [path.join(root, 'scripts/audit-gate-shapes.mjs'), '--json', '--root', dir],
+        {cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024});
+    rmSync(dir, {recursive: true, force: true});
+    return JSON.parse(raw).findings.map(f => f.kind);
+};
+
+test('a window whose result reaches a predicate is still caught', () => {
+    assert.deepEqual(scan("assert.match(body.slice(0, 600), /guard/);"), ['WINDOWED-SEARCH']);  // gate-shapes-allow: the fixture IS the shape
+    assert.deepEqual(scan("if (/guard/.test(body.slice(0, 600))) ok();"), ['WINDOWED-SEARCH']);  // gate-shapes-allow: the fixture IS the shape
+    assert.deepEqual(scan("const hit = body.slice(0, 600).includes('guard');"), ['WINDOWED-SEARCH']);  // gate-shapes-allow: the fixture IS the shape
+});
+
+test('a window that only shortens a failure message is not a suspect', () => {
+    // The 34 that were never defects. `check(label, predicate, evidence)`: the third argument
+    // is prose for a human, and truncating it is the right thing to do.
+    assert.deepEqual(scan("check('the engines are offered', labels.length > 1, labels.join(' | ').slice(0, 160));"), []);
+    assert.deepEqual(scan("assert.ok(vars.includes('count'), `missing: ${JSON.stringify(vars.slice(0, 80))}`);"), []);
+});
+
+test('truncating a diff against an empty expectation cannot change a verdict', () => {
+    assert.deepEqual(scan("assert.deepEqual(degraded.slice(0, 10), [], 'none may degrade');"), []);
+});
+
+test('selecting a row of a structure is a domain, not a window', () => {
+    assert.deepEqual(scan("assert.ok([...level.cells.slice(0, 32)].every(c => c === 0), 'the sky is empty');"), []);
+});
+
+test('a deliberate demonstration may be marked, and the marker must be honoured', () => {
+    const demo = "assert.match(src.slice(0, 200), /call/); // gate-shapes-allow\n";
+    assert.deepEqual(scan(demo), []);
+    assert.deepEqual(scan(demo.replace(' // gate-shapes-allow', '')), ['WINDOWED-SEARCH'],
+        'removing the marker must bring the finding back, or the marker is a blanket silence');
+});
 
 test('no new gate-shape suspects', () => {
     const raw = execFileSync(process.execPath,

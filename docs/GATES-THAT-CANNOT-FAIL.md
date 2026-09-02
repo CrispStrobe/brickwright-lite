@@ -111,3 +111,47 @@ sb3-creator's `scripts/gate-inventory.mjs` is the prior art here and covers a di
 tautologies, corpus-driven vacuity (a loop over an empty collection emits zero subtests and
 reports a clean pass), filesystem-discovery vacuity, early returns, unguarded sibling skips.
 Run both; neither subsumes the other.
+
+## The detector was an instance of what it hunts (2026-09-02)
+
+The WINDOWED-SEARCH rule asked: *is there an `assert(` within 200 characters of this
+`slice(0, N)`?* That is a fixed window searched for a construct — the exact shape the rule
+exists to find, written into the finder. It reported **37 suspects; 34 were never defects.**
+
+The distinction it was missing is not proximity but **dataflow**:
+
+- A window whose result reaches a **predicate** can make a gate lie.
+  `assert.match(body.slice(0, 600), /guard/)` passes when the guard is deleted from the
+  method under test and a *neighbouring* method happens to have one.
+- A window that only shortens a **failure message** is good practice.
+  `check(label, labels.length > 1, labels.join(' | ').slice(0, 160))` truncates prose for a
+  human; the verdict is the second argument and is untouched.
+
+Two further sound idioms the tightened rule leaves alone, because in each the truncation
+provably cannot change a verdict:
+
+- `assert.deepEqual(degraded.slice(0, 10), [], …)` — shortens the DIFF, not the outcome: any
+  non-empty prefix still differs from `[]`.
+- `[...level.cells.slice(0, 32)].every(…)` — selects a *row* of a tilemap. A domain, not a
+  text window.
+
+After conversion and retightening: **37 → 0**, of which 3 were real
+(`test/makecode-ui-contract.test.mjs`, now brace-matched via `test/helpers/js-scope.mjs`).
+
+**The real conversions were not false-green today** — `openArtefactFile` measured 1473
+characters against a 1500-character window, a 27-character margin, so they were closer to
+false-RED. But the false-green is reachable and was demonstrated rather than argued: with the
+byte read moved into the next method and removed from the method under test, the window gate
+PASSES and the scope gate fails. That mutation is pinned in `test/js-scope.test.mjs`.
+
+### Two rules learned about writing detectors
+
+1. **A rule that fires on nothing is indistinguishable from a rule that is correct.** Going
+   37 → 0 is only meaningful because `audit-gate-shapes.mjs --root <dir>` now runs against
+   fixtures, and `test/gate-shapes.test.mjs` proves each shape is still caught, each sound
+   idiom is still ignored, and that removing an exemption marker brings the finding back.
+2. **A detector will flag its own material.** This one has now done it six times — its
+   documentation, its own source, and finally its own test fixtures. The fix is a marker it
+   must be told about (`gate-shapes-allow`, honoured per line and the line above), never a
+   hardcoded list of its own filenames: that is how a detector learns to lie about itself.
+
