@@ -140,6 +140,20 @@ jobs:
           touch apps/tauri/src-tauri/build.rs
           cargo build --manifest-path apps/tauri/src-tauri/Cargo.toml --features custom-protocol
 
+      # A precondition, because six hypotheses were spent reading a symptom of this job's own
+      # build as a verdict about the code under test. If the broker document is not where the
+      # config says it is, say so HERE rather than letting the harness report an empty realm.
+      - name: The frontend the config points at must contain the broker document
+        run: |
+          set -eu
+          dist=$(python3 -c "import json;print(json.load(open('apps/tauri/src-tauri/tauri.conf.json'))['build']['frontendDist'])")
+          root=apps/tauri/src-tauri
+          resolved=$(cd "$root" && cd "$dist" && pwd)
+          echo "frontendDist resolves to: $resolved"
+          ls -la "$resolved"
+          test -f "$resolved/capability-broker.html" \
+            || { echo "::error::capability-broker.html is absent from the frontend the app will embed"; exit 1; }
+
       - name: Drive the packaged broker boundary
         run: |
           xvfb-run -a dbus-run-session -- node scripts/verify-native-broker-e2e.mjs \
