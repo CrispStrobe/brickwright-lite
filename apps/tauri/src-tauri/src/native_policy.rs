@@ -140,7 +140,7 @@ impl LeaseId {
 
     /// Lowercase hex, so the id can be held by the ISOLATED broker webview and handed back on
     /// the next call. It never reaches the editor realm; see the module header.
-    pub(crate) fn to_hex(&self) -> String {
+    pub(crate) fn to_hex(self) -> String {
         let mut out = String::with_capacity(64);
         for byte in self.0 {
             out.push(char::from_digit(u32::from(byte >> 4), 16).expect("nibble is hex"));
