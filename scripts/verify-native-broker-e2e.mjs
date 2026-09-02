@@ -186,6 +186,17 @@ try {
         await fail(`expected exactly one broker realm, found ${brokers.length}: ` +
             JSON.stringify(realms.map(r => r.href)));
     }
+    // Zero page errors, using the signal the realm already emits: the init script's catch writes
+    // `document.title = 'BROKER-ERR ' + message`, which survives whether or not IPC or CSP allow
+    // anything else. CP3-E asks for a slice with no page errors; this is the realm's own word for
+    // one, and it is the DOCUMENT title (not `webview.title()`, which reports the WINDOW's and is
+    // never synced from the page).
+    for (const realm of realms) {
+        if (/^BROKER-ERR/.test(String(realm.title))) {
+            await fail(`a realm reported its own initialisation failure: ${realm.title}`);
+        }
+    }
+
     // The realm must hold its OWN document. It rendered WebKit's "The URL can't be shown" page
     // for seven CI runs while every other signal looked healthy, so this is asserted, not assumed.
     if (!/Capability Broker/.test(String(brokers[0].doc) + String(brokers[0].title))) {
@@ -369,7 +380,8 @@ try {
         'lease and result both absent from what the editor can see); a replayed sequence was refused; ' +
         'editor refused native_broker_reply and native_broker_lease at the real Tauri boundary; ' +
         'a lease aged past its 60s TTL was refused against the REAL clock; ' +
-        'a refused navigation revoked the outstanding lease and the revocation is visible in the audit');
+        'a refused navigation revoked the outstanding lease and the revocation is visible in the audit; ' +
+        'no realm reported an initialisation error');
     await shutdown();
     process.exit(0);
 } catch (error) {

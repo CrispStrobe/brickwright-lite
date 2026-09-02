@@ -168,5 +168,26 @@ jobs:
 
       - name: Drive the packaged broker boundary
         run: |
+          set -o pipefail
+          mkdir -p e2e-evidence
           xvfb-run -a dbus-run-session -- node scripts/verify-native-broker-e2e.mjs \
-            apps/tauri/src-tauri/target/debug/brickwright-tauri
+            apps/tauri/src-tauri/target/debug/brickwright-tauri \
+            2>&1 | tee e2e-evidence/broker-boundary.log
+          # `set -o pipefail` above, because otherwise this step's status would be `tee`'s and a
+          # failing harness would report success. That exact confusion — a pipeline's exit code
+          # taken for the command's — has already cost this repository a "PUSHED" on a rejected
+          # push, so it is worth the one line.
+
+      # CP3-E asks that the artifacts SHOW the real vertical slice. The log is the evidence: it
+      # carries the realm dump (both documents, so "the frontend loaded" is visible rather than
+      # assumed), the broker's own trace, and the PASS line naming each property proven. Uploaded
+      # on failure too — a red run is exactly when someone needs to read it, and for seven hours
+      # today the only way to see this output was to re-run the job.
+      - name: Keep the boundary evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: broker-boundary-evidence
+          path: e2e-evidence/
+          if-no-files-found: error
+          retention-days: 14
