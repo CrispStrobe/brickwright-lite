@@ -24,12 +24,23 @@ const projectFrom = async bytes => JSON.parse(await (await JSZip.loadAsync(bytes
 
 test('vendored SPIKE compiler emits a canonical executable round-trip artifact', async () => {
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'a023885429e66d15b0caa96901b73e7a5c4a1b8d');
+        'af09a0d093c90b4781cd19d6446386314a22cde2');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
     assert.deepEqual(creator.warnings, []);
     const project = await projectFrom(Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+    // This fixture's first line is `GLOBAL dist = 0`, and until sb3-creator af09a0d that
+    // declared a variable literally NAMED "dist = 0" and then created a second, uninitialized
+    // "dist" the moment `set dist to ...` used it. Two variables where the program declares one.
+    //
+    // Asserted here because nothing else in this file or in the browser gate can see it: both
+    // check OPCODES and three motor phrases, none of which touch the declaration line. A green
+    // SPIKE round trip is not, on its own, evidence that the declaration parses correctly — so
+    // the evidence is added rather than assumed.
+    const declared = project.targets.flatMap(target => Object.values(target.variables || {}));
+    assert.deepEqual(declared, [['dist', 0]],
+        'the initializer must set the value, not become part of the variable name');
     assert.deepEqual(project.extensions, ['spikeprime']);
     assert.equal(project.extensionURLs.spikeprime,
         'https://crispstrobe.github.io/extensions/CrispStrobe/legospike_turbowarp_transpile.js');

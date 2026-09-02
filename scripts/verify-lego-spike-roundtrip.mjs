@@ -80,6 +80,27 @@ try {
         await page.screenshot({path: resolve(artifacts, 'code-roundtrip-failure.png'), fullPage: true});
         throw new Error(`From blocks did not produce canonical SPIKE text: ${text}`, {cause: error});
     }
+    // The three phrases above are motor calls; none touches the DECLARATION line, so this gate
+    // could go green while `GLOBAL dist = 0` produced a variable named "dist = 0" plus a second
+    // uninitialized "dist". "Round trip passed" is a sentence about the round trip that a reader
+    // hears as one about the page.
+    //
+    // What this can and cannot prove, stated because it is easy to over-read: the fixture is
+    // built HERE by the vendored compiler, so the bytes uploaded already reflect whatever this
+    // checkout parses. That means this assertion covers the deployed DECOMPILER — it must render
+    // exactly one canonical declaration — and says nothing about the deployed PARSER, which never
+    // sees the source text. The parse side is covered by test/lego-spike-roundtrip.test.mjs,
+    // which asserts the variable table directly.
+    // Read the editor's LINES, not its textContent: CodeMirror renders each line as its own
+    // element and concatenates them without newlines, so `GLOBAL dist` arrived glued to the
+    // following `STAGE:` and a naive split invented a declaration that was not there.
+    const declarations = await page.evaluate(() => [...document.querySelectorAll('.cm-content .cm-line')]
+        .map(line => (line.textContent || '').trim())
+        .filter(line => /^(GLOBAL|LOCAL)\b/.test(line)));
+    if (declarations.length !== 1 || declarations[0] !== 'GLOBAL dist') {
+        await page.screenshot({path: resolve(artifacts, 'declaration-failure.png'), fullPage: true});
+        throw new Error(`expected exactly one declaration "GLOBAL dist", got ${JSON.stringify(declarations)}`);
+    }
     await page.screenshot({path: resolve(artifacts, 'code-roundtrip.png'), fullPage: true});
 
     await page.getByRole('button', {name: /To blocks/}).first().click();
