@@ -23,7 +23,12 @@ const root = path.resolve(import.meta.dirname, '..');
 // Measured 2026-09-02. LOWER these as suspects are triaged; never raise one to make a push
 // green. A new suspect is a new place a gate can stop biting without saying so.
 const BASELINE = {
-    'AMBIENT-BINDING': 11,
+    // 11 -> 0 on 2026-09-02. Three were generators (gen-/make-/sync-), which the rule no longer
+    // asks: a generator invoking the developer's cargo is intended behaviour. The rest were
+    // triaged at their sites and every one FAILS CLOSED on absence. What that does NOT settle is
+    // version identity — a different sdcc or simavr is still a different verdict — and nothing
+    // here pins one. See docs/GATES-THAT-CANNOT-FAIL.md.
+    'AMBIENT-BINDING': 0,
     'EVENT-AS-STATE': 12,
     // 1 -> 0 on 2026-09-02: the single hit was triaged and kept, marked at the site. The
     // widening is real but bounded to one dot-prefixed spelling whose receiver is a per-game

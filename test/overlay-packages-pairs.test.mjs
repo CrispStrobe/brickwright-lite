@@ -16,6 +16,12 @@ import {execFileSync} from 'node:child_process';
 import assert from 'node:assert';
 import test from 'node:test';
 
+// AMBIENT-BINDING, triaged 2026-09-02 and KEPT. `git` from PATH is the one ambient tool whose
+// identity is not in question here: the gate asks git for THIS repository's own tracked blobs,
+// so a different git would still answer about the same objects, and an absent one throws
+// ENOENT rather than passing. Contrast a compiler or a simulator, where a different binary
+// silently produces a different verdict.
+// gate-shapes-allow
 const git = (...args) => execFileSync('git', args, {encoding: 'utf8', maxBuffer: 1 << 28});
 
 test('overlay/packages dual-tracked pairs are identical at HEAD', () => {

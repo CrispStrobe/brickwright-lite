@@ -212,3 +212,30 @@ entry after a nested array and the balanced region does not, and the converted
 `makecode-ui-contract` gate was mutation-checked by deleting an argument from the real call
 site (red) and restoring it (green).
 
+## AMBIENT-BINDING cleared: 11 -> 0 (2026-09-02), with a stated residue
+
+Three were never in scope. `scripts/gen-*`, `make-*` and `sync-*` are GENERATORS, and one of
+them invoking the developer's `cargo` or `python3` is the intended behaviour. The rule now asks
+only of files that render a verdict (`test/**.test.mjs`, `scripts/{verify,proof,audit,oracle,
+smoke}-*`), because reporting the generators taught the reader to skim past the class that cost
+stc-compiler-70 a real defect.
+
+One was a genuine defect, and not the one the detector was describing:
+`verify-microbit-debug-toggle.mjs` fell back to `/Users/<name>/code/wt-fable/...` — a hardcoded
+absolute path on one particular laptop. On every other machine that turned "playwright is not
+installed" into an ENOENT about a stranger's home directory. Removed; the gate now names what
+it is missing.
+
+The rest were triaged at their sites, and the justification in each case is the same: **they
+fail CLOSED.** `smoke-debugger` checks for a runnable `sdcc` and its stc-compiler checkout and
+`exit 2`s with a named message; `oracle-simavr` rejects with the tool's own stderr;
+`overlay-packages-pairs` asks `git` about THIS repository's own tracked blobs, so a different
+git still answers about the same objects. None of them can pass while their tool is absent,
+which is what the shape is about.
+
+**What that does not settle, stated because a zero invites the opposite conclusion:** absence is
+proven, IDENTITY is not. A different `sdcc`, a different `simavr`, a different playwright is
+still a different verdict, and nothing in this repository pins one. Closing that means recording
+each tool's version alongside the result it produced, so a changed oracle is visible rather than
+inferred. That is real work and it is not done; the marker exempts the shape, not the residue.
+

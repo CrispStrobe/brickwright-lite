@@ -31,6 +31,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
 const LITE = path.join(repo, 'packages/scratch-gui/src');
 const BUILD = path.join(repo, 'packages/scratch-gui/build');
+// gate-shapes-allow: overridable with STC_COMPILER, and its absence exits 2 below.
 const STCC = process.env.STC_COMPILER || path.resolve(repo, '../../stc-compiler');
 
 for (const [what, where] of [['the integrated tree (npm run integrate)', LITE],
@@ -38,6 +39,7 @@ for (const [what, where] of [['the integrated tree (npm run integrate)', LITE],
     ['stc-compiler (set STC_COMPILER)', path.join(STCC, 'stc_symtab.py')]]) {
     if (!existsSync(where)) { console.error(`smoke-debugger: missing ${what}: ${where}`); process.exit(2); }
 }
+// gate-shapes-allow: this IS the fail-closed check — no runnable sdcc means exit 2, not a pass.
 try { execFileSync('sdcc', ['--version'], { stdio: 'pipe' }); }
 catch { console.error('smoke-debugger: no runnable sdcc on PATH'); process.exit(2); }
 const work = mkdtempSync(path.join(tmpdir(), 'bw-runner-'));
@@ -54,9 +56,11 @@ globalThis.fetch = async (url, init) => {
     const req = JSON.parse(init.body);
     const src = path.join(work, 'main.c');
     writeFileSync(src, req.code);
+    // gate-shapes-allow: the sdcc proven runnable at startup, or this script already exited 2.
     execFileSync('sdcc', ['--debug', '-mmcs51', '--iram-size', '256', '--xram-size', '1024',
         '--code-size', '61440', '-o', `${work}/`, src], { stdio: 'pipe' });
     const ihx = readFileSync(path.join(work, 'main.ihx'));
+    // gate-shapes-allow: python3 + the STCC checkout, both existence-checked at startup.
     execFileSync('python3', [path.join(STCC, 'stc_symtab.py'),
         '--cdb', path.join(work, 'main.cdb'), '--source', src,
         '--fosc', '11059200', '--device', req.target, '-o', path.join(work, 's.json')],
@@ -206,6 +210,7 @@ console.log(`stepped 5 instructions -> ${added} rows: ${walked.map(r => r.text.s
 // with it for reasons that have nothing to do with lengths. Instead, take
 // stc_disasm's OWN consecutive instruction boundaries — where it is certain —
 // and check that our table predicts each gap.
+// gate-shapes-allow: same STCC checkout, already existence-checked at startup.
 const disasmOut = execFileSync('python3', ['-c', `
 import sys; sys.path.insert(0, ${JSON.stringify(STCC)})
 import stc_disasm

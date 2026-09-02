@@ -15,14 +15,26 @@ import { createRequire } from 'node:module';
 const requireUI = (() => {
     // playwright from wherever it is installed (lite root has it for the
     // other gates; the sibling UI repo is the fallback).
+    // AMBIENT-BINDING, triaged 2026-09-02. The sibling checkout supplies the DRIVER, not the
+    // subject: the lite root is the deterministic primary and this is only reached when lite has
+    // no playwright, in which case the gate cannot run at all. Neither present is now a named
+    // error rather than an ENOENT about a stranger's home directory.
+    // gate-shapes-allow
     for (const base of ['../package.json', '../../bw-circuit-ui/package.json']) {
         try { return createRequire(new URL(base, import.meta.url)); } catch { /* next */ }
     }
     throw new Error('no playwright host package found');
 })();
+// No hardcoded absolute fallback. There was one — a path under /Users on one particular
+// laptop — which cannot resolve on this box or in CI, so on every machine but that one it
+// turned "playwright is not installed" into a confusing ENOENT about someone's home directory.
+// A gate that cannot find its driver should say so in the words of the thing it is missing.
 let chromium;
 try { ({ chromium } = requireUI('playwright')); }
-catch { ({ chromium } = createRequire('/Users/christianstrobele/code/wt-fable/bw-circuit-ui/package.json')('playwright')); }
+catch (error) {
+    throw new Error('playwright is not installed for this gate: install it in the lite root ' +
+        `or in the sibling bw-circuit-ui checkout (${error && error.message})`);
+}
 
 const URL_ = process.env.PROOF_URL || 'http://localhost:8623/';
 const fail = (m) => { console.error(`FAIL ${m}`); process.exitCode = 1; };

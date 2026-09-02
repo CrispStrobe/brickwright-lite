@@ -37,6 +37,11 @@ const workDir = await mkdtemp(join(tmpdir(), 'brickwright-simavr-'));
 const vcd = join(workDir, 'trace.vcd');
 try {
     await new Promise((resolve, reject) => {
+        // AMBIENT-BINDING, triaged 2026-09-02. An oracle is external by definition, and this one
+        // fails CLOSED: an absent or failing simavr rejects with its own stderr rather than
+        // returning a trace. The residual risk the marker does NOT dismiss is version identity —
+        // a different simavr is still a different oracle, and nothing here pins one.
+        // gate-shapes-allow
         execFile('simavr', ['-m', mcu, '-f', clock, '-o', vcd, firmware], {
             cwd: workDir,
             maxBuffer: 4 * 1024 * 1024,

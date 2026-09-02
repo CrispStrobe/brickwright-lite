@@ -162,6 +162,14 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
     // production defect — POST /assemble had never returned a symbol table. The same shape runs
     // the other way here: two sb3-creator tests compare against a "live sibling checkout" and
     // fail on this box while passing in CI. Either direction, the verdict is not about the code.
+    // AMBIENT-BINDING is about a VERDICT that depends on something outside the repository, so it
+    // is only asked of files that render one. `scripts/gen-*`, `make-*`, `sync-*` and
+    // `package-*` are generators and tools: one of them invoking the developer's cargo or
+    // python3 is the intended behaviour, not a hazard, and reporting it taught the reader to
+    // skim past the class that actually cost stc-compiler-70 a real defect.
+    const rendersAVerdict = /(?:^|\/)test\/.*\.test\.mjs$|(?:^|\/)scripts\/(?:verify|proof|audit|oracle|smoke)-/
+        .test(path.relative(root, file));
+    if (rendersAVerdict) {
     for (const m of text.matchAll(/(?:execFileSync|execSync|spawnSync|spawn|execFile)\(\s*['"`]([a-z0-9_.-]+)['"`]/gi)) {
         const tool = m[1];
         // `node` and `process.execPath` are the runtime this file already runs under; a bare
@@ -181,6 +189,7 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
             note(file, lineOf(text, m.index), 'AMBIENT-BINDING',
                 `reads ${target.split('/').slice(-2).join('/')} — a checkout outside this repository`);
         }
+    }
     }
 
     // EVENT-AS-STATE: proves a thing appears, never proves it goes away.
