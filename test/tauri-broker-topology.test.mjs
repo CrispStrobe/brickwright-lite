@@ -83,6 +83,18 @@ const audit = ({handler, broker, adapter, capability, transport, capabilities, r
         assert.doesNotMatch(body, /issue_broker_lease|authorize_broker_call|grant_transport_once|revoke/,
             `${command} must be a read: it may not issue, authorise, grant or revoke`);
     }
+    // `.incognito(true)` on this webview makes the realm unloadable on Linux: Tauri skips
+    // registering `tauri://` for a scheme already registered on the web context
+    // (tauri-runtime-wry lib.rs:5188) and wry then replaces that context with a fresh
+    // ephemeral one (webkitgtk/mod.rs:255), so the realm has no handler for its own document
+    // and WebKit renders "The URL can't be shown". It reads exactly like an empty frontend.
+    // Comment-stripped, because the call site EXPLAINS the hazard in prose containing the very
+    // call, and the first version of this gate matched its own documentation.
+    const brokerCode = broker.replace(/\/\/[^\n]*/g, '');
+    assert.doesNotMatch(brokerCode, /\.incognito\(true\)/,
+        'the broker realm must not request an incognito context: on Linux it loses the custom ' +
+        'protocol and the document never loads');
+
     // The executor is the whole semantic surface, and it must stay a single read.
     assert.match(capability, /fn execute\(operation: Operation\)[\s\S]{0,400}Operation::PlatformKindRead/,
         'the only semantic operation is platform.kind.read');

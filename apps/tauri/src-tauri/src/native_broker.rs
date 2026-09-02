@@ -38,6 +38,26 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
     let page_policy = policy.clone();
     let page_app = app.handle().clone();
     let page_seen = AtomicBool::new(false);
+    // NOT `.incognito(true)`, and the reason is a two-crate interaction that costs a whole
+    // realm on Linux. Read together:
+    //
+    //   tauri-runtime-wry/src/lib.rs:5188 — on Linux a custom protocol is bound to the WEB
+    //     CONTEXT, so Tauri skips registering a scheme it has already registered on that
+    //     context. The main window registered `tauri://` first, so for this webview the
+    //     protocol list is empty by the time wry sees it.
+    //   wry/src/webkitgtk/mod.rs:255 — when `incognito` is set, wry DISCARDS the passed
+    //     context and builds a fresh `WebContext::new_ephemeral()`.
+    //
+    // So Tauri declines to register the scheme because it believes it already did, and wry
+    // then hands this webview a brand-new context that never had it. The realm loads no
+    // document at all: WebKit renders "The URL can't be shown", which reads exactly like an
+    // empty frontend and is why six hypotheses (CSP, custom-protocol, stale assets, the
+    // working directory, a same-document hash navigation, an eager invoke capture) all
+    // measured a symptom of this and none of them touched it.
+    //
+    // The realm loads one static document, holds no storage and is destroyed with the app, so
+    // an ephemeral context bought hardening we do not depend on. Correctness wins. Do not add
+    // it back without checking whether the upstream interaction still holds.
     let broker = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(DOCUMENT.into()))
         .initialization_script(initialization_script())
         .visible(false)
@@ -50,7 +70,6 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
         .closable(false)
         .skip_taskbar(true)
         .devtools(false)
-        .incognito(true)
         .on_navigation(move |url| {
             handle_navigation(url, || {
                 let _ = navigation_policy.revoke_all(LABEL);
@@ -64,25 +83,11 @@ pub(crate) fn create(app: &tauri::App, policy: NativePolicyState) -> tauri::Resu
             // measured, it stays "Tauri App" no matter what the page sets. The init script still
             // records its error there for a future channel that can read it, but this line cannot,
             // so do not read a plain title here as "the script succeeded".
+            // Kept: this is how the empty realm was first seen. The title is the WINDOW's and
+            // Tauri never syncs it from document.title, so never read it as "the script ran".
             eprintln!("[broker] page-load {:?} url={} title={}", payload.event(),
                 webview.url().map(|u| u.to_string()).unwrap_or_else(|_| "<none>".into()),
                 webview.title().unwrap_or_else(|_| "<none>".into()));
-            // DIAGNOSTIC (temporary, see LANES): four hypotheses about why the acknowledgement
-            // never fires have been falsified, and "the init script ran and threw" is still
-            // indistinguishable from "it never ran". This asks the realm directly. eval() is a
-            // Rust-side WebKit call, so it works whether or not the document's CSP admits
-            // scripts and whether or not Tauri's IPC exists; the answer returns as a navigation,
-            // which is the only channel out of here that needs neither. It trips the realm guard
-            // and revokes by design — the boundary is already known not to work.
-            if matches!(payload.event(), PageLoadEvent::Finished) {
-                // A PATH, not a hash: setting location.hash is a SAME-DOCUMENT navigation and never
-                // reaches the navigation handler, so the first probe fired and its answer went
-                // nowhere. location.replace to another path is a real navigation, which on_navigation
-                // receives (and denies — it is a diagnostic, and the boundary is already broken).
-                let _ = webview.eval(
-                    "try{location.replace('tauri://localhost/__brokerprobe__'+encodeURIComponent([typeof globalThis.__TAURI_INTERNALS__,typeof globalThis.__brickwrightBrokerReceive,typeof globalThis.__brickwrightInstallBrokerHost,String((document.documentElement&&document.documentElement.outerHTML||'')).slice(0,160)].join('|')))}catch(e){}",
-                );
-            }
             handle_page_load(payload.event(), &page_seen, || {
                 let _ = page_policy.revoke_all(LABEL);
                 page_app

@@ -154,7 +154,7 @@ mod imp {
                 "UF2 Bootloader v2.0\nModel: Raspberry Pi RP2\nBoard-ID: RPI-RP2\n",
             )
             .unwrap();
-            let found = find_bootsel_in(&[dir.clone()]);
+            let found = find_bootsel_in(std::slice::from_ref(&dir));
             assert_eq!(found, Some(vol));
             std::fs::remove_dir_all(&dir).ok();
         }
@@ -163,7 +163,7 @@ mod imp {
         fn no_volume_is_none_not_panic() {
             let dir = std::env::temp_dir().join(format!("bw-none-{}", std::process::id()));
             std::fs::create_dir_all(&dir).unwrap();
-            assert_eq!(find_bootsel_in(&[dir.clone()]), None);
+            assert_eq!(find_bootsel_in(std::slice::from_ref(&dir)), None);
             std::fs::remove_dir_all(&dir).ok();
         }
     }

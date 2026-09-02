@@ -193,15 +193,50 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   page errors, and every mobile/native limitation is either closed or an
   explicit fail-closed verdict rather than an implied compatibility claim.
 
-THE E2E HARNESS EXISTS AND WORKS. THE BOUNDARY DOES NOT. Read this before touching CP3-D1/D2/E.
+THE E2E HARNESS EXISTS AND WORKS. THE BOUNDARY'S ROOT CAUSE IS FOUND (2026-09-02) — see
+ROOT CAUSE below before reading the hypothesis log, which is kept only so nobody re-pays for it.
 
 `scripts/verify-native-broker-e2e.mjs` plus the `e2e` job in `tauri.yml` launch the built app
 under tauri-driver and probe it from the real main webview, so every invoke crosses the real
 Tauri ACL. It is the only gate that runs the program. Eight CI runs so far.
 
+ROOT CAUSE: `.incognito(true)` on the broker webview, via an interaction between two crates.
+
+    tauri-runtime-wry/src/lib.rs:5188   on Linux a custom protocol belongs to the WEB CONTEXT, so
+                                        Tauri SKIPS registering a scheme already registered on
+                                        that context. The main window registered `tauri://`
+                                        first, so the broker webview's protocol list is empty.
+    wry/src/webkitgtk/mod.rs:255        when `incognito` is set, wry DISCARDS the passed context
+                                        and builds a fresh `WebContext::new_ephemeral()`.
+
+Tauri declines to register the scheme because it believes it already has; wry then hands the
+webview a new context that never had it. The realm therefore has NO handler for its own document,
+and WebKit renders its load-failure page. Removing `.incognito(true)` is the fix; the realm loads
+one static document and holds no storage, so the ephemeral context bought hardening nothing
+depended on. `test/tauri-broker-topology.test.mjs` gates it against coming back, reading the
+source with comments stripped — the first version of that gate matched the very sentence at the
+call site that explains the hazard.
+
+HOW IT HID FOR SEVEN ROUNDS, which is the transferable part. The failure renders as
+
+    <html><head></head><body>The URL can't be shown</body></html>
+
+and every probe I wrote MEASURED that page instead of reading it: `htmlLen=61, metas=0, title=`.
+Sixty-one characters is a fact. "The frontend is empty" was an inference I laid on top of it and
+then defended for six hypotheses. The moment the probe returned the document's first 160
+CHARACTERS instead of its length, the answer was immediate and unambiguous. Prefer a probe that
+quotes to one that counts.
+
+The second thing that hid it: `__TAURI_INTERNALS__` was present and `invoke` worked, and I read
+that as "the frontend loaded". Tauri injects both regardless of whether the DOCUMENT loaded. I had
+never once looked at the editor's own document either — when I finally did, it was my CI stub
+(`<title>broker-e2e</title>`), which proved assets WERE being served and killed the whole
+stale-embedding line of inquiry that two CI runs had gone into.
+
 ESTABLISHED, by measurement rather than inference:
-- The broker realm IS created, and its page loads: `[broker] page-load Finished
-  url=tauri://localhost/capability-broker.html`. Origin and pathname both satisfy the realm check.
+- The broker realm IS created, and `on_page_load` fires for
+  `tauri://localhost/capability-broker.html` — but with WebKit's error page as the document, not
+  the file. A page-load event is not evidence that the intended page loaded.
 - `native_broker_ready` is NEVER ENTERED. The entry trace sits BEFORE the label check, so "called
   under an unexpected label" and "never called" are now distinguishable, and it is the latter.
 - The permission and the capability both exist in the generated ACL — `allow-native-broker-ready`
@@ -220,13 +255,20 @@ FOUR HYPOTHESES TESTED AND FALSIFIED, each by a CI run. Recorded so nobody pays 
    csp at all and its IPC works — but adding `'unsafe-inline'` changed nothing, so the relaxation
    was REVERTED rather than left in place unjustified.
 
-THE NEXT THING TO TEST, and it is now the leading candidate by elimination: whether
-`WebviewWindowBuilder::initialization_script` is delivered to this secondary webview at all. Every
-falsified hypothesis assumed the script runs and fails somewhere inside it. Nothing has yet shown
-it runs. The cheap decisive probe is a side effect Rust can observe WITHOUT IPC or CSP — a
-navigation attempt is the only such channel this shell has, since `on_navigation` already receives
-the URL. Note it will trip the realm guard and revoke, so it is a deliberate one-shot diagnostic
-rather than something to leave in.
+5. Stale embedded assets. Two runs went into this — `touch build.rs`, then
+   `cargo clean -p` before the build. Neither changed anything, and the editor's own document
+   later proved assets were being served correctly all along.
+6. The workflow's `defaults: working-directory`. Checked rather than assumed: it belongs to the
+   `test` job, not `e2e`, so the repo-root-relative paths were always right.
+7. `--features custom-protocol`. Correct to enable, but not the cause.
+
+The diagnostic probe that finally answered it (a `location.replace` carrying the document out
+through `on_navigation`, the only channel needing neither IPC nor CSP) has been REMOVED: it trips
+the realm guard and revokes by design, so leaving it in would sabotage the very run that proves
+the fix. The precondition it justified has been kept — the e2e job now resolves `frontendDist`
+from `tauri.conf.json`, lists it, and fails with a named error if the broker document is absent,
+so a build-shaped problem announces itself as one instead of arriving disguised as a broken
+boundary.
 
 WHY EVERY OTHER GATE DISAGREES: the browser gate passes 1/1 with zero page errors because
 Playwright's `addInitScript` bypasses page CSP and injects unconditionally. It is a more permissive
