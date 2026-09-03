@@ -448,3 +448,48 @@ wanted to see. When a mutation reports green, prove the mutation LANDED before c
 anything about the test: diff the file, or assert the anchor count, which is what
 `scripts/mutation-proof.mjs` does and why it treats a stale anchor as a failure rather than a skip.
 
+
+## Sixteenth species: THE FIX WHOSE ONLY GATE IS SKIPPED (2026-09-03)
+
+The first fifteen species are all about a gate that runs and checks nothing. This one is
+about a gate that checks something real and **never runs**, which the repair schedule then
+treats as coverage.
+
+`npm run smoke:debugger` is the only thing in this repo that drives the debugger end to end
+against a real compile. In CI it exits 2 for want of SDCC, and the step deliberately
+downgrades exit 2 to a warning so the build is not held hostage to a tool the runner cannot
+provide. That is a defensible decision about the *build*. It becomes a gap the moment
+something is FIXED on the strength of that gate: D-EMU-BP2 was caught by it, diagnosed
+through it, and confirmed fixed by it — and if the repair had stopped there, the only thing
+standing between the defect and its return was a step that has never once executed in CI.
+
+The defect itself illustrates why a live gate was needed. The faulty predicate,
+`stillWaiting()`, was private to `createDebugRunner`'s closure and reachable only through a
+live session with a compiled program, a symbol table and a running emulator. Nothing cheaper
+could ask it a question. So the repair **lifted it out** — `waitStillPending` is now an
+exported pure function taking `{why, blockYield, bwMs}` — for no reason other than that a gate
+had to be able to exist. `test/debug-runner-wait-skip.test.mjs` runs in the ordinary suite,
+on every push, with no toolchain at all.
+
+The rule: **when you fix something, name the gate that now fails if it regresses, and check
+that gate actually runs in CI** — not merely that it exists, and not merely that it passed on
+your machine. "It is covered by the smoke test" is not coverage when the smoke test is
+skipped. If the only witness is an environment CI does not have, the repair is not finished
+until some part of it is testable without that environment.
+
+### And mutation-prove each CLAUSE, not the fix
+
+This repair had two independent halves: scope the suppression to the halted block's own
+task, and apply it only when that block is itself a `wait`. Mutating the first failed a
+test. Mutating the second — deleting the guard entirely — **passed all seven**.
+
+The guard was not redundant. The fixture was wrong: the `repeat` task in the test carried no
+deadline at all, so the function returned `false` for the wrong reason and the guard never
+had to do any work. The real case, which the generated C actually produces, is a task with a
+**stale** `until` left over from a wait it has already left — `positionOf()` reports the
+variable whenever it is non-zero, regardless of state. Given that fixture, deleting the guard
+fails immediately.
+
+A surviving mutation is a claim about the *test data* at least as often as it is a claim
+about the code. One mutation per clause, and when one survives, fix the fixture before
+concluding the clause is spare.
