@@ -12,7 +12,8 @@ import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 import {setExtractors} from '../../lib/bw-circuit-ui/model/drc.js';
 import {extract6502Machine} from '../../lib/bw-board/m6502-extract.js';
 import {extractZ80Machine} from '../../lib/bw-board/z80-extract.js';
-setExtractors({extract6502Machine, extractZ80Machine});
+import {extract8086Machine} from '../../lib/bw-board/i8086-extract.js';
+setExtractors({extract6502Machine, extractZ80Machine, extract8086Machine});
 
 const DebugPanel = React.lazy(() =>
     import(/* webpackChunkName: "bw-debug-panel" */ './debug-panel.jsx')
@@ -724,6 +725,7 @@ class CircuitTab extends React.Component {
             // retro CPU found" with the W65C02 seated in plain sight.
             setEngine({BoardImpl: engine.BoardImpl, inferNetlist: engine.inferNetlist, checkWiring: engine.checkWiring,
                 hasDevice: engine.hasDevice, getDevice: getCircuitDevice, extract6502Machine, extractZ80Machine,
+                extract8086Machine,
                 // The sweep instrument (SweepPanel): Kennlinien + Bode run
                 // these on an offline board copy. Same contract as the
                 // extractors above — if they are absent, the panel refuses
@@ -828,10 +830,18 @@ class CircuitTab extends React.Component {
         if (circuit && circuit.parts) {
             const rt = this.props.vm && this.props.vm.runtime;
             if (rt && !rt.bwDeviceCore) {
+                const is8086 = (k) => k === 'i8086' || k === '8086' || k === 'i8088' || k === '8088';
                 if (circuit.parts.some(p => p.kind === 'z80')) {
                     rt.bwDeviceCore = 'z80';
                 } else if (circuit.parts.some(p => p.kind === 'w65c02')) {
                     rt.bwDeviceCore = 'w65c02';
+                } else if (circuit.parts.some(p => is8086(p.kind))) {
+                    // The 8088 is an 8086 with an eight-bit bus. Same
+                    // instruction set, same registers, same core here — the
+                    // difference is bus timing, which this tier does not model,
+                    // so refusing the 8088 by name would refuse a machine we
+                    // can in fact run.
+                    rt.bwDeviceCore = 'i8086';
                 }
             }
         }
@@ -1175,6 +1185,7 @@ class CircuitTab extends React.Component {
                 /^stm32/.test(id) ? 'arm' :
                 /^(eater6502|6502|w65c02)$/.test(id) ? 'w65c02' :
                 /^(z80|zx48|zx128)$/.test(id) ? 'z80' :
+                /^(i8086|8086|i8088|8088)$/.test(id) ? 'i8086' :
                 id === 'microbit' ? 'micropython' : null;
             if (core) vm.runtime.bwDeviceCore = core;
         }
@@ -1304,7 +1315,9 @@ class CircuitTab extends React.Component {
                     // board, not off the example id or its category — the
                     // same test CircuitDesigner uses to decide it has a
                     // retro CPU at all.
-                    const cpu = data.parts.find(pt => pt.kind === 'w65c02' || pt.kind === 'z80');
+                    const cpu = data.parts.find(pt => pt.kind === 'w65c02' || pt.kind === 'z80'
+                        || pt.kind === 'i8086' || pt.kind === '8086'
+                        || pt.kind === 'i8088' || pt.kind === '8088');
                     if (cpu) {
                         const rres = await fetch(`examples/${romPath}`);
                         if (!rres.ok) throw new Error(`HTTP ${rres.status}`);
@@ -1347,7 +1360,7 @@ class CircuitTab extends React.Component {
             // concept — their debugger comes from the bus extract, not
             // from PIN lines. PART bindings drive pins without PIN lines.
             // Scolding either case was wrong (owner report, twice).
-            const machineClass = prog && /^(eater6502|z80|zx48|zx128|6502|w65c02)$/.test(prog.device);
+            const machineClass = prog && /^(eater6502|z80|zx48|zx128|6502|w65c02|i8086|8086|i8088|8088)$/.test(prog.device);
             if (hasProgram && !pins && !programError && prog && !prog.hasPart && !machineClass) {
                 this.setState({examplesError:
                     `"${ex.id}" loaded, but its program declares no pins, so the ` +

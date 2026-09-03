@@ -132,6 +132,25 @@ const KNOWN_DEAD = new Map([
     // vdu-decoder.js removed from KNOWN_DEAD: now imported by vdu-terminal.jsx (BBC BASIC VDU canvas).
     // z80-debug.js removed from KNOWN_DEAD: now imported by debug-target-factory (Z80 interactive target).
     // z80-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
+    // i8237.js and upd765.js were listed here for ONE sync and are gone again, and
+    // the reason is worth keeping: they were not dead in lite, they were dead
+    // EVERYWHERE. I8086Machine's chip factory had no 'dma' and no 'fdc' kind, so no
+    // config in any repo could instantiate either. Both chips' own suites were
+    // green. This gate found it by asking a question nobody upstream was asking,
+    // which is the fourth time a finding here came from an unrelated direction.
+    ['lib/bw-board/i8086-asm.js', {roadmap: '4.4',
+        reason: 'Vendored; the 8086 MASM-subset assembler. NOT merely "wired later": '
+            + 'the ASM tab assembles through HOSTED ca65 and sdasz80, and neither '
+            + 'knows the 8086 — so unlike every other entry in this list, the tab '
+            + 'cannot grow an 8086 target without a LOCAL assemble path, and this '
+            + 'file is the only candidate. It is a tab design change, not a wiring '
+            + 'change, which is why it is recorded rather than smuggled in here.'}],
+    ['lib/bw-board/i8086-emu8086.js', {roadmap: '4.4',
+        reason: 'Vendored; the emu8086 dialect adapter. Its consumer is bw-board\'s '
+            + 'corpus harness (scripts/run-i8086-corpus.mjs), which lite does not '
+            + 'ship — it exists to run the 525-file teaching corpus against the '
+            + 'core, not to serve the app. Arrives with the sync, which copies the '
+            + 'full src/ tree.'}],
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;

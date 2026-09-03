@@ -168,6 +168,7 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     if (normalized === 'stm32f030') return 'stm32f0';
     if (['eater6502', '6502', 'w65c02'].includes(normalized)) return 'eater6502';
     if (['z80', 'zx48', 'zx128'].includes(normalized)) return 'z80';
+    if (['i8086', '8086', 'i8088', '8088'].includes(normalized)) return 'i8086';
     return requested;
 }
 
@@ -759,6 +760,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachEater6502();
         }
 
+        if (selectedTargetKind === 'i8086') {
+            return attachI8086();
+        }
+
         if (selectedTargetKind === 'stm32f0') {
             return attachStm32F0Target(built);
         }
@@ -1297,6 +1302,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      *  with no default). 1 MHz / 4 MHz are the canonical bench clocks. */
     const benchConfig6502 = () => ({ clockHz: 1_000_000, chips: [], ...machineConfig });
     const benchConfigZ80 = () => ({ clockHz: 4_000_000, ...machineConfig });
+    // 4.772727 MHz is not a round number by accident: the IBM XT divided a
+    // 14.31818 MHz colour-burst crystal by three, and the BIOS's 18.2 Hz tick
+    // is that clock through the 8254's 65536 divisor. A tidy 5 MHz here would
+    // leave every timing loop in a period-correct ROM running 4.8% fast.
+    const benchConfigI8086 = () => ({ clockHz: 4_772_727, chips: [], ...machineConfig });
 
     /** Boot media as {bytes, origin}: Intel HEX text (file picker accepts
      *  .hex/.ihx and hands over raw file bytes) is parsed; binaries pass
@@ -1513,6 +1523,88 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
         readyMsg += ` — ${db.why}`;
         const result = await createDebugTarget('z80', targetOpts);
+        wireMachineBench(result, createDebugSession);
+        setStatus('ready', readyMsg);
+        return session;
+    }
+
+    // ── 8086 machine bench ──────────────────────────────────────────────
+    // TWO DIFFERENT MACHINES WEAR THIS KIND, and conflating them is the
+    // failure this branch is shaped to prevent:
+    //
+    //   HARDWARE — a drawn board, or the BIOS ROM. Real 8259/8254/8255/CGA,
+    //              interrupts through the real vector table, and the BIOS
+    //              OWNS vectors 08h/09h/10h/13h/16h/19h because it installs
+    //              them itself at power-on.
+    //   DOS      — no hardware at all. INT 21h is answered by a service
+    //              layer reached through a trap page mapped over F000.
+    //
+    // The trap page is the whole difference and it is not a detail: mapped
+    // into the first kind it lands ON TOP OF the BIOS ROM and fights the code
+    // trying to boot. `createDebugTarget('i8086')` builds a plain machine from
+    // {config, rom, romAt} and adds no trap page, so this path stays hardware
+    // by construction rather than by remembering to pass a flag.
+    //
+    // A DOS program is therefore REFUSED BY NAME below rather than started as
+    // a ROM. A .COM loaded at F0000 executes nothing, and a machine that
+    // executes nothing is indistinguishable on screen from one that failed to
+    // start — the exact shape of failure this codebase keeps paying for.
+    async function attachI8086() {
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+
+        const targetOpts = {};
+        let readyMsg;
+        const isDosProgram = bootMedia &&
+            (bootMedia.slot === 'com' || bootMedia.slot === 'exe' || bootMedia.profile === 'dos');
+
+        if (isDosProgram) {
+            throw new Error(
+                `${bootMedia.name || 'That program'} is a DOS executable, and this bench boots ` +
+                'HARDWARE — a drawn board or a BIOS ROM, with real chips and a real vector ' +
+                'table. A .COM or .EXE needs the DOS service layer instead, which is a ' +
+                'different machine (no chips, INT 21h answered behind a trap page) and is not ' +
+                'wired to this tab yet. Load a ROM image, or draw a board and run it empty.');
+        }
+
+        if (bootMedia) {
+            setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
+            const img = await resolveMediaImage(bootMedia);
+            targetOpts.rom = img.bytes;
+            if (img.origin != null) targetOpts.romAt = img.origin;
+            if (machineConfig) targetOpts.config = benchConfigI8086();
+            readyMsg = `${bootMedia.name || 'ROM'} on ${machineConfig ? 'the extracted machine' : 'the default 8086 map'}`;
+        } else if (machineConfig) {
+            setStatus('attaching', 'booting extracted 8086 machine…');
+            targetOpts.config = benchConfigI8086();
+            readyMsg = 'extracted machine booted with an empty ROM — load a program (presets, file, or ASM tab)';
+        } else {
+            // The shipped BIOS is a 64K image whose RESET VECTOR is its last
+            // sixteen bytes. `romAt` is the LOAD address, so it is 0xF0000 and
+            // the 8086 begins at F000:FFF0 inside it. Passing 0xFFFF0 here —
+            // the address of the vector rather than of the image — puts the
+            // ROM 64K high, and the machine then executes open bus from the
+            // first instruction while reporting that it started fine.
+            setStatus('attaching', 'loading the XT BIOS…');
+            const res = await fetch(new URL('static/roms/bios8086.bin', document.baseURI).href);
+            if (!res.ok) throw new Error(`Failed to load bios8086.bin: HTTP ${res.status}`);
+            targetOpts.rom = new Uint8Array(await res.arrayBuffer());
+            targetOpts.romAt = 0xF0000;
+            if (machineConfig) targetOpts.config = benchConfigI8086();
+            // No serial console on this ROM, and saying so is the point: its
+            // INT 14h is a stub and the BIOS equipment word reports no COM
+            // port, because the XT config has no 8250. Output is the CGA text
+            // page at B800:0000, which reaches the screen through video().
+            readyMsg = 'XT BIOS — output is the CGA screen, not the serial console';
+        }
+
+        const db = designerBoard();
+        if (db.board) {
+            targetOpts.board = db.board;
+            board = db.board;
+        }
+        readyMsg += ` — ${db.why}`;
+        const result = await createDebugTarget('i8086', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
         return session;
