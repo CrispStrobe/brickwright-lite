@@ -320,3 +320,42 @@ test('a capability request is served without a worker, and only for a declared o
 
     await control.dispose();
 });
+
+test('a retired session is inert for a capability request, like every other kind', async () => {
+    // Found by asking what the capability branch's PLACEMENT skipped, not by a failing test: it
+    // sat above the stale-session guard, so a torn-down session still served capability reads
+    // while load/call/terminate on the same session were refused. Narrow — a fresh lease is
+    // minted per call, so session identity never gated authority — but a disposed session must
+    // be inert, and "inert for three kinds out of four" becomes a hole the moment the fourth
+    // kind grows a side effect.
+    const commands = [];
+    const replies = [];
+    const control = createNativeBrokerReceiver({NativeBrokerProtocol,
+        BrokerProtocolError: protocolModule.BrokerProtocolError,
+        invoke: async (command, args) => {
+            commands.push(command);
+            if (command === 'native_broker_reply') { replies.push(JSON.parse(args.payload)); return undefined; }
+            if (command === 'native_broker_lease') return 'e'.repeat(64);
+            if (command === 'native_broker_invoke') return 'linux';
+            throw new Error(`unexpected command ${command}`);
+        },
+        createProtocol: () => { throw new Error('a capability request must not create a worker host'); }});
+    const session = sid(3);
+
+    await control.receive(delivery(session, sid(31), 'capability', 0,
+        {operation: 'platform.kind.read', args: {}}));
+    assert.deepEqual(replies[0], {kind: 'capability', result: 'linux'}, 'a live session is served');
+
+    await control.disposeSession(session);
+    const nativeBefore = commands.filter(c => c !== 'native_broker_reply').length;
+    replies.length = 0;
+    await control.receive(delivery(session, sid(32), 'capability', 1,
+        {operation: 'platform.kind.read', args: {}}));
+    assert.deepEqual(replies[0],
+        {kind: 'failure', request_kind: 'capability', code: 'stale-reply'},
+        'a retired session still served a capability read');
+    assert.equal(commands.filter(c => c !== 'native_broker_reply').length, nativeBefore,
+        'a retired session reached the native boundary before being refused');
+
+    await control.dispose();
+});

@@ -82,6 +82,15 @@ const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, 
             {protocol: 1, requestId: delivery.requestId, operation: fields.operation, args: fields.args};
         else return safeReply(delivery, {kind: 'failure', request_kind: delivery.kind, code: 'invalid-envelope'});
         Object.freeze(envelope);
+        // The stale guard runs BEFORE the kind dispatch, so every kind obeys it. It used to sit
+        // after the capability branch, which meant a capability request on a RETIRED session was
+        // served while load/call/terminate on that same session were refused. No extra authority
+        // leaked — a fresh lease is minted per call, so session identity never gated authority —
+        // but a disposed session must be inert, and "inert for three kinds out of four" is the
+        // kind of asymmetry that becomes a hole when the fourth kind grows a side effect.
+        let state = sessions.get(delivery.session);
+        if (!state && retired.has(delivery.session)) return safeReply(delivery,
+            {kind: 'failure', request_kind: delivery.kind, code: 'stale-reply'});
         if (delivery.kind === 'capability') {
             // Answered without creating session state: this needs no worker host, and giving a
             // semantic read the lifetime of an extension session would be authority nobody asked
@@ -100,9 +109,6 @@ const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, 
             }
             return safeReply(delivery, response);
         }
-        let state = sessions.get(delivery.session);
-        if (!state && retired.has(delivery.session)) return safeReply(delivery,
-            {kind: 'failure', request_kind: delivery.kind, code: 'stale-reply'});
         if (!state && sessions.size >= 8) return safeReply(delivery,
             {kind: 'failure', request_kind: delivery.kind, code: 'capacity'});
         if (!state) {
