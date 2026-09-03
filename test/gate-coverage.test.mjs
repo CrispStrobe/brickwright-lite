@@ -36,18 +36,19 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    // Inventoried 2026-09-03 by widening this file past `verify-*`. Both render a VERDICT and
-    // neither is run by any workflow, which is the decay this file exists to prevent — it was
-    // invisible here only because of how they are named.
-    'smoke-debugger.mjs':
-        'Runs nowhere. Needs a runnable sdcc and a sibling stc-compiler checkout, and exits 2 by ' +
-        'name when either is missing, so it fails closed rather than lying. Whether it ships (wire ' +
-        'it into a workflow that installs sdcc) or is deleted is a decision for the lane owner, ' +
-        'not a thing to leave undecided and unnoticed.',
-    'oracle-simavr.mjs':
-        'Runs nowhere and no test references it. An oracle nothing consults is not an oracle. Same ' +
-        'decision as above; it also binds `simavr` by bare name, so its verdict depends on whatever ' +
-        'that resolves to.'
+    // Empty, and both entries that were briefly here on 2026-09-03 were WRONG:
+    //
+    //   smoke-debugger.mjs — recorded as "runs nowhere". It has run on EVERY build since it was
+    //     written, through `npm run smoke:debugger`, exiting 2 for want of sdcc and being
+    //     downgraded to a warning. `runInvokesGate` could not see an npm ALIAS, so widening this
+    //     inventory manufactured a false orphan in the list built to prevent decay. bw-ci caught
+    //     it. Alias resolution below closes the blind spot; build.yml now supplies sdcc and the
+    //     stc-compiler checkout so the step exercises the debugger instead of announcing it cannot.
+    //   oracle-simavr.mjs — not a gate at all. Its header: "Optional local oracle runner. The GPL
+    //     simulator is never bundled or linked." Reclassified below, not listed here.
+    //
+    // An entry here is a gate nothing runs. Adding one is a deliberate act that shows up in
+    // review; being WRONG about one sends the next reader to do work already done.
 };
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))
@@ -117,15 +118,32 @@ const testSources = readdirSync(path.join(ROOT, 'test'))
     .filter(f => f.endsWith('.test.mjs') && f !== 'gate-coverage.test.mjs')
     .map(f => readFileSync(path.join(ROOT, 'test', f), 'utf8')
         .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''));
-const gateIsWired = gate => workflowRuns.some(run => runInvokesGate(run, gate)) ||
+// npm-script ALIASES count as invocations. build.yml reaches the debugger smoke test through
+// `npm run smoke:debugger`, which `runInvokesGate` — looking for a literal `node scripts/<gate>` —
+// could not see. That blind spot manufactured a false orphan. A gate that cannot fail reports
+// green when it should be red; this is the MIRROR, an inventory reporting orphaned when the thing
+// is running, and it wastes the reader on work already done.
+const packageScripts = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts || {};
+const aliasInvokes = (run, gate) => Object.entries(packageScripts)
+    .filter(([, body]) => runInvokesGate(body, gate))
+    .some(([alias]) => new RegExp(
+        `(?:^|[;&|]\\s*)\\s*npm\\s+run\\s+${shellQuote(alias)}(?=\\s|$)`, 'm').test(run));
+
+const gateIsWired = gate => workflowRuns.some(run =>
+    runInvokesGate(run, gate) || aliasInvokes(run, gate)) ||
     testSources.some(source => source.includes(gate));
 
 // Every script that renders a VERDICT, not only those named `verify-`. This file's own opening
 // line is "a browser gate that CI never runs decays into decoration" — which was true of
 // `smoke-*` and `oracle-*` too, and they were escaping the inventory purely by naming. The same
 // convention the gate-shape sweep keys on, for the same reason.
+// `oracle-simavr` is excluded BY NAME: its own header reads "Optional local oracle runner. The
+// GPL simulator is never bundled or linked." A developer tool, not a gate. Excluding a file is
+// how decay hides, so the reason lives here and every other oracle must still be run by something.
+const TOOLS_NOT_GATES = new Set(['oracle-simavr.mjs']);
 const gates = readdirSync(path.join(ROOT, 'scripts'))
-    .filter(f => /^(?:verify|smoke|oracle)-/.test(f) && f.endsWith('.mjs'));
+    .filter(f => /^(?:verify|smoke|oracle)-/.test(f) && f.endsWith('.mjs'))
+    .filter(f => !TOOLS_NOT_GATES.has(f));
 
 test('a wrapper runs a gate; a mention of one does not', () => {
     // The whitelist that lets `xvfb-run -a dbus-run-session -- node …` count must not also let a
@@ -251,7 +269,15 @@ const buildJobSteps = text => {
 test('a browser gate cannot be skipped by an unrelated gate failing before it', () => {
     const steps = buildJobSteps(buildYml);
     const serve = steps.findIndex(s => /id:\s*serve/.test(s.lines.join('\n')));
-    assert.ok(serve > 0, 'the build job has no step with `id: serve` to hang the gates off');
+    assert.ok(serve > 0, 'the build job has no server step to hang the gates off');
+    // The anchor must be UNIQUE. It is found by searching step text, so a COMMENT naming it
+    // moves it: on 2026-09-03 a comment reading "placed before `id: serve`" put the anchor 85
+    // lines early and made every later gate look mis-keyed. The gate then failed for a reason
+    // that had nothing to do with what it gates.
+    const anchors = steps.filter(s => /id:\s*serve/.test(s.lines.join('\n'))).length;
+    assert.equal(anchors, 1,
+        `${anchors} steps contain the server anchor. It is matched as TEXT, so a comment that ` +
+        'names it counts — describe that step, do not spell its id.');
 
     const skippable = steps
         .slice(serve + 1)

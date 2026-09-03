@@ -419,8 +419,29 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: node scripts/verify-labwired-lazy-bundle.mjs
 
+      # The smoke test has been RUNNING all along and exiting 2 for want of sdcc, which the step
+      # below downgrades to a warning — so it has been reporting "skipped" on every build since it
+      # was written. These two steps give it what it needs, so it actually exercises the debugger
+      # instead of announcing that it cannot. Placed with the pre-server steps on purpose: it
+      # needs a compiler and a sibling checkout, not a served app, and keying it on the server
+      # step would tie it to a precondition it does not have.
+      #
+      # NB for whoever edits this comment: gate-coverage locates the server step by searching
+      # step text for that step's `id:` line. Naming it literally here put the anchor 85 lines
+      # early and made every later gate look mis-keyed. Describe it; do not spell it.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        with:
+          repository: CrispStrobe/stc-compiler
+          path: stc-compiler
+      - name: Install sdcc so the debugger smoke test stops exiting 2
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends sdcc
+
       - name: Smoke-test the debugger
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        env:
+          STC_COMPILER: ${{ github.workspace }}/stc-compiler
         run: |
           if ! grep -q '"smoke:debugger"' package.json; then
             echo "::error::package.json has no smoke:debugger script — the debugger is untested"
