@@ -644,3 +644,71 @@ unreachable produces exactly D-EMU-BP1: an armed breakpoint, a successful-lookin
 halt, reported as an emulator fault. This is the same species as the gates-that-cannot-fail
 family, inverted: not a gate that cannot fail, but one that fails for a reason unrelated to what
 it claims to test.
+
+## D-CORPUS1 — the corpus differential had never run, and the first run failed (2026-09-03)
+
+`test/corpus-differential.test.mjs` compares the emitter against the trace oracle over a rotating
+sample of the gallery. It is env-gated on `CORPUS_DIFFERENTIAL=1`, and **nothing has ever set
+it.** Measured rather than assumed: the unit-test step of the last green CI build reports exactly
+one skip over 1804 tests, and it is this one. Its own header says "Enable in CI with:", and its
+sample offset is derived from day-of-year so that "successive CI runs cover different parts of the
+gallery" — a rotation that has never had a second run.
+
+That is species 16 in its politest form. Unlike the debugger smoke, this skip is *honest*: it uses
+node:test's `{skip: reason}` and prints `# SKIP CORPUS_DIFFERENTIAL not set`. Visible and
+permanent is still zero coverage.
+
+### Two defects in the harness itself, both fixed
+
+**The sample could be empty, and an empty sample passed.** `pairs.slice(offset, offset + count)`
+does not wrap, so an offset at or past the end returns `[]`, the comparison loop runs zero times,
+the failure flag stays false and the process exits 0 — a run that reports success having compared
+nothing. That is precisely the defect this differential exists to catch in the emitter, and it was
+the harness's own behaviour. It could not be gated where it lived, inside a network-bound CLI that
+ends in `process.exit`, so the rule moved to `scripts/corpus-sample.mjs` and is pinned by
+`test/corpus-sample.test.mjs` — the same lesson as D-EMU-BP2.
+
+**The rotation could not reach the end of the corpus.** The caller wrapped at a hardcoded 200
+("to stay in range") while the gallery yields **224** eligible pairs, so pairs 200–223 were
+unreachable. Only the corpus walk knows that bound, so the wrap belongs there and the caller now
+passes the raw rotation. Mutation-proved three ways: the original slice fails five of six
+assertions, a sign-preserving single modulo fails the negative-offset case, and accepting
+`count < 1` fails the refusal case.
+
+### What the first real run found — owner: sb3-creator
+
+With the gate enabled, today's offset failed **6 of 6 pairs**, in two distinct ways:
+
+    arduino-08-string-append -> nano: main.c:35:24: warning: left shift count >= width of type
+                                      static char bw_arena[1 << 16];
+    arduino-08-string-append -> pico: main.c:7:10: fatal error: stdio.h: No such file or directory
+
+Both come from `cHostRuntime.js` — the **host** C runtime, being compiled for a microcontroller.
+`int` is 16 bits on AVR, so `1 << 16` overflows; bare-metal ARM has no `stdio.h`.
+
+The emitter is behaving as documented. `sb3-creator.js:8243` states the rule in its own words:
+*"Which target a project gets is decided by the project — declared pins mean the chip, everything
+else means the host."* `arduino-08-string-append` declares `DEVICE ARDUINO-UNO`, binds no pins and
+only prints strings, so it is a host program by that rule and gets host C.
+
+**The mismatch is in the computed `devices` list**, which claims device targets the emitter's own
+rule makes unbuildable. That example lists eleven, including `arduino-nano` and `pico`. Across the
+gallery, **24 of the 113 examples claiming nano/pico bind no hardware at all** (no `PIN`, `PART`
+or `CHIP`): fourteen `arduino-04/08-*` string and character programs, eight micro:bit `mb0*`, and
+`spike01-obstacle-avoid`. `mb01-display` declares `DEVICE MICROBIT` and lists eleven other chips,
+which is what shows the list is computed rather than curated.
+
+Stated with its limits: **six pairs were compiled and all six failed; the other 24 examples match
+the structural pattern and were not individually compiled.** The count of 24 is also a correction
+of my own first pass, which said 25 by looking only for `PIN` — `08-led-chaser-595` binds its pins
+through `PART leds = 74HC595 data P1.0 …`, and counting it would have inflated the claim in a
+filing that exists to complain about inflated claims.
+
+### Why the gate is still not enabled in CI
+
+Because it would fail, and the fix is not lite's to make: `devices` is computed in sb3-creator, and
+lite only vendors the result. Enabling it here would mean either a red main or an exclusion list —
+and an exclusion list of 24 entries added on the day the gate was switched on is the shape this
+repository has spent a campaign removing. What unblocks it is the producer teaching the `devices`
+computation the emitter's own host/device rule, after which this gate covers the corpus with no
+exclusions at all.

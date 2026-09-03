@@ -25,6 +25,7 @@
  * Exit code 0 only if every differential agrees.
  */
 import { readFileSync, readdirSync } from 'node:fs';
+import { wrappedSample } from './corpus-sample.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
@@ -226,8 +227,11 @@ async function corpusMode(count, offset) {
       if (e.devices.includes(retargetId)) pairs.push({ e, devName, retargetId });
     }
   }
-  const sample = pairs.slice(offset, offset + count);
-  console.log(`corpus: ${pairs.length} eligible pairs, running ${sample.length} from offset ${offset}`);
+  // Wrapped, and never empty — see scripts/corpus-sample.mjs for why that is
+  // its own module with its own gate.
+  const { sample, start, wrapped } = wrappedSample(pairs, count, offset);
+  console.log(`corpus: ${pairs.length} eligible pairs, running ${sample.length} from offset ${start}` +
+    (wrapped ? ` (wrapped from ${offset})` : ''));
   let bad = false;
   for (const { e, devName, retargetId } of sample) {
     const label = `${e.id} -> ${devName}`;
