@@ -678,14 +678,14 @@ the separate multi-day native boundary remains tracked by CP3.
 
 ## CP5 — release, adversarial review and closure (45–90 minutes plus CI)
 
-- [ ] Run focused and full Node suites, gallery pin regeneration/check,
+- [x] Run focused and full Node suites, gallery pin regeneration/check,
   overlay/package equality, production build/browser gates, Rust tests/checks
   for desktop and cfg-sensitive mobile surfaces where supported, and mutation
   proofs for every enforcement layer.
 - [x] Independently audit direct invoke, saved invoke closure, monkey-patching,
   forged worker frames, extension-id collision, cross-worker confused deputy,
   teardown/reload and diagnostic honesty. Record residual risks explicitly.
-- [ ] Push each repair immediately; re-fetch/rebase before every checkpoint.
+- [x] Push each repair immediately; re-fetch/rebase before every checkpoint.
   Require final-tip vendor freshness, full build, all browser jobs, Pages deploy
   and deployed-GUI verification green, then rerun the exact broker journey
   against deployed Pages.
@@ -873,7 +873,7 @@ game-example tests about a *collision strategy* in a racing game.
    sound": absence of a finding across four passes is evidence, not proof, and the passes were
    written by the person who wrote the code.
 
-## CP5 item 3 — the deployed-Pages journey: run, and it FAILS. Open. (2026-09-03)
+## CP5 item 3 — the deployed-Pages journey: run, diagnosed, fixed, PASSING (2026-09-03)
 
 The clause asks to "rerun the exact broker journey against deployed Pages". I first assumed CI
 already did it, because `verify-capability-broker.mjs` DEFAULTS to the Pages URL
@@ -904,11 +904,28 @@ ELIMINATED, so nobody repeats them:
 - Not a service worker intercepting ahead of Playwright: the deployed bundle registers none.
 - Not a worker-side `importScripts` bypassing page routing: the chunk contains none.
 
-Cause UNDETERMINED, recorded rather than guessed. The remaining candidate — that the app takes
-a different load path for a URL it has not seen before in a session, one page-level routing does
-not cover — is a claim to MEASURE, not to assert.
+CAUSE DETERMINED, an hour later, by measuring instead of theorising a fifth time. Instrumenting
+the route handler to log which URLs it actually served printed:
 
-Item 3 stays open. And worth stating for when it does work: with fixtures supplied by
-interception, a deployed run exercises the deployed VM, broker and worker driving
-LOCALLY-supplied extensions. That is meaningful, and it is not "production serving everything".
+    ROUTED: ["capability-probe-declared.js"]
+
+The handler fired for one URL and NEVER for the other, with identical registration, same origin
+and no query string. `page.route` does not intercept requests initiated by a WORKER, and the
+second extension load is fetched worker-side once a worker already exists. `context.route`
+covers both. With that one-line change the gate passes 7/7 against DEPLOYED PAGES, and still
+passes against a local build.
+
+So the deployed boundary was never broken. What this found is **a gate whose interception
+depended on which context happened to fetch** — passing locally and failing against Pages for a
+reason unrelated to what it tests. Not a gate that cannot fail: a gate that fails for the wrong
+reason, which is the same category of lie and harder to spot, because a red gate is not usually
+re-read.
+
+All four earlier explanations were wrong. The answer came from logging what the handler served,
+not from reasoning about Playwright's semantics.
+
+Item 3 CLOSES. The honest reading of what it proves: with fixtures supplied by interception, a
+deployed run exercises the deployed VM, broker and worker driving LOCALLY-supplied extensions.
+That is meaningful — it is the deployed code under test — and it is not "production serving
+everything", which no gate here claims.
 

@@ -36,8 +36,16 @@ try {
     const page = await browser.newPage();
     page.on('pageerror', error => pageErrors.push(error.message));
     const fulfillFixture = route => route.fulfill({status: 200, contentType: 'text/javascript', body: fixture});
-    await page.route(declaredURL, fulfillFixture);
-    await page.route(noneURL, fulfillFixture);
+    // CONTEXT routing, not page routing. `page.route` does not intercept requests initiated by a
+    // WORKER, and the second extension load is fetched worker-side once a worker already exists.
+    // Measured 2026-09-03: against deployed Pages the handler fired for capability-probe-declared
+    // and never for capability-probe-none, which then took a real 404 —
+    //     ROUTED: ["capability-probe-declared.js"]
+    // — while the same run against a local build passed, because there the timing put both loads
+    // page-side. A gate whose interception depends on which context happens to fetch is a gate
+    // that passes or fails on something it is not testing.
+    await page.context().route(declaredURL, fulfillFixture);
+    await page.context().route(noneURL, fulfillFixture);
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     const ready = async () => {
         await page.goto(proofURL, {waitUntil: 'domcontentloaded', timeout: 60000});
