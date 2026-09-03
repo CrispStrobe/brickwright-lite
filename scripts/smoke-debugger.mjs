@@ -47,12 +47,41 @@ const work = mkdtempSync(path.join(tmpdir(), 'bw-runner-'));
 // ---- browser stubs --------------------------------------------------------
 // Emscripten resolves the .wasm against this; in a browser it is the app root.
 globalThis.document = { baseURI: `file://${BUILD}/` };
+
 let frames = 0;
 globalThis.requestAnimationFrame = (fn) => { frames++; return setTimeout(fn, 0); };
 globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
 
-// fetch -> the local toolchain, exactly what POST /compile{symbols:true} returns
+// fetch serves TWO kinds of request, and assuming otherwise is what broke this script.
+//
+// The POST /compile below is the one it was written for. But when the build ships
+// static/sdcc-wasm, the app installs its OWN fetch interceptor, takes that POST, compiles
+// locally, and then fetches its runtime pack with `fetch(url)` and NO init — which this stub
+// used to dereference as `init.body`, throwing "Cannot read properties of undefined (reading
+// 'body')". Reported as "local WASM compilation failed", which reads like a compiler fault.
+//
+// `document.baseURI` above already points at the real build directory, so those assets are on
+// disk: serve them. That keeps the local-WASM path — the one production uses — under test,
+// rather than routing around it.
+//
+// It went unnoticed because the prerequisite check for sdcc exits 2 BEFORE reaching any of
+// this, and CI downgrades exit 2 to a warning. A precondition that fires first can shadow every
+// assertion behind it indefinitely; the skip was the only thing anyone ever saw.
 globalThis.fetch = async (url, init) => {
+    if (!init || init.method !== 'POST') {
+        const href = typeof url === 'string' ? url : (url && url.href) || String(url);
+        const asset = href.startsWith('file:') ? fileURLToPath(href) : href;
+        if (!existsSync(asset)) throw new Error(`smoke-debugger: no such local asset: ${href}`);
+        const bytes = readFileSync(asset);
+        return {
+            ok: true,
+            status: 200,
+            json: async () => JSON.parse(bytes.toString('utf8')),
+            text: async () => bytes.toString('utf8'),
+            arrayBuffer: async () =>
+                bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+        };
+    }
     const req = JSON.parse(init.body);
     const src = path.join(work, 'main.c');
     writeFileSync(src, req.code);
@@ -114,6 +143,7 @@ for (const t of creator.project.targets) {
 
 // ---- run it ---------------------------------------------------------------
 const { createDebugRunner } = await import(`${LITE}/lib/bw-debug/debug-runner.js`);
+
 const store = await import(`${LITE}/lib/bw-debug/breakpoints.js`);
 
 // The block a user would right-click: the second script's REPEAT. Marked BEFORE

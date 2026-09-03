@@ -407,3 +407,42 @@ The gate re-derives this table's lesson counts from the wave JSON rather than
 trusting the prose, so a lesson that stops naming a defective bench takes the
 count down with it. Each fixed row is asserted **fixed**, and each open row is
 asserted to **still reproduce** by the wave gate that already pins it.
+
+## D-SMOKE1 — the debugger smoke test cannot run, and its skip hid three defects (2026-09-03)
+
+`scripts/smoke-debugger.mjs` runs on every build via `npm run smoke:debugger`, and the step
+downgrades exit 2 ("missing local tool") to a warning. Given sdcc and a stc-compiler checkout it
+does NOT pass — it has been unable to run since sdcc-wasm landed, and the skip was the only
+thing anyone ever saw. Found by widening `gate-coverage`'s inventory, then giving it its tools.
+
+Reproduced locally with sdcc 4.2.0 and `/mnt/volume1/code/stc-compiler`.
+
+**1. FIXED — the fetch stub crashed on any non-POST request.** It did `JSON.parse(init.body)`
+unconditionally, and `compiler.js:31` fetches its runtime pack as `fetch(url)` with no `init`.
+The result was `Cannot read properties of undefined (reading 'body')`, reported as "local WASM
+compilation failed", which reads like a compiler fault. The stub now serves the toolchain's own
+assets from the build directory that `document.baseURI` already points at, and names a missing
+asset instead of dereferencing undefined. **The error message now identifies the real cause.**
+
+**2. OPEN — the sdcc-wasm toolchain cannot run under Node.** It is emscripten output built for
+a browser and fails in sequence: `require is not defined`, then `__dirname is not defined`, then
+— with both shimmed — sdcc itself dies with `memory access out of bounds`. Making this work needs
+a Node-targeted build of the toolchain, not a shim; I stopped after the third because the fourth
+is not an environment gap, it is the module misbehaving. Owner: whoever owns sdcc-wasm.
+
+**3. OPEN, and this one is a PRODUCT defect, not a test defect.** `createCompilerFetch` does
+
+    return compileLocal(...).then(result => new Response(...))
+
+with no `.catch`. When the in-browser toolchain fails at runtime, the rejection propagates and
+the `/compile` request fails outright — there is **no fall-through to the server** that the same
+function returns for every request it does not claim. `installWasmCompilerRouting` is called
+lazily at compile time and installs unconditionally once the chunk imports, so there is also no
+opt-out. In a browser where the WASM compiler is broken or partially cached, compilation fails
+rather than degrading to the hosted compiler. That is worth a look independently of this script.
+
+**Not re-enabled in CI.** The sdcc install and stc-compiler checkout were reverted so main stays
+green; re-enabling requires (2). The lesson worth keeping is structural: a prerequisite check
+that exits before the assertions can shadow them indefinitely, and a step that downgrades that
+exit to a warning makes the shadow permanent.
+
