@@ -1004,6 +1004,63 @@ mod tests {
         assert!(!d.javascript.contains("</script>"));
         assert!(!d.javascript.contains('\u{2028}'));
     }
+    /// The editor supplies `payload`, and the relay embeds it in JavaScript that is `eval`d
+    /// inside the BROKER realm. If a payload could close the string literal it sits in, the
+    /// editor would be executing code in the realm that holds the capability grants, and every
+    /// other control in this file would be decoration.
+    ///
+    /// `hostile_strings_are_canonicalized_and_script_escaped` covers `</script>` and the line
+    /// separators. It does not cover the direct break-out — close the quote, close the call,
+    /// append a statement — which is what an attacker reaches for first.
+    ///
+    /// This is asserted STRUCTURALLY, by round-tripping, and the first version of it was wrong
+    /// in a way worth recording: it looked for the absence of a bare `"});globalThis`. That
+    /// substring is present even when the escaping is perfect, because the escaped form `\"`
+    /// still contains a quote followed by `})`. Substring matching cannot tell an escaped quote
+    /// from a live one. Parsing can.
+    #[test]
+    fn a_payload_cannot_close_the_javascript_string_it_is_embedded_in() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 60);
+        // args.x is `"});globalThis.__pwned=1;({"y":"` — a closed quote, a closed call, a
+        // statement, and a fresh open expression to swallow the trailing syntax.
+        const ATTACK: &str = "\"});globalThis.__pwned=1;({\"y\":\"";
+        let breakout = br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"x","args":{"x":"\"});globalThis.__pwned=1;({\"y\":\""}}"#;
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, breakout, 0, rng(61))
+            .unwrap();
+
+        // One call, and the whole delivery is that call — not the call plus an appended statement.
+        assert_eq!(
+            d.javascript.matches("__brickwrightBrokerReceive(").count(),
+            1,
+            "the delivery grew a second statement: {}",
+            d.javascript
+        );
+        let inner = d
+            .javascript
+            .strip_prefix("globalThis.__brickwrightBrokerReceive(")
+            .and_then(|rest| rest.strip_suffix(')'))
+            .expect("the delivery must be exactly one receiver call");
+
+        // If the payload had escaped its literal, what is left here would not parse.
+        let envelope: serde_json::Value =
+            serde_json::from_str(inner).expect("the delivery argument must still be valid JSON");
+        let carried = envelope["payload"]
+            .as_str()
+            .expect("payload must be carried as a string");
+        let request: serde_json::Value =
+            serde_json::from_str(carried).expect("the carried payload must still be valid JSON");
+
+        // And it round-trips: the attacker's text arrives as DATA, byte for byte.
+        assert_eq!(
+            request["args"]["x"].as_str(),
+            Some(ATTACK),
+            "the payload did not survive as data: {}",
+            d.javascript
+        );
+    }
+
     #[test]
     fn cross_session_correlation_cannot_route() {
         let mut c = BrokerTransportCore::new(limits()).unwrap();
