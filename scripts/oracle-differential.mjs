@@ -25,7 +25,7 @@
  * Exit code 0 only if every differential agrees.
  */
 import { readFileSync, readdirSync } from 'node:fs';
-import { wrappedSample } from './corpus-sample.mjs';
+import { wrappedSample, bindsHardware } from './corpus-sample.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
@@ -222,10 +222,26 @@ async function corpusMode(count, offset) {
   const entries = (Array.isArray(index) ? index : index.examples || [])
     .filter((e) => e.files && e.files.program && Array.isArray(e.devices));
   const pairs = [];
+  const hostOnly = new Set();
   for (const e of entries) {
+    // `devices` is COMPUTED and claims chips for programs that bind nothing,
+    // which the emitter compiles as HOST C — see bindsHardware() and D-CORPUS1.
+    // Pairing those with a microcontroller measures the harness's own input.
+    let src = '';
+    try { src = readFileSync(join(root, e.files.program), 'utf8'); } catch { /* counted below */ }
+    const isDevice = bindsHardware(src);
     for (const [devName, retargetId] of Object.entries(RETARGET_DEVICE)) {
-      if (e.devices.includes(retargetId)) pairs.push({ e, devName, retargetId });
+      if (!e.devices.includes(retargetId)) continue;
+      if (isDevice) pairs.push({ e, devName, retargetId });
+      else hostOnly.add(e.id);
     }
+  }
+  // Never silently. A harness that drops work without saying so reports on a
+  // corpus it did not walk.
+  if (hostOnly.size) {
+    console.log(`corpus: skipped ${hostOnly.size} host-only programs that CLAIM a device ` +
+      `target but bind no PIN/PART/CHIP (D-CORPUS1, owner sb3-creator): ` +
+      `${[...hostOnly].slice(0, 5).join(', ')}${hostOnly.size > 5 ? ', …' : ''}`);
   }
   // Wrapped, and never empty — see scripts/corpus-sample.mjs for why that is
   // its own module with its own gate.

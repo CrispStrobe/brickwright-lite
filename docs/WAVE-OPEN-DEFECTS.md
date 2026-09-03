@@ -704,11 +704,43 @@ of my own first pass, which said 25 by looking only for `PIN` — `08-led-chaser
 through `PART leds = 74HC595 data P1.0 …`, and counting it would have inflated the claim in a
 filing that exists to complain about inflated claims.
 
-### Why the gate is still not enabled in CI
+### The pairing was a category error, and that half IS fixed here
 
-Because it would fail, and the fix is not lite's to make: `devices` is computed in sb3-creator, and
-lite only vendors the result. Enabling it here would mean either a red main or an exclusion list —
-and an exclusion list of 24 entries added on the day the gate was switched on is the shape this
-repository has spent a campaign removing. What unblocks it is the producer teaching the `devices`
-computation the emitter's own host/device rule, after which this gate covers the corpus with no
-exclusions at all.
+The first draft of this entry said the gate could not be enabled until sb3-creator corrected the
+lists. That was too quick. Pairing a host program with a microcontroller is a mistake the HARNESS
+makes, not a defect it detects: host C fails to compile for AVR and bare-metal ARM every time, for
+every one of those programs, and reporting that as emitter-vs-oracle disagreement is measuring its
+own input. The differential now asks the same question the emitter asks — does this program bind a
+`PIN`, `PART` or `CHIP`? — and only pairs device programs with devices. 224 candidate pairs become
+**176 real ones**, and the 24 host-only programs are named on stdout, never dropped silently.
+
+`bindsHardware()` is pinned by `test/corpus-sample.test.mjs`, including the case that caught my own
+first count: `08-led-chaser-595` binds three pins through `PART leds = 74HC595 data P1.0 …` and no
+`PIN` line, so a PIN-only test would have dropped a real device program — the expensive direction
+of this mistake. Mutation-proved both ways: PIN-only fails, and an unanchored match that lets the
+word in a comment promote a host program fails.
+
+The `devices` computation is still wrong and still sb3-creator's: a list that claims eleven chips
+for a program binding nothing is over-claiming whatever the harness does about it.
+
+### What the gate finds now that it can run — measured, not diagnosed
+
+40 pairs from offset 0, in 44 seconds: **31 AGREE, 9 DIFF, 0 ERROR.** Every disagreement is a
+timing one, and they fall into two clearly different groups:
+
+- **A systematic small skew** — 12 gaps of 6 ms and 3 of 7 ms, against a 5 ms tolerance. All nine
+  DIFF pairs are PWM, shift-register or motor programs, i.e. the ones toggling pins fastest
+  (`02-dimmer`, `08-led-chaser-595`, `10-motor-speed`, `20-shift-register-binary`, `24-pwm-fade`).
+  Just over tolerance and suspiciously uniform, which is the signature of a fixed per-loop
+  overhead in one model and not the other.
+- **Two end-of-trace divergences of 692 ms** — `02-dimmer -> pico` and `10-motor-speed -> pico`,
+  where the last event lands at 1932 ms against 1240 ms. Different in kind and much larger; a
+  tolerance argument cannot explain it.
+
+**This is recorded as a measurement and not as a diagnosis.** I have not established whether the
+emitter or the oracle model is the one that is wrong, and widening `tolMs` from 5 to 8 would make
+the first group disappear without anyone finding out which — the exact move this repository's gate
+work exists to prevent. The second group would survive it anyway.
+
+So the gate stays off in CI pending that diagnosis, and the reason is now an honest one: it fails
+because it has found something, not because it was pointed at the wrong pairs.

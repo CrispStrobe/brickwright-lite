@@ -38,3 +38,34 @@ export function wrappedSample (pairs, count, offset) {
     const sample = Array.from({length: take}, (_, i) => pairs[(start + i) % pairs.length]);
     return {sample, start, wrapped: start !== raw};
 }
+
+/**
+ * Does this program target a CHIP at all?
+ *
+ * The emitter decides its own target, and says so at `sb3-creator.js:8243`:
+ * "Which target a project gets is decided by the project — declared pins mean
+ * the chip, everything else means the host." A program that binds no hardware
+ * is a HOST program, and gets portable C99 with `stdio.h` and a 64 KiB arena.
+ *
+ * So pairing such a program with a microcontroller is a category error in the
+ * harness, not a defect it has detected: compiling host C with avr-gcc fails on
+ * `bw_arena[1 << 16]` (AVR's `int` is 16 bits) and with arm-none-eabi on the
+ * missing `stdio.h`, every time, for every one of them. Those are facts about
+ * the pairing, not about the emitter, and a differential that reports them as
+ * emitter disagreement is measuring its own input.
+ *
+ * The gallery's `devices` list is COMPUTED and does claim those targets for
+ * programs that bind nothing — 24 of the 113 claiming nano/pico. That is a real
+ * defect and it is filed as D-CORPUS1 against the producer; it is not fixable
+ * from here, and it must not be quietly absorbed either, so the caller reports
+ * how many pairs this dropped.
+ *
+ * Deliberately syntactic, over the program source, because that is the same
+ * evidence the emitter uses. `PART` and `CHIP` bind pins as surely as `PIN`
+ * does — `PART leds = 74HC595 data P1.0 clock P1.1` is a pin binding — and
+ * missing them would drop real device programs from the comparison, which is
+ * the expensive direction of this mistake.
+ */
+export function bindsHardware (programSource) {
+    return /^[ \t]*(PIN|PART|CHIP)\b/m.test(String(programSource || ''));
+}

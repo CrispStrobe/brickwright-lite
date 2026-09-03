@@ -22,7 +22,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const {wrappedSample} = await import(path.join(ROOT, 'scripts/corpus-sample.mjs'));
+const {wrappedSample, bindsHardware} = await import(path.join(ROOT, 'scripts/corpus-sample.mjs'));
 
 const pairs = n => Array.from({length: n}, (_, i) => `p${i}`);
 
@@ -73,4 +73,34 @@ test('an impossible request is refused loudly rather than silently empty', () =>
         assert.throws(() => wrappedSample(pairs(10), bad, 0), /at least 1/,
             `count=${bad} must be refused, not turned into an empty comparison`);
     }
+});
+
+// ── which programs may be paired with a chip at all ──────────────────────
+
+test('a program that binds hardware is a device program — PIN, PART or CHIP', () => {
+    assert.equal(bindsHardware('DEVICE ARDUINO-UNO\nPIN led = D13 OUTPUT\n'), true);
+    // The one that caught me out. `08-led-chaser-595` binds three pins through a
+    // PART and no PIN line at all; a PIN-only test called it a host program and
+    // would have dropped a real device program from the comparison — the
+    // expensive direction of this mistake.
+    assert.equal(bindsHardware('DEVICE STC12C5A60S2\nPART leds = 74HC595 data P1.0 clock P1.1 latch P1.2\n'),
+        true, 'PART binds pins as surely as PIN does');
+    assert.equal(bindsHardware('CHIP something\n'), true);
+    assert.equal(bindsHardware('  PIN led = D13 OUTPUT'), true, 'indented declarations still bind');
+});
+
+test('a print-only program is a HOST program by the emitter’s own rule', () => {
+    // sb3-creator.js:8243 — "declared pins mean the chip, everything else means
+    // the host". These get stdio.h and a 64 KiB arena, which cannot build for
+    // AVR (16-bit int) or bare-metal ARM (no stdio.h), every time.
+    const src = 'DEVICE ARDUINO-UNO\nCLOCK 16000000\n\nSPRITE Cat:\n  WHEN flag clicked:\n    print "hi"\n';
+    assert.equal(bindsHardware(src), false);
+});
+
+test('the word appearing in prose is not a declaration', () => {
+    assert.equal(bindsHardware('# the PIN is described in this comment\n'), false,
+        'a comment mentioning PIN must not promote a host program to a device one');
+    assert.equal(bindsHardware('print "PART of the string"\n'), false);
+    assert.equal(bindsHardware(''), false);
+    assert.equal(bindsHardware(null), false, 'an unreadable program is not a device program');
 });
