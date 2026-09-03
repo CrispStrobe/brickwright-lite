@@ -147,37 +147,115 @@ Reproducing those bits for real would mean emulating the divide microcode's
 shift-subtract loop, which is MartyPC's territory and worth nothing to a
 teaching workbench: a program that reads flags after `DIV` is already broken.
 
-## 5. Next: the debugger tier
+## 5. The road, in three machines
 
-In order, each landing green before the next starts.
+The tier is not one machine and should not be planned as one. Tier A is a
+breadboard computer in the shape this engine already builds; Tier B is a
+service layer with no hardware in it at all; Tier C is a PC/XT. Each is
+independently useful, and only Tier C is expensive. The engine-side items live
+in `bw-board/ROADMAP.md` §E6; this is the product view.
 
-**M2 — `i8086-disasm.js`. Done, 2026-09-03.** See §7 for what it cost.
+**Measured before promising anything.** The core runs at **4.0 M
+instructions/sec** on a representative mix (register ALU, memory read/write,
+taken branch, call/ret) — 12× a 5 MHz 8086 and about 16× a 4.77 MHz IBM XT.
+Software of that era was written for 0.24 MIPS, so the CPU is not the
+bottleneck at any tier; video timing is. That figure is Node; re-measure in
+the browser bundle before quoting it there.
 
-**M3 — `i8086-machine.js` + `i8086-adapter.js`.** The composable machine in the
-`m6502-machine.js` shape: `{clockHz, regions, chips}`, RAM/ROM ranges over a
-20-bit space, peripherals advanced by each instruction's cycle count, pin-level
-effects crossing the boundary in the same `{tMs, pin, level}` shape everything
-else emits. This is also where INTR/NMI delivery lands, with the IF check and
-the one-instruction inhibition after a segment-register load.
+**8088 comes free.** The ISA is identical. The differences — bus width, a
+four-byte prefetch queue instead of six, cycle timings — are precisely the
+things an instruction-stepped core does not model, so `I8086` *is* an 8088
+except for cycle counts. `SingleStepTests/8088` (with bus data) and `/v20`
+are also MIT if the tier ever wants an NEC V20 or cycle-level work.
 
-**M4 — `i8086-debug.js`.** Boundary-D target mirroring `z80-debug.js`:
-`capabilities`, `state`, `regs`, `disasm`, `onHalt`, `setBreakpoint`,
-`clearBreakpoint`, `run`, `halt`, `step`. Decisions already forced by the
-architecture:
+### Tier A — the 8086 on a breadboard  *(M3, M4; next)*
 
-- `regs()` returns `ax…dx, cs, ip, ss, sp, ds, es, bp, si, di, flags` plus a
-  derived `pc`.
-- **Code breakpoints compare on the linear address.** Two different `seg:off`
-  pairs can name the same instruction; only the linear compare cannot be
-  fooled. The UI may accept `1234:5678` and convert.
-- Write watchpoints wrap `cpu.write` exactly as the Z80 target does — the same
-  pattern, with the mask widened to `0xfffff`.
-- Step-over needs its own call-class test: `E8`, `9A`, `CD`, `CC`, and `FF`
-  reg 2/3.
+The direct analogue of the Eater 6502 and the Searle Z80, chip for chip. This
+is where an LED blinks from an 8255 port, where the MCU examples adapt, and
+where the references point: slador.uk's machine is 8088 + 8284 + 8254 + 8255
++ 8259 + 74244 + 74138 + flash + text LCD, and the Proteus tutorials are its
+first lesson.
 
-**M5 — the teaching surface.** Which machine the lessons actually run: a bare
-8086 on the breadboard, or a minimal XT-alike. Not decided, and not blocking
-M2–M4.
+**M3 — the machine.** `i8255.js` (ports A/B/C, control word, mode 0, and the
+BSR bit-set/reset path; modes 1 and 2 a stated non-goal until a lesson needs
+them), `i8086-machine.js` in the `m6502-machine.js` shape with the address
+space widened to twenty bits and a *second* decode space for I/O ports, and
+`i8086-adapter.js` on the boundary-A pin bus.
+
+**M4 — the debug target.** `i8086-debug.js` mirroring `z80-debug.js`.
+Decisions already forced by the architecture: `regs()` returns the segment
+registers alongside a derived flat `pc`; **code breakpoints compare on the
+linear address**, because two `seg:off` pairs can name one instruction and
+only the linear form cannot be fooled; write watchpoints wrap `cpu.write` as
+the Z80 target does with the mask widened to `0xfffff`; step-over needs its
+own call-class test (`E8`, `9A`, `CD`, `CC`, and `FF` reg 2/3).
+
+**M5 — interrupts and time.** `i8259.js` and `i8254.js`, plus INTR/NMI
+delivery in the machine layer with the IF check and the one-instruction
+inhibition after a segment-register load. The core deliberately does not
+deliver interrupts itself.
+
+**M6 — the wired machine.** `i8086-extract.js` and the extractor SELECT
+entries, so an 8086 hand-wired on the drawn breadboard becomes a machine — or
+a named refusal — exactly as the 6502 does. Plus our own monitor ROM.
+
+### Tier B — the DOS-program tier  *(no hardware at all)*
+
+The 8086 textbook corpus does not want a PC. Measured across the 525 programs
+of `Amey-Thakur/8086-ASSEMBLY-LANGUAGE-PROGRAMS`:
+
+```
+int 21h  3109   of which AH=02h 1347, AH=09h 1064, AH=4Ch 451
+                → 2862 of 3109 in three services
+int 10h    79   int 16h 26   int 1Ah 10   int 15h 8   int 33h 6
+502 of 525 files use .MODEL / PROC / MACRO
+```
+
+So the DOS/BIOS service layer is a few hundred lines and covers roughly 92% of
+the corpus with three functions, and no BIOS ROM or DOS is involved at all.
+**The gate is the assembler, not the emulator**: these are MASM sources, and
+`bw-asm` does not speak `.MODEL`, `PROC` or `MACRO` yet. Scope that honestly
+before promising the corpus — it is the larger half of this tier by far.
+
+### Tier B′ — emu8086 compatibility  *(smaller, separate)*
+
+`yousefkotp/8086-Assembly-Projects` is not DOS software. It is emu8086:
+`#start=Traffic_Lights.exe#`, `out 4, ax` to a built-in traffic-light device,
+`int 15h`/`AH=86h` delays, `include 'emu8086.inc'`. Running it means
+emulating emu8086's virtual peripherals and **re-implementing** its macro
+library — the `.inc` carries no licence we can rely on. This is the tier that
+makes traffic-light, stepper and thermometer lessons possible, and it lands
+after Tier B.
+
+### Tier C — PC/XT compatible  *(the expensive one)*
+
+8237 DMA, 6845/CGA (`mc6845.js` already exists), a µPD765 FDC and disk
+images, plus a BIOS and a DOS. Months of work and a different product from
+"learn the 8086 on a breadboard". Start it when tiers A and B are shipped and
+a lesson actually needs it — not before.
+
+### Not in this lane at all
+
+`jonasb.at/blog/breadboard-chip-8` has **no CPU**. It is 74LS181 ALUs, 74HC377
+registers and microcode in flash with an FPGA GPU — a discrete-logic machine,
+closer to the SAP-1 lane than to this one. Worth building someday; not here.
+
+### Licence rulings (verified 2026-09-03)
+
+| Source | Licence | Ruling |
+| --- | --- | --- |
+| SingleStepTests 8086 / 8088 / v20 | MIT | Oracle only, never shipped — the role `about-data.js` already records for the 65x02 and Z80 suites. |
+| `microsoft/MS-DOS` 1.25, 2.0, 4.0 | MIT | Usable. A genuine DOS exists for Tier C if it ever wants one. |
+| Amey-Thakur `.asm` corpus | MIT, per file header | Shippable as examples **with attribution**. Note that the same repo's *simulator* sources say `CC BY 4.0` in every header while its LICENSE says MIT — take the programs, not the simulator. |
+| GLaBIOS | GPL-3.0 | Refused. The best open BIOS is out of reach. |
+| `skiselev/8088_bios` | GPL-3.0 | Refused. |
+| `GREENSHELLRAGE/8086-breadboard-computer` | **no LICENSE file** | All rights reserved. The architecture may inspire — that is not copyrightable — but its ROM binaries and `.asm` may not be copied. |
+| `emu8086.inc` | unclear | Refused. Re-implement the macros. |
+| MartyPC, PCjs | MIT | Readable as reference implementations. Reading an MIT implementation ships no third-party code. |
+
+The consequence is worth stating plainly: **every ROM in this tier is ours**,
+at every tier. That is a real cost, and it is also the only reason the tier
+can ship inside a BSD-3 bundle at all.
 
 ## 6. Why the core is not vendored into Lite yet
 

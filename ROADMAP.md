@@ -422,6 +422,48 @@ Lite-side items (ours, this repo):
    the strengthened gates (corpus execution, KCL residual, rail-short,
    net-coalesce warnings).
 
+### 3.7 The 8086 tier — CORE + DISASSEMBLER LANDED 2026-09-03, the rest scoped
+
+Full plan, survey and licence rulings in `docs/I8086-CORE-PLAN.md`; the engine
+items are `bw-board/ROADMAP.md` §E6. Summary here so the roadmap is not missing
+a whole CPU tier that lives only in another file.
+
+Landed in bw-board (`f9ecac4`, `8a6a11f`, branch `feat/i8086-core`, not pushed):
+`i8086.js` and `i8086-disasm.js`, ground against SingleStepTests/8086 (MIT) at
+**646,000/646,000 vectors for the core and 646,000/646,000 for the
+disassembler's TEXT as well as its length** — the suite ships a disassembly
+string per vector, a higher standard than the Z80 and 65C02 disassemblers are
+held to. **Measured 4.0 M instructions/sec**, ~12x a 5 MHz 8086. **8088 comes
+free**: the ISA is identical and the differences are exactly what an
+instruction-stepped core does not model.
+
+Nothing is vendored here yet, and that is deliberate — with no adapter or debug
+target importing it, `no-dead-overlay-modules` would fail it and be right to. It
+rides in with the machine layer.
+
+Scoped as THREE machines, because planning them as one is how this gets
+mis-estimated:
+
+- **Tier A — the 8086 on a breadboard** (next). 8255 PPI, machine, adapter,
+  debug target, then 8259/8254 and the bus extractor. This is where an LED
+  blinks from a port, where the MCU examples adapt, and what every breadboard
+  reference the owner cited actually is (slador.uk: 8088 + 8284 + 8254 + 8255
+  + 8259 + 74244 + 74138 + LCD).
+- **Tier B — the DOS-program tier**, with no hardware in it. Measured across
+  the 525-program corpus: 3,109 `int 21h` calls of which 2,862 are AH=02h/09h/
+  4Ch, plus 79 `int 10h` and 26 `int 16h`. The service layer is small. **The
+  gate is the ASSEMBLER** — 502 of 525 files use `.MODEL`/`PROC`/`MACRO`, which
+  `bw-asm` does not speak. Do not promise the corpus before scoping that.
+- **Tier C — PC/XT compatible**, for real PC software. Months. Start it when A
+  and B ship and a lesson needs it.
+
+Licence findings that constrain all three: GLaBIOS and `skiselev/8088_bios` are
+GPL-3 (refused), `GREENSHELLRAGE/8086-breadboard-computer` has no LICENSE file
+at all (architecture may inspire, code may not be copied), `emu8086.inc` has no
+usable licence (re-implement). `microsoft/MS-DOS` 1.25/2.0/4.0 is MIT and the
+Amey-Thakur `.asm` corpus is MIT per file header. **Every ROM in this tier is
+ours.**
+
 ---
 
 ## 3b. What an extension can reach — **TASKS 1, 2 + URL SANDBOX SHIPPED** (2026-08-28)
