@@ -13,19 +13,22 @@ let browser = null;
 let fixture = null;
 
 
-// Open the diagnostics panel and return its settled text. Waits for CONTENT, not the element:
-// the panel is appended synchronously and painted asynchronously, so polling for the node returns
-// an empty body — an assertion about an event taken as one about a state.
-const readDiagnostics = async page => page.evaluate(async () => {
-    window.dispatchEvent(new CustomEvent('bw-open-capability-diagnostics'));
-    for (let i = 0; i < 60; i++) {
+// Open the diagnostics panel and return its settled text.
+//
+// `waitForFunction`, not a setTimeout poll: this gate BANS fixed sleeps, and
+// `capability-browser-gate.test.mjs` asserts `doesNotMatch(/waitForTimeout|setTimeout/)` on this
+// file. My first version polled with setTimeout and that meta-test caught it — a gate about a
+// gate, doing its job. Waiting on the CONDITION is also the correct wait: the panel is appended
+// synchronously and painted asynchronously, so waiting for the NODE returns an empty body.
+const readDiagnostics = async page => {
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('bw-open-capability-diagnostics')));
+    await page.waitForFunction(() => {
         const node = document.querySelector('[data-testid="bw-capability-diagnostics-body"]');
-        if (node && /declared\s+\d/.test(node.textContent)) return node.textContent;
-        await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    const node = document.querySelector('[data-testid="bw-capability-diagnostics-body"]');
-    return node ? `UNSETTLED: ${node.textContent.slice(0, 200)}` : 'NO PANEL';
-});
+        return Boolean(node && /declared\s+\d/.test(node.textContent));
+    }, {timeout: 15000});
+    return page.evaluate(() =>
+        document.querySelector('[data-testid="bw-capability-diagnostics-body"]').textContent);
+};
 
 const runOpcode = async (page, url, opcode) => page.evaluate(async ({extensionURL, opcodeName}) => {
     const vm = window.__brickwrightStore.getState().scratchGui.vm;

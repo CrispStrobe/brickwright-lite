@@ -366,3 +366,21 @@ The repair is also worth keeping, because a corrected assertion ended up STRONGE
 original intent — asserting the state BEFORE a lifecycle event, that it is CLEARED after, and
 that neither view leaks, where the first attempt only asked "are there rows".
 
+### Eleventh self-flag: a source gate matching the comment that explains it
+
+`capability-browser-gate.test.mjs` bans fixed sleeps in the browser proof —
+`assert.doesNotMatch(proof, /waitForTimeout|setTimeout/)` — which is a good rule and it caught a
+real violation: my first `readDiagnostics` polled with `setTimeout`. Replacing it with
+`waitForFunction` fixed the code, and then the assertion failed again, on the COMMENT explaining
+why fixed sleeps are banned. The comment contains the words.
+
+Identical to the broker topology gate matching the sentence describing the `.incognito(true)`
+hazard it gates, earlier the same day. Both fixed the same way: strip comments before a source
+`doesNotMatch`, because **the ban is on code, not prose**.
+
+The general rule, now that it has happened twice in one day: any assertion that reads source text
+and forbids a token will eventually match its own documentation, because the clearest way to
+explain a forbidden token is to name it. Strip comments in every such gate, and mutation-prove
+afterwards that a real occurrence in CODE is still caught — done here: reinserting an actual
+`setTimeout` turns it red.
+
