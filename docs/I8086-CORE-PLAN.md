@@ -3,14 +3,16 @@
 Started 2026-09-03. The retro tier gains a third CPU beside the W65C02 and the
 Z80, built the same way and verified to the same standard.
 
-**Status: the core is done and vector-complete. Nothing is wired to it yet.**
+**Status: the core and the disassembler are done and vector-complete. Nothing
+is wired to them yet.**
 
 | Piece | Where | State |
 |---|---|---|
 | `I8086` core | `bw-board/src/i8086.js` | **646,000/646,000 vectors, 323/323 files** |
 | Vector grinder | `bw-board/scripts/grind-i8086.mjs` | green, ~60 s for the full suite |
-| Always-on subset | `bw-board/test/i8086.test.mjs` | 14 tests, green |
-| Disassembler | `i8086-disasm.js` | not started |
+| Always-on subset | `bw-board/test/i8086.test.mjs` + `i8086-disasm.test.mjs` | 23 tests, green |
+| Disassembler | `bw-board/src/i8086-disasm.js` | **646,000/646,000 vectors, text AND length** |
+| Disassembly grinder | `bw-board/scripts/grind-i8086-disasm.mjs` | green, 3 vectors excluded (§4b) |
 | Machine + adapter | `i8086-machine.js`, `i8086-adapter.js` | not started |
 | Debug target | `i8086-debug.js` | not started |
 | Vendored into Lite | `overlay/…/bw-board/` | **deliberately not yet** — see §6 |
@@ -149,10 +151,7 @@ teaching workbench: a program that reads flags after `DIV` is already broken.
 
 In order, each landing green before the next starts.
 
-**M2 — `i8086-disasm.js`.** Reads through the bus like `z80-disasm.js`, takes a
-*linear* address, returns text plus length. The ModR/M and prefix decode is
-already written and proven inside the core; the disassembler needs its own copy
-of it because it must not advance IP.
+**M2 — `i8086-disasm.js`. Done, 2026-09-03.** See §7 for what it cost.
 
 **M3 — `i8086-machine.js` + `i8086-adapter.js`.** The composable machine in the
 `m6502-machine.js` shape: `{clockHz, regions, chips}`, RAM/ROM ranges over a
@@ -187,3 +186,58 @@ where `npm run sync:bwboard` pulls from. Vendoring it into the overlay before
 the adapter and debug target exist would land a module that nothing imports —
 which is exactly what `test/no-dead-overlay-modules.test.mjs` exists to catch,
 and it would be right to. The core rides in with M3.
+
+## 7. M2, and the standard the suite made possible
+
+The suite ships a **disassembly string** with every vector — `name`, beside
+`bytes`. That is a text oracle, and it is a stronger standard than either of
+the other two disassemblers in this tree is held to: `z80-disasm` and
+`w65c02-disasm` have their lengths ground against vector pc-deltas and their
+*formats spot-checked by hand*. `grind-i8086-disasm.mjs` checks both halves
+against all 646,000, and it passes.
+
+Matching a real disassembler rather than inventing a house style forced five
+rules that each look like a bug:
+
+- A memory operand **always** names its segment, override or not, and always
+  carries `byte`/`word`/`dword` — except `lea`, which carries none, and
+  `les`/`lds`, which say `dword` where `callf`/`jmpf` say `word`.
+- A segment override is spelled out as a bare prefix word (`cs movsb`) **only**
+  for the string primitives, whose operands are implicit. Elsewhere it lives in
+  the brackets, and where there is no memory operand it is not shown at all,
+  because it did nothing.
+- A displacement is printed because **mod says one was encoded**, not because
+  it is non-zero: `[ss:bp+si+0h]` is correct and `[ss:bp+si]` is not.
+- Jump targets zero-pad to four digits and far pointers pad both halves;
+  immediates pad to nothing. `jle 002Bh` and `mov bl, 2h` in one syntax.
+- `rep` on `movs`/`stos`/`lods` is spelled `rep`; on `cmps`/`scas`, which read
+  the zero flag, it is `repe`/`repne`. And `D2`/`D3` reg=6 is `setmoc`, not
+  `setmo`: the CL-counted form is conditional and named for it.
+
+**Two things the vectors caught that no hand-written test would have.**
+
+*Instruction fetch wraps at the segment boundary, not the linear one.* One
+vector in 646,000 starts at IP `FFFCh` and takes its fifth byte from offset
+`0000h` of the same segment. Reading straight on through the linear address
+disassembles a different instruction. The module now takes the real IP and
+fetches through `base + ((ip + i) & 0xffff)`.
+
+*What a relative target is measured from is a rendering choice, not a decoding
+one.* The suite's disassembler measures from the instruction's own start (IP
+treated as zero); a debugger pane wants the address in the segment. The module
+does the useful thing by default and takes `targetBase: 0` for the suite's
+convention, rather than baking a test convention into the product.
+
+### 4b. Three vectors where the suite is wrong
+
+`80.6 #1311`, `81.2 #1261` and `B7 #658` each sit at IP `FFFEh` or `FFFFh`,
+and each one's `name` contradicts its own `bytes` — the name was rendered from
+a byte that was never fetched. The `bytes` array is the capture, and the
+register and memory results agree with it, so disassembling the bytes is right
+and matching the name would be wrong.
+
+They are excluded by `test_hash`, with the reason written beside each, and the
+grinder still requires the right **bytes** for all three — only the text is
+excused. If a regenerated suite ever agrees, the run prints `HEALED` and the
+table should lose a row: an excuse that has stopped being true is worse than
+no excuse.
