@@ -3,76 +3,66 @@
 Started 2026-09-03. The retro tier gains a third CPU beside the W65C02 and the
 Z80, built the same way and verified to the same standard.
 
-**Status: the tier runs. 510 of the 525 textbook programs assemble, 498 run
-to a clean exit with output, and 8 of 10 emu8086 coursework projects drive
-their virtual devices. Nothing is vendored into Lite yet — see §6.**
+**Status: the tier runs, and an independent implementation agrees with it on
+470 of the 525 textbook programs. Nothing is vendored into Lite yet — see §6.**
 
-## What is built, and what it measures
+## What is built
 
 | Piece | Where | State |
 |---|---|---|
-| `I8086` core | `bw-board/src/i8086.js` | **646,000/646,000 vectors, 323/323 files** |
-| Disassembler | `bw-board/src/i8086-disasm.js` | **646,000/646,000 on TEXT and length** |
-| Two grinders | `bw-board/scripts/grind-i8086*.mjs` | green; 3 vectors excluded (§4b) |
-| 8255 PPI | `bw-board/src/i8255.js` | modes 1/2 refused in words, not faked |
-| Machine + adapter | `i8086-machine.js`, `i8086-adapter.js` | LED blinks from a ROM |
-| Debug target | `i8086-debug.js` | factory kind `i8086`; renders a frame |
-| 8259 / 8254 / 8251 | `i8259.js`, `i8254.js`, `i8251.js` | INTR + NMI delivered |
+| `I8086` core | `bw-board/src/i8086.js` | **646,000/646,000 vectors** |
+| Disassembler | `i8086-disasm.js` | **646,000/646,000 on TEXT and length** |
+| 8255 PPI · 8259 · 8254 · 8251 | `i8255.js`, `i8259.js`, `i8254.js`, `i8251.js` | INTR + NMI delivered |
+| Machine · adapter · debug target | `i8086-machine.js` + 2 | factory kind `i8086` |
 | Bus extractor | `i8086-extract.js` | a miswired select gives a NAMED refusal |
-| DIP parts | `bw-parts` `41706a7` | 7 packages, **committed, not pushed** |
-| DOS/BIOS services | `i8086-dos.js` | INT 21h/10h/13h/16h/19h/1Ah/03h/15h |
+| DIP parts | `bw-parts` `41706a7` | 7 packages, pushed |
+| DOS/BIOS services | `i8086-dos.js` | INT 21h/10h/13h/16h/19h/1Ah/03h/15h/20h |
 | Assembler | `i8086-asm.js` | **510/525 accepted** |
 | emu8086 devices | `i8086-emu8086.js` | clean re-implementation, evidence-cited |
-| CGA/VGA renderer | `i8086-cga.js` | modes 00-06h and 13h, pure function |
+| CGA · Hercules · VGA cards | `cga-card.js`, `hercules-card.js`, `vga-card.js` | ports only, no pixels |
+| PC speaker | `pc-speaker.js` | `audio() → {hz, on}`, the Z80 tier's shape |
+| Framebuffer renderer | `i8086-cga.js` | modes 00–06h and 13h, a pure function |
 | Corpus harness | `scripts/run-i8086-corpus.mjs` | the instrument below |
 
 ## The number, and what it is not
 
 ```
-Amey textbook corpus, 525 programs:
-  498  EXITED    terminated cleanly AND produced output
-   12  LOOPING   still running at the budget, and driving something
-   15  THREW     assembly refused
-    0  HUNG      0 SILENT      refused services: none
+Amey textbook corpus, 525 programs, against ITS OWN recorded outputs:
+  470  MATCH     byte-identical to an independent implementation
+    4  NOINPUT   asked for more keystrokes than the recording supplied
+   16  ORACLE    their recorded output is a memory image, not a result
+   12  DIFFER    every one read and explained
+    8  LOOPING   infinite control loops, by design
+   15  THREW     assembly refused; MASM refuses 14 of them too
 
-yousefkotp emu8086 coursework, 10 projects:
-    8  LOOPING     2  THREW
+yousefkotp emu8086 coursework, 10 projects:  8 LOOPING, 2 THREW (repo defects)
 ```
 
-**The harness has no "pass" in its vocabulary**, and that is the point. A
-program that loads, runs, exits cleanly and prints nothing is `SILENT`, not a
-success — on this corpus it usually means a service returned carry and the
-code took an error branch to the exit. A program still running at the budget
-is `LOOPING` only if it *did* something; otherwise `HUNG`. An `.asm` with no
-assembler is counted, not skipped, because a skip reads the same as a pass in
-a summary line.
+**The harness has no "pass" in its vocabulary.** A clean exit that printed
+nothing is `SILENT`, not a success. A program still running is `LOOPING` only
+if it *did* something, else `HUNG`. An `.asm` with no assembler is counted,
+not skipped — a skip reads the same as a pass in a summary line.
 
-Both `0`s are load-bearing. Zero `SILENT` means no program limped to an exit
-having produced nothing. Zero `HUNG` means every one of the twelve
-non-terminating programs is an infinite control loop doing its job — the
-traffic-light controller reports `R--,R--,R--,R--`, the documented all-red
-word.
+**`MATCH` is the strong claim.** The oracle is the corpus's own simulator: it
+dispatches on mnemonic strings and never fetches an opcode byte, so it shares
+no code with ours. Two unrelated implementations rarely make the same mistake.
+It is *not* hardware-grounded, so a disagreement is a lead to chase from both
+ends — and 16 of them turned out to be its own `$`-terminated print running
+away, one dumping the interrupt vector table verbatim, which means its `SEG`
+returns 0.
 
-The 15 refusals are honest: 14 relative jumps beyond 127 bytes, which MASM
-rejects too, and one `.FARDATA`, not modelled. The 2 emu8086 failures are
-**defects in that repo** — one file is truncated at publication and the other
-has a stray token and an unterminated string literal. Both are pinned in
-tests with a note that a later change which "fixes" them should be looked at
-rather than celebrated.
+**Comparing fairly took three corrections, all of them mine.** Their oracle
+records the *screen*; our stdout is the character *stream*, and the two differ
+the moment a program clears the display. A screen is eighty columns and a
+stream has no width, so a long line wraps here and not there. And a program
+that asked for a key it did not get cannot be expected to agree with a run
+that had one — the input is stated in their own test file, so the fix was to
+reproduce it rather than invent one.
 
-## The standing to-do list, measured not guessed
-
-With every DOS/BIOS service implemented, the harness's refusal histogram
-moved up a level and now reports unclaimed I/O ports:
-
-```
-   24  port 97  (61h — the PC speaker gate on the XT's PPI port B)
-   10  port 62      8  port 61      6  port 63      5  port 60
-    3  port 1016 (3F8h — COM1)      2  port 40      2  port 41
-```
-
-The speaker is the next real gap and both parts to close it (the 8255 and
-8254 channel 2) already exist in the tier.
+**What the oracle found that no test did**: two services of ours that reported
+success unconditionally (`INT 21h/3Eh` and `/41h`), and `INT 10h/06h` clearing
+the screen where it should scroll a window. None failed a test; none threw;
+the tally counted all three as successes.
 
 ## 1. Why a core of our own rather than an adoption
 
@@ -284,7 +274,7 @@ library — the `.inc` carries no licence we can rely on. This is the tier that
 makes traffic-light, stepper and thermometer lessons possible, and it lands
 after Tier B.
 
-### Tier C — PC/XT compatible  *(visible half done; the rest still expensive)*
+### Tier C — PC/XT compatible  *(the display and sound are done; storage is not)*
 
 The **visible half landed early and cheaply**, because it turned out not to
 need the machine at all: `i8086-cga.js` renders modes 00-06h and 13h as a
@@ -295,10 +285,24 @@ disk services are in, and `loadBoot()` runs a 512-byte boot sector at
 DOS nor an assembler**, so that corpus was runnable before the assembler
 existed.
 
-What remains is the expensive part and has not started: 8237 DMA, the 6845
-CRTC and real retrace timing, a µPD765 FDC with disk images, a BIOS ROM and a
-DOS. Months, and a different product from "learn the 8086 on a breadboard".
-Start it when a lesson actually needs it.
+**The display and sound are now done too, and they cost far less than
+expected.** Three port cards — CGA, Hercules and VGA — hold raw latches and no
+pixels; the renderer stays a pure function; and the debug target is the only
+file that knows both vocabularies. Retrace on `3DAh` is derived from machine
+time, which is what unhangs a game polling for it. The PC speaker reports
+`{hz, on}`, the same shape the Z80 tier already answers with, so a UI needs no
+new concept for a second CPU family.
+
+Two refusals in there are deliberate and worth keeping: VGA planar modes
+`0Dh`–`12h` and Hercules are **refused by name** rather than drawn. Hercules
+lives at `B0000h` and the renderer reads `B8000h` — drawing it anyway would
+not make a worse picture, it would make a picture of something else.
+
+What remains is storage and the software stack: 8237 DMA, a µPD765 FDC with
+disk images, a BIOS ROM and a DOS. Note that `loadBoot()` plus `INT 13h` over
+a supplied image already runs a boot sector today, so the gap is narrower than
+it was: what is missing is a *bootable image* and the BIOS ROM to make the
+machine self-hosting, not the ability to start one.
 
 ### Not in this lane at all
 
