@@ -117,8 +117,16 @@ jobs:
           # audit read was refused — a harness fault wearing the costume of a boundary fault.
           key: e2e-real-frontend
 
+      # PINNED, not floating. The e2e gate's verdict depends on this binary: it is the oracle
+      # that drives the app and reports what the boundary did. `--locked` pins the dependency
+      # tree; it does NOT pin tauri-driver itself, so an upstream release could silently change
+      # the oracle and every conclusion drawn from it. Recording the version beside the verdict
+      # (the harness does) makes a change visible; pinning makes it deliberate.
+      #
+      # 2.0.6 is what CI has been resolving to and what every green run in this lane was proven
+      # against. Raising it is a one-line edit that shows up in review, which is the point.
       - name: Install tauri-driver
-        run: cargo install tauri-driver --locked
+        run: cargo install tauri-driver --version 2.0.6 --locked
 
       # A REAL frontend is not needed and would cost twenty minutes of webpack: what the broker
       # requires is its own document and its packaged assets. Anything else the editor would
