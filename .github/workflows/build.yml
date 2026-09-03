@@ -419,24 +419,40 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: node scripts/verify-labwired-lazy-bundle.mjs
 
+      # The debugger smoke compares lite's own emitter against an INDEPENDENT
+      # disassembler, which lives in another repo. Fetching it is what turns
+      # this step from a permanent skip into a verdict — see below.
+      - name: Fetch stc-compiler (the debugger smoke's disassembly oracle)
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/stc-compiler
+          path: .stc-compiler
+
       - name: Smoke-test the debugger
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        env:
+          STC_COMPILER: ${{ github.workspace }}/.stc-compiler
         run: |
           if ! grep -q '"smoke:debugger"' package.json; then
             echo "::error::package.json has no smoke:debugger script — the debugger is untested"
             exit 1
           fi
-          # smoke:debugger needs SDCC + stc-compiler locally. In CI, report
-          # absence rather than silently skipping — but do not fail the build
-          # for a tool the runner cannot provide.
-          npm run smoke:debugger || {
-            EXIT=$?
-            if [ $EXIT -eq 2 ]; then
-              echo "::warning::smoke:debugger skipped (exit 2 = missing local tool, e.g. SDCC). Runs locally."
-            else
-              exit $EXIT
-            fi
-          }
+          # Exit 2 means "a prerequisite is missing", and it USED to be
+          # downgraded to a warning here. Because the runner had no compiler,
+          # that downgrade ran on every build for months: the step was green,
+          # the debugger was never exercised, and three real defects sat behind
+          # it (D-SMOKE1, then D-EMU-BP2 and D-EMU-BP3 once it could run).
+          #
+          # CI now supplies everything the script needs. The 8051 toolchain is
+          # in-tree WASM and runs under Node, native sdcc is NOT required
+          # (measured: the script exits 0 with sdcc absent from PATH), and the
+          # disassembly oracle is checked out above. So exit 2 no longer means
+          # "a tool this runner cannot provide" — it means the workflow is
+          # broken, and it fails.
+          # No `||` branch on purpose: this step no longer swallows anything,
+          # and the script's own stderr names any missing prerequisite.
+          npm run smoke:debugger
 
       # Browser acceptance BEFORE the artifact leaves this job. The
       # 930000d incident shipped a wall-to-wall visual regression on

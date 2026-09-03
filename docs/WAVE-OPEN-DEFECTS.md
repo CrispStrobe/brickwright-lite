@@ -424,11 +424,21 @@ compilation failed", which reads like a compiler fault. The stub now serves the 
 assets from the build directory that `document.baseURI` already points at, and names a missing
 asset instead of dereferencing undefined. **The error message now identifies the real cause.**
 
-**2. OPEN — the sdcc-wasm toolchain cannot run under Node.** It is emscripten output built for
-a browser and fails in sequence: `require is not defined`, then `__dirname is not defined`, then
-— with both shimmed — sdcc itself dies with `memory access out of bounds`. Making this work needs
-a Node-targeted build of the toolchain, not a shim; I stopped after the third because the fourth
-is not an environment gap, it is the module misbehaving. Owner: whoever owns sdcc-wasm.
+**2. RESOLVED 2026-09-03 — the sdcc-wasm toolchain runs under Node.** Recorded as needing "a
+Node-targeted build of the toolchain, not a shim", on the strength of a third failure
+(`memory access out of bounds`) read as the module misbehaving. It was not: the first two
+failures (`require is not defined`, `__dirname is not defined`) were the module being loaded as
+an ES import when it is CommonJS, and the third followed from a STALE toolchain in `build/` —
+the pre-2026-08-31 64 KiB-stack build whose stack overflow corrupts SDCC's own static data.
+`compiler.js` now loads the Emscripten glue through a Node branch that evaluates it as CommonJS
+with a real `require`/`__filename`/`__dirname`, and the smoke resolves the toolchain from the
+tree rather than from `build/`.
+
+Measured directly, outside the smoke harness — a staged app root, a `file:`-capable `fetch`, and
+`compile(src, {target: 'stc12c5a60s2'})` — returns `success=true bytes=528` and real Intel HEX.
+The lesson is the one the D29 header already carries: the third failure was a consequence of the
+first two being worked around in the wrong place, and "the module is misbehaving" was a
+conclusion drawn one step before the environment was actually correct.
 
 **3. CORRECTED 2026-09-03 — filed as a product bug, it is mostly a deliberate trade-off.**
 bw-ci challenged this and was right on every point. Recorded in full because the original
@@ -474,10 +484,27 @@ header governed it. That is the mirror of the mistake in the other direction —
 as evidence about code it does not govern. Here the comment governs the code directly beneath it,
 and skipping nine lines turned a trade-off into a bug report.
 
-**Not re-enabled in CI.** The sdcc install and stc-compiler checkout were reverted so main stays
-green; re-enabling requires (2). The lesson worth keeping is structural: a prerequisite check
-that exits before the assertions can shadow them indefinitely, and a step that downgrades that
-exit to a warning makes the shadow permanent.
+**RE-ENABLED IN CI 2026-09-03, and it needed neither of the things this paragraph assumed.**
+The note said re-enabling required (2) plus an sdcc install. (2) is resolved above — and the sdcc
+install was never needed at all.
+
+Instrumenting the smoke's own fetch stub showed the native-sdcc fallback is **not called once**
+in a full run: every supported 8051 target is compiled by the in-tree WASM toolchain. Confirmed
+by removing sdcc from `PATH` entirely, whereupon the script still exits 0. So the startup check
+`execFileSync('sdcc', ['--version'])` — which exits 2, which CI downgraded to a warning — was
+shadowing every assertion in the file over a tool the file does not use. It is now checked at the
+point of use, inside the fallback, where the answer matters.
+
+What CI actually needed was the stc-compiler checkout, for the independent disassembly oracle.
+That is one `actions/checkout` step. With it, the smoke step no longer swallows anything: the
+`|| { … -eq 2 … }` branch is gone, and `KNOWN_SWALLOWED` in `test/gate-coverage.test.mjs` is now
+**empty** — its only entry was this step, whose own excuse called itself "a promise to come back,
+not a resolution". Mutation-proved: re-introducing the swallow fails
+`a step that swallows a gate failure has to say why`.
+
+The structural lesson stands and is now sharper: a prerequisite check that exits before the
+assertions shadows them indefinitely, a step that downgrades that exit to a warning makes the
+shadow permanent — and nobody had checked whether the prerequisite was even real. It was not.
 
 
 ## D-EMU-BP — the three "emulator breakpoint" defects, resolved (2026-09-03)
