@@ -424,3 +424,27 @@ Three questions look alike and are not:
 This repository had mechanised the first and the third. The second was the gap, and a "skipped"
 line is exactly what fills it while looking like coverage.
 
+### Species 15's cheaper cousin: a condition that can never be true
+
+Two ways a gate is silently disabled by its `if:` alone, both now pinned in
+`test/gate-coverage.test.mjs`:
+
+- **`steps.<id>.outcome` for an id nothing declares.** One character off —
+  `steps.serv.outcome` — evaluates to empty, the condition is permanently false, and the step
+  never appears. No error, no warning, no skipped line.
+- **A forward reference.** A step's `outcome` is empty until it has run, so keying a gate on a
+  step declared BELOW it can never be true either.
+
+Every reference in all seven workflows resolves correctly today, which is precisely when to pin
+it: the failure is one keystroke away and looks like nothing at all. Mutation-proved both ways —
+`build.yml:504 -> steps.serv is never declared`, and
+`build.yml:126 -> steps.deployment is declared LATER (line 945)`.
+
+**A note on the mutation, which is the more useful lesson.** The forward-reference mutation first
+reported "no failure" — and the mutation had not applied, because of a quoting error in the
+script that made it. A mutation that does not apply is indistinguishable from a test that does not
+bite. It surfaced only because a `SyntaxWarning` appeared in the output next to the result I
+wanted to see. When a mutation reports green, prove the mutation LANDED before concluding
+anything about the test: diff the file, or assert the anchor count, which is what
+`scripts/mutation-proof.mjs` does and why it treats a stale anchor as a failure rather than a skip.
+

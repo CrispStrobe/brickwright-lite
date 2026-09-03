@@ -312,6 +312,48 @@ const KNOWN_SWALLOWED = {
         'is a promise to come back, not a resolution.'
 };
 
+/**
+ * A gate keyed on a step id that does not exist, or that is declared LATER, never runs.
+ *
+ * Species 15's cousin, and the cheaper half of it. `steps.<id>.outcome` for an id nothing
+ * declares evaluates to empty, so `if: steps.serv.outcome == 'success'` — one character off — is
+ * permanently false and the gate is silently disabled. Same for a forward reference: a step's
+ * `outcome` is empty until it has run, so keying a gate on a step declared BELOW it can never be
+ * true. Neither produces an error, a warning, or a skipped-step line anyone reads: the step just
+ * quietly does not appear.
+ *
+ * Every reference in this repo resolves correctly today. That is exactly when to pin it — the
+ * failure is a typo away and would look like nothing at all.
+ */
+const stepIdLines = text => {
+    const lines = text.split('\n');
+    const declared = new Map();
+    lines.forEach((line, index) => {
+        const id = line.match(/^\s*id:\s*([A-Za-z0-9_-]+)\s*$/);
+        if (id) declared.set(id[1], index);
+    });
+    return {lines, declared};
+};
+
+test('no gate is keyed on a step id that does not exist, or that comes later', () => {
+    for (const file of readdirSync(path.join(ROOT, '.github/workflows')).filter(f => f.endsWith('.yml'))) {
+        const {lines, declared} = stepIdLines(readFileSync(path.join(ROOT, '.github/workflows', file), 'utf8'));
+        const broken = [];
+        lines.forEach((line, index) => {
+            if (!/^\s*if:/.test(line)) return;
+            for (const [, ref] of line.matchAll(/steps\.([A-Za-z0-9_-]+)\./g)) {
+                if (!declared.has(ref)) broken.push(`${file}:${index + 1} -> steps.${ref} is never declared`);
+                else if (declared.get(ref) > index) {
+                    broken.push(`${file}:${index + 1} -> steps.${ref} is declared LATER (line ${declared.get(ref) + 1})`);
+                }
+            }
+        });
+        assert.deepEqual(broken, [],
+            `a condition references a step that cannot have an outcome, so it is permanently ` +
+            `false and its step silently never runs: ${broken.join(' | ')}`);
+    }
+});
+
 test('a step that swallows a gate failure has to say why', () => {
     const steps = buildJobSteps(buildYml);
     const swallows = step => /\|\|\s*(?:true|:)\b/.test(step.run) ||

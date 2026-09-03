@@ -290,9 +290,20 @@ console.log(`stepped 5 instructions -> ${added} rows: ${walked.map(r => r.text.s
 // version skew. Reading the loaded image keeps both sides on the same bytes,
 // and it is not circular — the boundaries still come from stc_disasm, not from
 // the length table under test.
+//
+// Bounded to the program's own contiguous region, which is what SDCC lays out
+// from 0x0000. The last nonzero byte is NOT that boundary: code memory also
+// carries bytes at 0xFFC0.., and stc_disasm sweeps min(address)..max(address),
+// so including them disassembles 64 KB of padding — 1.1 MB of NOP listing,
+// which overflows execFileSync's default 1 MB buffer (ENOBUFS) before any
+// length is ever compared.
+const PROGRAM_GAP = 64;
 const codeBytes = runner.readMem('code', 0, 0x10000);
-let codeEnd = codeBytes.length;
-while (codeEnd > 0 && codeBytes[codeEnd - 1] === 0) codeEnd--;
+let codeEnd = 0;
+for (let at = 0; at < codeBytes.length; at++) {
+    if (codeBytes[at]) codeEnd = at + 1;
+    else if (at - codeEnd >= PROGRAM_GAP) break;
+}
 const ihxRecords = [];
 for (let at = 0; at < codeEnd; at += 16) {
     const row = [Math.min(16, codeEnd - at), (at >> 8) & 0xFF, at & 0xFF, 0x00,
