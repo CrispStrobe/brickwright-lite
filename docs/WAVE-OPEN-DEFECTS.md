@@ -430,16 +430,49 @@ a browser and fails in sequence: `require is not defined`, then `__dirname is no
 a Node-targeted build of the toolchain, not a shim; I stopped after the third because the fourth
 is not an environment gap, it is the module misbehaving. Owner: whoever owns sdcc-wasm.
 
-**3. OPEN, and this one is a PRODUCT defect, not a test defect.** `createCompilerFetch` does
+**3. CORRECTED 2026-09-03 — filed as a product bug, it is mostly a deliberate trade-off.**
+bw-ci challenged this and was right on every point. Recorded in full because the original
+version of this entry would have sent someone to "fix" a decision.
 
-    return compileLocal(...).then(result => new Response(...))
+What I wrote: `createCompilerFetch` returns `compileLocal(...).then(...)` with no `.catch`, so a
+runtime failure of the in-browser toolchain fails the `/compile` request outright instead of
+falling through to the hosted compiler.
 
-with no `.catch`. When the in-browser toolchain fails at runtime, the rejection propagates and
-the `/compile` request fails outright — there is **no fall-through to the server** that the same
-function returns for every request it does not claim. `installWasmCompilerRouting` is called
-lazily at compile time and installs unconditionally once the chunk imports, so there is also no
-opt-out. In a browser where the WASM compiler is broken or partially cached, compilation fails
-rather than degrading to the hosted compiler. That is worth a look independently of this script.
+What the code says, in the first six lines of the file I was diagnosing — I read from line 10:
+
+    * A supported request never silently falls back after a local failure: that
+    * would turn offline/debug failures into surprising network traffic.
+
+So the missing `.catch` is the STATED INTENT with a reason. "Compilation fails instead of
+degrading to the hosted compiler" is a fair description of the behaviour and an unfair
+description of the decision: degrading is exactly what the author refused, so that a learner
+working offline or in the debugger does not have a local failure quietly become a network round
+trip. **Do not add a `.catch`** — that silently reverses a recorded choice.
+
+Two further specifics of mine were simply wrong:
+
+- It does NOT install unconditionally. `debug-runner.js:626` is
+  `if (LOCAL_8051_TARGETS.has(compileTarget)) await installWasmCompilerRouting(setStatus)`,
+  and `localTargetSupported(body.target)` gates each request again inside the intercept.
+  `installWasmCompilerIntercept()` is unconditional once CALLED, which is a different claim.
+- Therefore the blast radius is five parts, not every build.
+
+**What survives, and it is the better finding: there is no opt-out.** `LOCAL_TARGETS`
+(`compiler.js:4-10`) is a frozen allowlist of five STC parts with no flag, so for those five a
+broken or half-cached toolchain cannot be bypassed at all. That is a real gap, and a DIFFERENT
+gap from the missing `.catch`. The repair is a design call in someone else's feature, and the
+two shapes that satisfy the header rather than reversing it are:
+
+  (i) a LOUD fallback — fall back to hosted AND tell the user it happened, which honours
+      "never *silently*"; or
+  (ii) an explicit opt-out, so a stuck user can force the hosted compiler.
+
+Neither is made here. Owner: whoever owns sdcc-wasm.
+
+The lesson for me: I read a function's error path without reading its file's header, and the
+header governed it. That is the mirror of the mistake in the other direction — treating a comment
+as evidence about code it does not govern. Here the comment governs the code directly beneath it,
+and skipping nine lines turned a trade-off into a bug report.
 
 **Not re-enabled in CI.** The sdcc install and stc-compiler checkout were reverted so main stays
 green; re-enabling requires (2). The lesson worth keeping is structural: a prerequisite check

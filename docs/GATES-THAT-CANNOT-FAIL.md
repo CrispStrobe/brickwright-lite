@@ -402,7 +402,8 @@ the source was fine. `gate-coverage` asked "does a workflow run this?" and the a
 Neither asks the question that mattered: *did the assertions execute?* A skip satisfies "it ran".
 
 **Mechanised** in `test/gate-coverage.test.mjs`: any step invoking an inventoried gate that also
-swallows a nonzero exit (`|| true`, `|| :`, an `-eq N` re-raise, or `continue-on-error: true`)
+swallows a nonzero exit (`|| true`, `|| :`, an `-eq N` re-raise, or `continue-on-error: true` —
+bw-ci's addition, and correct: it is the same shape in different syntax)
 must appear in `KNOWN_SWALLOWED` with what the swallow costs. Ratcheted in both directions —
 a new undocumented swallow fails, and an entry that no longer swallows must be deleted, so the
 list cannot outlive the thing it excuses. Both mutation-proved.

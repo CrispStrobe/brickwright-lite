@@ -278,11 +278,36 @@ console.log(`stepped 5 instructions -> ${added} rows: ${walked.map(r => r.text.s
 // with it for reasons that have nothing to do with lengths. Instead, take
 // stc_disasm's OWN consecutive instruction boundaries — where it is certain —
 // and check that our table predicts each gap.
+//
+// The bytes handed to the oracle are the ones the emulator is EXECUTING, read
+// back out of code memory. They used to be `${work}/main.ihx`, written by the
+// POST /compile branch of the fetch stub — but the app's own local-WASM router
+// now claims that POST (that route IS production, and testing it is the point
+// of this script), so native SDCC never runs and no such file is written.
+// Compiling a second image with native SDCC would be worse than a missing file:
+// stc_disasm would report boundaries in an SDCC 4.2.0 image while `readMem`
+// below reads the 4.5.0 one, and every disagreement would be noise about
+// version skew. Reading the loaded image keeps both sides on the same bytes,
+// and it is not circular — the boundaries still come from stc_disasm, not from
+// the length table under test.
+const codeBytes = runner.readMem('code', 0, 0x10000);
+let codeEnd = codeBytes.length;
+while (codeEnd > 0 && codeBytes[codeEnd - 1] === 0) codeEnd--;
+const ihxRecords = [];
+for (let at = 0; at < codeEnd; at += 16) {
+    const row = [Math.min(16, codeEnd - at), (at >> 8) & 0xFF, at & 0xFF, 0x00,
+        ...codeBytes.slice(at, Math.min(at + 16, codeEnd))];
+    row.push((0x100 - (row.reduce((sum, b) => sum + b, 0) & 0xFF)) & 0xFF);
+    ihxRecords.push(`:${row.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join('')}`);
+}
+ihxRecords.push(':00000001FF');
+const loadedIhx = path.join(work, 'loaded.ihx');
+writeFileSync(loadedIhx, `${ihxRecords.join('\n')}\n`);
 // gate-shapes-allow: same STCC checkout, already existence-checked at startup.
 const disasmOut = execFileSync('python3', ['-c', `
 import sys; sys.path.insert(0, ${JSON.stringify(STCC)})
 import stc_disasm
-print(stc_disasm.disassemble_hex(open(${JSON.stringify(path.join(work, 'main.ihx'))}).read()))
+print(stc_disasm.disassemble_hex(open(${JSON.stringify(loadedIhx)}).read()))
 `], { encoding: 'utf8' });
 const oracle = disasmOut.split('\n')
     .map(l => l.match(/^([0-9A-F]{4})\s+((?:[0-9A-F]{2} )+)/))
