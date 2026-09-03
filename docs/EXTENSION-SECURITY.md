@@ -214,3 +214,39 @@ capabilities remains impossible and continuation (a) remains ~21% done. Anyone q
 from this file should re-measure it — the first count I took today looked for a top-level
 `deferred` key, found none, and would have reported continuation (a) as COMPLETE.
 
+### Continuation (a) measured, 2026-09-03: it is not a review backlog
+
+The plan of record has been "finish removing every deferred entry from the privileged realm
+before issuing leases", which reads like throughput — 95 reviews to grind through. Measured
+against `gallery-pins.json`, it is not that. Every one of the 95 carries a WRITTEN reason, and
+the capabilities they declare are:
+
+    79  runtime          (Scratch.vm internals, runtime lifecycle, redraw)
+    51  dom              (document / window / page URL)
+    21  fetch-import
+     8  websocket
+     4  web-serial      4  web-bluetooth      1  web-nfc      1  nested-worker
+
+**The two dominant blockers are `runtime` and `dom` — precisely what the worker realm exists to
+DENY.** Promoting most of these would mean handing workers the realm access the isolation was
+built to prevent, which is not a review decision; it is the opposite of the design.
+
+Even the four deferrals that declare NO capability are blocked on substance, not review:
+
+    Lily/HackedBlocks      runtime corpus found no executable opcode for parity proof
+    PwLDev/vibration       requires unsandboxed navigator.vibrate
+    TheShovel/LZ-String    requires reusable Scratch.external eval/import
+    ZXMushroom63/searchApi requires unsandboxed page URL search parameters
+
+So there is no promotable cohort waiting on attention. The honest reframing:
+
+1. **A small number are unblockable by US.** `websocket` (8) and `fetch-import` (21) are
+   capabilities a broker could plausibly mediate, and those are engineering tasks with a
+   security review each — not reviews of the extension.
+2. **The majority are unblockable without upstream change.** An extension that needs
+   `Scratch.vm.runtime` cannot run in a realm that does not have it. Removing it from the
+   privileged realm means removing it from the gallery, or the extension changing.
+3. **Therefore per-extension native attribution is not "one campaign away".** Anyone planning
+   on that basis should read this table first. It was written because the alternative — quoting
+   "95 deferred" as a to-do list — makes the work sound like patience.
+
