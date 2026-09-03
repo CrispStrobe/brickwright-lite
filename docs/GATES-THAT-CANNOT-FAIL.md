@@ -339,3 +339,30 @@ line contains the pattern. It killed the block before the backup line ran. Caugh
 the file's state did not match what the command should have done — the same "read the output,
 do not trust the step" habit that broke the `.incognito` hunt.
 
+## The number that was the answer, read past twice (2026-09-03)
+
+Not a new species — a repeat of the oldest lesson in this file, worth recording because of how
+cheaply it recurred.
+
+Chasing why a diagnostics panel "rendered zeros", I ran two probes. Both printed:
+
+    declared 2   allowed 1   refused 0   revoked 0
+
+I read `declared 2 allowed 1` as "the panel works" and moved on, twice. The answer was `refused
+0`: my assertion demanded a refusal that a `page.reload()` had legitimately cleared. Five
+theories about the panel's internals — module duplication, stale deploy, paint race, early open,
+null sources — all eliminated by measurement, while the disproof sat in the third field of a line
+I had already printed.
+
+**The habit that fails here is not "measure instead of guess".** I did measure, twice. It is
+reading the measurement for the thing you expect to see rather than the thing that is there.
+`htmlLen=61` was the same shape: a true number, read as confirmation of a theory it did not
+support.
+
+The practical form: when a probe returns several fields and you conclude from two of them, say
+out loud what the others are. If they do not fit the conclusion, the conclusion is wrong.
+
+The repair is also worth keeping, because a corrected assertion ended up STRONGER than the
+original intent — asserting the state BEFORE a lifecycle event, that it is CLEARED after, and
+that neither view leaks, where the first attempt only asked "are there rows".
+
