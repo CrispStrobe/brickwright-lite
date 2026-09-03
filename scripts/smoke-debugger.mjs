@@ -22,7 +22,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { writeFileSync, readFileSync, mkdtempSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, readdirSync, mkdirSync, mkdtempSync, symlinkSync, existsSync }
+    from 'node:fs';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -31,11 +33,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
 const LITE = path.join(repo, 'packages/scratch-gui/src');
 const BUILD = path.join(repo, 'packages/scratch-gui/build');
+const SDCC_DIST = path.join(LITE, 'lib/sdcc-wasm/dist');
 // gate-shapes-allow: overridable with STC_COMPILER, and its absence exits 2 below.
 const STCC = process.env.STC_COMPILER || path.resolve(repo, '../../stc-compiler');
 
 for (const [what, where] of [['the integrated tree (npm run integrate)', LITE],
     ['a webpack build (static/emu8051.wasm)', path.join(BUILD, 'static/emu8051.wasm')],
+    ['the in-tree SDCC WASM toolchain', path.join(SDCC_DIST, 'sdcc.js')],
     ['stc-compiler (set STC_COMPILER)', path.join(STCC, 'stc_symtab.py')]]) {
     if (!existsSync(where)) { console.error(`smoke-debugger: missing ${what}: ${where}`); process.exit(2); }
 }
@@ -44,9 +48,43 @@ try { execFileSync('sdcc', ['--version'], { stdio: 'pipe' }); }
 catch { console.error('smoke-debugger: no runnable sdcc on PATH'); process.exit(2); }
 const work = mkdtempSync(path.join(tmpdir(), 'bw-runner-'));
 
+// ---- the app root this run resolves assets against ------------------------
+// A staged mirror of `build/`, identical to it except that `static/sdcc-wasm`
+// points at `src/lib/sdcc-wasm/dist` — the source webpack's CopyWebpackPlugin
+// copies from — instead of whatever a previous build happened to leave there.
+//
+// This is not tidiness. The toolchain in build/ can be OLDER than the one in
+// the tree, and a pre-2026-08-31 copy is the 64 KiB-stack build whose stack
+// overflow corrupts SDCC's own static data (see sdcc-wasm/BUILD-INFO.md). It
+// fails as `memory access out of bounds` from the sdcc stage — which reads as
+// a compiler or harness bug, not as "your build directory is stale", and sent
+// at least one investigation down a dead end. Resolving the toolchain from the
+// tree makes this script's verdict a property of the committed toolchain, the
+// same one test/wasm-compiler-integration.test.mjs gates.
+const stage = mkdtempSync(path.join(tmpdir(), 'bw-approot-'));
+mkdirSync(path.join(stage, 'static'));
+for (const entry of readdirSync(BUILD)) {
+    if (entry !== 'static') symlinkSync(path.join(BUILD, entry), path.join(stage, entry));
+}
+for (const entry of readdirSync(path.join(BUILD, 'static'))) {
+    if (entry !== 'sdcc-wasm') {
+        symlinkSync(path.join(BUILD, 'static', entry), path.join(stage, 'static', entry));
+    }
+}
+symlinkSync(SDCC_DIST, path.join(stage, 'static/sdcc-wasm'));
+const digest = file => (existsSync(file) ? createHash('sha256').update(readFileSync(file)).digest('hex') : '-');
+const staleAssets = ['cc1.js', 'cc1.wasm', 'sdcc.js', 'sdcc.wasm', 'sdas8051.js', 'sdas8051.wasm',
+    'sdld.js', 'sdld.wasm', 'runtime.json']
+    .filter(name => digest(path.join(SDCC_DIST, name)) !==
+        digest(path.join(BUILD, 'static/sdcc-wasm', name)));
+if (staleAssets.length) {
+    console.log(`note: build/static/sdcc-wasm is stale (${staleAssets.join(' ')}); ` +
+        'using src/lib/sdcc-wasm/dist. Rebuild the GUI to ship what this run tested.');
+}
+
 // ---- browser stubs --------------------------------------------------------
 // Emscripten resolves the .wasm against this; in a browser it is the app root.
-globalThis.document = { baseURI: `file://${BUILD}/` };
+globalThis.document = { baseURI: `file://${stage}/` };
 
 let frames = 0;
 globalThis.requestAnimationFrame = (fn) => { frames++; return setTimeout(fn, 0); };

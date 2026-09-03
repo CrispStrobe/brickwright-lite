@@ -292,6 +292,59 @@ test('a browser gate cannot be skipped by an unrelated gate failing before it', 
         'neighbours. Measured cost of getting this wrong: 23 distinct gates silent for 23 hours.');
 });
 
+/**
+ * A gate whose failure a step swallows, with the reason it is allowed to.
+ *
+ * The shape this catches: a step invokes a gate, the gate exits nonzero, and the step turns that
+ * into a warning. The gate then reports "skipped" forever and nobody looks again. Found the hard
+ * way on 2026-09-03 — `smoke:debugger` had exited 2 for want of sdcc on EVERY build since it was
+ * written, so its assertions had never run, and behind that skip were three defects including a
+ * product bug. It is not a gate that cannot fail; it is a gate nobody ever let start.
+ *
+ * A swallow is not automatically wrong — an infra outage should not freeze a deploy. It has to be
+ * ARGUED, here, where the next person reads it.
+ */
+const KNOWN_SWALLOWED = {
+    'Smoke-test the debugger':
+        'Swallows exit 2 only (missing local tool) and re-raises anything else. Deliberate until ' +
+        'the sdcc-wasm toolchain can run under Node — see docs/WAVE-OPEN-DEFECTS.md D-SMOKE1. ' +
+        'NOTE what this costs: while it exits 2 the assertions do not run at all, so this entry ' +
+        'is a promise to come back, not a resolution.'
+};
+
+test('a step that swallows a gate failure has to say why', () => {
+    const steps = buildJobSteps(buildYml);
+    const swallows = step => /\|\|\s*(?:true|:)\b/.test(step.run) ||
+        /-eq\s+\d+\s*\]/.test(step.run) ||
+        /continue-on-error:\s*true/.test(step.lines.join('\n'));
+    const undocumented = steps
+        .filter(s => gates.some(g => runInvokesGate(s.run, g) || aliasInvokes(s.run, g)))
+        .filter(swallows)
+        .map(s => s.name)
+        .filter(name => !(name in KNOWN_SWALLOWED));
+    assert.deepEqual(undocumented, [],
+        `these steps swallow a gate's failure without a recorded reason: ${undocumented.join(' | ')}. ` +
+        'A swallowed exit turns a gate into a permanent "skipped" that nobody re-reads — the ' +
+        'assertions behind it may never have run. Add it to KNOWN_SWALLOWED with what it costs, ' +
+        'or stop swallowing.');
+});
+
+test('the swallow list only shrinks', () => {
+    // Same ratchet as KNOWN_UNWIRED: an entry that no longer swallows must be deleted, so the
+    // list cannot quietly outlive the thing it excuses.
+    const steps = buildJobSteps(buildYml);
+    const byName = new Map(steps.map(s => [s.name, s]));
+    const stale = Object.keys(KNOWN_SWALLOWED).filter(name => {
+        const step = byName.get(name);
+        if (!step) return true;
+        return !(/\|\|\s*(?:true|:)\b/.test(step.run) || /-eq\s+\d+\s*\]/.test(step.run) ||
+            /continue-on-error:\s*true/.test(step.lines.join('\n')));
+    });
+    assert.deepEqual(stale, [],
+        `these are in KNOWN_SWALLOWED but no longer swallow anything (or no longer exist) — ` +
+        `delete them: ${stale.join(' | ')}`);
+});
+
 test('the gates stay keyed on the served app, not on the playwright install', () => {
     // `serve` is itself skipped when playwright fails, so keying on it covers
     // that case AND stops 30 gates being fired at a dead server, each burning a

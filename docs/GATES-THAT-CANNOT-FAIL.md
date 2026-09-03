@@ -384,3 +384,42 @@ explain a forbidden token is to name it. Strip comments in every such gate, and 
 afterwards that a real occurrence in CODE is still caught — done here: reinserting an actual
 `setTimeout` turns it red.
 
+## Fifteenth species: SHADOWED-BY-PRECONDITION (2026-09-03)
+
+A gate whose prerequisite check exits before its assertions, in a step that downgrades that exit
+to a warning. The gate then reports "skipped" on every run forever, and nobody re-reads a skip.
+
+Not a gate that cannot fail. **A gate nobody ever let start.**
+
+The instance: `scripts/smoke-debugger.mjs` checks for a runnable sdcc and a stc-compiler
+checkout and `exit 2`s by name when either is missing — correct, fail-closed behaviour. The
+workflow step swallows exit 2 as a warning — also defensible on its own. Together they meant the
+assertions had never executed since the script was written, and behind that skip were three
+defects, one of them a product bug in the in-browser compiler's error path.
+
+**Why the existing shapes missed it.** WINDOWED-SEARCH and friends read the gate's SOURCE, and
+the source was fine. `gate-coverage` asked "does a workflow run this?" and the answer was yes.
+Neither asks the question that mattered: *did the assertions execute?* A skip satisfies "it ran".
+
+**Mechanised** in `test/gate-coverage.test.mjs`: any step invoking an inventoried gate that also
+swallows a nonzero exit (`|| true`, `|| :`, an `-eq N` re-raise, or `continue-on-error: true`)
+must appear in `KNOWN_SWALLOWED` with what the swallow costs. Ratcheted in both directions —
+a new undocumented swallow fails, and an entry that no longer swallows must be deleted, so the
+list cannot outlive the thing it excuses. Both mutation-proved.
+
+The one live entry says the important part out loud: *"while it exits 2 the assertions do not run
+at all, so this entry is a promise to come back, not a resolution."* A swallow is sometimes right
+— an infra outage should not freeze a deploy — but it has to be ARGUED where the next person
+reads it, and the argument has to name what is being given up.
+
+### The general lesson, which is not about workflows
+
+Three questions look alike and are not:
+
+    is this gate wired?        does a workflow invoke it?
+    does this gate run?        does it reach its assertions?
+    does this gate bite?       would it fail if the property broke?
+
+This repository had mechanised the first and the third. The second was the gap, and a "skipped"
+line is exactly what fills it while looking like coverage.
+

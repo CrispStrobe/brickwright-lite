@@ -19,15 +19,50 @@ const decodeBase64 = text => {
     return Uint8Array.from(raw, c => c.charCodeAt(0));
 };
 
+const IS_NODE = typeof process === 'object' && typeof process?.versions?.node === 'string';
+
+/**
+ * Load one Emscripten glue module.
+ *
+ * The browser — the only environment production runs in — takes the `import()`
+ * of the webpack-ignored URL, exactly as before.
+ *
+ * Node cannot: the shipped glue is an ES module whose Emscripten body still
+ * expects the CommonJS scope (`require`, `__dirname`) that its Node branch
+ * uses to reach `fs`, so `import()` of it throws `require is not defined`
+ * before a single stage runs. Execute the SAME source as CommonJS instead —
+ * byte-for-byte the program the browser runs, minus only the trailing
+ * `export default`. This is the trick test/wasm-compiler-integration.test.mjs
+ * already proves against this exact toolchain; hoisting it in here is what
+ * lets scripts/smoke-debugger.mjs drive the real `compile()` entry point
+ * rather than a hand-built toolchain of its own.
+ */
+async function importGlue (url) {
+    if (!IS_NODE) return import(/* webpackIgnore: true */ url);
+    const [{readFile}, {createRequire}, {dirname}, {fileURLToPath}] = await Promise.all([
+        import(/* webpackIgnore: true */ 'node:fs/promises'),
+        import(/* webpackIgnore: true */ 'node:module'),
+        import(/* webpackIgnore: true */ 'node:path'),
+        import(/* webpackIgnore: true */ 'node:url')
+    ]);
+    const file = url.startsWith('file:') ? fileURLToPath(url) : url;
+    const source = await readFile(file, 'utf8');
+    const module = {exports: {}};
+    Function('module', 'exports', 'require', '__filename', '__dirname',
+        source.replace(/export default createSDCC;\s*$/, ''))(
+        module, module.exports, createRequire(file), file, dirname(file));
+    return module.exports;
+}
+
 async function loadToolchain (base) {
     if (loaded) return loaded;
     loaded = (async () => {
         const resolve = name => new URL(`static/sdcc-wasm/${name}`, base).href;
         const [cc1, sdcc, sdas, sdld, response] = await Promise.all([
-            import(/* webpackIgnore: true */ resolve('cc1.js')),
-            import(/* webpackIgnore: true */ resolve('sdcc.js')),
-            import(/* webpackIgnore: true */ resolve('sdas8051.js')),
-            import(/* webpackIgnore: true */ resolve('sdld.js')),
+            importGlue(resolve('cc1.js')),
+            importGlue(resolve('sdcc.js')),
+            importGlue(resolve('sdas8051.js')),
+            importGlue(resolve('sdld.js')),
             fetch(resolve('runtime.json'))
         ]);
         if (!response.ok) throw new Error(`runtime.json returned ${response.status}`);
