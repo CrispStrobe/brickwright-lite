@@ -1544,9 +1544,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // wraparound-safe 16-bit compare. Reuse it. One stop per visit, on the
         // pass where the wait is over — which is also the moment the user means
         // by "pause here".
-        if (stillWaiting(why)) return true;
-
         const blockId = [...bps].find(([, handle]) => handle === why.bp)?.[0];
+
+        if (stillWaiting(why, blockId)) return true;
+
         if (!blockId) return false;
         const source = conditionOf(blockId);
         if (!source) return false;
@@ -1568,18 +1569,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * absent, which is how the target reports a task that is not waiting or
      * has finished) is never "still waiting".
      */
-    function stillWaiting(why) {
-        if (!target || !why || !why.tasks) return false;
-        if (typeof target.bwMs !== 'function') return false;
-        const ms = target.bwMs();
-        if (ms === undefined) return false;
-        for (const t of why.tasks) {
-            if (t.until === undefined) continue;
-            const delta = (ms - t.until) & 0xFFFF;
-            const signed = delta > 0x7FFF ? delta - 0x10000 : delta;
-            if (signed < 0) return true;
-        }
-        return false;
+    function stillWaiting(why, blockId) {
+        if (!target || typeof target.bwMs !== 'function') return false;
+        return waitStillPending({
+            why,
+            blockYield: blockId ? yieldOf.get(blockId) : undefined,
+            bwMs: target.bwMs()
+        });
     }
 
     // ─── the frame loop ──────────────────────────────────────────────────
@@ -2258,4 +2254,47 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     return runner;
+}
+
+/**
+ * Is the pause point we halted on a `wait` that has not finished waiting?
+ *
+ * Pure, and exported, because the defect it encodes (D-EMU-BP2) was a
+ * SEMANTICS error rather than a wiring one: the old version asked "is ANY task
+ * still waiting?" while its doc comment said "the task we stopped in". With
+ * two scripts running, one sitting in a `wait 1 seconds` swallowed every
+ * breakpoint in the project for as long as it waited — including a mark on a
+ * `repeat` loop top, which has no deadline of its own and halts correctly on
+ * the very first pass. The breakpoint fired, the halt was announced, and this
+ * predicate threw it away, so the run continued and the mark looked dead.
+ *
+ * A closure-private version could only be tested through a live session, and
+ * the only gate that drove one is skipped in CI for want of SDCC — so the fix
+ * would have had no gate at all. It takes its inputs instead of reaching for
+ * them.
+ *
+ * Two conditions, both necessary:
+ *   1. the halt is on a block whose yield IS a `wait` — nothing else is
+ *      re-entered by the dispatch loop on every pass, which is the only thing
+ *      this suppression exists to absorb; and
+ *   2. THAT block's own task is still counting down.
+ *
+ * The comparison mirrors the generated C exactly: `(int)(bw_now() - until) < 0`,
+ * a wraparound-safe 16-bit compare. A task with no deadline (`until` absent,
+ * which is how the target reports a task that is not waiting or has finished)
+ * is never still waiting.
+ *
+ * @param {{why: object, blockYield: {task: string, kind: string}|undefined,
+ *          bwMs: number|undefined}} arg
+ * @returns {boolean} true if this halt should be swallowed
+ */
+export function waitStillPending({why, blockYield, bwMs}) {
+    if (!why || !why.tasks || !blockYield) return false;
+    if (blockYield.kind !== 'wait') return false;
+    if (bwMs === undefined) return false;
+    const t = why.tasks.find((entry) => entry.task === blockYield.task);
+    if (!t || t.until === undefined) return false;
+    const delta = (bwMs - t.until) & 0xFFFF;
+    const signed = delta > 0x7FFF ? delta - 0x10000 : delta;
+    return signed < 0;
 }

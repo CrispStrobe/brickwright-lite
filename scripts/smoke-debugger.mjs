@@ -298,18 +298,17 @@ console.log(`stepped 5 instructions -> ${added} rows: ${walked.map(r => r.text.s
 // which overflows execFileSync's default 1 MB buffer (ENOBUFS) before any
 // length is ever compared.
 //
-// Read in 256-byte chunks, because a single 0x10000 request does NOT come back
-// whole: `readMem`'s fast path hands the length straight to the emulator's
-// scratch buffer, and a 64 KB ask returned the first ~270 bytes correctly and
-// ZERO for everything after — a silent short read. Taken at face value it makes
-// the program look like it ends at 0x010E while the CPU is demonstrably
-// executing at 0x01F8, and it hands stc_disasm a desert of NOPs to agree with.
+// Read the whole 64 KB in ONE request, deliberately. This used to be chunked
+// here at 256 bytes to work around D-EMU-BP3: `readMem`'s fast path handed the
+// length straight to the emulator's 256-byte scratch buffer, so a 64 KB ask
+// came back as 256 good bytes and zeroes for everything after — a silent short
+// read that made the program look like it ended at 0x010E while the CPU was
+// demonstrably executing at 0x01F8, and handed stc_disasm a desert of NOPs to
+// agree with. The chunking now lives in the adapter, where every caller gets
+// it; asking for the whole space here keeps this path exercising that fix
+// rather than hiding it behind a local workaround.
 const PROGRAM_GAP = 64;
-const CODE_CHUNK = 256;
-const codeBytes = [];
-for (let at = 0; at < 0x10000; at += CODE_CHUNK) {
-    codeBytes.push(...runner.readMem('code', at, CODE_CHUNK));
-}
+const codeBytes = Array.from(runner.readMem('code', 0, 0x10000));
 let codeEnd = 0;
 for (let at = 0; at < codeBytes.length; at++) {
     if (codeBytes[at]) codeEnd = at + 1;
@@ -368,10 +367,20 @@ const r3Back = runner.inspect().regs.r[3];
 console.log(`register edit: A=${accBack.toString(16)} R3=${r3Back.toString(16)} (bank ${bank})`);
 
 // Set PC and an address breakpoint — the TUI's `g` and `k`.
-const pcOk = runner.setPc(0x0100) === undefined && runner.inspect().pc === 0x0100;
-const bpOn = runner.toggleAddressBreakpoint(0x0170);
-const bpOff = runner.toggleAddressBreakpoint(0x0170);
-console.log(`setPc ok: ${pcOk} | address breakpoint on/off: ${bpOn}/${bpOff}`);
+// These addresses come from the disassembly of the image ACTUALLY LOADED, not
+// from constants. They used to be a hardcoded 0x0100 and 0x0170, and nothing
+// checked either was an instruction this program reaches. An address the
+// program never executes yields an armed breakpoint, a toggle that reports
+// success, and no halt — which is precisely the shape that got filed against
+// the emulator as D-EMU-BP1 and was not an emulator defect at all.
+const insnAddrs = oracle.map(o => o.addr);
+const gotoAddr = insnAddrs.find(a => a >= 0x0100) ?? insnAddrs[0];
+const bpAddr = insnAddrs.find(a => a >= 0x0170) ?? insnAddrs[insnAddrs.length - 1];
+const pcOk = runner.setPc(gotoAddr) === undefined && runner.inspect().pc === gotoAddr;
+const bpOn = runner.toggleAddressBreakpoint(bpAddr);
+const bpOff = runner.toggleAddressBreakpoint(bpAddr);
+console.log(`setPc ok: ${pcOk} (0x${gotoAddr.toString(16)}) | ` +
+    `address breakpoint 0x${bpAddr.toString(16)} on/off: ${bpOn}/${bpOff}`);
 
 // ---- the inspector: the user's own nouns ---------------------------------
 const vars = runner.variables();

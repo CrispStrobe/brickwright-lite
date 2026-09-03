@@ -479,3 +479,121 @@ green; re-enabling requires (2). The lesson worth keeping is structural: a prere
 that exits before the assertions can shadow them indefinitely, and a step that downgrades that
 exit to a warning makes the shadow permanent.
 
+
+## D-EMU-BP — the three "emulator breakpoint" defects, resolved (2026-09-03)
+
+D-SMOKE1 recorded three defects that the un-runnable smoke test had been hiding. With the
+test running, all three were reproduced directly against the vendored WASM. **One was real
+and is fixed, one was real, differently caused, and is fixed, and one did not exist.** They
+are written up separately because they failed for unrelated reasons and only looked like one
+family — "breakpoints don't work" — from the outside.
+
+### D-EMU-BP1 — `emu_dbg_set_bp_code` never halts. **This defect does not exist.**
+
+Filed as: breakpoints at `0x233`, `0x15e` and `0x186` do not stop the program, while
+`toggleAddressBreakpoint` reports success.
+
+Both halves are wrong, and the second half is what made the first look like a product bug.
+Against the vendored build, a code breakpoint halts at both layers — the raw export and the
+adapter:
+
+    raw _emu_dbg_set_bp_code(0x0003) -> 1 ; run -> pc=0x3, halt_bp=1
+    adapter setBreakpoint({kind:'code',addr:3}) -> 1 ; run -> halted, pc=0x3, cause 'breakpoint'
+
+Addresses above `0xFF` are not special either. On a program whose only executed instructions
+are at `0x233` and `0x234`, a breakpoint at `0x233` halts and breakpoints at `0x15e`, `0x186`,
+`0x100` and `0xff` do not — because **those addresses are never executed**. That is the
+breakpoint working, reported as the breakpoint failing.
+
+The observation was real; the inference was not. `toggleAddressBreakpoint` "reporting success"
+is also correct behaviour: arming a breakpoint at an address is a different claim from that
+address being reached, and the store deliberately keeps marks the current build cannot resolve
+(`unreachableBreakpoints`). What was missing was anything that checked the address was on the
+execution path — see the note on the smoke script's hardcoded addresses below.
+
+Pinned by `test/emu8051-readmem-length.test.mjs`'s sibling reasoning and by the fact that
+D-EMU-BP2's repair is now demonstrated by a code breakpoint at `0x180` halting in 1 ms.
+
+### D-EMU-BP2 — a pause point on a `repeat` loop top never fires. **Real. Fixed.**
+
+Filed as: yield breakpoints fire for the `wait` state but not the loop-top state
+(`bw_task1` state 1 at `0x180`).
+
+Accurate, and the cause is in neither the emulator nor the adapter. Instrumenting the pump
+showed the breakpoint firing correctly on the very first frame and then being thrown away:
+
+    pump#1 budget=16666667 pc=0x180 stopped=true state=0    <- the breakpoint hit
+    pump#2 budget=16666667 pc=0x233 stopped=false state=0    <- and the run continued
+
+`debug-runner.js`'s `shouldSkip()` swallows a halt when `stillWaiting()` says the task is
+mid-`wait`. That suppression exists for a good reason — a yield breakpoint sits on a `case`
+label the scheduler re-enters on every pass, so a pause point on `wait 0.3 seconds` fires
+thousands of times during one wait — but it was asking the wrong question in two ways:
+
+1. It looped over **every** task and returned true if **any** of them was waiting, while its
+   own doc comment said "the task we stopped in". With two scripts running, one sitting in a
+   `wait 1 seconds` swallowed every breakpoint in the project for as long as it waited.
+2. It applied to **every** breakpoint hit, not only to pause points that are themselves a
+   `wait`. A `repeat` loop top has no deadline of its own and should never have been tested
+   against one.
+
+The halt at `0x180` was hit by both: the mark is a `repeat`, and the *other* task
+(`bw_task0`, `until:150`) was mid-wait. `stillWaiting()` now resolves the halt's block, returns
+early unless that block's yield kind is `wait`, and compares only that block's own task:
+
+    position: [{"task":"bw_task0","state":2,"until":150},{"task":"bw_task1","state":1}]
+    pc 0x180, cause breakpoint            <- halts on frame 1, with task0 still waiting
+
+Pinned by `test/debug-runner-wait-skip.test.mjs`. The predicate was lifted out of the runner's
+closure into an exported pure function (`waitStillPending`) specifically so that gate can exist:
+the only thing that caught this defect is `npm run smoke:debugger`, which exits 2 and is SKIPPED
+in CI for want of SDCC, so a closure-private fix would have shipped with no gate that runs
+anywhere. Mutation-proved in both directions — restoring "is ANY task waiting?" fails one
+assertion, and dropping the "is this block a `wait`?" guard fails another. The second mutation
+initially passed, because the first draft's `repeat` task carried no deadline at all and so
+returned false for the wrong reason; the added case gives that task a *leftover* `until` from
+the wait it has already left, which is what the generated C actually reports.
+
+One repair closed all seven of the smoke test's failing assertions — never paused, wrong halt
+reason, no glow, neither task lit, `glowBlock` never called, no recorded values, and the editor
+bridge returning nothing — which is the evidence that this was the single cause behind them.
+Conditional pause points still skip correctly (`1800 earlier hits skipped`), so the suppression
+this narrows is still doing its job.
+
+### D-EMU-BP3 — `readMem('code', 0, 0x10000)` silently short-reads. **Real. Fixed.**
+
+Filed as: about 270 correct bytes followed by zeroes, worked around by chunking in the smoke
+script.
+
+Real, and worse than filed: it was not specific to the smoke script, and the seam is at exactly
+256 bytes, not ~270.
+
+`emu_dbg_read_mem` answers out of a fixed 256-byte scratch buffer in C and does **not** clamp
+the length it is handed. The adapter passed `len` straight through and then wrapped the full
+requested length around the returned pointer, so a caller got 256 bytes of program followed by
+whatever the heap happened to hold — no error, no short count, nothing to test:
+
+    readMem(code,0,256) -> first wrong byte at none
+    readMem(code,0,257) -> first wrong byte at 256
+    readMem(code,0,2048) -> first wrong byte at 256
+
+Every bulk reader was exposed, not just the smoke script: the hex view and the disassembler both
+issue reads far larger than 256 bytes, and a 64 KB code read came back looking like an erased
+chip. The adapter now issues the read one bufferful at a time, advancing both the output offset
+and the address, and falls through to the byte-at-a-time path if a chunk ever returns null.
+
+Pinned by `test/emu8051-readmem-length.test.mjs`, which reads *across* the 256-byte seam in
+three ways — a long read, a read compared byte-for-byte against the slow path, and a read that
+starts past the seam so a chunking loop that forgot to advance the address cannot pass.
+Mutation-proved: restoring the unchunked read fails all three; the fix passes all three.
+
+### The test defect underneath D-EMU-BP1
+
+`scripts/smoke-debugger.mjs` sets its address breakpoint at a **hardcoded** `0x0170` and its PC
+at a hardcoded `0x0100`, neither of which it checks is an instruction the loaded program
+reaches. It already has the material to do better — it disassembles the image it just loaded
+into `oracle`, with real instruction boundaries. A hardcoded address that happens to be
+unreachable produces exactly D-EMU-BP1: an armed breakpoint, a successful-looking toggle, and no
+halt, reported as an emulator fault. This is the same species as the gates-that-cannot-fail
+family, inverted: not a gate that cannot fail, but one that fails for a reason unrelated to what
+it claims to test.

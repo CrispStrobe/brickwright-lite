@@ -497,12 +497,27 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             // Fast path: if the build exports HEAPU8 and _emu_dbg_read_mem,
             // read the whole block in one WASM call. Feature-detect: the
             // vendored build in brickwright-lite may be older and lack these.
+            // The C side answers out of a fixed 256-byte scratch buffer and does
+            // NOT clamp the length it was asked for: request more and it hands
+            // back a pointer to 256 good bytes followed by whatever the heap
+            // happens to hold, with no error and no short count to notice. A
+            // 64 KB code read therefore used to come back 256 bytes of program
+            // and 65280 bytes of nothing, which reads as an erased chip. So the
+            // bulk read is issued one bufferful at a time. Pinned by
+            // test/emu8051-readmem-length.test.mjs, which reads across the seam.
             if (wasm.HEAPU8 && wasm._emu_dbg_read_mem && space !== 'bit') {
-                const ptr = wasm._emu_dbg_read_mem(SPACE[space], addr, len);
-                if (ptr) {
-                    return new Uint8Array(wasm.HEAPU8.buffer, ptr, len).slice();
+                const CHUNK = 256;
+                const out = new Uint8Array(len);
+                let done = 0;
+                while (done < len) {
+                    const n = Math.min(CHUNK, len - done);
+                    const ptr = wasm._emu_dbg_read_mem(SPACE[space], (addr + done) & 0xFFFF, n);
+                    if (!ptr) break;
+                    out.set(new Uint8Array(wasm.HEAPU8.buffer, ptr, n), done);
+                    done += n;
                 }
-                // fall through to byte-at-a-time if pointer is null
+                if (done === len) return out;
+                // a null pointer part-way through falls through to byte-at-a-time
             }
 
             // Slow path: one value-returning call per byte (always works)
