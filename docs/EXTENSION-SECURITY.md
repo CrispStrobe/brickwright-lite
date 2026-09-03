@@ -160,7 +160,8 @@ real Tauri ACL, in the packaged app, under tauri-driver:
 **What this does NOT establish, and must not be read as establishing.** The
 attribution is at REALM granularity, not per extension. The capability path is
 reached through main-label transport commands, so any code in the editor realm —
-including the 99 deferred gallery entries that still share it — can drive it.
+including the 95 gallery entries whose `migration.status` is still `deferred` and which
+therefore share it — can drive it.
 Rust sees "the main webview asked", exactly as this section warned; it does not
 see which extension. That is survivable only because the vocabulary is CLOSED and
 every operation in it must be safe for an arbitrary main-realm caller.
@@ -200,3 +201,16 @@ not a prerequisite for containing arbitrary URLs.
 
 Each is independently shippable. Do them one at a time; none depends on the
 next being finished.
+
+### Count correction (2026-09-03)
+
+The figures above ("twenty-one … 99 explicitly deferred") were true on 2026-08-28. Measured from
+`gallery-pins.json` today, `migration.status` across all 120 pins is **25 `worker`, 95
+`deferred`** — four were promoted on 2026-08-30 by "promote four fetch-safe gallery workers".
+
+The PREMISE is unchanged and this is not a small point: 95 gallery extensions still load through
+`_loadTrustedRemoteExtension` and share the editor realm, so per-extension attribution for native
+capabilities remains impossible and continuation (a) remains ~21% done. Anyone quoting a number
+from this file should re-measure it — the first count I took today looked for a top-level
+`deferred` key, found none, and would have reported continuation (a) as COMPLETE.
+
