@@ -175,18 +175,18 @@ split into separately pushed, independently audited checkpoints (3–5 hours):
   semantic native operation absent. DoD: injected caller, ACL, label, ordering,
   ACK, reload and teardown mutations fail; editor cannot retain or reflect the
   broker invoke closure; mobile remains unregistered.
-- [ ] **CP3-D1 — real native vertical slice (60–90 minutes).** Register only
+- [x] **CP3-D1 — real native vertical slice (60–90 minutes).** Register only
   `platform.kind.read` through the broker label, semantic Rust policy and exact
   empty arguments. DoD: editor direct/reflected/raw-command attempts are red;
   broker lease, sequence, expiry and revocation mutations are red; JavaScript
   and Rust return the same platform result without exposing a reusable invoke
   handle.
-- [ ] **CP3-D2 — diagnostics and lifecycle closure (45–75 minutes).** Render
+- [x] **CP3-D2 — diagnostics and lifecycle closure (45–75 minutes).** Render
   declared, allowed, refused and revoked capability state from bounded redacted
   audit data. DoD: no pin source, digest, lease, correlation, raw args/results
   or dependency errors appear; destroy, navigation, reload and timeout leave
   zero stale authority and update diagnostics deterministically.
-- [ ] **CP3-E — production evidence (60–120 minutes).** Reconcile current
+- [x] **CP3-E — production evidence (60–120 minutes).** Reconcile current
   remote main and run the full Node, Rust, Tauri, build, browser and packaged
   desktop gates. DoD: focused mutation denominators remain exact, applicable
   GitHub workflows are green, artifacts show the real vertical slice with zero
@@ -767,4 +767,71 @@ The honest summary is that D2's lifecycle clause is closed for navigation and ti
 rests on unit tests plus a shared wiring argument for destroy and reload. The rendering half —
 declared/allowed/refused/revoked shown to the learner — is still not started; the data is in
 `native_broker_audit` and already structurally redacted, and nothing displays it.
+
+## CP3-D1 and CP3-D2 closed (2026-09-03)
+
+**D1's same-result clause.** The JS side declared `platform.kind.read` and wired no executor, so
+it could NAME the operation and not perform it. Now wired through the EXISTING transport as a
+new `capability` envelope — `ReplyKind`, `EditorRequest`, `BrokerReply` and the wire tag in Rust;
+a branch in the broker realm's receiver; `native-platform-capability.js` in the VM.
+
+The alternative was a main-label native command doing lease+invoke internally. It was a much
+smaller diff, and it would have created a SECOND path to the semantic executor that bypasses the
+broker realm — `tauri-broker-topology` asserts semantic commands bind the broker label, so
+landing it meant weakening a gate. Dissolving the property the lane exists to establish in order
+to tick the lane's box is the wrong trade, and it was refused.
+
+What the shape buys:
+
+- The editor names an OPERATION and nothing else. Not the resource — the realm maps
+  operation → resource from a closed table, so the editor cannot widen a request past what the
+  operation means. Not a lease — the realm mints one, spends it at sequence 0 and abandons it
+  inside the call, so nothing crosses back that could be replayed.
+- Capability requests create NO session state. They need no worker host, and giving a semantic
+  read the lifetime of an extension session is authority nobody asked for.
+- FAIL-CLOSED BY ABSENCE. Outside Tauri the factory returns null, the operation stays unwired,
+  and `CapabilityBroker` refuses it as `unavailable-operation`. No branch anywhere answers for a
+  boundary that is not there.
+- NO RETRY inside a call. From the editor a refusal and a dead session are indistinguishable, so
+  a retry would spend a second lease on a request already denied once.
+
+Proven at the real boundary, in the only place it CAN be — the browser gate has no Tauri, and a
+same-result assertion against its stub would prove the stub agrees with itself:
+
+    the JavaScript path returned the same platform result as the native executor,
+    naming only the operation, with a replayed request id refused
+
+Two independent routes to one executor, required to agree, plus a replay refusal so "one round
+trip per call" is a property rather than a comment.
+
+**A unit invariant had to change, and the reasoning matters more than the change.** The new
+design turned `assert!(!script.contains("platform.kind.read"))` red. That assertion was written
+when the realm had no semantic role. Losing it costs nothing: a lease declares exactly
+`[(PlatformKindRead, PlatformDefault)]`, fixed by the HOST at issue time, and
+`authorize_broker_call` refuses any other pair as Undeclared, so the realm knowing the name buys
+an attacker nothing it could not already attempt. It guarded a layering statement, not a
+boundary. What replaced it pins the property the table exists to provide, which nothing asserted
+at all — the resource is LOOKED UP, never taken from the payload:
+
+    assert!(script.contains("CAPABILITY_RESOURCE[envelope.operation]"));
+    assert!(!script.contains("fields.resource"));
+
+Mutation-proved by pointing the resource at the payload: the new assertions go red; the one they
+replace would not have noticed.
+
+**D2's rendering half.** `overlay/scratch-gui/src/lib/capability-diagnostics.js`, opened from
+Settings, in the idiom of `ble-diagnostics.js` — plain DOM, no imports, because a diagnostic has
+to keep working when the thing being diagnosed is the GUI.
+
+Redaction is a WHITELIST: `row()` names the fields it renders and copies nothing else, so a
+field added to either source cannot reach the panel without a deliberate edit here. The test is
+adversarial in the way that distinguishes a whitelist from a blocklist — it feeds `lease`,
+`digest`, `correlation`, `args.pin`, `result`, `url`, `pinSource` and a path-bearing `error`,
+none of which the code has heard of, and requires every one absent. Mutation-proved.
+
+Two sources, because one tells half the story: the worker path knows what an extension DECLARED
+and works in a browser; the native path exists only in the desktop app. And two kinds of empty
+are kept apart — a browser build says "no native boundary in this build" rather than rendering
+an empty table, the same distinction whose absence cost seven hours when an error page measured
+as an empty document.
 
