@@ -477,7 +477,27 @@ two shapes that satisfy the header rather than reversing it are:
       "never *silently*"; or
   (ii) an explicit opt-out, so a stuck user can force the hosted compiler.
 
-Neither is made here. Owner: whoever owns sdcc-wasm.
+**CLOSED 2026-09-03 with shape (ii).** `localCompilerOptedOut()` in `debug-runner.js` reads
+`?localCompiler=off` from the URL, or `localStorage.bwLocalCompiler = 'off'` to persist it, and
+the compile path skips installing the in-page intercept when it is set — so the request reaches
+the compiler service by the ordinary route. The status line says
+`in-page 8051 compiler off by request — using the compiler service`, because the header's
+objection is to a *silent* fallback and this one is asked for out loud.
+
+Shape (ii) rather than (i) deliberately: it leaves the default behaviour and the header's promise
+exactly as they were, and adds only a door. An automatic fallback, however loud, changes what
+happens to every learner whose local build fails — which is the decision `intercept.js` made on
+purpose and which is not mine to reverse.
+
+The default is what most of `test/local-compiler-opt-out.test.mjs` is about: an absent, empty,
+unrelated or unreadable preference must all mean "use the in-page compiler", since anything else
+quietly puts a failed local build on the network. `?localCompiler=on` overrides a stored `off`,
+and an empty `?localCompiler=` is present-but-unset rather than a request. Mutation-proved four
+ways, including one that unwires the call site — a predicate nothing consults would have been no
+feature at all, which is species 16 applied to this repair.
+
+Owner: still whoever owns sdcc-wasm; this is the smaller of the two shapes that record allows,
+and it is reversible in one condition if they want (i) instead.
 
 The lesson for me: I read a function's error path without reading its file's header, and the
 header governed it. That is the mirror of the mistake in the other direction — treating a comment
