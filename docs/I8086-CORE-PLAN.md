@@ -3,19 +3,76 @@
 Started 2026-09-03. The retro tier gains a third CPU beside the W65C02 and the
 Z80, built the same way and verified to the same standard.
 
-**Status: the core and the disassembler are done and vector-complete. Nothing
-is wired to them yet.**
+**Status: the tier runs. 510 of the 525 textbook programs assemble, 498 run
+to a clean exit with output, and 8 of 10 emu8086 coursework projects drive
+their virtual devices. Nothing is vendored into Lite yet — see §6.**
+
+## What is built, and what it measures
 
 | Piece | Where | State |
 |---|---|---|
 | `I8086` core | `bw-board/src/i8086.js` | **646,000/646,000 vectors, 323/323 files** |
-| Vector grinder | `bw-board/scripts/grind-i8086.mjs` | green, ~60 s for the full suite |
-| Always-on subset | `bw-board/test/i8086.test.mjs` + `i8086-disasm.test.mjs` | 23 tests, green |
-| Disassembler | `bw-board/src/i8086-disasm.js` | **646,000/646,000 vectors, text AND length** |
-| Disassembly grinder | `bw-board/scripts/grind-i8086-disasm.mjs` | green, 3 vectors excluded (§4b) |
-| Machine + adapter | `i8086-machine.js`, `i8086-adapter.js` | not started |
-| Debug target | `i8086-debug.js` | not started |
-| Vendored into Lite | `overlay/…/bw-board/` | **deliberately not yet** — see §6 |
+| Disassembler | `bw-board/src/i8086-disasm.js` | **646,000/646,000 on TEXT and length** |
+| Two grinders | `bw-board/scripts/grind-i8086*.mjs` | green; 3 vectors excluded (§4b) |
+| 8255 PPI | `bw-board/src/i8255.js` | modes 1/2 refused in words, not faked |
+| Machine + adapter | `i8086-machine.js`, `i8086-adapter.js` | LED blinks from a ROM |
+| Debug target | `i8086-debug.js` | factory kind `i8086`; renders a frame |
+| 8259 / 8254 / 8251 | `i8259.js`, `i8254.js`, `i8251.js` | INTR + NMI delivered |
+| Bus extractor | `i8086-extract.js` | a miswired select gives a NAMED refusal |
+| DIP parts | `bw-parts` `41706a7` | 7 packages, **committed, not pushed** |
+| DOS/BIOS services | `i8086-dos.js` | INT 21h/10h/13h/16h/19h/1Ah/03h/15h |
+| Assembler | `i8086-asm.js` | **510/525 accepted** |
+| emu8086 devices | `i8086-emu8086.js` | clean re-implementation, evidence-cited |
+| CGA/VGA renderer | `i8086-cga.js` | modes 00-06h and 13h, pure function |
+| Corpus harness | `scripts/run-i8086-corpus.mjs` | the instrument below |
+
+## The number, and what it is not
+
+```
+Amey textbook corpus, 525 programs:
+  498  EXITED    terminated cleanly AND produced output
+   12  LOOPING   still running at the budget, and driving something
+   15  THREW     assembly refused
+    0  HUNG      0 SILENT      refused services: none
+
+yousefkotp emu8086 coursework, 10 projects:
+    8  LOOPING     2  THREW
+```
+
+**The harness has no "pass" in its vocabulary**, and that is the point. A
+program that loads, runs, exits cleanly and prints nothing is `SILENT`, not a
+success — on this corpus it usually means a service returned carry and the
+code took an error branch to the exit. A program still running at the budget
+is `LOOPING` only if it *did* something; otherwise `HUNG`. An `.asm` with no
+assembler is counted, not skipped, because a skip reads the same as a pass in
+a summary line.
+
+Both `0`s are load-bearing. Zero `SILENT` means no program limped to an exit
+having produced nothing. Zero `HUNG` means every one of the twelve
+non-terminating programs is an infinite control loop doing its job — the
+traffic-light controller reports `R--,R--,R--,R--`, the documented all-red
+word.
+
+The 15 refusals are honest: 14 relative jumps beyond 127 bytes, which MASM
+rejects too, and one `.FARDATA`, not modelled. The 2 emu8086 failures are
+**defects in that repo** — one file is truncated at publication and the other
+has a stray token and an unterminated string literal. Both are pinned in
+tests with a note that a later change which "fixes" them should be looked at
+rather than celebrated.
+
+## The standing to-do list, measured not guessed
+
+With every DOS/BIOS service implemented, the harness's refusal histogram
+moved up a level and now reports unclaimed I/O ports:
+
+```
+   24  port 97  (61h — the PC speaker gate on the XT's PPI port B)
+   10  port 62      8  port 61      6  port 63      5  port 60
+    3  port 1016 (3F8h — COM1)      2  port 40      2  port 41
+```
+
+The speaker is the next real gap and both parts to close it (the 8255 and
+8254 channel 2) already exist in the tier.
 
 ## 1. Why a core of our own rather than an adoption
 
@@ -168,7 +225,7 @@ things an instruction-stepped core does not model, so `I8086` *is* an 8088
 except for cycle counts. `SingleStepTests/8088` (with bus data) and `/v20`
 are also MIT if the tier ever wants an NEC V20 or cycle-level work.
 
-### Tier A — the 8086 on a breadboard  *(M3, M4; next)*
+### Tier A — the 8086 on a breadboard  *(DONE bar the parts push)*
 
 The direct analogue of the Eater 6502 and the Searle Z80, chip for chip. This
 is where an LED blinks from an 8255 port, where the MCU examples adapt, and
@@ -199,7 +256,7 @@ deliver interrupts itself.
 entries, so an 8086 hand-wired on the drawn breadboard becomes a machine — or
 a named refusal — exactly as the 6502 does. Plus our own monitor ROM.
 
-### Tier B — the DOS-program tier  *(no hardware at all)*
+### Tier B — the DOS-program tier  *(DONE: 498 of 525 run)*
 
 The 8086 textbook corpus does not want a PC. Measured across the 525 programs
 of `Amey-Thakur/8086-ASSEMBLY-LANGUAGE-PROGRAMS`:
@@ -217,7 +274,7 @@ the corpus with three functions, and no BIOS ROM or DOS is involved at all.
 `bw-asm` does not speak `.MODEL`, `PROC` or `MACRO` yet. Scope that honestly
 before promising the corpus — it is the larger half of this tier by far.
 
-### Tier B′ — emu8086 compatibility  *(smaller, separate)*
+### Tier B′ — emu8086 compatibility  *(DONE: 8 of 10 run)*
 
 `yousefkotp/8086-Assembly-Projects` is not DOS software. It is emu8086:
 `#start=Traffic_Lights.exe#`, `out 4, ax` to a built-in traffic-light device,
@@ -227,12 +284,21 @@ library — the `.inc` carries no licence we can rely on. This is the tier that
 makes traffic-light, stepper and thermometer lessons possible, and it lands
 after Tier B.
 
-### Tier C — PC/XT compatible  *(the expensive one)*
+### Tier C — PC/XT compatible  *(visible half done; the rest still expensive)*
 
-8237 DMA, 6845/CGA (`mc6845.js` already exists), a µPD765 FDC and disk
-images, plus a BIOS and a DOS. Months of work and a different product from
-"learn the 8086 on a breadboard". Start it when tiers A and B are shipped and
-a lesson actually needs it — not before.
+The **visible half landed early and cheaply**, because it turned out not to
+need the machine at all: `i8086-cga.js` renders modes 00-06h and 13h as a
+*pure function* of a read callback, so a program that writes `B800:0000` or
+`A000:0000` directly is already visible. INT 10h pixel services and `INT 13h`
+disk services are in, and `loadBoot()` runs a 512-byte boot sector at
+`0000:7C00` with the AA55h signature checked — **a boot sector needs neither
+DOS nor an assembler**, so that corpus was runnable before the assembler
+existed.
+
+What remains is the expensive part and has not started: 8237 DMA, the 6845
+CRTC and real retrace timing, a µPD765 FDC with disk images, a BIOS ROM and a
+DOS. Months, and a different product from "learn the 8086 on a breadboard".
+Start it when a lesson actually needs it.
 
 ### Not in this lane at all
 
@@ -319,3 +385,45 @@ grinder still requires the right **bytes** for all three — only the text is
 excused. If a regenerated suite ever agrees, the run prints `HEALED` and the
 table should lose a row: an excuse that has stopped being true is worse than
 no excuse.
+
+## 8. What this tier taught, that the next one will need
+
+Three things cost more than once, so they are written down rather than
+rediscovered.
+
+**A handler that takes CS:IP must not IRET — and this bit three times.** The
+generic interrupt return restores what the INT pushed, which silently undoes
+whatever the handler just set. It wiped the carry a DOS error had set and the
+zero flag `INT 16h/01h` answers with (so every `jc` after an open and every
+`jz` after a keyboard poll read the flags from *before* the call); it would
+have dropped a rebooting machine straight back into the program that asked to
+be restarted. Services now blend the status bits over the stacked flags, and a
+handler can declare it owns the transfer.
+
+**A trap needs somewhere to stand.** The first design put the interrupt
+vectors at an *unmapped* segment and intercepted before the CPU could fetch.
+That works for software INTs, where the service layer looks between
+instructions — and cannot work once hardware interrupts exist, because the
+machine delivers a pending IRQ and executes the next instruction in the same
+`step()`. There is no "between". The fix is a mapped page holding `jmp $` in
+every slot: the CPU may execute at a trap as often as it likes and IP does not
+move, so servicing is idempotent regardless of ordering. That is a property,
+not a patch.
+
+**Two independent implementations beat one shared one.** The pixel layout is
+written twice — once in the service layer, once in the renderer — and
+cross-checked by a test that plots through one and renders with the other,
+requiring the pixel where it was put *and its neighbour untouched*. Sharing
+the code would have been less work and would have caught nothing.
+
+And one about instruments rather than code: **three of the bugs found here
+were found by the refusal histogram, not by a test.** A silently mis-encoded
+`INT 21h` still printed plausible output and was already counted as a success;
+what exposed it was `int 02h` appearing in a list of things asked for and not
+granted. Keep the list.
+
+The matching correction: the first diagnosis of that bug — mine — was wrong.
+I disassembled the *running machine* and read a byte the program had
+overwritten as a byte the assembler had emitted. The image on disk was
+correct; the program was scribbling on its own code through a segment alias.
+Both look identical through a debugger and only one is an assembler bug.
