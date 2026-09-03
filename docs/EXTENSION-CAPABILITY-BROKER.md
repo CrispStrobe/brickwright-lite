@@ -873,3 +873,42 @@ game-example tests about a *collision strategy* in a racing game.
    sound": absence of a finding across four passes is evidence, not proof, and the passes were
    written by the person who wrote the code.
 
+## CP5 item 3 — the deployed-Pages journey: run, and it FAILS. Open. (2026-09-03)
+
+The clause asks to "rerun the exact broker journey against deployed Pages". I first assumed CI
+already did it, because `verify-capability-broker.mjs` DEFAULTS to the Pages URL
+(`process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/'`). It does not:
+build.yml overrides `PROOF_URL=http://localhost:8617/`, which is correct for CI — a gate should
+point at the artifact under test — but means this clause had never run. Reading a default and
+stopping before the caller is the same mistake as reading a probe's byte count and stopping
+before the document.
+
+MEASURED, both ways:
+
+- LOCAL build (`PROOF_URL=http://127.0.0.1:8623/`):
+  `PASS: 7/7 declared capability scenarios; teardown/reload clean; zero page errors`
+- DEPLOYED Pages (no override):
+  `page.evaluate: Error: HTTP 404 loading .../static/test-fixtures/capability-probe-none.js`
+  from `_startPinnedWorkerExtension`, at the THIRD scenario. `allowed` and `sequence` had
+  already succeeded, so interception worked for `capability-probe-declared.js` and not for
+  `capability-probe-none.js`.
+
+The gate is not vacuous: pointed at a port with nothing on it, it exits 1.
+
+ELIMINATED, so nobody repeats them:
+
+- Not a missing production file. Both fixture URLs exist only as Playwright-intercepted routes
+  (`page.route(url, fulfillFixture)`), fulfilled from `capability-probe.js` on disk. There is no
+  `capability-probe-none.js` anywhere in the repository, by design.
+- Not a stale pin. Both URLs are present in the deployed chunk.
+- Not a service worker intercepting ahead of Playwright: the deployed bundle registers none.
+- Not a worker-side `importScripts` bypassing page routing: the chunk contains none.
+
+Cause UNDETERMINED, recorded rather than guessed. The remaining candidate — that the app takes
+a different load path for a URL it has not seen before in a session, one page-level routing does
+not cover — is a claim to MEASURE, not to assert.
+
+Item 3 stays open. And worth stating for when it does work: with fixtures supplied by
+interception, a deployed run exercises the deployed VM, broker and worker driving
+LOCALLY-supplied extensions. That is meaningful, and it is not "production serving everything".
+
