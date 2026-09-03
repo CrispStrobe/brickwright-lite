@@ -297,8 +297,19 @@ console.log(`stepped 5 instructions -> ${added} rows: ${walked.map(r => r.text.s
 // so including them disassembles 64 KB of padding — 1.1 MB of NOP listing,
 // which overflows execFileSync's default 1 MB buffer (ENOBUFS) before any
 // length is ever compared.
+//
+// Read in 256-byte chunks, because a single 0x10000 request does NOT come back
+// whole: `readMem`'s fast path hands the length straight to the emulator's
+// scratch buffer, and a 64 KB ask returned the first ~270 bytes correctly and
+// ZERO for everything after — a silent short read. Taken at face value it makes
+// the program look like it ends at 0x010E while the CPU is demonstrably
+// executing at 0x01F8, and it hands stc_disasm a desert of NOPs to agree with.
 const PROGRAM_GAP = 64;
-const codeBytes = runner.readMem('code', 0, 0x10000);
+const CODE_CHUNK = 256;
+const codeBytes = [];
+for (let at = 0; at < 0x10000; at += CODE_CHUNK) {
+    codeBytes.push(...runner.readMem('code', at, CODE_CHUNK));
+}
 let codeEnd = 0;
 for (let at = 0; at < codeBytes.length; at++) {
     if (codeBytes[at]) codeEnd = at + 1;
