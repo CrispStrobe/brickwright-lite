@@ -15,7 +15,7 @@ Z80, built the same way and verified to the same standard.
 | 8255 PPI · 8259 · 8254 · 8251 | `i8255.js`, `i8259.js`, `i8254.js`, `i8251.js` | INTR + NMI delivered |
 | Machine · adapter · debug target | `i8086-machine.js` + 2 | factory kind `i8086` |
 | Bus extractor | `i8086-extract.js` | a miswired select gives a NAMED refusal |
-| DIP parts | `bw-parts` `41706a7` | 7 packages, pushed |
+| DIP parts | `bw-parts` `41706a7` | 7 packages, **pushed** |
 | DOS/BIOS services | `i8086-dos.js` | INT 21h/10h/13h/16h/19h/1Ah/03h/15h/20h |
 | Assembler | `i8086-asm.js` | **510/525 accepted** |
 | emu8086 devices | `i8086-emu8086.js` | clean re-implementation, evidence-cited |
@@ -63,6 +63,39 @@ reproduce it rather than invent one.
 success unconditionally (`INT 21h/3Eh` and `/41h`), and `INT 10h/06h` clearing
 the screen where it should scroll a window. None failed a test; none threw;
 the tally counted all three as successes.
+
+## What an outside pass found
+
+A reviewer who did not build the tier re-ran the oracles rather than reading
+the claims. All four headline numbers reproduce: core 646,000/646,000,
+disassembler 646,000/646,000 on text and length with the three documented
+exclusions, 237 tests green, and 5.17 M instr/sec against a quoted 4.0 — the
+figure above is conservative.
+
+The engine-side findings and the expanded licence tables are in `bw-board`
+`ROADMAP.md` §E6. Three of them change what this document promises.
+
+**The numbers in this file do not run in CI.** The sampled grind skips when
+the vector suite is absent, which on a runner it always is, so
+`646,000/646,000` is a number from one box on one day; the 525-program corpus
+is not in the tree either. Being fixed: the suite ships a compact binary form,
+`v1_binary/*.MOO.gz`, 94 MB for all 646,000 vectors against 174 MB of JSON, so
+a pinned sparse checkout — the idiom `ci.yml` already uses for emu8051-stc —
+makes the claim stop decaying. **Until that lands, read every number in this
+file as measured, not as maintained.**
+
+**§6 is now the near-term question, not the deferred one.** This document said
+Tier C should start "when a lesson actually needs it". Real Microsoft binaries
+from the MIT MS-DOS release now run — CHKDSK parsing its command line, COMP
+refusing to compare a file to itself, and DEBUG reaching its prompt, taking a
+command and quitting cleanly. That is the first third-party code this tier has
+executed that it did not assemble itself, and it moves a BIOS ROM at F000 from
+someday to soon — where it collides with the DOS layer's trap page.
+
+**The trap flag is absent and was not declared absent.** `i8086.js` names four
+deliberate omissions; TF was not among them, so a program installing its own
+single-step tracer got silence. Recorded here because §2's list of what is
+*not* modelled is the thing readers of this document trust.
 
 ## 1. Why a core of our own rather than an adoption
 
