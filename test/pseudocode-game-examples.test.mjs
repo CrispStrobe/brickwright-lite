@@ -2480,9 +2480,21 @@ test('lunar dash and rocket thrust consume resources in the live Scratch VM', as
         // inspect oxygen before the key hat had run. Observe the authored
         // transition with a hard bound; still require exactly one unit, so a
         // repeated or missing dash cannot make this test green.
+        // A WALL-CLOCK deadline, not a step count. Raising the count 20 -> 60 did not fix this
+        // race, it moved it: CI failed again at 60 steps (~600ms) on 2026-09-03, and said so
+        // exactly — "the dash never fired ... through 60 steps (~600ms of stepping)". The thing
+        // being waited on is a real-time interval inside vm.start(), so bounding the wait in
+        // STEPS measures the wrong axis; a loaded runner starves the interval regardless of how
+        // many times this loop calls _step().
+        //
+        // Ten seconds is generous when the runner is loaded and costs nothing when it is not,
+        // because the loop exits the moment oxygen moves. It hides no regression: an expired
+        // deadline still fails, and still reports how long it actually waited.
+        const deadline = Date.now() + 10000;
         let waited = 0;
-        for (; waited < 60 && Number(value(coil, 'oxygen').value) === beforeOxygen; waited++) {
+        while (Number(value(coil, 'oxygen').value) === beforeOxygen && Date.now() < deadline) {
             coil.runtime._step();
+            waited++;
             await new Promise(resolve => setTimeout(resolve, 10));
         }
         coil.postIOData('keyboard', {key: ' ', isDown: false});
@@ -2497,8 +2509,8 @@ test('lunar dash and rocket thrust consume resources in the live Scratch VM', as
         // actually waited, so a genuinely slower dash surfaces as itself.
         assert.notEqual(Number(value(coil, 'oxygen').value), beforeOxygen,
             `the dash never fired: oxygen stayed at ${beforeOxygen} through ${waited} steps ` +
-            `(~${waited * 10}ms of stepping). This is the WAIT expiring, not the dash spending ` +
-            'the wrong amount.');
+            'over a 10s deadline. This is the WAIT expiring, not the dash spending the wrong ' +
+            'amount — and at ten seconds it is no longer a slow runner, so look at the game.');
         assert.equal(Number(value(coil, 'oxygen').value), beforeOxygen - 1,
             'dash did not spend exactly one oxygen');
         assert.ok(Number(value(coil, 'headY').value) > beforeY, 'dash did not advance an extra grid cell');

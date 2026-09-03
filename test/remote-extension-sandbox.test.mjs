@@ -127,6 +127,15 @@ test('the broker rejects privileged calls and cross-worker response forgery at r
                 return Module.prototype.require.call(brokerModule,
                     path.join(root, 'overlay/scratch-vm/src/extension-support/capability-broker.js'));
             }
+        // Declared for the same reason as capability-broker above: this module is OURS and lives
+        // in the overlay, so real resolution against the vendored tree cannot find it. There are
+        // exactly TWO files that shim central-dispatch's requires; a new VM-internal dependency
+        // has to be declared in both, and missing this one turned Build red after the other was
+        // fixed — because I ran the suites I judged affected instead of the whole suite.
+        if (request === '../extension-support/native-platform-capability') {
+            return Module.prototype.require.call(brokerModule,
+                path.join(root, 'overlay/scratch-vm/src/extension-support/native-platform-capability.js'));
+        }
             return Module.prototype.require.call(brokerModule, request);
         };
         brokerModule._compile(central, filename);
