@@ -72,6 +72,30 @@ if (!driverBin) {
 console.log(`driver binary: ${driverBin}`);
 const driver = spawn(driverBin, ['--port', String(DRIVER_PORT), '--native-driver', nativeDriver],
     {stdio: ['ignore', 'pipe', 'pipe']});
+/**
+ * Which binaries produced this verdict. A gate that fails closed on a tool's ABSENCE still says
+ * nothing about its IDENTITY, and a different WebKitWebDriver is a different oracle. This does
+ * not pin them; it records them, so the artifact can be compared across runs.
+ */
+const toolVersions = async () => {
+    const {execFile} = await import('node:child_process');
+    const {promisify} = await import('node:util');
+    const run = promisify(execFile);
+    const out = {node: process.version, platform: `${process.platform}/${process.arch}`};
+    for (const [name, bin, args] of [
+        ['tauriDriver', driverBin, ['--help']],
+        ['webkitDriver', nativeDriver, ['--version']]
+    ]) {
+        try {
+            const {stdout, stderr} = await run(bin, args, {timeout: 5000});
+            out[name] = String(stdout || stderr).split('\n')[0].trim().slice(0, 80) || 'present';
+        } catch (error) {
+            out[name] = `unreadable: ${(error && error.message ? error.message : String(error)).slice(0, 60)}`;
+        }
+    }
+    return out;
+};
+
 const driverLog = [];
 driver.stdout.on('data', chunk => driverLog.push(String(chunk)));
 driver.stderr.on('data', chunk => driverLog.push(String(chunk)));
@@ -168,6 +192,12 @@ try {
         realms.push({handle, ...(seen.body?.value || {error: 'unreadable'})});
     }
     console.log('realms: ' + JSON.stringify(realms, null, 1));
+
+    // Residual risk 1, partially closed: this gate fails closed when its tools are ABSENT, and
+    // nothing pinned WHICH tools. Recording their versions beside the result does not pin them
+    // either — but it makes a changed oracle VISIBLE in the evidence artifact instead of
+    // inferred, which is the difference between noticing and not.
+    console.log('tools: ' + JSON.stringify(await toolVersions(), null, 1));
     // Select the editor by IDENTITY, never by position. This read `handles[0]` until the broker
     // realm started loading its document: a second realm then appeared, the order was not the one
     // assumed, and the probe ran INSIDE the broker — where `native_broker_audit` is refused by
@@ -441,6 +471,36 @@ try {
     if (brokerTrace.length) console.log('--- broker trace ---\n' + brokerTrace.join('\n'));
     else console.log('--- broker trace --- (none captured; the app printed no [broker] lines)');
 
+    // ── CP3-D2: RELOAD leaves zero stale authority, asserted rather than inferred ──────────
+    // `canonical_reload_revokes_before_allowing_fresh_document` proves the rule with a synthetic
+    // event pair. The navigation case shows that real page events reach these handlers, but that
+    // is an argument about shared plumbing, not a demonstration of THIS path. Recorded as an open
+    // residual risk earlier today; closed here.
+    await call('POST', `/session/${session}/window`, {handle: brokers[0].handle});
+    const preReload = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        globalThis.__TAURI_INTERNALS__.invoke('native_broker_lease')
+            .then(lease => done({lease}))
+            .catch(error => done({fatal: String(error)}));`);
+    if (!preReload || preReload.fatal) {
+        await fail(`could not mint a lease before the reload check: ${preReload && preReload.fatal}`);
+    }
+    await call('POST', `/session/${session}/refresh`, {});
+    await sleep(1500);
+    // The realm reloads and re-runs its init script. The lease minted BEFORE the reload must no
+    // longer authorise anything: a second page-load Started revokes.
+    const afterReload = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        globalThis.__TAURI_INTERNALS__.invoke('native_broker_invoke', {
+            lease: ${JSON.stringify(preReload.lease)}, sequence: 0,
+            operation: 'platform.kind.read', resource: 'platform/default', args: {}
+        }).then(value => done({ok: true, value})).catch(error => done({ok: false, error: String(error)}));`);
+    if (!afterReload) await fail('the post-reload invoke returned nothing');
+    if (afterReload.ok) {
+        await fail('a lease minted before a RELOAD still authorised a call afterwards ' +
+            `(returned ${JSON.stringify(afterReload.value)}) — the reload path does not revoke`);
+    }
+
     console.log(`PASS: acknowledgement reached the ACL; platform.kind.read returned ${JSON.stringify(slice.value)} ` +
         `through a broker-minted lease and is recorded in the audit (${before} -> ${after.rows.length} rows, ` +
         'lease and result both absent from what the editor can see); a replayed sequence was refused; ' +
@@ -449,7 +509,8 @@ try {
         'a refused navigation revoked the outstanding lease and the revocation is visible in the audit; ' +
         'no realm reported an initialisation error; ' +
         'and the JavaScript path returned the same platform result as the native executor, ' +
-        'naming only the operation, with a replayed request id refused');
+        'naming only the operation, with a replayed request id refused; ' +
+        'a reload revoked a lease minted before it');
     await shutdown();
     process.exit(0);
 } catch (error) {

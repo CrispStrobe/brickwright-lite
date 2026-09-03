@@ -382,6 +382,17 @@ jobs:
             exit 1
           fi
 
+      # A green suite says every assertion PASSED. It does not say any of them could have
+      # failed. These mutations weaken a real enforcement point and require the named suite to
+      # go red — the proofs existed before this step, by hand, in commit messages, which means
+      # they decayed silently the moment anyone edited a guard. Seven seconds.
+      #
+      # It restores every file in a `finally`, and a mutation whose anchor no longer occurs
+      # exactly once is a FAILURE rather than a skip: a rotted mutation proves nothing while
+      # continuing to look like a proof.
+      - name: Mutation proofs — every enforcement layer must be able to fail
+        run: node scripts/mutation-proof.mjs
+
       # --- build ---
 
       - name: Guard — packaged native broker proof authority is fresh
