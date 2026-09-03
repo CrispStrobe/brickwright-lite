@@ -33,6 +33,15 @@ class CentralDispatch extends SharedDispatch {
         // This deterministic handler is reachable only by the two exact, content-pinned browser-proof
         // identities. Ordinary gallery records never carry `proof`, and there is no runtime setter.
         this.capabilityBroker = new CapabilityBroker({'project.metadata.read': proofMetadataHandler});
+        // A read-only window onto the broker's diagnostics for the capability diagnostics panel,
+        // which is deliberately import-free (it has to work when the thing being diagnosed is the
+        // GUI). This exposes a READ of already-redacted data — the entry type has no field for a
+        // digest, a URL, arguments or a result — never the broker itself, so nothing here can
+        // declare, allow or revoke anything. Extensions cannot reach it in any case: they run in
+        // workers, which do not share this realm.
+        if (typeof globalThis !== 'undefined') {
+            globalThis.__brickwrightCapabilityDiagnostics = () => this.capabilityBroker.diagnostics();
+        }
     }
 
     callSync (service, method, ...args) {

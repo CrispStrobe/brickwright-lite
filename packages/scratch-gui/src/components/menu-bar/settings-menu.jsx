@@ -152,6 +152,13 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             id="gui.menuBar.connectionDiagnostics"
                         />
                     </MenuItem>
+                    <MenuItem onClick={() => { emit('bw-open-capability-diagnostics'); onRequestClose(); }}>
+                        <FormattedMessage
+                            defaultMessage="Capability diagnostics…"
+                            description="Settings action that opens the extension capability audit panel"
+                            id="gui.menuBar.capabilityDiagnostics"
+                        />
+                    </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-about'); onRequestClose(); }}>
                         About Brickwright…
                     </MenuItem>

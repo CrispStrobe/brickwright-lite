@@ -7,6 +7,7 @@ import GUI from '../containers/gui.jsx';
 import HashParserHOC from '../lib/hash-parser-hoc.jsx';
 import log from '../lib/log.js';
 import initBleDiagnostics from '../lib/ble-diagnostics.js';
+import initCapabilityDiagnostics from '../lib/capability-diagnostics.js';
 import initScratchLinkTransport from '../lib/scratchlink-transport.js';
 import installNativeWebBluetooth from '../lib/native-web-bluetooth.js';
 import installScratchLinkBridge from '../lib/native-scratch-link-bridge.js';
@@ -42,6 +43,7 @@ export default appTarget => {
     // point — including a failure to install the Bluetooth shim — is readable on
     // a device with no devtools. Settings › Connection diagnostics opens it.
     initBleDiagnostics();
+    initCapabilityDiagnostics();
 
     // The Scratch Link carrier chooser (Settings › How Scratch Link connects…).
     // Registered early so the preference is readable before anything dials.
