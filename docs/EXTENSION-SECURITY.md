@@ -138,6 +138,41 @@ desktop plus iOS/Android lifecycle proof and is tracked as a separate
 multi-platform campaign. Refusals still belong in diagnostics; a capability
 that silently does nothing is indistinguishable from a bug.
 
+### Update 2026-09-03: continuation (b) is BUILT, at realm granularity
+
+The hidden broker webview exists on desktop and is proven end to end against the
+real Tauri ACL, in the packaged app, under tauri-driver:
+
+- `native_broker_lease` and `native_broker_invoke` are bound to the BROKER label.
+  The editor is refused both — measured, not asserted.
+- `native_broker_audit` is bound to the MAIN label and returns structurally
+  redacted rows: the row type has no field for a lease, digest, correlation,
+  raw arguments or result, so there is nothing to strip.
+- One semantic operation exists, `platform.kind.read`, whose executor is a
+  side-effect-free read of a build constant.
+- A lease is minted per call, spent at sequence 0 and abandoned. A replayed
+  sequence is refused; a lease aged past its 60s TTL is refused against the REAL
+  clock; a refused navigation and a reload each revoke outstanding leases, and
+  the revocation is visible in the audit.
+- The JavaScript and native paths return the same platform result, and the
+  editor names only an OPERATION — never the resource, never a lease.
+
+**What this does NOT establish, and must not be read as establishing.** The
+attribution is at REALM granularity, not per extension. The capability path is
+reached through main-label transport commands, so any code in the editor realm —
+including the 99 deferred gallery entries that still share it — can drive it.
+Rust sees "the main webview asked", exactly as this section warned; it does not
+see which extension. That is survivable only because the vocabulary is CLOSED and
+every operation in it must be safe for an arbitrary main-realm caller.
+`platform.kind.read` was chosen for precisely that property. Adding an operation
+with any authority, side effect or secret in its result would require finishing
+continuation (a) first, or per-extension tokens checked in Rust.
+
+Per-extension identity IS enforced on the worker path, by the JavaScript broker:
+host WeakMap identity, exact declarations, strict arguments, replay state and
+revocation. The two granularities are different and the difference is the point.
+Do not merge these claims when summarising them.
+
 ## Task 4 — Sandbox unpinned extensions
 
 **Status: implemented 2026-08-28 for every unpinned URL.** This directly buys

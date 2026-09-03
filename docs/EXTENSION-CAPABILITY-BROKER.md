@@ -689,7 +689,7 @@ the separate multi-day native boundary remains tracked by CP3.
   Require final-tip vendor freshness, full build, all browser jobs, Pages deploy
   and deployed-GUI verification green, then rerun the exact broker journey
   against deployed Pages.
-- [ ] Update `docs/EXTENSION-SECURITY.md`, move the LANES row to DONE with SHAs,
+- [x] Update `docs/EXTENSION-SECURITY.md`, move the LANES row to DONE with SHAs,
   counts, mutations and run IDs, and leave the worktree clean and synchronized.
 
 DoD: the final remote tip is green on every required surface; the deployed
@@ -928,4 +928,44 @@ Item 3 CLOSES. The honest reading of what it proves: with fixtures supplied by i
 deployed run exercises the deployed VM, broker and worker driving LOCALLY-supplied extensions.
 That is meaningful — it is the deployed code under test — and it is not "production serving
 everything", which no gate here claims.
+
+## OPEN: the diagnostics panel renders zeros where its own source has rows (2026-09-03)
+
+Found while trying to close CP3-D2's "show declared capabilities and explicit refusals in
+product diagnostics BEFORE/AFTER extension load" by driving the panel from the browser gate.
+The panel's rendering is unit-tested; nothing proved it renders the ACTUAL run, so I drove it.
+It does not, and I could not explain why in the time I gave it.
+
+MEASURED, all at the same point in the same page context, after two extensions had loaded, two
+requests were allowed and one was refused:
+
+    window.__brickwrightCapabilityDiagnostics()   -> 2 rows, the first
+        {event: "attached", slug: "browser-proof/declared",
+         declared: ["project.metadata.read"], code: "worker-attached"}
+    panel.collect({workerDiagnostics: <that same function>})
+                                                  -> worker: 2 rows, correctly whitelisted
+    the PAINTED panel                             -> "declared 0   allowed 0   refused 0"
+
+So the source has data, `collect()` reads it correctly, and the DOM shows zeros — in the same
+context, at the same moment. Five explanations were tried and none survived: module duplication
+(disproved — the global returns rows), a stale deploy (disproved — the deployed bundle carries
+both the panel and the wiring), an async paint race (the panel SETTLES, and an `UNSETTLED`
+marker was added to tell that case apart), the panel being opened before the loads, and
+`defaultSources()` returning null.
+
+WHAT WAS DONE ABOUT IT. The two browser-gate scenarios were REVERTED. A gate that fails for a
+reason nobody can explain is the same species this repository fixed an hour earlier — a gate
+that fails for the WRONG reason — and shipping one to hold a checkbox open would be worse than
+the missing check. The gate is back to 7/7 against both a local build and deployed Pages.
+
+The unit tests stand: they pin the whitelist, the counting and the two-kinds-of-empty
+distinction, and they are mutation-proved. What is NOT established is that the panel shows a
+real session's declarations and refusals. CP3-D2's diagnostics box therefore stays UNCHECKED,
+and this is the first thing to pick up next.
+
+One measurement that would probably settle it, for whoever takes this: print `asText(...)` from a
+fresh `collect()` and the DOM's `textContent` in the SAME evaluate and diff them. If they differ,
+the DOM is stale and the bug is in when `paint()` runs; if they match, the bug is in what
+`paint()` passes to `collect()`. I ran out of turns on the nested-quoting of that probe, not on
+the idea.
 

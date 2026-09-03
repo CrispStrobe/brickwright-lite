@@ -78,6 +78,8 @@ try {
         pendingLoadsClosed: [allowed, sequence, undeclared, reloaded].every(item => item.pending === 0),
         teardownReloadFreshAndAllowed: reloaded.value === 'en' && /^extension\.\d+\.0$/.test(reloaded.service)
     };
+    // The exact list, compared by ORDER as well as membership, so a scenario cannot be dropped
+    // or renamed without this failing.
     const expectedScenarioNames = [
         'declaredWorkerRegistered', 'declaredOperationAllowed', 'sequentialRequestsAllowed',
         'noCapabilityWorkerDistinct', 'undeclaredOperationRefused', 'pendingLoadsClosed',
