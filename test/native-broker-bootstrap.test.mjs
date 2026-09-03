@@ -249,3 +249,74 @@ test('the production CommonJS sources compose in separate lexical scopes', () =>
     vm.runInNewContext(script, realm);
     assert.equal(typeof realm.__brickwrightInstallBrokerHost, 'function');
 });
+
+test('a capability request is served without a worker, and only for a declared operation', async () => {
+    // CP5 adversarial pass over the newest surface. The editor supplies `operation`, and the
+    // realm looks it up in a table to choose the resource — so the sharp attack on a string-keyed
+    // lookup is a PROTOTYPE name. `CAPABILITY_RESOURCE` has a null prototype, which makes
+    // `__proto__`, `constructor` and friends resolve to undefined; that held before this test
+    // existed, and nothing pinned it.
+    const commands = [];
+    const replies = [];
+    const control = createNativeBrokerReceiver({NativeBrokerProtocol,
+        BrokerProtocolError: protocolModule.BrokerProtocolError,
+        invoke: async (command, args) => {
+            commands.push(command);
+            if (command === 'native_broker_reply') { replies.push(JSON.parse(args.payload)); return undefined; }
+            if (command === 'native_broker_lease') return 'f'.repeat(64);
+            if (command === 'native_broker_invoke') return 'linux';
+            throw new Error(`unexpected command ${command}`);
+        },
+        createProtocol: () => { throw new Error('a capability request must not create a worker host'); }});
+    const session = sid(2);
+
+    // The declared operation is served. `createProtocol` throwing above is the assertion that it
+    // is served WITHOUT session state: a capability read must not inherit an extension session.
+    await control.receive(delivery(session, sid(21), 'capability', 0,
+        {operation: 'platform.kind.read', args: {}}));
+    assert.deepEqual(replies[0], {kind: 'capability', result: 'linux'});
+
+    // The realm chooses the resource; the editor never sent one.
+    const invoked = commands.filter(c => c === 'native_broker_invoke');
+    assert.equal(invoked.length, 1);
+
+    // Prototype names, and an unknown operation, are refused BEFORE any native call. That is the
+    // property worth pinning: an unknown name must not reach the boundary at all.
+    //
+    // MUTATION RECORD, because the result is more informative than the assertion. Removing the
+    // table's `__proto__: null` ALONE does not fail this test, and removing the
+    // `typeof resource !== 'string'` guard ALONE does not either — the two are INDEPENDENTLY
+    // SUFFICIENT. With a null prototype `__proto__` resolves to undefined; with the typeof guard
+    // it resolves to Object.prototype and is rejected for not being a string. Remove BOTH and
+    // this loop fails with `operation "__proto__" was not refused`. So the test proves the PAIR
+    // holds, not that either does; keep both, and do not read a green run here as evidence that
+    // the one you happen to be looking at is the one doing the work.
+    for (const operation of ['__proto__', 'constructor', 'toString', 'valueOf',
+        'platform.kind.write', '', 'platform.kind.read ']) {
+        const before = commands.filter(c => c !== 'native_broker_reply').length;
+        replies.length = 0;
+        await control.receive(delivery(session, sid(22), 'capability', 1, {operation, args: {}}));
+        assert.deepEqual(replies[0],
+            {kind: 'failure', request_kind: 'capability', code: 'invalid-envelope'},
+            `operation ${JSON.stringify(operation)} was not refused`);
+        assert.equal(commands.filter(c => c !== 'native_broker_reply').length, before,
+            `operation ${JSON.stringify(operation)} reached the native boundary before being refused`);
+    }
+
+    // A non-string operation cannot reach the lookup either.
+    for (const operation of [null, 42, {}, ['platform.kind.read']]) {
+        replies.length = 0;
+        await control.receive(delivery(session, sid(23), 'capability', 2, {operation, args: {}}));
+        assert.equal(replies[0].kind, 'failure', `operation ${JSON.stringify(operation)} was accepted`);
+    }
+
+    // And the envelope shape is exact: no extra fields, and no resource smuggled alongside.
+    replies.length = 0;
+    await control.receive(delivery(session, sid(24), 'capability', 3,
+        {operation: 'platform.kind.read', args: {}, resource: 'platform/default'}));
+    assert.deepEqual(replies[0],
+        {kind: 'failure', request_kind: 'capability', code: 'invalid-envelope'},
+        'a resource supplied by the editor must not be accepted, even a correct one');
+
+    await control.dispose();
+});
