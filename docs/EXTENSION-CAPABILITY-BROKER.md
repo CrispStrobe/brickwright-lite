@@ -682,7 +682,7 @@ the separate multi-day native boundary remains tracked by CP3.
   overlay/package equality, production build/browser gates, Rust tests/checks
   for desktop and cfg-sensitive mobile surfaces where supported, and mutation
   proofs for every enforcement layer.
-- [ ] Independently audit direct invoke, saved invoke closure, monkey-patching,
+- [x] Independently audit direct invoke, saved invoke closure, monkey-patching,
   forged worker frames, extension-id collision, cross-worker confused deputy,
   teardown/reload and diagnostic honesty. Record residual risks explicitly.
 - [ ] Push each repair immediately; re-fetch/rebase before every checkpoint.
@@ -834,4 +834,42 @@ and works in a browser; the native path exists only in the desktop app. And two 
 are kept apart — a browser build says "no native boundary in this build" rather than rendering
 an empty table, the same distinction whose absence cost seven hours when an error page measured
 as an empty document.
+
+## CP5 item 2 — the eight audits, and the residual risks (2026-09-03)
+
+Each of the eight surfaces the checkpoint names, with what covers it. Established by reading
+the mechanism, not by matching a test name to a keyword — the first grep for these returned
+game-example tests about a *collision strategy* in a racing game.
+
+| audit | covered by |
+|---|---|
+| direct invoke | e2e at the real ACL: the editor is refused `native_broker_reply` and `native_broker_lease`; plus `tauri-app-command-acl` |
+| saved invoke closure | `revoke()` keeps a WeakMap TOMBSTONE so a transport object cannot be rebound to fresh authority; "stale reply and post-termination request are refused" |
+| monkey-patching | "worker bootstrap locks escape hatches before evaluating verified source" — `lockEscapes` freezes Worker/WebSocket/importScripts/postMessage/navigator.bluetooth BEFORE extension source runs |
+| forged worker frames | "forged slug and reply-shaped reflection fields are refused"; "unforgeable owner is checked before sequence mutation on every entrypoint" |
+| extension-id collision | impossible by construction — "load … returns only broker-assigned identities"; "calls refuse unknown worker, extension, and non-allowlisted methods" |
+| cross-worker confused deputy | "cross-worker replay and same-session replay are refused"; "identity, declaration, hostile frame, cross-worker, and replay mutations fail closed" |
+| teardown / reload | browser gate closes "declared, sequential, undeclared and reload scenarios"; plus the retired-session fix found by THIS review |
+| diagnostic honesty | redaction is a whitelist (`capability-diagnostics`), "every refusal has a stable sanitized diagnostic code", "keeps diagnostics redacted" |
+
+### Residual risks, recorded explicitly as the checkpoint requires
+
+1. **Tool IDENTITY is not pinned anywhere.** Every gate fails closed when a tool is ABSENT;
+   none pins which tool. A different `sdcc`, `simavr` or playwright is a different verdict.
+   Closing it means recording each tool's version beside the result it produced.
+2. **The destroy path cannot be driven from a harness.** The broker window is deliberately
+   `.closable(false)`. Its logic is unit-proven; its WIRING is argued from the shared
+   `on_window_event` registration, not demonstrated.
+3. **Reload wiring is unasserted end to end.** `handle_page_load` revoking on a second `Started`
+   is unit-proven, and navigation demonstrates that real page events reach these handlers, but
+   reload itself is inferred from that, not shown.
+4. **The semantic vocabulary lives in two places** — the realm's `CAPABILITY_RESOURCE` table and
+   the lease's declarations in Rust. They must agree. A divergence fails CLOSED (the pair would
+   be Undeclared), so it cannot leak, but it would break silently in a way only the e2e catches.
+5. **One operation, one resource.** The design's generality is untested at scale: everything
+   here is proven for `platform.kind.read` / `platform/default` and nothing else.
+6. **Four adversarial passes found one defect, and it was mine.** Passes 1–3 found no
+   pre-existing hole and five unpinned properties. That is a weaker result than "the boundary is
+   sound": absence of a finding across four passes is evidence, not proof, and the passes were
+   written by the person who wrote the code.
 
